@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "training-dashboard": {
+      "command": "python",
+      "args": ["/ABSOLUTE/PATH/TO/training-dashboard/mcp/server.py"],
+      "env": {}
+    }
+  }
+}

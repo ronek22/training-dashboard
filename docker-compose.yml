@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    container_name: training-backend
+    ports:
+      - "8000:8000"
+    environment:
+      STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID:-}
+      STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:-}
+      STRAVA_REFRESH_TOKEN: ${STRAVA_REFRESH_TOKEN:-}
+    volumes:
+      - ./data:/data
+      - ./backend/app:/app/app
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: training-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  data:

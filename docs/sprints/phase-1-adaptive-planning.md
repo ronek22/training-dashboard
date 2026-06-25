@@ -4,7 +4,7 @@
 
 Make weekly plan adjustment usable directly in the app, without relying on chat for the common replanning workflow.
 
-This sprint is the first implementation slice from [docs/roadmap.md](/Users/jakubronkiewicz/Projekty/training-dashboard/docs/roadmap.md).
+This sprint is the first implementation slice from [docs/roadmap.md](../roadmap.md).
 
 ## Why This Sprint
 
@@ -67,7 +67,7 @@ Add API method for:
 
 Target file:
 
-- [frontend/src/stores/api.js](/Users/jakubronkiewicz/Projekty/training-dashboard/frontend/src/stores/api.js:1)
+- [frontend/src/stores/api.js](../../frontend/src/stores/api.js)
 
 ### 2. Plan view adjustment UI
 
@@ -79,7 +79,7 @@ Recommended approach:
 
 Target file:
 
-- [frontend/src/views/Plan.vue](/Users/jakubronkiewicz/Projekty/training-dashboard/frontend/src/views/Plan.vue:1)
+- [frontend/src/views/Plan.vue](../../frontend/src/views/Plan.vue)
 
 Core UI requirements:
 

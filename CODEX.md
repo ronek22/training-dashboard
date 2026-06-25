@@ -10,9 +10,9 @@ This file is the root guidance note for working in this repository.
 
 ## Primary Documents
 
-- [docs/README.md](/Users/jakubronkiewicz/Projekty/training-dashboard/docs/README.md)
-- [docs/roadmap.md](/Users/jakubronkiewicz/Projekty/training-dashboard/docs/roadmap.md)
-- [docs/decisions.md](/Users/jakubronkiewicz/Projekty/training-dashboard/docs/decisions.md)
+- [docs/README.md](docs/README.md)
+- [docs/roadmap.md](docs/roadmap.md)
+- [docs/decisions.md](docs/decisions.md)
 
 ## Working Preference
 

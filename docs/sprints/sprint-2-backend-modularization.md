@@ -8,7 +8,7 @@ The goal is not a rewrite. The goal is to preserve behavior while introducing a 
 
 ## Why This Sprint
 
-Right now too many concerns live in [backend/app/main.py](/Users/jakubronkiewicz/Projekty/training-dashboard/backend/app/main.py:1):
+Right now too many concerns live in [backend/app/main.py](../../backend/app/main.py):
 
 - FastAPI app bootstrap
 - database initialization
@@ -147,7 +147,7 @@ Recommended next slice:
 
 ### 1. App composition
 
-Keep [backend/app/main.py](/Users/jakubronkiewicz/Projekty/training-dashboard/backend/app/main.py:1) minimal:
+Keep [backend/app/main.py](../../backend/app/main.py) minimal:
 
 - create FastAPI app
 - register middleware

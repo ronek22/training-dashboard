@@ -65,8 +65,8 @@ Scope:
 
 Implementation notes:
 
-- frontend form or modal on [frontend/src/views/Plan.vue](/Users/jakubronkiewicz/Projekty/training-dashboard/frontend/src/views/Plan.vue:1)
-- API helper for `POST /plans/weekly/adjust` in [frontend/src/stores/api.js](/Users/jakubronkiewicz/Projekty/training-dashboard/frontend/src/stores/api.js:1)
+- frontend form or modal on [frontend/src/views/Plan.vue](../frontend/src/views/Plan.vue)
+- API helper for `POST /plans/weekly/adjust` in [frontend/src/stores/api.js](../frontend/src/stores/api.js)
 - reuse current plan data shape instead of inventing a new editor model
 
 ### 2. Clearer status semantics
@@ -84,7 +84,7 @@ Scope:
 
 Implementation notes:
 
-- likely centered in [backend/app/main.py](/Users/jakubronkiewicz/Projekty/training-dashboard/backend/app/main.py:1685)
+- likely centered in [backend/app/main.py](../backend/app/main.py)
 - should remain conservative to avoid false positives
 
 ### 3. Plan revision visibility
@@ -171,7 +171,7 @@ Scope:
 
 Implementation notes:
 
-- extend planning context in [backend/app/main.py](/Users/jakubronkiewicz/Projekty/training-dashboard/backend/app/main.py:2679)
+- extend planning context in [backend/app/main.py](../backend/app/main.py)
 - keep goal linkage simple at first
 
 ### 7. Goal progress forecast
@@ -288,7 +288,7 @@ Scope:
 
 Implementation notes:
 
-- see [docs/sprints/sprint-2-backend-modularization.md](/Users/jakubronkiewicz/Projekty/training-dashboard/docs/sprints/sprint-2-backend-modularization.md)
+- see [docs/sprints/sprint-2-backend-modularization.md](sprints/sprint-2-backend-modularization.md)
 
 ## Suggested Build Sequence
 

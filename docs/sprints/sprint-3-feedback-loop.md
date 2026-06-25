@@ -92,7 +92,7 @@ Why this shape:
 
 Primary placement:
 
-- add a compact `Log Feedback` or `Edit Feedback` action in [frontend/src/views/Activities.vue](/Users/jakubronkiewicz/Projekty/training-dashboard/frontend/src/views/Activities.vue:1)
+- add a compact `Log Feedback` or `Edit Feedback` action in [frontend/src/views/Activities.vue](../../frontend/src/views/Activities.vue)
 
 Recommended UX:
 
@@ -129,7 +129,7 @@ Important constraint:
 
 ### 4. Dashboard recommendation upgrade
 
-Extend [frontend/src/views/Dashboard.vue](/Users/jakubronkiewicz/Projekty/training-dashboard/frontend/src/views/Dashboard.vue:1) so the top recommendation card explains:
+Extend [frontend/src/views/Dashboard.vue](../../frontend/src/views/Dashboard.vue) so the top recommendation card explains:
 
 - what is planned today
 - current recommendation state
@@ -219,7 +219,7 @@ This can likely live in the existing MCP adapter/service path without a protocol
 
 ### 1. Activities feedback entry
 
-Update [frontend/src/views/Activities.vue](/Users/jakubronkiewicz/Projekty/training-dashboard/frontend/src/views/Activities.vue:1):
+Update [frontend/src/views/Activities.vue](../../frontend/src/views/Activities.vue):
 
 - add feedback action per recent activity
 - add feedback form state
@@ -228,11 +228,11 @@ Update [frontend/src/views/Activities.vue](/Users/jakubronkiewicz/Projekty/train
 
 ### 2. API helpers
 
-Update [frontend/src/stores/api.js](/Users/jakubronkiewicz/Projekty/training-dashboard/frontend/src/stores/api.js:1) with feedback endpoints.
+Update [frontend/src/stores/api.js](../../frontend/src/stores/api.js) with feedback endpoints.
 
 ### 3. Dashboard guidance card
 
-Update [frontend/src/views/Dashboard.vue](/Users/jakubronkiewicz/Projekty/training-dashboard/frontend/src/views/Dashboard.vue:1):
+Update [frontend/src/views/Dashboard.vue](../../frontend/src/views/Dashboard.vue):
 
 - show current recommendation state
 - show short rationale

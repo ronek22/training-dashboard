@@ -2,7 +2,7 @@
 
 Personal training dashboard with FastAPI backend, Vue 3 frontend, and MCP server for Claude integration.
 
-See [docs/README.md](/Users/jakubronkiewicz/Projekty/training-dashboard/docs/README.md) for planning and decision documents, including the [roadmap](/Users/jakubronkiewicz/Projekty/training-dashboard/docs/roadmap.md).
+See [docs/README.md](docs/README.md) for planning and decision documents, including the [roadmap](docs/roadmap.md).
 
 ## Stack
 

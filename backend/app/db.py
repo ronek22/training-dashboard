@@ -78,6 +78,18 @@ def init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS plan_revisions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            week_start TEXT NOT NULL,
+            effective_from TEXT NOT NULL,
+            adaptation_reason TEXT,
+            changed_dates_json TEXT NOT NULL,
+            preserved_dates_json TEXT NOT NULL,
+            previous_plan_json TEXT NOT NULL,
+            updated_plan_json TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS activity_stream_summaries (
             activity_id TEXT PRIMARY KEY,
             fetched_at TEXT NOT NULL,

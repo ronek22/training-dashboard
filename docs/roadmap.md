@@ -23,6 +23,12 @@ The app already supports:
 - MCP read/write access for ChatGPT and Claude
 - partial weekly plan adjustment through `adjust_weekly_plan`
 
+Current implementation status:
+
+- the in-app `Adjust Remaining Week` flow is now at least partially implemented
+- the backend modularization track is structurally complete
+- the roadmap should therefore be read as priority order plus remaining gaps, not as a claim that every listed item is still untouched
+
 The main gap is that the app still acts more like a dashboard than a coaching workflow. The next phases should reduce manual interpretation and make planning, feedback, and adaptation first-class features.
 
 ## Product Direction
@@ -312,21 +318,25 @@ If only one sprint is available, do this:
 
 ### Sprint Goal
 
-Make adaptive planning visible, safe, and easy to use without chat.
+Close the remaining Phase 1 adaptive-planning gaps before moving fully into the feedback loop.
 
 ### Scope
 
-- add `adjust weekly plan` UI
-- add adjustment result messaging
 - add revision notes or snapshots
 - improve plan status labels
+- decide whether any remaining Phase 1 polish should be completed now or intentionally deferred before starting the feedback-loop sprint
+
+Current interpretation:
+
+- the core `adjust weekly plan` UI and save-result messaging already exist
+- the remaining highest-priority Phase 1 work is revision visibility and clearer moved/skipped/replaced semantics
+- after that, the next major sprint is [docs/sprints/sprint-3-feedback-loop.md](sprints/sprint-3-feedback-loop.md)
 
 ### Definition of done
 
-- user can adjust remaining days from the app
-- completed days cannot be overwritten
-- the app shows what changed
-- the user can understand why the plan now differs from the original week
+- plan adjustments have visible revision context
+- users can better distinguish moved, skipped, replaced, and other mismatch states
+- the team has a clear decision to either close or defer any remaining Phase 1 polish before starting the feedback-loop sprint
 
 ## Risks And Constraints
 

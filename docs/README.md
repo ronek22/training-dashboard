@@ -6,6 +6,9 @@ This directory is the source of truth for product planning and engineering decis
 
 - `roadmap.md` — prioritized product and engineering roadmap
 - `decisions.md` — durable decisions, tradeoffs, and conventions
+- `architecture.md` — high-level system design and data flow
+- `project-structure.md` — practical codebase map by backend/frontend area
+- `current-state.md` — what is implemented now and what should happen next
 - `sprints/` — concrete implementation plans for the next work slices
 
 ## Working Rule

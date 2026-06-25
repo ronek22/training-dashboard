@@ -1,5 +1,29 @@
 # Phase 1 Sprint: Adaptive Planning In-App
 
+## Status
+
+Current status:
+
+- partially implemented
+- the core `Adjust Remaining Week` flow now exists in the app
+- this sprint should be treated as still open until the remaining visibility and status-semantics work is finished
+
+What appears complete already:
+
+- frontend API support for `POST /plans/weekly/adjust`
+- Plan page adjustment UI
+- save result messaging for changed and preserved dates
+
+What still remains to close Phase 1 cleanly:
+
+- plan revision visibility or snapshots
+- clearer `moved` / `skipped` / `replaced` comparison semantics
+
+Ordering note:
+
+- this is the current sprint document for roadmap Phase 1
+- [sprint-3-feedback-loop.md](sprint-3-feedback-loop.md) should be treated as the next major sprint after the remaining work here is either completed or intentionally deferred
+
 ## Objective
 
 Make weekly plan adjustment usable directly in the app, without relying on chat for the common replanning workflow.
@@ -182,3 +206,8 @@ Once this sprint is complete, the next best follow-up is:
 1. add plan revision history
 2. improve moved/skipped/replaced status semantics
 3. add post-workout feedback capture
+
+That means:
+
+- items 1 and 2 are still part of closing Phase 1
+- item 3 is the bridge into [sprint-3-feedback-loop.md](sprint-3-feedback-loop.md)

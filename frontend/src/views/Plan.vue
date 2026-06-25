@@ -38,6 +38,22 @@
 
         <p v-if="plan.overview" class="plan-overview">{{ plan.overview }}</p>
 
+        <div v-if="plan.latest_revision" class="revision-banner">
+          <div class="revision-title">
+            Adjusted {{ formatTimestamp(plan.latest_revision.created_at) }}
+            <span v-if="plan.revision_count > 1">· {{ plan.revision_count }} revisions</span>
+          </div>
+          <div class="revision-detail">
+            Effective from {{ formatDay(plan.latest_revision.effective_from) }}
+            <span v-if="plan.latest_revision.changed_dates?.length">
+              · Changed {{ formatDateList(plan.latest_revision.changed_dates) }}
+            </span>
+            <span v-if="plan.latest_revision.adaptation_reason">
+              · {{ plan.latest_revision.adaptation_reason }}
+            </span>
+          </div>
+        </div>
+
         <div class="week-summary">
           <div class="week-summary-pill summary-changed">
             {{ planSummary(plan).changed }} changed
@@ -188,7 +204,7 @@
                   class="plan-status"
                   :class="`status-${day.comparison.status}`"
                 >
-                  {{ day.comparison.label }}
+                  {{ statusLabel(day.comparison) }}
                 </div>
               </div>
 
@@ -213,6 +229,9 @@
                 </div>
 
                 <div v-if="day.details" class="plan-day-details">{{ day.details }}</div>
+                <div v-if="statusDetail(day.comparison)" class="plan-status-detail">
+                  {{ statusDetail(day.comparison) }}
+                </div>
               </div>
 
               <div class="actual-block">
@@ -227,7 +246,7 @@
                   v-else-if="!day.comparison?.completed_activities?.length"
                   class="actual-empty"
                 >
-                  No activity logged yet.
+                  {{ emptyStateCopy(day) }}
                 </div>
                 <div v-else class="actual-list">
                   <div
@@ -301,6 +320,15 @@ const formatDay = (day) => {
   try { return format(new Date(day), 'MMM d') } catch { return day }
 }
 
+const formatTimestamp = (value) => {
+  try { return format(new Date(value), 'MMM d, yyyy HH:mm') } catch { return value }
+}
+
+const formatDateList = (dates) => {
+  if (!Array.isArray(dates) || !dates.length) return ''
+  return dates.map((date) => formatDay(date)).join(', ')
+}
+
 const activityTone = (type) => {
   if (type === 'Run') return 'run'
   if (type === 'Ride' || type === 'VirtualRide' || type === 'cycling') return 'ride'
@@ -344,6 +372,31 @@ const statusClass = (status) => {
   return `status-${status}`
 }
 
+const statusLabel = (comparison) => {
+  if (!comparison) return ''
+  if (comparison.status === 'moved' && comparison.moved_to_date) {
+    return `Moved to ${formatDay(comparison.moved_to_date)}`
+  }
+  return comparison.label
+}
+
+const statusDetail = (comparison) => {
+  if (!comparison) return ''
+  if (comparison.status === 'moved' && comparison.moved_to_date) {
+    return `Matching ${comparison.planned_type || 'session'} found on ${formatDay(comparison.moved_to_date)}.`
+  }
+  if (comparison.status === 'skipped') {
+    return `No nearby ${comparison.planned_type?.toLowerCase() || 'planned'} session was found.`
+  }
+  if (comparison.status === 'replaced' && comparison.completed_activities?.length) {
+    return `Another session happened on this day instead of the planned ${comparison.planned_type?.toLowerCase() || 'workout'}.`
+  }
+  if (comparison.status === 'rest_day_changed') {
+    return 'Activity was logged on a planned rest or recovery day.'
+  }
+  return ''
+}
+
 const planSummary = (plan) => {
   const summary = { changed: 0, matched: 0, partial: 0, upcoming: 0 }
 
@@ -351,11 +404,17 @@ const planSummary = (plan) => {
     const status = day.comparison?.status
     if (status === 'matched') summary.matched += 1
     else if (status === 'partially_matched') summary.partial += 1
-    else if (status === 'different' || status === 'rest_day_changed') summary.changed += 1
+    else if (['different', 'rest_day_changed', 'replaced', 'skipped', 'moved'].includes(status)) summary.changed += 1
     else if (status === 'not_completed_yet') summary.upcoming += 1
   }
 
   return summary
+}
+
+const emptyStateCopy = (day) => {
+  const status = day.comparison?.status
+  if (status === 'skipped') return 'No matching activity found.'
+  return 'No activity logged yet.'
 }
 
 const hasCompletedActivity = (day) => Boolean(day.comparison?.completed_activities?.length)
@@ -505,6 +564,7 @@ const saveAdjustment = async (plan) => {
   justify-content: space-between;
   gap: 14px;
   align-items: flex-start;
+  flex-wrap: wrap;
 }
 .week-actions {
   display: flex;
@@ -520,6 +580,24 @@ const saveAdjustment = async (plan) => {
   line-height: 1.55;
   margin-bottom: 12px;
   max-width: 1100px;
+}
+.revision-banner {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(96, 165, 250, 0.08);
+  border: 1px solid rgba(96, 165, 250, 0.16);
+}
+.revision-title {
+  color: #dbeafe;
+  font-size: 12px;
+  font-weight: 700;
+}
+.revision-detail {
+  margin-top: 4px;
+  color: #bfdbfe;
+  font-size: 12px;
+  line-height: 1.5;
 }
 .flash-banner {
   border-radius: 18px;
@@ -849,6 +927,9 @@ const saveAdjustment = async (plan) => {
 }
 .plan-day.status-matched::before,
 .plan-day.status-partially_matched::before,
+.plan-day.status-moved::before,
+.plan-day.status-skipped::before,
+.plan-day.status-replaced::before,
 .plan-day.status-different::before,
 .plan-day.status-rest_day_changed::before,
 .plan-day.status-not_completed_yet::before {
@@ -865,6 +946,11 @@ const saveAdjustment = async (plan) => {
 .plan-day.status-partially_matched::before {
   background: linear-gradient(90deg, #f59e0b, #fbbf24);
 }
+.plan-day.status-moved::before {
+  background: linear-gradient(90deg, #38bdf8, #60a5fa);
+}
+.plan-day.status-skipped::before,
+.plan-day.status-replaced::before,
 .plan-day.status-different::before,
 .plan-day.status-rest_day_changed::before {
   background: linear-gradient(90deg, #ef4444, #f87171);
@@ -907,9 +993,11 @@ const saveAdjustment = async (plan) => {
   padding: 7px 10px;
   font-size: 11px;
   font-weight: 700;
-  white-space: nowrap;
-  line-height: 1;
+  white-space: normal;
+  line-height: 1.25;
+  text-align: right;
   flex-shrink: 0;
+  max-width: 120px;
 }
 .status-matched {
   background: rgba(16, 185, 129, 0.16);
@@ -919,6 +1007,12 @@ const saveAdjustment = async (plan) => {
   background: rgba(245, 158, 11, 0.16);
   color: #fbbf24;
 }
+.status-moved {
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+}
+.status-skipped,
+.status-replaced,
 .status-different,
 .status-rest_day_changed {
   background: rgba(239, 68, 68, 0.14);
@@ -1003,6 +1097,12 @@ const saveAdjustment = async (plan) => {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.plan-status-detail {
+  margin-top: 10px;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.5;
+}
 .actual-empty {
   color: var(--muted);
   font-size: 12px;
@@ -1069,6 +1169,9 @@ const saveAdjustment = async (plan) => {
   }
   .adjust-status-grid {
     grid-template-columns: 1fr;
+  }
+  .save-button {
+    width: 100%;
   }
 }
 

@@ -21,6 +21,16 @@ class WeeklyPlan(BaseModel):
     notes: Optional[str] = None
 
 
+class WeeklyPlanRevision(BaseModel):
+    week_start: str
+    effective_from: str
+    adaptation_reason: Optional[str] = None
+    changed_dates: list[str] = Field(default_factory=list)
+    preserved_dates: list[str] = Field(default_factory=list)
+    previous_plan: WeeklyPlan
+    updated_plan: WeeklyPlan
+
+
 class WeeklyPlanAdjustment(BaseModel):
     week_start: str
     days: list[WeeklyPlanDay] = Field(default_factory=list)

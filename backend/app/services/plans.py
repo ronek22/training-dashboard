@@ -5,8 +5,15 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-from ..models.plans import WeeklyPlan, WeeklyPlanAdjustment, WeeklyPlanDay
-from ..repositories.plans import get_weekly_plan_row, list_weekly_plan_rows, upsert_weekly_plan_row
+from ..models.plans import WeeklyPlan, WeeklyPlanAdjustment, WeeklyPlanDay, WeeklyPlanRevision
+from ..repositories.plans import (
+    count_weekly_plan_revision_rows,
+    create_weekly_plan_revision_row,
+    get_latest_weekly_plan_revision_row,
+    get_weekly_plan_row,
+    list_weekly_plan_rows,
+    upsert_weekly_plan_row,
+)
 
 
 def parse_plan_date(value: str):
@@ -35,6 +42,16 @@ def normalize_plan_session_type(session_type: Optional[str]) -> Optional[str]:
     return mapping.get(normalized, session_type)
 
 
+def is_past_or_today(day_value: Optional[str]) -> bool:
+    if not day_value:
+        return False
+    try:
+        day = datetime.strptime(day_value, "%Y-%m-%d").date()
+    except ValueError:
+        return False
+    return day <= datetime.now().date()
+
+
 def append_plan_note(existing_notes: Optional[str], adjustment_reason: Optional[str], effective_from: str) -> Optional[str]:
     adjustment_stamp = f"Adjusted from {effective_from}"
     if adjustment_reason:
@@ -44,22 +61,67 @@ def append_plan_note(existing_notes: Optional[str], adjustment_reason: Optional[
     return adjustment_stamp
 
 
-def build_plan_day_comparison(day: dict, activities: list[sqlite3.Row]) -> dict:
+def build_activity_summary(row: sqlite3.Row) -> dict:
+    return {
+        "id": row["id"],
+        "date": row["date"],
+        "type": row["type"],
+        "name": row["name"],
+        "distance_km": row["distance_km"],
+        "duration_min": row["duration_min"],
+        "avg_pace": row["avg_pace"],
+        "avg_watts": row["avg_watts"],
+    }
+
+
+def find_moved_session(day: dict, by_date: dict[str, list[sqlite3.Row]], week_days_by_date: dict[str, dict]) -> Optional[dict]:
     planned_type = normalize_plan_session_type(day.get("session_type"))
-    completed = [
-        {
-            "id": row["id"],
-            "type": row["type"],
-            "name": row["name"],
-            "distance_km": row["distance_km"],
-            "duration_min": row["duration_min"],
-            "avg_pace": row["avg_pace"],
-            "avg_watts": row["avg_watts"],
-        }
-        for row in activities
-    ]
+    if not planned_type or not is_past_or_today(day.get("date")):
+        return None
+
+    day_date = datetime.strptime(day["date"], "%Y-%m-%d").date()
+    for offset in (-2, -1, 1, 2):
+        nearby_date = day_date.fromordinal(day_date.toordinal() + offset).isoformat()
+        nearby_day = week_days_by_date.get(nearby_date)
+        if not nearby_day:
+            continue
+        nearby_planned_type = normalize_plan_session_type(nearby_day.get("session_type"))
+        if nearby_planned_type == planned_type:
+            continue
+
+        matches = [
+            build_activity_summary(row)
+            for row in by_date.get(nearby_date, [])
+            if normalize_plan_session_type(row["type"]) == planned_type
+        ]
+        if matches:
+            return {"date": nearby_date, "activities": matches}
+
+    return None
+
+
+def build_plan_day_comparison(day: dict, activities: list[sqlite3.Row], by_date: dict[str, list[sqlite3.Row]], week_days_by_date: dict[str, dict]) -> dict:
+    planned_type = normalize_plan_session_type(day.get("session_type"))
+    completed = [build_activity_summary(row) for row in activities]
 
     if not completed:
+        moved_session = find_moved_session(day, by_date, week_days_by_date)
+        if moved_session:
+            return {
+                "status": "moved",
+                "label": f"Moved to {moved_session['date']}",
+                "planned_type": planned_type,
+                "completed_activities": moved_session["activities"],
+                "moved_to_date": moved_session["date"],
+            }
+
+        if is_past_or_today(day.get("date")):
+            return {
+                "status": "skipped",
+                "label": "Skipped",
+                "planned_type": planned_type,
+                "completed_activities": [],
+            }
         return {
             "status": "not_completed_yet",
             "label": "Not completed yet",
@@ -88,8 +150,8 @@ def build_plan_day_comparison(day: dict, activities: list[sqlite3.Row]) -> dict:
             status = "matched"
             label = "Matched"
     else:
-        status = "different"
-        label = "Different"
+        status = "replaced"
+        label = "Replaced"
 
     return {
         "status": status,
@@ -99,9 +161,26 @@ def build_plan_day_comparison(day: dict, activities: list[sqlite3.Row]) -> dict:
     }
 
 
+def serialize_weekly_plan_revision_row(row: Optional[sqlite3.Row]) -> Optional[dict]:
+    if not row:
+        return None
+    return {
+        "id": row["id"],
+        "week_start": row["week_start"],
+        "effective_from": row["effective_from"],
+        "adaptation_reason": row["adaptation_reason"],
+        "changed_dates": json.loads(row["changed_dates_json"]),
+        "preserved_dates": json.loads(row["preserved_dates_json"]),
+        "created_at": row["created_at"],
+    }
+
+
 def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] = None) -> dict:
     days = json.loads(row["days_json"])
+    latest_revision = None
+    revision_count = 0
     if conn:
+        week_days_by_date = {day["date"]: day for day in days if day.get("date")}
         dates = [day["date"] for day in days if day.get("date")]
         by_date: dict[str, list[sqlite3.Row]] = {}
         if dates:
@@ -120,11 +199,13 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
 
         enriched_days = []
         for day in days:
-            comparison = build_plan_day_comparison(day, by_date.get(day.get("date"), []))
+            comparison = build_plan_day_comparison(day, by_date.get(day.get("date"), []), by_date, week_days_by_date)
             enriched_day = dict(day)
             enriched_day["comparison"] = comparison
             enriched_days.append(enriched_day)
         days = enriched_days
+        latest_revision = serialize_weekly_plan_revision_row(get_latest_weekly_plan_revision_row(conn, row["week_start"]))
+        revision_count = count_weekly_plan_revision_rows(conn, row["week_start"])
 
     return {
         "week_start": row["week_start"],
@@ -134,6 +215,8 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
         "days": days,
         "notes": row["notes"],
         "created_at": row["created_at"],
+        "revision_count": revision_count,
+        "latest_revision": latest_revision,
     }
 
 
@@ -225,6 +308,19 @@ def adjust_weekly_plan_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdju
         days=merged_days,
         notes=adjustment.notes if adjustment.notes is not None else append_plan_note(existing_plan.notes, adjustment.adaptation_reason, effective_from),
     )
+
+    create_weekly_plan_revision_row(
+        conn,
+        WeeklyPlanRevision(
+            week_start=existing_plan.week_start,
+            effective_from=effective_from,
+            adaptation_reason=adjustment.adaptation_reason,
+            changed_dates=changed_dates,
+            preserved_dates=sorted(protected_dates),
+            previous_plan=existing_plan,
+            updated_plan=updated_plan,
+        ),
+    )
     upsert_weekly_plan_row(conn, updated_plan)
     conn.commit()
 
@@ -235,5 +331,6 @@ def adjust_weekly_plan_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdju
         "effective_from": effective_from,
         "changed_dates": changed_dates,
         "preserved_dates": sorted(protected_dates),
+        "latest_revision": serialize_weekly_plan_revision_row(get_latest_weekly_plan_revision_row(conn, adjustment.week_start)),
         "plan": serialize_weekly_plan(updated_row, conn) if updated_row else None,
     }

@@ -1,5 +1,22 @@
 # Sprint 3: Feedback Loop And Daily Guidance
 
+## Status
+
+Current status:
+
+- planned, not started as a sprint
+- this is the next major product sprint after the remaining Phase 1 adaptive-planning cleanup
+
+Dependency note:
+
+- do not read `Sprint 3` as meaning it must happen immediately after `Sprint 2`
+- [sprint-2-backend-modularization.md](sprint-2-backend-modularization.md) is already structurally complete
+- [phase-1-adaptive-planning.md](phase-1-adaptive-planning.md) is the active product sprint and still has open follow-up items
+
+Recommended trigger to start this sprint:
+
+- start once the team decides the remaining Phase 1 items are either complete or intentionally postponed
+
 ## Objective
 
 Make the app react to how training actually felt, not only to what was completed.

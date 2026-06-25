@@ -133,7 +133,24 @@ make up-detached
 make tunnel
 make logs
 make down
+make test-backend
 ```
+
+## Backend Testing
+
+The backend now has a lightweight smoke test pass that exercises the modularized app assembly and core routes.
+
+Run it with:
+
+```bash
+make test-backend
+```
+
+Notes:
+
+- The test command uses a workspace-local dependency directory at `.tmp_test_deps/`.
+- The test app uses `TRAINING_DB_PATH` to point SQLite at a temporary test database instead of `/data/training.db`.
+- In normal app usage, `TRAINING_DB_PATH` is optional and defaults to `/data/training.db`.
 
 Quick verification before connecting ChatGPT:
 

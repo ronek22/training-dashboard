@@ -268,20 +268,43 @@ Scope:
 - show changed days
 - require explicit user approval before save in the UI flow
 
+## Cross-Cutting Engineering Track
+
+Goal: keep the codebase maintainable enough to support the product roadmap.
+
+### 12. Backend modularization
+
+Why:
+
+- the backend has accumulated too much logic in a single file
+- feature velocity will drop if extraction keeps getting delayed
+- future planning and coaching features need cleaner boundaries
+
+Scope:
+
+- split `backend/app/main.py` into routers, services, repositories, models, and DB bootstrap modules
+- preserve existing API behavior
+- extract plans first, then other major domains
+
+Implementation notes:
+
+- see [docs/sprints/sprint-2-backend-modularization.md](/Users/jakubronkiewicz/Projekty/training-dashboard/docs/sprints/sprint-2-backend-modularization.md)
+
 ## Suggested Build Sequence
 
 This is the recommended implementation order:
 
 1. In-app "Adjust Remaining Week" flow
 2. API helper + UX polish for plan adjustments
-3. Plan revision history
-4. Post-workout feedback model and form
-5. Daily recommendation card
-6. Goal-aware planning context
-7. Planned-to-actual linkage
-8. Goal forecasting
-9. Structured workout intent
-10. One-shot coaching MCP tool
+3. Backend modularization
+4. Plan revision history
+5. Post-workout feedback model and form
+6. Daily recommendation card
+7. Goal-aware planning context
+8. Planned-to-actual linkage
+9. Goal forecasting
+10. Structured workout intent
+11. One-shot coaching MCP tool
 
 ## Recommended Next Sprint
 

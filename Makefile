@@ -10,7 +10,7 @@ NGROK ?= ngrok
 NGROK_PORT ?= 8000
 NGROK_URL ?=
 
-.PHONY: up up-detached down restart logs tunnel chatgpt
+.PHONY: up up-detached down restart logs tunnel chatgpt test-backend
 
 up:
 	$(COMPOSE) up --build
@@ -50,3 +50,6 @@ chatgpt:
 		echo "Starting ngrok. In ChatGPT, connect the HTTPS URL plus /mcp."; \
 		$(NGROK) http $(NGROK_PORT); \
 	fi
+
+test-backend:
+	PYTHONPATH=$(CURDIR)/.tmp_test_deps:$(CURDIR) PYTHONPYCACHEPREFIX=$(CURDIR)/.tmp_pycache python3 -m unittest discover -s backend/tests

@@ -10,6 +10,7 @@ export const useApi = () => ({
   getActivities: (params) => api.get('/activities', { params }),
   getCalendarWeeks: (params) => api.get('/calendar/weeks', { params }),
   getWeeklyPlans: (params) => api.get('/plans/weekly', { params }),
+  adjustWeeklyPlan: (payload) => api.post('/plans/weekly/adjust', payload),
   getStravaStatus: () => api.get('/integrations/strava/status'),
   importStravaActivities: (payload) => api.post('/integrations/strava/import', payload),
   backfillStravaStreams: (payload) => api.post('/integrations/strava/streams/backfill', payload),

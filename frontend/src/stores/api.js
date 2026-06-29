@@ -15,6 +15,7 @@ export const useApi = () => ({
   getActivityFeedback: (activityId) => api.get(`/activities/${activityId}/feedback`),
   saveActivityFeedback: (activityId, payload) => api.post(`/activities/${activityId}/feedback`, payload),
   getCalendarWeeks: (params) => api.get('/calendar/weeks', { params }),
+  getCalendarMonth: (params) => api.get('/calendar/month', { params }),
   getWeeklyPlans: (params) => api.get('/plans/weekly', { params }),
   previewWeeklyPlanAdjustment: (payload) => api.post('/plans/weekly/adjust/preview', payload),
   adjustWeeklyPlan: (payload) => api.post('/plans/weekly/adjust', payload),

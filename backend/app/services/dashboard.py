@@ -98,6 +98,104 @@ def build_yearly_duration_series(conn: sqlite3.Connection, activity_types: tuple
     return series
 
 
+def build_activity_heatmap(conn: sqlite3.Connection) -> dict:
+    today = datetime.now().date()
+    year_start = today.replace(month=1, day=1)
+    grid_start = year_start - timedelta(days=year_start.weekday())
+    grid_end = today + timedelta(days=(6 - today.weekday()))
+
+    rows = conn.execute(
+        """
+        SELECT
+            date,
+            COUNT(*) AS sessions,
+            ROUND(SUM(duration_min), 0) AS total_duration_min,
+            ROUND(SUM(distance_km), 1) AS total_distance_km
+        FROM activities
+        WHERE date >= ? AND date <= ?
+        GROUP BY date
+        ORDER BY date
+        """,
+        (grid_start.isoformat(), grid_end.isoformat()),
+    ).fetchall()
+
+    by_date = {
+        row["date"]: {
+            "sessions": int(row["sessions"] or 0),
+            "total_duration_min": int(row["total_duration_min"] or 0),
+            "total_distance_km": float(row["total_distance_km"] or 0),
+        }
+        for row in rows
+    }
+
+    active_scores = []
+    cells = []
+    month_labels = []
+    current = grid_start
+    week_index = 0
+    previous_month = None
+
+    while current <= grid_end:
+        if current.weekday() == 0:
+            month_label = current.strftime("%b")
+            if previous_month != current.month:
+                month_labels.append({"label": month_label, "week_index": week_index})
+                previous_month = current.month
+            week_index += 1 if cells else 0
+
+        entry = by_date.get(current.isoformat(), {"sessions": 0, "total_duration_min": 0, "total_distance_km": 0.0})
+        score = entry["total_duration_min"] + (entry["sessions"] * 20)
+        if score > 0:
+            active_scores.append(score)
+        cells.append(
+            {
+                "date": current.isoformat(),
+                "weekday_index": current.weekday(),
+                "week_index": (len(cells) // 7),
+                "day_of_month": current.day,
+                "in_year": current >= year_start and current <= today,
+                "sessions": entry["sessions"],
+                "total_duration_min": entry["total_duration_min"],
+                "total_distance_km": round(entry["total_distance_km"], 1),
+                "score": score,
+            }
+        )
+        current += timedelta(days=1)
+
+    if active_scores:
+        max_score = max(active_scores)
+        thresholds = [
+            max_score * 0.25,
+            max_score * 0.5,
+            max_score * 0.75,
+            max_score,
+        ]
+    else:
+        thresholds = [0, 0, 0, 0]
+
+    for cell in cells:
+        score = cell["score"]
+        if score <= 0:
+            cell["level"] = 0
+        elif score <= thresholds[0]:
+            cell["level"] = 1
+        elif score <= thresholds[1]:
+            cell["level"] = 2
+        elif score <= thresholds[2]:
+            cell["level"] = 3
+        else:
+            cell["level"] = 4
+
+    return {
+        "year": today.year,
+        "range_start": year_start.isoformat(),
+        "range_end": today.isoformat(),
+        "total_active_days": sum(1 for cell in cells if cell["score"] > 0 and cell["in_year"]),
+        "month_labels": month_labels,
+        "cells": cells,
+    }
+
+
 def build_weekly_mix(conn: sqlite3.Connection, weeks: int = 6) -> list[dict]:
     today = datetime.now().date()
     current_week_start = today - timedelta(days=today.weekday())
@@ -904,6 +1002,7 @@ def build_dashboard_data(
     ride_year_series = build_yearly_distance_series(conn, ("Ride", "VirtualRide"))
     run_year_series = build_yearly_distance_series(conn, ("Run",))
     strength_year_series = build_yearly_duration_series(conn, ("WeightTraining",))
+    activity_heatmap = build_activity_heatmap(conn)
     weekly_mix = build_weekly_mix(conn, 6)
     cycling_efficiency_trend = build_cycling_efficiency_trend(conn, 8)
     strength_consistency = build_strength_consistency(conn, 8, 2)
@@ -932,6 +1031,7 @@ def build_dashboard_data(
         "ride_year_series": ride_year_series,
         "run_year_series": run_year_series,
         "strength_year_series": strength_year_series,
+        "activity_heatmap": activity_heatmap,
         "weekly_mix": weekly_mix,
         "cycling_efficiency_trend": cycling_efficiency_trend,
         "strength_consistency": strength_consistency,

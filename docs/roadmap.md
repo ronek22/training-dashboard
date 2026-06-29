@@ -27,6 +27,7 @@ Current implementation status:
 
 - the in-app `Adjust Remaining Week` flow is now at least partially implemented
 - the backend modularization track is structurally complete
+- Sprint 9 app redesign and information hierarchy is now complete as the current UI-foundation pass
 - the roadmap should therefore be read as priority order plus remaining gaps, not as a claim that every listed item is still untouched
 
 The main gap is that the app still acts more like a dashboard than a coaching workflow. The next phases should reduce manual interpretation and make planning, feedback, and adaptation first-class features.

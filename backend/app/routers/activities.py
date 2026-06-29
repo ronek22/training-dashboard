@@ -6,6 +6,7 @@ from ..models.activities import Activity, ActivityIntentUpdate, ActivityPlanLink
 from ..services.activities import (
     activity_stats_data,
     create_activity_data,
+    get_calendar_month_data,
     get_calendar_weeks_data,
     link_activity_to_planned_session_data,
     list_activities_data,
@@ -65,5 +66,14 @@ def calendar_weeks(weeks: int = 8):
     conn = get_db()
     try:
         return get_calendar_weeks_data(conn, weeks=weeks)
+    finally:
+        conn.close()
+
+
+@router.get("/calendar/month")
+def calendar_month(month: Optional[str] = None):
+    conn = get_db()
+    try:
+        return get_calendar_month_data(conn, month=month)
     finally:
         conn.close()

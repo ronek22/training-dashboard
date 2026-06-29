@@ -114,18 +114,29 @@ Completed slices:
 - backend planning-status parsing now reads stable markdown structure from `docs/`
 - Docker-backed backend runs can access the docs mount needed for roadmap visibility
 
+### Sprint 9 app redesign and information hierarchy
+
+Sprint 9 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- `Plan` now gives the current week stronger visual priority than historical weeks
+- coaching approvals, revisions, changed sessions, and editable/protected distinctions are easier to scan in the planning workflow
+- `Dashboard` now emphasizes today's guidance and weekly coaching more clearly than secondary analytics
+- shared visual hierarchy across the shell and primary views is less flat and more directed
+- `Calendar` now supports both weekly and full-month review with weekly summary context in month view
+
 ## Recommended Next Step
 
 The next major sprint should be:
 
-- Sprint 9 app redesign and information hierarchy
+- Sprint 10 coaching memory and weekly narrative history
 
 That means moving into:
 
-- stronger visual hierarchy across the app
-- clearer distinction between current, active, and historical information
-- more emphasis on what needs attention now, especially in Plan and Dashboard
-- a cleaner foundation for later coaching-history and trend-analysis work in Sprints 10 through 13
+- retaining and surfacing weekly coaching history instead of only the latest read
+- giving recent coaching decisions more narrative continuity across weeks
+- building on the clearer hierarchy foundation from Sprint 9 before deeper analysis work
 
 ## Areas That Are Still Intentionally Lightweight
 
@@ -136,15 +147,16 @@ That means moving into:
 
 ## Good Starting Points For Future Work
 
-If continuing after Sprint 8:
+If continuing after Sprint 9:
 
 - plan comparison and serialization: `backend/app/services/plans.py`
 - activity persistence and linking: `backend/app/services/activities.py`
 - activity SQL changes: `backend/app/repositories/activities.py`
 - coaching summary and heuristics: `backend/app/services/coaching.py`
 - coaching inspection and handoff UI: `frontend/src/views/Dashboard.vue` and `frontend/src/views/Plan.vue`
+- calendar aggregation and month view: `backend/app/services/activities.py` and `frontend/src/views/Calendar.vue`
 - docs-backed planning visibility: `docs/roadmap.md`, `docs/current-state.md`, and `docs/sprints/`
-- sprint planning direction: `docs/sprints/sprint-9-app-redesign-and-information-hierarchy.md` through `sprint-13-goal-progress-and-planning-forecasts.md`
+- sprint planning direction: `docs/sprints/sprint-10-coaching-memory-and-weekly-narrative-history.md` through `sprint-13-goal-progress-and-planning-forecasts.md`
 
 ## Working Assumption
 

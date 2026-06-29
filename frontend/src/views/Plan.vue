@@ -2,8 +2,9 @@
   <div>
     <div class="page-head">
       <div>
+        <div class="page-eyebrow">Planning Workspace</div>
         <h1 class="page-title">Plan</h1>
-        <p class="page-sub">Structured weekly plans prepared by Claude.</p>
+        <p class="page-sub">Current week first, older weeks quieter. Review coaching changes, protect completed days, and adjust only what still matters.</p>
       </div>
     </div>
 
@@ -29,12 +30,29 @@
     <div v-else-if="!plans.length" class="empty card">No weekly plans yet.</div>
 
     <div v-else class="weeks-list">
-      <section v-for="plan in plans" :key="plan.week_start" class="card week-card">
+      <section
+        v-for="plan in plans"
+        :key="plan.week_start"
+        class="card week-card"
+        :class="{
+          'week-card-current': isCurrentPlan(plan),
+          'week-card-upcoming': isUpcomingPlan(plan),
+          'week-card-historical': isHistoricalPlan(plan),
+          'week-card-historical-open': isHistoricalPlan(plan) && isPlanExpanded(plan),
+        }"
+      >
         <div class="week-header">
-          <div>
-            <div class="card-title">Week of {{ formatWeek(plan.week_start) }}</div>
+          <div class="week-header-main">
+            <div class="week-meta-row">
+              <div class="card-title">Week of {{ formatWeek(plan.week_start) }}</div>
+              <span class="week-emphasis-pill" :class="weekEmphasisClass(plan)">{{ weekEmphasisLabel(plan) }}</span>
+              <span v-if="weekNeedsAttentionCount(plan)" class="week-emphasis-pill week-emphasis-alert">
+                {{ weekNeedsAttentionCount(plan) }} attention item<span v-if="weekNeedsAttentionCount(plan) !== 1">s</span>
+              </span>
+            </div>
             <div class="week-range">{{ plan.title || 'Weekly training plan' }}</div>
             <div v-if="plan.focus" class="plan-focus">{{ plan.focus }}</div>
+            <div class="week-guidance">{{ weekGuidance(plan) }}</div>
           </div>
           <div class="week-actions">
             <button
@@ -59,6 +77,7 @@
 
         <div v-if="!isPlanExpanded(plan)" class="historical-week-preview">
           <span>{{ historicalWeekSummary(plan) }}</span>
+          <span v-if="plan.latest_revision">Latest revision {{ formatTimestamp(plan.latest_revision.created_at) }}</span>
         </div>
 
         <template v-else>
@@ -179,20 +198,26 @@
         </div>
 
         <div class="week-summary">
-          <div class="week-summary-pill summary-linked">
-            {{ planSummary(plan).linked }} linked
+          <div class="week-summary-head">
+            <div class="section-label">At A Glance</div>
+            <div class="week-summary-note">{{ weekSummaryNote(plan) }}</div>
           </div>
-          <div class="week-summary-pill summary-changed">
-            {{ planSummary(plan).changed }} changed
-          </div>
-          <div class="week-summary-pill summary-matched">
-            {{ planSummary(plan).matched }} inferred
-          </div>
-          <div class="week-summary-pill summary-partial">
-            {{ planSummary(plan).partial }} partial
-          </div>
-          <div class="week-summary-pill summary-upcoming">
-            {{ planSummary(plan).upcoming }} upcoming
+          <div class="week-summary-pills">
+            <div class="week-summary-pill summary-linked">
+              {{ planSummary(plan).linked }} linked
+            </div>
+            <div class="week-summary-pill summary-changed">
+              {{ planSummary(plan).changed }} changed
+            </div>
+            <div class="week-summary-pill summary-matched">
+              {{ planSummary(plan).matched }} inferred
+            </div>
+            <div class="week-summary-pill summary-partial">
+              {{ planSummary(plan).partial }} partial
+            </div>
+            <div class="week-summary-pill summary-upcoming">
+              {{ planSummary(plan).upcoming }} upcoming
+            </div>
           </div>
         </div>
 
@@ -638,10 +663,31 @@ const maxPlanDayKey = (plan) => {
   return Math.max(...keys)
 }
 
+const minPlanDayKey = (plan) => {
+  const keys = (plan.days || []).map((day) => normalizedDayKey(day.date)).filter((value) => value !== null)
+  if (!keys.length) return normalizedDayKey(plan.week_start)
+  return Math.min(...keys)
+}
+
 const isHistoricalPlan = (plan) => {
   const lastDayKey = maxPlanDayKey(plan)
   if (lastDayKey === null) return false
   return lastDayKey < todayKey()
+}
+
+const isCurrentPlan = (plan) => {
+  const startKey = minPlanDayKey(plan)
+  const endKey = maxPlanDayKey(plan)
+  const current = todayKey()
+  if (startKey === null || endKey === null) return false
+  return startKey <= current && endKey >= current
+}
+
+const isUpcomingPlan = (plan) => {
+  if (isHistoricalPlan(plan) || isCurrentPlan(plan)) return false
+  const startKey = minPlanDayKey(plan)
+  if (startKey === null) return false
+  return startKey > todayKey()
 }
 
 const isPlanExpanded = (plan) => {
@@ -665,6 +711,40 @@ const historicalWeekSummary = (plan) => {
   if (summary.partial) fragments.push(`${summary.partial} partial`)
   if (!fragments.length) fragments.push(`${(plan.days || []).length} planned days`)
   return fragments.join(' · ')
+}
+
+const weekNeedsAttentionCount = (plan) => {
+  const summary = planSummary(plan)
+  let count = summary.changed
+  if (isCoachingReviewForPlan(plan)) count += 1
+  if (plan.latest_revision?.changed_dates?.length) count += 1
+  return count
+}
+
+const weekEmphasisLabel = (plan) => {
+  if (isCurrentPlan(plan)) return 'Current week'
+  if (isUpcomingPlan(plan)) return 'Upcoming'
+  return 'History'
+}
+
+const weekEmphasisClass = (plan) => {
+  if (isCurrentPlan(plan)) return 'week-emphasis-current'
+  if (isUpcomingPlan(plan)) return 'week-emphasis-upcoming'
+  return 'week-emphasis-historical'
+}
+
+const weekGuidance = (plan) => {
+  if (isCoachingReviewForPlan(plan)) return 'Approve or edit the proposed coaching adjustment before saving.'
+  if (isCurrentPlan(plan)) return 'Review changed sessions first, then use the editor only for remaining open days.'
+  if (isUpcomingPlan(plan)) return 'Future planning context stays visible, but the active week should drive your decisions first.'
+  return 'This week is preserved as history. Open it when you need context, not as the default focus.'
+}
+
+const weekSummaryNote = (plan) => {
+  if (isCoachingReviewForPlan(plan)) return 'Coaching approval is waiting on this week.'
+  if (planSummary(plan).changed) return 'Changed or missed sessions should be checked before the rest.'
+  if (isHistoricalPlan(plan)) return 'Historical detail stays available, but the summary should usually be enough.'
+  return 'Most of the remaining sessions are still on track.'
 }
 
 const dayState = (day) => {
@@ -1141,17 +1221,47 @@ const savePlanLink = async (day) => {
 </script>
 
 <style scoped>
-.page-head { margin-bottom: 20px; }
-.page-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; margin-bottom: 4px; }
-.page-sub { color: var(--muted); font-size: 13px; }
-.weeks-list { display: flex; flex-direction: column; gap: 18px; }
-.week-card { padding: 22px; }
+.weeks-list { display: flex; flex-direction: column; gap: 20px; }
+.week-card {
+  padding: 24px;
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+.week-card-current {
+  background:
+    radial-gradient(circle at top left, rgba(95, 140, 255, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(21, 29, 46, 0.98), rgba(16, 23, 36, 0.95));
+  border-color: rgba(123, 163, 255, 0.22);
+  box-shadow: var(--shadow-md);
+}
+.week-card-upcoming {
+  background:
+    radial-gradient(circle at top right, rgba(31, 190, 141, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(20, 27, 41, 0.96), rgba(15, 22, 34, 0.92));
+}
+.week-card-historical {
+  background: linear-gradient(180deg, rgba(18, 24, 36, 0.88), rgba(14, 19, 29, 0.86));
+  border-color: rgba(114, 132, 162, 0.14);
+  opacity: 0.9;
+}
+.week-card-historical-open {
+  opacity: 0.98;
+}
 .week-header {
-  margin-bottom: 10px;
+  margin-bottom: 14px;
   display: flex;
   justify-content: space-between;
   gap: 14px;
   align-items: flex-start;
+  flex-wrap: wrap;
+}
+.week-header-main {
+  display: grid;
+  gap: 8px;
+}
+.week-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .week-actions {
@@ -1160,13 +1270,52 @@ const savePlanLink = async (day) => {
   gap: 12px;
   flex-shrink: 0;
 }
-.week-range { color: var(--text); font-size: 18px; font-weight: 700; }
-.plan-focus { color: #c7d2fe; font-size: 13px; margin-top: 4px; }
-.plan-overview {
+.week-range {
   color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(22px, 2.8vw, 28px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+.week-emphasis-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.week-emphasis-current {
+  background: rgba(95, 140, 255, 0.16);
+  color: #b9ceff;
+}
+.week-emphasis-upcoming {
+  background: rgba(31, 190, 141, 0.14);
+  color: #98f0cf;
+}
+.week-emphasis-historical {
+  background: rgba(127, 146, 178, 0.14);
+  color: #b2c0d8;
+}
+.week-emphasis-alert {
+  background: rgba(239, 94, 94, 0.14);
+  color: #ffb0b0;
+}
+.plan-focus { color: #d5e1ff; font-size: 13px; }
+.week-guidance {
+  color: var(--muted-soft);
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 78ch;
+}
+.plan-overview {
+  color: var(--text-soft);
   font-size: 14px;
   line-height: 1.55;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   max-width: 1100px;
 }
 .goal-context-panel {
@@ -1253,7 +1402,7 @@ const savePlanLink = async (day) => {
 .flash-banner {
   border-radius: 18px;
   padding: 14px 16px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   border: 1px solid;
 }
 .flash-success {
@@ -1282,22 +1431,23 @@ const savePlanLink = async (day) => {
   color: #fecaca;
 }
 .coaching-review-banner {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   display: flex;
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
   background:
-    linear-gradient(140deg, rgba(59, 130, 246, 0.14), rgba(16, 185, 129, 0.08)),
-    var(--surface);
+    linear-gradient(140deg, rgba(95, 140, 255, 0.18), rgba(31, 190, 141, 0.1)),
+    linear-gradient(180deg, rgba(23, 32, 49, 0.98), rgba(17, 24, 37, 0.96));
+  border-color: rgba(123, 163, 255, 0.22);
 }
 .coaching-review-title {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 24px;
   margin-bottom: 6px;
 }
 .coaching-review-copy {
-  color: #dbeafe;
+  color: #d9e6ff;
   font-size: 13px;
   max-width: 720px;
 }
@@ -1325,16 +1475,16 @@ const savePlanLink = async (day) => {
   transform: translateY(-1px);
 }
 .history-toggle {
-  background: rgba(51, 65, 85, 0.58);
+  background: rgba(55, 68, 91, 0.46);
   color: #dbe7ff;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid rgba(148, 163, 184, 0.14);
 }
 .adjust-button {
-  background: linear-gradient(135deg, #60a5fa, #818cf8);
+  background: linear-gradient(135deg, #6c98ff, #88a8ff);
   color: #f8fbff;
 }
 .ghost-button {
-  background: rgba(51, 65, 85, 0.65);
+  background: rgba(51, 65, 85, 0.54);
   color: #e2e8f0;
   border: 1px solid rgba(148, 163, 184, 0.18);
 }
@@ -1353,13 +1503,17 @@ const savePlanLink = async (day) => {
   color: var(--muted);
 }
 .historical-week-preview {
-  margin-top: 12px;
+  margin-top: 8px;
   padding: 14px 16px;
   border-radius: 14px;
-  background: rgba(15, 23, 42, 0.42);
-  border: 1px solid rgba(71, 85, 105, 0.28);
-  color: var(--muted);
+  background: rgba(11, 17, 27, 0.42);
+  border: 1px solid rgba(71, 85, 105, 0.2);
+  color: var(--muted-soft);
   font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 .coaching-diff-panel {
   margin-bottom: 16px;
@@ -1496,10 +1650,25 @@ const savePlanLink = async (day) => {
   font-weight: 700;
 }
 .week-summary {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.week-summary-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.week-summary-note {
+  color: var(--muted-soft);
+  font-size: 12px;
+}
+.week-summary-pills {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
 }
 .week-summary-pill {
   border-radius: 999px;
@@ -1527,6 +1696,17 @@ const savePlanLink = async (day) => {
 .summary-upcoming {
   background: rgba(148, 163, 184, 0.14);
   color: #cbd5e1;
+}
+.week-card-historical .week-range,
+.week-card-historical .plan-overview,
+.week-card-historical .week-guidance {
+  color: #c2cde0;
+}
+.week-card-historical .goal-context-panel,
+.week-card-historical .revision-banner,
+.week-card-historical .coaching-diff-panel,
+.week-card-historical .plan-day {
+  opacity: 0.88;
 }
 .adjust-panel {
   margin-bottom: 18px;

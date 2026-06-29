@@ -1,6 +1,6 @@
 import json
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from fastapi import HTTPException
@@ -69,89 +69,7 @@ def build_calendar_weeks_data(conn: sqlite3.Connection, weeks: int = 8) -> list[
     output = []
     for week_index in range(weeks):
         week_start = latest_week_start - timedelta(weeks=week_index)
-        week_end = week_start + timedelta(days=6)
-        days = []
-        total_duration = 0.0
-        total_distance = 0.0
-        total_elevation = 0
-        total_sessions = 0
-        run_km = 0.0
-        ride_km = 0.0
-        strength_sessions = 0
-
-        for day_offset in range(7):
-            day = week_start + timedelta(days=day_offset)
-            day_key = day.isoformat()
-            activities = by_date.get(day_key, [])
-            day_distance = round(sum((activity["distance_km"] or 0) for activity in activities), 1)
-            day_duration = round(sum((activity["duration_min"] or 0) for activity in activities), 1)
-            day_elevation = round(sum((activity["elevation_m"] or 0) for activity in activities))
-            type_counts: dict[str, int] = {}
-
-            for activity in activities:
-                activity_type = activity["type"]
-                type_counts[activity_type] = type_counts.get(activity_type, 0) + 1
-                if activity_type == "Run":
-                    run_km += activity["distance_km"] or 0
-                if activity_type in {"Ride", "VirtualRide"}:
-                    ride_km += activity["distance_km"] or 0
-                if activity_type == "WeightTraining":
-                    strength_sessions += 1
-
-            total_duration += day_duration
-            total_distance += day_distance
-            total_elevation += day_elevation
-            total_sessions += len(activities)
-
-            days.append(
-                {
-                    "date": day_key,
-                    "weekday": day.strftime("%a"),
-                    "total_distance_km": day_distance,
-                    "total_duration_min": day_duration,
-                    "total_elevation_m": day_elevation,
-                    "sessions": len(activities),
-                    "type_counts": type_counts,
-                    "activities": [
-                        {
-                            "id": activity["id"],
-                            "type": activity["type"],
-                            "workout_intent": normalize_workout_intent(activity["workout_intent"], activity["type"]),
-                            "workout_intent_label": format_workout_intent_label(
-                                normalize_workout_intent(activity["workout_intent"], activity["type"])
-                            ),
-                            "name": activity["name"],
-                            "distance_km": activity["distance_km"],
-                            "duration_min": activity["duration_min"],
-                            "avg_hr": activity["avg_hr"],
-                            "avg_pace": activity["avg_pace"],
-                            "avg_watts": activity["avg_watts"],
-                            "zone2": bool(activity["zone2"]),
-                            "linked_planned_session_id": activity["linked_planned_session_id"],
-                        }
-                        for activity in activities
-                    ],
-                }
-            )
-
-        output.append(
-            {
-                "week_start": week_start.isoformat(),
-                "week_end": week_end.isoformat(),
-                "total_distance_km": round(total_distance, 1),
-                "total_duration_min": round(total_duration, 1),
-                "total_elevation_m": total_elevation,
-                "total_sessions": total_sessions,
-                "run_km": round(run_km, 1),
-                "ride_km": round(ride_km, 1),
-                "strength_sessions": strength_sessions,
-                "days": days,
-            }
-        )
-
-    for week in output:
-        for day in week["days"]:
-            attach_feedback_by_activity_id(conn, day["activities"])
+        output.append(build_calendar_week_payload(conn, by_date, week_start))
 
     return output
 
@@ -159,6 +77,144 @@ def build_calendar_weeks_data(conn: sqlite3.Connection, weeks: int = 8) -> list[
 def get_calendar_weeks_data(conn: sqlite3.Connection, weeks: int = 8) -> list[dict]:
     safe_weeks = max(1, min(weeks, 16))
     return build_calendar_weeks_data(conn, safe_weeks)
+
+
+def build_calendar_day_payload(day: date, activities: list[sqlite3.Row]) -> dict:
+    day_distance = round(sum((activity["distance_km"] or 0) for activity in activities), 1)
+    day_duration = round(sum((activity["duration_min"] or 0) for activity in activities), 1)
+    day_elevation = round(sum((activity["elevation_m"] or 0) for activity in activities))
+    type_counts: dict[str, int] = {}
+
+    for activity in activities:
+        activity_type = activity["type"]
+        type_counts[activity_type] = type_counts.get(activity_type, 0) + 1
+
+    return {
+        "date": day.isoformat(),
+        "weekday": day.strftime("%a"),
+        "day_of_month": day.day,
+        "total_distance_km": day_distance,
+        "total_duration_min": day_duration,
+        "total_elevation_m": day_elevation,
+        "sessions": len(activities),
+        "type_counts": type_counts,
+        "activities": [
+            {
+                "id": activity["id"],
+                "type": activity["type"],
+                "workout_intent": normalize_workout_intent(activity["workout_intent"], activity["type"]),
+                "workout_intent_label": format_workout_intent_label(
+                    normalize_workout_intent(activity["workout_intent"], activity["type"])
+                ),
+                "name": activity["name"],
+                "distance_km": activity["distance_km"],
+                "duration_min": activity["duration_min"],
+                "avg_hr": activity["avg_hr"],
+                "avg_pace": activity["avg_pace"],
+                "avg_watts": activity["avg_watts"],
+                "zone2": bool(activity["zone2"]),
+                "linked_planned_session_id": activity["linked_planned_session_id"],
+            }
+            for activity in activities
+        ],
+    }
+
+
+def build_calendar_week_payload(
+    conn: sqlite3.Connection,
+    by_date: dict[str, list[sqlite3.Row]],
+    week_start: date,
+) -> dict:
+    week_end = week_start + timedelta(days=6)
+    days = []
+    total_duration = 0.0
+    total_distance = 0.0
+    total_elevation = 0
+    total_sessions = 0
+    run_km = 0.0
+    ride_km = 0.0
+    strength_sessions = 0
+
+    for day_offset in range(7):
+        day = week_start + timedelta(days=day_offset)
+        activities = by_date.get(day.isoformat(), [])
+        day_payload = build_calendar_day_payload(day, activities)
+
+        for activity in activities:
+            activity_type = activity["type"]
+            if activity_type == "Run":
+                run_km += activity["distance_km"] or 0
+            if activity_type in {"Ride", "VirtualRide"}:
+                ride_km += activity["distance_km"] or 0
+            if activity_type == "WeightTraining":
+                strength_sessions += 1
+
+        total_duration += day_payload["total_duration_min"]
+        total_distance += day_payload["total_distance_km"]
+        total_elevation += day_payload["total_elevation_m"]
+        total_sessions += day_payload["sessions"]
+        days.append(day_payload)
+
+    for day in days:
+        attach_feedback_by_activity_id(conn, day["activities"])
+
+    return {
+        "week_start": week_start.isoformat(),
+        "week_end": week_end.isoformat(),
+        "total_distance_km": round(total_distance, 1),
+        "total_duration_min": round(total_duration, 1),
+        "total_elevation_m": total_elevation,
+        "total_sessions": total_sessions,
+        "run_km": round(run_km, 1),
+        "ride_km": round(ride_km, 1),
+        "strength_sessions": strength_sessions,
+        "days": days,
+    }
+
+
+def get_calendar_month_data(conn: sqlite3.Connection, month: Optional[str] = None) -> dict:
+    if month:
+        try:
+            month_anchor = datetime.strptime(f"{month}-01", "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM.") from exc
+    else:
+        latest_activity = get_latest_activity_date(conn)
+        if latest_activity:
+            month_anchor = datetime.strptime(latest_activity, "%Y-%m-%d").date().replace(day=1)
+        else:
+            today = datetime.now().date()
+            month_anchor = today.replace(day=1)
+
+    month_start = month_anchor.replace(day=1)
+    next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+    month_end = next_month - timedelta(days=1)
+    grid_start = month_start - timedelta(days=month_start.weekday())
+    grid_end = month_end + timedelta(days=(6 - month_end.weekday()))
+
+    rows = list_calendar_activity_rows(conn, grid_start.isoformat(), grid_end.isoformat())
+    by_date: dict[str, list[sqlite3.Row]] = {}
+    for row in rows:
+        by_date.setdefault(row["date"], []).append(row)
+
+    weeks = []
+    cursor = grid_start
+    while cursor <= grid_end:
+        weeks.append(build_calendar_week_payload(conn, by_date, cursor))
+        cursor += timedelta(days=7)
+
+    month_days = [day for week in weeks for day in week["days"] if month_start.isoformat() <= day["date"] <= month_end.isoformat()]
+
+    return {
+        "month": month_start.strftime("%Y-%m"),
+        "month_start": month_start.isoformat(),
+        "month_end": month_end.isoformat(),
+        "weeks": weeks,
+        "total_sessions": sum(day["sessions"] for day in month_days),
+        "total_duration_min": round(sum(day["total_duration_min"] for day in month_days), 1),
+        "total_distance_km": round(sum(day["total_distance_km"] for day in month_days), 1),
+        "total_elevation_m": round(sum(day["total_elevation_m"] for day in month_days)),
+    }
 
 
 def upsert_activity(conn: sqlite3.Connection, activity: dict, preserve_annotations: bool = False) -> None:

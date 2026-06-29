@@ -1,7 +1,17 @@
 <template>
   <div>
-    <h1 class="page-title">Dashboard</h1>
-    <p class="page-sub">Today first, trends second, details below.</p>
+    <div class="page-head dashboard-head">
+      <div>
+        <div class="page-eyebrow">Daily Coaching View</div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub">Immediate coaching and recovery signals lead. Trends and history stay available, but clearly secondary.</p>
+      </div>
+      <div v-if="dailyRecommendation" class="dashboard-head-status" :class="`status-${dailyRecommendation.status}`">
+        <span class="dashboard-head-status-label">Today's call</span>
+        <strong>{{ recommendationHeaderLabel(dailyRecommendation.status) }}</strong>
+        <span class="dashboard-head-status-copy">{{ recommendationHeaderCopy(dailyRecommendation.status) }}</span>
+      </div>
+    </div>
 
     <div class="overview-grid" :class="{ 'overview-grid-single': !hasTopGoals }">
       <div class="overview-stack" :class="{ 'overview-stack-full': !hasTopGoals }">
@@ -36,6 +46,32 @@
             <div class="today-plan-details">Use the training load and goal cards below to decide whether to push, keep it easy, or recover.</div>
           </template>
 
+          <div class="today-context-strip">
+            <article class="today-context-pill">
+              <span class="today-context-label">Planned</span>
+              <strong>{{ todayContextPrimary }}</strong>
+            </article>
+            <article class="today-context-pill">
+              <span class="today-context-label">Check-in</span>
+              <div v-if="checkInMetrics.length" class="checkin-meters">
+                <div v-for="metric in checkInMetrics" :key="metric.label" class="checkin-meter">
+                  <div class="checkin-meter-top">
+                    <span>{{ metric.label }}</span>
+                    <strong :class="metric.tone">{{ metric.valueLabel }}</strong>
+                  </div>
+                  <div class="checkin-meter-track">
+                    <div class="checkin-meter-fill" :class="metric.tone" :style="{ width: `${metric.fillPct}%` }"></div>
+                  </div>
+                </div>
+              </div>
+              <strong v-else>{{ todayCheckInSummary }}</strong>
+            </article>
+            <article class="today-context-pill">
+              <span class="today-context-label">Pressure</span>
+              <strong>{{ todayGoalPressure }}</strong>
+            </article>
+          </div>
+
           <div v-if="dailyRecommendation" class="recommendation-card" :class="`recommendation-${dailyRecommendation.status}`">
             <div class="recommendation-top">
               <span class="recommendation-label">Daily guidance</span>
@@ -51,28 +87,13 @@
           </div>
         </div>
 
-        <div class="card stats-panel overview-stats" v-if="stats.length">
-          <div class="stats-panel-head">
-            <div>
-              <div class="card-title">Last 14 Days</div>
-              <div class="goals-sub">Quick training snapshot across run, ride, strength, and intensity.</div>
-            </div>
-          </div>
-          <div class="stats-grid stats-grid-compact">
-            <div class="stat-card" v-for="s in statCards" :key="s.label">
-              <div class="stat-label">{{ s.label }}</div>
-              <div class="stat-big" :style="{ color: s.color }">{{ s.value }}</div>
-            </div>
-          </div>
-        </div>
-
       </div>
 
       <div class="card overview-secondary" v-if="hasTopGoals">
         <div class="goals-head">
           <div>
             <div class="card-title">Goals</div>
-            <div class="goals-sub">The targets that matter right now.</div>
+            <div class="goals-sub">The targets shaping decisions this week.</div>
           </div>
         </div>
         <div class="goal-groups">
@@ -135,6 +156,21 @@
               </div>
             </div>
           </section>
+        </div>
+      </div>
+    </div>
+
+    <div class="card stats-panel overview-stats support-card support-card-quiet stats-panel-wide" v-if="stats.length">
+      <div class="stats-panel-head">
+        <div>
+          <div class="card-title">Last 14 Days</div>
+          <div class="goals-sub">Quick volume context. Useful, but secondary to today’s call.</div>
+        </div>
+      </div>
+      <div class="stats-grid stats-grid-wide">
+        <div class="stat-card" v-for="s in statCards" :key="s.label">
+          <div class="stat-label">{{ s.label }}</div>
+          <div class="stat-big" :style="{ color: s.color }">{{ s.value }}</div>
         </div>
       </div>
     </div>
@@ -253,12 +289,21 @@
       </div>
     </div>
 
-    <TrainingLoadPanel
-      title="Training Load"
-      subtitle="Fitness, fatigue, and form based on recent sessions."
-    />
+    <section class="support-section">
+      <div class="support-section-head">
+        <div>
+          <div class="section-label">Supporting Context</div>
+          <div class="support-section-title">Performance and trend panels</div>
+        </div>
+        <div class="support-section-copy">Keep these for context after the primary coaching signals above.</div>
+      </div>
 
-    <div class="card" v-if="cyclingSnapshot.sessions">
+      <TrainingLoadPanel
+        title="Training Load"
+        subtitle="Fitness, fatigue, and form based on recent sessions."
+      />
+
+      <div class="card support-card" v-if="cyclingSnapshot.sessions">
       <div class="cycling-head">
         <div>
           <div class="card-title">Cycling Focus</div>
@@ -294,10 +339,10 @@
           </div>
         </div>
       </div>
-    </div>
+      </div>
 
-    <div class="grid-2" v-if="weeklyMix.length || efficiencyTrend.length">
-      <div class="card" v-if="weeklyMix.length">
+      <div class="grid-2 support-grid" v-if="weeklyMix.length || efficiencyTrend.length">
+      <div class="card support-card" v-if="weeklyMix.length">
         <div class="distance-chart-head">
           <div>
             <div class="card-title">Weekly Training Mix</div>
@@ -331,7 +376,7 @@
         </div>
       </div>
 
-      <div class="card" v-if="efficiencyTrend.length">
+      <div class="card support-card" v-if="efficiencyTrend.length">
         <div class="distance-chart-head">
           <div>
             <div class="card-title">Cycling Aerobic Efficiency</div>
@@ -369,9 +414,9 @@
           </div>
         </div>
       </div>
-    </div>
+      </div>
 
-    <div class="card" v-if="strengthConsistency.history?.length">
+      <div class="card support-card" v-if="strengthConsistency.history?.length">
       <div class="cycling-head">
         <div>
           <div class="card-title">Strength Consistency</div>
@@ -396,10 +441,10 @@
           <div class="strength-label">{{ week.label }}</div>
         </div>
       </div>
-    </div>
+      </div>
 
-    <div class="grid-yearly" v-if="rideYearSeries.length || runYearSeries.length || strengthYearSeries.length">
-      <div class="card" v-if="rideYearSeries.length">
+      <div class="grid-yearly support-grid" v-if="rideYearSeries.length || runYearSeries.length || strengthYearSeries.length">
+      <div class="card support-card" v-if="rideYearSeries.length">
         <div class="distance-chart-head">
           <div>
             <div class="card-title">Ride Distance This Year</div>
@@ -439,7 +484,7 @@
         </div>
       </div>
 
-      <div class="card" v-if="runYearSeries.length">
+      <div class="card support-card" v-if="runYearSeries.length">
         <div class="distance-chart-head">
           <div>
             <div class="card-title">Run Distance This Year</div>
@@ -479,7 +524,7 @@
         </div>
       </div>
 
-      <div class="card" v-if="strengthYearSeries.length">
+      <div class="card support-card" v-if="strengthYearSeries.length">
         <div class="distance-chart-head">
           <div>
             <div class="card-title">Strength Hours This Year</div>
@@ -518,10 +563,9 @@
           </div>
         </div>
       </div>
-    </div>
+      </div>
 
-    <!-- Z2 Pace Trend -->
-    <div class="card" v-if="dashboard?.z2_pace_trend?.length">
+      <div class="card support-card" v-if="dashboard?.z2_pace_trend?.length">
       <div class="card-title">Zone 2 Pace Trend</div>
       <div class="trend-chart-wrap" v-if="z2ChartPoints.length">
         <svg class="trend-chart" viewBox="0 0 640 220" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Zone 2 pace trend chart">
@@ -600,26 +644,84 @@
           <div class="z2-hr">{{ r.avg_hr }} bpm</div>
         </div>
       </div>
-    </div>
+      </div>
+    </section>
 
-    <!-- Coach Notes -->
-    <div class="card" v-if="dashboard?.coach_notes?.length">
-      <div class="card-title">Latest Coach Notes</div>
-      <div class="notes-list">
-        <div class="note-item" v-for="n in dashboard.coach_notes" :key="n.date + n.content">
-          <div class="note-header">
-            <span class="note-date">{{ formatDate(n.date) }}</span>
-            <span class="badge" :class="`badge-${n.category === 'running' ? 'run' : n.category === 'cycling' ? 'ride' : 'strength'}`">
-              {{ n.category }}
-            </span>
+    <section class="support-section support-section-late">
+      <div class="support-section-head">
+        <div>
+          <div class="section-label">Reference</div>
+          <div class="support-section-title">Recent notes and activity history</div>
+        </div>
+        <div class="support-section-copy">Useful for recall and review, but intentionally quieter than the coaching area above.</div>
+      </div>
+
+      <div class="grid-2 support-grid reference-top-grid" :class="{ 'reference-top-grid-single': !dashboard?.coach_notes?.length }">
+        <div class="card support-card support-card-quiet reference-heatmap" v-if="activityHeatmap">
+          <div class="distance-chart-head">
+            <div>
+              <div class="card-title">Activity Rhythm</div>
+              <div class="distance-chart-sub">Year-to-date training density. Brighter cells mean more training load.</div>
+            </div>
+            <div class="distance-total activity-rhythm-total">{{ activityHeatmap.total_active_days }} active days</div>
           </div>
-          <div class="note-content">{{ n.content }}</div>
+          <div class="heatmap-wrap">
+            <div class="heatmap-months" :style="{ gridTemplateColumns: heatmapGridColumns }">
+              <div v-for="(week, index) in heatmapWeeks" :key="`month-${index}`" class="heatmap-month-cell">
+                <span v-if="heatmapMonthLabel(index)">{{ heatmapMonthLabel(index) }}</span>
+              </div>
+            </div>
+            <div class="heatmap-grid-wrap">
+              <div class="heatmap-weekday-labels">
+                <span></span>
+                <span>Mon</span>
+                <span></span>
+                <span>Wed</span>
+                <span></span>
+                <span>Fri</span>
+                <span></span>
+              </div>
+              <div class="heatmap-grid" :style="{ gridTemplateColumns: heatmapGridColumns }">
+                <div v-for="(week, index) in heatmapWeeks" :key="`week-${index}`" class="heatmap-week">
+                  <button
+                    v-for="cell in week"
+                    :key="cell.date"
+                    type="button"
+                    class="heatmap-cell"
+                    :class="[`level-${cell.level}`, { 'cell-outside': !cell.in_year }]"
+                    :title="heatmapTitle(cell)"
+                  ></button>
+                </div>
+              </div>
+            </div>
+            <div class="heatmap-legend">
+              <span>Less</span>
+              <div class="heatmap-legend-cells">
+                <span v-for="level in [0, 1, 2, 3, 4]" :key="`legend-${level}`" class="heatmap-cell" :class="`level-${level}`"></span>
+              </div>
+              <span>More</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card support-card support-card-quiet" v-if="dashboard?.coach_notes?.length">
+          <div class="card-title">Latest Coach Notes</div>
+          <div class="notes-list">
+            <div class="note-item" v-for="n in dashboard.coach_notes" :key="n.date + n.content">
+              <div class="note-header">
+                <span class="note-date">{{ formatDate(n.date) }}</span>
+                <span class="badge" :class="`badge-${n.category === 'running' ? 'run' : n.category === 'cycling' ? 'ride' : 'strength'}`">
+                  {{ n.category }}
+                </span>
+              </div>
+              <div class="note-content">{{ n.content }}</div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="grid-2">
-      <div class="card">
+      <div class="grid-2 support-grid">
+      <div class="card support-card support-card-quiet">
         <div class="card-title">Recent Runs</div>
         <div v-if="dashboard?.recent_runs?.length">
           <table>
@@ -655,7 +757,7 @@
         <div v-else class="empty">No runs logged yet</div>
       </div>
 
-      <div class="card">
+      <div class="card support-card support-card-quiet">
         <div class="card-title">Recent Rides</div>
         <div v-if="dashboard?.recent_rides?.length">
           <table>
@@ -681,7 +783,8 @@
         </div>
         <div v-else class="empty">No rides logged yet</div>
       </div>
-    </div>
+      </div>
+    </section>
 
     <div v-if="loading" class="empty">Loading...</div>
   </div>
@@ -727,6 +830,7 @@ const cyclingDaily = computed(() => [...(dashboard.value?.cycling_daily || [])].
 const rideYearSeries = computed(() => dashboard.value?.ride_year_series || [])
 const runYearSeries = computed(() => dashboard.value?.run_year_series || [])
 const strengthYearSeries = computed(() => dashboard.value?.strength_year_series || [])
+const activityHeatmap = computed(() => dashboard.value?.activity_heatmap || null)
 const weeklyPlan = computed(() => dashboard.value?.weekly_plan || null)
 const dailyRecommendation = computed(() => dashboard.value?.daily_recommendation || null)
 const latestSubjectiveState = computed(() => dashboard.value?.latest_subjective_state || null)
@@ -739,6 +843,50 @@ const todayPlan = computed(() => {
   if (!weeklyPlan.value?.days?.length) return null
   const today = new Date().toISOString().slice(0, 10)
   return weeklyPlan.value.days.find((day) => day.date === today) || null
+})
+const todayContextPrimary = computed(() => {
+  if (!todayPlan.value) return 'No workout scheduled'
+  const parts = []
+  if (todayPlan.value.target_duration_min) parts.push(`${todayPlan.value.target_duration_min} min`)
+  if (todayPlan.value.target_distance_km) parts.push(`${todayPlan.value.target_distance_km} km`)
+  if (todayPlan.value.workout_intent_label) parts.push(todayPlan.value.workout_intent_label)
+  if (!parts.length && todayPlan.value.session_type) parts.push(todayPlan.value.session_type)
+  return parts.join(' · ') || 'Planned session'
+})
+const todayCheckInSummary = computed(() => {
+  if (!latestSubjectiveState.value) return 'No recent check-in'
+  return `Energy ${latestSubjectiveState.value.energy}/5 · soreness ${latestSubjectiveState.value.muscle_soreness}/5 · pain ${latestSubjectiveState.value.pain_level}/10`
+})
+const checkInMetrics = computed(() => {
+  if (!latestSubjectiveState.value) return []
+  const { energy, muscle_soreness: soreness, pain_level: pain } = latestSubjectiveState.value
+  return [
+    {
+      label: 'Energy',
+      valueLabel: `${energy}/5`,
+      fillPct: Math.max(0, Math.min((Number(energy || 0) / 5) * 100, 100)),
+      tone: Number(energy || 0) >= 4 ? 'tone-good' : Number(energy || 0) >= 3 ? 'tone-steady' : 'tone-caution',
+    },
+    {
+      label: 'Soreness',
+      valueLabel: `${soreness}/5`,
+      fillPct: Math.max(0, Math.min((Number(soreness || 0) / 5) * 100, 100)),
+      tone: Number(soreness || 0) <= 1 ? 'tone-good' : Number(soreness || 0) <= 3 ? 'tone-steady' : 'tone-risk',
+    },
+    {
+      label: 'Pain',
+      valueLabel: `${pain}/10`,
+      fillPct: Math.max(0, Math.min((Number(pain || 0) / 10) * 100, 100)),
+      tone: Number(pain || 0) === 0 ? 'tone-good' : Number(pain || 0) <= 3 ? 'tone-steady' : 'tone-risk',
+    },
+  ]
+})
+const todayGoalPressure = computed(() => {
+  const goalsAssessment = weeklyCoaching.value?.goal_assessment
+  if (!goalsAssessment?.active_goal_count) return 'No active goal pressure'
+  if (goalsAssessment.status === 'pressured') return 'Goals under pressure'
+  if (goalsAssessment.status === 'watch') return 'Worth watching'
+  return `${goalsAssessment.plan_supported_goals || 0} goals supported`
 })
 const weeklyMix = computed(() => (dashboard.value?.weekly_mix || []).map((week) => {
   const total = Number(week.total_min || 0)
@@ -754,6 +902,22 @@ const weeklyMix = computed(() => (dashboard.value?.weekly_mix || []).map((week) 
 }))
 const efficiencyTrend = computed(() => dashboard.value?.cycling_efficiency_trend || [])
 const strengthConsistency = computed(() => dashboard.value?.strength_consistency || { history: [], target_sessions: 2, current_streak_weeks: 0, weeks_hit: 0, weeks_total: 0 })
+const heatmapWeeks = computed(() => {
+  const cells = activityHeatmap.value?.cells || []
+  const weeks = []
+  for (let index = 0; index < cells.length; index += 7) {
+    weeks.push(cells.slice(index, index + 7))
+  }
+  return weeks
+})
+const heatmapMonthLabels = computed(() => {
+  const labels = new Map()
+  for (const item of activityHeatmap.value?.month_labels || []) {
+    labels.set(item.week_index, item.label)
+  }
+  return labels
+})
+const heatmapGridColumns = computed(() => `repeat(${heatmapWeeks.value.length}, 12px)`)
 
 const activityTone = (type) => {
   if (type === 'Run' || type === 'run') return 'run'
@@ -920,6 +1084,15 @@ const buildDistanceAreaPoints = (points) => {
   ].join(' ')
 }
 
+const heatmapMonthLabel = (weekIndex) => heatmapMonthLabels.value.get(weekIndex) || ''
+
+const heatmapTitle = (cell) => {
+  const dayLabel = formatDate(cell.date)
+  if (!cell.in_year) return `${dayLabel} · outside current year`
+  if (!cell.sessions) return `${dayLabel} · no activity`
+  return `${dayLabel} · ${cell.sessions} session${cell.sessions === 1 ? '' : 's'} · ${formatMinutesAsHours(cell.total_duration_min)} · ${cell.total_distance_km} km`
+}
+
 const latestCumulative = (series) => series.length ? series[series.length - 1].cumulative_km : 0
 const latestCumulativeHours = (series) => series.length ? series[series.length - 1].cumulative_hours : 0
 const latestEfficiency = computed(() => efficiencyTrend.value.length ? efficiencyTrend.value[efficiencyTrend.value.length - 1].efficiency.toFixed(3) : '—')
@@ -1051,6 +1224,22 @@ const recommendationLabel = (status) => {
   return 'Keep'
 }
 
+const recommendationHeaderLabel = (status) => {
+  if (status === 'push') return 'Push session'
+  if (status === 'reduce') return 'Ease back'
+  if (status === 'recover') return 'Recover today'
+  if (status === 'adjust') return 'Adjust plan'
+  return 'Stay on plan'
+}
+
+const recommendationHeaderCopy = (status) => {
+  if (status === 'push') return 'Good window for the planned work.'
+  if (status === 'reduce') return 'Keep the session, but trim the load.'
+  if (status === 'recover') return 'Recovery matters more than intensity today.'
+  if (status === 'adjust') return 'The current plan likely needs a change.'
+  return 'No strong reason to change the planned session.'
+}
+
 const coachingStatusLabel = (status) => {
   if (status === 'push') return 'Push window'
   if (status === 'reduce') return 'Reduce'
@@ -1174,17 +1363,47 @@ const zoneBadgeClass = (activity) => {
 </script>
 
 <style scoped>
-.page-title {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 4px;
+.dashboard-head {
+  margin-bottom: 26px;
 }
-.page-sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+.dashboard-head-status {
+  display: grid;
+  gap: 4px;
+  min-width: 168px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(123, 163, 255, 0.18);
+  background: rgba(13, 20, 32, 0.55);
+  text-align: right;
+}
+.dashboard-head-status-label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.dashboard-head-status strong {
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 1.05;
+}
+.dashboard-head-status-copy {
+  color: var(--muted-soft);
+  font-size: 12px;
+  line-height: 1.35;
+  max-width: 18ch;
+  justify-self: end;
+}
+.dashboard-head-status.status-push strong { color: #6ee7b7; }
+.dashboard-head-status.status-keep strong { color: #bfdbfe; }
+.dashboard-head-status.status-reduce strong,
+.dashboard-head-status.status-adjust strong { color: #fcd34d; }
+.dashboard-head-status.status-recover strong { color: #fda4af; }
 .overview-grid {
   display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 18px;
+  margin-bottom: 22px;
   align-items: stretch;
 }
 .overview-grid-single {
@@ -1207,24 +1426,109 @@ const zoneBadgeClass = (activity) => {
 .overview-stack {
   flex: 1.45 1 0;
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 .overview-stack > .card,
 .overview-grid > .card {
   margin-bottom: 0;
 }
 .overview-primary {
-  padding: 18px;
+  padding: 22px;
   background:
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.14), transparent 44%),
-    radial-gradient(circle at top right, rgba(16, 185, 129, 0.1), transparent 32%);
+    radial-gradient(circle at top left, rgba(95, 140, 255, 0.16), transparent 42%),
+    radial-gradient(circle at top right, rgba(31, 190, 141, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(21, 29, 44, 0.99), rgba(16, 23, 36, 0.96));
+  border-color: rgba(123, 163, 255, 0.2);
+  box-shadow: var(--shadow-md);
+}
+.today-context-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+.today-context-pill {
+  padding: 14px 14px 15px;
+  border-radius: 16px;
+  background: rgba(8, 15, 28, 0.46);
+  border: 1px solid rgba(123, 163, 255, 0.12);
+  min-height: 100%;
+}
+.today-context-label {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.today-context-pill strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-soft);
+}
+.checkin-meters {
+  display: grid;
+  gap: 10px;
+}
+.checkin-meter {
+  display: grid;
+  gap: 6px;
+}
+.checkin-meter-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.checkin-meter-top strong {
+  font-size: 12px;
+  line-height: 1;
+}
+.checkin-meter-track {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.checkin-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+.tone-good {
+  color: #6ee7b7;
+}
+.checkin-meter-fill.tone-good {
+  background: linear-gradient(90deg, rgba(52, 211, 153, 0.9), rgba(110, 231, 183, 0.92));
+}
+.tone-steady {
+  color: #93c5fd;
+}
+.checkin-meter-fill.tone-steady {
+  background: linear-gradient(90deg, rgba(96, 165, 250, 0.9), rgba(129, 140, 248, 0.9));
+}
+.tone-caution {
+  color: #fbbf24;
+}
+.checkin-meter-fill.tone-caution {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.9), rgba(251, 191, 36, 0.92));
+}
+.tone-risk {
+  color: #fda4af;
+}
+.checkin-meter-fill.tone-risk {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.9), rgba(244, 114, 182, 0.9));
 }
 .recommendation-card {
-  margin-top: 16px;
-  padding: 14px;
+  margin-top: 18px;
+  padding: 16px;
   border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.07);
-  background: rgba(8, 15, 28, 0.65);
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(8, 15, 28, 0.72);
   display: grid;
   gap: 8px;
 }
@@ -1248,8 +1552,9 @@ const zoneBadgeClass = (activity) => {
 }
 .recommendation-action {
   font-family: var(--font-display);
-  font-size: 18px;
-  line-height: 1.3;
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: -0.03em;
 }
 .recommendation-reasons {
   display: flex;
@@ -1276,6 +1581,8 @@ const zoneBadgeClass = (activity) => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background:
+    linear-gradient(180deg, rgba(19, 26, 39, 0.96), rgba(15, 21, 33, 0.92));
 }
 .overview-head {
   display: flex;
@@ -1294,17 +1601,153 @@ const zoneBadgeClass = (activity) => {
 .overview-stats {
   margin-bottom: 0;
 }
+.stats-panel-wide {
+  margin-bottom: 24px;
+}
+.support-section {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 26px;
+}
+.support-section-late {
+  margin-top: 6px;
+}
+.support-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.support-section-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-top: 6px;
+}
+.support-section-copy {
+  color: var(--muted-soft);
+  font-size: 13px;
+  max-width: 54ch;
+}
+.support-grid {
+  margin-bottom: 0;
+}
+.reference-top-grid {
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.55fr);
+}
+.reference-top-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.reference-heatmap .distance-chart-head {
+  margin-bottom: 12px;
+}
+.support-card {
+  background: linear-gradient(180deg, rgba(19, 26, 39, 0.92), rgba(15, 21, 33, 0.9));
+}
+.support-card-quiet {
+  border-color: rgba(114, 132, 162, 0.14);
+  background: linear-gradient(180deg, rgba(17, 23, 35, 0.84), rgba(14, 19, 29, 0.8));
+}
+.activity-rhythm-total {
+  color: #9dd8b9;
+  font-size: 22px;
+}
+.heatmap-wrap {
+  display: grid;
+  gap: 12px;
+}
+.heatmap-months {
+  display: grid;
+  gap: 4px;
+  padding-left: 34px;
+  width: max-content;
+}
+.heatmap-month-cell {
+  width: 12px;
+  min-width: 12px;
+}
+.heatmap-month-cell span {
+  color: var(--muted-soft);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.heatmap-grid-wrap {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.heatmap-weekday-labels {
+  width: 24px;
+  display: grid;
+  grid-template-rows: repeat(7, 12px);
+  gap: 6px;
+}
+.heatmap-weekday-labels span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 12px;
+}
+.heatmap-grid {
+  display: grid;
+  gap: 4px;
+  width: max-content;
+}
+.heatmap-week {
+  display: grid;
+  grid-template-rows: repeat(7, 12px);
+  gap: 4px;
+}
+.heatmap-cell {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0;
+}
+.heatmap-cell.level-0 {
+  background: rgba(255, 255, 255, 0.06);
+}
+.heatmap-cell.level-1 {
+  background: rgba(34, 197, 94, 0.32);
+}
+.heatmap-cell.level-2 {
+  background: rgba(34, 197, 94, 0.5);
+}
+.heatmap-cell.level-3 {
+  background: rgba(34, 197, 94, 0.68);
+}
+.heatmap-cell.level-4 {
+  background: #6ee7b7;
+}
+.heatmap-cell.cell-outside {
+  opacity: 0.28;
+}
+.heatmap-legend {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-soft);
+  font-size: 12px;
+}
+.heatmap-legend-cells {
+  display: inline-flex;
+  gap: 6px;
+}
 .weekly-coach-wrap {
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 .weekly-coach-card {
-  padding: 22px;
+  padding: 24px;
   background:
     radial-gradient(circle at top right, rgba(245, 158, 11, 0.13), transparent 28%),
-    radial-gradient(circle at left center, rgba(59, 130, 246, 0.11), transparent 32%),
+    radial-gradient(circle at left center, rgba(95, 140, 255, 0.12), transparent 32%),
     linear-gradient(135deg, rgba(15, 20, 32, 0.98), rgba(12, 17, 28, 0.95));
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
 .weekly-coach-head {
@@ -1371,10 +1814,11 @@ const zoneBadgeClass = (activity) => {
 }
 .weekly-coach-headline {
   font-family: var(--font-display);
-  font-size: 38px;
+  font-size: clamp(34px, 4vw, 42px);
   line-height: 1.2;
   max-width: 12ch;
   margin-bottom: 12px;
+  letter-spacing: -0.05em;
 }
 .weekly-coach-text {
   color: var(--muted);
@@ -1679,6 +2123,9 @@ const zoneBadgeClass = (activity) => {
 .stats-grid-compact {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.stats-grid-wide {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 .stat-card {
   text-align: left;
   min-height: 118px;
@@ -1836,9 +2283,11 @@ const zoneBadgeClass = (activity) => {
 }
 .today-plan-title {
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 30px;
   font-weight: 700;
   margin-bottom: 6px;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
 }
 .today-plan-meta {
   display: flex;
@@ -2069,6 +2518,8 @@ const zoneBadgeClass = (activity) => {
   .weekly-coach-hero { grid-template-columns: 1fr; }
   .cycling-kpis { min-width: 0; width: 100%; }
   .weekly-coach-grid { grid-template-columns: 1fr; }
+  .today-context-strip { grid-template-columns: 1fr; }
+  .heatmap-wrap { overflow-x: auto; }
   .mix-chart,
   .strength-bars { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
@@ -2081,10 +2532,15 @@ const zoneBadgeClass = (activity) => {
   .goal-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .stats-grid-compact {
+  .stats-grid-compact,
+  .stats-grid-wide {
     grid-template-columns: 1fr;
   }
   .goal-strip-top { grid-template-columns: 1fr; }
+  .dashboard-head-status,
+  .support-section-head {
+    width: 100%;
+  }
   .weekly-coach-head,
   .weekly-coach-session-top,
   .weekly-coach-head-meta {

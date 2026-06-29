@@ -4,7 +4,7 @@
 
 Current status:
 
-- planned
+- complete
 - follows completed Sprint 8 plan-diff confirmation and roadmap visibility work
 
 Starting point:
@@ -70,6 +70,13 @@ After this sprint:
 - current-week planning and coaching will stand out more clearly than older history
 - dashboards and plans will feel more directed, not just uniformly clean
 - later feature sprints will land on a stronger visual foundation
+
+Implemented result:
+
+- `Plan` now makes the active week clearly primary while older weeks recede into quieter historical summaries
+- `Dashboard` now prioritizes today's coaching call, weekly coaching read, and structured supporting context instead of a flat stack of equal cards
+- shared shell and typography treatments now create clearer emphasis through spacing, contrast, and grouping
+- `Calendar` now supports both weekly review and a full-month view with weekly summary context
 
 ## Proposed Feature Slice
 
@@ -168,4 +175,3 @@ Sprint 9 should be considered complete when:
 - important current information stands out more clearly than historical information
 - the Plan view makes current and old weeks visually distinct
 - the overall app feels more intentionally structured without becoming noisy or hard to scan
-

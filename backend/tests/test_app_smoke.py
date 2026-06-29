@@ -481,7 +481,7 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(strength_day["goal_links"], [])
 
     def test_plan_session_ids_and_manual_activity_linking(self):
-        week_start = datetime.now().date() - timedelta(days=datetime.now().date().weekday()) - timedelta(days=21)
+        week_start = datetime.now().date() - timedelta(days=datetime.now().date().weekday()) - timedelta(days=70)
         planned_day = week_start + timedelta(days=1)
         moved_day = planned_day + timedelta(days=1)
 
@@ -551,7 +551,7 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(linked_day["comparison"]["intent_alignment"], "different")
         self.assertEqual(linked_day["comparison"]["completed_activities"][0]["workout_intent"], "easy")
 
-        activities_after_link = self.client.get("/activities?limit=8")
+        activities_after_link = self.client.get("/activities?limit=32")
         self.assertEqual(activities_after_link.status_code, 200)
         linked_activity = next(item for item in activities_after_link.json() if item["id"] == "linked-run-1")
         self.assertEqual(linked_activity["linked_planned_session_id"], day["session_id"])
@@ -899,7 +899,7 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(planning_body["roadmap"]["title"], "Training Dashboard Roadmap")
         self.assertTrue(planning_body["roadmap"]["phases"])
         self.assertTrue(planning_body["sprints"]["items"])
-        self.assertEqual(planning_body["sprints"]["next_recommended"]["label"], "Sprint 10")
+        self.assertEqual(planning_body["sprints"]["next_recommended"]["label"], "Sprint 12")
 
     def test_today_session_is_not_skipped_before_day_is_over(self):
         today = datetime.now().date()
@@ -929,3 +929,135 @@ class AppSmokeTests(unittest.TestCase):
         target_plan = next(item for item in plans.json() if item["week_start"] == week_start.isoformat())
         comparison = target_plan["days"][0]["comparison"]
         self.assertNotEqual(comparison["status"], "skipped")
+
+    def test_multi_week_execution_trend_exposes_recurring_patterns(self):
+        today = datetime.now().date()
+        current_week_start = today - timedelta(days=today.weekday())
+        week_starts = [
+            current_week_start - timedelta(days=21),
+            current_week_start - timedelta(days=14),
+            current_week_start - timedelta(days=7),
+        ]
+
+        for index, week_start in enumerate(week_starts):
+            monday = week_start
+            tuesday = week_start + timedelta(days=1)
+            wednesday = week_start + timedelta(days=2)
+
+            plan = self.client.post(
+                "/plans/weekly",
+                json={
+                    "week_start": week_start.isoformat(),
+                    "title": f"Trend week {index + 1}",
+                    "days": [
+                        {
+                            "date": monday.isoformat(),
+                            "label": monday.strftime("%a"),
+                            "session_type": "Run",
+                            "workout_intent": "tempo",
+                            "title": "Tempo run",
+                            "target_duration_min": 45,
+                        },
+                        {
+                            "date": tuesday.isoformat(),
+                            "label": tuesday.strftime("%a"),
+                            "session_type": "Run",
+                            "workout_intent": "easy",
+                            "title": "Easy run",
+                            "target_duration_min": 40,
+                        },
+                        {
+                            "date": wednesday.isoformat(),
+                            "label": wednesday.strftime("%a"),
+                            "session_type": "Rest",
+                            "title": "Rest day",
+                        },
+                    ],
+                },
+            )
+            self.assertEqual(plan.status_code, 201)
+
+        moved_activity_week_1 = self.client.post(
+            "/activities",
+            json={
+                "id": "trend-moved-week-1",
+                "date": (week_starts[0] + timedelta(days=2)).isoformat(),
+                "type": "Run",
+                "workout_intent": "tempo",
+                "name": "Moved tempo run",
+                "duration_min": 46.0,
+            },
+        )
+        self.assertEqual(moved_activity_week_1.status_code, 201)
+
+        matched_activity_week_1 = self.client.post(
+            "/activities",
+            json={
+                "id": "trend-matched-week-1",
+                "date": (week_starts[0] + timedelta(days=1)).isoformat(),
+                "type": "Run",
+                "workout_intent": "easy",
+                "name": "Matched easy run",
+                "duration_min": 39.0,
+            },
+        )
+        self.assertEqual(matched_activity_week_1.status_code, 201)
+
+        moved_activity_week_2 = self.client.post(
+            "/activities",
+            json={
+                "id": "trend-moved-week-2",
+                "date": (week_starts[1] + timedelta(days=2)).isoformat(),
+                "type": "Run",
+                "workout_intent": "tempo",
+                "name": "Moved tempo run again",
+                "duration_min": 47.0,
+            },
+        )
+        self.assertEqual(moved_activity_week_2.status_code, 201)
+
+        mismatched_activity_week_2 = self.client.post(
+            "/activities",
+            json={
+                "id": "trend-partial-week-2",
+                "date": (week_starts[1] + timedelta(days=1)).isoformat(),
+                "type": "Run",
+                "workout_intent": "tempo",
+                "name": "Harder than planned",
+                "duration_min": 41.0,
+            },
+        )
+        self.assertEqual(mismatched_activity_week_2.status_code, 201)
+
+        matched_activity_week_3 = self.client.post(
+            "/activities",
+            json={
+                "id": "trend-matched-week-3",
+                "date": week_starts[2].isoformat(),
+                "type": "Run",
+                "workout_intent": "tempo",
+                "name": "Tempo run matched",
+                "duration_min": 44.0,
+            },
+        )
+        self.assertEqual(matched_activity_week_3.status_code, 201)
+
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        dashboard_trend = dashboard.json()["execution_trend"]
+        self.assertGreaterEqual(dashboard_trend["recurring_patterns"]["weeks_with_moved"], 2)
+        self.assertGreaterEqual(dashboard_trend["recurring_patterns"]["weeks_with_intent_mismatch"], 1)
+        self.assertGreaterEqual(dashboard_trend["totals"]["status_counts"]["moved"], 2)
+        self.assertTrue(dashboard_trend["observations"])
+
+        trends = self.client.get("/plans/weekly/trends?weeks=8")
+        self.assertEqual(trends.status_code, 200)
+        body = trends.json()
+        self.assertGreaterEqual(body["weeks_considered"], 3)
+        trend_weeks = {item["week_start"]: item for item in body["weeks"] if item["week_start"] in {week.isoformat() for week in week_starts}}
+        self.assertEqual(len(trend_weeks), 3)
+        self.assertEqual(trend_weeks[week_starts[0].isoformat()]["status_counts"]["moved"], 1)
+        self.assertEqual(trend_weeks[week_starts[0].isoformat()]["status_counts"]["rest_day_changed"], 1)
+        self.assertEqual(trend_weeks[week_starts[1].isoformat()]["intent_alignment"]["different"], 1)
+        self.assertEqual(trend_weeks[week_starts[1].isoformat()]["status_counts"]["rest_day_changed"], 1)
+        self.assertGreaterEqual(trend_weeks[week_starts[2].isoformat()]["fulfilled_sessions"], 1)

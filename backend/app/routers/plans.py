@@ -2,7 +2,13 @@ from fastapi import APIRouter
 
 from ..db import get_db
 from ..models.plans import WeeklyPlan, WeeklyPlanAdjustment
-from ..services.plans import adjust_weekly_plan_data, list_weekly_plans_data, preview_weekly_plan_adjustment_data, upsert_weekly_plan_data
+from ..services.plans import (
+    adjust_weekly_plan_data,
+    build_multi_week_execution_trend,
+    list_weekly_plans_data,
+    preview_weekly_plan_adjustment_data,
+    upsert_weekly_plan_data,
+)
 
 router = APIRouter()
 
@@ -39,5 +45,14 @@ def list_weekly_plans(limit: int = 8):
     conn = get_db()
     try:
         return list_weekly_plans_data(conn, limit=limit)
+    finally:
+        conn.close()
+
+
+@router.get("/plans/weekly/trends")
+def weekly_plan_trends(weeks: int = 6):
+    conn = get_db()
+    try:
+        return build_multi_week_execution_trend(conn, weeks=weeks)
     finally:
         conn.close()

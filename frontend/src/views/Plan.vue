@@ -26,6 +26,48 @@
       </div>
     </div>
 
+    <div v-if="planTrends && planTrends.weeks?.length" class="card plan-trend-card">
+      <div class="plan-trend-head">
+        <div>
+          <div class="card-title">Recent Execution Pattern</div>
+          <div class="plan-trend-sub">Use this to judge whether the current structure is actually holding across recent weeks.</div>
+        </div>
+        <div class="plan-trend-pill" :class="`trend-${planTrends.status}`">
+          {{ planTrendStatusLabel(planTrends.status) }}
+        </div>
+      </div>
+
+      <div class="plan-trend-metrics">
+        <article v-for="metric in planTrendMetrics" :key="metric.label" class="plan-trend-metric">
+          <span>{{ metric.label }}</span>
+          <strong>{{ metric.value }}</strong>
+        </article>
+      </div>
+
+      <div class="plan-trend-grid">
+        <article v-for="week in planTrends.weeks" :key="week.week_start" class="plan-trend-week">
+          <div class="plan-trend-week-top">
+            <strong>{{ formatWeek(week.week_start) }}</strong>
+            <span>{{ planTrendWeekCopy(week) }}</span>
+          </div>
+          <div class="plan-trend-week-bars">
+            <span class="bar-fulfilled" :style="{ width: `${planTrendBarPct(week, 'fulfilled')}%` }"></span>
+            <span class="bar-modified" :style="{ width: `${planTrendBarPct(week, 'modified')}%` }"></span>
+            <span class="bar-missed" :style="{ width: `${planTrendBarPct(week, 'missed')}%` }"></span>
+          </div>
+          <div class="plan-trend-week-meta">
+            <span>{{ week.status_counts?.linked || 0 }} linked</span>
+            <span>{{ week.status_counts?.moved || 0 }} moved</span>
+            <span>{{ week.intent_alignment?.different || 0 }} intent mismatches</span>
+          </div>
+        </article>
+      </div>
+
+      <div class="plan-trend-observations">
+        <div v-for="item in planTrends.observations || []" :key="item" class="plan-trend-observation">{{ item }}</div>
+      </div>
+    </div>
+
     <div v-if="loading" class="empty card">Loading plans…</div>
     <div v-else-if="!plans.length" class="empty card">No weekly plans yet.</div>
 
@@ -527,7 +569,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
@@ -576,6 +618,7 @@ const api = useApi()
 const route = useRoute()
 const router = useRouter()
 const plans = ref([])
+const planTrends = ref(null)
 const loading = ref(true)
 const savingAdjustment = ref(false)
 const approvingCoaching = ref(false)
@@ -625,8 +668,12 @@ const clearCoachingReview = () => {
 const load = async () => {
   loading.value = true
   try {
-    const { data } = await api.getWeeklyPlans({ limit: 8 })
-    plans.value = data
+    const [plansResult, trendsResult] = await Promise.allSettled([
+      api.getWeeklyPlans({ limit: 8 }),
+      api.getWeeklyPlanTrends({ weeks: 6 }),
+    ])
+    plans.value = plansResult.status === 'fulfilled' ? plansResult.value.data : []
+    planTrends.value = trendsResult.status === 'fulfilled' ? trendsResult.value.data : null
     selectedLinkedActivityIds.value = {}
     openLinkEditors.value = {}
     await maybeApplyCoachingDraft()
@@ -664,6 +711,37 @@ const activityTone = (type) => {
 }
 
 const isIconSessionType = (type) => ['Run', 'Ride', 'VirtualRide', 'WeightTraining', 'Strength', 'Recovery', 'Rest', 'Walk', 'run', 'ride', 'strength', 'recovery', 'rest', 'walk'].includes(type)
+
+const planTrendStatusLabel = (status) => {
+  if (status === 'on_track') return 'Mostly on track'
+  if (status === 'mixed') return 'Mixed trend'
+  if (status === 'off_track') return 'Recurring misses'
+  return 'Limited data'
+}
+
+const planTrendWeekCopy = (week) => {
+  if (week.adherence_pct !== null && week.adherence_pct !== undefined) return `${week.adherence_pct}% fulfilled`
+  if (week.evaluable_sessions) return `${week.evaluable_sessions} reviewed`
+  return 'Quiet week'
+}
+
+const planTrendBarPct = (week, kind) => {
+  const total = Number(week.evaluable_sessions || 0)
+  if (!total) return 0
+  if (kind === 'fulfilled') return (Number(week.fulfilled_sessions || 0) / total) * 100
+  if (kind === 'modified') return (Number(week.modified_sessions || 0) / total) * 100
+  return (Number(week.missed_sessions || 0) / total) * 100
+}
+
+const planTrendMetrics = computed(() => {
+  if (!planTrends.value) return []
+  return [
+    { label: 'Fulfilled', value: planTrends.value.totals?.fulfilled_sessions || 0 },
+    { label: 'Modified', value: planTrends.value.totals?.modified_sessions || 0 },
+    { label: 'Missed', value: planTrends.value.totals?.missed_sessions || 0 },
+    { label: 'Weeks with moved sessions', value: planTrends.value.recurring_patterns?.weeks_with_moved || 0 },
+  ]
+})
 
 const normalizedDayKey = (value) => {
   const parsed = new Date(value)
@@ -2475,11 +2553,101 @@ const savePlanLink = async (day) => {
   line-height: 1.6;
   white-space: pre-line;
 }
+.plan-trend-card {
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.plan-trend-head,
+.plan-trend-week-top,
+.plan-trend-week-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.plan-trend-sub,
+.plan-trend-week-top span,
+.plan-trend-week-meta,
+.plan-trend-observation {
+  color: var(--muted);
+  font-size: 12px;
+}
+.plan-trend-pill {
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.plan-trend-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.plan-trend-metric {
+  background: rgba(10, 15, 25, 0.48);
+  border: 1px solid rgba(76, 92, 125, 0.18);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.plan-trend-metric span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.plan-trend-metric strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--text);
+  font-family: var(--font-display);
+}
+.plan-trend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
+  gap: 12px;
+  justify-content: start;
+}
+.plan-trend-week {
+  background: rgba(10, 15, 25, 0.56);
+  border: 1px solid rgba(76, 92, 125, 0.18);
+  border-radius: 14px;
+  padding: 14px;
+}
+.plan-trend-week-bars {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(148, 163, 184, 0.12);
+  margin: 10px 0 8px;
+}
+.plan-trend-week-bars span {
+  display: block;
+  height: 100%;
+}
+.plan-trend-observations {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.plan-trend-observation {
+  background: rgba(15, 23, 42, 0.42);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
 
 @media (max-width: 920px) {
   .week-header,
   .adjust-panel-head,
-  .editor-footer {
+  .editor-footer,
+  .plan-trend-head,
+  .plan-trend-week-top,
+  .plan-trend-week-meta {
     flex-direction: column;
   }
   .week-actions,
@@ -2487,6 +2655,9 @@ const savePlanLink = async (day) => {
     width: 100%;
   }
   .adjust-status-grid {
+    grid-template-columns: 1fr;
+  }
+  .plan-trend-grid {
     grid-template-columns: 1fr;
   }
   .save-button {

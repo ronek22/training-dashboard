@@ -4,8 +4,8 @@
 
 Current status:
 
-- planned
-- follows planned Sprint 10 coaching history and revision timeline work
+- complete
+- follows completed Sprint 10 coaching history and revision timeline work
 
 Starting point:
 

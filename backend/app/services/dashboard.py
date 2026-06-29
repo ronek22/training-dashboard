@@ -3,7 +3,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from typing import Callable, Optional
 
-from .plans import serialize_weekly_plan
+from .plans import build_multi_week_execution_trend, serialize_weekly_plan
 from .plans import format_workout_intent_label, normalize_workout_intent
 from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
 from .goals import list_goals_data
@@ -1048,6 +1048,7 @@ def build_dashboard_data(
     latest_plan = select_active_weekly_plan_row(conn)
     serialized_latest_plan = serialize_weekly_plan(latest_plan, conn) if latest_plan else None
     daily_recommendation = build_daily_recommendation(conn, training_load_summary=training_load, weekly_plan=serialized_latest_plan)
+    execution_trend = build_multi_week_execution_trend(conn, weeks=6)
 
     return {
         "last_14_days": [dict(r) for r in recent],
@@ -1067,6 +1068,7 @@ def build_dashboard_data(
         "strength_consistency": strength_consistency,
         "active_goals": active_goals,
         "weekly_plan": serialized_latest_plan,
+        "execution_trend": execution_trend,
         "computed_streak": computed_streak,
         "recent_feedback": list_recent_feedback_data(conn, limit=5),
         "latest_subjective_state": latest_subjective_state(conn),

@@ -666,6 +666,179 @@ def list_weekly_plans_data(conn: sqlite3.Connection, limit: int = 8) -> list[dic
     return [serialize_weekly_plan(row, conn) for row in rows]
 
 
+def build_multi_week_execution_trend(conn: sqlite3.Connection, weeks: int = 6) -> dict:
+    safe_weeks = max(2, min(weeks, 12))
+    plan_rows = list_weekly_plan_rows(conn, safe_weeks)
+    plans = [serialize_weekly_plan(row, conn) for row in plan_rows]
+    plans.reverse()
+
+    tracked_statuses = [
+        "linked",
+        "matched",
+        "moved",
+        "partially_matched",
+        "replaced",
+        "rest_day_changed",
+        "skipped",
+    ]
+    fulfilled_statuses = {"linked", "matched", "moved"}
+    modified_statuses = {"partially_matched", "replaced", "rest_day_changed"}
+    totals = {status: 0 for status in tracked_statuses}
+    intent_totals = {"aligned": 0, "different": 0, "unknown": 0}
+    weeks_output = []
+    weeks_with_any_evaluable_day = 0
+    skipped_weeks = 0
+    moved_weeks = 0
+    modified_weeks = 0
+    intent_mismatch_weeks = 0
+
+    for plan in plans:
+        status_counts = {status: 0 for status in tracked_statuses}
+        intent_counts = {"aligned": 0, "different": 0, "unknown": 0}
+        evaluable_days = 0
+        fulfilled_sessions = 0
+        modified_sessions = 0
+        missed_sessions = 0
+
+        for day in plan.get("days", []):
+            comparison = day.get("comparison") or {}
+            status = comparison.get("status")
+            if status == "not_completed_yet" or not status:
+                continue
+            if status not in status_counts:
+                continue
+
+            evaluable_days += 1
+            status_counts[status] += 1
+            totals[status] += 1
+
+            alignment = comparison.get("intent_alignment", "unknown")
+            if alignment not in intent_counts:
+                alignment = "unknown"
+            intent_counts[alignment] += 1
+            intent_totals[alignment] += 1
+
+            if status in fulfilled_statuses:
+                fulfilled_sessions += 1
+            elif status in modified_statuses:
+                modified_sessions += 1
+            elif status == "skipped":
+                missed_sessions += 1
+
+        if evaluable_days:
+            weeks_with_any_evaluable_day += 1
+        if status_counts["skipped"]:
+            skipped_weeks += 1
+        if status_counts["moved"]:
+            moved_weeks += 1
+        if modified_sessions:
+            modified_weeks += 1
+        if intent_counts["different"]:
+            intent_mismatch_weeks += 1
+
+        adherence_base = fulfilled_sessions + modified_sessions + missed_sessions
+        adherence_pct = round((fulfilled_sessions / adherence_base) * 100) if adherence_base else None
+        if missed_sessions >= 2 or (missed_sessions + modified_sessions) >= 3:
+            week_status = "off_track"
+        elif missed_sessions >= 1 or modified_sessions >= 1:
+            week_status = "mixed"
+        elif fulfilled_sessions:
+            week_status = "on_track"
+        else:
+            week_status = "quiet"
+
+        weeks_output.append({
+            "week_start": plan["week_start"],
+            "label": plan["week_start"],
+            "title": plan.get("title"),
+            "planned_sessions": len(plan.get("days", [])),
+            "evaluable_sessions": evaluable_days,
+            "fulfilled_sessions": fulfilled_sessions,
+            "modified_sessions": modified_sessions,
+            "missed_sessions": missed_sessions,
+            "adherence_pct": adherence_pct,
+            "status": week_status,
+            "status_counts": status_counts,
+            "intent_alignment": intent_counts,
+        })
+
+    observations = []
+    if skipped_weeks >= 2:
+        observations.append(f"Skipped sessions appeared in {skipped_weeks} of the last {len(weeks_output)} planned weeks.")
+    if moved_weeks >= 2:
+        observations.append(f"Session movement repeated across {moved_weeks} recent weeks.")
+    if modified_weeks >= 2:
+        observations.append(f"Execution changed materially in {modified_weeks} recent weeks.")
+    if intent_mismatch_weeks >= 2:
+        observations.append(f"Intent mismatches showed up in {intent_mismatch_weeks} recent weeks.")
+    if totals["linked"] >= 3:
+        observations.append(f"Explicit linking already covers {totals['linked']} sessions in the recent window.")
+    if not observations:
+        observations.append("Recent execution looks stable enough that no strong recurring pattern stands out yet.")
+
+    consecutive_skipped_weeks = 0
+    consecutive_moved_weeks = 0
+    consecutive_modified_weeks = 0
+    for week in reversed(weeks_output):
+        if week["status_counts"]["skipped"] > 0:
+            consecutive_skipped_weeks += 1
+        else:
+            break
+    for week in reversed(weeks_output):
+        if week["status_counts"]["moved"] > 0:
+            consecutive_moved_weeks += 1
+        else:
+            break
+    for week in reversed(weeks_output):
+        if week["modified_sessions"] > 0:
+            consecutive_modified_weeks += 1
+        else:
+            break
+
+    evaluable_total = sum(week["evaluable_sessions"] for week in weeks_output)
+    fulfilled_total = sum(week["fulfilled_sessions"] for week in weeks_output)
+    modified_total = sum(week["modified_sessions"] for week in weeks_output)
+    missed_total = sum(week["missed_sessions"] for week in weeks_output)
+
+    if missed_total >= 3 or skipped_weeks >= 2:
+        summary_status = "off_track"
+    elif modified_total >= 3 or moved_weeks >= 2 or intent_totals["different"] >= 2:
+        summary_status = "mixed"
+    elif fulfilled_total > 0:
+        summary_status = "on_track"
+    else:
+        summary_status = "quiet"
+
+    return {
+        "weeks_requested": safe_weeks,
+        "weeks_considered": len(weeks_output),
+        "weeks_with_data": weeks_with_any_evaluable_day,
+        "status": summary_status,
+        "totals": {
+            "planned_sessions": sum(week["planned_sessions"] for week in weeks_output),
+            "evaluable_sessions": evaluable_total,
+            "fulfilled_sessions": fulfilled_total,
+            "modified_sessions": modified_total,
+            "missed_sessions": missed_total,
+            "status_counts": totals,
+            "intent_alignment": intent_totals,
+        },
+        "recurring_patterns": {
+            "weeks_with_skipped": skipped_weeks,
+            "weeks_with_moved": moved_weeks,
+            "weeks_with_modified": modified_weeks,
+            "weeks_with_intent_mismatch": intent_mismatch_weeks,
+        },
+        "streaks": {
+            "consecutive_weeks_with_skipped": consecutive_skipped_weeks,
+            "consecutive_weeks_with_moved": consecutive_moved_weeks,
+            "consecutive_weeks_with_modified": consecutive_modified_weeks,
+        },
+        "observations": observations[:5],
+        "weeks": weeks_output,
+    }
+
+
 def prepare_weekly_plan_for_storage(plan: WeeklyPlan) -> WeeklyPlan:
     normalized_days = ensure_plan_day_ids(
         plan.week_start,

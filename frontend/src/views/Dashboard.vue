@@ -198,6 +198,62 @@
       </div>
     </div>
 
+    <div v-if="executionTrend && executionTrend.weeks?.length" class="card execution-trend-card">
+      <div class="execution-trend-head">
+        <div>
+          <div class="card-title">Execution Trend</div>
+          <div class="goals-sub">Recent weeks, reduced to status counts that are easy to inspect.</div>
+        </div>
+        <div class="execution-trend-badge" :class="`trend-${executionTrend.status}`">
+          {{ executionTrendStatusLabel(executionTrend.status) }}
+        </div>
+      </div>
+
+      <div class="execution-trend-summary">
+        <div class="execution-trend-metric">
+          <span>Fulfilled</span>
+          <strong>{{ executionTrend.totals?.fulfilled_sessions || 0 }}</strong>
+        </div>
+        <div class="execution-trend-metric">
+          <span>Modified</span>
+          <strong>{{ executionTrend.totals?.modified_sessions || 0 }}</strong>
+        </div>
+        <div class="execution-trend-metric">
+          <span>Missed</span>
+          <strong>{{ executionTrend.totals?.missed_sessions || 0 }}</strong>
+        </div>
+        <div class="execution-trend-metric">
+          <span>Intent mismatches</span>
+          <strong>{{ executionTrend.totals?.intent_alignment?.different || 0 }}</strong>
+        </div>
+      </div>
+
+      <div class="execution-trend-weeks">
+        <article v-for="week in executionTrend.weeks" :key="week.week_start" class="execution-trend-week">
+          <div class="execution-trend-week-top">
+            <strong>{{ formatDate(week.week_start) }}</strong>
+            <span>{{ executionWeekStatusCopy(week) }}</span>
+          </div>
+          <div class="execution-trend-bars">
+            <span class="bar-fulfilled" :style="{ width: `${executionWeekBarPct(week, 'fulfilled')}%` }"></span>
+            <span class="bar-modified" :style="{ width: `${executionWeekBarPct(week, 'modified')}%` }"></span>
+            <span class="bar-missed" :style="{ width: `${executionWeekBarPct(week, 'missed')}%` }"></span>
+          </div>
+          <div class="execution-trend-week-meta">
+            <span>{{ week.fulfilled_sessions }} fulfilled</span>
+            <span>{{ week.modified_sessions }} modified</span>
+            <span>{{ week.missed_sessions }} missed</span>
+          </div>
+        </article>
+      </div>
+
+      <div class="execution-trend-observations">
+        <div v-for="item in executionTrend.observations || []" :key="item" class="execution-trend-observation">
+          {{ item }}
+        </div>
+      </div>
+    </div>
+
     <div v-if="weeklyCoaching" class="weekly-coach-wrap">
       <div class="card weekly-coach-card" :class="`coach-${weeklyCoaching.recommendation?.status || 'keep'}`">
         <div class="weekly-coach-head">
@@ -911,6 +967,7 @@ const runYearSeries = computed(() => dashboard.value?.run_year_series || [])
 const strengthYearSeries = computed(() => dashboard.value?.strength_year_series || [])
 const activityHeatmap = computed(() => dashboard.value?.activity_heatmap || null)
 const weeklyPlan = computed(() => dashboard.value?.weekly_plan || null)
+const executionTrend = computed(() => dashboard.value?.execution_trend || null)
 const dailyRecommendation = computed(() => dashboard.value?.daily_recommendation || null)
 const latestSubjectiveState = computed(() => dashboard.value?.latest_subjective_state || null)
 const topGoals = computed(() => dashboard.value?.active_goals || [])
@@ -1061,6 +1118,27 @@ const activityTone = (type) => {
 }
 
 const isIconSessionType = (type) => ['Run', 'Ride', 'VirtualRide', 'WeightTraining', 'Strength', 'Recovery', 'Rest', 'Walk', 'run', 'ride', 'strength', 'recovery', 'rest', 'walk'].includes(type)
+
+const executionTrendStatusLabel = (status) => {
+  if (status === 'on_track') return 'Mostly on track'
+  if (status === 'mixed') return 'Mixed pattern'
+  if (status === 'off_track') return 'Needs attention'
+  return 'Limited data'
+}
+
+const executionWeekStatusCopy = (week) => {
+  if (week.adherence_pct !== null && week.adherence_pct !== undefined) return `${week.adherence_pct}% fulfilled`
+  if (week.evaluable_sessions) return `${week.evaluable_sessions} reviewed`
+  return 'No completed sessions yet'
+}
+
+const executionWeekBarPct = (week, kind) => {
+  const total = Number(week.evaluable_sessions || 0)
+  if (!total) return 0
+  if (kind === 'fulfilled') return (Number(week.fulfilled_sessions || 0) / total) * 100
+  if (kind === 'modified') return (Number(week.modified_sessions || 0) / total) * 100
+  return (Number(week.missed_sessions || 0) / total) * 100
+}
 
 const statCards = computed(() => {
   const s = stats.value
@@ -2802,6 +2880,81 @@ const zoneBadgeClass = (activity) => {
 .note-date { font-size: 12px; color: var(--muted); }
 .note-content { font-size: 13px; line-height: 1.5; }
 
+.execution-trend-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.execution-trend-head,
+.execution-trend-week-top,
+.execution-trend-week-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.execution-trend-badge {
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.trend-on_track { background: rgba(16, 185, 129, 0.14); color: #34d399; }
+.trend-mixed { background: rgba(245, 158, 11, 0.14); color: #fbbf24; }
+.trend-off_track { background: rgba(239, 68, 68, 0.14); color: #f87171; }
+.trend-quiet { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; }
+.execution-trend-summary,
+.execution-trend-weeks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.execution-trend-metric,
+.execution-trend-week {
+  background: var(--surface2);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 14px;
+  padding: 14px;
+}
+.execution-trend-metric span,
+.execution-trend-week-top span,
+.execution-trend-week-meta,
+.execution-trend-observation {
+  color: var(--muted);
+  font-size: 12px;
+}
+.execution-trend-metric strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 28px;
+  font-family: var(--font-display);
+}
+.execution-trend-bars {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(148, 163, 184, 0.12);
+  margin: 10px 0 8px;
+}
+.execution-trend-bars span {
+  display: block;
+  height: 100%;
+}
+.bar-fulfilled { background: #34d399; }
+.bar-modified { background: #fbbf24; }
+.bar-missed { background: #f87171; }
+.execution-trend-observations {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.execution-trend-observation {
+  background: rgba(15, 23, 42, 0.42);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
 @media (max-width: 1100px) {
   .cycling-head { flex-direction: column; }
   .overview-grid { flex-direction: column; }
@@ -2811,6 +2964,8 @@ const zoneBadgeClass = (activity) => {
   .weekly-coach-grid { grid-template-columns: 1fr; }
   .today-context-strip { grid-template-columns: 1fr; }
   .heatmap-wrap { overflow-x: auto; }
+  .execution-trend-summary,
+  .execution-trend-weeks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mix-chart,
   .strength-bars { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
@@ -2827,6 +2982,10 @@ const zoneBadgeClass = (activity) => {
   .stats-grid-wide {
     grid-template-columns: 1fr;
   }
+  .execution-trend-summary,
+  .execution-trend-weeks {
+    grid-template-columns: 1fr;
+  }
   .goal-strip-top { grid-template-columns: 1fr; }
   .dashboard-head-status,
   .support-section-head {
@@ -2834,7 +2993,10 @@ const zoneBadgeClass = (activity) => {
   }
   .weekly-coach-head,
   .weekly-coach-session-top,
-  .weekly-coach-head-meta {
+  .weekly-coach-head-meta,
+  .execution-trend-head,
+  .execution-trend-week-top,
+  .execution-trend-week-meta {
     flex-direction: column;
     align-items: flex-start;
   }

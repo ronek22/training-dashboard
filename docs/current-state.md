@@ -125,18 +125,20 @@ Completed slices:
 - `Dashboard` now emphasizes today's guidance and weekly coaching more clearly than secondary analytics
 - shared visual hierarchy across the shell and primary views is less flat and more directed
 - `Calendar` now supports both weekly and full-month review with weekly summary context in month view
+- recent execution patterns are now summarized across multiple weeks in both `Dashboard` and `Plan`
+- multi-week adherence and intent-alignment trend analysis is now available through deterministic backend summaries
 
 ## Recommended Next Step
 
 The next major sprint should be:
 
-- Sprint 10 coaching memory and weekly narrative history is now implemented as compact coaching history plus plan change visibility
+- Sprint 12 stronger deterministic coaching heuristics should follow now that coaching history and multi-week execution trends are implemented
 
 That means moving into:
 
-- retaining and surfacing weekly coaching history instead of only the latest read
-- giving recent coaching decisions more narrative continuity across weeks
-- building on the clearer hierarchy foundation from Sprint 9 before deeper analysis work
+- upgrading deterministic recommendation rules using recent execution, revision, recovery, and goal signals
+- improving rationale and risk reporting without making the coaching contract harder to inspect
+- building on the history and trend visibility now already in place
 
 ## Areas That Are Still Intentionally Lightweight
 

@@ -8,3 +8,4 @@ __pycache__/
 .tmp_test_deps/
 frontend/node_modules/
 frontend/dist/
+backend/.venv/

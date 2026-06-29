@@ -15,6 +15,59 @@ def goal_metric_unit(metric_type: str) -> str:
     return ""
 
 
+def rounded_goal_value(metric_type: str, value: float) -> float:
+    if metric_type in {"strength_sessions", "activities_count"}:
+        return round(value, 1)
+    return round(value, 1)
+
+
+def goal_planning_guidance(
+    *,
+    metric_type: str,
+    unit: str,
+    target_value: float,
+    remaining_value: float,
+    total_days: int,
+    today,
+    end_day,
+) -> dict:
+    remaining_days_including_today = max((end_day - today).days + 1, 1)
+    if remaining_value <= 0:
+        return {
+            "remaining_days_including_today": remaining_days_including_today,
+            "required_per_day": 0.0,
+            "status": "completed",
+            "summary": "Target already met.",
+        }
+
+    base_daily_target = target_value / max(total_days, 1) if target_value > 0 else 0.0
+    required_per_day = remaining_value / remaining_days_including_today
+    pressure_ratio = (required_per_day / base_daily_target) if base_daily_target > 0 else 0.0
+
+    if pressure_ratio <= 1.05:
+        status = "comfortable"
+    elif pressure_ratio <= 1.35:
+        status = "steady"
+    elif pressure_ratio <= 1.75:
+        status = "pressured"
+    else:
+        status = "urgent"
+
+    rounded_required = rounded_goal_value(metric_type, required_per_day)
+    summary = f"Need {rounded_required} {unit}/day from here.".replace(" /", "/")
+    if unit == "sessions":
+        summary = f"Need about {rounded_required} {unit}/day from here."
+    if unit == "activities":
+        summary = f"Need about {rounded_required} {unit}/day from here."
+
+    return {
+        "remaining_days_including_today": remaining_days_including_today,
+        "required_per_day": round(required_per_day, 2),
+        "status": status,
+        "summary": summary,
+    }
+
+
 def goal_period_window(period_type: str, today: Optional[date] = None) -> tuple[date, date, str]:
     current = today or datetime.now().date()
 
@@ -118,6 +171,7 @@ def serialize_goal(row: sqlite3.Row, conn: sqlite3.Connection) -> dict:
     expected_value = round((target_value * elapsed_days) / total_days, 1) if target_value > 0 else 0.0
     pace_delta_value = round(current_value - expected_value, 1)
     pace_delta_pct = round(progress_pct - expected_pct, 1)
+    unit = goal_metric_unit(row["metric_type"])
 
     if current_value >= target_value:
         status = "completed"
@@ -128,6 +182,16 @@ def serialize_goal(row: sqlite3.Row, conn: sqlite3.Connection) -> dict:
     else:
         status = "behind_pace"
 
+    planning_guidance = goal_planning_guidance(
+        metric_type=row["metric_type"],
+        unit=unit,
+        target_value=target_value,
+        remaining_value=remaining_value,
+        total_days=total_days,
+        today=today,
+        end_day=end_day,
+    )
+
     return {
         "id": row["id"],
         "title": row["title"],
@@ -136,7 +200,7 @@ def serialize_goal(row: sqlite3.Row, conn: sqlite3.Connection) -> dict:
         "metric_type": row["metric_type"],
         "target_value": target_value,
         "current_value": current_value,
-        "unit": goal_metric_unit(row["metric_type"]),
+        "unit": unit,
         "start_date": start_day.isoformat(),
         "end_date": end_day.isoformat(),
         "activity_type": row["activity_type"],
@@ -149,6 +213,7 @@ def serialize_goal(row: sqlite3.Row, conn: sqlite3.Connection) -> dict:
         "pace_delta_value": pace_delta_value,
         "pace_delta_pct": pace_delta_pct,
         "status": status,
+        "planning_guidance": planning_guidance,
     }
 
 

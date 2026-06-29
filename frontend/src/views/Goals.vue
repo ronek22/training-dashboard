@@ -48,6 +48,16 @@
               <span class="goal-required-label">Vs pace</span>
               <span class="goal-required-value" :class="paceDeltaClass(goal)">{{ paceLabel(goal) }}</span>
             </div>
+
+            <div class="goal-planning" v-if="goal.planning_guidance">
+              <div class="goal-planning-top">
+                <span class="goal-planning-label">Planning cue</span>
+                <span class="goal-planning-status" :class="`planning-${goal.planning_guidance.status}`">
+                  {{ planningGuidanceLabel(goal.planning_guidance.status) }}
+                </span>
+              </div>
+              <div class="goal-planning-summary">{{ goal.planning_guidance.summary }}</div>
+            </div>
           </article>
         </div>
       </section>
@@ -216,6 +226,14 @@ const goalMarkerOffset = (goal) => {
   const pct = Number(goal.expected_pct || 0)
   return Math.max(0, Math.min(pct, 100))
 }
+
+const planningGuidanceLabel = (status) => {
+  if (status === 'completed') return 'Done'
+  if (status === 'comfortable') return 'Comfortable'
+  if (status === 'steady') return 'Steady'
+  if (status === 'pressured') return 'Pressured'
+  return 'Urgent'
+}
 </script>
 
 <style scoped>
@@ -372,6 +390,41 @@ const goalMarkerOffset = (goal) => {
   font-weight: 700;
   line-height: 1;
 }
+.goal-planning {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.goal-planning-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.goal-planning-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.goal-planning-status {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.goal-planning-summary {
+  color: #dbe4ff;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.planning-completed { background: rgba(16,185,129,0.16); color: #34d399; }
+.planning-comfortable { background: rgba(34,197,94,0.16); color: #4ade80; }
+.planning-steady { background: rgba(59,130,246,0.16); color: #60a5fa; }
+.planning-pressured { background: rgba(245,158,11,0.16); color: #fbbf24; }
+.planning-urgent { background: rgba(239,68,68,0.16); color: #f87171; }
 .pace-positive { color: #4ade80; }
 .pace-negative { color: #f87171; }
 .pace-neutral { color: #dbe4ff; }

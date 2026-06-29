@@ -4,10 +4,15 @@ const api = axios.create({ baseURL: '/api' })
 
 export const useApi = () => ({
   getDashboard: () => api.get('/dashboard'),
+  getWeeklyCoaching: (params) => api.get('/coaching/weekly', { params }),
   getTrainingLoad: (params) => api.get('/training-load', { params }),
   getGoals: (params) => api.get('/goals', { params }),
   createGoal: (payload) => api.post('/goals', payload),
   getActivities: (params) => api.get('/activities', { params }),
+  updateActivityIntent: (activityId, payload) => api.post(`/activities/${activityId}/intent`, payload),
+  linkActivityToPlan: (activityId, payload) => api.post(`/activities/${activityId}/link-plan`, payload),
+  getActivityFeedback: (activityId) => api.get(`/activities/${activityId}/feedback`),
+  saveActivityFeedback: (activityId, payload) => api.post(`/activities/${activityId}/feedback`, payload),
   getCalendarWeeks: (params) => api.get('/calendar/weeks', { params }),
   getWeeklyPlans: (params) => api.get('/plans/weekly', { params }),
   adjustWeeklyPlan: (payload) => api.post('/plans/weekly/adjust', payload),

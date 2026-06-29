@@ -1,7 +1,7 @@
 import json
 
 
-MCP_SERVER_INFO = {"name": "training-dashboard", "version": "1.1.0"}
+MCP_SERVER_INFO = {"name": "training-dashboard", "version": "1.2.0"}
 MCP_SECURITY_SCHEMES = [{"type": "noauth"}]
 
 MCP_TOOLS = [
@@ -20,6 +20,7 @@ MCP_TOOLS = [
                 "id": {"type": "string", "description": "Unique ID (use strava ID if available)"},
                 "date": {"type": "string", "description": "Date YYYY-MM-DD"},
                 "type": {"type": "string", "enum": ["Run", "Ride", "VirtualRide", "WeightTraining", "Walk", "Hike"]},
+                "workout_intent": {"type": "string", "description": "Optional structured intent like easy, long, tempo, interval, recovery, strength_lower"},
                 "name": {"type": "string"},
                 "distance_km": {"type": "number"},
                 "duration_min": {"type": "number"},
@@ -56,7 +57,7 @@ MCP_TOOLS = [
     },
     {
         "name": "log_metric",
-        "description": "Log a personal metric like weight, resting HR, Z2 pace, FTP, heel pain level, or streak",
+        "description": "Log a personal metric like weight, resting HR, Z2 pace, FTP, or streak",
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False,
@@ -67,8 +68,8 @@ MCP_TOOLS = [
             "type": "object",
             "properties": {
                 "date": {"type": "string", "description": "Date YYYY-MM-DD"},
-                "metric": {"type": "string", "enum": ["weight", "resting_hr", "z2_pace", "ftp", "heel_pain", "streak"]},
-                "value": {"type": "number", "description": "For z2_pace use seconds per km. For heel_pain use 0-10 scale."},
+                "metric": {"type": "string", "enum": ["weight", "resting_hr", "z2_pace", "ftp", "streak"]},
+                "value": {"type": "number", "description": "For z2_pace use seconds per km."},
                 "unit": {"type": "string"},
                 "notes": {"type": "string"},
             },
@@ -122,6 +123,7 @@ MCP_TOOLS = [
                             "date": {"type": "string", "description": "Date YYYY-MM-DD"},
                             "label": {"type": "string", "description": "Mon, Tue, etc."},
                             "session_type": {"type": "string", "description": "run, ride, strength, recovery, rest"},
+                            "workout_intent": {"type": "string", "description": "Optional structured intent like easy, long, tempo, interval, recovery"},
                             "title": {"type": "string"},
                             "details": {"type": "string"},
                             "target_duration_min": {"type": "integer"},
@@ -163,6 +165,7 @@ MCP_TOOLS = [
                             "date": {"type": "string", "description": "Date YYYY-MM-DD"},
                             "label": {"type": "string", "description": "Mon, Tue, etc."},
                             "session_type": {"type": "string", "description": "run, ride, strength, recovery, rest"},
+                            "workout_intent": {"type": "string", "description": "Optional structured intent like easy, long, tempo, interval, recovery"},
                             "title": {"type": "string"},
                             "details": {"type": "string"},
                             "target_duration_min": {"type": "integer"},
@@ -202,6 +205,29 @@ MCP_TOOLS = [
                 "context_days": {"type": "integer", "description": "Broader context window, defaults to 30 days"},
                 "recent_activity_limit": {"type": "integer", "description": "How many recent activities to include"},
                 "recent_note_limit": {"type": "integer", "description": "How many recent notes to include"},
+            },
+        },
+    },
+    {
+        "name": "coach_this_week",
+        "description": "Get a one-shot weekly coaching read that combines execution, recovery, goal, and recommendation context in one response",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "lookback_days": {"type": "integer", "description": "Primary analysis window, defaults to 14 days"},
+                "context_days": {"type": "integer", "description": "Broader context window, defaults to 30 days"},
+                "recent_activity_limit": {"type": "integer", "description": "How many recent activities to include"},
+                "recent_note_limit": {"type": "integer", "description": "How many recent notes to include"},
+                "include_proposed_adjustment": {
+                    "type": "boolean",
+                    "description": "Whether to include a preview-only adjustment payload when the recommendation suggests reducing or adjusting the week",
+                },
             },
         },
     },
@@ -270,7 +296,7 @@ MCP_TOOLS = [
             "properties": {
                 "metric_name": {
                     "type": "string",
-                    "enum": ["weight", "resting_hr", "z2_pace", "ftp", "heel_pain", "streak"],
+                    "enum": ["weight", "resting_hr", "z2_pace", "ftp", "streak"],
                 },
                 "limit": {"type": "integer", "description": "Maximum number of entries to return"},
             },
@@ -360,6 +386,7 @@ def call_mcp_tool(
     adjust_weekly_plan_data_fn,
     dashboard_fn,
     recent_context_fn,
+    weekly_coaching_fn,
     list_activities_fn,
     activity_stats_fn,
     list_notes_fn,
@@ -448,6 +475,16 @@ def call_mcp_tool(
                 context_days=int(args.get("context_days", 30)),
                 recent_activity_limit=int(args.get("recent_activity_limit", 12)),
                 recent_note_limit=int(args.get("recent_note_limit", 5)),
+            )
+            message = json.dumps(data, indent=2)
+
+        elif name == "coach_this_week":
+            data = weekly_coaching_fn(
+                lookback_days=int(args.get("lookback_days", 14)),
+                context_days=int(args.get("context_days", 30)),
+                recent_activity_limit=int(args.get("recent_activity_limit", 12)),
+                recent_note_limit=int(args.get("recent_note_limit", 5)),
+                include_proposed_adjustment=bool(args.get("include_proposed_adjustment", True)),
             )
             message = json.dumps(data, indent=2)
 

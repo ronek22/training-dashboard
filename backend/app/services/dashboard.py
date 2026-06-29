@@ -4,6 +4,10 @@ from datetime import datetime, timedelta
 from typing import Callable, Optional
 
 from .plans import serialize_weekly_plan
+from .plans import format_workout_intent_label, normalize_workout_intent
+from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
+from .goals import list_goals_data
+from .recommendations import build_daily_recommendation, latest_subjective_state
 
 
 def compute_activity_streak(conn: sqlite3.Connection) -> dict:
@@ -213,6 +217,65 @@ def build_strength_consistency(conn: sqlite3.Connection, weeks: int = 8, target_
         "weeks_hit": weeks_hit,
         "weeks_total": len(history),
         "history": history,
+    }
+
+
+def build_activity_intent_summary(activities: list[dict]) -> dict:
+    by_intent: dict[str, dict] = {}
+    for activity in activities:
+        normalized_intent = normalize_workout_intent(activity.get("workout_intent"), activity.get("type"))
+        if not normalized_intent:
+            continue
+        bucket = by_intent.setdefault(
+            normalized_intent,
+            {
+                "intent": normalized_intent,
+                "label": format_workout_intent_label(normalized_intent),
+                "sessions": 0,
+                "total_min": 0.0,
+            },
+        )
+        bucket["sessions"] += 1
+        bucket["total_min"] += float(activity.get("duration_min") or 0)
+
+    ranked = sorted(
+        by_intent.values(),
+        key=lambda item: (-item["sessions"], -item["total_min"], item["label"]),
+    )
+    for item in ranked:
+        item["total_min"] = round(item["total_min"], 0)
+    return {
+        "count": len(ranked),
+        "top": ranked[:6],
+    }
+
+
+def build_planned_intent_summary(active_plan: Optional[dict]) -> dict:
+    if not active_plan:
+        return {"count": 0, "top": []}
+
+    by_intent: dict[str, dict] = {}
+    for day in active_plan.get("days", []):
+        normalized_intent = normalize_workout_intent(day.get("workout_intent"), day.get("session_type"))
+        if not normalized_intent:
+            continue
+        bucket = by_intent.setdefault(
+            normalized_intent,
+            {
+                "intent": normalized_intent,
+                "label": format_workout_intent_label(normalized_intent),
+                "sessions": 0,
+            },
+        )
+        bucket["sessions"] += 1
+
+    ranked = sorted(
+        by_intent.values(),
+        key=lambda item: (-item["sessions"], item["label"]),
+    )
+    return {
+        "count": len(ranked),
+        "top": ranked[:6],
     }
 
 
@@ -659,7 +722,7 @@ def build_recent_context(
 
     activities = conn.execute(
         """
-        SELECT date, type, name, distance_km, duration_min, avg_hr, avg_pace, avg_watts, zone2
+        SELECT id, date, type, workout_intent, name, distance_km, duration_min, avg_hr, avg_pace, avg_watts, zone2, linked_planned_session_id
         FROM activities
         ORDER BY date DESC, created_at DESC
         LIMIT ?
@@ -691,6 +754,18 @@ def build_recent_context(
     weekly_mix = build_weekly_mix(conn, 4)
     strength_consistency = build_strength_consistency(conn, 8, 2)
     computed_streak = compute_activity_streak(conn)
+    training_load = build_training_load_summary(conn)
+    active_goals = list_goals_data(conn, active_only=True, limit=8)
+    planning_priority = sorted(
+        active_goals,
+        key=lambda goal: (
+            {"urgent": 0, "pressured": 1, "steady": 2, "comfortable": 3, "completed": 4}.get(
+                goal.get("planning_guidance", {}).get("status", "comfortable"),
+                5,
+            ),
+            goal.get("days_remaining", 9999),
+        ),
+    )
 
     latest_plan = conn.execute(
         """
@@ -701,6 +776,11 @@ def build_recent_context(
         LIMIT 1
         """
     ).fetchone()
+    serialized_latest_plan = serialize_weekly_plan(latest_plan, conn) if latest_plan else None
+    daily_recommendation = build_daily_recommendation(conn, training_load_summary=training_load, weekly_plan=serialized_latest_plan)
+    recent_activities = attach_feedback_by_activity_id(conn, [dict(row) for row in activities])
+    recent_activity_intents = build_activity_intent_summary(recent_activities)
+    planned_intents = build_planned_intent_summary(serialized_latest_plan)
 
     return {
         "generated_at": datetime.now().isoformat(),
@@ -722,12 +802,32 @@ def build_recent_context(
             "ride_km": round(float(current_week["ride_km"] or 0), 1),
             "strength_sessions": int(current_week["strength_sessions"] or 0),
         },
-        "recent_activities": [dict(row) for row in activities],
+        "recent_activities": recent_activities,
+        "recent_feedback": list_recent_feedback_data(conn, limit=5),
+        "latest_subjective_state": latest_subjective_state(conn),
         "recent_notes": [dict(row) for row in notes],
         "latest_metrics": [dict(row) for row in latest_metrics],
         "weekly_mix": weekly_mix,
         "strength_consistency": strength_consistency,
-        "active_plan": serialize_weekly_plan(latest_plan, conn) if latest_plan else None,
+        "active_goals": active_goals,
+        "goal_planning_summary": {
+            "count": len(active_goals),
+            "most_urgent": planning_priority[:3],
+            "statuses": {
+                "urgent": sum(1 for goal in active_goals if goal.get("planning_guidance", {}).get("status") == "urgent"),
+                "pressured": sum(1 for goal in active_goals if goal.get("planning_guidance", {}).get("status") == "pressured"),
+                "steady": sum(1 for goal in active_goals if goal.get("planning_guidance", {}).get("status") == "steady"),
+                "comfortable": sum(1 for goal in active_goals if goal.get("planning_guidance", {}).get("status") == "comfortable"),
+                "completed": sum(1 for goal in active_goals if goal.get("planning_guidance", {}).get("status") == "completed"),
+            },
+        },
+        "workout_intent_summary": {
+            "recent_activities": recent_activity_intents,
+            "active_plan": planned_intents,
+        },
+        "active_plan": serialized_latest_plan,
+        "daily_recommendation": daily_recommendation,
+        "training_load": training_load,
     }
 
 
@@ -808,6 +908,7 @@ def build_dashboard_data(
     cycling_efficiency_trend = build_cycling_efficiency_trend(conn, 8)
     strength_consistency = build_strength_consistency(conn, 8, 2)
     active_goals = list_goals_data_fn(conn, active_only=True, limit=4)
+    training_load = build_training_load_summary(conn)
     latest_plan = conn.execute(
         """
         SELECT * FROM weekly_plans
@@ -817,6 +918,7 @@ def build_dashboard_data(
         """
     ).fetchone()
     serialized_latest_plan = serialize_weekly_plan(latest_plan, conn) if latest_plan else None
+    daily_recommendation = build_daily_recommendation(conn, training_load_summary=training_load, weekly_plan=serialized_latest_plan)
 
     return {
         "last_14_days": [dict(r) for r in recent],
@@ -836,4 +938,7 @@ def build_dashboard_data(
         "active_goals": active_goals,
         "weekly_plan": serialized_latest_plan,
         "computed_streak": computed_streak,
+        "recent_feedback": list_recent_feedback_data(conn, limit=5),
+        "latest_subjective_state": latest_subjective_state(conn),
+        "daily_recommendation": daily_recommendation,
     }

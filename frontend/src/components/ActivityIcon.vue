@@ -44,6 +44,34 @@
       <path d="M8.5 13h7" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
     </svg>
     <svg
+      v-else-if="iconName === 'recovery'"
+      :width="size"
+      :height="size"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 4.5c-3.6 0-6.5 2.9-6.5 6.5 0 3.4 2.6 6.1 5.9 6.4 2.2.2 4.2-.6 5.6-2.1"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      />
+      <path
+        d="M14.8 6.1A6.43 6.43 0 0 1 18.5 12"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      />
+      <path
+        d="M16.8 4.5h-2.6v2.6"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+    <svg
       v-else-if="iconName === 'walk'"
       :width="size"
       :height="size"
@@ -82,6 +110,7 @@ const iconName = computed(() => {
   if (normalizedType.value === 'run') return 'run'
   if (normalizedType.value === 'ride' || normalizedType.value === 'virtualride' || normalizedType.value === 'cycling') return 'ride'
   if (normalizedType.value === 'weighttraining' || normalizedType.value === 'strength') return 'strength'
+  if (normalizedType.value === 'recovery' || normalizedType.value === 'rest') return 'recovery'
   if (normalizedType.value === 'walk') return 'walk'
   return 'default'
 })
@@ -90,6 +119,7 @@ const label = computed(() => {
   if (iconName.value === 'run') return 'Run'
   if (iconName.value === 'ride') return 'Ride'
   if (iconName.value === 'strength') return 'Strength'
+  if (iconName.value === 'recovery') return 'Recovery'
   if (iconName.value === 'walk') return 'Walk'
   return props.type || 'Activity'
 })
@@ -105,6 +135,7 @@ const label = computed(() => {
 .activity-icon-run { color: var(--run); }
 .activity-icon-ride { color: var(--ride); }
 .activity-icon-strength { color: var(--strength); }
+.activity-icon-recovery { color: #a5b4fc; }
 .activity-icon-walk { color: #94a3b8; }
 .activity-icon-neutral { color: var(--muted); }
 </style>

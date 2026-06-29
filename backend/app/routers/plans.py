@@ -2,8 +2,7 @@ from fastapi import APIRouter
 
 from ..db import get_db
 from ..models.plans import WeeklyPlan, WeeklyPlanAdjustment
-from ..repositories.plans import upsert_weekly_plan_row
-from ..services.plans import adjust_weekly_plan_data, list_weekly_plans_data
+from ..services.plans import adjust_weekly_plan_data, list_weekly_plans_data, upsert_weekly_plan_data
 
 router = APIRouter()
 
@@ -12,9 +11,7 @@ router = APIRouter()
 def upsert_weekly_plan(plan: WeeklyPlan):
     conn = get_db()
     try:
-        upsert_weekly_plan_row(conn, plan)
-        conn.commit()
-        return {"status": "ok", "week_start": plan.week_start}
+        return upsert_weekly_plan_data(conn, plan)
     finally:
         conn.close()
 

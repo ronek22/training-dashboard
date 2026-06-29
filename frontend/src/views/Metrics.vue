@@ -109,7 +109,6 @@ const metricTypes = [
   { key: 'weight', label: '⚖️ Weight', color: '#f59e0b', defaultUnit: 'kg', step: '0.1', notesPlaceholder: 'Optional weigh-in context.' },
   { key: 'resting_hr', label: '❤️ Resting HR', color: '#ef4444', defaultUnit: 'bpm', step: '1', notesPlaceholder: 'Optional note like morning measurement.' },
   { key: 'ftp', label: '🚴 FTP', color: '#10b981', defaultUnit: 'W', step: '1', notesPlaceholder: 'Optional test context.' },
-  { key: 'heel_pain', label: '🦶 Heel Pain', color: '#8b5cf6', defaultUnit: '0-10', step: '1', notesPlaceholder: 'Optional symptom context.' },
   { key: 'streak', label: '🔥 Streak', color: '#f97316', defaultUnit: 'days', computed: true, notesPlaceholder: 'Computed automatically.' },
 ]
 

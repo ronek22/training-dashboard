@@ -4,7 +4,7 @@
     <p class="page-sub">Today first, trends second, details below.</p>
 
     <div class="overview-grid" :class="{ 'overview-grid-single': !hasTopGoals }">
-      <div class="overview-stack">
+      <div class="overview-stack" :class="{ 'overview-stack-full': !hasTopGoals }">
         <div class="card overview-primary">
           <div class="overview-head">
             <div>
@@ -35,6 +35,20 @@
             <div class="today-plan-title">No workout planned for today</div>
             <div class="today-plan-details">Use the training load and goal cards below to decide whether to push, keep it easy, or recover.</div>
           </template>
+
+          <div v-if="dailyRecommendation" class="recommendation-card" :class="`recommendation-${dailyRecommendation.status}`">
+            <div class="recommendation-top">
+              <span class="recommendation-label">Daily guidance</span>
+              <span class="recommendation-status">{{ recommendationLabel(dailyRecommendation.status) }}</span>
+            </div>
+            <div class="recommendation-action">{{ dailyRecommendation.action }}</div>
+            <div class="recommendation-reasons">
+              <span v-for="reason in dailyRecommendation.reasons" :key="reason">{{ reason }}</span>
+            </div>
+            <div v-if="latestSubjectiveState" class="recommendation-feedback">
+              Latest check-in: energy {{ latestSubjectiveState.energy }}/5, soreness {{ latestSubjectiveState.muscle_soreness }}/5, pain {{ latestSubjectiveState.pain_level }}/10.
+            </div>
+          </div>
         </div>
 
         <div class="card stats-panel overview-stats" v-if="stats.length">
@@ -51,6 +65,7 @@
             </div>
           </div>
         </div>
+
       </div>
 
       <div class="card overview-secondary" v-if="hasTopGoals">
@@ -120,6 +135,120 @@
               </div>
             </div>
           </section>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="weeklyCoaching" class="weekly-coach-wrap">
+      <div class="card weekly-coach-card" :class="`coach-${weeklyCoaching.recommendation?.status || 'keep'}`">
+        <div class="weekly-coach-head">
+          <div>
+            <div class="card-title">Weekly Coach Read</div>
+            <div class="weekly-coach-sub">One pass across execution, recovery, goals, and what to do next.</div>
+          </div>
+          <div class="weekly-coach-head-meta">
+            <div v-if="weeklyCoaching.recommendation?.confidence" class="weekly-coach-confidence">
+              {{ weeklyCoaching.recommendation.confidence }} confidence
+            </div>
+            <div class="weekly-coach-status">
+              {{ coachingStatusLabel(weeklyCoaching.recommendation?.status) }}
+            </div>
+          </div>
+        </div>
+
+        <div class="weekly-coach-hero">
+          <section class="weekly-coach-story">
+            <div class="weekly-coach-headline">{{ weeklyCoaching.summary?.headline }}</div>
+            <div v-if="weeklyCoaching.summary?.text" class="weekly-coach-text">{{ weeklyCoaching.summary.text }}</div>
+            <div class="weekly-coach-focus-line">{{ weeklyCoaching.recommendation?.focus_for_next_48h }}</div>
+          </section>
+
+          <section class="weekly-coach-rail">
+            <article class="weekly-coach-signal signal-execution">
+              <div class="weekly-coach-signal-label">Execution</div>
+              <div class="weekly-coach-signal-value">{{ coachingExecutionValue(weeklyCoaching.execution_assessment) }}</div>
+              <div class="weekly-coach-signal-copy">{{ coachingExecutionCopy(weeklyCoaching.execution_assessment) }}</div>
+            </article>
+
+            <article class="weekly-coach-signal signal-recovery">
+              <div class="weekly-coach-signal-label">Recovery</div>
+              <div class="weekly-coach-signal-value">{{ coachingRecoveryValue(weeklyCoaching.recovery_assessment) }}</div>
+              <div class="weekly-coach-signal-copy">{{ coachingRecoveryCopy(weeklyCoaching.recovery_assessment) }}</div>
+            </article>
+
+            <article class="weekly-coach-signal signal-goals">
+              <div class="weekly-coach-signal-label">Goals</div>
+              <div class="weekly-coach-signal-value">{{ coachingGoalsValue(weeklyCoaching.goal_assessment) }}</div>
+              <div class="weekly-coach-signal-copy">{{ coachingGoalsCopy(weeklyCoaching.goal_assessment) }}</div>
+            </article>
+          </section>
+        </div>
+
+        <div class="weekly-coach-grid">
+          <section class="weekly-coach-panel weekly-coach-panel-reasons">
+            <div class="weekly-coach-label">Why This Call</div>
+            <div v-if="coachingHighlights(weeklyCoaching).length" class="weekly-coach-reason-list">
+              <div
+                v-for="item in coachingHighlights(weeklyCoaching)"
+                :key="`${item.kind}-${item.text}`"
+                class="weekly-coach-reason"
+                :class="`reason-${item.kind}`"
+              >
+                <span class="weekly-coach-reason-dot"></span>
+                <span>{{ item.text }}</span>
+              </div>
+            </div>
+            <div v-else class="weekly-coach-empty">No strong warning signals are standing out right now.</div>
+          </section>
+
+          <section class="weekly-coach-panel" v-if="weeklyCoaching.recommended_next_sessions?.length">
+            <div class="weekly-coach-label">Next Sessions</div>
+            <div class="weekly-coach-session-list">
+              <article v-for="session in weeklyCoaching.recommended_next_sessions.slice(0, 3)" :key="`${session.date}-${session.title}`" class="weekly-coach-session">
+                <div class="weekly-coach-session-top">
+                  <div class="weekly-coach-session-main">
+                    <span class="weekly-coach-session-icon">
+                      <ActivityIcon
+                        v-if="isIconSessionType(session.session_type)"
+                        :type="session.session_type"
+                        :tone="activityTone(session.session_type)"
+                        :size="15"
+                      />
+                      <span v-else>{{ session.session_type }}</span>
+                    </span>
+                    <div>
+                      <div class="weekly-coach-session-title">{{ session.title }}</div>
+                      <div class="weekly-coach-session-meta">
+                        <span>{{ formatDate(session.date) }}</span>
+                        <span v-if="session.target_duration_min">{{ session.target_duration_min }} min</span>
+                        <span v-if="session.target_distance_km">{{ session.target_distance_km }} km</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="weekly-coach-session-suggestion" :class="`suggestion-${session.suggestion}`">
+                    {{ sessionSuggestionLabel(session.suggestion) }}
+                  </div>
+                </div>
+                <div v-if="session.workout_intent_label" class="weekly-coach-session-intent">{{ session.workout_intent_label }}</div>
+              </article>
+            </div>
+          </section>
+        </div>
+
+        <div v-if="weeklyCoaching.proposed_adjustment?.days?.length" class="weekly-coach-adjustment">
+          <div class="weekly-coach-label">Preview Adjustment</div>
+          <div class="weekly-coach-adjustment-copy">
+            {{ weeklyCoaching.proposed_adjustment.days.length }} day{{ weeklyCoaching.proposed_adjustment.days.length === 1 ? '' : 's' }}
+            would change from {{ formatDate(weeklyCoaching.proposed_adjustment.effective_from) }}.
+          </div>
+          <div class="weekly-coach-adjustment-list">
+            <span v-for="day in weeklyCoaching.proposed_adjustment.days" :key="`adjust-${day.date}`">
+              {{ formatDate(day.date) }}: {{ day.title }}
+            </span>
+          </div>
+          <button type="button" class="weekly-coach-action" @click="reviewCoachingAdjustment">
+            Review in Plan
+          </button>
         </div>
       </div>
     </div>
@@ -560,21 +689,33 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
 import { format } from 'date-fns'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import TrainingLoadPanel from '../components/TrainingLoadPanel.vue'
 
 const api = useApi()
+const router = useRouter()
 const dashboard = ref(null)
+const weeklyCoaching = ref(null)
 const loading = ref(true)
 const activeTooltip = ref(null)
 const activeDistanceTooltip = ref(null)
 
 onMounted(async () => {
   try {
-    const { data } = await api.getDashboard()
-    dashboard.value = data
+    const [dashboardResult, coachingResult] = await Promise.allSettled([
+      api.getDashboard(),
+      api.getWeeklyCoaching(),
+    ])
+
+    if (dashboardResult.status === 'fulfilled') {
+      dashboard.value = dashboardResult.value.data
+    }
+    if (coachingResult.status === 'fulfilled') {
+      weeklyCoaching.value = coachingResult.value.data
+    }
   } finally {
     loading.value = false
   }
@@ -587,6 +728,8 @@ const rideYearSeries = computed(() => dashboard.value?.ride_year_series || [])
 const runYearSeries = computed(() => dashboard.value?.run_year_series || [])
 const strengthYearSeries = computed(() => dashboard.value?.strength_year_series || [])
 const weeklyPlan = computed(() => dashboard.value?.weekly_plan || null)
+const dailyRecommendation = computed(() => dashboard.value?.daily_recommendation || null)
+const latestSubjectiveState = computed(() => dashboard.value?.latest_subjective_state || null)
 const topGoals = computed(() => dashboard.value?.active_goals || [])
 const topWeeklyGoals = computed(() => topGoals.value.filter((goal) => goal.period_type === 'week').slice(0, 2))
 const topYearlyGoals = computed(() => topGoals.value.filter((goal) => goal.period_type === 'year').slice(0, 2))
@@ -616,11 +759,12 @@ const activityTone = (type) => {
   if (type === 'Run' || type === 'run') return 'run'
   if (type === 'Ride' || type === 'VirtualRide' || type === 'ride' || type === 'cycling') return 'ride'
   if (type === 'WeightTraining' || type === 'Strength' || type === 'strength') return 'strength'
+  if (type === 'Recovery' || type === 'Rest' || type === 'recovery' || type === 'rest') return 'recovery'
   if (type === 'Walk' || type === 'walk') return 'walk'
   return 'neutral'
 }
 
-const isIconSessionType = (type) => ['Run', 'Ride', 'VirtualRide', 'WeightTraining', 'Strength', 'run', 'ride', 'strength'].includes(type)
+const isIconSessionType = (type) => ['Run', 'Ride', 'VirtualRide', 'WeightTraining', 'Strength', 'Recovery', 'Rest', 'Walk', 'run', 'ride', 'strength', 'recovery', 'rest', 'walk'].includes(type)
 
 const statCards = computed(() => {
   const s = stats.value
@@ -899,6 +1043,100 @@ const goalMarkerOffset = (goal) => {
   return Math.max(0, Math.min(pct, 100))
 }
 
+const recommendationLabel = (status) => {
+  if (status === 'push') return 'Push'
+  if (status === 'reduce') return 'Reduce'
+  if (status === 'recover') return 'Recover'
+  if (status === 'adjust') return 'Adjust'
+  return 'Keep'
+}
+
+const coachingStatusLabel = (status) => {
+  if (status === 'push') return 'Push window'
+  if (status === 'reduce') return 'Reduce'
+  if (status === 'recover') return 'Recover'
+  if (status === 'adjust') return 'Adjust week'
+  return 'Keep plan'
+}
+
+const sessionSuggestionLabel = (suggestion) => {
+  if (suggestion === 'swap_to_recovery') return 'Swap'
+  if (suggestion === 'lighten') return 'Lighten'
+  if (suggestion === 'review') return 'Review'
+  return 'Keep'
+}
+
+const coachingExecutionValue = (execution) => {
+  if (!execution) return 'No plan'
+  if (execution.adherence_pct !== null && typeof execution.adherence_pct !== 'undefined') {
+    return `${execution.adherence_pct}%`
+  }
+  return `${execution.fulfilled_sessions || 0}/${execution.planned_sessions || 0}`
+}
+
+const coachingExecutionCopy = (execution) => {
+  if (!execution) return 'No weekly plan is available.'
+  const status = execution.status
+  if (status === 'off_track') return `${execution.missed_sessions || 0} missed and ${execution.modified_sessions || 0} modified sessions this week.`
+  if (status === 'mixed') return `${execution.fulfilled_sessions || 0} fulfilled, ${execution.modified_sessions || 0} modified, ${execution.missed_sessions || 0} missed.`
+  return `${execution.fulfilled_sessions || 0} sessions are tracking cleanly against the plan.`
+}
+
+const coachingRecoveryValue = (recovery) => {
+  if (!recovery) return 'Steady'
+  if (recovery.status === 'needs_recovery') return 'Recover'
+  if (recovery.status === 'caution') return 'Caution'
+  if (recovery.status === 'ready') return 'Ready'
+  return 'Steady'
+}
+
+const coachingRecoveryCopy = (recovery) => {
+  if (!recovery) return 'No strong recovery signals are available.'
+  if (recovery.caution_flags?.length) return recovery.caution_flags[0]
+  if (recovery.key_reasons?.length) return recovery.key_reasons[0]
+  return 'Recovery signals look stable right now.'
+}
+
+const coachingGoalsValue = (goals) => {
+  if (!goals?.active_goal_count) return 'No goals'
+  if (goals.most_urgent?.length) return goals.most_urgent[0].title
+  return `${goals.active_goal_count} active`
+}
+
+const coachingGoalsCopy = (goals) => {
+  if (!goals?.active_goal_count) return 'No active goals are shaping the week.'
+  if (goals.status === 'pressured') return 'At least one active goal is under pressure.'
+  if (goals.status === 'watch') return 'Goal pressure is building and worth watching.'
+  return `${goals.plan_supported_goals || 0} active goals are supported by this week’s sessions.`
+}
+
+const coachingHighlights = (weeklyCoachingPayload) => {
+  if (!weeklyCoachingPayload) return []
+  const items = []
+  for (const text of weeklyCoachingPayload.recommendation?.rationale || []) {
+    items.push({ kind: 'rationale', text })
+  }
+  for (const text of weeklyCoachingPayload.recommendation?.risks || []) {
+    items.push({ kind: 'risk', text })
+  }
+  return items.slice(0, 6)
+}
+
+const reviewCoachingAdjustment = async () => {
+  const adjustment = weeklyCoaching.value?.proposed_adjustment
+  if (!adjustment?.week_start || !adjustment?.days?.length) return
+  try {
+    window.sessionStorage.setItem('coaching-adjustment-draft', JSON.stringify(adjustment))
+  } catch {}
+  await router.push({
+    path: '/plan',
+    query: {
+      draft: 'coaching',
+      week_start: adjustment.week_start,
+    },
+  })
+}
+
 const hrClass = (hr) => {
   if (!hr) return ''
   if (hr <= 162) return 'hr-z2'
@@ -950,7 +1188,21 @@ const zoneBadgeClass = (activity) => {
   align-items: stretch;
 }
 .overview-grid-single {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.overview-stack-full {
+  flex: 0 0 100%;
+  width: 100%;
+  max-width: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-self: stretch;
+}
+.overview-stack-full > .card {
+  width: 100%;
+  max-width: none;
 }
 .overview-stack {
   flex: 1.45 1 0;
@@ -967,6 +1219,58 @@ const zoneBadgeClass = (activity) => {
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.14), transparent 44%),
     radial-gradient(circle at top right, rgba(16, 185, 129, 0.1), transparent 32%);
 }
+.recommendation-card {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(8, 15, 28, 0.65);
+  display: grid;
+  gap: 8px;
+}
+.recommendation-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.recommendation-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.recommendation-status {
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.recommendation-action {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1.3;
+}
+.recommendation-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.recommendation-reasons span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  font-size: 12px;
+}
+.recommendation-feedback {
+  color: var(--muted);
+  font-size: 12px;
+}
+.recommendation-push .recommendation-status { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
+.recommendation-keep .recommendation-status { background: rgba(59, 130, 246, 0.16); color: #60a5fa; }
+.recommendation-reduce .recommendation-status { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
+.recommendation-recover .recommendation-status { background: rgba(239, 68, 68, 0.16); color: #f87171; }
 .overview-secondary {
   flex: 1 1 420px;
   display: flex;
@@ -989,6 +1293,295 @@ const zoneBadgeClass = (activity) => {
 .stats-panel-head { margin-bottom: 14px; }
 .overview-stats {
   margin-bottom: 0;
+}
+.weekly-coach-wrap {
+  width: 100%;
+  margin-bottom: 20px;
+}
+.weekly-coach-card {
+  padding: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(245, 158, 11, 0.13), transparent 28%),
+    radial-gradient(circle at left center, rgba(59, 130, 246, 0.11), transparent 32%),
+    linear-gradient(135deg, rgba(15, 20, 32, 0.98), rgba(12, 17, 28, 0.95));
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.weekly-coach-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.weekly-coach-sub {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+.weekly-coach-head-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.weekly-coach-confidence {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.58);
+}
+.weekly-coach-status {
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.coach-push .weekly-coach-status {
+  background: rgba(34, 197, 94, 0.16);
+  color: #4ade80;
+}
+.coach-keep .weekly-coach-status {
+  background: rgba(59, 130, 246, 0.16);
+  color: #60a5fa;
+}
+.coach-reduce .weekly-coach-status,
+.coach-adjust .weekly-coach-status {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+.coach-recover .weekly-coach-status {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+}
+.weekly-coach-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.weekly-coach-story {
+  padding: 18px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.05);
+  min-height: 100%;
+}
+.weekly-coach-headline {
+  font-family: var(--font-display);
+  font-size: 38px;
+  line-height: 1.2;
+  max-width: 12ch;
+  margin-bottom: 12px;
+}
+.weekly-coach-text {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.55;
+  max-width: 58ch;
+  margin-bottom: 18px;
+}
+.weekly-coach-focus-line {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(8, 15, 28, 0.58);
+  border: 1px solid rgba(99, 102, 241, 0.14);
+  color: #d8e2ff;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.weekly-coach-rail {
+  display: grid;
+  gap: 12px;
+}
+.weekly-coach-signal {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.05);
+  min-height: 118px;
+}
+.weekly-coach-signal-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.weekly-coach-signal-value {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.15;
+  margin-bottom: 8px;
+}
+.signal-execution .weekly-coach-signal-value { color: #93c5fd; }
+.signal-recovery .weekly-coach-signal-value { color: #fbbf24; }
+.signal-goals .weekly-coach-signal-value {
+  color: #e5e7eb;
+  font-size: 18px;
+}
+.weekly-coach-signal-copy {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.weekly-coach-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 14px;
+}
+.weekly-coach-panel {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.weekly-coach-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.weekly-coach-reason-list {
+  display: grid;
+  gap: 10px;
+}
+.weekly-coach-reason {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(8, 15, 28, 0.58);
+  border: 1px solid rgba(255,255,255,0.04);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.weekly-coach-reason-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
+}
+.reason-risk .weekly-coach-reason-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
+}
+.weekly-coach-empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+.weekly-coach-adjustment-list span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  font-size: 12px;
+}
+.weekly-coach-session-list {
+  display: grid;
+  gap: 12px;
+}
+.weekly-coach-session {
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(9, 13, 24, 0.7), rgba(9, 13, 24, 0.44));
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.weekly-coach-session-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+.weekly-coach-session-main {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.weekly-coach-session-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.05);
+  color: var(--muted);
+}
+.weekly-coach-session-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1.3;
+}
+.weekly-coach-session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.weekly-coach-session-suggestion {
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.suggestion-keep {
+  background: rgba(59, 130, 246, 0.16);
+  color: #60a5fa;
+}
+.suggestion-lighten,
+.suggestion-review {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+.suggestion-swap_to_recovery {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+}
+.weekly-coach-session-intent {
+  margin-top: 8px;
+  color: #a5b4fc;
+  font-size: 12px;
+}
+.weekly-coach-adjustment {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.weekly-coach-adjustment-copy {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.weekly-coach-adjustment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.weekly-coach-action {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  cursor: pointer;
+}
+.weekly-coach-action:hover {
+  filter: brightness(1.05);
 }
 .badge-zone-1 { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; }
 .badge-zone-3 { background: rgba(245, 158, 11, 0.14); color: #f59e0b; }
@@ -1473,7 +2066,9 @@ const zoneBadgeClass = (activity) => {
   .cycling-head { flex-direction: column; }
   .overview-grid { flex-direction: column; }
   .overview-stack { width: 100%; }
+  .weekly-coach-hero { grid-template-columns: 1fr; }
   .cycling-kpis { min-width: 0; width: 100%; }
+  .weekly-coach-grid { grid-template-columns: 1fr; }
   .mix-chart,
   .strength-bars { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
@@ -1490,5 +2085,22 @@ const zoneBadgeClass = (activity) => {
     grid-template-columns: 1fr;
   }
   .goal-strip-top { grid-template-columns: 1fr; }
+  .weekly-coach-head,
+  .weekly-coach-session-top,
+  .weekly-coach-head-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .weekly-coach-session-suggestion {
+    align-self: flex-start;
+  }
+  .weekly-coach-headline {
+    font-size: 30px;
+  }
+  .weekly-coach-story,
+  .weekly-coach-panel,
+  .weekly-coach-adjustment {
+    padding: 14px;
+  }
 }
 </style>

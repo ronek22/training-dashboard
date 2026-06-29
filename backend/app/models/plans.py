@@ -3,9 +3,11 @@ from typing import Optional
 
 
 class WeeklyPlanDay(BaseModel):
+    session_id: Optional[str] = None
     date: str
     label: str
     session_type: Optional[str] = None
+    workout_intent: Optional[str] = None
     title: str
     details: Optional[str] = None
     target_duration_min: Optional[int] = None

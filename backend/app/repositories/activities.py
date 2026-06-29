@@ -10,23 +10,26 @@ def get_latest_activity_date(conn: sqlite3.Connection) -> Optional[str]:
 def upsert_activity_row(conn: sqlite3.Connection, activity: dict, preserve_annotations: bool = False) -> None:
     if preserve_annotations:
         existing = conn.execute(
-            "SELECT notes, zone2 FROM activities WHERE id = ?",
+            "SELECT notes, zone2, linked_planned_session_id, workout_intent FROM activities WHERE id = ?",
             (activity["id"],),
         ).fetchone()
         if existing:
             activity["notes"] = existing["notes"]
             if existing["zone2"] is not None:
                 activity["zone2"] = bool(existing["zone2"])
+            activity["linked_planned_session_id"] = existing["linked_planned_session_id"]
+            activity["workout_intent"] = existing["workout_intent"]
 
     conn.execute(
         """
         INSERT INTO activities
-        (id, date, type, name, distance_km, duration_min, avg_hr, max_hr,
-         avg_pace, avg_watts, elevation_m, calories, zone2, notes)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        (id, date, type, workout_intent, name, distance_km, duration_min, avg_hr, max_hr,
+         avg_pace, avg_watts, elevation_m, calories, zone2, notes, linked_planned_session_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(id) DO UPDATE SET
             date=excluded.date,
             type=excluded.type,
+            workout_intent=excluded.workout_intent,
             name=excluded.name,
             distance_km=excluded.distance_km,
             duration_min=excluded.duration_min,
@@ -37,12 +40,14 @@ def upsert_activity_row(conn: sqlite3.Connection, activity: dict, preserve_annot
             elevation_m=excluded.elevation_m,
             calories=excluded.calories,
             zone2=excluded.zone2,
-            notes=excluded.notes
+            notes=excluded.notes,
+            linked_planned_session_id=excluded.linked_planned_session_id
         """,
         (
             activity["id"],
             activity["date"],
             activity["type"],
+            activity.get("workout_intent"),
             activity["name"],
             activity["distance_km"],
             activity["duration_min"],
@@ -54,7 +59,37 @@ def upsert_activity_row(conn: sqlite3.Connection, activity: dict, preserve_annot
             activity["calories"],
             1 if activity["zone2"] else 0,
             activity["notes"],
+            activity.get("linked_planned_session_id"),
         ),
+    )
+
+
+def get_activity_row(conn: sqlite3.Connection, activity_id: str) -> Optional[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM activities WHERE id = ?",
+        (activity_id,),
+    ).fetchone()
+
+
+def update_activity_linked_session_id(conn: sqlite3.Connection, activity_id: str, planned_session_id: Optional[str]) -> None:
+    conn.execute(
+        """
+        UPDATE activities
+        SET linked_planned_session_id = ?
+        WHERE id = ?
+        """,
+        (planned_session_id, activity_id),
+    )
+
+
+def update_activity_workout_intent(conn: sqlite3.Connection, activity_id: str, workout_intent: Optional[str]) -> None:
+    conn.execute(
+        """
+        UPDATE activities
+        SET workout_intent = ?
+        WHERE id = ?
+        """,
+        (workout_intent, activity_id),
     )
 
 
@@ -106,8 +141,8 @@ def list_calendar_activity_rows(
 ) -> list[sqlite3.Row]:
     return conn.execute(
         """
-        SELECT id, date, type, name, distance_km, duration_min, avg_hr, avg_pace,
-               avg_watts, elevation_m, zone2
+        SELECT id, date, type, workout_intent, name, distance_km, duration_min, avg_hr, avg_pace,
+               avg_watts, elevation_m, zone2, linked_planned_session_id
         FROM activities
         WHERE date >= ? AND date <= ?
         ORDER BY date DESC, created_at DESC

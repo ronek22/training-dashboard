@@ -128,7 +128,7 @@ Scope:
   - `rpe`
   - `energy`
   - `muscle soreness`
-  - `heel pain`
+  - `pain / niggle`
   - optional note
 
 Implementation notes:
@@ -216,6 +216,10 @@ Implementation notes:
 
 - simplest version is a nullable `planned_date` or `planned_session_id` reference on activities
 
+Status:
+
+- complete as a first explicit-linking slice
+
 ### 9. Structured workout intent
 
 Why:
@@ -237,6 +241,10 @@ Implementation notes:
 
 - add optional structured fields without breaking current plans
 - use this for better matching and better recommendations
+
+Status:
+
+- complete as a first structured-intent slice
 
 ## Phase 5: Make Coaching Easier Through MCP
 
@@ -262,6 +270,10 @@ Implementation notes:
 - start deterministic and transparent
 - let the model still explain reasoning in natural language
 
+Status:
+
+- complete as [docs/sprints/sprint-7-one-shot-coaching.md](sprints/sprint-7-one-shot-coaching.md)
+
 ### 11. Plan-diff confirmation flow
 
 Why:
@@ -274,11 +286,42 @@ Scope:
 - show changed days
 - require explicit user approval before save in the UI flow
 
+Implementation notes:
+
+- build directly on the Sprint 7 coaching payload rather than inventing a separate adjustment path
+- likely spans `backend/app/services/coaching.py`, `backend/app/services/plans.py`, and `frontend/src/views/Plan.vue`
+
+Recommended Sprint 8 role:
+
+- this is the primary sprint goal
+
+### 12. Read-only roadmap and sprint visibility
+
+Why:
+
+- roadmap and sprint status already exists in markdown, but it is invisible unless someone reads the repo directly
+- users can benefit from lightweight visual progress without turning docs into an editable in-app system
+
+Scope:
+
+- expose roadmap phase and sprint status in-app
+- keep markdown under `docs/` as the single source of truth
+- use deterministic metadata or stable headings instead of parsing arbitrary prose
+
+Implementation notes:
+
+- likely requires a small docs metadata reader plus a read-only API shape
+- UI should favor compact cards, timelines, and progress indicators over free-form markdown rendering
+
+Recommended Sprint 8 role:
+
+- this is a secondary slice only if it stays lightweight and docs-backed
+
 ## Cross-Cutting Engineering Track
 
 Goal: keep the codebase maintainable enough to support the product roadmap.
 
-### 12. Backend modularization
+### 13. Backend modularization
 
 Why:
 
@@ -318,25 +361,29 @@ If only one sprint is available, do this:
 
 ### Sprint Goal
 
-Close the remaining Phase 1 adaptive-planning gaps before moving fully into the feedback loop.
+Add explicit plan-diff review and approval on top of the new one-shot weekly coaching workflow, with a smaller read-only roadmap visibility slice if scope stays controlled.
 
 ### Scope
 
-- add revision notes or snapshots
-- improve plan status labels
-- decide whether any remaining Phase 1 polish should be completed now or intentionally deferred before starting the feedback-loop sprint
+- show a clearer before/after diff for coaching-proposed weekly adjustments
+- let the user review changed days before saving
+- connect the draft handoff into an explicit approval step instead of only prefilled editing
+- keep plan writes inspectable and user-confirmed
+- optionally expose roadmap and sprint progress in-app from structured docs metadata without allowing edits
 
 Current interpretation:
 
-- the core `adjust weekly plan` UI and save-result messaging already exist
-- the remaining highest-priority Phase 1 work is revision visibility and clearer moved/skipped/replaced semantics
-- after that, the next major sprint is [docs/sprints/sprint-3-feedback-loop.md](sprints/sprint-3-feedback-loop.md)
+- the one-shot coaching read now exists and is good enough to build on
+- the next highest-value gap is confirmation and trust around proposed changes
+- roadmap visibility is worth doing only if it stays read-only and source-of-truth-safe
+- after that, the next major sprint can go deeper into history-aware execution insights or stronger coaching heuristics
 
 ### Definition of done
 
-- plan adjustments have visible revision context
-- users can better distinguish moved, skipped, replaced, and other mismatch states
-- the team has a clear decision to either close or defer any remaining Phase 1 polish before starting the feedback-loop sprint
+- coaching-proposed changes are visible as an explicit diff before save
+- users approve plan changes deliberately instead of accepting silent rewrites
+- the coaching workflow feels end-to-end rather than draft-only
+- if the roadmap slice is included, sprint and roadmap status is visible in-app from docs-backed metadata only
 
 ## Risks And Constraints
 

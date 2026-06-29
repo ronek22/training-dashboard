@@ -7,7 +7,6 @@ METRIC_CATALOG = [
     {"key": "weight", "label": "Weight", "unit": "kg", "entry_mode": "manual", "description": "Body weight tracking."},
     {"key": "resting_hr", "label": "Resting HR", "unit": "bpm", "entry_mode": "manual", "description": "Morning or resting heart rate."},
     {"key": "ftp", "label": "FTP", "unit": "W", "entry_mode": "manual", "description": "Cycling functional threshold power."},
-    {"key": "heel_pain", "label": "Heel Pain", "unit": "0-10", "entry_mode": "manual", "description": "Pain score on a 0-10 scale."},
     {"key": "streak", "label": "Streak", "unit": "days", "entry_mode": "computed", "description": "Computed automatically from consecutive activity days."},
 ]
 

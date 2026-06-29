@@ -85,18 +85,34 @@
             <div v-else class="day-empty-copy">Rest / no data</div>
 
             <div class="activity-list" v-if="day.activities.length">
-              <div v-for="activity in day.activities" :key="activity.id" class="activity-line">
+              <div
+                v-for="activity in day.activities"
+                :key="activity.id"
+                class="activity-line"
+                :class="{ 'has-feedback': activity.feedback }"
+                role="button"
+                tabindex="0"
+                @click="openFeedbackDialog(activity)"
+                @keydown.enter.prevent="openFeedbackDialog(activity)"
+                @keydown.space.prevent="openFeedbackDialog(activity)"
+              >
                 <div class="activity-row">
-                  <span class="activity-icon">
-                    <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="14" />
-                  </span>
                   <div class="activity-body">
-                    <span class="activity-name">{{ activity.name || activity.type }}</span>
+                    <div class="activity-head">
+                      <span class="activity-icon">
+                        <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="14" />
+                      </span>
+                      <span class="activity-name">{{ activity.name || activity.type }}</span>
+                    </div>
+                    <div v-if="activity.distance_km" class="activity-distance">{{ activity.distance_km }} km</div>
                     <div class="activity-stats">
-                      <span v-if="activity.distance_km" class="activity-distance">{{ activity.distance_km }} km</span>
                       <span class="activity-detail">{{ formatMinutes(activity.duration_min) }}</span>
+                      <span v-if="activity.elevation_m" class="activity-detail">{{ activity.elevation_m }}m</span>
                       <span v-if="activity.avg_pace" class="activity-detail">{{ activity.avg_pace }}/km</span>
                       <span v-else-if="activity.avg_watts" class="activity-detail">{{ Math.round(activity.avg_watts) }} W</span>
+                    </div>
+                    <div v-if="activity.workout_intent_label" class="activity-intent">
+                      {{ activity.workout_intent_label }}
                     </div>
                   </div>
                 </div>
@@ -106,6 +122,16 @@
         </div>
       </section>
     </div>
+
+    <FeedbackDialog
+      :open="Boolean(dialogActivity)"
+      :activity="dialogActivity"
+      :initial-feedback="dialogActivity?.feedback || null"
+      :saving="feedbackSaving"
+      :message="feedbackMessage"
+      @close="closeFeedbackDialog"
+      @save="saveFeedback"
+    />
   </div>
 </template>
 
@@ -114,12 +140,16 @@ import { ref, onMounted } from 'vue'
 import { format } from 'date-fns'
 import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
+import FeedbackDialog from '../components/FeedbackDialog.vue'
 
 const api = useApi()
 const weeks = ref([])
 const loading = ref(true)
 const activeWeeks = ref(8)
 const weekOptions = [4, 8, 12]
+const dialogActivity = ref(null)
+const feedbackSaving = ref(false)
+const feedbackMessage = ref('')
 
 const loadWeeks = async (count) => {
   loading.value = true
@@ -173,6 +203,55 @@ const activityTone = (type) => {
   if (type === 'WeightTraining') return 'strength'
   if (type === 'Walk') return 'walk'
   return 'neutral'
+}
+
+const openFeedbackDialog = (activity) => {
+  feedbackMessage.value = ''
+  dialogActivity.value = {
+    ...activity,
+    dateLabel: formatDay(activity.date),
+  }
+}
+
+const closeFeedbackDialog = () => {
+  if (feedbackSaving.value) return
+  dialogActivity.value = null
+  feedbackMessage.value = ''
+}
+
+const saveFeedback = async (payload) => {
+  if (!dialogActivity.value) return
+  feedbackSaving.value = true
+  feedbackMessage.value = ''
+  try {
+    await api.updateActivityIntent(dialogActivity.value.id, { workout_intent: payload.workout_intent || null })
+    await api.saveActivityFeedback(dialogActivity.value.id, {
+      rpe: payload.rpe,
+      energy: payload.energy,
+      muscle_soreness: payload.muscle_soreness,
+      pain_level: payload.pain_level,
+      note: payload.note,
+    })
+    feedbackMessage.value = 'Saved.'
+    await loadWeeks(activeWeeks.value)
+    const refreshed = weeks.value
+      .flatMap((week) => week.days)
+      .flatMap((day) => day.activities)
+      .find((activity) => activity.id === dialogActivity.value?.id)
+    if (refreshed) {
+      dialogActivity.value = {
+        ...refreshed,
+        dateLabel: formatDay(refreshed.date),
+      }
+    }
+    window.setTimeout(() => {
+      if (!feedbackSaving.value) closeFeedbackDialog()
+    }, 250)
+  } catch (error) {
+    feedbackMessage.value = error?.response?.data?.detail || 'Feedback save failed.'
+  } finally {
+    feedbackSaving.value = false
+  }
 }
 </script>
 
@@ -304,16 +383,43 @@ const activityTone = (type) => {
 .activity-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 .activity-line {
-  padding-top: 8px;
-  border-top: 1px solid rgba(37, 45, 61, 0.9);
+  padding: 7px 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+.activity-line + .activity-line {
+  margin-top: 2px;
+}
+.activity-line:hover,
+.activity-line:focus-visible {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(96, 165, 250, 0.24);
+  transform: translateY(-1px);
+  outline: none;
+}
+.activity-line.has-feedback {
+  border-color: rgba(16, 185, 129, 0.16);
+  background: rgba(16, 185, 129, 0.04);
 }
 .activity-row {
+  min-width: 0;
+}
+.activity-body {
   display: flex;
+  flex-direction: column;
   gap: 6px;
+  min-width: 0;
+}
+.activity-head {
+  display: flex;
+  gap: 8px;
   align-items: flex-start;
+  min-width: 0;
 }
 .activity-icon {
   width: 16px;
@@ -321,31 +427,41 @@ const activityTone = (type) => {
   line-height: 0;
   margin-top: 1px;
 }
-.activity-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
 .activity-name {
   font-size: 12px;
   line-height: 1.35;
   color: #dfe4ee;
+  min-width: 0;
 }
 .activity-stats {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
   align-items: baseline;
+  min-width: 0;
+  overflow: hidden;
 }
 .activity-distance {
   color: var(--text);
   font-size: 13px;
   font-weight: 700;
+  line-height: 1.2;
 }
 .activity-detail {
   color: var(--muted);
   font-size: 11px;
+  white-space: nowrap;
+}
+.activity-intent {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #bfdbfe;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 @media (max-width: 1200px) {

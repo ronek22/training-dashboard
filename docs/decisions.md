@@ -30,3 +30,58 @@ This file records durable project decisions that should influence future work.
 - The next product sprint should prioritize the feedback loop over broader goal-planning work.
 - Post-workout feedback should attach to activities directly instead of living as a separate date-only journal stream.
 - Recovery guidance should start with deterministic and explainable rules before any more advanced scoring approach.
+
+## 2026-06-26
+
+### Sprint 4 product focus
+
+- The next product sprint should focus on goal-aware planning rather than deeper automation.
+- Weekly plans should expose which active goals they support before the app attempts stronger automatic planning behavior.
+- Goal-to-plan linkage should stay explicit, lightweight, and inspectable.
+- Planned-to-actual explicit linking should follow goal-aware planning rather than precede it.
+
+### Sprint 5 product focus
+
+- Sprint 4 is complete enough to stop expanding goal-aware planning for now.
+- The next product sprint should focus on planned-to-actual explicit linking.
+- Comparison behavior should prefer explicit linkage over increasingly clever heuristics.
+- Manual relinking should exist before adding more advanced coaching automation on top of comparison data.
+
+### Sprint 5 implementation outcome
+
+- Weekly plan days should carry stable session identifiers rather than rely only on date matching.
+- Activities should own the explicit link back to planned sessions through a nullable planned-session reference.
+- Link review in the Plan UI should stay on-demand and lightweight instead of being permanently expanded in every day card.
+
+### Sprint 6 product focus
+
+- The next product sprint should focus on structured workout intent before a more opinionated coaching MCP action.
+- Session purpose should become explicit in plan data before the app tries to coach more aggressively from broad activity types alone.
+- The first workout-intent vocabulary should stay deliberately small, optional, and inspectable.
+
+### Sprint 6 implementation outcome
+
+- Workout intent should remain optional but available across planned sessions, activities, and subjective feedback flows.
+- Intent should influence inferred comparison conservatively, without overriding explicit planned-to-actual links.
+- Intent-aware summaries should be included in recent coaching context before building a one-shot coaching action on top.
+
+### Sprint 7 product focus
+
+- The next product sprint should focus on a one-shot weekly coaching action rather than deeper storage or taxonomy work.
+- The first coaching action should stay deterministic, transparent, and built on existing plan, feedback, linkage, and intent context.
+- Coaching output should be structured enough to support a later plan-diff confirmation flow without auto-writing changes in the same sprint.
+
+### Sprint 7 implementation outcome
+
+- Weekly coaching should now be available as a one-shot backend and MCP read rather than requiring several separate context calls.
+- The first coaching contract should stay inspectable, deterministic, and recommendation-oriented, with preview-only plan adjustments instead of automatic writes.
+- The Dashboard should expose coaching output directly and support a lightweight handoff into the existing Plan editor before a dedicated approval flow exists.
+
+## 2026-06-29
+
+### Sprint 8 product focus
+
+- The next product sprint should finish the coaching workflow by adding explicit plan-diff confirmation and approval before write.
+- Roadmap and sprint visibility in the UI is worth adding now only as a read-only, docs-backed slice.
+- Markdown under `docs/` should remain the source of truth rather than creating a separate editable planning model in the app.
+- Any roadmap visualization should depend on stable metadata or headings, not fuzzy parsing of arbitrary prose.

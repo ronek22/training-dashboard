@@ -21,6 +21,7 @@ def init_db():
             id TEXT PRIMARY KEY,
             date TEXT NOT NULL,
             type TEXT NOT NULL,
+            workout_intent TEXT,
             name TEXT,
             distance_km REAL,
             duration_min REAL,
@@ -32,6 +33,7 @@ def init_db():
             calories INTEGER,
             zone2 INTEGER DEFAULT 0,
             notes TEXT,
+            linked_planned_session_id TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -117,6 +119,68 @@ def init_db():
             is_active INTEGER DEFAULT 1,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS activity_feedback (
+            activity_id TEXT PRIMARY KEY,
+            rpe INTEGER NOT NULL,
+            energy INTEGER NOT NULL,
+            muscle_soreness INTEGER NOT NULL,
+            pain_level INTEGER NOT NULL DEFAULT 0,
+            note TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
+        );
     """)
+
+    feedback_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(activity_feedback)").fetchall()
+    }
+    activity_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(activities)").fetchall()
+    }
+    if "linked_planned_session_id" not in activity_columns:
+        conn.execute("ALTER TABLE activities ADD COLUMN linked_planned_session_id TEXT")
+    if "workout_intent" not in activity_columns:
+        conn.execute("ALTER TABLE activities ADD COLUMN workout_intent TEXT")
+
+    if "heel_pain" in feedback_columns:
+        pain_level_expr = "COALESCE(pain_level, heel_pain, 0)" if "pain_level" in feedback_columns else "COALESCE(heel_pain, 0)"
+        conn.execute("ALTER TABLE activity_feedback RENAME TO activity_feedback_legacy")
+        conn.execute(
+            """
+            CREATE TABLE activity_feedback (
+                activity_id TEXT PRIMARY KEY,
+                rpe INTEGER NOT NULL,
+                energy INTEGER NOT NULL,
+                muscle_soreness INTEGER NOT NULL,
+                pain_level INTEGER NOT NULL DEFAULT 0,
+                note TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute(
+            f"""
+            INSERT INTO activity_feedback
+            (activity_id, rpe, energy, muscle_soreness, pain_level, note, created_at, updated_at)
+            SELECT
+                activity_id,
+                rpe,
+                energy,
+                muscle_soreness,
+                {pain_level_expr},
+                note,
+                created_at,
+                updated_at
+            FROM activity_feedback_legacy
+            """
+        )
+        conn.execute("DROP TABLE activity_feedback_legacy")
+    elif "pain_level" not in feedback_columns:
+        conn.execute("ALTER TABLE activity_feedback ADD COLUMN pain_level INTEGER NOT NULL DEFAULT 0")
+
     conn.commit()
     conn.close()

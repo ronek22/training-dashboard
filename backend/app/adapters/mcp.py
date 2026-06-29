@@ -18,6 +18,7 @@ from ..services.dashboard import (
     build_recent_context,
     compute_activity_streak,
 )
+from ..services.coaching import build_weekly_coaching
 from ..services.goals import list_goals_data
 from ..services.metrics import get_metric_history_data
 from ..services.notes import list_notes_data
@@ -100,6 +101,31 @@ def recent_context(
         conn.close()
 
 
+def weekly_coaching(
+    lookback_days: int = 14,
+    context_days: int = 30,
+    recent_activity_limit: int = 12,
+    recent_note_limit: int = 5,
+    include_proposed_adjustment: bool = True,
+):
+    safe_lookback = max(1, min(lookback_days, 60))
+    safe_context = max(safe_lookback, min(context_days, 120))
+    safe_activity_limit = max(1, min(recent_activity_limit, 30))
+    safe_note_limit = max(1, min(recent_note_limit, 20))
+    conn = get_db()
+    try:
+        return build_weekly_coaching(
+            conn,
+            lookback_days=safe_lookback,
+            context_days=safe_context,
+            recent_activity_limit=safe_activity_limit,
+            recent_note_limit=safe_note_limit,
+            include_proposed_adjustment=include_proposed_adjustment,
+        )
+    finally:
+        conn.close()
+
+
 def build_mcp_router_dependencies() -> dict:
     return {
         "get_db_fn": get_db,
@@ -114,6 +140,7 @@ def build_mcp_router_dependencies() -> dict:
         "adjust_weekly_plan_data_fn": adjust_weekly_plan_data,
         "dashboard_fn": dashboard,
         "recent_context_fn": recent_context,
+        "weekly_coaching_fn": weekly_coaching,
         "list_activities_fn": list_activities,
         "activity_stats_fn": activity_stats,
         "list_notes_fn": list_notes,

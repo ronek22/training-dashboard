@@ -41,40 +41,104 @@ Completed slices:
 - clearer `moved` / `skipped` / `replaced` semantics
 - small Plan UI polish pass for revision and status readability
 
+### Sprint 3 feedback loop
+
+Sprint 3 can now be treated as functionally implemented, even if docs and tests still need cleanup.
+
+Completed slices:
+
+- structured post-workout feedback attached to activities
+- lightweight feedback entry from Activities and Calendar
+- recovery-aware daily recommendation on the Dashboard
+- recent feedback and recommendation signals exposed through MCP/context
+- generic pain / niggle signal instead of heel-specific feedback
+- initial goal-aware context surfaced in weekly plans
+
+### Sprint 4 goal-aware planning
+
+Sprint 4 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- weekly plans include active-goal context at the week level
+- plan days can expose which goals a session supports
+- Goals view shows planning-relevant pacing guidance
+- recent dashboard and MCP context now carry compact active-goal planning signals
+- plan and goal workflows now feel more intentionally connected
+
+### Sprint 5 planned-to-actual linking
+
+Sprint 5 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- weekly plan days now carry stable planned-session IDs
+- activities can explicitly link back to planned sessions
+- plan comparison distinguishes explicit, inferred, and unmatched execution states
+- Plan UI supports lightweight on-demand review and relinking
+- active plan context exposed through dashboard and MCP reads now carries linkage-aware comparison data
+
+### Sprint 6 structured workout intent
+
+Sprint 6 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- planned sessions and activities now support optional structured workout intent
+- Plan, Activities, Calendar, and feedback flows can surface or edit intent in lightweight ways
+- inferred comparison can distinguish same-type sessions with different intended purpose
+- recent dashboard and MCP context now includes compact intent-aware summaries for coaching reads
+
+### Sprint 7 one-shot coaching
+
+Sprint 7 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- one-shot weekly coaching is now available through a deterministic backend service plus MCP action
+- a read-only weekly coaching route exists for local inspection and testing
+- coaching output includes structured execution, recovery, goal, recommendation, next-session, and preview-adjustment fields
+- Dashboard now exposes the weekly coaching read in-app and can hand a preview adjustment into the Plan editor
+- weekly coaching heuristics are now grounded in explicit linking, workout intent, recent subjective feedback, and lightweight goal pressure
+
 ## Recommended Next Step
 
 The next major sprint should be:
 
-- [docs/sprints/sprint-3-feedback-loop.md](sprints/sprint-3-feedback-loop.md)
+- Sprint 8 with two tightly scoped parts:
+  - primary: a plan-diff confirmation and approval flow on top of the new weekly coaching action
+  - secondary: read-only roadmap and sprint visibility in-app sourced from `docs/`
 
 That means moving into:
 
-- post-workout feedback capture
-- recovery-aware daily recommendation logic
-- dashboard guidance based on subjective recovery signals
-- MCP context updates for feedback and recommendation signals
+- clearer before/after review of coaching-proposed weekly changes
+- explicit save approval instead of draft-only handoff
+- lightweight docs-backed progress visibility without UI editing
+- deeper execution-quality and multi-week analysis after the approval flow is stable
 
 ## Areas That Are Still Intentionally Lightweight
 
 - test coverage is still smoke-level rather than deep
 - weekly plans are stored as JSON blobs by week
-- feedback capture does not exist yet
-- goal-aware planning is still shallow
-- plan-to-activity explicit linking does not exist yet
+- goal-aware planning is still lightweight rather than deeply automated
+- MCP coaching still requires multiple reads rather than one opinionated weekly coaching action
 
 ## Good Starting Points For Future Work
 
-If starting Sprint 3:
+If continuing into Sprint 8:
 
-- backend persistence shape: `backend/app/db.py` plus a new feedback domain
-- dashboard recommendation logic: `backend/app/services/dashboard.py` or a new recommendation service
-- activities feedback entry UI: `frontend/src/views/Activities.vue`
-- dashboard guidance UI: `frontend/src/views/Dashboard.vue`
+- plan comparison and serialization: `backend/app/services/plans.py`
+- activity persistence and linking: `backend/app/services/activities.py`
+- activity SQL changes: `backend/app/repositories/activities.py`
+- coaching summary and heuristics: `backend/app/services/coaching.py`
+- coaching inspection and handoff UI: `frontend/src/views/Dashboard.vue` and `frontend/src/views/Plan.vue`
+- docs-backed planning visibility: `docs/roadmap.md`, `docs/current-state.md`, and `docs/sprints/`
 
 ## Working Assumption
 
 Unless the roadmap changes, the default implementation direction should be:
 
 1. finish lightweight coaching workflow improvements
-2. keep logic deterministic and inspectable
-3. avoid overbuilding storage or automation too early
+2. build on explicit planned-to-actual linkage before adding heavier automation
+3. keep logic deterministic and inspectable
+4. avoid overbuilding storage or automation too early

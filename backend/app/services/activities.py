@@ -1,14 +1,23 @@
+import json
 import sqlite3
 from datetime import datetime, timedelta
 from typing import Optional
 
+from fastapi import HTTPException
+
+from ..repositories.plans import list_weekly_plan_rows
 from ..repositories.activities import (
+    get_activity_row,
     get_latest_activity_date,
     list_activity_rows,
     list_activity_stat_rows,
     list_calendar_activity_rows,
+    update_activity_linked_session_id,
+    update_activity_workout_intent,
     upsert_activity_row,
 )
+from .activity_feedback import attach_feedback_by_activity_id
+from .plans import ensure_plan_day_ids, format_workout_intent_label, normalize_workout_intent
 
 
 def create_activity_data(conn: sqlite3.Connection, activity: dict) -> dict:
@@ -24,7 +33,14 @@ def list_activities_data(
     days: Optional[int] = None,
 ) -> list[dict]:
     rows = list_activity_rows(conn, limit=limit, activity_type=activity_type, days=days)
-    return [dict(row) for row in rows]
+    payload = []
+    for row in rows:
+        item = dict(row)
+        normalized_intent = normalize_workout_intent(item.get("workout_intent"), item.get("type"))
+        item["workout_intent"] = normalized_intent
+        item["workout_intent_label"] = format_workout_intent_label(normalized_intent)
+        payload.append(item)
+    return attach_feedback_by_activity_id(conn, payload)
 
 
 def activity_stats_data(conn: sqlite3.Connection, days: int = 30) -> list[dict]:
@@ -100,6 +116,10 @@ def build_calendar_weeks_data(conn: sqlite3.Connection, weeks: int = 8) -> list[
                         {
                             "id": activity["id"],
                             "type": activity["type"],
+                            "workout_intent": normalize_workout_intent(activity["workout_intent"], activity["type"]),
+                            "workout_intent_label": format_workout_intent_label(
+                                normalize_workout_intent(activity["workout_intent"], activity["type"])
+                            ),
                             "name": activity["name"],
                             "distance_km": activity["distance_km"],
                             "duration_min": activity["duration_min"],
@@ -107,6 +127,7 @@ def build_calendar_weeks_data(conn: sqlite3.Connection, weeks: int = 8) -> list[
                             "avg_pace": activity["avg_pace"],
                             "avg_watts": activity["avg_watts"],
                             "zone2": bool(activity["zone2"]),
+                            "linked_planned_session_id": activity["linked_planned_session_id"],
                         }
                         for activity in activities
                     ],
@@ -128,6 +149,10 @@ def build_calendar_weeks_data(conn: sqlite3.Connection, weeks: int = 8) -> list[
             }
         )
 
+    for week in output:
+        for day in week["days"]:
+            attach_feedback_by_activity_id(conn, day["activities"])
+
     return output
 
 
@@ -138,3 +163,56 @@ def get_calendar_weeks_data(conn: sqlite3.Connection, weeks: int = 8) -> list[di
 
 def upsert_activity(conn: sqlite3.Connection, activity: dict, preserve_annotations: bool = False) -> None:
     upsert_activity_row(conn, activity, preserve_annotations=preserve_annotations)
+
+
+def linked_planned_session_exists(conn: sqlite3.Connection, planned_session_id: str) -> bool:
+    for row in list_weekly_plan_rows(conn, 1000):
+        days = ensure_plan_day_ids(row["week_start"], json.loads(row["days_json"]))
+        if any(day.get("session_id") == planned_session_id for day in days):
+            return True
+    return False
+
+
+def link_activity_to_planned_session_data(
+    conn: sqlite3.Connection,
+    activity_id: str,
+    planned_session_id: Optional[str],
+) -> dict:
+    activity_row = get_activity_row(conn, activity_id)
+    if not activity_row:
+        raise HTTPException(status_code=404, detail=f"Activity not found: {activity_id}")
+
+    if planned_session_id and not linked_planned_session_exists(conn, planned_session_id):
+        raise HTTPException(status_code=404, detail=f"Planned session not found: {planned_session_id}")
+
+    update_activity_linked_session_id(conn, activity_id, planned_session_id)
+    conn.commit()
+
+    updated = get_activity_row(conn, activity_id)
+    return dict(updated) if updated else {"status": "ok", "id": activity_id, "linked_planned_session_id": planned_session_id}
+
+
+def update_activity_workout_intent_data(
+    conn: sqlite3.Connection,
+    activity_id: str,
+    workout_intent: Optional[str],
+) -> dict:
+    activity_row = get_activity_row(conn, activity_id)
+    if not activity_row:
+        raise HTTPException(status_code=404, detail=f"Activity not found: {activity_id}")
+
+    normalized_intent = normalize_workout_intent(workout_intent, activity_row["type"])
+    if workout_intent and not normalized_intent:
+        raise HTTPException(status_code=400, detail=f"Invalid workout_intent for activity type {activity_row['type']}")
+
+    update_activity_workout_intent(conn, activity_id, normalized_intent)
+    conn.commit()
+
+    updated = get_activity_row(conn, activity_id)
+    if not updated:
+        return {"status": "ok", "id": activity_id, "workout_intent": normalized_intent}
+
+    response = dict(updated)
+    response["workout_intent"] = normalized_intent
+    response["workout_intent_label"] = format_workout_intent_label(normalized_intent)
+    return response

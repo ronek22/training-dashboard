@@ -5,6 +5,8 @@ from datetime import datetime
 from .adapters.mcp import build_mcp_router_dependencies
 from .db import get_db, init_db
 from .routers.activities import router as activities_router
+from .routers.activity_feedback import router as activity_feedback_router
+from .routers.coaching import router as coaching_router
 from .routers.dashboard import router as dashboard_router
 from .routers.goals import router as goals_router
 from .routers.integrations import router as integrations_router
@@ -24,6 +26,8 @@ app.add_middleware(
 )
 app.include_router(plans_router)
 app.include_router(activities_router)
+app.include_router(activity_feedback_router)
+app.include_router(coaching_router)
 app.include_router(notes_router)
 app.include_router(metrics_router)
 app.include_router(goals_router)

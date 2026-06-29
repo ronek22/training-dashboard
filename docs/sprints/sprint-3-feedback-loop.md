@@ -4,8 +4,8 @@
 
 Current status:
 
-- planned, not started as a sprint
-- this is the next major product sprint after the remaining Phase 1 adaptive-planning cleanup
+- functionally implemented as a product slice
+- still needs doc cleanup and stronger test depth before it should be treated as fully closed
 
 Dependency note:
 
@@ -90,7 +90,7 @@ Capture a small set of fields per activity:
 - `rpe` from 1-10
 - `energy` from 1-5
 - `muscle_soreness` from 1-5
-- `heel_pain` from 0-10
+- `pain_level` from 0-10
 - optional note
 
 Recommended shape:
@@ -135,7 +135,7 @@ Recommended first-pass rule inputs:
 - whether there was a hard session recently
 - latest `energy`
 - latest `muscle_soreness`
-- latest `heel_pain`
+- latest `pain_level`
 - recent streak context
 - today’s planned session type
 
@@ -157,7 +157,7 @@ Example outputs:
 
 - `Keep the planned easy run.`
 - `Reduce intensity today because soreness is elevated after two harder days.`
-- `Recover today because heel pain is high.`
+- `Recover today because pain is high.`
 
 ### 5. MCP context upgrade
 
@@ -184,7 +184,7 @@ Recommended data fields:
 - `rpe`
 - `energy`
 - `muscle_soreness`
-- `heel_pain`
+- `pain_level`
 - `note`
 - `created_at`
 - `updated_at`
@@ -272,7 +272,7 @@ Update [frontend/src/views/Dashboard.vue](../../frontend/src/views/Dashboard.vue
 - too many subjective fields could make logging feel heavy
 - naive recommendation logic could feel arbitrary if reasoning is hidden
 - feedback that is not attached to activities cleanly could become noisy fast
-- heel pain should remain high-signal and not get buried inside generic soreness logic
+- pain signals should remain high-signal and not get buried inside generic soreness logic
 
 ## Design Constraints
 

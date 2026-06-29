@@ -92,6 +92,22 @@ def init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS coaching_snapshots (
+            week_start TEXT PRIMARY KEY,
+            week_end TEXT,
+            summary_status TEXT NOT NULL,
+            headline TEXT NOT NULL,
+            rationale_summary TEXT,
+            recommendation_status TEXT NOT NULL,
+            recommendation_action TEXT,
+            focus_for_next_48h TEXT,
+            proposed_changed_dates_json TEXT NOT NULL,
+            revision_count INTEGER DEFAULT 0,
+            generated_at TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS activity_stream_summaries (
             activity_id TEXT PRIMARY KEY,
             fetched_at TEXT NOT NULL,

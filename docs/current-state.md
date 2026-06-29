@@ -130,7 +130,7 @@ Completed slices:
 
 The next major sprint should be:
 
-- Sprint 10 coaching memory and weekly narrative history
+- Sprint 10 coaching memory and weekly narrative history is now implemented as compact coaching history plus plan change visibility
 
 That means moving into:
 

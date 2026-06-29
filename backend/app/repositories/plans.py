@@ -83,6 +83,19 @@ def get_latest_weekly_plan_revision_row(conn: sqlite3.Connection, week_start: st
     ).fetchone()
 
 
+def list_weekly_plan_revision_rows(conn: sqlite3.Connection, week_start: str, limit: int = 12) -> list[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT *
+        FROM plan_revisions
+        WHERE week_start = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT ?
+        """,
+        (week_start, limit),
+    ).fetchall()
+
+
 def count_weekly_plan_revision_rows(conn: sqlite3.Connection, week_start: str) -> int:
     row = conn.execute(
         """

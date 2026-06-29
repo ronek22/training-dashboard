@@ -47,7 +47,12 @@
               <div class="card-title">Week of {{ formatWeek(plan.week_start) }}</div>
               <span class="week-emphasis-pill" :class="weekEmphasisClass(plan)">{{ weekEmphasisLabel(plan) }}</span>
               <span v-if="weekNeedsAttentionCount(plan)" class="week-emphasis-pill week-emphasis-alert">
-                {{ weekNeedsAttentionCount(plan) }} attention item<span v-if="weekNeedsAttentionCount(plan) !== 1">s</span>
+                <template v-if="isHistoricalPlan(plan)">
+                  {{ weekNeedsAttentionCount(plan) }} recorded change<span v-if="weekNeedsAttentionCount(plan) !== 1">s</span>
+                </template>
+                <template v-else>
+                  {{ weekNeedsAttentionCount(plan) }} change<span v-if="weekNeedsAttentionCount(plan) !== 1">s</span> to review
+                </template>
               </span>
             </div>
             <div class="week-range">{{ plan.title || 'Weekly training plan' }}</div>
@@ -100,22 +105,6 @@
                 <span>{{ goal.supported_sessions }} supporting session{{ goal.supported_sessions === 1 ? '' : 's' }}</span>
               </div>
             </article>
-          </div>
-        </div>
-
-        <div v-if="plan.latest_revision" class="revision-banner">
-          <div class="revision-title">
-            Adjusted {{ formatTimestamp(plan.latest_revision.created_at) }}
-            <span v-if="plan.revision_count > 1">· {{ plan.revision_count }} revisions</span>
-          </div>
-          <div class="revision-detail">
-            Effective from {{ formatDay(plan.latest_revision.effective_from) }}
-            <span v-if="plan.latest_revision.changed_dates?.length">
-              · Changed {{ formatDateList(plan.latest_revision.changed_dates) }}
-            </span>
-            <span v-if="plan.latest_revision.adaptation_reason">
-              · {{ plan.latest_revision.adaptation_reason }}
-            </span>
           </div>
         </div>
 
@@ -500,7 +489,37 @@
           </div>
         </div>
 
-        <div v-if="plan.notes" class="plan-notes">{{ plan.notes }}</div>
+        <div v-if="displayPlanNotes(plan)" class="plan-notes">{{ displayPlanNotes(plan) }}</div>
+
+        <div v-if="plan.revisions?.length" class="revision-timeline">
+          <div class="revision-timeline-head">
+            <div class="section-label">Plan Changes</div>
+            <div class="revision-timeline-copy">Supporting metadata only: when the plan changed, what moved, and why.</div>
+          </div>
+          <div class="revision-timeline-list revision-timeline-horizontal">
+            <article v-for="revision in plan.revisions" :key="revision.id" class="revision-entry revision-entry-horizontal">
+              <div class="revision-entry-rail" aria-hidden="true">
+                <div class="revision-entry-marker"></div>
+                <div class="revision-entry-line"></div>
+              </div>
+              <div class="revision-entry-body">
+                <div class="revision-entry-top">
+                  <div class="revision-entry-title-row">
+                    <strong>{{ formatTimestamp(revision.created_at) }}</strong>
+                    <span class="revision-source-pill" :class="`source-${revision.source}`">{{ revisionSourceLabel(revision.source) }}</span>
+                  </div>
+                  <div class="revision-entry-effective">Effective from {{ formatDay(revision.effective_from) }}</div>
+                </div>
+                <div v-if="revision.adaptation_reason" class="revision-entry-reason">{{ revision.adaptation_reason }}</div>
+                <div class="revision-entry-meta">
+                  <span v-if="revision.changed_dates?.length">Changed {{ formatDateList(revision.changed_dates) }}</span>
+                  <span v-else>No editable dates changed</span>
+                  <span v-if="revision.preserved_dates?.length">Preserved {{ formatDateList(revision.preserved_dates) }}</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
         </template>
       </section>
     </div>
@@ -774,6 +793,21 @@ const goalStatusLabel = (status) => {
   if (status === 'ahead_of_pace') return 'Ahead'
   if (status === 'on_pace') return 'On pace'
   return 'Behind'
+}
+
+const revisionSourceLabel = (source) => {
+  if (source === 'coaching') return 'Coaching draft'
+  return 'User-saved'
+}
+
+const displayPlanNotes = (plan) => {
+  const notes = plan?.notes
+  if (!notes) return ''
+  return notes
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('Adjusted from '))
+    .join('\n')
 }
 
 const statusLabel = (comparison) => {
@@ -1381,23 +1415,126 @@ const savePlanLink = async (day) => {
   color: var(--muted);
   font-size: 11px;
 }
-.revision-banner {
-  margin-bottom: 14px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(96, 165, 250, 0.08);
-  border: 1px solid rgba(96, 165, 250, 0.16);
+.revision-timeline {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
 }
-.revision-title {
-  color: #dbeafe;
+.revision-timeline-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.revision-timeline-copy {
+  color: var(--muted-soft);
   font-size: 12px;
+}
+.revision-timeline-list {
+  display: grid;
+  gap: 8px;
+}
+.revision-timeline-horizontal {
+  display: flex;
+  align-items: start;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  gap: 14px;
+  scrollbar-width: thin;
+}
+.revision-entry {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.revision-entry-horizontal {
+  position: relative;
+  min-width: 300px;
+  max-width: 360px;
+  flex: 0 0 320px;
+  display: grid;
+  gap: 10px;
+}
+.revision-entry-rail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.revision-entry-marker {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #8ba4cf;
+  box-shadow: 0 0 0 4px rgba(43, 58, 82, 0.9);
+  flex: 0 0 auto;
+}
+.revision-entry-line {
+  height: 1px;
+  flex: 1;
+  background: rgba(148, 163, 184, 0.22);
+}
+.revision-entry-body {
+  padding: 12px 14px 14px;
+  border-radius: 16px;
+  background: rgba(10, 16, 27, 0.52);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+}
+.revision-entry-top {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.revision-entry-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.revision-entry-title-row strong {
+  font-size: 13px;
+  color: #dce6f7;
+}
+.revision-entry-effective {
+  color: var(--muted);
+  font-size: 12px;
+}
+.revision-source-pill {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
-.revision-detail {
-  margin-top: 4px;
+.revision-source-pill.source-manual {
+  background: rgba(96, 165, 250, 0.12);
   color: #bfdbfe;
-  font-size: 12px;
+}
+.revision-source-pill.source-coaching {
+  background: rgba(16, 185, 129, 0.14);
+  color: #a7f3d0;
+}
+.revision-entry-reason {
+  color: var(--text-soft);
+  font-size: 13px;
   line-height: 1.5;
+}
+.revision-entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.revision-entry-meta span {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(148, 163, 184, 0.08);
+  color: #c5d2e6;
+  font-size: 11px;
 }
 .flash-banner {
   border-radius: 18px;

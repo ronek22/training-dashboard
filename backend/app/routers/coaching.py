@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from ..db import get_db
-from ..services.coaching import build_weekly_coaching
+from ..services.coaching import build_weekly_coaching, list_coaching_history_data
 
 router = APIRouter()
 
@@ -28,5 +28,15 @@ def weekly_coaching(
             recent_note_limit=safe_note_limit,
             include_proposed_adjustment=include_proposed_adjustment,
         )
+    finally:
+        conn.close()
+
+
+@router.get("/coaching/history")
+def coaching_history(limit: int = 6):
+    safe_limit = max(1, min(limit, 16))
+    conn = get_db()
+    try:
+        return list_coaching_history_data(conn, limit=safe_limit)
     finally:
         conn.close()

@@ -6,6 +6,7 @@ export const useApi = () => ({
   getDashboard: () => api.get('/dashboard'),
   getPlanningStatus: () => api.get('/planning/status'),
   getWeeklyCoaching: (params) => api.get('/coaching/weekly', { params }),
+  getCoachingHistory: (params) => api.get('/coaching/history', { params }),
   getTrainingLoad: (params) => api.get('/training-load', { params }),
   getGoals: (params) => api.get('/goals', { params }),
   createGoal: (payload) => api.post('/goals', payload),

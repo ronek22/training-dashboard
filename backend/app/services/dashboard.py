@@ -10,6 +10,49 @@ from .goals import list_goals_data
 from .recommendations import build_daily_recommendation, latest_subjective_state
 
 
+def select_active_weekly_plan_row(conn: sqlite3.Connection) -> Optional[sqlite3.Row]:
+    today = datetime.now().date()
+    current_week_start = (today - timedelta(days=today.weekday())).isoformat()
+    current_week_end = (today + timedelta(days=(6 - today.weekday()))).isoformat()
+
+    current_row = conn.execute(
+        """
+        SELECT *
+        FROM weekly_plans
+        WHERE week_start >= ? AND week_start <= ?
+        ORDER BY week_start ASC
+        LIMIT 1
+        """,
+        (current_week_start, current_week_end),
+    ).fetchone()
+    if current_row:
+        return current_row
+
+    upcoming_row = conn.execute(
+        """
+        SELECT *
+        FROM weekly_plans
+        WHERE week_start > ?
+        ORDER BY week_start ASC
+        LIMIT 1
+        """,
+        (current_week_end,),
+    ).fetchone()
+    if upcoming_row:
+        return upcoming_row
+
+    return conn.execute(
+        """
+        SELECT *
+        FROM weekly_plans
+        WHERE week_start < ?
+        ORDER BY week_start DESC
+        LIMIT 1
+        """,
+        (current_week_start,),
+    ).fetchone()
+
+
 def compute_activity_streak(conn: sqlite3.Connection) -> dict:
     rows = conn.execute(
         "SELECT DISTINCT date FROM activities ORDER BY date DESC"
@@ -101,8 +144,9 @@ def build_yearly_duration_series(conn: sqlite3.Connection, activity_types: tuple
 def build_activity_heatmap(conn: sqlite3.Connection) -> dict:
     today = datetime.now().date()
     year_start = today.replace(month=1, day=1)
+    year_end = today.replace(month=12, day=31)
     grid_start = year_start - timedelta(days=year_start.weekday())
-    grid_end = today + timedelta(days=(6 - today.weekday()))
+    grid_end = year_end + timedelta(days=(6 - year_end.weekday()))
 
     rows = conn.execute(
         """
@@ -153,7 +197,8 @@ def build_activity_heatmap(conn: sqlite3.Connection) -> dict:
                 "weekday_index": current.weekday(),
                 "week_index": (len(cells) // 7),
                 "day_of_month": current.day,
-                "in_year": current >= year_start and current <= today,
+                "in_year": current >= year_start and current <= year_end,
+                "is_future": current > today and current <= year_end,
                 "sessions": entry["sessions"],
                 "total_duration_min": entry["total_duration_min"],
                 "total_distance_km": round(entry["total_distance_km"], 1),
@@ -189,8 +234,8 @@ def build_activity_heatmap(conn: sqlite3.Connection) -> dict:
     return {
         "year": today.year,
         "range_start": year_start.isoformat(),
-        "range_end": today.isoformat(),
-        "total_active_days": sum(1 for cell in cells if cell["score"] > 0 and cell["in_year"]),
+        "range_end": year_end.isoformat(),
+        "total_active_days": sum(1 for cell in cells if cell["score"] > 0 and not cell["is_future"] and cell["in_year"]),
         "month_labels": month_labels,
         "cells": cells,
     }
@@ -865,15 +910,7 @@ def build_recent_context(
         ),
     )
 
-    latest_plan = conn.execute(
-        """
-        SELECT *
-        FROM weekly_plans
-        WHERE week_start <= date('now', '+7 days')
-        ORDER BY week_start DESC
-        LIMIT 1
-        """
-    ).fetchone()
+    latest_plan = select_active_weekly_plan_row(conn)
     serialized_latest_plan = serialize_weekly_plan(latest_plan, conn) if latest_plan else None
     daily_recommendation = build_daily_recommendation(conn, training_load_summary=training_load, weekly_plan=serialized_latest_plan)
     recent_activities = attach_feedback_by_activity_id(conn, [dict(row) for row in activities])
@@ -1008,14 +1045,7 @@ def build_dashboard_data(
     strength_consistency = build_strength_consistency(conn, 8, 2)
     active_goals = list_goals_data_fn(conn, active_only=True, limit=4)
     training_load = build_training_load_summary(conn)
-    latest_plan = conn.execute(
-        """
-        SELECT * FROM weekly_plans
-        WHERE week_start <= date('now', '+7 days')
-        ORDER BY week_start DESC
-        LIMIT 1
-        """
-    ).fetchone()
+    latest_plan = select_active_weekly_plan_row(conn)
     serialized_latest_plan = serialize_weekly_plan(latest_plan, conn) if latest_plan else None
     daily_recommendation = build_daily_recommendation(conn, training_load_summary=training_load, weekly_plan=serialized_latest_plan)
 

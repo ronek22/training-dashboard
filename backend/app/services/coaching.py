@@ -1,9 +1,17 @@
+import json
 import sqlite3
 from datetime import datetime, timedelta
 from typing import Optional
 
 from .dashboard import build_recent_context
-from .plans import build_adjustment_diff_payload, format_workout_intent_label, normalize_plan_session_type
+from .plans import (
+    COACHING_ADAPTATION_REASON,
+    build_adjustment_diff_payload,
+    format_workout_intent_label,
+    normalize_plan_session_type,
+)
+from ..repositories.coaching import list_coaching_snapshot_rows, upsert_coaching_snapshot_row
+from ..repositories.plans import count_weekly_plan_revision_rows
 
 HARD_INTENTS = {"long", "tempo", "interval", "race_specific", "strength_general", "strength_lower", "strength_upper"}
 
@@ -11,6 +19,27 @@ HARD_INTENTS = {"long", "tempo", "interval", "race_specific", "strength_general"
 def _parse_date(value: Optional[str]):
     if not value:
         return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _goal_is_run_volume(goal: dict) -> bool:
+    metric_type = goal.get("metric_type")
+    if metric_type == "run_km":
+        return True
+    if metric_type == "activities_count":
+        return normalize_plan_session_type(goal.get("activity_type")) == "Run"
+    return False
+
+
+def _should_deprioritize_run_goals(context: dict) -> bool:
+    daily_status = context.get("daily_recommendation", {}).get("status")
+    feedback = context.get("latest_subjective_state") or {}
+    pain_level = int(feedback.get("pain_level") or 0)
+    energy = int(feedback.get("energy") or 0)
+    return daily_status in {"reduce", "recover"} or pain_level >= 2 or energy <= 2
     try:
         return datetime.strptime(value, "%Y-%m-%d").date()
     except ValueError:
@@ -254,8 +283,33 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
             "key_observations": ["No active goals are shaping the current coaching read."],
         }
 
-    urgency_counts = context.get("goal_planning_summary", {}).get("statuses", {})
-    if urgency_counts.get("urgent"):
+    deprioritize_run_goals = _should_deprioritize_run_goals(context)
+    relevant_active_goals = [
+        goal for goal in active_goals
+        if not (deprioritize_run_goals and _goal_is_run_volume(goal))
+    ]
+    relevant_plan_goals = [
+        goal for goal in plan_goals
+        if not (deprioritize_run_goals and _goal_is_run_volume(goal))
+    ]
+    deferred_goals = [
+        goal for goal in active_goals
+        if deprioritize_run_goals and _goal_is_run_volume(goal)
+    ]
+    most_urgent = [
+        goal for goal in context.get("goal_planning_summary", {}).get("most_urgent", [])[:3]
+        if not (deprioritize_run_goals and _goal_is_run_volume(goal))
+    ]
+    urgency_counts = {
+        "urgent": sum(1 for goal in relevant_active_goals if goal.get("planning_guidance", {}).get("status") == "urgent"),
+        "pressured": sum(1 for goal in relevant_active_goals if goal.get("planning_guidance", {}).get("status") == "pressured"),
+        "steady": sum(1 for goal in relevant_active_goals if goal.get("planning_guidance", {}).get("status") == "steady"),
+        "comfortable": sum(1 for goal in relevant_active_goals if goal.get("planning_guidance", {}).get("status") == "comfortable"),
+        "completed": sum(1 for goal in relevant_active_goals if goal.get("planning_guidance", {}).get("status") == "completed"),
+    }
+    if not relevant_active_goals and deferred_goals:
+        status = "deferred"
+    elif urgency_counts.get("urgent"):
         status = "pressured"
     elif urgency_counts.get("pressured"):
         status = "watch"
@@ -263,19 +317,22 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
         status = "steady"
 
     observations = []
-    for goal in plan_goals[:3]:
+    for goal in relevant_plan_goals[:3]:
         if goal.get("supported_sessions"):
             observations.append(
                 f"{goal['title']} is supported by {goal['supported_sessions']} planned sessions this week."
             )
+    if deferred_goals:
+        observations.append("Run-volume goals are temporarily backgrounded while recovery is the priority.")
     if not observations:
         observations.append("Active goals are present, but plan support is still fairly lightweight.")
 
     return {
         "status": status,
         "active_goal_count": len(active_goals),
-        "most_urgent": context.get("goal_planning_summary", {}).get("most_urgent", [])[:3],
-        "plan_supported_goals": sum(1 for goal in plan_goals if goal.get("supported_sessions")),
+        "most_urgent": most_urgent,
+        "plan_supported_goals": sum(1 for goal in relevant_plan_goals if goal.get("supported_sessions")),
+        "deferred_goal_count": len(deferred_goals),
         "key_observations": observations[:4],
     }
 
@@ -285,10 +342,18 @@ def build_recommended_next_sessions(active_plan: Optional[dict], recommendation_
         return []
 
     today = datetime.now().date()
+    fulfilled_statuses = {"linked", "matched", "moved"}
+    modified_statuses = {"partially_matched", "replaced", "rest_day_changed"}
     upcoming_days = []
     for day in active_plan.get("days", []):
         day_date = _parse_date(day.get("date"))
         if not day_date or day_date < today:
+            continue
+        comparison = day.get("comparison", {})
+        status = comparison.get("status")
+        if status in fulfilled_statuses or status in modified_statuses:
+            continue
+        if comparison.get("completed_activities"):
             continue
         upcoming_days.append(day)
 
@@ -362,12 +427,34 @@ def build_proposed_adjustment(active_plan: Optional[dict], recommendation_status
         "preview_only": True,
         "week_start": active_plan.get("week_start"),
         "effective_from": updated_days[0]["date"],
-        "adaptation_reason": "Generated from one-shot coaching guidance.",
+        "adaptation_reason": COACHING_ADAPTATION_REASON,
         "changed_dates": [day["date"] for day in updated_days],
         "days": updated_days,
     }
     adjustment["diff"] = build_adjustment_diff_payload(active_plan, adjustment)
     return adjustment
+
+
+def serialize_coaching_snapshot_row(row: sqlite3.Row) -> dict:
+    return {
+        "week_start": row["week_start"],
+        "week_end": row["week_end"],
+        "summary_status": row["summary_status"],
+        "headline": row["headline"],
+        "rationale_summary": row["rationale_summary"],
+        "recommendation_status": row["recommendation_status"],
+        "recommendation_action": row["recommendation_action"],
+        "focus_for_next_48h": row["focus_for_next_48h"],
+        "proposed_changed_dates": json.loads(row["proposed_changed_dates_json"]),
+        "revision_count": int(row["revision_count"] or 0),
+        "generated_at": row["generated_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def list_coaching_history_data(conn: sqlite3.Connection, limit: int = 6) -> list[dict]:
+    rows = list_coaching_snapshot_rows(conn, limit)
+    return [serialize_coaching_snapshot_row(row) for row in rows]
 
 
 def build_weekly_recommendation(
@@ -494,8 +581,9 @@ def build_weekly_coaching(
     if active_plan and active_plan.get("days"):
         week_end = max(day["date"] for day in active_plan["days"] if day.get("date"))
 
-    return {
-        "generated_at": datetime.now().isoformat(),
+    generated_at = datetime.now().isoformat()
+    payload = {
+        "generated_at": generated_at,
         "week_start": week_start,
         "week_end": week_end,
         "summary": {
@@ -519,3 +607,22 @@ def build_weekly_coaching(
             "recent_notes": context.get("recent_notes", [])[:3],
         },
     }
+
+    if week_start:
+        upsert_coaching_snapshot_row(
+            conn,
+            week_start=week_start,
+            week_end=week_end,
+            summary_status=summary_status,
+            headline=recommendation["headline"],
+            rationale_summary=payload["summary"]["text"],
+            recommendation_status=recommendation["status"],
+            recommendation_action=recommendation.get("action"),
+            focus_for_next_48h=recommendation.get("focus_for_next_48h"),
+            proposed_changed_dates=[day["date"] for day in (proposed_adjustment or {}).get("days", []) if day.get("date")],
+            revision_count=count_weekly_plan_revision_rows(conn, week_start),
+            generated_at=generated_at,
+        )
+        conn.commit()
+
+    return payload

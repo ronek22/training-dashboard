@@ -4,8 +4,8 @@
 
 Current status:
 
-- planned
-- follows planned Sprint 9 app redesign and information hierarchy work
+- complete
+- followed Sprint 9 app redesign and information hierarchy work
 
 Starting point:
 
@@ -13,6 +13,12 @@ Starting point:
 - coaching-proposed changes can be reviewed as a diff and explicitly approved
 - plan revisions are stored, but the UI only emphasizes the latest change
 - coaching output is useful in the moment, but it is still mostly a single-snapshot workflow
+
+Completion note:
+
+- recent coaching decisions are now stored and exposed as compact history
+- plan revisions are visible as supporting change history in Plan
+- the history flow remains read-only and deterministic
 
 Dependency note:
 

@@ -14,6 +14,7 @@ from ..repositories.plans import (
     create_weekly_plan_revision_row,
     get_latest_weekly_plan_revision_row,
     get_weekly_plan_row,
+    list_weekly_plan_revision_rows,
     list_weekly_plan_rows,
     upsert_weekly_plan_row,
 )
@@ -48,6 +49,8 @@ SESSION_TYPE_INTENT_OPTIONS = {
     "Recovery": {"recovery", "mobility"},
     "Rest": set(),
 }
+
+COACHING_ADAPTATION_REASON = "Generated from one-shot coaching guidance."
 
 
 def parse_plan_date(value: str):
@@ -553,13 +556,19 @@ def build_plan_day_comparison(
 def serialize_weekly_plan_revision_row(row: Optional[sqlite3.Row]) -> Optional[dict]:
     if not row:
         return None
+    changed_dates = json.loads(row["changed_dates_json"])
+    preserved_dates = json.loads(row["preserved_dates_json"])
+    source = "coaching" if row["adaptation_reason"] == COACHING_ADAPTATION_REASON else "manual"
     return {
         "id": row["id"],
         "week_start": row["week_start"],
         "effective_from": row["effective_from"],
         "adaptation_reason": row["adaptation_reason"],
-        "changed_dates": json.loads(row["changed_dates_json"]),
-        "preserved_dates": json.loads(row["preserved_dates_json"]),
+        "changed_dates": changed_dates,
+        "preserved_dates": preserved_dates,
+        "change_count": len(changed_dates),
+        "preserved_count": len(preserved_dates),
+        "source": source,
         "created_at": row["created_at"],
     }
 
@@ -567,6 +576,7 @@ def serialize_weekly_plan_revision_row(row: Optional[sqlite3.Row]) -> Optional[d
 def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] = None) -> dict:
     days = ensure_plan_day_ids(row["week_start"], json.loads(row["days_json"]))
     latest_revision = None
+    revisions = []
     revision_count = 0
     goal_context = {"active_goals": [], "goal_ids": []}
     if conn:
@@ -630,6 +640,10 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
                 if goal_supports_session(goal, day)
             ]
         latest_revision = serialize_weekly_plan_revision_row(get_latest_weekly_plan_revision_row(conn, row["week_start"]))
+        revisions = [
+            serialize_weekly_plan_revision_row(item)
+            for item in list_weekly_plan_revision_rows(conn, row["week_start"], limit=12)
+        ]
         revision_count = count_weekly_plan_revision_rows(conn, row["week_start"])
 
     return {
@@ -642,6 +656,7 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
         "created_at": row["created_at"],
         "revision_count": revision_count,
         "latest_revision": latest_revision,
+        "revisions": revisions,
         "goal_context": goal_context,
     }
 

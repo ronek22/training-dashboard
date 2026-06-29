@@ -6,10 +6,10 @@
         <h1 class="page-title">Dashboard</h1>
         <p class="page-sub">Immediate coaching and recovery signals lead. Trends and history stay available, but clearly secondary.</p>
       </div>
-      <div v-if="dailyRecommendation" class="dashboard-head-status" :class="`status-${dailyRecommendation.status}`">
+      <div v-if="dailyRecommendation || todayPlanCompleted" class="dashboard-head-status" :class="todayPlanCompleted ? 'status-keep' : `status-${dailyRecommendation.status}`">
         <span class="dashboard-head-status-label">Today's call</span>
-        <strong>{{ recommendationHeaderLabel(dailyRecommendation.status) }}</strong>
-        <span class="dashboard-head-status-copy">{{ recommendationHeaderCopy(dailyRecommendation.status) }}</span>
+        <strong>{{ dashboardHeaderCallLabel }}</strong>
+        <span class="dashboard-head-status-copy">{{ dashboardHeaderCallCopy }}</span>
       </div>
     </div>
 
@@ -33,13 +33,19 @@
           </div>
 
           <template v-if="todayPlan">
-            <div class="today-plan-title">{{ todayPlan.title }}</div>
-            <div class="today-plan-meta">
-              <span v-if="todayPlan.target_duration_min">{{ todayPlan.target_duration_min }} min</span>
-              <span v-if="todayPlan.target_distance_km">{{ todayPlan.target_distance_km }} km</span>
-              <span>{{ todayPlan.session_type === 'WeightTraining' ? 'Strength focus' : 'Planned session' }}</span>
+            <div class="today-plan-title">
+              {{ todayPlanCompleted ? "Today's planned session is done" : todayPlan.title }}
             </div>
-            <div v-if="todayPlan.details" class="today-plan-details">{{ todayPlan.details }}</div>
+            <div class="today-plan-meta">
+              <span v-if="todayPlanCompleted">{{ todayPlanCompletionLabel }}</span>
+              <span v-else-if="todayPlan.target_duration_min">{{ todayPlan.target_duration_min }} min</span>
+              <span v-if="!todayPlanCompleted && todayPlan.target_distance_km">{{ todayPlan.target_distance_km }} km</span>
+              <span>{{ todayPlanCompleted ? 'Completed today' : todayPlan.session_type === 'WeightTraining' ? 'Strength focus' : 'Planned session' }}</span>
+            </div>
+            <div v-if="todayPlanCompleted" class="today-plan-details">
+              {{ todayPlanCompletedCopy }}
+            </div>
+            <div v-else-if="todayPlan.details" class="today-plan-details">{{ todayPlan.details }}</div>
           </template>
           <template v-else>
             <div class="today-plan-title">No workout planned for today</div>
@@ -72,7 +78,24 @@
             </article>
           </div>
 
-          <div v-if="dailyRecommendation" class="recommendation-card" :class="`recommendation-${dailyRecommendation.status}`">
+          <div v-if="todayPlanCompleted" class="recommendation-card recommendation-completed">
+            <div class="recommendation-top">
+              <span class="recommendation-label">Completed</span>
+              <span class="recommendation-status">{{ todayPlanCompletionStatus }}</span>
+            </div>
+            <div class="recommendation-action">{{ todayPlanCompletedActivity?.name || todayPlan.title }}</div>
+            <div class="recommendation-reasons">
+              <span v-if="todayPlanCompletedActivity?.distance_km">{{ todayPlanCompletedActivity.distance_km }} km</span>
+              <span v-if="todayPlanCompletedActivity?.duration_min">{{ Math.round(todayPlanCompletedActivity.duration_min) }} min</span>
+              <span v-if="todayPlanCompletedActivity?.avg_pace">{{ todayPlanCompletedActivity.avg_pace }}</span>
+              <span v-else-if="todayPlanCompletedActivity?.avg_watts">{{ Math.round(todayPlanCompletedActivity.avg_watts) }} W</span>
+              <span v-if="todayPlanCompletedActivity?.workout_intent_label">{{ todayPlanCompletedActivity.workout_intent_label }}</span>
+            </div>
+            <div class="recommendation-feedback">
+              {{ todayPostWorkoutGuidance }}
+            </div>
+          </div>
+          <div v-else-if="dailyRecommendation" class="recommendation-card" :class="`recommendation-${dailyRecommendation.status}`">
             <div class="recommendation-top">
               <span class="recommendation-label">Daily guidance</span>
               <span class="recommendation-status">{{ recommendationLabel(dailyRecommendation.status) }}</span>
@@ -271,23 +294,67 @@
           </section>
         </div>
 
-        <div v-if="weeklyCoaching.proposed_adjustment?.days?.length" class="weekly-coach-adjustment">
+        <div v-if="showCoachingAdjustmentPreview" class="weekly-coach-adjustment">
           <div class="weekly-coach-label">Preview Adjustment</div>
           <div class="weekly-coach-adjustment-copy">
             {{ weeklyCoaching.proposed_adjustment.days.length }} day{{ weeklyCoaching.proposed_adjustment.days.length === 1 ? '' : 's' }}
             would change from {{ formatDate(weeklyCoaching.proposed_adjustment.effective_from) }}.
+          </div>
+          <div v-if="coachingAdjustmentReasons.length" class="weekly-coach-adjustment-reasons">
+            <span v-for="reason in coachingAdjustmentReasons" :key="reason">{{ reason }}</span>
           </div>
           <div class="weekly-coach-adjustment-list">
             <span v-for="day in weeklyCoaching.proposed_adjustment.days" :key="`adjust-${day.date}`">
               {{ formatDate(day.date) }}: {{ day.title }}
             </span>
           </div>
-          <button type="button" class="weekly-coach-action" @click="reviewCoachingAdjustment">
-            Review in Plan
-          </button>
+          <div class="weekly-coach-adjustment-actions">
+            <button type="button" class="weekly-coach-dismiss" @click="dismissCoachingAdjustmentPreview">
+              Dismiss
+            </button>
+            <button type="button" class="weekly-coach-action" @click="reviewCoachingAdjustment">
+              Review in Plan
+            </button>
+          </div>
         </div>
       </div>
     </div>
+
+    <section v-if="coachingHistory.length" class="support-section">
+      <div class="support-section-head">
+        <div>
+          <div class="section-label">Recent History</div>
+          <div class="support-section-title">Coaching timeline</div>
+        </div>
+        <div class="support-section-copy">Recent weekly calls, saved as compact checkpoints instead of one-off snapshots.</div>
+      </div>
+
+      <div class="coaching-history-list">
+        <article
+          v-for="entry in coachingHistory"
+          :key="entry.week_start"
+          class="card coaching-history-card"
+          :class="`history-${entry.summary_status}`"
+        >
+          <div class="coaching-history-top">
+            <div>
+              <div class="card-title">Week of {{ formatDate(entry.week_start) }}</div>
+              <div class="coaching-history-headline">{{ entry.headline }}</div>
+            </div>
+            <div class="coaching-history-status" :class="`status-${entry.recommendation_status}`">
+              {{ coachingStatusLabel(entry.recommendation_status) }}
+            </div>
+          </div>
+          <div v-if="entry.rationale_summary" class="coaching-history-copy">{{ entry.rationale_summary }}</div>
+          <div class="coaching-history-meta">
+            <span>{{ formatDateTime(entry.generated_at) }}</span>
+            <span v-if="entry.revision_count">Plan revisions: {{ entry.revision_count }}</span>
+            <span v-if="entry.proposed_changed_dates?.length">Proposed: {{ formatDateList(entry.proposed_changed_dates) }}</span>
+          </div>
+          <div v-if="entry.focus_for_next_48h" class="coaching-history-focus">{{ entry.focus_for_next_48h }}</div>
+        </article>
+      </div>
+    </section>
 
     <section class="support-section">
       <div class="support-section-head">
@@ -661,7 +728,7 @@
           <div class="distance-chart-head">
             <div>
               <div class="card-title">Activity Rhythm</div>
-              <div class="distance-chart-sub">Year-to-date training density. Brighter cells mean more training load.</div>
+              <div class="distance-chart-sub">Full-year training density. Future days stay muted; brighter cells mean more training load.</div>
             </div>
             <div class="distance-total activity-rhythm-total">{{ activityHeatmap.total_active_days }} active days</div>
           </div>
@@ -688,7 +755,7 @@
                     :key="cell.date"
                     type="button"
                     class="heatmap-cell"
-                    :class="[`level-${cell.level}`, { 'cell-outside': !cell.in_year }]"
+                    :class="[`level-${cell.level}`, { 'cell-outside': !cell.in_year, 'cell-future': cell.is_future }]"
                     :title="heatmapTitle(cell)"
                   ></button>
                 </div>
@@ -802,15 +869,24 @@ const api = useApi()
 const router = useRouter()
 const dashboard = ref(null)
 const weeklyCoaching = ref(null)
+const coachingHistory = ref([])
 const loading = ref(true)
 const activeTooltip = ref(null)
 const activeDistanceTooltip = ref(null)
+const dismissedCoachingAdjustmentKey = ref(null)
+
+const coachingAdjustmentPreviewStorageKey = 'dismissed-coaching-adjustment-preview'
+
+try {
+  dismissedCoachingAdjustmentKey.value = window.sessionStorage.getItem(coachingAdjustmentPreviewStorageKey)
+} catch {}
 
 onMounted(async () => {
   try {
-    const [dashboardResult, coachingResult] = await Promise.allSettled([
+    const [dashboardResult, coachingResult, coachingHistoryResult] = await Promise.allSettled([
       api.getDashboard(),
       api.getWeeklyCoaching(),
+      api.getCoachingHistory({ limit: 6 }),
     ])
 
     if (dashboardResult.status === 'fulfilled') {
@@ -818,6 +894,9 @@ onMounted(async () => {
     }
     if (coachingResult.status === 'fulfilled') {
       weeklyCoaching.value = coachingResult.value.data
+    }
+    if (coachingHistoryResult.status === 'fulfilled') {
+      coachingHistory.value = coachingHistoryResult.value.data
     }
   } finally {
     loading.value = false
@@ -839,13 +918,66 @@ const topWeeklyGoals = computed(() => topGoals.value.filter((goal) => goal.perio
 const topYearlyGoals = computed(() => topGoals.value.filter((goal) => goal.period_type === 'year').slice(0, 2))
 const topOtherGoals = computed(() => topGoals.value.filter((goal) => !['week', 'year'].includes(goal.period_type)).slice(0, 2))
 const hasTopGoals = computed(() => topWeeklyGoals.value.length || topYearlyGoals.value.length || topOtherGoals.value.length)
+const completedPlanStatuses = new Set(['linked', 'matched', 'partially_matched', 'moved', 'replaced', 'rest_day_changed'])
 const todayPlan = computed(() => {
   if (!weeklyPlan.value?.days?.length) return null
   const today = new Date().toISOString().slice(0, 10)
   return weeklyPlan.value.days.find((day) => day.date === today) || null
 })
+const todayPlanCompleted = computed(() => {
+  const status = todayPlan.value?.comparison?.status
+  return Boolean(status && completedPlanStatuses.has(status))
+})
+const todayPlanCompletedActivity = computed(() => todayPlan.value?.comparison?.completed_activities?.[0] || null)
+const todayPlanCompletionLabel = computed(() => {
+  const activity = todayPlanCompletedActivity.value
+  if (!activity) return 'Completed'
+  const parts = []
+  if (activity.duration_min) parts.push(`${Math.round(activity.duration_min)} min`)
+  if (activity.distance_km) parts.push(`${activity.distance_km} km`)
+  return parts.join(' · ') || 'Completed'
+})
+const todayPlanCompletionStatus = computed(() => {
+  const status = todayPlan.value?.comparison?.status
+  if (status === 'linked') return 'Linked to activity'
+  if (status === 'matched') return 'Matched'
+  if (status === 'partially_matched') return 'Completed with changes'
+  if (status === 'moved') return 'Completed on another day'
+  if (status === 'replaced') return 'Completed as different session'
+  if (status === 'rest_day_changed') return 'Activity on recovery day'
+  return 'Completed'
+})
+const todayPostWorkoutGuidance = computed(() => {
+  const recommendationStatus = dailyRecommendation.value?.status
+  const trainingSignals = dailyRecommendation.value?.signals?.training_load || {}
+  const form = Number(trainingSignals.form || 0)
+  const ratioStatus = trainingSignals.ratio_status
+  const recentStreakDays = Number(dailyRecommendation.value?.signals?.recent_streak_days || 0)
+
+  if (recommendationStatus === 'recover') {
+    return 'That is enough for today. If you do anything else, keep it to recovery-only movement.'
+  }
+  if (recommendationStatus === 'reduce') {
+    return 'Your main session is done. Avoid adding more load today unless it is very easy recovery work.'
+  }
+  if (recommendationStatus === 'push' && form >= 8 && ratioStatus !== 'high') {
+    return 'You likely still have room for a short second session, but keep it clearly easier than the main work.'
+  }
+  if (recentStreakDays >= 5) {
+    return 'You are stacking training days already, so the safer call is to stop here unless you only want light recovery.'
+  }
+  return 'Planned work is done. A short easy second session is optional, but no extra load is needed today.'
+})
+const todayPlanCompletedCopy = computed(() => {
+  const status = todayPlan.value?.comparison?.status
+  if (status === 'moved') return `The planned session was already fulfilled earlier this week. ${todayPostWorkoutGuidance.value}`
+  if (status === 'partially_matched') return `The session is already done, but execution differed enough that it may be worth a quick review. ${todayPostWorkoutGuidance.value}`
+  if (status === 'replaced') return `A different session was logged today instead of the original plan. ${todayPostWorkoutGuidance.value}`
+  return todayPostWorkoutGuidance.value
+})
 const todayContextPrimary = computed(() => {
   if (!todayPlan.value) return 'No workout scheduled'
+  if (todayPlanCompleted.value) return todayPlanCompletionLabel.value
   const parts = []
   if (todayPlan.value.target_duration_min) parts.push(`${todayPlan.value.target_duration_min} min`)
   if (todayPlan.value.target_distance_km) parts.push(`${todayPlan.value.target_distance_km} km`)
@@ -1089,6 +1221,7 @@ const heatmapMonthLabel = (weekIndex) => heatmapMonthLabels.value.get(weekIndex)
 const heatmapTitle = (cell) => {
   const dayLabel = formatDate(cell.date)
   if (!cell.in_year) return `${dayLabel} · outside current year`
+  if (cell.is_future) return `${dayLabel} · future day`
   if (!cell.sessions) return `${dayLabel} · no activity`
   return `${dayLabel} · ${cell.sessions} session${cell.sessions === 1 ? '' : 's'} · ${formatMinutesAsHours(cell.total_duration_min)} · ${cell.total_distance_km} km`
 }
@@ -1196,6 +1329,15 @@ const formatDate = (d) => {
   try { return format(new Date(d), 'MMM d') } catch { return d }
 }
 
+const formatDateTime = (d) => {
+  try { return format(new Date(d), 'MMM d, yyyy HH:mm') } catch { return d }
+}
+
+const formatDateList = (dates) => {
+  if (!Array.isArray(dates) || !dates.length) return ''
+  return dates.map((date) => formatDate(date)).join(', ')
+}
+
 const formatMinutesAsHours = (minutes) => {
   if (!minutes) return '0h 00m'
   const rounded = Math.round(minutes)
@@ -1239,6 +1381,16 @@ const recommendationHeaderCopy = (status) => {
   if (status === 'adjust') return 'The current plan likely needs a change.'
   return 'No strong reason to change the planned session.'
 }
+
+const dashboardHeaderCallLabel = computed(() => {
+  if (todayPlanCompleted.value) return 'Completed today'
+  return dailyRecommendation.value ? recommendationHeaderLabel(dailyRecommendation.value.status) : 'No call'
+})
+
+const dashboardHeaderCallCopy = computed(() => {
+  if (todayPlanCompleted.value) return todayPostWorkoutGuidance.value
+  return dailyRecommendation.value ? recommendationHeaderCopy(dailyRecommendation.value.status) : 'No current coaching recommendation.'
+})
 
 const coachingStatusLabel = (status) => {
   if (status === 'push') return 'Push window'
@@ -1288,12 +1440,14 @@ const coachingRecoveryCopy = (recovery) => {
 
 const coachingGoalsValue = (goals) => {
   if (!goals?.active_goal_count) return 'No goals'
+  if (goals.status === 'deferred') return 'Recovery first'
   if (goals.most_urgent?.length) return goals.most_urgent[0].title
   return `${goals.active_goal_count} active`
 }
 
 const coachingGoalsCopy = (goals) => {
   if (!goals?.active_goal_count) return 'No active goals are shaping the week.'
+  if (goals.status === 'deferred') return 'Recovery is taking priority over run-volume pressure right now.'
   if (goals.status === 'pressured') return 'At least one active goal is under pressure.'
   if (goals.status === 'watch') return 'Goal pressure is building and worth watching.'
   return `${goals.plan_supported_goals || 0} active goals are supported by this week’s sessions.`
@@ -1309,6 +1463,42 @@ const coachingHighlights = (weeklyCoachingPayload) => {
     items.push({ kind: 'risk', text })
   }
   return items.slice(0, 6)
+}
+
+const coachingAdjustmentPreviewKey = computed(() => {
+  const adjustment = weeklyCoaching.value?.proposed_adjustment
+  const generatedAt = weeklyCoaching.value?.generated_at
+  if (!adjustment?.week_start || !generatedAt) return null
+  return `${adjustment.week_start}:${generatedAt}:${(adjustment.changed_dates || []).join(',')}`
+})
+
+const showCoachingAdjustmentPreview = computed(() => {
+  const adjustment = weeklyCoaching.value?.proposed_adjustment
+  if (!adjustment?.days?.length) return false
+  return coachingAdjustmentPreviewKey.value !== dismissedCoachingAdjustmentKey.value
+})
+
+const coachingAdjustmentReasons = computed(() => {
+  if (!weeklyCoaching.value) return []
+  const reasons = []
+  for (const text of weeklyCoaching.value.recovery_assessment?.caution_flags || []) {
+    reasons.push(text)
+  }
+  for (const text of weeklyCoaching.value.recommendation?.risks || []) {
+    if (!reasons.includes(text)) reasons.push(text)
+  }
+  for (const text of weeklyCoaching.value.recommendation?.rationale || []) {
+    if (!reasons.includes(text)) reasons.push(text)
+  }
+  return reasons.slice(0, 3)
+})
+
+const dismissCoachingAdjustmentPreview = () => {
+  if (!coachingAdjustmentPreviewKey.value) return
+  dismissedCoachingAdjustmentKey.value = coachingAdjustmentPreviewKey.value
+  try {
+    window.sessionStorage.setItem(coachingAdjustmentPreviewStorageKey, coachingAdjustmentPreviewKey.value)
+  } catch {}
 }
 
 const reviewCoachingAdjustment = async () => {
@@ -1609,6 +1799,72 @@ const zoneBadgeClass = (activity) => {
   gap: 18px;
   margin-bottom: 26px;
 }
+.coaching-history-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+.coaching-history-card {
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(19, 26, 39, 0.94), rgba(14, 20, 31, 0.9));
+  border-color: rgba(114, 132, 162, 0.16);
+}
+.coaching-history-card.history-opportunity {
+  border-color: rgba(52, 211, 153, 0.22);
+}
+.coaching-history-card.history-caution {
+  border-color: rgba(245, 158, 11, 0.22);
+}
+.coaching-history-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.coaching-history-headline {
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.coaching-history-status {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.coaching-history-status.status-push { background: rgba(34, 197, 94, 0.14); color: #86efac; }
+.coaching-history-status.status-keep { background: rgba(59, 130, 246, 0.14); color: #93c5fd; }
+.coaching-history-status.status-reduce,
+.coaching-history-status.status-adjust { background: rgba(245, 158, 11, 0.14); color: #fcd34d; }
+.coaching-history-status.status-recover { background: rgba(239, 68, 68, 0.14); color: #fda4af; }
+.coaching-history-copy {
+  margin-top: 12px;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.coaching-history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.coaching-history-meta span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.coaching-history-focus {
+  margin-top: 12px;
+  color: #d8e4ff;
+  font-size: 12px;
+  line-height: 1.5;
+}
 .support-section-late {
   margin-top: 6px;
 }
@@ -1721,6 +1977,9 @@ const zoneBadgeClass = (activity) => {
 }
 .heatmap-cell.level-4 {
   background: #6ee7b7;
+}
+.heatmap-cell.cell-future {
+  background: rgba(148, 163, 184, 0.18);
 }
 .heatmap-cell.cell-outside {
   opacity: 0.28;
@@ -2009,13 +2268,33 @@ const zoneBadgeClass = (activity) => {
   font-size: 13px;
   margin-bottom: 10px;
 }
+.weekly-coach-adjustment-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.weekly-coach-adjustment-reasons span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #fcd34d;
+  font-size: 12px;
+  line-height: 1.4;
+}
 .weekly-coach-adjustment-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-.weekly-coach-action {
+.weekly-coach-adjustment-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
   margin-top: 12px;
+}
+.weekly-coach-action {
   padding: 10px 14px;
   border: 0;
   border-radius: 12px;
@@ -2024,7 +2303,19 @@ const zoneBadgeClass = (activity) => {
   color: white;
   cursor: pointer;
 }
+.weekly-coach-dismiss {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(51, 65, 85, 0.54);
+  color: #e2e8f0;
+  font-weight: 700;
+  cursor: pointer;
+}
 .weekly-coach-action:hover {
+  filter: brightness(1.05);
+}
+.weekly-coach-dismiss:hover {
   filter: brightness(1.05);
 }
 .badge-zone-1 { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; }

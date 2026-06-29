@@ -579,14 +579,87 @@ class AppSmokeTests(unittest.TestCase):
         self.assertIn("planning_guidance", target_goal)
         self.assertIn(target_goal["planning_guidance"]["status"], {"completed", "comfortable", "steady", "pressured", "urgent"})
         self.assertIsInstance(target_goal["planning_guidance"]["required_per_day"], float)
+        self.assertIsInstance(target_goal["planning_guidance"]["required_per_week"], float)
         self.assertTrue(target_goal["planning_guidance"]["summary"])
+        self.assertIn("forecast", target_goal)
+        self.assertIn(target_goal["forecast"]["projected_status"], {"completed", "ahead", "on_track", "behind", "at_risk"})
+        self.assertIn("risk_summary", target_goal)
+        self.assertIn(target_goal["risk_summary"]["status"], {"completed", "on_track", "watch", "under_pressure", "at_risk"})
 
         recent_context = self.client.get("/context/recent")
         self.assertEqual(recent_context.status_code, 200)
         self.assertIn("active_goals", recent_context.json())
         self.assertIn("goal_planning_summary", recent_context.json())
+        self.assertIn("goal_risk_summary", recent_context.json())
         self.assertGreaterEqual(recent_context.json()["goal_planning_summary"]["count"], 1)
         self.assertTrue(recent_context.json()["goal_planning_summary"]["most_urgent"])
+
+    def test_behind_goal_changes_visible_planning_guidance(self):
+        today = datetime.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        second_day = week_start + timedelta(days=2)
+
+        goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Ride 5000 km this year",
+                "period_type": "year",
+                "metric_type": "ride_km",
+                "target_value": 5000,
+            },
+        )
+        self.assertEqual(goal.status_code, 201)
+
+        plan = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": week_start.isoformat(),
+                "title": "Pressure week",
+                "days": [
+                    {
+                        "date": today.isoformat(),
+                        "label": today.strftime("%a"),
+                        "session_type": "Ride",
+                        "title": "Endurance ride",
+                        "target_duration_min": 90,
+                    },
+                    {
+                        "date": second_day.isoformat(),
+                        "label": second_day.strftime("%a"),
+                        "session_type": "WeightTraining",
+                        "title": "Gym",
+                        "target_duration_min": 40,
+                    },
+                ],
+            },
+        )
+        self.assertEqual(plan.status_code, 201)
+
+        goals = self.client.get("/goals?limit=24")
+        self.assertEqual(goals.status_code, 200)
+        target_goal = next(item for item in goals.json() if item["title"] == "Ride 5000 km this year")
+        self.assertIn(target_goal["forecast"]["projected_status"], {"behind", "at_risk"})
+        self.assertIn(target_goal["risk_summary"]["status"], {"under_pressure", "at_risk"})
+
+        plans = self.client.get("/plans/weekly?limit=8")
+        self.assertEqual(plans.status_code, 200)
+        target_plan = next(item for item in plans.json() if item["week_start"] == week_start.isoformat())
+        ride_day = next(day for day in target_plan["days"] if day["session_type"] == "Ride")
+        self.assertTrue(ride_day["goal_links"])
+        self.assertEqual(ride_day["goal_links"][0]["goal_title"], "Ride 5000 km this year")
+        self.assertIn(ride_day["goal_links"][0]["risk_status"], {"under_pressure", "at_risk"})
+
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertIn(dashboard.json()["goal_risk_summary"]["status"], {"under_pressure", "at_risk"})
+
+        coaching = self.client.get("/coaching/weekly")
+        self.assertEqual(coaching.status_code, 200)
+        self.assertIn(coaching.json()["goal_assessment"]["status"], {"watch", "pressured"})
+        self.assertTrue(any(
+            "Ride 5000 km this year" in item
+            for item in coaching.json()["goal_assessment"]["key_observations"]
+        ))
 
     def test_plan_comparison_status_semantics(self):
         today = datetime.now().date()
@@ -828,6 +901,246 @@ class AppSmokeTests(unittest.TestCase):
         self.assertIn("recommendation", structured)
         self.assertIn("summary", structured)
         self.assertIn(structured["recommendation"]["status"], {"reduce", "recover", "adjust"})
+
+    def test_weekly_coaching_exposes_recent_pattern_summary(self):
+        today = datetime.now().date()
+        current_week_start = today - timedelta(days=today.weekday())
+        historical_weeks = [
+            current_week_start - timedelta(days=14),
+            current_week_start - timedelta(days=7),
+        ]
+
+        for index, week_start in enumerate(historical_weeks):
+            monday = week_start
+            tuesday = week_start + timedelta(days=1)
+            plan = self.client.post(
+                "/plans/weekly",
+                json={
+                    "week_start": week_start.isoformat(),
+                    "title": f"Pattern week {index + 1}",
+                    "days": [
+                        {
+                            "date": monday.isoformat(),
+                            "label": monday.strftime("%a"),
+                            "session_type": "Run",
+                            "workout_intent": "tempo",
+                            "title": "Tempo run",
+                            "target_duration_min": 45,
+                        },
+                        {
+                            "date": tuesday.isoformat(),
+                            "label": tuesday.strftime("%a"),
+                            "session_type": "Run",
+                            "workout_intent": "easy",
+                            "title": "Easy run",
+                            "target_duration_min": 35,
+                        },
+                    ],
+                },
+            )
+            self.assertEqual(plan.status_code, 201)
+
+            matched = self.client.post(
+                "/activities",
+                json={
+                    "id": f"pattern-match-{index}",
+                    "date": monday.isoformat(),
+                    "type": "Run",
+                    "workout_intent": "tempo",
+                    "name": "Tempo run done",
+                    "duration_min": 44.0,
+                },
+            )
+            self.assertEqual(matched.status_code, 201)
+
+        tomorrow = today + timedelta(days=1)
+        later_this_week = today + timedelta(days=2)
+        current_plan = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": current_week_start.isoformat(),
+                "title": "Current pattern-sensitive week",
+                "days": [
+                    {
+                        "date": tomorrow.isoformat(),
+                        "label": tomorrow.strftime("%a"),
+                        "session_type": "Run",
+                        "workout_intent": "tempo",
+                        "title": "Tempo run",
+                        "target_duration_min": 50,
+                    },
+                    {
+                        "date": later_this_week.isoformat(),
+                        "label": later_this_week.strftime("%a"),
+                        "session_type": "Run",
+                        "workout_intent": "easy",
+                        "title": "Easy run",
+                        "target_duration_min": 40,
+                    },
+                ],
+            },
+        )
+        self.assertEqual(current_plan.status_code, 201)
+
+        neutral_activity = self.client.post(
+            "/activities",
+            json={
+                "id": "pattern-neutral-checkin",
+                "date": today.isoformat(),
+                "type": "Run",
+                "workout_intent": "easy",
+                "name": "Easy reset run",
+                "duration_min": 30.0,
+            },
+        )
+        self.assertEqual(neutral_activity.status_code, 201)
+
+        neutral_feedback = self.client.post(
+            "/activities/pattern-neutral-checkin/feedback",
+            json={
+                "rpe": 4,
+                "energy": 4,
+                "muscle_soreness": 2,
+                "pain_level": 0,
+                "note": "Felt normal again.",
+            },
+        )
+        self.assertEqual(neutral_feedback.status_code, 201)
+
+        coaching = self.client.get("/coaching/weekly")
+        self.assertEqual(coaching.status_code, 200)
+        body = coaching.json()
+        self.assertIn(body["recommendation"]["status"], {"adjust", "reduce", "recover"})
+        self.assertEqual(body["reasoning_signals"]["recent_pattern_summary"]["status"], "concerning")
+        self.assertTrue(any(
+            "Skipped sessions appeared" in item
+            for item in body["reasoning_signals"]["recent_pattern_summary"]["key_observations"]
+        ))
+
+    def test_weekly_recommendation_push_is_suppressed_when_recent_patterns_are_not_stable(self):
+        from backend.app.services.coaching import build_weekly_recommendation
+
+        context = {"daily_recommendation": {"status": "push"}}
+        execution = {
+            "status": "on_track",
+            "planned_sessions": 4,
+            "fulfilled_sessions": 3,
+            "modified_sessions": 0,
+            "missed_sessions": 0,
+            "intent_alignment": {"different": 0},
+            "key_observations": ["Execution is lining up with the plan."],
+        }
+        recovery = {
+            "status": "steady",
+            "caution_score": 0,
+            "key_reasons": ["Recovery signals are calm."],
+            "caution_flags": [],
+        }
+        goals = {
+            "status": "steady",
+            "most_urgent": [],
+            "key_observations": ["Goals are supported by the current week."],
+        }
+        next_sessions = [
+            {
+                "date": "2026-07-01",
+                "title": "Quality ride",
+                "suggestion": "keep",
+            }
+        ]
+
+        stable_patterns = {
+            "status": "stable",
+            "current_week_revision_count": 0,
+            "key_observations": ["Recent pattern signals are fairly stable."],
+            "execution_trend": {
+                "recurring_patterns": {
+                    "weeks_with_skipped": 0,
+                    "weeks_with_modified": 0,
+                },
+                "streaks": {"consecutive_weeks_with_skipped": 0},
+            },
+            "recent_feedback_patterns": {
+                "high_rpe_count": 0,
+                "low_energy_count": 0,
+                "elevated_pain_count": 0,
+            },
+        }
+        watch_patterns = {
+            **stable_patterns,
+            "status": "watch",
+            "key_observations": ["Intent mismatches are repeating rather than looking like a one-off."],
+            "recent_feedback_patterns": {
+                "high_rpe_count": 2,
+                "low_energy_count": 0,
+                "elevated_pain_count": 0,
+            },
+        }
+
+        stable = build_weekly_recommendation(context, execution, recovery, goals, next_sessions, stable_patterns)
+        watch = build_weekly_recommendation(context, execution, recovery, goals, next_sessions, watch_patterns)
+
+        self.assertEqual(stable["status"], "push")
+        self.assertEqual(watch["status"], "keep")
+        self.assertIn("Recent feedback includes repeated high-RPE sessions.", watch["rationale"])
+
+    def test_weekly_recommendation_adjusts_for_recurring_skips_and_revision_churn(self):
+        from backend.app.services.coaching import build_weekly_recommendation
+
+        context = {"daily_recommendation": {"status": "keep"}}
+        execution = {
+            "status": "mixed",
+            "planned_sessions": 4,
+            "fulfilled_sessions": 2,
+            "modified_sessions": 1,
+            "missed_sessions": 0,
+            "intent_alignment": {"different": 1},
+            "key_observations": ["Execution has started to drift."],
+        }
+        recovery = {
+            "status": "steady",
+            "caution_score": 0,
+            "key_reasons": ["Recovery signals are calm."],
+            "caution_flags": [],
+        }
+        goals = {
+            "status": "steady",
+            "most_urgent": [],
+            "key_observations": ["Goals are present but not driving the decision."],
+        }
+        next_sessions = [
+            {
+                "date": "2026-07-02",
+                "title": "Threshold run",
+                "suggestion": "review",
+            }
+        ]
+        recent_patterns = {
+            "status": "concerning",
+            "current_week_revision_count": 3,
+            "key_observations": [
+                "Skipped sessions appeared in 2 recent planned weeks.",
+                "This week has already been revised 3 times.",
+            ],
+            "execution_trend": {
+                "recurring_patterns": {
+                    "weeks_with_skipped": 2,
+                    "weeks_with_modified": 1,
+                },
+                "streaks": {"consecutive_weeks_with_skipped": 2},
+            },
+            "recent_feedback_patterns": {
+                "high_rpe_count": 0,
+                "low_energy_count": 0,
+                "elevated_pain_count": 0,
+            },
+        }
+
+        recommendation = build_weekly_recommendation(context, execution, recovery, goals, next_sessions, recent_patterns)
+
+        self.assertEqual(recommendation["status"], "adjust")
+        self.assertIn("Skipped sessions have recurred in 2 recent weeks.", recommendation["risks"])
+        self.assertIn("This week has already been revised 3 times.", recommendation["rationale"])
 
     def test_adjustment_preview_and_planning_status_routes(self):
         today = datetime.now().date()

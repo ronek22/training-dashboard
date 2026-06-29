@@ -75,6 +75,9 @@
             <article class="today-context-pill">
               <span class="today-context-label">Pressure</span>
               <strong>{{ todayGoalPressure }}</strong>
+              <div v-if="goalRiskSummary?.most_pressured?.[0]?.risk_summary?.summary" class="today-context-copy">
+                {{ goalRiskSummary.most_pressured[0].risk_summary.summary }}
+              </div>
             </article>
           </div>
 
@@ -118,6 +121,9 @@
             <div class="card-title">Goals</div>
             <div class="goals-sub">The targets shaping decisions this week.</div>
           </div>
+          <div v-if="goalRiskSummary" class="goal-risk-banner" :class="`risk-${goalRiskSummary.status}`">
+            {{ goalRiskSummary.label }}
+          </div>
         </div>
         <div class="goal-groups">
           <section v-if="topWeeklyGoals.length" class="goal-group">
@@ -129,6 +135,7 @@
                   <span class="goal-mini-status" :class="`status-${goal.status}`">{{ goalStatusLabel(goal.status) }}</span>
                 </div>
                 <div class="goal-mini-progress">{{ goal.current_value }} / {{ goal.target_value }} {{ goal.unit }}</div>
+                <div v-if="goal.risk_summary?.summary" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
                 <div class="goal-mini-track-wrap">
                   <div class="goal-mini-track">
                     <div class="goal-mini-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
@@ -149,6 +156,7 @@
                   <span class="goal-mini-status" :class="`status-${goal.status}`">{{ goalStatusLabel(goal.status) }}</span>
                 </div>
                 <div class="goal-mini-progress">{{ goal.current_value }} / {{ goal.target_value }} {{ goal.unit }}</div>
+                <div v-if="goal.risk_summary?.summary" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
                 <div class="goal-mini-track-wrap">
                   <div class="goal-mini-track">
                     <div class="goal-mini-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
@@ -169,6 +177,7 @@
                   <span class="goal-mini-status" :class="`status-${goal.status}`">{{ goalStatusLabel(goal.status) }}</span>
                 </div>
                 <div class="goal-mini-progress">{{ goal.current_value }} / {{ goal.target_value }} {{ goal.unit }}</div>
+                <div v-if="goal.risk_summary?.summary" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
                 <div class="goal-mini-track-wrap">
                   <div class="goal-mini-track">
                     <div class="goal-mini-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
@@ -314,6 +323,24 @@
               </div>
             </div>
             <div v-else class="weekly-coach-empty">No strong warning signals are standing out right now.</div>
+          </section>
+
+          <section class="weekly-coach-panel" v-if="coachingPatternSummary(weeklyCoaching)">
+            <div class="weekly-coach-label">Recent Patterns</div>
+            <div class="weekly-coach-reason-list">
+              <div class="weekly-coach-reason" :class="`reason-${coachingPatternSummary(weeklyCoaching).status === 'concerning' ? 'risk' : 'rationale'}`">
+                <span class="weekly-coach-reason-dot"></span>
+                <span>{{ coachingPatternSummaryLabel(coachingPatternSummary(weeklyCoaching).status) }}</span>
+              </div>
+              <div
+                v-for="item in coachingPatternSummary(weeklyCoaching).key_observations || []"
+                :key="`pattern-${item}`"
+                class="weekly-coach-reason reason-rationale"
+              >
+                <span class="weekly-coach-reason-dot"></span>
+                <span>{{ item }}</span>
+              </div>
+            </div>
           </section>
 
           <section class="weekly-coach-panel" v-if="weeklyCoaching.recommended_next_sessions?.length">
@@ -970,6 +997,7 @@ const weeklyPlan = computed(() => dashboard.value?.weekly_plan || null)
 const executionTrend = computed(() => dashboard.value?.execution_trend || null)
 const dailyRecommendation = computed(() => dashboard.value?.daily_recommendation || null)
 const latestSubjectiveState = computed(() => dashboard.value?.latest_subjective_state || null)
+const goalRiskSummary = computed(() => dashboard.value?.goal_risk_summary || null)
 const topGoals = computed(() => dashboard.value?.active_goals || [])
 const topWeeklyGoals = computed(() => topGoals.value.filter((goal) => goal.period_type === 'week').slice(0, 2))
 const topYearlyGoals = computed(() => topGoals.value.filter((goal) => goal.period_type === 'year').slice(0, 2))
@@ -1071,6 +1099,7 @@ const checkInMetrics = computed(() => {
   ]
 })
 const todayGoalPressure = computed(() => {
+  if (goalRiskSummary.value?.label) return goalRiskSummary.value.label
   const goalsAssessment = weeklyCoaching.value?.goal_assessment
   if (!goalsAssessment?.active_goal_count) return 'No active goal pressure'
   if (goalsAssessment.status === 'pressured') return 'Goals under pressure'
@@ -1543,6 +1572,16 @@ const coachingHighlights = (weeklyCoachingPayload) => {
   return items.slice(0, 6)
 }
 
+const coachingPatternSummary = (weeklyCoachingPayload) => (
+  weeklyCoachingPayload?.reasoning_signals?.recent_pattern_summary || null
+)
+
+const coachingPatternSummaryLabel = (status) => {
+  if (status === 'concerning') return 'Recurring drift is shaping this call.'
+  if (status === 'watch') return 'Recent patterns are worth watching.'
+  return 'Recent patterns look stable.'
+}
+
 const coachingAdjustmentPreviewKey = computed(() => {
   const adjustment = weeklyCoaching.value?.proposed_adjustment
   const generatedAt = weeklyCoaching.value?.generated_at
@@ -1736,6 +1775,12 @@ const zoneBadgeClass = (activity) => {
   font-size: 13px;
   line-height: 1.45;
   color: var(--text-soft);
+}
+.today-context-copy {
+  margin-top: 8px;
+  color: var(--muted-soft);
+  font-size: 11px;
+  line-height: 1.4;
 }
 .checkin-meters {
   display: grid;
@@ -2400,8 +2445,29 @@ const zoneBadgeClass = (activity) => {
 .badge-zone-3 { background: rgba(245, 158, 11, 0.14); color: #f59e0b; }
 .badge-zone-4 { background: rgba(239, 68, 68, 0.14); color: #f87171; }
 .badge-zone-5 { background: rgba(217, 70, 239, 0.14); color: #e879f9; }
-.goals-head { margin-bottom: 14px; }
+.goals-head {
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
 .goals-sub { color: var(--muted); font-size: 13px; }
+.goal-risk-banner {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,0.08);
+  white-space: nowrap;
+}
+.goal-risk-banner.risk-on_track { color: #93c5fd; border-color: rgba(59,130,246,0.22); }
+.goal-risk-banner.risk-watch { color: #bfdbfe; border-color: rgba(96,165,250,0.22); }
+.goal-risk-banner.risk-under_pressure { color: #fcd34d; border-color: rgba(245,158,11,0.24); }
+.goal-risk-banner.risk-at_risk { color: #fda4af; border-color: rgba(239,68,68,0.24); }
+.goal-risk-banner.risk-completed { color: #6ee7b7; border-color: rgba(16,185,129,0.24); }
 .goal-groups {
   display: grid;
   gap: 14px;
@@ -2456,6 +2522,12 @@ const zoneBadgeClass = (activity) => {
 .status-on_pace { background: rgba(59,130,246,0.16); color: #60a5fa; }
 .status-behind_pace { background: rgba(239,68,68,0.16); color: #f87171; }
 .goal-mini-progress { font-size: 13px; margin-bottom: 8px; }
+.goal-mini-risk {
+  margin-bottom: 8px;
+  color: var(--muted-soft);
+  font-size: 11px;
+  line-height: 1.4;
+}
 .goal-mini-track-wrap {
   position: relative;
   margin-bottom: 8px;

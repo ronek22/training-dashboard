@@ -4,8 +4,8 @@
 
 Current status:
 
-- planned
-- follows planned Sprint 11 multi-week execution analysis work
+- complete
+- follows completed Sprint 11 multi-week execution analysis work
 
 Starting point:
 

@@ -370,6 +370,7 @@ def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_sta
     active_goals = [serialize_goal(row, conn) for row in goal_rows]
     relevant_goals = [goal for goal in active_goals if goal_applies_to_plan(goal, week_start, week_end)]
 
+    priority_order = {"at_risk": 0, "under_pressure": 1, "watch": 2, "on_track": 3, "completed": 4}
     enriched_goals = []
     for goal in relevant_goals:
         supported_days = []
@@ -381,12 +382,20 @@ def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_sta
                     "label": day.get("label"),
                     "title": day.get("title"),
                     "support_reason": support_reason,
+                    "priority": goal.get("risk_summary", {}).get("status", "on_track"),
                 })
         enriched_goals.append({
             **goal,
             "supported_sessions": len(supported_days),
             "supported_days": supported_days,
         })
+    enriched_goals.sort(
+        key=lambda goal: (
+            priority_order.get(goal.get("risk_summary", {}).get("status", "on_track"), 99),
+            goal.get("days_remaining", 9999),
+            goal.get("title", ""),
+        )
+    )
 
     return {
         "active_goals": enriched_goals,
@@ -635,6 +644,8 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
                     "period_label": goal["period_label"],
                     "support_reason": goal_supports_session(goal, day),
                     "status": goal["status"],
+                    "risk_status": goal.get("risk_summary", {}).get("status"),
+                    "risk_label": goal.get("risk_summary", {}).get("label"),
                 }
                 for goal in goals_by_id.values()
                 if goal_supports_session(goal, day)

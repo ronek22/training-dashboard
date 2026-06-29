@@ -7,6 +7,7 @@ from .dashboard import build_recent_context
 from .plans import (
     COACHING_ADAPTATION_REASON,
     build_adjustment_diff_payload,
+    build_multi_week_execution_trend,
     format_workout_intent_label,
     normalize_plan_session_type,
 )
@@ -40,10 +41,11 @@ def _should_deprioritize_run_goals(context: dict) -> bool:
     pain_level = int(feedback.get("pain_level") or 0)
     energy = int(feedback.get("energy") or 0)
     return daily_status in {"reduce", "recover"} or pain_level >= 2 or energy <= 2
-    try:
-        return datetime.strptime(value, "%Y-%m-%d").date()
-    except ValueError:
-        return None
+
+
+def _append_unique(items: list[str], value: Optional[str]) -> None:
+    if value and value not in items:
+        items.append(value)
 
 
 def _is_hard_session(day: dict) -> bool:
@@ -300,18 +302,20 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
         goal for goal in context.get("goal_planning_summary", {}).get("most_urgent", [])[:3]
         if not (deprioritize_run_goals and _goal_is_run_volume(goal))
     ]
-    urgency_counts = {
-        "urgent": sum(1 for goal in relevant_active_goals if goal.get("planning_guidance", {}).get("status") == "urgent"),
-        "pressured": sum(1 for goal in relevant_active_goals if goal.get("planning_guidance", {}).get("status") == "pressured"),
-        "steady": sum(1 for goal in relevant_active_goals if goal.get("planning_guidance", {}).get("status") == "steady"),
-        "comfortable": sum(1 for goal in relevant_active_goals if goal.get("planning_guidance", {}).get("status") == "comfortable"),
-        "completed": sum(1 for goal in relevant_active_goals if goal.get("planning_guidance", {}).get("status") == "completed"),
+    risk_counts = {
+        "at_risk": sum(1 for goal in relevant_active_goals if goal.get("risk_summary", {}).get("status") == "at_risk"),
+        "under_pressure": sum(1 for goal in relevant_active_goals if goal.get("risk_summary", {}).get("status") == "under_pressure"),
+        "watch": sum(1 for goal in relevant_active_goals if goal.get("risk_summary", {}).get("status") == "watch"),
+        "on_track": sum(1 for goal in relevant_active_goals if goal.get("risk_summary", {}).get("status") == "on_track"),
+        "completed": sum(1 for goal in relevant_active_goals if goal.get("risk_summary", {}).get("status") == "completed"),
     }
     if not relevant_active_goals and deferred_goals:
         status = "deferred"
-    elif urgency_counts.get("urgent"):
+    elif risk_counts.get("at_risk"):
         status = "pressured"
-    elif urgency_counts.get("pressured"):
+    elif risk_counts.get("under_pressure"):
+        status = "pressured"
+    elif risk_counts.get("watch"):
         status = "watch"
     else:
         status = "steady"
@@ -322,6 +326,8 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
             observations.append(
                 f"{goal['title']} is supported by {goal['supported_sessions']} planned sessions this week."
             )
+        if goal.get("risk_summary", {}).get("status") in {"at_risk", "under_pressure"}:
+            observations.append(goal["risk_summary"]["summary"])
     if deferred_goals:
         observations.append("Run-volume goals are temporarily backgrounded while recovery is the priority.")
     if not observations:
@@ -334,6 +340,77 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
         "plan_supported_goals": sum(1 for goal in relevant_plan_goals if goal.get("supported_sessions")),
         "deferred_goal_count": len(deferred_goals),
         "key_observations": observations[:4],
+    }
+
+
+def summarize_recent_patterns(conn: sqlite3.Connection, context: dict, active_plan: Optional[dict]) -> dict:
+    execution_trend = build_multi_week_execution_trend(conn, weeks=6)
+    recurring = execution_trend.get("recurring_patterns", {})
+    streaks = execution_trend.get("streaks", {})
+    totals = execution_trend.get("totals", {})
+    recent_feedback = context.get("recent_feedback", [])
+    latest_revision = (active_plan or {}).get("latest_revision")
+    current_revision_count = int((active_plan or {}).get("revision_count") or 0)
+
+    repeated_high_rpe = sum(1 for item in recent_feedback if int(item.get("rpe") or 0) >= 8)
+    repeated_low_energy = sum(1 for item in recent_feedback if int(item.get("energy") or 0) <= 2)
+    repeated_pain_flags = sum(1 for item in recent_feedback if int(item.get("pain_level") or 0) >= 4)
+
+    observations: list[str] = []
+    if recurring.get("weeks_with_skipped", 0) >= 2:
+        _append_unique(observations, f"Skipped sessions appeared in {recurring['weeks_with_skipped']} recent planned weeks.")
+    if recurring.get("weeks_with_moved", 0) >= 2:
+        _append_unique(observations, f"Session movement repeated across {recurring['weeks_with_moved']} recent weeks.")
+    if recurring.get("weeks_with_modified", 0) >= 2:
+        _append_unique(observations, f"Execution changed materially in {recurring['weeks_with_modified']} recent weeks.")
+    if recurring.get("weeks_with_intent_mismatch", 0) >= 2 or totals.get("intent_alignment", {}).get("different", 0) >= 2:
+        _append_unique(observations, "Intent mismatches are repeating rather than looking like a one-off.")
+    if current_revision_count >= 3:
+        _append_unique(observations, f"This week has already been revised {current_revision_count} times.")
+    elif current_revision_count >= 1 and latest_revision:
+        _append_unique(observations, f"This week was already revised on {latest_revision['updated_at'][:10]}.")
+    if repeated_high_rpe >= 2:
+        _append_unique(observations, f"Recent feedback includes {repeated_high_rpe} high-RPE sessions.")
+    if repeated_low_energy >= 2:
+        _append_unique(observations, f"Recent feedback includes {repeated_low_energy} low-energy check-ins.")
+    if repeated_pain_flags >= 2:
+        _append_unique(observations, f"Recent feedback includes {repeated_pain_flags} elevated-pain check-ins.")
+    if not observations and execution_trend.get("observations"):
+        observations.extend(execution_trend["observations"][:2])
+    if not observations:
+        observations.append("Recent pattern signals are fairly stable.")
+
+    if (
+        recurring.get("weeks_with_skipped", 0) >= 2
+        or streaks.get("consecutive_weeks_with_skipped", 0) >= 2
+        or current_revision_count >= 3
+        or repeated_low_energy >= 2
+        or repeated_pain_flags >= 2
+    ):
+        status = "concerning"
+    elif (
+        execution_trend.get("status") == "mixed"
+        or recurring.get("weeks_with_modified", 0) >= 2
+        or recurring.get("weeks_with_moved", 0) >= 2
+        or totals.get("intent_alignment", {}).get("different", 0) >= 2
+        or current_revision_count >= 1
+        or repeated_high_rpe >= 2
+    ):
+        status = "watch"
+    else:
+        status = "stable"
+
+    return {
+        "status": status,
+        "execution_trend": execution_trend,
+        "current_week_revision_count": current_revision_count,
+        "latest_revision": latest_revision,
+        "recent_feedback_patterns": {
+            "high_rpe_count": repeated_high_rpe,
+            "low_energy_count": repeated_low_energy,
+            "elevated_pain_count": repeated_pain_flags,
+        },
+        "key_observations": observations[:5],
     }
 
 
@@ -463,73 +540,117 @@ def build_weekly_recommendation(
     recovery: dict,
     goals: dict,
     next_sessions: list[dict],
+    recent_patterns: dict,
 ) -> dict:
     status = context.get("daily_recommendation", {}).get("status", "keep")
     recovery_score = int(recovery.get("caution_score") or 0)
     goal_status = goals.get("status")
-    recent_feedback = context.get("recent_feedback", [])
-    repeated_high_rpe = sum(1 for item in recent_feedback if int(item.get("rpe") or 0) >= 8)
+    pattern_status = recent_patterns.get("status")
+    trend = recent_patterns.get("execution_trend", {})
+    recurring = trend.get("recurring_patterns", {})
+    streaks = trend.get("streaks", {})
+    feedback_patterns = recent_patterns.get("recent_feedback_patterns", {})
+    repeated_high_rpe = int(feedback_patterns.get("high_rpe_count") or 0)
+    repeated_low_energy = int(feedback_patterns.get("low_energy_count") or 0)
+    repeated_pain_flags = int(feedback_patterns.get("elevated_pain_count") or 0)
+    current_revision_count = int(recent_patterns.get("current_week_revision_count") or 0)
+    hard_upcoming = any(item["suggestion"] in {"swap_to_recovery", "lighten", "review"} for item in next_sessions)
+    goal_support_is_thin = execution["fulfilled_sessions"] < max(1, execution["planned_sessions"] // 2)
 
-    if recovery_score >= 4 and status != "recover":
+    if recovery_score >= 4 or (repeated_pain_flags >= 2 and recovery_score >= 2):
+        status = "recover"
+    elif recovery_score >= 3 and repeated_low_energy >= 2 and status != "recover":
         status = "recover"
     elif recovery_score >= 2 and status in {"keep", "push"}:
         status = "reduce"
 
-    if execution["status"] == "off_track" and next_sessions:
-        hard_upcoming = any(item["suggestion"] in {"swap_to_recovery", "lighten", "review"} for item in next_sessions)
-        if hard_upcoming and status in {"keep", "push"}:
+    if status not in {"recover", "reduce"}:
+        if execution["status"] == "off_track" and next_sessions and hard_upcoming:
             status = "adjust"
-    elif execution["missed_sessions"] >= 2 and status == "keep":
-        status = "adjust"
-    elif execution["modified_sessions"] >= 2 and status == "keep":
-        status = "adjust"
+        elif execution["missed_sessions"] >= 2 and status == "keep":
+            status = "adjust"
+        elif execution["modified_sessions"] >= 2 and status == "keep":
+            status = "adjust"
+        elif execution["intent_alignment"]["different"] >= 2 and status == "keep":
+            status = "adjust"
+        elif recurring.get("weeks_with_skipped", 0) >= 2 and status == "keep":
+            status = "adjust"
+        elif recurring.get("weeks_with_modified", 0) >= 2 and current_revision_count >= 1 and status == "keep":
+            status = "adjust"
+        elif current_revision_count >= 3 and status == "keep":
+            status = "adjust"
+        elif streaks.get("consecutive_weeks_with_skipped", 0) >= 2 and status == "keep":
+            status = "adjust"
 
-    if execution["intent_alignment"]["different"] >= 2 and status == "keep":
-        status = "adjust"
-
-    if goal_status == "pressured" and status == "keep" and execution["fulfilled_sessions"] < max(1, execution["planned_sessions"] // 2):
-        status = "adjust"
+    if status == "push" and (pattern_status != "stable" or repeated_high_rpe >= 2 or execution["status"] != "on_track"):
+        status = "keep"
     elif goal_status == "watch" and status == "push":
         status = "keep"
 
-    if repeated_high_rpe >= 2 and status == "push":
-        status = "keep"
+    if goal_status == "pressured" and status == "keep" and goal_support_is_thin:
+        status = "adjust"
+    elif (
+        goal_status == "pressured"
+        and status == "keep"
+        and recovery_score <= 1
+        and pattern_status == "stable"
+        and execution["status"] == "on_track"
+        and repeated_high_rpe == 0
+        and execution["fulfilled_sessions"] >= max(1, execution["planned_sessions"] // 2)
+    ):
+        status = "push"
 
     if status == "push":
         headline = "You are in a good position to press the next quality session."
+        action = "Lean into the next key session without adding extra complexity."
     elif status == "keep":
         headline = "Stay with the current weekly structure."
+        action = "Keep the planned structure and avoid unnecessary changes."
     elif status == "reduce":
         headline = "Keep the structure, but trim the next one or two sessions."
+        action = "Hold onto the week shape, but reduce intensity or volume in the next sessions."
     elif status == "recover":
         headline = "Prioritize recovery before adding more load."
+        action = "Swap the next demanding session for recovery work or rest."
     else:
         headline = "Adjust the remainder of the week instead of forcing the original plan."
+        action = "Review and rewrite the next one or two sessions to match current execution reality."
 
-    rationale = []
-    rationale.extend(recovery.get("key_reasons", []))
-    rationale.extend(execution.get("key_observations", []))
-    rationale.extend(goals.get("key_observations", []))
+    rationale: list[str] = []
+    for text in recovery.get("key_reasons", []):
+        _append_unique(rationale, text)
+    for text in recent_patterns.get("key_observations", []):
+        _append_unique(rationale, text)
+    for text in execution.get("key_observations", []):
+        _append_unique(rationale, text)
+    for text in goals.get("key_observations", []):
+        _append_unique(rationale, text)
     if repeated_high_rpe >= 2:
-        rationale.append("Recent feedback includes repeated high-RPE sessions.")
+        _append_unique(rationale, "Recent feedback includes repeated high-RPE sessions.")
     if goal_status == "pressured" and goals.get("most_urgent"):
-        rationale.append(f"Goal pressure is highest around {goals['most_urgent'][0]['title']}.")
+        _append_unique(rationale, f"Goal pressure is highest around {goals['most_urgent'][0]['title']}.")
 
-    risks = []
-    risks.extend(recovery.get("caution_flags", []))
+    risks: list[str] = []
+    for text in recovery.get("caution_flags", []):
+        _append_unique(risks, text)
     if execution["missed_sessions"]:
-        risks.append(f"{execution['missed_sessions']} planned sessions were missed this week.")
+        _append_unique(risks, f"{execution['missed_sessions']} planned sessions were missed this week.")
     if execution["intent_alignment"]["different"]:
-        risks.append(f"{execution['intent_alignment']['different']} sessions diverged from planned intent.")
+        _append_unique(risks, f"{execution['intent_alignment']['different']} sessions diverged from planned intent.")
+    if recurring.get("weeks_with_skipped", 0) >= 2:
+        _append_unique(risks, f"Skipped sessions have recurred in {recurring['weeks_with_skipped']} recent weeks.")
+    if current_revision_count >= 2:
+        _append_unique(risks, f"The current week has already needed {current_revision_count} revisions.")
     if goals.get("status") in {"pressured", "watch"} and goals.get("most_urgent"):
-        risks.append(f"Active goals are under pressure, led by {goals['most_urgent'][0]['title']}.")
+        _append_unique(risks, f"Active goals are under pressure, led by {goals['most_urgent'][0]['title']}.")
 
     return {
         "status": status,
         "headline": headline,
+        "action": action,
         "rationale": rationale[:5],
         "risks": risks[:5],
-        "confidence": "high" if recovery_score >= 3 or execution["status"] == "off_track" else "moderate",
+        "confidence": "high" if recovery_score >= 3 or execution["status"] == "off_track" or pattern_status == "concerning" else "moderate",
         "focus_for_next_48h": build_focus_for_next_48h(status, next_sessions),
     }
 
@@ -553,8 +674,9 @@ def build_weekly_coaching(
     execution = summarize_execution(active_plan)
     recovery = summarize_recovery(context)
     goals = summarize_goals(context, active_plan)
+    recent_patterns = summarize_recent_patterns(conn, context, active_plan)
     next_sessions = build_recommended_next_sessions(active_plan, context.get("daily_recommendation", {}).get("status", "keep"))
-    recommendation = build_weekly_recommendation(context, execution, recovery, goals, next_sessions)
+    recommendation = build_weekly_recommendation(context, execution, recovery, goals, next_sessions, recent_patterns)
     if recommendation["status"] != context.get("daily_recommendation", {}).get("status", "keep"):
         next_sessions = build_recommended_next_sessions(active_plan, recommendation["status"])
         recommendation["focus_for_next_48h"] = build_focus_for_next_48h(recommendation["status"], next_sessions)
@@ -573,6 +695,8 @@ def build_weekly_coaching(
         summary_parts.append(f"{execution['missed_sessions']} planned sessions were missed.")
     if recovery.get("caution_flags"):
         summary_parts.append(recovery["caution_flags"][0])
+    elif recent_patterns.get("key_observations"):
+        summary_parts.append(recent_patterns["key_observations"][0])
     elif execution["key_observations"]:
         summary_parts.append(execution["key_observations"][0])
 
@@ -603,6 +727,7 @@ def build_weekly_coaching(
             "training_load": context.get("training_load"),
             "goal_planning_summary": context.get("goal_planning_summary"),
             "workout_intent_summary": context.get("workout_intent_summary"),
+            "recent_pattern_summary": recent_patterns,
             "recent_feedback": context.get("recent_feedback", [])[:3],
             "recent_notes": context.get("recent_notes", [])[:3],
         },

@@ -127,18 +127,34 @@ Completed slices:
 - `Calendar` now supports both weekly and full-month review with weekly summary context in month view
 - recent execution patterns are now summarized across multiple weeks in both `Dashboard` and `Plan`
 - multi-week adherence and intent-alignment trend analysis is now available through deterministic backend summaries
+- weekly coaching now uses stronger deterministic heuristics across recent execution patterns, revision churn, recovery signals, and goal pressure
+- weekly coaching rationale and risk reporting now expose clearer recent-pattern summaries without breaking the structured contract
+
+### Sprint 13 goal progress and planning forecasts
+
+Sprint 13 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- active goals now expose deterministic forecast fields including recent pace, projected finish, projected gap, and required weekly pace
+- goals now carry compact risk summaries so pace pressure is easier to inspect across API, MCP, and UI surfaces
+- `Goals` now shows explicit forecast and risk cards rather than only lightweight pace guidance
+- `Dashboard` now surfaces aggregate goal pressure and more visible goal-risk cues for short-horizon decisions
+- `Plan` now highlights higher-pressure goal-supporting sessions more clearly in week context
+- coaching and recent-context summaries now reason about goal pressure using the new forecast/risk layer
+- smoke coverage now includes forecast fields and a case where a behind goal changes visible planning guidance
 
 ## Recommended Next Step
 
 The next major sprint should be:
 
-- Sprint 12 stronger deterministic coaching heuristics should follow now that coaching history and multi-week execution trends are implemented
+- Sprint 14 modality restrictions and injury-aware coaching should follow now that goal pressure and forecasts are more visible
 
 That means moving into:
 
-- upgrading deterministic recommendation rules using recent execution, revision, recovery, and goal signals
-- improving rationale and risk reporting without making the coaching contract harder to inspect
-- building on the history and trend visibility now already in place
+- making modality restrictions and injury signals first-class planning inputs
+- teaching coaching and plan adjustment flows when to protect or avoid specific session types
+- building on the goal-pressure and recovery-aware coaching surfaces now already in place
 
 ## Areas That Are Still Intentionally Lightweight
 
@@ -146,6 +162,7 @@ That means moving into:
 - weekly plans are stored as JSON blobs by week
 - goal-aware planning is still lightweight rather than deeply automated
 - MCP coaching still requires multiple reads rather than one opinionated weekly coaching action
+- local backend test execution still depends on having the Python app dependencies installed
 
 ## Good Starting Points For Future Work
 

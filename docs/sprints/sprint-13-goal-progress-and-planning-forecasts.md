@@ -4,8 +4,8 @@
 
 Current status:
 
-- planned
-- follows planned Sprint 12 stronger deterministic coaching heuristics work
+- complete
+- follows completed Sprint 12 stronger deterministic coaching heuristics work
 
 Starting point:
 

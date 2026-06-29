@@ -44,9 +44,25 @@
               <span>{{ goal.remaining_value }} {{ goal.unit }} remaining</span>
             </div>
 
+            <div v-if="goal.risk_summary" class="goal-risk" :class="`risk-${goal.risk_summary.status}`">
+              <span class="goal-risk-label">{{ goal.risk_summary.label }}</span>
+              <span class="goal-risk-copy">{{ goal.risk_summary.summary }}</span>
+            </div>
+
             <div class="goal-required" v-if="goal.status !== 'completed'">
               <span class="goal-required-label">Vs pace</span>
               <span class="goal-required-value" :class="paceDeltaClass(goal)">{{ paceLabel(goal) }}</span>
+            </div>
+
+            <div v-if="goal.forecast && goal.status !== 'completed'" class="goal-forecast-grid">
+              <div class="goal-forecast-stat">
+                <span>Projected finish</span>
+                <strong>{{ forecastFinish(goal) }}</strong>
+              </div>
+              <div class="goal-forecast-stat">
+                <span>Needed next</span>
+                <strong>{{ forecastNeed(goal) }}</strong>
+              </div>
             </div>
 
             <div class="goal-planning" v-if="goal.planning_guidance">
@@ -234,6 +250,16 @@ const planningGuidanceLabel = (status) => {
   if (status === 'pressured') return 'Pressured'
   return 'Urgent'
 }
+
+const forecastFinish = (goal) => {
+  const value = Number(goal.forecast?.projected_finish_value || 0)
+  return `${value.toFixed(1)} ${goal.unit}`
+}
+
+const forecastNeed = (goal) => {
+  const value = Number(goal.planning_guidance?.required_per_week || 0)
+  return `${value.toFixed(1)} ${goal.unit}/wk`
+}
 </script>
 
 <style scoped>
@@ -372,6 +398,31 @@ const planningGuidanceLabel = (status) => {
   color: var(--muted);
   font-size: 12px;
 }
+.goal-risk {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+}
+.goal-risk-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.goal-risk-copy {
+  color: #dbe4ff;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.risk-completed { border-color: rgba(16,185,129,0.22); }
+.risk-on_track { border-color: rgba(59,130,246,0.2); }
+.risk-watch { border-color: rgba(96,165,250,0.2); }
+.risk-under_pressure { border-color: rgba(245,158,11,0.24); background: rgba(245,158,11,0.08); }
+.risk-at_risk { border-color: rgba(239,68,68,0.26); background: rgba(239,68,68,0.08); }
 .goal-required {
   margin-top: 12px;
   display: flex;
@@ -389,6 +440,31 @@ const planningGuidanceLabel = (status) => {
   font-size: 24px;
   font-weight: 700;
   line-height: 1;
+}
+.goal-forecast-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.goal-forecast-stat {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.goal-forecast-stat span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.goal-forecast-stat strong {
+  font-size: 16px;
+  line-height: 1.2;
 }
 .goal-planning {
   margin-top: 14px;
@@ -487,5 +563,6 @@ const planningGuidanceLabel = (status) => {
 @media (max-width: 760px) {
   .page-head { flex-direction: column; }
   .goal-form { grid-template-columns: 1fr; }
+  .goal-forecast-grid { grid-template-columns: 1fr; }
 }
 </style>

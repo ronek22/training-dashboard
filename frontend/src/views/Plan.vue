@@ -139,13 +139,16 @@
             <article v-for="goal in plan.goal_context.active_goals" :key="goal.id" class="goal-context-card">
               <div class="goal-context-top">
                 <strong>{{ goal.title }}</strong>
-                <span class="goal-context-status" :class="`status-${goal.status}`">{{ goalStatusLabel(goal.status) }}</span>
+                <span class="goal-context-status" :class="`risk-${goal.risk_summary?.status || 'on_track'}`">
+                  {{ goal.risk_summary?.label || goalStatusLabel(goal.status) }}
+                </span>
               </div>
               <div class="goal-context-progress">{{ goal.current_value }} / {{ goal.target_value }} {{ goal.unit }}</div>
               <div class="goal-context-meta">
                 <span>{{ goal.period_label }}</span>
                 <span>{{ goal.supported_sessions }} supporting session{{ goal.supported_sessions === 1 ? '' : 's' }}</span>
               </div>
+              <div v-if="goal.risk_summary?.summary" class="goal-context-copy">{{ goal.risk_summary.summary }}</div>
             </article>
           </div>
         </div>
@@ -436,8 +439,10 @@
                     v-for="goalLink in day.goal_links"
                     :key="`${day.date}-${goalLink.goal_id}`"
                     class="goal-link-pill"
+                    :class="`risk-${goalLink.risk_status || 'on_track'}`"
                   >
                     <strong>{{ goalLink.goal_title }}</strong>
+                    <em v-if="goalLink.risk_label">{{ goalLink.risk_label }}</em>
                     <span>{{ goalLink.support_reason }}</span>
                   </div>
                 </div>
@@ -1493,6 +1498,17 @@ const savePlanLink = async (day) => {
   color: var(--muted);
   font-size: 11px;
 }
+.goal-context-copy {
+  margin-top: 8px;
+  color: #d5deef;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.goal-context-status.risk-on_track { background: rgba(59,130,246,0.16); color: #93c5fd; }
+.goal-context-status.risk-watch { background: rgba(96,165,250,0.16); color: #bfdbfe; }
+.goal-context-status.risk-under_pressure { background: rgba(245,158,11,0.16); color: #fcd34d; }
+.goal-context-status.risk-at_risk { background: rgba(239,68,68,0.16); color: #fda4af; }
+.goal-context-status.risk-completed { background: rgba(16,185,129,0.16); color: #6ee7b7; }
 .revision-timeline {
   margin-top: 18px;
   display: grid;
@@ -2422,10 +2438,25 @@ const savePlanLink = async (day) => {
   font-size: 11px;
   line-height: 1.2;
 }
+.goal-link-pill em {
+  color: #dbe4ff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.2;
+}
 .goal-link-pill span {
   color: var(--muted);
   font-size: 10px;
   line-height: 1.25;
+}
+.goal-link-pill.risk-under_pressure {
+  background: rgba(245,158,11,0.1);
+  border-color: rgba(245,158,11,0.22);
+}
+.goal-link-pill.risk-at_risk {
+  background: rgba(239,68,68,0.1);
+  border-color: rgba(239,68,68,0.22);
 }
 .actual-empty {
   color: var(--muted);

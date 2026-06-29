@@ -295,6 +295,10 @@ Recommended Sprint 8 role:
 
 - this is the primary sprint goal
 
+Status:
+
+- complete as [docs/sprints/sprint-8-plan-diff-and-roadmap-visibility.md](sprints/sprint-8-plan-diff-and-roadmap-visibility.md)
+
 ### 12. Read-only roadmap and sprint visibility
 
 Why:
@@ -317,11 +321,120 @@ Recommended Sprint 8 role:
 
 - this is a secondary slice only if it stays lightweight and docs-backed
 
+Status:
+
+- complete as [docs/sprints/sprint-8-plan-diff-and-roadmap-visibility.md](sprints/sprint-8-plan-diff-and-roadmap-visibility.md)
+
+### 13. App redesign and information hierarchy
+
+Why:
+
+- the current UI is clean and usable, but it can feel visually flat
+- important states often carry too little visual emphasis compared with historical or secondary information
+- current and old plan weeks should not feel equally important in the interface
+
+Scope:
+
+- improve hierarchy, emphasis, and scanning across the key app surfaces
+- make current, active, and historical states more visually distinct
+- redesign Plan and Dashboard presentation so important information stands out more clearly
+
+Implementation notes:
+
+- likely centered in `frontend/src/views/Plan.vue`, `frontend/src/views/Dashboard.vue`, `frontend/src/style.css`, and shared app layout components
+
+Recommended Sprint 9 role:
+
+- this is the next primary sprint goal
+
+### 14. Coaching history and revision timeline
+
+Why:
+
+- explicit approval is now in place, but users still lack a clear view of how coaching and plan changes evolved over time
+- history visibility should improve before heavier trend analysis or heuristic expansion
+
+Scope:
+
+- expose recent coaching history in a compact read-only form
+- show richer multi-entry plan revision timeline data
+- connect recommendation, approval, and saved changes where practical
+
+Implementation notes:
+
+- likely spans `backend/app/services/coaching.py`, `backend/app/services/plans.py`, `frontend/src/views/Dashboard.vue`, and `frontend/src/views/Plan.vue`
+
+Recommended Sprint 10 role:
+
+- this should follow the redesign pass once hierarchy and emphasis are stronger
+
+### 15. Multi-week execution analysis
+
+Why:
+
+- single-week comparison is now solid, but repeated patterns matter more than isolated misses
+- richer analysis should build on visible history instead of replacing it
+
+Scope:
+
+- summarize adherence trends across several weeks
+- show recurring moved, skipped, replaced, and partial patterns
+- surface intent-alignment trends conservatively
+
+Implementation notes:
+
+- likely spans `backend/app/services/plans.py`, `backend/app/services/coaching.py`, and Dashboard or Plan summary views
+
+Recommended Sprint 11 role:
+
+- this should follow Sprint 10 once history visibility is in place
+
+### 16. Stronger deterministic coaching heuristics
+
+Why:
+
+- recommendation quality can improve now that approval and trend visibility are becoming stronger
+- the app should get smarter without becoming opaque
+
+Scope:
+
+- upgrade deterministic recommendation rules using recent execution, revision, recovery, and goal signals
+- improve rationale and risk reporting without destabilizing the contract
+
+Implementation notes:
+
+- likely centered in `backend/app/services/coaching.py`
+
+Recommended Sprint 12 role:
+
+- this is the heuristic upgrade sprint after history and trend work
+
+### 17. Goal progress and planning forecasts
+
+Why:
+
+- goals exist and influence planning lightly, but pace-to-go and planning risk can still become more actionable
+- the app should connect short-term coaching and longer-term targets more intentionally
+
+Scope:
+
+- refine goal forecasting and planning pressure signals
+- show clearer goal risk states in Goals, Dashboard, and planning context
+- keep forecasting lightweight and interpretable
+
+Implementation notes:
+
+- likely spans `backend/app/services/goals.py`, `backend/app/services/plans.py`, `backend/app/services/coaching.py`, and `frontend/src/views/Goals.vue`
+
+Recommended Sprint 13 role:
+
+- this should follow the stronger coaching and multi-week context work
+
 ## Cross-Cutting Engineering Track
 
 Goal: keep the codebase maintainable enough to support the product roadmap.
 
-### 13. Backend modularization
+### 18. Backend modularization
 
 Why:
 
@@ -361,29 +474,26 @@ If only one sprint is available, do this:
 
 ### Sprint Goal
 
-Add explicit plan-diff review and approval on top of the new one-shot weekly coaching workflow, with a smaller read-only roadmap visibility slice if scope stays controlled.
+Start with Sprint 9 app redesign and information hierarchy, then continue through the next planning and coaching-quality sprints in order.
 
 ### Scope
 
-- show a clearer before/after diff for coaching-proposed weekly adjustments
-- let the user review changed days before saving
-- connect the draft handoff into an explicit approval step instead of only prefilled editing
-- keep plan writes inspectable and user-confirmed
-- optionally expose roadmap and sprint progress in-app from structured docs metadata without allowing edits
+- improve information hierarchy and current-versus-historical emphasis in the app
+- preserve the current deterministic, inspectable approach rather than adding autonomous rewrites
+- use Sprint 9 as the visual foundation for later history, trend, heuristic, and goal forecast work
 
 Current interpretation:
 
-- the one-shot coaching read now exists and is good enough to build on
-- the next highest-value gap is confirmation and trust around proposed changes
-- roadmap visibility is worth doing only if it stays read-only and source-of-truth-safe
-- after that, the next major sprint can go deeper into history-aware execution insights or stronger coaching heuristics
+- the one-shot coaching read and explicit approval flow now exist end-to-end
+- the next highest-value gap is better visual emphasis and information hierarchy
+- roadmap visibility is now in place, so future work should avoid turning docs into a parallel editable system
+- the next sprints should favor better analysis and trust over broader automation
 
 ### Definition of done
 
-- coaching-proposed changes are visible as an explicit diff before save
-- users approve plan changes deliberately instead of accepting silent rewrites
-- the coaching workflow feels end-to-end rather than draft-only
-- if the roadmap slice is included, sprint and roadmap status is visible in-app from docs-backed metadata only
+- the app makes important current information stand out more clearly than historical information
+- users can scan Plan and Dashboard more quickly and understand where attention should go first
+- the app is positioned cleanly for Sprint 10 coaching-history work instead of layering more analysis onto a visually flat UI
 
 ## Risks And Constraints
 

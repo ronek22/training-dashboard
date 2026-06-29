@@ -12,6 +12,19 @@
       <div v-if="flashMessage.detail" class="flash-detail">{{ flashMessage.detail }}</div>
     </div>
 
+    <div v-if="coachingReview" class="coaching-review-banner card">
+      <div>
+        <div class="card-title">Coaching Approval</div>
+        <div class="coaching-review-title">{{ coachingReview.diff?.changed_dates?.length || 0 }} proposed change<span v-if="(coachingReview.diff?.changed_dates?.length || 0) !== 1">s</span></div>
+        <div class="coaching-review-copy">
+          Review the before/after diff for {{ formatWeek(coachingReview.week_start) }} and explicitly approve before saving.
+        </div>
+      </div>
+      <div class="coaching-review-actions">
+        <button type="button" class="ghost-button" @click="dismissCoachingReview">Cancel</button>
+      </div>
+    </div>
+
     <div v-if="loading" class="empty card">Loading plans…</div>
     <div v-else-if="!plans.length" class="empty card">No weekly plans yet.</div>
 
@@ -84,6 +97,84 @@
             <span v-if="plan.latest_revision.adaptation_reason">
               · {{ plan.latest_revision.adaptation_reason }}
             </span>
+          </div>
+        </div>
+
+        <div v-if="isCoachingReviewForPlan(plan)" class="coaching-diff-panel">
+          <div class="coaching-diff-head">
+            <div>
+              <div class="coaching-diff-title">Approve coaching adjustment</div>
+              <div class="coaching-diff-sub">
+                {{ coachingReview.diff?.changed_dates?.length || 0 }} days would change from
+                {{ formatDay(coachingReview.effective_from) }}.
+              </div>
+            </div>
+            <div class="coaching-diff-actions">
+              <button type="button" class="ghost-button" @click="openCoachingDraftInEditor(plan)">Open in editor</button>
+              <button type="button" class="ghost-button" @click="dismissCoachingReview">Cancel</button>
+              <button type="button" class="save-button" :disabled="approvingCoaching" @click="approveCoachingAdjustment">
+                {{ approvingCoaching ? 'Approving…' : 'Approve changes' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="coaching-diff-summary">
+            <span class="diff-pill diff-edited">{{ coachingReview.diff?.summary?.edited || 0 }} edited</span>
+            <span class="diff-pill diff-protected">{{ coachingReview.diff?.summary?.protected || 0 }} protected</span>
+            <span class="diff-pill diff-unchanged">{{ coachingReview.diff?.summary?.unchanged || 0 }} unchanged</span>
+          </div>
+
+          <div class="coaching-diff-grid">
+            <article
+              v-for="day in coachingReview.diff?.days || []"
+              :key="`coach-diff-${day.date}`"
+              class="coaching-diff-day"
+              :class="`diff-state-${day.status}`"
+            >
+              <div class="coaching-diff-day-top">
+                <div>
+                  <div class="coaching-diff-day-label">{{ day.label }}</div>
+                  <div class="coaching-diff-day-date">{{ formatDay(day.date) }}</div>
+                </div>
+                <span class="diff-status">{{ diffStatusLabel(day.status) }}</span>
+              </div>
+
+              <div class="coaching-diff-columns">
+                <div class="coaching-diff-column">
+                  <div class="coaching-diff-column-label">Before</div>
+                  <div class="coaching-diff-session-title">{{ day.before?.title || 'None' }}</div>
+                  <div class="coaching-diff-meta">
+                    <span v-if="day.before?.session_type">{{ displaySessionType(day.before.session_type) }}</span>
+                    <span v-if="day.before?.target_duration_min">{{ day.before.target_duration_min }} min</span>
+                    <span v-if="day.before?.target_distance_km">{{ day.before.target_distance_km }} km</span>
+                  </div>
+                  <div v-if="day.before?.workout_intent_label" class="intent-row">
+                    <span class="intent-pill intent-planned">{{ day.before.workout_intent_label }}</span>
+                  </div>
+                  <div v-if="day.before?.details" class="coaching-diff-details">{{ day.before.details }}</div>
+                </div>
+
+                <div class="coaching-diff-column">
+                  <div class="coaching-diff-column-label">After</div>
+                  <div class="coaching-diff-session-title">{{ day.after?.title || 'None' }}</div>
+                  <div class="coaching-diff-meta">
+                    <span v-if="day.after?.session_type">{{ displaySessionType(day.after.session_type) }}</span>
+                    <span v-if="day.after?.target_duration_min">{{ day.after.target_duration_min }} min</span>
+                    <span v-if="day.after?.target_distance_km">{{ day.after.target_distance_km }} km</span>
+                  </div>
+                  <div v-if="day.after?.workout_intent_label" class="intent-row">
+                    <span class="intent-pill intent-actual">{{ day.after.workout_intent_label }}</span>
+                  </div>
+                  <div v-if="day.after?.details" class="coaching-diff-details">{{ day.after.details }}</div>
+                </div>
+              </div>
+
+              <div v-if="day.changes?.length" class="coaching-diff-change-list">
+                <span v-for="change in day.changes" :key="`${day.date}-${change.field}`">
+                  {{ change.label }}
+                </span>
+              </div>
+            </article>
           </div>
         </div>
 
@@ -443,9 +534,11 @@ const router = useRouter()
 const plans = ref([])
 const loading = ref(true)
 const savingAdjustment = ref(false)
+const approvingCoaching = ref(false)
 const linkingSessionId = ref(null)
 const flashMessage = ref(null)
 const editorError = ref('')
+const coachingReview = ref(null)
 const selectedLinkedActivityIds = ref({})
 const openLinkEditors = ref({})
 const expandedHistoricalWeeks = ref({})
@@ -479,6 +572,10 @@ const clearCoachingDraftQuery = async () => {
   delete nextQuery.draft
   delete nextQuery.week_start
   await router.replace({ path: route.path, query: nextQuery })
+}
+
+const clearCoachingReview = () => {
+  coachingReview.value = null
 }
 
 const load = async () => {
@@ -814,6 +911,13 @@ const buildEditorStateFromCoachingDraft = (plan, draft) => {
   return { state: base, skippedDates }
 }
 
+const buildCoachingAdjustmentPayload = (draft) => ({
+  week_start: draft.week_start,
+  effective_from: draft.effective_from,
+  adaptation_reason: draft.adaptation_reason || null,
+  days: draft.days || [],
+})
+
 const sanitizeNumber = (value) => {
   if (value === '' || value === null || typeof value === 'undefined') return null
   const parsed = Number(value)
@@ -864,15 +968,19 @@ const maybeApplyCoachingDraft = async () => {
     return
   }
 
-  const { state, skippedDates } = buildEditorStateFromCoachingDraft(plan, draft)
-  editor.value = state
+  const { skippedDates } = buildEditorStateFromCoachingDraft(plan, draft)
+  clearCoachingReview()
   editorError.value = ''
+  coachingReview.value = {
+    ...draft,
+    diff: draft.diff || null,
+  }
   flashMessage.value = {
     type: 'success',
-    title: 'Coaching draft loaded into the week editor',
+    title: 'Coaching draft ready for approval',
     detail: skippedDates.length
-      ? `Skipped protected dates: ${skippedDates.map((date) => formatDay(date)).join(', ')}`
-      : 'Review the suggested day changes and save if they still look right.',
+      ? `Protected dates will stay unchanged: ${skippedDates.map((date) => formatDay(date)).join(', ')}`
+      : 'Review the proposed diff and approve it, or open the editor for manual changes.',
   }
   clearCoachingDraft()
   await clearCoachingDraftQuery()
@@ -891,6 +999,28 @@ const closeAdjustEditor = () => {
     days: {},
   }
   editorError.value = ''
+}
+
+const isCoachingReviewForPlan = (plan) => coachingReview.value?.week_start === plan.week_start
+
+const diffStatusLabel = (status) => {
+  if (status === 'edited') return 'Edited'
+  if (status === 'protected') return 'Protected'
+  if (status === 'added') return 'Added'
+  if (status === 'removed') return 'Removed'
+  return 'Unchanged'
+}
+
+const openCoachingDraftInEditor = (plan) => {
+  const draft = coachingReview.value
+  if (!draft) return
+  const { state } = buildEditorStateFromCoachingDraft(plan, draft)
+  editor.value = state
+  editorError.value = ''
+}
+
+const dismissCoachingReview = () => {
+  clearCoachingReview()
 }
 
 const isProtectedDay = (day) => isProtectedForPlan(day)
@@ -942,6 +1072,32 @@ const saveAdjustment = async (plan) => {
     editorError.value = typeof detail === 'string' ? detail : 'Could not save the weekly adjustment.'
   } finally {
     savingAdjustment.value = false
+  }
+}
+
+const approveCoachingAdjustment = async () => {
+  if (!coachingReview.value) return
+  approvingCoaching.value = true
+  flashMessage.value = null
+  try {
+    const { data } = await api.adjustWeeklyPlan(buildCoachingAdjustmentPayload(coachingReview.value))
+    await load()
+    flashMessage.value = {
+      type: 'success',
+      title: `Coaching adjustment approved for ${formatWeek(data.week_start)}`,
+      detail: data.changed_dates?.length ? `Changed ${data.changed_dates.map((date) => formatDay(date)).join(', ')}` : 'No editable days changed.',
+    }
+    clearCoachingReview()
+    closeAdjustEditor()
+  } catch (error) {
+    const detail = error?.response?.data?.detail
+    flashMessage.value = {
+      type: 'error',
+      title: 'Could not approve coaching adjustment',
+      detail: typeof detail === 'string' ? detail : 'The coaching approval request failed.',
+    }
+  } finally {
+    approvingCoaching.value = false
   }
 }
 
@@ -1125,6 +1281,31 @@ const savePlanLink = async (day) => {
 .flash-error .flash-detail {
   color: #fecaca;
 }
+.coaching-review-banner {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  background:
+    linear-gradient(140deg, rgba(59, 130, 246, 0.14), rgba(16, 185, 129, 0.08)),
+    var(--surface);
+}
+.coaching-review-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+.coaching-review-copy {
+  color: #dbeafe;
+  font-size: 13px;
+  max-width: 720px;
+}
+.coaching-review-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .adjust-button,
 .history-toggle,
 .ghost-button,
@@ -1179,6 +1360,140 @@ const savePlanLink = async (day) => {
   border: 1px solid rgba(71, 85, 105, 0.28);
   color: var(--muted);
   font-size: 13px;
+}
+.coaching-diff-panel {
+  margin-bottom: 16px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  background: rgba(15, 23, 42, 0.5);
+}
+.coaching-diff-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.coaching-diff-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.coaching-diff-sub {
+  color: var(--muted);
+  font-size: 13px;
+}
+.coaching-diff-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.coaching-diff-summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.diff-pill,
+.diff-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.diff-edited,
+.diff-state-edited .diff-status {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+}
+.diff-protected,
+.diff-state-protected .diff-status {
+  background: rgba(148, 163, 184, 0.14);
+  color: #cbd5e1;
+}
+.diff-unchanged,
+.diff-state-unchanged .diff-status {
+  background: rgba(16, 185, 129, 0.14);
+  color: #86efac;
+}
+.coaching-diff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+.coaching-diff-day {
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  padding: 14px;
+}
+.coaching-diff-day-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.coaching-diff-day-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+.coaching-diff-day-date {
+  color: var(--muted);
+  font-size: 12px;
+}
+.coaching-diff-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.coaching-diff-column {
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(2, 6, 23, 0.34);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.coaching-diff-column-label {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.coaching-diff-session-title {
+  font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+.coaching-diff-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #cbd5e1;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.coaching-diff-details {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.coaching-diff-change-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.coaching-diff-change-list span {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(96, 165, 250, 0.12);
+  color: #bfdbfe;
+  font-size: 11px;
+  font-weight: 700;
 }
 .week-summary {
   display: flex;

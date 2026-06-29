@@ -4,7 +4,7 @@
 
 Current status:
 
-- planned
+- complete
 - follows completed Sprint 7 one-shot coaching work
 
 Starting point:
@@ -18,6 +18,26 @@ Dependency note:
 
 - the main remaining coaching workflow gap is explicit before/after approval of proposed plan changes
 - the roadmap visibility idea is viable if the UI reads structured markdown metadata instead of trying to interpret arbitrary prose
+
+Completed so far:
+
+- weekly coaching proposed adjustments now include a structured before/after diff payload
+- the Plan view now exposes a dedicated approval surface with explicit approve, cancel, and optional editor handoff actions
+- plan adjustment preview and approval are now separated cleanly at the API level
+- roadmap and sprint status are now available through a read-only docs-backed backend route
+- the app now includes a dedicated read-only Roadmap view sourced from markdown under `docs/`
+- the backend container setup now mounts `docs/` so roadmap visibility works in Docker as well as local development
+
+Validation note:
+
+- backend syntax checks passed for the Sprint 8 backend changes
+- targeted smoke assertions were added for docs-backed planning status and adjustment diff preview shapes
+- full backend and frontend environment validation still depends on locally installed FastAPI and Vite dependencies
+
+Completion note:
+
+- Sprint 8 can be treated as complete for the current roadmap slice
+- the main remaining work is deeper coaching analysis and stronger multi-week visibility rather than approval-flow basics
 
 ## Objective
 

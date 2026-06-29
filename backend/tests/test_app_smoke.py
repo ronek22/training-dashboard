@@ -597,6 +597,8 @@ class AppSmokeTests(unittest.TestCase):
         self.assertTrue(coaching_body["recommended_next_sessions"])
         self.assertEqual(coaching_body["recommended_next_sessions"][0]["date"], today.isoformat())
         self.assertIsNotNone(coaching_body["proposed_adjustment"])
+        self.assertIn("diff", coaching_body["proposed_adjustment"])
+        self.assertTrue(coaching_body["proposed_adjustment"]["diff"]["changed_dates"])
 
         mcp = self.client.post(
             "/mcp",
@@ -617,6 +619,78 @@ class AppSmokeTests(unittest.TestCase):
         self.assertIn("recommendation", structured)
         self.assertIn("summary", structured)
         self.assertIn(structured["recommendation"]["status"], {"reduce", "recover", "adjust"})
+
+    def test_adjustment_preview_and_planning_status_routes(self):
+        today = datetime.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        tomorrow = today + timedelta(days=1)
+
+        plan = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": week_start.isoformat(),
+                "title": "Preview week",
+                "days": [
+                    {
+                        "date": today.isoformat(),
+                        "label": today.strftime("%a"),
+                        "session_type": "Run",
+                        "workout_intent": "tempo",
+                        "title": "Tempo run",
+                        "target_duration_min": 50,
+                    },
+                    {
+                        "date": tomorrow.isoformat(),
+                        "label": tomorrow.strftime("%a"),
+                        "session_type": "Run",
+                        "workout_intent": "easy",
+                        "title": "Easy run",
+                        "target_duration_min": 40,
+                    },
+                ],
+            },
+        )
+        self.assertEqual(plan.status_code, 201)
+
+        preview = self.client.post(
+            "/plans/weekly/adjust/preview",
+            json={
+                "week_start": week_start.isoformat(),
+                "effective_from": today.isoformat(),
+                "days": [
+                    {
+                        "date": today.isoformat(),
+                        "label": today.strftime("%a"),
+                        "session_type": "Recovery",
+                        "workout_intent": "recovery",
+                        "title": "Recovery spin",
+                        "target_duration_min": 30,
+                    },
+                    {
+                        "date": tomorrow.isoformat(),
+                        "label": tomorrow.strftime("%a"),
+                        "session_type": "Run",
+                        "workout_intent": "easy",
+                        "title": "Easy run",
+                        "target_duration_min": 40,
+                    },
+                ],
+            },
+        )
+        self.assertEqual(preview.status_code, 200)
+        preview_body = preview.json()
+        self.assertTrue(preview_body["preview_only"])
+        self.assertEqual(preview_body["diff"]["summary"]["edited"], 1)
+        self.assertEqual(preview_body["diff"]["days"][0]["status"], "edited")
+        self.assertTrue(preview_body["diff"]["days"][0]["changes"])
+
+        planning_status = self.client.get("/planning/status")
+        self.assertEqual(planning_status.status_code, 200)
+        planning_body = planning_status.json()
+        self.assertEqual(planning_body["roadmap"]["title"], "Training Dashboard Roadmap")
+        self.assertTrue(planning_body["roadmap"]["phases"])
+        self.assertTrue(planning_body["sprints"]["items"])
+        self.assertEqual(planning_body["sprints"]["next_recommended"]["label"], "Sprint 8")
 
     def test_today_session_is_not_skipped_before_day_is_over(self):
         today = datetime.now().date()

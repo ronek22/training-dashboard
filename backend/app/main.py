@@ -13,6 +13,7 @@ from .routers.integrations import router as integrations_router
 from .routers.mcp import build_mcp_router
 from .routers.metrics import router as metrics_router
 from .routers.notes import router as notes_router
+from .routers.planning_status import router as planning_status_router
 from .routers.plans import router as plans_router
 from .routers.weekly_summary import router as weekly_summary_router
 
@@ -29,6 +30,7 @@ app.include_router(activities_router)
 app.include_router(activity_feedback_router)
 app.include_router(coaching_router)
 app.include_router(notes_router)
+app.include_router(planning_status_router)
 app.include_router(metrics_router)
 app.include_router(goals_router)
 app.include_router(weekly_summary_router)

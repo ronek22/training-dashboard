@@ -101,20 +101,31 @@ Completed slices:
 - Dashboard now exposes the weekly coaching read in-app and can hand a preview adjustment into the Plan editor
 - weekly coaching heuristics are now grounded in explicit linking, workout intent, recent subjective feedback, and lightweight goal pressure
 
+### Sprint 8 plan diff and roadmap visibility
+
+Sprint 8 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- coaching-proposed weekly adjustments now expose explicit before/after diff data
+- the Plan view now requires explicit approval before saving a coaching-generated adjustment
+- coaching review can still hand off into the editable week flow when manual changes are needed
+- roadmap and sprint progress are now visible in-app through a read-only docs-backed view
+- backend planning-status parsing now reads stable markdown structure from `docs/`
+- Docker-backed backend runs can access the docs mount needed for roadmap visibility
+
 ## Recommended Next Step
 
 The next major sprint should be:
 
-- Sprint 8 with two tightly scoped parts:
-  - primary: a plan-diff confirmation and approval flow on top of the new weekly coaching action
-  - secondary: read-only roadmap and sprint visibility in-app sourced from `docs/`
+- Sprint 9 app redesign and information hierarchy
 
 That means moving into:
 
-- clearer before/after review of coaching-proposed weekly changes
-- explicit save approval instead of draft-only handoff
-- lightweight docs-backed progress visibility without UI editing
-- deeper execution-quality and multi-week analysis after the approval flow is stable
+- stronger visual hierarchy across the app
+- clearer distinction between current, active, and historical information
+- more emphasis on what needs attention now, especially in Plan and Dashboard
+- a cleaner foundation for later coaching-history and trend-analysis work in Sprints 10 through 13
 
 ## Areas That Are Still Intentionally Lightweight
 
@@ -125,7 +136,7 @@ That means moving into:
 
 ## Good Starting Points For Future Work
 
-If continuing into Sprint 8:
+If continuing after Sprint 8:
 
 - plan comparison and serialization: `backend/app/services/plans.py`
 - activity persistence and linking: `backend/app/services/activities.py`
@@ -133,12 +144,13 @@ If continuing into Sprint 8:
 - coaching summary and heuristics: `backend/app/services/coaching.py`
 - coaching inspection and handoff UI: `frontend/src/views/Dashboard.vue` and `frontend/src/views/Plan.vue`
 - docs-backed planning visibility: `docs/roadmap.md`, `docs/current-state.md`, and `docs/sprints/`
+- sprint planning direction: `docs/sprints/sprint-9-app-redesign-and-information-hierarchy.md` through `sprint-13-goal-progress-and-planning-forecasts.md`
 
 ## Working Assumption
 
 Unless the roadmap changes, the default implementation direction should be:
 
 1. finish lightweight coaching workflow improvements
-2. build on explicit planned-to-actual linkage before adding heavier automation
+2. build on explicit planned-to-actual linkage and approval history before adding heavier automation
 3. keep logic deterministic and inspectable
 4. avoid overbuilding storage or automation too early

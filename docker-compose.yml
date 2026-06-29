@@ -13,6 +13,7 @@ services:
     volumes:
       - ./data:/data
       - ./backend/app:/app/app
+      - ./docs:/app/docs:ro
     restart: unless-stopped
 
   frontend:

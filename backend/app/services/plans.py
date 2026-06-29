@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import sqlite3
 from datetime import datetime
@@ -132,6 +134,136 @@ def append_plan_note(existing_notes: Optional[str], adjustment_reason: Optional[
     if existing_notes:
         return f"{existing_notes}\n{adjustment_stamp}"
     return adjustment_stamp
+
+
+def serialize_plan_day(day: dict | WeeklyPlanDay) -> dict:
+    if isinstance(day, WeeklyPlanDay):
+        payload = day.model_dump()
+    else:
+        payload = dict(day)
+    payload["workout_intent"] = normalize_workout_intent(payload.get("workout_intent"), payload.get("session_type"))
+    payload["workout_intent_label"] = format_workout_intent_label(payload.get("workout_intent"))
+    return payload
+
+
+def build_day_change_details(before: Optional[dict], after: Optional[dict]) -> list[dict]:
+    details = []
+    fields = [
+        ("title", "Title"),
+        ("session_type", "Session type"),
+        ("workout_intent_label", "Intent"),
+        ("target_duration_min", "Duration"),
+        ("target_distance_km", "Distance"),
+        ("details", "Details"),
+    ]
+    for key, label in fields:
+        before_value = before.get(key) if before else None
+        after_value = after.get(key) if after else None
+        if before_value == after_value:
+            continue
+        details.append({
+            "field": key,
+            "label": label,
+            "before": before_value,
+            "after": after_value,
+        })
+    return details
+
+
+def infer_preview_protected_dates(plan_days: list[dict], effective_from: str) -> list[str]:
+    protected = []
+    for day in plan_days:
+        date_value = day.get("date")
+        if not date_value:
+            continue
+        if date_value < effective_from or day.get("comparison", {}).get("completed_activities"):
+            protected.append(date_value)
+    return sorted(set(protected))
+
+
+def build_adjustment_diff_payload(
+    existing_plan: dict,
+    adjustment_payload: dict,
+    protected_dates: Optional[list[str]] = None,
+) -> dict:
+    existing_days = [serialize_plan_day(day) for day in existing_plan.get("days", [])]
+    existing_by_date = {day["date"]: day for day in existing_days if day.get("date")}
+    incoming_days = [serialize_plan_day(day) for day in adjustment_payload.get("days", [])]
+    incoming_by_date = {day["date"]: day for day in incoming_days if day.get("date")}
+    effective_from = adjustment_payload.get("effective_from") or existing_plan.get("week_start")
+    protected_set = set(protected_dates or infer_preview_protected_dates(existing_days, effective_from))
+
+    merged_days = []
+    diff_days = []
+    changed_dates = []
+    all_dates = sorted({*existing_by_date.keys(), *incoming_by_date.keys()})
+    for date_value in all_dates:
+        before = existing_by_date.get(date_value)
+        replacement = incoming_by_date.get(date_value)
+        is_protected = date_value in protected_set
+
+        if is_protected:
+            after = before
+            status = "protected"
+        elif before and replacement:
+            after = replacement
+            status = "unchanged" if build_day_change_details(before, replacement) == [] else "edited"
+        elif before and not replacement:
+            after = before
+            status = "unchanged"
+        elif replacement and not before:
+            after = replacement
+            status = "added"
+        else:
+            continue
+
+        if after:
+            merged_days.append(after)
+
+        changes = build_day_change_details(before, after)
+        if status in {"edited", "added", "removed"}:
+            changed_dates.append(date_value)
+
+        diff_days.append({
+            "date": date_value,
+            "label": (after or before or {}).get("label"),
+            "status": status,
+            "is_protected": is_protected,
+            "before": before,
+            "after": after,
+            "changes": changes,
+        })
+
+    summary = {
+        "unchanged": sum(1 for item in diff_days if item["status"] == "unchanged"),
+        "edited": sum(1 for item in diff_days if item["status"] == "edited"),
+        "added": sum(1 for item in diff_days if item["status"] == "added"),
+        "removed": sum(1 for item in diff_days if item["status"] == "removed"),
+        "protected": sum(1 for item in diff_days if item["status"] == "protected"),
+    }
+
+    return {
+        "week_start": existing_plan.get("week_start"),
+        "effective_from": effective_from,
+        "changed_dates": sorted(set(changed_dates)),
+        "protected_dates": sorted(protected_set),
+        "summary": summary,
+        "days": diff_days,
+        "before_plan": {
+            "week_start": existing_plan.get("week_start"),
+            "title": existing_plan.get("title"),
+            "focus": existing_plan.get("focus"),
+            "overview": existing_plan.get("overview"),
+            "days": existing_days,
+        },
+        "after_plan": {
+            "week_start": existing_plan.get("week_start"),
+            "title": adjustment_payload.get("title", existing_plan.get("title")),
+            "focus": adjustment_payload.get("focus", existing_plan.get("focus")),
+            "overview": adjustment_payload.get("overview", existing_plan.get("overview")),
+            "days": merged_days,
+        },
+    }
 
 
 def build_activity_summary(row: sqlite3.Row) -> dict:
@@ -541,6 +673,39 @@ def upsert_weekly_plan_data(conn: sqlite3.Connection, plan: WeeklyPlan) -> dict:
     return {"status": "ok", "week_start": prepared_plan.week_start}
 
 
+def preview_weekly_plan_adjustment_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdjustment) -> dict:
+    plan_row = get_weekly_plan_row(conn, adjustment.week_start)
+    if not plan_row:
+        raise HTTPException(status_code=404, detail=f"Weekly plan not found for {adjustment.week_start}")
+
+    existing_plan = serialize_weekly_plan(plan_row, conn)
+    effective_from = adjustment.effective_from or datetime.now().date().isoformat()
+    week_dates = {day["date"] for day in existing_plan.get("days", [])}
+    if effective_from not in week_dates:
+        raise HTTPException(
+            status_code=400,
+            detail=f"effective_from {effective_from} is outside plan week {adjustment.week_start}",
+        )
+
+    diff = build_adjustment_diff_payload(
+        existing_plan,
+        {
+            "week_start": adjustment.week_start,
+            "effective_from": effective_from,
+            "title": adjustment.title,
+            "focus": adjustment.focus,
+            "overview": adjustment.overview,
+            "days": [day.model_dump() for day in adjustment.days],
+        },
+    )
+    return {
+        "status": "ok",
+        "week_start": adjustment.week_start,
+        "preview_only": True,
+        "diff": diff,
+    }
+
+
 def adjust_weekly_plan_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdjustment) -> dict:
     plan_row = get_weekly_plan_row(conn, adjustment.week_start)
     if not plan_row:
@@ -607,6 +772,19 @@ def adjust_weekly_plan_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdju
             detail=f"Cannot adjust protected days with completed or past sessions: {', '.join(conflicting_dates)}",
         )
 
+    diff = build_adjustment_diff_payload(
+        serialize_weekly_plan(plan_row, conn),
+        {
+            "week_start": adjustment.week_start,
+            "effective_from": effective_from,
+            "title": adjustment.title,
+            "focus": adjustment.focus,
+            "overview": adjustment.overview,
+            "days": [day.model_dump() for day in adjustment.days],
+        },
+        protected_dates=sorted(protected_dates),
+    )
+
     merged_days: list[WeeklyPlanDay] = []
     changed_dates: list[str] = []
     for day in sorted(existing_plan.days, key=lambda item: item.date):
@@ -647,6 +825,7 @@ def adjust_weekly_plan_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdju
         "effective_from": effective_from,
         "changed_dates": changed_dates,
         "preserved_dates": sorted(protected_dates),
+        "diff": diff,
         "latest_revision": serialize_weekly_plan_revision_row(get_latest_weekly_plan_revision_row(conn, adjustment.week_start)),
         "plan": serialize_weekly_plan(updated_row, conn) if updated_row else None,
     }

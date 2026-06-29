@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from ..db import get_db
 from ..models.plans import WeeklyPlan, WeeklyPlanAdjustment
-from ..services.plans import adjust_weekly_plan_data, list_weekly_plans_data, upsert_weekly_plan_data
+from ..services.plans import adjust_weekly_plan_data, list_weekly_plans_data, preview_weekly_plan_adjustment_data, upsert_weekly_plan_data
 
 router = APIRouter()
 
@@ -21,6 +21,15 @@ def adjust_weekly_plan(adjustment: WeeklyPlanAdjustment):
     conn = get_db()
     try:
         return adjust_weekly_plan_data(conn, adjustment)
+    finally:
+        conn.close()
+
+
+@router.post("/plans/weekly/adjust/preview")
+def preview_weekly_plan_adjustment(adjustment: WeeklyPlanAdjustment):
+    conn = get_db()
+    try:
+        return preview_weekly_plan_adjustment_data(conn, adjustment)
     finally:
         conn.close()
 

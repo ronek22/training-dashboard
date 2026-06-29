@@ -27,6 +27,9 @@
         <router-link to="/notes" class="nav-item" :class="{ active: $route.path === '/notes' }">
           <span class="nav-icon">📝</span> Coach Notes
         </router-link>
+        <router-link to="/roadmap" class="nav-item" :class="{ active: $route.path === '/roadmap' }">
+          <span class="nav-icon">🛣️</span> Roadmap
+        </router-link>
       </nav>
       <div class="sidebar-footer">
         <div class="streak-badge">

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from .dashboard import build_recent_context
-from .plans import format_workout_intent_label, normalize_plan_session_type
+from .plans import build_adjustment_diff_payload, format_workout_intent_label, normalize_plan_session_type
 
 HARD_INTENTS = {"long", "tempo", "interval", "race_specific", "strength_general", "strength_lower", "strength_upper"}
 
@@ -358,7 +358,7 @@ def build_proposed_adjustment(active_plan: Optional[dict], recommendation_status
     if not updated_days:
         return None
 
-    return {
+    adjustment = {
         "preview_only": True,
         "week_start": active_plan.get("week_start"),
         "effective_from": updated_days[0]["date"],
@@ -366,6 +366,8 @@ def build_proposed_adjustment(active_plan: Optional[dict], recommendation_status
         "changed_dates": [day["date"] for day in updated_days],
         "days": updated_days,
     }
+    adjustment["diff"] = build_adjustment_diff_payload(active_plan, adjustment)
+    return adjustment
 
 
 def build_weekly_recommendation(

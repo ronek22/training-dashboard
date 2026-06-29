@@ -15,7 +15,12 @@ The intended reading order is:
 5. [sprint-5-planned-to-actual-linking.md](sprint-5-planned-to-actual-linking.md) — planned-to-actual linking sprint, complete
 6. [sprint-6-structured-workout-intent.md](sprint-6-structured-workout-intent.md) — structured workout intent sprint, complete
 7. [sprint-7-one-shot-coaching.md](sprint-7-one-shot-coaching.md) — one-shot coaching workflow sprint, complete
-8. [sprint-8-plan-diff-and-roadmap-visibility.md](sprint-8-plan-diff-and-roadmap-visibility.md) — plan approval plus read-only roadmap visibility sprint, planned
+8. [sprint-8-plan-diff-and-roadmap-visibility.md](sprint-8-plan-diff-and-roadmap-visibility.md) — plan approval plus read-only roadmap visibility sprint, complete
+9. [sprint-9-app-redesign-and-information-hierarchy.md](sprint-9-app-redesign-and-information-hierarchy.md) — app redesign and information hierarchy sprint, planned
+10. [sprint-10-coaching-history-and-revision-timeline.md](sprint-10-coaching-history-and-revision-timeline.md) — coaching history and plan revision visibility sprint, planned
+11. [sprint-11-multi-week-execution-analysis.md](sprint-11-multi-week-execution-analysis.md) — multi-week execution trend sprint, planned
+12. [sprint-12-stronger-deterministic-coaching-heuristics.md](sprint-12-stronger-deterministic-coaching-heuristics.md) — stronger deterministic coaching heuristics sprint, planned
+13. [sprint-13-goal-progress-and-planning-forecasts.md](sprint-13-goal-progress-and-planning-forecasts.md) — goal forecast and planning pressure sprint, planned
 
 ## Sprint Plans
 
@@ -29,3 +34,8 @@ Available sprint documents:
 - [sprint-6-structured-workout-intent.md](sprint-6-structured-workout-intent.md)
 - [sprint-7-one-shot-coaching.md](sprint-7-one-shot-coaching.md)
 - [sprint-8-plan-diff-and-roadmap-visibility.md](sprint-8-plan-diff-and-roadmap-visibility.md)
+- [sprint-9-app-redesign-and-information-hierarchy.md](sprint-9-app-redesign-and-information-hierarchy.md)
+- [sprint-10-coaching-history-and-revision-timeline.md](sprint-10-coaching-history-and-revision-timeline.md)
+- [sprint-11-multi-week-execution-analysis.md](sprint-11-multi-week-execution-analysis.md)
+- [sprint-12-stronger-deterministic-coaching-heuristics.md](sprint-12-stronger-deterministic-coaching-heuristics.md)
+- [sprint-13-goal-progress-and-planning-forecasts.md](sprint-13-goal-progress-and-planning-forecasts.md)

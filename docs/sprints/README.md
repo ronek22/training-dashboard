@@ -22,6 +22,8 @@ The intended reading order is:
 12. [sprint-12-stronger-deterministic-coaching-heuristics.md](sprint-12-stronger-deterministic-coaching-heuristics.md) — stronger deterministic coaching heuristics sprint, complete
 13. [sprint-13-goal-progress-and-planning-forecasts.md](sprint-13-goal-progress-and-planning-forecasts.md) — goal forecast and planning pressure sprint, complete
 14. [sprint-14-modality-restrictions-and-injury-aware-coaching.md](sprint-14-modality-restrictions-and-injury-aware-coaching.md) — modality restrictions and injury-aware coaching sprint, complete
+15. [sprint-15-athlete-profile-and-planning-preferences.md](sprint-15-athlete-profile-and-planning-preferences.md) — athlete profile and planning preferences sprint, complete
+16. [sprint-16-richer-goal-families.md](sprint-16-richer-goal-families.md) — richer goal families sprint, planned
 
 ## Sprint Plans
 
@@ -41,3 +43,5 @@ Available sprint documents:
 - [sprint-12-stronger-deterministic-coaching-heuristics.md](sprint-12-stronger-deterministic-coaching-heuristics.md)
 - [sprint-13-goal-progress-and-planning-forecasts.md](sprint-13-goal-progress-and-planning-forecasts.md)
 - [sprint-14-modality-restrictions-and-injury-aware-coaching.md](sprint-14-modality-restrictions-and-injury-aware-coaching.md)
+- [sprint-15-athlete-profile-and-planning-preferences.md](sprint-15-athlete-profile-and-planning-preferences.md)
+- [sprint-16-richer-goal-families.md](sprint-16-richer-goal-families.md)

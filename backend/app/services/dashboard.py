@@ -8,7 +8,7 @@ from .plans import format_workout_intent_label, normalize_workout_intent
 from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
 from .goals import aggregate_goal_risk_summary, list_goals_data
 from .recommendations import build_daily_recommendation, latest_subjective_state
-from .settings import get_modality_restrictions_for_conn
+from .settings import get_athlete_profile_for_conn, get_modality_restrictions_for_conn
 
 
 def select_active_weekly_plan_row(conn: sqlite3.Connection) -> Optional[sqlite3.Row]:
@@ -901,6 +901,7 @@ def build_recent_context(
     training_load = build_training_load_summary(conn)
     active_goals = list_goals_data(conn, active_only=True, limit=8)
     modality_restrictions = get_modality_restrictions_for_conn(conn)
+    athlete_profile = get_athlete_profile_for_conn(conn)
     goal_risk_summary = aggregate_goal_risk_summary(active_goals)
     planning_priority = sorted(
         active_goals,
@@ -947,6 +948,8 @@ def build_recent_context(
         "latest_metrics": [dict(row) for row in latest_metrics],
         "weekly_mix": weekly_mix,
         "strength_consistency": strength_consistency,
+        "athlete_profile": athlete_profile,
+        "athlete_brief": athlete_profile.get("athlete_brief"),
         "modality_restrictions": modality_restrictions,
         "active_goals": active_goals,
         "goal_risk_summary": goal_risk_summary,
@@ -1052,6 +1055,7 @@ def build_dashboard_data(
     strength_consistency = build_strength_consistency(conn, 8, 2)
     active_goals = list_goals_data_fn(conn, active_only=True, limit=4)
     modality_restrictions = get_modality_restrictions_for_conn(conn)
+    athlete_profile = get_athlete_profile_for_conn(conn)
     goal_risk_summary = aggregate_goal_risk_summary(active_goals)
     training_load = build_training_load_summary(conn)
     latest_plan = select_active_weekly_plan_row(conn)
@@ -1075,6 +1079,8 @@ def build_dashboard_data(
         "weekly_mix": weekly_mix,
         "cycling_efficiency_trend": cycling_efficiency_trend,
         "strength_consistency": strength_consistency,
+        "athlete_profile": athlete_profile,
+        "athlete_brief": athlete_profile.get("athlete_brief"),
         "modality_restrictions": modality_restrictions,
         "active_goals": active_goals,
         "goal_risk_summary": goal_risk_summary,

@@ -179,6 +179,17 @@ MCP_TOOLS = [
         },
     },
     {
+        "name": "get_athlete_profile",
+        "description": "Read the persisted athlete profile and compact athlete brief used by planning and coaching",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "get_dashboard_summary",
         "description": "Get current dashboard data to see what's already logged",
         "annotations": {
@@ -467,6 +478,20 @@ def call_mcp_tool(
 
         elif name == "get_dashboard_summary":
             data = dashboard_fn()
+            message = json.dumps(data, indent=2)
+
+        elif name == "get_athlete_profile":
+            data = recent_context_fn(
+                lookback_days=1,
+                context_days=1,
+                recent_activity_limit=1,
+                recent_note_limit=1,
+            )
+            data = {
+                "athlete_profile": data.get("athlete_profile"),
+                "athlete_brief": data.get("athlete_brief"),
+                "modality_restrictions": data.get("modality_restrictions"),
+            }
             message = json.dumps(data, indent=2)
 
         elif name == "get_recent_context":

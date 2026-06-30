@@ -142,6 +142,87 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(recent_context.json()["recent_feedback"][0]["activity_id"], "feedback-run-1")
         self.assertIn("daily_recommendation", recent_context.json())
 
+    def test_athlete_profile_persists_and_surfaces_in_dashboard_context_and_coaching(self):
+        today = datetime.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        target_day = today + timedelta(days=1)
+
+        profile = self.client.put(
+            "/settings/athlete-profile",
+            json={
+                "primary_focus": "hybrid",
+                "modality_preferences": ["ride", "run", "strength"],
+                "current_block": "Summer durability block",
+                "preferred_long_session_days": ["sat", "sun"],
+                "weekly_availability_notes": "Harder work fits best before Thursday.",
+                "planning_notes": "Keep one long ride each weekend if recovery is stable.",
+            },
+        )
+        self.assertEqual(profile.status_code, 200)
+        self.assertEqual(profile.json()["primary_focus"], "hybrid")
+        self.assertEqual(profile.json()["athlete_brief"]["modality_priority"], ["ride", "run", "strength"])
+
+        plan = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": week_start.isoformat(),
+                "title": "Hybrid support week",
+                "days": [
+                    {
+                        "date": target_day.isoformat(),
+                        "label": target_day.strftime("%a"),
+                        "session_type": "Ride",
+                        "title": "Aerobic ride",
+                        "target_duration_min": 90,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(plan.status_code, 201)
+
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertEqual(dashboard.json()["athlete_profile"]["focus"]["label"], "Hybrid")
+        self.assertIn("Summer durability block", dashboard.json()["athlete_brief"]["coaching_summary"])
+
+        recent_context = self.client.get("/context/recent")
+        self.assertEqual(recent_context.status_code, 200)
+        self.assertEqual(recent_context.json()["athlete_brief"]["preferred_long_session_days"], ["sat", "sun"])
+
+        coaching = self.client.get("/coaching/weekly")
+        self.assertEqual(coaching.status_code, 200)
+        coaching_body = coaching.json()
+        self.assertEqual(coaching_body["reasoning_signals"]["athlete_brief"]["focus"]["value"], "hybrid")
+        self.assertEqual(
+            coaching_body["reasoning_signals"]["athlete_brief"]["preferred_long_session_days"],
+            ["sat", "sun"],
+        )
+
+    def test_athlete_profile_can_be_read_back_after_persisting_normalized_shape(self):
+        initial = self.client.put(
+            "/settings/athlete-profile",
+            json={
+                "primary_focus": "hybrid",
+                "modality_preferences": ["ride", "strength", "run"],
+                "current_block": "Cycling-first rebuild",
+                "preferred_long_session_days": ["sat", "sun"],
+                "weekly_availability_notes": "Weekdays are short.",
+                "planning_notes": "Avoid stacking run progression and hard strength on the same day.",
+            },
+        )
+        self.assertEqual(initial.status_code, 200)
+
+        reread = self.client.get("/settings/athlete-profile")
+        self.assertEqual(reread.status_code, 200)
+        body = reread.json()
+        self.assertEqual(body["primary_focus"], "hybrid")
+        self.assertEqual(body["athlete_brief"]["modality_priority"], ["ride", "strength", "run"])
+        self.assertEqual(body["athlete_brief"]["preferred_long_session_days"], ["sat", "sun"])
+
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertEqual(dashboard.json()["athlete_brief"]["modality_priority"], ["ride", "strength", "run"])
+
     def test_recovery_caution_deprioritizes_run_goal_pressure_in_weekly_coaching(self):
         today = datetime.now().date()
         yesterday = today - timedelta(days=1)
@@ -1297,9 +1378,10 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(planning_body["roadmap"]["title"], "Training Dashboard Roadmap")
         self.assertTrue(planning_body["roadmap"]["phases"])
         self.assertTrue(planning_body["sprints"]["items"])
-        self.assertEqual(planning_body["roadmap"]["completed_phases"], planning_body["roadmap"]["total_phases"])
-        self.assertIsNone(planning_body["roadmap"]["current_phase"])
-        self.assertIsNone(planning_body["sprints"]["next_recommended"])
+        self.assertEqual(planning_body["roadmap"]["completed_phases"], 0)
+        self.assertEqual(planning_body["roadmap"]["total_phases"], 4)
+        self.assertEqual(planning_body["roadmap"]["current_phase"]["number"], 6)
+        self.assertEqual(planning_body["sprints"]["next_recommended"]["label"], "Sprint 16")
 
     def test_today_session_is_not_skipped_before_day_is_over(self):
         today = datetime.now().date()

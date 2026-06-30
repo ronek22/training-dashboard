@@ -43,7 +43,7 @@
         <div class="section-head">
           <div>
             <div class="card-title">Roadmap Phases</div>
-            <div class="section-sub">Goal-oriented phases from [docs/roadmap.md](/Users/jakubronkiewicz/Projekty/training-dashboard/docs/roadmap.md).</div>
+            <div class="section-sub">Goal-oriented phases from the active roadmap under [docs/roadmaps](/Users/jakubronkiewicz/Projekty/training-dashboard/docs/roadmaps).</div>
           </div>
         </div>
         <div class="phase-list">

@@ -7,7 +7,7 @@ This is a practical map of the repository for day-to-day development.
 - `backend/` — FastAPI app and tests
 - `frontend/` — Vue app
 - `mcp/` — local MCP server bridge
-- `docs/` — roadmap, sprint plans, decisions, and durable repo context
+- `docs/` — roadmap index, roadmap archives, sprint plans, decisions, and durable repo context
 - `docker-compose.yml` — local multi-service startup
 - `Makefile` — common developer commands
 - `README.md` — setup and operator-facing instructions
@@ -29,6 +29,7 @@ Root:
 - `models/metrics.py` — metric payload shape
 - `models/notes.py` — note payload shape
 - `models/plans.py` — weekly plans, adjustments, revisions
+- `models/settings.py` — modality restrictions and athlete-profile payload shape
 - `models/weekly_summary.py` — stored weekly summary shape
 
 ### Repositories
@@ -50,7 +51,7 @@ Root:
 - `services/metrics.py` — metric history and writes
 - `services/notes.py` — note creation and listing
 - `services/plans.py` — plan serialization, adjustment, comparison semantics
-- `services/settings.py` — app settings reads/writes
+- `services/settings.py` — app settings reads/writes including modality restrictions and athlete profile normalization
 - `services/strava.py` — Strava import and stream backfill logic
 - `services/weekly_summary.py` — weekly summary writes/reads
 
@@ -64,6 +65,7 @@ Root:
 - `routers/metrics.py` — `/metrics`
 - `routers/notes.py` — `/notes`
 - `routers/plans.py` — `/plans/weekly`, `/plans/weekly/adjust`
+- `routers/settings.py` — settings-backed athlete profile and modality restriction routes
 - `routers/weekly_summary.py` — `/weekly`
 
 ### Adapters

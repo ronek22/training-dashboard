@@ -24,6 +24,15 @@ def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _get_active_roadmap_path(docs_dir: Path) -> Path:
+    roadmap_index = docs_dir / "roadmap.md"
+    index_text = _read_text(roadmap_index)
+    match = re.search(r"^Active roadmap:\s*`([^`]+)`\s*$", index_text, re.MULTILINE)
+    if not match:
+        return roadmap_index
+    return docs_dir / match.group(1)
+
+
 def _parse_roadmap_phases(roadmap_text: str, current_state_text: str) -> list[dict]:
     phases: list[dict] = []
     pattern = re.compile(r"^## Phase (\d+): (.+)$", re.MULTILINE)
@@ -112,7 +121,9 @@ def _parse_next_focus(current_state_text: str, sprints: list[dict]) -> dict | No
 
 def get_planning_status() -> dict:
     docs_dir, sprints_dir = _get_docs_paths()
-    roadmap_text = _read_text(docs_dir / "roadmap.md")
+    roadmap_index_path = docs_dir / "roadmap.md"
+    active_roadmap_path = _get_active_roadmap_path(docs_dir)
+    roadmap_text = _read_text(active_roadmap_path)
     current_state_text = _read_text(docs_dir / "current-state.md")
     sprints_readme_text = _read_text(sprints_dir / "README.md")
 
@@ -145,7 +156,8 @@ def get_planning_status() -> dict:
             "items": sprints,
         },
         "sources": [
-            {"label": "Roadmap", "path": "docs/roadmap.md"},
+            {"label": "Roadmap Index", "path": str(roadmap_index_path.relative_to(docs_dir.parent))},
+            {"label": "Active Roadmap", "path": str(active_roadmap_path.relative_to(docs_dir.parent))},
             {"label": "Current State", "path": "docs/current-state.md"},
             {"label": "Sprints Index", "path": "docs/sprints/README.md"},
         ],

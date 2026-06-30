@@ -9,9 +9,47 @@
     </div>
 
     <div v-if="loading" class="empty card">Loading goals…</div>
-    <div v-else-if="!goals.length" class="empty card">No goals yet.</div>
-
     <div v-else class="goal-sections">
+      <div class="card athlete-profile-summary">
+        <div class="athlete-profile-top">
+          <div>
+            <div class="card-title">Athlete Profile</div>
+            <div class="page-sub">Durable coaching context for planning, dashboard reads, and MCP.</div>
+          </div>
+          <button class="dialog-secondary" @click="openProfileDialog">Edit profile</button>
+        </div>
+
+        <div class="athlete-profile-grid">
+          <article class="athlete-profile-stat">
+            <span>Primary focus</span>
+            <strong>{{ athleteProfile?.focus?.label || 'General fitness' }}</strong>
+          </article>
+          <article class="athlete-profile-stat">
+            <span>Priority order</span>
+            <strong>{{ profilePriorityLabel }}</strong>
+          </article>
+          <article class="athlete-profile-stat">
+            <span>Long-session days</span>
+            <strong>{{ profileLongDaysLabel }}</strong>
+          </article>
+        </div>
+
+        <div v-if="athleteProfile?.athlete_brief?.current_block || athleteProfile?.athlete_brief?.weekly_availability_notes || athleteProfile?.athlete_brief?.planning_notes" class="athlete-profile-notes">
+          <div v-if="athleteProfile?.athlete_brief?.current_block" class="athlete-profile-note">
+            <span>Current block</span>
+            <strong>{{ athleteProfile.athlete_brief.current_block }}</strong>
+          </div>
+          <div v-if="athleteProfile?.athlete_brief?.weekly_availability_notes" class="athlete-profile-note">
+            <span>Availability</span>
+            <strong>{{ athleteProfile.athlete_brief.weekly_availability_notes }}</strong>
+          </div>
+          <div v-if="athleteProfile?.athlete_brief?.planning_notes" class="athlete-profile-note">
+            <span>Planning notes</span>
+            <strong>{{ athleteProfile.athlete_brief.planning_notes }}</strong>
+          </div>
+        </div>
+      </div>
+
       <div v-if="activeRestrictions.length" class="card goal-restriction-summary">
         <div class="goal-restriction-top">
           <div>
@@ -39,6 +77,8 @@
           <button class="dialog-secondary" @click="openRestrictionDialog">Add restriction</button>
         </div>
       </div>
+
+      <div v-if="!goals.length" class="empty card">No goals yet.</div>
 
       <section v-for="section in groupedGoals" :key="section.label" class="goal-section">
         <div class="section-title">{{ section.label }}</div>
@@ -248,6 +288,102 @@
         </div>
       </div>
     </div>
+
+    <div v-if="profileDialogOpen" class="goal-dialog-backdrop" @click.self="closeProfileDialog">
+      <div class="goal-dialog card">
+        <div class="goal-dialog-head">
+          <div>
+            <div class="card-title">Athlete Profile</div>
+            <div class="goal-dialog-sub">This is durable context. Use it to describe focus, priorities, and constraints that last longer than one week.</div>
+          </div>
+          <button class="dialog-close" @click="closeProfileDialog">×</button>
+        </div>
+
+        <div class="goal-form athlete-profile-form">
+          <label>
+            <span>Primary focus</span>
+            <select v-model="profileForm.primary_focus">
+              <option value="general_fitness">General fitness</option>
+              <option value="endurance">Endurance</option>
+              <option value="hybrid">Hybrid</option>
+              <option value="strength">Strength</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Current block</span>
+            <input v-model="profileForm.current_block" type="text" placeholder="Example: summer durability block">
+          </label>
+
+          <label>
+            <span>1st modality priority</span>
+            <select v-model="profileForm.modality_preferences[0]">
+              <option value="">Not set</option>
+              <option value="run">Running</option>
+              <option value="ride">Riding</option>
+              <option value="strength">Strength</option>
+            </select>
+          </label>
+
+          <label>
+            <span>2nd modality priority</span>
+            <select v-model="profileForm.modality_preferences[1]">
+              <option value="">Not set</option>
+              <option value="run">Running</option>
+              <option value="ride">Riding</option>
+              <option value="strength">Strength</option>
+            </select>
+          </label>
+
+          <label>
+            <span>3rd modality priority</span>
+            <select v-model="profileForm.modality_preferences[2]">
+              <option value="">Not set</option>
+              <option value="run">Running</option>
+              <option value="ride">Riding</option>
+              <option value="strength">Strength</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="athlete-profile-days">
+          <span>Preferred long-session days</span>
+          <div class="athlete-profile-day-grid">
+            <button
+              v-for="day in weekdayOptions"
+              :key="day.value"
+              type="button"
+              class="athlete-day-chip"
+              :class="{ 'is-active': profileForm.preferred_long_session_days.includes(day.value) }"
+              @click="toggleLongSessionDay(day.value)"
+            >
+              {{ day.label }}
+            </button>
+          </div>
+        </div>
+
+        <div class="athlete-profile-textareas">
+          <label class="goal-restriction-field">
+            <span>Weekly availability notes</span>
+            <textarea v-model="profileForm.weekly_availability_notes" rows="3" placeholder="Example: harder work fits best before Thursday"></textarea>
+          </label>
+
+          <label class="goal-restriction-field">
+            <span>Planning notes</span>
+            <textarea v-model="profileForm.planning_notes" rows="4" placeholder="Example: protect one long ride most weekends"></textarea>
+          </label>
+        </div>
+
+        <p v-if="profileMessage" class="goal-message">{{ profileMessage }}</p>
+
+        <div class="goal-dialog-actions">
+          <button class="dialog-secondary" @click="closeProfileDialog">Cancel</button>
+          <button class="save-btn" :disabled="savingProfile" @click="saveProfile">
+            {{ savingProfile ? 'Saving...' : 'Save profile' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -259,22 +395,32 @@ const api = useApi()
 const loading = ref(true)
 const saving = ref(false)
 const savingRestrictions = ref(false)
+const savingProfile = ref(false)
 const message = ref('')
 const restrictionMessage = ref('')
+const profileMessage = ref('')
 const goals = ref([])
 const dialogOpen = ref(false)
 const restrictionDialogOpen = ref(false)
+const profileDialogOpen = ref(false)
+const athleteProfile = ref(null)
 
 const form = ref(defaultForm())
 const restrictionForm = ref(defaultRestrictionForm())
+const profileForm = ref(defaultProfileForm())
 
 const loadGoals = async () => {
   loading.value = true
   try {
-    const { data } = await api.getGoals({ limit: 24 })
-    goals.value = data
-    const restrictionResult = await api.getModalityRestrictions()
+    const [goalsResult, restrictionResult, profileResult] = await Promise.all([
+      api.getGoals({ limit: 24 }),
+      api.getModalityRestrictions(),
+      api.getAthleteProfile(),
+    ])
+    goals.value = goalsResult.data
     restrictionForm.value = restrictionFormFromPayload(restrictionResult.data)
+    athleteProfile.value = profileResult.data
+    profileForm.value = profileFormFromPayload(profileResult.data)
   } finally {
     loading.value = false
   }
@@ -311,6 +457,23 @@ const modalityRestrictionCards = [
   { key: 'ride', label: 'Riding', reasonPlaceholder: 'Example: no hard climbing' },
   { key: 'strength', label: 'Strength', reasonPlaceholder: 'Example: no lower-body loading' },
 ]
+const weekdayOptions = [
+  { value: 'mon', label: 'Mon' },
+  { value: 'tue', label: 'Tue' },
+  { value: 'wed', label: 'Wed' },
+  { value: 'thu', label: 'Thu' },
+  { value: 'fri', label: 'Fri' },
+  { value: 'sat', label: 'Sat' },
+  { value: 'sun', label: 'Sun' },
+]
+const profilePriorityLabel = computed(() => {
+  const labels = athleteProfile.value?.athlete_brief?.modality_priority_labels || []
+  return labels.length ? labels.join(' → ') : 'Not set'
+})
+const profileLongDaysLabel = computed(() => {
+  const labels = athleteProfile.value?.athlete_brief?.preferred_long_session_day_labels || []
+  return labels.length ? labels.join(', ') : 'Not set'
+})
 
 const canSave = computed(() =>
   form.value.title && form.value.period_type && form.value.metric_type &&
@@ -341,6 +504,21 @@ const closeDialog = () => {
 const closeRestrictionDialog = () => {
   if (savingRestrictions.value) return
   restrictionDialogOpen.value = false
+}
+
+const openProfileDialog = async () => {
+  profileMessage.value = ''
+  try {
+    const profileResult = await api.getAthleteProfile()
+    athleteProfile.value = profileResult.data
+    profileForm.value = profileFormFromPayload(profileResult.data)
+  } catch {}
+  profileDialogOpen.value = true
+}
+
+const closeProfileDialog = () => {
+  if (savingProfile.value) return
+  profileDialogOpen.value = false
 }
 
 const saveGoal = async () => {
@@ -374,6 +552,23 @@ const saveRestrictions = async () => {
   }
 }
 
+const saveProfile = async () => {
+  savingProfile.value = true
+  profileMessage.value = ''
+  try {
+    const payload = profilePayloadFromForm(profileForm.value)
+    const result = await api.updateAthleteProfile(payload)
+    athleteProfile.value = result.data
+    profileForm.value = profileFormFromPayload(result.data)
+    profileMessage.value = 'Profile updated.'
+    profileDialogOpen.value = false
+  } catch (error) {
+    profileMessage.value = error?.response?.data?.detail || 'Failed to save profile.'
+  } finally {
+    savingProfile.value = false
+  }
+}
+
 function defaultForm() {
   return {
     title: '',
@@ -391,6 +586,17 @@ function defaultRestrictionForm() {
   }
 }
 
+function defaultProfileForm() {
+  return {
+    primary_focus: 'general_fitness',
+    modality_preferences: ['', '', ''],
+    current_block: '',
+    preferred_long_session_days: [],
+    weekly_availability_notes: '',
+    planning_notes: '',
+  }
+}
+
 function restrictionFormFromPayload(payload) {
   const next = defaultRestrictionForm()
   for (const modality of Object.keys(next)) {
@@ -403,6 +609,45 @@ function restrictionFormFromPayload(payload) {
     }
   }
   return next
+}
+
+function profileFormFromPayload(payload) {
+  const next = defaultProfileForm()
+  const preferences = payload?.athlete_brief?.modality_priority || []
+  next.primary_focus = payload?.primary_focus || 'general_fitness'
+  next.modality_preferences = [
+    preferences[0] || '',
+    preferences[1] || '',
+    preferences[2] || '',
+  ]
+  next.current_block = payload?.current_block || ''
+  next.preferred_long_session_days = [...(payload?.athlete_brief?.preferred_long_session_days || [])]
+  next.weekly_availability_notes = payload?.weekly_availability_notes || ''
+  next.planning_notes = payload?.planning_notes || ''
+  return next
+}
+
+function profilePayloadFromForm(formState) {
+  return {
+    primary_focus: formState.primary_focus || 'general_fitness',
+    modality_preferences: [...new Set((formState.modality_preferences || []).filter(Boolean))],
+    current_block: formState.current_block || null,
+    preferred_long_session_days: [...new Set(formState.preferred_long_session_days || [])],
+    weekly_availability_notes: formState.weekly_availability_notes || null,
+    planning_notes: formState.planning_notes || null,
+  }
+}
+
+const toggleLongSessionDay = (day) => {
+  const current = new Set(profileForm.value.preferred_long_session_days || [])
+  if (current.has(day)) {
+    current.delete(day)
+  } else {
+    current.add(day)
+  }
+  profileForm.value.preferred_long_session_days = weekdayOptions
+    .map((item) => item.value)
+    .filter((value) => current.has(value))
 }
 
 const periodHeading = (periodType) => {
@@ -989,13 +1234,96 @@ const showPlanningGuidance = (goal) => {
   color: var(--text);
   cursor: pointer;
 }
+.athlete-profile-summary {
+  display: grid;
+  gap: 16px;
+}
+.athlete-profile-top,
+.athlete-profile-grid,
+.athlete-profile-notes {
+  display: grid;
+  gap: 12px;
+}
+.athlete-profile-top {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+.athlete-profile-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.athlete-profile-stat,
+.athlete-profile-note {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+}
+.athlete-profile-stat span,
+.athlete-profile-note span,
+.athlete-profile-days > span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.athlete-profile-stat strong,
+.athlete-profile-note strong {
+  font-size: 14px;
+  line-height: 1.45;
+}
+.athlete-profile-form {
+  margin-bottom: 16px;
+}
+.athlete-profile-days {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.athlete-profile-day-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+.athlete-day-chip {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  border-radius: 10px;
+  padding: 10px 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+.athlete-day-chip.is-active {
+  background: rgba(59,130,246,0.16);
+  border-color: rgba(59,130,246,0.28);
+  color: #d9e6ff;
+}
+.athlete-profile-textareas {
+  display: grid;
+  gap: 12px;
+}
+.athlete-profile-textareas textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+}
 @media (max-width: 1100px) {
   .goal-grid { grid-template-columns: 1fr; }
   .goal-restriction-grid-compact { grid-template-columns: 1fr; }
+  .athlete-profile-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
   .page-head { flex-direction: column; }
   .goal-form { grid-template-columns: 1fr; }
+  .athlete-profile-top { grid-template-columns: 1fr; }
+  .athlete-profile-day-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .goal-restriction-top,
   .goal-restriction-summary-footer,
   .goal-restriction-actions,

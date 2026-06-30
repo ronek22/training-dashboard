@@ -4,6 +4,8 @@ const api = axios.create({ baseURL: '/api' })
 
 export const useApi = () => ({
   getDashboard: () => api.get('/dashboard'),
+  getAthleteProfile: () => api.get('/settings/athlete-profile'),
+  updateAthleteProfile: (payload) => api.put('/settings/athlete-profile', payload),
   getModalityRestrictions: () => api.get('/settings/modality-restrictions'),
   updateModalityRestrictions: (payload) => api.put('/settings/modality-restrictions', payload),
   getPlanningStatus: () => api.get('/planning/status'),

@@ -85,3 +85,35 @@ This file records durable project decisions that should influence future work.
 - Roadmap and sprint visibility in the UI is worth adding now only as a read-only, docs-backed slice.
 - Markdown under `docs/` should remain the source of truth rather than creating a separate editable planning model in the app.
 - Any roadmap visualization should depend on stable metadata or headings, not fuzzy parsing of arbitrary prose.
+
+## 2026-06-30
+
+### Next roadmap direction
+
+- The next roadmap should focus on richer athlete modeling and richer goal modeling rather than broader integrations.
+- The biggest product gap is now `the app understands training data better than it understands the athlete`.
+- Athlete context should become explicit persisted state before deeper goal-aware automation expands further.
+
+### Goal model direction
+
+- Goals should expand from simple accumulation tracking into a small number of explicit goal families.
+- The first goal families should include accumulation goals, event-performance goals, benchmark goals, and process or frequency goals.
+- Structured goal templates should remain the canonical source of truth; free-form text can assist creation but should not replace normalized goal data.
+
+### Athlete profile direction
+
+- The app should store a lightweight athlete profile including focus, modality priorities, planning notes, and similar durable coaching context.
+- The first athlete profile can live in settings-backed storage rather than requiring a large new profile subsystem.
+- MCP and chat surfaces should consume a deterministic athlete brief derived from that stored profile.
+
+### Planning and coaching guardrails
+
+- Richer goals should improve planning and coaching explanations before they drive more aggressive automation.
+- Goal evaluation and forecasts should stay deterministic and explainable even when they become goal-family-specific.
+- Hybrid or competing goals should be surfaced as explicit tradeoffs rather than hidden behind generic pressure scores.
+
+### Sprint 15 implementation outcome
+
+- Athlete profile now lives in settings-backed storage as lightweight durable coaching context rather than a separate subsystem.
+- The canonical stored athlete-profile payload should remain compact and raw; normalized labels and `athlete_brief` should be derived on read.
+- Dashboard should treat athlete context as secondary reference information, not as a top-level daily coaching signal.

@@ -6,12 +6,28 @@ from ..db import get_db
 from ..repositories.settings import get_setting_value, set_setting_value
 
 MODALITY_RESTRICTIONS_KEY = "modality_restrictions"
+ATHLETE_PROFILE_KEY = "athlete_profile"
 MODALITY_LABELS = {
     "run": "Running",
     "ride": "Riding",
     "strength": "Strength",
 }
 RESTRICTION_STATUSES = {"allowed", "limited", "blocked"}
+ATHLETE_FOCUS_LABELS = {
+    "endurance": "Endurance",
+    "hybrid": "Hybrid",
+    "strength": "Strength",
+    "general_fitness": "General fitness",
+}
+WEEKDAY_LABELS = {
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri",
+    "sat": "Sat",
+    "sun": "Sun",
+}
 
 
 def get_setting(key: str):
@@ -55,8 +71,19 @@ def default_modality_restrictions() -> dict:
     }
 
 
-def normalize_modality(value: Optional[str]) -> Optional[str]:
+def _clean_text(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    return cleaned or None
+
+
+def normalize_modality(value) -> Optional[str]:
     if not value:
+        return None
+    if isinstance(value, dict):
+        value = value.get("value") or value.get("modality") or value.get("label")
+    if value is None:
         return None
     normalized = value.strip().lower()
     aliases = {
@@ -71,6 +98,124 @@ def normalize_modality(value: Optional[str]) -> Optional[str]:
         "weighttraining": "strength",
     }
     return aliases.get(normalized)
+
+
+def normalize_weekday(value) -> Optional[str]:
+    if not value:
+        return None
+    if isinstance(value, dict):
+        value = value.get("value") or value.get("day") or value.get("label")
+    if value is None:
+        return None
+    normalized = value.strip().lower()[:3]
+    return normalized if normalized in WEEKDAY_LABELS else None
+
+
+def _format_list(items: list[str]) -> str:
+    if not items:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return f"{', '.join(items[:-1])}, and {items[-1]}"
+
+
+def default_athlete_profile() -> dict:
+    return normalize_athlete_profile({})
+
+
+def build_athlete_brief(profile: dict) -> dict:
+    focus_label = profile["focus"]["label"]
+    modality_labels = [item["label"] for item in profile.get("modality_preferences", [])]
+    long_day_labels = [item["label"] for item in profile.get("preferred_long_session_days", [])]
+    current_block = profile.get("current_block")
+    availability_notes = profile.get("weekly_availability_notes")
+    planning_notes = profile.get("planning_notes")
+
+    if modality_labels:
+        headline = f"{focus_label} athlete prioritizing {_format_list(modality_labels).lower()}."
+    else:
+        headline = f"{focus_label} athlete profile is active."
+
+    coaching_summary_parts = [headline]
+    if current_block:
+        coaching_summary_parts.append(f"Current block: {current_block}.")
+    if long_day_labels:
+        coaching_summary_parts.append(f"Long sessions fit best on {_format_list(long_day_labels)}.")
+    if availability_notes:
+        coaching_summary_parts.append(f"Availability: {availability_notes}.")
+    if planning_notes:
+        coaching_summary_parts.append(f"Planning notes: {planning_notes}.")
+
+    return {
+        "headline": headline,
+        "focus": {
+            "value": profile["primary_focus"],
+            "label": focus_label,
+        },
+        "current_block": current_block,
+        "modality_priority": [item["value"] for item in profile.get("modality_preferences", [])],
+        "modality_priority_labels": modality_labels,
+        "preferred_long_session_days": [item["value"] for item in profile.get("preferred_long_session_days", [])],
+        "preferred_long_session_day_labels": long_day_labels,
+        "weekly_availability_notes": availability_notes,
+        "planning_notes": planning_notes,
+        "coaching_summary": " ".join(coaching_summary_parts),
+    }
+
+
+def normalize_athlete_profile(raw_value: Optional[dict]) -> dict:
+    raw = raw_value if isinstance(raw_value, dict) else {}
+    focus = _clean_text(raw.get("primary_focus")) or "general_fitness"
+    if focus not in ATHLETE_FOCUS_LABELS:
+        focus = "general_fitness"
+
+    modality_preferences = []
+    for item in raw.get("modality_preferences", []) if isinstance(raw.get("modality_preferences"), list) else []:
+        normalized = normalize_modality(item)
+        if normalized and normalized not in modality_preferences:
+            modality_preferences.append(normalized)
+
+    preferred_long_session_days = []
+    for item in raw.get("preferred_long_session_days", []) if isinstance(raw.get("preferred_long_session_days"), list) else []:
+        normalized = normalize_weekday(item)
+        if normalized and normalized not in preferred_long_session_days:
+            preferred_long_session_days.append(normalized)
+
+    profile = {
+        "primary_focus": focus,
+        "focus": {
+            "value": focus,
+            "label": ATHLETE_FOCUS_LABELS[focus],
+        },
+        "modality_preferences": [
+            {"value": item, "label": MODALITY_LABELS[item]}
+            for item in modality_preferences
+        ],
+        "current_block": _clean_text(raw.get("current_block")),
+        "preferred_long_session_days": [
+            {"value": item, "label": WEEKDAY_LABELS[item]}
+            for item in preferred_long_session_days
+        ],
+        "weekly_availability_notes": _clean_text(raw.get("weekly_availability_notes")),
+        "planning_notes": _clean_text(raw.get("planning_notes")),
+    }
+    profile["athlete_brief"] = build_athlete_brief(profile)
+    return profile
+
+
+def serialize_athlete_profile_for_storage(profile: dict) -> dict:
+    return {
+        "primary_focus": profile.get("primary_focus"),
+        "modality_preferences": [item.get("value") for item in profile.get("modality_preferences", []) if item.get("value")],
+        "current_block": profile.get("current_block"),
+        "preferred_long_session_days": [
+            item.get("value") for item in profile.get("preferred_long_session_days", []) if item.get("value")
+        ],
+        "weekly_availability_notes": profile.get("weekly_availability_notes"),
+        "planning_notes": profile.get("planning_notes"),
+    }
 
 
 def modality_for_session_type(session_type: Optional[str]) -> Optional[str]:
@@ -166,10 +311,29 @@ def get_modality_restrictions_for_conn(conn: sqlite3.Connection) -> dict:
     return normalize_modality_restrictions(parsed)
 
 
+def get_athlete_profile_for_conn(conn: sqlite3.Connection) -> dict:
+    raw_value = get_setting_value(conn, ATHLETE_PROFILE_KEY)
+    if not raw_value:
+        return default_athlete_profile()
+    try:
+        parsed = json.loads(raw_value)
+    except json.JSONDecodeError:
+        return default_athlete_profile()
+    return normalize_athlete_profile(parsed)
+
+
 def get_modality_restrictions_data() -> dict:
     conn = get_db()
     try:
         return get_modality_restrictions_for_conn(conn)
+    finally:
+        conn.close()
+
+
+def get_athlete_profile_data() -> dict:
+    conn = get_db()
+    try:
+        return get_athlete_profile_for_conn(conn)
     finally:
         conn.close()
 
@@ -179,6 +343,17 @@ def set_modality_restrictions_data(payload: dict) -> dict:
     try:
         normalized = normalize_modality_restrictions(payload)
         set_setting_value(conn, MODALITY_RESTRICTIONS_KEY, json.dumps(normalized))
+        conn.commit()
+        return normalized
+    finally:
+        conn.close()
+
+
+def set_athlete_profile_data(payload: dict) -> dict:
+    conn = get_db()
+    try:
+        normalized = normalize_athlete_profile(payload)
+        set_setting_value(conn, ATHLETE_PROFILE_KEY, json.dumps(serialize_athlete_profile_for_storage(normalized)))
         conn.commit()
         return normalized
     finally:

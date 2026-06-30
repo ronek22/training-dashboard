@@ -4,7 +4,8 @@ This directory is the source of truth for product planning and engineering decis
 
 ## Structure
 
-- `roadmap.md` — prioritized product and engineering roadmap
+- `roadmap.md` — roadmap entrypoint and active-roadmap pointer
+- `roadmaps/` — archived and active roadmap files by generation
 - `decisions.md` — durable decisions, tradeoffs, and conventions
 - `architecture.md` — high-level system design and data flow
 - `project-structure.md` — practical codebase map by backend/frontend area

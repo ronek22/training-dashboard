@@ -13,7 +13,7 @@ from .plans import (
 )
 from ..repositories.coaching import list_coaching_snapshot_rows, upsert_coaching_snapshot_row
 from ..repositories.plans import count_weekly_plan_revision_rows
-from .settings import restriction_summary_text
+from .settings import _format_list, restriction_summary_text
 
 HARD_INTENTS = {"long", "tempo", "interval", "race_specific", "strength_general", "strength_lower", "strength_upper"}
 
@@ -604,6 +604,7 @@ def build_weekly_recommendation(
     recent_patterns: dict,
 ) -> dict:
     status = context.get("daily_recommendation", {}).get("status", "keep")
+    athlete_brief = context.get("athlete_brief") or {}
     recovery_score = int(recovery.get("caution_score") or 0)
     goal_status = goals.get("status")
     pattern_status = recent_patterns.get("status")
@@ -691,6 +692,17 @@ def build_weekly_recommendation(
         _append_unique(rationale, text)
     for text in goals.get("key_observations", []):
         _append_unique(rationale, text)
+    if athlete_brief.get("headline"):
+        _append_unique(rationale, athlete_brief["headline"])
+    if athlete_brief.get("current_block"):
+        _append_unique(rationale, f"Current emphasis block: {athlete_brief['current_block']}.")
+    if athlete_brief.get("preferred_long_session_day_labels"):
+        _append_unique(
+            rationale,
+            f"Long-session preference is {_format_list(athlete_brief['preferred_long_session_day_labels'])}.",
+        )
+    if athlete_brief.get("planning_notes"):
+        _append_unique(rationale, f"Planning note: {athlete_brief['planning_notes']}.")
     if repeated_high_rpe >= 2:
         _append_unique(rationale, "Recent feedback includes repeated high-RPE sessions.")
     if goal_status == "pressured" and goals.get("most_urgent"):
@@ -740,6 +752,7 @@ def build_weekly_coaching(
         recent_activity_limit=recent_activity_limit,
         recent_note_limit=recent_note_limit,
     )
+    athlete_brief = context.get("athlete_brief")
     active_plan = context.get("active_plan")
     execution = summarize_execution(active_plan)
     recovery = summarize_recovery(context)
@@ -796,6 +809,8 @@ def build_weekly_coaching(
             "latest_subjective_state": context.get("latest_subjective_state"),
             "training_load": context.get("training_load"),
             "goal_planning_summary": context.get("goal_planning_summary"),
+            "athlete_brief": athlete_brief,
+            "athlete_profile": context.get("athlete_profile"),
             "modality_restrictions": context.get("modality_restrictions"),
             "workout_intent_summary": context.get("workout_intent_summary"),
             "recent_pattern_summary": recent_patterns,

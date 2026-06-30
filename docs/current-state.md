@@ -156,6 +156,19 @@ Completed slices:
 - `Dashboard`, `Goals`, and `Plan` now surface restriction-aware cues and constrained states
 - smoke coverage includes restriction-aware goal and coaching behavior
 
+### Sprint 15 athlete profile and planning preferences
+
+Sprint 15 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- users can persist a lightweight athlete profile with focus, modality priorities, long-session days, and planning notes
+- dashboard and recent-context reads now expose a deterministic `athlete_brief` instead of relying only on inferred athlete context
+- weekly coaching rationale can reference athlete focus, current block, long-session preferences, and planning notes
+- `Goals` now provides compact athlete-profile editing alongside restriction management
+- `Dashboard` now surfaces athlete context as secondary reference context near coaching history instead of treating it like a top-level daily signal
+- smoke coverage now includes athlete-profile persistence and readback expectations
+
 ### Phase 5 coaching workflow and analysis
 
 Phase 5 can now be treated as complete for the current roadmap slice.
@@ -169,40 +182,47 @@ Completed slices:
 
 ## Recommended Next Step
 
-The current roadmap can be treated as implemented.
+The next roadmap slice should start now.
 
-That means the next step should be one of:
+The next major sprint should be:
 
-- define a new roadmap phase or sprint if product scope is expanding again
-- harden the existing workflow with deeper test coverage and cleanup
-- refine rough edges in the deterministic coaching layer without pretending the current roadmap is still open
+- Sprint 16 richer goal families should follow now that athlete context is explicit and durable
+
+That means moving into:
+
+- expanding beyond accumulation-only goals into richer goal families like event-performance, benchmark, and process targets
+- using the new athlete brief to keep richer goals and coaching tradeoffs coherent
+- improving planning guidance before attempting more aggressive automation
 
 ## Areas That Are Still Intentionally Lightweight
 
 - test coverage is still smoke-level rather than deep
 - weekly plans are stored as JSON blobs by week
 - goal-aware planning is still lightweight rather than deeply automated
-- MCP coaching still requires multiple reads rather than one opinionated weekly coaching action
+- goals are still mostly limited to distance, time, and activity-count style tracking
 - local backend test execution still depends on having the Python app dependencies installed
 
 ## Good Starting Points For Future Work
 
-If continuing after the current roadmap:
+If continuing into the next roadmap:
 
 - plan comparison and serialization: `backend/app/services/plans.py`
 - activity persistence and linking: `backend/app/services/activities.py`
 - activity SQL changes: `backend/app/repositories/activities.py`
 - coaching summary and heuristics: `backend/app/services/coaching.py`
 - coaching inspection and handoff UI: `frontend/src/views/Dashboard.vue` and `frontend/src/views/Plan.vue`
+- goal schema and progress logic: `backend/app/models/goals.py`, `backend/app/repositories/goals.py`, and `backend/app/services/goals.py`
+- settings-backed athlete context: `backend/app/services/settings.py` and `backend/app/repositories/settings.py`
+- athlete-facing goal and profile UI: `frontend/src/views/Goals.vue`
 - calendar aggregation and month view: `backend/app/services/activities.py` and `frontend/src/views/Calendar.vue`
-- docs-backed planning visibility: `docs/roadmap.md`, `docs/current-state.md`, and `docs/sprints/`
-- sprint planning direction: start by drafting a new sprint doc under `docs/sprints/` rather than reusing the completed Sprint 10-14 sequence
+- docs-backed planning visibility: `docs/roadmap.md`, `docs/roadmaps/`, `docs/current-state.md`, and `docs/sprints/`
+- sprint planning direction: richer goal modeling should be the next execution slice
 
 ## Working Assumption
 
 Unless the roadmap changes, the default implementation direction should be:
 
-1. treat the current roadmap as complete
-2. keep logic deterministic and inspectable
-3. prefer hardening and cleanup over broad new automation
-4. create a new roadmap slice before starting another large feature sequence
+1. make athlete profile explicit before deeper goal automation
+2. add richer goal families before trying to make coaching more autonomous
+3. keep logic deterministic and inspectable
+4. prefer structured templates over vague free-form modeling

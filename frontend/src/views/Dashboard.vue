@@ -409,7 +409,7 @@
       </div>
     </div>
 
-    <section v-if="coachingHistory.length" class="support-section">
+    <section v-if="coachingHistory.length || athleteBrief" class="support-section">
       <div class="support-section-head">
         <div>
           <div class="section-label">Recent History</div>
@@ -418,30 +418,74 @@
         <div class="support-section-copy">Recent weekly calls, saved as compact checkpoints instead of one-off snapshots.</div>
       </div>
 
-      <div class="coaching-history-list">
-        <article
-          v-for="entry in coachingHistory"
-          :key="entry.week_start"
-          class="card coaching-history-card"
-          :class="`history-${entry.summary_status}`"
-        >
-          <div class="coaching-history-top">
+      <div class="history-grid" :class="{ 'history-grid-single': !coachingHistory.length || !athleteBrief }">
+        <div v-if="coachingHistory.length" class="coaching-history-list">
+          <article
+            v-for="entry in coachingHistory"
+            :key="entry.week_start"
+            class="card coaching-history-card"
+            :class="`history-${entry.summary_status}`"
+          >
+            <div class="coaching-history-top">
+              <div>
+                <div class="card-title">Week of {{ formatDate(entry.week_start) }}</div>
+                <div class="coaching-history-headline">{{ entry.headline }}</div>
+              </div>
+              <div class="coaching-history-status" :class="`status-${entry.recommendation_status}`">
+                {{ coachingStatusLabel(entry.recommendation_status) }}
+              </div>
+            </div>
+            <div v-if="entry.rationale_summary" class="coaching-history-copy">{{ entry.rationale_summary }}</div>
+            <div class="coaching-history-meta">
+              <span>{{ formatDateTime(entry.generated_at) }}</span>
+              <span v-if="entry.revision_count">Plan revisions: {{ entry.revision_count }}</span>
+              <span v-if="entry.proposed_changed_dates?.length">Proposed: {{ formatDateList(entry.proposed_changed_dates) }}</span>
+            </div>
+            <div v-if="entry.focus_for_next_48h" class="coaching-history-focus">{{ entry.focus_for_next_48h }}</div>
+          </article>
+        </div>
+
+        <div v-if="athleteBrief" class="card athlete-brief-card athlete-brief-card-side">
+          <div class="athlete-brief-head">
             <div>
-              <div class="card-title">Week of {{ formatDate(entry.week_start) }}</div>
-              <div class="coaching-history-headline">{{ entry.headline }}</div>
+              <div class="card-title">Athlete Context</div>
+              <div class="goals-sub">Reference context for coaching reads.</div>
             </div>
-            <div class="coaching-history-status" :class="`status-${entry.recommendation_status}`">
-              {{ coachingStatusLabel(entry.recommendation_status) }}
+            <div class="athlete-brief-focus">{{ athleteProfile?.focus?.label || 'General fitness' }}</div>
+          </div>
+
+          <div class="athlete-brief-summary">
+            {{ athleteSummaryLine }}
+          </div>
+
+          <div class="athlete-brief-grid athlete-brief-grid-side">
+            <article class="athlete-brief-stat">
+              <span>Priority order</span>
+              <strong>{{ athletePriorityLabel }}</strong>
+            </article>
+            <article class="athlete-brief-stat">
+              <span>Current block</span>
+              <strong>{{ athleteBrief.current_block || 'Not set' }}</strong>
+            </article>
+            <article class="athlete-brief-stat">
+              <span>Long-session days</span>
+              <strong>{{ athleteLongDaysLabel }}</strong>
+            </article>
+          </div>
+
+          <div v-if="athleteDetailItems.length" class="athlete-brief-details">
+            <button type="button" class="athlete-brief-toggle" @click="athleteNotesOpen = !athleteNotesOpen">
+              {{ athleteNotesOpen ? 'Hide notes' : 'Show notes' }}
+            </button>
+
+            <div v-if="athleteNotesOpen" class="athlete-brief-notes">
+              <div v-for="item in athleteDetailItems" :key="item.label" class="athlete-brief-note">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
             </div>
           </div>
-          <div v-if="entry.rationale_summary" class="coaching-history-copy">{{ entry.rationale_summary }}</div>
-          <div class="coaching-history-meta">
-            <span>{{ formatDateTime(entry.generated_at) }}</span>
-            <span v-if="entry.revision_count">Plan revisions: {{ entry.revision_count }}</span>
-            <span v-if="entry.proposed_changed_dates?.length">Proposed: {{ formatDateList(entry.proposed_changed_dates) }}</span>
-          </div>
-          <div v-if="entry.focus_for_next_48h" class="coaching-history-focus">{{ entry.focus_for_next_48h }}</div>
-        </article>
+        </div>
       </div>
     </section>
 
@@ -963,6 +1007,7 @@ const loading = ref(true)
 const activeTooltip = ref(null)
 const activeDistanceTooltip = ref(null)
 const dismissedCoachingAdjustmentKey = ref(null)
+const athleteNotesOpen = ref(false)
 
 const coachingAdjustmentPreviewStorageKey = 'dismissed-coaching-adjustment-preview'
 
@@ -1001,6 +1046,8 @@ const strengthYearSeries = computed(() => dashboard.value?.strength_year_series 
 const activityHeatmap = computed(() => dashboard.value?.activity_heatmap || null)
 const weeklyPlan = computed(() => dashboard.value?.weekly_plan || null)
 const executionTrend = computed(() => dashboard.value?.execution_trend || null)
+const athleteProfile = computed(() => dashboard.value?.athlete_profile || null)
+const athleteBrief = computed(() => dashboard.value?.athlete_brief || null)
 const dailyRecommendation = computed(() => dashboard.value?.daily_recommendation || null)
 const latestSubjectiveState = computed(() => dashboard.value?.latest_subjective_state || null)
 const goalRiskSummary = computed(() => dashboard.value?.goal_risk_summary || null)
@@ -1111,6 +1158,35 @@ const todayGoalPressure = computed(() => {
   if (goalsAssessment.status === 'pressured') return 'Goals under pressure'
   if (goalsAssessment.status === 'watch') return 'Worth watching'
   return `${goalsAssessment.plan_supported_goals || 0} goals supported`
+})
+const athletePriorityLabel = computed(() => {
+  const labels = athleteBrief.value?.modality_priority_labels || []
+  return labels.length ? labels.join(' → ') : 'Not set'
+})
+const athleteLongDaysLabel = computed(() => {
+  const labels = athleteBrief.value?.preferred_long_session_day_labels || []
+  return labels.length ? labels.join(', ') : 'Not set'
+})
+const athleteSummaryLine = computed(() => {
+  const parts = []
+  if (athleteBrief.value?.current_block) parts.push(athleteBrief.value.current_block)
+  if (athleteBrief.value?.modality_priority_labels?.length) {
+    parts.push(`Priority: ${athleteBrief.value.modality_priority_labels.join(' → ')}`)
+  }
+  if (athleteBrief.value?.preferred_long_session_day_labels?.length) {
+    parts.push(`Long days: ${athleteBrief.value.preferred_long_session_day_labels.join(', ')}`)
+  }
+  return parts.join(' · ') || 'No additional athlete context set.'
+})
+const athleteDetailItems = computed(() => {
+  const items = []
+  if (athleteBrief.value?.weekly_availability_notes) {
+    items.push({ label: 'Availability', value: athleteBrief.value.weekly_availability_notes })
+  }
+  if (athleteBrief.value?.planning_notes) {
+    items.push({ label: 'Planning notes', value: athleteBrief.value.planning_notes })
+  }
+  return items
 })
 const weeklyMix = computed(() => (dashboard.value?.weekly_mix || []).map((week) => {
   const total = Number(week.total_min || 0)
@@ -2026,6 +2102,15 @@ const zoneBadgeClass = (activity) => {
 }
 .support-grid {
   margin-bottom: 0;
+}
+.history-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.7fr);
+  gap: 18px;
+  align-items: start;
+}
+.history-grid-single {
+  grid-template-columns: minmax(0, 1fr);
 }
 .reference-top-grid {
   grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.55fr);
@@ -3047,6 +3132,82 @@ const zoneBadgeClass = (activity) => {
   border-radius: 10px;
   padding: 10px 12px;
 }
+.athlete-brief-card,
+.athlete-brief-grid,
+.athlete-brief-notes,
+.athlete-brief-details {
+  display: grid;
+  gap: 12px;
+}
+.athlete-brief-card {
+  gap: 14px;
+}
+.athlete-brief-card-side {
+  position: sticky;
+  top: 18px;
+}
+.athlete-brief-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+.athlete-brief-summary {
+  color: var(--muted-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 0 2px;
+}
+.athlete-brief-focus {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(59,130,246,0.14);
+  color: #dbeafe;
+  font-size: 12px;
+  font-weight: 700;
+}
+.athlete-brief-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.athlete-brief-grid-side {
+  grid-template-columns: 1fr;
+}
+.athlete-brief-stat,
+.athlete-brief-note {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+.athlete-brief-stat span,
+.athlete-brief-note span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.athlete-brief-stat strong,
+.athlete-brief-note strong {
+  line-height: 1.45;
+}
+.athlete-brief-toggle {
+  justify-self: start;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.46);
+  color: var(--muted-soft);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.athlete-brief-toggle:hover {
+  color: var(--text);
+  border-color: rgba(148, 163, 184, 0.28);
+}
 
 @media (max-width: 1100px) {
   .cycling-head { flex-direction: column; }
@@ -3060,6 +3221,9 @@ const zoneBadgeClass = (activity) => {
   .heatmap-wrap { overflow-x: auto; }
   .execution-trend-summary,
   .execution-trend-weeks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .history-grid { grid-template-columns: 1fr; }
+  .athlete-brief-card-side { position: static; }
+  .athlete-brief-grid { grid-template-columns: 1fr; }
   .mix-chart,
   .strength-bars { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
@@ -3084,6 +3248,10 @@ const zoneBadgeClass = (activity) => {
   .dashboard-head-status,
   .support-section-head {
     width: 100%;
+  }
+  .athlete-brief-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
   .weekly-coach-head,
   .weekly-coach-session-top,

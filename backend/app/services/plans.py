@@ -8,6 +8,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from .goals import serialize_goal
+from .settings import get_modality_restrictions_for_conn, modality_for_session_type
 from ..models.plans import WeeklyPlan, WeeklyPlanAdjustment, WeeklyPlanDay, WeeklyPlanRevision
 from ..repositories.plans import (
     count_weekly_plan_revision_rows,
@@ -367,10 +368,11 @@ def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_sta
         LIMIT 12
         """
     ).fetchall()
-    active_goals = [serialize_goal(row, conn) for row in goal_rows]
+    restrictions = get_modality_restrictions_for_conn(conn)
+    active_goals = [serialize_goal(row, conn, restrictions) for row in goal_rows]
     relevant_goals = [goal for goal in active_goals if goal_applies_to_plan(goal, week_start, week_end)]
 
-    priority_order = {"at_risk": 0, "under_pressure": 1, "watch": 2, "on_track": 3, "completed": 4}
+    priority_order = {"constrained": 0, "at_risk": 1, "under_pressure": 2, "watch": 3, "on_track": 4, "completed": 5}
     enriched_goals = []
     for goal in relevant_goals:
         supported_days = []
@@ -383,6 +385,7 @@ def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_sta
                     "title": day.get("title"),
                     "support_reason": support_reason,
                     "priority": goal.get("risk_summary", {}).get("status", "on_track"),
+                    "restriction_status": (goal.get("constraint_summary") or {}).get("status"),
                 })
         enriched_goals.append({
             **goal,
@@ -400,6 +403,7 @@ def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_sta
     return {
         "active_goals": enriched_goals,
         "goal_ids": [goal["id"] for goal in enriched_goals],
+        "constrained_goal_count": sum(1 for goal in enriched_goals if goal.get("is_constrained")),
     }
 
 
@@ -589,6 +593,7 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
     revision_count = 0
     goal_context = {"active_goals": [], "goal_ids": []}
     if conn:
+        restrictions = get_modality_restrictions_for_conn(conn)
         week_days_by_date = {day["date"]: day for day in days if day.get("date")}
         dates = [day["date"] for day in days if day.get("date")]
         session_ids = [day["session_id"] for day in days if day.get("session_id")]
@@ -628,6 +633,9 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
             )
             enriched_day = dict(day)
             enriched_day["workout_intent_label"] = format_workout_intent_label(enriched_day.get("workout_intent"))
+            day_modality = modality_for_session_type(enriched_day.get("session_type"))
+            enriched_day["modality"] = day_modality
+            enriched_day["modality_restriction"] = restrictions.get("modalities", {}).get(day_modality) if day_modality else None
             enriched_day["comparison"] = comparison
             enriched_day["link_candidates"] = build_link_candidates(day, activity_rows)
             enriched_day["goal_links"] = []
@@ -646,6 +654,8 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
                     "status": goal["status"],
                     "risk_status": goal.get("risk_summary", {}).get("status"),
                     "risk_label": goal.get("risk_summary", {}).get("label"),
+                    "is_constrained": goal.get("is_constrained", False),
+                    "constraint_summary": goal.get("constraint_summary"),
                 }
                 for goal in goals_by_id.values()
                 if goal_supports_session(goal, day)

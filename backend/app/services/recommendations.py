@@ -4,6 +4,7 @@ from typing import Optional
 
 from .activity_feedback import list_recent_feedback_data
 from .plans import normalize_plan_session_type
+from .settings import get_modality_restrictions_for_conn, modality_for_session_type
 
 
 def latest_feedback_entry(conn: sqlite3.Connection) -> dict | None:
@@ -95,6 +96,7 @@ def build_daily_recommendation(
     today_plan = get_today_plan(weekly_plan)
     plan_type = normalize_plan_session_type(today_plan.get("session_type")) if today_plan else None
     hard_session = recent_hard_session(conn)
+    restrictions = get_modality_restrictions_for_conn(conn)
     streak_row = conn.execute("SELECT COUNT(DISTINCT date) AS days FROM activities WHERE date >= date('now', '-6 days')").fetchone()
     recent_streak_days = int(streak_row["days"] or 0) if streak_row else 0
 
@@ -149,6 +151,16 @@ def build_daily_recommendation(
         reasons.append(f"You have trained on {recent_streak_days} of the last 7 days.")
 
     if today_plan:
+        plan_modality = modality_for_session_type(today_plan.get("session_type"))
+        plan_restriction = restrictions.get("modalities", {}).get(plan_modality) if plan_modality else None
+        if plan_restriction and plan_restriction.get("status") == "blocked":
+            status = "adjust"
+            reasons.insert(0, f"{plan_restriction['label']} is currently blocked.")
+            action = f"Swap {today_plan['title']} out. {plan_restriction['label']} is currently blocked."
+        elif plan_restriction and plan_restriction.get("status") == "limited" and status in {"keep", "push"}:
+            status = "reduce"
+            reasons.insert(0, f"{plan_restriction['label']} is currently limited.")
+            action = f"Keep {today_plan['title']} only if it stays easy and symptom-aware."
         if plan_type in {"Rest", "Recovery"}:
             action = "Keep today light and let the recovery day do its job."
         elif status == "recover":
@@ -172,6 +184,7 @@ def build_daily_recommendation(
         "today_plan": today_plan,
         "signals": {
             "latest_feedback": feedback,
+            "modality_restrictions": restrictions,
             "training_load": {
                 "form": round(form, 1),
                 "fatigue": training_load.get("current", {}).get("fatigue"),

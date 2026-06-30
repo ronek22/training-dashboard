@@ -147,6 +147,18 @@ class AppSmokeTests(unittest.TestCase):
         yesterday = today - timedelta(days=1)
         week_start = today - timedelta(days=today.weekday())
 
+        restrictions = self.client.put(
+            "/settings/modality-restrictions",
+            json={
+                "modalities": {
+                    "run": {"status": "allowed"},
+                    "ride": {"status": "allowed"},
+                    "strength": {"status": "allowed"},
+                }
+            },
+        )
+        self.assertEqual(restrictions.status_code, 200)
+
         goal = self.client.post(
             "/goals",
             json={
@@ -211,6 +223,79 @@ class AppSmokeTests(unittest.TestCase):
             for item in body["goal_assessment"]["key_observations"]
         ))
         self.assertFalse(any("Run 1000km in 2026" in item for item in body["recommendation"]["risks"]))
+
+    def test_modality_restrictions_constrain_goals_and_coaching(self):
+        today = datetime.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        target_day = today + timedelta(days=1)
+
+        restrictions = self.client.put(
+            "/settings/modality-restrictions",
+            json={
+                "modalities": {
+                    "run": {
+                        "status": "blocked",
+                        "reason": "Foot flare-up",
+                        "expected_end_date": (today + timedelta(days=10)).isoformat(),
+                    },
+                    "ride": {"status": "allowed"},
+                    "strength": {"status": "allowed"},
+                }
+            },
+        )
+        self.assertEqual(restrictions.status_code, 200)
+        self.assertEqual(restrictions.json()["summary"]["blocked_count"], 1)
+
+        goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Run 800km in 2026",
+                "period_type": "year",
+                "metric_type": "run_km",
+                "target_value": 800,
+            },
+        )
+        self.assertEqual(goal.status_code, 201)
+
+        plan = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": week_start.isoformat(),
+                "title": "Restriction-aware week",
+                "days": [
+                    {
+                        "date": target_day.isoformat(),
+                        "label": target_day.strftime("%a"),
+                        "session_type": "Run",
+                        "workout_intent": "easy",
+                        "title": "Easy run",
+                        "target_duration_min": 45,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(plan.status_code, 201)
+
+        goals = self.client.get("/goals")
+        self.assertEqual(goals.status_code, 200)
+        restricted_goal = next(item for item in goals.json() if item["title"] == "Run 800km in 2026")
+        self.assertEqual(restricted_goal["risk_summary"]["status"], "constrained")
+
+        plans = self.client.get("/plans/weekly?limit=4")
+        self.assertEqual(plans.status_code, 200)
+        self.assertEqual(plans.json()[0]["days"][0]["modality_restriction"]["status"], "blocked")
+
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertEqual(dashboard.json()["modality_restrictions"]["summary"]["blocked_count"], 1)
+
+        coaching = self.client.get("/coaching/weekly")
+        self.assertEqual(coaching.status_code, 200)
+        body = coaching.json()
+        self.assertEqual(body["goal_assessment"]["constrained_goal_count"], 1)
+        next_session = next(item for item in body["recommended_next_sessions"] if item["title"] == "Easy run")
+        self.assertEqual(next_session["suggestion"], "substitute")
+        self.assertEqual(body["proposed_adjustment"]["days"][0]["session_type"], "Ride")
 
     def test_plan_and_weekly_summary_routes(self):
         today = datetime.now().date()
@@ -1212,7 +1297,7 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(planning_body["roadmap"]["title"], "Training Dashboard Roadmap")
         self.assertTrue(planning_body["roadmap"]["phases"])
         self.assertTrue(planning_body["sprints"]["items"])
-        self.assertEqual(planning_body["sprints"]["next_recommended"]["label"], "Sprint 12")
+        self.assertEqual(planning_body["sprints"]["next_recommended"]["label"], "Sprint 14")
 
     def test_today_session_is_not_skipped_before_day_is_over(self):
         today = datetime.now().date()

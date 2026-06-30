@@ -8,6 +8,7 @@ from .plans import format_workout_intent_label, normalize_workout_intent
 from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
 from .goals import aggregate_goal_risk_summary, list_goals_data
 from .recommendations import build_daily_recommendation, latest_subjective_state
+from .settings import get_modality_restrictions_for_conn
 
 
 def select_active_weekly_plan_row(conn: sqlite3.Connection) -> Optional[sqlite3.Row]:
@@ -899,13 +900,14 @@ def build_recent_context(
     computed_streak = compute_activity_streak(conn)
     training_load = build_training_load_summary(conn)
     active_goals = list_goals_data(conn, active_only=True, limit=8)
+    modality_restrictions = get_modality_restrictions_for_conn(conn)
     goal_risk_summary = aggregate_goal_risk_summary(active_goals)
     planning_priority = sorted(
         active_goals,
         key=lambda goal: (
-            {"at_risk": 0, "under_pressure": 1, "watch": 2, "on_track": 3, "completed": 4}.get(
+            {"constrained": 0, "at_risk": 1, "under_pressure": 2, "watch": 3, "on_track": 4, "completed": 5}.get(
                 goal.get("risk_summary", {}).get("status", "on_track"),
-                5,
+                6,
             ),
             goal.get("days_remaining", 9999),
         ),
@@ -945,12 +947,15 @@ def build_recent_context(
         "latest_metrics": [dict(row) for row in latest_metrics],
         "weekly_mix": weekly_mix,
         "strength_consistency": strength_consistency,
+        "modality_restrictions": modality_restrictions,
         "active_goals": active_goals,
         "goal_risk_summary": goal_risk_summary,
         "goal_planning_summary": {
             "count": len(active_goals),
+            "constrained": sum(1 for goal in active_goals if goal.get("is_constrained")),
             "most_urgent": planning_priority[:3],
             "statuses": {
+                "constrained": sum(1 for goal in active_goals if goal.get("planning_guidance", {}).get("status") == "constrained"),
                 "urgent": sum(1 for goal in active_goals if goal.get("planning_guidance", {}).get("status") == "urgent"),
                 "pressured": sum(1 for goal in active_goals if goal.get("planning_guidance", {}).get("status") == "pressured"),
                 "steady": sum(1 for goal in active_goals if goal.get("planning_guidance", {}).get("status") == "steady"),
@@ -1046,6 +1051,7 @@ def build_dashboard_data(
     cycling_efficiency_trend = build_cycling_efficiency_trend(conn, 8)
     strength_consistency = build_strength_consistency(conn, 8, 2)
     active_goals = list_goals_data_fn(conn, active_only=True, limit=4)
+    modality_restrictions = get_modality_restrictions_for_conn(conn)
     goal_risk_summary = aggregate_goal_risk_summary(active_goals)
     training_load = build_training_load_summary(conn)
     latest_plan = select_active_weekly_plan_row(conn)
@@ -1069,6 +1075,7 @@ def build_dashboard_data(
         "weekly_mix": weekly_mix,
         "cycling_efficiency_trend": cycling_efficiency_trend,
         "strength_consistency": strength_consistency,
+        "modality_restrictions": modality_restrictions,
         "active_goals": active_goals,
         "goal_risk_summary": goal_risk_summary,
         "weekly_plan": serialized_latest_plan,

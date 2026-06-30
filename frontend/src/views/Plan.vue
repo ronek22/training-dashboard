@@ -148,7 +148,8 @@
                 <span>{{ goal.period_label }}</span>
                 <span>{{ goal.supported_sessions }} supporting session{{ goal.supported_sessions === 1 ? '' : 's' }}</span>
               </div>
-              <div v-if="goal.risk_summary?.summary" class="goal-context-copy">{{ goal.risk_summary.summary }}</div>
+              <div v-if="goal.constraint_summary?.summary" class="goal-context-copy goal-context-copy-warn">{{ goal.constraint_summary.summary }}</div>
+              <div v-if="showGoalContextRiskSummary(goal)" class="goal-context-copy">{{ goal.risk_summary.summary }}</div>
             </article>
           </div>
         </div>
@@ -421,6 +422,9 @@
                     <span v-else>{{ day.session_type }}</span>
                   </div>
                 </div>
+                <div v-if="day.modality_restriction?.status !== 'allowed'" class="plan-restriction-pill" :class="`restriction-${day.modality_restriction?.status}`">
+                  {{ day.modality_restriction?.label }} {{ day.modality_restriction?.status }}
+                </div>
 
                 <div class="plan-day-meta">
                   <span v-if="day.target_duration_min">{{ day.target_duration_min }} min</span>
@@ -670,20 +674,54 @@ const clearCoachingReview = () => {
   coachingReview.value = null
 }
 
+const requestWithTimeout = (request, timeoutMs = 8000) => Promise.race([
+  request,
+  new Promise((_, reject) => {
+    window.setTimeout(() => reject(new Error(`Request timed out after ${timeoutMs}ms`)), timeoutMs)
+  }),
+])
+
 const load = async () => {
   loading.value = true
+  flashMessage.value = null
   try {
-    const [plansResult, trendsResult] = await Promise.allSettled([
-      api.getWeeklyPlans({ limit: 8 }),
-      api.getWeeklyPlanTrends({ weeks: 6 }),
-    ])
-    plans.value = plansResult.status === 'fulfilled' ? plansResult.value.data : []
-    planTrends.value = trendsResult.status === 'fulfilled' ? trendsResult.value.data : null
+    const plansResult = await requestWithTimeout(api.getWeeklyPlans({ limit: 8 }))
+    plans.value = plansResult.data
     selectedLinkedActivityIds.value = {}
     openLinkEditors.value = {}
-    await maybeApplyCoachingDraft()
+  } catch (error) {
+    plans.value = []
+    planTrends.value = null
+    flashMessage.value = {
+      type: 'error',
+      title: 'Could not load plans',
+      detail: error?.message?.includes('timed out')
+        ? 'The weekly plans request took too long and was stopped.'
+        : 'The weekly plans request failed.',
+    }
   } finally {
     loading.value = false
+  }
+
+  try {
+    const trendsResult = await requestWithTimeout(api.getWeeklyPlanTrends({ weeks: 6 }), 6000)
+    planTrends.value = trendsResult.data
+  } catch {
+    planTrends.value = null
+  }
+
+  try {
+    await maybeApplyCoachingDraft()
+  } catch {
+    clearCoachingDraft()
+    flashMessage.value = {
+      type: 'error',
+      title: 'Coaching draft could not be opened',
+      detail: 'The plan loaded, but the pending coaching review could not be restored cleanly.',
+    }
+    try {
+      await clearCoachingDraftQuery()
+    } catch {}
   }
 }
 
@@ -872,10 +910,21 @@ const statusClass = (status) => {
 }
 
 const goalStatusLabel = (status) => {
+  if (status === 'constrained') return 'Constrained'
   if (status === 'completed') return 'Done'
   if (status === 'ahead_of_pace') return 'Ahead'
   if (status === 'on_pace') return 'On pace'
   return 'Behind'
+}
+
+const normalizeSummary = (value) => (value || '').trim().toLowerCase()
+
+const showGoalContextRiskSummary = (goal) => {
+  const riskSummary = goal?.risk_summary?.summary
+  if (!riskSummary) return false
+  const constraintSummary = goal?.constraint_summary?.summary
+  if (!constraintSummary) return true
+  return normalizeSummary(riskSummary) !== normalizeSummary(constraintSummary)
 }
 
 const revisionSourceLabel = (source) => {
@@ -1504,6 +1553,10 @@ const savePlanLink = async (day) => {
   font-size: 11px;
   line-height: 1.45;
 }
+.goal-context-copy-warn {
+  color: #f8d38b;
+}
+.goal-context-status.risk-constrained { background: rgba(245,158,11,0.16); color: #fcd34d; }
 .goal-context-status.risk-on_track { background: rgba(59,130,246,0.16); color: #93c5fd; }
 .goal-context-status.risk-watch { background: rgba(96,165,250,0.16); color: #bfdbfe; }
 .goal-context-status.risk-under_pressure { background: rgba(245,158,11,0.16); color: #fcd34d; }
@@ -2319,6 +2372,25 @@ const savePlanLink = async (day) => {
   letter-spacing: 0.12em;
   margin-bottom: 0;
 }
+.plan-restriction-pill {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.plan-restriction-pill.restriction-limited {
+  background: rgba(245,158,11,0.16);
+  color: #fbbf24;
+}
+.plan-restriction-pill.restriction-blocked {
+  background: rgba(239,68,68,0.16);
+  color: #f87171;
+}
 .link-toggle-button {
   border: 0;
   padding: 0;
@@ -2660,6 +2732,15 @@ const savePlanLink = async (day) => {
 .plan-trend-week-bars span {
   display: block;
   height: 100%;
+}
+.plan-trend-week-bars .bar-fulfilled {
+  background: #34d399;
+}
+.plan-trend-week-bars .bar-modified {
+  background: #fbbf24;
+}
+.plan-trend-week-bars .bar-missed {
+  background: #f87171;
 }
 .plan-trend-observations {
   display: flex;

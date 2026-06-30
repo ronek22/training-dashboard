@@ -342,7 +342,13 @@
               </div>
             </div>
           </section>
+        </div>
 
+        <div
+          v-if="weeklyCoaching.recommended_next_sessions?.length || showCoachingAdjustmentPreview"
+          class="weekly-coach-followup"
+          :class="{ 'followup-single': !(weeklyCoaching.recommended_next_sessions?.length && showCoachingAdjustmentPreview) }"
+        >
           <section class="weekly-coach-panel" v-if="weeklyCoaching.recommended_next_sessions?.length">
             <div class="weekly-coach-label">Next Sessions</div>
             <div class="weekly-coach-session-list">
@@ -375,30 +381,30 @@
               </article>
             </div>
           </section>
-        </div>
 
-        <div v-if="showCoachingAdjustmentPreview" class="weekly-coach-adjustment">
-          <div class="weekly-coach-label">Preview Adjustment</div>
-          <div class="weekly-coach-adjustment-copy">
-            {{ weeklyCoaching.proposed_adjustment.days.length }} day{{ weeklyCoaching.proposed_adjustment.days.length === 1 ? '' : 's' }}
-            would change from {{ formatDate(weeklyCoaching.proposed_adjustment.effective_from) }}.
-          </div>
-          <div v-if="coachingAdjustmentReasons.length" class="weekly-coach-adjustment-reasons">
-            <span v-for="reason in coachingAdjustmentReasons" :key="reason">{{ reason }}</span>
-          </div>
-          <div class="weekly-coach-adjustment-list">
-            <span v-for="day in weeklyCoaching.proposed_adjustment.days" :key="`adjust-${day.date}`">
-              {{ formatDate(day.date) }}: {{ day.title }}
-            </span>
-          </div>
-          <div class="weekly-coach-adjustment-actions">
-            <button type="button" class="weekly-coach-dismiss" @click="dismissCoachingAdjustmentPreview">
-              Dismiss
-            </button>
-            <button type="button" class="weekly-coach-action" @click="reviewCoachingAdjustment">
-              Review in Plan
-            </button>
-          </div>
+          <section v-if="showCoachingAdjustmentPreview" class="weekly-coach-panel weekly-coach-adjustment">
+            <div class="weekly-coach-label">Preview Adjustment</div>
+            <div class="weekly-coach-adjustment-copy">
+              {{ weeklyCoaching.proposed_adjustment.days.length }} day{{ weeklyCoaching.proposed_adjustment.days.length === 1 ? '' : 's' }}
+              would change from {{ formatDate(weeklyCoaching.proposed_adjustment.effective_from) }}.
+            </div>
+            <div v-if="coachingAdjustmentReasons.length" class="weekly-coach-adjustment-reasons">
+              <span v-for="reason in coachingAdjustmentReasons" :key="reason">{{ reason }}</span>
+            </div>
+            <div class="weekly-coach-adjustment-list">
+              <span v-for="day in weeklyCoaching.proposed_adjustment.days" :key="`adjust-${day.date}`">
+                {{ formatDate(day.date) }}: {{ day.title }}
+              </span>
+            </div>
+            <div class="weekly-coach-adjustment-actions">
+              <button type="button" class="weekly-coach-dismiss" @click="dismissCoachingAdjustmentPreview">
+                Dismiss
+              </button>
+              <button type="button" class="weekly-coach-action" @click="reviewCoachingAdjustment">
+                Review in Plan
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </div>
@@ -1136,7 +1142,6 @@ const heatmapMonthLabels = computed(() => {
   return labels
 })
 const heatmapGridColumns = computed(() => `repeat(${heatmapWeeks.value.length}, 12px)`)
-
 const activityTone = (type) => {
   if (type === 'Run' || type === 'run') return 'run'
   if (type === 'Ride' || type === 'VirtualRide' || type === 'ride' || type === 'cycling') return 'ride'
@@ -1454,6 +1459,7 @@ const formatMinutesAsHours = (minutes) => {
 }
 
 const goalStatusLabel = (status) => {
+  if (status === 'constrained') return 'Constrained'
   if (status === 'completed') return 'Done'
   if (status === 'ahead_of_pace') return 'Ahead'
   if (status === 'on_pace') return 'On pace'
@@ -1508,6 +1514,9 @@ const coachingStatusLabel = (status) => {
 }
 
 const sessionSuggestionLabel = (suggestion) => {
+  if (suggestion === 'substitute') return 'Substitute'
+  if (suggestion === 'avoid') return 'Avoid'
+  if (suggestion === 'limit') return 'Limit'
   if (suggestion === 'swap_to_recovery') return 'Swap'
   if (suggestion === 'lighten') return 'Lighten'
   if (suggestion === 'review') return 'Review'
@@ -1532,6 +1541,7 @@ const coachingExecutionCopy = (execution) => {
 
 const coachingRecoveryValue = (recovery) => {
   if (!recovery) return 'Steady'
+  if (recovery.restriction_status === 'restricted' && !recovery.caution_flags?.length) return 'Restricted'
   if (recovery.status === 'needs_recovery') return 'Recover'
   if (recovery.status === 'caution') return 'Caution'
   if (recovery.status === 'ready') return 'Ready'
@@ -1540,6 +1550,7 @@ const coachingRecoveryValue = (recovery) => {
 
 const coachingRecoveryCopy = (recovery) => {
   if (!recovery) return 'No strong recovery signals are available.'
+  if (recovery.active_restrictions?.length) return recovery.active_restrictions[0].summary
   if (recovery.caution_flags?.length) return recovery.caution_flags[0]
   if (recovery.key_reasons?.length) return recovery.key_reasons[0]
   return 'Recovery signals look stable right now.'
@@ -1547,6 +1558,7 @@ const coachingRecoveryCopy = (recovery) => {
 
 const coachingGoalsValue = (goals) => {
   if (!goals?.active_goal_count) return 'No goals'
+  if (goals.status === 'constrained') return 'Constrained'
   if (goals.status === 'deferred') return 'Recovery first'
   if (goals.most_urgent?.length) return goals.most_urgent[0].title
   return `${goals.active_goal_count} active`
@@ -1554,6 +1566,7 @@ const coachingGoalsValue = (goals) => {
 
 const coachingGoalsCopy = (goals) => {
   if (!goals?.active_goal_count) return 'No active goals are shaping the week.'
+  if (goals.status === 'constrained') return 'Current modality restrictions are limiting at least one active goal.'
   if (goals.status === 'deferred') return 'Recovery is taking priority over run-volume pressure right now.'
   if (goals.status === 'pressured') return 'At least one active goal is under pressure.'
   if (goals.status === 'watch') return 'Goal pressure is building and worth watching.'
@@ -1667,6 +1680,7 @@ const zoneBadgeClass = (activity) => {
   if (zone === 'Z5') return 'badge-zone-5'
   return ''
 }
+
 </script>
 
 <style scoped>
@@ -2257,6 +2271,16 @@ const zoneBadgeClass = (activity) => {
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
   gap: 14px;
+  margin-bottom: 14px;
+}
+.weekly-coach-followup {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 14px;
+  align-items: start;
+}
+.weekly-coach-followup.followup-single {
+  grid-template-columns: minmax(0, 1fr);
 }
 .weekly-coach-panel {
   padding: 16px;
@@ -2380,11 +2404,7 @@ const zoneBadgeClass = (activity) => {
   font-size: 12px;
 }
 .weekly-coach-adjustment {
-  margin-top: 16px;
-  padding: 16px;
-  border-radius: 18px;
-  background: rgba(255,255,255,0.025);
-  border: 1px solid rgba(255,255,255,0.05);
+  min-height: 100%;
 }
 .weekly-coach-adjustment-copy {
   color: var(--muted);
@@ -2518,6 +2538,7 @@ const zoneBadgeClass = (activity) => {
   white-space: nowrap;
 }
 .status-completed { background: rgba(16,185,129,0.16); color: #34d399; }
+.status-constrained { background: rgba(245,158,11,0.16); color: #fbbf24; }
 .status-ahead_of_pace { background: rgba(34,197,94,0.16); color: #4ade80; }
 .status-on_pace { background: rgba(59,130,246,0.16); color: #60a5fa; }
 .status-behind_pace { background: rgba(239,68,68,0.16); color: #f87171; }
@@ -3034,6 +3055,7 @@ const zoneBadgeClass = (activity) => {
   .weekly-coach-hero { grid-template-columns: 1fr; }
   .cycling-kpis { min-width: 0; width: 100%; }
   .weekly-coach-grid { grid-template-columns: 1fr; }
+  .weekly-coach-followup { grid-template-columns: 1fr; }
   .today-context-strip { grid-template-columns: 1fr; }
   .heatmap-wrap { overflow-x: auto; }
   .execution-trend-summary,

@@ -13,6 +13,7 @@ from .plans import (
 )
 from ..repositories.coaching import list_coaching_snapshot_rows, upsert_coaching_snapshot_row
 from ..repositories.plans import count_weekly_plan_revision_rows
+from .settings import restriction_summary_text
 
 HARD_INTENTS = {"long", "tempo", "interval", "race_specific", "strength_general", "strength_lower", "strength_upper"}
 
@@ -239,6 +240,8 @@ def summarize_recovery(context: dict) -> dict:
         caution_flags.append(f"Training form is suppressed at {round(form)}.")
 
     recommendation_status = daily.get("status", "keep")
+    restrictions = context.get("modality_restrictions", {})
+    active_restrictions = restrictions.get("active", [])
     caution_score = 0
     if feedback:
         caution_score += 2 if int(feedback.get("pain_level") or 0) >= 4 else 0
@@ -262,6 +265,8 @@ def summarize_recovery(context: dict) -> dict:
         "key_reasons": daily.get("reasons", [])[:4],
         "caution_flags": caution_flags[:4],
         "caution_score": caution_score,
+        "active_restrictions": active_restrictions,
+        "restriction_status": "restricted" if active_restrictions else "none",
         "latest_subjective_state": feedback,
         "training_load": {
             "fitness": current_load.get("fitness"),
@@ -285,14 +290,16 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
             "key_observations": ["No active goals are shaping the current coaching read."],
         }
 
-    deprioritize_run_goals = _should_deprioritize_run_goals(context)
+    run_restriction = ((context.get("modality_restrictions") or {}).get("modalities") or {}).get("run", {})
+    deprioritize_run_goals = _should_deprioritize_run_goals(context) and run_restriction.get("status") == "allowed"
+    constrained_goals = [goal for goal in active_goals if goal.get("is_constrained")]
     relevant_active_goals = [
         goal for goal in active_goals
-        if not (deprioritize_run_goals and _goal_is_run_volume(goal))
+        if not goal.get("is_constrained") and not (deprioritize_run_goals and _goal_is_run_volume(goal))
     ]
     relevant_plan_goals = [
         goal for goal in plan_goals
-        if not (deprioritize_run_goals and _goal_is_run_volume(goal))
+        if not goal.get("is_constrained") and not (deprioritize_run_goals and _goal_is_run_volume(goal))
     ]
     deferred_goals = [
         goal for goal in active_goals
@@ -309,7 +316,9 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
         "on_track": sum(1 for goal in relevant_active_goals if goal.get("risk_summary", {}).get("status") == "on_track"),
         "completed": sum(1 for goal in relevant_active_goals if goal.get("risk_summary", {}).get("status") == "completed"),
     }
-    if not relevant_active_goals and deferred_goals:
+    if constrained_goals and not relevant_active_goals and not deferred_goals:
+        status = "constrained"
+    elif not relevant_active_goals and deferred_goals:
         status = "deferred"
     elif risk_counts.get("at_risk"):
         status = "pressured"
@@ -321,6 +330,9 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
         status = "steady"
 
     observations = []
+    for goal in constrained_goals[:2]:
+        if (goal.get("constraint_summary") or {}).get("summary"):
+            observations.append(goal["constraint_summary"]["summary"])
     for goal in relevant_plan_goals[:3]:
         if goal.get("supported_sessions"):
             observations.append(
@@ -339,6 +351,7 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
         "most_urgent": most_urgent,
         "plan_supported_goals": sum(1 for goal in relevant_plan_goals if goal.get("supported_sessions")),
         "deferred_goal_count": len(deferred_goals),
+        "constrained_goal_count": len(constrained_goals),
         "key_observations": observations[:4],
     }
 
@@ -368,7 +381,7 @@ def summarize_recent_patterns(conn: sqlite3.Connection, context: dict, active_pl
     if current_revision_count >= 3:
         _append_unique(observations, f"This week has already been revised {current_revision_count} times.")
     elif current_revision_count >= 1 and latest_revision:
-        _append_unique(observations, f"This week was already revised on {latest_revision['updated_at'][:10]}.")
+        _append_unique(observations, f"This week was already revised on {latest_revision['created_at'][:10]}.")
     if repeated_high_rpe >= 2:
         _append_unique(observations, f"Recent feedback includes {repeated_high_rpe} high-RPE sessions.")
     if repeated_low_energy >= 2:
@@ -414,7 +427,7 @@ def summarize_recent_patterns(conn: sqlite3.Connection, context: dict, active_pl
     }
 
 
-def build_recommended_next_sessions(active_plan: Optional[dict], recommendation_status: str) -> list[dict]:
+def build_recommended_next_sessions(active_plan: Optional[dict], recommendation_status: str, restrictions: Optional[dict] = None) -> list[dict]:
     if not active_plan:
         return []
 
@@ -439,6 +452,12 @@ def build_recommended_next_sessions(active_plan: Optional[dict], recommendation_
     for day in upcoming_days[:3]:
         hard = _is_hard_session(day)
         suggestion = "keep"
+        modality_restriction = day.get("modality_restriction") or {}
+        restriction_status = modality_restriction.get("status", "allowed")
+        if restriction_status == "blocked":
+            suggestion = "substitute" if day.get("session_type") in {"Run", "Ride", "VirtualRide"} else "avoid"
+        elif restriction_status == "limited":
+            suggestion = "limit"
         if recommendation_status == "recover" and hard:
             suggestion = "swap_to_recovery"
         elif recommendation_status in {"reduce", "adjust"} and hard:
@@ -457,6 +476,9 @@ def build_recommended_next_sessions(active_plan: Optional[dict], recommendation_
             "target_distance_km": day.get("target_distance_km"),
             "comparison_status": day.get("comparison", {}).get("status"),
             "suggestion": suggestion,
+            "modality": day.get("modality"),
+            "modality_restriction": modality_restriction,
+            "restriction_summary": restriction_summary_text(modality_restriction) if restriction_status in {"limited", "blocked"} else None,
         })
     return recommendations
 
@@ -468,6 +490,12 @@ def build_focus_for_next_48h(recommendation_status: str, next_sessions: list[dic
         return "No upcoming planned sessions are available for the next 48 hours."
 
     first = next_sessions[0]
+    if first.get("suggestion") == "substitute":
+        return f"Replace {first['title']} on {first['date']} with work in an allowed modality."
+    if first.get("suggestion") == "avoid":
+        return f"Avoid {first['title']} on {first['date']} while {first.get('modality_restriction', {}).get('label', 'that modality')} is blocked."
+    if first.get("suggestion") == "limit":
+        return f"Keep {first['title']} on {first['date']} only if it stays easy and symptom-aware."
     if recommendation_status == "recover":
         return f"Replace {first['title']} on {first['date']} with recovery work or rest."
     if recommendation_status == "reduce":
@@ -479,13 +507,43 @@ def build_focus_for_next_48h(recommendation_status: str, next_sessions: list[dic
     return f"Stay with the current structure starting with {first['title']} on {first['date']}."
 
 
+def _build_restriction_adjusted_day(day: dict, suggestion: str, restriction: dict) -> Optional[dict]:
+    session_type = normalize_plan_session_type(day.get("session_type"))
+    modality = day.get("modality")
+    if suggestion == "limit":
+        return _build_adjusted_day(day, "reduce")
+    if suggestion == "substitute" and modality == "run":
+        return {
+            "date": day["date"],
+            "label": day["label"],
+            "session_type": "Ride",
+            "workout_intent": "easy",
+            "title": f"Alternative to {day['title']}",
+            "details": "Running is blocked right now. Replace the session with an easy aerobic ride or trainer spin.",
+            "target_duration_min": day.get("target_duration_min") or 40,
+            "target_distance_km": None,
+        }
+    if suggestion in {"substitute", "avoid"}:
+        return {
+            "date": day["date"],
+            "label": day["label"],
+            "session_type": "Recovery",
+            "workout_intent": "mobility",
+            "title": f"Protected {restriction.get('label', 'modality')} day",
+            "details": f"{restriction.get('label', 'This modality')} is currently {restriction.get('status')}. Swap this session for mobility, walking, or full rest.",
+            "target_duration_min": 20,
+            "target_distance_km": None,
+        }
+    return None
+
+
 def build_proposed_adjustment(active_plan: Optional[dict], recommendation_status: str, next_sessions: list[dict]) -> Optional[dict]:
-    if recommendation_status not in {"reduce", "recover", "adjust"} or not active_plan or not next_sessions:
+    if recommendation_status not in {"reduce", "recover", "adjust", "keep"} or not active_plan or not next_sessions:
         return None
 
     updated_days = []
     for session in next_sessions[:2]:
-        if session["suggestion"] not in {"swap_to_recovery", "lighten", "review"}:
+        if session["suggestion"] not in {"swap_to_recovery", "lighten", "review", "substitute", "avoid", "limit"}:
             continue
         source_day = next(
             (day for day in active_plan.get("days", []) if day.get("date") == session["date"]),
@@ -493,7 +551,10 @@ def build_proposed_adjustment(active_plan: Optional[dict], recommendation_status
         )
         if not source_day:
             continue
-        adjusted = _build_adjusted_day(source_day, "recover" if session["suggestion"] == "swap_to_recovery" else recommendation_status)
+        if session["suggestion"] in {"substitute", "avoid", "limit"}:
+            adjusted = _build_restriction_adjusted_day(source_day, session["suggestion"], session.get("modality_restriction") or {})
+        else:
+            adjusted = _build_adjusted_day(source_day, "recover" if session["suggestion"] == "swap_to_recovery" else recommendation_status)
         if adjusted:
             updated_days.append(adjusted)
 
@@ -555,6 +616,7 @@ def build_weekly_recommendation(
     repeated_pain_flags = int(feedback_patterns.get("elevated_pain_count") or 0)
     current_revision_count = int(recent_patterns.get("current_week_revision_count") or 0)
     hard_upcoming = any(item["suggestion"] in {"swap_to_recovery", "lighten", "review"} for item in next_sessions)
+    blocked_upcoming = any(item["suggestion"] in {"substitute", "avoid"} for item in next_sessions)
     goal_support_is_thin = execution["fulfilled_sessions"] < max(1, execution["planned_sessions"] // 2)
 
     if recovery_score >= 4 or (repeated_pain_flags >= 2 and recovery_score >= 2):
@@ -565,6 +627,8 @@ def build_weekly_recommendation(
         status = "reduce"
 
     if status not in {"recover", "reduce"}:
+        if blocked_upcoming:
+            status = "adjust"
         if execution["status"] == "off_track" and next_sessions and hard_upcoming:
             status = "adjust"
         elif execution["missed_sessions"] >= 2 and status == "keep":
@@ -619,6 +683,8 @@ def build_weekly_recommendation(
     rationale: list[str] = []
     for text in recovery.get("key_reasons", []):
         _append_unique(rationale, text)
+    for item in recovery.get("active_restrictions", [])[:2]:
+        _append_unique(rationale, item.get("summary"))
     for text in recent_patterns.get("key_observations", []):
         _append_unique(rationale, text)
     for text in execution.get("key_observations", []):
@@ -629,10 +695,14 @@ def build_weekly_recommendation(
         _append_unique(rationale, "Recent feedback includes repeated high-RPE sessions.")
     if goal_status == "pressured" and goals.get("most_urgent"):
         _append_unique(rationale, f"Goal pressure is highest around {goals['most_urgent'][0]['title']}.")
+    if goals.get("constrained_goal_count"):
+        _append_unique(rationale, f"{goals['constrained_goal_count']} active goals are constrained by current modality limits.")
 
     risks: list[str] = []
     for text in recovery.get("caution_flags", []):
         _append_unique(risks, text)
+    for item in recovery.get("active_restrictions", [])[:2]:
+        _append_unique(risks, item.get("summary"))
     if execution["missed_sessions"]:
         _append_unique(risks, f"{execution['missed_sessions']} planned sessions were missed this week.")
     if execution["intent_alignment"]["different"]:
@@ -675,10 +745,10 @@ def build_weekly_coaching(
     recovery = summarize_recovery(context)
     goals = summarize_goals(context, active_plan)
     recent_patterns = summarize_recent_patterns(conn, context, active_plan)
-    next_sessions = build_recommended_next_sessions(active_plan, context.get("daily_recommendation", {}).get("status", "keep"))
+    next_sessions = build_recommended_next_sessions(active_plan, context.get("daily_recommendation", {}).get("status", "keep"), context.get("modality_restrictions"))
     recommendation = build_weekly_recommendation(context, execution, recovery, goals, next_sessions, recent_patterns)
     if recommendation["status"] != context.get("daily_recommendation", {}).get("status", "keep"):
-        next_sessions = build_recommended_next_sessions(active_plan, recommendation["status"])
+        next_sessions = build_recommended_next_sessions(active_plan, recommendation["status"], context.get("modality_restrictions"))
         recommendation["focus_for_next_48h"] = build_focus_for_next_48h(recommendation["status"], next_sessions)
     proposed_adjustment = build_proposed_adjustment(active_plan, recommendation["status"], next_sessions) if include_proposed_adjustment else None
 
@@ -726,6 +796,7 @@ def build_weekly_coaching(
             "latest_subjective_state": context.get("latest_subjective_state"),
             "training_load": context.get("training_load"),
             "goal_planning_summary": context.get("goal_planning_summary"),
+            "modality_restrictions": context.get("modality_restrictions"),
             "workout_intent_summary": context.get("workout_intent_summary"),
             "recent_pattern_summary": recent_patterns,
             "recent_feedback": context.get("recent_feedback", [])[:3],

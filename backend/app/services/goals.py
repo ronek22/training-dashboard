@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 
 from ..repositories.goals import insert_goal, list_goal_rows
+from .settings import modality_for_goal, get_modality_restrictions_for_conn, restriction_summary_text
 
 
 def goal_metric_unit(metric_type: str) -> str:
@@ -294,6 +295,7 @@ def build_goal_risk_summary(
 
 def aggregate_goal_risk_summary(goals: list[dict]) -> dict:
     counts = {
+        "constrained": 0,
         "at_risk": 0,
         "under_pressure": 0,
         "watch": 0,
@@ -306,7 +308,10 @@ def aggregate_goal_risk_summary(goals: list[dict]) -> dict:
             status = "on_track"
         counts[status] += 1
 
-    if counts["at_risk"]:
+    if counts["constrained"]:
+        status = "constrained"
+        label = "Goals constrained"
+    elif counts["at_risk"]:
         status = "at_risk"
         label = "Goals at risk"
     elif counts["under_pressure"]:
@@ -325,9 +330,9 @@ def aggregate_goal_risk_summary(goals: list[dict]) -> dict:
     most_pressured = sorted(
         goals,
         key=lambda goal: (
-            {"at_risk": 0, "under_pressure": 1, "watch": 2, "on_track": 3, "completed": 4}.get(
+            {"constrained": 0, "at_risk": 1, "under_pressure": 2, "watch": 3, "on_track": 4, "completed": 5}.get(
                 goal.get("risk_summary", {}).get("status", "on_track"),
-                5,
+                6,
             ),
             goal.get("days_remaining", 9999),
         ),
@@ -341,7 +346,7 @@ def aggregate_goal_risk_summary(goals: list[dict]) -> dict:
     }
 
 
-def serialize_goal(row: sqlite3.Row, conn: sqlite3.Connection) -> dict:
+def serialize_goal(row: sqlite3.Row, conn: sqlite3.Connection, restrictions: Optional[dict] = None) -> dict:
     current_value = round(goal_current_value(conn, row), 1)
     target_value = float(row["target_value"] or 0)
     today = datetime.now().date()
@@ -357,8 +362,17 @@ def serialize_goal(row: sqlite3.Row, conn: sqlite3.Connection) -> dict:
     pace_delta_pct = round(progress_pct - expected_pct, 1)
     unit = goal_metric_unit(row["metric_type"])
     metric_label = goal_metric_label(row["metric_type"])
+    modality = modality_for_goal(row["metric_type"], row["activity_type"])
+    normalized_restrictions = restrictions or get_modality_restrictions_for_conn(conn)
+    modality_restriction = (
+        normalized_restrictions.get("modalities", {}).get(modality)
+        if modality else None
+    )
+    is_constrained = bool(modality_restriction and modality_restriction.get("status") in {"limited", "blocked"})
 
-    if current_value >= target_value:
+    if is_constrained:
+        status = "constrained"
+    elif current_value >= target_value:
         status = "completed"
     elif pace_delta_pct >= 5:
         status = "ahead_of_pace"
@@ -401,6 +415,27 @@ def serialize_goal(row: sqlite3.Row, conn: sqlite3.Connection) -> dict:
         forecast=forecast,
         planning_guidance_status=planning_guidance["status"],
     )
+    constraint_summary = None
+    if is_constrained:
+        planning_guidance = {
+            **planning_guidance,
+            "status": "constrained",
+            "summary": restriction_summary_text(modality_restriction),
+        }
+        risk_summary = {
+            "status": "constrained",
+            "label": "Constrained",
+            "summary": restriction_summary_text(modality_restriction),
+        }
+        constraint_summary = {
+            "modality": modality,
+            "status": modality_restriction["status"],
+            "label": modality_restriction["label"],
+            "reason": modality_restriction.get("reason"),
+            "note": modality_restriction.get("note"),
+            "expected_end_date": modality_restriction.get("expected_end_date"),
+            "summary": restriction_summary_text(modality_restriction),
+        }
 
     return {
         "id": row["id"],
@@ -424,6 +459,10 @@ def serialize_goal(row: sqlite3.Row, conn: sqlite3.Connection) -> dict:
         "pace_delta_pct": pace_delta_pct,
         "status": status,
         "metric_label": metric_label,
+        "modality": modality,
+        "modality_restriction": modality_restriction,
+        "is_constrained": is_constrained,
+        "constraint_summary": constraint_summary,
         "forecast": forecast,
         "risk_summary": risk_summary,
         "planning_guidance": planning_guidance,
@@ -460,4 +499,5 @@ def create_goal_data(
 
 def list_goals_data(conn: sqlite3.Connection, active_only: bool = False, limit: int = 24) -> list[dict]:
     rows = list_goal_rows(conn, active_only=active_only, limit=limit)
-    return [serialize_goal(row, conn) for row in rows]
+    restrictions = get_modality_restrictions_for_conn(conn)
+    return [serialize_goal(row, conn, restrictions) for row in rows]

@@ -144,17 +144,38 @@ Completed slices:
 - coaching and recent-context summaries now reason about goal pressure using the new forecast/risk layer
 - smoke coverage now includes forecast fields and a case where a behind goal changes visible planning guidance
 
+### Sprint 14 modality restrictions and injury-aware coaching
+
+Sprint 14 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- users can persist modality restrictions for running, riding, and strength
+- coaching now adapts next-session suggestions and rationale to active restrictions
+- goals can become explicitly constrained instead of only looking behind pace
+- `Dashboard`, `Goals`, and `Plan` now surface restriction-aware cues and constrained states
+- smoke coverage includes restriction-aware goal and coaching behavior
+
+### Phase 5 coaching workflow and analysis
+
+Phase 5 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- one-shot weekly coaching is available through MCP and backend reads
+- coaching-generated plan changes expose reviewable diff and approval flow
+- roadmap, sprint, coaching-history, revision-timeline, and multi-week analysis reads are now visible in-app
+- deterministic coaching heuristics, goal forecasts, and modality restrictions now work together as a coherent coaching layer
+
 ## Recommended Next Step
 
-The next major sprint should be:
+The current roadmap can be treated as implemented.
 
-- Sprint 14 modality restrictions and injury-aware coaching should follow now that goal pressure and forecasts are more visible
+That means the next step should be one of:
 
-That means moving into:
-
-- making modality restrictions and injury signals first-class planning inputs
-- teaching coaching and plan adjustment flows when to protect or avoid specific session types
-- building on the goal-pressure and recovery-aware coaching surfaces now already in place
+- define a new roadmap phase or sprint if product scope is expanding again
+- harden the existing workflow with deeper test coverage and cleanup
+- refine rough edges in the deterministic coaching layer without pretending the current roadmap is still open
 
 ## Areas That Are Still Intentionally Lightweight
 
@@ -166,7 +187,7 @@ That means moving into:
 
 ## Good Starting Points For Future Work
 
-If continuing after Sprint 9:
+If continuing after the current roadmap:
 
 - plan comparison and serialization: `backend/app/services/plans.py`
 - activity persistence and linking: `backend/app/services/activities.py`
@@ -175,13 +196,13 @@ If continuing after Sprint 9:
 - coaching inspection and handoff UI: `frontend/src/views/Dashboard.vue` and `frontend/src/views/Plan.vue`
 - calendar aggregation and month view: `backend/app/services/activities.py` and `frontend/src/views/Calendar.vue`
 - docs-backed planning visibility: `docs/roadmap.md`, `docs/current-state.md`, and `docs/sprints/`
-- sprint planning direction: `docs/sprints/sprint-10-coaching-memory-and-weekly-narrative-history.md` through `sprint-13-goal-progress-and-planning-forecasts.md`
+- sprint planning direction: start by drafting a new sprint doc under `docs/sprints/` rather than reusing the completed Sprint 10-14 sequence
 
 ## Working Assumption
 
 Unless the roadmap changes, the default implementation direction should be:
 
-1. finish lightweight coaching workflow improvements
-2. build on explicit planned-to-actual linkage and approval history before adding heavier automation
-3. keep logic deterministic and inspectable
-4. avoid overbuilding storage or automation too early
+1. treat the current roadmap as complete
+2. keep logic deterministic and inspectable
+3. prefer hardening and cleanup over broad new automation
+4. create a new roadmap slice before starting another large feature sequence

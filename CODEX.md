@@ -7,6 +7,8 @@ This file is the root guidance note for working in this repository.
 - Treat `docs/` as the default home for planning and decision documents.
 - Save new roadmaps, sprint plans, architecture notes, and durable product decisions in `docs/`.
 - Prefer updating an existing document in `docs/` instead of scattering notes across the repository root.
+- When a sprint or planned feature is implemented, update the corresponding documentation before closing the task.
+- Mark the relevant sprint, roadmap, or feature-status documents as complete or implemented when that work is done.
 
 ## Primary Documents
 

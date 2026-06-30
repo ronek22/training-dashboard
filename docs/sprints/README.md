@@ -21,7 +21,7 @@ The intended reading order is:
 11. [sprint-11-multi-week-execution-analysis.md](sprint-11-multi-week-execution-analysis.md) — multi-week execution trend sprint, complete
 12. [sprint-12-stronger-deterministic-coaching-heuristics.md](sprint-12-stronger-deterministic-coaching-heuristics.md) — stronger deterministic coaching heuristics sprint, complete
 13. [sprint-13-goal-progress-and-planning-forecasts.md](sprint-13-goal-progress-and-planning-forecasts.md) — goal forecast and planning pressure sprint, complete
-14. [sprint-14-modality-restrictions-and-injury-aware-coaching.md](sprint-14-modality-restrictions-and-injury-aware-coaching.md) — modality restrictions and injury-aware coaching sprint, planned
+14. [sprint-14-modality-restrictions-and-injury-aware-coaching.md](sprint-14-modality-restrictions-and-injury-aware-coaching.md) — modality restrictions and injury-aware coaching sprint, complete
 
 ## Sprint Plans
 

@@ -4,7 +4,7 @@
 
 Current status:
 
-- planned
+- completed
 - follows planned Sprint 13 goal progress and planning forecast work
 
 Starting point:
@@ -177,3 +177,10 @@ Sprint 14 should be considered complete when:
 - users can explicitly mark a modality as limited or blocked
 - coaching and goal pressure respect those restrictions deterministically
 - the app no longer confuses `globally tired` with `modality-specific restriction`
+
+## Delivered
+
+- added persisted modality restriction state for running, riding, and strength
+- added restriction-aware coaching, goal evaluation, and next-session shaping
+- surfaced constrained-goal and restricted-session cues across dashboard, goals, and plan
+- added backend smoke coverage for constrained goals and restriction-aware coaching behavior

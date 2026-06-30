@@ -27,9 +27,9 @@ Current implementation status:
 
 - the in-app `Adjust Remaining Week` flow is now at least partially implemented
 - the backend modularization track is structurally complete
-- Sprint 9 app redesign and information hierarchy is now complete as the current UI-foundation pass
-- modality-specific restriction handling is still missing, so injury-aware coaching remains a known gap
-- the roadmap should therefore be read as priority order plus remaining gaps, not as a claim that every listed item is still untouched
+- the Sprint 9 through Sprint 14 coaching workflow sequence is now complete
+- modality-specific restriction handling is now implemented, including restriction-aware goals and coaching
+- the roadmap should therefore be read as an implemented sequence plus a record of product priorities, not as a claim that major listed items remain untouched
 
 The main gap is that the app still acts more like a dashboard than a coaching workflow. The next phases should reduce manual interpretation and make planning, feedback, and adaptation first-class features.
 
@@ -349,6 +349,10 @@ Recommended Sprint 9 role:
 
 - this is the next primary sprint goal
 
+Status:
+
+- complete as [docs/sprints/sprint-9-app-redesign-and-information-hierarchy.md](sprints/sprint-9-app-redesign-and-information-hierarchy.md)
+
 ### 14. Coaching history and revision timeline
 
 Why:
@@ -369,6 +373,10 @@ Implementation notes:
 Recommended Sprint 10 role:
 
 - this should follow the redesign pass once hierarchy and emphasis are stronger
+
+Status:
+
+- complete as [docs/sprints/sprint-10-coaching-history-and-revision-timeline.md](sprints/sprint-10-coaching-history-and-revision-timeline.md)
 
 ### 15. Multi-week execution analysis
 
@@ -391,6 +399,10 @@ Recommended Sprint 11 role:
 
 - this should follow Sprint 10 once history visibility is in place
 
+Status:
+
+- complete as [docs/sprints/sprint-11-multi-week-execution-analysis.md](sprints/sprint-11-multi-week-execution-analysis.md)
+
 ### 16. Stronger deterministic coaching heuristics
 
 Why:
@@ -410,6 +422,10 @@ Implementation notes:
 Recommended Sprint 12 role:
 
 - this is the heuristic upgrade sprint after history and trend work
+
+Status:
+
+- complete as [docs/sprints/sprint-12-stronger-deterministic-coaching-heuristics.md](sprints/sprint-12-stronger-deterministic-coaching-heuristics.md)
 
 ### 17. Goal progress and planning forecasts
 
@@ -432,11 +448,40 @@ Recommended Sprint 13 role:
 
 - this should follow the stronger coaching and multi-week context work
 
+Status:
+
+- complete as [docs/sprints/sprint-13-goal-progress-and-planning-forecasts.md](sprints/sprint-13-goal-progress-and-planning-forecasts.md)
+
+### 18. Modality restrictions and injury-aware coaching
+
+Why:
+
+- generic recovery logic is not enough when one modality is temporarily limited
+- coaching and goal pressure should reflect what the user can actually do
+
+Scope:
+
+- add explicit modality restriction state
+- make goals, plan context, and coaching respect active restrictions
+- surface constrained states clearly in the app
+
+Implementation notes:
+
+- likely spans `backend/app/services/settings.py`, `backend/app/services/goals.py`, `backend/app/services/coaching.py`, and `frontend/src/views/Goals.vue`
+
+Recommended Sprint 14 role:
+
+- this should follow goal forecasting once coaching pressure is already more visible
+
+Status:
+
+- complete as [docs/sprints/sprint-14-modality-restrictions-and-injury-aware-coaching.md](sprints/sprint-14-modality-restrictions-and-injury-aware-coaching.md)
+
 ## Cross-Cutting Engineering Track
 
 Goal: keep the codebase maintainable enough to support the product roadmap.
 
-### 18. Backend modularization
+### 19. Backend modularization
 
 Why:
 
@@ -472,30 +517,28 @@ This is the recommended implementation order:
 
 ## Recommended Next Sprint
 
-If only one sprint is available, do this:
+The current roadmap sequence is complete.
 
 ### Sprint Goal
 
-Start with Sprint 9 app redesign and information hierarchy, then continue through the next planning and coaching-quality sprints in order.
+Draft a new roadmap slice only after deciding what the next product gap actually is.
 
 ### Scope
 
-- improve information hierarchy and current-versus-historical emphasis in the app
-- preserve the current deterministic, inspectable approach rather than adding autonomous rewrites
-- use Sprint 9 as the visual foundation for later history, trend, heuristic, and goal forecast work
+- preserve the current deterministic, inspectable coaching model
+- harden tests and cleanup around the implemented workflow
+- avoid pretending the Sprint 9 through Sprint 14 sequence is still pending
 
 Current interpretation:
 
-- the one-shot coaching read and explicit approval flow now exist end-to-end
-- the next highest-value gap is better visual emphasis and information hierarchy
-- roadmap visibility is now in place, so future work should avoid turning docs into a parallel editable system
-- the next sprints should favor better analysis and trust over broader automation
+- the one-shot coaching, approval, history, trend, goal-forecast, and restriction-aware slices now exist end-to-end
+- roadmap visibility is already in place, so future work should avoid turning docs into a parallel editable system
+- the next decision is not `which listed sprint is next`, but `what belongs on the next roadmap`
 
 ### Definition of done
 
-- the app makes important current information stand out more clearly than historical information
-- users can scan Plan and Dashboard more quickly and understand where attention should go first
-- the app is positioned cleanly for Sprint 10 coaching-history work instead of layering more analysis onto a visually flat UI
+- the current roadmap is treated as complete in docs and status views
+- any new major work starts from a fresh roadmap or sprint definition
 
 ## Risks And Constraints
 

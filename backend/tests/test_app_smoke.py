@@ -1297,7 +1297,9 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(planning_body["roadmap"]["title"], "Training Dashboard Roadmap")
         self.assertTrue(planning_body["roadmap"]["phases"])
         self.assertTrue(planning_body["sprints"]["items"])
-        self.assertEqual(planning_body["sprints"]["next_recommended"]["label"], "Sprint 14")
+        self.assertEqual(planning_body["roadmap"]["completed_phases"], planning_body["roadmap"]["total_phases"])
+        self.assertIsNone(planning_body["roadmap"]["current_phase"])
+        self.assertIsNone(planning_body["sprints"]["next_recommended"])
 
     def test_today_session_is_not_skipped_before_day_is_over(self):
         today = datetime.now().date()

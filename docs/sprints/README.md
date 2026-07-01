@@ -28,7 +28,7 @@ The intended reading order is:
 18. [sprint-18-rule-based-workout-templates-and-rotation-state.md](sprint-18-rule-based-workout-templates-and-rotation-state.md) — rule-based workout templates and rotation state sprint, complete
 19. [sprint-19-deterministic-athlete-brief-and-goal-aware-coaching-explanations.md](sprint-19-deterministic-athlete-brief-and-goal-aware-coaching-explanations.md) — deterministic athlete brief and goal-aware coaching explanations sprint, complete
 20. [sprint-20-natural-language-goal-capture-and-structured-drafts.md](sprint-20-natural-language-goal-capture-and-structured-drafts.md) — natural-language goal capture and structured drafts sprint, complete
-21. [sprint-21-derived-performance-metrics-and-zones-foundation.md](sprint-21-derived-performance-metrics-and-zones-foundation.md) — derived performance metrics and zones foundation sprint, planned
+21. [sprint-21-derived-performance-metrics-and-zones-foundation.md](sprint-21-derived-performance-metrics-and-zones-foundation.md) — derived performance metrics and zones foundation sprint, complete
 22. [sprint-22-benchmark-sessions-and-test-result-visibility.md](sprint-22-benchmark-sessions-and-test-result-visibility.md) — benchmark sessions and test-result visibility sprint, planned
 
 ## Sprint Plans

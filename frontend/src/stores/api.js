@@ -10,6 +10,8 @@ export const useApi = () => ({
   updateModalityRestrictions: (payload) => api.put('/settings/modality-restrictions', payload),
   getWorkoutTemplateSettings: () => api.get('/settings/workout-templates'),
   updateWorkoutTemplateSettings: (payload) => api.put('/settings/workout-templates', payload),
+  getPerformanceSettings: () => api.get('/settings/performance'),
+  updatePerformanceSettings: (payload) => api.put('/settings/performance', payload),
   getPlanningStatus: () => api.get('/planning/status'),
   getWeeklyCoaching: (params) => api.get('/coaching/weekly', { params }),
   getCoachingHistory: (params) => api.get('/coaching/history', { params }),
@@ -34,5 +36,6 @@ export const useApi = () => ({
   getNotes: (params) => api.get('/notes', { params }),
   getWeekly: () => api.get('/weekly'),
   getMetric: (name) => api.get(`/metrics/${name}`),
+  getPerformanceSummary: () => api.get('/metrics/performance-summary'),
   createMetric: (payload) => api.post('/metrics', payload),
 })

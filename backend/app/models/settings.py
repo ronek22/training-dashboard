@@ -24,3 +24,18 @@ class AthleteProfilePayload(BaseModel):
 
 class WorkoutTemplateSettingsPayload(BaseModel):
     programs: dict = Field(default_factory=dict)
+
+
+class PerformanceAnchorPayload(BaseModel):
+    value: Optional[float] = None
+    unit: Optional[str] = None
+
+
+class PerformanceZonesPayload(BaseModel):
+    zone2_lower_pct: Optional[float] = None
+    zone2_upper_pct: Optional[float] = None
+
+
+class PerformanceSettingsPayload(BaseModel):
+    anchors: dict[str, PerformanceAnchorPayload] = Field(default_factory=dict)
+    zones: dict[str, PerformanceZonesPayload] = Field(default_factory=dict)

@@ -219,16 +219,27 @@ Completed slices:
 - roadmap, sprint, coaching-history, revision-timeline, and multi-week analysis reads are now visible in-app
 - deterministic coaching heuristics, goal forecasts, and modality restrictions now work together as a coherent coaching layer
 
+### Sprint 21 performance foundations
+
+Sprint 21 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- manual performance anchors now persist running threshold pace and cycling threshold power settings
+- zone definitions are explicit and reusable instead of being guessed implicitly in goal reads
+- compact derived reads now expose recent 5k and 10k run benchmarks plus best recent 10-minute power
+- zone-dependent goal logic now stays explicitly unavailable when threshold anchors are missing
+- `Goals` now exposes lightweight performance-foundation editing and visibility for benchmark and zone-based goal support
+
 ## Recommended Next Step
 
-Sprint 20 has landed.
+Sprint 21 has landed.
 
 The next roadmap slice should be defined explicitly before work starts again.
 
 Current recommendation:
 
-- move into Phase 9 with Sprint 21 derived performance metrics and zones foundation
-- close the current roadmap slice with Sprint 22 benchmark sessions and test-result visibility
+- continue Phase 9 with Sprint 22 benchmark sessions and test-result visibility
 
 ## Areas That Are Still Intentionally Lightweight
 

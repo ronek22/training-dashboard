@@ -687,8 +687,10 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(event_item["family_label"], "Event")
         self.assertEqual(event_item["display_mode"], "performance")
         self.assertIn("10 km", event_item["target_summary"])
+        self.assertEqual(event_item["derived_foundation"]["status"], "available")
         self.assertEqual(benchmark_item["goal_family"], "benchmark")
         self.assertEqual(benchmark_item["performance_snapshot"]["recent_best_watts"], 286)
+        self.assertEqual(benchmark_item["derived_foundation"]["status"], "available")
 
         dashboard = self.client.get("/dashboard")
         self.assertEqual(dashboard.status_code, 200)
@@ -700,6 +702,70 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(coaching.status_code, 200)
         observations = coaching.json()["goal_assessment"]["key_observations"]
         self.assertTrue(any("event" in item.lower() or "benchmark" in item.lower() for item in observations))
+
+    def test_performance_settings_and_zone_foundation_surface_available_and_missing_states(self):
+        today = datetime.now().date()
+        zone_activity = self.client.post(
+            "/activities",
+            json={
+                "id": "zone-foundation-ride-1",
+                "date": (today - timedelta(days=1)).isoformat(),
+                "type": "Ride",
+                "name": "Aerobic ride",
+                "duration_min": 90,
+                "avg_watts": 170,
+            },
+        )
+        self.assertEqual(zone_activity.status_code, 201)
+
+        goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Ride 4 hours of zone 2 per week",
+                "period_type": "week",
+                "goal_family": "process",
+                "metric_type": "zone2_hours",
+                "target_value": 4,
+                "activity_type": "Ride",
+            },
+        )
+        self.assertEqual(goal.status_code, 201)
+
+        performance_summary = self.client.get("/metrics/performance-summary")
+        self.assertEqual(performance_summary.status_code, 200)
+        self.assertFalse(performance_summary.json()["derived"]["zone2_foundation"]["available"])
+
+        goals_without_anchor = self.client.get("/goals")
+        self.assertEqual(goals_without_anchor.status_code, 200)
+        zone_goal_without_anchor = next(item for item in goals_without_anchor.json() if item["title"] == "Ride 4 hours of zone 2 per week")
+        self.assertEqual(zone_goal_without_anchor["derived_foundation"]["status"], "unavailable")
+        self.assertEqual(zone_goal_without_anchor["current_value"], 0.0)
+
+        settings_update = self.client.put(
+            "/settings/performance",
+            json={
+                "anchors": {
+                    "ride_threshold_power": {"value": 240, "unit": "W"},
+                },
+                "zones": {
+                    "ride": {"zone2_lower_pct": 0.56, "zone2_upper_pct": 0.75},
+                },
+            },
+        )
+        self.assertEqual(settings_update.status_code, 200)
+        self.assertTrue(settings_update.json()["anchors"]["ride_threshold_power"]["is_set"])
+
+        performance_summary_ready = self.client.get("/metrics/performance-summary")
+        self.assertEqual(performance_summary_ready.status_code, 200)
+        ready_body = performance_summary_ready.json()
+        self.assertTrue(ready_body["derived"]["zone2_foundation"]["available"])
+        self.assertEqual(ready_body["derived"]["zone2_foundation"]["longest_recent_block_min"], 90.0)
+
+        goals_with_anchor = self.client.get("/goals")
+        self.assertEqual(goals_with_anchor.status_code, 200)
+        zone_goal_with_anchor = next(item for item in goals_with_anchor.json() if item["title"] == "Ride 4 hours of zone 2 per week")
+        self.assertEqual(zone_goal_with_anchor["derived_foundation"]["status"], "available")
+        self.assertEqual(zone_goal_with_anchor["current_value"], 1.5)
 
     def test_weekly_goal_uses_current_week_window_not_creation_week(self):
         today = datetime.now().date()

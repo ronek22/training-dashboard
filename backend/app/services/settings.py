@@ -8,6 +8,7 @@ from ..repositories.settings import get_setting_value, set_setting_value
 MODALITY_RESTRICTIONS_KEY = "modality_restrictions"
 ATHLETE_PROFILE_KEY = "athlete_profile"
 WORKOUT_TEMPLATE_SETTINGS_KEY = "workout_template_settings"
+PERFORMANCE_SETTINGS_KEY = "performance_settings"
 MODALITY_LABELS = {
     "run": "Running",
     "ride": "Riding",
@@ -28,6 +29,10 @@ WEEKDAY_LABELS = {
     "fri": "Fri",
     "sat": "Sat",
     "sun": "Sun",
+}
+DEFAULT_PERFORMANCE_ZONES = {
+    "run": {"zone2_lower_pct": 1.15, "zone2_upper_pct": 1.3},
+    "ride": {"zone2_lower_pct": 0.56, "zone2_upper_pct": 0.75},
 }
 DEFAULT_STRENGTH_TEMPLATES = [
     {
@@ -170,6 +175,10 @@ def default_athlete_profile() -> dict:
 
 def default_workout_template_settings() -> dict:
     return normalize_workout_template_settings({})
+
+
+def default_performance_settings() -> dict:
+    return normalize_performance_settings({})
 
 
 def build_athlete_brief(profile: dict) -> dict:
@@ -390,6 +399,148 @@ def normalize_workout_template_settings(raw_value: Optional[dict]) -> dict:
             "strength": strength_program,
         }
     }
+
+
+def _normalize_anchor(raw_anchor: Optional[dict], *, key: str, label: str, unit: str) -> dict:
+    raw = raw_anchor if isinstance(raw_anchor, dict) else {}
+    value = raw.get("value")
+    try:
+        numeric_value = float(value) if value not in {None, ""} else None
+    except (TypeError, ValueError):
+        numeric_value = None
+    if numeric_value is not None and numeric_value <= 0:
+        numeric_value = None
+    return {
+        "key": key,
+        "label": label,
+        "value": round(numeric_value, 1) if numeric_value is not None else None,
+        "unit": unit,
+        "is_set": numeric_value is not None,
+    }
+
+
+def _normalize_zone(raw_zone: Optional[dict], *, modality: str) -> dict:
+    base = DEFAULT_PERFORMANCE_ZONES[modality]
+    raw = raw_zone if isinstance(raw_zone, dict) else {}
+
+    def pct_value(field: str) -> float:
+        value = raw.get(field, base[field])
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            numeric = base[field]
+        if numeric <= 0:
+            numeric = base[field]
+        return round(numeric, 2)
+
+    lower = pct_value("zone2_lower_pct")
+    upper = pct_value("zone2_upper_pct")
+    if upper < lower:
+        lower, upper = base["zone2_lower_pct"], base["zone2_upper_pct"]
+    return {
+        "modality": modality,
+        "zone2_lower_pct": lower,
+        "zone2_upper_pct": upper,
+    }
+
+
+def normalize_performance_settings(raw_value: Optional[dict]) -> dict:
+    raw = raw_value if isinstance(raw_value, dict) else {}
+    anchors_raw = raw.get("anchors") if isinstance(raw.get("anchors"), dict) else {}
+    zones_raw = raw.get("zones") if isinstance(raw.get("zones"), dict) else {}
+    anchors = {
+        "run_threshold_pace": _normalize_anchor(
+            anchors_raw.get("run_threshold_pace"),
+            key="run_threshold_pace",
+            label="Running threshold pace",
+            unit="s/km",
+        ),
+        "ride_threshold_power": _normalize_anchor(
+            anchors_raw.get("ride_threshold_power"),
+            key="ride_threshold_power",
+            label="Cycling threshold power",
+            unit="W",
+        ),
+    }
+    zones = {
+        "run": _normalize_zone(zones_raw.get("run"), modality="run"),
+        "ride": _normalize_zone(zones_raw.get("ride"), modality="ride"),
+    }
+    anchors_set = sum(1 for item in anchors.values() if item["is_set"])
+    return {
+        "anchors": anchors,
+        "zones": zones,
+        "summary": {
+            "anchors_set": anchors_set,
+            "run_ready": anchors["run_threshold_pace"]["is_set"],
+            "ride_ready": anchors["ride_threshold_power"]["is_set"],
+            "headline": (
+                "Performance anchors are ready for running and riding."
+                if anchors_set == 2 else
+                "One performance anchor is set."
+                if anchors_set == 1 else
+                "Performance anchors are still missing."
+            ),
+        },
+    }
+
+
+def serialize_performance_settings_for_storage(settings: dict) -> dict:
+    return {
+        "anchors": {
+            key: {
+                "value": item.get("value"),
+                "unit": item.get("unit"),
+            }
+            for key, item in (settings.get("anchors") or {}).items()
+        },
+        "zones": {
+            key: {
+                "zone2_lower_pct": item.get("zone2_lower_pct"),
+                "zone2_upper_pct": item.get("zone2_upper_pct"),
+            }
+            for key, item in (settings.get("zones") or {}).items()
+        },
+    }
+
+
+def get_performance_settings_for_conn(conn: sqlite3.Connection) -> dict:
+    raw_value = get_setting_value(conn, PERFORMANCE_SETTINGS_KEY)
+    if not raw_value:
+        return default_performance_settings()
+    try:
+        parsed = json.loads(raw_value)
+    except json.JSONDecodeError:
+        return default_performance_settings()
+    return normalize_performance_settings(parsed)
+
+
+def get_performance_settings_data() -> dict:
+    conn = get_db()
+    try:
+        return get_performance_settings_for_conn(conn)
+    finally:
+        conn.close()
+
+
+def set_performance_settings_for_conn(conn: sqlite3.Connection, payload: dict) -> dict:
+    normalized = normalize_performance_settings(payload)
+    set_setting_value(
+        conn,
+        PERFORMANCE_SETTINGS_KEY,
+        json.dumps(serialize_performance_settings_for_storage(normalized)),
+    )
+    return normalized
+
+
+def set_performance_settings_data(payload: dict) -> dict:
+    conn = get_db()
+    try:
+        normalized = set_performance_settings_for_conn(conn, payload)
+        conn.commit()
+        return normalized
+    finally:
+        conn.close()
 
 
 def get_workout_template_settings_for_conn(conn: sqlite3.Connection) -> dict:

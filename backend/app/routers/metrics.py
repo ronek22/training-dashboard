@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from ..db import get_db
 from ..models.metrics import Metric
-from ..services.metrics import create_metric_data, get_metric_history_data
+from ..services.metrics import create_metric_data, get_metric_history_data, get_performance_summary_data
 from ..services.dashboard import compute_activity_streak
 
 router = APIRouter()
@@ -13,6 +13,15 @@ def create_metric(metric: Metric):
     conn = get_db()
     try:
         return create_metric_data(conn, metric.date, metric.metric, metric.value, metric.unit, metric.notes)
+    finally:
+        conn.close()
+
+
+@router.get("/metrics/performance-summary")
+def get_performance_summary():
+    conn = get_db()
+    try:
+        return get_performance_summary_data(conn)
     finally:
         conn.close()
 

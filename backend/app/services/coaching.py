@@ -933,6 +933,12 @@ def build_weekly_recommendation(
         _append_unique(immediate_signals, f"Planning note: {athlete_brief['planning_notes']}.")
     if goal_status == "pressured" and goals.get("most_urgent"):
         _append_unique(immediate_signals, f"Goal pressure is highest around {goals['most_urgent'][0]['title']}.")
+    if repeated_high_rpe >= 2:
+        _append_unique(immediate_signals, "Recent feedback includes repeated high-RPE sessions.")
+    if repeated_low_energy >= 2:
+        _append_unique(immediate_signals, "Recent feedback includes repeated low-energy sessions.")
+    if repeated_pain_flags >= 2:
+        _append_unique(immediate_signals, "Recent feedback includes repeated elevated pain flags.")
 
     recent_pattern_items = recent_patterns.get("key_observations", [])[:5]
     rationale: list[str] = []
@@ -941,6 +947,8 @@ def build_weekly_recommendation(
     for item in secondary_support:
         _append_unique(rationale, item)
     for item in immediate_signals:
+        _append_unique(rationale, item)
+    for item in recent_pattern_items[:2]:
         _append_unique(rationale, item)
 
     risks: list[str] = []
@@ -960,8 +968,9 @@ def build_weekly_recommendation(
         _append_unique(risks, f"Active goals are under pressure, led by {goals['most_urgent'][0]['title']}.")
     if goals.get("unsupported_goal_count"):
         _append_unique(risks, f"{goals['unsupported_goal_count']} active goal{'s lack' if goals['unsupported_goal_count'] != 1 else ' lacks'} enough weekly support.")
-    for item in deprioritized_work:
-        _append_unique(risks, item)
+    if goal_status != "deferred":
+        for item in deprioritized_work:
+            _append_unique(risks, item)
 
     return {
         "status": status,

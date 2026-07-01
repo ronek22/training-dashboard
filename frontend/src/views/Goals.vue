@@ -53,6 +53,46 @@
       <div class="card athlete-profile-summary">
         <div class="athlete-profile-top">
           <div>
+            <div class="card-title">Performance Foundation</div>
+            <div class="page-sub">Manual threshold anchors make benchmark and zone-dependent reads explicit instead of guessed.</div>
+          </div>
+          <button class="dialog-secondary" @click="openPerformanceDialog">Edit anchors</button>
+        </div>
+
+        <div class="athlete-profile-grid">
+          <article class="athlete-profile-stat">
+            <span>Run threshold pace</span>
+            <strong>{{ runThresholdLabel }}</strong>
+          </article>
+          <article class="athlete-profile-stat">
+            <span>Ride threshold power</span>
+            <strong>{{ rideThresholdLabel }}</strong>
+          </article>
+          <article class="athlete-profile-stat">
+            <span>Zone foundation</span>
+            <strong>{{ zoneFoundationHeadline }}</strong>
+          </article>
+        </div>
+
+        <div class="athlete-profile-notes">
+          <div class="athlete-profile-note">
+            <span>Best run benchmarks</span>
+            <strong>{{ runBenchmarkSummary }}</strong>
+          </div>
+          <div class="athlete-profile-note">
+            <span>Best 10-minute power</span>
+            <strong>{{ rideBenchmarkSummary }}</strong>
+          </div>
+          <div class="athlete-profile-note">
+            <span>Longest recent zone 2 block</span>
+            <strong>{{ zoneBlockSummary }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="card athlete-profile-summary">
+        <div class="athlete-profile-top">
+          <div>
             <div class="card-title">Workout Rotation</div>
             <div class="page-sub">Structured strength templates stay durable across weeks instead of resetting to generic sessions.</div>
           </div>
@@ -217,6 +257,16 @@
                   {{ requirement.label }}
                 </span>
               </div>
+            </div>
+
+            <div v-if="goal.derived_foundation" class="goal-planning goal-requirement-block">
+              <div class="goal-planning-top">
+                <span class="goal-planning-label">Derived signal</span>
+                <span class="goal-planning-status" :class="`planning-${goal.derived_foundation.status === 'available' ? 'steady' : 'constrained'}`">
+                  {{ goal.derived_foundation.status === 'available' ? 'Available' : 'Missing' }}
+                </span>
+              </div>
+              <div class="goal-planning-summary">{{ goal.derived_foundation.summary }}</div>
             </div>
           </article>
         </div>
@@ -649,6 +699,54 @@
         </div>
       </div>
     </div>
+
+    <div v-if="performanceDialogOpen" class="goal-dialog-backdrop" @click.self="closePerformanceDialog">
+      <div class="goal-dialog card">
+        <div class="goal-dialog-head">
+          <div>
+            <div class="card-title">Performance Anchors</div>
+            <div class="goal-dialog-sub">Set the manual anchors that zone-aware and benchmark reads can trust.</div>
+          </div>
+          <button class="dialog-close" @click="closePerformanceDialog">×</button>
+        </div>
+
+        <div class="goal-form athlete-profile-form">
+          <label>
+            <span>Running threshold pace</span>
+            <input v-model.number="performanceForm.anchors.run_threshold_pace.value" type="number" min="1" step="1" placeholder="Seconds per km">
+          </label>
+          <label>
+            <span>Cycling threshold power</span>
+            <input v-model.number="performanceForm.anchors.ride_threshold_power.value" type="number" min="1" step="1" placeholder="Watts">
+          </label>
+          <label>
+            <span>Run zone 2 lower bound</span>
+            <input v-model.number="performanceForm.zones.run.zone2_lower_pct" type="number" min="1" step="0.01">
+          </label>
+          <label>
+            <span>Run zone 2 upper bound</span>
+            <input v-model.number="performanceForm.zones.run.zone2_upper_pct" type="number" min="1" step="0.01">
+          </label>
+          <label>
+            <span>Ride zone 2 lower bound</span>
+            <input v-model.number="performanceForm.zones.ride.zone2_lower_pct" type="number" min="0.1" step="0.01">
+          </label>
+          <label>
+            <span>Ride zone 2 upper bound</span>
+            <input v-model.number="performanceForm.zones.ride.zone2_upper_pct" type="number" min="0.1" step="0.01">
+          </label>
+        </div>
+
+        <p v-if="performanceMessage" class="goal-message">{{ performanceMessage }}</p>
+
+        <div class="goal-dialog-actions">
+          <button class="dialog-secondary" @click="closePerformanceDialog">Cancel</button>
+          <button class="save-btn" :disabled="savingPerformance" @click="savePerformance">
+            {{ savingPerformance ? 'Saving...' : 'Save anchors' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -663,17 +761,22 @@ const draftingGoal = ref(false)
 const savingRestrictions = ref(false)
 const savingProfile = ref(false)
 const savingWorkoutTemplates = ref(false)
+const savingPerformance = ref(false)
 const message = ref('')
 const restrictionMessage = ref('')
 const profileMessage = ref('')
 const workoutTemplateMessage = ref('')
+const performanceMessage = ref('')
 const goals = ref([])
 const dialogOpen = ref(false)
 const restrictionDialogOpen = ref(false)
 const profileDialogOpen = ref(false)
 const workoutTemplateDialogOpen = ref(false)
+const performanceDialogOpen = ref(false)
 const athleteProfile = ref(null)
 const workoutTemplateSettings = ref(null)
+const performanceSettings = ref(null)
+const performanceSummary = ref(null)
 const goalDraftText = ref('')
 const goalDraftPreview = ref(null)
 
@@ -681,15 +784,18 @@ const form = ref(defaultForm())
 const restrictionForm = ref(defaultRestrictionForm())
 const profileForm = ref(defaultProfileForm())
 const workoutTemplateForm = ref(defaultWorkoutTemplateForm())
+const performanceForm = ref(defaultPerformanceForm())
 
 const loadGoals = async () => {
   loading.value = true
   try {
-    const [goalsResult, restrictionResult, profileResult, workoutTemplateResult] = await Promise.all([
+    const [goalsResult, restrictionResult, profileResult, workoutTemplateResult, performanceResult, performanceSummaryResult] = await Promise.all([
       api.getGoals({ limit: 24 }),
       api.getModalityRestrictions(),
       api.getAthleteProfile(),
       api.getWorkoutTemplateSettings(),
+      api.getPerformanceSettings(),
+      api.getPerformanceSummary(),
     ])
     goals.value = goalsResult.data
     restrictionForm.value = restrictionFormFromPayload(restrictionResult.data)
@@ -697,6 +803,9 @@ const loadGoals = async () => {
     profileForm.value = profileFormFromPayload(profileResult.data)
     workoutTemplateSettings.value = workoutTemplateResult.data
     workoutTemplateForm.value = workoutTemplateFormFromPayload(workoutTemplateResult.data)
+    performanceSettings.value = performanceResult.data
+    performanceForm.value = performanceFormFromPayload(performanceResult.data)
+    performanceSummary.value = performanceSummaryResult.data
   } finally {
     loading.value = false
   }
@@ -762,6 +871,25 @@ const strengthRotationRuleSummary = computed(() => {
   const highlights = strengthProgram.value?.summary?.rule_highlights || []
   return highlights.length ? highlights.join(' · ') : 'No explicit rules set'
 })
+const performanceBenchmarks = computed(() => performanceSummary.value?.derived?.benchmarks || [])
+const run5kBenchmark = computed(() => performanceBenchmarks.value.find((item) => item.key === 'run_5_best'))
+const run10kBenchmark = computed(() => performanceBenchmarks.value.find((item) => item.key === 'run_10_best'))
+const ridePowerBenchmark = computed(() => performanceBenchmarks.value.find((item) => item.key === 'ride_best_10min_power'))
+const zoneFoundation = computed(() => performanceSummary.value?.derived?.zone2_foundation || null)
+const runThresholdLabel = computed(() => formatThresholdPace(performanceSettings.value?.anchors?.run_threshold_pace?.value))
+const rideThresholdLabel = computed(() => {
+  const value = performanceSettings.value?.anchors?.ride_threshold_power?.value
+  return value ? `${Math.round(value)} W` : 'Not set'
+})
+const zoneFoundationHeadline = computed(() => zoneFoundation.value?.available ? `${zoneFoundation.value.total_hours || 0} h tracked` : 'Missing anchor')
+const runBenchmarkSummary = computed(() => {
+  const parts = []
+  if (run5kBenchmark.value?.available) parts.push(`5k ${run5kBenchmark.value.value} min`)
+  if (run10kBenchmark.value?.available) parts.push(`10k ${run10kBenchmark.value.value} min`)
+  return parts.length ? parts.join(' · ') : 'No recent 5k/10k benchmark'
+})
+const rideBenchmarkSummary = computed(() => ridePowerBenchmark.value?.available ? `${ridePowerBenchmark.value.value} W` : 'No recent 10-minute power benchmark')
+const zoneBlockSummary = computed(() => zoneFoundation.value?.longest_recent_block_min ? `${zoneFoundation.value.longest_recent_block_min} min` : zoneFoundation.value?.available ? 'No qualifying block yet' : 'Missing threshold anchor')
 
 const canSave = computed(() =>
   canSaveGoal(form.value)
@@ -822,9 +950,24 @@ const openWorkoutTemplateDialog = async () => {
   workoutTemplateDialogOpen.value = true
 }
 
+const openPerformanceDialog = async () => {
+  performanceMessage.value = ''
+  try {
+    const result = await api.getPerformanceSettings()
+    performanceSettings.value = result.data
+    performanceForm.value = performanceFormFromPayload(result.data)
+  } catch {}
+  performanceDialogOpen.value = true
+}
+
 const closeWorkoutTemplateDialog = () => {
   if (savingWorkoutTemplates.value) return
   workoutTemplateDialogOpen.value = false
+}
+
+const closePerformanceDialog = () => {
+  if (savingPerformance.value) return
+  performanceDialogOpen.value = false
 }
 
 const saveGoal = async () => {
@@ -932,6 +1075,23 @@ const saveWorkoutTemplates = async () => {
   }
 }
 
+const savePerformance = async () => {
+  savingPerformance.value = true
+  performanceMessage.value = ''
+  try {
+    const result = await api.updatePerformanceSettings(performancePayloadFromForm(performanceForm.value))
+    performanceSettings.value = result.data
+    performanceForm.value = performanceFormFromPayload(result.data)
+    performanceSummary.value = (await api.getPerformanceSummary()).data
+    await loadGoals()
+    performanceDialogOpen.value = false
+  } catch (error) {
+    performanceMessage.value = error?.response?.data?.detail || 'Failed to save performance anchors.'
+  } finally {
+    savingPerformance.value = false
+  }
+}
+
 function defaultForm() {
   return {
     title: '',
@@ -976,6 +1136,19 @@ function defaultWorkoutTemplateForm() {
     delay_lower_body_when_running_restricted: true,
     prefer_ride_when_run_blocked: true,
     templates: [],
+  }
+}
+
+function defaultPerformanceForm() {
+  return {
+    anchors: {
+      run_threshold_pace: { value: null, unit: 's/km' },
+      ride_threshold_power: { value: null, unit: 'W' },
+    },
+    zones: {
+      run: { zone2_lower_pct: 1.15, zone2_upper_pct: 1.3 },
+      ride: { zone2_lower_pct: 0.56, zone2_upper_pct: 0.75 },
+    },
   }
 }
 
@@ -1059,6 +1232,42 @@ function workoutTemplatePayloadFromForm(formState) {
   }
 }
 
+function performanceFormFromPayload(payload) {
+  const next = defaultPerformanceForm()
+  next.anchors.run_threshold_pace.value = payload?.anchors?.run_threshold_pace?.value ?? null
+  next.anchors.ride_threshold_power.value = payload?.anchors?.ride_threshold_power?.value ?? null
+  next.zones.run.zone2_lower_pct = payload?.zones?.run?.zone2_lower_pct ?? next.zones.run.zone2_lower_pct
+  next.zones.run.zone2_upper_pct = payload?.zones?.run?.zone2_upper_pct ?? next.zones.run.zone2_upper_pct
+  next.zones.ride.zone2_lower_pct = payload?.zones?.ride?.zone2_lower_pct ?? next.zones.ride.zone2_lower_pct
+  next.zones.ride.zone2_upper_pct = payload?.zones?.ride?.zone2_upper_pct ?? next.zones.ride.zone2_upper_pct
+  return next
+}
+
+function performancePayloadFromForm(formState) {
+  return {
+    anchors: {
+      run_threshold_pace: {
+        value: formState.anchors.run_threshold_pace.value ? Number(formState.anchors.run_threshold_pace.value) : null,
+        unit: 's/km',
+      },
+      ride_threshold_power: {
+        value: formState.anchors.ride_threshold_power.value ? Number(formState.anchors.ride_threshold_power.value) : null,
+        unit: 'W',
+      },
+    },
+    zones: {
+      run: {
+        zone2_lower_pct: Number(formState.zones.run.zone2_lower_pct),
+        zone2_upper_pct: Number(formState.zones.run.zone2_upper_pct),
+      },
+      ride: {
+        zone2_lower_pct: Number(formState.zones.ride.zone2_lower_pct),
+        zone2_upper_pct: Number(formState.zones.ride.zone2_upper_pct),
+      },
+    },
+  }
+}
+
 const toggleLongSessionDay = (day) => {
   const current = new Set(profileForm.value.preferred_long_session_days || [])
   if (current.has(day)) {
@@ -1124,6 +1333,14 @@ const formatShortDate = (value) => {
   } catch {
     return value
   }
+}
+
+const formatThresholdPace = (secondsValue) => {
+  const total = Number(secondsValue || 0)
+  if (!total) return 'Not set'
+  const minutes = Math.floor(total / 60)
+  const seconds = Math.round(total % 60)
+  return `${minutes}:${String(seconds).padStart(2, '0')} /km`
 }
 
 const paceLabel = (goal) => {

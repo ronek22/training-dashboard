@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 from ..repositories.goals import insert_goal, list_goal_rows
+from .metrics import get_zone2_foundation_for_window
 from .settings import modality_for_goal, get_modality_restrictions_for_conn, restriction_summary_text
 
 GOAL_FAMILY_LABELS = {
@@ -462,19 +463,14 @@ def goal_value_for_window(
         return float(row["value"] or 0)
 
     if metric_type == "zone2_hours":
-        activity_types = ("Run", "Ride", "VirtualRide")
-        placeholders = ",".join("?" for _ in activity_types)
-        row = conn.execute(
-            f"""
-            SELECT COALESCE(SUM(duration_min), 0) AS value
-            FROM activities
-            WHERE zone2 = 1
-              AND type IN ({placeholders})
-              AND date >= ? AND date <= ?
-            """,
-            (*activity_types, start_date, end_date),
-        ).fetchone()
-        return round(float(row["value"] or 0) / 60.0, 1)
+        summary = get_zone2_foundation_for_window(
+            conn,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if not summary["available"]:
+            return 0.0
+        return round(float(summary["total_hours"] or 0), 1)
 
     return 0.0
 
@@ -794,12 +790,36 @@ def _serialize_volume_goal(
     expected_value = round((target_value * elapsed_days) / total_days, 1) if target_value > 0 else 0.0
     pace_delta_value = round(current_value - expected_value, 1)
     pace_delta_pct = round(progress_pct - expected_pct, 1)
+    derived_foundation = None
+    if row["metric_type"] == "zone2_hours":
+        derived_foundation = get_zone2_foundation_for_window(
+            conn,
+            start_date=start_day.isoformat(),
+            end_date=end_day.isoformat(),
+        )
+        current_value = round(float(derived_foundation["total_hours"] or 0), 1) if derived_foundation["available"] else 0.0
+        remaining_value = round(max(target_value - current_value, 0), 1)
+        progress_pct = round(min((current_value / target_value) * 100, 999), 1) if target_value > 0 else 0
+        pace_delta_value = round(current_value - expected_value, 1)
+        pace_delta_pct = round(progress_pct - expected_pct, 1)
+        derived_foundation = {
+            **derived_foundation,
+            "summary": (
+                f"Zone 2 foundation ready. {derived_foundation['session_count']} qualifying session"
+                f"{'' if derived_foundation['session_count'] == 1 else 's'} in this window."
+                if derived_foundation["available"] else
+                "Zone 2 hours stay unavailable until a running threshold pace or cycling threshold power anchor is set."
+            ),
+            "status": "available" if derived_foundation["available"] else "unavailable",
+        }
     unit = goal_metric_unit(row["metric_type"])
     metric_label = goal_metric_label(row["metric_type"])
     modality = _goal_modality(goal_family, row["metric_type"], row["activity_type"])
     is_constrained, modality_restriction, constraint_summary = _constraint_details(modality, restrictions)
 
-    if is_constrained:
+    if derived_foundation and derived_foundation["status"] == "unavailable":
+        status = "behind_pace"
+    elif is_constrained:
         status = "constrained"
     elif current_value >= target_value:
         status = "completed"
@@ -845,7 +865,18 @@ def _serialize_volume_goal(
         planning_guidance_status=planning_guidance["status"],
     )
 
-    if is_constrained:
+    if derived_foundation and derived_foundation["status"] == "unavailable":
+        planning_guidance = {
+            **planning_guidance,
+            "status": "constrained",
+            "summary": derived_foundation["summary"],
+        }
+        risk_summary = {
+            "status": "watch",
+            "label": "Missing anchor",
+            "summary": derived_foundation["summary"],
+        }
+    elif is_constrained:
         planning_guidance = {
             **planning_guidance,
             "status": "constrained",
@@ -871,7 +902,6 @@ def _serialize_volume_goal(
         target_value=target_value,
         target_config=target_config,
     )
-
     return {
         "id": row["id"],
         "title": row["title"],
@@ -909,6 +939,7 @@ def _serialize_volume_goal(
         "weekly_requirement_summary": build_requirement_summary(weekly_requirements),
         "compact_summary": planning_guidance["summary"],
         "display_mode": "volume",
+        "derived_foundation": derived_foundation,
     }
 
 
@@ -967,6 +998,15 @@ def _serialize_event_goal(
     }
     target_summary = f"{activity_type} {distance_km:g} km in under {target_duration_min:g} min by {end_day.isoformat()}."
     compact_summary = risk_summary["summary"]
+    derived_foundation = {
+        "type": "run_benchmark",
+        "status": "available" if performance_snapshot["recent_best_duration_min"] else "unavailable",
+        "summary": (
+            f"Recent best {distance_km:g}k is {performance_snapshot['recent_best_duration_min']:.1f} min from {performance_snapshot['recent_best_date']}."
+            if performance_snapshot["recent_best_duration_min"] else
+            f"No recent {distance_km:g}k benchmark is available yet."
+        ),
+    }
     weekly_requirements = build_goal_requirements(
         goal_family="event_performance",
         metric_type=row["metric_type"],
@@ -1013,6 +1053,7 @@ def _serialize_event_goal(
         "compact_summary": compact_summary,
         "display_mode": "performance",
         "performance_snapshot": performance_snapshot,
+        "derived_foundation": derived_foundation,
     }
 
 
@@ -1048,6 +1089,15 @@ def _serialize_benchmark_goal(
         target_summary = f"Run {distance_km:g} km in under {target_duration_min:g} min during this block."
         achieved = bool(best_duration and best_duration <= target_duration_min)
         gap_ratio = ((best_duration - target_duration_min) / target_duration_min) if best_duration and target_duration_min else 1.0
+        derived_foundation = {
+            "type": "run_benchmark",
+            "status": "available" if best_duration else "unavailable",
+            "summary": (
+                f"Recent best {distance_km:g}k is {best_duration:.1f} min."
+                if best_duration else
+                f"No recent {distance_km:g}k benchmark is available yet."
+            ),
+        }
     else:
         duration_min = _safe_float(target_config.get("duration_min"))
         best_match = _recent_best_ride_power(conn, duration_min)
@@ -1065,6 +1115,15 @@ def _serialize_benchmark_goal(
         target_summary = f"Hold {target_watts:g} W for {duration_min:g} min during this block."
         achieved = bool(best_power and best_power >= target_watts)
         gap_ratio = ((target_watts - best_power) / target_watts) if best_power and target_watts else 1.0
+        derived_foundation = {
+            "type": "ride_power_benchmark",
+            "status": "available" if best_power else "unavailable",
+            "summary": (
+                f"Best recent {duration_min:g}-minute power is {round(best_power):g} W."
+                if best_power else
+                f"No recent {duration_min:g}-minute power benchmark is available yet."
+            ),
+        }
 
     if achieved:
         status = "completed"
@@ -1133,6 +1192,7 @@ def _serialize_benchmark_goal(
         "compact_summary": compact_summary,
         "display_mode": "performance",
         "performance_snapshot": performance_snapshot,
+        "derived_foundation": derived_foundation,
     }
 
 

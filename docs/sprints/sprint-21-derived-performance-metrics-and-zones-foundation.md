@@ -4,7 +4,7 @@
 
 Current status:
 
-- planned
+- completed
 - follows Sprint 20 natural-language goal capture and structured drafts
 
 Starting point:

@@ -99,7 +99,14 @@ def _parse_sprint_listing(readme_text: str) -> list[dict]:
 
 
 def _parse_next_focus(current_state_text: str, sprints: list[dict]) -> dict | None:
-    label_match = re.search(r"-\s+(Sprint\s+\d+)(?:\s+([^\n]+))?", current_state_text)
+    recommended_section_match = re.search(
+        r"## Recommended Next Step\s*(.*?)(?:\n## |\Z)",
+        current_state_text,
+        re.DOTALL,
+    )
+    search_text = recommended_section_match.group(1) if recommended_section_match else current_state_text
+
+    label_match = re.search(r"-\s+(Sprint\s+\d+)(?:\s+([^\n]+))?", search_text)
     if not label_match:
         return None
 

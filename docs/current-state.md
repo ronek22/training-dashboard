@@ -195,6 +195,19 @@ Completed slices:
 - `Goals`, `Plan`, and `Dashboard` now show requirement-focused cues so it is clearer why a session matters and what is still missing
 - smoke coverage now includes multiple goal-family requirement mappings plus cases for unsupported goals and visible goal tradeoffs
 
+### Sprint 18 rule-based workout templates and rotation state
+
+Sprint 18 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- settings now persist reusable strength workout templates plus explicit rotation state and skip behavior
+- generic strength plan days are normalized into named templates like `Workout A` instead of staying generic
+- completing a linked template-backed strength session advances the persisted next-workout pointer
+- missed strength sessions stay pending so later weekly plan generation postpones them instead of silently skipping ahead
+- restriction-aware template assignment can delay lower-body strength while running is limited or blocked
+- `Goals`, `Plan`, and `Dashboard` now expose the current strength rotation and next programmed workout
+
 ### Phase 5 coaching workflow and analysis
 
 Phase 5 can now be treated as complete for the current roadmap slice.
@@ -208,19 +221,14 @@ Completed slices:
 
 ## Recommended Next Step
 
-The next roadmap slice should start now.
+Sprint 20 has landed.
 
-The next major sprint should be:
+The next roadmap slice should be defined explicitly before work starts again.
 
-- Sprint 18 rule-based workout templates and rotation state
+Current recommendation:
 
-That sprint should build on the new requirement-aware planning layer that now exists.
-
-That means moving into:
-
-- preserving specific workout identity instead of treating recurring sessions too generically
-- using rotation state and simple planning rules to maintain continuity across weeks and missed sessions
-- improving week generation and adjustment quality without jumping to a fully autonomous planner
+- move into Phase 9 with Sprint 21 derived performance metrics and zones foundation
+- close the current roadmap slice with Sprint 22 benchmark sessions and test-result visibility
 
 ## Areas That Are Still Intentionally Lightweight
 
@@ -244,7 +252,7 @@ If continuing into the next roadmap:
 - athlete-facing goal and profile UI: `frontend/src/views/Goals.vue`
 - calendar aggregation and month view: `backend/app/services/activities.py` and `frontend/src/views/Calendar.vue`
 - docs-backed planning visibility: `docs/roadmap.md`, `docs/roadmaps/`, `docs/current-state.md`, and `docs/sprints/`
-- sprint planning direction: rule-based workout templates and rotation state should be the next execution slice
+- sprint planning direction: Phase 8 should now focus on context packaging and explanation quality before Phase 9 deepens performance data foundations
 
 ## Working Assumption
 

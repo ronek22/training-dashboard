@@ -19,7 +19,7 @@ from ..services.dashboard import (
     compute_activity_streak,
 )
 from ..services.coaching import build_weekly_coaching
-from ..services.goals import list_goals_data
+from ..services.goals import draft_goal_data, list_goals_data
 from ..services.metrics import get_metric_history_data
 from ..services.notes import list_notes_data
 from ..services.plans import adjust_weekly_plan_data, list_weekly_plans_data
@@ -148,4 +148,5 @@ def build_mcp_router_dependencies() -> dict:
         "list_weekly_plans_data_fn": list_weekly_plans_data,
         "calendar_weeks_fn": calendar_weeks,
         "metric_catalog": METRIC_CATALOG,
+        "draft_goal_data_fn": draft_goal_data,
     }

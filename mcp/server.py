@@ -241,6 +241,17 @@ TOOLS = [
                 "weeks": {"type": "integer", "description": "Number of recent weeks to return"}
             }
         }
+    },
+    {
+        "name": "draft_goal",
+        "description": "Preview a structured goal draft from natural-language text without saving it",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "Natural-language goal idea to parse"}
+            },
+            "required": ["text"]
+        }
     }
 ]
 
@@ -303,6 +314,10 @@ def handle_tool(name: str, args: dict) -> str:
 
         elif name == "get_calendar_weeks":
             result = call_api("GET", "/calendar/weeks", args)
+            return json.dumps(result, indent=2)
+
+        elif name == "draft_goal":
+            result = call_api("POST", "/goals/draft", args)
             return json.dumps(result, indent=2)
 
         else:

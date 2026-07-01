@@ -36,6 +36,9 @@
             <div class="today-plan-title">
               {{ todayPlanCompleted ? "Today's planned session is done" : todayPlan.title }}
             </div>
+            <div v-if="todayPlan.template_label && !todayPlanCompleted" class="today-plan-details">
+              {{ todayPlan.template_label }}
+            </div>
             <div class="today-plan-meta">
               <span v-if="todayPlanCompleted">{{ todayPlanCompletionLabel }}</span>
               <span v-else-if="todayPlan.target_duration_min">{{ todayPlan.target_duration_min }} min</span>
@@ -320,15 +323,20 @@
         <div class="weekly-coach-grid">
           <section class="weekly-coach-panel weekly-coach-panel-reasons">
             <div class="weekly-coach-label">Why This Call</div>
-            <div v-if="coachingHighlights(weeklyCoaching).length" class="weekly-coach-reason-list">
-              <div
-                v-for="item in coachingHighlights(weeklyCoaching)"
-                :key="`${item.kind}-${item.text}`"
-                class="weekly-coach-reason"
-                :class="`reason-${item.kind}`"
-              >
-                <span class="weekly-coach-reason-dot"></span>
-                <span>{{ item.text }}</span>
+            <div v-if="coachingExplanationGroups(weeklyCoaching).length" class="weekly-coach-explanation-groups">
+              <div v-for="group in coachingExplanationGroups(weeklyCoaching)" :key="group.label" class="weekly-coach-explanation-group">
+                <div class="weekly-coach-explanation-label">{{ group.label }}</div>
+                <div class="weekly-coach-reason-list">
+                  <div
+                    v-for="item in group.items"
+                    :key="`${group.label}-${item}`"
+                    class="weekly-coach-reason"
+                    :class="`reason-${group.kind}`"
+                  >
+                    <span class="weekly-coach-reason-dot"></span>
+                    <span>{{ item }}</span>
+                  </div>
+                </div>
               </div>
             </div>
             <div v-else class="weekly-coach-empty">No strong warning signals are standing out right now.</div>
@@ -427,34 +435,61 @@
         <div class="support-section-copy">Recent weekly calls, saved as compact checkpoints instead of one-off snapshots.</div>
       </div>
 
-      <div class="history-grid" :class="{ 'history-grid-single': !coachingHistory.length || !athleteBrief }">
-        <div v-if="coachingHistory.length" class="coaching-history-list">
-          <article
-            v-for="entry in coachingHistory"
-            :key="entry.week_start"
-            class="card coaching-history-card"
-            :class="`history-${entry.summary_status}`"
-          >
-            <div class="coaching-history-top">
-              <div>
-                <div class="card-title">Week of {{ formatDate(entry.week_start) }}</div>
-                <div class="coaching-history-headline">{{ entry.headline }}</div>
-              </div>
-              <div class="coaching-history-status" :class="`status-${entry.recommendation_status}`">
-                {{ coachingStatusLabel(entry.recommendation_status) }}
-              </div>
+      <div v-if="coachingHistory.length" class="coaching-history-list">
+        <article
+          v-for="entry in coachingHistory"
+          :key="entry.week_start"
+          class="card coaching-history-card"
+          :class="`history-${entry.summary_status}`"
+        >
+          <div class="coaching-history-top">
+            <div>
+              <div class="card-title">Week of {{ formatDate(entry.week_start) }}</div>
+              <div class="coaching-history-headline">{{ entry.headline }}</div>
             </div>
-            <div v-if="entry.rationale_summary" class="coaching-history-copy">{{ entry.rationale_summary }}</div>
-            <div class="coaching-history-meta">
-              <span>{{ formatDateTime(entry.generated_at) }}</span>
-              <span v-if="entry.revision_count">Plan revisions: {{ entry.revision_count }}</span>
-              <span v-if="entry.proposed_changed_dates?.length">Proposed: {{ formatDateList(entry.proposed_changed_dates) }}</span>
+            <div class="coaching-history-status" :class="`status-${entry.recommendation_status}`">
+              {{ coachingStatusLabel(entry.recommendation_status) }}
             </div>
-            <div v-if="entry.focus_for_next_48h" class="coaching-history-focus">{{ entry.focus_for_next_48h }}</div>
-          </article>
+          </div>
+          <div v-if="entry.rationale_summary" class="coaching-history-copy">{{ entry.rationale_summary }}</div>
+          <div class="coaching-history-meta">
+            <span>{{ formatDateTime(entry.generated_at) }}</span>
+            <span v-if="entry.revision_count">Plan revisions: {{ entry.revision_count }}</span>
+            <span v-if="entry.proposed_changed_dates?.length">Proposed: {{ formatDateList(entry.proposed_changed_dates) }}</span>
+          </div>
+          <div v-if="entry.focus_for_next_48h" class="coaching-history-focus">{{ entry.focus_for_next_48h }}</div>
+        </article>
+      </div>
+
+      <div v-if="strengthRotation || athleteBrief" class="history-detail-grid" :class="{ 'history-detail-grid-single': !(strengthRotation && athleteBrief) }">
+        <div v-if="strengthRotation" class="card athlete-brief-card">
+          <div class="athlete-brief-head">
+            <div>
+              <div class="card-title">Strength Rotation</div>
+              <div class="goals-sub">Persisted template order and skip rules for structured strength work.</div>
+            </div>
+            <div class="athlete-brief-focus">{{ strengthRotation.next_template_label || 'Not set' }}</div>
+          </div>
+          <div class="athlete-brief-summary">
+            Next programmed workout: {{ strengthRotation.next_template_label || 'Not set' }}.
+          </div>
+          <div class="athlete-brief-grid athlete-brief-grid-side">
+            <article class="athlete-brief-stat">
+              <span>Last completed</span>
+              <strong>{{ strengthRotation.last_completed_template_label || 'Not completed yet' }}</strong>
+            </article>
+            <article class="athlete-brief-stat">
+              <span>Missed sessions</span>
+              <strong>{{ strengthRotationSkipLabel }}</strong>
+            </article>
+            <article class="athlete-brief-stat">
+              <span>Pending</span>
+              <strong>{{ strengthRotation.pending_template_label || strengthRotation.next_template_label || 'Not set' }}</strong>
+            </article>
+          </div>
         </div>
 
-        <div v-if="athleteBrief" class="card athlete-brief-card athlete-brief-card-side">
+        <div v-if="athleteBrief" class="card athlete-brief-card">
           <div class="athlete-brief-head">
             <div>
               <div class="card-title">Athlete Context</div>
@@ -480,6 +515,13 @@
               <span>Long-session days</span>
               <strong>{{ athleteLongDaysLabel }}</strong>
             </article>
+          </div>
+
+          <div v-if="athleteContextThisWeekItems.length" class="athlete-brief-notes athlete-brief-notes-static">
+            <div v-for="item in athleteContextThisWeekItems" :key="item.label" class="athlete-brief-note">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
           </div>
 
           <div v-if="athleteDetailItems.length" class="athlete-brief-details">
@@ -1057,6 +1099,17 @@ const weeklyPlan = computed(() => dashboard.value?.weekly_plan || null)
 const executionTrend = computed(() => dashboard.value?.execution_trend || null)
 const athleteProfile = computed(() => dashboard.value?.athlete_profile || null)
 const athleteBrief = computed(() => dashboard.value?.athlete_brief || null)
+const athleteCoachingBrief = computed(() => (
+  dashboard.value?.athlete_coaching_brief
+  || weeklyCoaching.value?.reasoning_signals?.athlete_coaching_brief
+  || null
+))
+const strengthRotationProgram = computed(() => dashboard.value?.workout_template_settings?.programs?.strength || null)
+const strengthRotation = computed(() => strengthRotationProgram.value?.rotation_state || null)
+const strengthRotationSkipLabel = computed(() => {
+  if (strengthRotationProgram.value?.rules?.skip_behavior === 'skip') return 'Skip ahead'
+  return 'Postpone'
+})
 const dailyRecommendation = computed(() => dashboard.value?.daily_recommendation || null)
 const latestSubjectiveState = computed(() => dashboard.value?.latest_subjective_state || null)
 const goalRiskSummary = computed(() => dashboard.value?.goal_risk_summary || null)
@@ -1188,6 +1241,46 @@ const athleteSummaryLine = computed(() => {
     parts.push(`Long days: ${athleteBrief.value.preferred_long_session_day_labels.join(', ')}`)
   }
   return parts.join(' · ') || 'No additional athlete context set.'
+})
+const joinGoalTitles = (items, fallback) => {
+  const titles = (items || [])
+    .map((item) => item?.title)
+    .filter(Boolean)
+  if (!titles.length) return fallback
+  if (titles.length === 1) return titles[0]
+  if (titles.length === 2) return `${titles[0]} and ${titles[1]}`
+  return `${titles[0]}, ${titles[1]}, +${titles.length - 2} more`
+}
+const athleteContextThisWeekItems = computed(() => {
+  const briefGoals = athleteCoachingBrief.value?.goals || {}
+  const items = []
+  const primary = briefGoals.primary || []
+  const secondary = briefGoals.secondary || []
+  const deprioritized = [
+    ...(briefGoals.deprioritized || []),
+    ...(briefGoals.constrained || []),
+  ]
+  const conflicts = briefGoals.conflicts || []
+
+  if (primary.length || secondary.length) {
+    items.push({
+      label: 'This week supports',
+      value: joinGoalTitles(primary.length ? primary : secondary, 'No explicit support focus'),
+    })
+  }
+  if (deprioritized.length) {
+    items.push({
+      label: 'In the background',
+      value: joinGoalTitles(deprioritized, 'Nothing is currently delayed'),
+    })
+  }
+  if (conflicts.length) {
+    items.push({
+      label: 'Main tradeoff',
+      value: conflicts[0].summary || conflicts[0].label,
+    })
+  }
+  return items.slice(0, 3)
 })
 const athleteDetailItems = computed(() => {
   const items = []
@@ -1662,16 +1755,34 @@ const coachingGoalsCopy = (goals) => {
   return `${goals.plan_supported_goals || 0} active goals are supported by this week’s sessions.`
 }
 
-const coachingHighlights = (weeklyCoachingPayload) => {
-  if (!weeklyCoachingPayload) return []
-  const items = []
-  for (const text of weeklyCoachingPayload.recommendation?.rationale || []) {
-    items.push({ kind: 'rationale', text })
+const normalizeCoachingText = (value) => (
+  String(value || '')
+    .trim()
+    .toLowerCase()
+)
+
+const uniqueCoachingItems = (items) => {
+  const output = []
+  const seen = new Set()
+  for (const item of items || []) {
+    const normalized = normalizeCoachingText(item)
+    if (!normalized || seen.has(normalized)) continue
+    seen.add(normalized)
+    output.push(item)
   }
-  for (const text of weeklyCoachingPayload.recommendation?.risks || []) {
-    items.push({ kind: 'risk', text })
-  }
-  return items.slice(0, 6)
+  return output
+}
+
+const coachingExplanationGroups = (weeklyCoachingPayload) => {
+  if (!weeklyCoachingPayload?.recommendation) return []
+  const recommendation = weeklyCoachingPayload.recommendation
+  const groups = [
+    { label: 'Advancing', kind: 'rationale', items: uniqueCoachingItems(recommendation.primary_support).slice(0, 3) },
+    { label: 'Maintaining', kind: 'rationale', items: uniqueCoachingItems(recommendation.secondary_support).slice(0, 2) },
+    { label: 'Deprioritized', kind: 'risk', items: uniqueCoachingItems(recommendation.deprioritized_work).slice(0, 3) },
+    { label: 'Immediate signals', kind: 'rationale', items: uniqueCoachingItems(recommendation.immediate_signals).slice(0, 3) },
+  ]
+  return groups.filter((group) => group.items.length)
 }
 
 const coachingPatternSummary = (weeklyCoachingPayload) => (
@@ -2116,13 +2227,13 @@ const zoneBadgeClass = (activity) => {
 .support-grid {
   margin-bottom: 0;
 }
-.history-grid {
+.history-detail-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.7fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
   align-items: start;
 }
-.history-grid-single {
+.history-detail-grid-single {
   grid-template-columns: minmax(0, 1fr);
 }
 .reference-top-grid {
@@ -2396,6 +2507,19 @@ const zoneBadgeClass = (activity) => {
 .weekly-coach-reason-list {
   display: grid;
   gap: 10px;
+}
+.weekly-coach-explanation-groups {
+  display: grid;
+  gap: 14px;
+}
+.weekly-coach-explanation-group {
+  display: grid;
+  gap: 8px;
+}
+.weekly-coach-explanation-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
 }
 .weekly-coach-reason {
   display: grid;
@@ -3184,10 +3308,6 @@ const zoneBadgeClass = (activity) => {
 .athlete-brief-card {
   gap: 14px;
 }
-.athlete-brief-card-side {
-  position: sticky;
-  top: 18px;
-}
 .athlete-brief-head {
   display: flex;
   justify-content: space-between;
@@ -3250,6 +3370,9 @@ const zoneBadgeClass = (activity) => {
   color: var(--text);
   border-color: rgba(148, 163, 184, 0.28);
 }
+.athlete-brief-notes-static {
+  margin-top: -2px;
+}
 
 @media (max-width: 1100px) {
   .cycling-head { flex-direction: column; }
@@ -3263,8 +3386,7 @@ const zoneBadgeClass = (activity) => {
   .heatmap-wrap { overflow-x: auto; }
   .execution-trend-summary,
   .execution-trend-weeks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .history-grid { grid-template-columns: 1fr; }
-  .athlete-brief-card-side { position: static; }
+  .history-detail-grid { grid-template-columns: 1fr; }
   .athlete-brief-grid { grid-template-columns: 1fr; }
   .mix-chart,
   .strength-bars { grid-template-columns: repeat(4, minmax(0, 1fr)); }

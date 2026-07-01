@@ -357,6 +357,23 @@ MCP_TOOLS = [
             },
         },
     },
+    {
+        "name": "draft_goal",
+        "description": "Preview a structured goal draft from natural-language goal text without saving it",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "Natural-language goal idea to parse"},
+            },
+            "required": ["text"],
+        },
+    },
 ]
 
 
@@ -405,6 +422,7 @@ def call_mcp_tool(
     list_weekly_plans_data_fn,
     calendar_weeks_fn,
     metric_catalog,
+    draft_goal_data_fn,
 ) -> dict:
     conn = get_db_fn()
     try:
@@ -490,6 +508,7 @@ def call_mcp_tool(
             data = {
                 "athlete_profile": data.get("athlete_profile"),
                 "athlete_brief": data.get("athlete_brief"),
+                "athlete_coaching_brief": data.get("athlete_coaching_brief"),
                 "modality_restrictions": data.get("modality_restrictions"),
             }
             message = json.dumps(data, indent=2)
@@ -549,6 +568,10 @@ def call_mcp_tool(
 
         elif name == "get_calendar_weeks":
             data = calendar_weeks_fn(weeks=int(args.get("weeks", 8)))
+            message = json.dumps(data, indent=2)
+
+        elif name == "draft_goal":
+            data = draft_goal_data_fn(args.get("text", ""))
             message = json.dumps(data, indent=2)
 
         else:

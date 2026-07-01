@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -28,6 +29,32 @@ class AppSmokeTests(unittest.TestCase):
     def tearDownClass(cls):
         os.environ.pop("TRAINING_DB_PATH", None)
         cls.temp_dir.cleanup()
+
+    def _find_plan(self, week_start: str):
+        plans = self.client.get("/plans/weekly?limit=24")
+        self.assertEqual(plans.status_code, 200)
+        return next((plan for plan in plans.json() if plan["week_start"] == week_start), None)
+
+    def setUp(self):
+        conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])
+        try:
+            for table in [
+                "activities",
+                "coach_notes",
+                "weekly_summary",
+                "metrics",
+                "app_settings",
+                "weekly_plans",
+                "plan_revisions",
+                "coaching_snapshots",
+                "activity_stream_summaries",
+                "goals",
+                "activity_feedback",
+            ]:
+                conn.execute(f"DELETE FROM {table}")
+            conn.commit()
+        finally:
+            conn.close()
 
     def test_health_and_mcp_info(self):
         health = self.client.get("/health")
@@ -142,6 +169,75 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(recent_context.json()["recent_feedback"][0]["activity_id"], "feedback-run-1")
         self.assertIn("daily_recommendation", recent_context.json())
 
+    def test_goal_drafting_supports_high_confidence_and_warning_cases(self):
+        ready_cases = [
+            (
+                "run 10k in under 40 minutes by October",
+                {
+                    "goal_family": "event_performance",
+                    "activity_type": "Run",
+                    "distance_km": 10.0,
+                    "target_duration_min": 40.0,
+                },
+            ),
+            (
+                "hold 300W for 10 minutes",
+                {
+                    "goal_family": "benchmark",
+                    "activity_type": "Ride",
+                    "target_watts": 300.0,
+                    "duration_min": 10.0,
+                },
+            ),
+            (
+                "ride 6 hours of zone 2 per week",
+                {
+                    "goal_family": "process",
+                    "metric_type": "zone2_hours",
+                    "target_value": 6.0,
+                },
+            ),
+        ]
+
+        for text, expected in ready_cases:
+            with self.subTest(text=text):
+                draft = self.client.post("/goals/draft", json={"text": text})
+                self.assertEqual(draft.status_code, 200)
+                body = draft.json()
+                self.assertTrue(body["is_supported"])
+                self.assertTrue(body["is_ready"])
+                self.assertEqual(body["goal"]["goal_family"], expected["goal_family"])
+                if "metric_type" in expected:
+                    self.assertEqual(body["goal"]["metric_type"], expected["metric_type"])
+                if "activity_type" in expected:
+                    self.assertEqual(body["goal"]["activity_type"], expected["activity_type"])
+                if "target_value" in expected:
+                    self.assertEqual(body["goal"]["target_value"], expected["target_value"])
+                if "distance_km" in expected:
+                    self.assertEqual(body["goal"]["target_config"]["distance_km"], expected["distance_km"])
+                if "target_duration_min" in expected:
+                    self.assertEqual(body["goal"]["target_config"]["target_duration_min"], expected["target_duration_min"])
+                if "target_watts" in expected:
+                    self.assertEqual(body["goal"]["target_config"]["target_watts"], expected["target_watts"])
+                if "duration_min" in expected:
+                    self.assertEqual(body["goal"]["target_config"]["duration_min"], expected["duration_min"])
+
+        saveable = self.client.post("/goals/draft", json={"text": "lift twice per week"})
+        self.assertEqual(saveable.status_code, 200)
+        saveable_body = saveable.json()
+        self.assertTrue(saveable_body["is_ready"])
+
+        created = self.client.post("/goals", json=saveable_body["goal"])
+        self.assertEqual(created.status_code, 201)
+
+        warning_case = self.client.post("/goals/draft", json={"text": "ride more zone 2"})
+        self.assertEqual(warning_case.status_code, 200)
+        warning_body = warning_case.json()
+        self.assertTrue(warning_body["is_supported"])
+        self.assertFalse(warning_body["is_ready"])
+        self.assertIn("target_value", warning_body["missing_fields"])
+        self.assertGreaterEqual(len(warning_body["warnings"]), 1)
+
     def test_athlete_profile_persists_and_surfaces_in_dashboard_context_and_coaching(self):
         today = datetime.now().date()
         week_start = today - timedelta(days=today.weekday())
@@ -188,11 +284,13 @@ class AppSmokeTests(unittest.TestCase):
         recent_context = self.client.get("/context/recent")
         self.assertEqual(recent_context.status_code, 200)
         self.assertEqual(recent_context.json()["athlete_brief"]["preferred_long_session_days"], ["sat", "sun"])
+        self.assertEqual(recent_context.json()["athlete_coaching_brief"]["profile"]["focus"]["value"], "hybrid")
 
         coaching = self.client.get("/coaching/weekly")
         self.assertEqual(coaching.status_code, 200)
         coaching_body = coaching.json()
         self.assertEqual(coaching_body["reasoning_signals"]["athlete_brief"]["focus"]["value"], "hybrid")
+        self.assertEqual(coaching_body["reasoning_signals"]["athlete_coaching_brief"]["profile"]["focus"]["value"], "hybrid")
         self.assertEqual(
             coaching_body["reasoning_signals"]["athlete_brief"]["preferred_long_session_days"],
             ["sat", "sun"],
@@ -222,6 +320,147 @@ class AppSmokeTests(unittest.TestCase):
         dashboard = self.client.get("/dashboard")
         self.assertEqual(dashboard.status_code, 200)
         self.assertEqual(dashboard.json()["athlete_brief"]["modality_priority"], ["ride", "strength", "run"])
+
+    def test_zz_strength_rotation_advances_on_completion_and_postpones_missed_sessions(self):
+        settings = self.client.get("/settings/workout-templates")
+        self.assertEqual(settings.status_code, 200)
+        self.assertEqual(settings.json()["programs"]["strength"]["rotation_state"]["next_template_id"], "strength-a")
+
+        first_week = "2031-01-06"
+        second_week = "2031-01-13"
+        third_week = "2031-01-20"
+
+        created = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": first_week,
+                "title": "Strength progression week 1",
+                "days": [
+                    {
+                        "date": "2031-01-07",
+                        "label": "Tue",
+                        "session_type": "WeightTraining",
+                        "title": "Strength",
+                        "target_duration_min": 55,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        first_plan = self._find_plan(first_week)
+        self.assertIsNotNone(first_plan)
+        self.assertEqual(first_plan["days"][0]["template_id"], "strength-a")
+
+        activity = self.client.post(
+            "/activities",
+            json={
+                "id": "strength-rotation-a",
+                "date": "2031-01-07",
+                "type": "WeightTraining",
+                "name": "Workout A completed",
+                "duration_min": 56.0,
+                "linked_planned_session_id": first_plan["days"][0]["session_id"],
+            },
+        )
+        self.assertEqual(activity.status_code, 201)
+
+        reread_settings = self.client.get("/settings/workout-templates")
+        self.assertEqual(reread_settings.status_code, 200)
+        strength_program = reread_settings.json()["programs"]["strength"]
+        self.assertEqual(strength_program["rotation_state"]["last_completed_template_id"], "strength-a")
+        self.assertEqual(strength_program["rotation_state"]["next_template_id"], "strength-b")
+
+        second = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": second_week,
+                "title": "Strength progression week 2",
+                "days": [
+                    {
+                        "date": "2031-01-14",
+                        "label": "Tue",
+                        "session_type": "WeightTraining",
+                        "title": "Strength",
+                        "target_duration_min": 55,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(second.status_code, 201)
+        second_plan = self._find_plan(second_week)
+        self.assertIsNotNone(second_plan)
+        self.assertEqual(second_plan["days"][0]["template_id"], "strength-b")
+
+        third = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": third_week,
+                "title": "Strength progression week 3",
+                "days": [
+                    {
+                        "date": "2031-01-21",
+                        "label": "Tue",
+                        "session_type": "WeightTraining",
+                        "title": "Strength",
+                        "target_duration_min": 55,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(third.status_code, 201)
+        third_plan = self._find_plan(third_week)
+        self.assertIsNotNone(third_plan)
+        self.assertEqual(third_plan["days"][0]["template_id"], "strength-b")
+
+    def test_zz_running_restriction_delays_lower_body_template_assignment(self):
+        updated = self.client.put(
+            "/settings/workout-templates",
+            json={
+                "programs": {
+                    "strength": {
+                        "rotation_state": {
+                            "next_template_id": "strength-d",
+                        }
+                    }
+                }
+            },
+        )
+        self.assertEqual(updated.status_code, 200)
+
+        restrictions = self.client.put(
+            "/settings/modality-restrictions",
+            json={
+                "modalities": {
+                    "run": {"status": "limited", "reason": "No extra lower-body loading"},
+                    "ride": {"status": "allowed"},
+                    "strength": {"status": "allowed"},
+                }
+            },
+        )
+        self.assertEqual(restrictions.status_code, 200)
+
+        week_start = "2031-02-03"
+        created = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": week_start,
+                "title": "Restriction-aware strength week",
+                "days": [
+                    {
+                        "date": "2031-02-04",
+                        "label": "Tue",
+                        "session_type": "WeightTraining",
+                        "title": "Strength",
+                        "target_duration_min": 50,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        plan = self._find_plan(week_start)
+        self.assertIsNotNone(plan)
+        self.assertNotEqual(plan["days"][0]["template_id"], "strength-d")
+        self.assertIn("Lower-body strength was delayed", plan["days"][0]["planning_rule_reason"])
 
     def test_recovery_caution_deprioritizes_run_goal_pressure_in_weekly_coaching(self):
         today = datetime.now().date()
@@ -959,6 +1198,17 @@ class AppSmokeTests(unittest.TestCase):
         self.assertGreaterEqual(coaching_body["goal_assessment"]["unsupported_goal_count"], 1)
         self.assertGreaterEqual(coaching_body["goal_assessment"]["conflict_count"], 1)
         self.assertTrue(any("unsupported this week" in item.lower() or "tradeoff" in item.lower() for item in coaching_body["goal_assessment"]["key_observations"]))
+        self.assertTrue(any("Autumn 10k under 40" in item for item in coaching_body["recommendation"]["primary_support"]))
+        self.assertTrue(any("Strength twice weekly" in item for item in coaching_body["recommendation"]["deprioritized_work"]))
+        recent_pattern_text = {
+            item.strip().lower()
+            for item in coaching_body["reasoning_signals"]["recent_pattern_summary"]["key_observations"]
+        }
+        rationale_text = {
+            item.strip().lower()
+            for item in coaching_body["recommendation"]["rationale"]
+        }
+        self.assertTrue(recent_pattern_text.isdisjoint(rationale_text))
 
     def test_plan_session_ids_and_manual_activity_linking(self):
         week_start = datetime.now().date() - timedelta(days=datetime.now().date().weekday()) - timedelta(days=70)
@@ -1356,6 +1606,12 @@ class AppSmokeTests(unittest.TestCase):
         self.assertIn("recommendation", coaching_body)
         self.assertIn("recommended_next_sessions", coaching_body)
         self.assertIn("reasoning_signals", coaching_body)
+        self.assertIn("athlete_coaching_brief", coaching_body["reasoning_signals"])
+        self.assertIn("primary_support", coaching_body["recommendation"])
+        self.assertIn("secondary_support", coaching_body["recommendation"])
+        self.assertIn("deprioritized_work", coaching_body["recommendation"])
+        self.assertIn("immediate_signals", coaching_body["recommendation"])
+        self.assertIn("recent_patterns", coaching_body["recommendation"])
         self.assertIn(coaching_body["recommendation"]["status"], {"reduce", "recover", "adjust"})
         self.assertIsInstance(coaching_body["recommended_next_sessions"], list)
         if coaching_body["proposed_adjustment"] is not None:
@@ -1695,7 +1951,7 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(planning_body["roadmap"]["completed_phases"], 0)
         self.assertEqual(planning_body["roadmap"]["total_phases"], 4)
         self.assertEqual(planning_body["roadmap"]["current_phase"]["number"], 6)
-        self.assertEqual(planning_body["sprints"]["next_recommended"]["label"], "Sprint 16")
+        self.assertIsNone(planning_body["sprints"]["next_recommended"])
 
     def test_today_session_is_not_skipped_before_day_is_over(self):
         today = datetime.now().date()

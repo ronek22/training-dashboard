@@ -1,5 +1,7 @@
 import json
+import calendar
 import sqlite3
+import re
 from math import ceil
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
@@ -22,6 +24,51 @@ REQUIREMENT_TYPE_LABELS = {
     "event_specific_quality": "Event-specific quality",
     "long_aerobic_support": "Long aerobic support",
     "benchmark_specific_quality": "Benchmark-specific quality",
+}
+
+COUNT_WORDS = {
+    "a": 1.0,
+    "an": 1.0,
+    "one": 1.0,
+    "once": 1.0,
+    "two": 2.0,
+    "twice": 2.0,
+    "three": 3.0,
+    "thrice": 3.0,
+    "four": 4.0,
+    "five": 5.0,
+    "six": 6.0,
+    "seven": 7.0,
+    "eight": 8.0,
+    "nine": 9.0,
+    "ten": 10.0,
+}
+
+MONTH_ALIASES = {
+    "jan": 1,
+    "january": 1,
+    "feb": 2,
+    "february": 2,
+    "mar": 3,
+    "march": 3,
+    "apr": 4,
+    "april": 4,
+    "may": 5,
+    "jun": 6,
+    "june": 6,
+    "jul": 7,
+    "july": 7,
+    "aug": 8,
+    "august": 8,
+    "sep": 9,
+    "sept": 9,
+    "september": 9,
+    "oct": 10,
+    "october": 10,
+    "nov": 11,
+    "november": 11,
+    "dec": 12,
+    "december": 12,
 }
 
 
@@ -108,6 +155,43 @@ def _parse_date(value: Optional[str]) -> Optional[date]:
         return None
 
 
+def _compact_text(value: str) -> str:
+    return " ".join((value or "").strip().lower().split())
+
+
+def _number_from_token(value: Optional[str]) -> Optional[float]:
+    if value is None:
+        return None
+    token = value.strip().lower()
+    if token in COUNT_WORDS:
+        return COUNT_WORDS[token]
+    try:
+        return float(token)
+    except ValueError:
+        return None
+
+
+def _month_deadline(month_token: str, today: Optional[date] = None) -> Optional[date]:
+    month_number = MONTH_ALIASES.get((month_token or "").strip().lower())
+    if not month_number:
+        return None
+    current = today or datetime.now().date()
+    year = current.year
+    if month_number < current.month:
+        year += 1
+    last_day = calendar.monthrange(year, month_number)[1]
+    return date(year, month_number, last_day)
+
+
+def _empty_goal_target_config() -> dict[str, Any]:
+    return {
+        "distance_km": None,
+        "target_duration_min": None,
+        "duration_min": None,
+        "target_watts": None,
+    }
+
+
 def _parse_target_config(row: sqlite3.Row) -> dict[str, Any]:
     raw_value = row["target_config_json"] if "target_config_json" in row.keys() else None
     if not raw_value:
@@ -160,7 +244,7 @@ def build_goal_requirements(
 
     if goal_family == "event_performance":
         distance_km = _safe_float(target_config.get("distance_km"))
-        event_descriptor = f"{activity_type or 'Event'} specificity"
+        event_descriptor = f"event-specific {activity_type or 'event'}"
         add_requirement(
             "event_specific_quality",
             priority="primary",
@@ -1062,6 +1146,283 @@ def serialize_goal(row: sqlite3.Row, conn: sqlite3.Connection, restrictions: Opt
     if goal_family == "benchmark":
         return _serialize_benchmark_goal(row, conn, normalized_restrictions, target_config)
     return _serialize_volume_goal(row, conn, normalized_restrictions, goal_family, target_config)
+
+
+def _base_goal_draft(text: str) -> dict[str, Any]:
+    return {
+        "source_text": text,
+        "goal": {
+            "title": "",
+            "goal_family": "accumulation",
+            "period_type": "week",
+            "metric_type": None,
+            "target_value": None,
+            "start_date": None,
+            "end_date": None,
+            "activity_type": None,
+            "target_config": _empty_goal_target_config(),
+        },
+        "title_suggestion": "",
+        "warnings": [],
+        "missing_fields": [],
+        "confidence": "low",
+        "is_supported": False,
+        "is_ready": False,
+    }
+
+
+def _build_event_goal_draft(
+    *,
+    source_text: str,
+    activity_type: str,
+    distance_km: float,
+    target_duration_min: float,
+    end_date: str,
+    title: str,
+    warning: Optional[str] = None,
+) -> dict[str, Any]:
+    draft = _base_goal_draft(source_text)
+    draft["goal"] = {
+        "title": title,
+        "goal_family": "event_performance",
+        "period_type": "year",
+        "metric_type": None,
+        "target_value": None,
+        "start_date": None,
+        "end_date": end_date,
+        "activity_type": activity_type,
+        "target_config": {
+            "distance_km": distance_km,
+            "target_duration_min": target_duration_min,
+            "duration_min": None,
+            "target_watts": None,
+            "event_date": end_date,
+        },
+    }
+    draft["title_suggestion"] = title
+    draft["confidence"] = "high"
+    draft["is_supported"] = True
+    if warning:
+        draft["warnings"].append(warning)
+    return draft
+
+
+def _parse_goal_text(text: str, today: Optional[date] = None) -> dict[str, Any]:
+    normalized = _compact_text(text)
+    draft = _base_goal_draft(text)
+    current = today or datetime.now().date()
+    if not normalized:
+        draft["warnings"].append("Enter a goal idea to draft from natural language.")
+        draft["missing_fields"].append("text")
+        return draft
+
+    event_match = re.search(
+        r"\b(run|ride|virtual ride)\s+(\d+(?:\.\d+)?)\s*k(?:m)?\s+in\s+(?:under\s+)?(\d+(?:\.\d+)?)\s*(?:minutes|min)\s+by\s+([a-z]+)\b",
+        normalized,
+    )
+    if event_match:
+        activity_raw, distance_raw, duration_raw, month_raw = event_match.groups()
+        deadline = _month_deadline(month_raw, current)
+        activity_type = "VirtualRide" if activity_raw == "virtual ride" else activity_raw.capitalize()
+        distance_km = float(distance_raw)
+        target_duration_min = float(duration_raw)
+        if deadline:
+            activity_label = "Virtual ride" if activity_type == "VirtualRide" else activity_type
+            title = f"{activity_label} {distance_km:g} km under {target_duration_min:g} min"
+            warning = None
+            if len(month_raw) > 0:
+                warning = f"Interpreted 'by {month_raw.title()}' as {deadline.isoformat()}."
+            return _build_event_goal_draft(
+                source_text=text,
+                activity_type=activity_type,
+                distance_km=distance_km,
+                target_duration_min=target_duration_min,
+                end_date=deadline.isoformat(),
+                title=title,
+                warning=warning,
+            )
+
+    ride_benchmark_match = re.search(
+        r"\bhold\s+(\d+(?:\.\d+)?)\s*w(?:atts?)?\s+for\s+(\d+(?:\.\d+)?)\s*(?:minutes|min)\b",
+        normalized,
+    )
+    if ride_benchmark_match:
+        watts_raw, duration_raw = ride_benchmark_match.groups()
+        watts = float(watts_raw)
+        duration_min = float(duration_raw)
+        draft["goal"] = {
+            "title": f"Hold {watts:g} W for {duration_min:g} min",
+            "goal_family": "benchmark",
+            "period_type": "year",
+            "metric_type": None,
+            "target_value": None,
+            "start_date": None,
+            "end_date": None,
+            "activity_type": "Ride",
+            "target_config": {
+                "distance_km": None,
+                "target_duration_min": None,
+                "duration_min": duration_min,
+                "target_watts": watts,
+            },
+        }
+        draft["title_suggestion"] = draft["goal"]["title"]
+        draft["confidence"] = "high"
+        draft["is_supported"] = True
+        return draft
+
+    zone2_match = re.search(
+        r"\b(ride|run)\s+(\d+(?:\.\d+)?)\s*(hours?|hrs?)\s+of\s+zone\s*2\s+(?:per|a)\s+(week|month|year)\b",
+        normalized,
+    )
+    if zone2_match:
+        activity_raw, hours_raw, _, period_raw = zone2_match.groups()
+        activity_type = activity_raw.capitalize()
+        period_type = {"week": "week", "month": "month", "year": "year"}[period_raw]
+        hours = float(hours_raw)
+        draft["goal"] = {
+            "title": f"{activity_type} {hours:g} hours of zone 2 per {period_type}",
+            "goal_family": "process",
+            "period_type": period_type,
+            "metric_type": "zone2_hours",
+            "target_value": hours,
+            "start_date": None,
+            "end_date": None,
+            "activity_type": activity_type,
+            "target_config": _empty_goal_target_config(),
+        }
+        draft["title_suggestion"] = draft["goal"]["title"]
+        draft["confidence"] = "high"
+        draft["is_supported"] = True
+        return draft
+
+    lift_match = re.search(
+        r"\b(lift|strength train|do strength)\s+([a-z0-9.]+)\s+(?:times?\s+)?(?:per|a)\s+(week|month)\b",
+        normalized,
+    )
+    if lift_match:
+        _, count_raw, period_raw = lift_match.groups()
+        count = _number_from_token(count_raw)
+        if count is not None:
+            period_type = {"week": "week", "month": "month"}[period_raw]
+            draft["goal"] = {
+                "title": f"Lift {count:g} times per {period_type}",
+                "goal_family": "process",
+                "period_type": period_type,
+                "metric_type": "strength_sessions",
+                "target_value": count,
+                "start_date": None,
+                "end_date": None,
+                "activity_type": "WeightTraining",
+                "target_config": _empty_goal_target_config(),
+            }
+            draft["title_suggestion"] = draft["goal"]["title"]
+            draft["confidence"] = "high"
+            draft["is_supported"] = True
+            return draft
+
+    accumulation_match = re.search(
+        r"\b(run|ride)\s+(\d+(?:\.\d+)?)\s*k(?:m)?\s+(?:this\s+|per\s+)?(week|month|year)\b",
+        normalized,
+    )
+    if accumulation_match:
+        activity_raw, distance_raw, period_raw = accumulation_match.groups()
+        activity_type = activity_raw.capitalize()
+        metric_type = "run_km" if activity_type == "Run" else "ride_km"
+        period_type = {"week": "week", "month": "month", "year": "year"}[period_raw]
+        distance_km = float(distance_raw)
+        draft["goal"] = {
+            "title": f"{activity_type} {distance_km:g} km this {period_type}",
+            "goal_family": "accumulation",
+            "period_type": period_type,
+            "metric_type": metric_type,
+            "target_value": distance_km,
+            "start_date": None,
+            "end_date": None,
+            "activity_type": activity_type,
+            "target_config": _empty_goal_target_config(),
+        }
+        draft["title_suggestion"] = draft["goal"]["title"]
+        draft["confidence"] = "high"
+        draft["is_supported"] = True
+        return draft
+
+    if "zone 2" in normalized:
+        draft["goal"].update({
+            "goal_family": "process",
+            "metric_type": "zone2_hours",
+            "activity_type": "Ride" if "ride" in normalized else "Run" if "run" in normalized else None,
+        })
+        draft["title_suggestion"] = "Zone 2 goal"
+        draft["warnings"].append("I found a zone 2 goal, but I still need a target amount and time period.")
+        draft["missing_fields"].extend(["target_value", "period_type"])
+        draft["is_supported"] = True
+        draft["confidence"] = "medium"
+        return draft
+
+    if any(token in normalized for token in ["lift", "strength"]):
+        draft["goal"].update({
+            "goal_family": "process",
+            "metric_type": "strength_sessions",
+            "activity_type": "WeightTraining",
+        })
+        draft["title_suggestion"] = "Strength frequency goal"
+        draft["warnings"].append("I found a strength-frequency goal, but I still need how often and over what period.")
+        draft["missing_fields"].extend(["target_value", "period_type"])
+        draft["is_supported"] = True
+        draft["confidence"] = "medium"
+        return draft
+
+    if "run" in normalized or "ride" in normalized:
+        draft["goal"]["activity_type"] = "Run" if "run" in normalized else "Ride"
+        draft["warnings"].append("I found an endurance goal, but the current parser only supports a few high-confidence patterns.")
+        draft["warnings"].append("Try a phrase like 'run 10k in under 40 minutes by October' or 'ride 6 hours of zone 2 per week'.")
+        draft["missing_fields"].extend(["goal_family", "target_value"])
+        return draft
+
+    draft["warnings"].append("That goal wording is not supported yet. Try a simpler measurable phrase.")
+    return draft
+
+
+def draft_goal_data(text: str, today: Optional[date] = None) -> dict[str, Any]:
+    draft = _parse_goal_text(text, today=today)
+    goal = draft["goal"]
+    if not goal.get("title"):
+        goal["title"] = draft["title_suggestion"] or ""
+
+    if draft["missing_fields"]:
+        draft["missing_fields"] = list(dict.fromkeys(draft["missing_fields"]))
+    if draft["warnings"]:
+        draft["warnings"] = list(dict.fromkeys(draft["warnings"]))
+
+    try:
+        normalized = _validate_goal_payload(
+            title=goal["title"],
+            period_type=goal["period_type"],
+            goal_family=goal.get("goal_family"),
+            metric_type=goal.get("metric_type"),
+            target_value=goal.get("target_value"),
+            start_date=goal.get("start_date"),
+            end_date=goal.get("end_date"),
+            activity_type=goal.get("activity_type"),
+            target_config=goal.get("target_config"),
+        )
+        draft["goal"] = {
+            "title": goal["title"],
+            "period_type": goal["period_type"],
+            **normalized,
+        }
+        draft["title_suggestion"] = goal["title"]
+        draft["is_ready"] = True
+        if not draft["warnings"]:
+            draft["confidence"] = "high"
+    except ValueError as exc:
+        message = str(exc)
+        if message not in draft["warnings"]:
+            draft["warnings"].append(message)
+        draft["is_ready"] = False
+
+    return draft
 
 
 def _validate_goal_payload(

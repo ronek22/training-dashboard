@@ -4,7 +4,7 @@
 
 Current status:
 
-- planned
+- complete
 - follows Sprint 17 goal-aware session requirements and conflicts
 
 Starting point:
@@ -200,3 +200,12 @@ Sprint 18 should be considered complete when:
 - template rotation state persists across weeks and advances on completion
 - missed template-backed sessions can be postponed instead of silently skipped
 - at least one rule-based planning behavior changes weekly adjustment output in a visible and inspectable way
+
+Implemented slice:
+
+- settings-backed strength templates and persisted rotation state now exist
+- generic strength plan days are normalized into named templates like `Workout A` and `Workout B`
+- linked completion of template-backed strength sessions advances the persisted next-workout pointer
+- missed strength sessions stay pending so later plan creation postpones them instead of skipping ahead
+- restriction-aware assignment can delay lower-body strength while running is limited or blocked
+- `Goals`, `Plan`, and `Dashboard` now surface the current rotation and next programmed workout

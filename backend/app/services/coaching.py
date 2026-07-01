@@ -3,7 +3,6 @@ import sqlite3
 from datetime import datetime, timedelta
 from typing import Optional
 
-from .dashboard import build_recent_context
 from .plans import (
     COACHING_ADAPTATION_REASON,
     build_adjustment_diff_payload,
@@ -359,10 +358,10 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
         if goal.get("risk_summary", {}).get("status") in {"at_risk", "under_pressure"}:
             observations.append(goal["risk_summary"]["summary"])
         elif goal.get("goal_family") in {"event_performance", "benchmark"} and goal.get("target_summary"):
-            observations.append(goal["target_summary"])
+            observations.append(f"{goal.get('family_label', 'Goal')}: {goal['target_summary']}")
     for goal in most_urgent[:2]:
         if goal.get("goal_family") in {"event_performance", "benchmark"} and goal.get("target_summary"):
-            _append_unique(observations, goal["target_summary"])
+            _append_unique(observations, f"{goal.get('family_label', 'Goal')}: {goal['target_summary']}")
     if deferred_goals:
         observations.append("Run-volume goals are temporarily backgrounded while recovery is the priority.")
     for conflict in plan_conflicts[:2]:
@@ -456,6 +455,185 @@ def summarize_recent_patterns(conn: sqlite3.Connection, context: dict, active_pl
     }
 
 
+def _goal_sort_key(goal: dict) -> tuple:
+    return (
+        {
+            "constrained": 0,
+            "at_risk": 1,
+            "under_pressure": 2,
+            "watch": 3,
+            "on_track": 4,
+            "completed": 5,
+        }.get(goal.get("risk_summary", {}).get("status", "on_track"), 99),
+        0 if goal.get("requirement_support_status") == "supported" else 1 if goal.get("requirement_support_status") == "weak" else 2,
+        goal.get("days_remaining", 9999),
+        goal.get("title", ""),
+    )
+
+
+def _compact_goal_brief(goal: dict, *, focus_state: Optional[str] = None) -> dict:
+    constraint_summary = goal.get("constraint_summary") or {}
+    risk_summary = goal.get("risk_summary") or {}
+    summary = None
+    if constraint_summary.get("summary"):
+        summary = constraint_summary["summary"]
+    elif risk_summary.get("summary"):
+        summary = risk_summary["summary"]
+    elif goal.get("weekly_requirement_summary"):
+        summary = goal["weekly_requirement_summary"]
+    elif goal.get("target_summary"):
+        summary = goal["target_summary"]
+
+    support_state = goal.get("requirement_support_status")
+    support_label = {
+        "supported": "Supported",
+        "weak": "Partially supported",
+        "unsupported": "Not supported",
+        "deferred": "Temporarily deprioritized",
+        "constrained": "Constrained",
+    }.get(support_state or focus_state or "supported", "Supported")
+
+    return {
+        "id": goal.get("id"),
+        "title": goal.get("title"),
+        "family_label": goal.get("family_label"),
+        "period_label": goal.get("period_label"),
+        "risk_status": risk_summary.get("status"),
+        "risk_label": risk_summary.get("label"),
+        "support_state": support_state or focus_state or "supported",
+        "support_label": support_label,
+        "supported_sessions": goal.get("supported_sessions"),
+        "summary": summary,
+    }
+
+
+def build_athlete_coaching_brief(
+    context: dict,
+    active_plan: Optional[dict],
+    *,
+    execution: Optional[dict] = None,
+    recovery: Optional[dict] = None,
+    goals_assessment: Optional[dict] = None,
+    recent_patterns: Optional[dict] = None,
+) -> dict:
+    athlete_brief = context.get("athlete_brief") or {}
+    plan_goals = list((active_plan or {}).get("goal_context", {}).get("active_goals", []))
+    active_goals = context.get("active_goals", [])
+    goal_conflicts = list((active_plan or {}).get("goal_context", {}).get("conflicts", []))
+    restrictions = context.get("modality_restrictions") or {}
+    strength_program = ((context.get("workout_template_settings") or {}).get("programs") or {}).get("strength") or {}
+    rotation = strength_program.get("rotation_state") or {}
+    execution = execution or summarize_execution(active_plan)
+    recovery = recovery or summarize_recovery(context)
+    goals_assessment = goals_assessment or summarize_goals(context, active_plan)
+    recent_patterns = recent_patterns or {"key_observations": []}
+
+    run_restriction = (restrictions.get("modalities") or {}).get("run", {})
+    deprioritize_run_goals = _should_deprioritize_run_goals(context) and run_restriction.get("status") == "allowed"
+
+    constrained_goals = [goal for goal in active_goals if goal.get("is_constrained")]
+    deferred_goals = [goal for goal in plan_goals if deprioritize_run_goals and _goal_is_run_volume(goal)]
+    relevant_plan_goals = [
+        goal for goal in plan_goals
+        if not goal.get("is_constrained") and not (deprioritize_run_goals and _goal_is_run_volume(goal))
+    ]
+    relevant_plan_goals.sort(key=_goal_sort_key)
+
+    primary_goals = relevant_plan_goals[:2]
+    secondary_goals = relevant_plan_goals[2:4]
+    deprioritized_goals = [
+        goal for goal in relevant_plan_goals[2:]
+        if goal.get("requirement_support_status") in {"weak", "unsupported"}
+    ]
+    deprioritized_goals.extend(deferred_goals)
+
+    planning_risks: list[str] = []
+    for item in recovery.get("caution_flags", [])[:2]:
+        _append_unique(planning_risks, item)
+    for conflict in goal_conflicts[:2]:
+        _append_unique(planning_risks, conflict.get("summary"))
+    for goal in relevant_plan_goals:
+        if goal.get("requirement_support_status") == "unsupported" and goal.get("unsupported_requirements"):
+            _append_unique(planning_risks, f"{goal['title']} is missing {goal['unsupported_requirements'][0]['label'].lower()} support.")
+    for item in recent_patterns.get("key_observations", [])[:2]:
+        _append_unique(planning_risks, item)
+
+    primary_count = len(primary_goals)
+    deprioritized_count = len(deprioritized_goals) + len(constrained_goals)
+    brief_summary_parts = []
+    if athlete_brief.get("headline"):
+        brief_summary_parts.append(athlete_brief["headline"])
+    if primary_count:
+        brief_summary_parts.append(
+            f"{primary_count} primary goal{'s are' if primary_count != 1 else ' is'} receiving the clearest support this week."
+        )
+    if deprioritized_count:
+        brief_summary_parts.append(
+            f"{deprioritized_count} goal area{'s are' if deprioritized_count != 1 else ' is'} constrained, delayed, or carrying thinner support."
+        )
+
+    return {
+        "headline": " ".join(brief_summary_parts) or "No compact coaching brief is available yet.",
+        "profile": {
+            "focus": athlete_brief.get("focus"),
+            "current_block": athlete_brief.get("current_block"),
+            "modality_priority_labels": athlete_brief.get("modality_priority_labels", []),
+            "preferred_long_session_day_labels": athlete_brief.get("preferred_long_session_day_labels", []),
+            "weekly_availability_notes": athlete_brief.get("weekly_availability_notes"),
+            "planning_notes": athlete_brief.get("planning_notes"),
+        },
+        "goals": {
+            "primary": [_compact_goal_brief(goal, focus_state="supported") for goal in primary_goals],
+            "secondary": [_compact_goal_brief(goal, focus_state="supported") for goal in secondary_goals],
+            "deprioritized": [_compact_goal_brief(goal, focus_state="deferred") for goal in deprioritized_goals[:3]],
+            "constrained": [_compact_goal_brief(goal, focus_state="constrained") for goal in constrained_goals[:2]],
+            "conflicts": [
+                {
+                    "type": conflict.get("type"),
+                    "label": conflict.get("label"),
+                    "summary": conflict.get("summary"),
+                }
+                for conflict in goal_conflicts[:3]
+            ],
+        },
+        "restrictions": {
+            "status": "restricted" if restrictions.get("active") else "none",
+            "active": [
+                {
+                    "modality": item.get("modality"),
+                    "label": item.get("label"),
+                    "status": item.get("status"),
+                    "summary": item.get("summary"),
+                }
+                for item in restrictions.get("active", [])[:3]
+            ],
+        },
+        "execution": {
+            "status": execution.get("status"),
+            "adherence_pct": execution.get("adherence_pct"),
+            "fulfilled_sessions": execution.get("fulfilled_sessions"),
+            "modified_sessions": execution.get("modified_sessions"),
+            "missed_sessions": execution.get("missed_sessions"),
+            "summary": execution.get("key_observations", [])[:2],
+        },
+        "recovery": {
+            "status": recovery.get("status"),
+            "daily_recommendation_status": recovery.get("daily_recommendation_status"),
+            "caution_score": recovery.get("caution_score"),
+            "key_reasons": recovery.get("key_reasons", [])[:2],
+            "caution_flags": recovery.get("caution_flags", [])[:2],
+        },
+        "rotation": {
+            "next_template_label": rotation.get("next_template_label"),
+            "last_completed_template_label": rotation.get("last_completed_template_label"),
+            "pending_template_label": rotation.get("pending_template_label"),
+            "skip_behavior": (strength_program.get("rules") or {}).get("skip_behavior"),
+        },
+        "planning_risks": planning_risks[:5],
+        "goal_pressure_status": goals_assessment.get("status"),
+    }
+
+
 def build_recommended_next_sessions(active_plan: Optional[dict], recommendation_status: str, restrictions: Optional[dict] = None) -> list[dict]:
     if not active_plan:
         return []
@@ -487,11 +665,11 @@ def build_recommended_next_sessions(active_plan: Optional[dict], recommendation_
             suggestion = "substitute" if day.get("session_type") in {"Run", "Ride", "VirtualRide"} else "avoid"
         elif restriction_status == "limited":
             suggestion = "limit"
-        if recommendation_status == "recover" and hard:
+        if suggestion == "keep" and recommendation_status == "recover" and hard:
             suggestion = "swap_to_recovery"
-        elif recommendation_status in {"reduce", "adjust"} and hard:
+        elif suggestion == "keep" and recommendation_status in {"reduce", "adjust"} and hard:
             suggestion = "lighten"
-        elif recommendation_status == "adjust":
+        elif suggestion == "keep" and recommendation_status == "adjust":
             suggestion = "review"
 
         recommendations.append({
@@ -631,9 +809,11 @@ def build_weekly_recommendation(
     goals: dict,
     next_sessions: list[dict],
     recent_patterns: dict,
+    athlete_coaching_brief: Optional[dict] = None,
 ) -> dict:
     status = context.get("daily_recommendation", {}).get("status", "keep")
     athlete_brief = context.get("athlete_brief") or {}
+    athlete_coaching_brief = athlete_coaching_brief or {}
     recovery_score = int(recovery.get("caution_score") or 0)
     goal_status = goals.get("status")
     pattern_status = recent_patterns.get("status")
@@ -710,38 +890,58 @@ def build_weekly_recommendation(
         headline = "Adjust the remainder of the week instead of forcing the original plan."
         action = "Review and rewrite the next one or two sessions to match current execution reality."
 
-    rationale: list[str] = []
+    primary_support: list[str] = []
+    secondary_support: list[str] = []
+    deprioritized_work: list[str] = []
+    immediate_signals: list[str] = []
+
+    for goal in (athlete_coaching_brief.get("goals") or {}).get("primary", [])[:3]:
+        if goal.get("summary"):
+            _append_unique(primary_support, f"{goal['title']}: {goal['summary']}")
+        elif goal.get("supported_sessions"):
+            _append_unique(primary_support, f"{goal['title']} is supported by {goal['supported_sessions']} planned sessions this week.")
+    for goal in (athlete_coaching_brief.get("goals") or {}).get("secondary", [])[:2]:
+        if goal.get("summary"):
+            _append_unique(secondary_support, f"{goal['title']}: {goal['summary']}")
+        elif goal.get("supported_sessions"):
+            _append_unique(secondary_support, f"{goal['title']} stays in view with {goal['supported_sessions']} planned supporting sessions.")
+    for goal in (athlete_coaching_brief.get("goals") or {}).get("deprioritized", [])[:3]:
+        if goal.get("summary"):
+            _append_unique(deprioritized_work, f"{goal['title']}: {goal['summary']}")
+        else:
+            _append_unique(deprioritized_work, f"{goal['title']} is carrying thinner support this week.")
+    for goal in (athlete_coaching_brief.get("goals") or {}).get("constrained", [])[:2]:
+        if goal.get("summary"):
+            _append_unique(deprioritized_work, f"{goal['title']}: {goal['summary']}")
+    for conflict in (athlete_coaching_brief.get("goals") or {}).get("conflicts", [])[:2]:
+        _append_unique(deprioritized_work, conflict.get("summary"))
+
     for text in recovery.get("key_reasons", []):
-        _append_unique(rationale, text)
+        _append_unique(immediate_signals, text)
     for item in recovery.get("active_restrictions", [])[:2]:
-        _append_unique(rationale, item.get("summary"))
-    for text in recent_patterns.get("key_observations", []):
-        _append_unique(rationale, text)
-    for text in execution.get("key_observations", []):
-        _append_unique(rationale, text)
-    for text in goals.get("key_observations", []):
-        _append_unique(rationale, text)
-    if athlete_brief.get("headline"):
-        _append_unique(rationale, athlete_brief["headline"])
+        _append_unique(immediate_signals, item.get("summary"))
+    for text in execution.get("key_observations", [])[:2]:
+        _append_unique(immediate_signals, text)
     if athlete_brief.get("current_block"):
-        _append_unique(rationale, f"Current emphasis block: {athlete_brief['current_block']}.")
+        _append_unique(immediate_signals, f"Current emphasis block: {athlete_brief['current_block']}.")
     if athlete_brief.get("preferred_long_session_day_labels"):
         _append_unique(
-            rationale,
+            immediate_signals,
             f"Long-session preference is {_format_list(athlete_brief['preferred_long_session_day_labels'])}.",
         )
     if athlete_brief.get("planning_notes"):
-        _append_unique(rationale, f"Planning note: {athlete_brief['planning_notes']}.")
-    if repeated_high_rpe >= 2:
-        _append_unique(rationale, "Recent feedback includes repeated high-RPE sessions.")
+        _append_unique(immediate_signals, f"Planning note: {athlete_brief['planning_notes']}.")
     if goal_status == "pressured" and goals.get("most_urgent"):
-        _append_unique(rationale, f"Goal pressure is highest around {goals['most_urgent'][0]['title']}.")
-    if goals.get("constrained_goal_count"):
-        _append_unique(rationale, f"{goals['constrained_goal_count']} active goals are constrained by current modality limits.")
-    if goals.get("conflict_count"):
-        _append_unique(rationale, f"{goals['conflict_count']} goal tradeoff{'s are' if goals['conflict_count'] != 1 else ' is'} visible in the current week.")
-    if goals.get("unsupported_goal_count"):
-        _append_unique(rationale, f"{goals['unsupported_goal_count']} active goal{'s are' if goals['unsupported_goal_count'] != 1 else ' is'} not meaningfully supported this week.")
+        _append_unique(immediate_signals, f"Goal pressure is highest around {goals['most_urgent'][0]['title']}.")
+
+    recent_pattern_items = recent_patterns.get("key_observations", [])[:5]
+    rationale: list[str] = []
+    for item in primary_support:
+        _append_unique(rationale, item)
+    for item in secondary_support:
+        _append_unique(rationale, item)
+    for item in immediate_signals:
+        _append_unique(rationale, item)
 
     risks: list[str] = []
     for text in recovery.get("caution_flags", []):
@@ -760,6 +960,8 @@ def build_weekly_recommendation(
         _append_unique(risks, f"Active goals are under pressure, led by {goals['most_urgent'][0]['title']}.")
     if goals.get("unsupported_goal_count"):
         _append_unique(risks, f"{goals['unsupported_goal_count']} active goal{'s lack' if goals['unsupported_goal_count'] != 1 else ' lacks'} enough weekly support.")
+    for item in deprioritized_work:
+        _append_unique(risks, item)
 
     return {
         "status": status,
@@ -767,6 +969,11 @@ def build_weekly_recommendation(
         "action": action,
         "rationale": rationale[:5],
         "risks": risks[:5],
+        "primary_support": primary_support[:3],
+        "secondary_support": secondary_support[:3],
+        "deprioritized_work": deprioritized_work[:4],
+        "immediate_signals": immediate_signals[:4],
+        "recent_patterns": recent_pattern_items,
         "confidence": "high" if recovery_score >= 3 or execution["status"] == "off_track" or pattern_status == "concerning" else "moderate",
         "focus_for_next_48h": build_focus_for_next_48h(status, next_sessions),
     }
@@ -780,6 +987,8 @@ def build_weekly_coaching(
     recent_note_limit: int = 5,
     include_proposed_adjustment: bool = True,
 ) -> dict:
+    from .dashboard import build_recent_context
+
     context = build_recent_context(
         conn,
         lookback_days=lookback_days,
@@ -793,8 +1002,24 @@ def build_weekly_coaching(
     recovery = summarize_recovery(context)
     goals = summarize_goals(context, active_plan)
     recent_patterns = summarize_recent_patterns(conn, context, active_plan)
+    athlete_coaching_brief = build_athlete_coaching_brief(
+        context,
+        active_plan,
+        execution=execution,
+        recovery=recovery,
+        goals_assessment=goals,
+        recent_patterns=recent_patterns,
+    )
     next_sessions = build_recommended_next_sessions(active_plan, context.get("daily_recommendation", {}).get("status", "keep"), context.get("modality_restrictions"))
-    recommendation = build_weekly_recommendation(context, execution, recovery, goals, next_sessions, recent_patterns)
+    recommendation = build_weekly_recommendation(
+        context,
+        execution,
+        recovery,
+        goals,
+        next_sessions,
+        recent_patterns,
+        athlete_coaching_brief,
+    )
     if recommendation["status"] != context.get("daily_recommendation", {}).get("status", "keep"):
         next_sessions = build_recommended_next_sessions(active_plan, recommendation["status"], context.get("modality_restrictions"))
         recommendation["focus_for_next_48h"] = build_focus_for_next_48h(recommendation["status"], next_sessions)
@@ -845,6 +1070,7 @@ def build_weekly_coaching(
             "training_load": context.get("training_load"),
             "goal_planning_summary": context.get("goal_planning_summary"),
             "athlete_brief": athlete_brief,
+            "athlete_coaching_brief": athlete_coaching_brief,
             "athlete_profile": context.get("athlete_profile"),
             "modality_restrictions": context.get("modality_restrictions"),
             "workout_intent_summary": context.get("workout_intent_summary"),

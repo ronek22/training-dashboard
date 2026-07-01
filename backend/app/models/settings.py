@@ -20,3 +20,7 @@ class AthleteProfilePayload(BaseModel):
     preferred_long_session_days: list[str] = Field(default_factory=list)
     weekly_availability_notes: Optional[str] = None
     planning_notes: Optional[str] = None
+
+
+class WorkoutTemplateSettingsPayload(BaseModel):
+    programs: dict = Field(default_factory=dict)

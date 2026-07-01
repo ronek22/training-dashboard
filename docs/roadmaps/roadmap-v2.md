@@ -245,7 +245,7 @@ Implementation notes:
 
 Recommended Sprint 19 role:
 
-- this should be the first MCP/context upgrade sprint
+- this should be the first post-planning sprint now that Sprint 18 closed the goal-aware planning phase
 
 ### 27. Goal-aware coaching explanations
 
@@ -270,7 +270,7 @@ Implementation notes:
 
 Recommended Sprint 19 role:
 
-- this should pair naturally with the athlete brief work
+- this should pair naturally with the deterministic athlete brief work in the same sprint
 
 ### 28. Natural-language goal capture into structured drafts
 
@@ -295,7 +295,7 @@ Implementation notes:
 
 Recommended Sprint 20 role:
 
-- this should follow once the richer goal schema is already stable
+- this should follow once Sprint 19 has cleaned up coaching context packaging and explanation structure
 
 ## Phase 9: Build Better Performance Data Foundations
 
@@ -324,7 +324,7 @@ Implementation notes:
 
 Recommended Sprint 21 role:
 
-- this should be the first data-foundation sprint for richer performance goals
+- this should be the first Phase 9 data-foundation sprint after the Phase 8 context work lands
 
 ### 30. Zones and threshold management
 
@@ -346,7 +346,7 @@ Implementation notes:
 
 Recommended Sprint 21 role:
 
-- this should follow derived metrics in the same phase
+- this should pair naturally with derived metrics in the same sprint if scope stays tight, otherwise become the first split candidate
 
 ### 31. Benchmark sessions and test-result visibility
 
@@ -401,12 +401,11 @@ This is the recommended implementation order:
 4. Goal-to-session requirement mapping
 5. Hybrid priority and conflict management
 6. Goal-aware week generation and adjustment
-7. Deterministic athlete brief for MCP
-8. Goal-aware coaching explanations
-9. Natural-language goal capture into structured drafts
-10. Derived performance metrics and best efforts
-11. Zones and threshold management
-12. Benchmark sessions and test-result visibility
+7. Deterministic athlete brief for MCP plus goal-aware coaching explanations
+8. Natural-language goal capture into structured drafts
+9. Derived performance metrics and best efforts
+10. Zones and threshold management
+11. Benchmark sessions and test-result visibility
 
 ## Recommended Next Sprint
 
@@ -414,12 +413,13 @@ If only one sprint is available, do this:
 
 ### Sprint Goal
 
-Start with Sprint 15 athlete profile and planning preferences.
+Start with Sprint 21 derived performance metrics and zones foundation.
 
 ### Scope
 
-- add a lightweight persisted athlete profile
-- expose it in UI, backend reads, and MCP context
+- add derived performance metrics that summarize recent capability from stored activities
+- establish zones-oriented foundations that later benchmark and coaching features can reuse
+- keep the derived layer deterministic and reusable across dashboard, goals, and coaching flows
 - make the profile useful for coaching without waiting for richer goal families
 
 Current interpretation:

@@ -8,7 +8,11 @@ from typing import Optional
 from fastapi import HTTPException
 
 from .goals import build_requirement_summary, serialize_goal
-from .settings import get_modality_restrictions_for_conn, modality_for_session_type
+from .settings import (
+    get_modality_restrictions_for_conn,
+    get_workout_template_settings_for_conn,
+    modality_for_session_type,
+)
 from ..models.plans import WeeklyPlan, WeeklyPlanAdjustment, WeeklyPlanDay, WeeklyPlanRevision
 from ..repositories.plans import (
     count_weekly_plan_revision_rows,
@@ -150,10 +154,102 @@ def serialize_plan_day(day: dict | WeeklyPlanDay) -> dict:
     return payload
 
 
+def _workout_template_by_id(template_settings: dict, template_id: Optional[str]) -> Optional[dict]:
+    strength_program = ((template_settings or {}).get("programs") or {}).get("strength") or {}
+    for item in strength_program.get("templates", []):
+        if item.get("id") == template_id:
+            return item
+    return None
+
+
+def _next_template_id(template_settings: dict, template_id: Optional[str]) -> Optional[str]:
+    strength_program = ((template_settings or {}).get("programs") or {}).get("strength") or {}
+    templates = strength_program.get("templates", [])
+    if not templates:
+        return None
+    if not template_id:
+        return templates[0]["id"]
+    template_ids = [item.get("id") for item in templates if item.get("id")]
+    if template_id not in template_ids:
+        return template_ids[0]
+    next_index = (template_ids.index(template_id) + 1) % len(template_ids)
+    return template_ids[next_index]
+
+
+def _assign_template_to_day(day: dict, template: dict, reason: Optional[str] = None) -> dict:
+    enriched = dict(day)
+    enriched["template_id"] = template.get("id")
+    enriched["template_label"] = template.get("display_name") or template.get("label")
+    enriched["template_summary"] = template.get("summary")
+    if not enriched.get("workout_intent"):
+        enriched["workout_intent"] = template.get("workout_intent")
+    if not enriched.get("title") or enriched.get("title") in {"Strength", "Strength session", "WeightTraining"}:
+        enriched["title"] = template.get("display_name") or template.get("label") or enriched.get("title")
+    if not enriched.get("details") and template.get("summary"):
+        enriched["details"] = template.get("summary")
+    if reason:
+        enriched["planning_rule_reason"] = reason
+    return enriched
+
+
+def _apply_strength_templates_to_days(
+    days: list[dict],
+    template_settings: dict,
+    restrictions: dict,
+) -> list[dict]:
+    strength_program = ((template_settings or {}).get("programs") or {}).get("strength") or {}
+    if not strength_program.get("enabled", True):
+        return [dict(day) for day in days]
+
+    templates = strength_program.get("templates", [])
+    if not templates:
+        return [dict(day) for day in days]
+
+    rules = strength_program.get("rules") or {}
+    next_template_id = ((strength_program.get("rotation_state") or {}).get("next_template_id")) or templates[0]["id"]
+    run_restriction_status = ((((restrictions or {}).get("modalities") or {}).get("run") or {}).get("status")) or "allowed"
+    previous_template_id = None
+    normalized_days = []
+
+    for day in sorted(days, key=lambda item: item.get("date") or ""):
+        normalized = dict(day)
+        session_type = normalize_plan_session_type(normalized.get("session_type"))
+        if session_type == "WeightTraining":
+            template = _workout_template_by_id(template_settings, normalized.get("template_id"))
+            reason = None
+            if not template:
+                template = _workout_template_by_id(template_settings, next_template_id) or templates[0]
+                if (
+                    template
+                    and rules.get("delay_lower_body_when_running_restricted", True)
+                    and run_restriction_status in {"limited", "blocked"}
+                    and template.get("focus_area") == "lower"
+                ):
+                    fallback = next(
+                        (
+                            item for item in templates
+                            if item.get("focus_area") != "lower" and item.get("id") != previous_template_id
+                        ),
+                        None,
+                    )
+                    if fallback:
+                        template = fallback
+                        reason = "Lower-body strength was delayed because running is currently restricted."
+                normalized = _assign_template_to_day(normalized, template, reason)
+            else:
+                normalized = _assign_template_to_day(normalized, template, normalized.get("planning_rule_reason"))
+            previous_template_id = normalized.get("template_id") or previous_template_id
+            next_template_id = _next_template_id(template_settings, normalized.get("template_id"))
+        normalized_days.append(normalized)
+
+    return normalized_days
+
+
 def build_day_change_details(before: Optional[dict], after: Optional[dict]) -> list[dict]:
     details = []
     fields = [
         ("title", "Title"),
+        ("template_label", "Template"),
         ("session_type", "Session type"),
         ("workout_intent_label", "Intent"),
         ("target_duration_min", "Duration"),
@@ -721,8 +817,11 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
     revisions = []
     revision_count = 0
     goal_context = {"active_goals": [], "goal_ids": [], "conflicts": [], "unsupported_goal_count": 0}
+    workout_template_programs = None
     if conn:
         restrictions = get_modality_restrictions_for_conn(conn)
+        workout_template_programs = get_workout_template_settings_for_conn(conn).get("programs")
+        days = _apply_strength_templates_to_days(days, {"programs": workout_template_programs or {}}, restrictions)
         week_days_by_date = {day["date"]: day for day in days if day.get("date")}
         dates = [day["date"] for day in days if day.get("date")]
         session_ids = [day["session_id"] for day in days if day.get("session_id")]
@@ -811,6 +910,7 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
         "latest_revision": latest_revision,
         "revisions": revisions,
         "goal_context": goal_context,
+        "workout_template_programs": workout_template_programs,
     }
 
 
@@ -992,11 +1092,21 @@ def build_multi_week_execution_trend(conn: sqlite3.Connection, weeks: int = 6) -
     }
 
 
-def prepare_weekly_plan_for_storage(plan: WeeklyPlan) -> WeeklyPlan:
+def prepare_weekly_plan_for_storage(
+    plan: WeeklyPlan,
+    template_settings: Optional[dict] = None,
+    restrictions: Optional[dict] = None,
+) -> WeeklyPlan:
     normalized_days = ensure_plan_day_ids(
         plan.week_start,
         [day.model_dump() for day in plan.days],
     )
+    if template_settings:
+        normalized_days = _apply_strength_templates_to_days(
+            normalized_days,
+            template_settings,
+            restrictions or {},
+        )
     return WeeklyPlan(
         week_start=plan.week_start,
         title=plan.title,
@@ -1008,7 +1118,9 @@ def prepare_weekly_plan_for_storage(plan: WeeklyPlan) -> WeeklyPlan:
 
 
 def upsert_weekly_plan_data(conn: sqlite3.Connection, plan: WeeklyPlan) -> dict:
-    prepared_plan = prepare_weekly_plan_for_storage(plan)
+    template_settings = get_workout_template_settings_for_conn(conn)
+    restrictions = get_modality_restrictions_for_conn(conn)
+    prepared_plan = prepare_weekly_plan_for_storage(plan, template_settings=template_settings, restrictions=restrictions)
     upsert_weekly_plan_row(conn, prepared_plan)
     conn.commit()
     return {"status": "ok", "week_start": prepared_plan.week_start}
@@ -1020,6 +1132,8 @@ def preview_weekly_plan_adjustment_data(conn: sqlite3.Connection, adjustment: We
         raise HTTPException(status_code=404, detail=f"Weekly plan not found for {adjustment.week_start}")
 
     existing_plan = serialize_weekly_plan(plan_row, conn)
+    template_settings = get_workout_template_settings_for_conn(conn)
+    restrictions = get_modality_restrictions_for_conn(conn)
     effective_from = adjustment.effective_from or datetime.now().date().isoformat()
     week_dates = {day["date"] for day in existing_plan.get("days", [])}
     if effective_from not in week_dates:
@@ -1027,6 +1141,12 @@ def preview_weekly_plan_adjustment_data(conn: sqlite3.Connection, adjustment: We
             status_code=400,
             detail=f"effective_from {effective_from} is outside plan week {adjustment.week_start}",
         )
+
+    preview_days = ensure_plan_day_ids(
+        adjustment.week_start,
+        [day.model_dump() for day in adjustment.days],
+    )
+    preview_days = _apply_strength_templates_to_days(preview_days, template_settings, restrictions)
 
     diff = build_adjustment_diff_payload(
         existing_plan,
@@ -1036,7 +1156,7 @@ def preview_weekly_plan_adjustment_data(conn: sqlite3.Connection, adjustment: We
             "title": adjustment.title,
             "focus": adjustment.focus,
             "overview": adjustment.overview,
-            "days": [day.model_dump() for day in adjustment.days],
+            "days": preview_days,
         },
     )
     return {
@@ -1052,6 +1172,8 @@ def adjust_weekly_plan_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdju
     if not plan_row:
         raise HTTPException(status_code=404, detail=f"Weekly plan not found for {adjustment.week_start}")
 
+    template_settings = get_workout_template_settings_for_conn(conn)
+    restrictions = get_modality_restrictions_for_conn(conn)
     existing_plan = prepare_weekly_plan_for_storage(WeeklyPlan(
         week_start=plan_row["week_start"],
         title=plan_row["title"],
@@ -1059,7 +1181,7 @@ def adjust_weekly_plan_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdju
         overview=plan_row["overview"],
         days=[WeeklyPlanDay(**day) for day in json.loads(plan_row["days_json"])],
         notes=plan_row["notes"],
-    ))
+    ), template_settings=template_settings, restrictions=restrictions)
     if not existing_plan.days:
         raise HTTPException(status_code=400, detail="Weekly plan has no days to adjust")
 
@@ -1143,6 +1265,7 @@ def adjust_weekly_plan_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdju
         days=merged_days,
         notes=adjustment.notes if adjustment.notes is not None else append_plan_note(existing_plan.notes, adjustment.adaptation_reason, effective_from),
     )
+    updated_plan = prepare_weekly_plan_for_storage(updated_plan, template_settings=template_settings, restrictions=restrictions)
 
     create_weekly_plan_revision_row(
         conn,

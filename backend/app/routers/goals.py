@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
 from ..db import get_db
-from ..models.goals import Goal
-from ..services.goals import create_goal_data, list_goals_data
+from ..models.goals import Goal, GoalDraftRequest
+from ..services.goals import create_goal_data, draft_goal_data, list_goals_data
 
 router = APIRouter()
 
@@ -17,6 +17,11 @@ def create_goal(goal: Goal):
             raise HTTPException(status_code=400, detail=str(exc)) from exc
     finally:
         conn.close()
+
+
+@router.post("/goals/draft")
+def draft_goal(request: GoalDraftRequest):
+    return draft_goal_data(request.text)
 
 
 @router.get("/goals")

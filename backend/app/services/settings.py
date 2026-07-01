@@ -7,6 +7,7 @@ from ..repositories.settings import get_setting_value, set_setting_value
 
 MODALITY_RESTRICTIONS_KEY = "modality_restrictions"
 ATHLETE_PROFILE_KEY = "athlete_profile"
+WORKOUT_TEMPLATE_SETTINGS_KEY = "workout_template_settings"
 MODALITY_LABELS = {
     "run": "Running",
     "ride": "Riding",
@@ -28,6 +29,48 @@ WEEKDAY_LABELS = {
     "sat": "Sat",
     "sun": "Sun",
 }
+DEFAULT_STRENGTH_TEMPLATES = [
+    {
+        "id": "strength-a",
+        "code": "A",
+        "label": "Workout A",
+        "title": "Upper Chest",
+        "summary": "Upper-body push emphasis with stable pressing volume.",
+        "session_type": "WeightTraining",
+        "workout_intent": "strength_upper",
+        "focus_area": "upper",
+    },
+    {
+        "id": "strength-b",
+        "code": "B",
+        "label": "Workout B",
+        "title": "Back + Arms",
+        "summary": "Pulling and arm work without extra lower-body fatigue.",
+        "session_type": "WeightTraining",
+        "workout_intent": "strength_upper",
+        "focus_area": "upper",
+    },
+    {
+        "id": "strength-c",
+        "code": "C",
+        "label": "Workout C",
+        "title": "Wide Shoulders",
+        "summary": "Shoulder-focused upper-body session that keeps the rotation moving.",
+        "session_type": "WeightTraining",
+        "workout_intent": "strength_upper",
+        "focus_area": "upper",
+    },
+    {
+        "id": "strength-d",
+        "code": "D",
+        "label": "Workout D",
+        "title": "Lower + Core",
+        "summary": "Lower-body and trunk work for the next heavier strength slot.",
+        "session_type": "WeightTraining",
+        "workout_intent": "strength_lower",
+        "focus_area": "lower",
+    },
+]
 
 
 def get_setting(key: str):
@@ -125,6 +168,10 @@ def default_athlete_profile() -> dict:
     return normalize_athlete_profile({})
 
 
+def default_workout_template_settings() -> dict:
+    return normalize_workout_template_settings({})
+
+
 def build_athlete_brief(profile: dict) -> dict:
     focus_label = profile["focus"]["label"]
     modality_labels = [item["label"] for item in profile.get("modality_preferences", [])]
@@ -163,6 +210,245 @@ def build_athlete_brief(profile: dict) -> dict:
         "planning_notes": planning_notes,
         "coaching_summary": " ".join(coaching_summary_parts),
     }
+
+
+def _template_order_lookup(templates: list[dict]) -> dict[str, int]:
+    return {
+        item["id"]: index
+        for index, item in enumerate(templates)
+        if item.get("id")
+    }
+
+
+def _next_template_id(templates: list[dict], template_id: Optional[str]) -> Optional[str]:
+    if not templates:
+        return None
+    if not template_id:
+        return templates[0]["id"]
+    lookup = _template_order_lookup(templates)
+    index = lookup.get(template_id)
+    if index is None:
+        return templates[0]["id"]
+    return templates[(index + 1) % len(templates)]["id"]
+
+
+def _template_by_id(templates: list[dict], template_id: Optional[str]) -> Optional[dict]:
+    for item in templates:
+        if item.get("id") == template_id:
+            return item
+    return None
+
+
+def _template_display_name(template: Optional[dict]) -> Optional[str]:
+    if not template:
+        return None
+    label = template.get("label")
+    title = template.get("title")
+    if label and title:
+        return f"{label} · {title}"
+    return label or title
+
+
+def _normalize_template(raw_template: dict, fallback_index: int) -> dict:
+    raw = raw_template if isinstance(raw_template, dict) else {}
+    template_id = _clean_text(raw.get("id")) or f"strength-template-{fallback_index + 1}"
+    code = _clean_text(raw.get("code")) or chr(ord("A") + fallback_index)
+    label = _clean_text(raw.get("label")) or f"Workout {code}"
+    session_type = _clean_text(raw.get("session_type")) or "WeightTraining"
+    workout_intent = raw.get("workout_intent") or "strength_general"
+    if workout_intent not in {"strength_general", "strength_lower", "strength_upper", "mobility"}:
+        workout_intent = "strength_general"
+    focus_area = (_clean_text(raw.get("focus_area")) or ("lower" if workout_intent == "strength_lower" else "upper")).lower()
+    if focus_area not in {"upper", "lower", "full_body", "mobility"}:
+        focus_area = "upper"
+    normalized = {
+        "id": template_id,
+        "code": code,
+        "label": label,
+        "title": _clean_text(raw.get("title")) or label,
+        "summary": _clean_text(raw.get("summary")),
+        "session_type": session_type,
+        "workout_intent": workout_intent,
+        "focus_area": focus_area,
+        "display_name": None,
+    }
+    normalized["display_name"] = _template_display_name(normalized)
+    return normalized
+
+
+def _normalize_strength_program(raw_program: Optional[dict]) -> dict:
+    raw = raw_program if isinstance(raw_program, dict) else {}
+    incoming_templates = raw.get("templates") if isinstance(raw.get("templates"), list) else DEFAULT_STRENGTH_TEMPLATES
+    templates = []
+    seen_template_ids: set[str] = set()
+    for index, item in enumerate(incoming_templates):
+        normalized = _normalize_template(item, index)
+        if normalized["id"] in seen_template_ids:
+            continue
+        seen_template_ids.add(normalized["id"])
+        templates.append(normalized)
+    if not templates:
+        templates = [_normalize_template(item, index) for index, item in enumerate(DEFAULT_STRENGTH_TEMPLATES)]
+
+    rules_source = raw.get("rules") if isinstance(raw.get("rules"), dict) else {}
+    rules = {
+        "continue_across_weeks": rules_source.get("continue_across_weeks", True) is not False,
+        "skip_behavior": "postpone" if rules_source.get("skip_behavior") != "skip" else "skip",
+        "avoid_consecutive_repeat": rules_source.get("avoid_consecutive_repeat", True) is not False,
+        "prefer_ride_when_run_blocked": rules_source.get("prefer_ride_when_run_blocked", True) is not False,
+        "delay_lower_body_when_running_restricted": rules_source.get("delay_lower_body_when_running_restricted", True) is not False,
+        "replace_rest_with_recovery_only_when_explicit": bool(rules_source.get("replace_rest_with_recovery_only_when_explicit", False)),
+    }
+
+    state_source = raw.get("rotation_state") if isinstance(raw.get("rotation_state"), dict) else {}
+    valid_template_ids = [item["id"] for item in templates]
+    processed_activity_ids = []
+    for activity_id in state_source.get("processed_activity_ids", []) if isinstance(state_source.get("processed_activity_ids"), list) else []:
+        cleaned = _clean_text(activity_id)
+        if cleaned and cleaned not in processed_activity_ids:
+            processed_activity_ids.append(cleaned)
+    last_completed_template_id = _clean_text(state_source.get("last_completed_template_id"))
+    if last_completed_template_id not in valid_template_ids:
+        last_completed_template_id = None
+    next_template_id = _clean_text(state_source.get("next_template_id"))
+    if next_template_id not in valid_template_ids:
+        next_template_id = _next_template_id(templates, last_completed_template_id)
+    pending_template_id = _clean_text(state_source.get("pending_template_id")) or next_template_id
+    if pending_template_id not in valid_template_ids:
+        pending_template_id = next_template_id
+
+    program = {
+        "modality": "strength",
+        "label": "Strength rotation",
+        "enabled": raw.get("enabled", True) is not False,
+        "templates": templates,
+        "rules": rules,
+        "rotation_state": {
+            "last_completed_template_id": last_completed_template_id,
+            "last_completed_template_label": _template_display_name(_template_by_id(templates, last_completed_template_id)),
+            "last_completed_at": _clean_text(state_source.get("last_completed_at")),
+            "last_completed_activity_id": _clean_text(state_source.get("last_completed_activity_id")),
+            "next_template_id": next_template_id,
+            "next_template_label": _template_display_name(_template_by_id(templates, next_template_id)),
+            "pending_template_id": pending_template_id,
+            "pending_template_label": _template_display_name(_template_by_id(templates, pending_template_id)),
+            "processed_activity_ids": processed_activity_ids[-64:],
+        },
+    }
+    program["summary"] = {
+        "template_count": len(templates),
+        "next_workout": program["rotation_state"]["next_template_label"] or "Not set",
+        "last_completed": program["rotation_state"]["last_completed_template_label"],
+        "skip_behavior": "Postpone missed sessions" if rules["skip_behavior"] == "postpone" else "Skip missed sessions",
+        "rule_highlights": [
+            "Continue rotation across weeks" if rules["continue_across_weeks"] else "Reset weekly",
+            "Delay lower-body work when running is restricted" if rules["delay_lower_body_when_running_restricted"] else "No lower-body delay rule",
+        ],
+    }
+    return program
+
+
+def serialize_workout_template_settings_for_storage(settings: dict) -> dict:
+    program = ((settings or {}).get("programs") or {}).get("strength") or {}
+    return {
+        "programs": {
+            "strength": {
+                "enabled": program.get("enabled", True),
+                "templates": [
+                    {
+                        "id": item.get("id"),
+                        "code": item.get("code"),
+                        "label": item.get("label"),
+                        "title": item.get("title"),
+                        "summary": item.get("summary"),
+                        "session_type": item.get("session_type"),
+                        "workout_intent": item.get("workout_intent"),
+                        "focus_area": item.get("focus_area"),
+                    }
+                    for item in program.get("templates", [])
+                ],
+                "rules": dict(program.get("rules") or {}),
+                "rotation_state": {
+                    "last_completed_template_id": (program.get("rotation_state") or {}).get("last_completed_template_id"),
+                    "last_completed_at": (program.get("rotation_state") or {}).get("last_completed_at"),
+                    "last_completed_activity_id": (program.get("rotation_state") or {}).get("last_completed_activity_id"),
+                    "next_template_id": (program.get("rotation_state") or {}).get("next_template_id"),
+                    "pending_template_id": (program.get("rotation_state") or {}).get("pending_template_id"),
+                    "processed_activity_ids": (program.get("rotation_state") or {}).get("processed_activity_ids", []),
+                },
+            }
+        }
+    }
+
+
+def normalize_workout_template_settings(raw_value: Optional[dict]) -> dict:
+    raw = raw_value if isinstance(raw_value, dict) else {}
+    programs = raw.get("programs") if isinstance(raw.get("programs"), dict) else {}
+    strength_program = _normalize_strength_program(programs.get("strength"))
+    return {
+        "programs": {
+            "strength": strength_program,
+        }
+    }
+
+
+def get_workout_template_settings_for_conn(conn: sqlite3.Connection) -> dict:
+    raw_value = get_setting_value(conn, WORKOUT_TEMPLATE_SETTINGS_KEY)
+    if not raw_value:
+        return default_workout_template_settings()
+    try:
+        parsed = json.loads(raw_value)
+    except json.JSONDecodeError:
+        return default_workout_template_settings()
+    return normalize_workout_template_settings(parsed)
+
+
+def get_workout_template_settings_data() -> dict:
+    conn = get_db()
+    try:
+        return get_workout_template_settings_for_conn(conn)
+    finally:
+        conn.close()
+
+
+def set_workout_template_settings_for_conn(conn: sqlite3.Connection, payload: dict) -> dict:
+    existing = get_workout_template_settings_for_conn(conn)
+    existing_strength = ((existing.get("programs") or {}).get("strength")) or {}
+    incoming_strength = (((payload or {}).get("programs") or {}).get("strength")) or {}
+    merged = {
+        "programs": {
+            "strength": {
+                **existing_strength,
+                **incoming_strength,
+                "rules": {
+                    **(existing_strength.get("rules") or {}),
+                    **(incoming_strength.get("rules") or {}),
+                },
+                "rotation_state": {
+                    **(existing_strength.get("rotation_state") or {}),
+                    **(incoming_strength.get("rotation_state") or {}),
+                },
+                "templates": incoming_strength.get("templates") or existing_strength.get("templates"),
+            }
+        }
+    }
+    normalized = normalize_workout_template_settings(merged)
+    set_setting_value(
+        conn,
+        WORKOUT_TEMPLATE_SETTINGS_KEY,
+        json.dumps(serialize_workout_template_settings_for_storage(normalized)),
+    )
+    return normalized
+
+
+def set_workout_template_settings_data(payload: dict) -> dict:
+    conn = get_db()
+    try:
+        normalized = set_workout_template_settings_for_conn(conn, payload)
+        conn.commit()
+        return normalized
+    finally:
+        conn.close()
 
 
 def normalize_athlete_profile(raw_value: Optional[dict]) -> dict:

@@ -14,3 +14,7 @@ class Goal(BaseModel):
     activity_type: Optional[str] = None
     is_active: Optional[bool] = True
     target_config: Optional[dict[str, Any]] = None
+
+
+class GoalDraftRequest(BaseModel):
+    text: str

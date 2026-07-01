@@ -50,6 +50,42 @@
         </div>
       </div>
 
+      <div class="card athlete-profile-summary">
+        <div class="athlete-profile-top">
+          <div>
+            <div class="card-title">Workout Rotation</div>
+            <div class="page-sub">Structured strength templates stay durable across weeks instead of resetting to generic sessions.</div>
+          </div>
+          <button class="dialog-secondary" @click="openWorkoutTemplateDialog">Edit rotation</button>
+        </div>
+
+        <div class="athlete-profile-grid">
+          <article class="athlete-profile-stat">
+            <span>Next workout</span>
+            <strong>{{ strengthRotationNextLabel }}</strong>
+          </article>
+          <article class="athlete-profile-stat">
+            <span>Last completed</span>
+            <strong>{{ strengthRotationLastLabel }}</strong>
+          </article>
+          <article class="athlete-profile-stat">
+            <span>Missed-session rule</span>
+            <strong>{{ strengthRotationSkipLabel }}</strong>
+          </article>
+        </div>
+
+        <div class="athlete-profile-notes">
+          <div class="athlete-profile-note">
+            <span>Templates</span>
+            <strong>{{ strengthTemplateLabels }}</strong>
+          </div>
+          <div class="athlete-profile-note">
+            <span>Rules</span>
+            <strong>{{ strengthRotationRuleSummary }}</strong>
+          </div>
+        </div>
+      </div>
+
       <div v-if="activeRestrictions.length" class="card goal-restriction-summary">
         <div class="goal-restriction-top">
           <div>
@@ -195,6 +231,48 @@
             <div class="goal-dialog-sub">Set a target and let the app track progress automatically.</div>
           </div>
           <button class="dialog-close" @click="closeDialog">×</button>
+        </div>
+
+        <div class="goal-draft-shell">
+          <label class="goal-draft-field">
+            <span>Describe the goal naturally</span>
+            <textarea
+              v-model="goalDraftText"
+              rows="3"
+              placeholder="Examples: run 10k in under 40 minutes by October, hold 300W for 10 minutes, lift twice per week"
+            />
+          </label>
+          <div class="goal-draft-actions">
+            <button class="dialog-secondary" :disabled="saving || draftingGoal" @click="previewGoalDraft">
+              {{ draftingGoal ? 'Drafting...' : 'Preview draft' }}
+            </button>
+            <span class="goal-draft-hint">Preview only. Nothing is saved until you review and confirm.</span>
+          </div>
+
+          <div v-if="goalDraftPreview" class="goal-draft-review">
+            <div class="goal-draft-review-top">
+              <div>
+                <strong>{{ goalDraftPreview.title_suggestion || 'Draft review' }}</strong>
+                <div class="goal-draft-review-meta">
+                  <span class="goal-family-chip">{{ draftFamilyLabel(goalDraftPreview.goal?.goal_family) }}</span>
+                  <span class="goal-family-chip">{{ draftConfidenceLabel(goalDraftPreview.confidence) }}</span>
+                  <span v-if="goalDraftPreview.is_ready" class="goal-status status-on_pace">Ready to save</span>
+                </div>
+              </div>
+              <button class="dialog-secondary" :disabled="saving" @click="applyGoalDraft">
+                {{ goalDraftPreview.is_ready ? 'Use draft' : 'Use partial draft' }}
+              </button>
+            </div>
+
+            <p class="goal-draft-summary">{{ goalDraftSummary(goalDraftPreview) }}</p>
+
+            <div v-if="goalDraftPreview.missing_fields?.length" class="goal-draft-callout draft-callout-warning">
+              Missing: {{ goalDraftPreview.missing_fields.map(draftMissingLabel).join(', ') }}
+            </div>
+            <div v-for="warning in goalDraftPreview.warnings || []" :key="warning" class="goal-draft-callout draft-callout-warning">
+              {{ warning }}
+            </div>
+          </div>
         </div>
 
         <div class="goal-form">
@@ -503,6 +581,74 @@
         </div>
       </div>
     </div>
+
+    <div v-if="workoutTemplateDialogOpen" class="goal-dialog-backdrop" @click.self="closeWorkoutTemplateDialog">
+      <div class="goal-dialog card">
+        <div class="goal-dialog-head">
+          <div>
+            <div class="card-title">Strength Rotation</div>
+            <div class="goal-dialog-sub">Keep the first rule set explicit: name the templates, keep missed sessions postponed, and delay lower-body work when running is constrained.</div>
+          </div>
+          <button class="dialog-close" @click="closeWorkoutTemplateDialog">×</button>
+        </div>
+
+        <div class="goal-form athlete-profile-form">
+          <label class="goal-restriction-field">
+            <span>Next workout in rotation</span>
+            <select v-model="workoutTemplateForm.next_template_id">
+              <option v-for="template in workoutTemplateForm.templates" :key="template.id" :value="template.id">
+                {{ template.label }} · {{ template.title }}
+              </option>
+            </select>
+          </label>
+
+          <label class="goal-restriction-field">
+            <span>Missed-session behavior</span>
+            <select v-model="workoutTemplateForm.skip_behavior">
+              <option value="postpone">Postpone the missed workout</option>
+              <option value="skip">Skip ahead in the rotation</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="athlete-profile-textareas">
+          <label class="goal-restriction-field checkbox-field">
+            <span>
+              <input v-model="workoutTemplateForm.delay_lower_body_when_running_restricted" type="checkbox">
+              Delay lower-body strength while running is limited or blocked
+            </span>
+          </label>
+
+          <label class="goal-restriction-field checkbox-field">
+            <span>
+              <input v-model="workoutTemplateForm.prefer_ride_when_run_blocked" type="checkbox">
+              Prefer riding over running while running is blocked
+            </span>
+          </label>
+        </div>
+
+        <div class="goal-restriction-list-compact">
+          <article v-for="template in workoutTemplateForm.templates" :key="template.id" class="goal-restriction-row-card">
+            <div class="goal-restriction-card-top">
+              <div>
+                <strong>{{ template.label }} · {{ template.title }}</strong>
+                <div class="goal-restriction-inline-copy">{{ template.summary }}</div>
+              </div>
+              <span class="goal-family-chip">{{ template.focus_area === 'lower' ? 'Lower' : 'Upper' }}</span>
+            </div>
+          </article>
+        </div>
+
+        <p v-if="workoutTemplateMessage" class="goal-message">{{ workoutTemplateMessage }}</p>
+
+        <div class="goal-dialog-actions">
+          <button class="dialog-secondary" @click="closeWorkoutTemplateDialog">Cancel</button>
+          <button class="save-btn" :disabled="savingWorkoutTemplates" @click="saveWorkoutTemplates">
+            {{ savingWorkoutTemplates ? 'Saving...' : 'Save rotation' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -513,33 +659,44 @@ import { useApi } from '../stores/api'
 const api = useApi()
 const loading = ref(true)
 const saving = ref(false)
+const draftingGoal = ref(false)
 const savingRestrictions = ref(false)
 const savingProfile = ref(false)
+const savingWorkoutTemplates = ref(false)
 const message = ref('')
 const restrictionMessage = ref('')
 const profileMessage = ref('')
+const workoutTemplateMessage = ref('')
 const goals = ref([])
 const dialogOpen = ref(false)
 const restrictionDialogOpen = ref(false)
 const profileDialogOpen = ref(false)
+const workoutTemplateDialogOpen = ref(false)
 const athleteProfile = ref(null)
+const workoutTemplateSettings = ref(null)
+const goalDraftText = ref('')
+const goalDraftPreview = ref(null)
 
 const form = ref(defaultForm())
 const restrictionForm = ref(defaultRestrictionForm())
 const profileForm = ref(defaultProfileForm())
+const workoutTemplateForm = ref(defaultWorkoutTemplateForm())
 
 const loadGoals = async () => {
   loading.value = true
   try {
-    const [goalsResult, restrictionResult, profileResult] = await Promise.all([
+    const [goalsResult, restrictionResult, profileResult, workoutTemplateResult] = await Promise.all([
       api.getGoals({ limit: 24 }),
       api.getModalityRestrictions(),
       api.getAthleteProfile(),
+      api.getWorkoutTemplateSettings(),
     ])
     goals.value = goalsResult.data
     restrictionForm.value = restrictionFormFromPayload(restrictionResult.data)
     athleteProfile.value = profileResult.data
     profileForm.value = profileFormFromPayload(profileResult.data)
+    workoutTemplateSettings.value = workoutTemplateResult.data
+    workoutTemplateForm.value = workoutTemplateFormFromPayload(workoutTemplateResult.data)
   } finally {
     loading.value = false
   }
@@ -593,6 +750,18 @@ const profileLongDaysLabel = computed(() => {
   const labels = athleteProfile.value?.athlete_brief?.preferred_long_session_day_labels || []
   return labels.length ? labels.join(', ') : 'Not set'
 })
+const strengthProgram = computed(() => workoutTemplateSettings.value?.programs?.strength || null)
+const strengthRotationNextLabel = computed(() => strengthProgram.value?.rotation_state?.next_template_label || 'Not set')
+const strengthRotationLastLabel = computed(() => strengthProgram.value?.rotation_state?.last_completed_template_label || 'Not completed yet')
+const strengthRotationSkipLabel = computed(() => strengthProgram.value?.summary?.skip_behavior || 'Postpone missed sessions')
+const strengthTemplateLabels = computed(() => {
+  const templates = strengthProgram.value?.templates || []
+  return templates.length ? templates.map((template) => template.label).join(' → ') : 'No templates configured'
+})
+const strengthRotationRuleSummary = computed(() => {
+  const highlights = strengthProgram.value?.summary?.rule_highlights || []
+  return highlights.length ? highlights.join(' · ') : 'No explicit rules set'
+})
 
 const canSave = computed(() =>
   canSaveGoal(form.value)
@@ -601,6 +770,8 @@ const canSave = computed(() =>
 const openDialog = () => {
   message.value = ''
   form.value = defaultForm()
+  goalDraftText.value = ''
+  goalDraftPreview.value = null
   dialogOpen.value = true
 }
 
@@ -617,6 +788,8 @@ const closeDialog = () => {
   if (saving.value) return
   dialogOpen.value = false
   form.value = defaultForm()
+  goalDraftText.value = ''
+  goalDraftPreview.value = null
 }
 
 const closeRestrictionDialog = () => {
@@ -639,6 +812,21 @@ const closeProfileDialog = () => {
   profileDialogOpen.value = false
 }
 
+const openWorkoutTemplateDialog = async () => {
+  workoutTemplateMessage.value = ''
+  try {
+    const result = await api.getWorkoutTemplateSettings()
+    workoutTemplateSettings.value = result.data
+    workoutTemplateForm.value = workoutTemplateFormFromPayload(result.data)
+  } catch {}
+  workoutTemplateDialogOpen.value = true
+}
+
+const closeWorkoutTemplateDialog = () => {
+  if (savingWorkoutTemplates.value) return
+  workoutTemplateDialogOpen.value = false
+}
+
 const saveGoal = async () => {
   saving.value = true
   message.value = ''
@@ -653,6 +841,47 @@ const saveGoal = async () => {
   } finally {
     saving.value = false
   }
+}
+
+const previewGoalDraft = async () => {
+  draftingGoal.value = true
+  message.value = ''
+  try {
+    const result = await api.draftGoal({ text: goalDraftText.value })
+    goalDraftPreview.value = result.data
+    if (!result.data?.is_supported) {
+      message.value = 'Draft needs a simpler measurable phrase.'
+    } else if (result.data?.is_ready) {
+      message.value = 'Draft parsed. Review it before saving.'
+    } else {
+      message.value = 'Draft parsed partially. Review the warnings and fill the remaining fields.'
+    }
+  } catch (error) {
+    message.value = error?.response?.data?.detail || 'Failed to draft goal.'
+  } finally {
+    draftingGoal.value = false
+  }
+}
+
+const applyGoalDraft = () => {
+  const draft = goalDraftPreview.value?.goal
+  if (!draft) return
+  const next = defaultForm()
+  next.title = draft.title || goalDraftPreview.value?.title_suggestion || ''
+  next.goal_family = draft.goal_family || next.goal_family
+  next.period_type = draft.period_type || next.period_type
+  next.metric_type = draft.metric_type || next.metric_type
+  next.target_value = draft.target_value == null ? null : Number(draft.target_value)
+  next.activity_type = draft.activity_type || ''
+  next.end_date = draft.end_date || ''
+  next.target_config = {
+    ...next.target_config,
+    ...(draft.target_config || {}),
+  }
+  form.value = next
+  message.value = goalDraftPreview.value?.is_ready
+    ? 'Draft applied. Review the structured fields and save when ready.'
+    : 'Partial draft applied. Finish the missing fields before saving.'
 }
 
 const saveRestrictions = async () => {
@@ -684,6 +913,22 @@ const saveProfile = async () => {
     profileMessage.value = error?.response?.data?.detail || 'Failed to save profile.'
   } finally {
     savingProfile.value = false
+  }
+}
+
+const saveWorkoutTemplates = async () => {
+  savingWorkoutTemplates.value = true
+  workoutTemplateMessage.value = ''
+  try {
+    const payload = workoutTemplatePayloadFromForm(workoutTemplateForm.value)
+    const result = await api.updateWorkoutTemplateSettings(payload)
+    workoutTemplateSettings.value = result.data
+    workoutTemplateForm.value = workoutTemplateFormFromPayload(result.data)
+    workoutTemplateDialogOpen.value = false
+  } catch (error) {
+    workoutTemplateMessage.value = error?.response?.data?.detail || 'Failed to save workout rotation.'
+  } finally {
+    savingWorkoutTemplates.value = false
   }
 }
 
@@ -721,6 +966,16 @@ function defaultProfileForm() {
     preferred_long_session_days: [],
     weekly_availability_notes: '',
     planning_notes: '',
+  }
+}
+
+function defaultWorkoutTemplateForm() {
+  return {
+    next_template_id: 'strength-a',
+    skip_behavior: 'postpone',
+    delay_lower_body_when_running_restricted: true,
+    prefer_ride_when_run_blocked: true,
+    templates: [],
   }
 }
 
@@ -762,6 +1017,45 @@ function profilePayloadFromForm(formState) {
     preferred_long_session_days: [...new Set(formState.preferred_long_session_days || [])],
     weekly_availability_notes: formState.weekly_availability_notes || null,
     planning_notes: formState.planning_notes || null,
+  }
+}
+
+function workoutTemplateFormFromPayload(payload) {
+  const next = defaultWorkoutTemplateForm()
+  const strength = payload?.programs?.strength || {}
+  next.next_template_id = strength?.rotation_state?.next_template_id || next.next_template_id
+  next.skip_behavior = strength?.rules?.skip_behavior || next.skip_behavior
+  next.delay_lower_body_when_running_restricted = strength?.rules?.delay_lower_body_when_running_restricted !== false
+  next.prefer_ride_when_run_blocked = strength?.rules?.prefer_ride_when_run_blocked !== false
+  next.templates = [...(strength?.templates || [])]
+  return next
+}
+
+function workoutTemplatePayloadFromForm(formState) {
+  return {
+    programs: {
+      strength: {
+        templates: (formState.templates || []).map((template) => ({
+          id: template.id,
+          code: template.code,
+          label: template.label,
+          title: template.title,
+          summary: template.summary,
+          session_type: template.session_type,
+          workout_intent: template.workout_intent,
+          focus_area: template.focus_area,
+        })),
+        rules: {
+          skip_behavior: formState.skip_behavior,
+          delay_lower_body_when_running_restricted: formState.delay_lower_body_when_running_restricted,
+          prefer_ride_when_run_blocked: formState.prefer_ride_when_run_blocked,
+        },
+        rotation_state: {
+          next_template_id: formState.next_template_id,
+          pending_template_id: formState.next_template_id,
+        },
+      },
+    },
   }
 }
 
@@ -952,6 +1246,49 @@ const goalFamilyInfo = (family) => {
   }
 }
 
+const draftFamilyLabel = (family) => {
+  if (!family) return 'Draft'
+  if (family === 'event_performance') return 'Event'
+  if (family === 'benchmark') return 'Benchmark'
+  if (family === 'process') return 'Process'
+  return 'Accumulation'
+}
+
+const draftConfidenceLabel = (confidence) => {
+  if (confidence === 'high') return 'High confidence'
+  if (confidence === 'medium') return 'Partial draft'
+  return 'Low confidence'
+}
+
+const draftMissingLabel = (field) => {
+  if (field === 'goal_family') return 'goal type'
+  if (field === 'target_value') return 'target amount'
+  if (field === 'period_type') return 'time period'
+  return field.replaceAll('_', ' ')
+}
+
+const goalDraftSummary = (draft) => {
+  const goal = draft?.goal || {}
+  if (goal.goal_family === 'event_performance') {
+    const distance = goal.target_config?.distance_km
+    const duration = goal.target_config?.target_duration_min
+    return `${goal.activity_type || 'Event'} ${distance || '?'} km with a target time of ${duration || '?'} min by ${goal.end_date || 'a target date'}.`
+  }
+  if (goal.goal_family === 'benchmark') {
+    return `Benchmark ${goal.activity_type || 'goal'}: ${goal.target_config?.target_watts || '?'} W for ${goal.target_config?.duration_min || '?'} min.`
+  }
+  if (goal.metric_type === 'zone2_hours') {
+    return `${goal.activity_type || 'Endurance'} zone 2 target: ${goal.target_value || '?'} hours per ${goal.period_type || 'period'}.`
+  }
+  if (goal.metric_type === 'strength_sessions') {
+    return `Strength frequency target: ${goal.target_value || '?'} sessions per ${goal.period_type || 'period'}.`
+  }
+  if (goal.metric_type === 'run_km' || goal.metric_type === 'ride_km') {
+    return `${goal.activity_type || 'Endurance'} volume target: ${goal.target_value || '?'} km this ${goal.period_type || 'period'}.`
+  }
+  return 'Review the inferred family, title, and target fields before saving.'
+}
+
 const goalTypeHintTitle = (goal) => {
   if (goal.goal_family === 'process') return 'Process vs accumulation'
   return 'How this target is tracked'
@@ -1092,8 +1429,24 @@ const showPlanningGuidance = (goal) => {
   font-size: 13px;
   color: var(--muted);
 }
+.goal-draft-shell {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(120, 146, 214, 0.18);
+  background: linear-gradient(180deg, rgba(71, 98, 173, 0.12), rgba(255,255,255,0.03));
+}
+.goal-draft-field {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
 .goal-form input,
-.goal-form select {
+.goal-form select,
+.goal-draft-field textarea {
   width: 100%;
   min-height: 48px;
   padding: 10px 12px;
@@ -1104,6 +1457,57 @@ const showPlanningGuidance = (goal) => {
   font: inherit;
   line-height: 1.2;
   box-sizing: border-box;
+}
+.goal-draft-field textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+.goal-draft-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.goal-draft-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+.goal-draft-review {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(8, 13, 24, 0.48);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.goal-draft-review-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.goal-draft-review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.goal-draft-summary {
+  margin: 0;
+  color: #dbe4ff;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.goal-draft-callout {
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.draft-callout-warning {
+  background: rgba(245,158,11,0.08);
+  border: 1px solid rgba(245,158,11,0.18);
+  color: #f8d38b;
 }
 .goal-control {
   width: 100%;

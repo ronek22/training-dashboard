@@ -26,6 +26,32 @@
       </div>
     </div>
 
+    <div v-if="strengthRotationSummary" class="card plan-trend-card">
+      <div class="plan-trend-head">
+        <div>
+          <div class="card-title">Strength Rotation</div>
+          <div class="plan-trend-sub">Template-backed strength days keep their identity instead of collapsing back to generic strength blocks.</div>
+        </div>
+        <div class="plan-trend-pill trend-on_track">
+          {{ strengthRotationSummary.next_template_label || 'Not set' }}
+        </div>
+      </div>
+      <div class="plan-trend-metrics">
+        <article class="plan-trend-metric">
+          <span>Next</span>
+          <strong>{{ strengthRotationSummary.next_template_label || 'Not set' }}</strong>
+        </article>
+        <article class="plan-trend-metric">
+          <span>Last done</span>
+          <strong>{{ strengthRotationSummary.last_completed_template_label || 'Not completed yet' }}</strong>
+        </article>
+        <article class="plan-trend-metric">
+          <span>Missed-session rule</span>
+          <strong>{{ strengthRotationSummary.skip_behavior === 'skip' ? 'Skip ahead' : 'Postpone' }}</strong>
+        </article>
+      </div>
+    </div>
+
     <div v-if="planTrends && planTrends.weeks?.length" class="card plan-trend-card">
       <div class="plan-trend-head">
         <div>
@@ -155,6 +181,9 @@
               <div class="goal-context-meta">
                 <span>{{ goal.family_label }} · {{ goal.period_label }}</span>
                 <span>{{ goal.supported_sessions }} supporting session{{ goal.supported_sessions === 1 ? '' : 's' }}</span>
+              </div>
+              <div class="goal-context-copy">
+                {{ goalSupportStateCopy(goal) }}
               </div>
               <div v-if="goal.weekly_requirement_summary" class="goal-context-copy">{{ goal.weekly_requirement_summary }}</div>
               <div v-if="goal.requirement_statuses?.length" class="goal-context-requirements">
@@ -444,6 +473,9 @@
                     <span v-else>{{ day.session_type }}</span>
                   </div>
                 </div>
+                <div v-if="day.template_label" class="intent-row">
+                  <span class="intent-pill intent-actual">{{ day.template_label }}</span>
+                </div>
                 <div v-if="day.modality_restriction?.status !== 'allowed'" class="plan-restriction-pill" :class="`restriction-${day.modality_restriction?.status}`">
                   {{ day.modality_restriction?.label }} {{ day.modality_restriction?.status }}
                 </div>
@@ -457,6 +489,9 @@
                 </div>
 
                 <div v-if="day.details" class="plan-day-details">{{ day.details }}</div>
+                <div v-if="day.planning_rule_reason" class="plan-status-detail">
+                  {{ day.planning_rule_reason }}
+                </div>
                 <div v-if="statusDetail(day.comparison)" class="plan-status-detail">
                   {{ statusDetail(day.comparison) }}
                 </div>
@@ -807,6 +842,15 @@ const planTrendMetrics = computed(() => {
     { label: 'Weeks with moved sessions', value: planTrends.value.recurring_patterns?.weeks_with_moved || 0 },
   ]
 })
+const strengthRotationSummary = computed(() => {
+  const program = plans.value.find((plan) => plan?.workout_template_programs?.strength)?.workout_template_programs?.strength
+  return program?.rotation_state
+    ? {
+      ...program.rotation_state,
+      skip_behavior: program?.rules?.skip_behavior || 'postpone',
+    }
+    : null
+})
 
 const normalizedDayKey = (value) => {
   const parsed = new Date(value)
@@ -953,6 +997,14 @@ const requirementSupportLabel = (status) => {
   if (status === 'supported') return 'supported'
   if (status === 'weakly_supported') return 'thin'
   return 'missing'
+}
+
+const goalSupportStateCopy = (goal) => {
+  if (goal?.constraint_summary?.summary) return `Blocked or limited: ${goal.constraint_summary.summary}`
+  if (goal?.requirement_support_status === 'unsupported') return 'Deprioritized this week: a primary requirement is still missing from the plan.'
+  if (goal?.requirement_support_status === 'weak') return 'Maintenance only: support is present, but still thinner than the goal asks for.'
+  if (goal?.supported_sessions) return 'Advancing this week: the current plan has explicit sessions supporting this goal.'
+  return 'No explicit support is mapped yet.'
 }
 
 const revisionSourceLabel = (source) => {

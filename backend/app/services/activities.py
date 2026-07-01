@@ -18,10 +18,94 @@ from ..repositories.activities import (
 )
 from .activity_feedback import attach_feedback_by_activity_id
 from .plans import ensure_plan_day_ids, format_workout_intent_label, normalize_workout_intent
+from .settings import get_workout_template_settings_for_conn, set_workout_template_settings_for_conn
+
+
+def _template_lookup_by_session_id(conn: sqlite3.Connection) -> dict[str, str]:
+    lookup: dict[str, str] = {}
+    for row in list_weekly_plan_rows(conn, 200):
+        days = ensure_plan_day_ids(row["week_start"], json.loads(row["days_json"]))
+        for day in days:
+            session_id = day.get("session_id")
+            template_id = day.get("template_id")
+            if session_id and template_id:
+                lookup[session_id] = template_id
+    return lookup
+
+
+def reconcile_workout_template_rotation_state(conn: sqlite3.Connection) -> None:
+    settings = get_workout_template_settings_for_conn(conn)
+    strength_program = ((settings.get("programs") or {}).get("strength")) or {}
+    if not strength_program.get("enabled", True):
+        return
+
+    templates = strength_program.get("templates") or []
+    if not templates:
+        return
+
+    state = dict(strength_program.get("rotation_state") or {})
+    processed_activity_ids = list(state.get("processed_activity_ids") or [])
+    processed_lookup = set(processed_activity_ids)
+    template_ids = [item.get("id") for item in templates if item.get("id")]
+    template_order = {template_id: index for index, template_id in enumerate(template_ids)}
+    session_lookup = _template_lookup_by_session_id(conn)
+    if not session_lookup:
+        return
+
+    rows = conn.execute(
+        """
+        SELECT id, date, linked_planned_session_id
+        FROM activities
+        WHERE linked_planned_session_id IS NOT NULL
+        ORDER BY date ASC, created_at ASC, id ASC
+        """
+    ).fetchall()
+
+    changed = False
+    for row in rows:
+        activity_id = row["id"]
+        if activity_id in processed_lookup:
+            continue
+        template_id = session_lookup.get(row["linked_planned_session_id"])
+        if template_id not in template_order:
+            continue
+        expected_template_id = state.get("next_template_id") or template_ids[0]
+        state["last_completed_template_id"] = template_id
+        state["last_completed_at"] = row["date"]
+        state["last_completed_activity_id"] = activity_id
+        if state.get("pending_template_id") in {None, template_id}:
+            state["pending_template_id"] = template_id
+        if strength_program.get("rules", {}).get("skip_behavior") == "postpone" and expected_template_id and template_id != expected_template_id:
+            state["next_template_id"] = expected_template_id
+            state["pending_template_id"] = expected_template_id
+        else:
+            next_index = (template_order[template_id] + 1) % len(template_ids)
+            state["next_template_id"] = template_ids[next_index]
+            state["pending_template_id"] = state["next_template_id"]
+        processed_activity_ids.append(activity_id)
+        processed_lookup.add(activity_id)
+        changed = True
+
+    if not changed:
+        return
+
+    strength_program["rotation_state"] = {
+        **strength_program.get("rotation_state", {}),
+        **state,
+        "processed_activity_ids": processed_activity_ids[-64:],
+    }
+    updated = {
+        "programs": {
+            **(settings.get("programs") or {}),
+            "strength": strength_program,
+        }
+    }
+    set_workout_template_settings_for_conn(conn, updated)
 
 
 def create_activity_data(conn: sqlite3.Connection, activity: dict) -> dict:
     upsert_activity_row(conn, activity)
+    reconcile_workout_template_rotation_state(conn)
     conn.commit()
     return {"status": "ok", "id": activity["id"]}
 
@@ -32,6 +116,7 @@ def list_activities_data(
     activity_type: Optional[str] = None,
     days: Optional[int] = None,
 ) -> list[dict]:
+    reconcile_workout_template_rotation_state(conn)
     rows = list_activity_rows(conn, limit=limit, activity_type=activity_type, days=days)
     payload = []
     for row in rows:
@@ -242,6 +327,7 @@ def link_activity_to_planned_session_data(
         raise HTTPException(status_code=404, detail=f"Planned session not found: {planned_session_id}")
 
     update_activity_linked_session_id(conn, activity_id, planned_session_id)
+    reconcile_workout_template_rotation_state(conn)
     conn.commit()
 
     updated = get_activity_row(conn, activity_id)

@@ -6,9 +6,20 @@ from typing import Callable, Optional
 from .plans import build_multi_week_execution_trend, serialize_weekly_plan
 from .plans import format_workout_intent_label, normalize_workout_intent
 from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
+from .coaching import (
+    build_athlete_coaching_brief,
+    summarize_execution,
+    summarize_goals,
+    summarize_recent_patterns,
+    summarize_recovery,
+)
 from .goals import aggregate_goal_risk_summary, list_goals_data
 from .recommendations import build_daily_recommendation, latest_subjective_state
-from .settings import get_athlete_profile_for_conn, get_modality_restrictions_for_conn
+from .settings import (
+    get_athlete_profile_for_conn,
+    get_modality_restrictions_for_conn,
+    get_workout_template_settings_for_conn,
+)
 
 
 def select_active_weekly_plan_row(conn: sqlite3.Connection) -> Optional[sqlite3.Row]:
@@ -902,6 +913,7 @@ def build_recent_context(
     active_goals = list_goals_data(conn, active_only=True, limit=8)
     modality_restrictions = get_modality_restrictions_for_conn(conn)
     athlete_profile = get_athlete_profile_for_conn(conn)
+    workout_template_settings = get_workout_template_settings_for_conn(conn)
     goal_risk_summary = aggregate_goal_risk_summary(active_goals)
     planning_priority = sorted(
         active_goals,
@@ -920,36 +932,10 @@ def build_recent_context(
     recent_activities = attach_feedback_by_activity_id(conn, [dict(row) for row in activities])
     recent_activity_intents = build_activity_intent_summary(recent_activities)
     planned_intents = build_planned_intent_summary(serialized_latest_plan)
-
-    return {
-        "generated_at": datetime.now().isoformat(),
-        "focus_window_days": lookback_days,
-        "context_window_days": context_days,
-        "streak": computed_streak,
-        "focus_window": {
-            "totals": dict(recent_totals) if recent_totals else {},
-            "by_type": [dict(row) for row in recent_rows],
-        },
-        "context_window": {
-            "totals": dict(context_totals) if context_totals else {},
-        },
-        "current_week": {
-            "sessions": int(current_week["sessions"] or 0),
-            "total_km": round(float(current_week["total_km"] or 0), 1),
-            "total_min": round(float(current_week["total_min"] or 0), 0),
-            "run_km": round(float(current_week["run_km"] or 0), 1),
-            "ride_km": round(float(current_week["ride_km"] or 0), 1),
-            "strength_sessions": int(current_week["strength_sessions"] or 0),
-        },
-        "recent_activities": recent_activities,
-        "recent_feedback": list_recent_feedback_data(conn, limit=5),
+    context_payload = {
+        "daily_recommendation": daily_recommendation,
         "latest_subjective_state": latest_subjective_state(conn),
-        "recent_notes": [dict(row) for row in notes],
-        "latest_metrics": [dict(row) for row in latest_metrics],
-        "weekly_mix": weekly_mix,
-        "strength_consistency": strength_consistency,
-        "athlete_profile": athlete_profile,
-        "athlete_brief": athlete_profile.get("athlete_brief"),
+        "training_load": training_load,
         "modality_restrictions": modality_restrictions,
         "active_goals": active_goals,
         "goal_risk_summary": goal_risk_summary,
@@ -972,6 +958,60 @@ def build_recent_context(
                 "completed": sum(1 for goal in active_goals if goal.get("planning_guidance", {}).get("status") == "completed"),
             },
         },
+        "recent_feedback": list_recent_feedback_data(conn, limit=5),
+        "recent_notes": [dict(row) for row in notes],
+        "athlete_profile": athlete_profile,
+        "athlete_brief": athlete_profile.get("athlete_brief"),
+        "workout_template_settings": workout_template_settings,
+    }
+    execution_summary = summarize_execution(serialized_latest_plan)
+    recovery_summary = summarize_recovery(context_payload)
+    goal_summary = summarize_goals(context_payload, serialized_latest_plan)
+    recent_pattern_summary = summarize_recent_patterns(conn, context_payload, serialized_latest_plan)
+    athlete_coaching_brief = build_athlete_coaching_brief(
+        context_payload,
+        serialized_latest_plan,
+        execution=execution_summary,
+        recovery=recovery_summary,
+        goals_assessment=goal_summary,
+        recent_patterns=recent_pattern_summary,
+    )
+
+    return {
+        "generated_at": datetime.now().isoformat(),
+        "focus_window_days": lookback_days,
+        "context_window_days": context_days,
+        "streak": computed_streak,
+        "focus_window": {
+            "totals": dict(recent_totals) if recent_totals else {},
+            "by_type": [dict(row) for row in recent_rows],
+        },
+        "context_window": {
+            "totals": dict(context_totals) if context_totals else {},
+        },
+        "current_week": {
+            "sessions": int(current_week["sessions"] or 0),
+            "total_km": round(float(current_week["total_km"] or 0), 1),
+            "total_min": round(float(current_week["total_min"] or 0), 0),
+            "run_km": round(float(current_week["run_km"] or 0), 1),
+            "ride_km": round(float(current_week["ride_km"] or 0), 1),
+            "strength_sessions": int(current_week["strength_sessions"] or 0),
+        },
+        "recent_activities": recent_activities,
+        "recent_feedback": context_payload["recent_feedback"],
+        "latest_subjective_state": context_payload["latest_subjective_state"],
+        "recent_notes": context_payload["recent_notes"],
+        "latest_metrics": [dict(row) for row in latest_metrics],
+        "weekly_mix": weekly_mix,
+        "strength_consistency": strength_consistency,
+        "athlete_profile": athlete_profile,
+        "athlete_brief": athlete_profile.get("athlete_brief"),
+        "athlete_coaching_brief": athlete_coaching_brief,
+        "modality_restrictions": modality_restrictions,
+        "workout_template_settings": workout_template_settings,
+        "active_goals": active_goals,
+        "goal_risk_summary": goal_risk_summary,
+        "goal_planning_summary": context_payload["goal_planning_summary"],
         "workout_intent_summary": {
             "recent_activities": recent_activity_intents,
             "active_plan": planned_intents,
@@ -1062,6 +1102,7 @@ def build_dashboard_data(
     active_goals = list_goals_data_fn(conn, active_only=True, limit=4)
     modality_restrictions = get_modality_restrictions_for_conn(conn)
     athlete_profile = get_athlete_profile_for_conn(conn)
+    workout_template_settings = get_workout_template_settings_for_conn(conn)
     goal_risk_summary = aggregate_goal_risk_summary(active_goals)
     training_load = build_training_load_summary(conn)
     latest_plan = select_active_weekly_plan_row(conn)
@@ -1078,6 +1119,32 @@ def build_dashboard_data(
         ),
         "conflicts": (serialized_latest_plan or {}).get("goal_context", {}).get("conflicts", []),
     }
+    context_payload = {
+        "daily_recommendation": daily_recommendation,
+        "latest_subjective_state": latest_subjective_state(conn),
+        "training_load": training_load,
+        "modality_restrictions": modality_restrictions,
+        "active_goals": active_goals,
+        "goal_risk_summary": goal_risk_summary,
+        "goal_planning_summary": goal_planning_summary,
+        "recent_feedback": list_recent_feedback_data(conn, limit=5),
+        "recent_notes": [dict(r) for r in notes],
+        "athlete_profile": athlete_profile,
+        "athlete_brief": athlete_profile.get("athlete_brief"),
+        "workout_template_settings": workout_template_settings,
+    }
+    execution_summary = summarize_execution(serialized_latest_plan)
+    recovery_summary = summarize_recovery(context_payload)
+    goal_summary = summarize_goals(context_payload, serialized_latest_plan)
+    recent_pattern_summary = summarize_recent_patterns(conn, context_payload, serialized_latest_plan)
+    athlete_coaching_brief = build_athlete_coaching_brief(
+        context_payload,
+        serialized_latest_plan,
+        execution=execution_summary,
+        recovery=recovery_summary,
+        goals_assessment=goal_summary,
+        recent_patterns=recent_pattern_summary,
+    )
 
     return {
         "last_14_days": [dict(r) for r in recent],
@@ -1097,14 +1164,16 @@ def build_dashboard_data(
         "strength_consistency": strength_consistency,
         "athlete_profile": athlete_profile,
         "athlete_brief": athlete_profile.get("athlete_brief"),
+        "athlete_coaching_brief": athlete_coaching_brief,
         "modality_restrictions": modality_restrictions,
+        "workout_template_settings": workout_template_settings,
         "active_goals": active_goals,
         "goal_risk_summary": goal_risk_summary,
         "goal_planning_summary": goal_planning_summary,
         "weekly_plan": serialized_latest_plan,
         "execution_trend": execution_trend,
         "computed_streak": computed_streak,
-        "recent_feedback": list_recent_feedback_data(conn, limit=5),
-        "latest_subjective_state": latest_subjective_state(conn),
+        "recent_feedback": context_payload["recent_feedback"],
+        "latest_subjective_state": context_payload["latest_subjective_state"],
         "daily_recommendation": daily_recommendation,
     }

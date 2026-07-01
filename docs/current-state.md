@@ -169,6 +169,20 @@ Completed slices:
 - `Dashboard` now surfaces athlete context as secondary reference context near coaching history instead of treating it like a top-level daily signal
 - smoke coverage now includes athlete-profile persistence and readback expectations
 
+### Sprint 16 richer goal families
+
+Sprint 16 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- goals now support explicit accumulation, process, event-performance, and benchmark families
+- richer goal reads are normalized across API, dashboard context, coaching context, and UI surfaces
+- `Goals` now supports family-aware creation with type-specific fields and lightweight in-form guidance
+- goal cards, dashboard goal visibility, and plan goal context now show clearer structured goal meaning instead of treating every target like pure volume
+- recurring weekly, monthly, and yearly goal windows now float with the active calendar period instead of staying pinned to stale stored dates
+- count-based goal presentation now treats sessions and activity counts as discrete values rather than fractional pacing noise
+- smoke coverage now includes richer goal-family creation plus current-window regression checks for recurring goals
+
 ### Phase 5 coaching workflow and analysis
 
 Phase 5 can now be treated as complete for the current roadmap slice.
@@ -186,12 +200,14 @@ The next roadmap slice should start now.
 
 The next major sprint should be:
 
-- Sprint 16 richer goal families should follow now that athlete context is explicit and durable
+- Sprint 17 goal-aware session requirements and conflicts
+
+That sprint should build on the richer goal model that now exists.
 
 That means moving into:
 
-- expanding beyond accumulation-only goals into richer goal families like event-performance, benchmark, and process targets
-- using the new athlete brief to keep richer goals and coaching tradeoffs coherent
+- mapping richer goals into explicit session requirements rather than treating them as mostly presentation and wording upgrades
+- using the new athlete brief and richer goal model to make coaching tradeoffs and deprioritization more specific and truthful
 - improving planning guidance before attempting more aggressive automation
 
 ## Areas That Are Still Intentionally Lightweight
@@ -199,7 +215,7 @@ That means moving into:
 - test coverage is still smoke-level rather than deep
 - weekly plans are stored as JSON blobs by week
 - goal-aware planning is still lightweight rather than deeply automated
-- goals are still mostly limited to distance, time, and activity-count style tracking
+- richer goal families now exist, but deeper family-specific progress and readiness modeling is still intentionally lightweight
 - local backend test execution still depends on having the Python app dependencies installed
 
 ## Good Starting Points For Future Work
@@ -216,7 +232,7 @@ If continuing into the next roadmap:
 - athlete-facing goal and profile UI: `frontend/src/views/Goals.vue`
 - calendar aggregation and month view: `backend/app/services/activities.py` and `frontend/src/views/Calendar.vue`
 - docs-backed planning visibility: `docs/roadmap.md`, `docs/roadmaps/`, `docs/current-state.md`, and `docs/sprints/`
-- sprint planning direction: richer goal modeling should be the next execution slice
+- sprint planning direction: goal-aware session requirements and conflict visibility should be the next execution slice
 
 ## Working Assumption
 

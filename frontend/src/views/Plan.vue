@@ -143,9 +143,11 @@
                   {{ goal.risk_summary?.label || goalStatusLabel(goal.status) }}
                 </span>
               </div>
-              <div class="goal-context-progress">{{ goal.current_value }} / {{ goal.target_value }} {{ goal.unit }}</div>
+              <div class="goal-context-progress">
+                {{ goal.display_mode === 'performance' ? goal.target_summary : `${goal.current_value} / ${goal.target_value} ${goal.unit}` }}
+              </div>
               <div class="goal-context-meta">
-                <span>{{ goal.period_label }}</span>
+                <span>{{ goal.family_label }} · {{ goal.period_label }}</span>
                 <span>{{ goal.supported_sessions }} supporting session{{ goal.supported_sessions === 1 ? '' : 's' }}</span>
               </div>
               <div v-if="goal.constraint_summary?.summary" class="goal-context-copy goal-context-copy-warn">{{ goal.constraint_summary.summary }}</div>

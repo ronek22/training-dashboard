@@ -229,6 +229,8 @@ def modality_for_goal(metric_type: Optional[str], activity_type: Optional[str] =
         return "ride"
     if metric_type == "strength_sessions":
         return "strength"
+    if metric_type == "zone2_hours":
+        return normalize_modality(activity_type) or "run"
     if metric_type == "activities_count":
         return normalize_modality(activity_type)
     return None

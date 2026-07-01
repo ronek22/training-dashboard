@@ -134,9 +134,9 @@
                   <strong>{{ goal.title }}</strong>
                   <span class="goal-mini-status" :class="`status-${goal.status}`">{{ goalStatusLabel(goal.status) }}</span>
                 </div>
-                <div class="goal-mini-progress">{{ goal.current_value }} / {{ goal.target_value }} {{ goal.unit }}</div>
+                <div class="goal-mini-progress">{{ goal.family_label }} · {{ goal.display_mode === 'performance' ? goal.target_summary : `${goal.current_value} / ${goal.target_value} ${goal.unit}` }}</div>
                 <div v-if="goal.risk_summary?.summary" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
-                <div class="goal-mini-track-wrap">
+                <div v-if="goal.display_mode !== 'performance'" class="goal-mini-track-wrap">
                   <div class="goal-mini-track">
                     <div class="goal-mini-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
                   </div>
@@ -155,9 +155,9 @@
                   <strong>{{ goal.title }}</strong>
                   <span class="goal-mini-status" :class="`status-${goal.status}`">{{ goalStatusLabel(goal.status) }}</span>
                 </div>
-                <div class="goal-mini-progress">{{ goal.current_value }} / {{ goal.target_value }} {{ goal.unit }}</div>
+                <div class="goal-mini-progress">{{ goal.family_label }} · {{ goal.display_mode === 'performance' ? goal.target_summary : `${goal.current_value} / ${goal.target_value} ${goal.unit}` }}</div>
                 <div v-if="goal.risk_summary?.summary" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
-                <div class="goal-mini-track-wrap">
+                <div v-if="goal.display_mode !== 'performance'" class="goal-mini-track-wrap">
                   <div class="goal-mini-track">
                     <div class="goal-mini-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
                   </div>
@@ -176,9 +176,9 @@
                   <strong>{{ goal.title }}</strong>
                   <span class="goal-mini-status" :class="`status-${goal.status}`">{{ goalStatusLabel(goal.status) }}</span>
                 </div>
-                <div class="goal-mini-progress">{{ goal.current_value }} / {{ goal.target_value }} {{ goal.unit }}</div>
+                <div class="goal-mini-progress">{{ goal.family_label }} · {{ goal.display_mode === 'performance' ? goal.target_summary : `${goal.current_value} / ${goal.target_value} ${goal.unit}` }}</div>
                 <div v-if="goal.risk_summary?.summary" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
-                <div class="goal-mini-track-wrap">
+                <div v-if="goal.display_mode !== 'performance'" class="goal-mini-track-wrap">
                   <div class="goal-mini-track">
                     <div class="goal-mini-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
                   </div>

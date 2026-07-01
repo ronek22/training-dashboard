@@ -23,7 +23,9 @@ The intended reading order is:
 13. [sprint-13-goal-progress-and-planning-forecasts.md](sprint-13-goal-progress-and-planning-forecasts.md) — goal forecast and planning pressure sprint, complete
 14. [sprint-14-modality-restrictions-and-injury-aware-coaching.md](sprint-14-modality-restrictions-and-injury-aware-coaching.md) — modality restrictions and injury-aware coaching sprint, complete
 15. [sprint-15-athlete-profile-and-planning-preferences.md](sprint-15-athlete-profile-and-planning-preferences.md) — athlete profile and planning preferences sprint, complete
-16. [sprint-16-richer-goal-families.md](sprint-16-richer-goal-families.md) — richer goal families sprint, planned
+16. [sprint-16-richer-goal-families.md](sprint-16-richer-goal-families.md) — richer goal families sprint, complete
+17. [sprint-17-goal-aware-session-requirements-and-conflicts.md](sprint-17-goal-aware-session-requirements-and-conflicts.md) — goal-aware session requirements and conflicts sprint, planned
+18. [sprint-18-rule-based-workout-templates-and-rotation-state.md](sprint-18-rule-based-workout-templates-and-rotation-state.md) — rule-based workout templates and rotation state sprint, planned
 
 ## Sprint Plans
 
@@ -45,3 +47,5 @@ Available sprint documents:
 - [sprint-14-modality-restrictions-and-injury-aware-coaching.md](sprint-14-modality-restrictions-and-injury-aware-coaching.md)
 - [sprint-15-athlete-profile-and-planning-preferences.md](sprint-15-athlete-profile-and-planning-preferences.md)
 - [sprint-16-richer-goal-families.md](sprint-16-richer-goal-families.md)
+- [sprint-17-goal-aware-session-requirements-and-conflicts.md](sprint-17-goal-aware-session-requirements-and-conflicts.md)
+- [sprint-18-rule-based-workout-templates-and-rotation-state.md](sprint-18-rule-based-workout-templates-and-rotation-state.md)

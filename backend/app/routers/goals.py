@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from ..db import get_db
 from ..models.goals import Goal
@@ -11,7 +11,10 @@ router = APIRouter()
 def create_goal(goal: Goal):
     conn = get_db()
     try:
-        return create_goal_data(conn, **goal.model_dump())
+        try:
+            return create_goal_data(conn, **goal.model_dump())
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     finally:
         conn.close()
 

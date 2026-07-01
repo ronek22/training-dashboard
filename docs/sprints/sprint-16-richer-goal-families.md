@@ -4,7 +4,7 @@
 
 Current status:
 
-- planned
+- complete
 - follows completed Sprint 15 athlete profile and planning preferences work
 
 Starting point:

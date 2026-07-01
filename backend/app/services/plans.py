@@ -333,9 +333,22 @@ def goal_applies_to_plan(goal: dict, week_start: str, week_end: str) -> bool:
 
 
 def goal_supports_session(goal: dict, day: dict) -> Optional[str]:
+    goal_family = goal.get("goal_family")
     metric_type = goal.get("metric_type")
     session_type = normalize_plan_session_type(day.get("session_type"))
     if not session_type:
+        return None
+
+    if goal_family == "event_performance":
+        goal_type = normalize_plan_session_type(goal.get("activity_type"))
+        if goal_type == session_type:
+            return "Supports event-specific preparation"
+        return None
+
+    if goal_family == "benchmark":
+        goal_type = normalize_plan_session_type(goal.get("activity_type"))
+        if goal_type == session_type:
+            return "Supports benchmark-specific work"
         return None
 
     if metric_type == "run_km" and session_type == "Run":
@@ -344,6 +357,8 @@ def goal_supports_session(goal: dict, day: dict) -> Optional[str]:
         return "Builds ride volume"
     if metric_type == "strength_sessions" and session_type == "WeightTraining":
         return "Counts toward strength target"
+    if metric_type == "zone2_hours" and session_type in {"Run", "Ride", "VirtualRide"}:
+        return "Supports aerobic process target"
     if metric_type == "activities_count":
         activity_type = goal.get("activity_type")
         if not activity_type:

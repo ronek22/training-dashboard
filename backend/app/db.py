@@ -127,12 +127,14 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
             period_type TEXT NOT NULL,
+            goal_family TEXT DEFAULT 'accumulation',
             metric_type TEXT NOT NULL,
             target_value REAL NOT NULL,
             start_date TEXT NOT NULL,
             end_date TEXT NOT NULL,
             activity_type TEXT,
             is_active INTEGER DEFAULT 1,
+            target_config_json TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -155,10 +157,17 @@ def init_db():
     activity_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(activities)").fetchall()
     }
+    goal_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(goals)").fetchall()
+    }
     if "linked_planned_session_id" not in activity_columns:
         conn.execute("ALTER TABLE activities ADD COLUMN linked_planned_session_id TEXT")
     if "workout_intent" not in activity_columns:
         conn.execute("ALTER TABLE activities ADD COLUMN workout_intent TEXT")
+    if "goal_family" not in goal_columns:
+        conn.execute("ALTER TABLE goals ADD COLUMN goal_family TEXT DEFAULT 'accumulation'")
+    if "target_config_json" not in goal_columns:
+        conn.execute("ALTER TABLE goals ADD COLUMN target_config_json TEXT")
 
     if "heel_pain" in feedback_columns:
         pain_level_expr = "COALESCE(pain_level, heel_pain, 0)" if "pain_level" in feedback_columns else "COALESCE(heel_pain, 0)"

@@ -87,30 +87,53 @@
             <div class="goal-top">
               <div>
                 <div class="goal-title">{{ goal.title }}</div>
-                <div class="goal-meta">{{ goal.period_label || periodHeading(goal.period_type) }}</div>
+                <div class="goal-meta-row">
+                  <div class="goal-meta">{{ goal.period_label || periodHeading(goal.period_type) }}</div>
+                  <span class="goal-family-chip">{{ goal.family_label }}</span>
+                </div>
               </div>
               <span class="goal-status" :class="`status-${goal.status}`">{{ statusLabel(goal.status) }}</span>
             </div>
 
-            <div class="goal-numbers">
-              <strong>{{ goal.current_value }}</strong>
-              <span>/ {{ goal.target_value }} {{ goal.unit }}</span>
-            </div>
-
-            <div class="goal-track-wrap">
-              <div class="goal-track">
-                <div class="goal-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
+            <template v-if="usesVolumeDisplay(goal)">
+              <div class="goal-numbers">
+                <strong>{{ formatGoalValue(goal, goal.current_value) }}</strong>
+                <span>/ {{ formatGoalValue(goal, goal.target_value) }} {{ goal.unit }}</span>
               </div>
-              <div class="goal-today-marker" :style="{ left: `${goalMarkerOffset(goal)}%` }">
-                <span>Today</span>
-              </div>
-            </div>
 
-            <div class="goal-foot">
-              <span>{{ goal.progress_pct }}%</span>
-              <span>{{ goal.days_remaining }}d left</span>
-              <span>{{ goal.remaining_value }} {{ goal.unit }} remaining</span>
-            </div>
+              <div class="goal-track-wrap">
+                <div class="goal-track">
+                  <div class="goal-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
+                </div>
+                <div class="goal-today-marker" :style="{ left: `${goalMarkerOffset(goal)}%` }">
+                  <span>Today</span>
+                </div>
+              </div>
+
+              <div class="goal-foot">
+                <span>{{ goal.progress_pct }}%</span>
+                <span>{{ goal.days_remaining }}d left</span>
+                <span>{{ formatGoalValue(goal, goal.remaining_value) }} {{ goal.unit }} remaining</span>
+              </div>
+            </template>
+
+            <template v-else>
+              <div class="goal-planning-summary">{{ goal.target_summary }}</div>
+              <div class="goal-forecast-grid">
+                <div class="goal-forecast-stat">
+                  <span>Recent best</span>
+                  <strong>{{ performanceCurrentLabel(goal) }}</strong>
+                </div>
+                <div class="goal-forecast-stat">
+                  <span>Target</span>
+                  <strong>{{ performanceTargetLabel(goal) }}</strong>
+                </div>
+              </div>
+              <div class="goal-foot">
+                <span>{{ goal.compact_summary }}</span>
+                <span>{{ goal.days_remaining }}d left</span>
+              </div>
+            </template>
 
             <div v-if="goal.constraint_summary" class="goal-risk risk-constrained">
               <span class="goal-risk-label">Restriction</span>
@@ -122,18 +145,18 @@
               <span class="goal-risk-copy">{{ goal.risk_summary.summary }}</span>
             </div>
 
-            <div class="goal-required" v-if="goal.status !== 'completed'">
+            <div class="goal-required" v-if="usesVolumeDisplay(goal) && goal.status !== 'completed'">
               <span class="goal-required-label">Vs pace</span>
               <span class="goal-required-value" :class="paceDeltaClass(goal)">{{ paceLabel(goal) }}</span>
             </div>
 
-            <div v-if="goal.forecast && goal.status !== 'completed'" class="goal-forecast-grid">
+            <div v-if="usesVolumeDisplay(goal) && goal.forecast && goal.status !== 'completed'" class="goal-forecast-grid">
               <div class="goal-forecast-stat">
                 <span>Projected finish</span>
                 <strong>{{ forecastFinish(goal) }}</strong>
               </div>
               <div class="goal-forecast-stat">
-                <span>Needed next</span>
+                <span>{{ goal.planning_guidance?.required_next_label || 'Needed next' }}</span>
                 <strong>{{ forecastNeed(goal) }}</strong>
               </div>
             </div>
@@ -165,29 +188,113 @@
         <div class="goal-form">
           <label>
             <span>Title</span>
-            <input v-model="form.title" type="text" placeholder="Ride 5000 km in 2026">
+            <input v-model="form.title" type="text" :placeholder="goalTitlePlaceholder(form.goal_family)">
           </label>
           <label>
+            <span>Goal family</span>
+            <select v-model="form.goal_family" class="goal-control goal-select">
+              <option value="accumulation">Accumulation</option>
+              <option value="process">Process</option>
+              <option value="event_performance">Event</option>
+              <option value="benchmark">Benchmark</option>
+            </select>
+          </label>
+          <div class="goal-family-panel">
+            <div class="goal-family-panel-top">
+              <strong>{{ goalFamilyInfo(form.goal_family).title }}</strong>
+              <span>{{ goalFamilyInfo(form.goal_family).tag }}</span>
+            </div>
+            <p>{{ goalFamilyInfo(form.goal_family).summary }}</p>
+            <div class="goal-family-panel-foot">
+              <span>Use when: {{ goalFamilyInfo(form.goal_family).useWhen }}</span>
+            </div>
+          </div>
+          <label>
             <span>Period</span>
-            <select v-model="form.period_type">
+            <select v-model="form.period_type" class="goal-control goal-select">
               <option value="week">Weekly</option>
               <option value="month">Monthly</option>
               <option value="year">Yearly</option>
             </select>
           </label>
-          <label>
-            <span>Goal type</span>
-            <select v-model="form.metric_type">
-              <option value="ride_km">Ride km</option>
-              <option value="run_km">Run km</option>
-              <option value="strength_sessions">Strength sessions</option>
-              <option value="activities_count">Activities count</option>
-            </select>
-          </label>
-          <label>
-            <span>Target</span>
-            <input v-model.number="form.target_value" type="number" min="1" step="1">
-          </label>
+          <template v-if="usesMetricTypeGoal(form)">
+            <label>
+              <span>Goal type</span>
+              <select v-model="form.metric_type" class="goal-control goal-select">
+                <option v-for="option in metricOptionsForFamily(form.goal_family)" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+            <label v-if="form.metric_type === 'activities_count'">
+              <span>Activity type</span>
+              <select v-model="form.activity_type" class="goal-control goal-select">
+                <option value="">Any activity</option>
+                <option value="Run">Run</option>
+                <option value="Ride">Ride</option>
+                <option value="VirtualRide">Virtual ride</option>
+                <option value="WeightTraining">Strength</option>
+              </select>
+            </label>
+            <div class="goal-inline-hint">
+              <strong>{{ goalTypeHintTitle(form) }}</strong>
+              <span>{{ goalTypeHintCopy(form) }}</span>
+            </div>
+            <label>
+              <span>{{ form.goal_family === 'process' ? 'Weekly/process target' : 'Target' }}</span>
+              <input v-model.number="form.target_value" type="number" min="1" :step="targetInputStep(form)">
+            </label>
+          </template>
+
+          <template v-else-if="form.goal_family === 'event_performance'">
+            <label>
+              <span>Sport</span>
+              <select v-model="form.activity_type" class="goal-control goal-select">
+                <option value="Run">Run</option>
+                <option value="Ride">Ride</option>
+                <option value="VirtualRide">Virtual ride</option>
+              </select>
+            </label>
+            <label>
+              <span>Event date</span>
+              <input v-model="form.end_date" type="date">
+            </label>
+            <label>
+              <span>Distance km</span>
+              <input v-model.number="form.target_config.distance_km" type="number" min="1" step="0.1">
+            </label>
+            <label>
+              <span>Target time min</span>
+              <input v-model.number="form.target_config.target_duration_min" type="number" min="1" step="1">
+            </label>
+          </template>
+
+          <template v-else>
+            <label>
+              <span>Sport</span>
+              <select v-model="form.activity_type" class="goal-control goal-select">
+                <option value="Run">Run</option>
+                <option value="Ride">Ride</option>
+                <option value="VirtualRide">Virtual ride</option>
+              </select>
+            </label>
+            <label v-if="form.activity_type === 'Run'">
+              <span>Benchmark distance km</span>
+              <input v-model.number="form.target_config.distance_km" type="number" min="1" step="0.1">
+            </label>
+            <label v-if="form.activity_type === 'Run'">
+              <span>Target time min</span>
+              <input v-model.number="form.target_config.target_duration_min" type="number" min="1" step="1">
+            </label>
+            <label v-else>
+              <span>Benchmark duration min</span>
+              <input v-model.number="form.target_config.duration_min" type="number" min="1" step="1">
+            </label>
+            <label v-if="form.activity_type !== 'Run'">
+              <span>Target watts</span>
+              <input v-model.number="form.target_config.target_watts" type="number" min="1" step="1">
+            </label>
+          </template>
         </div>
 
         <p v-if="message" class="goal-message">{{ message }}</p>
@@ -476,8 +583,7 @@ const profileLongDaysLabel = computed(() => {
 })
 
 const canSave = computed(() =>
-  form.value.title && form.value.period_type && form.value.metric_type &&
-  form.value.target_value > 0
+  canSaveGoal(form.value)
 )
 
 const openDialog = () => {
@@ -525,7 +631,7 @@ const saveGoal = async () => {
   saving.value = true
   message.value = ''
   try {
-    await api.createGoal(form.value)
+    await api.createGoal(goalPayloadFromForm(form.value))
     await loadGoals()
     dialogOpen.value = false
     form.value = defaultForm()
@@ -572,9 +678,18 @@ const saveProfile = async () => {
 function defaultForm() {
   return {
     title: '',
+    goal_family: 'accumulation',
     period_type: 'week',
     metric_type: 'run_km',
     target_value: 50,
+    activity_type: '',
+    end_date: '',
+    target_config: {
+      distance_km: null,
+      target_duration_min: null,
+      duration_min: null,
+      target_watts: null,
+    },
   }
 }
 
@@ -707,9 +822,166 @@ const formatShortDate = (value) => {
 
 const paceLabel = (goal) => {
   const delta = Number(goal.pace_delta_value || 0)
-  if (delta > 0) return `+${delta} ${goal.unit}`
-  if (delta < 0) return `-${Math.abs(delta)} ${goal.unit}`
+  const formatted = formatGoalValue(goal, Math.abs(delta))
+  if (delta > 0) return `+${formatted} ${goal.unit}`
+  if (delta < 0) return `-${formatted} ${goal.unit}`
   return '0'
+}
+
+const metricOptionsForFamily = (family) => {
+  if (family === 'process') {
+    return [
+      { value: 'strength_sessions', label: 'Strength sessions' },
+      { value: 'activities_count', label: 'Activities count' },
+      { value: 'zone2_hours', label: 'Zone 2 hours' },
+      { value: 'run_km', label: 'Run km' },
+      { value: 'ride_km', label: 'Ride km' },
+    ]
+  }
+  return [
+    { value: 'ride_km', label: 'Ride km' },
+    { value: 'run_km', label: 'Run km' },
+    { value: 'strength_sessions', label: 'Strength sessions' },
+    { value: 'activities_count', label: 'Activities count' },
+  ]
+}
+
+const usesMetricTypeGoal = (goal) => ['accumulation', 'process'].includes(goal.goal_family)
+
+const canSaveGoal = (goal) => {
+  if (!goal.title || !goal.period_type || !goal.goal_family) return false
+  if (usesMetricTypeGoal(goal)) {
+    return !!goal.metric_type && Number(goal.target_value || 0) > 0
+  }
+  if (goal.goal_family === 'event_performance') {
+    return !!goal.activity_type && !!goal.end_date &&
+      Number(goal.target_config?.distance_km || 0) > 0 &&
+      Number(goal.target_config?.target_duration_min || 0) > 0
+  }
+  if (goal.activity_type === 'Run') {
+    return Number(goal.target_config?.distance_km || 0) > 0 &&
+      Number(goal.target_config?.target_duration_min || 0) > 0
+  }
+  return !!goal.activity_type &&
+    Number(goal.target_config?.duration_min || 0) > 0 &&
+    Number(goal.target_config?.target_watts || 0) > 0
+}
+
+const goalPayloadFromForm = (goal) => {
+  const payload = {
+    title: goal.title,
+    goal_family: goal.goal_family,
+    period_type: goal.period_type,
+  }
+  if (usesMetricTypeGoal(goal)) {
+    payload.metric_type = goal.metric_type
+    payload.target_value = Number(goal.target_value)
+    if (goal.metric_type === 'activities_count' && goal.activity_type) {
+      payload.activity_type = goal.activity_type
+    }
+    return payload
+  }
+  payload.activity_type = goal.activity_type
+  payload.end_date = goal.end_date || undefined
+  payload.target_config = {}
+  if (goal.goal_family === 'event_performance') {
+    payload.target_config.distance_km = Number(goal.target_config.distance_km)
+    payload.target_config.target_duration_min = Number(goal.target_config.target_duration_min)
+    payload.target_config.event_date = goal.end_date
+    return payload
+  }
+  if (goal.activity_type === 'Run') {
+    payload.target_config.distance_km = Number(goal.target_config.distance_km)
+    payload.target_config.target_duration_min = Number(goal.target_config.target_duration_min)
+    return payload
+  }
+  payload.target_config.duration_min = Number(goal.target_config.duration_min)
+  payload.target_config.target_watts = Number(goal.target_config.target_watts)
+  return payload
+}
+
+const goalTitlePlaceholder = (family) => {
+  if (family === 'process') return 'Lift twice per week'
+  if (family === 'event_performance') return 'Run 10k under 40 minutes'
+  if (family === 'benchmark') return 'Hold 300W for 10 minutes'
+  return 'Ride 5000 km in 2026'
+}
+
+const goalFamilyInfo = (family) => {
+  if (family === 'process') {
+    return {
+      title: 'Process goals build repeatable habits',
+      tag: 'Consistency',
+      summary: 'Choose process when the point is repeating a behavior or training pattern, like lifting twice per week or building steady zone 2 time.',
+      useWhen: 'you care more about the routine than the total at the end',
+    }
+  }
+  if (family === 'event_performance') {
+    return {
+      title: 'Event goals point at one date',
+      tag: 'Race day',
+      summary: 'Choose event when you have a specific race or test day and a clear result target, such as a 10k time goal.',
+      useWhen: 'the target only matters on a known event date',
+    }
+  }
+  if (family === 'benchmark') {
+    return {
+      title: 'Benchmark goals test a capability',
+      tag: 'Capability',
+      summary: 'Choose benchmark when you want to hit a performance standard in training, like holding 300W for 10 minutes.',
+      useWhen: 'you want a measurable capability, not necessarily a race result',
+    }
+  }
+  return {
+    title: 'Accumulation goals add up work over time',
+    tag: 'Volume',
+    summary: 'Choose accumulation when the outcome is the total itself, like ride 5000 km this year or run 50 km this week.',
+    useWhen: 'the main question is how much you can accumulate in the window',
+  }
+}
+
+const goalTypeHintTitle = (goal) => {
+  if (goal.goal_family === 'process') return 'Process vs accumulation'
+  return 'How this target is tracked'
+}
+
+const goalTypeHintCopy = (goal) => {
+  if (goal.goal_family === 'process') {
+    return 'Process goals are still measured, but they represent habits or training intent. Accumulation is for totals you want to end up with.'
+  }
+  if (goal.metric_type === 'activities_count') {
+    return 'Use activity count when the target is frequency rather than distance or time.'
+  }
+  return 'This family tracks progress automatically from logged activities in the selected period.'
+}
+
+const usesVolumeDisplay = (goal) => goal.display_mode !== 'performance'
+
+const usesDiscreteCounts = (goal) => ['strength_sessions', 'activities_count'].includes(goal.metric_type)
+
+const formatGoalValue = (goal, value) => {
+  const numeric = Number(value || 0)
+  if (usesDiscreteCounts(goal)) {
+    return String(Math.round(numeric))
+  }
+  return numeric.toFixed(1)
+}
+
+const performanceCurrentLabel = (goal) => {
+  const snapshot = goal.performance_snapshot || {}
+  if (goal.goal_family === 'benchmark' && goal.activity_type !== 'Run') {
+    return snapshot.recent_best_watts ? `${snapshot.recent_best_watts} W` : 'No benchmark yet'
+  }
+  if (snapshot.recent_best_duration_min) return `${snapshot.recent_best_duration_min} min`
+  return 'No benchmark yet'
+}
+
+const performanceTargetLabel = (goal) => {
+  const snapshot = goal.performance_snapshot || {}
+  if (goal.goal_family === 'benchmark' && goal.activity_type !== 'Run') {
+    return `${snapshot.target_watts || goal.target_value} W`
+  }
+  return `${snapshot.target_duration_min || goal.target_value} min`
 }
 
 const paceDeltaClass = (goal) => {
@@ -735,13 +1007,31 @@ const planningGuidanceLabel = (status) => {
 
 const forecastFinish = (goal) => {
   const value = Number(goal.forecast?.projected_finish_value || 0)
+  if (usesDiscreteCounts(goal)) {
+    return `${Math.round(value)} ${goal.unit}`
+  }
   return `${value.toFixed(1)} ${goal.unit}`
 }
 
 const forecastNeed = (goal) => {
-  const value = Number(goal.planning_guidance?.required_per_week || 0)
+  const value = Number(
+    goal.planning_guidance?.required_next_value ??
+    goal.planning_guidance?.required_per_week ??
+    0
+  )
+  if (goal.period_type === 'week') {
+    if (usesDiscreteCounts(goal)) {
+      return `${Math.round(value)} ${goal.unit}`
+    }
+    return `${value.toFixed(1)} ${goal.unit}`
+  }
+  if (usesDiscreteCounts(goal)) {
+    return `${Math.round(value)} ${goal.unit}/wk`
+  }
   return `${value.toFixed(1)} ${goal.unit}/wk`
 }
+
+const targetInputStep = (goal) => (usesDiscreteCounts(goal) ? 1 : 0.5)
 
 const normalizeSummary = (value) => (value || '').trim().toLowerCase()
 
@@ -792,11 +1082,90 @@ const showPlanningGuidance = (goal) => {
 }
 .goal-form input,
 .goal-form select {
+  width: 100%;
+  min-height: 48px;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
+  font: inherit;
+  line-height: 1.2;
+  box-sizing: border-box;
+}
+.goal-control {
+  width: 100%;
+}
+.goal-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 42px !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(207, 219, 255, 0.78) 50%),
+    linear-gradient(135deg, rgba(207, 219, 255, 0.78) 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) calc(50% - 3px),
+    calc(100% - 14px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+.goal-family-panel,
+.goal-inline-hint {
+  border-radius: 14px;
+  border: 1px solid rgba(120, 146, 214, 0.18);
+  background: linear-gradient(180deg, rgba(71, 98, 173, 0.12), rgba(255,255,255,0.03));
+  padding: 14px 15px;
+}
+.goal-family-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+}
+.goal-family-panel-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.goal-family-panel-top strong {
+  color: #eef4ff;
+  font-size: 14px;
+  line-height: 1.3;
+}
+.goal-family-panel-top span {
+  flex-shrink: 0;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(123, 156, 255, 0.14);
+  color: #b9ceff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.goal-family-panel p,
+.goal-inline-hint span {
+  margin: 0;
+  color: #c9d6f6;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.goal-family-panel-foot {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.goal-inline-hint {
+  display: grid;
+  gap: 4px;
+  align-self: stretch;
+}
+.goal-inline-hint strong {
+  color: #eef4ff;
+  font-size: 12px;
+  font-weight: 700;
 }
 .save-btn {
   padding: 10px 16px;
@@ -829,7 +1198,30 @@ const showPlanningGuidance = (goal) => {
   margin-bottom: 14px;
 }
 .goal-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; }
+.goal-meta-row {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
 .goal-meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.goal-meta-row .goal-meta {
+  margin-top: 0;
+}
+.goal-family-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(123, 156, 255, 0.1);
+  border: 1px solid rgba(123, 156, 255, 0.16);
+  color: #9fb8ff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .goal-status {
   font-size: 11px;
   font-weight: 700;

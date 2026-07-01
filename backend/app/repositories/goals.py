@@ -12,22 +12,26 @@ def insert_goal(
     end_date: str,
     activity_type: Optional[str],
     is_active: bool,
+    goal_family: str,
+    target_config_json: Optional[str],
 ) -> int:
     cursor = conn.execute(
         """
         INSERT INTO goals
-        (title, period_type, metric_type, target_value, start_date, end_date, activity_type, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (title, period_type, goal_family, metric_type, target_value, start_date, end_date, activity_type, is_active, target_config_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             title,
             period_type,
+            goal_family,
             metric_type,
             target_value,
             start_date,
             end_date,
             activity_type,
             1 if is_active else 0,
+            target_config_json,
         ),
     )
     return cursor.lastrowid

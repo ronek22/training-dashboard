@@ -335,11 +335,15 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
             observations.append(goal["constraint_summary"]["summary"])
     for goal in relevant_plan_goals[:3]:
         if goal.get("supported_sessions"):
-            observations.append(
-                f"{goal['title']} is supported by {goal['supported_sessions']} planned sessions this week."
-            )
+            family_label = (goal.get("family_label") or "Goal").lower()
+            observations.append(f"{goal['title']} ({family_label}) is supported by {goal['supported_sessions']} planned sessions this week.")
         if goal.get("risk_summary", {}).get("status") in {"at_risk", "under_pressure"}:
             observations.append(goal["risk_summary"]["summary"])
+        elif goal.get("goal_family") in {"event_performance", "benchmark"} and goal.get("target_summary"):
+            observations.append(goal["target_summary"])
+    for goal in most_urgent[:2]:
+        if goal.get("goal_family") in {"event_performance", "benchmark"} and goal.get("target_summary"):
+            _append_unique(observations, goal["target_summary"])
     if deferred_goals:
         observations.append("Run-volume goals are temporarily backgrounded while recovery is the priority.")
     if not observations:

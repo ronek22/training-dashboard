@@ -378,6 +378,166 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(next_session["suggestion"], "substitute")
         self.assertEqual(body["proposed_adjustment"]["days"][0]["session_type"], "Ride")
 
+    def test_richer_goal_families_surface_in_goals_dashboard_and_coaching(self):
+        today = datetime.now().date()
+        event_date = today + timedelta(days=45)
+
+        run_activity = self.client.post(
+            "/activities",
+            json={
+                "id": "goal-family-run-1",
+                "date": (today - timedelta(days=3)).isoformat(),
+                "type": "Run",
+                "name": "10k tempo",
+                "distance_km": 10.1,
+                "duration_min": 42.5,
+            },
+        )
+        self.assertEqual(run_activity.status_code, 201)
+
+        ride_activity = self.client.post(
+            "/activities",
+            json={
+                "id": "goal-family-ride-1",
+                "date": (today - timedelta(days=2)).isoformat(),
+                "type": "Ride",
+                "name": "Threshold climb",
+                "duration_min": 75,
+                "avg_watts": 286,
+            },
+        )
+        self.assertEqual(ride_activity.status_code, 201)
+
+        event_goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Run autumn 10k under 40",
+                "period_type": "year",
+                "goal_family": "event_performance",
+                "activity_type": "Run",
+                "end_date": event_date.isoformat(),
+                "target_config": {
+                    "distance_km": 10,
+                    "target_duration_min": 40,
+                },
+            },
+        )
+        self.assertEqual(event_goal.status_code, 201)
+
+        benchmark_goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Hold 300W for 10 minutes",
+                "period_type": "month",
+                "goal_family": "benchmark",
+                "activity_type": "Ride",
+                "target_config": {
+                    "duration_min": 10,
+                    "target_watts": 300,
+                },
+            },
+        )
+        self.assertEqual(benchmark_goal.status_code, 201)
+
+        goals = self.client.get("/goals")
+        self.assertEqual(goals.status_code, 200)
+        body = goals.json()
+        event_item = next(item for item in body if item["title"] == "Run autumn 10k under 40")
+        benchmark_item = next(item for item in body if item["title"] == "Hold 300W for 10 minutes")
+        self.assertEqual(event_item["goal_family"], "event_performance")
+        self.assertEqual(event_item["family_label"], "Event")
+        self.assertEqual(event_item["display_mode"], "performance")
+        self.assertIn("10 km", event_item["target_summary"])
+        self.assertEqual(benchmark_item["goal_family"], "benchmark")
+        self.assertEqual(benchmark_item["performance_snapshot"]["recent_best_watts"], 286)
+
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        dashboard_goals = dashboard.json()["active_goals"]
+        self.assertTrue(any(item["goal_family"] == "event_performance" for item in dashboard_goals))
+        self.assertTrue(any(item["goal_family"] == "benchmark" for item in dashboard_goals))
+
+        coaching = self.client.get("/coaching/weekly")
+        self.assertEqual(coaching.status_code, 200)
+        observations = coaching.json()["goal_assessment"]["key_observations"]
+        self.assertTrue(any("event" in item.lower() or "benchmark" in item.lower() for item in observations))
+
+    def test_weekly_goal_uses_current_week_window_not_creation_week(self):
+        today = datetime.now().date()
+        current_week_start = today - timedelta(days=today.weekday())
+        previous_week_day = current_week_start - timedelta(days=2)
+
+        previous_ride = self.client.post(
+            "/activities",
+            json={
+                "id": "weekly-goal-window-ride-1",
+                "date": previous_week_day.isoformat(),
+                "type": "Ride",
+                "name": "Previous week ride",
+                "distance_km": 168.1,
+                "duration_min": 300,
+            },
+        )
+        self.assertEqual(previous_ride.status_code, 201)
+
+        goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Ride 100km weekly",
+                "period_type": "week",
+                "goal_family": "accumulation",
+                "metric_type": "ride_km",
+                "target_value": 100,
+            },
+        )
+        self.assertEqual(goal.status_code, 201)
+
+        goals = self.client.get("/goals")
+        self.assertEqual(goals.status_code, 200)
+        weekly_goal = next(item for item in goals.json() if item["title"] == "Ride 100km weekly")
+        self.assertEqual(weekly_goal["current_value"], 0.0)
+        self.assertEqual(weekly_goal["remaining_value"], 100.0)
+
+    def test_weekly_goal_ignores_stale_stored_dates_from_previous_week(self):
+        today = datetime.now().date()
+        current_week_start = today - timedelta(days=today.weekday())
+        previous_week_start = current_week_start - timedelta(days=7)
+        previous_week_day = previous_week_start + timedelta(days=2)
+
+        previous_ride = self.client.post(
+            "/activities",
+            json={
+                "id": "weekly-goal-stale-date-ride-1",
+                "date": previous_week_day.isoformat(),
+                "type": "Ride",
+                "name": "Previous week big ride",
+                "distance_km": 168.1,
+                "duration_min": 300,
+            },
+        )
+        self.assertEqual(previous_ride.status_code, 201)
+
+        goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Ride 100km weekly stale dates",
+                "period_type": "week",
+                "goal_family": "accumulation",
+                "metric_type": "ride_km",
+                "target_value": 100,
+                "start_date": previous_week_start.isoformat(),
+                "end_date": (previous_week_start + timedelta(days=6)).isoformat(),
+            },
+        )
+        self.assertEqual(goal.status_code, 201)
+
+        goals = self.client.get("/goals")
+        self.assertEqual(goals.status_code, 200)
+        weekly_goal = next(item for item in goals.json() if item["title"] == "Ride 100km weekly stale dates")
+        self.assertEqual(weekly_goal["start_date"], current_week_start.isoformat())
+        self.assertEqual(weekly_goal["current_value"], 0.0)
+        self.assertEqual(weekly_goal["remaining_value"], 100.0)
+
     def test_plan_and_weekly_summary_routes(self):
         today = datetime.now().date()
         week_start = today - timedelta(days=today.weekday())

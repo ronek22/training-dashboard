@@ -1026,6 +1026,9 @@ def build_dashboard_data(
     conn: sqlite3.Connection,
     list_goals_data_fn: Callable[[sqlite3.Connection, bool, int], list[dict]],
 ) -> dict:
+    from .activities import reconcile_workout_template_rotation_state
+
+    reconcile_workout_template_rotation_state(conn)
     computed_streak = compute_activity_streak(conn)
 
     recent = conn.execute("""

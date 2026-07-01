@@ -29,7 +29,8 @@ The intended reading order is:
 19. [sprint-19-deterministic-athlete-brief-and-goal-aware-coaching-explanations.md](sprint-19-deterministic-athlete-brief-and-goal-aware-coaching-explanations.md) — deterministic athlete brief and goal-aware coaching explanations sprint, complete
 20. [sprint-20-natural-language-goal-capture-and-structured-drafts.md](sprint-20-natural-language-goal-capture-and-structured-drafts.md) — natural-language goal capture and structured drafts sprint, complete
 21. [sprint-21-derived-performance-metrics-and-zones-foundation.md](sprint-21-derived-performance-metrics-and-zones-foundation.md) — derived performance metrics and zones foundation sprint, complete
-22. [sprint-22-benchmark-sessions-and-test-result-visibility.md](sprint-22-benchmark-sessions-and-test-result-visibility.md) — benchmark sessions and test-result visibility sprint, planned
+22. [sprint-22-benchmark-sessions-and-test-result-visibility.md](sprint-22-benchmark-sessions-and-test-result-visibility.md) — benchmark sessions and test-result visibility sprint, complete
+23. [sprint-23-activity-detail-view-and-on-demand-strava-caching.md](sprint-23-activity-detail-view-and-on-demand-strava-caching.md) — activity detail view and on-demand Strava caching sprint, planned
 
 ## Sprint Plans
 
@@ -57,3 +58,4 @@ Available sprint documents:
 - [sprint-20-natural-language-goal-capture-and-structured-drafts.md](sprint-20-natural-language-goal-capture-and-structured-drafts.md)
 - [sprint-21-derived-performance-metrics-and-zones-foundation.md](sprint-21-derived-performance-metrics-and-zones-foundation.md)
 - [sprint-22-benchmark-sessions-and-test-result-visibility.md](sprint-22-benchmark-sessions-and-test-result-visibility.md)
+- [sprint-23-activity-detail-view-and-on-demand-strava-caching.md](sprint-23-activity-detail-view-and-on-demand-strava-caching.md)

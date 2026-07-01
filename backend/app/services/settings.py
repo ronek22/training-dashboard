@@ -557,6 +557,9 @@ def get_workout_template_settings_for_conn(conn: sqlite3.Connection) -> dict:
 def get_workout_template_settings_data() -> dict:
     conn = get_db()
     try:
+        from .activities import reconcile_workout_template_rotation_state
+
+        reconcile_workout_template_rotation_state(conn)
         return get_workout_template_settings_for_conn(conn)
     finally:
         conn.close()

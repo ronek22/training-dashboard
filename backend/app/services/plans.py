@@ -7,6 +7,11 @@ from typing import Optional
 
 from fastapi import HTTPException
 
+from .benchmarks import (
+    attach_benchmark_from_lookup,
+    build_benchmark_session_lookup,
+    normalize_benchmark_fields,
+)
 from .goals import build_requirement_summary, serialize_goal
 from .settings import (
     get_modality_restrictions_for_conn,
@@ -149,6 +154,7 @@ def serialize_plan_day(day: dict | WeeklyPlanDay) -> dict:
         payload = day.model_dump()
     else:
         payload = dict(day)
+    payload = normalize_benchmark_fields(payload)
     payload["workout_intent"] = normalize_workout_intent(payload.get("workout_intent"), payload.get("session_type"))
     payload["workout_intent_label"] = format_workout_intent_label(payload.get("workout_intent"))
     return payload
@@ -252,6 +258,7 @@ def build_day_change_details(before: Optional[dict], after: Optional[dict]) -> l
         ("template_label", "Template"),
         ("session_type", "Session type"),
         ("workout_intent_label", "Intent"),
+        ("benchmark_label", "Benchmark tag"),
         ("target_duration_min", "Duration"),
         ("target_distance_km", "Distance"),
         ("details", "Details"),
@@ -366,9 +373,9 @@ def build_adjustment_diff_payload(
     }
 
 
-def build_activity_summary(row: sqlite3.Row) -> dict:
+def build_activity_summary(row: sqlite3.Row, benchmark_lookup: Optional[dict[str, dict]] = None) -> dict:
     normalized_intent = normalize_workout_intent(row["workout_intent"], row["type"])
-    return {
+    payload = {
         "id": row["id"],
         "date": row["date"],
         "type": row["type"],
@@ -381,6 +388,14 @@ def build_activity_summary(row: sqlite3.Row) -> dict:
         "avg_watts": row["avg_watts"],
         "linked_planned_session_id": row["linked_planned_session_id"],
     }
+    if "benchmark_tag" in row.keys():
+        payload["benchmark_tag"] = row["benchmark_tag"]
+    if "benchmark_label" in row.keys():
+        payload["benchmark_label"] = row["benchmark_label"]
+    normalized = normalize_benchmark_fields(payload)
+    if benchmark_lookup:
+        normalized = attach_benchmark_from_lookup(normalized, benchmark_lookup)
+    return normalized
 
 
 def build_planned_session_id(week_start: str, day: dict, index: int) -> str:
@@ -392,7 +407,7 @@ def ensure_plan_day_ids(week_start: str, days: list[dict]) -> list[dict]:
     normalized_days = []
     seen_ids: set[str] = set()
     for index, day in enumerate(days):
-        normalized_day = dict(day)
+        normalized_day = normalize_benchmark_fields(day)
         session_id = normalized_day.get("session_id")
         if not session_id or session_id in seen_ids:
             session_id = build_planned_session_id(week_start, normalized_day, index)
@@ -431,6 +446,7 @@ def goal_applies_to_plan(goal: dict, week_start: str, week_end: str) -> bool:
 def _requirement_support_for_day(requirement: dict, day: dict) -> Optional[dict]:
     session_type = normalize_plan_session_type(day.get("session_type"))
     workout_intent = normalize_workout_intent(day.get("workout_intent"), session_type)
+    benchmark_tag = normalize_benchmark_fields(day).get("benchmark_tag")
     if not session_type:
         return None
 
@@ -446,6 +462,14 @@ def _requirement_support_for_day(requirement: dict, day: dict) -> Optional[dict]
             "requirement_label": requirement.get("label"),
             "support_level": "strong",
             "support_reason": requirement.get("label"),
+        }
+
+    if requirement.get("type") in {"event_specific_quality", "benchmark_specific_quality"} and benchmark_tag:
+        return {
+            "requirement_type": requirement.get("type"),
+            "requirement_label": requirement.get("label"),
+            "support_level": "strong",
+            "support_reason": f"{requirement.get('label')} via {normalize_benchmark_fields(day).get('benchmark_label', 'benchmark session')}",
         }
 
     if workout_intent in preferred_intents:
@@ -632,7 +656,12 @@ def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_sta
     }
 
 
-def find_moved_session(day: dict, by_date: dict[str, list[sqlite3.Row]], week_days_by_date: dict[str, dict]) -> Optional[dict]:
+def find_moved_session(
+    day: dict,
+    by_date: dict[str, list[sqlite3.Row]],
+    week_days_by_date: dict[str, dict],
+    benchmark_lookup: Optional[dict[str, dict]] = None,
+) -> Optional[dict]:
     planned_type = normalize_plan_session_type(day.get("session_type"))
     if not planned_type or not is_past_or_today(day.get("date")):
         return None
@@ -648,7 +677,7 @@ def find_moved_session(day: dict, by_date: dict[str, list[sqlite3.Row]], week_da
             continue
 
         matches = [
-            build_activity_summary(row)
+            build_activity_summary(row, benchmark_lookup)
             for row in by_date.get(nearby_date, [])
             if normalize_plan_session_type(row["type"]) == planned_type
         ]
@@ -658,7 +687,12 @@ def find_moved_session(day: dict, by_date: dict[str, list[sqlite3.Row]], week_da
     return None
 
 
-def build_link_candidates(day: dict, candidate_rows: list[sqlite3.Row], max_candidates: int = 6) -> list[dict]:
+def build_link_candidates(
+    day: dict,
+    candidate_rows: list[sqlite3.Row],
+    benchmark_lookup: Optional[dict[str, dict]] = None,
+    max_candidates: int = 6,
+) -> list[dict]:
     day_date = day.get("date")
     planned_type = normalize_plan_session_type(day.get("session_type"))
     planned_intent = normalize_workout_intent(day.get("workout_intent"), day.get("session_type"))
@@ -672,7 +706,7 @@ def build_link_candidates(day: dict, candidate_rows: list[sqlite3.Row], max_cand
         if distance > 2 and row["linked_planned_session_id"] != day.get("session_id"):
             continue
         type_match = normalize_plan_session_type(row["type"]) == planned_type if planned_type else True
-        summary = build_activity_summary(row)
+        summary = build_activity_summary(row, benchmark_lookup)
         intent_match = summary.get("workout_intent") == planned_intent if planned_intent and summary.get("workout_intent") else False
         ranked.append((0 if type_match else 1, 0 if intent_match else 1, distance, row["date"], summary))
 
@@ -686,10 +720,11 @@ def build_plan_day_comparison(
     by_date: dict[str, list[sqlite3.Row]],
     week_days_by_date: dict[str, dict],
     linked_activities: list[sqlite3.Row],
+    benchmark_lookup: Optional[dict[str, dict]] = None,
 ) -> dict:
     planned_type = normalize_plan_session_type(day.get("session_type"))
     planned_intent = normalize_workout_intent(day.get("workout_intent"), day.get("session_type"))
-    explicitly_linked = [build_activity_summary(row) for row in linked_activities]
+    explicitly_linked = [build_activity_summary(row, benchmark_lookup) for row in linked_activities]
 
     if explicitly_linked:
         return {
@@ -704,10 +739,10 @@ def build_plan_day_comparison(
             "intent_alignment": infer_intent_alignment(planned_intent, explicitly_linked),
         }
 
-    completed = [build_activity_summary(row) for row in activities]
+    completed = [build_activity_summary(row, benchmark_lookup) for row in activities]
 
     if not completed:
-        moved_session = find_moved_session(day, by_date, week_days_by_date)
+        moved_session = find_moved_session(day, by_date, week_days_by_date, benchmark_lookup)
         if moved_session:
             return {
                 "status": "moved",
@@ -821,6 +856,7 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
     if conn:
         restrictions = get_modality_restrictions_for_conn(conn)
         workout_template_programs = get_workout_template_settings_for_conn(conn).get("programs")
+        benchmark_lookup = build_benchmark_session_lookup(conn)
         days = _apply_strength_templates_to_days(days, {"programs": workout_template_programs or {}}, restrictions)
         week_days_by_date = {day["date"]: day for day in days if day.get("date")}
         dates = [day["date"] for day in days if day.get("date")]
@@ -858,14 +894,16 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
                 by_date,
                 week_days_by_date,
                 by_linked_session_id.get(day.get("session_id"), []),
+                benchmark_lookup,
             )
             enriched_day = dict(day)
+            enriched_day = normalize_benchmark_fields(enriched_day)
             enriched_day["workout_intent_label"] = format_workout_intent_label(enriched_day.get("workout_intent"))
             day_modality = modality_for_session_type(enriched_day.get("session_type"))
             enriched_day["modality"] = day_modality
             enriched_day["modality_restriction"] = restrictions.get("modalities", {}).get(day_modality) if day_modality else None
             enriched_day["comparison"] = comparison
-            enriched_day["link_candidates"] = build_link_candidates(day, activity_rows)
+            enriched_day["link_candidates"] = build_link_candidates(day, activity_rows, benchmark_lookup)
             enriched_day["goal_links"] = []
             enriched_days.append(enriched_day)
         days = enriched_days
@@ -915,6 +953,9 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
 
 
 def list_weekly_plans_data(conn: sqlite3.Connection, limit: int = 8) -> list[dict]:
+    from .activities import reconcile_workout_template_rotation_state
+
+    reconcile_workout_template_rotation_state(conn)
     rows = list_weekly_plan_rows(conn, limit)
     return [serialize_weekly_plan(row, conn) for row in rows]
 

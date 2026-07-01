@@ -361,6 +361,9 @@
                   <span v-if="day.target_duration_min">{{ day.target_duration_min }} min</span>
                   <span v-if="day.target_distance_km">{{ day.target_distance_km }} km</span>
                 </div>
+                <div v-if="day.benchmark_label" class="intent-row">
+                  <span class="intent-pill benchmark-pill">{{ day.benchmark_label }}</span>
+                </div>
                 <div v-if="day.details" class="editor-locked-details">{{ day.details }}</div>
                 <div v-if="day.comparison?.completed_activities?.length" class="editor-activity-count">
                   {{ day.comparison.completed_activities.length }} completed activity
@@ -405,6 +408,22 @@
                   <label class="editor-field">
                     <span>Distance</span>
                     <input v-model.number="editor.days[day.date].target_distance_km" type="number" min="0" step="0.5" />
+                  </label>
+                </div>
+
+                <div class="editor-row">
+                  <label class="editor-field">
+                    <span>Benchmark tag</span>
+                    <select v-model="editor.days[day.date].benchmark_tag">
+                      <option value="">None</option>
+                      <option v-for="option in benchmarkTagOptions" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                      </option>
+                    </select>
+                  </label>
+                  <label class="editor-field">
+                    <span>Benchmark label</span>
+                    <input v-model="editor.days[day.date].benchmark_label" type="text" placeholder="Optional custom label" />
                   </label>
                 </div>
 
@@ -475,6 +494,9 @@
                 </div>
                 <div v-if="day.template_label" class="intent-row">
                   <span class="intent-pill intent-actual">{{ day.template_label }}</span>
+                </div>
+                <div v-if="day.benchmark_label" class="intent-row">
+                  <span class="intent-pill benchmark-pill">{{ day.benchmark_label }}</span>
                 </div>
                 <div v-if="day.modality_restriction?.status !== 'allowed'" class="plan-restriction-pill" :class="`restriction-${day.modality_restriction?.status}`">
                   {{ day.modality_restriction?.label }} {{ day.modality_restriction?.status }}
@@ -553,6 +575,9 @@
                     </div>
                     <div v-if="activity.workout_intent_label" class="intent-row">
                       <span class="intent-pill intent-actual">{{ activity.workout_intent_label }}</span>
+                    </div>
+                    <div v-if="activity.benchmark_label" class="intent-row">
+                      <span class="intent-pill benchmark-pill">{{ activity.benchmark_label }}</span>
                     </div>
                   </div>
                 </div>
@@ -1184,12 +1209,19 @@ const firstAdjustableDate = (plan) => adjustableDays(plan)[0]?.date || ''
 
 const displaySessionType = (value) => value || 'Unspecified'
 const intentOptionsForSessionType = (sessionType) => workoutIntentOptions[sessionType] || []
+const benchmarkTagOptions = [
+  { value: 'benchmark', label: 'Benchmark' },
+  { value: 'test', label: 'Test' },
+  { value: 'rehearsal', label: 'Rehearsal' },
+]
 
 const cloneDayForEditor = (day) => ({
   date: day.date,
   label: day.label,
   session_type: day.session_type || '',
   workout_intent: day.workout_intent || '',
+  benchmark_tag: day.benchmark_tag || '',
+  benchmark_label: day.benchmark_label || '',
   title: day.title || '',
   details: day.details || '',
   target_duration_min: day.target_duration_min ?? null,
@@ -1225,6 +1257,8 @@ const buildEditorStateFromCoachingDraft = (plan, draft) => {
       label: day.label || base.days[day.date].label,
       session_type: day.session_type || '',
       workout_intent: day.workout_intent || '',
+      benchmark_tag: day.benchmark_tag || '',
+      benchmark_label: day.benchmark_label || '',
       title: day.title || base.days[day.date].title,
       details: day.details || '',
       target_duration_min: day.target_duration_min ?? null,
@@ -1255,6 +1289,8 @@ const sanitizeEditorDay = (day) => ({
   label: day.label,
   session_type: day.session_type || null,
   workout_intent: day.workout_intent || null,
+  benchmark_tag: day.benchmark_tag || null,
+  benchmark_label: day.benchmark_label?.trim() || null,
   title: day.title?.trim() || 'Planned session',
   details: day.details?.trim() || null,
   target_duration_min: sanitizeNumber(day.target_duration_min),
@@ -2604,6 +2640,11 @@ const savePlanLink = async (day) => {
   color: #a7f3d0;
   background: rgba(5, 150, 105, 0.14);
   border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.benchmark-pill {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.24);
 }
 .plan-day-details {
   color: var(--muted);

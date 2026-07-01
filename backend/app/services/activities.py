@@ -17,20 +17,81 @@ from ..repositories.activities import (
     upsert_activity_row,
 )
 from .activity_feedback import attach_feedback_by_activity_id
+from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
 from .plans import ensure_plan_day_ids, format_workout_intent_label, normalize_workout_intent
 from .settings import get_workout_template_settings_for_conn, set_workout_template_settings_for_conn
 
 
-def _template_lookup_by_session_id(conn: sqlite3.Connection) -> dict[str, str]:
-    lookup: dict[str, str] = {}
+def _normalize_text_for_match(value: Optional[str]) -> str:
+    if not value:
+        return ""
+    return "".join(ch.lower() for ch in value if ch.isalnum())
+
+
+def _template_session_lookup_by_session_id(conn: sqlite3.Connection) -> dict[str, dict]:
+    lookup: dict[str, dict] = {}
     for row in list_weekly_plan_rows(conn, 200):
         days = ensure_plan_day_ids(row["week_start"], json.loads(row["days_json"]))
         for day in days:
             session_id = day.get("session_id")
             template_id = day.get("template_id")
             if session_id and template_id:
-                lookup[session_id] = template_id
+                lookup[session_id] = {
+                    "session_id": session_id,
+                    "template_id": template_id,
+                    "date": day.get("date"),
+                    "session_type": day.get("session_type"),
+                    "template_label": day.get("template_label"),
+                    "title": day.get("title"),
+                }
     return lookup
+
+
+def _infer_strength_template_id_for_activity(
+    activity_row: sqlite3.Row,
+    session_lookup: dict[str, dict],
+    templates_by_id: dict[str, dict],
+) -> Optional[str]:
+    linked_session_id = activity_row["linked_planned_session_id"]
+    if linked_session_id:
+        linked = session_lookup.get(linked_session_id)
+        if linked:
+            return linked.get("template_id")
+
+    if activity_row["type"] != "WeightTraining":
+        return None
+
+    activity_date = activity_row["date"]
+    same_day_sessions = [
+        session for session in session_lookup.values()
+        if session.get("session_type") == "WeightTraining" and session.get("date") == activity_date
+    ]
+    normalized_name = _normalize_text_for_match(activity_row["name"])
+    if normalized_name:
+        matching_template_ids = []
+        for template_id, template in templates_by_id.items():
+            candidate_tokens = {
+                _normalize_text_for_match(template.get("label")),
+                _normalize_text_for_match(template.get("title")),
+                _normalize_text_for_match(template.get("display_name")),
+            }
+            candidate_tokens.discard("")
+            if any(token and token in normalized_name for token in candidate_tokens):
+                matching_template_ids.append(template_id)
+
+        if len(matching_template_ids) == 1:
+            return matching_template_ids[0]
+
+        if len(same_day_sessions) > 1 and len(matching_template_ids) >= 1:
+            same_day_template_ids = {session.get("template_id") for session in same_day_sessions}
+            overlap = [template_id for template_id in matching_template_ids if template_id in same_day_template_ids]
+            if len(overlap) == 1:
+                return overlap[0]
+
+    if len(same_day_sessions) == 1:
+        return same_day_sessions[0].get("template_id")
+
+    return None
 
 
 def reconcile_workout_template_rotation_state(conn: sqlite3.Connection) -> None:
@@ -48,15 +109,15 @@ def reconcile_workout_template_rotation_state(conn: sqlite3.Connection) -> None:
     processed_lookup = set(processed_activity_ids)
     template_ids = [item.get("id") for item in templates if item.get("id")]
     template_order = {template_id: index for index, template_id in enumerate(template_ids)}
-    session_lookup = _template_lookup_by_session_id(conn)
+    templates_by_id = {item["id"]: item for item in templates if item.get("id")}
+    session_lookup = _template_session_lookup_by_session_id(conn)
     if not session_lookup:
         return
 
     rows = conn.execute(
         """
-        SELECT id, date, linked_planned_session_id
+        SELECT id, date, type, name, linked_planned_session_id
         FROM activities
-        WHERE linked_planned_session_id IS NOT NULL
         ORDER BY date ASC, created_at ASC, id ASC
         """
     ).fetchall()
@@ -66,22 +127,17 @@ def reconcile_workout_template_rotation_state(conn: sqlite3.Connection) -> None:
         activity_id = row["id"]
         if activity_id in processed_lookup:
             continue
-        template_id = session_lookup.get(row["linked_planned_session_id"])
+        template_id = _infer_strength_template_id_for_activity(row, session_lookup, templates_by_id)
         if template_id not in template_order:
             continue
-        expected_template_id = state.get("next_template_id") or template_ids[0]
         state["last_completed_template_id"] = template_id
         state["last_completed_at"] = row["date"]
         state["last_completed_activity_id"] = activity_id
         if state.get("pending_template_id") in {None, template_id}:
             state["pending_template_id"] = template_id
-        if strength_program.get("rules", {}).get("skip_behavior") == "postpone" and expected_template_id and template_id != expected_template_id:
-            state["next_template_id"] = expected_template_id
-            state["pending_template_id"] = expected_template_id
-        else:
-            next_index = (template_order[template_id] + 1) % len(template_ids)
-            state["next_template_id"] = template_ids[next_index]
-            state["pending_template_id"] = state["next_template_id"]
+        next_index = (template_order[template_id] + 1) % len(template_ids)
+        state["next_template_id"] = template_ids[next_index]
+        state["pending_template_id"] = state["next_template_id"]
         processed_activity_ids.append(activity_id)
         processed_lookup.add(activity_id)
         changed = True
@@ -117,6 +173,7 @@ def list_activities_data(
     days: Optional[int] = None,
 ) -> list[dict]:
     reconcile_workout_template_rotation_state(conn)
+    benchmark_lookup = build_benchmark_session_lookup(conn)
     rows = list_activity_rows(conn, limit=limit, activity_type=activity_type, days=days)
     payload = []
     for row in rows:
@@ -124,7 +181,7 @@ def list_activities_data(
         normalized_intent = normalize_workout_intent(item.get("workout_intent"), item.get("type"))
         item["workout_intent"] = normalized_intent
         item["workout_intent_label"] = format_workout_intent_label(normalized_intent)
-        payload.append(item)
+        payload.append(attach_benchmark_from_lookup(item, benchmark_lookup))
     return attach_feedback_by_activity_id(conn, payload)
 
 
@@ -146,6 +203,7 @@ def build_calendar_weeks_data(conn: sqlite3.Connection, weeks: int = 8) -> list[
     range_end = latest_week_start + timedelta(days=6)
 
     rows = list_calendar_activity_rows(conn, range_start.isoformat(), range_end.isoformat())
+    benchmark_lookup = build_benchmark_session_lookup(conn)
 
     by_date: dict[str, list[sqlite3.Row]] = {}
     for row in rows:
@@ -154,7 +212,7 @@ def build_calendar_weeks_data(conn: sqlite3.Connection, weeks: int = 8) -> list[
     output = []
     for week_index in range(weeks):
         week_start = latest_week_start - timedelta(weeks=week_index)
-        output.append(build_calendar_week_payload(conn, by_date, week_start))
+        output.append(build_calendar_week_payload(conn, by_date, week_start, benchmark_lookup))
 
     return output
 
@@ -164,7 +222,7 @@ def get_calendar_weeks_data(conn: sqlite3.Connection, weeks: int = 8) -> list[di
     return build_calendar_weeks_data(conn, safe_weeks)
 
 
-def build_calendar_day_payload(day: date, activities: list[sqlite3.Row]) -> dict:
+def build_calendar_day_payload(day: date, activities: list[sqlite3.Row], benchmark_lookup: Optional[dict[str, dict]] = None) -> dict:
     day_distance = round(sum((activity["distance_km"] or 0) for activity in activities), 1)
     day_duration = round(sum((activity["duration_min"] or 0) for activity in activities), 1)
     day_elevation = round(sum((activity["elevation_m"] or 0) for activity in activities))
@@ -184,7 +242,7 @@ def build_calendar_day_payload(day: date, activities: list[sqlite3.Row]) -> dict
         "sessions": len(activities),
         "type_counts": type_counts,
         "activities": [
-            {
+            attach_benchmark_from_lookup({
                 "id": activity["id"],
                 "type": activity["type"],
                 "workout_intent": normalize_workout_intent(activity["workout_intent"], activity["type"]),
@@ -199,7 +257,7 @@ def build_calendar_day_payload(day: date, activities: list[sqlite3.Row]) -> dict
                 "avg_watts": activity["avg_watts"],
                 "zone2": bool(activity["zone2"]),
                 "linked_planned_session_id": activity["linked_planned_session_id"],
-            }
+            }, benchmark_lookup or {})
             for activity in activities
         ],
     }
@@ -209,6 +267,7 @@ def build_calendar_week_payload(
     conn: sqlite3.Connection,
     by_date: dict[str, list[sqlite3.Row]],
     week_start: date,
+    benchmark_lookup: Optional[dict[str, dict]] = None,
 ) -> dict:
     week_end = week_start + timedelta(days=6)
     days = []
@@ -223,7 +282,7 @@ def build_calendar_week_payload(
     for day_offset in range(7):
         day = week_start + timedelta(days=day_offset)
         activities = by_date.get(day.isoformat(), [])
-        day_payload = build_calendar_day_payload(day, activities)
+        day_payload = build_calendar_day_payload(day, activities, benchmark_lookup)
 
         for activity in activities:
             activity_type = activity["type"]
@@ -278,6 +337,7 @@ def get_calendar_month_data(conn: sqlite3.Connection, month: Optional[str] = Non
     grid_end = month_end + timedelta(days=(6 - month_end.weekday()))
 
     rows = list_calendar_activity_rows(conn, grid_start.isoformat(), grid_end.isoformat())
+    benchmark_lookup = build_benchmark_session_lookup(conn)
     by_date: dict[str, list[sqlite3.Row]] = {}
     for row in rows:
         by_date.setdefault(row["date"], []).append(row)
@@ -285,7 +345,7 @@ def get_calendar_month_data(conn: sqlite3.Connection, month: Optional[str] = Non
     weeks = []
     cursor = grid_start
     while cursor <= grid_end:
-        weeks.append(build_calendar_week_payload(conn, by_date, cursor))
+        weeks.append(build_calendar_week_payload(conn, by_date, cursor, benchmark_lookup))
         cursor += timedelta(days=7)
 
     month_days = [day for week in weeks for day in week["days"] if month_start.isoformat() <= day["date"] <= month_end.isoformat()]

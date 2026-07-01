@@ -268,6 +268,21 @@
               </div>
               <div class="goal-planning-summary">{{ goal.derived_foundation.summary }}</div>
             </div>
+
+            <div v-if="goal.benchmark_history?.entries?.length" class="goal-planning goal-requirement-block">
+              <div class="goal-planning-top">
+                <span class="goal-planning-label">Benchmark history</span>
+                <span class="goal-planning-status planning-steady">
+                  {{ goal.benchmark_history.latest?.benchmark_label || 'Recent efforts' }}
+                </span>
+              </div>
+              <div class="goal-planning-summary">{{ goal.benchmark_history.summary }}</div>
+              <div class="goal-requirement-list goal-benchmark-history">
+                <span v-for="entry in goal.benchmark_history.entries" :key="`${goal.id}-${entry.id}`" class="goal-family-chip">
+                  {{ benchmarkHistoryEntryLabel(entry) }}
+                </span>
+              </div>
+            </div>
           </article>
         </div>
       </section>
@@ -1548,6 +1563,16 @@ const performanceTargetLabel = (goal) => {
     return `${snapshot.target_watts || goal.target_value} W`
   }
   return `${snapshot.target_duration_min || goal.target_value} min`
+}
+
+const benchmarkHistoryEntryLabel = (entry) => {
+  if (!entry) return ''
+  const parts = [entry.date, entry.value_label]
+  if (typeof entry.delta_to_target === 'number') {
+    const prefix = entry.delta_to_target > 0 ? '+' : ''
+    parts.push(`${prefix}${entry.delta_to_target} vs target`)
+  }
+  return parts.join(' · ')
 }
 
 const paceDeltaClass = (goal) => {

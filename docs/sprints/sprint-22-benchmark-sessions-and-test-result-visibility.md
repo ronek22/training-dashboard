@@ -4,7 +4,7 @@
 
 Current status:
 
-- planned
+- completed
 - follows Sprint 21 derived performance metrics and zones foundation
 
 Starting point:

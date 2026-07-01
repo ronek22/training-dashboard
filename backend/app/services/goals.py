@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 from ..repositories.goals import insert_goal, list_goal_rows
+from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
 from .metrics import get_zone2_foundation_for_window
 from .settings import modality_for_goal, get_modality_restrictions_for_conn, restriction_summary_text
 
@@ -733,6 +734,119 @@ def _recent_best_ride_power(conn: sqlite3.Connection, minimum_duration_min: floa
     return dict(row) if row else None
 
 
+def _format_benchmark_entry_label(metric_type: str, row: dict) -> str:
+    if metric_type == "benchmark_power":
+        watts = _safe_float(row.get("avg_watts"))
+        duration = _safe_float(row.get("duration_min"))
+        if watts and duration:
+            return f"{round(watts):g} W for {duration:g} min"
+        if watts:
+            return f"{round(watts):g} W"
+        return "Benchmark effort"
+    duration = _safe_float(row.get("duration_min"))
+    distance = _safe_float(row.get("distance_km"))
+    if duration and distance:
+        return f"{distance:g} km in {duration:.1f} min"
+    if duration:
+        return f"{duration:.1f} min"
+    return "Benchmark effort"
+
+
+def _serialize_benchmark_history(
+    conn: sqlite3.Connection,
+    *,
+    activity_type: str,
+    metric_type: str,
+    target_value: float,
+    target_config: dict[str, Any],
+) -> dict:
+    benchmark_lookup = build_benchmark_session_lookup(conn)
+    rows: list[sqlite3.Row]
+    if metric_type == "benchmark_power":
+        duration_min = _safe_float(target_config.get("duration_min"))
+        rows = conn.execute(
+            """
+            SELECT id, date, type, name, duration_min, avg_watts, linked_planned_session_id
+            FROM activities
+            WHERE type IN ('Ride', 'VirtualRide')
+              AND duration_min >= ?
+              AND avg_watts IS NOT NULL
+            ORDER BY date DESC, created_at DESC
+            LIMIT 6
+            """,
+            (duration_min,),
+        ).fetchall()
+    else:
+        distance_km = _safe_float(target_config.get("distance_km"))
+        min_distance = max(distance_km * 0.9, distance_km - 1.0)
+        max_distance = distance_km * 1.1
+        rows = conn.execute(
+            """
+            SELECT id, date, type, name, distance_km, duration_min, linked_planned_session_id
+            FROM activities
+            WHERE type = ?
+              AND distance_km >= ? AND distance_km <= ?
+              AND duration_min IS NOT NULL
+            ORDER BY date DESC, created_at DESC
+            LIMIT 6
+            """,
+            (activity_type, min_distance, max_distance),
+        ).fetchall()
+
+    entries = []
+    previous_primary_value = None
+    for row in rows:
+        enriched = attach_benchmark_from_lookup(dict(row), benchmark_lookup)
+        if metric_type == "benchmark_power":
+            primary_value = _safe_float(enriched.get("avg_watts"))
+            delta_to_target = round(primary_value - target_value, 1) if primary_value and target_value else None
+            delta_to_previous = (
+                round(primary_value - previous_primary_value, 1)
+                if primary_value and previous_primary_value is not None
+                else None
+            )
+        else:
+            primary_value = _safe_float(enriched.get("duration_min"))
+            delta_to_target = round(target_value - primary_value, 1) if primary_value and target_value else None
+            delta_to_previous = (
+                round(previous_primary_value - primary_value, 1)
+                if primary_value and previous_primary_value is not None
+                else None
+            )
+
+        entries.append({
+            "id": enriched.get("id"),
+            "date": enriched.get("date"),
+            "name": enriched.get("name"),
+            "benchmark_tag": enriched.get("benchmark_tag"),
+            "benchmark_label": enriched.get("benchmark_label"),
+            "linked_planned_session_id": enriched.get("linked_planned_session_id"),
+            "value_label": _format_benchmark_entry_label(metric_type, enriched),
+            "delta_to_target": delta_to_target,
+            "delta_to_previous": delta_to_previous,
+            "is_tagged_benchmark": bool(enriched.get("benchmark_tag")),
+        })
+        if primary_value:
+            previous_primary_value = primary_value
+
+    latest = entries[0] if entries else None
+    summary = "No recent benchmark efforts are visible yet."
+    if latest:
+        summary = f"Latest effort: {latest['value_label']} on {latest['date']}."
+        if latest.get("delta_to_previous"):
+            direction = "better" if latest["delta_to_previous"] > 0 else "worse"
+            summary = (
+                f"{summary[:-1]} ({abs(latest['delta_to_previous']):g} {direction} vs previous)."
+            )
+
+    return {
+        "status": "available" if entries else "unavailable",
+        "summary": summary,
+        "latest": latest,
+        "entries": entries[:3],
+    }
+
+
 def _goal_modality(goal_family: str, metric_type: str, activity_type: Optional[str]) -> Optional[str]:
     if goal_family in {"event_performance", "benchmark"}:
         if activity_type in {"Run", "Ride", "VirtualRide"}:
@@ -998,6 +1112,13 @@ def _serialize_event_goal(
     }
     target_summary = f"{activity_type} {distance_km:g} km in under {target_duration_min:g} min by {end_day.isoformat()}."
     compact_summary = risk_summary["summary"]
+    benchmark_history = _serialize_benchmark_history(
+        conn,
+        activity_type=activity_type,
+        metric_type="benchmark_time",
+        target_value=target_duration_min,
+        target_config={"distance_km": distance_km},
+    )
     derived_foundation = {
         "type": "run_benchmark",
         "status": "available" if performance_snapshot["recent_best_duration_min"] else "unavailable",
@@ -1054,6 +1175,7 @@ def _serialize_event_goal(
         "display_mode": "performance",
         "performance_snapshot": performance_snapshot,
         "derived_foundation": derived_foundation,
+        "benchmark_history": benchmark_history,
     }
 
 
@@ -1072,6 +1194,7 @@ def _serialize_benchmark_goal(
 
     performance_snapshot: dict[str, Any]
     target_summary: str
+    benchmark_history: dict[str, Any]
     if activity_type == "Run":
         distance_km = _safe_float(target_config.get("distance_km"))
         best_match = _recent_best_run_effort(conn, "Run", distance_km)
@@ -1098,6 +1221,13 @@ def _serialize_benchmark_goal(
                 f"No recent {distance_km:g}k benchmark is available yet."
             ),
         }
+        benchmark_history = _serialize_benchmark_history(
+            conn,
+            activity_type="Run",
+            metric_type="benchmark_time",
+            target_value=target_duration_min,
+            target_config={"distance_km": distance_km},
+        )
     else:
         duration_min = _safe_float(target_config.get("duration_min"))
         best_match = _recent_best_ride_power(conn, duration_min)
@@ -1124,6 +1254,13 @@ def _serialize_benchmark_goal(
                 f"No recent {duration_min:g}-minute power benchmark is available yet."
             ),
         }
+        benchmark_history = _serialize_benchmark_history(
+            conn,
+            activity_type=activity_type,
+            metric_type="benchmark_power",
+            target_value=target_watts,
+            target_config={"duration_min": duration_min},
+        )
 
     if achieved:
         status = "completed"
@@ -1193,6 +1330,7 @@ def _serialize_benchmark_goal(
         "display_mode": "performance",
         "performance_snapshot": performance_snapshot,
         "derived_foundation": derived_foundation,
+        "benchmark_history": benchmark_history,
     }
 
 

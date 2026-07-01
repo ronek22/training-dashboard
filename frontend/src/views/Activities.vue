@@ -89,7 +89,10 @@
                 </span>
               </td>
               <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                {{ a.name || '—' }}
+                <div>{{ a.name || '—' }}</div>
+                <div v-if="a.benchmark_label" class="activity-subtag">
+                  <span class="badge badge-benchmark">{{ a.benchmark_label }}</span>
+                </div>
               </td>
               <td>{{ a.distance_km ? `${a.distance_km} km` : '—' }}</td>
               <td>{{ a.duration_min ? `${Math.round(a.duration_min)} min` : '—' }}</td>
@@ -494,6 +497,8 @@ const zoneBadgeClass = (activity) => {
 .status-missing { background: rgba(245, 158, 11, 0.14); color: #b45309; }
 .import-message { margin: 14px 0 0; font-weight: 600; }
 .import-hint { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+.activity-subtag { margin-top: 6px; white-space: normal; }
+.badge-benchmark { background: rgba(245, 158, 11, 0.14); color: #f59e0b; }
 .badge-zone-1 { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; }
 .badge-zone-3 { background: rgba(245, 158, 11, 0.14); color: #f59e0b; }
 .badge-zone-4 { background: rgba(239, 68, 68, 0.14); color: #f87171; }

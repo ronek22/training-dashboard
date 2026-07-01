@@ -8,6 +8,8 @@ class WeeklyPlanDay(BaseModel):
     label: str
     session_type: Optional[str] = None
     workout_intent: Optional[str] = None
+    benchmark_tag: Optional[str] = None
+    benchmark_label: Optional[str] = None
     template_id: Optional[str] = None
     template_label: Optional[str] = None
     template_summary: Optional[str] = None

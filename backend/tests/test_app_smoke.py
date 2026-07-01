@@ -412,6 +412,104 @@ class AppSmokeTests(unittest.TestCase):
         self.assertIsNotNone(third_plan)
         self.assertEqual(third_plan["days"][0]["template_id"], "strength-b")
 
+    def test_zz_strength_rotation_advances_from_inferred_same_day_completion_without_explicit_link(self):
+        first_week = "2031-02-03"
+
+        created = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": first_week,
+                "title": "Strength progression inferred link",
+                "days": [
+                    {
+                        "date": "2031-02-04",
+                        "label": "Tue",
+                        "session_type": "WeightTraining",
+                        "title": "Strength",
+                        "target_duration_min": 55,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        first_plan = self._find_plan(first_week)
+        self.assertIsNotNone(first_plan)
+        self.assertEqual(first_plan["days"][0]["template_id"], "strength-a")
+        self.assertEqual(first_plan["days"][0]["template_label"], "Workout A · Upper Chest")
+
+        activity = self.client.post(
+            "/activities",
+            json={
+                "id": "strength-rotation-inferred-a",
+                "date": "2031-02-04",
+                "type": "WeightTraining",
+                "name": "Workout A Upper Chest",
+                "duration_min": 56.0,
+            },
+        )
+        self.assertEqual(activity.status_code, 201)
+
+        reread_settings = self.client.get("/settings/workout-templates")
+        self.assertEqual(reread_settings.status_code, 200)
+        strength_program = reread_settings.json()["programs"]["strength"]
+        self.assertEqual(strength_program["rotation_state"]["last_completed_template_id"], "strength-a")
+        self.assertEqual(strength_program["rotation_state"]["last_completed_template_label"], "Workout A · Upper Chest")
+        self.assertEqual(strength_program["rotation_state"]["next_template_id"], "strength-b")
+
+    def test_zz_strength_rotation_completion_overrides_stale_postponed_next_template(self):
+        updated = self.client.put(
+            "/settings/workout-templates",
+            json={
+                "programs": {
+                    "strength": {
+                        "rotation_state": {
+                            "next_template_id": "strength-d",
+                            "pending_template_id": "strength-d",
+                        }
+                    }
+                }
+            },
+        )
+        self.assertEqual(updated.status_code, 200)
+
+        week_start = "2031-02-10"
+        created = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": week_start,
+                "title": "Strength progression stale pending",
+                "days": [
+                    {
+                        "date": "2031-02-11",
+                        "label": "Tue",
+                        "session_type": "WeightTraining",
+                        "title": "Strength",
+                        "target_duration_min": 55,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+
+        activity = self.client.post(
+            "/activities",
+            json={
+                "id": "strength-rotation-stale-pending-a",
+                "date": "2031-02-11",
+                "type": "WeightTraining",
+                "name": "Workout A Upper Chest",
+                "duration_min": 56.0,
+            },
+        )
+        self.assertEqual(activity.status_code, 201)
+
+        reread_settings = self.client.get("/settings/workout-templates")
+        self.assertEqual(reread_settings.status_code, 200)
+        strength_program = reread_settings.json()["programs"]["strength"]
+        self.assertEqual(strength_program["rotation_state"]["last_completed_template_id"], "strength-a")
+        self.assertEqual(strength_program["rotation_state"]["next_template_id"], "strength-b")
+        self.assertEqual(strength_program["rotation_state"]["pending_template_id"], "strength-b")
+
     def test_zz_running_restriction_delays_lower_body_template_assignment(self):
         updated = self.client.put(
             "/settings/workout-templates",
@@ -1389,6 +1487,88 @@ class AppSmokeTests(unittest.TestCase):
         self.assertIn("goal_risk_summary", recent_context.json())
         self.assertGreaterEqual(recent_context.json()["goal_planning_summary"]["count"], 1)
         self.assertTrue(recent_context.json()["goal_planning_summary"]["most_urgent"])
+
+    def test_benchmark_tagged_plan_sessions_surface_on_activities_and_goals(self):
+        today = datetime.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        benchmark_day = week_start + timedelta(days=2)
+
+        goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Hold 300W for 10 minutes",
+                "period_type": "month",
+                "goal_family": "benchmark",
+                "activity_type": "Ride",
+                "target_config": {
+                    "duration_min": 10,
+                    "target_watts": 300,
+                },
+            },
+        )
+        self.assertEqual(goal.status_code, 201)
+
+        plan = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": week_start.isoformat(),
+                "title": "Benchmark week",
+                "days": [
+                    {
+                        "date": benchmark_day.isoformat(),
+                        "label": benchmark_day.strftime("%a"),
+                        "session_type": "Ride",
+                        "workout_intent": "interval",
+                        "benchmark_tag": "test",
+                        "benchmark_label": "FTP check",
+                        "title": "10-minute power test",
+                        "target_duration_min": 60,
+                        "details": "Warm up, then one clear 10-minute test effort.",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(plan.status_code, 201)
+
+        plans = self.client.get("/plans/weekly?limit=8")
+        self.assertEqual(plans.status_code, 200)
+        target_plan = next(item for item in plans.json() if item["week_start"] == week_start.isoformat())
+        plan_day = target_plan["days"][0]
+        self.assertEqual(plan_day["benchmark_tag"], "test")
+        self.assertEqual(plan_day["benchmark_label"], "FTP check")
+
+        activity = self.client.post(
+            "/activities",
+            json={
+                "id": "benchmark-ride-1",
+                "date": benchmark_day.isoformat(),
+                "type": "Ride",
+                "name": "10-minute test",
+                "duration_min": 62,
+                "avg_watts": 295,
+                "zone2": False,
+            },
+        )
+        self.assertEqual(activity.status_code, 201)
+
+        link = self.client.post(
+            "/activities/benchmark-ride-1/link-plan",
+            json={"planned_session_id": plan_day["session_id"]},
+        )
+        self.assertEqual(link.status_code, 200)
+
+        activities = self.client.get("/activities?limit=32")
+        self.assertEqual(activities.status_code, 200)
+        linked_activity = next(item for item in activities.json() if item["id"] == "benchmark-ride-1")
+        self.assertEqual(linked_activity["benchmark_tag"], "test")
+        self.assertEqual(linked_activity["benchmark_label"], "FTP check")
+
+        goals = self.client.get("/goals")
+        self.assertEqual(goals.status_code, 200)
+        benchmark_goal = next(item for item in goals.json() if item["title"] == "Hold 300W for 10 minutes")
+        self.assertEqual(benchmark_goal["benchmark_history"]["status"], "available")
+        self.assertEqual(benchmark_goal["benchmark_history"]["latest"]["benchmark_label"], "FTP check")
+        self.assertTrue(benchmark_goal["benchmark_history"]["latest"]["is_tagged_benchmark"])
 
     def test_behind_goal_changes_visible_planning_guidance(self):
         today = datetime.now().date()

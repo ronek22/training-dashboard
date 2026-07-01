@@ -126,6 +126,12 @@
           </div>
         </div>
         <div class="goal-groups">
+          <div v-if="goalPlanningConflicts.length" class="dashboard-goal-conflicts">
+            <div v-for="conflict in goalPlanningConflicts" :key="conflict.type" class="dashboard-goal-conflict">
+              <strong>{{ conflict.label }}</strong>
+              <span>{{ conflict.summary }}</span>
+            </div>
+          </div>
           <section v-if="topWeeklyGoals.length" class="goal-group">
             <div class="goal-group-label">Weekly</div>
             <div class="goal-strip goal-strip-top">
@@ -135,6 +141,7 @@
                   <span class="goal-mini-status" :class="`status-${goal.status}`">{{ goalStatusLabel(goal.status) }}</span>
                 </div>
                 <div class="goal-mini-progress">{{ goal.family_label }} · {{ goal.display_mode === 'performance' ? goal.target_summary : `${goal.current_value} / ${goal.target_value} ${goal.unit}` }}</div>
+                <div v-if="goal.weekly_requirement_summary" class="goal-mini-requirement">{{ goal.weekly_requirement_summary }}</div>
                 <div v-if="goal.risk_summary?.summary" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
                 <div v-if="goal.display_mode !== 'performance'" class="goal-mini-track-wrap">
                   <div class="goal-mini-track">
@@ -156,6 +163,7 @@
                   <span class="goal-mini-status" :class="`status-${goal.status}`">{{ goalStatusLabel(goal.status) }}</span>
                 </div>
                 <div class="goal-mini-progress">{{ goal.family_label }} · {{ goal.display_mode === 'performance' ? goal.target_summary : `${goal.current_value} / ${goal.target_value} ${goal.unit}` }}</div>
+                <div v-if="goal.weekly_requirement_summary" class="goal-mini-requirement">{{ goal.weekly_requirement_summary }}</div>
                 <div v-if="goal.risk_summary?.summary" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
                 <div v-if="goal.display_mode !== 'performance'" class="goal-mini-track-wrap">
                   <div class="goal-mini-track">
@@ -177,6 +185,7 @@
                   <span class="goal-mini-status" :class="`status-${goal.status}`">{{ goalStatusLabel(goal.status) }}</span>
                 </div>
                 <div class="goal-mini-progress">{{ goal.family_label }} · {{ goal.display_mode === 'performance' ? goal.target_summary : `${goal.current_value} / ${goal.target_value} ${goal.unit}` }}</div>
+                <div v-if="goal.weekly_requirement_summary" class="goal-mini-requirement">{{ goal.weekly_requirement_summary }}</div>
                 <div v-if="goal.risk_summary?.summary" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
                 <div v-if="goal.display_mode !== 'performance'" class="goal-mini-track-wrap">
                   <div class="goal-mini-track">
@@ -1051,6 +1060,8 @@ const athleteBrief = computed(() => dashboard.value?.athlete_brief || null)
 const dailyRecommendation = computed(() => dashboard.value?.daily_recommendation || null)
 const latestSubjectiveState = computed(() => dashboard.value?.latest_subjective_state || null)
 const goalRiskSummary = computed(() => dashboard.value?.goal_risk_summary || null)
+const goalPlanningSummary = computed(() => dashboard.value?.goal_planning_summary || null)
+const goalPlanningConflicts = computed(() => goalPlanningSummary.value?.conflicts || weeklyPlan.value?.goal_context?.conflicts || [])
 const topGoals = computed(() => dashboard.value?.active_goals || [])
 const topWeeklyGoals = computed(() => topGoals.value.filter((goal) => goal.period_type === 'week').slice(0, 2))
 const topYearlyGoals = computed(() => topGoals.value.filter((goal) => goal.period_type === 'year').slice(0, 2))
@@ -1644,6 +1655,8 @@ const coachingGoalsCopy = (goals) => {
   if (!goals?.active_goal_count) return 'No active goals are shaping the week.'
   if (goals.status === 'constrained') return 'Current modality restrictions are limiting at least one active goal.'
   if (goals.status === 'deferred') return 'Recovery is taking priority over run-volume pressure right now.'
+  if (goals.conflict_count) return `${goals.conflict_count} explicit goal tradeoff${goals.conflict_count === 1 ? ' is' : 's are'} visible this week.`
+  if (goals.unsupported_goal_count) return `${goals.unsupported_goal_count} active goal${goals.unsupported_goal_count === 1 ? '' : 's'} lack enough weekly support right now.`
   if (goals.status === 'pressured') return 'At least one active goal is under pressure.'
   if (goals.status === 'watch') return 'Goal pressure is building and worth watching.'
   return `${goals.plan_supported_goals || 0} active goals are supported by this week’s sessions.`
@@ -2577,6 +2590,29 @@ const zoneBadgeClass = (activity) => {
   display: grid;
   gap: 14px;
 }
+.dashboard-goal-conflicts {
+  display: grid;
+  gap: 8px;
+}
+.dashboard-goal-conflict {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(245,158,11,0.18);
+  background: rgba(245,158,11,0.08);
+}
+.dashboard-goal-conflict strong {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f8d38b;
+}
+.dashboard-goal-conflict span {
+  color: #e6edf9;
+  font-size: 12px;
+  line-height: 1.45;
+}
 .goal-group {
   display: grid;
   gap: 10px;
@@ -2628,6 +2664,12 @@ const zoneBadgeClass = (activity) => {
 .status-on_pace { background: rgba(59,130,246,0.16); color: #60a5fa; }
 .status-behind_pace { background: rgba(239,68,68,0.16); color: #f87171; }
 .goal-mini-progress { font-size: 13px; margin-bottom: 8px; }
+.goal-mini-requirement {
+  margin-bottom: 8px;
+  color: #d8e2f4;
+  font-size: 11px;
+  line-height: 1.45;
+}
 .goal-mini-risk {
   margin-bottom: 8px;
   color: var(--muted-soft);

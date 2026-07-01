@@ -4,7 +4,7 @@
 
 Current status:
 
-- planned
+- complete
 - follows completed Sprint 16 richer goal families work
 
 Starting point:

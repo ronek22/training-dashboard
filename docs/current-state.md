@@ -183,6 +183,18 @@ Completed slices:
 - count-based goal presentation now treats sessions and activity counts as discrete values rather than fractional pacing noise
 - smoke coverage now includes richer goal-family creation plus current-window regression checks for recurring goals
 
+### Sprint 17 goal-aware session requirements and conflicts
+
+Sprint 17 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- active goals now expose deterministic weekly requirement summaries and normalized requirement types
+- plan goal context now shows requirement-aware support, unsupported goals, and weaker-support gaps instead of only generic goal matching
+- dashboard and weekly coaching now surface compact conflict, tradeoff, and deprioritization signals when goals compete
+- `Goals`, `Plan`, and `Dashboard` now show requirement-focused cues so it is clearer why a session matters and what is still missing
+- smoke coverage now includes multiple goal-family requirement mappings plus cases for unsupported goals and visible goal tradeoffs
+
 ### Phase 5 coaching workflow and analysis
 
 Phase 5 can now be treated as complete for the current roadmap slice.
@@ -200,15 +212,15 @@ The next roadmap slice should start now.
 
 The next major sprint should be:
 
-- Sprint 17 goal-aware session requirements and conflicts
+- Sprint 18 rule-based workout templates and rotation state
 
-That sprint should build on the richer goal model that now exists.
+That sprint should build on the new requirement-aware planning layer that now exists.
 
 That means moving into:
 
-- mapping richer goals into explicit session requirements rather than treating them as mostly presentation and wording upgrades
-- using the new athlete brief and richer goal model to make coaching tradeoffs and deprioritization more specific and truthful
-- improving planning guidance before attempting more aggressive automation
+- preserving specific workout identity instead of treating recurring sessions too generically
+- using rotation state and simple planning rules to maintain continuity across weeks and missed sessions
+- improving week generation and adjustment quality without jumping to a fully autonomous planner
 
 ## Areas That Are Still Intentionally Lightweight
 
@@ -232,7 +244,7 @@ If continuing into the next roadmap:
 - athlete-facing goal and profile UI: `frontend/src/views/Goals.vue`
 - calendar aggregation and month view: `backend/app/services/activities.py` and `frontend/src/views/Calendar.vue`
 - docs-backed planning visibility: `docs/roadmap.md`, `docs/roadmaps/`, `docs/current-state.md`, and `docs/sprints/`
-- sprint planning direction: goal-aware session requirements and conflict visibility should be the next execution slice
+- sprint planning direction: rule-based workout templates and rotation state should be the next execution slice
 
 ## Working Assumption
 

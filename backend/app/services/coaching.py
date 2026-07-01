@@ -280,6 +280,7 @@ def summarize_recovery(context: dict) -> dict:
 def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
     active_goals = context.get("active_goals", [])
     plan_goals = (active_plan or {}).get("goal_context", {}).get("active_goals", [])
+    plan_conflicts = (active_plan or {}).get("goal_context", {}).get("conflicts", [])
 
     if not active_goals:
         return {
@@ -287,6 +288,8 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
             "active_goal_count": 0,
             "most_urgent": [],
             "plan_supported_goals": 0,
+            "unsupported_goal_count": 0,
+            "conflict_count": 0,
             "key_observations": ["No active goals are shaping the current coaching read."],
         }
 
@@ -316,10 +319,14 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
         "on_track": sum(1 for goal in relevant_active_goals if goal.get("risk_summary", {}).get("status") == "on_track"),
         "completed": sum(1 for goal in relevant_active_goals if goal.get("risk_summary", {}).get("status") == "completed"),
     }
+    unsupported_plan_goals = [goal for goal in relevant_plan_goals if goal.get("requirement_support_status") == "unsupported"]
+    weak_plan_goals = [goal for goal in relevant_plan_goals if goal.get("requirement_support_status") == "weak"]
     if constrained_goals and not relevant_active_goals and not deferred_goals:
         status = "constrained"
     elif not relevant_active_goals and deferred_goals:
         status = "deferred"
+    elif plan_conflicts or unsupported_plan_goals:
+        status = "pressured"
     elif risk_counts.get("at_risk"):
         status = "pressured"
     elif risk_counts.get("under_pressure"):
@@ -337,6 +344,18 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
         if goal.get("supported_sessions"):
             family_label = (goal.get("family_label") or "Goal").lower()
             observations.append(f"{goal['title']} ({family_label}) is supported by {goal['supported_sessions']} planned sessions this week.")
+        if goal.get("weekly_requirement_summary"):
+            _append_unique(observations, goal["weekly_requirement_summary"])
+        if goal.get("requirement_support_status") == "unsupported" and goal.get("unsupported_requirements"):
+            _append_unique(
+                observations,
+                f"{goal['title']} is unsupported this week: {goal['unsupported_requirements'][0]['label']} is still missing.",
+            )
+        elif goal.get("requirement_support_status") == "weak" and goal.get("unsupported_requirements"):
+            _append_unique(
+                observations,
+                f"{goal['title']} only has partial support: {goal['unsupported_requirements'][0]['label']} is still thin.",
+            )
         if goal.get("risk_summary", {}).get("status") in {"at_risk", "under_pressure"}:
             observations.append(goal["risk_summary"]["summary"])
         elif goal.get("goal_family") in {"event_performance", "benchmark"} and goal.get("target_summary"):
@@ -346,6 +365,8 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
             _append_unique(observations, goal["target_summary"])
     if deferred_goals:
         observations.append("Run-volume goals are temporarily backgrounded while recovery is the priority.")
+    for conflict in plan_conflicts[:2]:
+        _append_unique(observations, conflict.get("summary"))
     if not observations:
         observations.append("Active goals are present, but plan support is still fairly lightweight.")
 
@@ -356,6 +377,10 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
         "plan_supported_goals": sum(1 for goal in relevant_plan_goals if goal.get("supported_sessions")),
         "deferred_goal_count": len(deferred_goals),
         "constrained_goal_count": len(constrained_goals),
+        "unsupported_goal_count": len(unsupported_plan_goals),
+        "weakly_supported_goal_count": len(weak_plan_goals),
+        "conflict_count": len(plan_conflicts),
+        "conflicts": plan_conflicts,
         "key_observations": observations[:4],
     }
 
@@ -713,6 +738,10 @@ def build_weekly_recommendation(
         _append_unique(rationale, f"Goal pressure is highest around {goals['most_urgent'][0]['title']}.")
     if goals.get("constrained_goal_count"):
         _append_unique(rationale, f"{goals['constrained_goal_count']} active goals are constrained by current modality limits.")
+    if goals.get("conflict_count"):
+        _append_unique(rationale, f"{goals['conflict_count']} goal tradeoff{'s are' if goals['conflict_count'] != 1 else ' is'} visible in the current week.")
+    if goals.get("unsupported_goal_count"):
+        _append_unique(rationale, f"{goals['unsupported_goal_count']} active goal{'s are' if goals['unsupported_goal_count'] != 1 else ' is'} not meaningfully supported this week.")
 
     risks: list[str] = []
     for text in recovery.get("caution_flags", []):
@@ -729,6 +758,8 @@ def build_weekly_recommendation(
         _append_unique(risks, f"The current week has already needed {current_revision_count} revisions.")
     if goals.get("status") in {"pressured", "watch"} and goals.get("most_urgent"):
         _append_unique(risks, f"Active goals are under pressure, led by {goals['most_urgent'][0]['title']}.")
+    if goals.get("unsupported_goal_count"):
+        _append_unique(risks, f"{goals['unsupported_goal_count']} active goal{'s lack' if goals['unsupported_goal_count'] != 1 else ' lacks'} enough weekly support.")
 
     return {
         "status": status,

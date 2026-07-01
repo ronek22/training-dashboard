@@ -21,3 +21,9 @@ This file is the root guidance note for working in this repository.
 - Keep product planning pragmatic and implementation-oriented.
 - Favor small, compounding improvements over speculative rewrites.
 - Preserve user control around training-plan changes and coaching actions.
+
+## Backend Environment
+
+- The backend Python environment already exists at `backend/.venv`.
+- When running backend tests or backend Python commands, prefer the executables from `backend/.venv/bin/` instead of the system Python.
+- Do not report missing backend dependencies until you have first tried the repo virtualenv, for example `backend/.venv/bin/python -m unittest ...`.

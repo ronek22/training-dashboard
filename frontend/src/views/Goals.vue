@@ -170,6 +170,18 @@
               </div>
               <div class="goal-planning-summary">{{ goal.planning_guidance.summary }}</div>
             </div>
+
+            <div v-if="goal.weekly_requirement_summary" class="goal-planning goal-requirement-block">
+              <div class="goal-planning-top">
+                <span class="goal-planning-label">Weekly requirement</span>
+              </div>
+              <div class="goal-planning-summary">{{ goal.weekly_requirement_summary }}</div>
+              <div v-if="goal.weekly_requirements?.length" class="goal-requirement-list">
+                <span v-for="requirement in goal.weekly_requirements.slice(0, 2)" :key="`${goal.id}-${requirement.type}`" class="goal-family-chip">
+                  {{ requirement.label }}
+                </span>
+              </div>
+            </div>
           </article>
         </div>
       </section>
@@ -1385,6 +1397,15 @@ const showPlanningGuidance = (goal) => {
   color: #dbe4ff;
   font-size: 12px;
   line-height: 1.45;
+}
+.goal-requirement-block {
+  margin-top: 10px;
+}
+.goal-requirement-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
 }
 .planning-completed { background: rgba(16,185,129,0.16); color: #34d399; }
 .planning-comfortable { background: rgba(34,197,94,0.16); color: #4ade80; }

@@ -14,6 +14,16 @@ GOAL_FAMILY_LABELS = {
     "benchmark": "Benchmark",
 }
 
+REQUIREMENT_TYPE_LABELS = {
+    "aerobic_volume": "Aerobic volume",
+    "aerobic_endurance": "Aerobic endurance",
+    "strength_frequency": "Strength frequency",
+    "session_frequency": "Session frequency",
+    "event_specific_quality": "Event-specific quality",
+    "long_aerobic_support": "Long aerobic support",
+    "benchmark_specific_quality": "Benchmark-specific quality",
+}
+
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
     try:
@@ -85,6 +95,10 @@ def goal_family_label(goal_family: str) -> str:
     return GOAL_FAMILY_LABELS.get(goal_family, "Goal")
 
 
+def requirement_type_label(requirement_type: str) -> str:
+    return REQUIREMENT_TYPE_LABELS.get(requirement_type, "Requirement")
+
+
 def _parse_date(value: Optional[str]) -> Optional[date]:
     if not value:
         return None
@@ -103,6 +117,143 @@ def _parse_target_config(row: sqlite3.Row) -> dict[str, Any]:
     except (TypeError, ValueError):
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
+
+def _int_requirement_count(value: float, floor_value: int = 1, cap: int = 4) -> int:
+    return max(floor_value, min(cap, int(round(value))))
+
+
+def build_goal_requirements(
+    *,
+    goal_family: str,
+    metric_type: Optional[str],
+    activity_type: Optional[str],
+    target_value: float,
+    target_config: Optional[dict[str, Any]] = None,
+) -> list[dict[str, Any]]:
+    target_config = target_config or {}
+    modality = _goal_modality(goal_family, metric_type or "", activity_type)
+    session_type = activity_type or ("Run" if metric_type == "run_km" else "Ride" if metric_type == "ride_km" else "WeightTraining" if metric_type == "strength_sessions" else None)
+    requirements: list[dict[str, Any]] = []
+
+    def add_requirement(
+        requirement_type: str,
+        *,
+        priority: str,
+        minimum_sessions: int,
+        summary: str,
+        session_types: list[str],
+        preferred_intents: Optional[list[str]] = None,
+        fallback_intents: Optional[list[str]] = None,
+    ) -> None:
+        requirements.append({
+            "type": requirement_type,
+            "label": requirement_type_label(requirement_type),
+            "priority": priority,
+            "minimum_sessions": minimum_sessions,
+            "summary": summary,
+            "modality": modality,
+            "session_types": session_types,
+            "preferred_intents": preferred_intents or [],
+            "fallback_intents": fallback_intents or [],
+        })
+
+    if goal_family == "event_performance":
+        distance_km = _safe_float(target_config.get("distance_km"))
+        event_descriptor = f"{activity_type or 'Event'} specificity"
+        add_requirement(
+            "event_specific_quality",
+            priority="primary",
+            minimum_sessions=1,
+            summary=f"Include 1 {event_descriptor.lower()} session this week.",
+            session_types=[session_type] if session_type else [],
+            preferred_intents=["tempo", "interval", "race_specific"],
+            fallback_intents=["easy", "long"],
+        )
+        add_requirement(
+            "long_aerobic_support",
+            priority="secondary",
+            minimum_sessions=1,
+            summary=f"Keep 1 longer aerobic {activity_type or 'event'} support session in the week{f' for {distance_km:g} km demands' if distance_km else ''}.",
+            session_types=[session_type] if session_type else [],
+            preferred_intents=["long", "easy"],
+            fallback_intents=["tempo"],
+        )
+        return requirements
+
+    if goal_family == "benchmark":
+        add_requirement(
+            "benchmark_specific_quality",
+            priority="primary",
+            minimum_sessions=1,
+            summary=f"Include 1 benchmark-focused quality or rehearsal session for {activity_type or 'this goal'} this week.",
+            session_types=[session_type] if session_type else [],
+            preferred_intents=["tempo", "interval", "race_specific"],
+            fallback_intents=["easy"],
+        )
+        return requirements
+
+    if metric_type == "run_km":
+        add_requirement(
+            "aerobic_volume",
+            priority="primary",
+            minimum_sessions=2 if target_value >= 35 else 1,
+            summary=f"Keep {2 if target_value >= 35 else 1} run volume-supporting session{'s' if target_value >= 35 else ''} in the week.",
+            session_types=["Run"],
+            preferred_intents=["easy", "long", "tempo", "interval", "race_specific"],
+        )
+    elif metric_type == "ride_km":
+        add_requirement(
+            "aerobic_volume",
+            priority="primary",
+            minimum_sessions=2 if target_value >= 80 else 1,
+            summary=f"Keep {2 if target_value >= 80 else 1} ride volume-supporting session{'s' if target_value >= 80 else ''} in the week.",
+            session_types=["Ride", "VirtualRide"],
+            preferred_intents=["easy", "long", "tempo", "interval", "race_specific"],
+        )
+    elif metric_type == "strength_sessions":
+        required_sessions = _int_requirement_count(target_value, floor_value=1, cap=4)
+        add_requirement(
+            "strength_frequency",
+            priority="primary",
+            minimum_sessions=required_sessions,
+            summary=f"Keep {required_sessions} strength session{'s' if required_sessions != 1 else ''} in the week.",
+            session_types=["WeightTraining"],
+            preferred_intents=["strength_general", "strength_lower", "strength_upper"],
+            fallback_intents=["mobility"],
+        )
+    elif metric_type == "zone2_hours":
+        minimum_sessions = 2 if target_value >= 3.5 else 1
+        add_requirement(
+            "aerobic_endurance",
+            priority="primary",
+            minimum_sessions=minimum_sessions,
+            summary=f"Include {minimum_sessions} aerobic endurance session{'s' if minimum_sessions != 1 else ''} with easy or long intent this week.",
+            session_types=["Run", "Ride", "VirtualRide"],
+            preferred_intents=["easy", "long"],
+            fallback_intents=["tempo"],
+        )
+    elif metric_type == "activities_count":
+        normalized_activity_type = activity_type or session_type
+        session_types = [normalized_activity_type] if normalized_activity_type else ["Run", "Ride", "VirtualRide", "WeightTraining", "Walk", "Hike"]
+        required_sessions = _int_requirement_count(target_value, floor_value=1, cap=4)
+        add_requirement(
+            "session_frequency",
+            priority="primary",
+            minimum_sessions=required_sessions,
+            summary=f"Keep {required_sessions} counted session{'s' if required_sessions != 1 else ''} in the week.",
+            session_types=session_types,
+            preferred_intents=[],
+        )
+
+    return requirements
+
+
+def build_requirement_summary(requirements: list[dict[str, Any]]) -> str:
+    if not requirements:
+        return "No specific weekly requirement is mapped yet."
+    parts = [item["summary"] for item in requirements[:2] if item.get("summary")]
+    return " ".join(parts)
 
 
 def normalize_goal_family(value: Optional[str]) -> str:
@@ -629,6 +780,14 @@ def _serialize_volume_goal(
     else:
         target_summary = f"Reach {rounded_goal_value(row['metric_type'], target_value)} {unit} of {metric_label} by {end_day.isoformat()}."
 
+    weekly_requirements = build_goal_requirements(
+        goal_family=goal_family,
+        metric_type=row["metric_type"],
+        activity_type=row["activity_type"],
+        target_value=target_value,
+        target_config=target_config,
+    )
+
     return {
         "id": row["id"],
         "title": row["title"],
@@ -662,6 +821,8 @@ def _serialize_volume_goal(
         "planning_guidance": planning_guidance,
         "target_config": target_config,
         "target_summary": target_summary,
+        "weekly_requirements": weekly_requirements,
+        "weekly_requirement_summary": build_requirement_summary(weekly_requirements),
         "compact_summary": planning_guidance["summary"],
         "display_mode": "volume",
     }
@@ -722,6 +883,13 @@ def _serialize_event_goal(
     }
     target_summary = f"{activity_type} {distance_km:g} km in under {target_duration_min:g} min by {end_day.isoformat()}."
     compact_summary = risk_summary["summary"]
+    weekly_requirements = build_goal_requirements(
+        goal_family="event_performance",
+        metric_type=row["metric_type"],
+        activity_type=activity_type,
+        target_value=target_duration_min,
+        target_config=target_config,
+    )
 
     return {
         "id": row["id"],
@@ -756,6 +924,8 @@ def _serialize_event_goal(
         "planning_guidance": planning_guidance,
         "target_config": target_config,
         "target_summary": target_summary,
+        "weekly_requirements": weekly_requirements,
+        "weekly_requirement_summary": build_requirement_summary(weekly_requirements),
         "compact_summary": compact_summary,
         "display_mode": "performance",
         "performance_snapshot": performance_snapshot,
@@ -834,6 +1004,13 @@ def _serialize_benchmark_goal(
         planning_guidance = {"status": "urgent", "summary": "The current block should deliberately include benchmark-specific work."}
 
     compact_summary = risk_summary["summary"]
+    weekly_requirements = build_goal_requirements(
+        goal_family="benchmark",
+        metric_type=row["metric_type"],
+        activity_type=activity_type,
+        target_value=float(row["target_value"] or 0),
+        target_config=target_config,
+    )
     return {
         "id": row["id"],
         "title": row["title"],
@@ -867,6 +1044,8 @@ def _serialize_benchmark_goal(
         "planning_guidance": planning_guidance,
         "target_config": target_config,
         "target_summary": target_summary,
+        "weekly_requirements": weekly_requirements,
+        "weekly_requirement_summary": build_requirement_summary(weekly_requirements),
         "compact_summary": compact_summary,
         "display_mode": "performance",
         "performance_snapshot": performance_snapshot,

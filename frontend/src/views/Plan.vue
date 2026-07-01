@@ -135,6 +135,12 @@
             <div class="goal-context-title">Goal Focus</div>
             <div class="goal-context-sub">Active targets this week and how the plan supports them.</div>
           </div>
+          <div v-if="plan.goal_context?.conflicts?.length" class="goal-conflict-list">
+            <div v-for="conflict in plan.goal_context.conflicts" :key="`${plan.week_start}-${conflict.type}`" class="goal-conflict-pill">
+              <strong>{{ conflict.label }}</strong>
+              <span>{{ conflict.summary }}</span>
+            </div>
+          </div>
           <div class="goal-context-grid">
             <article v-for="goal in plan.goal_context.active_goals" :key="goal.id" class="goal-context-card">
               <div class="goal-context-top">
@@ -150,7 +156,21 @@
                 <span>{{ goal.family_label }} · {{ goal.period_label }}</span>
                 <span>{{ goal.supported_sessions }} supporting session{{ goal.supported_sessions === 1 ? '' : 's' }}</span>
               </div>
+              <div v-if="goal.weekly_requirement_summary" class="goal-context-copy">{{ goal.weekly_requirement_summary }}</div>
+              <div v-if="goal.requirement_statuses?.length" class="goal-context-requirements">
+                <span
+                  v-for="requirement in goal.requirement_statuses"
+                  :key="`${goal.id}-${requirement.type}`"
+                  class="goal-requirement-pill"
+                  :class="`support-${requirement.status}`"
+                >
+                  {{ requirement.label }} · {{ requirementSupportLabel(requirement.status) }}
+                </span>
+              </div>
               <div v-if="goal.constraint_summary?.summary" class="goal-context-copy goal-context-copy-warn">{{ goal.constraint_summary.summary }}</div>
+              <div v-if="goal.requirement_support_status === 'unsupported' && goal.unsupported_requirements?.length" class="goal-context-copy goal-context-copy-warn">
+                Missing: {{ goal.unsupported_requirements[0].label }}
+              </div>
               <div v-if="showGoalContextRiskSummary(goal)" class="goal-context-copy">{{ goal.risk_summary.summary }}</div>
             </article>
           </div>
@@ -449,7 +469,7 @@
                   >
                     <strong>{{ goalLink.goal_title }}</strong>
                     <em v-if="goalLink.risk_label">{{ goalLink.risk_label }}</em>
-                    <span>{{ goalLink.support_reason }}</span>
+                    <span>{{ goalLink.requirement_label }} · {{ goalLink.support_reason }}</span>
                   </div>
                 </div>
               </div>
@@ -927,6 +947,12 @@ const showGoalContextRiskSummary = (goal) => {
   const constraintSummary = goal?.constraint_summary?.summary
   if (!constraintSummary) return true
   return normalizeSummary(riskSummary) !== normalizeSummary(constraintSummary)
+}
+
+const requirementSupportLabel = (status) => {
+  if (status === 'supported') return 'supported'
+  if (status === 'weakly_supported') return 'thin'
+  return 'missing'
 }
 
 const revisionSourceLabel = (source) => {
@@ -1498,6 +1524,30 @@ const savePlanLink = async (day) => {
 .goal-context-head {
   margin-bottom: 12px;
 }
+.goal-conflict-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.goal-conflict-pill {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  background: rgba(245, 158, 11, 0.08);
+}
+.goal-conflict-pill strong {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f8d38b;
+}
+.goal-conflict-pill span {
+  color: #e6edf9;
+  font-size: 12px;
+  line-height: 1.45;
+}
 .goal-context-title {
   font-family: var(--font-display);
   font-size: 14px;
@@ -1554,6 +1604,31 @@ const savePlanLink = async (day) => {
   color: #d5deef;
   font-size: 11px;
   line-height: 1.45;
+}
+.goal-context-requirements {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.goal-requirement-pill {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.goal-requirement-pill.support-supported {
+  background: rgba(16,185,129,0.14);
+  color: #9ef0c4;
+}
+.goal-requirement-pill.support-weakly_supported {
+  background: rgba(245,158,11,0.14);
+  color: #f8d38b;
+}
+.goal-requirement-pill.support-unsupported {
+  background: rgba(239,68,68,0.14);
+  color: #ffb0b0;
 }
 .goal-context-copy-warn {
   color: #f8d38b;

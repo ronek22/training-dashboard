@@ -7,7 +7,7 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-from .goals import serialize_goal
+from .goals import build_requirement_summary, serialize_goal
 from .settings import get_modality_restrictions_for_conn, modality_for_session_type
 from ..models.plans import WeeklyPlan, WeeklyPlanAdjustment, WeeklyPlanDay, WeeklyPlanRevision
 from ..repositories.plans import (
@@ -332,46 +332,134 @@ def goal_applies_to_plan(goal: dict, week_start: str, week_end: str) -> bool:
     return bool(goal.get("is_active")) and goal["start_date"] <= week_end and goal["end_date"] >= week_start
 
 
-def goal_supports_session(goal: dict, day: dict) -> Optional[str]:
-    goal_family = goal.get("goal_family")
-    metric_type = goal.get("metric_type")
+def _requirement_support_for_day(requirement: dict, day: dict) -> Optional[dict]:
     session_type = normalize_plan_session_type(day.get("session_type"))
+    workout_intent = normalize_workout_intent(day.get("workout_intent"), session_type)
     if not session_type:
         return None
 
-    if goal_family == "event_performance":
-        goal_type = normalize_plan_session_type(goal.get("activity_type"))
-        if goal_type == session_type:
-            return "Supports event-specific preparation"
+    allowed_session_types = set(requirement.get("session_types") or [])
+    if allowed_session_types and session_type not in allowed_session_types:
+        return None
+    preferred_intents = set(requirement.get("preferred_intents") or [])
+    fallback_intents = set(requirement.get("fallback_intents") or [])
+
+    if not preferred_intents:
+        return {
+            "requirement_type": requirement.get("type"),
+            "requirement_label": requirement.get("label"),
+            "support_level": "strong",
+            "support_reason": requirement.get("label"),
+        }
+
+    if workout_intent in preferred_intents:
+        support_level = "strong"
+    elif not workout_intent and requirement.get("type") in {"aerobic_volume", "session_frequency"}:
+        support_level = "strong"
+    elif workout_intent in fallback_intents or requirement.get("type") in {"aerobic_volume", "session_frequency"}:
+        support_level = "weak"
+    elif requirement.get("type") == "aerobic_endurance" and session_type in {"Run", "Ride", "VirtualRide"}:
+        support_level = "weak"
+    else:
         return None
 
-    if goal_family == "benchmark":
-        goal_type = normalize_plan_session_type(goal.get("activity_type"))
-        if goal_type == session_type:
-            return "Supports benchmark-specific work"
-        return None
+    reason = requirement.get("label")
+    if support_level == "weak":
+        reason = f"Weak {reason.lower()} support"
+    return {
+        "requirement_type": requirement.get("type"),
+        "requirement_label": requirement.get("label"),
+        "support_level": support_level,
+        "support_reason": reason,
+    }
 
-    if metric_type == "run_km" and session_type == "Run":
-        return "Builds run volume"
-    if metric_type == "ride_km" and session_type in {"Ride", "VirtualRide"}:
-        return "Builds ride volume"
-    if metric_type == "strength_sessions" and session_type == "WeightTraining":
-        return "Counts toward strength target"
-    if metric_type == "zone2_hours" and session_type in {"Run", "Ride", "VirtualRide"}:
-        return "Supports aerobic process target"
-    if metric_type == "activities_count":
-        activity_type = goal.get("activity_type")
-        if not activity_type:
-            return "Counts toward activity target"
-        normalized_goal_type = normalize_plan_session_type(activity_type)
-        if normalized_goal_type == session_type:
-            return f"Counts toward {activity_type} target"
-    return None
+
+def goal_supports_session(goal: dict, day: dict) -> Optional[str]:
+    matches = goal_requirement_matches(goal, day)
+    if not matches:
+        return None
+    strongest = next((item for item in matches if item["support_level"] == "strong"), matches[0])
+    return strongest["support_reason"]
+
+
+def goal_requirement_matches(goal: dict, day: dict) -> list[dict]:
+    matches = []
+    for requirement in goal.get("weekly_requirements") or []:
+        match = _requirement_support_for_day(requirement, day)
+        if match:
+            matches.append(match)
+    return matches
+
+
+def _build_requirement_status(requirement: dict, supporting_days: list[dict]) -> dict:
+    strong_count = sum(1 for item in supporting_days if item.get("support_level") == "strong")
+    weak_count = sum(1 for item in supporting_days if item.get("support_level") == "weak")
+    minimum_sessions = int(requirement.get("minimum_sessions") or 1)
+    if strong_count >= minimum_sessions:
+        status = "supported"
+    elif strong_count + weak_count >= minimum_sessions and (strong_count > 0 or weak_count > 0):
+        status = "weakly_supported"
+    else:
+        status = "unsupported"
+    return {
+        **requirement,
+        "strong_support_count": strong_count,
+        "weak_support_count": weak_count,
+        "status": status,
+        "supporting_days": supporting_days,
+    }
+
+
+def _build_goal_conflicts(enriched_goals: list[dict]) -> list[dict]:
+    if len(enriched_goals) < 2:
+        return []
+
+    conflicts: list[dict] = []
+    unmet_goals = [goal for goal in enriched_goals if goal.get("requirement_support_status") in {"unsupported", "weak"}]
+    primary_modalities = {
+        goal.get("modality")
+        for goal in enriched_goals
+        if goal.get("modality") and any(item.get("priority") == "primary" for item in goal.get("requirement_statuses", []))
+    }
+    if len(primary_modalities) >= 2:
+        conflicts.append({
+            "type": "modality_pull",
+            "label": "Competing modality demands",
+            "summary": "Active goals are asking for key work across multiple modalities this week.",
+            "goal_titles": [goal["title"] for goal in enriched_goals[:3]],
+        })
+
+    strength_goals = [
+        goal for goal in enriched_goals
+        if any(item.get("type") == "strength_frequency" for item in goal.get("requirement_statuses", []))
+    ]
+    quality_goals = [
+        goal for goal in enriched_goals
+        if any(item.get("type") in {"event_specific_quality", "benchmark_specific_quality"} for item in goal.get("requirement_statuses", []))
+    ]
+    if strength_goals and quality_goals:
+        conflicts.append({
+            "type": "lower_body_load",
+            "label": "Quality vs strength tension",
+            "summary": "Strength frequency and quality goals are both competing for the harder slots in the week.",
+            "goal_titles": [strength_goals[0]["title"], quality_goals[0]["title"]],
+        })
+
+    supported_goals = [goal for goal in enriched_goals if goal.get("requirement_support_status") == "supported"]
+    if unmet_goals and supported_goals:
+        conflicts.append({
+            "type": "deprioritized",
+            "label": "Deprioritized goals",
+            "summary": f"{unmet_goals[0]['title']} has weaker support while other goals are taking the clearer sessions this week.",
+            "goal_titles": [goal["title"] for goal in unmet_goals[:2]],
+        })
+
+    return conflicts[:3]
 
 
 def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_start: str) -> dict:
     if not days:
-        return {"active_goals": [], "goal_ids": []}
+        return {"active_goals": [], "goal_ids": [], "conflicts": [], "unsupported_goal_count": 0}
 
     week_end = max(day["date"] for day in days if day.get("date"))
     goal_rows = conn.execute(
@@ -391,21 +479,45 @@ def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_sta
     enriched_goals = []
     for goal in relevant_goals:
         supported_days = []
-        for day in days:
-            support_reason = goal_supports_session(goal, day)
-            if support_reason:
+        requirement_statuses = []
+        unique_supported_dates: set[str] = set()
+        for requirement in goal.get("weekly_requirements") or []:
+            requirement_days = []
+            for day in days:
+                for match in goal_requirement_matches({**goal, "weekly_requirements": [requirement]}, day):
+                    requirement_days.append({
+                        "date": day["date"],
+                        "label": day.get("label"),
+                        "title": day.get("title"),
+                        "support_reason": match["support_reason"],
+                        "support_level": match["support_level"],
+                        "requirement_type": match["requirement_type"],
+                        "requirement_label": match["requirement_label"],
+                    })
+            requirement_status = _build_requirement_status(requirement, requirement_days)
+            requirement_statuses.append(requirement_status)
+            for item in requirement_days:
+                unique_supported_dates.add(item["date"])
                 supported_days.append({
-                    "date": day["date"],
-                    "label": day.get("label"),
-                    "title": day.get("title"),
-                    "support_reason": support_reason,
+                    **item,
                     "priority": goal.get("risk_summary", {}).get("status", "on_track"),
                     "restriction_status": (goal.get("constraint_summary") or {}).get("status"),
                 })
+        if any(item["status"] == "unsupported" and item.get("priority") == "primary" for item in requirement_statuses):
+            requirement_support_status = "unsupported"
+        elif any(item["status"] == "unsupported" for item in requirement_statuses) or any(item["status"] == "weakly_supported" for item in requirement_statuses):
+            requirement_support_status = "weak"
+        else:
+            requirement_support_status = "supported"
+        unsupported_requirements = [item for item in requirement_statuses if item["status"] == "unsupported"]
         enriched_goals.append({
             **goal,
-            "supported_sessions": len(supported_days),
+            "supported_sessions": len(unique_supported_dates),
             "supported_days": supported_days,
+            "requirement_statuses": requirement_statuses,
+            "requirement_support_status": requirement_support_status,
+            "unsupported_requirements": unsupported_requirements,
+            "weekly_requirement_summary": build_requirement_summary(goal.get("weekly_requirements") or []),
         })
     enriched_goals.sort(
         key=lambda goal: (
@@ -419,6 +531,8 @@ def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_sta
         "active_goals": enriched_goals,
         "goal_ids": [goal["id"] for goal in enriched_goals],
         "constrained_goal_count": sum(1 for goal in enriched_goals if goal.get("is_constrained")),
+        "unsupported_goal_count": sum(1 for goal in enriched_goals if goal.get("requirement_support_status") == "unsupported"),
+        "conflicts": _build_goal_conflicts(enriched_goals),
     }
 
 
@@ -606,7 +720,7 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
     latest_revision = None
     revisions = []
     revision_count = 0
-    goal_context = {"active_goals": [], "goal_ids": []}
+    goal_context = {"active_goals": [], "goal_ids": [], "conflicts": [], "unsupported_goal_count": 0}
     if conn:
         restrictions = get_modality_restrictions_for_conn(conn)
         week_days_by_date = {day["date"]: day for day in days if day.get("date")}
@@ -659,22 +773,25 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
         goal_context = build_plan_goal_context(conn, days, row["week_start"])
         goals_by_id = {goal["id"]: goal for goal in goal_context["active_goals"]}
         for day in days:
-            day["goal_links"] = [
-                {
-                    "goal_id": goal["id"],
-                    "goal_title": goal["title"],
-                    "metric_type": goal["metric_type"],
-                    "period_label": goal["period_label"],
-                    "support_reason": goal_supports_session(goal, day),
-                    "status": goal["status"],
-                    "risk_status": goal.get("risk_summary", {}).get("status"),
-                    "risk_label": goal.get("risk_summary", {}).get("label"),
-                    "is_constrained": goal.get("is_constrained", False),
-                    "constraint_summary": goal.get("constraint_summary"),
-                }
-                for goal in goals_by_id.values()
-                if goal_supports_session(goal, day)
-            ]
+            goal_links = []
+            for goal in goals_by_id.values():
+                for match in goal_requirement_matches(goal, day):
+                    goal_links.append({
+                        "goal_id": goal["id"],
+                        "goal_title": goal["title"],
+                        "metric_type": goal["metric_type"],
+                        "period_label": goal["period_label"],
+                        "support_reason": match["support_reason"],
+                        "support_level": match["support_level"],
+                        "requirement_type": match["requirement_type"],
+                        "requirement_label": match["requirement_label"],
+                        "status": goal["status"],
+                        "risk_status": goal.get("risk_summary", {}).get("status"),
+                        "risk_label": goal.get("risk_summary", {}).get("label"),
+                        "is_constrained": goal.get("is_constrained", False),
+                        "constraint_summary": goal.get("constraint_summary"),
+                    })
+            day["goal_links"] = goal_links
         latest_revision = serialize_weekly_plan_revision_row(get_latest_weekly_plan_revision_row(conn, row["week_start"]))
         revisions = [
             serialize_weekly_plan_revision_row(item)

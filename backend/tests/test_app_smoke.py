@@ -803,8 +803,162 @@ class AppSmokeTests(unittest.TestCase):
         self.assertIn("Run 40 km this week", goal_titles)
         run_day = next(day for day in target_plan["days"] if day["session_type"] == "Run")
         strength_day = next(day for day in target_plan["days"] if day["session_type"] == "WeightTraining")
-        self.assertEqual(run_day["goal_links"][0]["support_reason"], "Builds run volume")
+        self.assertEqual(run_day["goal_links"][0]["requirement_type"], "aerobic_volume")
+        self.assertEqual(run_day["goal_links"][0]["support_level"], "strong")
         self.assertEqual(strength_day["goal_links"], [])
+
+    def test_goal_requirements_surface_for_multiple_goal_families(self):
+        today = datetime.now().date()
+        event_date = today + timedelta(days=28)
+
+        process_goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Keep two strength sessions weekly",
+                "period_type": "week",
+                "goal_family": "process",
+                "metric_type": "strength_sessions",
+                "target_value": 2,
+            },
+        )
+        self.assertEqual(process_goal.status_code, 201)
+
+        event_goal = self.client.post(
+            "/goals",
+            json={
+                "title": "10k under 42",
+                "period_type": "year",
+                "goal_family": "event_performance",
+                "activity_type": "Run",
+                "end_date": event_date.isoformat(),
+                "target_config": {
+                    "distance_km": 10,
+                    "target_duration_min": 42,
+                },
+            },
+        )
+        self.assertEqual(event_goal.status_code, 201)
+
+        goals = self.client.get("/goals")
+        self.assertEqual(goals.status_code, 200)
+        body = goals.json()
+        process_item = next(item for item in body if item["title"] == "Keep two strength sessions weekly")
+        event_item = next(item for item in body if item["title"] == "10k under 42")
+
+        self.assertEqual(process_item["weekly_requirements"][0]["type"], "strength_frequency")
+        self.assertEqual(process_item["weekly_requirements"][0]["minimum_sessions"], 2)
+        self.assertIn("strength sessions", process_item["weekly_requirement_summary"].lower())
+
+        event_requirement_types = [item["type"] for item in event_item["weekly_requirements"]]
+        self.assertIn("event_specific_quality", event_requirement_types)
+        self.assertIn("long_aerobic_support", event_requirement_types)
+        self.assertIn("event-specific", event_item["weekly_requirement_summary"].lower())
+
+    def test_plan_and_coaching_surface_requirement_gaps_and_goal_tradeoffs(self):
+        today = datetime.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        second_day = week_start + timedelta(days=1)
+        third_day = week_start + timedelta(days=2)
+        event_date = today + timedelta(days=35)
+
+        run_goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Autumn 10k under 40",
+                "period_type": "year",
+                "goal_family": "event_performance",
+                "activity_type": "Run",
+                "end_date": event_date.isoformat(),
+                "target_config": {
+                    "distance_km": 10,
+                    "target_duration_min": 40,
+                },
+            },
+        )
+        self.assertEqual(run_goal.status_code, 201)
+
+        strength_goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Strength twice weekly",
+                "period_type": "week",
+                "goal_family": "process",
+                "metric_type": "strength_sessions",
+                "target_value": 2,
+            },
+        )
+        self.assertEqual(strength_goal.status_code, 201)
+
+        benchmark_goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Hold 300W for 10 minutes",
+                "period_type": "month",
+                "goal_family": "benchmark",
+                "activity_type": "Ride",
+                "target_config": {
+                    "duration_min": 10,
+                    "target_watts": 300,
+                },
+            },
+        )
+        self.assertEqual(benchmark_goal.status_code, 201)
+
+        plan = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": week_start.isoformat(),
+                "title": "Competing goals week",
+                "days": [
+                    {
+                        "date": week_start.isoformat(),
+                        "label": week_start.strftime("%a"),
+                        "session_type": "Run",
+                        "workout_intent": "tempo",
+                        "title": "10k pace work",
+                        "target_duration_min": 50,
+                    },
+                    {
+                        "date": second_day.isoformat(),
+                        "label": second_day.strftime("%a"),
+                        "session_type": "Ride",
+                        "workout_intent": "interval",
+                        "title": "Threshold ride",
+                        "target_duration_min": 70,
+                    },
+                    {
+                        "date": third_day.isoformat(),
+                        "label": third_day.strftime("%a"),
+                        "session_type": "Run",
+                        "workout_intent": "easy",
+                        "title": "Easy run",
+                        "target_duration_min": 40,
+                    },
+                ],
+            },
+        )
+        self.assertEqual(plan.status_code, 201)
+
+        plans = self.client.get("/plans/weekly?limit=4")
+        self.assertEqual(plans.status_code, 200)
+        target_plan = next(item for item in plans.json() if item["week_start"] == week_start.isoformat())
+        goal_context = target_plan["goal_context"]
+        self.assertGreaterEqual(len(goal_context["conflicts"]), 1)
+
+        strength_item = next(item for item in goal_context["active_goals"] if item["title"] == "Strength twice weekly")
+        self.assertEqual(strength_item["requirement_support_status"], "unsupported")
+        self.assertEqual(strength_item["unsupported_requirements"][0]["type"], "strength_frequency")
+
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertGreaterEqual(len(dashboard.json()["goal_planning_summary"]["conflicts"]), 1)
+
+        coaching = self.client.get("/coaching/weekly")
+        self.assertEqual(coaching.status_code, 200)
+        coaching_body = coaching.json()
+        self.assertGreaterEqual(coaching_body["goal_assessment"]["unsupported_goal_count"], 1)
+        self.assertGreaterEqual(coaching_body["goal_assessment"]["conflict_count"], 1)
+        self.assertTrue(any("unsupported this week" in item.lower() or "tradeoff" in item.lower() for item in coaching_body["goal_assessment"]["key_observations"]))
 
     def test_plan_session_ids_and_manual_activity_linking(self):
         week_start = datetime.now().date() - timedelta(days=datetime.now().date().weekday()) - timedelta(days=70)

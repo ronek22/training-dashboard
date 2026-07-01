@@ -957,6 +957,12 @@ def build_recent_context(
             "count": len(active_goals),
             "constrained": sum(1 for goal in active_goals if goal.get("is_constrained")),
             "most_urgent": planning_priority[:3],
+            "weekly_requirement_gaps": sum(
+                1
+                for goal in (serialized_latest_plan or {}).get("goal_context", {}).get("active_goals", [])
+                if goal.get("requirement_support_status") in {"unsupported", "weak"}
+            ),
+            "conflicts": (serialized_latest_plan or {}).get("goal_context", {}).get("conflicts", []),
             "statuses": {
                 "constrained": sum(1 for goal in active_goals if goal.get("planning_guidance", {}).get("status") == "constrained"),
                 "urgent": sum(1 for goal in active_goals if goal.get("planning_guidance", {}).get("status") == "urgent"),
@@ -1062,6 +1068,16 @@ def build_dashboard_data(
     serialized_latest_plan = serialize_weekly_plan(latest_plan, conn) if latest_plan else None
     daily_recommendation = build_daily_recommendation(conn, training_load_summary=training_load, weekly_plan=serialized_latest_plan)
     execution_trend = build_multi_week_execution_trend(conn, weeks=6)
+    goal_planning_summary = {
+        "count": len(active_goals),
+        "most_urgent": active_goals[:3],
+        "weekly_requirement_gaps": sum(
+            1
+            for goal in (serialized_latest_plan or {}).get("goal_context", {}).get("active_goals", [])
+            if goal.get("requirement_support_status") in {"unsupported", "weak"}
+        ),
+        "conflicts": (serialized_latest_plan or {}).get("goal_context", {}).get("conflicts", []),
+    }
 
     return {
         "last_14_days": [dict(r) for r in recent],
@@ -1084,6 +1100,7 @@ def build_dashboard_data(
         "modality_restrictions": modality_restrictions,
         "active_goals": active_goals,
         "goal_risk_summary": goal_risk_summary,
+        "goal_planning_summary": goal_planning_summary,
         "weekly_plan": serialized_latest_plan,
         "execution_trend": execution_trend,
         "computed_streak": computed_streak,

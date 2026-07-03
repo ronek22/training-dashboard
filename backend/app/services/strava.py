@@ -10,6 +10,7 @@ from fastapi import HTTPException
 
 STRAVA_TOKEN_URL = "https://www.strava.com/oauth/token"
 STRAVA_ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
+STRAVA_ACTIVITY_DETAIL_URL = "https://www.strava.com/api/v3/activities/{activity_id}"
 STRAVA_ACTIVITY_STREAMS_URL = "https://www.strava.com/api/v3/activities/{activity_id}/streams"
 STRAVA_PAGE_SIZE = 100
 STRAVA_STREAM_FETCH_LIMIT = 12
@@ -221,10 +222,28 @@ def should_pause_stream_fetch(rate_limit: Optional[dict]) -> bool:
 
 
 def fetch_strava_activity_streams(client: httpx.Client, activity_id: str) -> tuple[Optional[dict], Optional[dict]]:
+    return fetch_strava_activity_streams_by_keys(client, activity_id, "time,heartrate,watts")
+
+
+def fetch_strava_activity_detail(client: httpx.Client, activity_id: str) -> tuple[Optional[dict], Optional[dict]]:
+    response = client.get(STRAVA_ACTIVITY_DETAIL_URL.format(activity_id=activity_id))
+    rate_limit = parse_strava_rate_limit_headers(response)
+    if response.status_code == 404:
+        return None, rate_limit
+    if response.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Strava activity detail fetch failed: {response.text}")
+    return response.json(), rate_limit
+
+
+def fetch_strava_activity_streams_by_keys(
+    client: httpx.Client,
+    activity_id: str,
+    keys: str,
+) -> tuple[Optional[dict], Optional[dict]]:
     response = client.get(
         STRAVA_ACTIVITY_STREAMS_URL.format(activity_id=activity_id),
         params={
-            "keys": "time,heartrate,watts",
+            "keys": keys,
             "key_by_type": "true",
         },
     )

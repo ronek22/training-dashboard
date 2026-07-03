@@ -3,11 +3,18 @@ from typing import Optional
 
 from ..db import get_db
 from ..models.activities import Activity, ActivityIntentUpdate, ActivityPlanLink
+from ..services.settings import get_setting, set_setting
+from ..services.strava import (
+    fetch_strava_activity_detail,
+    fetch_strava_activity_streams_by_keys,
+    get_strava_access_token,
+)
 from ..services.activities import (
     activity_stats_data,
     create_activity_data,
     get_calendar_month_data,
     get_calendar_weeks_data,
+    get_activity_detail_data,
     link_activity_to_planned_session_data,
     list_activities_data,
     update_activity_workout_intent_data,
@@ -39,6 +46,23 @@ def activity_stats(days: int = 30):
     conn = get_db()
     try:
         return activity_stats_data(conn, days=days)
+    finally:
+        conn.close()
+
+
+@router.get("/activities/{activity_id}")
+def get_activity_detail(activity_id: str):
+    conn = get_db()
+    try:
+        return get_activity_detail_data(
+            conn,
+            activity_id,
+            get_setting_fn=get_setting,
+            set_setting_fn=set_setting,
+            get_strava_access_token_fn=get_strava_access_token,
+            fetch_strava_activity_detail_fn=fetch_strava_activity_detail,
+            fetch_strava_activity_streams_fn=fetch_strava_activity_streams_by_keys,
+        )
     finally:
         conn.close()
 

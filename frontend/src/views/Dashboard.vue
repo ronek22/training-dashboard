@@ -89,13 +89,19 @@
               <span class="recommendation-label">Completed</span>
               <span class="recommendation-status">{{ todayPlanCompletionStatus }}</span>
             </div>
-            <div class="recommendation-action">{{ todayPlanCompletedActivity?.name || todayPlan.title }}</div>
-            <div class="recommendation-reasons">
-              <span v-if="todayPlanCompletedActivity?.distance_km">{{ todayPlanCompletedActivity.distance_km }} km</span>
-              <span v-if="todayPlanCompletedActivity?.duration_min">{{ Math.round(todayPlanCompletedActivity.duration_min) }} min</span>
-              <span v-if="todayPlanCompletedActivity?.avg_pace">{{ todayPlanCompletedActivity.avg_pace }}</span>
-              <span v-else-if="todayPlanCompletedActivity?.avg_watts">{{ Math.round(todayPlanCompletedActivity.avg_watts) }} W</span>
-              <span v-if="todayPlanCompletedActivity?.workout_intent_label">{{ todayPlanCompletedActivity.workout_intent_label }}</span>
+            <div
+              v-for="activity in todayPlanCompletedActivities"
+              :key="activity.id"
+              class="completed-activity-card"
+            >
+              <div class="recommendation-action">{{ activity.name || todayPlan.title }}</div>
+              <div class="recommendation-reasons">
+                <span v-if="activity.distance_km">{{ activity.distance_km }} km</span>
+                <span v-if="activity.duration_min">{{ Math.round(activity.duration_min) }} min</span>
+                <span v-if="activity.avg_pace">{{ activity.avg_pace }}</span>
+                <span v-else-if="activity.avg_watts">{{ Math.round(activity.avg_watts) }} W</span>
+                <span v-if="activity.workout_intent_label">{{ activity.workout_intent_label }}</span>
+              </div>
             </div>
             <div class="recommendation-feedback">
               {{ todayPostWorkoutGuidance }}
@@ -1130,13 +1136,16 @@ const todayPlanCompleted = computed(() => {
   const status = todayPlan.value?.comparison?.status
   return Boolean(status && completedPlanStatuses.has(status))
 })
-const todayPlanCompletedActivity = computed(() => todayPlan.value?.comparison?.completed_activities?.[0] || null)
+const todayPlanCompletedActivities = computed(() => todayPlan.value?.comparison?.completed_activities || [])
 const todayPlanCompletionLabel = computed(() => {
-  const activity = todayPlanCompletedActivity.value
-  if (!activity) return 'Completed'
+  const activities = todayPlanCompletedActivities.value
+  if (!activities.length) return 'Completed'
+  const totalDuration = activities.reduce((sum, activity) => sum + Number(activity.duration_min || 0), 0)
+  const totalDistance = activities.reduce((sum, activity) => sum + Number(activity.distance_km || 0), 0)
   const parts = []
-  if (activity.duration_min) parts.push(`${Math.round(activity.duration_min)} min`)
-  if (activity.distance_km) parts.push(`${activity.distance_km} km`)
+  if (totalDuration) parts.push(`${Math.round(totalDuration)} min`)
+  if (totalDistance) parts.push(`${Number(totalDistance.toFixed(2))} km`)
+  if (activities.length > 1) parts.push(`${activities.length} activities`)
   return parts.join(' · ') || 'Completed'
 })
 const todayPlanCompletionStatus = computed(() => {
@@ -2082,6 +2091,14 @@ const zoneBadgeClass = (activity) => {
   font-size: 22px;
   line-height: 1.25;
   letter-spacing: -0.03em;
+}
+.completed-activity-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
 }
 .recommendation-reasons {
   display: flex;

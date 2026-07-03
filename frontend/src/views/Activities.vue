@@ -89,9 +89,14 @@
                 </span>
               </td>
               <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                <div>{{ a.name || '—' }}</div>
+                <router-link :to="`/activities/${a.id}`" class="activity-detail-link">
+                  {{ a.name || 'Untitled activity' }}
+                </router-link>
                 <div v-if="a.benchmark_label" class="activity-subtag">
                   <span class="badge badge-benchmark">{{ a.benchmark_label }}</span>
+                </div>
+                <div class="activity-subtag">
+                  <router-link :to="`/activities/${a.id}`" class="activity-open-link">Open detail</router-link>
                 </div>
               </td>
               <td>{{ a.distance_km ? `${a.distance_km} km` : '—' }}</td>
@@ -497,6 +502,18 @@ const zoneBadgeClass = (activity) => {
 .status-missing { background: rgba(245, 158, 11, 0.14); color: #b45309; }
 .import-message { margin: 14px 0 0; font-weight: 600; }
 .import-hint { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+.activity-detail-link {
+  color: var(--text);
+  font-weight: 600;
+}
+.activity-detail-link:hover,
+.activity-open-link:hover {
+  color: var(--accent-strong);
+}
+.activity-open-link {
+  color: var(--muted-soft);
+  font-size: 12px;
+}
 .activity-subtag { margin-top: 6px; white-space: normal; }
 .badge-benchmark { background: rgba(245, 158, 11, 0.14); color: #f59e0b; }
 .badge-zone-1 { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; }

@@ -123,6 +123,18 @@ def init_db():
             stream_version TEXT DEFAULT 'v1'
         );
 
+        CREATE TABLE IF NOT EXISTS activity_details (
+            activity_id TEXT PRIMARY KEY,
+            fetched_at TEXT NOT NULL,
+            source_status TEXT NOT NULL,
+            detail_json TEXT,
+            streams_json TEXT,
+            route_polyline TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS goals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
@@ -160,6 +172,9 @@ def init_db():
     goal_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(goals)").fetchall()
     }
+    activity_detail_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(activity_details)").fetchall()
+    }
     if "linked_planned_session_id" not in activity_columns:
         conn.execute("ALTER TABLE activities ADD COLUMN linked_planned_session_id TEXT")
     if "workout_intent" not in activity_columns:
@@ -168,6 +183,8 @@ def init_db():
         conn.execute("ALTER TABLE goals ADD COLUMN goal_family TEXT DEFAULT 'accumulation'")
     if "target_config_json" not in goal_columns:
         conn.execute("ALTER TABLE goals ADD COLUMN target_config_json TEXT")
+    if activity_detail_columns and "route_polyline" not in activity_detail_columns:
+        conn.execute("ALTER TABLE activity_details ADD COLUMN route_polyline TEXT")
 
     if "heel_pain" in feedback_columns:
         pain_level_expr = "COALESCE(pain_level, heel_pain, 0)" if "pain_level" in feedback_columns else "COALESCE(heel_pain, 0)"

@@ -4,8 +4,14 @@
 
 Current status:
 
-- planned
+- completed
 - follows completed Sprint 22 benchmark sessions and test-result visibility
+
+Completion note:
+
+- shipped dedicated activity detail review
+- added on-demand Strava detail fetch with local cache reuse
+- delivered route map, chart review, summary stats, feedback, context reads, and compact best-effort support in the activity detail surface
 
 Starting point:
 

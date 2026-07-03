@@ -663,7 +663,7 @@ def find_moved_session(
     benchmark_lookup: Optional[dict[str, dict]] = None,
 ) -> Optional[dict]:
     planned_type = normalize_plan_session_type(day.get("session_type"))
-    if not planned_type or not is_past_or_today(day.get("date")):
+    if not planned_type or not is_strictly_past(day.get("date")):
         return None
 
     day_date = datetime.strptime(day["date"], "%Y-%m-%d").date()

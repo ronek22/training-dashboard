@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -48,6 +49,7 @@ class AppSmokeTests(unittest.TestCase):
                 "plan_revisions",
                 "coaching_snapshots",
                 "activity_stream_summaries",
+                "activity_details",
                 "goals",
                 "activity_feedback",
             ]:
@@ -168,6 +170,89 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(recent_context.status_code, 200)
         self.assertEqual(recent_context.json()["recent_feedback"][0]["activity_id"], "feedback-run-1")
         self.assertIn("daily_recommendation", recent_context.json())
+
+    def test_activity_detail_fetches_once_caches_and_surfaces_feedback(self):
+        activity_date = (datetime.now().date() - timedelta(days=1)).isoformat()
+        create = self.client.post(
+            "/activities",
+            json={
+                "id": "123456789",
+                "date": activity_date,
+                "type": "Run",
+                "name": "Track session",
+                "distance_km": 9.8,
+                "duration_min": 47.5,
+                "avg_hr": 168,
+                "max_hr": 182,
+                "avg_pace": "4:51",
+                "elevation_m": 54,
+                "calories": 720,
+                "zone2": False,
+            },
+        )
+        self.assertEqual(create.status_code, 201)
+
+        feedback = self.client.post(
+            "/activities/123456789/feedback",
+            json={
+                "rpe": 8,
+                "energy": 3,
+                "muscle_soreness": 2,
+                "pain_level": 1,
+                "note": "Good control through the last rep.",
+            },
+        )
+        self.assertEqual(feedback.status_code, 201)
+
+        with patch("backend.app.routers.activities.get_strava_access_token", return_value="test-token"), patch(
+            "backend.app.routers.activities.fetch_strava_activity_detail",
+            return_value=(
+                {
+                    "id": 123456789,
+                    "moving_time": 2850,
+                    "elapsed_time": 2940,
+                    "average_speed": 3.43,
+                    "max_speed": 5.2,
+                    "average_cadence": 84.4,
+                    "map": {"summary_polyline": "_p~iF~ps|U_ulLnnqC_mqNvxq`@"},
+                },
+                None,
+            ),
+        ) as detail_fetch, patch(
+            "backend.app.routers.activities.fetch_strava_activity_streams_by_keys",
+            return_value=(
+                {
+                    "time": {"data": [0, 60, 120, 180]},
+                    "distance": {"data": [0, 200, 400, 600]},
+                    "velocity_smooth": {"data": [3.2, 3.5, 3.4, 3.6]},
+                    "heartrate": {"data": [150, 162, 170, 174]},
+                    "altitude": {"data": [120, 124, 122, 126]},
+                    "latlng": {"data": [[38.5, -120.2], [40.7, -120.95], [43.252, -126.453]]},
+                },
+                None,
+            ),
+        ) as stream_fetch:
+            first = self.client.get("/activities/123456789")
+            self.assertEqual(first.status_code, 200)
+            first_body = first.json()
+            self.assertEqual(first_body["cache"]["status"], "fetched")
+            self.assertEqual(first_body["feedback"]["rpe"], 8)
+            self.assertTrue(first_body["route"]["polyline"])
+            self.assertGreaterEqual(len(first_body["charts"]), 2)
+            self.assertTrue(first_body["best_efforts"])
+            self.assertEqual(first_body["best_efforts"]["efforts"][0]["label"], "400m")
+            self.assertIn("start_time_s", first_body["best_efforts"]["efforts"][0])
+            self.assertTrue(first_body["best_efforts"]["efforts"][0]["route_segment"])
+            detail_fetch.assert_called_once()
+            stream_fetch.assert_called_once()
+
+            second = self.client.get("/activities/123456789")
+            self.assertEqual(second.status_code, 200)
+            second_body = second.json()
+            self.assertEqual(second_body["cache"]["status"], "cached")
+            self.assertEqual(second_body["feedback"]["note"], "Good control through the last rep.")
+            detail_fetch.assert_called_once()
+            stream_fetch.assert_called_once()
 
     def test_goal_drafting_supports_high_confidence_and_warning_cases(self):
         ready_cases = [

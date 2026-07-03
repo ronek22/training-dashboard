@@ -233,13 +233,13 @@ Completed slices:
 
 ## Recommended Next Step
 
-Sprint 21 has landed.
+Sprint 23 has landed.
 
-The next roadmap slice should be defined explicitly before work starts again.
+The next roadmap slice is ready for execution.
 
 Current recommendation:
 
-- continue Phase 9 with Sprint 22 benchmark sessions and test-result visibility
+- continue Phase 10 with Sprint 24 strength workout enrichment via manual Fitbod import
 
 ## Areas That Are Still Intentionally Lightweight
 

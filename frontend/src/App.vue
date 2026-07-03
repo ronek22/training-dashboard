@@ -18,6 +18,9 @@
         <router-link to="/goals" class="nav-item" :class="{ active: $route.path === '/goals' }">
           <span class="nav-icon">🎯</span> Goals
         </router-link>
+        <router-link to="/strength" class="nav-item" :class="{ active: $route.path === '/strength' }">
+          <span class="nav-icon">🏋️</span> Strength
+        </router-link>
         <router-link to="/activities" class="nav-item" :class="{ active: $route.path.startsWith('/activities') }">
           <span class="nav-icon">🏃</span> Activities
         </router-link>

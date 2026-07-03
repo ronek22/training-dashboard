@@ -32,7 +32,8 @@ The intended reading order is:
 22. [sprint-22-benchmark-sessions-and-test-result-visibility.md](sprint-22-benchmark-sessions-and-test-result-visibility.md) — benchmark sessions and test-result visibility sprint, complete
 23. [sprint-23-activity-detail-view-and-on-demand-strava-caching.md](sprint-23-activity-detail-view-and-on-demand-strava-caching.md) — activity detail view and on-demand Strava caching sprint, complete
 24. [sprint-24-strength-workout-enrichment-via-manual-fitbod-import.md](sprint-24-strength-workout-enrichment-via-manual-fitbod-import.md) — strength workout enrichment via manual Fitbod import sprint, complete
-25. [sprint-25-strength-view-and-lifting-trend-analysis.md](sprint-25-strength-view-and-lifting-trend-analysis.md) — strength view and lifting trend analysis sprint, planned
+25. [sprint-25-strength-view-and-lifting-trend-analysis.md](sprint-25-strength-view-and-lifting-trend-analysis.md) — strength view and lifting trend analysis sprint, complete
+26. [sprint-26-fitbod-strength-history-in-mcp.md](sprint-26-fitbod-strength-history-in-mcp.md) — Fitbod-enriched strength history in MCP sprint, planned
 
 ## Sprint Plans
 
@@ -63,3 +64,4 @@ Available sprint documents:
 - [sprint-23-activity-detail-view-and-on-demand-strava-caching.md](sprint-23-activity-detail-view-and-on-demand-strava-caching.md)
 - [sprint-24-strength-workout-enrichment-via-manual-fitbod-import.md](sprint-24-strength-workout-enrichment-via-manual-fitbod-import.md)
 - [sprint-25-strength-view-and-lifting-trend-analysis.md](sprint-25-strength-view-and-lifting-trend-analysis.md)
+- [sprint-26-fitbod-strength-history-in-mcp.md](sprint-26-fitbod-strength-history-in-mcp.md)

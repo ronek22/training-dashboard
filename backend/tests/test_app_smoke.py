@@ -386,6 +386,79 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertEqual(cached_repeat.status_code, 200)
         self.assertEqual(cached_repeat.json()["id"], body["id"])
 
+    def test_strength_overview_aggregates_matched_fitbod_history(self):
+        today = datetime.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        day_one = week_start - timedelta(weeks=2) + timedelta(days=1)
+        day_two = week_start - timedelta(weeks=1) + timedelta(days=2)
+        day_three = week_start + timedelta(days=1)
+        unmatched_day = week_start + timedelta(days=3)
+
+        for activity_id, activity_date, name in [
+            ("strength-overview-a", day_one, "Push A"),
+            ("strength-overview-b", day_two, "Lower + Push"),
+            ("strength-overview-c", day_three, "Push B"),
+        ]:
+            created = self.client.post(
+                "/activities",
+                json={
+                    "id": activity_id,
+                    "date": activity_date.isoformat(),
+                    "type": "WeightTraining",
+                    "name": name,
+                    "duration_min": 50,
+                    "calories": 330,
+                },
+            )
+            self.assertEqual(created.status_code, 201)
+
+        csv_text = f"""Date,Exercise,Reps,Weight(kg),Duration(s),Distance(m),Incline,Resistance,isWarmup,Note,multiplier
+{day_one.isoformat()} 07:00:00,Bench Press,5,60,45,,,,false,,1
+{day_one.isoformat()} 07:00:00,Bench Press,5,62.5,45,,,,false,,1
+{day_one.isoformat()} 07:00:00,Chest Supported Row,10,45,50,,,,false,,1
+{day_two.isoformat()} 07:00:00,Back Squat,5,100,60,,,,false,,1
+{day_two.isoformat()} 07:00:00,Bench Press,6,65,45,,,,false,,1
+{day_three.isoformat()} 07:00:00,Bench Press,5,67.5,45,,,,false,,1
+{day_three.isoformat()} 07:00:00,Pull Up,8,,45,,,,false,,1
+{unmatched_day.isoformat()} 07:00:00,Deadlift,5,140,60,,,,false,,1
+"""
+
+        imported = self.client.post(
+            "/fitbod/import",
+            json={"file_name": "strength-overview.csv", "csv_text": csv_text},
+        )
+        self.assertEqual(imported.status_code, 200)
+        self.assertEqual(imported.json()["matched_count"], 3)
+        self.assertEqual(imported.json()["unmatched_count"], 1)
+
+        overview = self.client.get("/strength/overview?weeks=4")
+        self.assertEqual(overview.status_code, 200)
+        body = overview.json()
+
+        self.assertEqual(body["summary"]["session_count"], 3)
+        self.assertEqual(body["summary"]["total_sets"], 7)
+        self.assertEqual(body["summary"]["total_reps"], 44)
+        self.assertEqual(body["summary"]["total_volume_kg"], 2290.0)
+        self.assertEqual(body["selected_exercise"]["exercise_name"], "Bench Press")
+        self.assertEqual(body["selected_exercise"]["appearance_count"], 3)
+        self.assertEqual(body["selected_exercise"]["trend"][-1]["top_load_kg"], 67.5)
+        self.assertEqual(body["selected_exercise"]["progression"]["headline"], "Load is trending up")
+        self.assertEqual(body["important_prs"][0]["label"], "Bench Press")
+        self.assertEqual(body["important_prs"][0]["top_load_kg"], 67.5)
+        self.assertEqual(body["important_prs"][1]["label"], "Back Squat")
+        self.assertEqual(body["important_prs"][1]["top_load_kg"], 100.0)
+        self.assertEqual(body["sessions"][0]["matched_activity"]["id"], "strength-overview-c")
+        self.assertEqual(body["weekly"][-3]["week_start"], (day_one - timedelta(days=day_one.weekday())).isoformat())
+        self.assertEqual(body["weekly"][-3]["session_count"], 1)
+        self.assertEqual(body["weekly"][-3]["total_volume_kg"], 1062.5)
+
+        lower = self.client.get("/strength/overview?weeks=4&body_part=lower")
+        self.assertEqual(lower.status_code, 200)
+        lower_body = lower.json()
+        self.assertEqual(lower_body["summary"]["session_count"], 1)
+        self.assertEqual(lower_body["summary"]["total_volume_kg"], 500.0)
+        self.assertEqual(lower_body["selected_exercise"]["exercise_name"], "Back Squat")
+
     def test_init_db_cleans_up_existing_fitbod_non_strength_sessions(self):
         conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])
         try:

@@ -19,6 +19,7 @@ export const useApi = () => ({
   getGoals: (params) => api.get('/goals', { params }),
   draftGoal: (payload) => api.post('/goals/draft', payload),
   createGoal: (payload) => api.post('/goals', payload),
+  getStrengthOverview: (params) => api.get('/strength/overview', { params }),
   getActivities: (params) => api.get('/activities', { params }),
   getActivityDetail: (activityId) => api.get(`/activities/${activityId}`),
   updateActivityIntent: (activityId, payload) => api.post(`/activities/${activityId}/intent`, payload),

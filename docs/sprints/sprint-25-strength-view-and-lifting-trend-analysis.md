@@ -4,8 +4,15 @@
 
 Current status:
 
-- planned
+- completed
 - follows completed Sprint 24 strength workout enrichment via manual Fitbod import
+
+Completion note:
+
+- shipped a dedicated `Strength` frontend view with time-window and heuristic body-part filters
+- added backend strength analytics aggregation over linked Fitbod-enriched `WeightTraining` history
+- delivered weekly session and volume trend summaries, recurring-lift ranking, selected-exercise progression shaping, and recent strength session drill-down
+- added smoke coverage for matched-session aggregation, weekly totals, recurring exercise trends, and exclusion of unmatched strength sessions
 
 Starting point:
 

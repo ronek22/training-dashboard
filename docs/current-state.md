@@ -233,13 +233,18 @@ Completed slices:
 
 ## Recommended Next Step
 
-Sprint 23 has landed.
+Sprint 25 can now be treated as complete.
 
 The next roadmap slice is ready for execution.
 
 Current recommendation:
 
-- continue Phase 10 with Sprint 24 strength workout enrichment via manual Fitbod import
+- Sprint 26 Fitbod-enriched strength history in MCP should be treated as the next execution slice
+
+Recently completed strength slices:
+
+- the Sprint 24 slice delivered manual Fitbod CSV import, reconstruction, and conservative linking to stored `WeightTraining` activities
+- the Sprint 25 slice delivered the dedicated `Strength` view with deterministic session trends, recurring lifts, selected-lift reads, and simple PR visibility
 
 ## Areas That Are Still Intentionally Lightweight
 

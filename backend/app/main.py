@@ -16,6 +16,7 @@ from .routers.notes import router as notes_router
 from .routers.planning_status import router as planning_status_router
 from .routers.plans import router as plans_router
 from .routers.settings import router as settings_router
+from .routers.strength import router as strength_router
 from .routers.weekly_summary import router as weekly_summary_router
 
 app = FastAPI(title="Training Dashboard API")
@@ -37,6 +38,7 @@ app.include_router(metrics_router)
 app.include_router(goals_router)
 app.include_router(weekly_summary_router)
 app.include_router(dashboard_router)
+app.include_router(strength_router)
 app.include_router(integrations_router)
 
 init_db()

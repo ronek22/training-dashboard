@@ -17,6 +17,7 @@ from ..repositories.activities import (
     update_activity_workout_intent,
     upsert_activity_row,
 )
+from .fitbod_imports import get_fitbod_strength_detail_for_activity
 from .activity_feedback import attach_feedback_by_activity_id, get_activity_feedback_data
 from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
 from .plans import ensure_plan_day_ids, format_workout_intent_label, normalize_workout_intent
@@ -570,6 +571,9 @@ def _build_activity_detail_payload(
     ).fetchone()
     source_status = cache_status_override or ("cached" if detail_row else ("summary_only" if not _is_strava_backed_activity(activity["id"]) else "not_cached"))
     feedback = get_activity_feedback_data(conn, activity["id"])
+    strength_detail = None
+    if activity.get("type") == "WeightTraining":
+        strength_detail = get_fitbod_strength_detail_for_activity(conn, activity["id"]) or {"status": "not_linked"}
 
     return {
         "activity": activity,
@@ -588,6 +592,7 @@ def _build_activity_detail_payload(
         },
         "source_stream_summary": dict(stream_summary) if stream_summary else None,
         "detail_available": bool(detail_row and (detail or streams or route_polyline)),
+        "strength_detail": strength_detail,
     }
 
 

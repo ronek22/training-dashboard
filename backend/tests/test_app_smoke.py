@@ -52,6 +52,12 @@ class AppSmokeTests(unittest.TestCase):
                 "activity_details",
                 "goals",
                 "activity_feedback",
+                "fitbod_workout_sets",
+                "fitbod_workout_exercises",
+                "fitbod_workout_sessions",
+                "fitbod_session_decisions",
+                "fitbod_import_rows",
+                "fitbod_import_batches",
             ]:
                 conn.execute(f"DELETE FROM {table}")
             conn.commit()
@@ -253,6 +259,464 @@ class AppSmokeTests(unittest.TestCase):
             self.assertEqual(second_body["feedback"]["note"], "Good control through the last rep.")
             detail_fetch.assert_called_once()
             stream_fetch.assert_called_once()
+
+    def test_fitbod_import_filters_groups_matches_and_enriches_strength_activity(self):
+        activity_date = "2026-06-30"
+        for payload in [
+            {
+                "id": "fitbod-strength-a",
+                "date": activity_date,
+                "type": "WeightTraining",
+                "name": "Upper Strength",
+                "duration_min": 48,
+                "calories": 320,
+            },
+            {
+                "id": "fitbod-strength-b",
+                "date": "2026-06-29",
+                "type": "WeightTraining",
+                "name": "Lower Strength",
+                "duration_min": 44,
+                "calories": 340,
+            },
+            {
+                "id": "fitbod-strength-c",
+                "date": "2026-07-01",
+                "type": "WeightTraining",
+                "name": "Posterior Chain",
+                "duration_min": 50,
+                "calories": 360,
+            },
+            {
+                "id": "fitbod-strength-d",
+                "date": "2026-07-01",
+                "type": "WeightTraining",
+                "name": "Strength Session",
+                "duration_min": 52,
+                "calories": 355,
+            },
+        ]:
+            created = self.client.post("/activities", json=payload)
+            self.assertEqual(created.status_code, 201)
+
+        csv_text = """Date,Exercise,Reps,Weight(kg),Duration(s),Distance(m),Incline,Resistance,isWarmup,Note,multiplier
+2025-12-15 18:30:00,Front Squat,5,90,60,,,,false,,1
+2025-12-15 18:30:00,Romanian Deadlift,8,80,55,,,,false,,1
+2026-06-30 18:00:00,Bench Press,8,60,45,,,,false,,1
+2026-06-30 18:00:00,Bench Press,8,60,45,,,,false,,1
+2026-06-30 18:00:00,Incline Dumbbell Press,10,22.5,50,,,,false,,2
+2026-06-30 18:00:00,Cycling,,,1800,12000,,,false,Commute,1
+2026-03-28 20:47:00,Cycling - Stationary,,,3725,,,,false,Zwift sync,1
+2026-07-01 07:15:00,Deadlift,5,100,60,,,,true,Warm-up,1
+2026-07-01 07:15:00,Deadlift,5,140,70,,,,false,,1
+2026-07-01 07:15:00,Deadlift,5,140,70,,,,false,,1
+2026-07-01 07:15:00,Barbell Row,10,60,55,,,,false,,1
+2026-07-01 07:15:00,Barbell Row,10,60,55,,,,false,,1
+bad-date,Squat,5,100,60,,,,false,,1
+"""
+
+        imported = self.client.post(
+            "/fitbod/import",
+            json={
+                "file_name": "fitbod-june.csv",
+                "csv_text": csv_text,
+            },
+        )
+        self.assertEqual(imported.status_code, 200)
+        body = imported.json()
+        self.assertEqual(body["raw_row_count"], 13)
+        self.assertEqual(body["ignored_row_count"], 2)
+        self.assertEqual(body["rejected_row_count"], 1)
+        self.assertEqual(body["session_count"], 3)
+        self.assertEqual(body["matched_count"], 1)
+        self.assertEqual(body["ambiguous_count"], 1)
+        self.assertEqual(body["outside_activity_range_count"], 1)
+        self.assertEqual(body["actionable_count"], 1)
+
+        first_session = next(session for session in body["sessions"] if session["workout_date"] == "2026-06-30")
+        self.assertEqual(first_session["set_count"], 3)
+        self.assertEqual(first_session["rep_count"], 26)
+        self.assertEqual(first_session["matched_activity"]["id"], "fitbod-strength-a")
+        self.assertEqual(first_session["match_provenance"], "matched_automatically")
+        self.assertEqual(first_session["exercises"][0]["exercise_name"], "Bench Press")
+        self.assertEqual(first_session["exercises"][0]["set_count"], 2)
+        self.assertEqual(first_session["exercises"][0]["sets"][0]["reps"], 8)
+
+        old_session = next(session for session in body["sessions"] if session["workout_date"] == "2025-12-15")
+        self.assertEqual(old_session["review_state"], "outside_activity_range")
+        self.assertFalse(old_session["actionable"])
+        self.assertTrue(old_session["range_reason"])
+
+        ambiguous_session = next(session for session in body["sessions"] if session["workout_date"] == "2026-07-01")
+        self.assertEqual(ambiguous_session["match_status"], "ambiguous")
+        self.assertEqual(ambiguous_session["review_state"], "ambiguous")
+        self.assertTrue(ambiguous_session["actionable"])
+        self.assertTrue(ambiguous_session["candidate_activities"])
+        self.assertEqual(ambiguous_session["candidate_activities"][0]["id"], "fitbod-strength-c")
+
+        latest = self.client.get("/fitbod/imports/latest")
+        self.assertEqual(latest.status_code, 200)
+        self.assertEqual(latest.json()["id"], body["id"])
+
+        linked = self.client.post(
+            f"/fitbod/sessions/{ambiguous_session['id']}/link",
+            json={"activity_id": "fitbod-strength-c"},
+        )
+        self.assertEqual(linked.status_code, 200)
+        self.assertEqual(linked.json()["match_status"], "matched")
+        self.assertEqual(linked.json()["match_provenance"], "matched_manually")
+        self.assertEqual(linked.json()["matched_activity"]["id"], "fitbod-strength-c")
+        self.assertEqual(linked.json()["review_state"], "matched")
+
+        enriched = self.client.get("/activities/fitbod-strength-c")
+        self.assertEqual(enriched.status_code, 200)
+        strength_detail = enriched.json()["strength_detail"]
+        self.assertEqual(strength_detail["status"], "enriched")
+        self.assertEqual(strength_detail["session"]["match_provenance"], "matched_manually")
+        self.assertEqual(strength_detail["session"]["rep_count"], 35)
+        self.assertEqual(len(strength_detail["session"]["exercises"]), 2)
+
+        cached_repeat = self.client.post(
+            "/fitbod/import",
+            json={
+                "file_name": "fitbod-june.csv",
+                "csv_text": csv_text,
+            },
+        )
+        self.assertEqual(cached_repeat.status_code, 200)
+        self.assertEqual(cached_repeat.json()["id"], body["id"])
+
+    def test_init_db_cleans_up_existing_fitbod_non_strength_sessions(self):
+        conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])
+        try:
+            conn.execute(
+                """
+                INSERT INTO fitbod_import_batches
+                (
+                    id, file_name, file_hash, parser_version, grouping_version, imported_at,
+                    raw_row_count, strength_row_count, ignored_row_count, rejected_row_count,
+                    session_count, matched_count, ambiguous_count, unmatched_count
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    1,
+                    "legacy-fitbod.csv",
+                    "legacy-hash",
+                    "fitbod_csv_v1",
+                    "timestamp_group_v1",
+                    "2026-07-03T09:00:00",
+                    1,
+                    1,
+                    0,
+                    0,
+                    1,
+                    0,
+                    0,
+                    1,
+                ),
+            )
+            conn.execute(
+                """
+                INSERT INTO fitbod_import_rows
+                (batch_id, row_index, row_kind, workout_timestamp, exercise_name, ignore_reason, raw_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    1,
+                    2,
+                    "strength",
+                    "2026-03-28T20:47:00",
+                    "Cycling - Stationary",
+                    None,
+                    '{"Exercise":"Cycling - Stationary"}',
+                ),
+            )
+            conn.execute(
+                """
+                INSERT INTO fitbod_workout_sessions
+                (
+                    id, batch_id, session_key, workout_timestamp, workout_date, title,
+                    exercise_count, set_count, rep_count, total_volume_kg, total_duration_seconds,
+                    total_distance_m, calories, match_status
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    1,
+                    1,
+                    "2026-03-28T20:47:00",
+                    "2026-03-28T20:47:00",
+                    "2026-03-28",
+                    "Cycling - Stationary",
+                    1,
+                    1,
+                    0,
+                    0,
+                    3725,
+                    None,
+                    None,
+                    "unmatched",
+                ),
+            )
+            conn.execute(
+                """
+                INSERT INTO fitbod_workout_exercises
+                (
+                    id, session_id, exercise_order, exercise_name, set_count, rep_count,
+                    total_volume_kg, work_set_count, warmup_set_count
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    1,
+                    1,
+                    1,
+                    "Cycling - Stationary",
+                    1,
+                    0,
+                    0,
+                    1,
+                    0,
+                ),
+            )
+            conn.execute(
+                """
+                INSERT INTO fitbod_workout_sets
+                (
+                    id, exercise_id, set_order, reps, weight_kg, duration_seconds,
+                    distance_m, incline, resistance, is_warmup, note, multiplier
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    1,
+                    1,
+                    1,
+                    0,
+                    None,
+                    3725,
+                    None,
+                    None,
+                    None,
+                    0,
+                    "legacy zwift duplicate",
+                    1,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        import_fresh_app()
+
+        conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])
+        conn.row_factory = sqlite3.Row
+        try:
+            session_count = conn.execute("SELECT COUNT(*) AS count FROM fitbod_workout_sessions").fetchone()["count"]
+            exercise_count = conn.execute("SELECT COUNT(*) AS count FROM fitbod_workout_exercises").fetchone()["count"]
+            set_count = conn.execute("SELECT COUNT(*) AS count FROM fitbod_workout_sets").fetchone()["count"]
+            self.assertEqual(session_count, 0)
+            self.assertEqual(exercise_count, 0)
+            self.assertEqual(set_count, 0)
+
+            cleaned_row = conn.execute(
+                """
+                SELECT row_kind, ignore_reason
+                FROM fitbod_import_rows
+                WHERE batch_id = 1
+                """
+            ).fetchone()
+            self.assertEqual(cleaned_row["row_kind"], "ignored")
+            self.assertIn("Retrospective cleanup", cleaned_row["ignore_reason"])
+
+            batch_row = conn.execute(
+                """
+                SELECT strength_row_count, ignored_row_count, session_count, unmatched_count
+                FROM fitbod_import_batches
+                WHERE id = 1
+                """
+            ).fetchone()
+            self.assertEqual(batch_row["strength_row_count"], 0)
+            self.assertEqual(batch_row["ignored_row_count"], 1)
+            self.assertEqual(batch_row["session_count"], 0)
+            self.assertEqual(batch_row["unmatched_count"], 0)
+        finally:
+            conn.close()
+
+    def test_fitbod_session_can_be_rejected_manually(self):
+        created = self.client.post(
+            "/activities",
+            json={
+                "id": "fitbod-strength-july",
+                "date": "2026-07-01",
+                "type": "WeightTraining",
+                "name": "Workout A Upper Chest",
+                "duration_min": 58,
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+
+        csv_text = """Date,Exercise,Reps,Weight(kg),Duration(s),Distance(m),Incline,Resistance,isWarmup,Note,multiplier
+2026-02-25 21:26:00,Dip,20,10,0,,,,false,,1
+2026-02-25 21:26:00,Dip,20,10,0,,,,false,,1
+2026-02-25 21:26:00,Dip,20,10,0,,,,false,,1
+"""
+        imported = self.client.post(
+            "/fitbod/import",
+            json={"file_name": "fitbod-dip.csv", "csv_text": csv_text},
+        )
+        self.assertEqual(imported.status_code, 200)
+        body = imported.json()
+        self.assertEqual(body["session_count"], 1)
+        session = body["sessions"][0]
+        self.assertEqual(session["title"], "Dip")
+
+        rejected = self.client.post(
+            f"/fitbod/sessions/{session['id']}/reject",
+            json={"reason": "This export row does not represent a workout I want to review."},
+        )
+        self.assertEqual(rejected.status_code, 200)
+        self.assertEqual(rejected.json()["status"], "rejected")
+
+        latest = self.client.get("/fitbod/imports/latest")
+        self.assertEqual(latest.status_code, 200)
+        self.assertEqual(latest.json()["session_count"], 0)
+        self.assertEqual(latest.json()["ignored_row_count"], 3)
+        self.assertEqual(latest.json()["actionable_count"], 0)
+
+        conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])
+        conn.row_factory = sqlite3.Row
+        try:
+            session_count = conn.execute("SELECT COUNT(*) AS count FROM fitbod_workout_sessions").fetchone()["count"]
+            self.assertEqual(session_count, 0)
+            row = conn.execute(
+                """
+                SELECT row_kind, ignore_reason
+                FROM fitbod_import_rows
+                WHERE batch_id = ? AND exercise_name = 'Dip'
+                LIMIT 1
+                """,
+                (body["id"],),
+            ).fetchone()
+            self.assertEqual(row["row_kind"], "ignored")
+            self.assertIn("does not represent a workout", row["ignore_reason"])
+        finally:
+            conn.close()
+
+    def test_fitbod_reimport_deduplicates_sessions_and_preserves_manual_decisions(self):
+        for payload in [
+            {
+                "id": "fitbod-repeat-a",
+                "date": "2026-06-30",
+                "type": "WeightTraining",
+                "name": "Upper Strength",
+                "duration_min": 48,
+            },
+            {
+                "id": "fitbod-repeat-b",
+                "date": "2026-07-01",
+                "type": "WeightTraining",
+                "name": "Posterior Chain",
+                "duration_min": 50,
+            },
+            {
+                "id": "fitbod-repeat-c",
+                "date": "2026-07-01",
+                "type": "WeightTraining",
+                "name": "Strength Session",
+                "duration_min": 52,
+            },
+            {
+                "id": "fitbod-repeat-d",
+                "date": "2026-07-02",
+                "type": "WeightTraining",
+                "name": "Leg Day",
+                "duration_min": 46,
+            },
+        ]:
+            created = self.client.post("/activities", json=payload)
+            self.assertEqual(created.status_code, 201)
+
+        first_csv = """Date,Exercise,Reps,Weight(kg),Duration(s),Distance(m),Incline,Resistance,isWarmup,Note,multiplier
+2026-02-25 21:26:00,Dip,20,10,0,,,,false,,1
+2026-02-25 21:26:00,Dip,20,10,0,,,,false,,1
+2026-06-30 18:00:00,Bench Press,8,60,45,,,,false,,1
+2026-06-30 18:00:00,Incline Dumbbell Press,10,22.5,50,,,,false,,2
+2026-07-01 07:15:00,Deadlift,5,140,70,,,,false,,1
+2026-07-01 07:15:00,Barbell Row,10,60,55,,,,false,,1
+"""
+        first_import = self.client.post(
+            "/fitbod/import",
+            json={"file_name": "fitbod-export-1.csv", "csv_text": first_csv},
+        )
+        self.assertEqual(first_import.status_code, 200)
+        first_body = first_import.json()
+        self.assertEqual(first_body["session_count"], 3)
+
+        july1_session = next(session for session in first_body["sessions"] if session["workout_date"] == "2026-07-01")
+        linked = self.client.post(
+            f"/fitbod/sessions/{july1_session['id']}/link",
+            json={"activity_id": "fitbod-repeat-b"},
+        )
+        self.assertEqual(linked.status_code, 200)
+        self.assertEqual(linked.json()["match_provenance"], "matched_manually")
+
+        dip_session = next(session for session in first_body["sessions"] if session["title"] == "Dip")
+        rejected = self.client.post(
+            f"/fitbod/sessions/{dip_session['id']}/reject",
+            json={"reason": "Bodyweight accessory set; do not review as a standalone workout."},
+        )
+        self.assertEqual(rejected.status_code, 200)
+
+        second_csv = """Date,Exercise,Reps,Weight(kg),Duration(s),Distance(m),Incline,Resistance,isWarmup,Note,multiplier
+2026-02-25 21:26:00,Dip,20,10,0,,,,false,,1
+2026-02-25 21:26:00,Dip,20,10,0,,,,false,,1
+2026-06-30 18:00:00,Bench Press,8,60,45,,,,false,,1
+2026-06-30 18:00:00,Incline Dumbbell Press,10,22.5,50,,,,false,,2
+2026-07-01 07:15:00,Deadlift,5,140,70,,,,false,,1
+2026-07-01 07:15:00,Barbell Row,10,60,55,,,,false,,1
+2026-07-02 18:10:00,Back Squat,5,100,60,,,,false,,1
+2026-07-02 18:10:00,Back Squat,5,100,60,,,,false,,1
+"""
+        second_import = self.client.post(
+            "/fitbod/import",
+            json={"file_name": "fitbod-export-2.csv", "csv_text": second_csv},
+        )
+        self.assertEqual(second_import.status_code, 200)
+        second_body = second_import.json()
+        self.assertEqual(second_body["session_count"], 3)
+        self.assertEqual(second_body["new_session_count"], 1)
+        self.assertEqual(second_body["updated_session_count"], 2)
+        self.assertEqual(second_body["preserved_manual_match_count"], 1)
+        self.assertEqual(second_body["preserved_rejected_count"], 1)
+        self.assertEqual(second_body["actionable_count"], 0)
+
+        july1_after = next(session for session in second_body["sessions"] if session["workout_date"] == "2026-07-01")
+        self.assertEqual(july1_after["match_provenance"], "matched_manually")
+        self.assertEqual(july1_after["matched_activity"]["id"], "fitbod-repeat-b")
+
+        conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])
+        conn.row_factory = sqlite3.Row
+        try:
+            session_count = conn.execute("SELECT COUNT(*) AS count FROM fitbod_workout_sessions").fetchone()["count"]
+            distinct_timestamps = conn.execute(
+                "SELECT COUNT(DISTINCT workout_timestamp) AS count FROM fitbod_workout_sessions"
+            ).fetchone()["count"]
+            self.assertEqual(session_count, 3)
+            self.assertEqual(distinct_timestamps, 3)
+
+            decision_rows = conn.execute(
+                "SELECT workout_timestamp, decision_type FROM fitbod_session_decisions ORDER BY workout_timestamp ASC"
+            ).fetchall()
+            self.assertEqual(len(decision_rows), 2)
+            self.assertEqual({row["decision_type"] for row in decision_rows}, {"matched_manually", "rejected_manually"})
+        finally:
+            conn.close()
+
+        enriched = self.client.get("/activities/fitbod-repeat-b")
+        self.assertEqual(enriched.status_code, 200)
+        self.assertEqual(enriched.json()["strength_detail"]["session"]["match_provenance"], "matched_manually")
 
     def test_goal_drafting_supports_high_confidence_and_warning_cases(self):
         ready_cases = [

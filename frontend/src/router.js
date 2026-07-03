@@ -8,6 +8,7 @@ import Plan from './views/Plan.vue'
 import Goals from './views/Goals.vue'
 import Roadmap from './views/Roadmap.vue'
 import ActivityDetail from './views/ActivityDetail.vue'
+import Sync from './views/Sync.vue'
 
 export default createRouter({
   history: createWebHistory(),
@@ -19,6 +20,7 @@ export default createRouter({
     { path: '/goals', component: Goals },
     { path: '/activities', component: Activities },
     { path: '/activities/:activityId', component: ActivityDetail },
+    { path: '/sync', component: Sync },
     { path: '/notes', component: Notes },
     { path: '/metrics', component: Metrics },
   ]

@@ -4,8 +4,17 @@
 
 Current status:
 
-- planned
-- follows planned Sprint 23 activity detail view and on-demand Strava caching
+- completed
+- follows completed Sprint 23 activity detail view and on-demand Strava caching
+
+Completion note:
+
+- shipped manual Fitbod CSV import with deterministic workout-session reconstruction
+- added filtering and retrospective cleanup for non-strength rows such as `Cycling`
+- delivered conservative matching, manual linking, and manual rejection flows for reconstructed Fitbod sessions
+- moved import and review workflow into a dedicated Sync surface
+- enriched `WeightTraining` activity detail with linked Fitbod exercise, set, rep, and volume detail
+- adapted strength activity detail to remove endurance-only sections and emphasize strength-specific summary and breakdown
 
 Starting point:
 
@@ -83,6 +92,12 @@ After this sprint:
 - the app can match or help link reconstructed Fitbod workout sessions to existing Strava strength activities
 - matched strength activities can show richer detail such as exercise list, sets, reps, and volume
 - the import process is explicit and auditable instead of silently guessing
+
+Delivered in implementation:
+
+- imports are durable across repeated Fitbod exports because reconstructed sessions are deduplicated by workout timestamp and relinked conservatively
+- manual cleanup paths exist for historical mismatches and false candidates
+- activity detail now distinguishes `WeightTraining` from run and ride review instead of trying to force all modalities into the same detail contract
 
 ## Proposed Feature Slice
 

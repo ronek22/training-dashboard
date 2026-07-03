@@ -11,6 +11,159 @@ def get_db():
     return conn
 
 
+NON_STRENGTH_EXERCISES = {
+    "bike",
+    "biking",
+    "cycling",
+    "elliptical",
+    "hike",
+    "hiking",
+    "ride",
+    "row",
+    "rowing",
+    "run",
+    "running",
+    "stairclimber",
+    "stairmaster",
+    "swim",
+    "swimming",
+    "walk",
+    "walking",
+    "yoga",
+}
+NON_STRENGTH_PREFIXES = tuple(sorted(NON_STRENGTH_EXERCISES, key=len, reverse=True))
+
+
+def _normalize_fitbod_exercise_name(value: str | None) -> str:
+    if not value:
+        return ""
+    return "".join(ch.lower() for ch in value if ch.isalnum())
+
+
+def _looks_like_non_strength_fitbod_exercise(value: str | None) -> bool:
+    normalized = _normalize_fitbod_exercise_name(value)
+    if not normalized:
+        return False
+    if normalized in NON_STRENGTH_EXERCISES:
+        return True
+    return normalized.startswith(NON_STRENGTH_PREFIXES)
+
+
+def _recompute_fitbod_batch_counters(conn: sqlite3.Connection, batch_id: int) -> None:
+    row = conn.execute(
+        """
+        SELECT
+            COUNT(*) AS raw_row_count,
+            SUM(CASE WHEN row_kind = 'strength' THEN 1 ELSE 0 END) AS strength_row_count,
+            SUM(CASE WHEN row_kind = 'ignored' THEN 1 ELSE 0 END) AS ignored_row_count,
+            SUM(CASE WHEN row_kind = 'rejected' THEN 1 ELSE 0 END) AS rejected_row_count
+        FROM fitbod_import_rows
+        WHERE batch_id = ?
+        """,
+        (batch_id,),
+    ).fetchone()
+    session_row = conn.execute(
+        """
+        SELECT
+            COUNT(*) AS session_count,
+            SUM(CASE WHEN match_status = 'matched' THEN 1 ELSE 0 END) AS matched_count,
+            SUM(CASE WHEN match_status = 'ambiguous' THEN 1 ELSE 0 END) AS ambiguous_count,
+            SUM(CASE WHEN match_status = 'unmatched' THEN 1 ELSE 0 END) AS unmatched_count
+        FROM fitbod_workout_sessions
+        WHERE batch_id = ?
+        """,
+        (batch_id,),
+    ).fetchone()
+    conn.execute(
+        """
+        UPDATE fitbod_import_batches
+        SET raw_row_count = ?,
+            strength_row_count = ?,
+            ignored_row_count = ?,
+            rejected_row_count = ?,
+            session_count = ?,
+            matched_count = ?,
+            ambiguous_count = ?,
+            unmatched_count = ?
+        WHERE id = ?
+        """,
+        (
+            int(row["raw_row_count"] or 0),
+            int(row["strength_row_count"] or 0),
+            int(row["ignored_row_count"] or 0),
+            int(row["rejected_row_count"] or 0),
+            int(session_row["session_count"] or 0),
+            int(session_row["matched_count"] or 0),
+            int(session_row["ambiguous_count"] or 0),
+            int(session_row["unmatched_count"] or 0),
+            batch_id,
+        ),
+    )
+
+
+def _cleanup_existing_fitbod_non_strength_sessions(conn: sqlite3.Connection) -> None:
+    if not conn.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'fitbod_workout_sessions'"
+    ).fetchone():
+        return
+
+    sessions = conn.execute(
+        """
+        SELECT id, batch_id, workout_timestamp
+        FROM fitbod_workout_sessions
+        ORDER BY id ASC
+        """
+    ).fetchall()
+    affected_batches: set[int] = set()
+
+    for session in sessions:
+        exercise_rows = conn.execute(
+            """
+            SELECT id, exercise_name
+            FROM fitbod_workout_exercises
+            WHERE session_id = ?
+            ORDER BY id ASC
+            """,
+            (session["id"],),
+        ).fetchall()
+        if not exercise_rows:
+            continue
+        exercise_names = [row["exercise_name"] for row in exercise_rows]
+        if not all(_looks_like_non_strength_fitbod_exercise(name) for name in exercise_names):
+            continue
+
+        affected_batches.add(int(session["batch_id"]))
+        reason = f"Retrospective cleanup filtered non-strength modality rows: {', '.join(exercise_names)}."
+        conn.execute(
+            """
+            UPDATE fitbod_import_rows
+            SET row_kind = 'ignored',
+                ignore_reason = ?
+            WHERE batch_id = ? AND workout_timestamp = ? AND row_kind = 'strength'
+            """,
+            (reason, session["batch_id"], session["workout_timestamp"]),
+        )
+
+        exercise_ids = [row["id"] for row in exercise_rows]
+        if exercise_ids:
+            placeholders = ",".join("?" for _ in exercise_ids)
+            conn.execute(
+                f"DELETE FROM fitbod_workout_sets WHERE exercise_id IN ({placeholders})",
+                exercise_ids,
+            )
+            conn.execute(
+                f"DELETE FROM fitbod_workout_exercises WHERE id IN ({placeholders})",
+                exercise_ids,
+            )
+        conn.execute(
+            "DELETE FROM fitbod_workout_sessions WHERE id = ?",
+            (session["id"],),
+        )
+
+    for batch_id in affected_batches:
+        _recompute_fitbod_batch_counters(conn, batch_id)
+
+
 def init_db():
     db_dir = os.path.dirname(DB_PATH)
     if db_dir:
@@ -161,6 +314,103 @@ def init_db():
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS fitbod_import_batches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_name TEXT,
+            file_hash TEXT NOT NULL UNIQUE,
+            parser_version TEXT NOT NULL,
+            grouping_version TEXT NOT NULL,
+            imported_at TEXT NOT NULL,
+            raw_row_count INTEGER NOT NULL DEFAULT 0,
+            strength_row_count INTEGER NOT NULL DEFAULT 0,
+            ignored_row_count INTEGER NOT NULL DEFAULT 0,
+            rejected_row_count INTEGER NOT NULL DEFAULT 0,
+            session_count INTEGER NOT NULL DEFAULT 0,
+            matched_count INTEGER NOT NULL DEFAULT 0,
+            ambiguous_count INTEGER NOT NULL DEFAULT 0,
+            unmatched_count INTEGER NOT NULL DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS fitbod_import_rows (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            batch_id INTEGER NOT NULL,
+            row_index INTEGER NOT NULL,
+            row_kind TEXT NOT NULL,
+            workout_timestamp TEXT,
+            exercise_name TEXT,
+            ignore_reason TEXT,
+            raw_json TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(batch_id) REFERENCES fitbod_import_batches(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS fitbod_workout_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            batch_id INTEGER NOT NULL,
+            session_key TEXT NOT NULL,
+            workout_timestamp TEXT NOT NULL,
+            workout_date TEXT NOT NULL,
+            title TEXT,
+            exercise_count INTEGER NOT NULL DEFAULT 0,
+            set_count INTEGER NOT NULL DEFAULT 0,
+            rep_count INTEGER NOT NULL DEFAULT 0,
+            total_volume_kg REAL,
+            total_duration_seconds REAL,
+            total_distance_m REAL,
+            calories INTEGER,
+            match_status TEXT NOT NULL DEFAULT 'unmatched',
+            matched_activity_id TEXT,
+            match_confidence REAL,
+            match_provenance TEXT,
+            match_reason TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(batch_id) REFERENCES fitbod_import_batches(id) ON DELETE CASCADE,
+            FOREIGN KEY(matched_activity_id) REFERENCES activities(id) ON DELETE SET NULL,
+            UNIQUE(batch_id, session_key)
+        );
+
+        CREATE TABLE IF NOT EXISTS fitbod_workout_exercises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            exercise_order INTEGER NOT NULL,
+            exercise_name TEXT NOT NULL,
+            set_count INTEGER NOT NULL DEFAULT 0,
+            rep_count INTEGER NOT NULL DEFAULT 0,
+            total_volume_kg REAL,
+            work_set_count INTEGER NOT NULL DEFAULT 0,
+            warmup_set_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(session_id) REFERENCES fitbod_workout_sessions(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS fitbod_workout_sets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            exercise_id INTEGER NOT NULL,
+            set_order INTEGER NOT NULL,
+            reps INTEGER,
+            weight_kg REAL,
+            duration_seconds REAL,
+            distance_m REAL,
+            incline REAL,
+            resistance REAL,
+            is_warmup INTEGER NOT NULL DEFAULT 0,
+            note TEXT,
+            multiplier REAL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(exercise_id) REFERENCES fitbod_workout_exercises(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS fitbod_session_decisions (
+            workout_timestamp TEXT PRIMARY KEY,
+            decision_type TEXT NOT NULL,
+            activity_id TEXT,
+            reason TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE SET NULL
+        );
     """)
 
     feedback_columns = {
@@ -223,6 +473,8 @@ def init_db():
         conn.execute("DROP TABLE activity_feedback_legacy")
     elif "pain_level" not in feedback_columns:
         conn.execute("ALTER TABLE activity_feedback ADD COLUMN pain_level INTEGER NOT NULL DEFAULT 0")
+
+    _cleanup_existing_fitbod_non_strength_sessions(conn)
 
     conn.commit()
     conn.close()

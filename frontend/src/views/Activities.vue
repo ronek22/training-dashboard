@@ -1,55 +1,11 @@
 <template>
   <div>
-    <h1 class="page-title">Activities</h1>
-
-    <div class="card import-card">
-      <div class="import-header">
-        <div>
-          <h2>Strava Sync</h2>
-          <p>Pull activities directly from Strava into the dashboard. Leave dates empty to sync from the last saved activity day.</p>
-        </div>
-        <span class="status-pill" :class="stravaStatus.configured ? 'status-ok' : 'status-missing'">
-          {{ stravaStatus.configured ? 'Configured' : 'Needs config' }}
-        </span>
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Activities</h1>
+        <p class="page-copy">Review logged sessions, update intent, and capture post-workout feedback.</p>
       </div>
-
-      <div class="import-form">
-        <label>
-          <span>Start date</span>
-          <input v-model="importForm.start_date" type="date" placeholder="Auto">
-        </label>
-        <label>
-          <span>End date</span>
-          <input v-model="importForm.end_date" type="date" placeholder="Today">
-        </label>
-        <button class="import-btn" :disabled="importing || !canImport" @click="runImport">
-          {{ importing ? 'Importing...' : 'Import from Strava' }}
-        </button>
-        <button
-          class="import-btn import-btn-secondary"
-          :disabled="backfilling || !canImport || !stravaStatus.pending_stream_backfill"
-          @click="runStreamBackfill"
-        >
-          {{ backfilling ? 'Backfilling...' : `Backfill Detailed Load (${stravaStatus.stream_fetch_limit || 12})` }}
-        </button>
-      </div>
-
-      <p v-if="importMessage" class="import-message">{{ importMessage }}</p>
-      <p v-if="!stravaStatus.configured" class="import-hint">
-        Set `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, and `STRAVA_REFRESH_TOKEN` for the backend service.
-      </p>
-      <p v-else-if="stravaStatus.latest_activity_date" class="import-hint">
-        Default sync range starts at {{ formatDate(stravaStatus.latest_activity_date) }} and includes that day.
-      </p>
-      <p v-if="stravaStatus.configured && stravaStatus.last_import_at" class="import-hint">
-        Last import: {{ formatDateTime(stravaStatus.last_import_at) }}
-      </p>
-      <p v-if="stravaStatus.configured" class="import-hint">
-        Detailed stream backfill pending: {{ stravaStatus.pending_stream_backfill || 0 }} activities.
-      </p>
-      <p v-if="stravaStatus.configured && !stravaStatus.latest_activity_date" class="import-hint">
-        No activities stored yet. Empty dates will import today by default; set a custom start date for an initial backfill.
-      </p>
+      <router-link to="/sync" class="sync-link">Open Sync</router-link>
     </div>
 
     <div class="filters">
@@ -199,24 +155,19 @@
 
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
-import { useApi } from '../stores/api'
 import { format } from 'date-fns'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
+import { useApi } from '../stores/api'
 
 const api = useApi()
 const activities = ref([])
 const activeFilter = ref('all')
-const importing = ref(false)
-const backfilling = ref(false)
-const importMessage = ref('')
 const savingIntentId = ref(null)
 const editingIntentId = ref(null)
 const feedbackSaving = ref(false)
 const feedbackMessage = ref('')
 const dialogActivity = ref(null)
-const stravaStatus = ref({ configured: false, last_import_at: null, latest_activity_date: null })
-const importForm = ref({ start_date: '', end_date: '' })
 const selectedIntents = ref({})
 
 const workoutIntentOptions = {
@@ -276,51 +227,9 @@ const load = async () => {
   selectedIntents.value = {}
 }
 
-const loadStravaStatus = async () => {
-  const { data } = await api.getStravaStatus()
-  stravaStatus.value = data
-}
-
-const canImport = computed(() =>
-  stravaStatus.value.configured
-)
-
-const runImport = async () => {
-  importing.value = true
-  importMessage.value = ''
-  try {
-    const payload = {}
-    if (importForm.value.start_date) payload.start_date = importForm.value.start_date
-    if (importForm.value.end_date) payload.end_date = importForm.value.end_date
-    const { data } = await api.importStravaActivities(payload)
-    importMessage.value = `Imported ${data.imported} activities for ${data.start_date} to ${data.end_date}. Detailed streams fetched: ${data.streams_fetched || 0}.`
-    await Promise.all([load(), loadStravaStatus()])
-  } catch (error) {
-    importMessage.value = error?.response?.data?.detail || 'Strava import failed.'
-  } finally {
-    importing.value = false
-  }
-}
-
-const runStreamBackfill = async () => {
-  backfilling.value = true
-  importMessage.value = ''
-  try {
-    const { data } = await api.backfillStravaStreams({ limit: stravaStatus.value.stream_fetch_limit || 12 })
-    importMessage.value = `Detailed load backfill scanned ${data.scanned} activities, fetched ${data.streams_fetched} stream summaries. Remaining candidates: ${data.remaining_candidates}.`
-    await Promise.all([load(), loadStravaStatus()])
-  } catch (error) {
-    importMessage.value = error?.response?.data?.detail || 'Detailed load backfill failed.'
-  } finally {
-    backfilling.value = false
-  }
-}
-
 const setFilter = (f) => { activeFilter.value = f }
 watch(activeFilter, load)
-onMounted(async () => {
-  await Promise.all([load(), loadStravaStatus()])
-})
+onMounted(load)
 
 const isRecentActivity = (dateValue) => {
   try {
@@ -423,7 +332,6 @@ const saveIntent = async (activity) => {
 }
 
 const formatDate = (d) => { try { return format(new Date(d), 'MMM d, yyyy') } catch { return d } }
-const formatDateTime = (d) => { try { return format(new Date(d), 'MMM d, yyyy HH:mm') } catch { return d } }
 const badgeClass = (t) => {
   if (t === 'Run') return 'badge-run'
   if (t === 'Ride' || t === 'VirtualRide') return 'badge-ride'
@@ -474,46 +382,29 @@ const zoneBadgeClass = (activity) => {
 </script>
 
 <style scoped>
-.page-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; margin-bottom: 20px; }
-.import-card { margin-bottom: 20px; }
-.import-header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 16px; }
-.import-header h2 { margin: 0 0 6px; font-size: 18px; }
-.import-header p { margin: 0; color: var(--muted); }
-.import-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
-.import-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
-.import-form input {
-  padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--text);
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
 }
-.import-btn {
-  padding: 10px 16px; border: 0; border-radius: 10px; cursor: pointer;
-  background: var(--accent); color: #fff; font-weight: 600;
+.page-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+.page-copy { color: var(--muted); font-size: 14px; }
+.sync-link {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  background: rgba(37, 99, 235, 0.14);
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 700;
 }
-.import-btn-secondary {
-  background: #1f2937;
-  color: #dbe4ff;
-  border: 1px solid var(--border);
-}
-.import-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.status-pill {
-  border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700;
-}
-.status-ok { background: rgba(34, 197, 94, 0.14); color: #15803d; }
-.status-missing { background: rgba(245, 158, 11, 0.14); color: #b45309; }
-.import-message { margin: 14px 0 0; font-weight: 600; }
-.import-hint { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
-.activity-detail-link {
-  color: var(--text);
-  font-weight: 600;
-}
+.sync-link:hover { background: rgba(37, 99, 235, 0.22); }
+.activity-detail-link { color: var(--text); font-weight: 600; }
 .activity-detail-link:hover,
-.activity-open-link:hover {
-  color: var(--accent-strong);
-}
-.activity-open-link {
-  color: var(--muted-soft);
-  font-size: 12px;
-}
+.activity-open-link:hover { color: var(--accent-strong); }
+.activity-open-link { color: var(--muted-soft); font-size: 12px; }
 .activity-subtag { margin-top: 6px; white-space: normal; }
 .badge-benchmark { background: rgba(245, 158, 11, 0.14); color: #f59e0b; }
 .badge-zone-1 { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; }
@@ -551,15 +442,12 @@ const zoneBadgeClass = (activity) => {
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 .intent-display:hover {
   border-color: rgba(96, 165, 250, 0.28);
   background: rgba(30, 41, 59, 0.86);
 }
-.intent-display-empty {
-  color: var(--muted);
-}
+.intent-display-empty { color: var(--muted); }
 .intent-select {
   width: 100%;
   padding: 8px 10px;
@@ -574,10 +462,8 @@ const zoneBadgeClass = (activity) => {
   gap: 8px;
   align-items: center;
 }
-.intent-save-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.intent-save-btn:disabled,
+.intent-cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .intent-cancel-btn {
   border: 0;
   background: transparent;
@@ -585,10 +471,6 @@ const zoneBadgeClass = (activity) => {
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
-}
-.intent-cancel-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 .feedback-pill {
   padding: 4px 8px;
@@ -607,5 +489,8 @@ const zoneBadgeClass = (activity) => {
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
+}
+@media (max-width: 760px) {
+  .page-header { flex-direction: column; }
 }
 </style>

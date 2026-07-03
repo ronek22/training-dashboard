@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from typing import Optional
 
 from ..db import get_db
+from ..models.fitbod_imports import FitbodImportRequest, FitbodSessionLinkRequest, FitbodSessionRejectRequest
 from ..models.activities import Activity, ActivityIntentUpdate, ActivityPlanLink
 from ..services.settings import get_setting, set_setting
 from ..services.strava import (
@@ -18,6 +19,12 @@ from ..services.activities import (
     link_activity_to_planned_session_data,
     list_activities_data,
     update_activity_workout_intent_data,
+)
+from ..services.fitbod_imports import (
+    get_latest_fitbod_import_data,
+    import_fitbod_csv_data,
+    link_fitbod_session_to_activity_data,
+    reject_fitbod_session_data,
 )
 
 router = APIRouter()
@@ -63,6 +70,42 @@ def get_activity_detail(activity_id: str):
             fetch_strava_activity_detail_fn=fetch_strava_activity_detail,
             fetch_strava_activity_streams_fn=fetch_strava_activity_streams_by_keys,
         )
+    finally:
+        conn.close()
+
+
+@router.post("/fitbod/import")
+def import_fitbod_csv(payload: FitbodImportRequest):
+    conn = get_db()
+    try:
+        return import_fitbod_csv_data(conn, file_name=payload.file_name, csv_text=payload.csv_text)
+    finally:
+        conn.close()
+
+
+@router.get("/fitbod/imports/latest")
+def get_latest_fitbod_import():
+    conn = get_db()
+    try:
+        return get_latest_fitbod_import_data(conn)
+    finally:
+        conn.close()
+
+
+@router.post("/fitbod/sessions/{session_id}/link")
+def link_fitbod_session_to_activity(session_id: int, payload: FitbodSessionLinkRequest):
+    conn = get_db()
+    try:
+        return link_fitbod_session_to_activity_data(conn, session_id, payload.activity_id)
+    finally:
+        conn.close()
+
+
+@router.post("/fitbod/sessions/{session_id}/reject")
+def reject_fitbod_session(session_id: int, payload: FitbodSessionRejectRequest):
+    conn = get_db()
+    try:
+        return reject_fitbod_session_data(conn, session_id, payload.reason)
     finally:
         conn.close()
 

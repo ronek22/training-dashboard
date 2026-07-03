@@ -26,7 +26,7 @@
             <div class="panel-title">Summary</div>
             <div class="summary-showcase">
               <div class="summary-distance-orb">
-                <span class="summary-orb-label">{{ primarySummaryStats[0]?.label || 'Distance' }}</span>
+                <span class="summary-orb-label">{{ primarySummaryStats[0]?.label || (isStrengthActivity ? 'Elapsed' : 'Distance') }}</span>
                 <strong class="summary-orb-value">{{ primarySummaryStats[0] ? formatStatValue(primarySummaryStats[0]) : '—' }}</strong>
                 <span class="summary-orb-sub">{{ detail.activity.type }} session</span>
               </div>
@@ -128,7 +128,78 @@
 
         <section class="content-grid">
           <div class="main-column">
-            <section class="detail-panel route-panel">
+            <section v-if="detail.activity.type === 'WeightTraining'" class="detail-panel strength-panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Strength Enrichment</div>
+                  <p class="panel-copy">
+                    {{ strengthDetail?.status === 'enriched' ? 'Exercise-level detail reconstructed from the linked Fitbod import.' : 'No linked Fitbod workout has enriched this strength activity yet.' }}
+                  </p>
+                </div>
+              </div>
+
+              <template v-if="strengthDetail?.status === 'enriched'">
+                <div class="strength-match-note">
+                  <span class="strength-match-badge">Linked workout</span>
+                  <span>
+                    {{ formatDateTime(strengthDetail.session.workout_timestamp) }}
+                    <span v-if="strengthDetail.session.match_provenance === 'matched_manually'">after manual review.</span>
+                    <span v-else>via conservative automatic matching.</span>
+                  </span>
+                </div>
+
+                <div class="strength-exercise-list">
+                  <article v-for="exercise in strengthDetail.session.exercises" :key="exercise.id" class="strength-exercise-card">
+                    <div class="strength-exercise-head">
+                      <div class="strength-exercise-title-block">
+                        <h3>{{ exercise.exercise_name }}</h3>
+                        <div class="strength-exercise-meta">
+                          <span class="strength-meta-pill">{{ exercise.set_count }} sets</span>
+                          <span class="strength-meta-pill">{{ exercise.rep_count }} reps</span>
+                        </div>
+                      </div>
+                      <div class="strength-exercise-volume" :class="{ 'strength-exercise-volume-muted': exercise.total_volume_kg == null || exercise.total_volume_kg === 0 }">
+                        <span>Volume</span>
+                        <strong>{{ exercise.total_volume_kg != null ? `${trimNumber(exercise.total_volume_kg)} kg` : 'No load' }}</strong>
+                      </div>
+                    </div>
+
+                    <div class="strength-table-wrap">
+                      <table class="strength-set-table">
+                        <thead>
+                          <tr>
+                            <th>Set</th>
+                            <th>Reps</th>
+                            <th>Load</th>
+                            <th>Warmup</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="setRow in exercise.sets" :key="setRow.id">
+                            <td>
+                              <span class="strength-set-index">{{ setRow.set_order }}</span>
+                            </td>
+                            <td>{{ setRow.reps ?? '—' }}</td>
+                            <td>{{ setRow.weight_kg != null ? `${trimNumber(setRow.weight_kg)} kg` : '—' }}</td>
+                            <td>
+                              <span class="strength-warmup-pill" :class="setRow.is_warmup ? 'strength-warmup-pill-yes' : 'strength-warmup-pill-no'">
+                                {{ setRow.is_warmup ? 'Warmup' : 'Work' }}
+                              </span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </article>
+                </div>
+              </template>
+
+              <div v-else class="detail-empty-copy">
+                Import a Fitbod CSV from the Sync page and link the reconstructed workout to see exercises, sets, reps, and volume here.
+              </div>
+            </section>
+
+            <section v-if="!isStrengthActivity" class="detail-panel route-panel">
               <div class="panel-head">
                 <div>
                   <div class="panel-title">Route</div>
@@ -143,7 +214,7 @@
               <div v-else class="detail-empty-copy">No route geometry is available for this activity.</div>
             </section>
 
-            <section class="chart-stack">
+            <section v-if="!isStrengthActivity" class="chart-stack">
               <article v-for="chart in preparedCharts" :key="chart.key" class="detail-panel chart-panel">
                 <div class="panel-head chart-head">
                   <div>
@@ -197,7 +268,38 @@
           </div>
 
           <aside class="side-column">
-            <section class="detail-panel context-panel">
+            <section v-if="isStrengthActivity" class="detail-panel muscle-map-panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Muscle Focus</div>
+                  <p class="panel-copy">
+                    {{ strengthMuscleSummary?.regions?.length
+                      ? 'Estimated from the linked Fitbod exercise names and set mix.'
+                      : 'Link Fitbod detail to estimate which muscle groups this session emphasized.' }}
+                  </p>
+                </div>
+              </div>
+
+              <template v-if="strengthMuscleSummary?.regions?.length">
+                <div class="muscle-region-list muscle-region-list-tight">
+                  <div v-for="region in strengthMuscleSummary.regions.slice(0, 6)" :key="region.key" class="muscle-region-chip">
+                    <div class="muscle-region-top">
+                      <span>{{ region.label }}</span>
+                      <strong>{{ region.share }}%</strong>
+                    </div>
+                    <div class="muscle-region-bar">
+                      <span :style="{ width: `${region.share}%` }"></span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <div v-else class="detail-empty-copy">
+                No exercise breakdown is available yet for this strength session.
+              </div>
+            </section>
+
+            <section v-if="!isStrengthActivity" class="detail-panel context-panel">
               <div class="panel-title">Activity Context</div>
               <div class="context-overview">
                 <div class="context-story-card">
@@ -257,7 +359,7 @@
               </div>
             </section>
 
-            <section v-if="detail.best_efforts?.efforts?.length" class="detail-panel best-efforts-panel">
+            <section v-if="!isStrengthActivity && detail.best_efforts?.efforts?.length" class="detail-panel best-efforts-panel">
               <div class="panel-head">
                 <div>
                   <div class="panel-title">Best Efforts</div>
@@ -326,6 +428,53 @@ let startMarker = null
 let endMarker = null
 let lastRouteSignature = ''
 
+const muscleRegionLabels = {
+  chest: 'Chest',
+  shoulders: 'Shoulders',
+  biceps: 'Biceps',
+  triceps: 'Triceps',
+  lats: 'Lats',
+  traps: 'Upper back',
+  core: 'Core',
+  lower_back: 'Lower back',
+  glutes: 'Glutes',
+  quads: 'Quads',
+  hamstrings: 'Hamstrings',
+  calves: 'Calves',
+}
+
+const muscleInferenceRules = [
+  { tokens: ['bench', 'incline', 'decline', 'chest press', 'push up', 'push-up', 'dip', 'fly'], regions: { chest: 3, shoulders: 1, triceps: 1 } },
+  { tokens: ['pull up', 'pull-up', 'chin up', 'chin-up', 'lat pulldown', 'pulldown'], regions: { lats: 3, biceps: 1, traps: 1 } },
+  { tokens: ['row', 'seal row', 'cable row', 't bar', 't-bar'], regions: { lats: 2, traps: 2, biceps: 1 } },
+  { tokens: ['deadlift', 'romanian', 'rdl', 'good morning'], regions: { hamstrings: 2, glutes: 2, lower_back: 2, traps: 1 } },
+  { tokens: ['squat', 'leg press', 'hack squat', 'split squat', 'lunge', 'step up', 'step-up'], regions: { quads: 3, glutes: 2, core: 1 } },
+  { tokens: ['hip thrust', 'glute bridge', 'bridge'], regions: { glutes: 3, hamstrings: 1 } },
+  { tokens: ['calf raise', 'calves'], regions: { calves: 3 } },
+  { tokens: ['curl', 'hammer curl', 'preacher'], regions: { biceps: 3 } },
+  { tokens: ['tricep', 'triceps', 'pushdown', 'skull crusher', 'skullcrusher', 'overhead extension'], regions: { triceps: 3 } },
+  { tokens: ['lateral raise', 'front raise', 'reverse fly', 'rear delt', 'face pull'], regions: { shoulders: 3, traps: 1 } },
+  { tokens: ['shoulder press', 'overhead press', 'military press', 'arnold'], regions: { shoulders: 3, triceps: 1, core: 1 } },
+  { tokens: ['shrug'], regions: { traps: 3 } },
+  { tokens: ['plank', 'crunch', 'sit up', 'sit-up', 'leg raise', 'ab wheel', 'ab rollout', 'russian twist'], regions: { core: 3 } },
+  { tokens: ['back extension'], regions: { lower_back: 3, glutes: 1 } },
+]
+
+const normalizeExerciseName = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+const inferMuscleRegions = (exerciseName) => {
+  const normalized = normalizeExerciseName(exerciseName)
+  if (!normalized) return {}
+  const scores = {}
+  for (const rule of muscleInferenceRules) {
+    if (!rule.tokens.some((token) => normalized.includes(token))) continue
+    for (const [region, weight] of Object.entries(rule.regions)) {
+      scores[region] = (scores[region] || 0) + weight
+    }
+  }
+  return scores
+}
+
 const load = async () => {
   loading.value = true
   error.value = ''
@@ -369,7 +518,39 @@ const clearActiveBestEffort = () => {
   activeBestEffort.value = null
 }
 
-const summaryPriority = [
+const isStrengthActivity = computed(() => detail.value?.activity?.type === 'WeightTraining')
+const strengthSession = computed(() => strengthDetail.value?.session || null)
+const strengthMuscleSummary = computed(() => {
+  if (!isStrengthActivity.value) return null
+  const exercises = strengthSession.value?.exercises || []
+  if (!exercises.length) return { regions: [] }
+
+  const totals = {}
+  for (const exercise of exercises) {
+    const inferred = inferMuscleRegions(exercise.exercise_name)
+    const baseSets = Math.max(Number(exercise.work_set_count || exercise.set_count || 1), 1)
+    const multiplier = exercise.total_volume_kg && Number(exercise.total_volume_kg) > 0 ? 1.15 : 1
+    for (const [region, score] of Object.entries(inferred)) {
+      totals[region] = (totals[region] || 0) + (score * baseSets * multiplier)
+    }
+  }
+
+  const sorted = Object.entries(totals)
+    .map(([key, score]) => ({ key, label: muscleRegionLabels[key] || key, score }))
+    .sort((left, right) => right.score - left.score)
+
+  if (!sorted.length) return { regions: [] }
+
+  const totalScore = sorted.reduce((sum, item) => sum + item.score, 0)
+  return {
+    regions: sorted.slice(0, 6).map((item) => ({
+      ...item,
+      share: Math.max(8, Math.round((item.score / totalScore) * 100)),
+    })),
+  }
+})
+
+const enduranceSummaryPriority = [
   'distance_km',
   'moving_time_min',
   'avg_pace',
@@ -386,8 +567,71 @@ const summaryPriority = [
   'average_cadence',
 ]
 
+const strengthSummaryPriority = [
+  'moving_time_min',
+  'elapsed_time_min',
+  'calories',
+  'avg_hr',
+  'max_hr',
+]
+
 const orderedSummaryStats = computed(() => {
-  const items = detail.value?.stats || []
+  if (isStrengthActivity.value && strengthSession.value) {
+    const stats = []
+    const rawStrengthDurationSeconds = Number(strengthSession.value.total_duration_seconds)
+    const elapsedMinutes = Number.isFinite(rawStrengthDurationSeconds) && rawStrengthDurationSeconds > 0
+      ? rawStrengthDurationSeconds / 60
+      : null
+    const existingStats = Object.fromEntries((detail.value?.stats || []).map((item) => [item.key, item]))
+
+    stats.push({
+      key: 'strength_volume',
+      label: 'Total volume',
+      value: strengthSession.value.total_volume_kg,
+      unit: 'kg',
+    })
+    stats.push({
+      key: 'strength_sets',
+      label: 'Sets',
+      value: strengthSession.value.set_count,
+      unit: null,
+    })
+    stats.push({
+      key: 'strength_reps',
+      label: 'Reps',
+      value: strengthSession.value.rep_count,
+      unit: null,
+    })
+
+    if (elapsedMinutes != null) {
+      stats.push({
+        key: 'elapsed_time_min',
+        label: 'Elapsed time',
+        value: elapsedMinutes,
+        unit: 'min',
+      })
+    } else if (existingStats.elapsed_time_min) {
+      stats.push(existingStats.elapsed_time_min)
+    } else if (existingStats.moving_time_min) {
+      stats.push({
+        ...existingStats.moving_time_min,
+        label: 'Elapsed time',
+      })
+    }
+
+    if (existingStats.calories) stats.push(existingStats.calories)
+    if (existingStats.avg_hr) stats.push(existingStats.avg_hr)
+    if (existingStats.max_hr) stats.push(existingStats.max_hr)
+
+    return stats.filter((item) => item.value !== null && item.value !== undefined && item.value !== '')
+  }
+
+  let items = detail.value?.stats || []
+  const summaryPriority = isStrengthActivity.value ? strengthSummaryPriority : enduranceSummaryPriority
+  if (isStrengthActivity.value) {
+    const disallowedKeys = new Set(['distance_km', 'avg_pace', 'avg_speed_kmh', 'elevation_m', 'max_speed_kmh'])
+    items = items.filter((item) => !disallowedKeys.has(item.key))
+  }
   return [...items].sort((left, right) => {
     const leftIndex = summaryPriority.indexOf(left.key)
     const rightIndex = summaryPriority.indexOf(right.key)
@@ -402,12 +646,61 @@ const secondarySummaryStats = computed(() => orderedSummaryStats.value.slice(3, 
 
 const summaryAccentTone = (key) => {
   if (key === 'moving_time_min') return 'blue'
+  if (key === 'strength_volume') return 'amber'
+  if (key === 'strength_sets' || key === 'strength_reps') return 'teal'
   if (key === 'avg_speed_kmh' || key === 'avg_pace') return 'teal'
+  if (key === 'calories') return 'amber'
   if (key === 'avg_watts') return 'amber'
   return 'blue'
 }
 
 const summaryNarrative = computed(() => {
+  if (isStrengthActivity.value) {
+    const session = strengthDetail.value?.session
+    const totalVolume = Number(session?.total_volume_kg || 0)
+    const totalSets = Number(session?.set_count || 0)
+    const totalReps = Number(session?.rep_count || 0)
+
+    if (session && totalVolume >= 8000) {
+      return {
+        headline: 'High-volume lifting',
+        copy: 'This session carried enough set and load density to count as substantial strength work.',
+        loadLabel: 'Substantial',
+        support: 'Volume and repetition count were meaningfully high.',
+        tone: 'loaded',
+        position: 78,
+      }
+    }
+    if (session && totalSets >= 16) {
+      return {
+        headline: 'Structured strength work',
+        copy: 'The workout had enough set volume to read as a complete gym session rather than a light add-on.',
+        loadLabel: 'Purposeful',
+        support: 'Set count suggests deliberate training load.',
+        tone: 'steady',
+        position: 58,
+      }
+    }
+    if (session) {
+      return {
+        headline: 'Compact strength session',
+        copy: `This looked like focused strength work with ${totalSets || 0} sets and ${totalReps || 0} reps logged.`,
+        loadLabel: 'Targeted',
+        support: 'Useful when paired with the exercise breakdown below.',
+        tone: 'steady',
+        position: 42,
+      }
+    }
+    return {
+      headline: 'Strength summary available',
+      copy: 'The session is logged as weight training, but no Fitbod enrichment is linked yet.',
+      loadLabel: 'Limited',
+      support: 'Link Fitbod detail for a more meaningful strength read.',
+      tone: 'neutral',
+      position: 34,
+    }
+  }
+
   const stats = Object.fromEntries((detail.value?.stats || []).map((item) => [item.key, item.value]))
   const distance = Number(stats.distance_km || 0)
   const speed = Number(stats.avg_speed_kmh || 0)
@@ -527,6 +820,11 @@ const activityContext = computed(() => {
   let headline = 'Context is usable'
   let copy = 'There is enough detail here to place the session inside the training week.'
 
+  if (isStrengthActivity.value) {
+    headline = 'Strength context is usable'
+    copy = 'Use the Fitbod exercise breakdown and your subjective feedback to place the lifting cost inside the week.'
+  }
+
   if (intent.includes('recover')) {
     target = 40
     low = 18
@@ -637,6 +935,8 @@ const preparedCharts = computed(() => {
     })
     .slice(0, 4)
 })
+
+const strengthDetail = computed(() => detail.value?.strength_detail || null)
 
 const chartTone = (key) => {
   if (key === 'pace' || key === 'speed') return 'speed'
@@ -1077,6 +1377,184 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: 700;
 }
+.strength-panel {
+  margin-bottom: 18px;
+  padding: 18px;
+}
+.strength-match-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  color: #c9d6ea;
+  font-size: 13px;
+}
+.strength-match-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(92, 211, 178, 0.18);
+  background: rgba(18, 76, 65, 0.26);
+  color: #72e0c4;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.strength-exercise-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+.strength-exercise-card {
+  border: 1px solid rgba(94, 107, 131, 0.22);
+  border-radius: 22px;
+  padding: 18px 18px 16px;
+  background:
+    radial-gradient(circle at top right, rgba(43, 79, 167, 0.13), transparent 32%),
+    linear-gradient(180deg, rgba(10, 18, 34, 0.96), rgba(7, 13, 25, 0.86));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+.strength-exercise-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.strength-exercise-title-block {
+  min-width: 0;
+}
+.strength-exercise-head h3 {
+  margin: 0;
+  font-size: 19px;
+}
+.strength-exercise-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.strength-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(118, 138, 178, 0.18);
+  background: rgba(20, 31, 50, 0.74);
+  color: #b6c7e5;
+  font-size: 12px;
+  font-weight: 600;
+}
+.strength-exercise-volume {
+  display: grid;
+  gap: 4px;
+  min-width: 116px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(245, 197, 107, 0.16);
+  background: linear-gradient(180deg, rgba(60, 39, 11, 0.34), rgba(19, 16, 16, 0.24));
+  text-align: right;
+}
+.strength-exercise-volume span {
+  color: #d8b372;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.strength-exercise-volume strong {
+  color: #f7d086;
+  font-size: 21px;
+  line-height: 1;
+}
+.strength-exercise-volume-muted {
+  border-color: rgba(94, 107, 131, 0.2);
+  background: rgba(16, 24, 37, 0.72);
+}
+.strength-exercise-volume-muted span,
+.strength-exercise-volume-muted strong {
+  color: #9db0cf;
+}
+.strength-table-wrap {
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(71, 85, 105, 0.2);
+  background: rgba(7, 13, 25, 0.58);
+}
+.strength-set-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+.strength-set-table th,
+.strength-set-table td {
+  padding: 12px 14px;
+  border-top: 1px solid rgba(71, 85, 105, 0.22);
+  text-align: left;
+}
+.strength-set-table th {
+  color: #9ab0cf;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(16, 24, 38, 0.92);
+}
+.strength-set-table thead th {
+  border-top: 0;
+}
+.strength-set-table tbody tr:nth-child(even) td {
+  background: rgba(11, 18, 32, 0.34);
+}
+.strength-set-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 144, 184, 0.18);
+  background: rgba(18, 28, 44, 0.84);
+  color: #dce6f7;
+  font-weight: 700;
+}
+.strength-warmup-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.strength-warmup-pill-yes {
+  border: 1px solid rgba(95, 165, 255, 0.2);
+  background: rgba(35, 67, 129, 0.28);
+  color: #90bcff;
+}
+.strength-warmup-pill-no {
+  border: 1px solid rgba(107, 122, 151, 0.18);
+  background: rgba(19, 29, 46, 0.68);
+  color: #c7d4eb;
+}
+@media (max-width: 860px) {
+  .strength-exercise-head {
+    flex-direction: column;
+  }
+  .strength-exercise-volume {
+    width: 100%;
+    text-align: left;
+  }
+}
 
 .status-ok {
   background: rgba(17, 103, 80, 0.3);
@@ -1130,6 +1608,7 @@ onBeforeUnmount(() => {
 
 .summary-panel,
 .feedback-panel,
+.muscle-map-panel,
 .context-panel,
 .best-efforts-panel,
 .chart-panel,
@@ -2104,6 +2583,63 @@ onBeforeUnmount(() => {
 .detail-empty-copy {
   color: #8ea2c4;
   font-size: 14px;
+}
+
+.muscle-map-panel {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 137, 54, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(24, 34, 52, 0.92), rgba(14, 22, 36, 0.95));
+}
+
+.muscle-region-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.muscle-region-list-tight {
+  margin-top: 4px;
+}
+
+.muscle-region-chip {
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(89, 108, 143, 0.18);
+  background: rgba(11, 18, 31, 0.64);
+}
+
+.muscle-region-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.muscle-region-top span {
+  color: #dce6f7;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.muscle-region-top strong {
+  color: #ffcb80;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.muscle-region-bar {
+  height: 6px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: rgba(70, 82, 107, 0.34);
+  overflow: hidden;
+}
+
+.muscle-region-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff7a1a, #ffb866);
 }
 
 .detail-state {

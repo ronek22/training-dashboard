@@ -602,3 +602,46 @@ def get_strength_overview_data(
             "note": "Body-part filters use explicit keyword heuristics over imported Fitbod exercise names and may not classify every variant cleanly.",
         },
     }
+
+
+def get_strength_context_data(
+    conn: sqlite3.Connection,
+    *,
+    weeks: int = 8,
+    body_part: Optional[str] = None,
+    exercise: Optional[str] = None,
+) -> dict:
+    overview = get_strength_overview_data(
+        conn,
+        weeks=weeks,
+        body_part=body_part,
+        exercise=exercise,
+    )
+    selected_exercise = overview.get("selected_exercise")
+    recurring_lifts = overview.get("exercises", [])
+
+    return {
+        "window": overview["window"],
+        "filters": {
+            "body_part": overview["filters"]["body_part"],
+            "exercise": overview["filters"]["exercise"],
+        },
+        "summary": overview["summary"],
+        "recurring_lifts": recurring_lifts,
+        "selected_exercise": selected_exercise,
+        "important_prs": overview["important_prs"],
+        "recent_sessions": overview["sessions"],
+        "weekly_trend": overview["weekly"],
+        "body_part_options": overview["filters"]["body_part_options"],
+        "exercise_options": overview["filters"]["exercise_options"],
+        "data_source": {
+            "kind": "fitbod_enriched_strength_history",
+            "included_session_criteria": [
+                "Fitbod workout session match_status = matched",
+                "matched activity type = WeightTraining",
+                "linked Fitbod exercise and set detail present in enrichment tables",
+            ],
+            "exclusion_note": "Unmatched Fitbod sessions and generic WeightTraining activities without linked Fitbod enrichment are excluded.",
+        },
+        "heuristics": overview["heuristics"],
+    }

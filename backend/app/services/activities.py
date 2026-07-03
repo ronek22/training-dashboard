@@ -5,7 +5,11 @@ from typing import Callable, Optional
 
 from fastapi import HTTPException
 
-from ..repositories.activity_details import get_activity_detail_row, upsert_activity_detail_row
+from ..repositories.activity_details import (
+    get_activity_detail_row,
+    update_activity_detail_derived_row,
+    upsert_activity_detail_row,
+)
 from ..repositories.plans import list_weekly_plan_rows
 from ..repositories.activities import (
     get_activity_row,
@@ -22,6 +26,8 @@ from .activity_feedback import attach_feedback_by_activity_id, get_activity_feed
 from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
 from .plans import ensure_plan_day_ids, format_workout_intent_label, normalize_workout_intent
 from .settings import get_workout_template_settings_for_conn, set_workout_template_settings_for_conn
+
+DETAIL_DERIVED_VERSION = "v1"
 
 
 def _normalize_text_for_match(value: Optional[str]) -> str:
@@ -561,6 +567,9 @@ def _build_activity_detail_payload(
     detail = _load_json_blob(detail_row["detail_json"]) if detail_row else None
     streams = _load_json_blob(detail_row["streams_json"]) if detail_row else None
     route_polyline = _extract_route_polyline(detail, streams, detail_row["route_polyline"] if detail_row else None)
+    cached_charts = _load_json_blob(detail_row["charts_json"]) if detail_row and "charts_json" in detail_row.keys() else None
+    cached_best_efforts = _load_json_blob(detail_row["best_efforts_json"]) if detail_row and "best_efforts_json" in detail_row.keys() else None
+    derived_version = detail_row["derived_version"] if detail_row and "derived_version" in detail_row.keys() else None
     stream_summary = conn.execute(
         """
         SELECT activity_id, fetched_at, source, hr_trimp, power_tss, normalized_power
@@ -574,12 +583,27 @@ def _build_activity_detail_payload(
     strength_detail = None
     if activity.get("type") == "WeightTraining":
         strength_detail = get_fitbod_strength_detail_for_activity(conn, activity["id"]) or {"status": "not_linked"}
+    if detail_row and derived_version == DETAIL_DERIVED_VERSION:
+        charts = cached_charts if isinstance(cached_charts, list) else []
+        best_efforts = cached_best_efforts if isinstance(cached_best_efforts, dict) else None
+    else:
+        charts = _build_activity_charts(activity, detail, streams)
+        best_efforts = _build_best_efforts(activity, streams)
+        if detail_row:
+            update_activity_detail_derived_row(
+                conn,
+                activity["id"],
+                charts_json=json.dumps(charts),
+                best_efforts_json=json.dumps(best_efforts) if best_efforts else None,
+                derived_version=DETAIL_DERIVED_VERSION,
+            )
+            conn.commit()
 
     return {
         "activity": activity,
         "stats": _build_activity_stats(activity, detail, stream_summary),
-        "charts": _build_activity_charts(activity, detail, streams),
-        "best_efforts": _build_best_efforts(activity, streams),
+        "charts": charts,
+        "best_efforts": best_efforts,
         "feedback": feedback,
         "route": {
             "polyline": route_polyline,
@@ -633,6 +657,9 @@ def get_activity_detail_data(
 
     fetched_at = datetime.now().isoformat()
     source_status = "fetched"
+    activity_payload = dict(activity_row)
+    cached_charts = _build_activity_charts(activity_payload, detail, streams)
+    cached_best_efforts = _build_best_efforts(activity_payload, streams)
     upsert_activity_detail_row(
         conn,
         activity_id=activity_id,
@@ -640,6 +667,9 @@ def get_activity_detail_data(
         source_status=source_status,
         detail_json=json.dumps(detail) if detail else None,
         streams_json=json.dumps(streams) if streams else None,
+        charts_json=json.dumps(cached_charts),
+        best_efforts_json=json.dumps(cached_best_efforts) if cached_best_efforts else None,
+        derived_version=DETAIL_DERIVED_VERSION,
         route_polyline=_extract_route_polyline(detail, streams, None),
     )
     conn.commit()

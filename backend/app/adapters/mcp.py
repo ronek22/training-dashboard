@@ -23,6 +23,7 @@ from ..services.goals import draft_goal_data, list_goals_data
 from ..services.metrics import get_metric_history_data
 from ..services.notes import list_notes_data
 from ..services.plans import adjust_weekly_plan_data, list_weekly_plans_data
+from ..services.strength import get_strength_context_data
 
 
 def list_activities(limit: int = 50, type: Optional[str] = None, days: Optional[int] = None):
@@ -126,6 +127,19 @@ def weekly_coaching(
         conn.close()
 
 
+def strength_context(weeks: int = 8, body_part: Optional[str] = None, exercise: Optional[str] = None):
+    conn = get_db()
+    try:
+        return get_strength_context_data(
+            conn,
+            weeks=weeks,
+            body_part=body_part,
+            exercise=exercise,
+        )
+    finally:
+        conn.close()
+
+
 def build_mcp_router_dependencies() -> dict:
     return {
         "get_db_fn": get_db,
@@ -149,4 +163,5 @@ def build_mcp_router_dependencies() -> dict:
         "calendar_weeks_fn": calendar_weeks,
         "metric_catalog": METRIC_CATALOG,
         "draft_goal_data_fn": draft_goal_data,
+        "strength_context_fn": strength_context,
     }

@@ -358,6 +358,24 @@ MCP_TOOLS = [
         },
     },
     {
+        "name": "get_strength_context",
+        "description": "Read compact Fitbod-enriched strength history with recent sessions, recurring lifts, selected exercise trend, and important PRs",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "weeks": {"type": "integer", "description": "Recent window to inspect; supported values normalize to 4, 8, or 12 weeks"},
+                "body_part": {"type": "string", "description": "Optional body-part filter like all, push, pull, lower, core, or other"},
+                "exercise": {"type": "string", "description": "Optional exact exercise name to focus the selected trend payload"},
+            },
+        },
+    },
+    {
         "name": "draft_goal",
         "description": "Preview a structured goal draft from natural-language goal text without saving it",
         "annotations": {
@@ -423,6 +441,7 @@ def call_mcp_tool(
     calendar_weeks_fn,
     metric_catalog,
     draft_goal_data_fn,
+    strength_context_fn,
 ) -> dict:
     conn = get_db_fn()
     try:
@@ -568,6 +587,14 @@ def call_mcp_tool(
 
         elif name == "get_calendar_weeks":
             data = calendar_weeks_fn(weeks=int(args.get("weeks", 8)))
+            message = json.dumps(data, indent=2)
+
+        elif name == "get_strength_context":
+            data = strength_context_fn(
+                weeks=int(args.get("weeks", 8)),
+                body_part=args.get("body_part"),
+                exercise=args.get("exercise"),
+            )
             message = json.dumps(data, indent=2)
 
         elif name == "draft_goal":

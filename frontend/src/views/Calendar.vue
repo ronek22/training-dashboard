@@ -97,38 +97,44 @@
             <div v-else class="day-empty-copy">Rest / no data</div>
 
             <div class="activity-list" v-if="day.activities.length">
-              <div
+              <article
                 v-for="activity in day.activities"
                 :key="activity.id"
                 class="activity-line"
                 :class="{ 'has-feedback': activity.feedback }"
-                role="button"
-                tabindex="0"
-                @click="openFeedbackDialog(activity)"
-                @keydown.enter.prevent="openFeedbackDialog(activity)"
-                @keydown.space.prevent="openFeedbackDialog(activity)"
               >
-                <div class="activity-row">
-                  <div class="activity-body">
-                    <div class="activity-head">
-                      <span class="activity-icon">
-                        <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="14" />
-                      </span>
-                      <span class="activity-name">{{ activity.name || activity.type }}</span>
-                    </div>
-                    <div v-if="activity.distance_km" class="activity-distance">{{ activity.distance_km }} km</div>
-                    <div class="activity-stats">
-                      <span class="activity-detail">{{ formatMinutes(activity.duration_min) }}</span>
-                      <span v-if="activity.elevation_m" class="activity-detail">{{ activity.elevation_m }}m</span>
-                      <span v-if="activity.avg_pace" class="activity-detail">{{ activity.avg_pace }}/km</span>
-                      <span v-else-if="activity.avg_watts" class="activity-detail">{{ Math.round(activity.avg_watts) }} W</span>
-                    </div>
-                    <div v-if="activity.workout_intent_label" class="activity-intent">
-                      {{ activity.workout_intent_label }}
+                <router-link :to="{ path: `/activities/${activity.id}`, query: { from: 'calendar' } }" class="activity-main-link">
+                  <div class="activity-row">
+                    <div class="activity-body">
+                      <div class="activity-head">
+                        <span class="activity-icon">
+                          <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="14" />
+                        </span>
+                        <span class="activity-name">{{ activity.name || activity.type }}</span>
+                      </div>
+                      <div v-if="activity.distance_km" class="activity-distance">{{ activity.distance_km }} km</div>
+                      <div class="activity-stats">
+                        <span class="activity-detail">{{ formatMinutes(activity.duration_min) }}</span>
+                        <span v-if="activity.elevation_m" class="activity-detail">{{ activity.elevation_m }}m</span>
+                        <span v-if="activity.avg_pace" class="activity-detail">{{ activity.avg_pace }}/km</span>
+                        <span v-else-if="activity.avg_watts" class="activity-detail">{{ Math.round(activity.avg_watts) }} W</span>
+                      </div>
+                      <div v-if="activity.workout_intent_label" class="activity-intent">
+                        {{ activity.workout_intent_label }}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </router-link>
+                <button
+                  type="button"
+                  class="activity-feedback-btn"
+                  :class="{ 'activity-feedback-btn-logged': activity.feedback }"
+                  :aria-label="`${activity.feedback ? 'Edit' : 'Log'} feedback for ${activity.name || activity.type}`"
+                  @click="openFeedbackDialog(activity)"
+                >
+                  {{ activity.feedback ? '✎' : '+' }}
+                </button>
+              </article>
             </div>
           </article>
         </div>
@@ -193,38 +199,44 @@
             <div v-else class="day-empty-copy">{{ isDayInActiveMonth(day.date) ? 'Rest / no data' : 'Outside month' }}</div>
 
             <div class="activity-list" v-if="day.activities.length">
-              <div
+              <article
                 v-for="activity in day.activities"
                 :key="activity.id"
                 class="activity-line"
                 :class="{ 'has-feedback': activity.feedback }"
-                role="button"
-                tabindex="0"
-                @click="openFeedbackDialog(activity)"
-                @keydown.enter.prevent="openFeedbackDialog(activity)"
-                @keydown.space.prevent="openFeedbackDialog(activity)"
               >
-                <div class="activity-row">
-                  <div class="activity-body">
-                    <div class="activity-head">
-                      <span class="activity-icon">
-                        <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="14" />
-                      </span>
-                      <span class="activity-name">{{ activity.name || activity.type }}</span>
-                    </div>
-                    <div v-if="activity.distance_km" class="activity-distance">{{ activity.distance_km }} km</div>
-                    <div class="activity-stats">
-                      <span class="activity-detail">{{ formatMinutes(activity.duration_min) }}</span>
-                      <span v-if="activity.elevation_m" class="activity-detail">{{ activity.elevation_m }}m</span>
-                      <span v-if="activity.avg_pace" class="activity-detail">{{ activity.avg_pace }}/km</span>
-                      <span v-else-if="activity.avg_watts" class="activity-detail">{{ Math.round(activity.avg_watts) }} W</span>
-                    </div>
-                    <div v-if="activity.workout_intent_label" class="activity-intent">
-                      {{ activity.workout_intent_label }}
+                <router-link :to="{ path: `/activities/${activity.id}`, query: { from: 'calendar' } }" class="activity-main-link">
+                  <div class="activity-row">
+                    <div class="activity-body">
+                      <div class="activity-head">
+                        <span class="activity-icon">
+                          <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="14" />
+                        </span>
+                        <span class="activity-name">{{ activity.name || activity.type }}</span>
+                      </div>
+                      <div v-if="activity.distance_km" class="activity-distance">{{ activity.distance_km }} km</div>
+                      <div class="activity-stats">
+                        <span class="activity-detail">{{ formatMinutes(activity.duration_min) }}</span>
+                        <span v-if="activity.elevation_m" class="activity-detail">{{ activity.elevation_m }}m</span>
+                        <span v-if="activity.avg_pace" class="activity-detail">{{ activity.avg_pace }}/km</span>
+                        <span v-else-if="activity.avg_watts" class="activity-detail">{{ Math.round(activity.avg_watts) }} W</span>
+                      </div>
+                      <div v-if="activity.workout_intent_label" class="activity-intent">
+                        {{ activity.workout_intent_label }}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </router-link>
+                <button
+                  type="button"
+                  class="activity-feedback-btn"
+                  :class="{ 'activity-feedback-btn-logged': activity.feedback }"
+                  :aria-label="`${activity.feedback ? 'Edit' : 'Log'} feedback for ${activity.name || activity.type}`"
+                  @click="openFeedbackDialog(activity)"
+                >
+                  {{ activity.feedback ? '✎' : '+' }}
+                </button>
+              </article>
             </div>
           </article>
 
@@ -722,25 +734,37 @@ const saveFeedback = async (payload) => {
   gap: 4px;
 }
 .activity-line {
-  padding: 7px 8px;
+  display: block;
+  position: relative;
+  padding: 9px 10px;
   border-radius: 10px;
   border: 1px solid transparent;
-  cursor: pointer;
   transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
 }
 .activity-line + .activity-line {
   margin-top: 2px;
 }
 .activity-line:hover,
-.activity-line:focus-visible {
+.activity-line:focus-within {
   background: rgba(255,255,255,0.04);
   border-color: rgba(96, 165, 250, 0.24);
   transform: translateY(-1px);
-  outline: none;
 }
 .activity-line.has-feedback {
   border-color: rgba(16, 185, 129, 0.16);
   background: rgba(16, 185, 129, 0.04);
+}
+.activity-main-link {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 8px;
+}
+.activity-main-link:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.62);
+  outline-offset: 2px;
 }
 .activity-row {
   min-width: 0;
@@ -764,15 +788,16 @@ const saveFeedback = async (payload) => {
   margin-top: 1px;
 }
 .activity-name {
-  font-size: 12px;
-  line-height: 1.35;
+  font-size: 11px;
+  line-height: 1.25;
   color: #dfe4ee;
   min-width: 0;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 .activity-stats {
   display: flex;
@@ -804,6 +829,52 @@ const saveFeedback = async (payload) => {
   font-size: 10px;
   font-weight: 700;
 }
+.activity-feedback-btn {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(123, 163, 255, 0.18);
+  background: rgba(123, 163, 255, 0.06);
+  color: #b9caea;
+  border-radius: 999px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, opacity 0.16s ease, transform 0.16s ease;
+  z-index: 1;
+}
+.activity-line:hover .activity-feedback-btn,
+.activity-line:focus-within .activity-feedback-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+.activity-feedback-btn:hover,
+.activity-feedback-btn:focus-visible {
+  background: rgba(123, 163, 255, 0.12);
+  border-color: rgba(147, 197, 253, 0.3);
+  color: #eff6ff;
+  outline: none;
+}
+.activity-feedback-btn-logged {
+  border-color: rgba(16, 185, 129, 0.18);
+  background: rgba(16, 185, 129, 0.08);
+  color: #b8f5da;
+}
+.activity-feedback-btn-logged:hover,
+.activity-feedback-btn-logged:focus-visible {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #e8fff3;
+}
 
 @media (max-width: 1200px) {
   .calendar-grid,
@@ -823,5 +894,9 @@ const saveFeedback = async (payload) => {
   .month-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .week-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .month-nav { width: 100%; justify-content: space-between; }
+  .activity-feedback-btn {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 </style>

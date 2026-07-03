@@ -4,7 +4,7 @@
 
 Current status:
 
-- planned
+- complete
 - follows completed Sprint 25 strength view and lifting trend analysis
 
 Starting point:

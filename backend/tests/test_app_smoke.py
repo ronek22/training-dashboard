@@ -260,6 +260,22 @@ class AppSmokeTests(unittest.TestCase):
             detail_fetch.assert_called_once()
             stream_fetch.assert_called_once()
 
+            with patch(
+                "backend.app.services.activities._build_activity_charts",
+                wraps=sys.modules["backend.app.services.activities"]._build_activity_charts,
+            ) as chart_builder, patch(
+                "backend.app.services.activities._build_best_efforts",
+                wraps=sys.modules["backend.app.services.activities"]._build_best_efforts,
+            ) as best_effort_builder:
+                third = self.client.get("/activities/123456789")
+                self.assertEqual(third.status_code, 200)
+                third_body = third.json()
+                self.assertEqual(third_body["cache"]["status"], "cached")
+                self.assertGreaterEqual(len(third_body["charts"]), 2)
+                self.assertTrue(third_body["best_efforts"])
+                chart_builder.assert_not_called()
+                best_effort_builder.assert_not_called()
+
     def test_fitbod_import_filters_groups_matches_and_enriches_strength_activity(self):
         activity_date = "2026-06-30"
         for payload in [
@@ -392,6 +408,7 @@ bad-date,Squat,5,100,60,,,,false,,1
         day_one = week_start - timedelta(weeks=2) + timedelta(days=1)
         day_two = week_start - timedelta(weeks=1) + timedelta(days=2)
         day_three = week_start + timedelta(days=1)
+        generic_day = week_start + timedelta(days=5)
         unmatched_day = week_start + timedelta(days=3)
 
         for activity_id, activity_date, name in [
@@ -458,6 +475,94 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertEqual(lower_body["summary"]["session_count"], 1)
         self.assertEqual(lower_body["summary"]["total_volume_kg"], 500.0)
         self.assertEqual(lower_body["selected_exercise"]["exercise_name"], "Back Squat")
+
+    def test_mcp_strength_context_exposes_enriched_history_and_excludes_unlinked_rows(self):
+        today = datetime.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        day_one = week_start - timedelta(weeks=2) + timedelta(days=1)
+        day_two = week_start - timedelta(weeks=1) + timedelta(days=2)
+        day_three = week_start + timedelta(days=1)
+        generic_day = week_start + timedelta(days=5)
+        unmatched_day = week_start + timedelta(days=3)
+
+        for activity_id, activity_date, name in [
+            ("strength-mcp-a", day_one, "Push A"),
+            ("strength-mcp-b", day_two, "Lower + Push"),
+            ("strength-mcp-c", day_three, "Push B"),
+            ("strength-mcp-generic", generic_day, "Generic gym session"),
+        ]:
+            created = self.client.post(
+                "/activities",
+                json={
+                    "id": activity_id,
+                    "date": activity_date.isoformat(),
+                    "type": "WeightTraining",
+                    "name": name,
+                    "duration_min": 50,
+                    "calories": 330,
+                },
+            )
+            self.assertEqual(created.status_code, 201)
+
+        csv_text = f"""Date,Exercise,Reps,Weight(kg),Duration(s),Distance(m),Incline,Resistance,isWarmup,Note,multiplier
+{day_one.isoformat()} 07:00:00,Bench Press,5,60,45,,,,false,,1
+{day_one.isoformat()} 07:00:00,Bench Press,5,62.5,45,,,,false,,1
+{day_one.isoformat()} 07:00:00,Chest Supported Row,10,45,50,,,,false,,1
+{day_two.isoformat()} 07:00:00,Back Squat,5,100,60,,,,false,,1
+{day_two.isoformat()} 07:00:00,Bench Press,6,65,45,,,,false,,1
+{day_three.isoformat()} 07:00:00,Bench Press,5,67.5,45,,,,false,,1
+{day_three.isoformat()} 07:00:00,Pull Up,8,,45,,,,false,,1
+{unmatched_day.isoformat()} 07:00:00,Deadlift,5,140,60,,,,false,,1
+"""
+
+        imported = self.client.post(
+            "/fitbod/import",
+            json={"file_name": "strength-mcp.csv", "csv_text": csv_text},
+        )
+        self.assertEqual(imported.status_code, 200)
+        self.assertEqual(imported.json()["matched_count"], 3)
+        self.assertEqual(imported.json()["unmatched_count"], 1)
+
+        mcp = self.client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 26,
+                "method": "tools/call",
+                "params": {
+                    "name": "get_strength_context",
+                    "arguments": {"weeks": 4},
+                },
+            },
+        )
+        self.assertEqual(mcp.status_code, 200)
+
+        body = mcp.json()
+        self.assertEqual(body["id"], 26)
+        structured = body["result"]["structuredContent"]
+
+        self.assertEqual(structured["summary"]["session_count"], 3)
+        self.assertEqual(structured["summary"]["total_sets"], 7)
+        self.assertEqual(structured["summary"]["total_reps"], 44)
+        self.assertEqual(structured["summary"]["total_volume_kg"], 2290.0)
+        self.assertEqual(structured["selected_exercise"]["exercise_name"], "Bench Press")
+        self.assertEqual(structured["selected_exercise"]["trend"][-1]["top_load_kg"], 67.5)
+        self.assertEqual(structured["important_prs"][0]["label"], "Bench Press")
+        self.assertEqual(structured["important_prs"][1]["label"], "Back Squat")
+        self.assertEqual(structured["recent_sessions"][0]["matched_activity"]["id"], "strength-mcp-c")
+        self.assertEqual(structured["recurring_lifts"][0]["exercise_name"], "Bench Press")
+        self.assertEqual(
+            structured["data_source"]["kind"],
+            "fitbod_enriched_strength_history",
+        )
+        self.assertIn("Unmatched Fitbod sessions", structured["data_source"]["exclusion_note"])
+
+        matched_activity_ids = {
+            session["matched_activity"]["id"]
+            for session in structured["recent_sessions"]
+        }
+        self.assertNotIn("strength-mcp-generic", matched_activity_ids)
+        self.assertNotIn("Deadlift", {lift["exercise_name"] for lift in structured["recurring_lifts"]})
 
     def test_init_db_cleans_up_existing_fitbod_non_strength_sessions(self):
         conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])

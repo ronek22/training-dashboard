@@ -3,7 +3,10 @@
     <div class="detail-shell">
       <div class="detail-topbar">
         <div class="detail-title-block">
-          <router-link to="/activities" class="back-link">← Back to activities</router-link>
+          <router-link :to="backLinkTo" class="back-link">
+            <span class="back-link-arrow">←</span>
+            <span>{{ backLinkLabel }}</span>
+          </router-link>
           <div class="page-eyebrow">Activity Review</div>
           <h1 class="detail-title">{{ detail?.activity?.name || 'Activity detail' }}</h1>
           <p class="detail-subtitle">
@@ -427,6 +430,23 @@ let bestEffortRouteLayer = null
 let startMarker = null
 let endMarker = null
 let lastRouteSignature = ''
+
+const backContext = computed(() => {
+  const from = String(route.query.from || '').toLowerCase()
+  if (from === 'calendar') {
+    return {
+      label: 'Back to calendar',
+      to: '/calendar',
+    }
+  }
+  return {
+    label: 'Back to activities',
+    to: '/activities',
+  }
+})
+
+const backLinkLabel = computed(() => backContext.value.label)
+const backLinkTo = computed(() => backContext.value.to)
 
 const muscleRegionLabels = {
   chest: 'Chest',
@@ -1334,15 +1354,43 @@ onBeforeUnmount(() => {
   margin-bottom: 18px;
 }
 
+.detail-title-block {
+  display: grid;
+  gap: 10px;
+}
+
 .back-link {
   display: inline-flex;
-  margin-bottom: 10px;
-  color: #93a5c6;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(115, 137, 184, 0.18);
+  background: rgba(15, 24, 39, 0.52);
+  color: #b8cae7;
   font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
 }
 
 .back-link:hover {
-  color: #dfeaff;
+  color: #eef5ff;
+  border-color: rgba(147, 197, 253, 0.3);
+  background: rgba(24, 36, 58, 0.78);
+  transform: translateY(-1px);
+}
+
+.back-link:focus-visible {
+  outline: 2px solid rgba(147, 197, 253, 0.58);
+  outline-offset: 2px;
+}
+
+.back-link-arrow {
+  color: #8fb4ff;
+  font-size: 14px;
 }
 
 .detail-title {

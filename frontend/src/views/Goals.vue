@@ -10,119 +10,149 @@
 
     <div v-if="loading" class="empty card">Loading goals…</div>
     <div v-else class="goal-sections">
-      <div class="card athlete-profile-summary">
-        <div class="athlete-profile-top">
+      <div class="card training-context-card">
+        <div class="training-context-top">
           <div>
-            <div class="card-title">Athlete Profile</div>
-            <div class="page-sub">Durable coaching context for planning, dashboard reads, and MCP.</div>
+            <div class="card-title">Training Context</div>
+            <div class="page-sub">Compact planning context for goals, planning, and coaching.</div>
           </div>
-          <button class="dialog-secondary" @click="openProfileDialog">Edit profile</button>
+          <button class="dialog-secondary" @click="contextExpanded = !contextExpanded">
+            {{ contextExpanded ? 'Collapse details' : 'Expand details' }}
+          </button>
         </div>
 
-        <div class="athlete-profile-grid">
-          <article class="athlete-profile-stat">
-            <span>Primary focus</span>
+        <div class="training-context-glance">
+          <div class="context-glance-chip">
+            <span>Focus</span>
             <strong>{{ athleteProfile?.focus?.label || 'General fitness' }}</strong>
-          </article>
-          <article class="athlete-profile-stat">
-            <span>Priority order</span>
-            <strong>{{ profilePriorityLabel }}</strong>
-          </article>
-          <article class="athlete-profile-stat">
-            <span>Long-session days</span>
-            <strong>{{ profileLongDaysLabel }}</strong>
-          </article>
-        </div>
-
-        <div v-if="athleteProfile?.athlete_brief?.current_block || athleteProfile?.athlete_brief?.weekly_availability_notes || athleteProfile?.athlete_brief?.planning_notes" class="athlete-profile-notes">
-          <div v-if="athleteProfile?.athlete_brief?.current_block" class="athlete-profile-note">
-            <span>Current block</span>
-            <strong>{{ athleteProfile.athlete_brief.current_block }}</strong>
           </div>
-          <div v-if="athleteProfile?.athlete_brief?.weekly_availability_notes" class="athlete-profile-note">
-            <span>Availability</span>
-            <strong>{{ athleteProfile.athlete_brief.weekly_availability_notes }}</strong>
-          </div>
-          <div v-if="athleteProfile?.athlete_brief?.planning_notes" class="athlete-profile-note">
-            <span>Planning notes</span>
-            <strong>{{ athleteProfile.athlete_brief.planning_notes }}</strong>
-          </div>
-        </div>
-      </div>
-
-      <div class="card athlete-profile-summary">
-        <div class="athlete-profile-top">
-          <div>
-            <div class="card-title">Performance Foundation</div>
-            <div class="page-sub">Manual threshold anchors make benchmark and zone-dependent reads explicit instead of guessed.</div>
-          </div>
-          <button class="dialog-secondary" @click="openPerformanceDialog">Edit anchors</button>
-        </div>
-
-        <div class="athlete-profile-grid">
-          <article class="athlete-profile-stat">
-            <span>Run threshold pace</span>
+          <div class="context-glance-chip">
+            <span>Run pace</span>
             <strong>{{ runThresholdLabel }}</strong>
-          </article>
-          <article class="athlete-profile-stat">
-            <span>Ride threshold power</span>
+          </div>
+          <div class="context-glance-chip">
+            <span>Ride power</span>
             <strong>{{ rideThresholdLabel }}</strong>
-          </article>
-          <article class="athlete-profile-stat">
-            <span>Zone foundation</span>
-            <strong>{{ zoneFoundationHeadline }}</strong>
-          </article>
-        </div>
-
-        <div class="athlete-profile-notes">
-          <div class="athlete-profile-note">
-            <span>Best run benchmarks</span>
-            <strong>{{ runBenchmarkSummary }}</strong>
           </div>
-          <div class="athlete-profile-note">
-            <span>Best 10-minute power</span>
-            <strong>{{ rideBenchmarkSummary }}</strong>
-          </div>
-          <div class="athlete-profile-note">
-            <span>Longest recent zone 2 block</span>
-            <strong>{{ zoneBlockSummary }}</strong>
-          </div>
-        </div>
-      </div>
-
-      <div class="card athlete-profile-summary">
-        <div class="athlete-profile-top">
-          <div>
-            <div class="card-title">Workout Rotation</div>
-            <div class="page-sub">Structured strength templates stay durable across weeks instead of resetting to generic sessions.</div>
-          </div>
-          <button class="dialog-secondary" @click="openWorkoutTemplateDialog">Edit rotation</button>
-        </div>
-
-        <div class="athlete-profile-grid">
-          <article class="athlete-profile-stat">
+          <div class="context-glance-chip">
             <span>Next workout</span>
             <strong>{{ strengthRotationNextLabel }}</strong>
-          </article>
-          <article class="athlete-profile-stat">
-            <span>Last completed</span>
-            <strong>{{ strengthRotationLastLabel }}</strong>
-          </article>
-          <article class="athlete-profile-stat">
-            <span>Missed-session rule</span>
-            <strong>{{ strengthRotationSkipLabel }}</strong>
-          </article>
+          </div>
         </div>
 
-        <div class="athlete-profile-notes">
-          <div class="athlete-profile-note">
-            <span>Templates</span>
-            <strong>{{ strengthTemplateLabels }}</strong>
-          </div>
-          <div class="athlete-profile-note">
-            <span>Rules</span>
-            <strong>{{ strengthRotationRuleSummary }}</strong>
-          </div>
+        <div class="training-context-grid">
+          <section class="training-context-section">
+            <div class="training-context-section-top">
+              <div>
+                <div class="training-context-title">Athlete Profile</div>
+                <div v-if="contextExpanded" class="training-context-copy">Durable coaching context for planning, dashboard reads, and MCP.</div>
+              </div>
+              <button class="dialog-secondary dialog-secondary-compact" @click="openProfileDialog">Edit</button>
+            </div>
+            <div class="training-context-stat-grid">
+              <article class="context-stat">
+                <span>Primary focus</span>
+                <strong>{{ athleteProfile?.focus?.label || 'General fitness' }}</strong>
+              </article>
+              <article class="context-stat">
+                <span>Priority order</span>
+                <strong>{{ profilePriorityLabel }}</strong>
+              </article>
+              <article class="context-stat">
+                <span>Long-session days</span>
+                <strong>{{ profileLongDaysLabel }}</strong>
+              </article>
+            </div>
+            <div
+              v-if="contextExpanded && (athleteProfile?.athlete_brief?.current_block || athleteProfile?.athlete_brief?.weekly_availability_notes || athleteProfile?.athlete_brief?.planning_notes)"
+              class="training-context-notes"
+            >
+              <div v-if="athleteProfile?.athlete_brief?.current_block" class="context-note">
+                <span>Current block</span>
+                <strong>{{ athleteProfile.athlete_brief.current_block }}</strong>
+              </div>
+              <div v-if="athleteProfile?.athlete_brief?.weekly_availability_notes" class="context-note">
+                <span>Availability</span>
+                <strong>{{ athleteProfile.athlete_brief.weekly_availability_notes }}</strong>
+              </div>
+              <div v-if="athleteProfile?.athlete_brief?.planning_notes" class="context-note">
+                <span>Planning notes</span>
+                <strong>{{ athleteProfile.athlete_brief.planning_notes }}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="training-context-section">
+            <div class="training-context-section-top">
+              <div>
+                <div class="training-context-title">Performance Foundation</div>
+                <div v-if="contextExpanded" class="training-context-copy">Manual threshold anchors make benchmark and zone-dependent reads explicit instead of guessed.</div>
+              </div>
+              <button class="dialog-secondary dialog-secondary-compact" @click="openPerformanceDialog">Edit</button>
+            </div>
+            <div class="training-context-stat-grid">
+              <article class="context-stat">
+                <span>Run threshold pace</span>
+                <strong>{{ runThresholdLabel }}</strong>
+              </article>
+              <article class="context-stat">
+                <span>Ride threshold power</span>
+                <strong>{{ rideThresholdLabel }}</strong>
+              </article>
+              <article class="context-stat">
+                <span>Zone foundation</span>
+                <strong>{{ zoneFoundationHeadline }}</strong>
+              </article>
+            </div>
+            <div v-if="contextExpanded" class="training-context-notes">
+              <div class="context-note">
+                <span>Best run benchmarks</span>
+                <strong>{{ runBenchmarkSummary }}</strong>
+              </div>
+              <div class="context-note">
+                <span>Best 10-minute power</span>
+                <strong>{{ rideBenchmarkSummary }}</strong>
+              </div>
+              <div class="context-note">
+                <span>Longest recent zone 2 block</span>
+                <strong>{{ zoneBlockSummary }}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="training-context-section">
+            <div class="training-context-section-top">
+              <div>
+                <div class="training-context-title">Workout Rotation</div>
+                <div v-if="contextExpanded" class="training-context-copy">Structured strength templates stay durable across weeks instead of resetting to generic sessions.</div>
+              </div>
+              <button class="dialog-secondary dialog-secondary-compact" @click="openWorkoutTemplateDialog">Edit</button>
+            </div>
+            <div class="training-context-stat-grid">
+              <article class="context-stat">
+                <span>Next workout</span>
+                <strong>{{ strengthRotationNextLabel }}</strong>
+              </article>
+              <article class="context-stat">
+                <span>Last completed</span>
+                <strong>{{ strengthRotationLastLabel }}</strong>
+              </article>
+              <article class="context-stat">
+                <span>Missed-session rule</span>
+                <strong>{{ strengthRotationSkipLabel }}</strong>
+              </article>
+            </div>
+            <div v-if="contextExpanded" class="training-context-notes">
+              <div class="context-note">
+                <span>Templates</span>
+                <strong>{{ strengthTemplateLabels }}</strong>
+              </div>
+              <div class="context-note">
+                <span>Rules</span>
+                <strong>{{ strengthRotationRuleSummary }}</strong>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 
@@ -794,6 +824,7 @@ const performanceSettings = ref(null)
 const performanceSummary = ref(null)
 const goalDraftText = ref('')
 const goalDraftPreview = ref(null)
+const contextExpanded = ref(false)
 
 const form = ref(defaultForm())
 const restrictionForm = ref(defaultRestrictionForm())
@@ -1837,6 +1868,100 @@ const showPlanningGuidance = (goal) => {
 .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .goal-message { margin-top: 12px; font-weight: 600; }
 .goal-sections { display: grid; gap: 22px; }
+.training-context-card {
+  display: grid;
+  gap: 16px;
+}
+.training-context-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+.training-context-glance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.context-glance-chip {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+}
+.context-glance-chip span,
+.training-context-title,
+.training-context-copy,
+.context-stat span,
+.context-note span {
+  display: block;
+}
+.context-glance-chip span,
+.context-stat span,
+.context-note span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.context-glance-chip strong {
+  font-size: 13px;
+  line-height: 1.3;
+}
+.training-context-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.training-context-section {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.025);
+}
+.training-context-section-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+.training-context-title {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+}
+.training-context-copy {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.training-context-stat-grid,
+.training-context-notes {
+  display: grid;
+  gap: 10px;
+}
+.context-stat,
+.context-note {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.025);
+}
+.context-stat strong,
+.context-note strong {
+  font-size: 13px;
+  line-height: 1.45;
+}
+.dialog-secondary-compact {
+  padding: 8px 12px;
+  font-size: 12px;
+}
 .section-title {
   font-family: var(--font-display);
   font-size: 18px;
@@ -2293,32 +2418,6 @@ const showPlanningGuidance = (goal) => {
   color: var(--text);
   cursor: pointer;
 }
-.athlete-profile-summary {
-  display: grid;
-  gap: 16px;
-}
-.athlete-profile-top,
-.athlete-profile-grid,
-.athlete-profile-notes {
-  display: grid;
-  gap: 12px;
-}
-.athlete-profile-top {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-}
-.athlete-profile-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.athlete-profile-stat,
-.athlete-profile-note {
-  padding: 14px 16px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.06);
-  background: rgba(255,255,255,0.03);
-}
-.athlete-profile-stat span,
-.athlete-profile-note span,
 .athlete-profile-days > span {
   display: block;
   color: var(--muted);
@@ -2327,11 +2426,6 @@ const showPlanningGuidance = (goal) => {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   margin-bottom: 6px;
-}
-.athlete-profile-stat strong,
-.athlete-profile-note strong {
-  font-size: 14px;
-  line-height: 1.45;
 }
 .athlete-profile-form {
   margin-bottom: 16px;
@@ -2376,12 +2470,13 @@ const showPlanningGuidance = (goal) => {
 @media (max-width: 1100px) {
   .goal-grid { grid-template-columns: 1fr; }
   .goal-restriction-grid-compact { grid-template-columns: 1fr; }
-  .athlete-profile-grid { grid-template-columns: 1fr; }
+  .training-context-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
   .page-head { flex-direction: column; }
   .goal-form { grid-template-columns: 1fr; }
-  .athlete-profile-top { grid-template-columns: 1fr; }
+  .training-context-top { flex-direction: column; }
+  .training-context-section-top { grid-template-columns: 1fr; }
   .athlete-profile-day-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .goal-restriction-top,
   .goal-restriction-summary-footer,

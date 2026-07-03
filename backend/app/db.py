@@ -282,6 +282,9 @@ def init_db():
             source_status TEXT NOT NULL,
             detail_json TEXT,
             streams_json TEXT,
+            charts_json TEXT,
+            best_efforts_json TEXT,
+            derived_version TEXT,
             route_polyline TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -435,6 +438,12 @@ def init_db():
         conn.execute("ALTER TABLE goals ADD COLUMN target_config_json TEXT")
     if activity_detail_columns and "route_polyline" not in activity_detail_columns:
         conn.execute("ALTER TABLE activity_details ADD COLUMN route_polyline TEXT")
+    if activity_detail_columns and "charts_json" not in activity_detail_columns:
+        conn.execute("ALTER TABLE activity_details ADD COLUMN charts_json TEXT")
+    if activity_detail_columns and "best_efforts_json" not in activity_detail_columns:
+        conn.execute("ALTER TABLE activity_details ADD COLUMN best_efforts_json TEXT")
+    if activity_detail_columns and "derived_version" not in activity_detail_columns:
+        conn.execute("ALTER TABLE activity_details ADD COLUMN derived_version TEXT")
 
     if "heel_pain" in feedback_columns:
         pain_level_expr = "COALESCE(pain_level, heel_pain, 0)" if "pain_level" in feedback_columns else "COALESCE(heel_pain, 0)"

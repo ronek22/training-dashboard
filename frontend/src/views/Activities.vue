@@ -45,14 +45,14 @@
                 </span>
               </td>
               <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                <router-link :to="`/activities/${a.id}`" class="activity-detail-link">
+                <router-link :to="{ path: `/activities/${a.id}`, query: { from: 'activities' } }" class="activity-detail-link">
                   {{ a.name || 'Untitled activity' }}
                 </router-link>
                 <div v-if="a.benchmark_label" class="activity-subtag">
                   <span class="badge badge-benchmark">{{ a.benchmark_label }}</span>
                 </div>
                 <div class="activity-subtag">
-                  <router-link :to="`/activities/${a.id}`" class="activity-open-link">Open detail</router-link>
+                  <router-link :to="{ path: `/activities/${a.id}`, query: { from: 'activities' } }" class="activity-open-link">Open detail</router-link>
                 </div>
               </td>
               <td>{{ a.distance_km ? `${a.distance_km} km` : '—' }}</td>

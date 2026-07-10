@@ -2,12 +2,12 @@
 
 This file is the stable entrypoint for roadmap discovery.
 
-Active roadmap: `roadmaps/roadmap-v2.md`
+Active roadmap: `roadmaps/roadmap-v3.md`
 
 Archived roadmaps:
 
 - `roadmaps/roadmap-v1.md` — completed foundation roadmap covering Phases 1 through 5
-- `roadmaps/roadmap-v2.md` — active growth roadmap covering Phases 6 through 9
+- `roadmaps/roadmap-v2.md` — completed growth roadmap covering Phases 6 through 9
 
 Working rule:
 

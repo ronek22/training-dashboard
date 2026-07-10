@@ -8,10 +8,20 @@ from ..models.plans import WeeklyPlan, WeeklyPlanAdjustment
 from ..models.weekly_summary import WeeklySummary
 from ..repositories.plans import upsert_weekly_plan_row
 from ..services.activities import (
+    analyze_activity_data,
     activity_stats_data,
+    fail_activity_analysis_data,
     get_calendar_weeks_data,
+    get_activity_analysis_context_data,
     list_activities_data,
+    save_activity_analysis_data,
     upsert_activity,
+)
+from ..services.settings import get_setting, set_setting
+from ..services.strava import (
+    fetch_strava_activity_detail,
+    fetch_strava_activity_streams_by_keys,
+    get_strava_access_token,
 )
 from ..services.dashboard import (
     build_dashboard_data,
@@ -140,6 +150,88 @@ def strength_context(weeks: int = 8, body_part: Optional[str] = None, exercise: 
         conn.close()
 
 
+def analyze_activity(activity_id: str, force_refresh: bool = False):
+    conn = get_db()
+    try:
+        return analyze_activity_data(
+            conn,
+            activity_id,
+            force_refresh=force_refresh,
+            get_setting_fn=get_setting,
+            set_setting_fn=set_setting,
+            get_strava_access_token_fn=get_strava_access_token,
+            fetch_strava_activity_detail_fn=fetch_strava_activity_detail,
+            fetch_strava_activity_streams_fn=fetch_strava_activity_streams_by_keys,
+        )
+    finally:
+        conn.close()
+
+
+def get_activity_analysis_context(activity_id: str):
+    conn = get_db()
+    try:
+        return get_activity_analysis_context_data(
+            conn,
+            activity_id,
+            get_setting_fn=get_setting,
+            set_setting_fn=set_setting,
+            get_strava_access_token_fn=get_strava_access_token,
+            fetch_strava_activity_detail_fn=fetch_strava_activity_detail,
+            fetch_strava_activity_streams_fn=fetch_strava_activity_streams_by_keys,
+        )
+    finally:
+        conn.close()
+
+
+def save_activity_analysis(
+    activity_id: str,
+    headline: str,
+    summary: str,
+    key_observations: list[str],
+    limitations: list[str],
+    confidence_note: str,
+    generator: str = "llm",
+    model_name: Optional[str] = None,
+):
+    conn = get_db()
+    try:
+        return save_activity_analysis_data(
+            conn,
+            activity_id,
+            headline=headline,
+            summary=summary,
+            key_observations=key_observations,
+            limitations=limitations,
+            confidence_note=confidence_note,
+            generator=generator,
+            model_name=model_name,
+            get_setting_fn=get_setting,
+            set_setting_fn=set_setting,
+            get_strava_access_token_fn=get_strava_access_token,
+            fetch_strava_activity_detail_fn=fetch_strava_activity_detail,
+            fetch_strava_activity_streams_fn=fetch_strava_activity_streams_by_keys,
+        )
+    finally:
+        conn.close()
+
+
+def fail_activity_analysis(activity_id: str, error: str):
+    conn = get_db()
+    try:
+        return fail_activity_analysis_data(
+            conn,
+            activity_id,
+            error_message=error,
+            get_setting_fn=get_setting,
+            set_setting_fn=set_setting,
+            get_strava_access_token_fn=get_strava_access_token,
+            fetch_strava_activity_detail_fn=fetch_strava_activity_detail,
+            fetch_strava_activity_streams_fn=fetch_strava_activity_streams_by_keys,
+        )
+    finally:
+        conn.close()
+
+
 def build_mcp_router_dependencies() -> dict:
     return {
         "get_db_fn": get_db,
@@ -164,4 +256,8 @@ def build_mcp_router_dependencies() -> dict:
         "metric_catalog": METRIC_CATALOG,
         "draft_goal_data_fn": draft_goal_data,
         "strength_context_fn": strength_context,
+        "analyze_activity_fn": analyze_activity,
+        "get_activity_analysis_context_fn": get_activity_analysis_context,
+        "save_activity_analysis_fn": save_activity_analysis,
+        "fail_activity_analysis_fn": fail_activity_analysis,
     }

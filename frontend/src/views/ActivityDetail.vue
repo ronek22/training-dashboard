@@ -1,7 +1,7 @@
 <template>
-  <div class="activity-detail-page">
+  <div class="activity-detail-page motion-page">
     <div class="detail-shell">
-      <div class="detail-topbar">
+      <div class="detail-topbar motion-section">
         <div class="detail-title-block">
           <router-link :to="backLinkTo" class="back-link">
             <span class="back-link-arrow">←</span>
@@ -20,11 +20,11 @@
         </div>
       </div>
 
-      <div v-if="loading" class="card empty detail-state">Loading activity detail…</div>
-      <div v-else-if="error" class="card empty detail-state">{{ error }}</div>
+      <div v-if="loading" class="card empty detail-state motion-section">Loading activity detail…</div>
+      <div v-else-if="error" class="card empty detail-state motion-section">{{ error }}</div>
 
       <template v-else-if="detail">
-        <section class="overview-grid">
+        <section class="overview-grid motion-section">
           <section class="detail-panel summary-panel">
             <div class="panel-title">Summary</div>
             <div class="summary-showcase">
@@ -129,7 +129,7 @@
           </section>
         </section>
 
-        <section class="content-grid">
+        <section class="content-grid motion-section">
           <div class="main-column">
             <section v-if="detail.activity.type === 'WeightTraining'" class="detail-panel strength-panel">
               <div class="panel-head">
@@ -253,157 +253,347 @@
                     <line :x1="bestEffortHighlightRange(chart).x2" y1="24" :x2="bestEffortHighlightRange(chart).x2" y2="186" class="chart-effort-guide" />
                   </g>
                   <path :d="chart.path" class="chart-line" :class="`chart-line-${chart.tone}`" />
-                  <g v-if="chartHover[chart.key]" class="chart-hover-layer">
-                    <line :x1="chartHover[chart.key].x" y1="24" :x2="chartHover[chart.key].x" y2="186" class="chart-hover-guide" />
-                    <circle :cx="chartHover[chart.key].x" :cy="chartHover[chart.key].y" r="6" class="chart-hover-dot" :class="`chart-hover-dot-${chart.tone}`" />
+                  <g v-if="chartHoverState(chart)" class="chart-hover-layer">
+                    <line :x1="chartHoverState(chart).x" y1="24" :x2="chartHoverState(chart).x" y2="186" class="chart-hover-guide" />
+                    <circle :cx="chartHoverState(chart).x" :cy="chartHoverState(chart).y" r="6" class="chart-hover-dot" :class="`chart-hover-dot-${chart.tone}`" />
                   </g>
                 </svg>
                 <div
-                  v-if="chartHover[chart.key]"
+                  v-if="chartHoverState(chart)"
                   class="chart-tooltip chart-tooltip-floating"
-                  :style="chartTooltipStyle(chartHover[chart.key])"
+                  :style="chartTooltipStyle(chartHoverState(chart))"
                 >
-                  <span>{{ formatElapsedMinutes(chartHover[chart.key].minute) }}</span>
-                  <strong>{{ formatChartValue(chartHover[chart.key].rawValue, chart.unit, chart.key) }}</strong>
+                  <span>{{ formatElapsedMinutes(chartHoverState(chart).minute) }}</span>
+                  <strong>{{ formatChartValue(chartHoverState(chart).rawValue, chart.unit, chart.key) }}</strong>
                 </div>
               </article>
             </section>
-          </div>
 
-          <aside class="side-column">
-            <section v-if="isStrengthActivity" class="detail-panel muscle-map-panel">
-              <div class="panel-head">
-                <div>
-                  <div class="panel-title">Muscle Focus</div>
-                  <p class="panel-copy">
-                    {{ strengthMuscleSummary?.regions?.length
-                      ? 'Estimated from the linked Fitbod exercise names and set mix.'
-                      : 'Link Fitbod detail to estimate which muscle groups this session emphasized.' }}
-                  </p>
-                </div>
-              </div>
-
-              <template v-if="strengthMuscleSummary?.regions?.length">
-                <div class="muscle-region-list muscle-region-list-tight">
-                  <div v-for="region in strengthMuscleSummary.regions.slice(0, 6)" :key="region.key" class="muscle-region-chip">
-                    <div class="muscle-region-top">
-                      <span>{{ region.label }}</span>
-                      <strong>{{ region.share }}%</strong>
-                    </div>
-                    <div class="muscle-region-bar">
-                      <span :style="{ width: `${region.share}%` }"></span>
-                    </div>
+            <section v-if="!isStrengthActivity" class="detail-subgrid detail-subgrid-secondary">
+              <section class="detail-panel hr-zones-panel">
+                <div class="panel-head">
+                  <div>
+                    <div class="panel-title">Heart-Rate Zones</div>
+                    <p class="panel-copy">
+                      {{ heartRateZoneSummary?.available
+                        ? `${formatDurationMinutesCompact(heartRateZoneSummary.zone2_minutes)} Z2 · ${formatDurationMinutesCompact(heartRateZoneSummary.total_minutes)} total`
+                        : heartRateZoneSummary?.summary || 'Zone review is unavailable for this activity.' }}
+                    </p>
                   </div>
-                </div>
-              </template>
-
-              <div v-else class="detail-empty-copy">
-                No exercise breakdown is available yet for this strength session.
-              </div>
-            </section>
-
-            <section v-if="!isStrengthActivity" class="detail-panel context-panel">
-              <div class="panel-title">Activity Context</div>
-              <div class="context-overview">
-                <div class="context-story-card">
-                  <div class="context-story-top">
-                    <span class="context-story-pill">{{ detail.activity.workout_intent_label || 'General session' }}</span>
-                    <span class="context-story-chip" :class="`context-story-chip-${activityContext.fitTone}`">
-                      {{ activityContext.fitLabel }}
-                    </span>
-                  </div>
-                  <strong class="context-story-value">{{ activityContext.headline }}</strong>
-                  <p class="context-story-copy">{{ activityContext.copy }}</p>
-                </div>
-
-                <div class="context-fit-card">
-                  <span class="context-highlight-label">Intent Fit</span>
-                  <div class="context-fit-scale">
-                    <div class="context-fit-scale-track"></div>
-                    <div
-                      class="context-fit-scale-fill"
-                      :class="`context-fit-scale-fill-${activityContext.fitTone}`"
-                      :style="{ width: `${activityContext.position}%` }"
-                    ></div>
-                    <div
-                      class="context-fit-scale-marker"
-                      :class="`context-fit-scale-marker-${activityContext.fitTone}`"
-                      :style="{ left: `${activityContext.position}%` }"
-                    ></div>
-                  </div>
-                  <div class="context-fit-labels">
-                    <span>Below</span>
-                    <span>On brief</span>
-                    <span>Above</span>
-                  </div>
-                  <div class="context-fit-readout">
-                    <strong>{{ activityContext.scaleHeadline }}</strong>
-                    <span>{{ activityContext.scaleCopy }}</span>
-                  </div>
-                </div>
-
-                <div class="context-signal-grid">
-                  <div class="context-signal-card">
-                    <span class="context-highlight-label">Load Read</span>
-                    <strong class="context-signal-value">{{ activityContext.loadValue }}</strong>
-                    <span class="context-signal-copy">{{ activityContext.loadSourceLabel }}</span>
-                  </div>
-                  <div class="context-signal-card">
-                    <span class="context-highlight-label">Detail Source</span>
-                    <strong class="context-signal-value">{{ cacheStatusLabel }}</strong>
-                    <span class="context-signal-copy">{{ activityContext.detailSupport }}</span>
-                  </div>
-                  <div v-if="detail.activity.benchmark_label" class="context-signal-card context-signal-card-wide">
-                    <span class="context-highlight-label">Benchmark Tag</span>
-                    <strong class="context-signal-value">{{ detail.activity.benchmark_label }}</strong>
-                    <span class="context-signal-copy">Use this to compare repeated test or reference sessions over time.</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section v-if="!isStrengthActivity && detail.best_efforts?.efforts?.length" class="detail-panel best-efforts-panel">
-              <div class="panel-head">
-                <div>
-                  <div class="panel-title">Best Efforts</div>
-                  <p class="panel-copy">{{ detail.best_efforts.subtitle }}</p>
-                </div>
-              </div>
-
-              <div class="best-efforts-list">
-                <div
-                  v-for="effort in detail.best_efforts.efforts"
-                  :key="effort.label"
-                  class="best-effort-row"
-                  :class="{ 'best-effort-row-active': activeBestEffort?.label === effort.label }"
-                  @mouseenter="setActiveBestEffort(effort)"
-                  @mouseleave="clearActiveBestEffort()"
+                  <div
+                    v-if="heartRateZoneSummary?.available"
+                    class="hr-zone-focus-chip"
                 >
-                  <div class="best-effort-distance">
-                    <span class="best-effort-label">{{ effort.label }}</span>
-                    <strong class="best-effort-time">{{ formatDurationSecondsCompact(effort.duration_s) }}</strong>
+                  Z2 · {{ heartRateZoneSummary.zone2_pct }}%
+                </div>
+              </div>
+
+                <template v-if="heartRateZoneSummary?.available">
+                  <div class="hr-zone-focus-card">
+                    <span class="hr-zone-focus-label">{{ heartRateZoneSummary.summary }}</span>
+                    <strong>{{ heartRateZoneSummary.zone2_pct }}%</strong>
+                    <span>{{ formatDurationMinutesCompact(heartRateZoneSummary.zone2_minutes) }} · {{ zoneRangeLabel('zone2') }}</span>
                   </div>
-                  <div class="best-effort-metrics">
-                    <div class="best-effort-metric">
-                      <span>{{ effort.metric_label }}</span>
-                      <strong>{{ formatEffortMetric(effort.metric_value, effort.metric_unit) }}</strong>
+
+                  <div class="hr-zone-list">
+                    <div
+                      v-for="zone in heartRateZoneSummary.zones"
+                      :key="zone.key"
+                      class="hr-zone-row"
+                      :class="[zoneToneClass(zone.key), { 'hr-zone-row-highlight': zone.highlight }]"
+                    >
+                      <div class="hr-zone-row-top">
+                        <span>{{ zone.label }}</span>
+                        <div class="hr-zone-row-values">
+                          <span>{{ formatDurationMinutesCompact(zone.minutes) }}</span>
+                          <strong>{{ zone.pct }}%</strong>
+                        </div>
+                      </div>
+                      <div class="hr-zone-row-meta">{{ zone.bpm_range }}</div>
+                      <div class="hr-zone-row-bar">
+                        <span :style="{ width: `${Math.max(zone.pct, zone.seconds > 0 ? 4 : 0)}%` }"></span>
+                      </div>
                     </div>
-                    <div v-if="effort.avg_hr != null" class="best-effort-metric">
-                      <span>Avg HR</span>
-                      <strong>{{ effort.avg_hr }} bpm</strong>
+                  </div>
+                </template>
+
+                <div v-else class="detail-empty-copy">
+                  {{ heartRateZoneSummary?.summary || 'Zone review is unavailable for this activity.' }}
+                </div>
+              </section>
+
+              <section v-if="detail.best_efforts?.efforts?.length" class="detail-panel best-efforts-panel">
+                <div class="panel-head">
+                  <div>
+                    <div class="panel-title">Best Efforts</div>
+                    <p class="panel-copy">{{ detail.best_efforts.subtitle }}</p>
+                  </div>
+                </div>
+
+                <div class="best-efforts-list">
+                  <div
+                    v-for="effort in detail.best_efforts.efforts"
+                    :key="effort.label"
+                    class="best-effort-row"
+                    :class="{ 'best-effort-row-active': activeBestEffort?.label === effort.label }"
+                    @mouseenter="setActiveBestEffort(effort)"
+                    @mouseleave="clearActiveBestEffort()"
+                  >
+                    <div class="best-effort-distance">
+                      <span class="best-effort-label">{{ effort.label }}</span>
+                      <strong class="best-effort-time">{{ formatDurationSecondsCompact(effort.duration_s) }}</strong>
                     </div>
-                    <div v-if="effort.elevation_gain_m != null" class="best-effort-metric">
-                      <span>Elev Gain</span>
-                      <strong>{{ effort.elevation_gain_m }} m</strong>
+                    <div class="best-effort-metrics">
+                      <div class="best-effort-metric">
+                        <span>{{ effort.metric_label }}</span>
+                        <strong>{{ formatEffortMetric(effort.metric_value, effort.metric_unit) }}</strong>
+                      </div>
+                      <div v-if="effort.avg_hr != null" class="best-effort-metric">
+                        <span>Avg HR</span>
+                        <strong>{{ effort.avg_hr }} bpm</strong>
+                      </div>
+                      <div v-if="effort.elevation_gain_m != null" class="best-effort-metric">
+                        <span>Elev Gain</span>
+                        <strong>{{ effort.elevation_gain_m }} m</strong>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </section>
             </section>
-          </aside>
+
+            <section class="detail-subgrid detail-subgrid-primary">
+              <section v-if="!isStrengthActivity" class="detail-panel context-panel">
+                <div class="panel-title">Activity Context</div>
+                <div class="context-overview">
+                  <div class="context-story-card">
+                    <div class="context-story-top">
+                      <span class="context-story-pill">{{ detail.activity.workout_intent_label || 'General session' }}</span>
+                      <span class="context-story-chip" :class="`context-story-chip-${activityContext.fitTone}`">
+                        {{ activityContext.fitLabel }}
+                      </span>
+                    </div>
+                    <strong class="context-story-value">{{ activityContext.headline }}</strong>
+                    <p class="context-story-copy">{{ activityContext.copy }}</p>
+                  </div>
+
+                  <div class="context-fit-card">
+                    <span class="context-highlight-label">Intent Fit</span>
+                    <div class="context-fit-scale">
+                      <div class="context-fit-scale-track"></div>
+                      <div
+                        class="context-fit-scale-fill"
+                        :class="`context-fit-scale-fill-${activityContext.fitTone}`"
+                        :style="{ width: `${activityContext.position}%` }"
+                      ></div>
+                      <div
+                        class="context-fit-scale-marker"
+                        :class="`context-fit-scale-marker-${activityContext.fitTone}`"
+                        :style="{ left: `${activityContext.position}%` }"
+                      ></div>
+                    </div>
+                    <div class="context-fit-labels">
+                      <span>Below</span>
+                      <span>On brief</span>
+                      <span>Above</span>
+                    </div>
+                    <div class="context-fit-readout">
+                      <strong>{{ activityContext.scaleHeadline }}</strong>
+                      <span>{{ activityContext.scaleCopy }}</span>
+                    </div>
+                  </div>
+
+                  <div class="context-signal-grid">
+                    <div class="context-signal-card">
+                      <span class="context-highlight-label">Load Read</span>
+                      <strong class="context-signal-value">{{ activityContext.loadValue }}</strong>
+                      <span class="context-signal-copy">{{ activityContext.loadSourceLabel }}</span>
+                    </div>
+                    <div class="context-signal-card">
+                      <span class="context-highlight-label">Detail Source</span>
+                      <strong class="context-signal-value">{{ cacheStatusLabel }}</strong>
+                      <span class="context-signal-copy">{{ activityContext.detailSupport }}</span>
+                    </div>
+                    <div v-if="detail.activity.benchmark_label" class="context-signal-card context-signal-card-wide">
+                      <span class="context-highlight-label">Benchmark Tag</span>
+                      <strong class="context-signal-value">{{ detail.activity.benchmark_label }}</strong>
+                      <span class="context-signal-copy">Use this to compare repeated test or reference sessions over time.</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section v-if="isStrengthActivity" class="detail-panel muscle-map-panel">
+                <div class="panel-head">
+                  <div>
+                    <div class="panel-title">Muscle Focus</div>
+                    <p class="panel-copy">
+                      {{ strengthMuscleSummary?.regions?.length
+                        ? 'Estimated from the linked Fitbod exercise names and set mix.'
+                        : 'Link Fitbod detail to estimate which muscle groups this session emphasized.' }}
+                    </p>
+                  </div>
+                </div>
+
+                <template v-if="strengthMuscleSummary?.regions?.length">
+                  <div class="muscle-region-list muscle-region-list-tight">
+                    <div v-for="region in strengthMuscleSummary.regions.slice(0, 6)" :key="region.key" class="muscle-region-chip">
+                      <div class="muscle-region-top">
+                        <span>{{ region.label }}</span>
+                        <strong>{{ region.share }}%</strong>
+                      </div>
+                      <div class="muscle-region-bar">
+                        <span :style="{ width: `${region.share}%` }"></span>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+
+                <div v-else class="detail-empty-copy">
+                  No exercise breakdown is available yet for this strength session.
+                </div>
+              </section>
+
+              <section class="detail-panel workout-analysis-panel">
+                <div class="panel-head">
+                  <div>
+                    <div class="panel-title">Workout Analysis</div>
+                    <p class="panel-copy">
+                      {{
+                        workoutAnalysis?.status === 'ready'
+                          ? 'AI-generated interpretation saved back into the app from structured workout context.'
+                          : workoutAnalysis?.status === 'stale'
+                            ? 'A saved analysis exists, but the underlying workout context has changed.'
+                          : workoutAnalysis?.status === 'failed'
+                              ? workoutAnalysis?.last_error || 'The last external analysis attempt failed.'
+                              : workoutAnalysis?.reason || 'Use ChatGPT over MCP to read the workout context and save a compact analysis back into the app.'
+                      }}
+                    </p>
+                  </div>
+                  <div class="analysis-action-stack">
+                    <button
+                      v-if="analysisHasReadableContent"
+                      class="analysis-action-btn"
+                      @click="analysisModalOpen = true"
+                    >
+                      Open
+                    </button>
+                    <button
+                      class="analysis-action-btn analysis-action-btn-secondary"
+                      :disabled="analysisLoading || workoutAnalysis?.status === 'unavailable'"
+                      @click="copyChatgptPrompt()"
+                    >
+                      {{ promptCopied ? 'Copied' : 'Copy Prompt' }}
+                    </button>
+                  </div>
+                </div>
+
+                <div v-if="analysisError" class="analysis-state-card analysis-state-card-error">
+                  {{ analysisError }}
+                </div>
+
+                <div v-else-if="analysisLoading" class="analysis-state-card">
+                  Preparing ChatGPT instructions…
+                </div>
+
+                <template v-else-if="analysisHasReadableContent">
+                  <div class="analysis-preview-head">
+                    <strong class="analysis-preview-title">{{ analysisPreviewTitle }}</strong>
+                    <span v-if="workoutAnalysis?.status === 'stale'" class="analysis-state-pill">Needs refresh</span>
+                    <span v-else-if="legacyCoachAnalysis" class="analysis-state-pill analysis-state-pill-neutral">Legacy note</span>
+                  </div>
+                  <p class="analysis-preview-copy">{{ analysisPreviewText }}</p>
+                  <div class="analysis-meta-row">
+                    <span v-if="workoutAnalysis?.generated_at">
+                      Saved {{ formatDateTime(workoutAnalysis.generated_at) }}
+                      <span v-if="workoutAnalysis.model_name">· {{ workoutAnalysis.model_name }}</span>
+                    </span>
+                    <span v-else>Saved through the older notes path.</span>
+                  </div>
+                </template>
+
+                <div v-else-if="workoutAnalysis?.status === 'requested'" class="analysis-state-card">
+                  Analysis request pending from {{ workoutAnalysis.requested_at ? formatDateTime(workoutAnalysis.requested_at) : 'recently' }}.
+                  You can skip the request flow and ask ChatGPT to fetch context and save the analysis directly.
+                </div>
+
+                <div v-else-if="workoutAnalysis?.status === 'failed'" class="analysis-state-card analysis-state-card-error">
+                  {{ workoutAnalysis.last_error || 'The external analysis request failed.' }}
+                </div>
+
+                <div v-else-if="workoutAnalysis?.status === 'unavailable'" class="analysis-state-card">
+                  {{ workoutAnalysis.reason || 'Analysis is unavailable for this activity.' }}
+                </div>
+
+                <div v-else class="analysis-state-card">
+                  No saved analysis yet. Use `Copy ChatGPT Prompt`.
+                  If ChatGPT says `get_activity_analysis_context` or `save_activity_analysis` is missing, that ChatGPT MCP connection is stale and needs to be reconnected to the current `/mcp` endpoint.
+                </div>
+              </section>
+            </section>
+          </div>
         </section>
       </template>
     </div>
+
+    <Teleport to="body">
+      <div v-if="analysisModalOpen" class="analysis-modal-backdrop" @click.self="analysisModalOpen = false">
+        <div class="analysis-modal">
+          <div class="analysis-modal-head">
+            <div>
+              <div class="panel-title">Workout Analysis</div>
+              <div class="analysis-modal-sub">
+                {{ analysisPreviewTitle }}
+              </div>
+            </div>
+            <button class="analysis-modal-close" @click="analysisModalOpen = false">×</button>
+          </div>
+
+          <div v-if="legacyCoachAnalysis && !hasStructuredAnalysis" class="analysis-modal-body">
+            <p class="analysis-modal-copy">{{ legacyCoachAnalysis }}</p>
+          </div>
+
+          <div v-else-if="hasStructuredAnalysis" class="analysis-modal-body">
+            <strong class="analysis-headline">{{ workoutAnalysis.headline }}</strong>
+            <p class="analysis-summary">{{ workoutAnalysis.summary }}</p>
+
+            <div v-if="workoutAnalysis.key_observations?.length" class="analysis-list-block">
+              <div class="analysis-list-title">Key observations</div>
+              <ul class="analysis-list">
+                <li v-for="item in workoutAnalysis.key_observations" :key="item">{{ item }}</li>
+              </ul>
+            </div>
+
+            <div v-if="workoutAnalysis.limitations?.length" class="analysis-list-block">
+              <div class="analysis-list-title">Limitations</div>
+              <ul class="analysis-list analysis-list-muted">
+                <li v-for="item in workoutAnalysis.limitations" :key="item">{{ item }}</li>
+              </ul>
+            </div>
+
+            <div class="analysis-footer">
+              <span>{{ workoutAnalysis.confidence_note }}</span>
+              <span v-if="workoutAnalysis.generated_at">
+                Saved {{ formatDateTime(workoutAnalysis.generated_at) }}
+                <span v-if="workoutAnalysis.model_name">· {{ workoutAnalysis.model_name }}</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="analysis-modal-tools">
+            <div class="analysis-list-title">ChatGPT prompt</div>
+            <pre class="analysis-prompt-box">{{ chatgptPrompt }}</pre>
+            <button
+              class="analysis-action-btn analysis-action-btn-secondary"
+              :disabled="analysisLoading || workoutAnalysis?.status === 'unavailable'"
+              @click="copyChatgptPrompt()"
+            >
+              {{ promptCopied ? 'Copied' : 'Copy Prompt' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -420,8 +610,12 @@ const route = useRoute()
 const loading = ref(false)
 const error = ref('')
 const detail = ref(null)
+const analysisLoading = ref(false)
+const analysisError = ref('')
+const analysisModalOpen = ref(false)
+const promptCopied = ref(false)
 const chartGridLines = [46, 86, 126, 166]
-const chartHover = ref({})
+const activeChartMinute = ref(null)
 const activeBestEffort = ref(null)
 const routeMapRef = ref(null)
 let routeMap = null
@@ -429,6 +623,7 @@ let routeLayer = null
 let bestEffortRouteLayer = null
 let startMarker = null
 let endMarker = null
+let hoverMarker = null
 let lastRouteSignature = ''
 
 const backContext = computed(() => {
@@ -498,6 +693,7 @@ const inferMuscleRegions = (exerciseName) => {
 const load = async () => {
   loading.value = true
   error.value = ''
+  analysisError.value = ''
   try {
     const { data } = await api.getActivityDetail(route.params.activityId)
     detail.value = data
@@ -510,6 +706,9 @@ const load = async () => {
 
 onMounted(load)
 watch(() => route.params.activityId, load)
+watch(analysisModalOpen, (isOpen) => {
+  document.body.style.overflow = isOpen ? 'hidden' : ''
+})
 
 const createRouteMarker = (color) => L.divIcon({
   className: 'route-map-marker-shell',
@@ -527,6 +726,7 @@ const destroyRouteMap = () => {
   bestEffortRouteLayer = null
   startMarker = null
   endMarker = null
+  hoverMarker = null
   lastRouteSignature = ''
 }
 
@@ -536,6 +736,65 @@ const setActiveBestEffort = (effort) => {
 
 const clearActiveBestEffort = () => {
   activeBestEffort.value = null
+}
+
+const workoutAnalysis = computed(() => detail.value?.analysis || null)
+const legacyCoachAnalysis = computed(() => {
+  const notes = String(detail.value?.activity?.notes || '').trim()
+  if (!notes) return ''
+  if (notes.toLowerCase().startsWith('coach analysis:')) {
+    return notes.replace(/^coach analysis:\s*/i, '').trim()
+  }
+  return ''
+})
+const hasStructuredAnalysis = computed(() => ['ready', 'stale'].includes(workoutAnalysis.value?.status))
+const analysisHasReadableContent = computed(() => Boolean(hasStructuredAnalysis.value || legacyCoachAnalysis.value))
+const analysisPreviewTitle = computed(() => {
+  if (hasStructuredAnalysis.value) return workoutAnalysis.value.headline
+  if (legacyCoachAnalysis.value) return 'Legacy coach note'
+  if (workoutAnalysis.value?.status === 'requested') return 'Pending external analysis'
+  if (workoutAnalysis.value?.status === 'failed') return 'External analysis failed'
+  return 'No saved analysis yet'
+})
+const analysisPreviewText = computed(() => {
+  if (hasStructuredAnalysis.value) return workoutAnalysis.value.summary
+  if (legacyCoachAnalysis.value) return legacyCoachAnalysis.value
+  return ''
+})
+const chatgptPrompt = computed(() => {
+  const activityId = detail.value?.activity?.id
+  if (!activityId) return ''
+  return [
+    `Use the Training Dashboard MCP tools to analyze activity ${activityId}.`,
+    '',
+    'Preflight:',
+    '- First check that the Training Dashboard MCP exposes `get_activity_analysis_context` and `save_activity_analysis`.',
+    '- If either tool is missing, stop and say exactly: `This ChatGPT MCP connection is stale or pointed at an older Training Dashboard endpoint. Reconnect ChatGPT to the current /mcp server and try again.`',
+    '- Do not substitute `log_activity`, `add_coach_note`, or other write tools if the analysis tools are missing.',
+    '',
+    'Required flow:',
+    `1. Call get_activity_analysis_context with {"activity_id":"${activityId}"}.`,
+    '2. Read the returned context and generate a compact athlete-facing analysis using only that context.',
+    `3. Call save_activity_analysis with {"activity_id":"${activityId}","headline":"...","summary":"...","key_observations":["..."],"limitations":["..."],"confidence_note":"...","generator":"chatgpt","model_name":"your-model-name"}.`,
+    '',
+    'Rules:',
+    '- Do not use log_activity or write into notes.',
+    '- Do not invent facts not supported by the MCP context.',
+    '- Keep it concise and practical.',
+  ].join('\n')
+})
+
+const copyChatgptPrompt = async () => {
+  if (!chatgptPrompt.value || workoutAnalysis.value?.status === 'unavailable') return
+  try {
+    await navigator.clipboard.writeText(chatgptPrompt.value)
+    promptCopied.value = true
+    window.setTimeout(() => {
+      promptCopied.value = false
+    }, 2000)
+  } catch {
+    analysisError.value = 'Could not copy the ChatGPT prompt.'
+  }
 }
 
 const isStrengthActivity = computed(() => detail.value?.activity?.type === 'WeightTraining')
@@ -956,7 +1215,20 @@ const preparedCharts = computed(() => {
     .slice(0, 4)
 })
 
+const chartDurationMinutes = computed(() => {
+  return preparedCharts.value.reduce((maxMinutes, chart) => {
+    const lastPoint = chart.points?.[chart.points.length - 1]
+    return Math.max(maxMinutes, Number(lastPoint?.x || 0))
+  }, 0)
+})
+
 const strengthDetail = computed(() => detail.value?.strength_detail || null)
+const heartRateZoneSummary = computed(() => detail.value?.heart_rate_zones || null)
+const zoneToneClass = (zoneKey) => `zone-tone-${zoneKey}`
+const zoneRangeLabel = (zoneKey) => {
+  const zone = heartRateZoneSummary.value?.zones?.find((item) => item.key === zoneKey)
+  return zone?.bpm_range || ''
+}
 
 const chartTone = (key) => {
   if (key === 'pace' || key === 'speed') return 'speed'
@@ -1054,6 +1326,31 @@ const buildChartPath = (normalizedPoints) => {
   return path
 }
 
+const findClosestChartPoint = (chart, minute = activeChartMinute.value) => {
+  if (minute == null || !chart?.normalizedPoints?.length) return null
+  let closest = chart.normalizedPoints[0]
+  let distance = Math.abs(minute - closest.rawMinute)
+  for (const point of chart.normalizedPoints) {
+    const nextDistance = Math.abs(minute - point.rawMinute)
+    if (nextDistance < distance) {
+      closest = point
+      distance = nextDistance
+    }
+  }
+  return closest
+}
+
+const chartHoverState = (chart) => {
+  const closest = findClosestChartPoint(chart)
+  if (!closest || activeChartMinute.value == null) return null
+  return {
+    x: closest.x,
+    y: closest.y,
+    minute: activeChartMinute.value,
+    rawValue: closest.rawY,
+  }
+}
+
 const handleChartHover = (chart, event) => {
   const svg = event.currentTarget
   if (!svg || !chart.normalizedPoints?.length) return
@@ -1071,29 +1368,18 @@ const handleChartHover = (chart, event) => {
     }
   }
 
-  chartHover.value = {
-    ...chartHover.value,
-    [chart.key]: {
-      x: closest.x,
-      y: closest.y,
-      minute: closest.sourceX,
-      rawValue: closest.rawY,
-    },
-  }
+  activeChartMinute.value = closest.rawMinute
 }
 
-const clearChartHover = (chartKey) => {
-  if (!chartHover.value[chartKey]) return
-  const next = { ...chartHover.value }
-  delete next[chartKey]
-  chartHover.value = next
+const clearChartHover = () => {
+  activeChartMinute.value = null
 }
 
 const chartTooltipStyle = (hoverState) => {
-  const left = Math.max(18, Math.min(hoverState.x - 56, 860 - 132))
-  const top = hoverState.y > 74 ? hoverState.y - 52 : hoverState.y + 18
+  const leftPercent = Math.max(8, Math.min(92, (hoverState.x / 860) * 100))
+  const top = Math.max(8, hoverState.y - 58)
   return {
-    left: `${left}px`,
+    left: `${leftPercent}%`,
     top: `${top}px`,
   }
 }
@@ -1130,6 +1416,44 @@ const bestEffortHighlightRange = (chart) => {
     x2,
     width: Math.max(x2 - x1, 4),
   }
+}
+
+const interpolateRouteCoordinate = (coordinates, ratio) => {
+  if (!coordinates.length) return null
+  if (coordinates.length === 1) return coordinates[0]
+  const clampedRatio = Math.max(0, Math.min(1, ratio))
+  const scaledIndex = clampedRatio * (coordinates.length - 1)
+  const leftIndex = Math.floor(scaledIndex)
+  const rightIndex = Math.min(coordinates.length - 1, leftIndex + 1)
+  const progress = scaledIndex - leftIndex
+  const left = coordinates[leftIndex]
+  const right = coordinates[rightIndex]
+  return [
+    left[0] + (right[0] - left[0]) * progress,
+    left[1] + (right[1] - left[1]) * progress,
+  ]
+}
+
+const activeRouteCoordinate = computed(() => {
+  if (activeChartMinute.value == null || routeCoordinates.value.length < 2 || chartDurationMinutes.value <= 0) return null
+  return interpolateRouteCoordinate(routeCoordinates.value, activeChartMinute.value / chartDurationMinutes.value)
+})
+
+const syncRouteHoverMarker = () => {
+  if (hoverMarker) {
+    hoverMarker.remove()
+    hoverMarker = null
+  }
+  if (!routeMap || !activeRouteCoordinate.value) return
+  hoverMarker = L.circleMarker(activeRouteCoordinate.value, {
+    radius: 8,
+    weight: 3,
+    color: '#a9bdff',
+    opacity: 0.95,
+    fillColor: '#50dccf',
+    fillOpacity: 0.92,
+  }).addTo(routeMap)
+  hoverMarker.bringToFront()
 }
 
 const syncRouteMap = async () => {
@@ -1188,6 +1512,8 @@ const syncRouteMap = async () => {
     }).addTo(routeMap)
     bestEffortRouteLayer.bringToFront()
   }
+
+  syncRouteHoverMarker()
 
   if (shouldFit) {
     routeMap.fitBounds(routeLayer.getBounds(), {
@@ -1323,11 +1649,16 @@ watch(activeBestEffort, () => {
   syncRouteMap()
 })
 
+watch([activeChartMinute, routeCoordinates, chartDurationMinutes], () => {
+  syncRouteHoverMarker()
+})
+
 onMounted(() => {
   syncRouteMap()
 })
 
 onBeforeUnmount(() => {
+  document.body.style.overflow = ''
   destroyRouteMap()
 })
 </script>
@@ -1424,6 +1755,323 @@ onBeforeUnmount(() => {
   color: #d9e4f7;
   font-size: 12px;
   font-weight: 700;
+}
+
+.workout-analysis-panel {
+  position: relative;
+  margin-bottom: 18px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(21, 32, 50, 0.96), rgba(14, 22, 36, 0.98)) padding-box,
+    linear-gradient(135deg, rgba(92, 214, 255, 0.8), rgba(123, 163, 255, 0.72), rgba(255, 132, 201, 0.72), rgba(244, 180, 77, 0.74)) border-box;
+  border: 1px solid transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 40px rgba(3, 8, 18, 0.22),
+    0 0 0 1px rgba(129, 157, 218, 0.08);
+}
+
+.workout-analysis-panel::before {
+  content: '';
+  position: absolute;
+  inset: -20% auto auto -10%;
+  width: 200px;
+  height: 160px;
+  background: radial-gradient(circle, rgba(92, 214, 255, 0.16), transparent 68%);
+  pointer-events: none;
+}
+
+.workout-analysis-panel::after {
+  content: '';
+  position: absolute;
+  inset: auto -8% -18% auto;
+  width: 220px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(255, 132, 201, 0.12), transparent 72%);
+  pointer-events: none;
+}
+
+.workout-analysis-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.analysis-action-stack {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.analysis-action-btn {
+  border: 1px solid rgba(118, 148, 198, 0.22);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(45, 66, 110, 0.9), rgba(23, 37, 65, 0.94));
+  color: #eef4ff;
+  min-height: 38px;
+  padding: 0 15px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform 0.16s ease, border-color 0.16s ease, opacity 0.16s ease, box-shadow 0.16s ease;
+}
+
+.analysis-action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(147, 197, 253, 0.38);
+  box-shadow: 0 10px 24px rgba(9, 17, 31, 0.26);
+}
+
+.analysis-action-btn-secondary {
+  background:
+    linear-gradient(180deg, rgba(18, 29, 47, 0.98), rgba(12, 21, 36, 0.94)) padding-box,
+    linear-gradient(135deg, rgba(96, 220, 255, 0.85), rgba(124, 145, 255, 0.78), rgba(255, 140, 193, 0.76)) border-box;
+  border: 1px solid transparent;
+  color: #f4f8ff;
+  text-shadow: 0 0 12px rgba(123, 163, 255, 0.18);
+}
+
+.analysis-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.analysis-state-card {
+  margin-top: 14px;
+  padding: 15px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(101, 119, 152, 0.18);
+  background: linear-gradient(180deg, rgba(14, 22, 35, 0.8), rgba(11, 18, 29, 0.76));
+  color: #dce7f7;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.analysis-state-card-error {
+  border-color: rgba(225, 122, 122, 0.25);
+  color: #ffd3d3;
+}
+
+.analysis-state-card-legacy {
+  border-color: rgba(120, 148, 198, 0.24);
+  background:
+    linear-gradient(180deg, rgba(17, 28, 46, 0.9), rgba(13, 21, 35, 0.76)) padding-box,
+    linear-gradient(135deg, rgba(86, 201, 255, 0.24), rgba(120, 148, 255, 0.16), rgba(255, 132, 201, 0.18)) border-box;
+}
+
+.analysis-legacy-copy {
+  color: #dce7f7;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.analysis-preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.analysis-preview-title {
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.analysis-state-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(163, 114, 42, 0.18);
+  border: 1px solid rgba(234, 179, 72, 0.26);
+  color: #f8cf79;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.analysis-state-pill-neutral {
+  background: rgba(84, 109, 255, 0.12);
+  border-color: rgba(126, 153, 255, 0.22);
+  color: #b7c9ff;
+}
+
+.analysis-preview-copy {
+  margin: 10px 0 0;
+  color: #d5e0f2;
+  font-size: 14px;
+  line-height: 1.75;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.analysis-meta-row {
+  margin-top: 12px;
+  color: #8ea2c4;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.analysis-list-block {
+  margin-top: 14px;
+}
+
+.analysis-list-title {
+  margin-bottom: 8px;
+  color: #a5badb;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analysis-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #dce7f7;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.analysis-list-muted {
+  color: #9eb1cf;
+}
+
+.analysis-footer {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(101, 119, 152, 0.16);
+  display: grid;
+  gap: 6px;
+  color: #8ea2c4;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.analysis-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 7, 15, 0.78);
+  backdrop-filter: blur(14px);
+}
+
+.analysis-modal {
+  width: min(760px, 100%);
+  max-height: min(82vh, 920px);
+  overflow: auto;
+  border-radius: 24px;
+  border: 1px solid rgba(89, 108, 143, 0.24);
+  background: linear-gradient(180deg, rgba(24, 34, 52, 0.98), rgba(14, 22, 36, 0.98));
+  box-shadow: 0 28px 80px rgba(2, 7, 18, 0.44);
+  padding: 24px;
+}
+
+.analysis-modal-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.analysis-modal-sub {
+  margin-top: 10px;
+  color: #e8f0ff;
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.analysis-modal-close {
+  border: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: rgba(19, 30, 48, 0.92);
+  color: #dbe7f8;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.analysis-modal-body {
+  margin-top: 18px;
+}
+
+.analysis-headline {
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.analysis-summary {
+  margin: 12px 0 0;
+  color: #e8f0ff;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.analysis-modal-copy {
+  margin: 0;
+  color: #dce7f7;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.analysis-modal-tools {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(101, 119, 152, 0.16);
+}
+
+.analysis-prompt-box {
+  margin: 0 0 14px;
+  padding: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 16px;
+  border: 1px solid rgba(101, 119, 152, 0.18);
+  background: rgba(11, 18, 30, 0.88);
+  color: #dce7f7;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+@media (max-width: 900px) {
+  .analysis-action-stack {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .analysis-modal-backdrop {
+    padding: 12px;
+    align-items: center;
+  }
+
+  .analysis-modal {
+    width: 100%;
+    max-height: 88vh;
+    padding: 18px;
+  }
+
+  .analysis-modal-sub {
+    font-size: 18px;
+  }
 }
 .strength-panel {
   margin-bottom: 18px;
@@ -1629,16 +2277,21 @@ onBeforeUnmount(() => {
 
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(320px, 0.8fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-items: start;
 }
 
 .main-column,
 .chart-stack,
-.side-column {
+.detail-subgrid {
   display: grid;
   gap: 14px;
+}
+
+.detail-subgrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
 }
 
 .chart-stack {
@@ -1656,6 +2309,8 @@ onBeforeUnmount(() => {
 
 .summary-panel,
 .feedback-panel,
+.workout-analysis-panel,
+.hr-zones-panel,
 .muscle-map-panel,
 .context-panel,
 .best-efforts-panel,
@@ -2608,6 +3263,7 @@ onBeforeUnmount(() => {
   background: rgba(12, 18, 29, 0.94);
   box-shadow: 0 14px 30px rgba(3, 8, 18, 0.28);
   z-index: 2;
+  transform: translateX(-50%);
 }
 
 .chart-hover-guide {
@@ -2700,6 +3356,7 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
   }
 
+  .detail-subgrid,
   .chart-stack {
     grid-template-columns: 1fr;
   }

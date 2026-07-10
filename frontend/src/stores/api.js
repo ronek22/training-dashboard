@@ -22,6 +22,8 @@ export const useApi = () => ({
   getStrengthOverview: (params) => api.get('/strength/overview', { params }),
   getActivities: (params) => api.get('/activities', { params }),
   getActivityDetail: (activityId) => api.get(`/activities/${activityId}`),
+  analyzeActivity: (activityId, payload) => api.post(`/activities/${activityId}/analysis`, payload),
+  getActivityAnalysisContext: (activityId) => api.get(`/activities/${activityId}/analysis/context`),
   updateActivityIntent: (activityId, payload) => api.post(`/activities/${activityId}/intent`, payload),
   linkActivityToPlan: (activityId, payload) => api.post(`/activities/${activityId}/link-plan`, payload),
   importFitbodCsv: (payload) => api.post('/fitbod/import', payload),

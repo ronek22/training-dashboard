@@ -1,65 +1,69 @@
 <template>
-  <div v-if="open && activity" class="feedback-modal-shell" @click.self="$emit('close')">
-    <div class="feedback-modal">
-      <div class="feedback-modal-head">
-        <div>
-          <div class="feedback-modal-kicker">Post-workout feedback</div>
-          <h2>{{ activity.name || activity.type }}</h2>
-          <p>{{ activity.dateLabel || activity.date }}</p>
-        </div>
-        <button class="feedback-modal-close" @click="$emit('close')" aria-label="Close feedback dialog">×</button>
-      </div>
-
-      <div class="feedback-modal-grid">
-        <section v-for="field in fields" :key="field.key" class="feedback-slider-card">
-          <div class="feedback-slider-top">
+  <Transition name="overlay-fade" appear>
+    <div v-if="open && activity" class="feedback-modal-shell" @click.self="$emit('close')">
+      <Transition name="modal-pop" appear>
+        <div v-if="open && activity" class="feedback-modal">
+          <div class="feedback-modal-head">
             <div>
-              <strong>{{ field.label }}</strong>
-              <p>{{ field.help }}</p>
+              <div class="feedback-modal-kicker">Post-workout feedback</div>
+              <h2>{{ activity.name || activity.type }}</h2>
+              <p>{{ activity.dateLabel || activity.date }}</p>
             </div>
-            <span class="feedback-slider-value">{{ form[field.key] }}{{ field.suffix || '' }}</span>
+            <button class="feedback-modal-close" @click="$emit('close')" aria-label="Close feedback dialog">×</button>
           </div>
-          <input
-            v-model.number="form[field.key]"
-            class="feedback-slider"
-            type="range"
-            :min="field.min"
-            :max="field.max"
-            :step="1"
-          >
-          <div class="feedback-slider-scale">
-            <span>{{ field.minLabel }}</span>
-            <span>{{ field.maxLabel }}</span>
+
+          <div class="feedback-modal-grid">
+            <section v-for="field in fields" :key="field.key" class="feedback-slider-card">
+              <div class="feedback-slider-top">
+                <div>
+                  <strong>{{ field.label }}</strong>
+                  <p>{{ field.help }}</p>
+                </div>
+                <span class="feedback-slider-value">{{ form[field.key] }}{{ field.suffix || '' }}</span>
+              </div>
+              <input
+                v-model.number="form[field.key]"
+                class="feedback-slider"
+                type="range"
+                :min="field.min"
+                :max="field.max"
+                :step="1"
+              >
+              <div class="feedback-slider-scale">
+                <span>{{ field.minLabel }}</span>
+                <span>{{ field.maxLabel }}</span>
+              </div>
+            </section>
           </div>
-        </section>
-      </div>
 
-      <label v-if="intentOptions.length" class="feedback-intent-field">
-        <span>Workout intent</span>
-        <select v-model="form.workout_intent">
-          <option value="">None</option>
-          <option v-for="intent in intentOptions" :key="intent.value" :value="intent.value">
-            {{ intent.label }}
-          </option>
-        </select>
-      </label>
+          <label v-if="intentOptions.length" class="feedback-intent-field">
+            <span>Workout intent</span>
+            <select v-model="form.workout_intent">
+              <option value="">None</option>
+              <option v-for="intent in intentOptions" :key="intent.value" :value="intent.value">
+                {{ intent.label }}
+              </option>
+            </select>
+          </label>
 
-      <label class="feedback-note-field">
-        <span>Optional note</span>
-        <textarea v-model="form.note" rows="3" placeholder="Anything that explains the numbers?"></textarea>
-      </label>
+          <label class="feedback-note-field">
+            <span>Optional note</span>
+            <textarea v-model="form.note" rows="3" placeholder="Anything that explains the numbers?"></textarea>
+          </label>
 
-      <div class="feedback-modal-actions">
-        <div v-if="message" class="feedback-modal-message">{{ message }}</div>
-        <div class="feedback-modal-buttons">
-          <button class="feedback-secondary-btn" @click="$emit('close')">Cancel</button>
-          <button class="feedback-primary-btn" :disabled="saving" @click="submit">
-            {{ saving ? 'Saving...' : 'Save feedback' }}
-          </button>
+          <div class="feedback-modal-actions">
+            <div v-if="message" class="feedback-modal-message">{{ message }}</div>
+            <div class="feedback-modal-buttons">
+              <button class="feedback-secondary-btn" @click="$emit('close')">Cancel</button>
+              <button class="feedback-primary-btn" :disabled="saving" @click="submit">
+                {{ saving ? 'Saving...' : 'Save feedback' }}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      </Transition>
     </div>
-  </div>
+  </Transition>
 </template>
 
 <script setup>
@@ -199,14 +203,18 @@ const submit = () => {
   z-index: 40;
   background: rgba(6, 10, 19, 0.74);
   backdrop-filter: blur(10px);
-  display: grid;
-  place-items: center;
-  padding: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 24px 24px 40px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .feedback-modal {
   width: min(760px, 100%);
-  max-height: calc(100vh - 48px);
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
+  margin: 0 auto;
   padding: 24px;
   border-radius: 24px;
   border: 1px solid rgba(255,255,255,0.08);
@@ -249,6 +257,9 @@ const submit = () => {
   cursor: pointer;
   font-size: 24px;
   line-height: 1;
+}
+.feedback-modal-close:hover {
+  transform: rotate(90deg);
 }
 .feedback-modal-grid {
   display: grid;
@@ -359,12 +370,19 @@ const submit = () => {
   background: linear-gradient(135deg, #2563eb, #4f46e5);
   color: white;
 }
+.feedback-secondary-btn:hover,
+.feedback-primary-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
 .feedback-primary-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
 
 @media (max-width: 720px) {
+  .feedback-modal-shell {
+    padding: 16px 16px 28px;
+  }
   .feedback-modal {
     padding: 18px;
     border-radius: 20px;

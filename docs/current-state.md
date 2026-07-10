@@ -208,6 +208,42 @@ Completed slices:
 - restriction-aware template assignment can delay lower-body strength while running is limited or blocked
 - `Goals`, `Plan`, and `Dashboard` now expose the current strength rotation and next programmed workout
 
+### Sprint 28 heart-rate zones in activity detail and dashboard
+
+Sprint 28 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- activity detail now shows compact heart-rate zone summaries from cached Strava heart-rate and time streams
+- dashboard now summarizes recent heart-rate zone accumulation with explicit zone-2 emphasis and coverage state
+- Strava stream backfill now populates cached stream detail needed for zone review on previously imported activities
+- heart-rate zone boundaries now follow the documented explicit running and cycling HR ranges
+- UI treatment now makes zone distribution more compact, color-coded, and easier to scan in both dashboard and activity detail
+
+### Sprint 29 LLM workout analysis via MCP for activity detail
+
+Sprint 29 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- activity detail now exposes a dedicated AI workout-analysis block with compact preview and modal detail
+- MCP now exposes single-workout analysis reads and writes through `get_activity_analysis_context`, `save_activity_analysis`, and related analysis request state
+- ChatGPT-facing prompt flow now guides the client toward the deterministic analysis context and away from legacy notes writes
+- saved workout analyses are persisted back into the app with stale, unavailable, pending, and failure states
+- activity-detail charts now share hover state across panels and project the hovered point back onto the route map
+
+### Sprint 30 readiness and fatigue foundation
+
+Sprint 30 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- dashboard now surfaces a compact readiness read next to daily guidance with explicit short-horizon state
+- coaching now consumes a shared readiness summary with state, reasons, limitations, and next-48-hour guidance
+- recent-context and MCP-facing reads now expose the same deterministic readiness payload instead of requiring downstream reconstruction
+- readiness now distinguishes `ready`, `watch`, `strained`, and `insufficient_data` while staying conservative about missing evidence
+- frontend dashboard cleanup removed duplicated athlete-context and strength-rotation reference blocks so the readiness layer stays closer to the main decision flow
+
 ### Phase 5 coaching workflow and analysis
 
 Phase 5 can now be treated as complete for the current roadmap slice.

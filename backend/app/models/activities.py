@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 
@@ -27,3 +27,21 @@ class ActivityPlanLink(BaseModel):
 
 class ActivityIntentUpdate(BaseModel):
     workout_intent: Optional[str] = None
+
+
+class ActivityAnalysisRequest(BaseModel):
+    force_refresh: bool = False
+
+
+class ActivityAnalysisSaveRequest(BaseModel):
+    headline: str
+    summary: str
+    key_observations: list[str] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+    confidence_note: str
+    generator: str = "llm"
+    model_name: Optional[str] = None
+
+
+class ActivityAnalysisFailureRequest(BaseModel):
+    error: str

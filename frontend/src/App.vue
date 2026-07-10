@@ -44,17 +44,44 @@
       </div>
     </aside>
     <main class="main-content">
-      <router-view />
+      <router-view v-slot="{ Component, route }">
+        <Transition :name="routeTransitionName">
+          <component :is="Component" :key="route.fullPath" />
+        </Transition>
+      </router-view>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useApi } from './stores/api'
 
 const streak = ref('—')
 const api = useApi()
+const route = useRoute()
+const previousPath = ref('')
+
+watch(
+  () => route.fullPath,
+  (_, oldPath) => {
+    previousPath.value = oldPath || ''
+  },
+)
+
+const isActivityDetailPath = (path) => /^\/activities\/[^/]+/.test(path || '')
+
+const routeTransitionName = computed(() => {
+  const currentPath = route.path
+  if (isActivityDetailPath(currentPath) && !isActivityDetailPath(previousPath.value)) {
+    return 'route-forward'
+  }
+  if (!isActivityDetailPath(currentPath) && isActivityDetailPath(previousPath.value)) {
+    return 'route-back'
+  }
+  return 'route-none'
+})
 
 onMounted(async () => {
   try {
@@ -132,13 +159,13 @@ onMounted(async () => {
   color: var(--muted);
   font-size: 13px;
   font-weight: 600;
-  transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease;
   border: 1px solid transparent;
 }
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
   border-color: rgba(132, 149, 181, 0.12);
+  transform: translateY(-1px);
 }
 .nav-item.active {
   background: linear-gradient(135deg, rgba(95, 140, 255, 0.2), rgba(95, 140, 255, 0.12));
@@ -169,6 +196,7 @@ onMounted(async () => {
   margin-left: 232px;
   padding: 34px 32px 40px;
   overflow-y: auto;
+  position: relative;
 }
 
 @media (max-width: 900px) {

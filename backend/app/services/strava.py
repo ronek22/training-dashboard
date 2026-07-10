@@ -1,3 +1,4 @@
+import json
 import math
 import os
 import sqlite3
@@ -15,6 +16,7 @@ STRAVA_ACTIVITY_STREAMS_URL = "https://www.strava.com/api/v3/activities/{activit
 STRAVA_PAGE_SIZE = 100
 STRAVA_STREAM_FETCH_LIMIT = 12
 STRAVA_STREAM_RECENT_DAYS = 120
+STRAVA_DETAIL_STREAM_KEYS = "time,distance,latlng,altitude,heartrate,watts,velocity_smooth,cadence,grade_smooth"
 
 
 def require_strava_config(get_setting_fn: Callable[[str], Optional[str]]):
@@ -439,6 +441,49 @@ def stream_fetch_candidates(conn: sqlite3.Connection, activities: list[dict], li
     return [item[2] for item in prioritized[:limit]]
 
 
+def upsert_activity_detail_stream_cache(conn: sqlite3.Connection, activity_id: str, streams: dict) -> None:
+    fetched_at = datetime.now().isoformat()
+    conn.execute(
+        """
+        INSERT INTO activity_details (
+            activity_id,
+            fetched_at,
+            source_status,
+            streams_json,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, 'streams_backfill', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT(activity_id) DO UPDATE SET
+            fetched_at=excluded.fetched_at,
+            streams_json=excluded.streams_json,
+            source_status=CASE
+                WHEN activity_details.detail_json IS NOT NULL THEN activity_details.source_status
+                ELSE excluded.source_status
+            END,
+            updated_at=CURRENT_TIMESTAMP
+        """,
+        (activity_id, fetched_at, json.dumps(streams)),
+    )
+
+
+def _stream_backfill_candidate_count(conn: sqlite3.Connection) -> int:
+    row = conn.execute(
+        """
+        SELECT COUNT(*) AS count
+        FROM activities a
+        LEFT JOIN activity_stream_summaries s ON s.activity_id = a.id
+        LEFT JOIN activity_details d ON d.activity_id = a.id
+        WHERE (s.activity_id IS NULL OR d.streams_json IS NULL)
+          AND a.type IN ('Run', 'Ride', 'VirtualRide')
+          AND a.date >= ?
+          AND (a.avg_hr IS NOT NULL OR a.avg_watts IS NOT NULL)
+        """,
+        ((datetime.now().date() - timedelta(days=STRAVA_STREAM_RECENT_DAYS)).isoformat(),),
+    ).fetchone()
+    return int(row["count"] or 0) if row else 0
+
+
 def list_stream_backfill_candidates(conn: sqlite3.Connection, limit: int = STRAVA_STREAM_FETCH_LIMIT) -> list[dict]:
     safe_limit = max(1, min(limit, 50))
     cutoff = (datetime.now().date() - timedelta(days=STRAVA_STREAM_RECENT_DAYS)).isoformat()
@@ -456,7 +501,8 @@ def list_stream_backfill_candidates(conn: sqlite3.Connection, limit: int = STRAV
             a.distance_km
         FROM activities a
         LEFT JOIN activity_stream_summaries s ON s.activity_id = a.id
-        WHERE s.activity_id IS NULL
+        LEFT JOIN activity_details d ON d.activity_id = a.id
+        WHERE (s.activity_id IS NULL OR d.streams_json IS NULL)
           AND a.type IN ('Run', 'Ride', 'VirtualRide')
           AND a.date >= ?
           AND (a.avg_hr IS NOT NULL OR a.avg_watts IS NOT NULL)
@@ -488,10 +534,15 @@ def backfill_stream_summaries(
     streams_fetched = 0
     with httpx.Client(timeout=20, headers={"Authorization": f"Bearer {access_token}"}) as client:
         for activity in activities:
-            streams, rate_limit = fetch_strava_activity_streams(client, activity["id"])
+            streams, rate_limit = fetch_strava_activity_streams_by_keys(
+                client,
+                activity["id"],
+                STRAVA_DETAIL_STREAM_KEYS,
+            )
             summary = summarize_activity_streams(activity, streams, thresholds, intensity_bucket_from_hr_fn)
             if summary:
                 upsert_activity_stream_summary(conn, summary)
+                upsert_activity_detail_stream_cache(conn, activity["id"], streams)
                 streams_fetched += 1
             if should_pause_stream_fetch(rate_limit):
                 break
@@ -504,18 +555,6 @@ def build_strava_status_data(
     get_latest_activity_date_fn: Callable[[sqlite3.Connection], Optional[str]],
 ) -> dict:
     latest_activity_date = get_latest_activity_date_fn(conn)
-    pending_stream_backfill = conn.execute(
-        """
-        SELECT COUNT(*) AS count
-        FROM activities a
-        LEFT JOIN activity_stream_summaries s ON s.activity_id = a.id
-        WHERE s.activity_id IS NULL
-          AND a.type IN ('Run', 'Ride', 'VirtualRide')
-          AND a.date >= ?
-          AND (a.avg_hr IS NOT NULL OR a.avg_watts IS NOT NULL)
-        """,
-        ((datetime.now().date() - timedelta(days=STRAVA_STREAM_RECENT_DAYS)).isoformat(),),
-    ).fetchone()
     config = require_strava_config(get_setting_fn)
     return {
         "configured": all(config.values()),
@@ -524,7 +563,7 @@ def build_strava_status_data(
         "has_refresh_token": bool(config["refresh_token"]),
         "last_import_at": get_setting_fn("strava_last_import_at"),
         "latest_activity_date": latest_activity_date,
-        "pending_stream_backfill": int(pending_stream_backfill["count"] or 0) if pending_stream_backfill else 0,
+        "pending_stream_backfill": _stream_backfill_candidate_count(conn),
         "stream_fetch_limit": STRAVA_STREAM_FETCH_LIMIT,
     }
 
@@ -602,21 +641,8 @@ def backfill_strava_streams_data(
         )
         conn.commit()
 
-    remaining_row = conn.execute(
-        """
-        SELECT COUNT(*) AS count
-        FROM activities a
-        LEFT JOIN activity_stream_summaries s ON s.activity_id = a.id
-        WHERE s.activity_id IS NULL
-          AND a.type IN ('Run', 'Ride', 'VirtualRide')
-          AND a.date >= ?
-          AND (a.avg_hr IS NOT NULL OR a.avg_watts IS NOT NULL)
-        """,
-        ((datetime.now().date() - timedelta(days=STRAVA_STREAM_RECENT_DAYS)).isoformat(),),
-    ).fetchone()
-
     return {
         "scanned": len(candidates),
         "streams_fetched": streams_fetched,
-        "remaining_candidates": int(remaining_row["count"] or 0) if remaining_row else 0,
+        "remaining_candidates": _stream_backfill_candidate_count(conn),
     }

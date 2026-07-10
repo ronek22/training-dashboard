@@ -291,6 +291,32 @@ def init_db():
             FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS activity_analyses (
+            activity_id TEXT PRIMARY KEY,
+            context_signature TEXT NOT NULL,
+            context_json TEXT NOT NULL,
+            analysis_json TEXT NOT NULL,
+            generated_at TEXT NOT NULL,
+            generator TEXT DEFAULT 'llm',
+            model_name TEXT,
+            requested_via TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS activity_analysis_requests (
+            activity_id TEXT PRIMARY KEY,
+            status TEXT NOT NULL,
+            requested_at TEXT NOT NULL,
+            requested_via TEXT NOT NULL,
+            context_signature TEXT NOT NULL,
+            last_error TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS goals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
@@ -428,6 +454,12 @@ def init_db():
     activity_detail_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(activity_details)").fetchall()
     }
+    activity_analysis_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(activity_analyses)").fetchall()
+    }
+    activity_analysis_request_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(activity_analysis_requests)").fetchall()
+    }
     if "linked_planned_session_id" not in activity_columns:
         conn.execute("ALTER TABLE activities ADD COLUMN linked_planned_session_id TEXT")
     if "workout_intent" not in activity_columns:
@@ -444,6 +476,28 @@ def init_db():
         conn.execute("ALTER TABLE activity_details ADD COLUMN best_efforts_json TEXT")
     if activity_detail_columns and "derived_version" not in activity_detail_columns:
         conn.execute("ALTER TABLE activity_details ADD COLUMN derived_version TEXT")
+    if activity_analysis_columns and "generator" not in activity_analysis_columns:
+        conn.execute("ALTER TABLE activity_analyses ADD COLUMN generator TEXT DEFAULT 'llm'")
+    if activity_analysis_columns and "model_name" not in activity_analysis_columns:
+        conn.execute("ALTER TABLE activity_analyses ADD COLUMN model_name TEXT")
+    if activity_analysis_columns and "requested_via" not in activity_analysis_columns:
+        conn.execute("ALTER TABLE activity_analyses ADD COLUMN requested_via TEXT")
+    if not activity_analysis_request_columns:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS activity_analysis_requests (
+                activity_id TEXT PRIMARY KEY,
+                status TEXT NOT NULL,
+                requested_at TEXT NOT NULL,
+                requested_via TEXT NOT NULL,
+                context_signature TEXT NOT NULL,
+                last_error TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
+            )
+            """
+        )
 
     if "heel_pain" in feedback_columns:
         pain_level_expr = "COALESCE(pain_level, heel_pain, 0)" if "pain_level" in feedback_columns else "COALESCE(heel_pain, 0)"

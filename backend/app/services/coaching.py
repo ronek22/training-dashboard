@@ -359,9 +359,19 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
             observations.append(goal["risk_summary"]["summary"])
         elif goal.get("goal_family") in {"event_performance", "benchmark"} and goal.get("target_summary"):
             observations.append(f"{goal.get('family_label', 'Goal')}: {goal['target_summary']}")
+        if (goal.get("goal_readiness") or {}).get("what_matters_next", {}).get("summary"):
+            _append_unique(
+                observations,
+                f"{goal['title']}: {(goal.get('goal_readiness') or {}).get('what_matters_next', {}).get('summary')}",
+            )
     for goal in most_urgent[:2]:
         if goal.get("goal_family") in {"event_performance", "benchmark"} and goal.get("target_summary"):
             _append_unique(observations, f"{goal.get('family_label', 'Goal')}: {goal['target_summary']}")
+        if (goal.get("goal_readiness") or {}).get("what_matters_next", {}).get("summary"):
+            _append_unique(
+                observations,
+                f"{goal['title']}: {(goal.get('goal_readiness') or {}).get('what_matters_next', {}).get('summary')}",
+            )
     if deferred_goals:
         observations.append("Run-volume goals are temporarily backgrounded while recovery is the priority.")
     for conflict in plan_conflicts[:2]:
@@ -459,6 +469,15 @@ def _goal_sort_key(goal: dict) -> tuple:
     return (
         {
             "constrained": 0,
+            "underprepared": 1,
+            "stale": 2,
+            "inconsistent": 3,
+            "insufficient_evidence": 4,
+            "building": 5,
+            "ready": 6,
+        }.get((goal.get("goal_readiness") or {}).get("state", "building"), 99),
+        {
+            "constrained": 0,
             "at_risk": 1,
             "under_pressure": 2,
             "watch": 3,
@@ -474,9 +493,15 @@ def _goal_sort_key(goal: dict) -> tuple:
 def _compact_goal_brief(goal: dict, *, focus_state: Optional[str] = None) -> dict:
     constraint_summary = goal.get("constraint_summary") or {}
     risk_summary = goal.get("risk_summary") or {}
+    readiness_summary = goal.get("goal_readiness") or {}
+    next_step = readiness_summary.get("what_matters_next") or {}
     summary = None
     if constraint_summary.get("summary"):
         summary = constraint_summary["summary"]
+    elif next_step.get("summary"):
+        summary = next_step["summary"]
+    elif readiness_summary.get("summary"):
+        summary = readiness_summary["summary"]
     elif risk_summary.get("summary"):
         summary = risk_summary["summary"]
     elif goal.get("weekly_requirement_summary"):
@@ -500,6 +525,8 @@ def _compact_goal_brief(goal: dict, *, focus_state: Optional[str] = None) -> dic
         "period_label": goal.get("period_label"),
         "risk_status": risk_summary.get("status"),
         "risk_label": risk_summary.get("label"),
+        "readiness_state": readiness_summary.get("state"),
+        "readiness_label": readiness_summary.get("label"),
         "support_state": support_state or focus_state or "supported",
         "support_label": support_label,
         "supported_sessions": goal.get("supported_sessions"),
@@ -622,6 +649,13 @@ def build_athlete_coaching_brief(
             "caution_score": recovery.get("caution_score"),
             "key_reasons": recovery.get("key_reasons", [])[:2],
             "caution_flags": recovery.get("caution_flags", [])[:2],
+        },
+        "readiness": {
+            "state": (context.get("readiness") or {}).get("state"),
+            "label": (context.get("readiness") or {}).get("label"),
+            "summary": (context.get("readiness") or {}).get("summary"),
+            "guidance_48h": (context.get("readiness") or {}).get("guidance_48h"),
+            "confidence": (context.get("readiness") or {}).get("confidence"),
         },
         "rotation": {
             "next_template_label": rotation.get("next_template_label"),
@@ -825,6 +859,7 @@ def build_weekly_recommendation(
     repeated_low_energy = int(feedback_patterns.get("low_energy_count") or 0)
     repeated_pain_flags = int(feedback_patterns.get("elevated_pain_count") or 0)
     current_revision_count = int(recent_patterns.get("current_week_revision_count") or 0)
+    readiness = context.get("readiness") or {}
     hard_upcoming = any(item["suggestion"] in {"swap_to_recovery", "lighten", "review"} for item in next_sessions)
     blocked_upcoming = any(item["suggestion"] in {"substitute", "avoid"} for item in next_sessions)
     goal_support_is_thin = execution["fulfilled_sessions"] < max(1, execution["planned_sessions"] // 2)
@@ -835,6 +870,15 @@ def build_weekly_recommendation(
         status = "recover"
     elif recovery_score >= 2 and status in {"keep", "push"}:
         status = "reduce"
+
+    if readiness.get("state") == "strained" and status == "push":
+        status = "reduce"
+    elif readiness.get("state") == "strained" and status == "keep":
+        status = "reduce"
+    elif readiness.get("state") == "watch" and status == "push":
+        status = "keep"
+    elif readiness.get("state") == "insufficient_data" and status == "push":
+        status = "keep"
 
     if status not in {"recover", "reduce"}:
         if blocked_upcoming:
@@ -939,6 +983,10 @@ def build_weekly_recommendation(
         _append_unique(immediate_signals, "Recent feedback includes repeated low-energy sessions.")
     if repeated_pain_flags >= 2:
         _append_unique(immediate_signals, "Recent feedback includes repeated elevated pain flags.")
+    for text in readiness.get("reasons", [])[:2]:
+        _append_unique(immediate_signals, f"Readiness: {text}")
+    for text in readiness.get("limitations", [])[:1]:
+        _append_unique(immediate_signals, f"Readiness limit: {text}")
 
     recent_pattern_items = recent_patterns.get("key_observations", [])[:5]
     rationale: list[str] = []
@@ -1070,6 +1118,7 @@ def build_weekly_coaching(
         "execution_assessment": execution,
         "recovery_assessment": recovery,
         "goal_assessment": goals,
+        "readiness_assessment": context.get("readiness"),
         "recommendation": recommendation,
         "recommended_next_sessions": next_sessions,
         "proposed_adjustment": proposed_adjustment,
@@ -1078,6 +1127,7 @@ def build_weekly_coaching(
             "latest_subjective_state": context.get("latest_subjective_state"),
             "training_load": context.get("training_load"),
             "goal_planning_summary": context.get("goal_planning_summary"),
+            "readiness": context.get("readiness"),
             "athlete_brief": athlete_brief,
             "athlete_coaching_brief": athlete_coaching_brief,
             "athlete_profile": context.get("athlete_profile"),

@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div class="page-head">
+  <div class="motion-page">
+    <div class="page-head motion-section">
       <div>
         <h1 class="page-title">Goals</h1>
         <p class="page-sub">Track weekly, monthly, and yearly training targets.</p>
@@ -8,8 +8,8 @@
       <button class="add-goal-btn" @click="openDialog">Add Goal</button>
     </div>
 
-    <div v-if="loading" class="empty card">Loading goals…</div>
-    <div v-else class="goal-sections">
+    <div v-if="loading" class="empty card motion-section">Loading goals…</div>
+    <div v-else class="goal-sections motion-section">
       <div class="card training-context-card">
         <div class="training-context-top">
           <div>
@@ -45,7 +45,9 @@
             <div class="training-context-section-top">
               <div>
                 <div class="training-context-title">Athlete Profile</div>
-                <div v-if="contextExpanded" class="training-context-copy">Durable coaching context for planning, dashboard reads, and MCP.</div>
+                <Transition name="expand-fade">
+                  <div v-if="contextExpanded" class="training-context-copy">Durable coaching context for planning, dashboard reads, and MCP.</div>
+                </Transition>
               </div>
               <button class="dialog-secondary dialog-secondary-compact" @click="openProfileDialog">Edit</button>
             </div>
@@ -63,30 +65,34 @@
                 <strong>{{ profileLongDaysLabel }}</strong>
               </article>
             </div>
-            <div
-              v-if="contextExpanded && (athleteProfile?.athlete_brief?.current_block || athleteProfile?.athlete_brief?.weekly_availability_notes || athleteProfile?.athlete_brief?.planning_notes)"
-              class="training-context-notes"
-            >
-              <div v-if="athleteProfile?.athlete_brief?.current_block" class="context-note">
-                <span>Current block</span>
-                <strong>{{ athleteProfile.athlete_brief.current_block }}</strong>
+            <Transition name="expand-fade">
+              <div
+                v-if="contextExpanded && (athleteProfile?.athlete_brief?.current_block || athleteProfile?.athlete_brief?.weekly_availability_notes || athleteProfile?.athlete_brief?.planning_notes)"
+                class="training-context-notes"
+              >
+                <div v-if="athleteProfile?.athlete_brief?.current_block" class="context-note">
+                  <span>Current block</span>
+                  <strong>{{ athleteProfile.athlete_brief.current_block }}</strong>
+                </div>
+                <div v-if="athleteProfile?.athlete_brief?.weekly_availability_notes" class="context-note">
+                  <span>Availability</span>
+                  <strong>{{ athleteProfile.athlete_brief.weekly_availability_notes }}</strong>
+                </div>
+                <div v-if="athleteProfile?.athlete_brief?.planning_notes" class="context-note">
+                  <span>Planning notes</span>
+                  <strong>{{ athleteProfile.athlete_brief.planning_notes }}</strong>
+                </div>
               </div>
-              <div v-if="athleteProfile?.athlete_brief?.weekly_availability_notes" class="context-note">
-                <span>Availability</span>
-                <strong>{{ athleteProfile.athlete_brief.weekly_availability_notes }}</strong>
-              </div>
-              <div v-if="athleteProfile?.athlete_brief?.planning_notes" class="context-note">
-                <span>Planning notes</span>
-                <strong>{{ athleteProfile.athlete_brief.planning_notes }}</strong>
-              </div>
-            </div>
+            </Transition>
           </section>
 
           <section class="training-context-section">
             <div class="training-context-section-top">
               <div>
                 <div class="training-context-title">Performance Foundation</div>
-                <div v-if="contextExpanded" class="training-context-copy">Manual threshold anchors make benchmark and zone-dependent reads explicit instead of guessed.</div>
+                <Transition name="expand-fade">
+                  <div v-if="contextExpanded" class="training-context-copy">Manual threshold anchors make benchmark and zone-dependent reads explicit instead of guessed.</div>
+                </Transition>
               </div>
               <button class="dialog-secondary dialog-secondary-compact" @click="openPerformanceDialog">Edit</button>
             </div>
@@ -104,27 +110,31 @@
                 <strong>{{ zoneFoundationHeadline }}</strong>
               </article>
             </div>
-            <div v-if="contextExpanded" class="training-context-notes">
-              <div class="context-note">
-                <span>Best run benchmarks</span>
-                <strong>{{ runBenchmarkSummary }}</strong>
+            <Transition name="expand-fade">
+              <div v-if="contextExpanded" class="training-context-notes">
+                <div class="context-note">
+                  <span>Best run benchmarks</span>
+                  <strong>{{ runBenchmarkSummary }}</strong>
+                </div>
+                <div class="context-note">
+                  <span>Best 10-minute power</span>
+                  <strong>{{ rideBenchmarkSummary }}</strong>
+                </div>
+                <div class="context-note">
+                  <span>Longest recent zone 2 block</span>
+                  <strong>{{ zoneBlockSummary }}</strong>
+                </div>
               </div>
-              <div class="context-note">
-                <span>Best 10-minute power</span>
-                <strong>{{ rideBenchmarkSummary }}</strong>
-              </div>
-              <div class="context-note">
-                <span>Longest recent zone 2 block</span>
-                <strong>{{ zoneBlockSummary }}</strong>
-              </div>
-            </div>
+            </Transition>
           </section>
 
           <section class="training-context-section">
             <div class="training-context-section-top">
               <div>
                 <div class="training-context-title">Workout Rotation</div>
-                <div v-if="contextExpanded" class="training-context-copy">Structured strength templates stay durable across weeks instead of resetting to generic sessions.</div>
+                <Transition name="expand-fade">
+                  <div v-if="contextExpanded" class="training-context-copy">Structured strength templates stay durable across weeks instead of resetting to generic sessions.</div>
+                </Transition>
               </div>
               <button class="dialog-secondary dialog-secondary-compact" @click="openWorkoutTemplateDialog">Edit</button>
             </div>
@@ -142,16 +152,18 @@
                 <strong>{{ strengthRotationSkipLabel }}</strong>
               </article>
             </div>
-            <div v-if="contextExpanded" class="training-context-notes">
-              <div class="context-note">
-                <span>Templates</span>
-                <strong>{{ strengthTemplateLabels }}</strong>
+            <Transition name="expand-fade">
+              <div v-if="contextExpanded" class="training-context-notes">
+                <div class="context-note">
+                  <span>Templates</span>
+                  <strong>{{ strengthTemplateLabels }}</strong>
+                </div>
+                <div class="context-note">
+                  <span>Rules</span>
+                  <strong>{{ strengthRotationRuleSummary }}</strong>
+                </div>
               </div>
-              <div class="context-note">
-                <span>Rules</span>
-                <strong>{{ strengthRotationRuleSummary }}</strong>
-              </div>
-            </div>
+            </Transition>
           </section>
         </div>
       </div>
@@ -246,6 +258,18 @@
               <span class="goal-risk-copy">{{ goal.constraint_summary.summary }}</span>
             </div>
 
+            <div v-if="showGoalReadiness(goal)" class="goal-readiness-block" :class="`readiness-${goal.goal_readiness.state}`">
+              <div class="goal-readiness-top">
+                <span class="goal-planning-label">Goal readiness</span>
+                <span class="goal-readiness-badge">{{ goal.goal_readiness.label }}</span>
+              </div>
+              <div v-if="goalReadinessSummary(goal)" class="goal-readiness-summary">{{ goalReadinessSummary(goal) }}</div>
+              <div v-if="goalReadinessNextSummary(goal)" class="goal-readiness-next">
+                <strong>What matters next</strong>
+                <span>{{ goalReadinessNextSummary(goal) }}</span>
+              </div>
+            </div>
+
             <div v-if="showRiskSummary(goal)" class="goal-risk" :class="`risk-${goal.risk_summary.status}`">
               <span class="goal-risk-label">{{ goal.risk_summary.label }}</span>
               <span class="goal-risk-copy">{{ goal.risk_summary.summary }}</span>
@@ -277,7 +301,7 @@
               <div class="goal-planning-summary">{{ goal.planning_guidance.summary }}</div>
             </div>
 
-            <div v-if="goal.weekly_requirement_summary" class="goal-planning goal-requirement-block">
+            <div v-if="showWeeklyRequirement(goal)" class="goal-planning goal-requirement-block">
               <div class="goal-planning-top">
                 <span class="goal-planning-label">Weekly requirement</span>
               </div>
@@ -1657,6 +1681,29 @@ const targetInputStep = (goal) => (usesDiscreteCounts(goal) ? 1 : 0.5)
 
 const normalizeSummary = (value) => (value || '').trim().toLowerCase()
 
+const goalReadinessSummary = (goal) => {
+  const summary = goal?.goal_readiness?.summary || ''
+  if (!summary) return ''
+  if (normalizeSummary(summary) === normalizeSummary(goal?.constraint_summary?.summary)) return ''
+  return summary
+}
+
+const goalReadinessNextSummary = (goal) => {
+  const summary = goal?.goal_readiness?.what_matters_next?.summary || ''
+  if (!summary) return ''
+  const normalized = normalizeSummary(summary)
+  if (normalized === normalizeSummary(goal?.constraint_summary?.summary)) return ''
+  if (normalized === normalizeSummary(goal?.weekly_requirement_summary)) return ''
+  if (normalized === normalizeSummary(goal?.planning_guidance?.summary)) return ''
+  if (normalized === normalizeSummary(goal?.goal_readiness?.summary)) return ''
+  return summary
+}
+
+const showGoalReadiness = (goal) => {
+  if (!goal?.goal_readiness) return false
+  return Boolean(goalReadinessSummary(goal) || goalReadinessNextSummary(goal))
+}
+
 const showRiskSummary = (goal) => {
   if (!goal?.risk_summary) return false
   if (!goal?.constraint_summary) return true
@@ -1667,6 +1714,11 @@ const showPlanningGuidance = (goal) => {
   if (!goal?.planning_guidance) return false
   if (!goal?.constraint_summary) return true
   return normalizeSummary(goal.planning_guidance.summary) !== normalizeSummary(goal.constraint_summary.summary)
+}
+
+const showWeeklyRequirement = (goal) => {
+  if (!goal?.weekly_requirement_summary) return false
+  return normalizeSummary(goal.weekly_requirement_summary) !== normalizeSummary(goalReadinessNextSummary(goal))
 }
 </script>
 
@@ -2090,6 +2142,65 @@ const showPlanningGuidance = (goal) => {
   font-size: 12px;
   line-height: 1.45;
 }
+.goal-readiness-block {
+  margin-top: 14px;
+  padding: 12px 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  display: grid;
+  gap: 8px;
+}
+.goal-readiness-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.goal-readiness-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.goal-readiness-summary,
+.goal-readiness-next span {
+  color: #dbe4ff;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.goal-readiness-next {
+  display: grid;
+  gap: 3px;
+}
+.goal-readiness-next strong {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.readiness-ready { border-color: rgba(16,185,129,0.22); background: rgba(16,185,129,0.06); }
+.readiness-ready .goal-readiness-badge { background: rgba(16,185,129,0.16); color: #6ee7b7; }
+.readiness-building { border-color: rgba(59,130,246,0.2); background: rgba(59,130,246,0.06); }
+.readiness-building .goal-readiness-badge { background: rgba(59,130,246,0.16); color: #93c5fd; }
+.readiness-underprepared,
+.readiness-stale,
+.readiness-inconsistent,
+.readiness-constrained,
+.readiness-insufficient_evidence { background: rgba(245,158,11,0.08); }
+.readiness-underprepared { border-color: rgba(239,68,68,0.24); background: rgba(239,68,68,0.06); }
+.readiness-underprepared .goal-readiness-badge { background: rgba(239,68,68,0.16); color: #fca5a5; }
+.readiness-stale .goal-readiness-badge,
+.readiness-inconsistent .goal-readiness-badge,
+.readiness-constrained .goal-readiness-badge,
+.readiness-insufficient_evidence .goal-readiness-badge { background: rgba(245,158,11,0.16); color: #fcd34d; }
+.readiness-stale { border-color: rgba(245,158,11,0.24); }
+.readiness-inconsistent { border-color: rgba(251,191,36,0.22); }
+.readiness-constrained { border-color: rgba(245,158,11,0.3); }
+.readiness-insufficient_evidence { border-color: rgba(148,163,184,0.24); background: rgba(148,163,184,0.08); }
 .risk-completed { border-color: rgba(16,185,129,0.22); }
 .risk-on_track { border-color: rgba(59,130,246,0.2); }
 .risk-watch { border-color: rgba(96,165,250,0.2); }
@@ -2372,13 +2483,17 @@ const showPlanningGuidance = (goal) => {
   background: rgba(3, 6, 14, 0.68);
   backdrop-filter: blur(10px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 24px;
+  padding: 24px 24px 40px;
   z-index: 50;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .goal-dialog {
   width: min(760px, 100%);
+  max-height: none;
+  margin: 0 auto;
   padding: 22px;
 }
 .goal-dialog-head {
@@ -2477,6 +2592,7 @@ const showPlanningGuidance = (goal) => {
   .goal-form { grid-template-columns: 1fr; }
   .training-context-top { flex-direction: column; }
   .training-context-section-top { grid-template-columns: 1fr; }
+  .goal-dialog-backdrop { padding: 16px 16px 28px; }
   .athlete-profile-day-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .goal-restriction-top,
   .goal-restriction-summary-footer,

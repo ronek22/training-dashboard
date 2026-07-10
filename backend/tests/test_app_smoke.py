@@ -3,6 +3,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
@@ -36,6 +37,63 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(plans.status_code, 200)
         return next((plan for plan in plans.json() if plan["week_start"] == week_start), None)
 
+    def _insert_activity_detail_streams(self, activity_id: str, streams: dict):
+        conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])
+        try:
+            conn.execute(
+                """
+                INSERT INTO activity_details
+                (activity_id, fetched_at, source_status, detail_json, streams_json, charts_json, best_efforts_json, derived_version, route_polyline)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(activity_id) DO UPDATE SET
+                    fetched_at=excluded.fetched_at,
+                    source_status=excluded.source_status,
+                    detail_json=excluded.detail_json,
+                    streams_json=excluded.streams_json,
+                    charts_json=excluded.charts_json,
+                    best_efforts_json=excluded.best_efforts_json,
+                    derived_version=excluded.derived_version,
+                    route_polyline=excluded.route_polyline
+                """,
+                (
+                    activity_id,
+                    datetime.now().isoformat(),
+                    "cached",
+                    None,
+                    json.dumps(streams),
+                    json.dumps([]),
+                    None,
+                    "v1",
+                    None,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _create_activity(self, activity_id: str, date: str, activity_type: str, **overrides):
+        payload = {
+            "id": activity_id,
+            "date": date,
+            "type": activity_type,
+            "name": overrides.pop("name", activity_id),
+            "duration_min": overrides.pop("duration_min", 45.0),
+            "distance_km": overrides.pop("distance_km", 8.0 if activity_type == "Run" else None),
+            "workout_intent": overrides.pop("workout_intent", None),
+            "avg_hr": overrides.pop("avg_hr", 145 if activity_type in {"Run", "Ride", "VirtualRide"} else None),
+            "avg_watts": overrides.pop("avg_watts", 190 if activity_type in {"Ride", "VirtualRide"} else None),
+            "zone2": overrides.pop("zone2", True if activity_type in {"Run", "Ride", "VirtualRide"} else None),
+        }
+        payload.update(overrides)
+        response = self.client.post("/activities", json=payload)
+        self.assertEqual(response.status_code, 201)
+        return response
+
+    def _save_feedback(self, activity_id: str, **payload):
+        response = self.client.post(f"/activities/{activity_id}/feedback", json=payload)
+        self.assertEqual(response.status_code, 201)
+        return response
+
     def setUp(self):
         conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])
         try:
@@ -50,6 +108,7 @@ class AppSmokeTests(unittest.TestCase):
                 "coaching_snapshots",
                 "activity_stream_summaries",
                 "activity_details",
+                "activity_analyses",
                 "goals",
                 "activity_feedback",
                 "fitbod_workout_sets",
@@ -72,7 +131,23 @@ class AppSmokeTests(unittest.TestCase):
         mcp = self.client.get("/mcp")
         self.assertEqual(mcp.status_code, 200)
         self.assertEqual(mcp.json()["name"], "training-dashboard")
+        self.assertEqual(mcp.json()["version"], "1.3.0")
         self.assertEqual(mcp.json()["endpoint"], "/mcp")
+
+        tools = self.client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/list",
+                "params": {},
+            },
+        )
+        self.assertEqual(tools.status_code, 200)
+        names = {tool["name"] for tool in tools.json()["result"]["tools"]}
+        self.assertIn("get_strength_context", names)
+        self.assertIn("get_exercise_history", names)
+        self.assertIn("get_strength_workout_history", names)
 
     def test_activity_crud_and_stats(self):
         create = self.client.post(
@@ -275,6 +350,483 @@ class AppSmokeTests(unittest.TestCase):
                 self.assertTrue(third_body["best_efforts"])
                 chart_builder.assert_not_called()
                 best_effort_builder.assert_not_called()
+
+    def test_readiness_ready_state_surfaces_in_dashboard_context_and_coaching(self):
+        today = datetime.now().date()
+        self._create_activity(
+            "ready-run",
+            (today - timedelta(days=1)).isoformat(),
+            "Run",
+            name="Easy Run",
+            workout_intent="easy",
+            duration_min=46.0,
+            distance_km=8.5,
+            avg_hr=146,
+            zone2=True,
+        )
+        self._create_activity(
+            "ready-ride",
+            (today - timedelta(days=3)).isoformat(),
+            "Ride",
+            name="Endurance Ride",
+            workout_intent="easy",
+            duration_min=62.0,
+            distance_km=32.0,
+            avg_hr=138,
+            avg_watts=178,
+            zone2=True,
+        )
+        self._create_activity(
+            "ready-strength",
+            (today - timedelta(days=5)).isoformat(),
+            "WeightTraining",
+            name="Mobility Circuit",
+            workout_intent="mobility",
+            duration_min=35.0,
+            distance_km=None,
+        )
+        self._create_activity(
+            "ready-run-old",
+            (today - timedelta(days=8)).isoformat(),
+            "Run",
+            name="Easy Run Earlier",
+            workout_intent="easy",
+            duration_min=42.0,
+            distance_km=7.8,
+            avg_hr=144,
+            zone2=True,
+        )
+        self._create_activity(
+            "ready-ride-old",
+            (today - timedelta(days=10)).isoformat(),
+            "Ride",
+            name="Easy Ride Earlier",
+            workout_intent="easy",
+            duration_min=55.0,
+            distance_km=28.0,
+            avg_hr=136,
+            avg_watts=172,
+            zone2=True,
+        )
+        self._save_feedback(
+            "ready-run",
+            rpe=6,
+            energy=4,
+            muscle_soreness=2,
+            pain_level=1,
+            note="Felt normal throughout.",
+        )
+
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertEqual(dashboard.json()["readiness"]["state"], "ready")
+
+        recent_context = self.client.get("/context/recent")
+        self.assertEqual(recent_context.status_code, 200)
+        self.assertEqual(recent_context.json()["readiness"]["state"], "ready")
+
+        coaching = self.client.get("/coaching/weekly")
+        self.assertEqual(coaching.status_code, 200)
+        self.assertEqual(coaching.json()["readiness_assessment"]["state"], "ready")
+
+    def test_readiness_strained_state_surfaces_when_feedback_and_load_stack(self):
+        today = datetime.now().date()
+        self._create_activity(
+            "strained-run-1",
+            today.isoformat(),
+            "Run",
+            name="Threshold Run",
+            workout_intent="tempo",
+            duration_min=58.0,
+            distance_km=11.2,
+            avg_hr=171,
+            zone2=False,
+        )
+        self._create_activity(
+            "strained-run-2",
+            (today - timedelta(days=1)).isoformat(),
+            "Run",
+            name="Intervals",
+            workout_intent="interval",
+            duration_min=54.0,
+            distance_km=9.6,
+            avg_hr=174,
+            zone2=False,
+        )
+        self._create_activity(
+            "strained-strength",
+            (today - timedelta(days=3)).isoformat(),
+            "WeightTraining",
+            name="Heavy Lower",
+            workout_intent="strength_lower",
+            duration_min=52.0,
+            distance_km=None,
+        )
+        self._save_feedback(
+            "strained-run-1",
+            rpe=9,
+            energy=2,
+            muscle_soreness=4,
+            pain_level=5,
+            note="Legs were cooked.",
+        )
+        self._save_feedback(
+            "strained-run-2",
+            rpe=8,
+            energy=2,
+            muscle_soreness=4,
+            pain_level=4,
+            note="Could not lift the pace late.",
+        )
+
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        readiness = dashboard.json()["readiness"]
+        self.assertEqual(readiness["state"], "strained")
+        self.assertTrue(readiness["reasons"])
+
+        coaching = self.client.get("/coaching/weekly")
+        self.assertEqual(coaching.status_code, 200)
+        self.assertEqual(coaching.json()["readiness_assessment"]["state"], "strained")
+        self.assertIn(coaching.json()["recommendation"]["status"], {"reduce", "recover"})
+
+    def test_readiness_insufficient_data_is_explicit(self):
+        today = datetime.now().date()
+        self._create_activity(
+            "insufficient-walk",
+            (today - timedelta(days=1)).isoformat(),
+            "Walk",
+            name="Short Walk",
+            duration_min=24.0,
+            distance_km=2.1,
+            avg_hr=None,
+            avg_watts=None,
+            zone2=None,
+        )
+
+        recent_context = self.client.get("/context/recent")
+        self.assertEqual(recent_context.status_code, 200)
+        readiness = recent_context.json()["readiness"]
+        self.assertEqual(readiness["state"], "insufficient_data")
+        self.assertFalse(readiness["available"])
+        self.assertTrue(readiness["guidance_48h"])
+
+    def test_activity_detail_heart_rate_zones_require_streams(self):
+        activity_date = (datetime.now().date() - timedelta(days=2)).isoformat()
+        created = self.client.post(
+            "/activities",
+            json={
+                "id": "hr-zone-unconfigured",
+                "date": activity_date,
+                "type": "Run",
+                "name": "Steady Run",
+                "distance_km": 8.0,
+                "duration_min": 42.0,
+                "avg_hr": 150,
+                "max_hr": 176,
+                "avg_pace": "5:15",
+                "zone2": True,
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        self._insert_activity_detail_streams(
+            "hr-zone-unconfigured",
+            {
+                "time": {"data": [0, 60, 120, 180, 240]},
+                "heartrate": {"data": [132, 145, 151, 156, 162]},
+            },
+        )
+
+        response = self.client.get("/activities/hr-zone-unconfigured")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["heart_rate_zones"]
+        self.assertTrue(payload["available"])
+        self.assertGreater(payload["zone2_minutes"], 0)
+
+    def test_activity_detail_surfaces_heart_rate_zone_summary_when_streams_exist(self):
+        activity_date = (datetime.now().date() - timedelta(days=1)).isoformat()
+        created = self.client.post(
+            "/activities",
+            json={
+                "id": "hr-zone-run-1",
+                "date": activity_date,
+                "type": "Run",
+                "name": "Aerobic Run",
+                "distance_km": 10.2,
+                "duration_min": 56.0,
+                "avg_hr": 154,
+                "max_hr": 181,
+                "avg_pace": "5:29",
+                "zone2": True,
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        self._insert_activity_detail_streams(
+            "hr-zone-run-1",
+            {
+                "time": {"data": [0, 60, 120, 180, 240, 300, 360]},
+                "heartrate": {"data": [138, 144, 149, 153, 156, 160, 174]},
+                "velocity_smooth": {"data": [3.0, 3.1, 3.0, 3.0, 3.1, 3.0, 3.2]},
+            },
+        )
+
+        response = self.client.get("/activities/hr-zone-run-1")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["heart_rate_zones"]
+        self.assertTrue(payload["available"])
+        self.assertEqual(payload["summary"], "Mostly zone 2")
+        self.assertEqual(len(payload["zones"]), 5)
+        self.assertGreater(payload["zone2_minutes"], 0)
+        self.assertEqual(next(zone for zone in payload["zones"] if zone["key"] == "zone2")["highlight"], True)
+
+    def test_activity_analysis_request_flow_surfaces_pending_then_saved_result(self):
+        activity_date = (datetime.now().date() - timedelta(days=1)).isoformat()
+        created = self.client.post(
+            "/activities",
+            json={
+                "id": "analysis-run-1",
+                "date": activity_date,
+                "type": "Run",
+                "workout_intent": "easy",
+                "name": "Aerobic Run",
+                "distance_km": 11.2,
+                "duration_min": 61.0,
+                "avg_hr": 154,
+                "max_hr": 169,
+                "avg_pace": "5:27",
+                "zone2": True,
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        self._insert_activity_detail_streams(
+            "analysis-run-1",
+            {
+                "time": {"data": [0, 60, 120, 180, 240, 300, 360, 420]},
+                "distance": {"data": [0, 200, 420, 640, 860, 1080, 1300, 1520]},
+                "heartrate": {"data": [142, 148, 151, 154, 156, 158, 160, 162]},
+                "velocity_smooth": {"data": [3.1, 3.1, 3.0, 3.0, 3.0, 3.1, 3.0, 3.1]},
+            },
+        )
+        feedback = self.client.post(
+            "/activities/analysis-run-1/feedback",
+            json={"rpe": 6, "energy": 4, "muscle_soreness": 2, "pain_level": 0, "note": "Felt controlled."},
+        )
+        self.assertEqual(feedback.status_code, 201)
+
+        detail_before = self.client.get("/activities/analysis-run-1")
+        self.assertEqual(detail_before.status_code, 200)
+        self.assertEqual(detail_before.json()["analysis"]["status"], "not_requested")
+
+        first = self.client.post("/activities/analysis-run-1/analysis", json={})
+        self.assertEqual(first.status_code, 200)
+        first_body = first.json()
+        self.assertEqual(first_body["status"], "requested")
+        self.assertTrue(first_body["available"])
+        self.assertTrue(first_body["requested_at"])
+        self.assertIsNone(first_body["generated_at"])
+
+        second = self.client.post("/activities/analysis-run-1/analysis", json={})
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.json()["status"], "requested")
+
+        context = self.client.get("/activities/analysis-run-1/analysis/context")
+        self.assertEqual(context.status_code, 200)
+        context_body = context.json()
+        self.assertEqual(context_body["status"], "requested")
+        self.assertTrue(context_body["context"]["summary_stats"]["distance_km"])
+        self.assertEqual(context_body["context"]["activity"]["id"], "analysis-run-1")
+
+        saved = self.client.post(
+            "/activities/analysis-run-1/analysis/save",
+            json={
+                "headline": "Aerobic control stayed intact",
+                "summary": "The run stayed mostly in controlled aerobic territory and matched the easy-session brief.",
+                "key_observations": [
+                    "Heart-rate distribution stayed mostly aerobic.",
+                    "Subjective feedback described the run as controlled.",
+                ],
+                "limitations": [
+                    "No explicit planned-session link was attached.",
+                ],
+                "confidence_note": "Confidence is moderate because heart-rate and subjective feedback were both available.",
+                "generator": "chatgpt",
+                "model_name": "gpt-5",
+            },
+        )
+        self.assertEqual(saved.status_code, 200)
+        saved_body = saved.json()
+        self.assertEqual(saved_body["status"], "ready")
+        self.assertEqual(saved_body["generator"], "chatgpt")
+        self.assertEqual(saved_body["model_name"], "gpt-5")
+        self.assertEqual(saved_body["headline"], "Aerobic control stayed intact")
+        generated_at = saved_body["generated_at"]
+
+        detail_after = self.client.get("/activities/analysis-run-1")
+        self.assertEqual(detail_after.status_code, 200)
+        self.assertEqual(detail_after.json()["analysis"]["status"], "ready")
+        self.assertEqual(detail_after.json()["analysis"]["generated_at"], generated_at)
+        self.assertEqual(detail_after.json()["analysis"]["headline"], "Aerobic control stayed intact")
+
+    def test_activity_analysis_is_unavailable_without_detail_context(self):
+        activity_date = (datetime.now().date() - timedelta(days=1)).isoformat()
+        created = self.client.post(
+            "/activities",
+            json={
+                "id": "analysis-no-detail",
+                "date": activity_date,
+                "type": "Run",
+                "workout_intent": "tempo",
+                "name": "Uncached Run",
+                "distance_km": 8.0,
+                "duration_min": 40.0,
+                "avg_hr": 165,
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+
+        analysis = self.client.post("/activities/analysis-no-detail/analysis", json={})
+        self.assertEqual(analysis.status_code, 200)
+        self.assertEqual(analysis.json()["status"], "unavailable")
+        self.assertIn("cached", analysis.json()["reason"].lower())
+
+    def test_mcp_activity_analysis_context_and_save_round_trip(self):
+        activity_date = (datetime.now().date() - timedelta(days=2)).isoformat()
+        created = self.client.post(
+            "/activities",
+            json={
+                "id": "analysis-mcp-run",
+                "date": activity_date,
+                "type": "Run",
+                "workout_intent": "tempo",
+                "name": "Tempo Run",
+                "distance_km": 9.4,
+                "duration_min": 46.0,
+                "avg_hr": 168,
+                "max_hr": 181,
+                "avg_pace": "4:54",
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        self._insert_activity_detail_streams(
+            "analysis-mcp-run",
+            {
+                "time": {"data": [0, 60, 120, 180, 240, 300]},
+                "distance": {"data": [0, 250, 510, 760, 1020, 1270]},
+                "heartrate": {"data": [150, 160, 167, 171, 173, 176]},
+                "velocity_smooth": {"data": [3.4, 3.5, 3.5, 3.4, 3.4, 3.5]},
+            },
+        )
+
+        request_mcp = self.client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 41,
+                "method": "tools/call",
+                "params": {
+                    "name": "analyze_activity",
+                    "arguments": {"activity_id": "analysis-mcp-run"},
+                },
+            },
+        )
+        self.assertEqual(request_mcp.status_code, 200)
+        requested = request_mcp.json()["result"]["structuredContent"]
+        self.assertEqual(requested["status"], "requested")
+
+        context_mcp = self.client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 42,
+                "method": "tools/call",
+                "params": {
+                    "name": "get_activity_analysis_context",
+                    "arguments": {"activity_id": "analysis-mcp-run"},
+                },
+            },
+        )
+        self.assertEqual(context_mcp.status_code, 200)
+        context_structured = context_mcp.json()["result"]["structuredContent"]
+        self.assertEqual(context_structured["activity_id"], "analysis-mcp-run")
+        self.assertEqual(context_structured["status"], "requested")
+        self.assertTrue(context_structured["context"]["summary_stats"]["avg_hr"])
+
+        save_mcp = self.client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 43,
+                "method": "tools/call",
+                "params": {
+                    "name": "save_activity_analysis",
+                    "arguments": {
+                        "activity_id": "analysis-mcp-run",
+                        "headline": "The workout carried real intensity",
+                        "summary": "Heart-rate, pace, and the workout brief all point to a purposeful harder run rather than steady aerobic volume.",
+                        "key_observations": [
+                            "Average heart rate sat high for this duration.",
+                            "The workout intent was tempo.",
+                        ],
+                        "limitations": [
+                            "No explicit post-workout feedback was logged.",
+                        ],
+                        "confidence_note": "Confidence is moderate because multiple endurance signals were available.",
+                        "generator": "chatgpt",
+                        "model_name": "gpt-5",
+                    },
+                },
+            },
+        )
+        self.assertEqual(save_mcp.status_code, 200)
+        saved = save_mcp.json()["result"]["structuredContent"]
+        self.assertEqual(saved["status"], "ready")
+        self.assertEqual(saved["generator"], "chatgpt")
+        self.assertEqual(saved["model_name"], "gpt-5")
+        self.assertEqual(saved["headline"], "The workout carried real intensity")
+
+    def test_dashboard_heart_rate_zone_summary_reports_partial_coverage(self):
+        dates = [
+            (datetime.now().date() - timedelta(days=1)).isoformat(),
+            (datetime.now().date() - timedelta(days=3)).isoformat(),
+        ]
+        for activity_id, activity_date, name in [
+            ("dashboard-hr-run-1", dates[0], "Run With Streams"),
+            ("dashboard-hr-run-2", dates[1], "Run Missing Streams"),
+        ]:
+            created = self.client.post(
+                "/activities",
+                json={
+                    "id": activity_id,
+                    "date": activity_date,
+                    "type": "Run",
+                    "name": name,
+                    "distance_km": 9.0,
+                    "duration_min": 48.0,
+                    "avg_hr": 152,
+                    "max_hr": 179,
+                    "avg_pace": "5:20",
+                    "zone2": True,
+                },
+            )
+            self.assertEqual(created.status_code, 201)
+
+        self._insert_activity_detail_streams(
+            "dashboard-hr-run-1",
+            {
+                "time": {"data": [0, 60, 120, 180, 240, 300]},
+                "heartrate": {"data": [140, 146, 151, 155, 158, 161]},
+            },
+        )
+
+        response = self.client.get("/dashboard")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["heart_rate_zone_summary"]
+        self.assertTrue(payload["available"])
+        self.assertEqual(payload["state"], "partial")
+        self.assertEqual(payload["eligible_activities"], 2)
+        self.assertEqual(payload["usable_activities"], 1)
+        self.assertEqual(payload["unavailable_activities"], 1)
+        self.assertGreater(payload["zone2_minutes"], 0)
 
     def test_fitbod_import_filters_groups_matches_and_enriches_strength_activity(self):
         activity_date = "2026-06-30"
@@ -550,6 +1102,12 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertEqual(structured["important_prs"][0]["label"], "Bench Press")
         self.assertEqual(structured["important_prs"][1]["label"], "Back Squat")
         self.assertEqual(structured["recent_sessions"][0]["matched_activity"]["id"], "strength-mcp-c")
+        self.assertEqual(structured["recent_sessions"][0]["exercises"][0]["exercise_name"], "Bench Press")
+        self.assertEqual(structured["recent_sessions"][0]["exercises"][0]["sets"][0]["reps"], 5)
+        self.assertEqual(structured["recent_sessions"][0]["exercises"][0]["sets"][0]["weight_kg"], 67.5)
+        self.assertFalse(structured["recent_sessions"][0]["exercises"][0]["sets"][0]["is_warmup"])
+        self.assertEqual(structured["recent_sessions"][0]["exercises"][1]["exercise_name"], "Pull Up")
+        self.assertIsNone(structured["recent_sessions"][0]["exercises"][1]["sets"][0]["weight_kg"])
         self.assertEqual(structured["recurring_lifts"][0]["exercise_name"], "Bench Press")
         self.assertEqual(
             structured["data_source"]["kind"],
@@ -563,6 +1121,23 @@ bad-date,Squat,5,100,60,,,,false,,1
         }
         self.assertNotIn("strength-mcp-generic", matched_activity_ids)
         self.assertNotIn("Deadlift", {lift["exercise_name"] for lift in structured["recurring_lifts"]})
+
+        alias = self.client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 27,
+                "method": "tools/call",
+                "params": {
+                    "name": "get_exercise_history",
+                    "arguments": {"weeks": 4},
+                },
+            },
+        )
+        self.assertEqual(alias.status_code, 200)
+        alias_structured = alias.json()["result"]["structuredContent"]
+        self.assertEqual(alias_structured["recent_sessions"][0]["exercises"][0]["exercise_name"], "Bench Press")
+        self.assertEqual(alias_structured["recent_sessions"][0]["exercises"][0]["sets"][0]["weight_kg"], 67.5)
 
     def test_init_db_cleans_up_existing_fitbod_non_strength_sessions(self):
         conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])
@@ -1983,6 +2558,139 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertIn("event_specific_quality", event_requirement_types)
         self.assertIn("long_aerobic_support", event_requirement_types)
         self.assertIn("event-specific", event_item["weekly_requirement_summary"].lower())
+
+    def test_goal_readiness_surfaces_underprepared_stale_and_next_step_guidance(self):
+        today = datetime.now().date()
+        event_date = today + timedelta(days=28)
+
+        self._create_activity(
+            "goal-readiness-run-benchmark",
+            (today - timedelta(days=50)).isoformat(),
+            "Run",
+            name="10k benchmark",
+            distance_km=10.0,
+            duration_min=42.5,
+            avg_hr=168,
+            zone2=False,
+        )
+        self._create_activity(
+            "goal-readiness-ride-benchmark",
+            (today - timedelta(days=40)).isoformat(),
+            "Ride",
+            name="Old power test",
+            duration_min=12.0,
+            avg_watts=288,
+            avg_hr=164,
+            zone2=False,
+        )
+
+        event_goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Autumn 10k under 40",
+                "period_type": "year",
+                "goal_family": "event_performance",
+                "activity_type": "Run",
+                "end_date": event_date.isoformat(),
+                "target_config": {
+                    "distance_km": 10,
+                    "target_duration_min": 40,
+                },
+            },
+        )
+        self.assertEqual(event_goal.status_code, 201)
+
+        benchmark_goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Hold 300W for 10 minutes",
+                "period_type": "month",
+                "goal_family": "benchmark",
+                "activity_type": "Ride",
+                "target_config": {
+                    "duration_min": 10,
+                    "target_watts": 300,
+                },
+            },
+        )
+        self.assertEqual(benchmark_goal.status_code, 201)
+
+        goals = self.client.get("/goals")
+        self.assertEqual(goals.status_code, 200)
+        body = goals.json()
+        event_item = next(item for item in body if item["title"] == "Autumn 10k under 40")
+        benchmark_item = next(item for item in body if item["title"] == "Hold 300W for 10 minutes")
+
+        self.assertEqual(event_item["goal_readiness"]["state"], "underprepared")
+        self.assertEqual(event_item["goal_readiness"]["what_matters_next"]["code"], "event_specific_quality")
+        self.assertEqual(benchmark_item["goal_readiness"]["state"], "stale")
+        self.assertEqual(benchmark_item["goal_readiness"]["what_matters_next"]["code"], "benchmark_specific_quality")
+
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertEqual(dashboard.json()["goal_readiness_summary"]["status"], "underprepared")
+        self.assertEqual(dashboard.json()["goal_readiness_summary"]["focus_goal"]["title"], "Autumn 10k under 40")
+
+        coaching = self.client.get("/coaching/weekly")
+        self.assertEqual(coaching.status_code, 200)
+        observations = coaching.json()["goal_assessment"]["key_observations"]
+        self.assertTrue(any("Autumn 10k under 40" in item for item in observations))
+
+    def test_goal_readiness_distinguishes_consistent_and_inconsistent_process_support(self):
+        today = datetime.now().date()
+        self._create_activity(
+            "goal-ready-strength-1",
+            (today - timedelta(days=1)).isoformat(),
+            "WeightTraining",
+            name="Upper strength",
+            workout_intent="strength_upper",
+            duration_min=48.0,
+            distance_km=None,
+        )
+        self._create_activity(
+            "goal-ready-strength-2",
+            (today - timedelta(days=4)).isoformat(),
+            "WeightTraining",
+            name="Lower strength",
+            workout_intent="strength_lower",
+            duration_min=52.0,
+            distance_km=None,
+        )
+
+        ready_goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Strength twice weekly",
+                "period_type": "week",
+                "goal_family": "process",
+                "metric_type": "strength_sessions",
+                "target_value": 2,
+            },
+        )
+        self.assertEqual(ready_goal.status_code, 201)
+
+        inconsistent_goal = self.client.post(
+            "/goals",
+            json={
+                "title": "Run three times weekly",
+                "period_type": "week",
+                "goal_family": "process",
+                "metric_type": "activities_count",
+                "target_value": 3,
+                "activity_type": "Run",
+            },
+        )
+        self.assertEqual(inconsistent_goal.status_code, 201)
+
+        goals = self.client.get("/goals")
+        self.assertEqual(goals.status_code, 200)
+        body = goals.json()
+        ready_item = next(item for item in body if item["title"] == "Strength twice weekly")
+        inconsistent_item = next(item for item in body if item["title"] == "Run three times weekly")
+
+        self.assertEqual(ready_item["goal_readiness"]["state"], "ready")
+        self.assertEqual(inconsistent_item["goal_readiness"]["state"], "inconsistent")
+        self.assertEqual(inconsistent_item["goal_readiness"]["what_matters_next"]["code"], "session_frequency")
 
     def test_plan_and_coaching_surface_requirement_gaps_and_goal_tradeoffs(self):
         today = datetime.now().date()

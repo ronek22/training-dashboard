@@ -317,6 +317,23 @@ def _body_part_breakdown(sessions: list[dict]) -> list[dict]:
     return breakdown
 
 
+def _filtered_sessions(
+    conn: sqlite3.Connection,
+    *,
+    window_start: date,
+    body_part: str,
+) -> tuple[list[dict], list[dict]]:
+    session_rows, exercise_rows, set_rows = _load_strength_rows(conn, window_start.isoformat())
+    sessions = _build_session_index(session_rows, exercise_rows, set_rows)
+    filtered = [
+        serialized
+        for serialized in (_serialize_session_slice(session, body_part) for session in sessions)
+        if serialized
+    ]
+    filtered.sort(key=lambda item: (item["workout_date"], item["workout_timestamp"], item["id"]))
+    return sessions, filtered
+
+
 def _weekly_trend(filtered_sessions: list[dict], weeks: int, window_start: date) -> list[dict]:
     trend_by_week = {
         (window_start + timedelta(weeks=index)).isoformat(): {
@@ -498,6 +515,55 @@ def _recent_sessions(filtered_sessions: list[dict], limit: int = 8) -> list[dict
     return payload
 
 
+def _recent_sessions_with_detail(filtered_sessions: list[dict], limit: int = 8) -> list[dict]:
+    latest = sorted(
+        filtered_sessions,
+        key=lambda item: (item["workout_timestamp"], item["id"]),
+        reverse=True,
+    )[:limit]
+    payload = []
+    for session in latest:
+        payload.append(
+            {
+                "id": session["id"],
+                "workout_timestamp": session["workout_timestamp"],
+                "workout_date": session["workout_date"],
+                "title": session["title"],
+                "matched_activity": session["matched_activity"],
+                "exercise_count": session["exercise_count"],
+                "set_count": session["set_count"],
+                "rep_count": session["rep_count"],
+                "total_volume_kg": session["total_volume_kg"],
+                "major_exercises": [exercise["exercise_name"] for exercise in session["exercises"][:3]],
+                "exercises": [
+                    {
+                        "id": exercise["id"],
+                        "exercise_order": exercise["exercise_order"],
+                        "exercise_name": exercise["exercise_name"],
+                        "body_part": exercise["body_part"],
+                        "set_count": exercise["set_count"],
+                        "rep_count": exercise["rep_count"],
+                        "total_volume_kg": exercise["total_volume_kg"],
+                        "work_set_count": exercise["work_set_count"],
+                        "warmup_set_count": exercise["warmup_set_count"],
+                        "sets": [
+                            {
+                                "id": set_row["id"],
+                                "set_order": set_row["set_order"],
+                                "reps": set_row["reps"],
+                                "weight_kg": set_row["weight_kg"],
+                                "is_warmup": set_row["is_warmup"],
+                            }
+                            for set_row in exercise["sets"]
+                        ],
+                    }
+                    for exercise in session["exercises"]
+                ],
+            }
+        )
+    return payload
+
+
 def _match_pr_pattern(exercise_name: str) -> Optional[dict]:
     normalized = _normalize_name(exercise_name)
     for pattern in IMPORTANT_PR_PATTERNS:
@@ -551,15 +617,12 @@ def get_strength_overview_data(
     selected_body_part = body_part if body_part in {"all", *BODY_PART_LABELS.keys()} else "all"
     window_start = _window_start_for_weeks(normalized_weeks)
 
-    session_rows, exercise_rows, set_rows = _load_strength_rows(conn, window_start.isoformat())
-    sessions = _build_session_index(session_rows, exercise_rows, set_rows)
+    sessions, filtered_sessions = _filtered_sessions(
+        conn,
+        window_start=window_start,
+        body_part=selected_body_part,
+    )
     body_part_options = _body_part_breakdown(sessions)
-    filtered_sessions = [
-        serialized
-        for serialized in (_serialize_session_slice(session, selected_body_part) for session in sessions)
-        if serialized
-    ]
-    filtered_sessions.sort(key=lambda item: (item["workout_date"], item["workout_timestamp"], item["id"]))
 
     ranked_exercises, trends = _build_exercise_aggregates(filtered_sessions, normalized_weeks)
     selected_exercise = _selected_exercise_payload(exercise, ranked_exercises, trends, normalized_weeks)
@@ -617,6 +680,11 @@ def get_strength_context_data(
         body_part=body_part,
         exercise=exercise,
     )
+    _, filtered_sessions = _filtered_sessions(
+        conn,
+        window_start=date.fromisoformat(overview["window"]["start_date"]),
+        body_part=overview["filters"]["body_part"],
+    )
     selected_exercise = overview.get("selected_exercise")
     recurring_lifts = overview.get("exercises", [])
 
@@ -630,7 +698,7 @@ def get_strength_context_data(
         "recurring_lifts": recurring_lifts,
         "selected_exercise": selected_exercise,
         "important_prs": overview["important_prs"],
-        "recent_sessions": overview["sessions"],
+        "recent_sessions": _recent_sessions_with_detail(filtered_sessions),
         "weekly_trend": overview["weekly"],
         "body_part_options": overview["filters"]["body_part_options"],
         "exercise_options": overview["filters"]["exercise_options"],

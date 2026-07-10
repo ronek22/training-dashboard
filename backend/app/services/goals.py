@@ -700,6 +700,467 @@ def aggregate_goal_risk_summary(goals: list[dict]) -> dict:
     }
 
 
+def _append_unique(items: list[str], value: Optional[str]) -> None:
+    text = (value or "").strip()
+    if text and text not in items:
+        items.append(text)
+
+
+def _recent_goal_support(
+    conn: sqlite3.Connection,
+    *,
+    session_types: list[str],
+    preferred_intents: list[str],
+    fallback_intents: list[str],
+    start_date: str,
+    end_date: str,
+) -> dict[str, Any]:
+    rows = conn.execute(
+        """
+        SELECT date, type, workout_intent
+        FROM activities
+        WHERE date >= ? AND date <= ?
+        ORDER BY date DESC
+        """,
+        (start_date, end_date),
+    ).fetchall()
+
+    allowed_types = set(session_types or [])
+    preferred = set(preferred_intents or [])
+    fallback = set(fallback_intents or [])
+    total_matches = 0
+    preferred_matches = 0
+    fallback_matches = 0
+    last_match_date = None
+
+    for row in rows:
+        row_type = row["type"]
+        intent = row["workout_intent"]
+        if allowed_types and row_type not in allowed_types:
+            continue
+        if preferred:
+            if intent in preferred:
+                preferred_matches += 1
+            elif fallback and intent in fallback:
+                fallback_matches += 1
+            else:
+                continue
+        total_matches += 1
+        if not last_match_date:
+            last_match_date = row["date"]
+
+    return {
+        "total_matches": total_matches,
+        "preferred_matches": preferred_matches,
+        "fallback_matches": fallback_matches,
+        "last_match_date": last_match_date,
+    }
+
+
+def _days_between(today: date, value: Optional[str]) -> Optional[int]:
+    parsed = _parse_date(value)
+    if not parsed:
+        return None
+    return max((today - parsed).days, 0)
+
+
+def _goal_readiness_badge(state: str) -> str:
+    return {
+        "ready": "Ready",
+        "building": "Building",
+        "underprepared": "Underprepared",
+        "stale": "Stale",
+        "inconsistent": "Inconsistent",
+        "insufficient_evidence": "Not enough evidence",
+        "constrained": "Constrained",
+    }.get(state, "Building")
+
+
+def _what_matters_next(
+    code: str,
+    summary: str,
+    *,
+    secondary_summary: Optional[str] = None,
+) -> dict[str, Any]:
+    labels = {
+        "event_specific_quality": "Needs event-specific quality",
+        "long_aerobic_support": "Needs longer aerobic support",
+        "benchmark_specific_quality": "Needs fresher benchmark evidence",
+        "strength_frequency": "Needs another strength exposure",
+        "session_frequency": "Needs another counted session",
+        "aerobic_endurance": "Needs another aerobic endurance exposure",
+        "aerobic_volume": "Needs more volume support",
+        "benchmark_effort": "Needs a benchmark effort",
+        "threshold_anchor": "Needs a threshold anchor",
+        "restriction_review": "Restriction is limiting progress",
+        "maintain_specificity": "Keep specificity in place",
+    }
+    return {
+        "code": code,
+        "label": labels.get(code, "What matters next"),
+        "summary": summary,
+        "secondary_summary": secondary_summary,
+    }
+
+
+def _goal_readiness_state_rank(state: Optional[str]) -> int:
+    return {
+        "constrained": 0,
+        "underprepared": 1,
+        "stale": 2,
+        "inconsistent": 3,
+        "insufficient_evidence": 4,
+        "building": 5,
+        "ready": 6,
+    }.get(state or "building", 99)
+
+
+def build_goal_readiness_summary(conn: sqlite3.Connection, goal: dict) -> dict[str, Any]:
+    today = datetime.now().date()
+    reasons: list[str] = []
+    limitations: list[str] = []
+    evidence: list[dict[str, Any]] = []
+    family = goal.get("goal_family")
+    weekly_requirements = goal.get("weekly_requirements") or []
+    primary_requirement = weekly_requirements[0] if weekly_requirements else None
+    secondary_requirement = weekly_requirements[1] if len(weekly_requirements) > 1 else None
+
+    if goal.get("constraint_summary"):
+        summary = goal["constraint_summary"]["summary"]
+        return {
+            "state": "constrained",
+            "label": _goal_readiness_badge("constrained"),
+            "summary": summary,
+            "reasons": [summary],
+            "limitations": [],
+            "evidence": [],
+            "what_matters_next": _what_matters_next("restriction_review", summary),
+        }
+
+    if (goal.get("derived_foundation") or {}).get("status") == "unavailable":
+        summary = goal["derived_foundation"]["summary"]
+        return {
+            "state": "insufficient_evidence",
+            "label": _goal_readiness_badge("insufficient_evidence"),
+            "summary": summary,
+            "reasons": [summary],
+            "limitations": [],
+            "evidence": [],
+            "what_matters_next": _what_matters_next("threshold_anchor", summary),
+        }
+
+    primary_support = None
+    secondary_support = None
+    if primary_requirement:
+        primary_support = _recent_goal_support(
+            conn,
+            session_types=primary_requirement.get("session_types") or [],
+            preferred_intents=primary_requirement.get("preferred_intents") or [],
+            fallback_intents=primary_requirement.get("fallback_intents") or [],
+            start_date=(today - timedelta(days=13)).isoformat(),
+            end_date=today.isoformat(),
+        )
+        evidence.append({
+            "label": primary_requirement["label"],
+            "value": f"{primary_support['total_matches']}/{primary_requirement['minimum_sessions']} in 14d",
+            "tone": "steady" if primary_support["total_matches"] >= primary_requirement["minimum_sessions"] else "caution",
+        })
+    if secondary_requirement:
+        secondary_support = _recent_goal_support(
+            conn,
+            session_types=secondary_requirement.get("session_types") or [],
+            preferred_intents=secondary_requirement.get("preferred_intents") or [],
+            fallback_intents=secondary_requirement.get("fallback_intents") or [],
+            start_date=(today - timedelta(days=20)).isoformat(),
+            end_date=today.isoformat(),
+        )
+        evidence.append({
+            "label": secondary_requirement["label"],
+            "value": f"{secondary_support['total_matches']}/{secondary_requirement['minimum_sessions']} in 21d",
+            "tone": "steady" if secondary_support["total_matches"] >= secondary_requirement["minimum_sessions"] else "quiet",
+        })
+
+    if family == "event_performance":
+        snapshot = goal.get("performance_snapshot") or {}
+        benchmark_age = _days_between(today, snapshot.get("recent_best_date"))
+        if benchmark_age is not None:
+            evidence.append({
+                "label": "Recent benchmark",
+                "value": f"{benchmark_age}d ago",
+                "tone": "risk" if benchmark_age > 42 else "steady",
+            })
+        else:
+            limitations.append("No recent race-like benchmark is logged for this event target.")
+
+        if not snapshot.get("recent_best_date"):
+            summary = "Not enough recent event evidence is logged yet."
+            return {
+                "state": "insufficient_evidence",
+                "label": _goal_readiness_badge("insufficient_evidence"),
+                "summary": summary,
+                "reasons": [summary],
+                "limitations": limitations,
+                "evidence": evidence,
+                "what_matters_next": _what_matters_next(
+                    "benchmark_effort",
+                    "Log one race-like benchmark or rehearsal so the event target has a current anchor.",
+                ),
+            }
+
+        specific_missing = primary_requirement and primary_support and primary_support["total_matches"] < primary_requirement["minimum_sessions"]
+        long_missing = secondary_requirement and secondary_support and secondary_support["total_matches"] < secondary_requirement["minimum_sessions"]
+        if specific_missing:
+            summary = "Progress may exist, but event-specific work is still too thin."
+            _append_unique(reasons, summary)
+            return {
+                "state": "underprepared",
+                "label": _goal_readiness_badge("underprepared"),
+                "summary": summary,
+                "reasons": reasons,
+                "limitations": limitations,
+                "evidence": evidence,
+                "what_matters_next": _what_matters_next("event_specific_quality", primary_requirement["summary"]),
+            }
+        if benchmark_age is not None and benchmark_age > 42:
+            summary = "The target anchor is getting stale even if the goal pace still looks plausible."
+            _append_unique(reasons, summary)
+            return {
+                "state": "stale",
+                "label": _goal_readiness_badge("stale"),
+                "summary": summary,
+                "reasons": reasons,
+                "limitations": limitations,
+                "evidence": evidence,
+                "what_matters_next": _what_matters_next(
+                    "benchmark_specific_quality",
+                    "Refresh the goal with one event-like session or benchmark in the next 1-2 weeks.",
+                    secondary_summary=secondary_requirement["summary"] if long_missing and secondary_requirement else None,
+                ),
+            }
+        if long_missing:
+            summary = "Specific quality is present, but the longer aerobic support is still thin."
+            _append_unique(reasons, summary)
+            return {
+                "state": "building",
+                "label": _goal_readiness_badge("building"),
+                "summary": summary,
+                "reasons": reasons,
+                "limitations": limitations,
+                "evidence": evidence,
+                "what_matters_next": _what_matters_next("long_aerobic_support", secondary_requirement["summary"]),
+            }
+
+        summary = "Recent work looks specific enough to keep this event realistic."
+        return {
+            "state": "ready",
+            "label": _goal_readiness_badge("ready"),
+            "summary": summary,
+            "reasons": [summary],
+            "limitations": limitations,
+            "evidence": evidence,
+            "what_matters_next": _what_matters_next(
+                "maintain_specificity",
+                "Keep one event-specific quality session in the week and avoid replacing it with generic volume.",
+            ),
+        }
+
+    if family == "benchmark":
+        snapshot = goal.get("performance_snapshot") or {}
+        benchmark_age = _days_between(today, snapshot.get("recent_best_date"))
+        if benchmark_age is not None:
+            evidence.append({
+                "label": "Latest benchmark",
+                "value": f"{benchmark_age}d ago",
+                "tone": "risk" if benchmark_age > 35 else "steady",
+            })
+        else:
+            limitations.append("No recent benchmark result is logged for this target.")
+
+        if not snapshot.get("recent_best_date"):
+            summary = "No benchmark result is available yet for this target."
+            return {
+                "state": "insufficient_evidence",
+                "label": _goal_readiness_badge("insufficient_evidence"),
+                "summary": summary,
+                "reasons": [summary],
+                "limitations": limitations,
+                "evidence": evidence,
+                "what_matters_next": _what_matters_next("benchmark_effort", "Log one benchmark effort so this goal can move from guesswork to evidence."),
+            }
+
+        quality_missing = primary_requirement and primary_support and primary_support["total_matches"] < primary_requirement["minimum_sessions"]
+        if benchmark_age is not None and benchmark_age > 35:
+            summary = "The current benchmark evidence is too old to be a strong readiness read."
+            return {
+                "state": "stale",
+                "label": _goal_readiness_badge("stale"),
+                "summary": summary,
+                "reasons": [summary],
+                "limitations": limitations,
+                "evidence": evidence,
+                "what_matters_next": _what_matters_next("benchmark_specific_quality", "Refresh this benchmark with one focused rehearsal or test soon."),
+            }
+        if quality_missing and goal.get("risk_summary", {}).get("status") in {"at_risk", "watch", "under_pressure"}:
+            summary = "The benchmark target still needs deliberate quality work, not just maintenance."
+            return {
+                "state": "underprepared",
+                "label": _goal_readiness_badge("underprepared"),
+                "summary": summary,
+                "reasons": [summary],
+                "limitations": limitations,
+                "evidence": evidence,
+                "what_matters_next": _what_matters_next("benchmark_specific_quality", primary_requirement["summary"]),
+            }
+        if quality_missing:
+            summary = "The target is still building, but support work has been light recently."
+            return {
+                "state": "building",
+                "label": _goal_readiness_badge("building"),
+                "summary": summary,
+                "reasons": [summary],
+                "limitations": limitations,
+                "evidence": evidence,
+                "what_matters_next": _what_matters_next("benchmark_specific_quality", primary_requirement["summary"]),
+            }
+
+        summary = "Recent benchmark evidence is fresh enough to support this target."
+        return {
+            "state": "ready",
+            "label": _goal_readiness_badge("ready"),
+            "summary": summary,
+            "reasons": [summary],
+            "limitations": limitations,
+            "evidence": evidence,
+            "what_matters_next": _what_matters_next("maintain_specificity", "Keep one benchmark-supporting quality session in the week."),
+        }
+
+    support_requirement = primary_requirement
+    support_snapshot = primary_support
+    recent_match_age = _days_between(today, (support_snapshot or {}).get("last_match_date"))
+    if recent_match_age is not None:
+        evidence.append({
+            "label": "Last support session",
+            "value": f"{recent_match_age}d ago",
+            "tone": "risk" if recent_match_age > 7 else "steady",
+        })
+    elif support_requirement:
+        limitations.append("No recent supporting session is visible for this goal.")
+
+    if goal.get("status") == "completed":
+        summary = "This goal is already satisfied in the current window."
+        return {
+            "state": "ready",
+            "label": _goal_readiness_badge("ready"),
+            "summary": summary,
+            "reasons": [summary],
+            "limitations": limitations,
+            "evidence": evidence,
+            "what_matters_next": _what_matters_next("maintain_specificity", "Maintain the habit rather than forcing extra work."),
+        }
+
+    if not support_requirement:
+        summary = "This goal does not have enough structured support logic yet."
+        return {
+            "state": "insufficient_evidence",
+            "label": _goal_readiness_badge("insufficient_evidence"),
+            "summary": summary,
+            "reasons": [summary],
+            "limitations": limitations,
+            "evidence": evidence,
+            "what_matters_next": _what_matters_next("session_frequency", "Add one supporting session so this goal has a clearer recent signal."),
+        }
+
+    support_missing = support_snapshot and support_snapshot["total_matches"] < support_requirement["minimum_sessions"]
+    if support_missing and goal.get("days_remaining", 0) <= 3:
+        summary = "The recent completion pattern is too thin for the time left in this window."
+        return {
+            "state": "inconsistent",
+            "label": _goal_readiness_badge("inconsistent"),
+            "summary": summary,
+            "reasons": [summary],
+            "limitations": limitations,
+            "evidence": evidence,
+            "what_matters_next": _what_matters_next(support_requirement["type"], support_requirement["summary"]),
+        }
+    if support_missing and goal.get("risk_summary", {}).get("status") in {"at_risk", "under_pressure", "watch"}:
+        summary = "Goal pace is still alive, but recent support is inconsistent."
+        return {
+            "state": "inconsistent",
+            "label": _goal_readiness_badge("inconsistent"),
+            "summary": summary,
+            "reasons": [summary],
+            "limitations": limitations,
+            "evidence": evidence,
+            "what_matters_next": _what_matters_next(support_requirement["type"], support_requirement["summary"]),
+        }
+    if support_missing:
+        summary = "The goal is still building and needs one more recent exposure."
+        return {
+            "state": "building",
+            "label": _goal_readiness_badge("building"),
+            "summary": summary,
+            "reasons": [summary],
+            "limitations": limitations,
+            "evidence": evidence,
+            "what_matters_next": _what_matters_next(support_requirement["type"], support_requirement["summary"]),
+        }
+
+    summary = "Recent execution is consistent enough to support this goal."
+    return {
+        "state": "ready",
+        "label": _goal_readiness_badge("ready"),
+        "summary": summary,
+        "reasons": [summary],
+        "limitations": limitations,
+        "evidence": evidence,
+        "what_matters_next": _what_matters_next("maintain_specificity", support_requirement["summary"]),
+    }
+
+
+def attach_goal_readiness_summary(conn: sqlite3.Connection, goal: dict) -> dict:
+    readiness = build_goal_readiness_summary(conn, goal)
+    return {
+        **goal,
+        "goal_readiness": readiness,
+    }
+
+
+def build_goal_readiness_overview(goals: list[dict]) -> dict:
+    if not goals:
+        return {
+            "status": "no_active_goals",
+            "label": "No active goals",
+            "focus_goal": None,
+            "focus_summary": None,
+            "focus_next_step": None,
+        }
+
+    prioritized = sorted(
+        goals,
+        key=lambda goal: (
+            _goal_readiness_state_rank((goal.get("goal_readiness") or {}).get("state")),
+            {"at_risk": 0, "under_pressure": 1, "watch": 2, "on_track": 3, "completed": 4}.get(
+                goal.get("risk_summary", {}).get("status", "on_track"),
+                99,
+            ),
+            goal.get("days_remaining", 9999),
+        ),
+    )
+    focus_goal = prioritized[0]
+    readiness = focus_goal.get("goal_readiness") or {}
+    return {
+        "status": readiness.get("state", "building"),
+        "label": readiness.get("label", "Building"),
+        "focus_goal": {
+            "id": focus_goal.get("id"),
+            "title": focus_goal.get("title"),
+            "family_label": focus_goal.get("family_label"),
+        },
+        "focus_summary": readiness.get("summary"),
+        "focus_next_step": (readiness.get("what_matters_next") or {}).get("summary"),
+    }
+
+
 def _recent_best_run_effort(conn: sqlite3.Connection, activity_type: str, target_distance_km: float) -> Optional[dict]:
     min_distance = max(target_distance_km * 0.9, target_distance_km - 1.0)
     max_distance = target_distance_km * 1.1
@@ -1340,10 +1801,10 @@ def serialize_goal(row: sqlite3.Row, conn: sqlite3.Connection, restrictions: Opt
     normalized_restrictions = restrictions or get_modality_restrictions_for_conn(conn)
 
     if goal_family == "event_performance":
-        return _serialize_event_goal(row, conn, normalized_restrictions, target_config)
+        return attach_goal_readiness_summary(conn, _serialize_event_goal(row, conn, normalized_restrictions, target_config))
     if goal_family == "benchmark":
-        return _serialize_benchmark_goal(row, conn, normalized_restrictions, target_config)
-    return _serialize_volume_goal(row, conn, normalized_restrictions, goal_family, target_config)
+        return attach_goal_readiness_summary(conn, _serialize_benchmark_goal(row, conn, normalized_restrictions, target_config))
+    return attach_goal_readiness_summary(conn, _serialize_volume_goal(row, conn, normalized_restrictions, goal_family, target_config))
 
 
 def _base_goal_draft(text: str) -> dict[str, Any]:

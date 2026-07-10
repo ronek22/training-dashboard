@@ -3,7 +3,14 @@ from typing import Optional
 
 from ..db import get_db
 from ..models.fitbod_imports import FitbodImportRequest, FitbodSessionLinkRequest, FitbodSessionRejectRequest
-from ..models.activities import Activity, ActivityIntentUpdate, ActivityPlanLink
+from ..models.activities import (
+    Activity,
+    ActivityAnalysisFailureRequest,
+    ActivityAnalysisRequest,
+    ActivityAnalysisSaveRequest,
+    ActivityIntentUpdate,
+    ActivityPlanLink,
+)
 from ..services.settings import get_setting, set_setting
 from ..services.strava import (
     fetch_strava_activity_detail,
@@ -13,11 +20,15 @@ from ..services.strava import (
 from ..services.activities import (
     activity_stats_data,
     create_activity_data,
+    analyze_activity_data,
+    fail_activity_analysis_data,
     get_calendar_month_data,
     get_calendar_weeks_data,
     get_activity_detail_data,
+    get_activity_analysis_context_data,
     link_activity_to_planned_session_data,
     list_activities_data,
+    save_activity_analysis_data,
     update_activity_workout_intent_data,
 )
 from ..services.fitbod_imports import (
@@ -64,6 +75,83 @@ def get_activity_detail(activity_id: str):
         return get_activity_detail_data(
             conn,
             activity_id,
+            get_setting_fn=get_setting,
+            set_setting_fn=set_setting,
+            get_strava_access_token_fn=get_strava_access_token,
+            fetch_strava_activity_detail_fn=fetch_strava_activity_detail,
+            fetch_strava_activity_streams_fn=fetch_strava_activity_streams_by_keys,
+        )
+    finally:
+        conn.close()
+
+
+@router.post("/activities/{activity_id}/analysis")
+def analyze_activity(activity_id: str, payload: ActivityAnalysisRequest):
+    conn = get_db()
+    try:
+        return analyze_activity_data(
+            conn,
+            activity_id,
+            force_refresh=payload.force_refresh,
+            get_setting_fn=get_setting,
+            set_setting_fn=set_setting,
+            get_strava_access_token_fn=get_strava_access_token,
+            fetch_strava_activity_detail_fn=fetch_strava_activity_detail,
+            fetch_strava_activity_streams_fn=fetch_strava_activity_streams_by_keys,
+        )
+    finally:
+        conn.close()
+
+
+@router.get("/activities/{activity_id}/analysis/context")
+def get_activity_analysis_context(activity_id: str):
+    conn = get_db()
+    try:
+        return get_activity_analysis_context_data(
+            conn,
+            activity_id,
+            get_setting_fn=get_setting,
+            set_setting_fn=set_setting,
+            get_strava_access_token_fn=get_strava_access_token,
+            fetch_strava_activity_detail_fn=fetch_strava_activity_detail,
+            fetch_strava_activity_streams_fn=fetch_strava_activity_streams_by_keys,
+        )
+    finally:
+        conn.close()
+
+
+@router.post("/activities/{activity_id}/analysis/save")
+def save_activity_analysis(activity_id: str, payload: ActivityAnalysisSaveRequest):
+    conn = get_db()
+    try:
+        return save_activity_analysis_data(
+            conn,
+            activity_id,
+            headline=payload.headline,
+            summary=payload.summary,
+            key_observations=payload.key_observations,
+            limitations=payload.limitations,
+            confidence_note=payload.confidence_note,
+            generator=payload.generator,
+            model_name=payload.model_name,
+            get_setting_fn=get_setting,
+            set_setting_fn=set_setting,
+            get_strava_access_token_fn=get_strava_access_token,
+            fetch_strava_activity_detail_fn=fetch_strava_activity_detail,
+            fetch_strava_activity_streams_fn=fetch_strava_activity_streams_by_keys,
+        )
+    finally:
+        conn.close()
+
+
+@router.post("/activities/{activity_id}/analysis/fail")
+def fail_activity_analysis(activity_id: str, payload: ActivityAnalysisFailureRequest):
+    conn = get_db()
+    try:
+        return fail_activity_analysis_data(
+            conn,
+            activity_id,
+            error_message=payload.error,
             get_setting_fn=get_setting,
             set_setting_fn=set_setting,
             get_strava_access_token_fn=get_strava_access_token,

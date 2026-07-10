@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div class="page-header">
+  <div class="motion-page">
+    <div class="page-header motion-section">
       <div>
         <h1 class="page-title">Activities</h1>
         <p class="page-copy">Review logged sessions, update intent, and capture post-workout feedback.</p>
@@ -8,7 +8,7 @@
       <router-link to="/sync" class="sync-link">Open Sync</router-link>
     </div>
 
-    <div class="filters">
+    <div class="filters motion-section">
       <button v-for="f in filters" :key="f.value"
         class="filter-btn" :class="{ active: activeFilter === f.value }"
         @click="setFilter(f.value)">
@@ -17,7 +17,7 @@
       </button>
     </div>
 
-    <div class="card">
+    <div class="card motion-section">
       <table v-if="activities.length">
         <thead>
           <tr>

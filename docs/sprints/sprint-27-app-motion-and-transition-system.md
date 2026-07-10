@@ -4,8 +4,16 @@
 
 Current status:
 
-- planned
+- done
 - follows completed Sprint 26 Fitbod-enriched strength history in MCP
+
+Completed in Sprint 27:
+
+- added shared motion tokens and reusable transition primitives in the frontend shell and global styles
+- implemented reduced-motion-safe overlay, modal, expand-collapse, and contextual detail transitions
+- refined route behavior so major navigation avoids jarring handoff effects while activity detail still preserves directional context
+- replaced blunt loading states on key views with more intentional loading shells where they improved perceived responsiveness
+- fixed overlay positioning and view-refresh cases that made some transitions feel heavier or visually unstable
 
 Starting point:
 

@@ -23,9 +23,21 @@ from ..repositories.activities import (
 )
 from .fitbod_imports import get_fitbod_strength_detail_for_activity
 from .activity_feedback import attach_feedback_by_activity_id, get_activity_feedback_data
+from .activity_analysis import (
+    fail_activity_analysis,
+    get_activity_analysis_context_payload,
+    get_activity_analysis_snapshot,
+    request_activity_analysis,
+    save_activity_analysis,
+)
 from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
+from .heart_rate_zones import build_activity_heart_rate_zone_summary
 from .plans import ensure_plan_day_ids, format_workout_intent_label, normalize_workout_intent
-from .settings import get_workout_template_settings_for_conn, set_workout_template_settings_for_conn
+from .settings import (
+    get_performance_settings_for_conn,
+    get_workout_template_settings_for_conn,
+    set_workout_template_settings_for_conn,
+)
 
 DETAIL_DERIVED_VERSION = "v1"
 
@@ -558,6 +570,7 @@ def _build_activity_detail_payload(
     cache_status_override: Optional[str] = None,
 ) -> dict:
     activity = dict(activity_row)
+    performance_settings = get_performance_settings_for_conn(conn)
     normalized_intent = normalize_workout_intent(activity.get("workout_intent"), activity.get("type"))
     activity["workout_intent"] = normalized_intent
     activity["workout_intent_label"] = format_workout_intent_label(normalized_intent)
@@ -602,6 +615,12 @@ def _build_activity_detail_payload(
     return {
         "activity": activity,
         "stats": _build_activity_stats(activity, detail, stream_summary),
+        "heart_rate_zones": build_activity_heart_rate_zone_summary(
+            conn,
+            activity,
+            detail_row,
+            settings=performance_settings,
+        ),
         "charts": charts,
         "best_efforts": best_efforts,
         "feedback": feedback,
@@ -636,10 +655,14 @@ def get_activity_detail_data(
 
     detail_row = get_activity_detail_row(conn, activity_id)
     if detail_row:
-        return _build_activity_detail_payload(conn, activity_row, detail_row)
+        payload = _build_activity_detail_payload(conn, activity_row, detail_row)
+        payload["analysis"] = get_activity_analysis_snapshot(conn, payload)
+        return payload
 
     if not _is_strava_backed_activity(activity_id):
-        return _build_activity_detail_payload(conn, activity_row, None)
+        payload = _build_activity_detail_payload(conn, activity_row, None)
+        payload["analysis"] = get_activity_analysis_snapshot(conn, payload)
+        return payload
 
     import httpx
 
@@ -653,7 +676,9 @@ def get_activity_detail_data(
         )
 
     if not detail and not streams:
-        return _build_activity_detail_payload(conn, activity_row, None)
+        payload = _build_activity_detail_payload(conn, activity_row, None)
+        payload["analysis"] = get_activity_analysis_snapshot(conn, payload)
+        return payload
 
     fetched_at = datetime.now().isoformat()
     source_status = "fetched"
@@ -674,7 +699,116 @@ def get_activity_detail_data(
     )
     conn.commit()
     detail_row = get_activity_detail_row(conn, activity_id)
-    return _build_activity_detail_payload(conn, activity_row, detail_row, cache_status_override="fetched")
+    payload = _build_activity_detail_payload(conn, activity_row, detail_row, cache_status_override="fetched")
+    payload["analysis"] = get_activity_analysis_snapshot(conn, payload)
+    return payload
+
+
+def analyze_activity_data(
+    conn: sqlite3.Connection,
+    activity_id: str,
+    *,
+    force_refresh: bool,
+    get_setting_fn: Callable[[str], Optional[str]],
+    set_setting_fn: Callable[[str, str], None],
+    get_strava_access_token_fn: Callable[[Callable[[str], Optional[str]], Callable[[str, str], None]], str],
+    fetch_strava_activity_detail_fn: Callable[[object, str], tuple[Optional[dict], Optional[dict]]],
+    fetch_strava_activity_streams_fn: Callable[[object, str, str], tuple[Optional[dict], Optional[dict]]],
+) -> dict:
+    detail_payload = get_activity_detail_data(
+        conn,
+        activity_id,
+        get_setting_fn=get_setting_fn,
+        set_setting_fn=set_setting_fn,
+        get_strava_access_token_fn=get_strava_access_token_fn,
+        fetch_strava_activity_detail_fn=fetch_strava_activity_detail_fn,
+        fetch_strava_activity_streams_fn=fetch_strava_activity_streams_fn,
+    )
+    return request_activity_analysis(conn, detail_payload, force_refresh=force_refresh, requested_via="app")
+
+
+def get_activity_analysis_context_data(
+    conn: sqlite3.Connection,
+    activity_id: str,
+    *,
+    get_setting_fn: Callable[[str], Optional[str]],
+    set_setting_fn: Callable[[str, str], None],
+    get_strava_access_token_fn: Callable[[Callable[[str], Optional[str]], Callable[[str, str], None]], str],
+    fetch_strava_activity_detail_fn: Callable[[object, str], tuple[Optional[dict], Optional[dict]]],
+    fetch_strava_activity_streams_fn: Callable[[object, str, str], tuple[Optional[dict], Optional[dict]]],
+) -> dict:
+    detail_payload = get_activity_detail_data(
+        conn,
+        activity_id,
+        get_setting_fn=get_setting_fn,
+        set_setting_fn=set_setting_fn,
+        get_strava_access_token_fn=get_strava_access_token_fn,
+        fetch_strava_activity_detail_fn=fetch_strava_activity_detail_fn,
+        fetch_strava_activity_streams_fn=fetch_strava_activity_streams_fn,
+    )
+    return get_activity_analysis_context_payload(conn, detail_payload)
+
+
+def save_activity_analysis_data(
+    conn: sqlite3.Connection,
+    activity_id: str,
+    *,
+    headline: str,
+    summary: str,
+    key_observations: list[str],
+    limitations: list[str],
+    confidence_note: str,
+    generator: str,
+    model_name: Optional[str],
+    get_setting_fn: Callable[[str], Optional[str]],
+    set_setting_fn: Callable[[str, str], None],
+    get_strava_access_token_fn: Callable[[Callable[[str], Optional[str]], Callable[[str, str], None]], str],
+    fetch_strava_activity_detail_fn: Callable[[object, str], tuple[Optional[dict], Optional[dict]]],
+    fetch_strava_activity_streams_fn: Callable[[object, str, str], tuple[Optional[dict], Optional[dict]]],
+) -> dict:
+    detail_payload = get_activity_detail_data(
+        conn,
+        activity_id,
+        get_setting_fn=get_setting_fn,
+        set_setting_fn=set_setting_fn,
+        get_strava_access_token_fn=get_strava_access_token_fn,
+        fetch_strava_activity_detail_fn=fetch_strava_activity_detail_fn,
+        fetch_strava_activity_streams_fn=fetch_strava_activity_streams_fn,
+    )
+    return save_activity_analysis(
+        conn,
+        detail_payload,
+        headline=headline,
+        summary=summary,
+        key_observations=key_observations,
+        limitations=limitations,
+        confidence_note=confidence_note,
+        generator=generator,
+        model_name=model_name,
+    )
+
+
+def fail_activity_analysis_data(
+    conn: sqlite3.Connection,
+    activity_id: str,
+    *,
+    error_message: str,
+    get_setting_fn: Callable[[str], Optional[str]],
+    set_setting_fn: Callable[[str, str], None],
+    get_strava_access_token_fn: Callable[[Callable[[str], Optional[str]], Callable[[str, str], None]], str],
+    fetch_strava_activity_detail_fn: Callable[[object, str], tuple[Optional[dict], Optional[dict]]],
+    fetch_strava_activity_streams_fn: Callable[[object, str, str], tuple[Optional[dict], Optional[dict]]],
+) -> dict:
+    detail_payload = get_activity_detail_data(
+        conn,
+        activity_id,
+        get_setting_fn=get_setting_fn,
+        set_setting_fn=set_setting_fn,
+        get_strava_access_token_fn=get_strava_access_token_fn,
+        fetch_strava_activity_detail_fn=fetch_strava_activity_detail_fn,
+        fetch_strava_activity_streams_fn=fetch_strava_activity_streams_fn,
+    )
+    return fail_activity_analysis(conn, detail_payload, error_message=error_message)
 
 
 def build_calendar_weeks_data(conn: sqlite3.Connection, weeks: int = 8) -> list[dict]:

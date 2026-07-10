@@ -7,8 +7,10 @@ Run with: python server.py
 import json
 import sys
 import httpx
+from typing import Optional
 
 API_BASE = "http://localhost:8000"
+MCP_SERVER_INFO = {"name": "training-dashboard", "version": "1.3.0"}
 
 def call_api(method: str, path: str, data: dict = None):
     with httpx.Client(timeout=10) as client:
@@ -20,6 +22,25 @@ def call_api(method: str, path: str, data: dict = None):
             return {"error": f"Unknown method {method}"}
         r.raise_for_status()
         return r.json()
+
+
+def call_remote_mcp_tool(name: str, arguments: Optional[dict] = None):
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": name,
+            "arguments": arguments or {},
+        },
+    }
+    with httpx.Client(timeout=20) as client:
+        r = client.post(f"{API_BASE}/mcp", json=payload)
+        r.raise_for_status()
+        body = r.json()
+    if "error" in body:
+        raise RuntimeError(body["error"].get("message", "Unknown MCP error"))
+    return body["result"]["structuredContent"]
 
 TOOLS = [
     {
@@ -243,6 +264,95 @@ TOOLS = [
         }
     },
     {
+        "name": "get_strength_context",
+        "description": "Read Fitbod-enriched strength history with recent sessions, exercise-level set and rep detail, recurring lifts, selected exercise trend, and important PRs",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "weeks": {"type": "integer", "description": "Recent window to inspect; supported values normalize to 4, 8, or 12 weeks"},
+                "body_part": {"type": "string", "description": "Optional body-part filter like all, push, pull, lower, core, or other"},
+                "exercise": {"type": "string", "description": "Optional exact exercise name to focus the selected trend payload"}
+            }
+        }
+    },
+    {
+        "name": "get_exercise_history",
+        "description": "Read exercise-level strength workout history with exercises, sets, reps, weights, recent sessions, and lift trends",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "weeks": {"type": "integer", "description": "Recent window to inspect; supported values normalize to 4, 8, or 12 weeks"},
+                "body_part": {"type": "string", "description": "Optional body-part filter like all, push, pull, lower, core, or other"},
+                "exercise": {"type": "string", "description": "Optional exact exercise name to focus the selected trend payload"}
+            }
+        }
+    },
+    {
+        "name": "get_strength_workout_history",
+        "description": "Read recent strength workouts with full exercise breakdown including set-by-set reps and weights from linked Fitbod history",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "weeks": {"type": "integer", "description": "Recent window to inspect; supported values normalize to 4, 8, or 12 weeks"},
+                "body_part": {"type": "string", "description": "Optional body-part filter like all, push, pull, lower, core, or other"},
+                "exercise": {"type": "string", "description": "Optional exact exercise name to focus the selected trend payload"}
+            }
+        }
+    },
+    {
+        "name": "analyze_activity",
+        "description": "Request a compact workout analysis for one activity so an MCP-connected LLM client can generate and save it",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "activity_id": {"type": "string", "description": "Activity ID to analyze"},
+                "force_refresh": {"type": "boolean", "description": "Regenerate analysis even if a current cached result exists"}
+            },
+            "required": ["activity_id"]
+        }
+    },
+    {
+        "name": "get_activity_analysis_context",
+        "description": "Read the deterministic context bundle that an LLM should use to analyze one workout",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "activity_id": {"type": "string", "description": "Activity ID to inspect"}
+            },
+            "required": ["activity_id"]
+        }
+    },
+    {
+        "name": "save_activity_analysis",
+        "description": "Write an LLM-generated structured workout analysis back into the dashboard for one activity",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "activity_id": {"type": "string"},
+                "headline": {"type": "string"},
+                "summary": {"type": "string"},
+                "key_observations": {"type": "array", "items": {"type": "string"}},
+                "limitations": {"type": "array", "items": {"type": "string"}},
+                "confidence_note": {"type": "string"},
+                "generator": {"type": "string"},
+                "model_name": {"type": "string"}
+            },
+            "required": ["activity_id", "headline", "summary", "key_observations", "limitations", "confidence_note"]
+        }
+    },
+    {
+        "name": "fail_activity_analysis",
+        "description": "Mark a requested workout analysis as failed when the external LLM client cannot complete it",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "activity_id": {"type": "string"},
+                "error": {"type": "string"}
+            },
+            "required": ["activity_id", "error"]
+        }
+    },
+    {
         "name": "draft_goal",
         "description": "Preview a structured goal draft from natural-language text without saving it",
         "inputSchema": {
@@ -316,6 +426,35 @@ def handle_tool(name: str, args: dict) -> str:
             result = call_api("GET", "/calendar/weeks", args)
             return json.dumps(result, indent=2)
 
+        elif name in {"get_strength_context", "get_exercise_history", "get_strength_workout_history"}:
+            result = call_remote_mcp_tool(name, args)
+            return json.dumps(result, indent=2)
+
+        elif name == "analyze_activity":
+            result = call_api("POST", f"/activities/{args['activity_id']}/analysis", {"force_refresh": bool(args.get("force_refresh", False))})
+            return json.dumps(result, indent=2)
+
+        elif name == "get_activity_analysis_context":
+            result = call_api("GET", f"/activities/{args['activity_id']}/analysis/context")
+            return json.dumps(result, indent=2)
+
+        elif name == "save_activity_analysis":
+            payload = {
+                "headline": args["headline"],
+                "summary": args["summary"],
+                "key_observations": args.get("key_observations", []),
+                "limitations": args.get("limitations", []),
+                "confidence_note": args["confidence_note"],
+                "generator": args.get("generator", "llm"),
+                "model_name": args.get("model_name"),
+            }
+            result = call_api("POST", f"/activities/{args['activity_id']}/analysis/save", payload)
+            return json.dumps(result, indent=2)
+
+        elif name == "fail_activity_analysis":
+            result = call_api("POST", f"/activities/{args['activity_id']}/analysis/fail", {"error": args["error"]})
+            return json.dumps(result, indent=2)
+
         elif name == "draft_goal":
             result = call_api("POST", "/goals/draft", args)
             return json.dumps(result, indent=2)
@@ -359,7 +498,7 @@ def main():
                 {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "training-dashboard", "version": "1.0.1"}
+                    "serverInfo": MCP_SERVER_INFO
                 }
             )
 

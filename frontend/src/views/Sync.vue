@@ -4,7 +4,7 @@
       <div>
         <div class="page-eyebrow">Import Workspace</div>
         <h1 class="page-title">Sync</h1>
-        <p class="page-copy">Run Strava imports, backfill detailed load, and review Fitbod enrichment links in one place.</p>
+        <p class="page-copy">Run Strava imports, backfill detailed load and cached streams, and review Fitbod enrichment links in one place.</p>
       </div>
       <router-link to="/activities" class="back-link">Open Activities</router-link>
     </div>
@@ -273,7 +273,7 @@ const runStreamBackfill = async () => {
   importMessage.value = ''
   try {
     const { data } = await api.backfillStravaStreams({ limit: stravaStatus.value.stream_fetch_limit || 12 })
-    importMessage.value = `Detailed load backfill scanned ${data.scanned} activities, fetched ${data.streams_fetched} stream summaries. Remaining candidates: ${data.remaining_candidates}.`
+    importMessage.value = `Detailed load backfill scanned ${data.scanned} activities, fetched ${data.streams_fetched} stream caches. Remaining candidates: ${data.remaining_candidates}.`
     await Promise.all([loadActivities(), loadStravaStatus()])
   } catch (error) {
     importMessage.value = error?.response?.data?.detail || 'Detailed load backfill failed.'

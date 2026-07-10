@@ -1,6 +1,6 @@
 <template>
-  <div class="strength-page">
-    <section class="strength-hero">
+  <div class="strength-page motion-page">
+    <section class="strength-hero motion-section">
       <div class="strength-hero-copy">
         <div class="page-eyebrow">Fitbod Analytics</div>
         <h1 class="page-title">Strength</h1>
@@ -9,7 +9,7 @@
       <router-link to="/sync" class="back-link">Review Sync</router-link>
     </section>
 
-    <section class="card strength-toolbar">
+    <section class="card strength-toolbar motion-section">
       <div class="toolbar-block">
         <span class="toolbar-label">Window</span>
         <div class="range-switch">
@@ -45,17 +45,17 @@
       </label>
     </section>
 
-    <div v-if="loading" class="card empty-state">Loading strength history…</div>
-    <div v-else-if="error" class="card empty-state">{{ error }}</div>
+    <div v-if="loading && !overview" class="card empty-state motion-section">Loading strength history…</div>
+    <div v-else-if="error && !overview" class="card empty-state motion-section">{{ error }}</div>
 
     <template v-else-if="overview">
-      <div v-if="!overview.summary.session_count" class="card empty-state">
+      <div v-if="!overview.summary.session_count" class="card empty-state motion-section">
         <strong>No linked strength history is available in this window.</strong>
         <p>Import a Fitbod CSV on Sync and confirm links to stored `WeightTraining` activities first.</p>
       </div>
 
       <template v-else>
-        <section class="summary-ribbon">
+        <section class="summary-ribbon motion-section" :aria-busy="loading ? 'true' : 'false'">
           <article v-for="card in summaryCards" :key="card.label" class="card summary-tile">
             <span class="summary-label">{{ card.label }}</span>
             <strong class="summary-value">{{ card.value }}</strong>
@@ -63,7 +63,7 @@
           </article>
         </section>
 
-        <section v-if="overview.important_prs?.length" class="card pr-stage">
+        <section v-if="overview.important_prs?.length" class="card pr-stage motion-section">
           <div class="section-head">
             <div>
               <div class="card-title">Key PRs</div>
@@ -80,7 +80,7 @@
           </div>
         </section>
 
-        <section class="analysis-grid analysis-grid-top">
+        <section class="analysis-grid analysis-grid-top motion-section">
           <article class="card trend-stage">
             <div class="section-head">
               <div>
@@ -167,13 +167,14 @@
           </article>
         </section>
 
-        <section class="analysis-grid analysis-grid-bottom">
-          <article class="card lifts-stage">
+        <section class="analysis-grid analysis-grid-bottom motion-section" :class="{ 'analysis-grid-refreshing': loading }">
+          <article class="card lifts-stage" :class="{ 'panel-refreshing': loading }">
             <div class="section-head">
               <div>
                 <div class="card-title">Recurring Lifts</div>
                 <div class="section-copy">Dense ranking by recurrence first, then by total volume.</div>
               </div>
+              <span v-if="loading" class="inline-loading-chip">Updating…</span>
             </div>
 
             <div class="lift-table">
@@ -204,7 +205,7 @@
             </div>
           </article>
 
-          <article v-if="overview.selected_exercise" class="card spotlight-stage">
+          <article v-if="overview.selected_exercise" class="card spotlight-stage" :class="{ 'panel-refreshing': loading }">
             <div class="spotlight-top">
               <div>
                 <div class="spotlight-kicker">Selected Lift</div>
@@ -454,6 +455,7 @@ onMounted(() => {
 })
 
 const selectExercise = (exerciseName) => {
+  if (selectedExercise.value === exerciseName) return
   selectedExercise.value = exerciseName
 }
 
@@ -591,6 +593,37 @@ const round = (value) => Math.round(value * 10) / 10
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
+}
+
+.analysis-grid-refreshing {
+  align-items: start;
+}
+
+.panel-refreshing {
+  position: relative;
+}
+
+.panel-refreshing::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(9, 14, 24, 0.06), rgba(9, 14, 24, 0.12));
+  pointer-events: none;
+}
+
+.inline-loading-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 186, 92, 0.1);
+  border: 1px solid rgba(255, 186, 92, 0.18);
+  color: #ffd08a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .pr-stage {

@@ -34,7 +34,15 @@ The intended reading order is:
 24. [sprint-24-strength-workout-enrichment-via-manual-fitbod-import.md](sprint-24-strength-workout-enrichment-via-manual-fitbod-import.md) — strength workout enrichment via manual Fitbod import sprint, complete
 25. [sprint-25-strength-view-and-lifting-trend-analysis.md](sprint-25-strength-view-and-lifting-trend-analysis.md) — strength view and lifting trend analysis sprint, complete
 26. [sprint-26-fitbod-strength-history-in-mcp.md](sprint-26-fitbod-strength-history-in-mcp.md) — Fitbod-enriched strength history in MCP sprint, complete
-27. [sprint-27-app-motion-and-transition-system.md](sprint-27-app-motion-and-transition-system.md) — app motion and transition system sprint, planned
+27. [sprint-27-app-motion-and-transition-system.md](sprint-27-app-motion-and-transition-system.md) — app motion and transition system sprint, complete
+28. [sprint-28-heart-rate-zones-in-activity-detail-and-dashboard.md](sprint-28-heart-rate-zones-in-activity-detail-and-dashboard.md) — heart-rate zones in activity detail and dashboard sprint, complete
+29. [sprint-29-llm-workout-analysis-via-mcp-for-activity-detail.md](sprint-29-llm-workout-analysis-via-mcp-for-activity-detail.md) — LLM workout analysis via MCP for activity detail sprint, complete
+30. [sprint-30-readiness-and-fatigue-foundation.md](sprint-30-readiness-and-fatigue-foundation.md) — readiness and fatigue foundation sprint, complete
+31. [sprint-31-goal-readiness-and-what-matters-next.md](sprint-31-goal-readiness-and-what-matters-next.md) — goal readiness and `what matters next` sprint, complete
+32. [sprint-32-planned-vs-actual-workout-quality.md](sprint-32-planned-vs-actual-workout-quality.md) — planned-vs-actual workout quality sprint, proposed
+33. [sprint-33-closed-loop-weekly-adaptation.md](sprint-33-closed-loop-weekly-adaptation.md) — closed-loop weekly adaptation sprint, proposed
+34. [sprint-34-strength-progression-and-stall-detection.md](sprint-34-strength-progression-and-stall-detection.md) — strength progression and stall detection sprint, proposed
+35. [sprint-35-weekly-retrospectives-and-data-quality-inbox.md](sprint-35-weekly-retrospectives-and-data-quality-inbox.md) — weekly retrospectives and data-quality inbox sprint, proposed
 
 ## Sprint Plans
 
@@ -67,3 +75,11 @@ Available sprint documents:
 - [sprint-25-strength-view-and-lifting-trend-analysis.md](sprint-25-strength-view-and-lifting-trend-analysis.md)
 - [sprint-26-fitbod-strength-history-in-mcp.md](sprint-26-fitbod-strength-history-in-mcp.md)
 - [sprint-27-app-motion-and-transition-system.md](sprint-27-app-motion-and-transition-system.md)
+- [sprint-28-heart-rate-zones-in-activity-detail-and-dashboard.md](sprint-28-heart-rate-zones-in-activity-detail-and-dashboard.md)
+- [sprint-29-llm-workout-analysis-via-mcp-for-activity-detail.md](sprint-29-llm-workout-analysis-via-mcp-for-activity-detail.md)
+- [sprint-30-readiness-and-fatigue-foundation.md](sprint-30-readiness-and-fatigue-foundation.md)
+- [sprint-31-goal-readiness-and-what-matters-next.md](sprint-31-goal-readiness-and-what-matters-next.md)
+- [sprint-32-planned-vs-actual-workout-quality.md](sprint-32-planned-vs-actual-workout-quality.md)
+- [sprint-33-closed-loop-weekly-adaptation.md](sprint-33-closed-loop-weekly-adaptation.md)
+- [sprint-34-strength-progression-and-stall-detection.md](sprint-34-strength-progression-and-stall-detection.md)
+- [sprint-35-weekly-retrospectives-and-data-quality-inbox.md](sprint-35-weekly-retrospectives-and-data-quality-inbox.md)

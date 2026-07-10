@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div class="page-head">
+  <div class="motion-page">
+    <div class="page-head motion-section">
       <div>
         <h1 class="page-title">Calendar</h1>
         <p class="page-sub">Switch between weekly load review and a full-month activity map.</p>
@@ -29,11 +29,11 @@
       </div>
     </div>
 
-    <div v-if="loading" class="empty card">Loading calendar…</div>
-    <div v-else-if="activeMode === 'weeks' && !weeks.length" class="empty card">No activities logged yet.</div>
-    <div v-else-if="activeMode === 'month' && !monthData" class="empty card">No activities logged yet.</div>
+    <div v-if="loading" class="empty card motion-section">Loading calendar…</div>
+    <div v-else-if="activeMode === 'weeks' && !weeks.length" class="empty card motion-section">No activities logged yet.</div>
+    <div v-else-if="activeMode === 'month' && !monthData" class="empty card motion-section">No activities logged yet.</div>
 
-    <div v-else-if="activeMode === 'weeks'" class="weeks-list">
+    <div v-else-if="activeMode === 'weeks'" class="weeks-list motion-section">
       <section v-for="week in weeks" :key="week.week_start" class="card week-card">
         <div class="week-header">
           <div>
@@ -141,7 +141,7 @@
       </section>
     </div>
 
-    <section v-else-if="monthData" class="card month-card">
+    <section v-else-if="monthData" class="card month-card motion-section">
       <div class="month-header">
         <div>
           <div class="card-title">Month of {{ monthTitle }}</div>

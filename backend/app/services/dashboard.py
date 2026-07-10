@@ -13,11 +13,14 @@ from .coaching import (
     summarize_recent_patterns,
     summarize_recovery,
 )
-from .goals import aggregate_goal_risk_summary, list_goals_data
+from .goals import aggregate_goal_risk_summary, build_goal_readiness_overview, list_goals_data
+from .heart_rate_zones import build_recent_heart_rate_zone_summary
+from .readiness import build_readiness_summary
 from .recommendations import build_daily_recommendation, latest_subjective_state
 from .settings import (
     get_athlete_profile_for_conn,
     get_modality_restrictions_for_conn,
+    get_performance_settings_for_conn,
     get_workout_template_settings_for_conn,
 )
 
@@ -915,6 +918,7 @@ def build_recent_context(
     athlete_profile = get_athlete_profile_for_conn(conn)
     workout_template_settings = get_workout_template_settings_for_conn(conn)
     goal_risk_summary = aggregate_goal_risk_summary(active_goals)
+    goal_readiness_summary = build_goal_readiness_overview(active_goals)
     planning_priority = sorted(
         active_goals,
         key=lambda goal: (
@@ -929,6 +933,11 @@ def build_recent_context(
     latest_plan = select_active_weekly_plan_row(conn)
     serialized_latest_plan = serialize_weekly_plan(latest_plan, conn) if latest_plan else None
     daily_recommendation = build_daily_recommendation(conn, training_load_summary=training_load, weekly_plan=serialized_latest_plan)
+    readiness = build_readiness_summary(
+        conn,
+        training_load_summary=training_load,
+        daily_recommendation=daily_recommendation,
+    )
     recent_activities = attach_feedback_by_activity_id(conn, [dict(row) for row in activities])
     recent_activity_intents = build_activity_intent_summary(recent_activities)
     planned_intents = build_planned_intent_summary(serialized_latest_plan)
@@ -939,6 +948,8 @@ def build_recent_context(
         "modality_restrictions": modality_restrictions,
         "active_goals": active_goals,
         "goal_risk_summary": goal_risk_summary,
+        "goal_readiness_summary": goal_readiness_summary,
+        "readiness": readiness,
         "goal_planning_summary": {
             "count": len(active_goals),
             "constrained": sum(1 for goal in active_goals if goal.get("is_constrained")),
@@ -1011,7 +1022,9 @@ def build_recent_context(
         "workout_template_settings": workout_template_settings,
         "active_goals": active_goals,
         "goal_risk_summary": goal_risk_summary,
+        "goal_readiness_summary": goal_readiness_summary,
         "goal_planning_summary": context_payload["goal_planning_summary"],
+        "readiness": readiness,
         "workout_intent_summary": {
             "recent_activities": recent_activity_intents,
             "active_plan": planned_intents,
@@ -1105,12 +1118,20 @@ def build_dashboard_data(
     active_goals = list_goals_data_fn(conn, active_only=True, limit=4)
     modality_restrictions = get_modality_restrictions_for_conn(conn)
     athlete_profile = get_athlete_profile_for_conn(conn)
+    performance_settings = get_performance_settings_for_conn(conn)
     workout_template_settings = get_workout_template_settings_for_conn(conn)
     goal_risk_summary = aggregate_goal_risk_summary(active_goals)
+    goal_readiness_summary = build_goal_readiness_overview(active_goals)
     training_load = build_training_load_summary(conn)
+    heart_rate_zone_summary = build_recent_heart_rate_zone_summary(conn, days=14, settings=performance_settings)
     latest_plan = select_active_weekly_plan_row(conn)
     serialized_latest_plan = serialize_weekly_plan(latest_plan, conn) if latest_plan else None
     daily_recommendation = build_daily_recommendation(conn, training_load_summary=training_load, weekly_plan=serialized_latest_plan)
+    readiness = build_readiness_summary(
+        conn,
+        training_load_summary=training_load,
+        daily_recommendation=daily_recommendation,
+    )
     execution_trend = build_multi_week_execution_trend(conn, weeks=6)
     goal_planning_summary = {
         "count": len(active_goals),
@@ -1129,11 +1150,14 @@ def build_dashboard_data(
         "modality_restrictions": modality_restrictions,
         "active_goals": active_goals,
         "goal_risk_summary": goal_risk_summary,
+        "goal_readiness_summary": goal_readiness_summary,
+        "readiness": readiness,
         "goal_planning_summary": goal_planning_summary,
         "recent_feedback": list_recent_feedback_data(conn, limit=5),
         "recent_notes": [dict(r) for r in notes],
         "athlete_profile": athlete_profile,
         "athlete_brief": athlete_profile.get("athlete_brief"),
+        "performance_settings": performance_settings,
         "workout_template_settings": workout_template_settings,
     }
     execution_summary = summarize_execution(serialized_latest_plan)
@@ -1168,11 +1192,15 @@ def build_dashboard_data(
         "athlete_profile": athlete_profile,
         "athlete_brief": athlete_profile.get("athlete_brief"),
         "athlete_coaching_brief": athlete_coaching_brief,
+        "heart_rate_zone_summary": heart_rate_zone_summary,
         "modality_restrictions": modality_restrictions,
+        "performance_settings": performance_settings,
         "workout_template_settings": workout_template_settings,
         "active_goals": active_goals,
         "goal_risk_summary": goal_risk_summary,
+        "goal_readiness_summary": goal_readiness_summary,
         "goal_planning_summary": goal_planning_summary,
+        "readiness": readiness,
         "weekly_plan": serialized_latest_plan,
         "execution_trend": execution_trend,
         "computed_streak": computed_streak,

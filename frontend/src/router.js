@@ -1,15 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Dashboard from './views/Dashboard.vue'
-import Activities from './views/Activities.vue'
-import Notes from './views/Notes.vue'
-import Metrics from './views/Metrics.vue'
-import Calendar from './views/Calendar.vue'
-import Plan from './views/Plan.vue'
-import Goals from './views/Goals.vue'
-import Roadmap from './views/Roadmap.vue'
-import ActivityDetail from './views/ActivityDetail.vue'
-import Sync from './views/Sync.vue'
-import Strength from './views/Strength.vue'
+
+const Dashboard = () => import('./views/Dashboard.vue')
+const Activities = () => import('./views/Activities.vue')
+const Notes = () => import('./views/Notes.vue')
+const Metrics = () => import('./views/Metrics.vue')
+const Calendar = () => import('./views/Calendar.vue')
+const Plan = () => import('./views/Plan.vue')
+const Goals = () => import('./views/Goals.vue')
+const Roadmap = () => import('./views/Roadmap.vue')
+const ActivityDetail = () => import('./views/ActivityDetail.vue')
+const Sync = () => import('./views/Sync.vue')
+const Strength = () => import('./views/Strength.vue')
 
 export default createRouter({
   history: createWebHistory(),

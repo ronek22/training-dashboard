@@ -77,6 +77,9 @@ Implemented result:
 - `Dashboard` now prioritizes today's coaching call, weekly coaching read, and structured supporting context instead of a flat stack of equal cards
 - shared shell and typography treatments now create clearer emphasis through spacing, contrast, and grouping
 - `Calendar` now supports both weekly review and a full-month view with weekly summary context
+- a later dashboard refinement moves training load directly below today's decision surface, adds a compact recent/upcoming session bridge, and groups the global navigation with consistent vector icons
+- tablet navigation now collapses cleanly to icons, while mobile retains labeled, horizontally scrollable destinations without removing secondary routes
+- weekly coaching now leads with one decision and a 48-hour action, separates session completion from exact plan matching, and keeps repeated diagnostic evidence behind progressive disclosure
 
 ## Proposed Feature Slice
 

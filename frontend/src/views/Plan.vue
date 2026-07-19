@@ -46,6 +46,56 @@
         </div>
       </div>
 
+      <section v-if="selectedPlan" class="plan-command card" aria-labelledby="plan-command-title">
+        <div class="plan-command-top">
+          <div>
+            <div class="page-eyebrow">Training plan</div>
+            <h2 id="plan-command-title" class="plan-command-title">{{ selectedWeekRange }}</h2>
+            <p class="plan-command-focus">{{ selectedPlan.focus || selectedPlan.title || 'Weekly training plan' }}</p>
+          </div>
+          <div class="period-navigation" aria-label="Plan period navigation">
+            <button type="button" class="period-button" :disabled="!canGoNewer" aria-label="View newer week" @click="goToNewerWeek">‹</button>
+            <button type="button" class="period-today" :disabled="isViewingCurrentWeek" @click="goToCurrentWeek">This week</button>
+            <button type="button" class="period-button" :disabled="!canGoOlder" aria-label="View older week" @click="goToOlderWeek">›</button>
+          </div>
+        </div>
+
+        <div class="plan-command-grid">
+          <article class="today-brief" :class="{ 'is-rest': selectedFocusDay?.session_type === 'Rest' }">
+            <div class="today-brief-head">
+              <div>
+                <span class="section-label">{{ selectedFocusLabel }}</span>
+                <h3>{{ selectedFocusDay?.title || 'No session planned' }}</h3>
+              </div>
+              <span v-if="selectedFocusDay?.comparison" class="plan-status" :class="`status-${selectedFocusDay.comparison.status}`">
+                {{ statusLabel(selectedFocusDay.comparison) }}
+              </span>
+            </div>
+            <div v-if="selectedFocusDay" class="today-brief-meta">
+              <span v-if="selectedFocusDay.session_type">{{ displaySessionType(selectedFocusDay.session_type) }}</span>
+              <span v-if="selectedFocusDay.target_duration_min">{{ selectedFocusDay.target_duration_min }} min</span>
+              <span v-if="selectedFocusDay.target_distance_km">{{ selectedFocusDay.target_distance_km }} km</span>
+              <span v-if="selectedFocusDay.workout_intent_label">{{ selectedFocusDay.workout_intent_label }}</span>
+            </div>
+            <p v-if="selectedFocusDay?.details" class="today-brief-copy">{{ selectedFocusDay.details }}</p>
+            <div class="today-brief-actions">
+              <button v-if="selectedFocusDay?.details" type="button" class="save-button" @click="openPlannedSessionDetails(selectedFocusDay)">View session</button>
+              <button v-if="adjustableDays(selectedPlan).length" type="button" class="ghost-button" @click="openAdjustEditor(selectedPlan)">Adjust remaining week</button>
+            </div>
+          </article>
+
+          <div class="workload-summary" aria-label="Weekly workload summary">
+            <article v-for="metric in selectedWeekMetrics" :key="metric.label" class="workload-metric">
+              <span>{{ metric.label }}</span>
+              <strong>{{ metric.value }}</strong>
+              <small>{{ metric.detail }}</small>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <details v-if="strengthRotationSummary || (planTrends && planTrends.weeks?.length)" class="plan-insights-disclosure">
+        <summary>Coaching context and recent execution</summary>
       <div v-if="strengthRotationSummary" class="card plan-trend-card">
         <div class="plan-trend-head">
           <div>
@@ -123,12 +173,13 @@
           <div v-for="item in planTrends.observations || []" :key="item" class="plan-trend-observation">{{ item }}</div>
         </div>
       </div>
+      </details>
 
       <div v-if="!plans.length" class="empty card">No weekly plans yet.</div>
 
       <div v-else class="weeks-list">
       <section
-        v-for="plan in plans"
+        v-for="plan in visiblePlans"
         :key="plan.week_start"
         class="card week-card"
         :class="{
@@ -185,13 +236,25 @@
         <template v-else>
         <p v-if="plan.overview" class="plan-overview">{{ plan.overview }}</p>
 
-        <div v-if="!isHistoricalPlan(plan) && plan.goal_context?.active_goals?.length" class="goal-context-panel">
-          <div class="goal-context-head">
-            <div class="goal-context-title">Goal Focus</div>
-            <div class="goal-context-sub">Active targets this week and how the plan supports them.</div>
-          </div>
-          <div v-if="plan.goal_context?.conflicts?.length" class="goal-conflict-list">
-            <div v-for="conflict in plan.goal_context.conflicts" :key="`${plan.week_start}-${conflict.type}`" class="goal-conflict-pill">
+        <details v-if="!isHistoricalPlan(plan) && plan.goal_context?.active_goals?.length" class="goal-context-panel">
+          <summary class="goal-context-summary">
+            <span class="goal-context-summary-main">
+              <strong>Goal alignment</strong>
+              <small>How this week supports active goals</small>
+            </span>
+            <span class="goal-context-summary-metrics">
+              <span class="goal-summary-pill goal-summary-supported">{{ goalAlignmentSummary(plan).supported }} supported</span>
+              <span v-if="goalAlignmentSummary(plan).attention" class="goal-summary-pill goal-summary-attention">
+                {{ goalAlignmentSummary(plan).attention }} need attention
+              </span>
+              <span v-if="goalAlignmentSummary(plan).completed" class="goal-summary-pill goal-summary-completed">
+                {{ goalAlignmentSummary(plan).completed }} achieved
+              </span>
+            </span>
+          </summary>
+          <div class="goal-context-body">
+          <div v-if="actionableGoalConflicts(plan).length" class="goal-conflict-list">
+            <div v-for="conflict in actionableGoalConflicts(plan)" :key="`${plan.week_start}-${conflict.type}`" class="goal-conflict-pill">
               <strong>{{ conflict.label }}</strong>
               <span>{{ conflict.summary }}</span>
             </div>
@@ -232,7 +295,9 @@
               <div v-if="showGoalContextRiskSummary(goal)" class="goal-context-copy">{{ goal.risk_summary.summary }}</div>
             </article>
           </div>
-        </div>
+          <RouterLink to="/goals" class="goal-context-link">Open full goal details →</RouterLink>
+          </div>
+        </details>
 
         <div v-if="isCoachingReviewForPlan(plan)" class="coaching-diff-panel">
           <div class="coaching-diff-head">
@@ -491,9 +556,15 @@
               v-for="day in plan.days"
               :key="day.date"
               class="plan-day"
-              :class="[dayStateClass(day.date), statusClass(day.comparison?.status)]"
+              :class="[dayStateClass(day.date), statusClass(day.comparison?.status), { 'is-selected': selectedDayDate === day.date }]"
             >
-              <div class="plan-day-top">
+              <button
+                type="button"
+                class="plan-day-top day-select-button"
+                :aria-label="`Focus ${day.label} ${formatDay(day.date)}: ${day.title}`"
+                :aria-pressed="selectedDayDate === day.date"
+                @click="selectPlanDay(day)"
+              >
                 <div>
                   <div class="plan-day-label">{{ day.label }}</div>
                   <div class="plan-day-date">{{ formatDay(day.date) }}</div>
@@ -505,7 +576,7 @@
                 >
                   {{ statusLabel(day.comparison) }}
                 </div>
-              </div>
+              </button>
 
               <div class="plan-block">
                 <div class="plan-block-label">Planned</div>
@@ -862,6 +933,8 @@ const plannedSessionDialog = ref(null)
 const selectedLinkedActivityIds = ref({})
 const openLinkEditors = ref({})
 const expandedHistoricalWeeks = ref({})
+const selectedWeekStart = ref(null)
+const selectedDayDate = ref(null)
 const editor = ref({
   weekStart: null,
   effectiveFrom: '',
@@ -911,6 +984,11 @@ const load = async () => {
   try {
     const plansResult = await requestWithTimeout(api.getWeeklyPlans({ limit: 8 }))
     plans.value = plansResult.data
+    const currentPlan = plans.value.find((plan) => isCurrentPlan(plan)) || plans.value[0]
+    if (!selectedWeekStart.value || !plans.value.some((plan) => plan.week_start === selectedWeekStart.value)) {
+      selectedWeekStart.value = currentPlan?.week_start || null
+      selectedDayDate.value = null
+    }
     selectedLinkedActivityIds.value = {}
     openLinkEditors.value = {}
   } catch (error) {
@@ -979,6 +1057,73 @@ const formatDateList = (dates) => {
   if (!Array.isArray(dates) || !dates.length) return ''
   return dates.map((date) => formatDay(date)).join(', ')
 }
+
+const selectedPlan = computed(() => plans.value.find((plan) => plan.week_start === selectedWeekStart.value) || plans.value[0] || null)
+const visiblePlans = computed(() => selectedPlan.value ? [selectedPlan.value] : [])
+const selectedPlanIndex = computed(() => plans.value.findIndex((plan) => plan.week_start === selectedPlan.value?.week_start))
+const canGoNewer = computed(() => selectedPlanIndex.value > 0)
+const canGoOlder = computed(() => selectedPlanIndex.value >= 0 && selectedPlanIndex.value < plans.value.length - 1)
+const isViewingCurrentWeek = computed(() => Boolean(selectedPlan.value && isCurrentPlan(selectedPlan.value)))
+
+const selectWeekAt = (index) => {
+  const plan = plans.value[index]
+  if (!plan) return
+  selectedWeekStart.value = plan.week_start
+  selectedDayDate.value = null
+  if (isHistoricalPlan(plan)) expandedHistoricalWeeks.value = { ...expandedHistoricalWeeks.value, [plan.week_start]: true }
+}
+
+const goToNewerWeek = () => selectWeekAt(selectedPlanIndex.value - 1)
+const goToOlderWeek = () => selectWeekAt(selectedPlanIndex.value + 1)
+const goToCurrentWeek = () => {
+  const index = plans.value.findIndex((plan) => isCurrentPlan(plan))
+  selectWeekAt(index >= 0 ? index : 0)
+}
+
+const selectedWeekRange = computed(() => {
+  const plan = selectedPlan.value
+  if (!plan) return ''
+  const dates = (plan.days || []).map((day) => new Date(day.date)).filter((date) => !Number.isNaN(date.getTime()))
+  if (!dates.length) return `Week of ${formatWeek(plan.week_start)}`
+  const start = dates[0]
+  const end = dates[dates.length - 1]
+  const endFormat = start.getFullYear() === end.getFullYear() ? 'MMM d, yyyy' : 'MMM d, yyyy'
+  return `${format(start, 'MMM d')} – ${format(end, endFormat)}`
+})
+
+const selectedFocusDay = computed(() => {
+  const days = selectedPlan.value?.days || []
+  if (!days.length) return null
+  if (selectedDayDate.value) return days.find((day) => day.date === selectedDayDate.value) || null
+  return days.find((day) => dayState(day.date) === 'today')
+    || days.find((day) => dayState(day.date) === 'future' && day.session_type !== 'Rest')
+    || days[0]
+})
+
+const selectedFocusLabel = computed(() => {
+  if (!selectedFocusDay.value) return 'Selected day'
+  if (dayState(selectedFocusDay.value.date) === 'today') return 'Today'
+  return `${selectedFocusDay.value.label} · ${formatDay(selectedFocusDay.value.date)}`
+})
+
+const selectPlanDay = (day) => {
+  selectedDayDate.value = day.date
+}
+
+const selectedWeekMetrics = computed(() => {
+  const days = selectedPlan.value?.days || []
+  const duration = days.reduce((sum, day) => sum + Number(day.target_duration_min || 0), 0)
+  const distance = days.reduce((sum, day) => sum + Number(day.target_distance_km || 0), 0)
+  const restDays = days.filter((day) => ['Rest', 'Recovery'].includes(day.session_type)).length
+  const completed = days.filter((day) => day.comparison?.completed_activities?.length).length
+  const changed = days.filter((day) => ['different', 'rest_day_changed', 'replaced', 'skipped', 'moved'].includes(day.comparison?.status)).length
+  return [
+    { label: 'Planned load', value: duration ? `${Math.floor(duration / 60)}h ${duration % 60}m` : '—', detail: `${days.length - restDays} training days` },
+    { label: 'Volume', value: distance ? `${Math.round(distance * 10) / 10} km` : '—', detail: distance ? 'distance targets' : 'no distance targets' },
+    { label: 'Recovery', value: `${restDays} day${restDays === 1 ? '' : 's'}`, detail: `${Math.max(days.length - restDays, 0)} load days` },
+    { label: 'Execution', value: `${completed}/${days.length}`, detail: changed ? `${changed} changed or missed` : 'no exceptions' },
+  ]
+})
 
 const activityTone = (type) => {
   if (type === 'Run') return 'run'
@@ -1205,6 +1350,23 @@ const goalStatusLabel = (status) => {
   if (status === 'ahead_of_pace') return 'Ahead'
   if (status === 'on_pace') return 'On pace'
   return 'Behind'
+}
+
+const actionableGoalConflicts = (plan) => (plan?.goal_context?.conflicts || []).filter((conflict) => {
+  const label = `${conflict?.label || ''}`.toLowerCase()
+  const type = `${conflict?.type || ''}`.toLowerCase()
+  return !label.includes('competing modality') && !type.includes('competing_modality')
+})
+
+const goalAlignmentSummary = (plan) => {
+  const goals = plan?.goal_context?.active_goals || []
+  const completed = goals.filter((goal) => ['completed', 'done'].includes(goal?.risk_summary?.status) || goal?.status === 'completed').length
+  const attention = goals.filter((goal) => {
+    const status = goal?.risk_summary?.status
+    return goal?.requirement_support_status === 'unsupported' || ['constrained', 'under_pressure', 'at_risk'].includes(status)
+  }).length
+  const supported = goals.filter((goal) => Number(goal?.supported_sessions || 0) > 0 && goal?.requirement_support_status !== 'unsupported').length
+  return { supported, attention, completed }
 }
 
 const normalizeSummary = (value) => (value || '').trim().toLowerCase()
@@ -1816,6 +1978,66 @@ const savePlanLink = async (day) => {
 </script>
 
 <style scoped>
+.plan-command {
+  margin-bottom: 18px;
+  padding: 20px;
+  border-color: rgba(123, 163, 255, 0.28);
+  background: linear-gradient(180deg, rgba(20, 29, 45, 0.98), rgba(15, 22, 34, 0.96));
+}
+.plan-command-top,
+.plan-command-grid,
+.today-brief-head,
+.today-brief-actions,
+.period-navigation {
+  display: flex;
+  align-items: center;
+}
+.plan-command-top { justify-content: space-between; gap: 18px; margin-bottom: 16px; }
+.plan-command .page-eyebrow { margin-bottom: 5px; }
+.plan-command-title { font-family: var(--font-display); font-size: clamp(22px, 3vw, 30px); line-height: 1.1; letter-spacing: -0.03em; }
+.plan-command-focus { color: var(--muted-soft); margin-top: 5px; }
+.period-navigation { gap: 6px; }
+.period-button,
+.period-today {
+  min-height: 40px;
+  border: 1px solid var(--border-strong);
+  background: rgba(43, 55, 78, 0.48);
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+.period-button { width: 40px; border-radius: 12px; font-size: 24px; line-height: 1; }
+.period-today { border-radius: 12px; padding: 0 14px; font-size: 12px; }
+.period-button:hover:not(:disabled), .period-today:hover:not(:disabled) { background: rgba(68, 86, 120, 0.58); border-color: rgba(123, 163, 255, 0.48); }
+.period-button:disabled, .period-today:disabled { opacity: 0.38; cursor: not-allowed; }
+.plan-command-grid { align-items: stretch; gap: 14px; }
+.today-brief {
+  flex: 1.4;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 15px;
+  border: 1px solid rgba(123, 163, 255, 0.2);
+  background: rgba(8, 14, 24, 0.5);
+}
+.today-brief.is-rest { border-color: rgba(52, 211, 153, 0.22); }
+.today-brief-head { align-items: flex-start; justify-content: space-between; gap: 12px; }
+.today-brief h3 { margin-top: 4px; font-family: var(--font-display); font-size: 18px; line-height: 1.3; overflow-wrap: anywhere; }
+.today-brief-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.today-brief-meta span { padding: 4px 8px; border-radius: 999px; background: rgba(90, 105, 138, 0.2); color: var(--text-soft); font-size: 11px; font-weight: 650; }
+.today-brief-copy { margin-top: 10px; color: var(--muted-soft); font-size: 12px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.today-brief-actions { flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.today-brief-actions .save-button { min-width: 0; }
+.workload-summary { flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.workload-metric { min-width: 0; padding: 12px; border-radius: 14px; border: 1px solid rgba(114, 132, 162, 0.16); background: rgba(8, 14, 24, 0.36); display: grid; align-content: start; }
+.workload-metric span { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.workload-metric strong { margin-top: 4px; font-family: var(--font-display); font-size: 20px; line-height: 1.2; overflow-wrap: anywhere; }
+.workload-metric small { margin-top: 4px; color: var(--muted-soft); font-size: 10px; }
+.plan-insights-disclosure { margin-bottom: 18px; }
+.plan-insights-disclosure > summary { list-style: none; cursor: pointer; color: var(--muted-soft); font-size: 12px; font-weight: 700; padding: 10px 2px; }
+.plan-insights-disclosure > summary::-webkit-details-marker { display: none; }
+.plan-insights-disclosure > summary::before { content: '＋'; margin-right: 8px; color: var(--accent-strong); }
+.plan-insights-disclosure[open] > summary::before { content: '−'; }
+.plan-insights-disclosure .plan-trend-card { margin-top: 10px; }
 .weeks-list { display: flex; flex-direction: column; gap: 20px; }
 .week-card {
   padding: 24px;
@@ -1915,12 +2137,48 @@ const savePlanLink = async (day) => {
 }
 .goal-context-panel {
   margin-bottom: 14px;
-  padding: 16px;
+  padding: 0;
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,0.06);
-  background:
-    radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 30%),
-    rgba(255,255,255,0.03);
+  background: rgba(255,255,255,0.025);
+  overflow: hidden;
+}
+.goal-context-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 15px;
+  cursor: pointer;
+  list-style: none;
+}
+.goal-context-summary::-webkit-details-marker { display: none; }
+.goal-context-summary::after {
+  content: '＋';
+  color: var(--accent-strong);
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+.goal-context-panel[open] .goal-context-summary::after { content: '−'; }
+.goal-context-summary:hover { background: rgba(255,255,255,0.025); }
+.goal-context-summary-main { display: grid; gap: 2px; min-width: 0; }
+.goal-context-summary-main strong { font-family: var(--font-display); font-size: 13px; }
+.goal-context-summary-main small { color: var(--muted); font-size: 11px; }
+.goal-context-summary-metrics { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-left: auto; }
+.goal-summary-pill { padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.goal-summary-supported { background: rgba(16,185,129,0.12); color: #86efac; }
+.goal-summary-attention { background: rgba(245,158,11,0.13); color: #f8d38b; }
+.goal-summary-completed { background: rgba(96,165,250,0.12); color: #bfdbfe; }
+.goal-context-body {
+  padding: 0 15px 15px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.goal-context-link {
+  display: inline-flex;
+  margin-top: 12px;
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 700;
 }
 .goal-context-head {
   margin-bottom: 12px;
@@ -2670,10 +2928,18 @@ const savePlanLink = async (day) => {
 }
 .plan-grid-wrap {
   overflow-x: auto;
-  padding-bottom: 4px;
+  overscroll-behavior-inline: contain;
+  padding: 2px 2px 12px;
   scroll-snap-type: x proximity;
-  mask-image: linear-gradient(to right, black 0, black calc(100% - 24px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, black 0, black calc(100% - 24px), transparent 100%);
+  scrollbar-color: rgba(123, 163, 255, 0.44) rgba(31, 41, 58, 0.42);
+  scrollbar-width: thin;
+}
+.plan-grid-wrap::-webkit-scrollbar { height: 9px; }
+.plan-grid-wrap::-webkit-scrollbar-track { background: rgba(31, 41, 58, 0.42); border-radius: 999px; }
+.plan-grid-wrap::-webkit-scrollbar-thumb { background: rgba(123, 163, 255, 0.44); border-radius: 999px; }
+.plan-grid-wrap::-webkit-scrollbar-thumb:hover { background: rgba(123, 163, 255, 0.62); }
+.plan-grid-wrap:focus-within {
+  scrollbar-color: rgba(123, 163, 255, 0.68) rgba(31, 41, 58, 0.42);
 }
 .plan-day {
   position: relative;
@@ -2705,6 +2971,10 @@ const savePlanLink = async (day) => {
   background:
     linear-gradient(180deg, rgba(31, 39, 58, 0.99), rgba(18, 24, 35, 1)),
     radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 36%);
+}
+.plan-day.is-selected {
+  border-color: rgba(123, 163, 255, 0.64);
+  box-shadow: 0 0 0 2px rgba(95, 140, 255, 0.16);
 }
 .plan-day.is-today::before {
   content: '';
@@ -2768,6 +3038,17 @@ const savePlanLink = async (day) => {
   align-items: flex-start;
   flex-wrap: wrap;
 }
+.day-select-button {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.day-select-button:hover .plan-day-date { color: #bfdbfe; }
 .plan-day-label {
   color: var(--muted);
   font-size: 11px;
@@ -3503,13 +3784,28 @@ const savePlanLink = async (day) => {
   .save-button {
     width: 100%;
   }
+  .plan-command-grid { flex-direction: column; }
+  .today-brief, .workload-summary { width: 100%; }
 }
 
 @media (max-width: 760px) {
+  .plan-command { padding: 16px; }
+  .plan-command-top { align-items: flex-start; flex-direction: column; }
+  .period-navigation { width: 100%; }
+  .period-today { flex: 1; }
+  .workload-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .today-brief-head { flex-direction: column; }
+  .goal-context-summary { align-items: flex-start; flex-wrap: wrap; }
+  .goal-context-summary-metrics { order: 3; width: 100%; justify-content: flex-start; margin-left: 0; }
   .week-card { padding: 18px; }
   .week-summary { margin-bottom: 14px; }
   .plan-grid {
-    grid-template-columns: repeat(7, minmax(260px, 1fr));
+    grid-template-columns: 1fr;
+  }
+  .plan-grid-wrap {
+    overflow: visible;
+    padding: 2px 0 4px;
+    scroll-snap-type: none;
   }
   .plan-day {
     padding: 14px;
@@ -3541,5 +3837,10 @@ const savePlanLink = async (day) => {
   .plan-details-modal-head {
     gap: 12px;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .week-card, .plan-day, .period-button, .period-today { transition: none; }
+  .plan-day.is-today { transform: none; }
 }
 </style>

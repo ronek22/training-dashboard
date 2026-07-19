@@ -50,7 +50,7 @@
     <main class="main-content">
       <router-view v-slot="{ Component, route }">
         <Transition :name="routeTransitionName">
-          <component :is="Component" :key="route.fullPath" />
+          <component :is="Component" :key="route.path" />
         </Transition>
       </router-view>
     </main>

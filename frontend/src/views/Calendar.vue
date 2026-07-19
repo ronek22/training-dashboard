@@ -1,902 +1,304 @@
 <template>
-  <div class="motion-page">
-    <div class="page-head motion-section">
+  <main class="calendar-page motion-page">
+    <header class="calendar-toolbar motion-section">
       <div>
+        <div class="page-eyebrow">Training schedule</div>
         <h1 class="page-title">Calendar</h1>
-        <p class="page-sub">Switch between weekly load review and a full-month activity map.</p>
-      </div>
-      <div class="calendar-controls">
-        <div class="mode-toggle">
-          <button class="filter-btn" :class="{ active: activeMode === 'weeks' }" @click="setMode('weeks')">Weeks</button>
-          <button class="filter-btn" :class="{ active: activeMode === 'month' }" @click="setMode('month')">Month</button>
-        </div>
-        <div v-if="activeMode === 'weeks'" class="range-toggle">
-          <button
-            v-for="option in weekOptions"
-            :key="option"
-            class="filter-btn"
-            :class="{ active: activeWeeks === option }"
-            @click="loadWeeks(option)"
-          >
-            {{ option }}w
-          </button>
-        </div>
-        <div v-else class="month-nav">
-          <button class="filter-btn" @click="shiftMonth(-1)">Prev</button>
-          <div class="month-label">{{ monthTitle }}</div>
-          <button class="filter-btn" @click="shiftMonth(1)">Next</button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="loading" class="empty card motion-section">Loading calendar…</div>
-    <div v-else-if="activeMode === 'weeks' && !weeks.length" class="empty card motion-section">No activities logged yet.</div>
-    <div v-else-if="activeMode === 'month' && !monthData" class="empty card motion-section">No activities logged yet.</div>
-
-    <div v-else-if="activeMode === 'weeks'" class="weeks-list motion-section">
-      <section v-for="week in weeks" :key="week.week_start" class="card week-card">
-        <div class="week-header">
-          <div>
-            <div class="card-title">Week of {{ formatWeek(week.week_start, week.week_end) }}</div>
-            <div class="week-range">{{ formatRange(week.week_start, week.week_end) }}</div>
-          </div>
-          <div class="week-stats">
-            <div class="week-stat">
-              <span class="week-stat-label">Sessions</span>
-              <strong>{{ week.total_sessions }}</strong>
-            </div>
-            <div class="week-stat">
-              <span class="week-stat-label">Hours</span>
-              <strong>{{ formatHours(week.total_duration_min) }}</strong>
-            </div>
-            <div class="week-stat">
-              <span class="week-stat-label">Distance</span>
-              <strong>{{ week.total_distance_km }} km</strong>
-            </div>
-            <div class="week-stat">
-              <span class="week-stat-label">Elevation</span>
-              <strong>{{ week.total_elevation_m }} m</strong>
-            </div>
-          </div>
-        </div>
-
-        <div class="week-summary">
-          <span class="summary-pill summary-run">
-            <ActivityIcon type="Run" tone="run" :size="14" />
-            <span>{{ week.run_km }} km</span>
-          </span>
-          <span class="summary-pill summary-ride">
-            <ActivityIcon type="Ride" tone="ride" :size="14" />
-            <span>{{ week.ride_km }} km</span>
-          </span>
-          <span class="summary-pill summary-strength">
-            <ActivityIcon type="WeightTraining" tone="strength" :size="14" />
-            <span>{{ week.strength_sessions }}</span>
-          </span>
-        </div>
-
-        <div class="calendar-grid">
-          <article
-            v-for="day in week.days"
-            :key="day.date"
-            class="day-card"
-            :class="{ 'day-empty': !day.sessions }"
-          >
-            <div class="day-top">
-              <div>
-                <div class="day-weekday">{{ day.weekday }}</div>
-                <div class="day-date">{{ formatDay(day.date) }}</div>
-              </div>
-              <div class="day-sessions" v-if="day.sessions">{{ day.sessions }}x</div>
-            </div>
-
-            <div class="day-summary-line" v-if="day.sessions">
-              <span>{{ formatHours(day.total_duration_min) }}</span>
-              <span>{{ day.total_distance_km }} km</span>
-            </div>
-            <div v-else class="day-empty-copy">Rest / no data</div>
-
-            <div class="activity-list" v-if="day.activities.length">
-              <article
-                v-for="activity in day.activities"
-                :key="activity.id"
-                class="activity-line"
-                :class="{ 'has-feedback': activity.feedback }"
-              >
-                <router-link :to="{ path: `/activities/${activity.id}`, query: { from: 'calendar' } }" class="activity-main-link">
-                  <div class="activity-row">
-                    <div class="activity-body">
-                      <div class="activity-head">
-                        <span class="activity-icon">
-                          <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="14" />
-                        </span>
-                        <span class="activity-name">{{ activity.name || activity.type }}</span>
-                      </div>
-                      <div v-if="activity.distance_km" class="activity-distance">{{ activity.distance_km }} km</div>
-                      <div class="activity-stats">
-                        <span class="activity-detail">{{ formatMinutes(activity.duration_min) }}</span>
-                        <span v-if="activity.elevation_m" class="activity-detail">{{ activity.elevation_m }}m</span>
-                        <span v-if="activity.avg_pace" class="activity-detail">{{ activity.avg_pace }}/km</span>
-                        <span v-else-if="activity.avg_watts" class="activity-detail">{{ Math.round(activity.avg_watts) }} W</span>
-                      </div>
-                      <div v-if="activity.workout_intent_label" class="activity-intent">
-                        {{ activity.workout_intent_label }}
-                      </div>
-                    </div>
-                  </div>
-                </router-link>
-                <button
-                  type="button"
-                  class="activity-feedback-btn"
-                  :class="{ 'activity-feedback-btn-logged': activity.feedback }"
-                  :aria-label="`${activity.feedback ? 'Edit' : 'Log'} feedback for ${activity.name || activity.type}`"
-                  @click="openFeedbackDialog(activity)"
-                >
-                  {{ activity.feedback ? '✎' : '+' }}
-                </button>
-              </article>
-            </div>
-          </article>
-        </div>
-      </section>
-    </div>
-
-    <section v-else-if="monthData" class="card month-card motion-section">
-      <div class="month-header">
-        <div>
-          <div class="card-title">Month of {{ monthTitle }}</div>
-          <div class="week-range">{{ formatRange(monthData.month_start, monthData.month_end) }}</div>
-        </div>
-        <div class="week-stats month-stats">
-          <div class="week-stat">
-            <span class="week-stat-label">Sessions</span>
-            <strong>{{ monthData.total_sessions }}</strong>
-          </div>
-          <div class="week-stat">
-            <span class="week-stat-label">Hours</span>
-            <strong>{{ formatHours(monthData.total_duration_min) }}</strong>
-          </div>
-          <div class="week-stat">
-            <span class="week-stat-label">Distance</span>
-            <strong>{{ monthData.total_distance_km }} km</strong>
-          </div>
-          <div class="week-stat">
-            <span class="week-stat-label">Elevation</span>
-            <strong>{{ monthData.total_elevation_m }} m</strong>
-          </div>
-        </div>
+        <p class="page-sub">See planned work, completed training, and recovery in one place.</p>
       </div>
 
-      <div class="month-weekdays">
-        <span v-for="label in weekdayLabels" :key="label">{{ label }}</span>
-        <span class="month-week-summary-label">Week</span>
-      </div>
-
-      <div class="month-rows">
-        <div v-for="week in monthData.weeks" :key="week.week_start" class="month-row">
-          <article
-            v-for="day in week.days"
-            :key="day.date"
-            class="day-card month-day-card"
-            :class="{
-              'day-empty': !day.sessions,
-              'month-day-outside': !isDayInActiveMonth(day.date),
-              'month-day-active': isDayInActiveMonth(day.date),
-            }"
-          >
-            <div class="day-top">
-              <div>
-                <div class="day-weekday">{{ day.weekday }}</div>
-                <div class="day-date">{{ day.day_of_month }}</div>
-              </div>
-              <div class="day-sessions" v-if="day.sessions">{{ day.sessions }}x</div>
-            </div>
-
-            <div class="day-summary-line" v-if="day.sessions">
-              <span>{{ formatHours(day.total_duration_min) }}</span>
-              <span>{{ day.total_distance_km }} km</span>
-            </div>
-            <div v-else class="day-empty-copy">{{ isDayInActiveMonth(day.date) ? 'Rest / no data' : 'Outside month' }}</div>
-
-            <div class="activity-list" v-if="day.activities.length">
-              <article
-                v-for="activity in day.activities"
-                :key="activity.id"
-                class="activity-line"
-                :class="{ 'has-feedback': activity.feedback }"
-              >
-                <router-link :to="{ path: `/activities/${activity.id}`, query: { from: 'calendar' } }" class="activity-main-link">
-                  <div class="activity-row">
-                    <div class="activity-body">
-                      <div class="activity-head">
-                        <span class="activity-icon">
-                          <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="14" />
-                        </span>
-                        <span class="activity-name">{{ activity.name || activity.type }}</span>
-                      </div>
-                      <div v-if="activity.distance_km" class="activity-distance">{{ activity.distance_km }} km</div>
-                      <div class="activity-stats">
-                        <span class="activity-detail">{{ formatMinutes(activity.duration_min) }}</span>
-                        <span v-if="activity.elevation_m" class="activity-detail">{{ activity.elevation_m }}m</span>
-                        <span v-if="activity.avg_pace" class="activity-detail">{{ activity.avg_pace }}/km</span>
-                        <span v-else-if="activity.avg_watts" class="activity-detail">{{ Math.round(activity.avg_watts) }} W</span>
-                      </div>
-                      <div v-if="activity.workout_intent_label" class="activity-intent">
-                        {{ activity.workout_intent_label }}
-                      </div>
-                    </div>
-                  </div>
-                </router-link>
-                <button
-                  type="button"
-                  class="activity-feedback-btn"
-                  :class="{ 'activity-feedback-btn-logged': activity.feedback }"
-                  :aria-label="`${activity.feedback ? 'Edit' : 'Log'} feedback for ${activity.name || activity.type}`"
-                  @click="openFeedbackDialog(activity)"
-                >
-                  {{ activity.feedback ? '✎' : '+' }}
-                </button>
-              </article>
-            </div>
-          </article>
-
-          <aside class="week-summary-card month-week-summary">
-            <div class="week-summary-card-top">
-              <div class="week-summary-card-label">Week</div>
-              <div class="week-summary-card-range">{{ formatWeek(week.week_start, week.week_end) }}</div>
-            </div>
-            <div class="week-summary-card-metrics">
-              <div class="week-summary-metric">
-                <span>Sessions</span>
-                <strong>{{ week.total_sessions }}</strong>
-              </div>
-              <div class="week-summary-metric">
-                <span>Time</span>
-                <strong>{{ formatHours(week.total_duration_min) }}</strong>
-              </div>
-              <div class="week-summary-metric">
-                <span>Distance</span>
-                <strong>{{ week.total_distance_km }} km</strong>
-              </div>
-              <div class="week-summary-metric">
-                <span>Elevation</span>
-                <strong>{{ week.total_elevation_m }} m</strong>
-              </div>
-            </div>
-            <div class="week-summary-sports">
-              <div class="week-summary-sports-label">By sport</div>
-              <div class="week-summary-sport-row">
-                <span class="week-summary-sport-name">
-                  <ActivityIcon type="Run" tone="run" :size="14" />
-                  <span>Run</span>
-                </span>
-                <strong>{{ week.run_km }} km</strong>
-              </div>
-              <div class="week-summary-sport-row">
-                <span class="week-summary-sport-name">
-                  <ActivityIcon type="Ride" tone="ride" :size="14" />
-                  <span>Ride</span>
-                </span>
-                <strong>{{ week.ride_km }} km</strong>
-              </div>
-              <div class="week-summary-sport-row">
-                <span class="week-summary-sport-name">
-                  <ActivityIcon type="WeightTraining" tone="strength" :size="14" />
-                  <span>Strength</span>
-                </span>
-                <strong>{{ week.strength_sessions }}</strong>
-              </div>
-            </div>
-          </aside>
+      <div class="toolbar-actions">
+        <div class="view-switch" aria-label="Calendar view">
+          <button v-for="mode in modes" :key="mode.value" type="button" :class="{ active: activeMode === mode.value }" :aria-pressed="activeMode === mode.value" @click="setMode(mode.value)">{{ mode.label }}</button>
         </div>
+        <router-link class="plan-action" to="/plan">Adjust plan</router-link>
+      </div>
+    </header>
+
+    <section class="period-bar motion-section" aria-label="Calendar navigation">
+      <div class="period-navigation">
+        <button type="button" class="icon-btn" :disabled="loading" aria-label="Previous period" @click="shiftPeriod(-1)">‹</button>
+        <button type="button" class="today-btn" :disabled="loading" @click="goToday">Today</button>
+        <button type="button" class="icon-btn" :disabled="loading" aria-label="Next period" @click="shiftPeriod(1)">›</button>
+      </div>
+      <div class="period-title" aria-live="polite">
+        <strong>{{ periodTitle }}</strong>
+        <span>{{ periodContext }}</span>
+      </div>
+      <div class="legend" aria-label="Workout status legend">
+        <span><i class="legend-mark completed"></i>Completed</span>
+        <span><i class="legend-mark planned"></i>Planned</span>
+        <span><i class="legend-mark changed"></i>Changed</span>
+        <span><i class="legend-mark missed"></i>Missed</span>
       </div>
     </section>
 
-    <FeedbackDialog
-      :open="Boolean(dialogActivity)"
-      :activity="dialogActivity"
-      :initial-feedback="dialogActivity?.feedback || null"
-      :saving="feedbackSaving"
-      :message="feedbackMessage"
-      @close="closeFeedbackDialog"
-      @save="saveFeedback"
-    />
-  </div>
+    <section v-if="summary" class="load-summary motion-section" aria-label="Period training summary">
+      <article><span>Sessions</span><strong>{{ summary.total_sessions }}</strong><small>completed</small></article>
+      <article><span>Training time</span><strong>{{ formatHours(summary.total_duration_min) }}</strong><small>completed volume</small></article>
+      <article><span>Distance</span><strong>{{ formatDistance(summary.total_distance_km) }}</strong><small>all sports</small></article>
+      <article><span>Plan execution</span><strong>{{ executionSummary }}</strong><small>{{ executionContext }}</small></article>
+    </section>
+
+    <section v-if="activeMode === 'week' && !loading && !error" class="discipline-panel motion-section" aria-label="Completed training by discipline">
+      <div class="discipline-heading">
+        <div>
+          <span>Completed this week</span>
+          <h2>By discipline</h2>
+        </div>
+        <strong>{{ weeklyCompletedCount }} sessions</strong>
+      </div>
+
+      <div v-if="weeklyDisciplineSummary.length" class="discipline-list">
+        <article v-for="item in weeklyDisciplineSummary" :key="item.key" class="discipline-row">
+          <span class="discipline-icon" :class="`discipline-${item.tone}`">
+            <ActivityIcon :type="item.iconType" :tone="item.tone" :size="16" />
+          </span>
+          <div class="discipline-copy">
+            <div class="discipline-label"><strong>{{ item.label }}</strong><span>{{ item.sessions }} {{ item.sessions === 1 ? 'session' : 'sessions' }}</span></div>
+            <div class="discipline-metric">
+              <strong>{{ item.isStrength ? formatHours(item.duration) : formatDistance(item.distance) }}</strong>
+              <span>{{ item.isStrength ? 'strength work' : formatHours(item.duration) }}</span>
+            </div>
+            <div class="discipline-track" aria-hidden="true"><i :style="{ width: `${item.share}%` }"></i></div>
+          </div>
+        </article>
+      </div>
+      <p v-else class="discipline-empty">No completed training in this week.</p>
+    </section>
+
+    <div v-if="loading" class="calendar-state card" role="status">Loading training calendar…</div>
+    <div v-else-if="error" class="calendar-state card error-state" role="alert">
+      <strong>Calendar could not be loaded</strong><span>{{ error }}</span><button type="button" @click="reload">Try again</button>
+    </div>
+
+    <div v-else class="calendar-layout motion-section">
+      <section class="calendar-surface" :aria-label="periodTitle">
+        <div class="weekday-row" :class="{ 'is-week-view': activeMode === 'week' }" aria-hidden="true"><span v-for="label in weekdayLabels" :key="label">{{ label }}</span><span v-if="activeMode === 'month'" class="week-total-label">Week total</span></div>
+
+        <div v-if="activeMode === 'week'" class="week-grid">
+          <CalendarDayCell v-for="day in activeWeek?.days || []" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :time-state="timeState(day.date)" :max-events="2" @select="selectDate" />
+        </div>
+
+        <div v-else class="month-grid">
+          <template v-for="week in monthData?.weeks || []" :key="week.week_start">
+            <CalendarDayCell v-for="day in week.days" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :outside="!isActiveMonth(day.date)" :time-state="timeState(day.date)" :max-events="2" @select="selectDate" />
+            <aside class="week-total">
+              <span>{{ formatWeekRange(week.week_start, week.week_end) }}</span>
+              <strong>{{ formatHours(week.total_duration_min) }}</strong>
+              <small>{{ week.total_sessions }} sessions · {{ formatDistance(week.total_distance_km) }}</small>
+              <div class="volume-track"><i :style="{ width: `${weekVolumePercent(week)}%` }"></i></div>
+            </aside>
+          </template>
+        </div>
+
+        <div v-if="!displayDays.some((day) => day.activities?.length || planFor(day.date))" class="empty-overlay">No training or planned sessions in this period.</div>
+      </section>
+
+      <div class="calendar-rail">
+      <aside class="selected-panel" aria-label="Selected day details">
+        <div class="selected-head">
+          <div><span>{{ selectedDayLabel }}</span><h2>{{ selectedDayTitle }}</h2></div>
+          <span class="selected-load" :class="`tone-${selectedLoad.tone}`">{{ selectedLoad.label }}</span>
+        </div>
+
+        <div v-if="selectedPlan" class="detail-section">
+          <div class="detail-kicker">Planned</div>
+          <article class="detail-workout planned-detail">
+            <ActivityIcon :type="selectedPlan.session_type" :tone="activityTone(selectedPlan.session_type)" :size="18" />
+            <div><strong>{{ selectedPlan.title || selectedPlan.session_type }}</strong><span>{{ planStatusLabel(selectedPlan) }} · {{ formatMinutes(selectedPlan.duration_min) }}<template v-if="selectedPlan.distance_km"> · {{ selectedPlan.distance_km }} km</template></span><small v-if="selectedPlan.workout_intent_label">{{ selectedPlan.workout_intent_label }}</small></div>
+          </article>
+          <p v-if="selectedPlan.notes || selectedPlan.rationale" class="detail-note">{{ selectedPlan.notes || selectedPlan.rationale }}</p>
+        </div>
+
+        <div v-if="selectedDay?.activities?.length" class="detail-section">
+          <div class="detail-kicker">Completed</div>
+          <article v-for="activity in selectedDay.activities" :key="activity.id" class="detail-workout">
+            <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="18" />
+            <router-link :to="{ path: `/activities/${activity.id}`, query: { from: 'calendar' } }"><strong>{{ activity.name || activity.type }}</strong><span>{{ formatMinutes(activity.duration_min) }}<template v-if="activity.distance_km"> · {{ activity.distance_km }} km</template><template v-if="activity.avg_watts"> · {{ Math.round(activity.avg_watts) }} W</template></span><small v-if="activity.workout_intent_label">{{ activity.workout_intent_label }}</small></router-link>
+            <button type="button" class="feedback-btn" @click="openFeedbackDialog(activity)">{{ activity.feedback ? 'Edit feedback' : 'Add feedback' }}</button>
+          </article>
+        </div>
+
+        <div v-if="!selectedPlan && !selectedDay?.activities?.length" class="intentional-rest"><span aria-hidden="true">○</span><div><strong>Intentional recovery</strong><p>No workout is scheduled or recorded. Keep this space for recovery, or adjust the plan if training is expected.</p></div></div>
+        <router-link class="panel-action" to="/plan">Open planning workspace</router-link>
+      </aside>
+
+      </div>
+    </div>
+
+    <FeedbackDialog :open="Boolean(dialogActivity)" :activity="dialogActivity" :initial-feedback="dialogActivity?.feedback || null" :saving="feedbackSaving" :message="feedbackMessage" @close="closeFeedbackDialog" @save="saveFeedback" />
+  </main>
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
-import { addMonths, format } from 'date-fns'
+import { computed, onMounted, ref } from 'vue'
+import { addDays, addMonths, endOfWeek, format, isValid, parseISO, startOfWeek } from 'date-fns'
 import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
+import CalendarDayCell from '../components/CalendarDayCell.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
 
 const api = useApi()
-const activeMode = ref('weeks')
+const modes = [{ value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }]
+const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const activeMode = ref(window.innerWidth < 760 ? 'week' : 'month')
+const anchorDate = ref(new Date())
+const selectedDate = ref(format(new Date(), 'yyyy-MM-dd'))
 const weeks = ref([])
 const monthData = ref(null)
+const plans = ref([])
 const loading = ref(true)
-const activeWeeks = ref(8)
-const weekOptions = [4, 8, 12]
-const activeMonth = ref('')
-const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const error = ref('')
 const dialogActivity = ref(null)
 const feedbackSaving = ref(false)
 const feedbackMessage = ref('')
+const todayKey = format(new Date(), 'yyyy-MM-dd')
 
-const loadWeeks = async (count) => {
-  loading.value = true
-  activeWeeks.value = count
-  try {
-    const { data } = await api.getCalendarWeeks({ weeks: count })
-    weeks.value = data
-  } finally {
-    loading.value = false
-  }
+const safeDate = (value) => { const date = typeof value === 'string' ? parseISO(value) : value; return isValid(date) ? date : new Date() }
+const buildEmptyWeek = (weekStart) => {
+  const start = safeDate(weekStart)
+  const days = Array.from({ length: 7 }, (_, offset) => {
+    const current = addDays(start, offset)
+    return { date: format(current, 'yyyy-MM-dd'), weekday: format(current, 'EEE'), day_of_month: Number(format(current, 'd')), total_distance_km: 0, total_duration_min: 0, total_elevation_m: 0, sessions: 0, activities: [] }
+  })
+  return { week_start: weekStart, week_end: format(addDays(start, 6), 'yyyy-MM-dd'), total_sessions: 0, total_duration_min: 0, total_distance_km: 0, total_elevation_m: 0, days }
 }
-
-const loadMonth = async (month = activeMonth.value) => {
-  loading.value = true
-  try {
-    const { data } = await api.getCalendarMonth(month ? { month } : {})
-    monthData.value = data
-    activeMonth.value = data.month
-  } finally {
-    loading.value = false
-  }
-}
-
-const setMode = async (mode) => {
-  if (activeMode.value === mode) return
-  activeMode.value = mode
-  if (mode === 'weeks') await loadWeeks(activeWeeks.value)
-  else await loadMonth(activeMonth.value)
-}
-
-const shiftMonth = async (offset) => {
-  if (!activeMonth.value) return
-  const next = addMonths(new Date(`${activeMonth.value}-01`), offset)
-  await loadMonth(format(next, 'yyyy-MM'))
-}
-
-onMounted(async () => {
-  await loadWeeks(activeWeeks.value)
-  await loadMonth()
+const activeMonthKey = computed(() => format(anchorDate.value, 'yyyy-MM'))
+const activeWeekStart = computed(() => format(startOfWeek(anchorDate.value, { weekStartsOn: 1 }), 'yyyy-MM-dd'))
+const activeWeek = computed(() => weeks.value.find((week) => week.week_start === activeWeekStart.value) || buildEmptyWeek(activeWeekStart.value))
+const planDays = computed(() => plans.value.flatMap((plan) => plan.days || []))
+const planMap = computed(() => Object.fromEntries(planDays.value.map((day) => [day.date, day])))
+const displayDays = computed(() => activeMode.value === 'week' ? activeWeek.value?.days || [] : (monthData.value?.weeks || []).flatMap((week) => week.days))
+const selectedDay = computed(() => displayDays.value.find((day) => day.date === selectedDate.value) || null)
+const selectedPlan = computed(() => planMap.value[selectedDate.value] || null)
+const summary = computed(() => activeMode.value === 'month' ? monthData.value : activeWeek.value)
+const periodTitle = computed(() => activeMode.value === 'month' ? format(anchorDate.value, 'MMMM yyyy') : `${format(safeDate(activeWeekStart.value), 'MMM d')} – ${format(endOfWeek(safeDate(activeWeekStart.value), { weekStartsOn: 1 }), 'MMM d, yyyy')}`)
+const periodContext = computed(() => activeMode.value === 'month' ? `${monthData.value?.weeks?.length || 0} training weeks` : activeWeekStart.value === format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd') ? 'Current training week' : 'Training week')
+const selectedDayLabel = computed(() => selectedDate.value === todayKey ? 'Today' : format(safeDate(selectedDate.value), 'EEEE'))
+const selectedDayTitle = computed(() => format(safeDate(selectedDate.value), 'MMMM d, yyyy'))
+const selectedLoad = computed(() => { const intent = String(selectedPlan.value?.workout_intent || selectedPlan.value?.workout_intent_label || '').toLowerCase(); if (!selectedPlan.value && !selectedDay.value?.activities?.length) return { label: 'Rest', tone: 'rest' }; if (/interval|tempo|threshold|vo2|max|race/.test(intent)) return { label: 'Hard day', tone: 'hard' }; if (/recovery|easy/.test(intent)) return { label: 'Easy day', tone: 'easy' }; return { label: 'Training day', tone: 'steady' } })
+const relevantPlans = computed(() => planDays.value.filter((day) => displayDays.value.some((shown) => shown.date === day.date)))
+const executionSummary = computed(() => { const completed = relevantPlans.value.filter((day) => ['linked', 'matched', 'moved'].includes(day.comparison?.status)).length; return relevantPlans.value.length ? `${completed}/${relevantPlans.value.length}` : '—' })
+const executionContext = computed(() => { const changed = relevantPlans.value.filter((day) => ['replaced', 'partially_matched', 'rest_day_changed', 'skipped'].includes(day.comparison?.status)).length; return relevantPlans.value.length ? `${changed} changed or missed` : 'no plan in period' })
+const weeklyActivities = computed(() => (activeWeek.value?.days || []).flatMap((day) => day.activities || []))
+const weeklyCompletedCount = computed(() => weeklyActivities.value.length)
+const weeklyDisciplineSummary = computed(() => {
+  const definitions = [
+    { key: 'ride', label: 'Cycling', iconType: 'Ride', tone: 'ride', match: (type) => /ride|cycl/i.test(type) },
+    { key: 'run', label: 'Running', iconType: 'Run', tone: 'run', match: (type) => /run/i.test(type) },
+    { key: 'swim', label: 'Swimming', iconType: 'Swim', tone: 'neutral', match: (type) => /swim/i.test(type) },
+    { key: 'walk', label: 'Walking', iconType: 'Walk', tone: 'walk', match: (type) => /walk|hike/i.test(type) },
+    { key: 'strength', label: 'Strength', iconType: 'WeightTraining', tone: 'strength', isStrength: true, match: (type) => /weight|strength/i.test(type) },
+  ]
+  const groups = definitions.map((definition) => ({ ...definition, sessions: 0, distance: 0, duration: 0 }))
+  const other = { key: 'other', label: 'Other', iconType: 'Workout', tone: 'neutral', sessions: 0, distance: 0, duration: 0 }
+  weeklyActivities.value.forEach((activity) => {
+    const group = groups.find((item) => item.match(String(activity.type || ''))) || other
+    group.sessions += 1
+    group.distance += Number(activity.distance_km || 0)
+    group.duration += Number(activity.duration_min || 0)
+  })
+  const populated = [...groups, other].filter((item) => item.sessions || item.isStrength)
+  const maxValue = Math.max(...populated.map((item) => item.isStrength ? item.duration : item.distance || item.duration / 60), 1)
+  return populated.map((item) => ({
+    ...item,
+    distance: Math.round(item.distance * 10) / 10,
+    share: Math.max(8, Math.round(((item.isStrength ? item.duration : item.distance || item.duration / 60) / maxValue) * 100)),
+  }))
 })
 
-const monthTitle = computed(() => {
-  if (!monthData.value?.month_start) return 'Month'
-  try {
-    return format(new Date(monthData.value.month_start), 'MMMM yyyy')
-  } catch {
-    return monthData.value.month
-  }
-})
+const fetchPlans = async () => { const { data } = await api.getWeeklyPlans({ limit: 16 }); plans.value = data }
+const loadWeek = async () => { const { data } = await api.getCalendarWeeks({ weeks: 16 }); weeks.value = data }
+const loadMonth = async () => { const { data } = await api.getCalendarMonth({ month: activeMonthKey.value }); monthData.value = data }
+const reload = async () => { loading.value = true; error.value = ''; try { await Promise.all([loadWeek(), loadMonth(), fetchPlans()]); syncSelectedDate() } catch (err) { error.value = err?.response?.data?.detail || 'Check the connection and try again.' } finally { loading.value = false } }
+const syncSelectedDate = () => { if (displayDays.value.some((day) => day.date === selectedDate.value)) return; selectedDate.value = activeMode.value === 'week' ? activeWeekStart.value : format(anchorDate.value, 'yyyy-MM-dd') }
+const setMode = async (mode) => { activeMode.value = mode; syncSelectedDate() }
+const shiftPeriod = async (offset) => { anchorDate.value = activeMode.value === 'month' ? addMonths(anchorDate.value, offset) : addDays(anchorDate.value, offset * 7); loading.value = true; error.value = ''; try { if (activeMode.value === 'month') await loadMonth(); syncSelectedDate() } catch (err) { error.value = err?.response?.data?.detail || 'Could not load this period.' } finally { loading.value = false } }
+const goToday = async () => { anchorDate.value = new Date(); selectedDate.value = todayKey; if (activeMode.value === 'month' && monthData.value?.month !== activeMonthKey.value) { loading.value = true; try { await loadMonth() } finally { loading.value = false } } }
+const selectDate = (date) => { selectedDate.value = date }
+const planFor = (date) => planMap.value[date] || null
+const isActiveMonth = (date) => String(date).startsWith(activeMonthKey.value)
+const timeState = (date) => date === todayKey ? 'today' : date < todayKey ? 'past' : 'future'
+const formatHours = (minutes) => { const total = Math.round(minutes || 0); return `${Math.floor(total / 60)}h ${String(total % 60).padStart(2, '0')}m` }
+const formatMinutes = (minutes) => minutes ? `${Math.round(minutes)} min` : 'Duration not set'
+const formatDistance = (distance) => `${Number(distance || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`
+const formatWeekRange = (start, end) => `${format(safeDate(start), 'MMM d')}–${format(safeDate(end), 'd')}`
+const weekVolumePercent = (week) => { const max = Math.max(...(monthData.value?.weeks || []).map((item) => item.total_duration_min || 0), 1); return Math.round((week.total_duration_min || 0) / max * 100) }
+const activityTone = (type) => { const value = String(type || '').toLowerCase(); if (value.includes('run')) return 'run'; if (value.includes('ride') || value.includes('cycl')) return 'ride'; if (value.includes('weight') || value.includes('strength')) return 'strength'; if (value.includes('walk')) return 'walk'; return 'neutral' }
+const planStatusLabel = (day) => ({ linked: 'Completed as planned', matched: 'Completed', moved: 'Moved and completed', replaced: 'Changed', partially_matched: 'Modified', rest_day_changed: 'Rest changed', skipped: 'Missed', not_completed_yet: selectedDate.value === todayKey ? 'Planned today' : 'Upcoming' }[day.comparison?.status] || 'Planned')
+const openFeedbackDialog = (activity) => { feedbackMessage.value = ''; dialogActivity.value = { ...activity, dateLabel: selectedDayTitle.value } }
+const closeFeedbackDialog = () => { if (!feedbackSaving.value) { dialogActivity.value = null; feedbackMessage.value = '' } }
+const saveFeedback = async (payload) => { if (!dialogActivity.value) return; feedbackSaving.value = true; feedbackMessage.value = ''; try { await api.updateActivityIntent(dialogActivity.value.id, { workout_intent: payload.workout_intent || null }); await api.saveActivityFeedback(dialogActivity.value.id, { rpe: payload.rpe, energy: payload.energy, muscle_soreness: payload.muscle_soreness, pain_level: payload.pain_level, note: payload.note }); feedbackMessage.value = 'Saved.'; await reload(); window.setTimeout(closeFeedbackDialog, 300) } catch (err) { feedbackMessage.value = err?.response?.data?.detail || 'Feedback save failed.' } finally { feedbackSaving.value = false } }
 
-const formatWeek = (start, end) => {
-  try {
-    return `${format(new Date(start), 'MMM d')} - ${format(new Date(end), 'MMM d')}`
-  } catch {
-    return `${start} - ${end}`
-  }
-}
-
-const formatRange = (start, end) => {
-  try {
-    return `${format(new Date(start), 'EEEE, MMM d')} to ${format(new Date(end), 'EEEE, MMM d')}`
-  } catch {
-    return `${start} to ${end}`
-  }
-}
-
-const formatDay = (day) => {
-  try { return format(new Date(day), 'MMM d') } catch { return day }
-}
-
-const isDayInActiveMonth = (day) => {
-  if (!monthData.value?.month) return true
-  return String(day).startsWith(monthData.value.month)
-}
-
-const formatHours = (minutes) => {
-  if (!minutes) return '0h 00m'
-  const total = Math.round(minutes)
-  const hours = Math.floor(total / 60)
-  const mins = total % 60
-  return `${hours}h ${String(mins).padStart(2, '0')}m`
-}
-
-const formatMinutes = (minutes) => {
-  if (!minutes) return '0m'
-  return `${Math.round(minutes)}m`
-}
-
-const activityTone = (type) => {
-  if (type === 'Run') return 'run'
-  if (type === 'Ride' || type === 'VirtualRide') return 'ride'
-  if (type === 'WeightTraining') return 'strength'
-  if (type === 'Walk') return 'walk'
-  return 'neutral'
-}
-
-const openFeedbackDialog = (activity) => {
-  feedbackMessage.value = ''
-  dialogActivity.value = {
-    ...activity,
-    dateLabel: formatDay(activity.date),
-  }
-}
-
-const closeFeedbackDialog = () => {
-  if (feedbackSaving.value) return
-  dialogActivity.value = null
-  feedbackMessage.value = ''
-}
-
-const saveFeedback = async (payload) => {
-  if (!dialogActivity.value) return
-  feedbackSaving.value = true
-  feedbackMessage.value = ''
-  try {
-    await api.updateActivityIntent(dialogActivity.value.id, { workout_intent: payload.workout_intent || null })
-    await api.saveActivityFeedback(dialogActivity.value.id, {
-      rpe: payload.rpe,
-      energy: payload.energy,
-      muscle_soreness: payload.muscle_soreness,
-      pain_level: payload.pain_level,
-      note: payload.note,
-    })
-    feedbackMessage.value = 'Saved.'
-    if (activeMode.value === 'weeks') {
-      await loadWeeks(activeWeeks.value)
-    } else {
-      await loadMonth(activeMonth.value)
-    }
-    const refreshedDays = activeMode.value === 'weeks'
-      ? weeks.value.flatMap((week) => week.days)
-      : (monthData.value?.weeks || []).flatMap((week) => week.days)
-    const refreshed = refreshedDays
-      .flatMap((day) => day.activities)
-      .find((activity) => activity.id === dialogActivity.value?.id)
-    if (refreshed) {
-      dialogActivity.value = {
-        ...refreshed,
-        dateLabel: formatDay(refreshed.date),
-      }
-    }
-    window.setTimeout(() => {
-      if (!feedbackSaving.value) closeFeedbackDialog()
-    }, 250)
-  } catch (error) {
-    feedbackMessage.value = error?.response?.data?.detail || 'Feedback save failed.'
-  } finally {
-    feedbackSaving.value = false
-  }
-}
+onMounted(reload)
 </script>
 
 <style scoped>
-.page-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-end;
-  margin-bottom: 20px;
-}
-.page-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; margin-bottom: 4px; }
-.page-sub { color: var(--muted); font-size: 13px; }
-.calendar-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.mode-toggle,
-.range-toggle { display: flex; gap: 8px; }
-.month-nav {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.month-label {
-  min-width: 128px;
-  text-align: center;
-  color: var(--text);
-  font-weight: 700;
-}
-.filter-btn {
-  padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--muted); cursor: pointer; font-size: 13px;
-}
-.filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
-.weeks-list { display: flex; flex-direction: column; gap: 18px; }
-.week-card,
-.month-card { padding: 22px; }
-.week-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-  margin-bottom: 14px;
-}
-.week-range { color: var(--muted); font-size: 13px; }
-.week-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  min-width: 420px;
-}
-.week-stat {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
-}
-.week-stat-label {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
-}
-.week-summary {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-.summary-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.summary-run { background: rgba(59,130,246,0.15); color: var(--run); }
-.summary-ride { background: rgba(16,185,129,0.15); color: var(--ride); }
-.summary-strength { background: rgba(245,158,11,0.15); color: var(--strength); }
-.summary-neutral { background: rgba(107,122,153,0.16); color: #b5c0d8; }
-.month-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-  margin-bottom: 16px;
-}
-.month-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(180px, 0.9fr);
-  gap: 12px;
-  margin-bottom: 10px;
-}
-.month-weekdays span {
-  color: var(--muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 0 4px;
-}
-.month-week-summary-label {
-  text-align: left;
-}
-.month-rows {
-  display: grid;
-  gap: 12px;
-}
-.month-row {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(180px, 0.9fr);
-  gap: 12px;
-}
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 12px;
-}
-.day-card {
-  background: linear-gradient(180deg, rgba(30,37,53,0.95), rgba(22,27,39,1));
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
-  min-height: 190px;
-}
-.month-day-card {
-  min-height: 170px;
-}
-.month-day-outside {
-  opacity: 0.5;
-}
-.month-day-active {
-  opacity: 1;
-}
-.month-week-summary {
-  min-height: 170px;
-  padding: 14px;
-  background:
-    linear-gradient(180deg, rgba(31, 39, 58, 0.98), rgba(23, 30, 44, 0.96)),
-    radial-gradient(circle at top right, rgba(95, 140, 255, 0.14), transparent 40%);
-  border-color: rgba(123, 163, 255, 0.24);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-.week-summary-card {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-.week-summary-card-top {
-  margin-bottom: 12px;
-}
-.week-summary-card-label {
-  color: #b9ceff;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
-}
-.week-summary-card-range {
-  color: var(--text);
-  font-weight: 700;
-  line-height: 1.3;
-}
-.week-summary-card-metrics {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.week-summary-metric {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 11px;
-}
-.week-summary-metric strong {
-  color: var(--text);
-  font-size: 12px;
-}
-.week-summary-sports {
-  padding-top: 12px;
-  border-top: 1px solid rgba(123, 163, 255, 0.14);
-  display: grid;
-  gap: 8px;
-}
-.week-summary-sports-label {
-  color: #9fb9f5;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.week-summary-sport-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  align-items: center;
-}
-.week-summary-sport-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-soft);
-  font-size: 12px;
-}
-.week-summary-sport-row strong {
-  color: var(--text);
-  font-size: 12px;
-}
-.day-empty {
-  opacity: 0.72;
-}
-.day-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: flex-start;
-  margin-bottom: 10px;
-}
-.day-weekday {
-  color: var(--muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.day-date {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.day-sessions {
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: rgba(99,102,241,0.14);
-  color: #a5b4fc;
-  font-size: 12px;
-  font-weight: 700;
-}
-.day-summary-line {
-  display: flex;
-  gap: 10px;
-  flex-wrap: nowrap;
-  margin-bottom: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.day-summary-line::-webkit-scrollbar { display: none; }
-.day-empty-copy {
-  color: var(--muted);
-  font-size: 12px;
-  margin-bottom: 10px;
-}
-.activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.activity-line {
-  display: block;
-  position: relative;
-  padding: 9px 10px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
-}
-.activity-line + .activity-line {
-  margin-top: 2px;
-}
-.activity-line:hover,
-.activity-line:focus-within {
-  background: rgba(255,255,255,0.04);
-  border-color: rgba(96, 165, 250, 0.24);
-  transform: translateY(-1px);
-}
-.activity-line.has-feedback {
-  border-color: rgba(16, 185, 129, 0.16);
-  background: rgba(16, 185, 129, 0.04);
-}
-.activity-main-link {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-  border-radius: 8px;
-}
-.activity-main-link:focus-visible {
-  outline: 2px solid rgba(96, 165, 250, 0.62);
-  outline-offset: 2px;
-}
-.activity-row {
-  min-width: 0;
-}
-.activity-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-.activity-head {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  min-width: 0;
-}
-.activity-icon {
-  width: 16px;
-  flex: 0 0 16px;
-  line-height: 0;
-  margin-top: 1px;
-}
-.activity-name {
-  font-size: 11px;
-  line-height: 1.25;
-  color: #dfe4ee;
-  min-width: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: normal;
-  overflow-wrap: break-word;
-}
-.activity-stats {
-  display: flex;
-  gap: 8px;
-  flex-wrap: nowrap;
-  align-items: baseline;
-  min-width: 0;
-  overflow: hidden;
-}
-.activity-distance {
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-.activity-detail {
-  color: var(--muted);
-  font-size: 11px;
-  white-space: nowrap;
-}
-.activity-intent {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.12);
-  color: #bfdbfe;
-  font-size: 10px;
-  font-weight: 700;
-}
-.activity-feedback-btn {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(123, 163, 255, 0.18);
-  background: rgba(123, 163, 255, 0.06);
-  color: #b9caea;
-  border-radius: 999px;
-  padding: 0;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-  opacity: 0;
-  transform: scale(0.92);
-  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, opacity 0.16s ease, transform 0.16s ease;
-  z-index: 1;
-}
-.activity-line:hover .activity-feedback-btn,
-.activity-line:focus-within .activity-feedback-btn {
-  opacity: 1;
-  transform: scale(1);
-}
-.activity-feedback-btn:hover,
-.activity-feedback-btn:focus-visible {
-  background: rgba(123, 163, 255, 0.12);
-  border-color: rgba(147, 197, 253, 0.3);
-  color: #eff6ff;
-  outline: none;
-}
-.activity-feedback-btn-logged {
-  border-color: rgba(16, 185, 129, 0.18);
-  background: rgba(16, 185, 129, 0.08);
-  color: #b8f5da;
-}
-.activity-feedback-btn-logged:hover,
-.activity-feedback-btn-logged:focus-visible {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(52, 211, 153, 0.3);
-  color: #e8fff3;
-}
-
-@media (max-width: 1200px) {
-  .calendar-grid,
-  .month-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .week-header,
-  .month-header { flex-direction: column; }
-  .week-stats { min-width: 0; width: 100%; }
-  .month-weekdays { display: none; }
-  .month-week-summary {
-    min-height: 0;
-  }
-}
-
-@media (max-width: 820px) {
-  .page-head { flex-direction: column; align-items: stretch; }
-  .calendar-grid,
-  .month-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .week-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .month-nav { width: 100%; justify-content: space-between; }
-  .activity-feedback-btn {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
+.calendar-page { max-width: 1680px; margin: 0 auto; }
+.calendar-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+.toolbar-actions, .period-navigation, .view-switch, .legend { display: flex; align-items: center; }
+.toolbar-actions { gap: 10px; }
+.view-switch { padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: rgba(10,16,26,.7); }
+.view-switch button { min-width: 72px; min-height: 36px; padding: 0 14px; border: 0; border-radius: 7px; background: transparent; color: var(--muted-soft); cursor: pointer; }
+.view-switch button.active { background: var(--surface3); color: white; box-shadow: inset 0 0 0 1px var(--border-strong); }
+.plan-action, .panel-action { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 15px; border-radius: 9px; background: var(--accent); color: white; font-weight: 700; }
+.period-bar { min-height: 68px; display: grid; grid-template-columns: auto minmax(220px,1fr) auto; align-items: center; gap: 18px; margin-bottom: 14px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 14px; background: rgba(17,24,38,.78); }
+.period-navigation { gap: 6px; }
+.icon-btn, .today-btn { min-height: 38px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-soft); cursor: pointer; }
+.icon-btn { width: 38px; border-radius: 9px; font-size: 23px; line-height: 1; }
+.today-btn { padding: 0 13px; border-radius: 9px; font-weight: 700; }
+.icon-btn:disabled, .today-btn:disabled { opacity: .45; cursor: wait; }
+.period-title { min-width: 0; display: grid; text-align: center; line-height: 1.3; }
+.period-title strong { font-family: var(--font-display); font-size: 18px; }
+.period-title span { color: var(--muted); font-size: 11px; }
+.legend { justify-content: flex-end; gap: 12px; color: var(--muted-soft); font-size: 10px; }
+.legend span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.legend-mark { width: 3px; height: 14px; border-radius: 2px; }
+.legend-mark.completed { background: var(--success); }.legend-mark.planned { background: var(--accent-strong); }.legend-mark.changed { background: var(--warning); }.legend-mark.missed { background: var(--danger); }
+.load-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1px; margin-bottom: 14px; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--border); }
+.load-summary article { min-width: 0; padding: 12px 16px; background: rgba(17,24,38,.94); }
+.load-summary span, .load-summary small { display: block; color: var(--muted); font-size: 10px; }.load-summary span { font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }.load-summary strong { display: block; margin: 2px 0; font-family: var(--font-display); font-size: 18px; }
+.calendar-layout { display: grid; grid-template-columns: minmax(0,1fr) 310px; gap: 14px; align-items: start; }
+.calendar-surface, .selected-panel, .discipline-panel { border: 1px solid var(--border); border-radius: 14px; background: rgba(17,24,38,.9); overflow: hidden; }
+.weekday-row { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)) 126px; border-bottom: 1px solid var(--border); }
+.weekday-row.is-week-view { grid-template-columns: repeat(7,minmax(0,1fr)); }
+.weekday-row span { padding: 9px 10px; border-right: 1px solid var(--border); color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.week-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); }.week-grid :deep(.calendar-day) { min-height: 360px; }
+.month-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)) 126px; }
+.week-total { min-width: 0; min-height: 184px; padding: 13px 10px; border-bottom: 1px solid var(--border); background: rgba(23,31,48,.82); }
+.week-total span, .week-total small { display: block; color: var(--muted); font-size: 9px; }.week-total strong { display: block; margin: 12px 0 2px; font-size: 14px; }.volume-track { height: 3px; margin-top: 14px; overflow: hidden; border-radius: 3px; background: var(--surface3); }.volume-track i { display: block; height: 100%; background: var(--accent-strong); }
+.empty-overlay { padding: 24px; color: var(--muted); text-align: center; }
+.calendar-rail { position: sticky; top: 16px; display: grid; gap: 14px; }
+.selected-panel { padding: 18px; }
+.selected-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }.selected-head span:first-child { color: var(--accent-strong); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }.selected-head h2 { margin-top: 3px; font-family: var(--font-display); font-size: 17px; }.selected-load { flex: none; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 750; text-transform: uppercase; }.tone-rest { background: rgba(148,163,184,.12); color: var(--muted-soft); }.tone-easy { background: rgba(31,190,141,.13); color: #69d9bb; }.tone-steady { background: rgba(95,140,255,.13); color: #9db7ef; }.tone-hard { background: rgba(241,169,59,.15); color: #ffc46b; }
+.detail-section { padding: 15px 0; border-bottom: 1px solid var(--border); }.detail-kicker { margin-bottom: 8px; color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }.detail-workout { display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 8px; padding: 9px 0; }.detail-workout + .detail-workout { border-top: 1px solid var(--border); }.detail-workout > div, .detail-workout > a { min-width: 0; display: grid; line-height: 1.35; }.detail-workout strong { overflow-wrap: anywhere; font-size: 12px; }.detail-workout span { color: var(--muted-soft); font-size: 10px; }.detail-workout small { margin-top: 3px; color: var(--accent-strong); font-size: 10px; }.feedback-btn { grid-column: 2; justify-self: start; min-height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface2); color: var(--text-soft); cursor: pointer; font-size: 10px; }.detail-note { margin-top: 5px; color: var(--muted-soft); font-size: 11px; line-height: 1.5; }.intentional-rest { display: flex; gap: 10px; padding: 18px 0; color: var(--muted-soft); }.intentional-rest strong { color: var(--text-soft); font-size: 12px; }.intentional-rest p { margin-top: 4px; font-size: 10px; }.panel-action { width: 100%; margin-top: 14px; min-height: 38px; font-size: 11px; }
+.calendar-state { display: grid; justify-items: center; gap: 8px; }.error-state strong { color: var(--danger); }.error-state button { padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); color: white; cursor: pointer; }
+.discipline-panel { display: grid; grid-template-columns: 180px minmax(0,1fr); align-items: stretch; margin-bottom: 14px; padding: 0; }
+.discipline-heading { display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 14px 18px; border-right: 1px solid var(--border); }
+.discipline-heading span { color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+.discipline-heading h2 { margin-top: 2px; font-family: var(--font-display); font-size: 16px; }
+.discipline-heading > strong { color: var(--muted-soft); font-size: 10px; font-weight: 650; }
+.discipline-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(185px,1fr)); }
+.discipline-row { display: grid; grid-template-columns: 30px minmax(0,1fr); align-items: center; gap: 10px; min-width: 0; padding: 13px 16px; }
+.discipline-row + .discipline-row { border-left: 1px solid var(--border); }
+.discipline-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; background: var(--surface2); }
+.discipline-ride { background: rgba(31,190,141,.12); }.discipline-run { background: rgba(79,141,247,.12); }.discipline-strength { background: rgba(241,169,59,.12); }.discipline-walk { background: rgba(148,163,184,.12); }
+.discipline-copy { min-width: 0; }
+.discipline-label, .discipline-metric { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.discipline-label strong { font-size: 11px; }.discipline-label span, .discipline-metric span { color: var(--muted); font-size: 9px; }
+.discipline-metric { margin-top: 3px; }.discipline-metric strong { font-family: var(--font-display); font-size: 15px; }
+.discipline-track { height: 3px; margin-top: 8px; overflow: hidden; border-radius: 3px; background: var(--surface3); }.discipline-track i { display: block; height: 100%; border-radius: inherit; background: var(--accent-strong); }
+.discipline-empty { align-self: center; padding: 18px; color: var(--muted); font-size: 11px; }
+@media (max-width: 1400px) { .calendar-layout { grid-template-columns: minmax(0,1fr); }.calendar-rail { position: static; grid-template-columns: repeat(2,minmax(0,1fr)); }.weekday-row { grid-template-columns: repeat(7,minmax(0,1fr)) 118px; }.month-grid { grid-template-columns: repeat(7,minmax(0,1fr)) 118px; } }
+@media (max-width: 1100px) { .legend { display: none; }.period-bar { grid-template-columns: auto 1fr; }.weekday-row { grid-template-columns: repeat(7,minmax(0,1fr)); }.week-total-label, .week-total { display: none; }.month-grid { grid-template-columns: repeat(7,minmax(0,1fr)); } }
+@media (max-width: 760px) {
+  .calendar-toolbar { align-items: flex-start; }.toolbar-actions { align-items: stretch; flex-direction: column; }.plan-action { min-height: 36px; }.page-sub { max-width: 34ch; }
+  .period-bar { position: sticky; top: 0; z-index: 5; grid-template-columns: 1fr; gap: 7px; }.period-navigation { justify-content: center; }.period-title { grid-row: 1; }.load-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }.weekday-row { display: none; }
+  .month-grid, .week-grid { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 8px; }.month-grid :deep(.calendar-day.is-outside) { display: none; }.week-grid :deep(.calendar-day) { min-height: auto; }
+  .discipline-panel { grid-template-columns: 1fr; }.discipline-heading { flex-direction: row; align-items: center; justify-content: space-between; border-right: 0; border-bottom: 1px solid var(--border); }.discipline-list { grid-template-columns: 1fr; }.discipline-row + .discipline-row { border-left: 0; border-top: 1px solid var(--border); }
+  .calendar-layout { gap: 10px; }.calendar-rail { grid-template-columns: 1fr; order: -1; }.legend { display: none; }
+}
+@media (max-width: 480px) { .calendar-toolbar { display: grid; }.toolbar-actions { flex-direction: row; justify-content: space-between; }.view-switch button { min-width: 64px; }.load-summary strong { font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 </style>

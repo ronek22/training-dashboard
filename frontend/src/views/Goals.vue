@@ -1,237 +1,69 @@
 <template>
   <div class="motion-page">
-    <div class="page-head motion-section">
+    <div class="page-head goals-page-head motion-section">
       <div>
+        <div class="page-eyebrow">Performance planning</div>
         <h1 class="page-title">Goals</h1>
-        <p class="page-sub">Track weekly, monthly, and yearly training targets.</p>
+        <p class="page-sub">See what is moving, what needs attention, and the most useful next step.</p>
       </div>
-      <button class="add-goal-btn" @click="openDialog">Add Goal</button>
+      <button class="add-goal-btn" @click="openDialog"><span aria-hidden="true">＋</span> New goal</button>
     </div>
 
-    <div v-if="loading" class="empty card motion-section">Loading goals…</div>
+    <div v-if="loading" class="goal-loading motion-section" role="status" aria-live="polite">
+      <div v-for="index in 3" :key="index" class="card goal-skeleton"><span></span><span></span><span></span></div>
+    </div>
     <div v-else class="goal-sections motion-section">
-      <div class="card training-context-card">
-        <div class="training-context-top">
-          <div>
-            <div class="card-title">Training Context</div>
-            <div class="page-sub">Compact planning context for goals, planning, and coaching.</div>
-          </div>
-          <button class="dialog-secondary" @click="contextExpanded = !contextExpanded">
-            {{ contextExpanded ? 'Collapse details' : 'Expand details' }}
-          </button>
+      <section v-if="goals.length" class="goal-overview" aria-label="Goal overview">
+        <div class="goal-overview-copy">
+          <span class="overview-kicker">Current focus</span>
+          <strong>{{ goalOverviewTitle }}</strong>
+          <p>{{ goalOverviewCopy }}</p>
         </div>
-
-        <div class="training-context-glance">
-          <div class="context-glance-chip">
-            <span>Focus</span>
-            <strong>{{ athleteProfile?.focus?.label || 'General fitness' }}</strong>
-          </div>
-          <div class="context-glance-chip">
-            <span>Run pace</span>
-            <strong>{{ runThresholdLabel }}</strong>
-          </div>
-          <div class="context-glance-chip">
-            <span>Ride power</span>
-            <strong>{{ rideThresholdLabel }}</strong>
-          </div>
-          <div class="context-glance-chip">
-            <span>Next workout</span>
-            <strong>{{ strengthRotationNextLabel }}</strong>
-          </div>
+        <div class="goal-overview-stats">
+          <div><strong>{{ goals.length }}</strong><span>Active</span></div>
+          <div><strong>{{ attentionGoalCount }}</strong><span>Need attention</span></div>
+          <div><strong>{{ completedGoalCount }}</strong><span>Achieved</span></div>
         </div>
+      </section>
 
-        <div class="training-context-grid">
-          <section class="training-context-section">
-            <div class="training-context-section-top">
-              <div>
-                <div class="training-context-title">Athlete Profile</div>
-                <Transition name="expand-fade">
-                  <div v-if="contextExpanded" class="training-context-copy">Durable coaching context for planning, dashboard reads, and MCP.</div>
-                </Transition>
-              </div>
-              <button class="dialog-secondary dialog-secondary-compact" @click="openProfileDialog">Edit</button>
-            </div>
-            <div class="training-context-stat-grid">
-              <article class="context-stat">
-                <span>Primary focus</span>
-                <strong>{{ athleteProfile?.focus?.label || 'General fitness' }}</strong>
-              </article>
-              <article class="context-stat">
-                <span>Priority order</span>
-                <strong>{{ profilePriorityLabel }}</strong>
-              </article>
-              <article class="context-stat">
-                <span>Long-session days</span>
-                <strong>{{ profileLongDaysLabel }}</strong>
-              </article>
-            </div>
-            <Transition name="expand-fade">
-              <div
-                v-if="contextExpanded && (athleteProfile?.athlete_brief?.current_block || athleteProfile?.athlete_brief?.weekly_availability_notes || athleteProfile?.athlete_brief?.planning_notes)"
-                class="training-context-notes"
-              >
-                <div v-if="athleteProfile?.athlete_brief?.current_block" class="context-note">
-                  <span>Current block</span>
-                  <strong>{{ athleteProfile.athlete_brief.current_block }}</strong>
-                </div>
-                <div v-if="athleteProfile?.athlete_brief?.weekly_availability_notes" class="context-note">
-                  <span>Availability</span>
-                  <strong>{{ athleteProfile.athlete_brief.weekly_availability_notes }}</strong>
-                </div>
-                <div v-if="athleteProfile?.athlete_brief?.planning_notes" class="context-note">
-                  <span>Planning notes</span>
-                  <strong>{{ athleteProfile.athlete_brief.planning_notes }}</strong>
-                </div>
-              </div>
-            </Transition>
-          </section>
-
-          <section class="training-context-section">
-            <div class="training-context-section-top">
-              <div>
-                <div class="training-context-title">Performance Foundation</div>
-                <Transition name="expand-fade">
-                  <div v-if="contextExpanded" class="training-context-copy">Manual threshold anchors make benchmark and zone-dependent reads explicit instead of guessed.</div>
-                </Transition>
-              </div>
-              <button class="dialog-secondary dialog-secondary-compact" @click="openPerformanceDialog">Edit</button>
-            </div>
-            <div class="training-context-stat-grid">
-              <article class="context-stat">
-                <span>Run threshold pace</span>
-                <strong>{{ runThresholdLabel }}</strong>
-              </article>
-              <article class="context-stat">
-                <span>Ride threshold power</span>
-                <strong>{{ rideThresholdLabel }}</strong>
-              </article>
-              <article class="context-stat">
-                <span>Zone foundation</span>
-                <strong>{{ zoneFoundationHeadline }}</strong>
-              </article>
-            </div>
-            <Transition name="expand-fade">
-              <div v-if="contextExpanded" class="training-context-notes">
-                <div class="context-note">
-                  <span>Best run benchmarks</span>
-                  <strong>{{ runBenchmarkSummary }}</strong>
-                </div>
-                <div class="context-note">
-                  <span>Best 10-minute power</span>
-                  <strong>{{ rideBenchmarkSummary }}</strong>
-                </div>
-                <div class="context-note">
-                  <span>Longest recent zone 2 block</span>
-                  <strong>{{ zoneBlockSummary }}</strong>
-                </div>
-              </div>
-            </Transition>
-          </section>
-
-          <section class="training-context-section">
-            <div class="training-context-section-top">
-              <div>
-                <div class="training-context-title">Workout Rotation</div>
-                <Transition name="expand-fade">
-                  <div v-if="contextExpanded" class="training-context-copy">Structured strength templates stay durable across weeks instead of resetting to generic sessions.</div>
-                </Transition>
-              </div>
-              <button class="dialog-secondary dialog-secondary-compact" @click="openWorkoutTemplateDialog">Edit</button>
-            </div>
-            <div class="training-context-stat-grid">
-              <article class="context-stat">
-                <span>Next workout</span>
-                <strong>{{ strengthRotationNextLabel }}</strong>
-              </article>
-              <article class="context-stat">
-                <span>Last completed</span>
-                <strong>{{ strengthRotationLastLabel }}</strong>
-              </article>
-              <article class="context-stat">
-                <span>Missed-session rule</span>
-                <strong>{{ strengthRotationSkipLabel }}</strong>
-              </article>
-            </div>
-            <Transition name="expand-fade">
-              <div v-if="contextExpanded" class="training-context-notes">
-                <div class="context-note">
-                  <span>Templates</span>
-                  <strong>{{ strengthTemplateLabels }}</strong>
-                </div>
-                <div class="context-note">
-                  <span>Rules</span>
-                  <strong>{{ strengthRotationRuleSummary }}</strong>
-                </div>
-              </div>
-            </Transition>
-          </section>
-        </div>
+      <div v-if="!goals.length" class="card goal-empty">
+        <div class="goal-empty-icon" aria-hidden="true">◎</div>
+        <h2>Set your first training target</h2>
+        <p>Goals connect your logged activities to a measurable weekly, monthly, or yearly outcome.</p>
+        <button class="add-goal-btn" @click="openDialog">Create a goal</button>
       </div>
-
-      <div v-if="activeRestrictions.length" class="card goal-restriction-summary">
-        <div class="goal-restriction-top">
-          <div>
-            <div class="card-title">Current Restrictions</div>
-            <div class="page-sub">Constrained goals are shown explicitly instead of only looking behind pace.</div>
-          </div>
-          <span class="goal-status status-constrained">{{ activeRestrictions.length }} active</span>
-        </div>
-        <div class="goal-restriction-list">
-          <div v-for="item in activeRestrictions" :key="item.modality" class="goal-restriction-item">
-            {{ item.summary }}
-          </div>
-        </div>
-        <div class="goal-restriction-summary-footer">
-          <button class="restriction-inline-action" @click="openRestrictionDialog">Manage restrictions</button>
-        </div>
-      </div>
-
-      <div v-else class="card goal-restriction-summary goal-restriction-summary-empty">
-        <div class="goal-restriction-top">
-          <div>
-            <div class="card-title">Restrictions</div>
-            <div class="page-sub">No modality is currently limited. Add one only when goals need to adapt.</div>
-          </div>
-          <button class="dialog-secondary" @click="openRestrictionDialog">Add restriction</button>
-        </div>
-      </div>
-
-      <div v-if="!goals.length" class="empty card">No goals yet.</div>
 
       <section v-for="section in groupedGoals" :key="section.label" class="goal-section">
-        <div class="section-title">{{ section.label }}</div>
+        <div class="goal-section-head">
+          <div><div class="section-title">{{ section.label }}</div><span>{{ section.items.length }} {{ section.items.length === 1 ? 'goal' : 'goals' }}</span></div>
+          <span>{{ sectionWindowLabel(section.key) }}</span>
+        </div>
         <div class="goal-grid">
-          <article v-for="goal in section.items" :key="goal.id" class="card goal-card">
+          <article v-for="goal in section.items" :key="goal.id" class="card goal-card" :class="`goal-card-${goal.status}`">
             <div class="goal-top">
               <div>
-                <div class="goal-title">{{ goal.title }}</div>
                 <div class="goal-meta-row">
-                  <div class="goal-meta">{{ goal.period_label || periodHeading(goal.period_type) }}</div>
                   <span class="goal-family-chip">{{ goal.family_label }}</span>
+                  <span class="goal-meta">{{ goal.period_label || periodHeading(goal.period_type) }}</span>
                 </div>
+                <h2 class="goal-title">{{ goal.title }}</h2>
               </div>
               <span class="goal-status" :class="`status-${goal.status}`">{{ statusLabel(goal.status) }}</span>
             </div>
 
             <template v-if="usesVolumeDisplay(goal)">
-              <div class="goal-numbers">
-                <strong>{{ formatGoalValue(goal, goal.current_value) }}</strong>
-                <span>/ {{ formatGoalValue(goal, goal.target_value) }} {{ goal.unit }}</span>
+              <div class="goal-progress-head">
+                <div class="goal-numbers"><strong>{{ formatGoalValue(goal, goal.current_value) }}</strong><span>{{ goal.unit }}</span></div>
+                <div class="goal-target"><span>Target</span><strong>{{ formatGoalValue(goal, goal.target_value) }} {{ goal.unit }}</strong></div>
               </div>
-
               <div class="goal-track-wrap">
-                <div class="goal-track">
+                <div class="goal-track" role="progressbar" :aria-label="`${goal.title} progress`" aria-valuemin="0" :aria-valuemax="goal.target_value" :aria-valuenow="goal.current_value">
                   <div class="goal-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
                 </div>
-                <div class="goal-today-marker" :style="{ left: `${goalMarkerOffset(goal)}%` }">
-                  <span>Today</span>
-                </div>
               </div>
-
-              <div class="goal-foot">
-                <span>{{ goal.progress_pct }}%</span>
-                <span>{{ goal.days_remaining }}d left</span>
-                <span>{{ formatGoalValue(goal, goal.remaining_value) }} {{ goal.unit }} remaining</span>
+              <div class="goal-progress-meta">
+                <strong>{{ goal.progress_pct }}% complete</strong>
+                <span>{{ remainingLabel(goal) }}</span>
               </div>
             </template>
 
@@ -253,109 +85,58 @@
               </div>
             </template>
 
-            <div v-if="goal.constraint_summary" class="goal-risk risk-constrained">
-              <span class="goal-risk-label">Restriction</span>
-              <span class="goal-risk-copy">{{ goal.constraint_summary.summary }}</span>
-            </div>
-
-            <div v-if="showGoalReadiness(goal)" class="goal-readiness-block" :class="`readiness-${goal.goal_readiness.state}`">
-              <div class="goal-readiness-top">
-                <span class="goal-planning-label">Goal readiness</span>
-                <span class="goal-readiness-badge">{{ goal.goal_readiness.label }}</span>
+            <div class="goal-insight-grid">
+              <div v-if="usesVolumeDisplay(goal) && goal.status !== 'completed'" class="goal-insight">
+                <span>Against schedule</span><strong :class="paceDeltaClass(goal)">{{ paceLabel(goal) }}</strong>
               </div>
-              <div v-if="goalReadinessSummary(goal)" class="goal-readiness-summary">{{ goalReadinessSummary(goal) }}</div>
-              <div v-if="goalReadinessNextSummary(goal)" class="goal-readiness-next">
-                <strong>What matters next</strong>
-                <span>{{ goalReadinessNextSummary(goal) }}</span>
+              <div class="goal-insight"><span>Time remaining</span><strong>{{ timeRemainingLabel(goal) }}</strong></div>
+              <div v-if="goal.forecast && goal.status !== 'completed'" class="goal-insight">
+                <span>{{ goal.planning_guidance?.required_next_label || 'Needed next' }}</span><strong>{{ forecastNeed(goal) }}</strong>
               </div>
             </div>
 
-            <div v-if="showRiskSummary(goal)" class="goal-risk" :class="`risk-${goal.risk_summary.status}`">
-              <span class="goal-risk-label">{{ goal.risk_summary.label }}</span>
-              <span class="goal-risk-copy">{{ goal.risk_summary.summary }}</span>
+            <div v-if="primaryEvidence(goal)" class="goal-evidence" :class="`evidence-${goal.status}`">
+              <span>{{ evidenceLabel(goal) }}</span><p>{{ primaryEvidence(goal) }}</p>
             </div>
-
-            <div class="goal-required" v-if="usesVolumeDisplay(goal) && goal.status !== 'completed'">
-              <span class="goal-required-label">Vs pace</span>
-              <span class="goal-required-value" :class="paceDeltaClass(goal)">{{ paceLabel(goal) }}</span>
-            </div>
-
-            <div v-if="usesVolumeDisplay(goal) && goal.forecast && goal.status !== 'completed'" class="goal-forecast-grid">
-              <div class="goal-forecast-stat">
-                <span>Projected finish</span>
-                <strong>{{ forecastFinish(goal) }}</strong>
-              </div>
-              <div class="goal-forecast-stat">
-                <span>{{ goal.planning_guidance?.required_next_label || 'Needed next' }}</span>
-                <strong>{{ forecastNeed(goal) }}</strong>
-              </div>
-            </div>
-
-            <div class="goal-planning" v-if="showPlanningGuidance(goal)">
-              <div class="goal-planning-top">
-                <span class="goal-planning-label">Planning cue</span>
-                <span class="goal-planning-status" :class="`planning-${goal.planning_guidance.status}`">
-                  {{ planningGuidanceLabel(goal.planning_guidance.status) }}
-                </span>
-              </div>
-              <div class="goal-planning-summary">{{ goal.planning_guidance.summary }}</div>
-            </div>
-
-            <div v-if="showWeeklyRequirement(goal)" class="goal-planning goal-requirement-block">
-              <div class="goal-planning-top">
-                <span class="goal-planning-label">Weekly requirement</span>
-              </div>
-              <div class="goal-planning-summary">{{ goal.weekly_requirement_summary }}</div>
-              <div v-if="goal.weekly_requirements?.length" class="goal-requirement-list">
-                <span v-for="requirement in goal.weekly_requirements.slice(0, 2)" :key="`${goal.id}-${requirement.type}`" class="goal-family-chip">
-                  {{ requirement.label }}
-                </span>
-              </div>
-            </div>
-
-            <div v-if="goal.derived_foundation" class="goal-planning goal-requirement-block">
-              <div class="goal-planning-top">
-                <span class="goal-planning-label">Derived signal</span>
-                <span class="goal-planning-status" :class="`planning-${goal.derived_foundation.status === 'available' ? 'steady' : 'constrained'}`">
-                  {{ goal.derived_foundation.status === 'available' ? 'Available' : 'Missing' }}
-                </span>
-              </div>
-              <div class="goal-planning-summary">{{ goal.derived_foundation.summary }}</div>
-            </div>
-
-            <div v-if="goal.benchmark_history?.entries?.length" class="goal-planning goal-requirement-block">
-              <div class="goal-planning-top">
-                <span class="goal-planning-label">Benchmark history</span>
-                <span class="goal-planning-status planning-steady">
-                  {{ goal.benchmark_history.latest?.benchmark_label || 'Recent efforts' }}
-                </span>
-              </div>
-              <div class="goal-planning-summary">{{ goal.benchmark_history.summary }}</div>
-              <div class="goal-requirement-list goal-benchmark-history">
-                <span v-for="entry in goal.benchmark_history.entries" :key="`${goal.id}-${entry.id}`" class="goal-family-chip">
-                  {{ benchmarkHistoryEntryLabel(entry) }}
-                </span>
-              </div>
+            <div v-if="nextAction(goal)" class="goal-next-action">
+              <span aria-hidden="true">→</span><div><strong>What matters next</strong><p>{{ nextAction(goal) }}</p></div>
             </div>
           </article>
         </div>
       </section>
+
+      <section class="card goal-settings-card">
+        <button class="goal-settings-toggle" :aria-expanded="contextExpanded" @click="contextExpanded = !contextExpanded">
+          <span><strong>Goal settings</strong><small>Profile, performance anchors, workout rotation, and restrictions</small></span>
+          <span aria-hidden="true">{{ contextExpanded ? '−' : '+' }}</span>
+        </button>
+        <Transition name="expand-fade">
+          <div v-if="contextExpanded" class="goal-settings-grid">
+            <button @click="openProfileDialog"><span>Athlete profile</span><strong>{{ athleteProfile?.focus?.label || 'General fitness' }}</strong><small>{{ profilePriorityLabel }}</small></button>
+            <button @click="openPerformanceDialog"><span>Performance anchors</span><strong>{{ runThresholdLabel }} · {{ rideThresholdLabel }}</strong><small>{{ zoneFoundationHeadline }}</small></button>
+            <button @click="openWorkoutTemplateDialog"><span>Workout rotation</span><strong>{{ strengthRotationNextLabel }}</strong><small>{{ strengthRotationSkipLabel }}</small></button>
+            <button @click="openRestrictionDialog"><span>Restrictions</span><strong>{{ activeRestrictions.length ? `${activeRestrictions.length} active` : 'None active' }}</strong><small>{{ activeRestrictions[0]?.summary || 'Training modalities are unrestricted' }}</small></button>
+          </div>
+        </Transition>
+      </section>
     </div>
 
-    <div v-if="dialogOpen" class="goal-dialog-backdrop" @click.self="closeDialog">
-      <div class="goal-dialog card">
+    <Teleport to="body">
+    <div v-if="dialogOpen" class="goal-dialog-backdrop" @click.self="closeDialog" @keydown.esc="closeDialog">
+      <div class="goal-dialog card" role="dialog" aria-modal="true" aria-labelledby="add-goal-title">
         <div class="goal-dialog-head">
           <div>
-            <div class="card-title">Add Goal</div>
+            <div id="add-goal-title" class="card-title">Add Goal</div>
             <div class="goal-dialog-sub">Set a target and let the app track progress automatically.</div>
           </div>
-          <button class="dialog-close" @click="closeDialog">×</button>
+          <button class="dialog-close" aria-label="Close add goal dialog" @click="closeDialog">×</button>
         </div>
 
         <div class="goal-draft-shell">
           <label class="goal-draft-field">
             <span>Describe the goal naturally</span>
             <textarea
+              ref="goalDraftInput"
               v-model="goalDraftText"
               rows="3"
               placeholder="Examples: run 10k in under 40 minutes by October, hold 300W for 10 minutes, lift twice per week"
@@ -516,6 +297,7 @@
         </div>
       </div>
     </div>
+    </Teleport>
 
     <div v-if="restrictionDialogOpen" class="goal-dialog-backdrop" @click.self="closeRestrictionDialog">
       <div class="goal-dialog card goal-restriction-modal">
@@ -820,7 +602,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useApi } from '../stores/api'
 
 const api = useApi()
@@ -848,6 +630,7 @@ const performanceSettings = ref(null)
 const performanceSummary = ref(null)
 const goalDraftText = ref('')
 const goalDraftPreview = ref(null)
+const goalDraftInput = ref(null)
 const contextExpanded = ref(false)
 
 const form = ref(defaultForm())
@@ -892,6 +675,7 @@ const groupedGoals = computed(() => {
   return groups
     .map((group) => ({
       label: group.label,
+      key: group.key,
       items: goals.value.filter((goal) => goal.period_type === group.key),
     }))
     .filter((group) => group.items.length)
@@ -902,6 +686,25 @@ const activeRestrictions = computed(() =>
     .map((goal) => goal.constraint_summary)
     .filter((item, index, all) => all.findIndex((candidate) => candidate.modality === item.modality) === index)
 )
+const attentionGoalCount = computed(() => goals.value.filter((goal) => ['behind_pace', 'constrained'].includes(goal.status)).length)
+const completedGoalCount = computed(() => goals.value.filter((goal) => goal.status === 'completed').length)
+const priorityGoal = computed(() =>
+  goals.value.find((goal) => goal.status === 'behind_pace') ||
+  goals.value.find((goal) => goal.status === 'constrained') ||
+  goals.value.find((goal) => goal.status === 'on_pace') ||
+  goals.value[0]
+)
+const goalOverviewTitle = computed(() => {
+  if (attentionGoalCount.value) return `${attentionGoalCount.value} ${attentionGoalCount.value === 1 ? 'goal needs' : 'goals need'} attention`
+  if (goals.value.length && completedGoalCount.value === goals.value.length) return 'Every current target is achieved'
+  return 'Your goals are moving in the right direction'
+})
+const goalOverviewCopy = computed(() => {
+  const goal = priorityGoal.value
+  if (!goal) return ''
+  const action = goal.goal_readiness?.what_matters_next?.summary || goal.planning_guidance?.summary || goal.weekly_requirement_summary
+  return action ? `${goal.title}: ${action}` : `${goal.title} is the clearest priority right now.`
+})
 const restrictionStatusOptions = [
   { value: 'allowed', label: 'Allowed' },
   { value: 'limited', label: 'Limited' },
@@ -971,6 +774,7 @@ const openDialog = () => {
   goalDraftText.value = ''
   goalDraftPreview.value = null
   dialogOpen.value = true
+  nextTick(() => goalDraftInput.value?.focus())
 }
 
 const openRestrictionDialog = async () => {
@@ -1355,6 +1159,47 @@ const periodHeading = (periodType) => {
   if (periodType === 'month') return 'This month'
   return 'This year'
 }
+
+const sectionWindowLabel = (periodType) => {
+  if (periodType === 'week') return 'Resets each week'
+  if (periodType === 'month') return 'Current month'
+  return 'Through year end'
+}
+
+const timeRemainingLabel = (goal) => {
+  const days = Number(goal.days_remaining)
+  if (!Number.isFinite(days)) return 'No deadline'
+  if (goal.status === 'completed') return 'Target achieved'
+  if (days < 0) return `${Math.abs(days)}d overdue`
+  if (days === 0) return 'Ends today'
+  if (days === 1) return '1 day'
+  return `${days} days`
+}
+
+const remainingLabel = (goal) => {
+  if (goal.status === 'completed' || Number(goal.remaining_value) <= 0) return 'Target achieved'
+  return `${formatGoalValue(goal, goal.remaining_value)} ${goal.unit} remaining`
+}
+
+const primaryEvidence = (goal) =>
+  goal.constraint_summary?.summary ||
+  goalReadinessSummary(goal) ||
+  goal.risk_summary?.summary ||
+  goal.derived_foundation?.summary ||
+  ''
+
+const evidenceLabel = (goal) => {
+  if (goal.constraint_summary) return 'Training restriction'
+  if (goal.goal_readiness) return 'Recent training'
+  if (goal.risk_summary) return 'Progress signal'
+  return 'Supporting evidence'
+}
+
+const nextAction = (goal) =>
+  goalReadinessNextSummary(goal) ||
+  goal.planning_guidance?.summary ||
+  goal.weekly_requirement_summary ||
+  ''
 
 const statusLabel = (status) => {
   if (status === 'constrained') return 'Constrained'
@@ -2602,5 +2447,104 @@ const showWeeklyRequirement = (goal) => {
   .field-date { width: 100%; }
   .status-toggle { width: 100%; }
   .goal-forecast-grid { grid-template-columns: 1fr; }
+}
+
+/* Goals hierarchy — aligned with Dashboard, Plan, and Calendar */
+.goals-page-head { align-items: flex-end; margin-bottom: 28px; }
+.goals-page-head .page-title { font-size: clamp(28px, 4vw, 36px); letter-spacing: -0.04em; }
+.add-goal-btn { min-height: 42px; padding: 10px 16px; display: inline-flex; align-items: center; gap: 7px; border-radius: 12px; box-shadow: 0 8px 24px rgba(82, 115, 255, 0.18); }
+.add-goal-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+.goal-sections { gap: 28px; }
+.goal-loading { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.goal-skeleton { display: grid; gap: 14px; min-height: 220px; }
+.goal-skeleton span { display: block; height: 14px; border-radius: 999px; background: rgba(148,163,184,.1); animation: skeleton-shimmer 1.2s ease-in-out infinite; }
+.goal-skeleton span:nth-child(2) { width: 58%; height: 34px; }
+.goal-skeleton span:nth-child(3) { width: 78%; }
+.goal-overview { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: center; padding: 22px 24px; border: 1px solid rgba(116,145,214,.18); border-radius: 18px; background: rgba(18,27,44,.72); }
+.goal-overview-copy { display: grid; gap: 5px; }
+.overview-kicker { color: #8eabf5; font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+.goal-overview-copy strong { font-family: var(--font-display); font-size: 20px; letter-spacing: -.02em; }
+.goal-overview-copy p { margin: 0; color: var(--muted-soft); font-size: 13px; line-height: 1.5; }
+.goal-overview-stats { display: grid; grid-template-columns: repeat(3, minmax(76px, 1fr)); }
+.goal-overview-stats div { padding: 2px 18px; border-left: 1px solid var(--border); }
+.goal-overview-stats strong, .goal-overview-stats span { display: block; }
+.goal-overview-stats strong { font-family: var(--font-display); font-size: 22px; line-height: 1.1; }
+.goal-overview-stats span { margin-top: 4px; color: var(--muted); font-size: 10px; white-space: nowrap; text-transform: uppercase; letter-spacing: .06em; }
+.goal-empty { display: grid; justify-items: center; gap: 10px; padding: 52px 24px; text-align: center; }
+.goal-empty-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: rgba(92,126,255,.12); color: #9fb8ff; font-size: 28px; }
+.goal-empty h2 { margin: 6px 0 0; font-family: var(--font-display); font-size: 20px; }
+.goal-empty p { max-width: 50ch; margin: 0 0 8px; color: var(--muted); }
+.goal-section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.goal-section-head > div { display: flex; align-items: baseline; gap: 9px; }
+.goal-section-head .section-title { margin: 0; font-size: 17px; }
+.goal-section-head span { color: var(--muted); font-size: 11px; }
+.goal-grid { align-items: start; }
+.goal-card { position: relative; overflow: hidden; padding: 20px; border-radius: 18px; }
+.goal-card::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: #6288ff; opacity: .85; }
+.goal-card-completed::before, .goal-card-ahead_of_pace::before { background: #2fc990; }
+.goal-card-behind_pace::before { background: #f0a743; }
+.goal-card-constrained::before { background: #df9a42; }
+.goal-top { align-items: flex-start; margin-bottom: 20px; }
+.goal-title { margin: 8px 0 0; max-width: 34ch; font-size: 19px; line-height: 1.3; overflow-wrap: anywhere; }
+.goal-meta { margin: 0; }
+.goal-status { min-width: 0; padding: 5px 9px; border: 1px solid currentColor; border-color: color-mix(in srgb, currentColor 28%, transparent); font-size: 10px; }
+.status-behind_pace { background: rgba(245,158,11,.1); color: #f8c36c; }
+.goal-progress-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.goal-numbers { margin: 0; gap: 6px; }
+.goal-numbers strong { font-size: 34px; letter-spacing: -.04em; }
+.goal-numbers span { font-size: 13px; }
+.goal-target { display: grid; justify-items: end; }
+.goal-target span, .goal-insight span, .goal-evidence > span, .goal-next-action strong { color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.goal-target strong { font-size: 13px; }
+.goal-track-wrap { margin: 14px 0 8px; }
+.goal-track { height: 7px; }
+.goal-fill { background: #6f91f8; }
+.goal-card-completed .goal-fill, .goal-card-ahead_of_pace .goal-fill { background: #35c696; }
+.goal-card-behind_pace .goal-fill, .goal-card-constrained .goal-fill { background: #d9a14e; }
+.goal-progress-meta { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; }
+.goal-progress-meta strong { color: #d9e4ff; font-weight: 650; }
+.goal-insight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1px; margin-top: 18px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--border); }
+.goal-insight { min-width: 0; padding: 10px 11px; background: rgba(14,21,34,.94); }
+.goal-insight span, .goal-insight strong { display: block; }
+.goal-insight strong { margin-top: 5px; font-size: 13px; overflow-wrap: anywhere; }
+.goal-evidence { display: grid; gap: 4px; margin-top: 14px; padding: 11px 12px; border-radius: 12px; border: 1px solid rgba(99,133,220,.15); background: rgba(85,116,193,.06); }
+.goal-evidence p, .goal-next-action p { margin: 0; color: #cbd7f2; font-size: 12px; line-height: 1.45; }
+.evidence-behind_pace, .evidence-constrained { border-color: rgba(221,157,68,.2); background: rgba(221,157,68,.06); }
+.goal-next-action { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 10px; align-items: start; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.goal-next-action > span { color: #8ca9f5; font-size: 17px; line-height: 1.2; }
+.goal-next-action div { display: grid; gap: 3px; }
+.goal-settings-card { padding: 0; overflow: hidden; }
+.goal-settings-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 20px; border: 0; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.goal-settings-toggle > span:first-child { display: grid; gap: 2px; }
+.goal-settings-toggle strong { font-family: var(--font-display); font-size: 14px; }
+.goal-settings-toggle small { color: var(--muted); font-size: 11px; }
+.goal-settings-toggle > span:last-child { font-size: 22px; color: var(--muted); }
+.goal-settings-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1px; padding: 1px; border-top: 1px solid var(--border); background: var(--border); }
+.goal-settings-grid button { display: grid; align-content: start; gap: 6px; min-height: 112px; padding: 14px; border: 0; background: #111827; color: var(--text); text-align: left; cursor: pointer; }
+.goal-settings-grid button:hover { background: var(--surface2); }
+.goal-settings-grid span { color: #8ea7e5; font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.goal-settings-grid strong { font-size: 13px; line-height: 1.35; }
+.goal-settings-grid small { color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
+
+@media (max-width: 900px) {
+  .goal-overview { grid-template-columns: 1fr; gap: 18px; }
+  .goal-overview-stats { border-top: 1px solid var(--border); padding-top: 16px; }
+  .goal-overview-stats div:first-child { border-left: 0; padding-left: 0; }
+  .goal-settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .goals-page-head { align-items: stretch; }
+  .goals-page-head .add-goal-btn { justify-content: center; width: 100%; }
+  .goal-overview { padding: 18px; }
+  .goal-overview-stats div { padding: 2px 10px; }
+  .goal-overview-stats span { white-space: normal; line-height: 1.25; }
+  .goal-card { padding: 17px; }
+  .goal-top { gap: 8px; }
+  .goal-title { font-size: 17px; }
+  .goal-progress-head { align-items: flex-start; }
+  .goal-numbers strong { font-size: 29px; }
+  .goal-insight-grid { grid-template-columns: 1fr; }
+  .goal-settings-grid { grid-template-columns: 1fr; }
+  .goal-section-head > span { display: none; }
 }
 </style>

@@ -1,15 +1,15 @@
 <template>
   <div class="strength-page motion-page">
-    <section class="strength-hero motion-section">
+    <section class="page-head strength-hero motion-section">
       <div class="strength-hero-copy">
-        <div class="page-eyebrow">Fitbod Analytics</div>
+        <div class="page-eyebrow">Strength training</div>
         <h1 class="page-title">Strength</h1>
-        <p class="page-copy">Deterministic reads on gym work: workload, frequency, and which lifts are actually moving.</p>
+        <p class="page-sub">Review recent gym work, movement balance, and measured lift progress alongside your endurance training.</p>
       </div>
-      <router-link to="/sync" class="back-link">Review Sync</router-link>
+      <router-link to="/sync" class="strength-action">Import workouts</router-link>
     </section>
 
-    <section class="card strength-toolbar motion-section">
+    <section class="strength-toolbar motion-section" aria-label="Strength filters">
       <div class="toolbar-block">
         <span class="toolbar-label">Window</span>
         <div class="range-switch">
@@ -55,6 +55,32 @@
       </div>
 
       <template v-else>
+        <section v-if="latestSession" class="card latest-session motion-section">
+          <div class="latest-session-main">
+            <div class="section-head">
+              <div>
+                <div class="card-title">Latest session</div>
+                <h2 class="latest-session-title">{{ latestSession.title || 'Strength workout' }}</h2>
+                <p class="section-copy">{{ formatDateTime(latestSession.workout_timestamp) }} · Completed</p>
+              </div>
+              <span class="status-badge status-complete"><span aria-hidden="true">✓</span> Completed</span>
+            </div>
+            <div class="latest-session-metrics">
+              <div><span>Duration</span><strong>{{ formatDuration(latestSession) }}</strong></div>
+              <div><span>Exercises</span><strong>{{ latestSession.exercise_count }}</strong></div>
+              <div><span>Working sets</span><strong>{{ latestWorkSets }}</strong></div>
+              <div><span>Tracked volume</span><strong>{{ formatWorkload(latestSession.total_volume_kg) }}</strong></div>
+            </div>
+            <p class="latest-session-focus">{{ latestSession.major_exercises.join(' · ') }}</p>
+          </div>
+          <aside class="next-step" aria-label="Recommended next action">
+            <span class="next-step-label">Next useful action</span>
+            <strong>{{ latestSessionNextStep.title }}</strong>
+            <p>{{ latestSessionNextStep.copy }}</p>
+            <router-link :to="`/activities/${latestSession.matched_activity.id}`" class="detail-link">Review session <span aria-hidden="true">→</span></router-link>
+          </aside>
+        </section>
+
         <section class="summary-ribbon motion-section" :aria-busy="loading ? 'true' : 'false'">
           <article v-for="card in summaryCards" :key="card.label" class="card summary-tile">
             <span class="summary-label">{{ card.label }}</span>
@@ -84,8 +110,8 @@
           <article class="card trend-stage">
             <div class="section-head">
               <div>
-                <div class="card-title">Weekly Trend</div>
-                <div class="section-copy">Volume drives the main curve. Session count stays visible as a compact lower strip.</div>
+                <div class="card-title">Weekly training volume</div>
+                <div class="section-copy">Tracked external load × repetitions. Session ticks appear below the curve.</div>
               </div>
               <div class="section-callout">
                 <strong>{{ strongestWeek?.label || 'No peak week' }}</strong>
@@ -140,8 +166,8 @@
           <article class="card buckets-stage">
             <div class="section-head">
               <div>
-                <div class="card-title">Heuristic Buckets</div>
-                <div class="section-copy">A lightweight filter layer over literal imported names.</div>
+                <div class="card-title">Movement distribution</div>
+                <div class="section-copy">Where your recorded strength work has been concentrated.</div>
               </div>
             </div>
 
@@ -171,8 +197,8 @@
           <article class="card lifts-stage" :class="{ 'panel-refreshing': loading }">
             <div class="section-head">
               <div>
-                <div class="card-title">Recurring Lifts</div>
-                <div class="section-copy">Dense ranking by recurrence first, then by total volume.</div>
+                <div class="card-title">Exercise progression</div>
+                <div class="section-copy">Choose a recurring exercise to review its measured load and volume history.</div>
               </div>
               <span v-if="loading" class="inline-loading-chip">Updating…</span>
             </div>
@@ -270,25 +296,35 @@
             </div>
           </div>
 
-          <div class="session-grid">
-            <article v-for="session in overview.sessions" :key="session.id" class="session-card">
+          <div class="session-list">
+            <details v-for="session in overview.sessions" :key="session.id" class="session-card">
+              <summary>
               <div class="session-card-top">
                 <div>
                   <strong>{{ session.title || 'Strength workout' }}</strong>
-                  <div class="session-meta">
-                    <span>{{ formatDateTime(session.workout_timestamp) }}</span>
-                    <span>{{ session.exercise_count }} exercises</span>
-                  </div>
+                  <div class="session-meta"><span>{{ formatDateTime(session.workout_timestamp) }}</span><span class="status-inline">Completed</span></div>
                 </div>
                 <strong class="session-volume">{{ formatWorkload(session.total_volume_kg) }}</strong>
               </div>
-              <div class="session-meta">
-                <span>{{ session.set_count }} sets</span>
-                <span>{{ session.rep_count }} reps</span>
+              <div class="session-meta"><span>{{ session.exercise_count }} exercises</span><span>{{ session.set_count }} sets</span><span>{{ session.rep_count }} reps</span></div>
+              <span class="session-expand">Show exercises <span aria-hidden="true">⌄</span></span>
+              </summary>
+              <div class="session-exercises">
+                <article v-for="exercise in session.exercises" :key="exercise.id" class="session-exercise">
+                  <div class="exercise-head">
+                    <div><strong>{{ exercise.exercise_name }}</strong><span>{{ bodyPartLabel(exercise.body_part) }} · {{ exercise.work_set_count }} work<span v-if="exercise.warmup_set_count"> + {{ exercise.warmup_set_count }} warm-up</span></span></div>
+                    <strong>{{ formatWorkload(exercise.total_volume_kg) }}</strong>
+                  </div>
+                  <div class="set-groups" :aria-label="`${exercise.exercise_name} sets`">
+                    <span v-for="set in exercise.sets" :key="set.id" class="set-pill" :class="{ warmup: set.is_warmup }">
+                      <small>{{ set.is_warmup ? 'W' : set.set_order }}</small>
+                      <strong>{{ formatSet(set) }}</strong>
+                    </span>
+                  </div>
+                </article>
+                <router-link :to="`/activities/${session.matched_activity.id}`" class="detail-link session-detail-link">Open full activity <span aria-hidden="true">→</span></router-link>
               </div>
-              <div class="session-major">{{ session.major_exercises.join(' · ') }}</div>
-              <router-link :to="`/activities/${session.matched_activity.id}`" class="detail-link">Open activity</router-link>
-            </article>
+            </details>
           </div>
         </section>
       </template>
@@ -325,12 +361,20 @@ const summaryCards = computed(() => {
   if (!overview.value) return []
   const summary = overview.value.summary
   return [
-    { label: 'Sessions', value: summary.session_count, copy: 'Linked workouts inside the selected window.' },
-    { label: 'Volume', value: formatWorkload(summary.total_volume_kg), copy: 'Tracked load only.' },
-    { label: 'Sets', value: summary.total_sets, copy: 'Warmup and work sets together.' },
-    { label: 'Reps', value: summary.total_reps, copy: 'Useful for understanding work density.' },
-    { label: 'Exercises', value: summary.unique_exercises, copy: 'Distinct imported names after filtering.' },
+    { label: 'Sessions', value: summary.session_count, copy: `${activeWeeks.value} active of ${selectedWeeks.value} weeks` },
+    { label: 'Frequency', value: `${trimNumber(summary.session_count / selectedWeeks.value)}/wk`, copy: 'Average completed sessions' },
+    { label: 'Tracked volume', value: formatWorkload(summary.total_volume_kg), copy: 'External load × repetitions' },
+    { label: 'Recorded sets', value: summary.total_sets, copy: `Work + warm-up · ${summary.unique_exercises} exercises` },
   ]
+})
+
+const latestSession = computed(() => overview.value?.sessions?.[0] || null)
+const activeWeeks = computed(() => (overview.value?.weekly || []).filter((week) => week.session_count > 0).length)
+const latestWorkSets = computed(() => latestSession.value?.exercises.reduce((total, exercise) => total + exercise.work_set_count, 0) || 0)
+const latestSessionNextStep = computed(() => {
+  const exercise = overview.value?.selected_exercise || overview.value?.exercises?.[0]
+  if (!exercise) return { title: 'Review your session', copy: 'Check the linked activity and confirm the imported workout details.' }
+  return { title: `Review ${exercise.exercise_name}`, copy: `${exercise.appearance_count} appearances in this window. Open its progression below to check load and volume history.` }
 })
 
 const strongestWeek = computed(() => {
@@ -481,6 +525,16 @@ const formatDateTime = (value) => {
   }
 }
 
+const formatDuration = (session) => {
+  const minutes = session?.matched_activity?.duration_min ?? (session?.total_duration_seconds != null ? session.total_duration_seconds / 60 : null)
+  return minutes == null ? 'Not recorded' : `${trimNumber(minutes)} min`
+}
+
+const formatSet = (set) => {
+  const reps = set.reps == null ? '— reps' : `${trimNumber(set.reps)} rep${Number(set.reps) === 1 ? '' : 's'}`
+  return set.weight_kg == null || Number(set.weight_kg) === 0 ? reps : `${trimNumber(set.weight_kg)} kg × ${trimNumber(set.reps)}`
+}
+
 const trimNumber = (value) => {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return '0'
@@ -513,8 +567,22 @@ const round = (value) => Math.round(value * 10) / 10
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding: 6px 0 2px;
+  padding: 0;
+  margin-bottom: 0;
 }
+
+.strength-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  color: var(--text-soft);
+  font-weight: 700;
+}
+
+.strength-action:hover { background: var(--surface2); color: var(--text); }
 
 .strength-hero-copy {
   max-width: 720px;
@@ -525,11 +593,9 @@ const round = (value) => Math.round(value * 10) / 10
   grid-template-columns: 1.15fr 1fr 1fr;
   gap: 18px;
   align-items: end;
-  padding: 18px 22px;
-  background:
-    radial-gradient(circle at left center, rgba(244, 145, 54, 0.18), transparent 26%),
-    radial-gradient(circle at right center, rgba(38, 191, 168, 0.12), transparent 24%),
-    linear-gradient(135deg, rgba(14, 22, 36, 0.98), rgba(10, 18, 29, 0.96));
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .toolbar-block,
@@ -591,9 +657,32 @@ const round = (value) => Math.round(value * 10) / 10
 
 .summary-ribbon {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
+
+.latest-session {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, .7fr);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border-color: rgba(241, 169, 59, .28);
+}
+
+.latest-session-main { padding: 24px; }
+.latest-session-title { font-family: var(--font-display); font-size: 24px; line-height: 1.2; margin-bottom: 4px; }
+.status-badge { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.status-complete { color: #8be0bd; background: rgba(52, 211, 153, .1); border: 1px solid rgba(52, 211, 153, .2); }
+.latest-session-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.latest-session-metrics div { display: grid; gap: 4px; padding-right: 12px; border-right: 1px solid var(--border); }
+.latest-session-metrics div:last-child { border-right: 0; }
+.latest-session-metrics span, .next-step-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.latest-session-metrics strong { font-size: 17px; }
+.latest-session-focus { color: var(--muted-soft); margin-top: 18px; }
+.next-step { display: grid; align-content: center; gap: 9px; padding: 24px; background: rgba(241, 169, 59, .055); border-left: 1px solid rgba(241, 169, 59, .16); }
+.next-step > strong { font-size: 17px; }
+.next-step p { color: var(--muted-soft); line-height: 1.5; }
 
 .analysis-grid-refreshing {
   align-items: start;
@@ -659,8 +748,8 @@ const round = (value) => Math.round(value * 10) / 10
 }
 
 .summary-tile {
-  min-height: 138px;
-  padding: 20px 22px;
+  min-height: 116px;
+  padding: 18px 20px;
   display: grid;
   gap: 8px;
   background:
@@ -674,7 +763,7 @@ const round = (value) => Math.round(value * 10) / 10
 }
 
 .summary-value {
-  font-size: 32px;
+  font-size: 27px;
   line-height: 1.02;
   letter-spacing: -0.03em;
 }
@@ -1028,11 +1117,7 @@ const round = (value) => Math.round(value * 10) / 10
   padding-bottom: 16px;
 }
 
-.session-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px;
-}
+.session-list { display: grid; gap: 10px; }
 
 .session-card {
   display: grid;
@@ -1042,6 +1127,23 @@ const round = (value) => Math.round(value * 10) / 10
   border: 1px solid rgba(132, 149, 181, 0.12);
   background: rgba(255, 255, 255, 0.03);
 }
+
+.session-card summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 18px; cursor: pointer; list-style: none; }
+.session-card summary::-webkit-details-marker { display: none; }
+.session-card[open] { border-color: var(--border-strong); background: rgba(255,255,255,.04); }
+.session-expand { color: var(--muted-soft); font-size: 12px; font-weight: 700; align-self: end; }
+.session-card[open] .session-expand span { display: inline-block; transform: rotate(180deg); }
+.status-inline { color: #8be0bd; }
+.session-exercises { display: grid; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.session-exercise { display: grid; gap: 10px; padding: 12px 0; }
+.exercise-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.exercise-head > div { display: grid; gap: 3px; }
+.exercise-head span { color: var(--muted); font-size: 12px; }
+.set-groups { display: flex; flex-wrap: wrap; gap: 8px; }
+.set-pill { display: inline-grid; grid-template-columns: auto auto; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 9px; background: rgba(255,255,255,.025); }
+.set-pill small { color: var(--muted); }
+.set-pill.warmup { border-style: dashed; }
+.session-detail-link { margin-top: 4px; }
 
 .session-card-top {
   display: flex;
@@ -1072,7 +1174,7 @@ const round = (value) => Math.round(value * 10) / 10
 
 @media (max-width: 1280px) {
   .summary-ribbon {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .analysis-grid-top,
@@ -1081,6 +1183,9 @@ const round = (value) => Math.round(value * 10) / 10
   .spotlight-stats {
     grid-template-columns: 1fr;
   }
+
+  .latest-session { grid-template-columns: 1fr; }
+  .next-step { border-left: 0; border-top: 1px solid rgba(241, 169, 59, .16); }
 }
 
 @media (max-width: 860px) {
@@ -1093,9 +1198,16 @@ const round = (value) => Math.round(value * 10) / 10
   }
 
   .summary-ribbon,
-  .session-grid {
+  .latest-session-metrics {
     grid-template-columns: 1fr;
   }
+
+  .latest-session-metrics div { padding: 0 0 10px; border-right: 0; border-bottom: 1px solid var(--border); }
+  .latest-session-metrics div:last-child { border-bottom: 0; }
+  .session-card summary { grid-template-columns: 1fr; }
+  .strength-action { width: fit-content; }
+  .range-switch { width: 100%; }
+  .range-chip { flex: 1; }
 
   .lift-row {
     grid-template-columns: 36px 1fr;

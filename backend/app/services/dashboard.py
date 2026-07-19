@@ -437,63 +437,80 @@ def build_planned_intent_summary(active_plan: Optional[dict]) -> dict:
     }
 
 
-def latest_metric_value(conn: sqlite3.Connection, metric_name: str) -> Optional[float]:
+def latest_metric_value(
+    conn: sqlite3.Connection,
+    metric_name: str,
+    as_of_date: Optional[str] = None,
+) -> Optional[float]:
+    date_clause = "AND date <= ?" if as_of_date else ""
+    params = (metric_name, as_of_date) if as_of_date else (metric_name,)
     row = conn.execute(
-        """
+        f"""
         SELECT value
         FROM metrics
         WHERE metric = ?
+          {date_clause}
         ORDER BY date DESC, id DESC
         LIMIT 1
         """,
-        (metric_name,),
+        params,
     ).fetchone()
     if not row:
         return None
     return float(row["value"])
 
 
-def estimate_thresholds(conn: sqlite3.Connection) -> dict:
-    resting_hr = latest_metric_value(conn, "resting_hr") or 58.0
-    ftp = latest_metric_value(conn, "ftp")
+def estimate_thresholds(conn: sqlite3.Connection, as_of_date: Optional[str] = None) -> dict:
+    resting_hr = latest_metric_value(conn, "resting_hr", as_of_date) or 58.0
+    ftp = latest_metric_value(conn, "ftp", as_of_date)
+    date_clause = "AND date <= ?" if as_of_date else ""
+    params = (as_of_date,) if as_of_date else ()
 
     run_max_hr_row = conn.execute(
-        """
+        f"""
         SELECT MAX(max_hr) AS max_hr
         FROM activities
         WHERE type = 'Run' AND max_hr IS NOT NULL
-        """
+          {date_clause}
+        """,
+        params,
     ).fetchone()
     ride_max_hr_row = conn.execute(
-        """
+        f"""
         SELECT MAX(max_hr) AS max_hr
         FROM activities
         WHERE type IN ('Ride', 'VirtualRide') AND max_hr IS NOT NULL
-        """
+          {date_clause}
+        """,
+        params,
     ).fetchone()
     recent_run_hr_row = conn.execute(
-        """
+        f"""
         SELECT ROUND(AVG(avg_hr), 0) AS avg_hr
         FROM (
             SELECT avg_hr
             FROM activities
             WHERE type = 'Run' AND avg_hr IS NOT NULL
+              {date_clause}
             ORDER BY date DESC
             LIMIT 12
         )
-        """
+        """,
+        params,
     ).fetchone()
     recent_ride_hr_row = conn.execute(
-        """
+        f"""
         SELECT ROUND(AVG(avg_hr), 0) AS avg_hr
         FROM (
             SELECT avg_hr
             FROM activities
             WHERE type IN ('Ride', 'VirtualRide') AND avg_hr IS NOT NULL
+              {date_clause}
             ORDER BY date DESC
             LIMIT 12
         )
-        """
+        """,
+        params,
     ).fetchone()
 
     run_lthr = max(170.0, float(recent_run_hr_row["avg_hr"] or 0) + 6.0) if recent_run_hr_row else 172.0
@@ -646,6 +663,22 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
     start_day = today - timedelta(days=safe_days - 1)
     thresholds = estimate_thresholds(conn)
 
+    # CTL and ATL are stateful: the value on the first displayed day depends on
+    # all training before it. Starting the EWMA at the edge of the moving chart
+    # window makes every overlapping historical point drift when that edge moves.
+    # Warm the model from the athlete's first activity, then return only the
+    # requested display window.
+    first_activity_row = conn.execute(
+        "SELECT MIN(date) AS first_date FROM activities WHERE date <= ?",
+        (today.isoformat(),),
+    ).fetchone()
+    first_activity_date = first_activity_row["first_date"] if first_activity_row else None
+    calculation_start_day = (
+        min(start_day, datetime.strptime(first_activity_date, "%Y-%m-%d").date())
+        if first_activity_date
+        else start_day
+    )
+
     activity_rows = conn.execute(
         """
         SELECT
@@ -667,14 +700,15 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
         WHERE a.date >= ?
         ORDER BY a.date ASC, a.created_at ASC
         """,
-        (start_day.isoformat(),),
+        (calculation_start_day.isoformat(),),
     ).fetchall()
 
     by_day: dict[str, dict] = {}
     focus_loads = {"low_aerobic": 0.0, "high_aerobic": 0.0, "anaerobic": 0.0}
 
-    for offset in range(safe_days):
-        day = start_day + timedelta(days=offset)
+    calculation_days = (today - calculation_start_day).days + 1
+    for offset in range(calculation_days):
+        day = calculation_start_day + timedelta(days=offset)
         key = day.isoformat()
         by_day[key] = {
             "date": key,
@@ -687,18 +721,27 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
 
     focus_cutoff = today - timedelta(days=safe_focus_days - 1)
     load_sources = {"power_tss": 0, "hr_trimp": 0, "duration": 0}
+    historical_thresholds: dict[str, dict] = {}
 
     for row in activity_rows:
         day = row["date"]
         if day not in by_day:
             continue
 
-        details = activity_load_details(row, thresholds)
+        if row["stream_power_tss"] is not None or row["stream_hr_trimp"] is not None:
+            activity_thresholds = thresholds
+        else:
+            activity_thresholds = historical_thresholds.get(day)
+            if activity_thresholds is None:
+                activity_thresholds = estimate_thresholds(conn, as_of_date=day)
+                historical_thresholds[day] = activity_thresholds
+        details = activity_load_details(row, activity_thresholds)
         load = details["load"]
         bucket = details["bucket"]
+        row_day = datetime.strptime(day, "%Y-%m-%d").date()
         by_day[day]["load"] += load
         by_day[day]["load_source"] = details["source"]
-        if details["source"] in load_sources:
+        if row_day >= start_day and details["source"] in load_sources:
             load_sources[details["source"]] += 1
 
         if row["type"] == "Run":
@@ -708,7 +751,6 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
         elif row["type"] == "WeightTraining":
             by_day[day]["strength_load"] += load
 
-        row_day = datetime.strptime(day, "%Y-%m-%d").date()
         if row_day >= focus_cutoff and bucket in focus_loads:
             focus_loads[bucket] += load
 
@@ -726,17 +768,19 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
     ctl_series = ewma(daily_values, 42)
     atl_series = ewma(daily_values, 7)
 
-    chart = []
+    full_chart = []
     for index, item in enumerate(series):
         ctl = round(ctl_series[index], 1)
         atl = round(atl_series[index], 1)
         tsb = round(ctl - atl, 1)
-        chart.append({
+        full_chart.append({
             **item,
             "ctl": ctl,
             "atl": atl,
             "tsb": tsb,
         })
+
+    chart = [item for item in full_chart if item["date"] >= start_day.isoformat()]
 
     current = chart[-1] if chart else {
         "ctl": 0.0,

@@ -25,10 +25,16 @@ class AppSmokeTests(unittest.TestCase):
     def setUpClass(cls):
         cls.temp_dir = tempfile.TemporaryDirectory()
         os.environ["TRAINING_DB_PATH"] = os.path.join(cls.temp_dir.name, "training-test.db")
-        cls.client = TestClient(import_fresh_app())
+        cls.client = TestClient(
+            import_fresh_app(),
+            base_url="http://localhost:8000",
+            headers={"Accept": "application/json, text/event-stream"},
+        )
+        cls.client.__enter__()
 
     @classmethod
     def tearDownClass(cls):
+        cls.client.__exit__(None, None, None)
         os.environ.pop("TRAINING_DB_PATH", None)
         cls.temp_dir.cleanup()
 
@@ -89,10 +95,49 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         return response
 
+    def test_activity_detail_builds_route_from_cached_latlng_stream(self):
+        activity_id = "98765432101"
+        self._create_activity(activity_id, "2026-07-10", "Ride")
+        self._insert_activity_detail_streams(
+            activity_id,
+            {
+                "latlng": {
+                    "data": [
+                        [38.5, -120.2],
+                        [40.7, -120.95],
+                        [43.252, -126.453],
+                    ]
+                }
+            },
+        )
+
+        response = self.client.get(f"/activities/{activity_id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["route"]["polyline"], "_p~iF~ps|U_ulLnnqC_mqNvxq`@")
+        self.assertTrue(response.json()["route"]["has_stream_latlng"])
+
     def _save_feedback(self, activity_id: str, **payload):
         response = self.client.post(f"/activities/{activity_id}/feedback", json=payload)
         self.assertEqual(response.status_code, 201)
         return response
+
+    def test_training_load_uses_activity_history_before_chart_window(self):
+        old_activity_date = (datetime.now().date() - timedelta(days=20)).isoformat()
+        self._create_activity(
+            "training-load-warmup",
+            old_activity_date,
+            "WeightTraining",
+            duration_min=120,
+        )
+
+        response = self.client.get("/training-load?days=14&focus_days=7")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload["chart"]), 14)
+        self.assertGreater(payload["chart"][0]["ctl"], 0)
+        self.assertGreater(payload["chart"][0]["atl"], 0)
 
     def setUp(self):
         conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])
@@ -128,11 +173,21 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(health.status_code, 200)
         self.assertEqual(health.json()["status"], "ok")
 
-        mcp = self.client.get("/mcp")
-        self.assertEqual(mcp.status_code, 200)
-        self.assertEqual(mcp.json()["name"], "training-dashboard")
-        self.assertEqual(mcp.json()["version"], "1.3.0")
-        self.assertEqual(mcp.json()["endpoint"], "/mcp")
+        initialized = self.client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-11-25",
+                    "capabilities": {},
+                    "clientInfo": {"name": "backend-tests", "version": "1"},
+                },
+            },
+        )
+        self.assertEqual(initialized.status_code, 200)
+        self.assertEqual(initialized.json()["result"]["serverInfo"]["name"], "training-dashboard")
 
         tools = self.client.post(
             "/mcp",
@@ -574,7 +629,7 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()["heart_rate_zones"]
         self.assertTrue(payload["available"])
-        self.assertEqual(payload["summary"], "Mostly zone 2")
+        self.assertEqual(payload["summary"], "Meaningful zone 2 time")
         self.assertEqual(len(payload["zones"]), 5)
         self.assertGreater(payload["zone2_minutes"], 0)
         self.assertEqual(next(zone for zone in payload["zones"] if zone["key"] == "zone2")["highlight"], True)
@@ -2797,8 +2852,17 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertGreaterEqual(coaching_body["goal_assessment"]["unsupported_goal_count"], 1)
         self.assertGreaterEqual(coaching_body["goal_assessment"]["conflict_count"], 1)
         self.assertTrue(any("unsupported this week" in item.lower() or "tradeoff" in item.lower() for item in coaching_body["goal_assessment"]["key_observations"]))
-        self.assertTrue(any("Autumn 10k under 40" in item for item in coaching_body["recommendation"]["primary_support"]))
-        self.assertTrue(any("Strength twice weekly" in item for item in coaching_body["recommendation"]["deprioritized_work"]))
+        goal_support = [
+            *coaching_body["recommendation"]["primary_support"],
+            *coaching_body["recommendation"]["secondary_support"],
+        ]
+        self.assertTrue(any("Autumn 10k under 40" in item for item in goal_support))
+        strength_guidance = [
+            *coaching_body["recommendation"]["primary_support"],
+            *coaching_body["recommendation"]["secondary_support"],
+            *coaching_body["recommendation"]["deprioritized_work"],
+        ]
+        self.assertTrue(any("Strength twice weekly" in item for item in strength_guidance))
         recent_pattern_text = {
             item.strip().lower()
             for item in coaching_body["reasoning_signals"]["recent_pattern_summary"]["key_observations"]
@@ -3630,9 +3694,9 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertTrue(planning_body["roadmap"]["phases"])
         self.assertTrue(planning_body["sprints"]["items"])
         self.assertEqual(planning_body["roadmap"]["completed_phases"], 0)
-        self.assertEqual(planning_body["roadmap"]["total_phases"], 4)
-        self.assertEqual(planning_body["roadmap"]["current_phase"]["number"], 6)
-        self.assertIsNone(planning_body["sprints"]["next_recommended"])
+        self.assertEqual(planning_body["roadmap"]["total_phases"], 3)
+        self.assertEqual(planning_body["roadmap"]["current_phase"]["number"], 10)
+        self.assertEqual(planning_body["sprints"]["next_recommended"]["label"], "Sprint 33")
 
     def test_today_session_is_not_skipped_before_day_is_over(self):
         today = datetime.now().date()

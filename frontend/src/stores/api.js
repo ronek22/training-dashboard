@@ -41,6 +41,8 @@ export const useApi = () => ({
   getStravaStatus: () => api.get('/integrations/strava/status'),
   importStravaActivities: (payload) => api.post('/integrations/strava/import', payload),
   backfillStravaStreams: (payload) => api.post('/integrations/strava/streams/backfill', payload),
+  previewHealthFitImport: () => api.get('/integrations/healthfit/preview'),
+  importHealthFitFiles: () => api.post('/integrations/healthfit/import'),
   getNotes: (params) => api.get('/notes', { params }),
   getWeekly: () => api.get('/weekly'),
   getMetric: (name) => api.get(`/metrics/${name}`),

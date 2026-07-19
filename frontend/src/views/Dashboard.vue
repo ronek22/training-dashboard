@@ -79,9 +79,6 @@
             <article class="today-context-pill">
               <span class="today-context-label">Pressure</span>
               <strong>{{ todayGoalPressure }}</strong>
-              <div v-if="goalRiskSummary?.most_pressured?.[0]?.risk_summary?.summary" class="today-context-copy">
-                {{ goalRiskSummary.most_pressured[0].risk_summary.summary }}
-              </div>
             </article>
           </div>
 
@@ -172,7 +169,7 @@
             </div>
             <strong>{{ goalReadinessSummary.focus_goal.title }}</strong>
             <span>{{ goalReadinessSummary.focus_summary }}</span>
-            <span v-if="goalReadinessSummary.focus_next_step" class="dashboard-goal-readiness-next">{{ goalReadinessSummary.focus_next_step }}</span>
+            <span v-if="showGoalFocusNextStep" class="dashboard-goal-readiness-next">{{ goalReadinessSummary.focus_next_step }}</span>
           </div>
           <div v-if="goalPlanningConflicts.length" class="dashboard-goal-conflicts">
             <div v-for="conflict in goalPlanningConflicts" :key="conflict.type" class="dashboard-goal-conflict">
@@ -193,8 +190,8 @@
                   <strong>{{ goal.goal_readiness.label }}</strong>
                   <span>{{ goal.goal_readiness.what_matters_next?.summary || goal.goal_readiness.summary }}</span>
                 </div>
-                <div v-if="goal.weekly_requirement_summary" class="goal-mini-requirement">{{ goal.weekly_requirement_summary }}</div>
-                <div v-if="goal.risk_summary?.summary" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
+                <div v-if="showGoalRequirement(goal)" class="goal-mini-requirement">{{ goal.weekly_requirement_summary }}</div>
+                <div v-if="showGoalRisk(goal)" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
                 <div v-if="goal.display_mode !== 'performance'" class="goal-mini-track-wrap">
                   <div class="goal-mini-track">
                     <div class="goal-mini-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
@@ -219,8 +216,8 @@
                   <strong>{{ goal.goal_readiness.label }}</strong>
                   <span>{{ goal.goal_readiness.what_matters_next?.summary || goal.goal_readiness.summary }}</span>
                 </div>
-                <div v-if="goal.weekly_requirement_summary" class="goal-mini-requirement">{{ goal.weekly_requirement_summary }}</div>
-                <div v-if="goal.risk_summary?.summary" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
+                <div v-if="showGoalRequirement(goal)" class="goal-mini-requirement">{{ goal.weekly_requirement_summary }}</div>
+                <div v-if="showGoalRisk(goal)" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
                 <div v-if="goal.display_mode !== 'performance'" class="goal-mini-track-wrap">
                   <div class="goal-mini-track">
                     <div class="goal-mini-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
@@ -245,8 +242,8 @@
                   <strong>{{ goal.goal_readiness.label }}</strong>
                   <span>{{ goal.goal_readiness.what_matters_next?.summary || goal.goal_readiness.summary }}</span>
                 </div>
-                <div v-if="goal.weekly_requirement_summary" class="goal-mini-requirement">{{ goal.weekly_requirement_summary }}</div>
-                <div v-if="goal.risk_summary?.summary" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
+                <div v-if="showGoalRequirement(goal)" class="goal-mini-requirement">{{ goal.weekly_requirement_summary }}</div>
+                <div v-if="showGoalRisk(goal)" class="goal-mini-risk">{{ goal.risk_summary.summary }}</div>
                 <div v-if="goal.display_mode !== 'performance'" class="goal-mini-track-wrap">
                   <div class="goal-mini-track">
                     <div class="goal-mini-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
@@ -1187,6 +1184,11 @@ const dashboardZoneHeadline = computed(() => {
 })
 const goalRiskSummary = computed(() => dashboard.value?.goal_risk_summary || null)
 const goalReadinessSummary = computed(() => dashboard.value?.goal_readiness_summary || null)
+const showGoalFocusNextStep = computed(() => {
+  const summary = normalizeGoalCopy(goalReadinessSummary.value?.focus_summary)
+  const nextStep = normalizeGoalCopy(goalReadinessSummary.value?.focus_next_step)
+  return Boolean(nextStep && nextStep !== summary)
+})
 const goalPlanningSummary = computed(() => dashboard.value?.goal_planning_summary || null)
 const goalPlanningConflicts = computed(() => goalPlanningSummary.value?.conflicts || weeklyPlan.value?.goal_context?.conflicts || [])
 const topGoals = computed(() => dashboard.value?.active_goals || [])
@@ -1688,6 +1690,27 @@ const goalStatusLabel = (status) => {
   if (status === 'ahead_of_pace') return 'Ahead'
   if (status === 'on_pace') return 'On pace'
   return 'Behind'
+}
+
+const normalizeGoalCopy = (value) => String(value || '')
+  .trim()
+  .toLocaleLowerCase()
+  .replace(/\s+/g, ' ')
+  .replace(/[.!?]+$/, '')
+
+const goalReadinessCopy = (goal) => (
+  goal.goal_readiness?.what_matters_next?.summary || goal.goal_readiness?.summary || ''
+)
+
+const showGoalRequirement = (goal) => {
+  const requirement = normalizeGoalCopy(goal.weekly_requirement_summary)
+  return Boolean(requirement && requirement !== normalizeGoalCopy(goalReadinessCopy(goal)))
+}
+
+const showGoalRisk = (goal) => {
+  const risk = normalizeGoalCopy(goal.risk_summary?.summary)
+  if (!risk || risk === normalizeGoalCopy(goalReadinessCopy(goal))) return false
+  return risk !== normalizeGoalCopy(goal.weekly_requirement_summary)
 }
 
 const goalMarkerOffset = (goal) => {

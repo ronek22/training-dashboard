@@ -8,6 +8,8 @@ from typing import Callable, Optional
 import httpx
 from fastapi import HTTPException
 
+from .activity_sources import find_activity_match, get_source_activity_id, strava_started_at, upsert_source_ref
+
 
 STRAVA_TOKEN_URL = "https://www.strava.com/oauth/token"
 STRAVA_ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
@@ -474,10 +476,12 @@ def _stream_backfill_candidate_count(conn: sqlite3.Connection) -> int:
         FROM activities a
         LEFT JOIN activity_stream_summaries s ON s.activity_id = a.id
         LEFT JOIN activity_details d ON d.activity_id = a.id
+        LEFT JOIN activity_source_refs sr ON sr.activity_id = a.id AND sr.source = 'strava'
         WHERE (s.activity_id IS NULL OR d.streams_json IS NULL)
           AND a.type IN ('Run', 'Ride', 'VirtualRide')
           AND a.date >= ?
           AND (a.avg_hr IS NOT NULL OR a.avg_watts IS NOT NULL)
+          AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%')
         """,
         ((datetime.now().date() - timedelta(days=STRAVA_STREAM_RECENT_DAYS)).isoformat(),),
     ).fetchone()
@@ -491,6 +495,7 @@ def list_stream_backfill_candidates(conn: sqlite3.Connection, limit: int = STRAV
         """
         SELECT
             a.id,
+            COALESCE(sr.external_id, CASE WHEN a.id NOT LIKE 'healthfit:%' THEN a.id END) AS strava_id,
             a.date,
             a.type,
             a.name,
@@ -502,10 +507,12 @@ def list_stream_backfill_candidates(conn: sqlite3.Connection, limit: int = STRAV
         FROM activities a
         LEFT JOIN activity_stream_summaries s ON s.activity_id = a.id
         LEFT JOIN activity_details d ON d.activity_id = a.id
+        LEFT JOIN activity_source_refs sr ON sr.activity_id = a.id AND sr.source = 'strava'
         WHERE (s.activity_id IS NULL OR d.streams_json IS NULL)
           AND a.type IN ('Run', 'Ride', 'VirtualRide')
           AND a.date >= ?
           AND (a.avg_hr IS NOT NULL OR a.avg_watts IS NOT NULL)
+          AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%')
         ORDER BY
           CASE
             WHEN a.type IN ('Ride', 'VirtualRide') AND a.avg_watts IS NOT NULL THEN 3
@@ -536,7 +543,7 @@ def backfill_stream_summaries(
         for activity in activities:
             streams, rate_limit = fetch_strava_activity_streams_by_keys(
                 client,
-                activity["id"],
+                activity.get("strava_id") or activity["id"],
                 STRAVA_DETAIL_STREAM_KEYS,
             )
             summary = summarize_activity_streams(activity, streams, thresholds, intensity_bucket_from_hr_fn)
@@ -591,7 +598,28 @@ def import_strava_activities_data(
     activities = []
     for item in raw_items:
         activity = build_activity_from_strava(item)
+        strava_id = activity["id"]
+        canonical_id = get_source_activity_id(conn, "strava", strava_id)
+        if canonical_id is None:
+            existing = conn.execute("SELECT id FROM activities WHERE id = ?", (strava_id,)).fetchone()
+            if existing:
+                canonical_id = strava_id
+            else:
+                match = find_activity_match(conn, activity)
+                canonical_id = match["activity"]["id"] if match["status"] == "matched" else strava_id
+        activity["id"] = canonical_id
+        activity["strava_id"] = strava_id
         upsert_activity_fn(conn, activity, preserve_annotations=True)
+        upsert_source_ref(
+            conn,
+            source="strava",
+            external_id=strava_id,
+            activity_id=canonical_id,
+            started_at=strava_started_at(item),
+            status="linked",
+            match_reason="Existing Strava ID." if canonical_id == strava_id else "Reconciled to a unique compatible dashboard workout.",
+            metadata={"start_date_local": item.get("start_date_local")},
+        )
         activities.append(activity)
         imported += 1
 

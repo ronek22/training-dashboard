@@ -26,7 +26,8 @@ Current implementation status:
 - the app is now strong at `plan -> execute -> review`
 - richer goals, performance anchors, benchmark views, and workout detail all exist
 - single-workout interpretation is now available through an MCP-backed LLM workflow
-- the product still feels lighter on readiness, execution quality, and closed-loop progression than on planning visibility
+- readiness, goal-specific next-step guidance, and planned-vs-actual execution quality are implemented
+- the product still feels lighter on closed-loop adaptation and progression than on planning visibility
 
 The main gap is that the app can describe training history well, but still does not consistently answer:
 
@@ -259,25 +260,25 @@ If only one sprint is available, do this:
 
 ### Sprint Goal
 
-Start with Sprint 30 readiness and fatigue foundation.
+Start with Sprint 33 closed-loop weekly adaptation.
 
 ### Scope
 
-- establish one conservative readiness contract built from recent load, workout density, and recovery signals
-- expose readiness in dashboard, coaching, and MCP reads
-- keep the first version inspectable enough that later goal and adaptation logic can safely depend on it
+- use readiness, goal gaps, and recent execution-quality evidence in weekly coaching and adjustment previews
+- explain which sessions should be protected, reduced, moved, or replaced and why
+- keep every proposed plan change reviewable and approval-based
 
 Current interpretation:
 
-- the next highest-value gap is not another new analysis surface, but a reusable readiness layer
-- once readiness exists, both goal guidance and weekly adaptation can become materially better without guessing
-- this is the cleanest way to make the app feel more like a real coaching system rather than only a planning and review tool
+- readiness and execution-quality foundations now exist
+- the next highest-value gap is connecting those reads to practical weekly decisions
+- the adaptation layer should improve recommendations without introducing opaque automation
 
 ### Definition of done
 
-- the app can expose a compact readiness summary with explicit supporting factors and limitations
-- dashboard and coaching surfaces can reference readiness without falling back to vague prose
-- missing or weak data produces calm unavailable states instead of false precision
+- weekly coaching and adjustment previews use readiness and workout-quality evidence explicitly
+- protected, reduced, moved, and replaced sessions have clear goal-aware rationale
+- suggested changes remain previews until the athlete approves them
 
 ## Risks And Constraints
 

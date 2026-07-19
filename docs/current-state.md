@@ -244,6 +244,18 @@ Completed slices:
 - readiness now distinguishes `ready`, `watch`, `strained`, and `insufficient_data` while staying conservative about missing evidence
 - frontend dashboard cleanup removed duplicated athlete-context and strength-rotation reference blocks so the readiness layer stays closer to the main decision flow
 
+### Sprint 32 planned-vs-actual workout quality
+
+Sprint 32 can now be treated as complete for the current roadmap slice.
+
+Completed slices:
+
+- linked completed sessions now receive conservative, intent-aware execution-quality reads when evidence supports them
+- easy, long, tempo, interval, race-specific, and enriched strength intents have a narrow first-pass evaluator
+- results preserve explicit matched, partial, drifted, limited-evidence, and unavailable states with inspectable reasons and limitations
+- activity detail and plan review surface execution quality without treating missing evidence as poor execution
+- weekly coaching and multi-week execution summaries distinguish workout-quality misses from simple non-completion
+
 ### Phase 5 coaching workflow and analysis
 
 Phase 5 can now be treated as complete for the current roadmap slice.
@@ -269,18 +281,11 @@ Completed slices:
 
 ## Recommended Next Step
 
-Sprint 25 can now be treated as complete.
-
-The next roadmap slice is ready for execution.
+Sprint 32 is complete. The next roadmap slice is ready for execution.
 
 Current recommendation:
 
-- Sprint 26 Fitbod-enriched strength history in MCP should be treated as the next execution slice
-
-Recently completed strength slices:
-
-- the Sprint 24 slice delivered manual Fitbod CSV import, reconstruction, and conservative linking to stored `WeightTraining` activities
-- the Sprint 25 slice delivered the dedicated `Strength` view with deterministic session trends, recurring lifts, selected-lift reads, and simple PR visibility
+- Sprint 33 closed-loop weekly adaptation should use readiness, goal gaps, and execution-quality evidence to improve reviewable plan-adjustment guidance
 
 ## Areas That Are Still Intentionally Lightweight
 

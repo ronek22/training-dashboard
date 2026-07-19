@@ -7,12 +7,16 @@ from typing import Optional
 
 from fastapi import HTTPException
 
+from ..repositories.activity_details import get_activity_detail_row
 from .benchmarks import (
     attach_benchmark_from_lookup,
     build_benchmark_session_lookup,
     normalize_benchmark_fields,
 )
+from .execution_quality import evaluate_execution_quality
+from .fitbod_imports import get_fitbod_strength_detail_for_activity
 from .goals import build_requirement_summary, serialize_goal
+from .heart_rate_zones import build_activity_heart_rate_zone_summary
 from .settings import (
     get_modality_restrictions_for_conn,
     get_workout_template_settings_for_conn,
@@ -439,6 +443,78 @@ def infer_best_completed_intent(completed_activities: list[dict]) -> Optional[st
     return None
 
 
+def find_planned_session_by_id(conn: sqlite3.Connection, planned_session_id: str) -> Optional[dict]:
+    for row in list_weekly_plan_rows(conn, 1000):
+        days = ensure_plan_day_ids(row["week_start"], json.loads(row["days_json"]))
+        for day in days:
+            if day.get("session_id") == planned_session_id:
+                normalized = normalize_benchmark_fields(dict(day))
+                normalized["week_start"] = row["week_start"]
+                normalized["workout_intent"] = normalize_workout_intent(
+                    normalized.get("workout_intent"),
+                    normalized.get("session_type"),
+                )
+                normalized["workout_intent_label"] = format_workout_intent_label(normalized.get("workout_intent"))
+                return normalized
+    return None
+
+
+def _primary_activity_for_execution_quality(day: dict, completed_activities: list[dict]) -> Optional[dict]:
+    if not completed_activities:
+        return None
+    explicit = next(
+        (item for item in completed_activities if item.get("linked_planned_session_id") == day.get("session_id")),
+        None,
+    )
+    if explicit:
+        return explicit
+    planned_type = normalize_plan_session_type(day.get("session_type"))
+    type_match = next((item for item in completed_activities if normalize_plan_session_type(item.get("type")) == planned_type), None)
+    return type_match or completed_activities[0]
+
+
+def build_execution_quality_for_completed_session(
+    conn: sqlite3.Connection,
+    day: dict,
+    completed_activities: list[dict],
+) -> Optional[dict]:
+    primary_activity = _primary_activity_for_execution_quality(day, completed_activities)
+    if not primary_activity:
+        return None
+
+    try:
+        detail_row = get_activity_detail_row(conn, primary_activity["id"])
+    except sqlite3.OperationalError:
+        detail_row = None
+    heart_rate_zones = build_activity_heart_rate_zone_summary(conn, primary_activity, detail_row)
+    strength_detail = None
+    if primary_activity.get("type") == "WeightTraining":
+        try:
+            strength_detail = get_fitbod_strength_detail_for_activity(conn, primary_activity["id"])
+        except sqlite3.OperationalError:
+            strength_detail = None
+
+    result = evaluate_execution_quality(
+        {
+            "session_type": normalize_plan_session_type(day.get("session_type")),
+            "workout_intent": normalize_workout_intent(day.get("workout_intent"), day.get("session_type")),
+            "target_duration_min": day.get("target_duration_min"),
+            "target_distance_km": day.get("target_distance_km"),
+            "template_label": day.get("template_label"),
+        },
+        primary_activity,
+        heart_rate_zones=heart_rate_zones,
+        strength_detail=strength_detail,
+    )
+    result["planned_intent"] = normalize_workout_intent(day.get("workout_intent"), day.get("session_type"))
+    result["planned_intent_label"] = format_workout_intent_label(result["planned_intent"])
+    result["activity_id"] = primary_activity["id"]
+    result["activity_name"] = primary_activity.get("name")
+    if len(completed_activities) > 1:
+        result["limitations"] = [*result.get("limitations", []), "Multiple activities were associated with this planned session, so quality is based on the strongest matching completed activity."]
+    return result
+
+
 def goal_applies_to_plan(goal: dict, week_start: str, week_end: str) -> bool:
     return bool(goal.get("is_active")) and goal["start_date"] <= week_end and goal["end_date"] >= week_start
 
@@ -715,6 +791,7 @@ def build_link_candidates(
 
 
 def build_plan_day_comparison(
+    conn: sqlite3.Connection,
     day: dict,
     activities: list[sqlite3.Row],
     by_date: dict[str, list[sqlite3.Row]],
@@ -727,6 +804,7 @@ def build_plan_day_comparison(
     explicitly_linked = [build_activity_summary(row, benchmark_lookup) for row in linked_activities]
 
     if explicitly_linked:
+        execution_quality = build_execution_quality_for_completed_session(conn, day, explicitly_linked)
         return {
             "status": "linked",
             "label": "Linked",
@@ -737,6 +815,7 @@ def build_plan_day_comparison(
             "planned_intent": planned_intent,
             "planned_intent_label": format_workout_intent_label(planned_intent),
             "intent_alignment": infer_intent_alignment(planned_intent, explicitly_linked),
+            "execution_quality": execution_quality,
         }
 
     completed = [build_activity_summary(row, benchmark_lookup) for row in activities]
@@ -744,6 +823,7 @@ def build_plan_day_comparison(
     if not completed:
         moved_session = find_moved_session(day, by_date, week_days_by_date, benchmark_lookup)
         if moved_session:
+            execution_quality = build_execution_quality_for_completed_session(conn, day, moved_session["activities"])
             return {
                 "status": "moved",
                 "label": f"Moved to {moved_session['date']}",
@@ -754,6 +834,7 @@ def build_plan_day_comparison(
                 "planned_intent": planned_intent,
                 "planned_intent_label": format_workout_intent_label(planned_intent),
                 "intent_alignment": infer_intent_alignment(planned_intent, moved_session["activities"]),
+                "execution_quality": execution_quality,
             }
 
         if is_strictly_past(day.get("date")):
@@ -766,6 +847,7 @@ def build_plan_day_comparison(
                 "planned_intent": planned_intent,
                 "planned_intent_label": format_workout_intent_label(planned_intent),
                 "intent_alignment": "unknown",
+                "execution_quality": None,
             }
         return {
             "status": "not_completed_yet",
@@ -776,6 +858,7 @@ def build_plan_day_comparison(
             "planned_intent": planned_intent,
             "planned_intent_label": format_workout_intent_label(planned_intent),
             "intent_alignment": "unknown",
+            "execution_quality": None,
         }
 
     completed_types = {item["type"] for item in completed}
@@ -793,6 +876,7 @@ def build_plan_day_comparison(
             "planned_intent": planned_intent,
             "planned_intent_label": format_workout_intent_label(planned_intent),
             "intent_alignment": infer_intent_alignment(planned_intent, completed),
+            "execution_quality": None,
         }
 
     if planned_type in completed_types:
@@ -823,6 +907,7 @@ def build_plan_day_comparison(
         "planned_intent": planned_intent,
         "planned_intent_label": format_workout_intent_label(planned_intent),
         "intent_alignment": infer_intent_alignment(planned_intent, completed),
+        "execution_quality": build_execution_quality_for_completed_session(conn, day, completed),
     }
 
 
@@ -889,6 +974,7 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
         enriched_days = []
         for day in days:
             comparison = build_plan_day_comparison(
+                conn,
                 day,
                 by_date.get(day.get("date"), []),
                 by_date,
@@ -979,6 +1065,7 @@ def build_multi_week_execution_trend(conn: sqlite3.Connection, weeks: int = 6) -
     modified_statuses = {"partially_matched", "replaced", "rest_day_changed"}
     totals = {status: 0 for status in tracked_statuses}
     intent_totals = {"aligned": 0, "different": 0, "unknown": 0}
+    quality_totals = {"matched": 0, "partial": 0, "drifted": 0, "completed_without_evidence": 0, "unavailable": 0}
     weeks_output = []
     weeks_with_any_evaluable_day = 0
     skipped_weeks = 0
@@ -989,6 +1076,7 @@ def build_multi_week_execution_trend(conn: sqlite3.Connection, weeks: int = 6) -
     for plan in plans:
         status_counts = {status: 0 for status in tracked_statuses}
         intent_counts = {"aligned": 0, "different": 0, "unknown": 0}
+        quality_counts = {"matched": 0, "partial": 0, "drifted": 0, "completed_without_evidence": 0, "unavailable": 0}
         evaluable_days = 0
         fulfilled_sessions = 0
         modified_sessions = 0
@@ -1011,6 +1099,14 @@ def build_multi_week_execution_trend(conn: sqlite3.Connection, weeks: int = 6) -
                 alignment = "unknown"
             intent_counts[alignment] += 1
             intent_totals[alignment] += 1
+
+            quality = comparison.get("execution_quality")
+            if quality:
+                quality_status = quality.get("status") or "unavailable"
+                if quality_status not in quality_counts:
+                    quality_status = "unavailable"
+                quality_counts[quality_status] += 1
+                quality_totals[quality_status] += 1
 
             if status in fulfilled_statuses:
                 fulfilled_sessions += 1
@@ -1054,6 +1150,7 @@ def build_multi_week_execution_trend(conn: sqlite3.Connection, weeks: int = 6) -
             "status": week_status,
             "status_counts": status_counts,
             "intent_alignment": intent_counts,
+            "execution_quality": quality_counts,
         })
 
     observations = []
@@ -1116,6 +1213,7 @@ def build_multi_week_execution_trend(conn: sqlite3.Connection, weeks: int = 6) -
             "missed_sessions": missed_total,
             "status_counts": totals,
             "intent_alignment": intent_totals,
+            "execution_quality": quality_totals,
         },
         "recurring_patterns": {
             "weeks_with_skipped": skipped_weeks,

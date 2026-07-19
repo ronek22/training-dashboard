@@ -4,8 +4,16 @@
 
 Current status:
 
-- proposed
+- complete
 - follows completed Sprint 31 goal readiness and `what matters next`
+
+Completed implementation:
+
+- shared, inspectable execution-quality evaluation for easy, long, quality, and enriched strength sessions
+- conservative `matched`, `partial`, `drifted`, `completed_without_evidence`, and `unavailable` states with reasons and limitations
+- activity-detail and plan-review visibility for linked workout quality
+- weekly coaching and multi-week execution summaries that distinguish quality drift from non-completion
+- focused evaluator coverage for matched, drifted, limited-evidence, unavailable, and strength-specific cases
 
 Starting point:
 

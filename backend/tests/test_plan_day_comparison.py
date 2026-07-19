@@ -77,6 +77,7 @@ class PlanDayComparisonTests(unittest.TestCase):
         }
 
         comparison = build_plan_day_comparison(
+            self.conn,
             {"date": today, "session_type": "Ride", "session_id": "ride-today"},
             [],
             by_date,
@@ -105,6 +106,7 @@ class PlanDayComparisonTests(unittest.TestCase):
         by_date = {today: [moved_activity]}
 
         comparison = build_plan_day_comparison(
+            self.conn,
             {"date": yesterday, "session_type": "Ride", "session_id": "ride-yesterday"},
             [],
             by_date,

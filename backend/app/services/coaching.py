@@ -141,6 +141,7 @@ def summarize_execution(active_plan: Optional[dict]) -> dict:
             "adherence_pct": None,
             "status_counts": {},
             "intent_alignment": {"aligned": 0, "different": 0, "unknown": 0},
+            "execution_quality": {"matched": 0, "partial": 0, "drifted": 0, "completed_without_evidence": 0, "unavailable": 0},
             "key_observations": ["No active weekly plan is available."],
         }
 
@@ -148,6 +149,7 @@ def summarize_execution(active_plan: Optional[dict]) -> dict:
     days = active_plan.get("days", [])
     status_counts: dict[str, int] = {}
     intent_alignment = {"aligned": 0, "different": 0, "unknown": 0}
+    execution_quality = {"matched": 0, "partial": 0, "drifted": 0, "completed_without_evidence": 0, "unavailable": 0}
     fulfilled_statuses = {"linked", "matched", "moved"}
     modified_statuses = {"partially_matched", "replaced", "rest_day_changed"}
 
@@ -164,6 +166,10 @@ def summarize_execution(active_plan: Optional[dict]) -> dict:
         status_counts[status] = status_counts.get(status, 0) + 1
         alignment = comparison.get("intent_alignment", "unknown")
         intent_alignment[alignment if alignment in intent_alignment else "unknown"] += 1
+        quality = comparison.get("execution_quality")
+        if quality:
+            quality_status = quality.get("status") or "unavailable"
+            execution_quality[quality_status if quality_status in execution_quality else "unavailable"] += 1
 
         day_date = _parse_date(day.get("date"))
         if day_date and day_date <= today:
@@ -201,6 +207,10 @@ def summarize_execution(active_plan: Optional[dict]) -> dict:
         observations.append(f"{status_counts['linked']} sessions already use explicit planned-to-actual linking.")
     if intent_alignment["different"]:
         observations.append(f"{intent_alignment['different']} matched sessions had a different intent than planned.")
+    if execution_quality["drifted"]:
+        observations.append(f"{execution_quality['drifted']} completed sessions drifted away from planned workout intent.")
+    if execution_quality["partial"]:
+        observations.append(f"{execution_quality['partial']} completed sessions only partly satisfied planned intent.")
     if not observations:
         observations.append("No major execution deviations are visible in the current plan window.")
 
@@ -215,6 +225,7 @@ def summarize_execution(active_plan: Optional[dict]) -> dict:
         "adherence_pct": adherence_pct,
         "status_counts": status_counts,
         "intent_alignment": intent_alignment,
+        "execution_quality": execution_quality,
         "key_observations": observations[:5],
     }
 

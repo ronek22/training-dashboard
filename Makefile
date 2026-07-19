@@ -2,6 +2,9 @@ SHELL := /bin/bash
 
 ifneq (,$(wildcard .env))
 include .env
+# GNU Make keeps dotenv quotes as literal characters; Compose's dotenv parser does not.
+# Strip them so absolute bind-mount paths containing spaces remain valid under `make`.
+HEALTHFIT_EXPORT_DIR := $(subst ",,$(HEALTHFIT_EXPORT_DIR))
 export
 endif
 

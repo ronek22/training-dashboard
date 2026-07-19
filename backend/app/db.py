@@ -190,6 +190,28 @@ def init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS activity_source_refs (
+            source TEXT NOT NULL,
+            external_id TEXT NOT NULL,
+            activity_id TEXT,
+            started_at TEXT,
+            file_name TEXT,
+            file_hash TEXT,
+            status TEXT NOT NULL DEFAULT 'linked',
+            match_reason TEXT,
+            metadata_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (source, external_id),
+            FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_activity_source_refs_activity
+        ON activity_source_refs(activity_id);
+
+        CREATE INDEX IF NOT EXISTS idx_activity_source_refs_started
+        ON activity_source_refs(source, started_at);
+
         CREATE TABLE IF NOT EXISTS coach_notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL,

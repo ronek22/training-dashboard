@@ -62,6 +62,73 @@
     <div class="card import-card fitbod-card">
       <div class="import-header">
         <div>
+          <h2>HealthFit Directory</h2>
+          <p>Scan HealthFit FIT backups from iCloud Drive. Preview is read-only; after the initial baseline, unseen files are eligible regardless of workout date.</p>
+        </div>
+        <span class="status-pill" :class="healthFitPreview?.configured ? 'status-ok' : 'status-missing'">
+          {{ healthFitPreview?.configured ? 'Directory ready' : 'Directory unavailable' }}
+        </span>
+      </div>
+
+      <div class="import-form">
+        <button class="import-btn import-btn-secondary" :disabled="healthFitScanning" @click="loadHealthFitPreview">
+          {{ healthFitScanning ? 'Scanning...' : 'Preview HealthFit scan' }}
+        </button>
+        <button
+          class="import-btn"
+          :disabled="healthFitImporting || !healthFitPreview?.configured || !healthFitPendingCount"
+          @click="runHealthFitImport"
+        >
+          {{ healthFitImporting ? 'Importing...' : 'Apply safe import' }}
+        </button>
+      </div>
+
+      <p v-if="healthFitMessage" class="import-message">{{ healthFitMessage }}</p>
+      <p v-if="healthFitPreview" class="import-hint">
+        <template v-if="healthFitPreview.initialized">
+          HealthFit is initialized. Any unseen file is parsed even when its workout predates the latest dashboard activity.
+        </template>
+        <template v-else>
+          Initial existing-activity cutoff: {{ healthFitPreview.cutoff_date ? formatDate(healthFitPreview.cutoff_date) : 'none' }}.
+          Older files will be linked or baselined during first-time setup.
+        </template>
+      </p>
+
+      <div v-if="healthFitPreview?.configured" class="fitbod-summary-grid">
+        <div class="fitbod-summary-card">
+          <span>New activities</span>
+          <strong>{{ healthFitCount('create') }}</strong>
+          <small>{{ healthFitPreview.initialized ? 'Includes late-arriving older workouts' : 'Newer than the initial cutoff' }}</small>
+        </div>
+        <div class="fitbod-summary-card">
+          <span>Safe history</span>
+          <strong>{{ healthFitCount('link_existing') }} linked</strong>
+          <small>{{ healthFitCount('baseline') }} baselined without creation</small>
+        </div>
+        <div class="fitbod-summary-card">
+          <span>Skipped</span>
+          <strong>{{ healthFitCount('ambiguous') }} ambiguous</strong>
+          <small>{{ healthFitCount('already_processed') }} already processed · {{ healthFitCount('error') }} errors</small>
+        </div>
+      </div>
+
+      <div v-if="healthFitReviewItems.length" class="fitbod-session-list">
+        <article v-for="item in healthFitReviewItems" :key="item.file_hash || item.file_name" class="fitbod-session-card">
+          <div class="fitbod-session-head">
+            <div>
+              <h3>{{ item.name || item.file_name }}</h3>
+              <p>{{ item.date || 'Unknown date' }} · {{ item.type || 'Unknown type' }}</p>
+            </div>
+            <span class="fitbod-session-status fitbod-session-status-ambiguous">Needs review</span>
+          </div>
+          <div class="fitbod-session-metrics"><span>{{ item.reason }}</span></div>
+        </article>
+      </div>
+    </div>
+
+    <div class="card import-card fitbod-card">
+      <div class="import-header">
+        <div>
           <h2>Fitbod Enrichment</h2>
           <p>Upload a Fitbod CSV export to reconstruct strength sessions, filter non-strength rows, and link them to stored Strava strength activities.</p>
         </div>
@@ -208,6 +275,10 @@ const backfilling = ref(false)
 const importMessage = ref('')
 const fitbodImporting = ref(false)
 const fitbodMessage = ref('')
+const healthFitPreview = ref(null)
+const healthFitScanning = ref(false)
+const healthFitImporting = ref(false)
+const healthFitMessage = ref('')
 const activeFitbodFilter = ref('actionable')
 const stravaStatus = ref({ configured: false, last_import_at: null, latest_activity_date: null })
 const importForm = ref({ start_date: '', end_date: '' })
@@ -226,6 +297,8 @@ const fitbodFilters = [
 ]
 
 const canImport = computed(() => stravaStatus.value.configured)
+const healthFitPendingCount = computed(() => ['create', 'link_existing', 'baseline'].reduce((total, action) => total + healthFitCount(action), 0))
+const healthFitReviewItems = computed(() => (healthFitPreview.value?.items || []).filter((item) => item.action === 'ambiguous' || item.action === 'error'))
 const strengthActivities = computed(() => activities.value.filter((activity) => activity.type === 'WeightTraining'))
 
 const loadActivities = async () => {
@@ -248,8 +321,40 @@ const loadFitbodImport = async () => {
 }
 
 onMounted(async () => {
-  await Promise.all([loadActivities(), loadStravaStatus(), loadFitbodImport()])
+  await Promise.all([loadActivities(), loadStravaStatus(), loadFitbodImport(), loadHealthFitPreview()])
 })
+
+const healthFitCount = (action) => healthFitPreview.value?.counts?.[action] || 0
+
+async function loadHealthFitPreview() {
+  healthFitScanning.value = true
+  healthFitMessage.value = ''
+  try {
+    const { data } = await api.previewHealthFitImport()
+    healthFitPreview.value = data
+    if (!data.configured) healthFitMessage.value = 'The configured HealthFit directory is not available to the backend.'
+  } catch (error) {
+    healthFitMessage.value = error?.response?.data?.detail || 'HealthFit scan failed.'
+  } finally {
+    healthFitScanning.value = false
+  }
+}
+
+async function runHealthFitImport() {
+  healthFitImporting.value = true
+  healthFitMessage.value = ''
+  try {
+    const { data } = await api.importHealthFitFiles()
+    healthFitPreview.value = data
+    const result = data.applied || {}
+    healthFitMessage.value = `Created ${result.created || 0}, linked ${result.linked || 0}, baselined ${result.baselined || 0}, skipped ${result.skipped || 0}.`
+    await Promise.all([loadActivities(), loadStravaStatus(), loadHealthFitPreview()])
+  } catch (error) {
+    healthFitMessage.value = error?.response?.data?.detail || 'HealthFit import failed.'
+  } finally {
+    healthFitImporting.value = false
+  }
+}
 
 const runImport = async () => {
   importing.value = true

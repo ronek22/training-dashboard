@@ -274,7 +274,31 @@ Check integration status:
 curl http://localhost:8000/integrations/strava/status
 ```
 
-Imported activities are upserted by Strava activity ID, so rerunning the same range will refresh existing records instead of duplicating them.
+Imported activities retain a Strava source reference. Rerunning the same range refreshes the canonical activity, including one first created from HealthFit, instead of duplicating it.
+
+## HealthFit Directory Import
+
+HealthFit can be used as the always-available workout source when Strava API access is unavailable. The backend scans HealthFit's `.fit` backups from a read-only directory mount.
+
+Set the host directory in `.env`:
+
+```env
+HEALTHFIT_EXPORT_DIR="/Users/your-name/Library/Mobile Documents/iCloud~com~altifondo~HealthFit/Documents"
+```
+
+Then rebuild/restart the services and open **Sync → HealthFit Directory**. Always run the preview before applying an import.
+
+Duplicate protection is deliberately conservative:
+
+- during the first initialization only, files strictly before the latest stored activity date are baselined by filename without opening or importing them;
+- cutoff-day files are decoded and linked only when one compatible same-day activity exists;
+- only unmatched files newer than the cutoff create activities;
+- ambiguous matches are skipped for review;
+- every processed file receives a durable HealthFit source reference;
+- after initialization, every previously unseen file is parsed regardless of workout date, so late iCloud uploads are not hidden by the cutoff;
+- a later Strava import attaches its Strava ID to a uniquely compatible HealthFit activity instead of inserting another activity.
+
+The iCloud directory is mounted read-only at `/healthfit`. If macOS has evicted a recent FIT file from local storage, download it in Finder before scanning again.
 
 ## Dashboard Pages
 

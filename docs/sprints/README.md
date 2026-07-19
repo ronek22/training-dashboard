@@ -39,7 +39,7 @@ The intended reading order is:
 29. [sprint-29-llm-workout-analysis-via-mcp-for-activity-detail.md](sprint-29-llm-workout-analysis-via-mcp-for-activity-detail.md) — LLM workout analysis via MCP for activity detail sprint, complete
 30. [sprint-30-readiness-and-fatigue-foundation.md](sprint-30-readiness-and-fatigue-foundation.md) — readiness and fatigue foundation sprint, complete
 31. [sprint-31-goal-readiness-and-what-matters-next.md](sprint-31-goal-readiness-and-what-matters-next.md) — goal readiness and `what matters next` sprint, complete
-32. [sprint-32-planned-vs-actual-workout-quality.md](sprint-32-planned-vs-actual-workout-quality.md) — planned-vs-actual workout quality sprint, proposed
+32. [sprint-32-planned-vs-actual-workout-quality.md](sprint-32-planned-vs-actual-workout-quality.md) — planned-vs-actual workout quality sprint, complete
 33. [sprint-33-closed-loop-weekly-adaptation.md](sprint-33-closed-loop-weekly-adaptation.md) — closed-loop weekly adaptation sprint, proposed
 34. [sprint-34-strength-progression-and-stall-detection.md](sprint-34-strength-progression-and-stall-detection.md) — strength progression and stall detection sprint, proposed
 35. [sprint-35-weekly-retrospectives-and-data-quality-inbox.md](sprint-35-weekly-retrospectives-and-data-quality-inbox.md) — weekly retrospectives and data-quality inbox sprint, proposed

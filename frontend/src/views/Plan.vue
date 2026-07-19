@@ -556,18 +556,6 @@
                 <div v-if="statusDetail(day.comparison)" class="plan-status-detail">
                   {{ statusDetail(day.comparison) }}
                 </div>
-                <div v-if="day.goal_links?.length" class="goal-links">
-                  <div
-                    v-for="goalLink in day.goal_links"
-                    :key="`${day.date}-${goalLink.goal_id}`"
-                    class="goal-link-pill"
-                    :class="`risk-${goalLink.risk_status || 'on_track'}`"
-                  >
-                    <strong>{{ goalLink.goal_title }}</strong>
-                    <em v-if="goalLink.risk_label">{{ goalLink.risk_label }}</em>
-                    <span>{{ goalLink.requirement_label }} · {{ goalLink.support_reason }}</span>
-                  </div>
-                </div>
               </div>
 
               <div class="actual-block">
@@ -595,6 +583,16 @@
                   {{ emptyStateCopy(day) }}
                 </div>
                 <div v-else class="actual-list">
+                  <div
+                    v-if="shouldShowExecutionQuality(day.comparison?.execution_quality)"
+                    class="execution-quality-chip"
+                    :class="`quality-${day.comparison.execution_quality.status}`"
+                  >
+                    <strong>{{ executionQualityLabel(day.comparison.execution_quality) }}</strong>
+                    <span v-if="executionQualityDetail(day.comparison.execution_quality)">
+                      {{ executionQualityDetail(day.comparison.execution_quality) }}
+                    </span>
+                  </div>
                   <div
                     v-for="activity in day.comparison.completed_activities"
                     :key="activity.id"
@@ -1281,6 +1279,28 @@ const statusDetail = (comparison) => {
     return `Type matched, but the completed activity did not look like the planned ${comparison.planned_intent_label.toLowerCase()} session.`
   }
   return ''
+}
+
+const executionQualityLabel = (quality) => {
+  if (!quality) return ''
+  if (quality.status === 'matched') return 'Matched intent'
+  if (quality.status === 'partial') return 'Partly matched'
+  if (quality.status === 'drifted') return 'Drifted from plan'
+  if (quality.status === 'completed_without_evidence') return 'Limited evidence'
+  return 'Quality unavailable'
+}
+
+const executionQualityDetail = (quality) => {
+  if (!quality) return ''
+  if (quality.status === 'drifted' || quality.status === 'partial') {
+    return quality.reasons?.[0] || ''
+  }
+  return ''
+}
+
+const shouldShowExecutionQuality = (quality) => {
+  if (!quality) return false
+  return ['drifted', 'partial', 'completed_without_evidence'].includes(quality.status)
 }
 
 const planSummary = (plan) => {
@@ -2810,6 +2830,42 @@ const savePlanLink = async (day) => {
   border-radius: 16px;
   padding: 14px;
 }
+.execution-quality-chip.quality-matched {
+  border-color: rgba(16, 185, 129, 0.28);
+  color: #6ee7b7;
+}
+.execution-quality-chip.quality-partial {
+  border-color: rgba(245, 158, 11, 0.28);
+  color: #fbbf24;
+}
+.execution-quality-chip.quality-drifted {
+  border-color: rgba(239, 68, 68, 0.24);
+  color: #fca5a5;
+}
+.execution-quality-chip.quality-completed_without_evidence,
+.execution-quality-chip.quality-unavailable {
+  border-color: rgba(148, 163, 184, 0.22);
+  color: #cbd5e1;
+}
+.execution-quality-chip {
+  display: grid;
+  align-self: flex-start;
+  margin-bottom: 10px;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(89, 108, 143, 0.2);
+  background: rgba(10, 16, 27, 0.54);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.execution-quality-chip strong {
+  color: #eef4ff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .plan-block {
   min-height: 0;
 }
@@ -2971,45 +3027,6 @@ const savePlanLink = async (day) => {
   color: #d5deef;
   font-size: 12px;
   line-height: 1.5;
-}
-.goal-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-.goal-link-pill {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 7px 9px;
-  border-radius: 12px;
-  background: rgba(37, 99, 235, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.14);
-}
-.goal-link-pill strong {
-  font-size: 11px;
-  line-height: 1.2;
-}
-.goal-link-pill em {
-  color: #dbe4ff;
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 700;
-  line-height: 1.2;
-}
-.goal-link-pill span {
-  color: var(--muted);
-  font-size: 10px;
-  line-height: 1.25;
-}
-.goal-link-pill.risk-under_pressure {
-  background: rgba(245,158,11,0.1);
-  border-color: rgba(245,158,11,0.22);
-}
-.goal-link-pill.risk-at_risk {
-  background: rgba(239,68,68,0.1);
-  border-color: rgba(239,68,68,0.22);
 }
 .actual-empty {
   color: var(--muted);

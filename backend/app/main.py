@@ -10,7 +10,7 @@ from .routers.coaching import router as coaching_router
 from .routers.dashboard import router as dashboard_router
 from .routers.goals import router as goals_router
 from .routers.integrations import router as integrations_router
-from .routers.mcp import build_mcp_router
+from .routers.mcp import build_mcp_app
 from .routers.metrics import router as metrics_router
 from .routers.notes import router as notes_router
 from .routers.planning_status import router as planning_status_router
@@ -19,7 +19,8 @@ from .routers.settings import router as settings_router
 from .routers.strength import router as strength_router
 from .routers.weekly_summary import router as weekly_summary_router
 
-app = FastAPI(title="Training Dashboard API")
+mcp_app = build_mcp_app(**build_mcp_router_dependencies())
+app = FastAPI(title="Training Dashboard API", lifespan=mcp_app.router.lifespan_context)
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,7 +43,7 @@ app.include_router(strength_router)
 app.include_router(integrations_router)
 
 init_db()
-app.include_router(build_mcp_router(**build_mcp_router_dependencies()))
+app.mount("/mcp", mcp_app)
 
 @app.get("/health")
 def health():

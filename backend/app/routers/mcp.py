@@ -1,64 +1,25 @@
-from fastapi import APIRouter
+from mcp import types
+from mcp.server.fastmcp import FastMCP
 
-from ..services.mcp import MCP_SERVER_INFO, build_mcp_tools, call_mcp_tool, make_mcp_response
+from ..services.mcp import MCP_SERVER_INFO, build_mcp_tools, call_mcp_tool
 
 
-def build_mcp_router(**deps):
-    router = APIRouter()
+def build_mcp_app(**deps):
+    """Build the SDK-backed, stateless Streamable HTTP MCP application."""
+    mcp = FastMCP(
+        MCP_SERVER_INFO["name"],
+        instructions="Read and update the local Training Dashboard.",
+        json_response=True,
+        stateless_http=True,
+        streamable_http_path="/",
+    )
 
-    @router.get("/mcp")
-    def mcp_info():
-        return {
-            "name": MCP_SERVER_INFO["name"],
-            "version": MCP_SERVER_INFO["version"],
-            "endpoint": "/mcp",
-            "transport": "jsonrpc-http",
-        }
+    @mcp._mcp_server.list_tools()
+    async def list_tools():
+        return [types.Tool.model_validate(tool) for tool in build_mcp_tools()]
 
-    @router.post("/mcp")
-    def mcp_rpc(message: dict):
-        try:
-            method = message.get("method")
-            msg_id = message.get("id")
+    @mcp._mcp_server.call_tool()
+    async def dispatch_tool(name: str, arguments: dict):
+        return types.CallToolResult.model_validate(call_mcp_tool(name, arguments, **deps))
 
-            if msg_id is None:
-                return {}
-
-            if method == "initialize":
-                return make_mcp_response(
-                    msg_id,
-                    {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {"tools": {}},
-                        "serverInfo": MCP_SERVER_INFO,
-                    },
-                )
-
-            if method == "ping":
-                return make_mcp_response(msg_id, {})
-
-            if method == "tools/list":
-                return make_mcp_response(msg_id, {"tools": build_mcp_tools()})
-
-            if method == "tools/call":
-                params = message.get("params", {})
-                tool_name = params.get("name")
-                tool_args = params.get("arguments", {})
-                if not tool_name:
-                    return make_mcp_response(
-                        msg_id,
-                        error={"code": -32602, "message": "Missing tool name"},
-                    )
-                return make_mcp_response(msg_id, call_mcp_tool(tool_name, tool_args, **deps))
-
-            return make_mcp_response(
-                msg_id,
-                error={"code": -32601, "message": f"Unknown method: {method}"},
-            )
-        except Exception as exc:
-            return make_mcp_response(
-                message.get("id"),
-                error={"code": -32000, "message": str(exc)},
-            )
-
-    return router
+    return mcp.streamable_http_app()

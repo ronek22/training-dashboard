@@ -206,12 +206,12 @@
               <div class="panel-head">
                 <div>
                   <div class="panel-title">Route</div>
-                  <p class="panel-copy">Static route preview from cached Strava detail.</p>
+                  <p class="panel-copy">Drag to explore. Use the controls, scroll, or pinch to zoom.</p>
                 </div>
               </div>
 
                 <div v-if="routeCoordinates.length" class="route-stage">
-                  <div ref="routeMapRef" class="route-map" role="img" aria-label="Activity route map"></div>
+                  <div ref="routeMapRef" class="route-map" role="application" aria-label="Interactive activity route map"></div>
                 </div>
 
               <div v-else class="detail-empty-copy">No route geometry is available for this activity.</div>
@@ -420,6 +420,38 @@
                       <span class="context-signal-copy">Use this to compare repeated test or reference sessions over time.</span>
                     </div>
                   </div>
+                </div>
+              </section>
+
+              <section v-if="linkedPlannedSession || executionQuality" class="detail-panel execution-quality-panel">
+                <div class="panel-head">
+                  <div>
+                    <div class="panel-title">Planned Vs Actual Quality</div>
+                    <p class="panel-copy">
+                      {{ linkedPlannedSession?.workout_intent_label
+                        ? `Planned intent: ${linkedPlannedSession.workout_intent_label}.`
+                        : 'This activity is linked to a planned session.' }}
+                    </p>
+                  </div>
+                  <div
+                    v-if="executionQuality"
+                    class="execution-quality-badge"
+                    :class="`quality-${executionQuality.status}`"
+                  >
+                    {{ executionQualityLabel(executionQuality) }}
+                  </div>
+                </div>
+
+                <div v-if="executionQuality" class="execution-quality-card" :class="`quality-${executionQuality.status}`">
+                  <strong>{{ executionQuality.headline }}</strong>
+                  <p v-if="executionQualityPrimaryCopy">{{ executionQualityPrimaryCopy }}</p>
+                  <div v-if="executionQuality.limitations?.length" class="execution-quality-limitations">
+                    {{ executionQuality.limitations[0] }}
+                  </div>
+                </div>
+
+                <div v-else class="detail-empty-copy">
+                  No supported planned intent is available for quality review on this linked session.
                 </div>
               </section>
 
@@ -1223,6 +1255,13 @@ const chartDurationMinutes = computed(() => {
 })
 
 const strengthDetail = computed(() => detail.value?.strength_detail || null)
+const linkedPlannedSession = computed(() => detail.value?.linked_planned_session || null)
+const executionQuality = computed(() => detail.value?.execution_quality || null)
+const executionQualityPrimaryCopy = computed(() => {
+  const quality = executionQuality.value
+  if (!quality) return ''
+  return quality.reasons?.[0] || quality.limitations?.[0] || ''
+})
 const heartRateZoneSummary = computed(() => detail.value?.heart_rate_zones || null)
 const zoneToneClass = (zoneKey) => `zone-tone-${zoneKey}`
 const zoneRangeLabel = (zoneKey) => {
@@ -1237,6 +1276,15 @@ const chartTone = (key) => {
   if (key === 'watts') return 'watts'
   if (key === 'cadence') return 'cadence'
   return 'default'
+}
+
+const executionQualityLabel = (quality) => {
+  if (!quality) return ''
+  if (quality.status === 'matched') return 'Matched intended effort'
+  if (quality.status === 'partial') return 'Partly matched intent'
+  if (quality.status === 'drifted') return 'Drifted from planned intent'
+  if (quality.status === 'completed_without_evidence') return 'Completed with limited evidence'
+  return 'Not enough evidence'
 }
 
 const percentile = (sortedValues, ratio) => {
@@ -1466,9 +1514,9 @@ const syncRouteMap = async () => {
 
   if (!routeMap) {
     routeMap = L.map(routeMapRef.value, {
-      zoomControl: false,
+      zoomControl: true,
       attributionControl: true,
-      scrollWheelZoom: false,
+      scrollWheelZoom: true,
       dragging: true,
       tap: false,
     })
@@ -2310,6 +2358,7 @@ onBeforeUnmount(() => {
 .summary-panel,
 .feedback-panel,
 .workout-analysis-panel,
+.execution-quality-panel,
 .hr-zones-panel,
 .muscle-map-panel,
 .context-panel,
@@ -2339,6 +2388,56 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   gap: 16px;
   margin-bottom: 14px;
+}
+.execution-quality-badge {
+  display: inline-flex;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(89, 108, 143, 0.2);
+  background: rgba(10, 16, 27, 0.56);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.execution-quality-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(89, 108, 143, 0.2);
+  background: rgba(10, 16, 27, 0.52);
+}
+.execution-quality-card strong {
+  color: #eef4ff;
+}
+.execution-quality-card p,
+.execution-quality-limitations {
+  margin: 0;
+  color: #b8c7df;
+  font-size: 13px;
+}
+.execution-quality-badge.quality-matched,
+.execution-quality-card.quality-matched {
+  border-color: rgba(16, 185, 129, 0.28);
+  color: #6ee7b7;
+}
+.execution-quality-badge.quality-partial,
+.execution-quality-card.quality-partial {
+  border-color: rgba(245, 158, 11, 0.28);
+  color: #fbbf24;
+}
+.execution-quality-badge.quality-drifted,
+.execution-quality-card.quality-drifted {
+  border-color: rgba(239, 68, 68, 0.24);
+  color: #fca5a5;
+}
+.execution-quality-badge.quality-completed_without_evidence,
+.execution-quality-card.quality-completed_without_evidence,
+.execution-quality-badge.quality-unavailable,
+.execution-quality-card.quality-unavailable {
+  border-color: rgba(148, 163, 184, 0.22);
+  color: #cbd5e1;
 }
 
 .summary-hero {
@@ -3174,6 +3273,29 @@ onBeforeUnmount(() => {
 
 :deep(.route-map .leaflet-control-attribution a) {
   color: #bfd0eb;
+}
+
+:deep(.route-map .leaflet-control-zoom) {
+  overflow: hidden;
+  border: 1px solid rgba(122, 148, 255, 0.34);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+:deep(.route-map .leaflet-control-zoom a) {
+  width: 34px;
+  height: 34px;
+  border-color: rgba(89, 108, 143, 0.24);
+  background: rgba(14, 24, 41, 0.94);
+  color: #dbe7ff;
+  font-size: 22px;
+  line-height: 32px;
+}
+
+:deep(.route-map .leaflet-control-zoom a:hover),
+:deep(.route-map .leaflet-control-zoom a:focus) {
+  background: rgba(31, 48, 78, 0.98);
+  color: #ffffff;
 }
 
 :deep(.route-map .leaflet-pane),

@@ -1148,6 +1148,12 @@ def build_goal_readiness_overview(goals: list[dict]) -> dict:
     )
     focus_goal = prioritized[0]
     readiness = focus_goal.get("goal_readiness") or {}
+    focus_summary = readiness.get("summary")
+    focus_next_step = (readiness.get("what_matters_next") or {}).get("summary")
+    normalized_summary = re.sub(r"[.!?]+$", "", str(focus_summary or "").strip().lower())
+    normalized_next_step = re.sub(r"[.!?]+$", "", str(focus_next_step or "").strip().lower())
+    if normalized_next_step == normalized_summary:
+        focus_next_step = None
     return {
         "status": readiness.get("state", "building"),
         "label": readiness.get("label", "Building"),
@@ -1156,8 +1162,8 @@ def build_goal_readiness_overview(goals: list[dict]) -> dict:
             "title": focus_goal.get("title"),
             "family_label": focus_goal.get("family_label"),
         },
-        "focus_summary": readiness.get("summary"),
-        "focus_next_step": (readiness.get("what_matters_next") or {}).get("summary"),
+        "focus_summary": focus_summary,
+        "focus_next_step": focus_next_step,
     }
 
 

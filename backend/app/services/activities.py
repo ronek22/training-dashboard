@@ -32,7 +32,13 @@ from .activity_analysis import (
 )
 from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
 from .heart_rate_zones import build_activity_heart_rate_zone_summary
-from .plans import ensure_plan_day_ids, format_workout_intent_label, normalize_workout_intent
+from .plans import (
+    build_execution_quality_for_completed_session,
+    ensure_plan_day_ids,
+    find_planned_session_by_id,
+    format_workout_intent_label,
+    normalize_workout_intent,
+)
 from .settings import (
     get_performance_settings_for_conn,
     get_workout_template_settings_for_conn,
@@ -220,6 +226,35 @@ def _is_strava_backed_activity(activity_id: str) -> bool:
     return activity_id.isdigit()
 
 
+def _encode_route_polyline(latlng: list) -> Optional[str]:
+    """Encode a Strava lat/lng stream using Google's polyline format."""
+    encoded: list[str] = []
+    previous_lat = 0
+    previous_lng = 0
+
+    def encode_delta(delta: int) -> None:
+        value = ~(delta << 1) if delta < 0 else delta << 1
+        while value >= 0x20:
+            encoded.append(chr((0x20 | (value & 0x1F)) + 63))
+            value >>= 5
+        encoded.append(chr(value + 63))
+
+    for point in latlng:
+        if not isinstance(point, (list, tuple)) or len(point) < 2:
+            continue
+        try:
+            lat = round(float(point[0]) * 100_000)
+            lng = round(float(point[1]) * 100_000)
+        except (TypeError, ValueError):
+            continue
+        encode_delta(lat - previous_lat)
+        encode_delta(lng - previous_lng)
+        previous_lat = lat
+        previous_lng = lng
+
+    return "".join(encoded) or None
+
+
 def _extract_route_polyline(detail: Optional[dict], streams: Optional[dict], cached_polyline: Optional[str]) -> Optional[str]:
     if cached_polyline:
         return cached_polyline
@@ -230,7 +265,7 @@ def _extract_route_polyline(detail: Optional[dict], streams: Optional[dict], cac
             return summary_polyline
     latlng = (streams or {}).get("latlng", {}).get("data") or []
     if latlng:
-        return None
+        return _encode_route_polyline(latlng)
     return None
 
 
@@ -596,6 +631,12 @@ def _build_activity_detail_payload(
     strength_detail = None
     if activity.get("type") == "WeightTraining":
         strength_detail = get_fitbod_strength_detail_for_activity(conn, activity["id"]) or {"status": "not_linked"}
+    linked_planned_session = None
+    execution_quality = None
+    if activity.get("linked_planned_session_id"):
+        linked_planned_session = find_planned_session_by_id(conn, activity["linked_planned_session_id"])
+        if linked_planned_session:
+            execution_quality = build_execution_quality_for_completed_session(conn, linked_planned_session, [activity])
     if detail_row and derived_version == DETAIL_DERIVED_VERSION:
         charts = cached_charts if isinstance(cached_charts, list) else []
         best_efforts = cached_best_efforts if isinstance(cached_best_efforts, dict) else None
@@ -636,6 +677,8 @@ def _build_activity_detail_payload(
         "source_stream_summary": dict(stream_summary) if stream_summary else None,
         "detail_available": bool(detail_row and (detail or streams or route_polyline)),
         "strength_detail": strength_detail,
+        "linked_planned_session": linked_planned_session,
+        "execution_quality": execution_quality,
     }
 
 

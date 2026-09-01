@@ -2,6 +2,28 @@
 
 This file records durable project decisions that should influence future work.
 
+## 2026-08-26
+
+### Activity Detail information hierarchy
+
+- Subjective feedback should read as an interpreted athlete signal, not a raw row of values, while keeping the individual inputs visible and editable.
+- Coach analysis belongs directly after the session overview and before detailed route, chart, segment, and zone exploration.
+- Heart-rate zone summaries should link detail cards to their matching distribution-bar segments through hover and keyboard-focus feedback.
+- Endurance overviews should prioritize sport-relevant metrics in scannable tiles; cycling uses distance, clock-formatted moving time, average speed, and average heart rate, deriving speed when the source omits it.
+
+## 2026-08-25
+
+### One-click Codex weekly planning
+
+- The Plan view may start a non-interactive Codex CLI job through a loopback-only macOS helper; it should not require a second Send action.
+- The helper reuses the installed Codex login and configured `training_dashboard` MCP server, avoiding a separate API key.
+- Codex should preserve completed and past days when a current-week plan already exists, then verify the saved plan through MCP.
+- The helper stays bound to `127.0.0.1`, allows only dashboard browser origins, and runs Codex from a fresh temporary workspace with auto-reviewed approvals rather than exposing the repository as its working directory.
+- The same helper may generate structured single-workout analysis through the existing activity-analysis MCP tools; Activity Detail should keep that panel visible even before analysis exists.
+- Activity Detail should keep subjective session feedback compact and close to the header, while presenting saved coach analysis as a high-value preview that opens into a focused full-analysis modal.
+- Workout analysis should add coaching interpretation rather than restating visible metrics: explain training value, recent-pattern fit, positive signals, meaningful concerns, and the next practical implication from grounded evidence.
+- Athlete-written feedback notes are first-class analysis evidence and should be included in the Codex context, especially when they explain pain, soreness, conditions, or perceived session character.
+
 ## 2026-06-25
 
 ### Documentation location
@@ -117,3 +139,26 @@ This file records durable project decisions that should influence future work.
 - Athlete profile now lives in settings-backed storage as lightweight durable coaching context rather than a separate subsystem.
 - The canonical stored athlete-profile payload should remain compact and raw; normalized labels and `athlete_brief` should be derived on read.
 - Dashboard should treat athlete context as secondary reference information, not as a top-level daily coaching signal.
+
+## 2026-08-29
+
+### Dashboard role and information hierarchy
+
+- Dashboard should answer three questions first: what to do today, why that is the call, and what comes next.
+- Detailed load, strength, goal, and activity analysis should live in their dedicated views instead of being repeated in one long dashboard feed.
+- Conflicting but valid signals should be reconciled into one visible guardrail, such as allowing an easy planned session while warning against extra load when short-term strain is building.
+- The current seven-day plan, weekly focus, immediate goal pressure, and recent sessions are the maximum supporting context that should remain on the default dashboard surface.
+- The dashboard week strip is execution-first: past days show activities actually logged on those dates, while planned workouts appear only for an unfinished today or a future date.
+- Recent-session rows should not repeat the same short-horizon activity story already visible in the week strip; that dashboard space is reserved for redesigned year-to-date cycling, running, and strength trajectories.
+- Year-to-date chart months expose accessible hover and keyboard detail with monthly volume, training time, session count, and cumulative progress.
+- Do not keep a generic weekly-focus, goal-priority, or coming-next card row on Dashboard: those cards repeat the daily call and week strip or elevate durable restrictions as if they were new information.
+- The dashboard week surface includes an aggregate of actual distance, training time, and session count; actual day cards open Activity Detail, while unfinished, future, or missing days open Plan.
+- Dashboard readiness should lead with measured training load and a fresh subjective check-in as separate evidence. Consecutive training days and a long consistency streak are baseline context, not strain evidence on their own.
+- Dashboard detail links must land on the matching detail surface; Training load opens a computed Metrics tab with fitness, fatigue, form, ratio, focus, and trend rather than a generic manual-metric view.
+- The former Metrics page is now Trends: its job is to answer whether training is producing useful adaptation, led by training load, repeatable performance markers, supporting body/recovery signals, and plan-aware consistency.
+- Trends owns longer-horizon training context: recent heart-rate zone distribution, the annual workout heatmap, and cumulative cycling, running, and strength history. The dashboard can still summarize the year, but Trends is the durable analysis home.
+- Health charts are grouped into Recovery and Daily activity tabs instead of adding a primary tab for every imported measurement. Within each view, a compact metric selector controls one interactive focus chart rather than repeating multiple oversized charts; athletes can inspect individual days and switch between 14, 30, and 90-day ranges.
+- Apple Health JSON ingestion is deliberately selective and idempotent. Sleep, resting HR, HRV, weight, steps, walking/running distance, and flights climbed are retained; the much larger all-day heart-rate series and duplicate workout records stay in their source exports because HealthFit and workout streams are authoritative for training analysis.
+- Consecutive-day streak is no longer a primary navigation or trend signal. Consistency should measure planned sessions fulfilled, adapted, or missed so intentional recovery remains part of successful execution.
+- Weight stays available as an optional manual trend, and FTP test results update the cycling threshold anchor. Resting heart rate should wait for automatic Apple Watch/health-data ingestion rather than asking for manual entry.
+- Manual Z2 pace is not a trusted performance marker because route, terrain, conditions, and fatigue make isolated entries hard to compare; running threshold and derived repeatable benchmarks are preferred.

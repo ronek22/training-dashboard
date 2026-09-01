@@ -9,7 +9,7 @@ This is a practical map of the repository for day-to-day development.
 - `mcp/` — local MCP server bridge
 - `docs/` — roadmap index, roadmap archives, sprint plans, decisions, and durable repo context
 - `docker-compose.yml` — local multi-service startup
-- `Makefile` — common developer commands
+- `justfile` — common developer commands
 - `README.md` — setup and operator-facing instructions
 - `CODEX.md` — repo-specific guidance for coding agents
 

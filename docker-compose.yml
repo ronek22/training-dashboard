@@ -9,6 +9,9 @@ services:
       STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:-}
       STRAVA_REFRESH_TOKEN: ${STRAVA_REFRESH_TOKEN:-}
       HEALTHFIT_DIR: /healthfit
+      HEALTH_DATA_EXPORT_DIR: /health-data-export
+      HEALTH_DATA_AUTO_IMPORT: ${HEALTH_DATA_AUTO_IMPORT:-true}
+      HEALTH_DATA_IMPORT_INTERVAL_SECONDS: ${HEALTH_DATA_IMPORT_INTERVAL_SECONDS:-900}
     volumes:
       - ./data:/data
       - ./backend/app:/app/app
@@ -16,6 +19,10 @@ services:
       - type: bind
         source: ${HEALTHFIT_EXPORT_DIR:-./data/healthfit-inbox}
         target: /healthfit
+        read_only: true
+      - type: bind
+        source: ${HEALTH_DATA_EXPORT_DIR:-./data/health-data-export-inbox}
+        target: /health-data-export
         read_only: true
     restart: unless-stopped
 

@@ -12,10 +12,15 @@ Implemented foundations:
 - Strava import
 - metrics
 - coach notes
+- a global floating Coach drawer available from every page, with separate persistent conversations, new-chat, switching, deletion, local Codex CLI replies, and read-only live training context
 - weekly plans
 - plan-vs-actual comparison
 - dashboard aggregation and training-load views
 - MCP read/write access
+- one-click, non-interactive Codex planning that creates or updates the current week through MCP
+- optional pre-generation Codex planning briefs for schedule constraints, recovery feedback, and week-specific preferences
+- post-generation Codex plan feedback that revises eligible remaining days and records the plan change
+- always-visible workout analysis on Activity Detail with one-click Codex generation through MCP
 
 ## Recently Completed
 
@@ -129,6 +134,7 @@ Completed slices:
 - multi-week adherence and intent-alignment trend analysis is now available through deterministic backend summaries
 - weekly coaching now uses stronger deterministic heuristics across recent execution patterns, revision churn, recovery signals, and goal pressure
 - weekly coaching rationale and risk reporting now expose clearer recent-pattern summaries without breaking the structured contract
+- a later dashboard simplification replaces the long analytics feed with a daily decision surface: today’s call, readiness and check-in context, the current week, three priorities, recent sessions, and explicit routes into deeper views
 
 ### Sprint 13 goal progress and planning forecasts
 
@@ -242,6 +248,7 @@ Completed slices:
 - coaching now consumes a shared readiness summary with state, reasons, limitations, and next-48-hour guidance
 - recent-context and MCP-facing reads now expose the same deterministic readiness payload instead of requiring downstream reconstruction
 - readiness now distinguishes `ready`, `watch`, `strained`, and `insufficient_data` while staying conservative about missing evidence
+- readiness now leads with modeled fitness, short-term fatigue, form, and the latest subjective check-in; ordinary consistency, long easy sessions, and missing Zone 2 flags no longer create a strain state by themselves
 - frontend dashboard cleanup removed duplicated athlete-context and strength-rotation reference blocks so the readiness layer stays closer to the main decision flow
 
 ### Sprint 32 planned-vs-actual workout quality
@@ -278,6 +285,11 @@ Completed slices:
 - compact derived reads now expose recent 5k and 10k run benchmarks plus best recent 10-minute power
 - zone-dependent goal logic now stays explicitly unavailable when threshold anchors are missing
 - `Goals` now exposes lightweight performance-foundation editing and visibility for benchmark and zone-based goal support
+- `Trends` now replaces the generic Metrics presentation with training load, threshold anchors, derived run/ride benchmarks, automatic Apple Health resting HR, optional weight and FTP history, four-week plan-aware consistency, recent workout heart-rate distribution, a full-year workout heatmap, and year-to-date cycling/running/strength charts
+- focused Trends tabs group athlete-facing charts by purpose: Recovery contains sleep, resting HR, and HRV; Daily activity contains steps, walking/running distance, and flights climbed. Compact metric selectors drive one focused interactive chart with 14/30/90-day ranges, hover/tap/keyboard day inspection, prior-day comparison, and a rolling seven-day personal average without treating one reading as a readiness verdict
+- consecutive-day streak and manual Z2/resting-HR entry no longer occupy the primary Trends interface; rest days are part of the plan and Apple Watch recovery signals come from Health Data Export instead of manual entry
+- `Data & Sync` can stream raw Health Data Export JSON from a read-only iCloud Drive mount; imports run automatically on backend startup and every 15 minutes by default, remain manually triggerable, and are idempotent across a large initial backfill and overlapping daily files
+- Health Data Export supplies sleep stages, resting HR, HRV, weight, steps, walking/running distance, and flights climbed; HealthFit remains authoritative for workouts, and raw all-day heart rate is intentionally left out of SQLite
 
 ## Recommended Next Step
 

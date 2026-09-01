@@ -11,6 +11,8 @@ const Roadmap = () => import('./views/Roadmap.vue')
 const ActivityDetail = () => import('./views/ActivityDetail.vue')
 const Sync = () => import('./views/Sync.vue')
 const Strength = () => import('./views/Strength.vue')
+const StrengthWorkouts = () => import('./views/StrengthWorkouts.vue')
+const StrengthWorkoutSession = () => import('./views/StrengthWorkoutSession.vue')
 
 export default createRouter({
   history: createWebHistory(),
@@ -21,6 +23,8 @@ export default createRouter({
     { path: '/calendar', component: Calendar },
     { path: '/goals', component: Goals },
     { path: '/strength', component: Strength },
+    { path: '/strength/workouts', component: StrengthWorkouts },
+    { path: '/strength/workouts/:sessionId', component: StrengthWorkoutSession },
     { path: '/activities', component: Activities },
     { path: '/activities/:activityId', component: ActivityDetail },
     { path: '/sync', component: Sync },

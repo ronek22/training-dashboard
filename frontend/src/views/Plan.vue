@@ -6,6 +6,17 @@
         <h1 class="page-title">Plan</h1>
         <p class="page-sub">Current week first, older weeks quieter. Review coaching changes, protect completed days, and adjust only what still matters.</p>
       </div>
+      <div class="codex-plan-action">
+        <button type="button" class="codex-plan-button" :disabled="planningWithCodex" @click="openCodexPlanningBrief">
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M12 3l1.25 3.75L17 8l-3.75 1.25L12 13l-1.25-3.75L7 8l3.75-1.25L12 3Z" />
+            <path d="m18.5 13 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" />
+            <path d="m5.5 13 .8 2.2 2.2.8-2.2.8L5.5 19l-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" />
+          </svg>
+          <span>{{ planningWithCodex ? 'Codex is planning…' : 'Plan this week with Codex' }}</span>
+        </button>
+        <span class="codex-plan-hint">{{ codexPlanningStage || 'Creates and saves the plan automatically' }}</span>
+      </div>
     </div>
 
     <div v-if="flashMessage" class="flash-banner" :class="`flash-${flashMessage.type}`">
@@ -80,6 +91,13 @@
             <p v-if="selectedFocusDay?.details" class="today-brief-copy">{{ selectedFocusDay.details }}</p>
             <div class="today-brief-actions">
               <button v-if="selectedFocusDay?.details" type="button" class="save-button" @click="openPlannedSessionDetails(selectedFocusDay)">View session</button>
+              <button
+                v-if="isCurrentPlan(selectedPlan) && adjustableDays(selectedPlan).length"
+                type="button"
+                class="ghost-button codex-refine-button"
+                :disabled="planningWithCodex"
+                @click="openCodexPlanFeedback"
+              >Refine with Codex</button>
               <button v-if="adjustableDays(selectedPlan).length" type="button" class="ghost-button" @click="openAdjustEditor(selectedPlan)">Adjust remaining week</button>
             </div>
           </article>
@@ -408,6 +426,7 @@
               <div class="adjust-sub">
                 Protected days are in the past or already have logged activity. The plan will update from
                 {{ formatDay(editor.effectiveFrom) }}.
+                Drag a session onto another editable day to swap them, or select Move session on both days.
               </div>
             </div>
             <div class="adjust-panel-actions">
@@ -436,7 +455,17 @@
               v-for="day in plan.days"
               :key="`editor-${day.date}`"
               class="editor-day"
-              :class="{ 'is-protected': isProtectedDay(day), 'is-editable': !isProtectedDay(day) }"
+              :class="{
+                'is-protected': isProtectedDay(day),
+                'is-editable': !isProtectedDay(day),
+                'is-dragging': draggedEditorDate === day.date,
+                'is-drop-target': editorDropTargetDate === day.date,
+                'is-move-source': editorMoveSourceDate === day.date,
+              }"
+              @dragenter.prevent="setEditorDropTarget(day)"
+              @dragover.prevent="setEditorDropTarget(day)"
+              @dragleave="clearEditorDropTarget(day, $event)"
+              @drop.prevent="dropEditorDay(day)"
             >
               <div class="editor-day-top">
                 <div>
@@ -447,6 +476,22 @@
                   {{ isProtectedDay(day) ? protectedReason(day) : 'Editable' }}
                 </div>
               </div>
+
+              <button
+                v-if="!isProtectedDay(day)"
+                type="button"
+                class="editor-move-handle"
+                :class="{ 'is-selected': editorMoveSourceDate === day.date }"
+                draggable="true"
+                :aria-pressed="editorMoveSourceDate === day.date"
+                :aria-label="moveSessionLabel(day)"
+                @click="selectEditorDayForMove(day)"
+                @dragstart="startEditorDrag(day, $event)"
+                @dragend="finishEditorDrag"
+              >
+                <span class="editor-move-grip" aria-hidden="true">⠿</span>
+                <span>{{ editorMoveSourceDate === day.date ? 'Choose destination' : 'Move session' }}</span>
+              </button>
 
               <template v-if="isProtectedDay(day)">
                 <div class="editor-locked-title">{{ day.title }}</div>
@@ -529,6 +574,8 @@
             </article>
           </div>
 
+          <div class="sr-only" aria-live="polite">{{ editorMoveAnnouncement }}</div>
+
           <label class="editor-field editor-reason">
             <span>Adjustment reason</span>
             <textarea
@@ -578,7 +625,10 @@
                 </div>
               </button>
 
-              <div class="plan-block">
+              <div
+                class="plan-block plan-block-workout"
+                :class="`plan-block-${activityTone(day.session_type)}`"
+              >
                 <div class="plan-block-label">Planned</div>
                 <div class="plan-row">
                   <div class="plan-day-title">{{ day.title }}</div>
@@ -767,6 +817,94 @@
     </template>
 
     <Transition name="overlay-fade" appear>
+      <div v-if="codexBriefOpen" class="codex-brief-shell" @click.self="closeCodexPlanningBrief">
+        <form class="codex-brief-modal card" role="dialog" aria-modal="true" aria-labelledby="codex-brief-title" @submit.prevent="planCurrentWeekWithCodex">
+          <div class="codex-brief-head">
+            <div>
+              <div class="plan-details-kicker">Plan with Codex</div>
+              <h2 id="codex-brief-title">Anything Codex should consider?</h2>
+              <p>Add schedule constraints, recovery feedback, session preferences, or a specific priority for this week.</p>
+            </div>
+            <button class="plan-details-close" type="button" aria-label="Close planning brief" @click="closeCodexPlanningBrief">×</button>
+          </div>
+
+          <label class="codex-brief-label" for="codex-planning-brief">Additional input <span>optional</span></label>
+          <textarea
+            id="codex-planning-brief"
+            v-model="codexPlanningBrief"
+            rows="5"
+            maxlength="4000"
+            placeholder="For example: I feel more fatigued than usual. Keep Friday free, make Saturday the long ride, and avoid hard running this week."
+            autofocus
+          ></textarea>
+
+          <div class="codex-brief-suggestions" aria-label="Quick planning inputs">
+            <button
+              v-for="suggestion in codexBriefSuggestions"
+              :key="suggestion"
+              type="button"
+              @click="addCodexBriefSuggestion(suggestion)"
+            >{{ suggestion }}</button>
+          </div>
+
+          <div class="codex-brief-footer">
+            <span>{{ codexPlanningBrief.length }} / 4000</span>
+            <div>
+              <button class="ghost-button" type="button" @click="closeCodexPlanningBrief">Cancel</button>
+              <button class="codex-brief-submit" type="submit">
+                {{ codexPlanningBrief.trim() ? 'Generate with this input' : 'Generate from dashboard data' }}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </Transition>
+
+    <Transition name="overlay-fade" appear>
+      <div v-if="codexFeedbackOpen" class="codex-brief-shell" @click.self="closeCodexPlanFeedback">
+        <form class="codex-brief-modal card" role="dialog" aria-modal="true" aria-labelledby="codex-feedback-title" @submit.prevent="reviseCurrentPlanWithCodex">
+          <div class="codex-brief-head">
+            <div>
+              <div class="plan-details-kicker">Refine with Codex</div>
+              <h2 id="codex-feedback-title">How should Codex revise this plan?</h2>
+              <p>Review the generated week, then describe what should move, change, or receive more emphasis. Completed and past days stay protected.</p>
+            </div>
+            <button class="plan-details-close" type="button" aria-label="Close plan feedback" @click="closeCodexPlanFeedback">×</button>
+          </div>
+
+          <label class="codex-brief-label" for="codex-plan-feedback">Feedback on this plan</label>
+          <textarea
+            id="codex-plan-feedback"
+            v-model="codexPlanFeedback"
+            rows="5"
+            maxlength="4000"
+            placeholder="For example: Thursday looks too hard after Wednesday. Move the intervals to Saturday and make Friday a recovery day."
+            autofocus
+          ></textarea>
+
+          <div class="codex-brief-suggestions" aria-label="Quick plan feedback">
+            <button
+              v-for="suggestion in codexFeedbackSuggestions"
+              :key="suggestion"
+              type="button"
+              @click="addCodexFeedbackSuggestion(suggestion)"
+            >{{ suggestion }}</button>
+          </div>
+
+          <div class="codex-brief-footer">
+            <span>{{ codexPlanFeedback.length }} / 4000</span>
+            <div>
+              <button class="ghost-button" type="button" @click="closeCodexPlanFeedback">Cancel</button>
+              <button class="codex-brief-submit" type="submit" :disabled="!codexPlanFeedback.trim()">
+                Revise plan with Codex
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </Transition>
+
+    <Transition name="overlay-fade" appear>
       <div v-if="plannedSessionDialog" class="plan-details-modal-shell" @click.self="closePlannedSessionDetails">
         <Transition name="modal-pop" appear>
           <div v-if="plannedSessionDialog" class="plan-details-modal card" role="dialog" aria-modal="true" aria-label="Planned workout details">
@@ -873,7 +1011,7 @@
 
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
-import { format } from 'date-fns'
+import { format, startOfWeek } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
@@ -928,6 +1066,10 @@ const approvingCoaching = ref(false)
 const linkingSessionId = ref(null)
 const flashMessage = ref(null)
 const editorError = ref('')
+const draggedEditorDate = ref(null)
+const editorDropTargetDate = ref(null)
+const editorMoveSourceDate = ref(null)
+const editorMoveAnnouncement = ref('')
 const coachingReview = ref(null)
 const plannedSessionDialog = ref(null)
 const selectedLinkedActivityIds = ref({})
@@ -935,6 +1077,13 @@ const openLinkEditors = ref({})
 const expandedHistoricalWeeks = ref({})
 const selectedWeekStart = ref(null)
 const selectedDayDate = ref(null)
+const planningWithCodex = ref(false)
+const codexPlanningStage = ref('')
+const codexBriefOpen = ref(false)
+const codexPlanningBrief = ref('')
+const codexFeedbackOpen = ref(false)
+const codexPlanFeedback = ref('')
+let viewActive = true
 const editor = ref({
   weekStart: null,
   effectiveFrom: '',
@@ -942,6 +1091,18 @@ const editor = ref({
   days: {},
 })
 const coachingDraftKey = 'coaching-adjustment-draft'
+const codexBriefSuggestions = [
+  'Prioritize recovery',
+  'Keep Friday free',
+  'Long ride on Saturday',
+  'Limit weekday sessions to 60 minutes',
+]
+const codexFeedbackSuggestions = [
+  'Reduce the overall load',
+  'Add another recovery day',
+  'Move the hardest session later',
+  'Keep the weekend lighter',
+]
 
 const readCoachingDraft = () => {
   try {
@@ -977,6 +1138,148 @@ const requestWithTimeout = (request, timeoutMs = 8000) => Promise.race([
     window.setTimeout(() => reject(new Error(`Request timed out after ${timeoutMs}ms`)), timeoutMs)
   }),
 ])
+
+const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+
+const openCodexPlanningBrief = () => {
+  if (planningWithCodex.value) return
+  codexBriefOpen.value = true
+}
+
+const closeCodexPlanningBrief = () => {
+  if (planningWithCodex.value) return
+  codexBriefOpen.value = false
+}
+
+const addCodexBriefSuggestion = (suggestion) => {
+  if (codexPlanningBrief.value.includes(suggestion)) return
+  const separator = codexPlanningBrief.value.trim() ? '\n' : ''
+  codexPlanningBrief.value = `${codexPlanningBrief.value.trimEnd()}${separator}${suggestion}`
+}
+
+const openCodexPlanFeedback = () => {
+  if (planningWithCodex.value || !selectedPlan.value) return
+  codexFeedbackOpen.value = true
+}
+
+const closeCodexPlanFeedback = () => {
+  if (planningWithCodex.value) return
+  codexFeedbackOpen.value = false
+}
+
+const addCodexFeedbackSuggestion = (suggestion) => {
+  if (codexPlanFeedback.value.includes(suggestion)) return
+  const separator = codexPlanFeedback.value.trim() ? '\n' : ''
+  codexPlanFeedback.value = `${codexPlanFeedback.value.trimEnd()}${separator}${suggestion}`
+}
+
+const planCurrentWeekWithCodex = async () => {
+  if (planningWithCodex.value) return
+  const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+  const planningBrief = codexPlanningBrief.value.trim()
+  codexBriefOpen.value = false
+  planningWithCodex.value = true
+  codexPlanningStage.value = 'Starting local Codex…'
+  flashMessage.value = {
+    type: 'success',
+    title: 'Codex is planning this week',
+    detail: 'You can stay on this page. The plan will refresh automatically when it is saved.',
+  }
+  try {
+    const started = await api.startCodexWeeklyPlan({
+      week_start: weekStart,
+      planning_brief: planningBrief,
+    })
+    const jobId = started.data.job_id
+    const deadline = Date.now() + (15 * 60 * 1000)
+    while (viewActive && Date.now() < deadline) {
+      await wait(1800)
+      const result = await api.getCodexWeeklyPlanJob(jobId)
+      const job = result.data
+      codexPlanningStage.value = job.message || 'Codex is planning…'
+      if (job.status === 'failed') throw new Error(job.message || 'Codex could not create the weekly plan.')
+      if (job.status === 'succeeded') {
+        selectedWeekStart.value = weekStart
+        selectedDayDate.value = null
+        await load()
+        flashMessage.value = {
+          type: 'success',
+          title: 'Weekly plan saved by Codex',
+          detail: job.summary || 'The current plan has been refreshed. Use Refine with Codex if you want anything changed.',
+        }
+        return
+      }
+    }
+    if (viewActive) throw new Error('Codex planning timed out after 15 minutes.')
+  } catch (error) {
+    if (!viewActive) return
+    const helperUnavailable = Boolean(error?.request && !error?.response)
+    flashMessage.value = {
+      type: 'error',
+      title: helperUnavailable ? 'Local Codex helper is not running' : 'Codex could not create the plan',
+      detail: helperUnavailable
+        ? 'Restart the dashboard with its normal start command, then try again.'
+        : (error?.response?.data?.detail || error?.message || 'The weekly planning request failed.'),
+    }
+  } finally {
+    planningWithCodex.value = false
+    codexPlanningStage.value = ''
+  }
+}
+
+const reviseCurrentPlanWithCodex = async () => {
+  if (planningWithCodex.value || !selectedPlan.value) return
+  const feedback = codexPlanFeedback.value.trim()
+  if (!feedback) return
+  const weekStart = selectedPlan.value.week_start
+  codexFeedbackOpen.value = false
+  planningWithCodex.value = true
+  codexPlanningStage.value = 'Sending plan feedback to Codex…'
+  flashMessage.value = {
+    type: 'success',
+    title: 'Codex is revising the plan',
+    detail: 'The saved plan will refresh automatically after the revision is complete.',
+  }
+  try {
+    const started = await api.startCodexWeeklyPlanRevision({
+      week_start: weekStart,
+      feedback,
+    })
+    const jobId = started.data.job_id
+    const deadline = Date.now() + (15 * 60 * 1000)
+    while (viewActive && Date.now() < deadline) {
+      await wait(1800)
+      const result = await api.getCodexWeeklyPlanRevisionJob(jobId)
+      const job = result.data
+      codexPlanningStage.value = job.message || 'Codex is revising the plan…'
+      if (job.status === 'failed') throw new Error(job.message || 'Codex could not revise the weekly plan.')
+      if (job.status === 'succeeded') {
+        codexPlanFeedback.value = ''
+        await load()
+        flashMessage.value = {
+          type: 'success',
+          title: 'Plan revised from your feedback',
+          detail: job.summary || 'The current plan has been refreshed.',
+        }
+        return
+      }
+    }
+    if (viewActive) throw new Error('Codex revision timed out after 15 minutes.')
+  } catch (error) {
+    if (!viewActive) return
+    const helperUnavailable = Boolean(error?.request && !error?.response)
+    flashMessage.value = {
+      type: 'error',
+      title: helperUnavailable ? 'Local Codex helper is not running' : 'Codex could not revise the plan',
+      detail: helperUnavailable
+        ? 'Restart the dashboard with its normal start command, then try again.'
+        : (error?.response?.data?.detail || error?.message || 'The weekly plan revision failed.'),
+    }
+  } finally {
+    planningWithCodex.value = false
+    codexPlanningStage.value = ''
+  }
+}
 
 const load = async () => {
   loading.value = true
@@ -1038,6 +1341,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  viewActive = false
   window.removeEventListener('keydown', handlePlanDialogKeydown)
 })
 
@@ -1126,15 +1430,22 @@ const selectedWeekMetrics = computed(() => {
 })
 
 const activityTone = (type) => {
-  if (type === 'Run') return 'run'
-  if (type === 'Ride' || type === 'VirtualRide' || type === 'cycling') return 'ride'
-  if (type === 'WeightTraining' || type === 'Strength' || type === 'strength') return 'strength'
-  if (type === 'Recovery' || type === 'Rest' || type === 'recovery' || type === 'rest') return 'recovery'
-  if (type === 'Walk') return 'walk'
+  const normalizedType = String(type || '').replace(/[\s_-]+/g, '').toLowerCase()
+  if (normalizedType === 'run' || normalizedType === 'running') return 'run'
+  if (['ride', 'virtualride', 'cycling', 'bike'].includes(normalizedType)) return 'ride'
+  if (['weighttraining', 'strength', 'weights'].includes(normalizedType)) return 'strength'
+  if (normalizedType === 'recovery' || normalizedType === 'rest') return 'recovery'
+  if (normalizedType === 'walk' || normalizedType === 'hike') return 'walk'
   return 'neutral'
 }
 
-const isIconSessionType = (type) => ['Run', 'Ride', 'VirtualRide', 'WeightTraining', 'Strength', 'Recovery', 'Rest', 'Walk', 'run', 'ride', 'strength', 'recovery', 'rest', 'walk'].includes(type)
+const isIconSessionType = (type) => {
+  const normalizedType = String(type || '').replace(/[\s_-]+/g, '').toLowerCase()
+  return [
+    'run', 'running', 'ride', 'virtualride', 'cycling', 'bike',
+    'weighttraining', 'strength', 'weights', 'recovery', 'rest', 'walk', 'hike',
+  ].includes(normalizedType)
+}
 
 const planTrendStatusLabel = (status) => {
   if (status === 'on_track') return 'Mostly on track'
@@ -1410,7 +1721,7 @@ const displayPlanNotes = (plan) => {
 
 const statusLabel = (comparison) => {
   if (!comparison) return ''
-  if (comparison.status === 'linked') return 'Linked'
+  if (comparison.status === 'linked') return comparison.label || 'Linked'
   if (comparison.status === 'moved' && comparison.moved_to_date) {
     return `Moved to ${formatDay(comparison.moved_to_date)}`
   }
@@ -1420,6 +1731,12 @@ const statusLabel = (comparison) => {
 const statusDetail = (comparison) => {
   if (!comparison) return ''
   if (comparison.status === 'linked') {
+    if (comparison.schedule_timing === 'early' && comparison.fulfilled_on_date) {
+      return `Completed ahead of schedule on ${formatDay(comparison.fulfilled_on_date)}.`
+    }
+    if (comparison.schedule_timing === 'late' && comparison.fulfilled_on_date) {
+      return `Completed after the planned day on ${formatDay(comparison.fulfilled_on_date)}.`
+    }
     if (comparison.intent_alignment === 'different' && comparison.planned_intent_label) {
       return `This session is explicitly linked, but the completed activity intent differs from planned ${comparison.planned_intent_label.toLowerCase()} work.`
     }
@@ -1625,7 +1942,7 @@ const shouldShowLinkAction = (day) => shouldShowLinkEditor(day)
 const shouldShowLinkEditor = (day) => {
   if (explicitLinkedActivity(day)) return true
   if (day.comparison?.completed_activities?.length) return true
-  return uniqueLinkCandidates(day).length > 0 && !isFutureDay(day.date)
+  return uniqueLinkCandidates(day).length > 0
 }
 
 const isLinkEditorOpen = (day) => {
@@ -1643,6 +1960,7 @@ const toggleLinkEditor = (day) => {
 const linkActionLabel = (day) => {
   if (day.comparison?.matching_strategy === 'explicit') return 'Relink'
   if (day.comparison?.matching_strategy === 'inferred') return 'Review link'
+  if (isFutureDay(day.date)) return 'Complete early'
   return 'Link activity'
 }
 
@@ -1655,6 +1973,7 @@ const linkStateLabel = (strategy) => {
 const linkEditorCopy = (day) => {
   if (day.comparison?.matching_strategy === 'explicit') return 'Explicit links override date-based matching.'
   if (day.comparison?.matching_strategy === 'inferred') return 'Keep the inferred match or pick the session that actually fulfilled the plan.'
+  if (isFutureDay(day.date)) return 'Choose a completed activity to count for this planned session ahead of schedule.'
   return 'Choose the activity that should count for this planned session.'
 }
 
@@ -1702,6 +2021,108 @@ const cloneDayForEditor = (day) => ({
   target_duration_min: day.target_duration_min ?? null,
   target_distance_km: day.target_distance_km ?? null,
 })
+
+const editorSessionFields = [
+  'session_type',
+  'workout_intent',
+  'benchmark_tag',
+  'benchmark_label',
+  'title',
+  'details',
+  'target_duration_min',
+  'target_distance_km',
+]
+
+const sessionTitleForDate = (date) => editor.value.days[date]?.title || 'Planned session'
+
+const swapEditorDays = (sourceDate, destinationDate) => {
+  if (!sourceDate || !destinationDate || sourceDate === destinationDate) return false
+
+  const source = editor.value.days[sourceDate]
+  const destination = editor.value.days[destinationDate]
+  if (!source || !destination) return false
+
+  const sourceTitle = sessionTitleForDate(sourceDate)
+  const destinationTitle = sessionTitleForDate(destinationDate)
+  const nextSource = { ...source }
+  const nextDestination = { ...destination }
+
+  for (const field of editorSessionFields) {
+    nextSource[field] = destination[field]
+    nextDestination[field] = source[field]
+  }
+
+  editor.value.days = {
+    ...editor.value.days,
+    [sourceDate]: nextSource,
+    [destinationDate]: nextDestination,
+  }
+  editorMoveAnnouncement.value = `${sourceTitle} and ${destinationTitle} swapped.`
+  editorError.value = ''
+  return true
+}
+
+const resetEditorMoveState = () => {
+  draggedEditorDate.value = null
+  editorDropTargetDate.value = null
+  editorMoveSourceDate.value = null
+}
+
+const moveSessionLabel = (day) => {
+  const title = sessionTitleForDate(day.date)
+  if (editorMoveSourceDate.value === day.date) {
+    return `${title} selected. Choose another editable day to swap sessions.`
+  }
+  if (editorMoveSourceDate.value) {
+    return `Swap ${title} with the selected session.`
+  }
+  return `Move ${title} to another editable day.`
+}
+
+const selectEditorDayForMove = (day) => {
+  if (isProtectedDay(day)) return
+  const sourceDate = editorMoveSourceDate.value
+  if (!sourceDate) {
+    editorMoveSourceDate.value = day.date
+    editorMoveAnnouncement.value = `${sessionTitleForDate(day.date)} selected. Choose its destination.`
+    return
+  }
+  if (sourceDate === day.date) {
+    editorMoveSourceDate.value = null
+    editorMoveAnnouncement.value = 'Session move cancelled.'
+    return
+  }
+  swapEditorDays(sourceDate, day.date)
+  resetEditorMoveState()
+}
+
+const startEditorDrag = (day, event) => {
+  if (isProtectedDay(day)) return
+  draggedEditorDate.value = day.date
+  editorMoveSourceDate.value = day.date
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', day.date)
+}
+
+const setEditorDropTarget = (day) => {
+  if (!isProtectedDay(day) && draggedEditorDate.value && draggedEditorDate.value !== day.date) {
+    editorDropTargetDate.value = day.date
+  }
+}
+
+const clearEditorDropTarget = (day, event) => {
+  if (event.currentTarget.contains(event.relatedTarget)) return
+  if (editorDropTargetDate.value === day.date) editorDropTargetDate.value = null
+}
+
+const dropEditorDay = (day) => {
+  if (!isProtectedDay(day)) swapEditorDays(draggedEditorDate.value, day.date)
+  resetEditorMoveState()
+}
+
+const finishEditorDrag = () => {
+  resetEditorMoveState()
+}
 
 const buildEditorState = (plan) => {
   const days = {}
@@ -1780,6 +2201,8 @@ const openAdjustEditor = (plan) => {
     return
   }
 
+  resetEditorMoveState()
+  editorMoveAnnouncement.value = ''
   editor.value = buildEditorState(plan)
   editorError.value = ''
 }
@@ -1826,6 +2249,8 @@ const maybeApplyCoachingDraft = async () => {
 const resetEditor = (plan) => {
   editor.value = buildEditorState(plan)
   editorError.value = ''
+  resetEditorMoveState()
+  editorMoveAnnouncement.value = 'Edits reset to the saved plan.'
 }
 
 const closeAdjustEditor = () => {
@@ -1836,6 +2261,8 @@ const closeAdjustEditor = () => {
     days: {},
   }
   editorError.value = ''
+  resetEditorMoveState()
+  editorMoveAnnouncement.value = ''
 }
 
 const isCoachingReviewForPlan = (plan) => coachingReview.value?.week_start === plan.week_start
@@ -1852,6 +2279,8 @@ const openCoachingDraftInEditor = (plan) => {
   const draft = coachingReview.value
   if (!draft) return
   const { state } = buildEditorStateFromCoachingDraft(plan, draft)
+  resetEditorMoveState()
+  editorMoveAnnouncement.value = ''
   editor.value = state
   editorError.value = ''
 }
@@ -1978,6 +2407,160 @@ const savePlanLink = async (day) => {
 </script>
 
 <style scoped>
+.codex-plan-action {
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+.codex-plan-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(123, 163, 255, 0.38);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(95, 140, 255, 0.28), rgba(31, 190, 141, 0.18)),
+    rgba(20, 29, 45, 0.96);
+  color: #f3f7ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 26px rgba(3, 8, 18, 0.18);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.codex-plan-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(123, 163, 255, 0.62);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 14px 32px rgba(3, 8, 18, 0.24);
+}
+.codex-plan-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+  transform: none;
+}
+.codex-plan-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.55;
+}
+.codex-plan-hint {
+  color: var(--muted);
+  font-size: 10px;
+}
+.codex-brief-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(2, 6, 23, .74);
+  backdrop-filter: blur(16px);
+}
+.codex-brief-modal {
+  width: min(650px, 100%);
+  padding: 24px;
+  border-color: rgba(123, 163, 255, .26);
+  background:
+    radial-gradient(circle at top right, rgba(95, 140, 255, .18), transparent 32%),
+    linear-gradient(180deg, rgba(18, 26, 42, .99), rgba(10, 16, 27, .99));
+  box-shadow: 0 30px 90px rgba(2, 6, 23, .55);
+}
+.codex-brief-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.codex-brief-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(25px, 4vw, 34px);
+  line-height: 1.08;
+  letter-spacing: -.03em;
+}
+.codex-brief-head p {
+  max-width: 540px;
+  margin: 9px 0 0;
+  color: var(--muted-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.codex-brief-label {
+  display: flex;
+  justify-content: space-between;
+  margin: 22px 0 8px;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.codex-brief-label span { color: var(--muted); font-weight: 600; }
+.codex-brief-modal textarea {
+  width: 100%;
+  min-height: 128px;
+  resize: vertical;
+  padding: 14px 15px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: rgba(8, 14, 24, .72);
+  color: var(--text);
+  line-height: 1.55;
+}
+.codex-brief-modal textarea::placeholder { color: #667791; }
+.codex-brief-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 11px;
+}
+.codex-brief-suggestions button {
+  padding: 6px 10px;
+  border: 1px solid rgba(123, 163, 255, .2);
+  border-radius: 999px;
+  background: rgba(95, 140, 255, .08);
+  color: #b9c9e8;
+  font-size: 10px;
+  cursor: pointer;
+}
+.codex-brief-suggestions button:hover { background: rgba(95, 140, 255, .16); color: var(--text); }
+.codex-brief-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 22px;
+}
+.codex-brief-footer > span { color: var(--muted); font-size: 10px; }
+.codex-brief-footer > div { display: flex; gap: 8px; }
+.codex-brief-submit {
+  min-height: 40px;
+  padding: 0 15px;
+  border: 1px solid rgba(123, 163, 255, .36);
+  border-radius: 11px;
+  background: linear-gradient(135deg, #668cf0, #4e6ec8);
+  color: white;
+  font-weight: 750;
+  cursor: pointer;
+}
+.codex-brief-submit:hover { transform: translateY(-1px); }
+.codex-brief-submit:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+  transform: none;
+}
+.codex-refine-button {
+  border-color: rgba(123, 163, 255, .3);
+  color: #c9d8f5;
+}
 .plan-command {
   margin-bottom: 18px;
   padding: 20px;
@@ -2795,6 +3378,18 @@ const savePlanLink = async (day) => {
 }
 .editor-day.is-editable {
   box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.08);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.editor-day.is-dragging {
+  opacity: 0.62;
+}
+.editor-day.is-drop-target {
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: inset 0 0 0 2px rgba(96, 165, 250, 0.28), 0 12px 28px rgba(2, 6, 23, 0.35);
+  transform: translateY(-2px);
+}
+.editor-day.is-move-source {
+  border-color: rgba(52, 211, 153, 0.75);
 }
 .editor-day.is-protected {
   opacity: 0.82;
@@ -2834,6 +3429,38 @@ const savePlanLink = async (day) => {
 .pill-editable {
   background: rgba(52, 211, 153, 0.14);
   color: #6ee7b7;
+}
+.editor-move-handle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: -2px 0 12px;
+  padding: 9px 10px;
+  border: 1px dashed rgba(96, 165, 250, 0.42);
+  border-radius: 11px;
+  background: rgba(30, 41, 59, 0.58);
+  color: #bfdbfe;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: grab;
+}
+.editor-move-handle:hover,
+.editor-move-handle:focus-visible,
+.editor-move-handle.is-selected {
+  border-color: rgba(52, 211, 153, 0.78);
+  background: rgba(16, 185, 129, 0.13);
+  color: #a7f3d0;
+  outline: none;
+}
+.editor-move-handle:active {
+  cursor: grabbing;
+}
+.editor-move-grip {
+  font-size: 17px;
+  line-height: 1;
 }
 .editor-field {
   display: flex;
@@ -3149,6 +3776,32 @@ const savePlanLink = async (day) => {
 }
 .plan-block {
   min-height: 0;
+}
+.plan-block-workout {
+  border-color: var(--workout-border, rgba(76, 92, 125, 0.2));
+  background:
+    linear-gradient(90deg, var(--workout-wash, transparent), transparent 42%),
+    rgba(9, 14, 24, 0.28);
+}
+.plan-block-run {
+  --workout-border: rgba(79, 141, 247, 0.3);
+  --workout-wash: rgba(79, 141, 247, 0.045);
+}
+.plan-block-ride {
+  --workout-border: rgba(31, 190, 141, 0.3);
+  --workout-wash: rgba(31, 190, 141, 0.045);
+}
+.plan-block-strength {
+  --workout-border: rgba(241, 169, 59, 0.3);
+  --workout-wash: rgba(241, 169, 59, 0.045);
+}
+.plan-block-recovery {
+  --workout-border: rgba(165, 180, 252, 0.26);
+  --workout-wash: rgba(165, 180, 252, 0.04);
+}
+.plan-block-walk {
+  --workout-border: rgba(148, 163, 184, 0.24);
+  --workout-wash: rgba(148, 163, 184, 0.035);
 }
 .actual-block {
   margin-top: auto;
@@ -3789,6 +4442,23 @@ const savePlanLink = async (day) => {
 }
 
 @media (max-width: 760px) {
+  .codex-plan-action {
+    width: 100%;
+    justify-items: stretch;
+  }
+  .codex-plan-button {
+    justify-content: center;
+    width: 100%;
+  }
+  .codex-plan-hint { text-align: center; }
+  .codex-brief-shell { padding: 12px; align-items: flex-end; }
+  .codex-brief-modal {
+    padding: 19px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .codex-brief-footer { align-items: flex-end; }
+  .codex-brief-footer > div { flex-direction: column-reverse; }
   .plan-command { padding: 16px; }
   .plan-command-top { align-items: flex-start; flex-direction: column; }
   .period-navigation { width: 100%; }

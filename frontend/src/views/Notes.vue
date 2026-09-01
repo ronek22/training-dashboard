@@ -1,7 +1,14 @@
 <template>
   <div>
     <h1 class="page-title">Coach Notes</h1>
-    <p class="page-sub">Analysis and observations from training sessions</p>
+    <p class="page-sub">Saved analysis and observations from your coaching history.</p>
+
+    <div class="notes-heading">
+      <div>
+        <span class="notes-eyebrow">Saved history</span>
+        <h2>Coach observations</h2>
+      </div>
+    </div>
 
     <div class="filters">
       <button v-for="c in categories" :key="c.value"
@@ -35,7 +42,7 @@
       </div>
     </div>
 
-    <div v-else class="empty card">No notes yet. Claude will add notes automatically during training analysis.</div>
+    <div v-else class="empty card">No saved observations yet. Your coach can add them during training analysis.</div>
   </div>
 </template>
 
@@ -215,6 +222,20 @@ const categoryBadge = (c) => {
 <style scoped>
 .page-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; margin-bottom: 4px; }
 .page-sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+.notes-eyebrow {
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.notes-heading h2 {
+  margin: 3px 0 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.25;
+}
+.notes-heading { max-width: 980px; margin-bottom: 14px; }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .filter-btn {
   padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);

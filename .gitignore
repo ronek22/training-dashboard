@@ -9,3 +9,5 @@ __pycache__/
 frontend/node_modules/
 frontend/dist/
 backend/.venv/
+.codex-planning-helper.pid
+.codex-planning-helper.log

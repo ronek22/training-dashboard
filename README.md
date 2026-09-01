@@ -21,11 +21,13 @@ See [docs/README.md](docs/README.md) for planning and decision documents, includ
 docker compose up --build
 ```
 
-Or use the Makefile:
+Or use `just` to start it in the background:
 
 ```bash
-make up
+just
 ```
+
+Use `just up` when you want Docker Compose to remain in the foreground.
 
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
@@ -65,75 +67,14 @@ The backend now also exposes the same MCP tools over HTTP at:
 http://localhost:8000/mcp
 ```
 
-That endpoint is for remote MCP clients such as ChatGPT once you expose it through HTTPS.
-
-Practical setup:
-
-1. Run the app locally with Docker.
-2. Expose `http://localhost:8000` through a tunnel such as ngrok or Cloudflare Tunnel.
-3. In ChatGPT developer mode, connect the public `https://.../mcp` URL.
-
-Example with ngrok:
-
-```bash
-make chatgpt
-```
-
-That one command:
-
-1. starts Docker Compose in the background
-2. starts an ngrok tunnel to `localhost:8000`
-3. lets you copy the HTTPS tunnel URL for ChatGPT
-
-Then take the HTTPS forwarding URL from ngrok, for example:
-
-```text
-https://abc123.ngrok-free.app
-```
-
-and use this MCP endpoint in ChatGPT:
-
-```text
-https://abc123.ngrok-free.app/mcp
-```
-
-### Use a static ngrok URL
-
-ngrok supports a fixed dev-domain URL. As of the ngrok blog update on January 8, 2026, every ngrok account gets one automatically assigned free dev domain on `ngrok-free.dev`, and you can use it with the CLI by passing `--url`.
-
-Find your dev domain in the ngrok dashboard under `Gateway > Domains`, then start the tunnel like this:
-
-```bash
-NGROK_URL=https://your-domain.ngrok-free.dev make chatgpt
-```
-
-or:
-
-```bash
-NGROK_URL=https://your-domain.ngrok-free.dev make tunnel
-```
-
-Then use:
-
-```text
-https://your-domain.ngrok-free.dev/mcp
-```
-
-Notes:
-
-- On free accounts, the dev domain is assigned automatically; you cannot choose the hostname.
-- If `NGROK_URL` is not set, the Makefile keeps the old behavior and starts a random public URL.
-- If you want a chosen `*.ngrok.app` hostname or your own custom domain, that requires a paid ngrok plan.
-- The `Makefile` now loads root `.env`, so you can store `NGROK_URL=https://your-domain.ngrok-free.dev` there and just run `make chatgpt`.
-
 Other useful commands:
 
 ```bash
-make up-detached
-make tunnel
-make logs
-make down
-make test-backend
+just up
+just restart
+just logs
+just down
+just test-backend
 ```
 
 ## Backend Testing
@@ -143,7 +84,7 @@ The backend now has a lightweight smoke test pass that exercises the modularized
 Run it with:
 
 ```bash
-make test-backend
+just test-backend
 ```
 
 Notes:
@@ -308,7 +249,7 @@ The iCloud directory is mounted read-only at `/healthfit`. If macOS has evicted 
 | **Plan** | Weekly workout plans prepared by Claude, shown day by day |
 | **Calendar** | Weekly calendar view with daily activities, hours, distance, and elevation |
 | **Activities** | Full activity log with filters by type |
-| **Metrics** | Personal metrics trends (weight, Z2 pace, FTP, heel pain, streak) |
+| **Trends** | Overview plus focused Load, Recovery, Daily activity, Weight, and FTP views with personal-baseline charts |
 | **Coach Notes** | All coaching observations categorized by topic |
 
 ## What Claude Can Push via MCP
@@ -328,7 +269,7 @@ Once the MCP server is connected, Claude can:
 
 > "Log today's run to my dashboard and add a note about Zone 2 progress"
 
-> "Update my streak metric to 170 days"
+> "Log my latest FTP test and use it as my cycling threshold"
 
 > "Add a coach note about the heel recovery progress"
 
@@ -348,9 +289,17 @@ Once the MCP server is connected, Claude can:
 
 SQLite database stored in `./data/training.db` — persists across container restarts.
 
-## Streak Logic
+## Consistency And Legacy Streak Logic
 
-The sidebar streak is computed automatically from consecutive calendar days with at least one logged activity.
+The primary Trends experience uses planned sessions fulfilled, adapted, or missed across recent weeks. This respects intentional rest days and is more useful than rewarding consecutive training days.
+
+### Apple Health Data Export
+
+The backend can read raw JSON files produced by the iOS Health Data Export app from an iCloud Drive directory mounted read-only into the container. Set `HEALTH_DATA_EXPORT_DIR` in `.env`; the backend checks for new files on startup and every 15 minutes by default. **Data & Sync** also provides preview and immediate-import controls. The importer streams large files instead of loading them into memory and safely skips both already-processed files and overlapping samples in later daily exports. Set `HEALTH_DATA_AUTO_IMPORT=false` to disable the background check or adjust `HEALTH_DATA_IMPORT_INTERVAL_SECONDS` when needed.
+
+The selective import covers sleep stages, resting heart rate, HRV, body weight, steps, walking/running distance, and flights climbed. Apple sleep category codes are normalized into core, deep, REM, awake, and unspecified sleep, and overlapping sleep providers are resolved to one nightly source. Raw all-day heart-rate samples and HealthKit workout records remain in the source export; HealthFit and cached run/ride streams stay authoritative for workouts and training-zone distribution.
+
+The backend can still compute the legacy consecutive-day streak for compatibility and compact context:
 
 - Any activity type counts toward the streak.
 - If your latest activity was `today` or `yesterday`, the streak is considered active.

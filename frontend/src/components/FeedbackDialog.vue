@@ -1,12 +1,13 @@
 <template>
-  <Transition name="overlay-fade" appear>
-    <div v-if="open && activity" class="feedback-modal-shell" @click.self="$emit('close')">
-      <Transition name="modal-pop" appear>
-        <div v-if="open && activity" class="feedback-modal">
+  <Teleport to="body">
+    <Transition name="overlay-fade" appear>
+      <div v-if="open && activity" class="feedback-modal-shell" @click.self="$emit('close')">
+        <Transition name="modal-pop" appear>
+          <div v-if="open && activity" class="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-dialog-title">
           <div class="feedback-modal-head">
             <div>
               <div class="feedback-modal-kicker">Post-workout feedback</div>
-              <h2>{{ activity.name || activity.type }}</h2>
+              <h2 id="feedback-dialog-title">{{ activity.name || activity.type }}</h2>
               <p>{{ activity.dateLabel || activity.date }}</p>
             </div>
             <button class="feedback-modal-close" @click="$emit('close')" aria-label="Close feedback dialog">×</button>
@@ -60,10 +61,11 @@
               </button>
             </div>
           </div>
-        </div>
-      </Transition>
-    </div>
-  </Transition>
+          </div>
+        </Transition>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup>

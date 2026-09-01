@@ -5,13 +5,10 @@ from typing import Optional
 from .plans import normalize_workout_intent
 
 HARD_INTENTS = {
-    "long",
     "tempo",
     "interval",
     "race_specific",
-    "strength_general",
     "strength_lower",
-    "strength_upper",
 }
 
 
@@ -58,13 +55,10 @@ def _recent_activity_rows(conn: sqlite3.Connection, days: int = 14) -> list[sqli
 def _is_hard_session(row: sqlite3.Row) -> bool:
     session_type = row["type"]
     intent = normalize_workout_intent(row["workout_intent"], session_type)
-    if intent in HARD_INTENTS:
-        return True
-    if session_type == "WeightTraining" and intent != "mobility":
-        return True
-    if session_type in {"Run", "Ride", "VirtualRide"} and row["zone2"] == 0 and float(row["duration_min"] or 0) >= 45:
-        return True
-    return False
+    # Readiness should only call a session hard when its purpose makes that
+    # explicit. A long easy ride, ordinary strength session, or a missing/false
+    # zone-2 flag is training volume, but is not reliable evidence of intensity.
+    return intent in HARD_INTENTS
 
 
 def _readiness_factor(key: str, label: str, value, tone: str) -> dict:
@@ -168,7 +162,6 @@ def build_readiness_summary(
         feedback_burden >= 4
         or (form <= -18 and (hard_sessions_7d >= 2 or feedback_burden >= 2))
         or (ratio_status == "high" and hard_sessions_7d >= 2)
-        or (hard_sessions_7d >= 3 and sessions_3d >= 2)
         or elevated_pain_count >= 1
     ):
         state = "strained"
@@ -176,9 +169,6 @@ def build_readiness_summary(
         feedback_burden >= 2
         or (form <= -12 and (hard_sessions_7d >= 1 or sessions_3d >= 2 or feedback_burden >= 1))
         or (ratio_status == "high" and (hard_sessions_7d >= 1 or sessions_3d >= 2 or feedback_burden >= 1))
-        or hard_sessions_7d >= 2
-        or sessions_3d >= 3
-        or len(active_days_7d) >= 6
         or feedback_count_14d == 0
     ):
         state = "watch"
@@ -192,8 +182,6 @@ def build_readiness_summary(
             and latest_soreness <= 3
             and latest_pain <= 2
             and form >= -20
-            and hard_sessions_7d <= 2
-            and sessions_3d <= 2
             and not (ratio_status == "high" and (hard_sessions_7d >= 1 or sessions_3d >= 2 or feedback_burden >= 1))
         ):
             state = "ready"
@@ -216,7 +204,7 @@ def build_readiness_summary(
 
     reasons: list[str] = []
     if state == "ready":
-        _append_unique(reasons, f"Recent load is controlled with {sessions_7d} sessions and {hard_sessions_7d} hard sessions in the last 7 days.")
+        _append_unique(reasons, "Measured training load and the latest recovery check-in are aligned.")
         if latest_feedback:
             _append_unique(
                 reasons,
@@ -263,19 +251,19 @@ def build_readiness_summary(
             _append_unique(reasons, "Recent activity is too stale to support a useful readiness read.")
 
     guidance_map = {
-        "ready": "Recent load looks manageable. The next 48 hours can include planned quality if the session still matches how you feel.",
+        "ready": "Load looks manageable. Stay with the plan and use how you feel during the session as the final guardrail.",
         "watch": "Watch short-term strain. Keep the next 48 hours controlled unless fresh feedback improves the picture.",
         "strained": "Short-term strain is building. The next 48 hours should bias toward recovery or a lighter substitute.",
         "insufficient_data": "Limited by missing recent evidence. Use a calm default and avoid forcing a harder session from this read alone.",
     }
     label_map = {
-        "ready": "Ready",
+        "ready": "Balanced",
         "watch": "Watch",
         "strained": "Strained",
         "insufficient_data": "Insufficient data",
     }
     summary_map = {
-        "ready": "Recent load looks manageable.",
+        "ready": "Load and recovery are aligned.",
         "watch": "Watch short-term strain.",
         "strained": "Short-term strain is building.",
         "insufficient_data": "Limited by missing recovery or activity detail.",

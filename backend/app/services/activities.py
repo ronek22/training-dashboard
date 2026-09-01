@@ -22,6 +22,7 @@ from ..repositories.activities import (
     upsert_activity_row,
 )
 from .fitbod_imports import get_fitbod_strength_detail_for_activity
+from .strength_workouts import get_trainlog_strength_detail_for_activity
 from .activity_feedback import attach_feedback_by_activity_id, get_activity_feedback_data
 from .activity_analysis import (
     fail_activity_analysis,
@@ -120,6 +121,75 @@ def _infer_strength_template_id_for_activity(
     return None
 
 
+def _strength_plan_identity_for_activity(conn: sqlite3.Connection, activity: dict) -> Optional[dict]:
+    """Resolve a strength activity's planned identity without changing its source title."""
+    if activity.get("type") != "WeightTraining":
+        return None
+
+    session_lookup = _template_session_lookup_by_session_id(conn)
+    linked_session_id = activity.get("linked_planned_session_id")
+    if linked_session_id:
+        linked = session_lookup.get(linked_session_id)
+        if linked:
+            return {
+                "match_strategy": "explicit",
+                "session_id": linked_session_id,
+                "template_id": linked.get("template_id"),
+                "template_label": linked.get("template_label"),
+                "title": linked.get("title"),
+            }
+
+    same_day_sessions = [
+        session for session in session_lookup.values()
+        if session.get("session_type") == "WeightTraining" and session.get("date") == activity.get("date")
+    ]
+    if len(same_day_sessions) != 1:
+        return None
+
+    inferred = same_day_sessions[0]
+    return {
+        "match_strategy": "inferred",
+        "session_id": inferred.get("session_id"),
+        "template_id": inferred.get("template_id"),
+        "template_label": inferred.get("template_label"),
+        "title": inferred.get("title"),
+    }
+
+
+def _attach_strength_plan_identity(conn: sqlite3.Connection, activity: dict) -> dict:
+    enriched = dict(activity)
+    recorded_session = None
+    if enriched.get("type") == "WeightTraining":
+        row = conn.execute(
+            """
+            SELECT id, template_name, started_at, completed_at
+            FROM strength_workout_sessions
+            WHERE linked_activity_id = ? AND status = 'completed'
+            ORDER BY started_at DESC
+            LIMIT 1
+            """,
+            (enriched.get("id"),),
+        ).fetchone()
+        if row:
+            recorded_session = {
+                "id": int(row["id"]),
+                "name": row["template_name"],
+                "started_at": row["started_at"],
+                "completed_at": row["completed_at"],
+            }
+    identity = _strength_plan_identity_for_activity(conn, enriched)
+    enriched["source_name"] = enriched.get("name")
+    enriched["recorded_strength_session"] = recorded_session
+    enriched["planned_strength_identity"] = identity
+    if recorded_session:
+        enriched["display_name"] = recorded_session.get("name") or enriched.get("name")
+    elif identity:
+        enriched["display_name"] = identity.get("template_label") or identity.get("title") or enriched.get("name")
+    else:
+        enriched["display_name"] = enriched.get("name")
+    return enriched
+
+
 def reconcile_workout_template_rotation_state(conn: sqlite3.Connection) -> None:
     settings = get_workout_template_settings_for_conn(conn)
     strength_program = ((settings.get("programs") or {}).get("strength")) or {}
@@ -207,7 +277,8 @@ def list_activities_data(
         normalized_intent = normalize_workout_intent(item.get("workout_intent"), item.get("type"))
         item["workout_intent"] = normalized_intent
         item["workout_intent_label"] = format_workout_intent_label(normalized_intent)
-        payload.append(attach_benchmark_from_lookup(item, benchmark_lookup))
+        item = attach_benchmark_from_lookup(item, benchmark_lookup)
+        payload.append(_attach_strength_plan_identity(conn, item))
     return attach_feedback_by_activity_id(conn, payload)
 
 
@@ -525,6 +596,8 @@ def _build_activity_stats(activity: dict, detail: Optional[dict], stream_summary
     moving_time_min = detail.get("moving_time") / 60 if detail and detail.get("moving_time") is not None else activity.get("duration_min")
     elapsed_time_min = detail.get("elapsed_time") / 60 if detail and detail.get("elapsed_time") is not None else None
     average_speed_kmh = detail.get("average_speed") * 3.6 if detail and detail.get("average_speed") is not None else None
+    if average_speed_kmh is None and moving_time_min and activity.get("distance_km") is not None:
+        average_speed_kmh = float(activity["distance_km"]) / (float(moving_time_min) / 60)
     max_speed_kmh = detail.get("max_speed") * 3.6 if detail and detail.get("max_speed") is not None else None
     weighted_avg_watts = detail.get("weighted_average_watts") if detail else None
     average_cadence = detail.get("average_cadence") if detail else None
@@ -611,6 +684,7 @@ def _build_activity_detail_payload(
     activity["workout_intent_label"] = format_workout_intent_label(normalized_intent)
     benchmark_lookup = build_benchmark_session_lookup(conn)
     activity = attach_benchmark_from_lookup(activity, benchmark_lookup)
+    activity = _attach_strength_plan_identity(conn, activity)
 
     detail = _load_json_blob(detail_row["detail_json"]) if detail_row else None
     streams = _load_json_blob(detail_row["streams_json"]) if detail_row else None
@@ -630,11 +704,17 @@ def _build_activity_detail_payload(
     feedback = get_activity_feedback_data(conn, activity["id"])
     strength_detail = None
     if activity.get("type") == "WeightTraining":
-        strength_detail = get_fitbod_strength_detail_for_activity(conn, activity["id"]) or {"status": "not_linked"}
+        strength_detail = (
+            get_trainlog_strength_detail_for_activity(conn, activity["id"])
+            or get_fitbod_strength_detail_for_activity(conn, activity["id"])
+            or {"status": "not_linked"}
+        )
     linked_planned_session = None
+    planned_session_match = activity.get("planned_strength_identity")
     execution_quality = None
-    if activity.get("linked_planned_session_id"):
-        linked_planned_session = find_planned_session_by_id(conn, activity["linked_planned_session_id"])
+    planned_session_id = (planned_session_match or {}).get("session_id")
+    if planned_session_id:
+        linked_planned_session = find_planned_session_by_id(conn, planned_session_id)
         if linked_planned_session:
             execution_quality = build_execution_quality_for_completed_session(conn, linked_planned_session, [activity])
     if detail_row and derived_version == DETAIL_DERIVED_VERSION:
@@ -678,6 +758,7 @@ def _build_activity_detail_payload(
         "detail_available": bool(detail_row and (detail or streams or route_polyline)),
         "strength_detail": strength_detail,
         "linked_planned_session": linked_planned_session,
+        "planned_session_match": planned_session_match,
         "execution_quality": execution_quality,
     }
 

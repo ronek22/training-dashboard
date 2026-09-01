@@ -12,6 +12,7 @@ Completion note:
 - shipped dedicated activity detail review
 - added on-demand Strava detail fetch with local cache reuse
 - delivered route map, chart review, summary stats, feedback, context reads, and compact best-effort support in the activity detail surface
+- redesigned the detail surface around a shared activity shell with explicit endurance, strength, and generic presentations; running and cycling now share analysis structure while selecting sport-appropriate metrics, and strength uses an exercise-and-set-centered workflow
 
 Starting point:
 

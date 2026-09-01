@@ -1,4 +1,5 @@
 import sqlite3
+import json
 import tempfile
 import unittest
 import importlib
@@ -83,9 +84,14 @@ class HealthFitImportTests(unittest.TestCase):
         ):
             result = self.healthfit.apply_healthfit_import(self.conn)
         self.assertEqual(result["applied"]["linked"], 1)
+        self.assertEqual(result["applied"]["streams_imported"], 1)
         self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM activities").fetchone()[0], 1)
         ref = self.conn.execute("SELECT activity_id FROM activity_source_refs").fetchone()
         self.assertEqual(ref["activity_id"], "strava-1")
+        detail = self.conn.execute(
+            "SELECT streams_json FROM activity_details WHERE activity_id = 'strava-1'"
+        ).fetchone()
+        self.assertEqual(json.loads(detail["streams_json"])["heartrate"]["data"], [140, 150])
 
     def test_new_file_is_created_once_and_second_import_is_idempotent(self):
         self.conn.execute("INSERT INTO activities (id, date, type) VALUES ('old', '2026-07-10', 'Ride')")
@@ -100,6 +106,29 @@ class HealthFitImportTests(unittest.TestCase):
         self.assertEqual(second["applied"]["created"], 0)
         self.assertEqual(second["applied"]["skipped"], 1)
         self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM activities").fetchone()[0], 2)
+
+    def test_repeated_import_backfills_missing_streams_for_existing_link(self):
+        self.conn.execute(
+            """INSERT INTO activities
+               (id, date, type, name, distance_km, duration_min, avg_hr)
+               VALUES ('watch-1', '2026-07-11', 'Run', 'Morning Run', 10.01, 60.2, 146)"""
+        )
+        item = parsed("f" * 64, "2026-07-11")
+        self._file(item["file_name"])
+        with patch.object(self.healthfit, "healthfit_directory", return_value=self.directory), patch.object(
+            self.healthfit, "parse_healthfit_file", return_value=item
+        ):
+            first = self.healthfit.apply_healthfit_import(self.conn)
+            self.conn.execute("DELETE FROM activity_details WHERE activity_id = 'watch-1'")
+            second = self.healthfit.apply_healthfit_import(self.conn)
+
+        self.assertEqual(first["applied"]["linked"], 1)
+        self.assertEqual(second["applied"]["skipped"], 1)
+        self.assertEqual(second["applied"]["streams_imported"], 1)
+        detail = self.conn.execute(
+            "SELECT streams_json FROM activity_details WHERE activity_id = 'watch-1'"
+        ).fetchone()
+        self.assertEqual(json.loads(detail["streams_json"])["heartrate"]["data"], [140, 150])
 
     def test_later_strava_import_reuses_healthfit_activity_id(self):
         healthfit_id = "healthfit:" + "d" * 24

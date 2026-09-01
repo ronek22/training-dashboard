@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import re
 import sqlite3
@@ -134,25 +135,75 @@ def parse_healthfit_file(path: Path, include_streams: bool = False) -> dict:
     return {"file_hash": file_hash, "file_name": path.name, "started_at": started_at, "activity": activity, "streams": streams}
 
 
-def _existing_ref(conn: sqlite3.Connection, file_hash: str):
+def _existing_ref(conn: sqlite3.Connection, source: str, file_hash: str):
     return conn.execute(
         "SELECT * FROM activity_source_refs WHERE source = ? AND external_id = ?",
-        (HEALTHFIT_SOURCE, file_hash),
+        (source, file_hash),
     ).fetchone()
 
 
-def _existing_file_ref(conn: sqlite3.Connection, file_name: str):
+def _existing_file_ref(conn: sqlite3.Connection, source: str, file_name: str):
     return conn.execute(
         "SELECT * FROM activity_source_refs WHERE source = ? AND (file_name = ? OR external_id = ?)",
-        (HEALTHFIT_SOURCE, file_name, f"filename:{file_name}"),
+        (source, file_name, f"filename:{file_name}"),
     ).fetchone()
 
 
-def preview_healthfit_import(conn: sqlite3.Connection) -> dict:
-    directory = healthfit_directory()
+def _activity_needs_fit_streams(conn: sqlite3.Connection, activity_id: str) -> bool:
+    row = conn.execute(
+        "SELECT streams_json FROM activity_details WHERE activity_id = ?",
+        (activity_id,),
+    ).fetchone()
+    if not row or not row["streams_json"]:
+        return True
+    try:
+        streams = json.loads(row["streams_json"])
+    except (TypeError, ValueError):
+        return True
+    return not bool(((streams.get("heartrate") or {}).get("data") or []))
+
+
+def _store_fit_streams(
+    conn: sqlite3.Connection,
+    *,
+    activity_id: str,
+    streams: Optional[dict],
+    source: str,
+) -> bool:
+    if not streams:
+        return False
+    conn.execute(
+        """
+        INSERT INTO activity_details (activity_id, fetched_at, source_status, streams_json)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(activity_id) DO UPDATE SET
+            fetched_at = excluded.fetched_at,
+            source_status = excluded.source_status,
+            streams_json = excluded.streams_json,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (activity_id, datetime.now().isoformat(), f"{source}_fit", json.dumps(streams)),
+    )
+    detail_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(activity_details)").fetchall()
+    }
+    stale_columns = [
+        column for column in ("charts_json", "best_efforts_json", "derived_version")
+        if column in detail_columns
+    ]
+    if stale_columns:
+        assignments = ", ".join(f"{column} = NULL" for column in stale_columns)
+        conn.execute(
+            f"UPDATE activity_details SET {assignments} WHERE activity_id = ?",
+            (activity_id,),
+        )
+    return True
+
+
+def _preview_fit_import(conn: sqlite3.Connection, *, source: str, directory: Path, source_label: str) -> dict:
     initialized = bool(conn.execute(
         "SELECT 1 FROM activity_source_refs WHERE source = ? LIMIT 1",
-        (HEALTHFIT_SOURCE,),
+        (source,),
     ).fetchone())
     if not directory.is_dir():
         return {
@@ -164,7 +215,7 @@ def preview_healthfit_import(conn: sqlite3.Connection) -> dict:
     for path in sorted(directory.glob("*.fit")):
         name_match = FILENAME_PATTERN.match(path.name)
         file_date = name_match.group(1) if name_match else None
-        existing_file = _existing_file_ref(conn, path.name)
+        existing_file = _existing_file_ref(conn, source, path.name)
         if existing_file:
             items.append({
                 "file_name": path.name, "file_hash": existing_file["file_hash"],
@@ -186,7 +237,7 @@ def preview_healthfit_import(conn: sqlite3.Connection) -> dict:
         except ValueError as exc:
             items.append({"file_name": path.name, "action": "error", "reason": str(exc)})
             continue
-        existing = _existing_ref(conn, parsed["file_hash"])
+        existing = _existing_ref(conn, source, parsed["file_hash"])
         if existing:
             action = "already_processed"
             reason = existing["match_reason"] or f"Previously {existing['status']}."
@@ -202,7 +253,7 @@ def preview_healthfit_import(conn: sqlite3.Connection) -> dict:
             else:
                 action, activity_id = "create", None
                 reason = (
-                    "Previously unseen HealthFit file after initialization; workout date does not suppress late-arriving files."
+                    f"Previously unseen {source_label} file after initialization; workout date does not suppress late-arriving files."
                     if initialized
                     else "Workout is newer than the existing activity cutoff and has no match."
                 )
@@ -220,50 +271,101 @@ def preview_healthfit_import(conn: sqlite3.Connection) -> dict:
     }
 
 
-def apply_healthfit_import(conn: sqlite3.Connection) -> dict:
-    preview = preview_healthfit_import(conn)
+def _apply_fit_import(
+    conn: sqlite3.Connection, *, source: str, directory: Path, source_label: str,
+    selected_file_names: Optional[set[str]] = None,
+) -> dict:
+    preview = _preview_fit_import(conn, source=source, directory=directory, source_label=source_label)
     if not preview["configured"]:
-        raise HTTPException(status_code=400, detail=f"HealthFit directory is unavailable: {preview['directory']}")
-    directory = healthfit_directory()
-    applied = {"created": 0, "linked": 0, "baselined": 0, "skipped": 0}
+        raise HTTPException(status_code=400, detail=f"{source_label} directory is unavailable: {preview['directory']}")
+    applied = {
+        "created": 0,
+        "linked": 0,
+        "baselined": 0,
+        "excluded": 0,
+        "skipped": 0,
+        "streams_imported": 0,
+    }
     for item in preview["items"]:
         action = item["action"]
-        if action in {"already_processed", "ambiguous", "error"}:
+        if action == "already_processed":
+            activity_id = item.get("activity_id")
+            if activity_id and _activity_needs_fit_streams(conn, activity_id):
+                try:
+                    parsed = parse_healthfit_file(
+                        directory / item["file_name"],
+                        include_streams=True,
+                    )
+                    if _store_fit_streams(
+                        conn,
+                        activity_id=activity_id,
+                        streams=parsed.get("streams"),
+                        source=source,
+                    ):
+                        applied["streams_imported"] += 1
+                except ValueError:
+                    pass
             applied["skipped"] += 1
+            continue
+        if action in {"ambiguous", "error"}:
+            applied["skipped"] += 1
+            continue
+        if selected_file_names is not None and item["file_name"] not in selected_file_names:
+            upsert_source_ref(
+                conn, source=source, external_id=f"filename:{item['file_name']}", activity_id=None,
+                started_at=None, status="excluded", file_name=item["file_name"], file_hash=None,
+                match_reason=f"Excluded during {source_label} review.", metadata={"date": item.get("date")},
+            )
+            applied["excluded"] += 1
             continue
         if action == "baseline" and not item.get("file_hash"):
             upsert_source_ref(
-                conn, source=HEALTHFIT_SOURCE, external_id=f"filename:{item['file_name']}", activity_id=None,
+                conn, source=source, external_id=f"filename:{item['file_name']}", activity_id=None,
                 started_at=None, status="baseline", file_name=item["file_name"], file_hash=None,
                 match_reason=item["reason"], metadata={"date": item.get("date")},
             )
             applied["baselined"] += 1
             continue
-        parsed = parse_healthfit_file(directory / item["file_name"], include_streams=action == "create")
+        parsed = parse_healthfit_file(
+            directory / item["file_name"],
+            include_streams=action in {"create", "link_existing"},
+        )
         activity_id = item.get("activity_id")
         status = action
         if action == "create":
             upsert_activity_row(conn, parsed["activity"], preserve_annotations=True)
             activity_id = parsed["activity"]["id"]
-            streams = parsed.get("streams")
-            if streams:
-                import json
-                conn.execute(
-                    """INSERT INTO activity_details (activity_id, fetched_at, source_status, streams_json)
-                       VALUES (?, ?, 'healthfit_fit', ?)
-                       ON CONFLICT(activity_id) DO UPDATE SET fetched_at=excluded.fetched_at,
-                       source_status=excluded.source_status, streams_json=excluded.streams_json, updated_at=CURRENT_TIMESTAMP""",
-                    (activity_id, datetime.now().isoformat(), json.dumps(streams)),
-                )
+            if _store_fit_streams(
+                conn,
+                activity_id=activity_id,
+                streams=parsed.get("streams"),
+                source=source,
+            ):
+                applied["streams_imported"] += 1
             applied["created"] += 1
         elif action == "link_existing":
+            if _store_fit_streams(
+                conn,
+                activity_id=activity_id,
+                streams=parsed.get("streams"),
+                source=source,
+            ):
+                applied["streams_imported"] += 1
             applied["linked"] += 1
         else:
             applied["baselined"] += 1
         upsert_source_ref(
-            conn, source=HEALTHFIT_SOURCE, external_id=parsed["file_hash"], activity_id=activity_id,
+            conn, source=source, external_id=parsed["file_hash"], activity_id=activity_id,
             started_at=parsed["started_at"], status=status, file_name=parsed["file_name"],
             file_hash=parsed["file_hash"], match_reason=item["reason"], metadata={"activity": parsed["activity"]},
         )
     conn.commit()
     return {**preview, "applied": applied}
+
+
+def preview_healthfit_import(conn: sqlite3.Connection) -> dict:
+    return _preview_fit_import(conn, source=HEALTHFIT_SOURCE, directory=healthfit_directory(), source_label="HealthFit")
+
+
+def apply_healthfit_import(conn: sqlite3.Connection) -> dict:
+    return _apply_fit_import(conn, source=HEALTHFIT_SOURCE, directory=healthfit_directory(), source_label="HealthFit")

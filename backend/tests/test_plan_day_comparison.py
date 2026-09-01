@@ -1,7 +1,9 @@
 import sqlite3
 import unittest
+import json
 from datetime import datetime, timedelta
 
+from backend.app.services.activities import _attach_strength_plan_identity
 from backend.app.services.plans import build_plan_day_comparison
 
 
@@ -52,9 +54,95 @@ class PlanDayComparisonTests(unittest.TestCase):
     def setUp(self):
         self.conn = sqlite3.connect(":memory:")
         self.conn.row_factory = sqlite3.Row
+        self.conn.execute(
+            """
+            CREATE TABLE weekly_plans (
+                week_start TEXT PRIMARY KEY,
+                title TEXT,
+                focus TEXT,
+                overview TEXT,
+                days_json TEXT NOT NULL,
+                notes TEXT
+            )
+            """
+        )
 
     def tearDown(self):
         self.conn.close()
+
+    def add_plan_days(self, days: list[dict]) -> None:
+        self.conn.execute(
+            "INSERT INTO weekly_plans (week_start, days_json) VALUES (?, ?)",
+            ("2026-07-20", json.dumps(days)),
+        )
+
+    def test_strength_activity_uses_unique_same_day_template_as_display_identity(self):
+        self.add_plan_days([{
+            "date": "2026-07-22",
+            "session_id": "strength-a",
+            "session_type": "WeightTraining",
+            "template_id": "workout-a",
+            "template_label": "Workout A · Upper Chest",
+            "title": "Workout A · Upper Chest",
+        }])
+
+        enriched = _attach_strength_plan_identity(self.conn, {
+            "id": "healthfit:1",
+            "date": "2026-07-22",
+            "type": "WeightTraining",
+            "name": "Functional Strength Training",
+            "linked_planned_session_id": None,
+        })
+
+        self.assertEqual(enriched["source_name"], "Functional Strength Training")
+        self.assertEqual(enriched["display_name"], "Workout A · Upper Chest")
+        self.assertEqual(enriched["planned_strength_identity"]["match_strategy"], "inferred")
+
+    def test_explicit_strength_link_takes_priority(self):
+        self.add_plan_days([
+            {
+                "date": "2026-07-22", "session_id": "strength-a", "session_type": "WeightTraining",
+                "template_id": "workout-a", "template_label": "Workout A · Upper Chest", "title": "Workout A",
+            },
+            {
+                "date": "2026-07-22", "session_id": "strength-b", "session_type": "WeightTraining",
+                "template_id": "workout-b", "template_label": "Workout B · Back + Arms", "title": "Workout B",
+            },
+        ])
+
+        enriched = _attach_strength_plan_identity(self.conn, {
+            "id": "healthfit:1",
+            "date": "2026-07-22",
+            "type": "WeightTraining",
+            "name": "Functional Strength Training",
+            "linked_planned_session_id": "strength-b",
+        })
+
+        self.assertEqual(enriched["display_name"], "Workout B · Back + Arms")
+        self.assertEqual(enriched["planned_strength_identity"]["match_strategy"], "explicit")
+
+    def test_ambiguous_same_day_strength_sessions_keep_source_title(self):
+        self.add_plan_days([
+            {
+                "date": "2026-07-22", "session_id": "strength-a", "session_type": "WeightTraining",
+                "template_id": "workout-a", "template_label": "Workout A", "title": "Workout A",
+            },
+            {
+                "date": "2026-07-22", "session_id": "strength-b", "session_type": "WeightTraining",
+                "template_id": "workout-b", "template_label": "Workout B", "title": "Workout B",
+            },
+        ])
+
+        enriched = _attach_strength_plan_identity(self.conn, {
+            "id": "healthfit:1",
+            "date": "2026-07-22",
+            "type": "WeightTraining",
+            "name": "Functional Strength Training",
+            "linked_planned_session_id": None,
+        })
+
+        self.assertEqual(enriched["display_name"], "Functional Strength Training")
+        self.assertIsNone(enriched["planned_strength_identity"])
 
     def test_today_is_not_marked_moved_by_yesterdays_extra_matching_activity(self):
         today = datetime.now().date().isoformat()
@@ -117,3 +205,64 @@ class PlanDayComparisonTests(unittest.TestCase):
         self.assertEqual(comparison["status"], "moved")
         self.assertEqual(comparison["moved_to_date"], today)
         self.assertEqual(len(comparison["completed_activities"]), 1)
+
+    def test_activity_completed_early_only_fulfills_its_explicit_planned_session(self):
+        today = datetime.now().date().isoformat()
+        tomorrow = (datetime.now().date() + timedelta(days=1)).isoformat()
+        ride = make_activity_row(
+            self.conn,
+            activity_id="ride-today",
+            date=today,
+            activity_type="Ride",
+            workout_intent="easy",
+            duration_min=60,
+        )
+        early_strength = make_activity_row(
+            self.conn,
+            activity_id="strength-today",
+            date=today,
+            activity_type="WeightTraining",
+            workout_intent="strength_general",
+            duration_min=45,
+            linked_planned_session_id="strength-tomorrow",
+        )
+        by_date = {today: [ride, early_strength]}
+        week_days_by_date = {
+            today: {"date": today, "session_type": "Ride", "session_id": "ride-today"},
+            tomorrow: {
+                "date": tomorrow,
+                "session_type": "WeightTraining",
+                "session_id": "strength-tomorrow",
+            },
+        }
+
+        ride_comparison = build_plan_day_comparison(
+            self.conn,
+            week_days_by_date[today],
+            by_date[today],
+            by_date,
+            week_days_by_date,
+            [],
+        )
+        strength_comparison = build_plan_day_comparison(
+            self.conn,
+            week_days_by_date[tomorrow],
+            [],
+            by_date,
+            week_days_by_date,
+            [early_strength],
+        )
+
+        self.assertEqual(ride_comparison["status"], "matched")
+        self.assertEqual(
+            [activity["id"] for activity in ride_comparison["completed_activities"]],
+            ["ride-today"],
+        )
+        self.assertEqual(strength_comparison["status"], "linked")
+        self.assertEqual(strength_comparison["label"], "Completed early")
+        self.assertEqual(strength_comparison["fulfilled_on_date"], today)
+        self.assertEqual(strength_comparison["schedule_timing"], "early")
+        self.assertEqual(
+            [activity["id"] for activity in strength_comparison["completed_activities"]],
+            ["strength-today"],
+        )

@@ -1,341 +1,502 @@
 <template>
-  <div>
-    <div class="page-head">
-      <h1 class="page-title">Metrics</h1>
-      <button class="add-metric-btn" :disabled="active === 'streak'" @click="openDialog">Log Metric</button>
-    </div>
-
-    <div class="metrics-tabs">
-      <button v-for="m in metricTypes" :key="m.key"
-        class="filter-btn" :class="{ active: active === m.key }"
-        @click="loadMetric(m.key)">
-        {{ m.label }}
-      </button>
-    </div>
-
-    <div class="card" v-if="data.length">
-      <div class="card-title">{{ activeLabel }} — last {{ data.length }} entries</div>
-      <div class="chart-area">
-        <div class="chart-bars">
-          <div v-for="(d, i) in chartData" :key="i" class="bar-group">
-            <div class="bar-fill" :style="{ height: d.pct + '%', background: activeColor }"></div>
-            <div class="bar-label">{{ d.label }}</div>
-            <div class="bar-val">{{ d.value }}</div>
-          </div>
-        </div>
+  <main class="trends-page motion-page">
+    <header class="page-head">
+      <div>
+        <div class="page-eyebrow">Training response</div>
+        <h1 class="page-title">Trends</h1>
+        <p class="page-sub">See whether your training is building fitness and which signal deserves attention.</p>
       </div>
+      <button class="primary-btn" type="button" @click="openDialog">＋ Log measurement</button>
+    </header>
+
+    <nav class="trend-nav" aria-label="Trend views">
+      <button v-for="item in views" :key="item.key" type="button" :class="{ active: activeView === item.key }" @click="selectView(item.key)">
+        {{ item.label }}
+      </button>
+    </nav>
+
+    <div v-if="loading" class="card loading-state" role="status">Loading trends…</div>
+    <div v-else-if="loadError" class="card error-state">
+      <strong>Trends are unavailable</strong>
+      <p>{{ loadError }}</p>
+      <button type="button" class="secondary-btn" @click="loadPage">Try again</button>
     </div>
 
-    <div class="card" v-if="data.length">
-      <table>
-        <thead>
-          <tr><th>Date</th><th>Value</th><th>Unit</th><th>Notes</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="d in data" :key="d.id">
-            <td>{{ formatDate(d.date) }}</td>
-            <td><strong>{{ d.value }}</strong></td>
-            <td>{{ d.unit || '—' }}</td>
-            <td style="color: var(--muted)">{{ d.notes || '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div v-if="!data.length" class="empty card">No {{ activeLabel }} data yet.</div>
-
-    <div v-if="dialogOpen" class="metric-dialog-backdrop" @click.self="closeDialog">
-      <div class="metric-dialog card">
-        <div class="metric-dialog-head">
-          <div>
-            <div class="card-title">Log Metric</div>
-            <div class="metric-dialog-sub">Store a manual metric entry so it shows up here and is available through MCP tools.</div>
-          </div>
-          <button class="dialog-close" @click="closeDialog">×</button>
+    <template v-else-if="activeView === 'overview'">
+      <section class="overview-lead" aria-labelledby="training-state-heading">
+        <div class="section-heading">
+          <div><span class="section-kicker">Right now</span><h2 id="training-state-heading">Training state</h2></div>
+          <button type="button" class="text-btn" @click="selectView('training_load')">Open full load analysis →</button>
         </div>
+        <TrainingLoadPanel title="Training load" subtitle="Short-term fatigue compared with your longer-term fitness." :days="84" :focus-days="28" mode="compact" />
+      </section>
 
-        <div class="metric-form">
-          <label>
-            <span>Metric</span>
-            <select v-model="form.metric">
-              <option v-for="m in manualMetricTypes" :key="m.key" :value="m.key">{{ m.label }}</option>
-            </select>
-          </label>
-          <label>
-            <span>Date</span>
-            <input v-model="form.date" type="date">
-          </label>
-          <label>
-            <span>Value</span>
-            <input v-model.number="form.value" type="number" min="0" :step="valueStep">
-          </label>
-          <label>
-            <span>Unit</span>
-            <input v-model="form.unit" type="text" :placeholder="activeMetricMeta?.defaultUnit || ''">
-          </label>
-          <label class="metric-form-wide">
-            <span>Notes</span>
-            <textarea v-model="form.notes" rows="3" :placeholder="notesPlaceholder"></textarea>
-          </label>
+      <section aria-labelledby="performance-heading">
+        <div class="section-heading">
+          <div><span class="section-kicker">Adaptation evidence</span><h2 id="performance-heading">Performance markers</h2></div>
+          <p>Anchors and repeatable efforts—not everyday easy-run pace.</p>
         </div>
+        <div class="marker-grid">
+          <article class="card marker-card marker-primary">
+            <span class="marker-label">Cycling threshold</span><strong>{{ cyclingThresholdLabel }}</strong><p>{{ cyclingThresholdCopy }}</p>
+            <button type="button" class="card-action" @click="openDialog('ftp')">Log an FTP test</button>
+          </article>
+          <article class="card marker-card">
+            <span class="marker-label">Running threshold</span><strong>{{ runThresholdLabel }}</strong><p>{{ runThresholdCopy }}</p>
+          </article>
+          <article v-for="benchmark in visibleBenchmarks" :key="benchmark.key" class="card marker-card">
+            <span class="marker-label">{{ benchmark.label }}</span><strong>{{ benchmarkValue(benchmark) }}</strong><p>{{ benchmarkCopy(benchmark) }}</p>
+            <button v-if="benchmark.activity_id" type="button" class="card-action" @click="router.push(`/activities/${benchmark.activity_id}`)">View activity</button>
+          </article>
+        </div>
+      </section>
 
-        <p v-if="message" class="metric-message">{{ message }}</p>
-
-        <div class="metric-dialog-actions">
-          <button class="dialog-secondary" @click="closeDialog">Cancel</button>
-          <button class="save-btn" :disabled="saving || !canSave" @click="saveMetric">
-            {{ saving ? 'Saving...' : 'Save Metric' }}
+      <section aria-labelledby="supporting-heading">
+        <div class="section-heading">
+          <div><span class="section-kicker">Supporting signals</span><h2 id="supporting-heading">Body, recovery and consistency</h2></div>
+          <p>Useful context, kept separate from readiness itself.</p>
+        </div>
+        <div class="support-grid">
+          <article class="card support-card support-card-weight">
+            <span class="support-card-orb" aria-hidden="true"></span>
+            <div class="support-head"><span class="support-icon support-weight" aria-hidden="true">◇</span><div><span>Weight</span><strong>{{ latestWeightLabel }}</strong></div></div>
+            <p>{{ weightSummary }}</p>
+            <svg v-if="weightSparklinePoints" class="support-sparkline" viewBox="0 0 240 42" preserveAspectRatio="none" aria-hidden="true">
+              <defs><linearGradient id="weight-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbbf24" stop-opacity=".22"/><stop offset="1" stop-color="#fbbf24" stop-opacity="0"/></linearGradient></defs>
+              <path :d="`${weightSparklineArea} Z`" fill="url(#weight-area)"/><polyline :points="weightSparklinePoints" fill="none" stroke="#fbbf24" stroke-width="2" vector-effect="non-scaling-stroke"/>
+            </svg>
+            <div class="support-actions"><button type="button" class="card-action" @click="selectView('weight')">View trend</button><button type="button" class="card-action" @click="openDialog('weight')">Log weight</button></div>
+          </article>
+          <article class="card support-card support-card-recovery">
+            <span class="support-card-orb" aria-hidden="true"></span>
+            <div class="support-head"><span class="support-icon support-recovery" aria-hidden="true">♥</span><div><span>Resting heart rate</span><strong>{{ restingHeartRateLabel }}</strong></div></div>
+            <p>{{ restingHeartRateCopy }}</p>
+            <svg v-if="restingHrSparklinePoints" class="support-sparkline" viewBox="0 0 240 42" preserveAspectRatio="none" aria-hidden="true">
+              <defs><linearGradient id="rhr-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fb7185" stop-opacity=".22"/><stop offset="1" stop-color="#fb7185" stop-opacity="0"/></linearGradient></defs>
+              <path :d="`${restingHrSparklineArea} Z`" fill="url(#rhr-area)"/><polyline :points="restingHrSparklinePoints" fill="none" stroke="#fb7185" stroke-width="2" vector-effect="non-scaling-stroke"/>
+            </svg>
+            <button type="button" class="status-chip status-chip-action" :class="restingHeartRate?.available ? 'status-connected' : 'status-muted'" @click="selectView('recovery')">{{ restingHeartRate?.available ? 'Explore recovery →' : 'Not imported' }}</button>
+          </article>
+          <article class="card support-card support-card-consistency">
+            <span class="support-card-orb" aria-hidden="true"></span>
+            <div class="support-head"><span class="support-icon support-consistency" aria-hidden="true">✓</span><div><span>4-week consistency</span><strong>{{ consistencyLabel }}</strong></div></div>
+            <p>{{ consistencyCopy }}</p>
+            <div v-if="consistencyTotal" class="consistency-track" role="img" :aria-label="consistencyLabel"><span class="consistency-fulfilled" :style="{ width: `${consistencyFulfilledPct}%` }"></span><span class="consistency-modified" :style="{ width: `${consistencyModifiedPct}%` }"></span></div>
+            <div v-if="consistencyTotal" class="consistency-legend"><span><i class="legend-fulfilled"></i>{{ consistency.fulfilled }} planned</span><span><i class="legend-modified"></i>{{ consistency.modified }} adapted</span><span><i class="legend-missed"></i>{{ consistency.missed }} missed</span></div>
+          </article>
+        </div>
+        <div class="daily-signal-grid" aria-label="Latest Apple Health daily signals">
+          <button v-for="signal in dailySignals" :key="signal.key" type="button" class="card daily-signal-card" :style="{ '--signal-color': signal.accent }" @click="openDailySignal(signal)">
+            <span class="daily-signal-top"><span>{{ signal.label }}</span><i aria-hidden="true">↗</i></span>
+            <strong>{{ signal.value }}</strong><small>{{ signal.context }}</small>
+            <svg v-if="signal.points" viewBox="0 0 120 24" preserveAspectRatio="none" aria-hidden="true"><polyline :points="signal.points" fill="none" stroke="currentColor" stroke-width="1.7" vector-effect="non-scaling-stroke"/></svg>
           </button>
         </div>
+      </section>
+
+      <section class="training-history" aria-labelledby="history-heading">
+        <div class="section-heading">
+          <div><span class="section-kicker">Training footprint</span><h2 id="history-heading">How the work is accumulating</h2></div>
+          <p>Intensity balance and long-range consistency—without turning rest days into broken streaks.</p>
+        </div>
+
+        <div class="history-insight-grid">
+          <article class="card hr-zone-card">
+            <div class="insight-card-head">
+              <div><span class="marker-label">Last 14 days</span><strong>Heart-rate distribution</strong></div>
+              <span v-if="heartRateSummary?.available" class="history-total">{{ formatDuration(heartRateSummary.total_minutes) }}</span>
+            </div>
+            <p>{{ heartRateSummary?.summary || 'Heart-rate distribution will appear when recent run or ride streams are available.' }}</p>
+            <div v-if="heartRateSummary?.available && activeHeartRateZone" class="zone-focus" aria-live="polite">
+              <span :class="`zone-dot-${activeHeartRateZone.key}`"></span>
+              <div><small>{{ activeHeartRateZone.label }}</small><strong>{{ formatDuration(activeHeartRateZone.minutes) }}</strong></div>
+              <b>{{ activeHeartRateZone.pct }}%</b>
+            </div>
+            <div v-if="heartRateSummary?.available" class="zone-stack" aria-label="Time in heart-rate zones">
+              <button v-for="zone in heartRateZones" :key="zone.key" type="button" :class="[`zone-${zone.key}`, { active: selectedHeartRateZone === zone.key }]" :style="{ width: `${zone.pct}%` }" :aria-label="`${zone.label}, ${zone.pct}%`" @mouseenter="selectedHeartRateZone = zone.key" @focus="selectedHeartRateZone = zone.key" @click="selectedHeartRateZone = zone.key"><i v-if="zone.pct >= 9">{{ zone.pct }}%</i></button>
+            </div>
+            <div v-if="heartRateSummary?.available" class="zone-list">
+              <button v-for="zone in heartRateZones" :key="zone.key" type="button" :class="{ active: selectedHeartRateZone === zone.key }" @mouseenter="selectedHeartRateZone = zone.key" @focus="selectedHeartRateZone = zone.key" @click="selectedHeartRateZone = zone.key"><span><i :class="`zone-dot-${zone.key}`"></i>{{ zone.label }}</span><strong>{{ formatDuration(zone.minutes) }} · {{ zone.pct }}%</strong></button>
+            </div>
+          </article>
+
+          <article class="card heatmap-card">
+            <div class="insight-card-head">
+              <div><span class="marker-label">{{ activityHeatmap?.year || currentYear }}</span><strong>Workout calendar</strong></div>
+              <span class="history-total">{{ activityHeatmap?.total_active_days || 0 }} active days</span>
+            </div>
+            <p>Each square is a day. Brighter days combine more training time and sessions.</p>
+            <div v-if="heatmapCells.length" class="heatmap-scroll">
+              <div class="heatmap-months" :style="{ gridTemplateColumns: `repeat(${heatmapWeekCount}, minmax(8px, 1fr))` }">
+                <span v-for="month in heatmapMonths" :key="`${month.label}-${month.week_index}`" :style="{ gridColumn: `${month.week_index + 1} / span 4` }">{{ month.label }}</span>
+              </div>
+              <div class="heatmap-grid" role="grid" :aria-label="`Workout calendar for ${activityHeatmap.year}`">
+                <button v-for="cell in heatmapCells" :key="cell.date" type="button" class="heatmap-cell" :class="[`heatmap-level-${cell.level}`, { 'is-outside': !cell.in_year, 'is-future': cell.is_future, active: selectedHeatmapCell?.date === cell.date }]" :disabled="!cell.in_year || cell.is_future" :aria-label="heatmapCellLabel(cell)" @mouseenter="selectedHeatmapCell = cell" @focus="selectedHeatmapCell = cell" @click="selectedHeatmapCell = cell"></button>
+              </div>
+              <div class="heatmap-footer">
+                <div v-if="selectedHeatmapCell" class="heatmap-selection" aria-live="polite"><strong>{{ formatDate(selectedHeatmapCell.date) }}</strong><span>{{ selectedHeatmapCell.sessions }} {{ selectedHeatmapCell.sessions === 1 ? 'session' : 'sessions' }} · {{ formatDuration(selectedHeatmapCell.total_duration_min) }}</span></div>
+                <div class="heatmap-legend"><span>Less</span><i v-for="level in [0, 1, 2, 3, 4]" :key="level" :class="`heatmap-level-${level}`"></i><span>More</span></div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+      </section>
+    </template>
+
+    <TrainingLoadPanel v-else-if="activeView === 'training_load'" title="Training load" subtitle="How short-term fatigue is moving against your longer-term fitness." :days="84" :focus-days="28" mode="full" />
+
+    <section v-else-if="activeView === 'recovery'" class="health-detail" aria-labelledby="recovery-heading">
+      <div class="detail-head">
+        <div><span class="section-kicker">Automatic context</span><h2 id="recovery-heading">Recovery signals</h2><p>Follow your personal direction across several days. One unusual reading is context, not a verdict on today’s training.</p></div>
+        <span class="status-chip status-connected">Apple Health · automatic</span>
       </div>
-    </div>
-  </div>
+      <div class="metric-switcher" role="tablist" aria-label="Recovery metric">
+        <button v-for="option in recoveryMetricOptions" :key="option.key" type="button" role="tab" :aria-selected="recoveryMetric === option.key" :class="{ active: recoveryMetric === option.key }" :style="{ '--metric-color': option.accent }" @click="recoveryMetric = option.key">
+          <span>{{ option.label }}</span><strong>{{ metricOptionValue(option) }}</strong><small>{{ healthMetricDate(option.key) }}</small>
+        </button>
+      </div>
+      <div v-if="recoveryMetric === 'sleep' && sleepStages.length" class="sleep-stage-strip" aria-label="Latest sleep stages"><span v-for="stage in sleepStages" :key="stage.label"><i>{{ stage.label }}</i><strong>{{ stage.value }}</strong></span></div>
+      <HealthTrendChart :key="selectedRecoveryMetric.key" v-bind="selectedRecoveryMetric" :history="healthHistory(selectedRecoveryMetric.key)" />
+    </section>
+
+    <section v-else-if="activeView === 'daily_activity'" class="health-detail" aria-labelledby="daily-activity-heading">
+      <div class="detail-head">
+        <div><span class="section-kicker">Whole-day movement</span><h2 id="daily-activity-heading">Daily activity</h2><p>See movement across the full day. Totals can include workout contributions; HealthFit remains authoritative for individual sessions.</p></div>
+        <span class="status-chip status-connected">Apple Health · automatic</span>
+      </div>
+      <div class="metric-switcher" role="tablist" aria-label="Daily activity metric">
+        <button v-for="option in dailyMetricOptions" :key="option.key" type="button" role="tab" :aria-selected="dailyMetric === option.key" :class="{ active: dailyMetric === option.key }" :style="{ '--metric-color': option.accent }" @click="dailyMetric = option.key">
+          <span>{{ option.label }}</span><strong>{{ metricOptionValue(option) }}</strong><small>{{ healthMetricDate(option.key) }}</small>
+        </button>
+      </div>
+      <HealthTrendChart :key="selectedDailyMetric.key" v-bind="selectedDailyMetric" :history="healthHistory(selectedDailyMetric.key)" />
+    </section>
+
+    <section v-else class="measurement-detail" :aria-labelledby="`${activeView}-heading`">
+      <div class="detail-head">
+        <div><span class="section-kicker">Manual measurement</span><h2 :id="`${activeView}-heading`">{{ activeMetric.label }}</h2><p>{{ activeMetric.description }}</p></div>
+        <button class="primary-btn" type="button" @click="openDialog(activeView)">＋ {{ activeMetric.action }}</button>
+      </div>
+      <div v-if="activeData.length" class="metric-summary-grid">
+        <article class="card metric-summary-card"><span>Latest</span><strong>{{ formatMetricValue(activeData[0], activeView) }}</strong><small>{{ formatDate(activeData[0].date) }}</small></article>
+        <article class="card metric-summary-card"><span>Change</span><strong>{{ activeDeltaLabel }}</strong><small>{{ activeData.length > 1 ? 'Since the previous entry' : 'Needs another entry' }}</small></article>
+        <article class="card metric-summary-card"><span>History</span><strong>{{ activeData.length }}</strong><small>{{ activeData.length === 1 ? 'measurement' : 'measurements' }}</small></article>
+      </div>
+      <article v-if="activeData.length" class="card trend-card">
+        <div class="trend-card-head"><div><span class="marker-label">Recorded trend</span><strong>All available measurements</strong></div><span>{{ formatDate(oldestActiveDate) }} – {{ formatDate(activeData[0].date) }}</span></div>
+        <svg class="trend-chart" viewBox="0 0 620 180" role="img" :aria-label="`${activeMetric.label} measurement trend`">
+          <line v-for="y in [30, 90, 150]" :key="y" x1="22" :y1="y" x2="598" :y2="y" class="chart-grid" />
+          <polyline v-if="chartPoints.length > 1" :points="chartPolyline" class="chart-line" />
+          <circle v-for="point in chartPoints" :key="point.id" :cx="point.x" :cy="point.y" r="5" class="chart-dot"><title>{{ point.label }}</title></circle>
+        </svg>
+        <div class="chart-range"><span>{{ formatDate(oldestActiveDate) }}</span><span>{{ formatDate(activeData[0].date) }}</span></div>
+      </article>
+      <article v-if="activeData.length" class="card history-card">
+        <div class="history-title">Measurement history</div>
+        <div v-for="entry in activeData" :key="entry.id" class="history-row"><time :datetime="entry.date">{{ formatDate(entry.date) }}</time><strong>{{ formatMetricValue(entry, activeView) }}</strong><span>{{ entry.notes || 'No note' }}</span></div>
+      </article>
+      <article v-else class="card empty-state"><span aria-hidden="true">＋</span><h3>No {{ activeMetric.label.toLowerCase() }} history yet</h3><p>{{ activeMetric.empty }}</p><button class="primary-btn" type="button" @click="openDialog(activeView)">{{ activeMetric.action }}</button></article>
+    </section>
+
+    <Teleport to="body">
+      <div v-if="dialogOpen" class="metric-dialog-backdrop" @click.self="closeDialog" @keydown.esc="closeDialog">
+        <div class="metric-dialog card" role="dialog" aria-modal="true" aria-labelledby="log-measurement-title">
+          <div class="metric-dialog-head"><div><div class="section-kicker">Manual measurement</div><h2 id="log-measurement-title">{{ form.metric === 'ftp' ? 'Log FTP test' : 'Log weight' }}</h2><p>{{ dialogDescription }}</p></div><button class="dialog-close" type="button" aria-label="Close dialog" @click="closeDialog">×</button></div>
+          <div class="metric-form">
+            <label><span>Measurement</span><select v-model="form.metric"><option value="weight">Weight</option><option value="ftp">FTP test</option></select></label>
+            <label><span>Date</span><input v-model="form.date" type="date"></label>
+            <label class="value-field"><span>{{ form.metric === 'ftp' ? 'FTP' : 'Weight' }}</span><div class="input-with-unit"><input v-model.number="form.value" type="number" min="0" :step="form.metric === 'weight' ? '0.1' : '1'"><strong>{{ form.metric === 'weight' ? 'kg' : 'W' }}</strong></div></label>
+            <label class="metric-form-wide"><span>Context <small>optional</small></span><textarea v-model="form.notes" rows="3" :placeholder="form.metric === 'ftp' ? 'For example: Zwift ramp test' : 'For example: morning weigh-in'"></textarea></label>
+          </div>
+          <p v-if="message" class="metric-message">{{ message }}</p>
+          <div class="metric-dialog-actions"><button class="secondary-btn" type="button" @click="closeDialog">Cancel</button><button class="primary-btn" type="button" :disabled="saving || !canSave" @click="saveMetric">{{ saving ? 'Saving…' : 'Save measurement' }}</button></div>
+        </div>
+      </div>
+    </Teleport>
+  </main>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useApi } from '../stores/api'
+import { computed, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
+import { useRoute, useRouter } from 'vue-router'
+import TrainingLoadPanel from '../components/TrainingLoadPanel.vue'
+import HealthTrendChart from '../components/HealthTrendChart.vue'
+import { useApi } from '../stores/api'
 
 const api = useApi()
-const data = ref([])
-const active = ref('z2_pace')
-const saving = ref(false)
-const dialogOpen = ref(false)
-const message = ref('')
-
-const metricTypes = [
-  { key: 'z2_pace', label: '🏃 Z2 Pace', color: '#3b82f6', defaultUnit: 's/km', step: '1', notesPlaceholder: 'Optional context like route, surface, or conditions.' },
-  { key: 'weight', label: '⚖️ Weight', color: '#f59e0b', defaultUnit: 'kg', step: '0.1', notesPlaceholder: 'Optional weigh-in context.' },
-  { key: 'resting_hr', label: '❤️ Resting HR', color: '#ef4444', defaultUnit: 'bpm', step: '1', notesPlaceholder: 'Optional note like morning measurement.' },
-  { key: 'ftp', label: '🚴 FTP', color: '#10b981', defaultUnit: 'W', step: '1', notesPlaceholder: 'Optional test context.' },
-  { key: 'streak', label: '🔥 Streak', color: '#f97316', defaultUnit: 'days', computed: true, notesPlaceholder: 'Computed automatically.' },
+const route = useRoute()
+const router = useRouter()
+const views = [{ key: 'overview', label: 'Overview' }, { key: 'training_load', label: 'Training load' }, { key: 'recovery', label: 'Recovery' }, { key: 'daily_activity', label: 'Daily activity' }, { key: 'weight', label: 'Weight' }, { key: 'ftp', label: 'FTP' }]
+const metricMeta = {
+  weight: { label: 'Weight', description: 'A supporting body-composition signal. Interpret the longer trend, not a single weigh-in.', action: 'Log weight', empty: 'Add weigh-ins when useful; this does not need to become a daily obligation.' },
+  ftp: { label: 'Cycling FTP', description: 'A tested performance anchor used to set cycling zones and compare future tests.', action: 'Log FTP test', empty: 'Add a result after a repeatable FTP test. Everyday ride power does not belong here.' },
+}
+const recoveryMetricOptions = [
+  { key: 'sleep', label: 'Sleep', title: 'Sleep duration', eyebrow: 'Nightly recovery', unit: 'h', decimals: 1, chartType: 'bar', accent: '#8b9cff', higherIsPositive: null },
+  { key: 'resting_hr', label: 'Resting HR', title: 'Resting heart rate', eyebrow: 'Automatic morning signal', unit: 'bpm', decimals: 0, chartType: 'line', accent: '#fb7185', higherIsPositive: false },
+  { key: 'hrv', label: 'HRV', title: 'Heart-rate variability', eyebrow: 'Automatic recovery signal', unit: 'ms', decimals: 0, chartType: 'line', accent: '#34d399', higherIsPositive: true },
 ]
-
-const activeColor = computed(() => metricTypes.find(m => m.key === active.value)?.color || '#6366f1')
-const activeLabel = computed(() => metricTypes.find(m => m.key === active.value)?.label || active.value)
-const manualMetricTypes = computed(() => metricTypes.filter((metric) => !metric.computed))
+const dailyMetricOptions = [
+  { key: 'steps', label: 'Steps', title: 'Steps', eyebrow: 'Whole-day total', unit: '', decimals: 0, chartType: 'bar', accent: '#60a5fa', higherIsPositive: null },
+  { key: 'walking_running_distance', label: 'Walking + running', title: 'Walking + running distance', eyebrow: 'Whole-day total', unit: 'km', decimals: 2, chartType: 'bar', accent: '#34d399', higherIsPositive: null },
+  { key: 'flights_climbed', label: 'Flights climbed', title: 'Flights climbed', eyebrow: 'Whole-day total', unit: '', decimals: 0, chartType: 'bar', accent: '#fbbf24', higherIsPositive: null },
+]
+const normalizeView = (value) => value === 'training-load' ? 'training_load' : value === 'daily-activity' ? 'daily_activity' : views.some((item) => item.key === value) ? value : 'overview'
+const activeView = ref(normalizeView(route.query.view))
+const loading = ref(true)
+const loadError = ref('')
+const dialogOpen = ref(false)
+const saving = ref(false)
+const message = ref('')
+const performanceSummary = ref(null)
+const performanceSettings = ref(null)
+const healthSummary = ref(null)
+const trainingHistory = ref(null)
+const planTrends = ref(null)
+const metricData = ref({ weight: [], ftp: [] })
 const form = ref(defaultForm())
-const activeMetricMeta = computed(() => metricTypes.find((metric) => metric.key === form.value.metric))
-const valueStep = computed(() => activeMetricMeta.value?.step || '1')
-const notesPlaceholder = computed(() => activeMetricMeta.value?.notesPlaceholder || 'Optional notes')
-const canSave = computed(() =>
-  form.value.metric &&
-  form.value.date &&
-  typeof form.value.value === 'number' &&
-  !Number.isNaN(form.value.value) &&
-  activeMetricMeta.value?.computed !== true
-)
+const recoveryMetric = ref('sleep')
+const dailyMetric = ref('steps')
+const selectedHeartRateZone = ref('zone2')
+const selectedHeatmapCell = ref(null)
 
-const loadMetric = async (key) => {
-  active.value = key
-  const { data: d } = await api.getMetric(key)
-  data.value = d
+const loadPage = async () => {
+  loading.value = true
+  loadError.value = ''
+  const results = await Promise.allSettled([api.getPerformanceSummary(), api.getPerformanceSettings(), api.getWeeklyPlanTrends({ weeks: 4 }), api.getHealthSummary({ days: 90 }), api.getMetric('weight'), api.getMetric('ftp'), api.getTrainingHistory()])
+  if (results.every((result) => result.status === 'rejected')) {
+    loadError.value = 'None of the supporting training data could be loaded.'
+    loading.value = false
+    return
+  }
+  performanceSummary.value = results[0].status === 'fulfilled' ? results[0].value.data : null
+  performanceSettings.value = results[1].status === 'fulfilled' ? results[1].value.data : null
+  planTrends.value = results[2].status === 'fulfilled' ? results[2].value.data : null
+  healthSummary.value = results[3].status === 'fulfilled' ? results[3].value.data : null
+  metricData.value.weight = results[4].status === 'fulfilled' ? results[4].value.data : []
+  metricData.value.ftp = results[5].status === 'fulfilled' ? results[5].value.data : []
+  trainingHistory.value = results[6].status === 'fulfilled' ? results[6].value.data : null
+  const selectableDays = (trainingHistory.value?.activity_heatmap?.cells || []).filter((cell) => cell.in_year && !cell.is_future && cell.sessions > 0)
+  selectedHeatmapCell.value = selectableDays.at(-1) || null
+  loading.value = false
 }
 
-const openDialog = () => {
-  if (active.value === 'streak') return
+onMounted(loadPage)
+watch(() => route.query.view, (value) => { activeView.value = normalizeView(value) })
+
+const selectView = async (key) => {
+  activeView.value = key
+  const query = { ...route.query }
+  if (key === 'overview') delete query.view
+  else query.view = key === 'training_load' ? 'training-load' : key === 'daily_activity' ? 'daily-activity' : key
+  await router.replace({ query })
+}
+
+const activeMetric = computed(() => metricMeta[activeView.value] || metricMeta.weight)
+const activeData = computed(() => metricData.value[activeView.value] || [])
+const oldestActiveDate = computed(() => activeData.value.at(-1)?.date || '')
+const visibleBenchmarks = computed(() => (performanceSummary.value?.derived?.benchmarks || []).slice(0, 3))
+const latestWeight = computed(() => metricData.value.weight[0] || null)
+const latestFtp = computed(() => metricData.value.ftp[0] || null)
+const restingHeartRate = computed(() => healthSummary.value?.metrics?.resting_hr || null)
+const sleepMetric = computed(() => healthSummary.value?.metrics?.sleep || null)
+const sleepLabel = computed(() => sleepMetric.value?.latest ? `${Number(sleepMetric.value.latest.value).toFixed(1)} h` : 'Not imported')
+const sleepCopy = computed(() => {
+  const latest = sleepMetric.value?.latest
+  if (!latest) return 'Automatic nightly duration'
+  const stages = latest.stages || {}
+  const details = [`${formatDate(latest.date)}`]
+  if (stages.deep) details.push(`${Number(stages.deep).toFixed(1)}h deep`)
+  if (stages.rem) details.push(`${Number(stages.rem).toFixed(1)}h REM`)
+  return details.join(' · ')
+})
+const sleepStages = computed(() => {
+  const stages = sleepMetric.value?.latest?.stages || {}
+  return [
+    { label: 'Core', value: stages.core ? `${Number(stages.core).toFixed(1)}h` : null },
+    { label: 'Deep', value: stages.deep ? `${Number(stages.deep).toFixed(1)}h` : null },
+    { label: 'REM', value: stages.rem ? `${Number(stages.rem).toFixed(1)}h` : null },
+    { label: 'Awake', value: sleepMetric.value?.latest?.awake_minutes ? `${Math.round(sleepMetric.value.latest.awake_minutes)}m` : null },
+  ].filter((stage) => stage.value)
+})
+const selectedRecoveryMetric = computed(() => recoveryMetricOptions.find((option) => option.key === recoveryMetric.value) || recoveryMetricOptions[0])
+const selectedDailyMetric = computed(() => dailyMetricOptions.find((option) => option.key === dailyMetric.value) || dailyMetricOptions[0])
+const movementContext = computed(() => {
+  const distance = healthSummary.value?.metrics?.walking_running_distance?.latest
+  const flights = healthSummary.value?.metrics?.flights_climbed?.latest
+  if (!distance) return 'Daily movement outside workout records'
+  return [formatDate(distance.date), flights ? `${Math.round(flights.value)} flights` : null].filter(Boolean).join(' · ')
+})
+const heartRateSummary = computed(() => trainingHistory.value?.heart_rate_zone_summary || null)
+const heartRateZones = computed(() => heartRateSummary.value?.zones || [])
+const activeHeartRateZone = computed(() => heartRateZones.value.find((zone) => zone.key === selectedHeartRateZone.value) || heartRateZones.value[0] || null)
+const activityHeatmap = computed(() => trainingHistory.value?.activity_heatmap || null)
+const heatmapCells = computed(() => activityHeatmap.value?.cells || [])
+const heatmapMonths = computed(() => (activityHeatmap.value?.month_labels || []).filter((month, index) => index > 0 || month.label === 'Jan'))
+const heatmapWeekCount = computed(() => Math.max(1, ...heatmapCells.value.map((cell) => Number(cell.week_index || 0) + 1)))
+const currentYear = computed(() => activityHeatmap.value?.year || format(new Date(), 'yyyy'))
+const restingHeartRateLabel = computed(() => restingHeartRate.value?.latest ? `${Math.round(restingHeartRate.value.latest.value)} bpm` : 'Not imported yet')
+const restingHeartRateCopy = computed(() => {
+  const history = restingHeartRate.value?.history || []
+  if (!history.length) return 'Import Health Data Export JSON in Data & Sync. Apple Watch readings do not need to be entered by hand.'
+  const recent = history.slice(0, 7).map((item) => Number(item.value))
+  const baseline = recent.reduce((sum, value) => sum + value, 0) / recent.length
+  const delta = Number(history[0].value) - baseline
+  const direction = Math.abs(delta) < 0.5 ? 'near' : delta > 0 ? 'above' : 'below'
+  return `Latest automatic reading from ${formatDate(history[0].date)}; ${Math.abs(delta).toFixed(1)} bpm ${direction} the recent ${recent.length}-day average.`
+})
+const configuredRideThreshold = computed(() => performanceSettings.value?.anchors?.ride_threshold_power?.value || null)
+const configuredRunThreshold = computed(() => performanceSettings.value?.anchors?.run_threshold_pace?.value || null)
+const cyclingThresholdLabel = computed(() => configuredRideThreshold.value || latestFtp.value?.value ? `${Math.round(configuredRideThreshold.value || latestFtp.value.value)} W` : 'Not set')
+const cyclingThresholdCopy = computed(() => configuredRideThreshold.value ? 'Active anchor for cycling zones and zone-aware training reads.' : latestFtp.value ? `Last test was ${formatDate(latestFtp.value.date)}. Log the next test to activate it as your zone anchor.` : 'Log a repeatable FTP test when you have one. Do not infer this from an ordinary ride.')
+const runThresholdLabel = computed(() => formatPace(configuredRunThreshold.value))
+const runThresholdCopy = computed(() => configuredRunThreshold.value ? 'Active anchor for running zones. Easy-run pace stays out because conditions make it noisy.' : 'Set this from a threshold test when useful. Everyday Z2 pace is intentionally not logged.')
+const latestWeightLabel = computed(() => latestWeight.value ? formatMetricValue(latestWeight.value, 'weight') : 'Not tracked yet')
+const weightSummary = computed(() => {
+  const entries = metricData.value.weight
+  if (!entries.length) return 'Optional supporting context. Log it only when it helps a real goal.'
+  if (entries.length === 1) return `One weigh-in recorded on ${formatDate(entries[0].date)}.`
+  return `${signedMetricDelta(entries[0].value - entries[1].value, 'weight')} since the previous weigh-in.`
+})
+const consistency = computed(() => ({ fulfilled: Number(planTrends.value?.totals?.fulfilled_sessions || 0), modified: Number(planTrends.value?.totals?.modified_sessions || 0), missed: Number(planTrends.value?.totals?.missed_sessions || 0) }))
+const consistencyTotal = computed(() => consistency.value.fulfilled + consistency.value.modified + consistency.value.missed)
+const consistencyLabel = computed(() => consistencyTotal.value ? `${consistency.value.fulfilled} of ${consistencyTotal.value} as planned` : 'Not enough plan history')
+const consistencyCopy = computed(() => {
+  if (!consistencyTotal.value) return 'Consistency will appear after planned sessions have enough completed history.'
+  if (planTrends.value?.status === 'off_track') return 'Recurring misses are more useful to investigate than a consecutive-day streak.'
+  if (planTrends.value?.status === 'mixed') return 'Training is happening, with some sessions adapted or missed. The pattern matters more than perfection.'
+  return 'Recent training is following the plan. Rest days count as part of the plan—not broken streaks.'
+})
+const consistencyFulfilledPct = computed(() => consistencyTotal.value ? (consistency.value.fulfilled / consistencyTotal.value) * 100 : 0)
+const consistencyModifiedPct = computed(() => consistencyTotal.value ? (consistency.value.modified / consistencyTotal.value) * 100 : 0)
+const weightSparklinePoints = computed(() => sparklinePoints(metricData.value.weight, 240, 42, 3))
+const restingHrSparklinePoints = computed(() => sparklinePoints(restingHeartRate.value?.history, 240, 42, 3))
+const weightSparklineArea = computed(() => sparklineArea(metricData.value.weight, 240, 42, 3))
+const restingHrSparklineArea = computed(() => sparklineArea(restingHeartRate.value?.history, 240, 42, 3))
+const dailySignals = computed(() => [
+  { key: 'sleep', label: 'Sleep', value: sleepLabel.value, context: sleepCopy.value, accent: '#8b9cff', view: 'recovery', points: sparklinePoints(healthHistory('sleep'), 120, 24, 2) },
+  { key: 'hrv', label: 'HRV', value: healthMetricLabel('hrv', 'ms', 0), context: healthMetricDate('hrv'), accent: '#34d399', view: 'recovery', points: sparklinePoints(healthHistory('hrv'), 120, 24, 2) },
+  { key: 'steps', label: 'Steps', value: healthMetricLabel('steps', '', 0), context: healthMetricDate('steps'), accent: '#60a5fa', view: 'daily_activity', points: sparklinePoints(healthHistory('steps'), 120, 24, 2) },
+  { key: 'walking_running_distance', label: 'Walking + running', value: healthMetricLabel('walking_running_distance', 'km', 2), context: movementContext.value, accent: '#34d399', view: 'daily_activity', points: sparklinePoints(healthHistory('walking_running_distance'), 120, 24, 2) },
+])
+const activeDeltaLabel = computed(() => activeData.value.length < 2 ? '—' : signedMetricDelta(activeData.value[0].value - activeData.value[1].value, activeView.value))
+const chartPoints = computed(() => {
+  const entries = [...activeData.value].reverse()
+  if (!entries.length) return []
+  const values = entries.map((entry) => Number(entry.value))
+  const min = Math.min(...values)
+  const range = Math.max(...values) - min || 1
+  return entries.map((entry, index) => ({ id: entry.id, x: entries.length === 1 ? 310 : 22 + (index / (entries.length - 1)) * 576, y: 150 - ((Number(entry.value) - min) / range) * 120, label: `${formatDate(entry.date)}: ${formatMetricValue(entry, activeView.value)}` }))
+})
+const chartPolyline = computed(() => chartPoints.value.map((point) => `${point.x},${point.y}`).join(' '))
+const canSave = computed(() => form.value.date && Number.isFinite(form.value.value) && form.value.value > 0)
+const dialogDescription = computed(() => form.value.metric === 'ftp' ? 'A test result becomes the cycling threshold anchor used by zone-aware features.' : 'Weight is optional context. A longer trend matters more than any single reading.')
+
+const openDialog = (metric = null) => {
+  const selected = ['weight', 'ftp'].includes(metric) ? metric : ['weight', 'ftp'].includes(activeView.value) ? activeView.value : 'weight'
+  form.value = defaultForm(selected)
   message.value = ''
-  form.value = defaultForm(active.value)
   dialogOpen.value = true
 }
-
-const closeDialog = () => {
-  if (saving.value) return
-  dialogOpen.value = false
-  form.value = defaultForm(active.value)
+const closeDialog = () => { if (!saving.value) { dialogOpen.value = false; message.value = '' } }
+const openDailySignal = async (signal) => {
+  if (signal.view === 'recovery') recoveryMetric.value = signal.key
+  else dailyMetric.value = signal.key
+  await selectView(signal.view)
 }
-
 const saveMetric = async () => {
+  if (!canSave.value) return
   saving.value = true
   message.value = ''
+  const metric = form.value.metric
   try {
-    await api.createMetric(form.value)
-    await loadMetric(form.value.metric)
+    await api.createMetric({ date: form.value.date, metric, value: Number(form.value.value), unit: metric === 'weight' ? 'kg' : 'W', notes: form.value.notes || null })
+    if (metric === 'ftp') {
+      const current = performanceSettings.value || {}
+      await api.updatePerformanceSettings({
+        anchors: { run_threshold_pace: { value: current?.anchors?.run_threshold_pace?.value ?? null, unit: 's/km' }, ride_threshold_power: { value: Number(form.value.value), unit: 'W' } },
+        zones: {
+          run: { zone2_lower_pct: current?.zones?.run?.zone2_lower_pct ?? 1.15, zone2_upper_pct: current?.zones?.run?.zone2_upper_pct ?? 1.3 },
+          ride: { zone2_lower_pct: current?.zones?.ride?.zone2_lower_pct ?? 0.56, zone2_upper_pct: current?.zones?.ride?.zone2_upper_pct ?? 0.75 },
+        },
+      })
+    }
+    await loadPage()
     dialogOpen.value = false
-    form.value = defaultForm(active.value)
-  } catch (error) {
-    message.value = error?.response?.data?.detail || 'Failed to save metric.'
-  } finally {
-    saving.value = false
-  }
+    await selectView(metric)
+  } catch (error) { message.value = error?.response?.data?.detail || 'The measurement could not be saved.' } finally { saving.value = false }
 }
 
-const chartData = computed(() => {
-  const items = [...data.value].reverse().slice(-20)
-  if (!items.length) return []
-  const vals = items.map(d => d.value)
-  const max = Math.max(...vals)
-  const min = Math.min(...vals)
-  const range = max - min || 1
-  return items.map(d => ({
-    value: d.value,
-    label: format(new Date(d.date), 'M/d'),
-    pct: 10 + ((d.value - min) / range) * 85
-  }))
-})
-
-const formatDate = (d) => { try { return format(new Date(d), 'MMM d, yyyy') } catch { return d } }
-
-function defaultForm(metricKey = 'z2_pace') {
-  const metric = metricTypes.find((item) => item.key === metricKey && !item.computed) || metricTypes[0]
-  return {
-    metric: metric.key,
-    date: new Date().toISOString().slice(0, 10),
-    value: undefined,
-    unit: metric.defaultUnit || '',
-    notes: '',
-  }
+function defaultForm(metric = 'weight') { return { metric, date: format(new Date(), 'yyyy-MM-dd'), value: undefined, notes: '' } }
+function formatDate(value) { if (!value) return '—'; try { return format(new Date(`${value}T12:00:00`), 'd MMM yyyy') } catch { return value } }
+function formatPace(seconds) { if (!seconds) return 'Not set'; const rounded = Math.round(Number(seconds)); return `${Math.floor(rounded / 60)}:${String(rounded % 60).padStart(2, '0')} /km` }
+function formatMetricValue(entry, metric) { if (!entry) return '—'; return metric === 'weight' ? `${Number(entry.value).toFixed(1)} kg` : `${Math.round(Number(entry.value))} W` }
+function signedMetricDelta(value, metric) { const amount = metric === 'weight' ? Math.abs(value).toFixed(1) : Math.round(Math.abs(value)); const unit = metric === 'weight' ? 'kg' : 'W'; if (Number(value) === 0) return `No change (${amount} ${unit})`; return `${value > 0 ? '+' : '−'}${amount} ${unit}` }
+function formatElapsedMinutes(value) {
+  const totalSeconds = Math.max(0, Math.round(Number(value || 0) * 60))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return hours
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    : `${minutes}:${String(seconds).padStart(2, '0')}`
 }
-
-watch(() => form.value.metric, (metricKey) => {
-  const metric = metricTypes.find((item) => item.key === metricKey)
-  if (metric && !metric.computed) {
-    form.value.unit = metric.defaultUnit || ''
-  }
-})
-
-onMounted(() => loadMetric('z2_pace'))
+function benchmarkValue(benchmark) { if (!benchmark?.available) return 'Not available'; return benchmark.unit === 'W' ? `${Math.round(benchmark.value)} W` : formatElapsedMinutes(benchmark.value) }
+function benchmarkCopy(benchmark) { if (!benchmark?.available) return 'A qualifying activity has not been recorded yet.'; return [benchmark.date ? formatDate(benchmark.date) : null, benchmark.name].filter(Boolean).join(' · ') || 'Derived automatically from activity history.' }
+function healthMetricLabel(metric, unit, decimals = 0) { const latest = healthSummary.value?.metrics?.[metric]?.latest; if (!latest) return '—'; const value = Number(latest.value).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }); return `${value}${unit ? ` ${unit}` : ''}` }
+function healthMetricDate(metric) { const latest = healthSummary.value?.metrics?.[metric]?.latest; return latest ? formatDate(latest.date) : 'Automatic daily total' }
+function healthHistory(metric) { return healthSummary.value?.metrics?.[metric]?.history || [] }
+function metricOptionValue(option) { return healthMetricLabel(option.key, option.unit, option.decimals) }
+function formatDuration(minutes) { const total = Math.round(Number(minutes || 0)); const hours = Math.floor(total / 60); const rest = total % 60; return hours ? (rest ? `${hours}h ${rest}m` : `${hours}h`) : `${rest}m` }
+function heatmapCellLabel(cell) { return `${formatDate(cell.date)}: ${cell.sessions} ${cell.sessions === 1 ? 'session' : 'sessions'}, ${formatDuration(cell.total_duration_min)}` }
+function sparklineCoordinates(entries, width, height, padding) {
+  const values = [...(entries || [])].slice(0, 28).reverse().map((entry) => Number(entry.value)).filter(Number.isFinite)
+  if (values.length < 2) return []
+  const min = Math.min(...values)
+  const range = Math.max(...values) - min || 1
+  return values.map((value, index) => ({ x: padding + (index / (values.length - 1)) * (width - padding * 2), y: height - padding - ((value - min) / range) * (height - padding * 2) }))
+}
+function sparklinePoints(entries, width, height, padding) { return sparklineCoordinates(entries, width, height, padding).map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ') }
+function sparklineArea(entries, width, height, padding) {
+  const points = sparklineCoordinates(entries, width, height, padding)
+  if (!points.length) return ''
+  return `M ${points.map((point) => `${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' L ')} L ${width - padding} ${height} L ${padding} ${height}`
+}
 </script>
 
 <style scoped>
-.page-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: center;
-  margin-bottom: 20px;
-}
-.page-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; }
-.add-metric-btn,
-.save-btn {
-  padding: 10px 16px;
-  border: 0;
-  border-radius: 10px;
-  cursor: pointer;
-  background: var(--accent);
-  color: #fff;
-  font-weight: 600;
-}
-.add-metric-btn:disabled,
-.save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.metrics-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-.filter-btn {
-  padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--muted); cursor: pointer; font-size: 13px; transition: all 0.15s;
-}
-.filter-btn:hover { color: var(--text); }
-.filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+.trends-page{display:grid;gap:28px}.page-head,.detail-head,.section-heading,.trend-card-head,.metric-dialog-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.page-title{margin:3px 0 5px;font-family:var(--font-display);font-size:30px;line-height:1}.page-sub{max-width:620px}.primary-btn,.secondary-btn,.card-action,.text-btn,.trend-nav button{border:0;color:var(--text);cursor:pointer;font:inherit}.primary-btn{min-height:42px;padding:0 16px;border-radius:11px;background:var(--accent);color:#fff;font-size:13px;font-weight:700}.primary-btn:disabled{opacity:.45;cursor:not-allowed}.secondary-btn{min-height:40px;padding:0 15px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);font-weight:650}.trend-nav{display:flex;gap:6px;margin-top:-10px;padding-bottom:1px;border-bottom:1px solid var(--border)}.trend-nav button{padding:10px 13px 12px;border-bottom:2px solid transparent;background:transparent;color:var(--muted);font-size:12px;font-weight:700}.trend-nav button:hover{color:var(--text)}.trend-nav button.active{border-bottom-color:var(--accent-strong);color:var(--text)}.overview-lead,.measurement-detail{display:grid;gap:14px}.section-heading{align-items:end;margin-bottom:14px}.section-heading h2,.detail-head h2,.metric-dialog-head h2{margin:3px 0 0;font-family:var(--font-display);font-size:20px}.section-heading>p,.detail-head p,.metric-dialog-head p{max-width:460px;color:var(--muted);font-size:12px;line-height:1.55}.section-kicker,.marker-label,.metric-summary-card>span,.history-title{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.text-btn{padding:4px 0;background:transparent;color:var(--accent-strong);font-size:12px;font-weight:700}.marker-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.marker-card{position:relative;min-height:172px;padding:18px;overflow:hidden}.marker-card:after{position:absolute;right:-28px;bottom:-46px;width:100px;height:100px;border-radius:999px;background:rgba(123,163,255,.08);content:''}.marker-card.marker-primary{border-color:rgba(123,163,255,.34);background:linear-gradient(145deg,rgba(69,103,183,.14),var(--surface))}.marker-card>strong{display:block;margin:13px 0 8px;font-family:var(--font-display);font-size:24px}.marker-card p{min-height:48px;color:var(--muted);font-size:11px;line-height:1.5}.card-action{position:relative;z-index:1;padding:8px 0 0;background:transparent;color:var(--accent-strong);font-size:11px;font-weight:750}.support-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.support-card{min-height:205px;padding:20px}.support-head{display:flex;align-items:center;gap:12px}.support-head>div{display:grid;gap:3px}.support-head span:not(.support-icon){color:var(--muted);font-size:10px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.support-head strong{font-size:18px}.support-icon{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;font-size:17px;font-weight:800}.support-weight{background:rgba(245,158,11,.13);color:#fbbf24}.support-recovery{background:rgba(239,68,68,.12);color:#f87171}.support-consistency{background:rgba(52,211,153,.12);color:var(--success)}.support-card>p{min-height:55px;margin:17px 0 0;color:var(--muted);font-size:12px;line-height:1.55}.support-actions{display:flex;gap:16px}.status-chip{display:inline-flex;margin-top:13px;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:750}.status-muted{background:rgba(148,163,184,.1);color:var(--muted)}.consistency-track{display:flex;width:100%;height:7px;margin-top:14px;overflow:hidden;border-radius:99px;background:rgba(239,94,94,.25)}.consistency-fulfilled{background:var(--success)}.consistency-modified{background:var(--warning)}.consistency-legend{display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:10px;color:var(--muted);font-size:9px}.detail-head{align-items:end}.metric-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.metric-summary-card{display:grid;gap:7px;padding:18px}.metric-summary-card strong{font-family:var(--font-display);font-size:23px}.metric-summary-card small{color:var(--muted);font-size:10px}.trend-card,.history-card{padding:20px}.trend-card-head{align-items:end}.trend-card-head>div{display:grid;gap:5px}.trend-card-head>div strong{font-size:14px}.trend-card-head>span{color:var(--muted);font-size:10px}.trend-chart{width:100%;height:220px;margin-top:10px;overflow:visible}.chart-grid{stroke:rgba(132,149,181,.12);stroke-width:1}.chart-line{fill:none;stroke:var(--accent-strong);stroke-linecap:round;stroke-linejoin:round;stroke-width:3;vector-effect:non-scaling-stroke}.chart-dot{fill:var(--surface);stroke:var(--accent-strong);stroke-width:3;vector-effect:non-scaling-stroke}.chart-range{display:flex;justify-content:space-between;color:var(--muted);font-size:9px}.history-title{padding-bottom:10px}.history-row{display:grid;grid-template-columns:150px 110px minmax(0,1fr);gap:16px;align-items:center;padding:13px 0;border-top:1px solid var(--border);font-size:12px}.history-row time,.history-row span{color:var(--muted)}.empty-state,.loading-state,.error-state{display:grid;justify-items:center;gap:10px;padding:52px 24px;text-align:center}.empty-state>span{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;background:rgba(123,163,255,.12);color:var(--accent-strong);font-size:20px}.empty-state p,.error-state p{max-width:470px;color:var(--muted);font-size:12px}.metric-dialog-backdrop{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:24px;background:rgba(3,6,14,.72);backdrop-filter:blur(10px)}.metric-dialog{width:min(650px,100%);padding:23px}.metric-dialog-head{margin-bottom:20px}.dialog-close{width:36px;height:36px;border:1px solid var(--border);border-radius:999px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:21px}.metric-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.metric-form label{display:grid;gap:7px;color:var(--muted);font-size:11px;font-weight:650}.metric-form label>span small{color:var(--muted);font-weight:400}.metric-form input,.metric-form select,.metric-form textarea{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font:inherit}.metric-form-wide{grid-column:1/-1}.input-with-unit{display:flex;align-items:center;border:1px solid var(--border);border-radius:10px;background:var(--surface)}.input-with-unit input{border:0;background:transparent}.input-with-unit strong{padding-right:12px;color:var(--muted);font-size:11px}.metric-message{margin-top:12px;color:#fca5a5;font-size:12px;font-weight:650}.metric-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}@media(max-width:1180px){.marker-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:900px){.support-grid{grid-template-columns:1fr}}@media(max-width:720px){.page-head,.detail-head,.section-heading,.trend-card-head{align-items:flex-start;flex-direction:column}.marker-grid,.metric-summary-grid,.metric-form{grid-template-columns:1fr}.metric-form-wide{grid-column:auto}.trend-nav{overflow-x:auto}.trend-nav button{white-space:nowrap}.history-row{grid-template-columns:1fr auto}.history-row span{grid-column:1/-1}}
+.status-connected { background: rgba(52, 211, 153, .12); color: var(--success); }
+.daily-signal-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}.daily-signal-card{display:grid;gap:5px;padding:15px 17px}.daily-signal-card>span{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.daily-signal-card>strong{font-family:var(--font-display);font-size:18px}.daily-signal-card>small{overflow:hidden;color:var(--muted);font-size:9px;text-overflow:ellipsis;white-space:nowrap}
+.health-detail{display:grid;gap:14px}.metric-switcher{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.metric-switcher button{--metric-color:var(--accent);position:relative;display:grid;min-width:0;gap:4px;border:1px solid var(--border);border-radius:14px;background:rgba(17,24,38,.72);padding:15px 17px;color:var(--text);cursor:pointer;text-align:left}.metric-switcher button:before{position:absolute;inset:0 auto 0 0;width:2px;border-radius:14px 0 0 14px;background:var(--metric-color);content:'';opacity:0;transition:opacity .15s ease}.metric-switcher button:hover{border-color:color-mix(in srgb,var(--metric-color) 34%,var(--border));background:rgba(23,31,47,.9)}.metric-switcher button.active{border-color:color-mix(in srgb,var(--metric-color) 42%,var(--border));background:linear-gradient(135deg,color-mix(in srgb,var(--metric-color) 9%,transparent),rgba(17,24,38,.88));box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}.metric-switcher button.active:before{opacity:1}.metric-switcher span{overflow:hidden;color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.1em;text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}.metric-switcher strong{font-family:var(--font-display);font-size:21px}.metric-switcher small{color:var(--muted);font-size:8px}.sleep-stage-strip{display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:12px;background:rgba(17,24,38,.48);padding:10px 14px}.sleep-stage-strip span{display:grid;min-width:92px;gap:2px;border-right:1px solid var(--border);padding:0 15px}.sleep-stage-strip span:first-child{padding-left:0}.sleep-stage-strip span:last-child{border-right:0}.sleep-stage-strip i{color:var(--muted);font-size:7px;font-style:normal;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.sleep-stage-strip strong{font-size:11px}
+.training-history{display:grid;gap:14px}.history-insight-grid{display:grid;grid-template-columns:minmax(300px,.72fr) minmax(0,1.28fr);gap:12px;align-items:start}.hr-zone-card,.heatmap-card{padding:20px;overflow:hidden}.insight-card-head,.year-summary-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.insight-card-head>div,.year-summary-head>div{display:grid;gap:5px}.insight-card-head strong,.year-summary-head strong{font-size:15px}.history-total{color:var(--text);font-family:var(--font-display);font-size:15px}.hr-zone-card>p,.heatmap-card>p{min-height:38px;margin:13px 0 16px;color:var(--muted);font-size:11px;line-height:1.5}.zone-stack{display:flex;height:15px;overflow:hidden;border-radius:99px;background:var(--surface2)}.zone-stack span{display:flex;align-items:center;justify-content:center;min-width:2px}.zone-stack i{color:#08111e;font-size:8px;font-style:normal;font-weight:850}.zone-zone1,.zone-dot-zone1{background:#64748b}.zone-zone2,.zone-dot-zone2{background:#34d399}.zone-zone3,.zone-dot-zone3{background:#60a5fa}.zone-zone4,.zone-dot-zone4{background:#fbbf24}.zone-zone5,.zone-dot-zone5{background:#f87171}.zone-list{display:grid;gap:7px;margin-top:14px}.zone-list div{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:10px}.zone-list div>span{display:flex;align-items:center;gap:7px}.zone-list i{width:7px;height:7px;border-radius:50%}.zone-list strong{color:var(--text);font-size:10px}.heatmap-scroll{overflow-x:auto;padding-bottom:4px}.heatmap-months{display:grid;column-gap:3px;min-width:580px;width:100%;height:17px}.heatmap-months span{color:var(--muted);font-size:8px}.heatmap-grid{display:grid;grid-template-rows:repeat(7,auto);grid-auto-columns:minmax(8px,1fr);grid-auto-flow:column;column-gap:3px;row-gap:3px;min-width:580px;width:100%}.heatmap-cell{width:100%;height:auto;aspect-ratio:1;border-radius:2px;background:rgba(125,145,176,.1)}.heatmap-legend i{width:11px;height:11px;border-radius:2px;background:rgba(125,145,176,.1)}.heatmap-level-1{background:rgba(52,211,153,.28)!important}.heatmap-level-2{background:rgba(52,211,153,.48)!important}.heatmap-level-3{background:rgba(52,211,153,.7)!important}.heatmap-level-4{background:#34d399!important}.heatmap-cell.is-outside,.heatmap-cell.is-future{opacity:.18}.heatmap-legend{display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-top:11px;color:var(--muted);font-size:8px}.year-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.year-summary-card{--year-color:#34d399;padding:18px}.year-summary-run{--year-color:#60a5fa}.year-summary-strength{--year-color:#fbbf24}.year-summary-head>span{color:var(--muted);font-size:10px}.year-summary-head b{color:var(--text);font-family:var(--font-display);font-size:21px}.year-summary-card svg{display:block;width:100%;height:145px;margin-top:10px;overflow:visible}.year-grid-line{stroke:rgba(132,149,181,.12)}.year-area{fill:color-mix(in srgb,var(--year-color) 13%,transparent)}.year-line{fill:none;stroke:var(--year-color);stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}.year-summary-card circle{fill:var(--surface);stroke:var(--year-color);stroke-width:2;vector-effect:non-scaling-stroke}.year-summary-card text{fill:var(--muted);font-size:7px}.year-summary-foot{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;border-top:1px solid var(--border);padding-top:11px}.year-summary-foot span{display:grid;gap:3px;color:var(--muted);font-size:8px;text-transform:uppercase}.year-summary-foot strong{overflow:hidden;color:var(--text);font-size:10px;text-overflow:ellipsis;white-space:nowrap;text-transform:none}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media(max-width:1000px){.history-insight-grid{grid-template-columns:1fr}.year-summary-grid{grid-template-columns:1fr 1fr}.year-summary-card:first-child{grid-column:1/-1}.daily-signal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.metric-switcher{grid-template-columns:1fr}.sleep-stage-strip{overflow-x:auto}.sleep-stage-strip span{min-width:78px}}@media(max-width:720px){.year-summary-grid,.daily-signal-grid{grid-template-columns:1fr}.year-summary-card:first-child{grid-column:auto}.heatmap-card{padding-right:12px}}
 
-.chart-area { padding: 12px 0; overflow-x: auto; }
-.chart-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 140px;
-  min-width: max-content;
-}
-.bar-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  width: 36px;
-}
-.bar-fill {
-  width: 24px;
-  border-radius: 4px 4px 0 0;
-  min-height: 4px;
-  transition: height 0.3s;
-}
-.bar-label { font-size: 9px; color: var(--muted); }
-.bar-val { font-size: 9px; color: var(--text); }
+/* Interactive overview surfaces */
+.support-card{--support-color:var(--accent);position:relative;display:flex;flex-direction:column;min-height:242px;overflow:hidden;background:linear-gradient(145deg,color-mix(in srgb,var(--support-color) 6%,transparent),rgba(17,24,38,.96));transition:border-color var(--motion-duration-base) var(--motion-ease-standard),transform var(--motion-duration-base) var(--motion-ease-standard),box-shadow var(--motion-duration-base) var(--motion-ease-standard)}
+.support-card:hover{border-color:color-mix(in srgb,var(--support-color) 32%,var(--border));transform:translateY(-2px);box-shadow:0 18px 38px rgba(3,8,18,.24),inset 0 1px 0 rgba(255,255,255,.04)}
+.support-card-weight{--support-color:#fbbf24}.support-card-recovery{--support-color:#fb7185}.support-card-consistency{--support-color:#34d399}
+.support-card-orb{position:absolute;right:-54px;top:-64px;width:160px;height:160px;border-radius:50%;background:var(--support-color);filter:blur(42px);opacity:.08;pointer-events:none}
+.support-head{position:relative}.support-head strong{font-family:var(--font-display);font-size:22px}.support-icon{border:1px solid color-mix(in srgb,var(--support-color) 22%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.support-card>p{min-height:0;margin-bottom:12px}.support-sparkline{width:100%;height:42px;margin:auto 0 8px;overflow:visible;opacity:.92}.support-sparkline polyline{stroke-linecap:round;stroke-linejoin:round}
+.support-actions{margin-top:auto}.support-actions .card-action{position:relative;padding-right:14px}.support-actions .card-action:first-child:after{position:absolute;right:0;content:'→';transition:transform var(--motion-duration-fast) var(--motion-ease-standard)}.support-actions .card-action:first-child:hover:after{transform:translateX(3px)}
+.status-chip-action{align-self:flex-start;border:0;cursor:pointer;font:inherit}.status-chip-action:hover{filter:brightness(1.16)}
+.consistency-track{height:10px;margin-top:auto;border:1px solid rgba(255,255,255,.04);box-shadow:inset 0 2px 4px rgba(0,0,0,.16)}.consistency-track span{transition:width var(--motion-duration-slow) var(--motion-ease-emphasized)}
+.consistency-legend{gap:10px 16px}.consistency-legend span{display:flex;align-items:center;gap:5px}.consistency-legend i{width:6px;height:6px;border-radius:50%}.legend-fulfilled{background:var(--success)}.legend-modified{background:var(--warning)}.legend-missed{background:var(--danger)}
+.daily-signal-card{--signal-color:var(--accent);position:relative;min-width:0;border:1px solid var(--border);background:linear-gradient(145deg,color-mix(in srgb,var(--signal-color) 5%,transparent),rgba(17,24,38,.9));color:var(--text);cursor:pointer;text-align:left;overflow:hidden}
+.daily-signal-card:before{position:absolute;inset:0 auto 0 0;width:2px;background:var(--signal-color);content:'';opacity:.42}.daily-signal-card:hover{border-color:color-mix(in srgb,var(--signal-color) 38%,var(--border));background:linear-gradient(145deg,color-mix(in srgb,var(--signal-color) 10%,transparent),rgba(21,29,45,.98));transform:translateY(-2px);box-shadow:0 12px 26px rgba(3,8,18,.2)}
+.daily-signal-card .daily-signal-top{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.daily-signal-top i{color:var(--signal-color);font-size:12px;font-style:normal;letter-spacing:0;opacity:.7;transition:transform var(--motion-duration-fast) var(--motion-ease-standard)}.daily-signal-card:hover .daily-signal-top i{transform:translate(2px,-2px);opacity:1}
+.daily-signal-card>svg{width:100%;height:24px;margin-top:5px;color:var(--signal-color);opacity:.62}.daily-signal-card>svg polyline{stroke-linecap:round;stroke-linejoin:round}.daily-signal-card>small{display:block}
 
-.empty { text-align: center; color: var(--muted); padding: 40px; }
-.metric-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(3, 6, 14, 0.68);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  z-index: 50;
-}
-.metric-dialog {
-  width: min(680px, 100%);
-  padding: 22px;
-}
-.metric-dialog-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-  margin-bottom: 18px;
-}
-.metric-dialog-sub {
-  color: var(--muted);
-  font-size: 13px;
-  margin-top: -8px;
-}
-.dialog-close {
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface2);
-  color: var(--text);
-  cursor: pointer;
-  font-size: 22px;
-  line-height: 1;
-}
-.metric-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-.metric-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--muted);
-}
-.metric-form-wide {
-  grid-column: 1 / -1;
-}
-.metric-form input,
-.metric-form select,
-.metric-form textarea {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-}
-.metric-message {
-  margin-top: 12px;
-  font-weight: 600;
-  color: #fca5a5;
-}
-.metric-dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 18px;
-}
-.dialog-secondary {
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface2);
-  color: var(--text);
-  cursor: pointer;
-}
-@media (max-width: 760px) {
-  .page-head { flex-direction: column; align-items: flex-start; }
-  .metric-form { grid-template-columns: 1fr; }
-}
+/* Zone explorer */
+.zone-focus{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;margin:0 0 12px;padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:rgba(7,13,23,.36)}.zone-focus>span{width:9px;height:32px;border-radius:99px}.zone-focus div{display:grid;gap:1px}.zone-focus small{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}.zone-focus strong{font-family:var(--font-display);font-size:17px}.zone-focus b{font-family:var(--font-display);font-size:22px}
+.zone-stack{height:18px;gap:2px;background:transparent;overflow:visible}.zone-stack button{display:flex;align-items:center;justify-content:center;min-width:3px;padding:0;border:0;color:#07111d;cursor:pointer;filter:saturate(.8) brightness(.78);opacity:.7;transition:filter var(--motion-duration-fast),opacity var(--motion-duration-fast),transform var(--motion-duration-fast)}.zone-stack button:first-child{border-radius:99px 3px 3px 99px}.zone-stack button:last-child{border-radius:3px 99px 99px 3px}.zone-stack button:hover,.zone-stack button.active{filter:none;opacity:1;transform:scaleY(1.22);z-index:1}.zone-stack button:focus-visible{outline-offset:2px}.zone-stack i{pointer-events:none}
+.zone-list{gap:4px}.zone-list button{display:flex;justify-content:space-between;gap:12px;width:100%;padding:7px 8px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;font:inherit;font-size:10px;text-align:left}.zone-list button:hover,.zone-list button.active{border-color:var(--border);background:rgba(125,145,176,.07);color:var(--text)}.zone-list button>span{display:flex;align-items:center;gap:7px}.zone-list button strong{color:inherit;font-size:10px}.zone-list button i{flex:0 0 auto}
+
+/* Calendar explorer */
+.heatmap-card{background:linear-gradient(150deg,rgba(52,211,153,.035),rgba(17,24,38,.96) 44%)}.heatmap-scroll{padding:4px 2px 2px}.heatmap-cell{display:block;padding:0;border:0;cursor:pointer;transition:transform var(--motion-duration-fast) var(--motion-ease-standard),filter var(--motion-duration-fast),box-shadow var(--motion-duration-fast)}.heatmap-cell:not(:disabled):hover,.heatmap-cell.active{position:relative;z-index:2;transform:scale(1.42);filter:brightness(1.28);box-shadow:0 0 0 1px rgba(237,242,251,.75),0 0 12px rgba(52,211,153,.34)}.heatmap-cell:disabled{cursor:default}.heatmap-cell:focus-visible{position:relative;z-index:3;outline:2px solid var(--text);outline-offset:1px}.heatmap-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:39px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}.heatmap-selection{display:flex;align-items:baseline;gap:8px;min-width:0}.heatmap-selection strong{font-size:10px;white-space:nowrap}.heatmap-selection span{overflow:hidden;color:var(--muted);font-size:9px;text-overflow:ellipsis;white-space:nowrap}.heatmap-legend{flex:0 0 auto;margin-top:0}
+@media(max-width:900px){.support-card{min-height:220px}.support-sparkline{margin-top:10px}}
+@media(max-width:560px){.heatmap-footer{align-items:flex-start;flex-direction:column}.heatmap-selection{align-items:flex-start;flex-direction:column;gap:1px}}
+@media(prefers-reduced-motion:reduce){.support-card:hover,.daily-signal-card:hover,.zone-stack button:hover,.zone-stack button.active,.heatmap-cell:not(:disabled):hover,.heatmap-cell.active{transform:none}}
 </style>

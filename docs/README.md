@@ -10,6 +10,7 @@ This directory is the source of truth for product planning and engineering decis
 - `architecture.md` — high-level system design and data flow
 - `project-structure.md` — practical codebase map by backend/frontend area
 - `current-state.md` — what is implemented now and what should happen next
+- `codex-weekly-planning.md` — local one-click Codex actions and troubleshooting
 - `sprints/` — concrete implementation plans for the next work slices
 
 ## Working Rule

@@ -6,7 +6,10 @@
         <h1 class="page-title">Strength</h1>
         <p class="page-sub">Review recent gym work, movement balance, and measured lift progress alongside your endurance training.</p>
       </div>
-      <router-link to="/sync" class="strength-action">Import workouts</router-link>
+      <div class="strength-actions">
+        <router-link to="/strength/workouts" class="strength-action strength-action-primary">Plan &amp; train</router-link>
+        <router-link to="/sync" class="strength-action">Import workouts</router-link>
+      </div>
     </section>
 
     <section class="strength-toolbar motion-section" aria-label="Strength filters">
@@ -51,7 +54,7 @@
     <template v-else-if="overview">
       <div v-if="!overview.summary.session_count" class="card empty-state motion-section">
         <strong>No linked strength history is available in this window.</strong>
-        <p>Import a Fitbod CSV on Sync and confirm links to stored `WeightTraining` activities first.</p>
+        <p>Record a workout in TrainLog or import Fitbod history, then link it to the matching Apple Watch activity.</p>
       </div>
 
       <template v-else>
@@ -583,6 +586,8 @@ const round = (value) => Math.round(value * 10) / 10
 }
 
 .strength-action:hover { background: var(--surface2); color: var(--text); }
+.strength-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.strength-action-primary { color: #fff4e4; border-color: rgba(255, 179, 79, .4); background: rgba(255, 159, 47, .12); }
 
 .strength-hero-copy {
   max-width: 720px;

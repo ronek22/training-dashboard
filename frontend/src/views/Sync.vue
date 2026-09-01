@@ -62,6 +62,45 @@
     <div class="card import-card fitbod-card">
       <div class="import-header">
         <div>
+          <h2>Apple Health Data</h2>
+          <p>Import raw JSON exports from Health Data Export in iCloud Drive. Large backfills are streamed and daily files are deduplicated automatically.</p>
+        </div>
+        <span class="status-pill" :class="healthDataPreview?.configured ? 'status-ok' : 'status-missing'">
+          {{ healthDataPreview?.configured ? 'Directory ready' : 'Directory unavailable' }}
+        </span>
+      </div>
+
+      <div class="import-form">
+        <button class="import-btn import-btn-secondary" :disabled="healthDataScanning" @click="loadHealthDataPreview">
+          {{ healthDataScanning ? 'Scanning…' : 'Preview health data' }}
+        </button>
+        <button class="import-btn" :disabled="healthDataImporting || !healthDataPreview?.configured || !healthDataPendingCount" @click="runHealthDataImport">
+          {{ healthDataImporting ? 'Streaming import…' : 'Import new health data' }}
+        </button>
+      </div>
+
+      <p v-if="healthDataMessage" class="import-message">{{ healthDataMessage }}</p>
+      <p v-if="healthDataPreview?.configured" class="import-hint">
+        Imports sleep, resting heart rate, HRV, body weight, steps, walking/running distance, and flights climbed. Workouts and raw all-day heart rate remain in their purpose-built sources.
+      </p>
+
+      <div v-if="healthDataPreview?.configured" class="fitbod-summary-grid">
+        <div class="fitbod-summary-card"><span>Ready to import</span><strong>{{ healthDataPendingCount }}</strong><small>JSON {{ healthDataPendingCount === 1 ? 'file' : 'files' }}</small></div>
+        <div class="fitbod-summary-card"><span>Processed</span><strong>{{ healthDataCount('already_processed') }}</strong><small>Skipped safely on the next run</small></div>
+        <div class="fitbod-summary-card"><span>Latest import</span><strong>{{ healthDataPreview.last_import ? formatDateTime(healthDataPreview.last_import.imported_at) : 'Never' }}</strong><small>{{ healthDataPreview.last_import ? `${healthDataPreview.last_import.samples_inserted || 0} new samples` : 'Initial export is ready' }}</small></div>
+      </div>
+
+      <div v-if="healthDataPendingFiles.length" class="health-data-files">
+        <article v-for="item in healthDataPendingFiles" :key="item.file_name">
+          <div><strong>{{ item.file_name }}</strong><small>{{ item.file_size_mb }} MB</small></div>
+          <span class="status-pill status-missing">Pending</span>
+        </article>
+      </div>
+    </div>
+
+    <div class="card import-card fitbod-card">
+      <div class="import-header">
+        <div>
           <h2>HealthFit Directory</h2>
           <p>Scan HealthFit FIT backups from iCloud Drive. Preview is read-only; after the initial baseline, unseen files are eligible regardless of workout date.</p>
         </div>
@@ -279,6 +318,10 @@ const healthFitPreview = ref(null)
 const healthFitScanning = ref(false)
 const healthFitImporting = ref(false)
 const healthFitMessage = ref('')
+const healthDataPreview = ref(null)
+const healthDataScanning = ref(false)
+const healthDataImporting = ref(false)
+const healthDataMessage = ref('')
 const activeFitbodFilter = ref('actionable')
 const stravaStatus = ref({ configured: false, last_import_at: null, latest_activity_date: null })
 const importForm = ref({ start_date: '', end_date: '' })
@@ -299,6 +342,8 @@ const fitbodFilters = [
 const canImport = computed(() => stravaStatus.value.configured)
 const healthFitPendingCount = computed(() => ['create', 'link_existing', 'baseline'].reduce((total, action) => total + healthFitCount(action), 0))
 const healthFitReviewItems = computed(() => (healthFitPreview.value?.items || []).filter((item) => item.action === 'ambiguous' || item.action === 'error'))
+const healthDataPendingCount = computed(() => healthDataCount('import'))
+const healthDataPendingFiles = computed(() => (healthDataPreview.value?.items || []).filter((item) => item.action === 'import'))
 const strengthActivities = computed(() => activities.value.filter((activity) => activity.type === 'WeightTraining'))
 
 const loadActivities = async () => {
@@ -321,10 +366,43 @@ const loadFitbodImport = async () => {
 }
 
 onMounted(async () => {
-  await Promise.all([loadActivities(), loadStravaStatus(), loadFitbodImport(), loadHealthFitPreview()])
+  await Promise.all([loadActivities(), loadStravaStatus(), loadFitbodImport(), loadHealthFitPreview(), loadHealthDataPreview()])
 })
 
 const healthFitCount = (action) => healthFitPreview.value?.counts?.[action] || 0
+const healthDataCount = (action) => healthDataPreview.value?.counts?.[action] || 0
+
+async function loadHealthDataPreview() {
+  healthDataScanning.value = true
+  healthDataMessage.value = ''
+  try {
+    const { data } = await api.previewHealthDataImport()
+    healthDataPreview.value = data
+    if (!data.configured) healthDataMessage.value = 'The configured Health Data Export directory is not available to the backend.'
+  } catch (error) {
+    healthDataMessage.value = error?.response?.data?.detail || 'Health data scan failed.'
+  } finally {
+    healthDataScanning.value = false
+  }
+}
+
+async function runHealthDataImport() {
+  healthDataImporting.value = true
+  healthDataMessage.value = 'Streaming the export. The initial file can take a little while; keep this page open.'
+  try {
+    const { data } = await api.importHealthDataFiles()
+    healthDataPreview.value = data
+    const result = data.applied || {}
+    healthDataMessage.value = result.errors?.length
+      ? `Imported ${result.samples_inserted || 0} samples with ${result.errors.length} file error${result.errors.length === 1 ? '' : 's'}.`
+      : `Imported ${result.samples_inserted || 0} new health samples from ${result.files_imported || 0} file${result.files_imported === 1 ? '' : 's'}.`
+    await loadHealthDataPreview()
+  } catch (error) {
+    healthDataMessage.value = error?.response?.data?.detail || 'Health data import failed.'
+  } finally {
+    healthDataImporting.value = false
+  }
+}
 
 async function loadHealthFitPreview() {
   healthFitScanning.value = true
@@ -575,6 +653,11 @@ const formatSeconds = (value) => {
 .fitbod-summary-card span,
 .fitbod-summary-card small { color: var(--muted); }
 .fitbod-summary-card strong { font-size: 20px; }
+.health-data-files { display: grid; gap: 8px; margin-top: 16px; }
+.health-data-files article { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,.025); }
+.health-data-files article > div { display: grid; gap: 3px; min-width: 0; }
+.health-data-files strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.health-data-files small { color: var(--muted); font-size: 10px; }
 .fitbod-filter-row {
   display: flex;
   gap: 8px;

@@ -17,8 +17,27 @@ from ..services.strava import (
     import_strava_activities_data,
 )
 from ..services.healthfit import apply_healthfit_import, preview_healthfit_import
+from ..services.health_data import apply_health_data_import, preview_health_data_import
 
 router = APIRouter()
+
+
+@router.get("/integrations/health-data/preview")
+def health_data_preview():
+    conn = get_db()
+    try:
+        return preview_health_data_import(conn)
+    finally:
+        conn.close()
+
+
+@router.post("/integrations/health-data/import")
+def import_health_data_files():
+    conn = get_db()
+    try:
+        return apply_health_data_import(conn)
+    finally:
+        conn.close()
 
 
 @router.get("/integrations/healthfit/preview")
@@ -37,6 +56,7 @@ def import_healthfit_files():
         return apply_healthfit_import(conn)
     finally:
         conn.close()
+
 
 
 @router.get("/integrations/strava/status")

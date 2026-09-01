@@ -152,15 +152,54 @@ def _load_strength_rows(conn: sqlite3.Connection, window_start: str) -> tuple[li
             a.id AS activity_id,
             a.name AS activity_name,
             a.date AS activity_date,
-            a.duration_min AS activity_duration_min
+            a.duration_min AS activity_duration_min,
+            'fitbod' AS source
         FROM fitbod_workout_sessions s
         JOIN activities a ON a.id = s.matched_activity_id
         WHERE s.match_status = 'matched'
           AND a.type = 'WeightTraining'
           AND s.workout_date >= ?
-        ORDER BY s.workout_date ASC, s.workout_timestamp ASC, s.id ASC
+          AND NOT EXISTS (
+              SELECT 1 FROM strength_workout_sessions recorded
+              WHERE recorded.linked_activity_id = a.id
+                AND recorded.status = 'completed'
+          )
+
+        UNION ALL
+
+        SELECT
+            -s.id AS id,
+            s.started_at AS workout_timestamp,
+            substr(s.started_at, 1, 10) AS workout_date,
+            s.template_name AS title,
+            'matched' AS match_status,
+            'trainlog_link' AS match_provenance,
+            'Recorded in TrainLog and linked to the activity.' AS match_reason,
+            CASE
+                WHEN s.completed_at IS NOT NULL
+                THEN ROUND((julianday(s.completed_at) - julianday(s.started_at)) * 86400)
+                ELSE NULL
+            END AS total_duration_seconds,
+            a.calories AS calories,
+            a.id AS activity_id,
+            a.name AS activity_name,
+            a.date AS activity_date,
+            a.duration_min AS activity_duration_min,
+            'trainlog' AS source
+        FROM strength_workout_sessions s
+        JOIN activities a ON a.id = s.linked_activity_id
+        WHERE s.status = 'completed'
+          AND a.type = 'WeightTraining'
+          AND substr(s.started_at, 1, 10) >= ?
+          AND EXISTS (
+              SELECT 1
+              FROM strength_session_exercises e
+              JOIN strength_session_sets workout_set ON workout_set.session_exercise_id = e.id
+              WHERE e.session_id = s.id AND workout_set.status = 'completed'
+          )
+        ORDER BY workout_date ASC, workout_timestamp ASC, id ASC
         """,
-        (window_start,),
+        (window_start, window_start),
     ).fetchall()
     exercises = conn.execute(
         """
@@ -180,9 +219,37 @@ def _load_strength_rows(conn: sqlite3.Connection, window_start: str) -> tuple[li
         WHERE s.match_status = 'matched'
           AND a.type = 'WeightTraining'
           AND s.workout_date >= ?
-        ORDER BY s.workout_date ASC, s.workout_timestamp ASC, e.exercise_order ASC, e.id ASC
+          AND NOT EXISTS (
+              SELECT 1 FROM strength_workout_sessions recorded
+              WHERE recorded.linked_activity_id = a.id
+                AND recorded.status = 'completed'
+          )
+
+        UNION ALL
+
+        SELECT
+            -e.id AS id,
+            -s.id AS session_id,
+            e.exercise_order,
+            e.exercise_name,
+            COUNT(workout_set.id) AS set_count,
+            COALESCE(SUM(workout_set.actual_reps), 0) AS rep_count,
+            COALESCE(SUM(workout_set.actual_reps * COALESCE(workout_set.actual_weight_kg, 0)), 0) AS total_volume_kg,
+            COUNT(workout_set.id) AS work_set_count,
+            0 AS warmup_set_count
+        FROM strength_session_exercises e
+        JOIN strength_workout_sessions s ON s.id = e.session_id
+        JOIN activities a ON a.id = s.linked_activity_id
+        JOIN strength_session_sets workout_set
+          ON workout_set.session_exercise_id = e.id
+         AND workout_set.status = 'completed'
+        WHERE s.status = 'completed'
+          AND a.type = 'WeightTraining'
+          AND substr(s.started_at, 1, 10) >= ?
+        GROUP BY e.id, s.id, e.exercise_order, e.exercise_name
+        ORDER BY session_id ASC, exercise_order ASC, id ASC
         """,
-        (window_start,),
+        (window_start, window_start),
     ).fetchall()
     sets = conn.execute(
         """
@@ -200,9 +267,32 @@ def _load_strength_rows(conn: sqlite3.Connection, window_start: str) -> tuple[li
         WHERE s.match_status = 'matched'
           AND a.type = 'WeightTraining'
           AND s.workout_date >= ?
-        ORDER BY fs.exercise_id ASC, fs.set_order ASC, fs.id ASC
+          AND NOT EXISTS (
+              SELECT 1 FROM strength_workout_sessions recorded
+              WHERE recorded.linked_activity_id = a.id
+                AND recorded.status = 'completed'
+          )
+
+        UNION ALL
+
+        SELECT
+            -workout_set.id AS id,
+            -e.id AS exercise_id,
+            workout_set.set_order,
+            workout_set.actual_reps AS reps,
+            workout_set.actual_weight_kg AS weight_kg,
+            0 AS is_warmup
+        FROM strength_session_sets workout_set
+        JOIN strength_session_exercises e ON e.id = workout_set.session_exercise_id
+        JOIN strength_workout_sessions s ON s.id = e.session_id
+        JOIN activities a ON a.id = s.linked_activity_id
+        WHERE workout_set.status = 'completed'
+          AND s.status = 'completed'
+          AND a.type = 'WeightTraining'
+          AND substr(s.started_at, 1, 10) >= ?
+        ORDER BY exercise_id ASC, set_order ASC, id ASC
         """,
-        (window_start,),
+        (window_start, window_start),
     ).fetchall()
     return sessions, exercises, sets
 
@@ -225,6 +315,7 @@ def _build_session_index(
             "match_reason": row["match_reason"],
             "total_duration_seconds": row["total_duration_seconds"],
             "calories": row["calories"],
+            "source": row["source"],
             "matched_activity": {
                 "id": row["activity_id"],
                 "name": row["activity_name"],
@@ -283,6 +374,7 @@ def _serialize_session_slice(session: dict, body_part: str) -> Optional[dict]:
         "match_reason": session["match_reason"],
         "total_duration_seconds": session["total_duration_seconds"],
         "calories": session["calories"],
+        "source": session.get("source"),
         "matched_activity": session["matched_activity"],
         "exercise_count": len(exercises),
         "set_count": sum(exercise["set_count"] for exercise in exercises),
@@ -506,6 +598,7 @@ def _recent_sessions(filtered_sessions: list[dict], limit: int = 8) -> list[dict
                 "title": session["title"],
                 "total_duration_seconds": session["total_duration_seconds"],
                 "calories": session["calories"],
+                "source": session.get("source"),
                 "matched_activity": session["matched_activity"],
                 "exercise_count": session["exercise_count"],
                 "set_count": session["set_count"],
@@ -533,6 +626,7 @@ def _recent_sessions_with_detail(filtered_sessions: list[dict], limit: int = 8) 
                 "title": session["title"],
                 "total_duration_seconds": session["total_duration_seconds"],
                 "calories": session["calories"],
+                "source": session.get("source"),
                 "matched_activity": session["matched_activity"],
                 "exercise_count": session["exercise_count"],
                 "set_count": session["set_count"],
@@ -666,7 +760,7 @@ def get_strength_overview_data(
         "sessions": _recent_sessions_with_detail(filtered_sessions),
         "heuristics": {
             "body_part_mapping_version": "strength_view_v1",
-            "note": "Body-part filters use explicit keyword heuristics over imported Fitbod exercise names and may not classify every variant cleanly.",
+            "note": "Body-part filters use explicit keyword heuristics over recorded exercise names and may not classify every variant cleanly.",
         },
     }
 
@@ -707,13 +801,13 @@ def get_strength_context_data(
         "body_part_options": overview["filters"]["body_part_options"],
         "exercise_options": overview["filters"]["exercise_options"],
         "data_source": {
-            "kind": "fitbod_enriched_strength_history",
+            "kind": "linked_exercise_level_strength_history",
             "included_session_criteria": [
-                "Fitbod workout session match_status = matched",
-                "matched activity type = WeightTraining",
-                "linked Fitbod exercise and set detail present in enrichment tables",
+                "Completed TrainLog session explicitly linked to a WeightTraining activity, or matched Fitbod session",
+                "completed exercise and set detail is present",
+                "TrainLog is preferred when both sources refer to the same activity",
             ],
-            "exclusion_note": "Unmatched Fitbod sessions and generic WeightTraining activities without linked Fitbod enrichment are excluded.",
+            "exclusion_note": "Unlinked sessions and generic WeightTraining activities without exercise-level detail are excluded.",
         },
         "heuristics": overview["heuristics"],
     }

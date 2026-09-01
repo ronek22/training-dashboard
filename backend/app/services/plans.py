@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from datetime import datetime
 from typing import Optional
@@ -172,6 +173,25 @@ def _workout_template_by_id(template_settings: dict, template_id: Optional[str])
     return None
 
 
+def _workout_template_from_title(template_settings: dict, title: Optional[str]) -> Optional[dict]:
+    """Resolve an explicitly named workout before falling back to rotation state."""
+    normalized_title = re.sub(r"[^a-z0-9]+", " ", (title or "").lower()).strip()
+    if not normalized_title:
+        return None
+
+    strength_program = ((template_settings or {}).get("programs") or {}).get("strength") or {}
+    matches = []
+    for template in strength_program.get("templates", []):
+        aliases = {
+            re.sub(r"[^a-z0-9]+", " ", str(template.get(key) or "").lower()).strip()
+            for key in ("display_name", "label", "title")
+        }
+        aliases.discard("")
+        if any(normalized_title == alias or normalized_title.startswith(f"{alias} ") for alias in aliases):
+            matches.append(template)
+    return matches[0] if len(matches) == 1 else None
+
+
 def _next_template_id(template_settings: dict, template_id: Optional[str]) -> Optional[str]:
     strength_program = ((template_settings or {}).get("programs") or {}).get("strength") or {}
     templates = strength_program.get("templates", [])
@@ -225,8 +245,11 @@ def _apply_strength_templates_to_days(
         normalized = dict(day)
         session_type = normalize_plan_session_type(normalized.get("session_type"))
         if session_type == "WeightTraining":
-            template = _workout_template_by_id(template_settings, normalized.get("template_id"))
+            named_template = _workout_template_from_title(template_settings, normalized.get("title"))
+            template = named_template or _workout_template_by_id(template_settings, normalized.get("template_id"))
             reason = None
+            if named_template and named_template.get("id") != normalized.get("template_id"):
+                reason = "The explicitly named workout takes priority over the saved rotation pointer."
             if not template:
                 template = _workout_template_by_id(template_settings, next_template_id) or templates[0]
                 if (
@@ -756,6 +779,7 @@ def find_moved_session(
             build_activity_summary(row, benchmark_lookup)
             for row in by_date.get(nearby_date, [])
             if normalize_plan_session_type(row["type"]) == planned_type
+            and row["linked_planned_session_id"] in {None, day.get("session_id")}
         ]
         if matches:
             return {"date": nearby_date, "activities": matches}
@@ -805,20 +829,43 @@ def build_plan_day_comparison(
 
     if explicitly_linked:
         execution_quality = build_execution_quality_for_completed_session(conn, day, explicitly_linked)
+        fulfilled_on_date = min(
+            (activity.get("date") for activity in explicitly_linked if activity.get("date")),
+            default=None,
+        )
+        if fulfilled_on_date and fulfilled_on_date < day.get("date", ""):
+            schedule_timing = "early"
+            label = "Completed early"
+        elif fulfilled_on_date and fulfilled_on_date > day.get("date", ""):
+            schedule_timing = "late"
+            label = "Completed late"
+        else:
+            schedule_timing = "on_schedule"
+            label = "Linked"
         return {
             "status": "linked",
-            "label": "Linked",
+            "label": label,
             "planned_type": planned_type,
             "completed_activities": explicitly_linked,
             "matching_strategy": "explicit",
             "linked_session_id": day.get("session_id"),
+            "fulfilled_on_date": fulfilled_on_date,
+            "schedule_timing": schedule_timing,
             "planned_intent": planned_intent,
             "planned_intent_label": format_workout_intent_label(planned_intent),
             "intent_alignment": infer_intent_alignment(planned_intent, explicitly_linked),
             "execution_quality": execution_quality,
         }
 
-    completed = [build_activity_summary(row, benchmark_lookup) for row in activities]
+    # An activity explicitly assigned to another planned session must not also
+    # satisfy this day through date-based inference. This matters when a later
+    # workout is completed early on a day that already has its own session.
+    eligible_activities = [
+        row
+        for row in activities
+        if row["linked_planned_session_id"] in {None, day.get("session_id")}
+    ]
+    completed = [build_activity_summary(row, benchmark_lookup) for row in eligible_activities]
 
     if not completed:
         moved_session = find_moved_session(day, by_date, week_days_by_date, benchmark_lookup)

@@ -102,7 +102,11 @@ def build_yearly_distance_series(conn: sqlite3.Connection, activity_types: tuple
     placeholders = ",".join("?" for _ in activity_types)
     rows = conn.execute(
         f"""
-        SELECT strftime('%m', date) AS month_num, ROUND(SUM(distance_km), 1) AS km
+        SELECT
+            strftime('%m', date) AS month_num,
+            ROUND(SUM(distance_km), 1) AS km,
+            ROUND(SUM(duration_min), 1) AS duration_min,
+            COUNT(*) AS sessions
         FROM activities
         WHERE type IN ({placeholders})
           AND strftime('%Y', date) = ?
@@ -112,16 +116,31 @@ def build_yearly_distance_series(conn: sqlite3.Connection, activity_types: tuple
         (*activity_types, current_year),
     ).fetchall()
 
-    monthly = {int(row["month_num"]): float(row["km"] or 0) for row in rows}
-    cumulative = 0.0
+    monthly = {
+        int(row["month_num"]): {
+            "km": float(row["km"] or 0),
+            "duration_min": float(row["duration_min"] or 0),
+            "sessions": int(row["sessions"] or 0),
+        }
+        for row in rows
+    }
+    cumulative_km = 0.0
+    cumulative_min = 0.0
+    cumulative_sessions = 0
     series = []
     for month in range(1, current_month + 1):
-        monthly_km = monthly.get(month, 0.0)
-        cumulative += monthly_km
+        bucket = monthly.get(month, {"km": 0.0, "duration_min": 0.0, "sessions": 0})
+        cumulative_km += bucket["km"]
+        cumulative_min += bucket["duration_min"]
+        cumulative_sessions += bucket["sessions"]
         series.append({
             "month": datetime.strptime(f"{current_year}-{month:02d}-01", "%Y-%m-%d").strftime("%b"),
-            "monthly_km": round(monthly_km, 1),
-            "cumulative_km": round(cumulative, 1),
+            "monthly_km": round(bucket["km"], 1),
+            "monthly_hours": round(bucket["duration_min"] / 60.0, 1),
+            "monthly_sessions": bucket["sessions"],
+            "cumulative_km": round(cumulative_km, 1),
+            "cumulative_hours": round(cumulative_min / 60.0, 1),
+            "cumulative_sessions": cumulative_sessions,
         })
     return series
 
@@ -132,7 +151,10 @@ def build_yearly_duration_series(conn: sqlite3.Connection, activity_types: tuple
     placeholders = ",".join("?" for _ in activity_types)
     rows = conn.execute(
         f"""
-        SELECT strftime('%m', date) AS month_num, ROUND(SUM(duration_min), 1) AS duration_min
+        SELECT
+            strftime('%m', date) AS month_num,
+            ROUND(SUM(duration_min), 1) AS duration_min,
+            COUNT(*) AS sessions
         FROM activities
         WHERE type IN ({placeholders})
           AND strftime('%Y', date) = ?
@@ -142,16 +164,27 @@ def build_yearly_duration_series(conn: sqlite3.Connection, activity_types: tuple
         (*activity_types, current_year),
     ).fetchall()
 
-    monthly = {int(row["month_num"]): float(row["duration_min"] or 0) for row in rows}
+    monthly = {
+        int(row["month_num"]): {
+            "duration_min": float(row["duration_min"] or 0),
+            "sessions": int(row["sessions"] or 0),
+        }
+        for row in rows
+    }
     cumulative = 0.0
+    cumulative_sessions = 0
     series = []
     for month in range(1, current_month + 1):
-        monthly_min = monthly.get(month, 0.0)
+        bucket = monthly.get(month, {"duration_min": 0.0, "sessions": 0})
+        monthly_min = bucket["duration_min"]
         cumulative += monthly_min
+        cumulative_sessions += bucket["sessions"]
         series.append({
             "month": datetime.strptime(f"{current_year}-{month:02d}-01", "%Y-%m-%d").strftime("%b"),
             "monthly_hours": round(monthly_min / 60.0, 1),
+            "monthly_sessions": bucket["sessions"],
             "cumulative_hours": round(cumulative / 60.0, 1),
+            "cumulative_sessions": cumulative_sessions,
         })
     return series
 
@@ -1245,6 +1278,7 @@ def build_dashboard_data(
         "goal_readiness_summary": goal_readiness_summary,
         "goal_planning_summary": goal_planning_summary,
         "readiness": readiness,
+        "training_load": training_load,
         "weekly_plan": serialized_latest_plan,
         "execution_trend": execution_trend,
         "computed_streak": computed_streak,

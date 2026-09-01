@@ -114,10 +114,16 @@
                 <span>{{ sportLabel(activity.type) }}</span><span aria-hidden="true">·</span>
                 <time :datetime="activity.date">{{ formatDateTime(activity.date) }}</time>
               </div>
-              <router-link :to="detailRoute(activity)" class="activity-name">{{ activity.name || 'Untitled activity' }}</router-link>
+              <router-link :to="detailRoute(activity)" class="activity-name">{{ activity.display_name || activity.name || 'Untitled activity' }}</router-link>
               <div class="status-line">
                 <span v-if="activity.benchmark_label" class="status-tag achievement">{{ activity.benchmark_label }}</span>
-                <span v-if="activity.linked_planned_session_id" class="status-tag linked">Matched to plan</span>
+                <span v-if="activity.planned_strength_identity" class="status-tag linked">
+                  {{ activity.planned_strength_identity.match_strategy === 'explicit' ? 'Linked to plan' : 'Matched by date' }}
+                </span>
+                <span v-if="activity.recorded_strength_session" class="status-tag linked">Recorded in TrainLog</span>
+                <span v-if="activity.planned_strength_identity && activity.source_name !== activity.display_name" class="source-title" :title="`Imported as ${activity.source_name}`">
+                  Imported as {{ activity.source_name }}
+                </span>
                 <span v-if="activity.id.startsWith('healthfit:')" class="source-label">HealthFit</span>
                 <span v-else class="source-label">Strava</span>
               </div>
@@ -146,7 +152,7 @@
             <span v-else class="feedback-summary muted">No feedback</span>
           </div>
 
-          <router-link :to="detailRoute(activity)" class="open-activity" :aria-label="`Open ${activity.name || 'activity'} details`">
+          <router-link :to="detailRoute(activity)" class="open-activity" :aria-label="`Open ${activity.display_name || activity.name || 'activity'} details`">
             <span>View</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
           </router-link>
 
@@ -234,7 +240,10 @@ onMounted(load)
 const matchesSport = (activity, filter) => filter === 'all' || activity.type === filter || (filter === 'Ride' && activity.type === 'VirtualRide')
 const filteredActivities = computed(() => {
   const query = search.value.toLowerCase()
-  const list = activities.value.filter(a => matchesSport(a, activeFilter.value) && (!query || (a.name || '').toLowerCase().includes(query)))
+  const list = activities.value.filter(a => {
+    const searchableName = `${a.display_name || ''} ${a.name || ''} ${a.source_name || ''}`.toLowerCase()
+    return matchesSport(a, activeFilter.value) && (!query || searchableName.includes(query))
+  })
   return [...list].sort((a,b) => {
     if (sortOrder.value === 'oldest') return new Date(a.date) - new Date(b.date)
     if (sortOrder.value === 'longest') return (b.duration_min || 0) - (a.duration_min || 0)
@@ -343,7 +352,7 @@ const saveFeedback = async payload => {
 .activity-identity{display:flex;gap:12px;min-width:0;padding-right:18px}.sport-mark{width:38px;height:38px;flex:none;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--sport-color) 28%,transparent);border-radius:11px;background:color-mix(in srgb,var(--sport-color) 10%,transparent)}
 .identity-copy{min-width:0}.activity-meta{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:10px;font-weight:650;text-transform:uppercase;letter-spacing:.045em}
 .activity-name{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:3px 0 5px;font:650 14px/1.35 var(--font-display)}.activity-name:hover{color:var(--accent-strong)}
-.status-line{display:flex;align-items:center;gap:6px;min-height:17px}.status-tag,.source-label{font-size:10px}.status-tag{padding:2px 6px;border-radius:999px}.achievement{background:rgba(241,169,59,.12);color:#f5bd62}.linked{background:rgba(52,211,153,.1);color:#6ee7b7}.source-label{color:var(--muted)}
+.status-line{display:flex;align-items:center;gap:6px;min-height:17px}.status-tag,.source-label,.source-title{font-size:10px}.status-tag{padding:2px 6px;border-radius:999px}.achievement{background:rgba(241,169,59,.12);color:#f5bd62}.linked{background:rgba(52,211,153,.1);color:#6ee7b7}.source-label,.source-title{color:var(--muted)}.source-title{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .metric-group{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-right:14px}.metric-group div{min-width:0}.metric-group strong,.metric-group span{display:block}.metric-group strong{font:650 13px/1.25 var(--font-display);white-space:nowrap}.metric-group span{margin-top:3px;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.05em}
 .activity-context{display:flex;flex-direction:column;align-items:flex-start;gap:7px}.intent-display,.feedback-link{border:0;background:transparent;cursor:pointer;text-align:left}.intent-display{max-width:150px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;color:var(--text-soft);font-size:10px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.intent-display:hover{border-color:var(--border-strong)}.intent-display-empty{color:var(--muted)}
 .feedback-link,.feedback-summary{color:#6ee7b7;font-size:10px;font-weight:650}.feedback-link:hover{color:#a7f3d0}.feedback-summary.muted{color:var(--muted);font-weight:500}

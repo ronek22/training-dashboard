@@ -220,6 +220,22 @@ def init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS coach_chat_conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL DEFAULT 'New conversation',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS coach_chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER,
+            role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+            content TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(conversation_id) REFERENCES coach_chat_conversations(id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS weekly_summary (
             week_start TEXT PRIMARY KEY,
             run_km REAL DEFAULT 0,
@@ -239,6 +255,45 @@ def init_db():
             unit TEXT,
             notes TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS health_data_imports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_name TEXT NOT NULL,
+            file_hash TEXT NOT NULL UNIQUE,
+            file_size INTEGER NOT NULL,
+            file_modified_ns INTEGER NOT NULL,
+            export_date TEXT,
+            status TEXT NOT NULL DEFAULT 'imported',
+            samples_seen INTEGER NOT NULL DEFAULT 0,
+            samples_inserted INTEGER NOT NULL DEFAULT 0,
+            import_version INTEGER NOT NULL DEFAULT 1,
+            metadata_json TEXT,
+            imported_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_health_data_import_file
+        ON health_data_imports(file_name, file_size, file_modified_ns);
+
+        CREATE TABLE IF NOT EXISTS health_metric_samples (
+            sample_key TEXT PRIMARY KEY,
+            metric TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            end_timestamp TEXT,
+            date TEXT NOT NULL,
+            value REAL NOT NULL,
+            unit TEXT,
+            category_label TEXT,
+            duration_seconds REAL,
+            source_name TEXT,
+            source_bundle TEXT,
+            source_device TEXT,
+            import_id INTEGER NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(import_id) REFERENCES health_data_imports(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_health_metric_samples_metric_date
+        ON health_metric_samples(metric, date DESC);
 
         CREATE TABLE IF NOT EXISTS app_settings (
             key TEXT PRIMARY KEY,
@@ -462,6 +517,73 @@ def init_db():
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE SET NULL
         );
+
+        CREATE TABLE IF NOT EXISTS strength_workout_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS strength_template_exercises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            template_id INTEGER NOT NULL,
+            exercise_order INTEGER NOT NULL,
+            exercise_name TEXT NOT NULL,
+            set_count INTEGER NOT NULL,
+            target_reps INTEGER NOT NULL,
+            target_weight_kg REAL,
+            rest_seconds INTEGER NOT NULL DEFAULT 90,
+            notes TEXT,
+            FOREIGN KEY(template_id) REFERENCES strength_workout_templates(id) ON DELETE CASCADE,
+            UNIQUE(template_id, exercise_order)
+        );
+
+        CREATE TABLE IF NOT EXISTS strength_workout_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            template_id INTEGER,
+            template_name TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'active',
+            started_at TEXT NOT NULL,
+            completed_at TEXT,
+            current_exercise_order INTEGER NOT NULL DEFAULT 1,
+            current_set_order INTEGER NOT NULL DEFAULT 1,
+            linked_activity_id TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(template_id) REFERENCES strength_workout_templates(id) ON DELETE SET NULL,
+            FOREIGN KEY(linked_activity_id) REFERENCES activities(id) ON DELETE SET NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_strength_sessions_status
+        ON strength_workout_sessions(status, started_at DESC);
+
+        CREATE TABLE IF NOT EXISTS strength_session_exercises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            exercise_order INTEGER NOT NULL,
+            exercise_name TEXT NOT NULL,
+            notes TEXT,
+            FOREIGN KEY(session_id) REFERENCES strength_workout_sessions(id) ON DELETE CASCADE,
+            UNIQUE(session_id, exercise_order)
+        );
+
+        CREATE TABLE IF NOT EXISTS strength_session_sets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_exercise_id INTEGER NOT NULL,
+            set_order INTEGER NOT NULL,
+            target_reps INTEGER NOT NULL,
+            target_weight_kg REAL,
+            rest_seconds INTEGER NOT NULL DEFAULT 90,
+            actual_reps INTEGER,
+            actual_weight_kg REAL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            completed_at TEXT,
+            rest_ends_at TEXT,
+            FOREIGN KEY(session_exercise_id) REFERENCES strength_session_exercises(id) ON DELETE CASCADE,
+            UNIQUE(session_exercise_id, set_order)
+        );
     """)
 
     feedback_columns = {
@@ -482,6 +604,37 @@ def init_db():
     activity_analysis_request_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(activity_analysis_requests)").fetchall()
     }
+    health_import_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(health_data_imports)").fetchall()
+    }
+    health_sample_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(health_metric_samples)").fetchall()
+    }
+    chat_message_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(coach_chat_messages)").fetchall()
+    }
+    if "conversation_id" not in chat_message_columns:
+        conn.execute("ALTER TABLE coach_chat_messages ADD COLUMN conversation_id INTEGER")
+    if conn.execute("SELECT 1 FROM coach_chat_messages WHERE conversation_id IS NULL LIMIT 1").fetchone():
+        cursor = conn.execute(
+            "INSERT INTO coach_chat_conversations (title) VALUES (?)",
+            ("Previous conversation",),
+        )
+        conn.execute(
+            "UPDATE coach_chat_messages SET conversation_id = ? WHERE conversation_id IS NULL",
+            (cursor.lastrowid,),
+        )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_coach_chat_messages_conversation ON coach_chat_messages(conversation_id, id)"
+    )
+    if "import_version" not in health_import_columns:
+        conn.execute("ALTER TABLE health_data_imports ADD COLUMN import_version INTEGER NOT NULL DEFAULT 1")
+    if "end_timestamp" not in health_sample_columns:
+        conn.execute("ALTER TABLE health_metric_samples ADD COLUMN end_timestamp TEXT")
+    if "category_label" not in health_sample_columns:
+        conn.execute("ALTER TABLE health_metric_samples ADD COLUMN category_label TEXT")
+    if "duration_seconds" not in health_sample_columns:
+        conn.execute("ALTER TABLE health_metric_samples ADD COLUMN duration_seconds REAL")
     if "linked_planned_session_id" not in activity_columns:
         conn.execute("ALTER TABLE activities ADD COLUMN linked_planned_session_id TEXT")
     if "workout_intent" not in activity_columns:

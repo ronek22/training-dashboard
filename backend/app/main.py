@@ -1,6 +1,11 @@
+import asyncio
+import logging
+import os
+from contextlib import asynccontextmanager, suppress
+from datetime import datetime
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime
 
 from .adapters.mcp import build_mcp_router_dependencies
 from .db import get_db, init_db
@@ -17,10 +22,48 @@ from .routers.planning_status import router as planning_status_router
 from .routers.plans import router as plans_router
 from .routers.settings import router as settings_router
 from .routers.strength import router as strength_router
+from .routers.strength_workouts import router as strength_workouts_router
 from .routers.weekly_summary import router as weekly_summary_router
+from .routers.weather import router as weather_router
+from .services.health_data import apply_health_data_import
 
 mcp_app = build_mcp_app(**build_mcp_router_dependencies())
-app = FastAPI(title="Training Dashboard API", lifespan=mcp_app.router.lifespan_context)
+logger = logging.getLogger(__name__)
+
+
+def _import_health_data_once() -> None:
+    conn = get_db()
+    try:
+        apply_health_data_import(conn)
+    except Exception:
+        logger.exception("Automatic Health Data Export import failed")
+    finally:
+        conn.close()
+
+
+async def _health_data_import_loop() -> None:
+    interval = max(60, int(os.getenv("HEALTH_DATA_IMPORT_INTERVAL_SECONDS", "900")))
+    while True:
+        await asyncio.to_thread(_import_health_data_once)
+        await asyncio.sleep(interval)
+
+
+@asynccontextmanager
+async def app_lifespan(app_instance: FastAPI):
+    async with mcp_app.router.lifespan_context(app_instance):
+        task = None
+        if os.getenv("HEALTH_DATA_AUTO_IMPORT", "false").lower() in {"1", "true", "yes", "on"}:
+            task = asyncio.create_task(_health_data_import_loop())
+        try:
+            yield
+        finally:
+            if task:
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
+
+
+app = FastAPI(title="Training Dashboard API", lifespan=app_lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,7 +83,9 @@ app.include_router(goals_router)
 app.include_router(weekly_summary_router)
 app.include_router(dashboard_router)
 app.include_router(strength_router)
+app.include_router(strength_workouts_router)
 app.include_router(integrations_router)
+app.include_router(weather_router)
 
 init_db()
 app.mount("/mcp", mcp_app)

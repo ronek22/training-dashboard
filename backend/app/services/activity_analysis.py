@@ -29,7 +29,7 @@ def _format_decimal(value: Optional[float], digits: int = 1) -> Optional[float]:
     return round(float(value), digits)
 
 
-def _recent_activity_hints(conn: sqlite3.Connection, activity_id: str, limit: int = 3) -> list[dict]:
+def _recent_activity_hints(conn: sqlite3.Connection, activity_id: str, limit: int = 8) -> list[dict]:
     hints = []
     for row in list_activity_rows(conn, limit=12):
         if row["id"] == activity_id:
@@ -40,6 +40,8 @@ def _recent_activity_hints(conn: sqlite3.Connection, activity_id: str, limit: in
                 "type": row["type"],
                 "duration_min": _format_decimal(row["duration_min"]),
                 "distance_km": _format_decimal(row["distance_km"]),
+                "avg_hr": row["avg_hr"],
+                "zone2": bool(row["zone2"]) if row["zone2"] is not None else None,
                 "workout_intent": row["workout_intent"],
             }
         )
@@ -60,7 +62,9 @@ def build_activity_analysis_context(conn: sqlite3.Connection, detail_payload: di
     if activity.get("type") == "WeightTraining":
         available = strength_detail.get("status") == "enriched"
         if not available:
-            limitations.append("Strength analysis needs linked Fitbod enrichment with exercise-level detail.")
+            limitations.append(
+                "Strength analysis needs linked exercise-level detail from TrainLog or Fitbod."
+            )
     elif activity.get("type") in SUPPORTED_ENDURANCE_TYPES:
         available = bool(detail_payload.get("detail_available"))
         if not available:
@@ -147,7 +151,7 @@ def build_activity_analysis_context(conn: sqlite3.Connection, detail_payload: di
             "energy": feedback.get("energy"),
             "muscle_soreness": feedback.get("muscle_soreness"),
             "pain_level": feedback.get("pain_level"),
-            "note_present": bool(str(feedback.get("note") or "").strip()),
+            "note": str(feedback.get("note") or "").strip() or None,
         } if feedback else None,
         "load_signals": {
             "hr_trimp": _format_decimal((detail_payload.get("source_stream_summary") or {}).get("hr_trimp")),
@@ -275,18 +279,23 @@ def get_activity_analysis_context_payload(conn: sqlite3.Connection, detail_paylo
         "limitations": context_payload["limitations"],
         "context": context_payload["context"],
         "instructions": {
-            "task": "Analyze this single workout using only the provided structured context.",
+            "task": "Act as a thoughtful endurance and strength coach. Explain what this workout means within the athlete's recent training trajectory, rather than recapping fields already visible on the activity page.",
             "output_schema": {
-                "headline": "short athlete-facing title",
-                "summary": "2-4 sentence compact summary",
-                "key_observations": "list of 2-4 grounded observations",
-                "limitations": "list of 0-4 explicit caveats",
-                "confidence_note": "single sentence explaining confidence and constraints",
+                "headline": "short coaching conclusion, not an activity label or metric recap",
+                "summary": "3-5 sentences covering the session's training value, how it fits recent work, any meaningful concern, and the practical implication for recovery or upcoming training",
+                "key_observations": "list of 2-4 interpreted coaching signals; include what went well and any issue worth watching, not raw-stat restatements",
+                "limitations": "list of 0-4 evidence gaps that materially limit the coaching interpretation",
+                "confidence_note": "single sentence distinguishing direct evidence from inference",
             },
             "rules": [
+                "Lead with interpretation: adaptation value, execution quality, fatigue or recovery signal, consistency, progression, or mismatch with intended effort.",
+                "Use duration, distance, pace, heart rate, zones, power, and other visible metrics only as evidence for a coaching judgment or comparison; do not repeat them merely to summarize the workout.",
+                "Compare with recent_context when it supports a real pattern such as accumulating load, repeated intensity, consistency, recovery spacing, or a modality imbalance. Do not claim a trend from one data point.",
+                "Identify at least one positive signal when supported. Flag only meaningful concerns; if no concern is supported, say that plainly instead of inventing one.",
+                "Treat the athlete's feedback note as first-class coaching evidence. Use it to interpret pain, soreness, perceived difficulty, conditions, or session character when relevant, while distinguishing the athlete's report from measured data.",
+                "End the summary with a practical implication for the next 24-72 hours or the next similar session, without rewriting the weekly plan.",
                 "Do not invent facts that are not supported by the provided context.",
                 "Do not give medical advice or injury diagnosis.",
-                "Keep the analysis focused on interpreting the workout, not rewriting the training plan.",
             ],
         },
     }

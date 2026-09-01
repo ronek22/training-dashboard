@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 UPCOMING_HOURS = 6
+FORECAST_DAYS = 16
 
 
 def _weather_description(code: int) -> str:
@@ -84,6 +85,39 @@ def summarize_weather_payload(payload: dict[str, Any], latitude: float, longitud
     }
 
 
+def summarize_daily_forecast_payload(payload: dict[str, Any], latitude: float, longitude: float) -> dict[str, Any]:
+    daily = payload.get("daily") or {}
+    dates = daily.get("time") or []
+    weather_codes = daily.get("weather_code") or []
+    maximums = daily.get("temperature_2m_max") or []
+    minimums = daily.get("temperature_2m_min") or []
+    precipitation = daily.get("precipitation_sum") or []
+    probabilities = daily.get("precipitation_probability_max") or []
+    wind_speeds = daily.get("wind_speed_10m_max") or []
+
+    def value_at(values: list[Any], index: int, default: Any = 0) -> Any:
+        return values[index] if index < len(values) and values[index] is not None else default
+
+    return {
+        "latitude": latitude,
+        "longitude": longitude,
+        "timezone": payload.get("timezone"),
+        "days": [
+            {
+                "date": date,
+                "weather_code": int(value_at(weather_codes, index)),
+                "description": _weather_description(int(value_at(weather_codes, index))),
+                "temperature_max_c": round(float(value_at(maximums, index))),
+                "temperature_min_c": round(float(value_at(minimums, index))),
+                "precipitation_mm": round(float(value_at(precipitation, index)), 1),
+                "precipitation_probability": int(value_at(probabilities, index)),
+                "wind_speed_max_kmh": round(float(value_at(wind_speeds, index))),
+            }
+            for index, date in enumerate(dates)
+        ],
+    }
+
+
 def fetch_weather_data(latitude: float, longitude: float) -> dict[str, Any]:
     try:
         response = httpx.get(
@@ -103,3 +137,23 @@ def fetch_weather_data(latitude: float, longitude: float) -> dict[str, Any]:
         raise HTTPException(status_code=502, detail="Weather service is temporarily unavailable") from error
 
     return summarize_weather_payload(response.json(), latitude, longitude)
+
+
+def fetch_daily_forecast(latitude: float, longitude: float) -> dict[str, Any]:
+    try:
+        response = httpx.get(
+            OPEN_METEO_FORECAST_URL,
+            params={
+                "latitude": latitude,
+                "longitude": longitude,
+                "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max",
+                "forecast_days": FORECAST_DAYS,
+                "timezone": "auto",
+            },
+            timeout=8,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as error:
+        raise HTTPException(status_code=502, detail="Weather service is temporarily unavailable") from error
+
+    return summarize_daily_forecast_payload(response.json(), latitude, longitude)

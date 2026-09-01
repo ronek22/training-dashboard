@@ -9,6 +9,7 @@ const codexHelper = axios.create({
 export const useApi = () => ({
   getDashboard: () => api.get('/dashboard'),
   getCurrentWeather: (params) => api.get('/weather/current', { params }),
+  getWeatherForecast: (params) => api.get('/weather/forecast', { params }),
   getAthleteProfile: () => api.get('/settings/athlete-profile'),
   updateAthleteProfile: (payload) => api.put('/settings/athlete-profile', payload),
   getModalityRestrictions: () => api.get('/settings/modality-restrictions'),

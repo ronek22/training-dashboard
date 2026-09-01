@@ -625,6 +625,17 @@
                 </div>
               </button>
 
+              <div v-if="weatherForDay(day.date)" class="plan-day-weather" :aria-label="weatherAriaLabel(weatherForDay(day.date))">
+                <span class="plan-day-weather-icon" aria-hidden="true">{{ weatherIcon(weatherForDay(day.date).weather_code) }}</span>
+                <span class="plan-day-weather-copy">
+                  <strong>{{ weatherForDay(day.date).temperature_max_c }}° / {{ weatherForDay(day.date).temperature_min_c }}°</strong>
+                  <small>{{ weatherForDay(day.date).description }}</small>
+                </span>
+                <span v-if="weatherForDay(day.date).precipitation_probability" class="plan-day-weather-rain">
+                  {{ weatherForDay(day.date).precipitation_probability }}% rain
+                </span>
+              </div>
+
               <div
                 class="plan-block plan-block-workout"
                 :class="`plan-block-${activityTone(day.session_type)}`"
@@ -1060,6 +1071,7 @@ const route = useRoute()
 const router = useRouter()
 const plans = ref([])
 const planTrends = ref(null)
+const dailyForecast = ref({})
 const loading = ref(true)
 const savingAdjustment = ref(false)
 const approvingCoaching = ref(false)
@@ -1103,6 +1115,32 @@ const codexFeedbackSuggestions = [
   'Move the hardest session later',
   'Keep the weekend lighter',
 ]
+const weatherLocationStorageKey = 'training-dashboard-weather-location'
+const defaultWeatherLocation = { latitude: 54.352, longitude: 18.6466 }
+
+const planWeatherLocation = () => {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(weatherLocationStorageKey) || 'null')
+    if (Number.isFinite(saved?.latitude) && Number.isFinite(saved?.longitude)) return saved
+  } catch {}
+  return defaultWeatherLocation
+}
+
+const weatherForDay = (date) => dailyForecast.value[date] || null
+
+const weatherIcon = (code) => {
+  if (code === 0) return '☀️'
+  if (code === 1 || code === 2) return '🌤️'
+  if (code === 3) return '☁️'
+  if ([45, 48].includes(code)) return '🌫️'
+  if ([51, 53, 55, 56, 57].includes(code)) return '🌦️'
+  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return '🌧️'
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return '🌨️'
+  if ([95, 96, 99].includes(code)) return '⛈️'
+  return '🌤️'
+}
+
+const weatherAriaLabel = (forecast) => `${forecast.description}, high ${forecast.temperature_max_c} degrees and low ${forecast.temperature_min_c} degrees Celsius, ${forecast.precipitation_probability} percent chance of rain`
 
 const readCoachingDraft = () => {
   try {
@@ -1313,6 +1351,17 @@ const load = async () => {
     planTrends.value = trendsResult.data
   } catch {
     planTrends.value = null
+  }
+
+  try {
+    const location = planWeatherLocation()
+    const forecastResult = await requestWithTimeout(api.getWeatherForecast({
+      latitude: location.latitude,
+      longitude: location.longitude,
+    }), 6000)
+    dailyForecast.value = Object.fromEntries((forecastResult.data.days || []).map((day) => [day.date, day]))
+  } catch {
+    dailyForecast.value = {}
   }
 
   try {
@@ -3688,6 +3737,35 @@ const savePlanLink = async (day) => {
   font-size: 18px;
   font-weight: 700;
   line-height: 1.1;
+  white-space: nowrap;
+}
+.plan-day-weather {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  margin-top: -4px;
+  padding: 8px 10px;
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 12px;
+  background: rgba(14, 35, 52, 0.32);
+  color: #cbd5e1;
+}
+.plan-day-weather-icon { font-size: 20px; line-height: 1; }
+.plan-day-weather-copy { display: grid; min-width: 0; gap: 2px; }
+.plan-day-weather-copy strong { color: #e0f2fe; font-size: 12px; }
+.plan-day-weather-copy small {
+  overflow: hidden;
+  color: #91a7be;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-day-weather-rain {
+  margin-left: auto;
+  color: #7dd3fc;
+  font-size: 10px;
+  font-weight: 700;
   white-space: nowrap;
 }
 .plan-status {

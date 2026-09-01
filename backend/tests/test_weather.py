@@ -1,9 +1,32 @@
 import unittest
 
-from app.services.weather import summarize_weather_payload
+from app.services.weather import summarize_daily_forecast_payload, summarize_weather_payload
 
 
 class WeatherSummaryTests(unittest.TestCase):
+    def test_summarizes_daily_forecast(self):
+        payload = {
+            "timezone": "Europe/Warsaw",
+            "daily": {
+                "time": ["2026-09-01", "2026-09-02"],
+                "weather_code": [2, 61],
+                "temperature_2m_max": [21.6, 17.2],
+                "temperature_2m_min": [13.4, 11.8],
+                "precipitation_sum": [0, 4.26],
+                "precipitation_probability_max": [10, 82],
+                "wind_speed_10m_max": [14.7, 27.2],
+            },
+        }
+
+        result = summarize_daily_forecast_payload(payload, 54.352, 18.6466)
+
+        self.assertEqual(len(result["days"]), 2)
+        self.assertEqual(result["days"][0]["description"], "Partly cloudy")
+        self.assertEqual(result["days"][0]["temperature_max_c"], 22)
+        self.assertEqual(result["days"][1]["precipitation_mm"], 4.3)
+        self.assertEqual(result["days"][1]["precipitation_probability"], 82)
+        self.assertEqual(result["days"][1]["wind_speed_max_kmh"], 27)
+
     def test_summarizes_current_conditions_and_upcoming_rain(self):
         payload = {
             "timezone": "Europe/Warsaw",

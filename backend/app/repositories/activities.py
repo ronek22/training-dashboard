@@ -141,11 +141,34 @@ def list_calendar_activity_rows(
 ) -> list[sqlite3.Row]:
     return conn.execute(
         """
-        SELECT id, date, type, workout_intent, name, distance_km, duration_min, avg_hr, avg_pace,
-               avg_watts, elevation_m, zone2, linked_planned_session_id
-        FROM activities
-        WHERE date >= ? AND date <= ?
-        ORDER BY date DESC, created_at DESC
+        SELECT
+            activity.id,
+            activity.date,
+            activity.type,
+            activity.workout_intent,
+            COALESCE(
+                (
+                    SELECT recorded.template_name
+                    FROM strength_workout_sessions recorded
+                    WHERE recorded.linked_activity_id = activity.id
+                      AND recorded.status = 'completed'
+                    ORDER BY recorded.started_at DESC
+                    LIMIT 1
+                ),
+                activity.name
+            ) AS name,
+            activity.name AS source_name,
+            activity.distance_km,
+            activity.duration_min,
+            activity.avg_hr,
+            activity.avg_pace,
+            activity.avg_watts,
+            activity.elevation_m,
+            activity.zone2,
+            activity.linked_planned_session_id
+        FROM activities activity
+        WHERE activity.date >= ? AND activity.date <= ?
+        ORDER BY activity.date DESC, activity.created_at DESC
         """,
         (start_date, end_date),
     ).fetchall()

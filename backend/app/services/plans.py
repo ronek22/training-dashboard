@@ -415,6 +415,8 @@ def build_activity_summary(row: sqlite3.Row, benchmark_lookup: Optional[dict[str
         "avg_watts": row["avg_watts"],
         "linked_planned_session_id": row["linked_planned_session_id"],
     }
+    if "source_name" in row.keys():
+        payload["source_name"] = row["source_name"]
     if "benchmark_tag" in row.keys():
         payload["benchmark_tag"] = row["benchmark_tag"]
     if "benchmark_label" in row.keys():
@@ -1002,14 +1004,35 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
             linked_placeholders = ",".join("?" for _ in session_ids) if session_ids else "''"
             activity_rows = conn.execute(
                 f"""
-                SELECT id, date, type, workout_intent, name, distance_km, duration_min, avg_pace, avg_watts, linked_planned_session_id
-                FROM activities
+                SELECT
+                    activity.id,
+                    activity.date,
+                    activity.type,
+                    activity.workout_intent,
+                    COALESCE(
+                        (
+                            SELECT recorded.template_name
+                            FROM strength_workout_sessions recorded
+                            WHERE recorded.linked_activity_id = activity.id
+                              AND recorded.status = 'completed'
+                            ORDER BY recorded.started_at DESC
+                            LIMIT 1
+                        ),
+                        activity.name
+                    ) AS name,
+                    activity.name AS source_name,
+                    activity.distance_km,
+                    activity.duration_min,
+                    activity.avg_pace,
+                    activity.avg_watts,
+                    activity.linked_planned_session_id
+                FROM activities activity
                 WHERE (
-                    date >= date(?, '-2 days')
-                    AND date <= date(?, '+2 days')
+                    activity.date >= date(?, '-2 days')
+                    AND activity.date <= date(?, '+2 days')
                 )
-                OR linked_planned_session_id IN ({linked_placeholders})
-                ORDER BY date ASC, created_at DESC
+                OR activity.linked_planned_session_id IN ({linked_placeholders})
+                ORDER BY activity.date ASC, activity.created_at DESC
                 """,
                 [week_start_date, week_end_date, *session_ids],
             ).fetchall()

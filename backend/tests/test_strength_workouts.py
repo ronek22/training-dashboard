@@ -3,6 +3,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from datetime import date, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -217,6 +218,45 @@ class StrengthWorkoutTests(unittest.TestCase):
         self.assertEqual(linked_activity["source_name"], "Traditional Strength Training")
         self.assertEqual(linked_activity["recorded_strength_session"]["id"], session["id"])
 
+        activity_date = date.fromisoformat(linked_activity["date"])
+        calendar_response = self.client.get(
+            f"/calendar/month?month={activity_date.strftime('%Y-%m')}"
+        )
+        self.assertEqual(calendar_response.status_code, 200)
+        calendar_activity = next(
+            activity
+            for week in calendar_response.json()["weeks"]
+            for day in week["days"]
+            for activity in day["activities"]
+            if activity["id"] == "apple-watch-strength-1"
+        )
+        self.assertEqual(calendar_activity["name"], "Back Quick")
+        self.assertEqual(calendar_activity["source_name"], "Traditional Strength Training")
+
+        week_start = activity_date - timedelta(days=activity_date.weekday())
+        plan_create_response = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": week_start.isoformat(),
+                "title": "Test week",
+                "days": [
+                    {
+                        "date": activity_date.isoformat(),
+                        "label": activity_date.strftime("%A"),
+                        "session_type": "WeightTraining",
+                        "workout_intent": "strength_general",
+                        "title": "Strength workout",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(plan_create_response.status_code, 201)
+        plans_response = self.client.get("/plans/weekly?limit=1")
+        self.assertEqual(plans_response.status_code, 200)
+        planned_activity = plans_response.json()[0]["days"][0]["comparison"]["completed_activities"][0]
+        self.assertEqual(planned_activity["name"], "Back Quick")
+        self.assertEqual(planned_activity["source_name"], "Traditional Strength Training")
+
         overview_response = self.client.get("/strength/overview?weeks=4")
         self.assertEqual(overview_response.status_code, 200)
         overview = overview_response.json()
@@ -267,7 +307,31 @@ class StrengthWorkoutTests(unittest.TestCase):
             json={"template_id": template["id"]},
         )
         self.assertEqual(disposable_response.status_code, 201)
-        disposable_id = disposable_response.json()["id"]
+        disposable = disposable_response.json()
+        disposable_id = disposable["id"]
+
+        warmup_response = self.client.post(
+            f"/strength/workouts/sessions/{disposable_id}/exercises/{disposable['exercises'][0]['id']}/warmup-sets",
+            json={"rest_seconds": 60, "switch_to": True},
+        )
+        self.assertEqual(warmup_response.status_code, 201)
+        with_warmup = warmup_response.json()
+        self.assertEqual(with_warmup["progress"]["total_sets"], 5)
+        self.assertEqual(with_warmup["progress"]["completed_sets"], 0)
+        self.assertEqual(with_warmup["exercises"][0]["warmup_set_count"], 1)
+        warmup_set = with_warmup["exercises"][0]["sets"][0]
+        self.assertEqual(warmup_set["set_type"], "warmup")
+        self.assertEqual(warmup_set["target_weight_kg"], 40.0)
+
+        completed_warmup_response = self.client.post(
+            f"/strength/workouts/sessions/{disposable_id}/sets/{warmup_set['id']}/complete",
+            json={"actual_reps": 5, "actual_weight_kg": 40},
+        )
+        self.assertEqual(completed_warmup_response.status_code, 200)
+        self.assertEqual(
+            completed_warmup_response.json()["progress"]["completed_sets"],
+            0,
+        )
 
         abandoned_response = self.client.post(
             f"/strength/workouts/sessions/{disposable_id}/abandon"

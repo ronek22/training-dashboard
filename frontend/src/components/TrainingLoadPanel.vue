@@ -1,8 +1,8 @@
 <template>
-  <section class="card load-card">
+  <section class="card load-card" :class="{ 'load-immersive': mode === 'full' }">
     <div class="load-head">
       <div>
-        <div class="card-title">{{ title }}</div>
+        <div v-if="mode === 'full'" class="load-eyebrow">THE WORK &amp; THE RESPONSE</div><div class="card-title">{{ title }}</div>
         <div class="load-sub">{{ subtitle }}</div>
       </div>
       <div class="load-range">{{ focusWindowLabel }}</div>
@@ -84,17 +84,17 @@
         <div class="load-kpi fitness-kpi">
           <span class="load-kpi-label">Fitness</span>
           <strong>{{ loadData.current.fitness }}</strong>
-          <span class="load-kpi-meta">CTL</span>
+          <span class="load-kpi-meta">CTL · Longer-term load</span>
         </div>
         <div class="load-kpi fatigue-kpi">
           <span class="load-kpi-label">Fatigue</span>
           <strong>{{ loadData.current.fatigue }}</strong>
-          <span class="load-kpi-meta">ATL</span>
+          <span class="load-kpi-meta">ATL · Recent load</span>
         </div>
         <div class="load-kpi form-kpi">
           <span class="load-kpi-label">Form</span>
           <strong>{{ signedValue(loadData.current.form) }}</strong>
-          <span class="load-kpi-meta">TSB</span>
+          <span class="load-kpi-meta">TSB · Fitness minus fatigue</span>
         </div>
       </div>
 
@@ -111,7 +111,7 @@
         <div class="coverage-value">{{ coverage.detailed_pct || 0 }}%</div>
       </div>
 
-      <div v-if="mode === 'full'" class="load-chart-wrap">
+      <div v-if="mode === 'full'" class="load-chart-wrap"><div class="load-chart-heading"><div><span>YOUR ADAPTATION CURVE</span><h3>Fitness takes the long view.</h3></div><p>Watch fitness, fatigue and form move together.</p></div>
         <svg
           ref="chartRef"
           viewBox="0 0 640 190"
@@ -1045,4 +1045,8 @@ const signedValue = (value) => {
     grid-template-columns: 1fr;
   }
 }
+
+/* Full analysis shares the editorial hierarchy of Trends. */
+.load-immersive{padding:30px;border-radius:24px;background:radial-gradient(ellipse at 100% 0%,#5f8cff12,transparent 50%),linear-gradient(135deg,#151e30,#101923);overflow:hidden}.load-eyebrow{color:#a7baf3;font-size:9px;font-weight:800;letter-spacing:.16em;margin-bottom:10px}.load-immersive .card-title{font-family:var(--font-display);font-size:32px;line-height:1.2;letter-spacing:-1px;text-transform:none}.load-immersive .load-sub{margin-top:8px;max-width:560px;line-height:1.7}.load-immersive .load-range{border:1px solid #97b3ed26;background:#7ba3ff0c;padding:8px 12px;border-radius:99px}.load-immersive .load-layout{gap:24px}.load-immersive .readiness-card{background:linear-gradient(90deg,#8aa5ff0a,transparent);border:0;border-left:3px solid #8aa5ff;border-radius:0;padding:18px 22px}.load-immersive .readiness-title{font-family:var(--font-display);font-size:24px;letter-spacing:-.5px}.load-immersive .load-kpis{gap:0;margin:4px 0;border-block:1px solid var(--border)}.load-immersive .load-kpi{border:0;border-right:1px solid var(--border);border-radius:0;background:transparent;padding:24px;gap:10px}.load-immersive .load-kpi:last-child{border-right:0}.load-immersive .load-kpi strong{font-size:58px;letter-spacing:-3px;font-weight:500}.load-immersive .load-kpi-meta{font-size:9px;letter-spacing:.02em;text-transform:none}.load-immersive .load-kpi-label{font-size:10px;letter-spacing:.12em}.load-immersive .load-chart-wrap{grid-row:3;border:0;border-radius:0;background:transparent;padding:10px 0 16px}.load-chart-heading{display:flex;justify-content:space-between;gap:20px;align-items:end;padding:0 12px 20px}.load-chart-heading span{font-size:9px;letter-spacing:.13em;color:#9aafd1;font-weight:750}.load-chart-heading h3{font-family:var(--font-display);font-size:24px;font-weight:500;letter-spacing:-.6px;margin-top:6px}.load-chart-heading p{font-size:11px;max-width:210px;color:var(--muted)}.load-immersive .load-chart{height:280px}.load-immersive .coverage-bar{grid-row:5;background:transparent;border:0;border-top:1px solid var(--border);border-radius:0;padding:18px 0 0}.load-immersive .load-secondary{gap:30px;border-top:1px solid var(--border);padding-top:24px}.load-immersive .load-secondary-card{border:0;border-radius:0;background:transparent;padding:4px 10px}.load-immersive .ratio-row>strong{font-size:42px;letter-spacing:-1.5px}.load-immersive .ratio-track{height:9px;margin-block:20px}.load-immersive .focus-track{height:8px}.load-immersive .chart-legend{justify-content:center;gap:24px;margin-top:18px}
+@media(max-width:720px){.load-immersive{padding:21px 16px}.load-immersive .load-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.load-immersive .load-kpi{padding:18px 10px}.load-immersive .load-kpi strong{font-size:38px;letter-spacing:-1.5px}.load-immersive .load-kpi-label{font-size:8px}.load-immersive .load-kpi-meta{font-size:8px}.load-chart-heading{flex-direction:column;align-items:start;gap:8px}.load-chart-heading h3{font-size:22px}.load-chart-heading p{max-width:none}.load-immersive .load-chart{height:240px}.load-immersive .load-secondary{gap:22px}.load-immersive .coverage-bar{grid-template-columns:1fr auto}.load-immersive .coverage-track{grid-column:1/-1;grid-row:2}}
 </style>

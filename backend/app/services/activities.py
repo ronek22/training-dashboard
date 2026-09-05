@@ -995,6 +995,7 @@ def build_calendar_day_payload(day: date, activities: list[sqlite3.Row], benchma
                     normalize_workout_intent(activity["workout_intent"], activity["type"])
                 ),
                 "name": activity["name"],
+                "source_name": activity["source_name"],
                 "distance_km": activity["distance_km"],
                 "duration_min": activity["duration_min"],
                 "avg_hr": activity["avg_hr"],

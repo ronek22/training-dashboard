@@ -2,15 +2,15 @@
   <main class="trends-page motion-page">
     <header class="page-head">
       <div>
-        <div class="page-eyebrow">Training response</div>
+        <div class="page-eyebrow">Your training, in perspective</div>
         <h1 class="page-title">Trends</h1>
-        <p class="page-sub">See whether your training is building fitness and which signal deserves attention.</p>
+        <p class="page-sub">See the work. Find your rhythm. Watch your progress take shape.</p>
       </div>
       <button class="primary-btn" type="button" @click="openDialog">＋ Log measurement</button>
     </header>
 
     <nav class="trend-nav" aria-label="Trend views">
-      <button v-for="item in views" :key="item.key" type="button" :class="{ active: activeView === item.key }" @click="selectView(item.key)">
+      <button v-for="item in views" :key="item.key" type="button" :class="{ active: activeView === item.key }" :aria-current="activeView === item.key ? 'page' : undefined" @click="selectView(item.key)">
         {{ item.label }}
       </button>
     </nav>
@@ -23,9 +23,34 @@
     </div>
 
     <template v-else-if="activeView === 'overview'">
+      <section class="momentum-hero" aria-labelledby="momentum-heading">
+        <div class="momentum-topline"><span class="momentum-eyebrow"><i></i> THE BIG PICTURE</span><div class="period-switch" aria-label="Timeline period"><button v-for="period in [4, 8, 12]" :key="period" type="button" :aria-pressed="momentumPeriod === period" :class="{ active: momentumPeriod === period }" @click="momentumPeriod = period; selectedWeek = null">{{ period }} weeks</button></div></div>
+        <div class="momentum-layout">
+          <div class="momentum-story">
+            <h2 id="momentum-heading">Every session.<br><em>Part of your story.</em></h2>
+            <p>{{ momentumTotals.sessions ? 'The early starts. The easy days. The work you keep coming back to. Here’s how it adds up.' : 'Your story starts with the first session. Import your activities to see your training take shape.' }}</p>
+            <div class="momentum-total"><strong>{{ momentumWeeks.length ? (momentumTotals.minutes / 60).toFixed(1) : '—' }}</strong><span>hours invested<small>{{ momentumWeeks.length }} weeks · {{ currentYear }}{{ momentumWeeks.length ? ' · current week in progress' : '' }}</small></span></div>
+            <div class="momentum-facts"><span><strong>{{ momentumWeeks.length ? momentumTotals.sessions : '—' }}</strong> sessions</span><span><strong>{{ momentumWeeks.length ? momentumTotals.days : '—' }}</strong> active days</span></div>
+            <a class="momentum-link" href="#history-heading">Explore your training footprint <span aria-hidden="true">↗</span></a>
+          </div>
+          <div class="momentum-visual">
+            <div class="momentum-chart-head"><span>YOUR WEEKLY RHYTHM</span><div class="chart-mode" aria-label="Timeline metric"><button v-for="mode in ['hours', 'sessions']" :key="mode" type="button" :class="{ active: momentumMode === mode }" :aria-pressed="momentumMode === mode" @click="momentumMode = mode">{{ mode }}</button></div></div>
+            <div v-if="momentumWeeks.length" class="rhythm-chart" :style="{ '--week-count': momentumWeeks.length }" aria-label="Weekly training totals">
+              <button v-for="week in momentumWeeks" :key="week.date" type="button" class="rhythm-week" :class="{ selected: focusedWeek?.date === week.date }" :aria-pressed="focusedWeek?.date === week.date" :aria-label="`Week of ${formatDate(week.date)}: ${formatDuration(week.minutes)}, ${week.sessions} sessions`" @click="selectedWeek = week.date" @mouseenter="selectedWeek = week.date" @focus="selectedWeek = week.date">
+                <span class="rhythm-value">{{ momentumMode === 'hours' ? (week.minutes / 60).toFixed(1) : week.sessions }}</span>
+                <span class="rhythm-track"><span class="rhythm-bar" :style="{ height: `${week.height}%` }"></span></span><span class="rhythm-date">{{ format(new Date(`${week.date}T12:00:00`), 'd MMM') }}</span>
+              </button>
+            </div>
+            <div v-else class="rhythm-empty"><span aria-hidden="true">⌁</span><strong>Your next chapter is ahead.</strong><p>Weekly volume appears here when training history is available.</p><button class="secondary-btn" type="button" @click="router.push('/sync')">Connect your activities →</button></div>
+            <div v-if="focusedWeek" class="rhythm-caption" aria-live="polite"><span>Week of {{ formatDate(focusedWeek.date) }}<small>{{ focusedWeek.date === momentumWeeks.at(-1)?.date ? 'Current week · still in progress' : 'Recorded training' }}</small></span><strong>{{ formatDuration(focusedWeek.minutes) }} <i> / </i> {{ focusedWeek.sessions }} sessions</strong></div>
+          </div>
+        </div>
+        <div class="momentum-footer"><span><i aria-hidden="true">↗</i> Progress has a rhythm. Recovery is part of it.</span><button type="button" @click="selectView('training_load')">See your training response <span aria-hidden="true">→</span></button></div>
+      </section>
+
       <section class="overview-lead" aria-labelledby="training-state-heading">
         <div class="section-heading">
-          <div><span class="section-kicker">Right now</span><h2 id="training-state-heading">Training state</h2></div>
+          <div><span class="section-kicker">01 / Training response</span><h2 id="training-state-heading">Training state</h2></div>
           <button type="button" class="text-btn" @click="selectView('training_load')">Open full load analysis →</button>
         </div>
         <TrainingLoadPanel title="Training load" subtitle="Short-term fatigue compared with your longer-term fitness." :days="84" :focus-days="28" mode="compact" />
@@ -33,19 +58,19 @@
 
       <section aria-labelledby="performance-heading">
         <div class="section-heading">
-          <div><span class="section-kicker">Adaptation evidence</span><h2 id="performance-heading">Performance markers</h2></div>
+          <div><span class="section-kicker">02 / Performance</span><h2 id="performance-heading">Performance markers</h2></div>
           <p>Anchors and repeatable efforts—not everyday easy-run pace.</p>
         </div>
         <div class="marker-grid">
           <article class="card marker-card marker-primary">
-            <span class="marker-label">Cycling threshold</span><strong>{{ cyclingThresholdLabel }}</strong><p>{{ cyclingThresholdCopy }}</p>
+            <span class="marker-symbol" aria-hidden="true">↗</span><span class="marker-label">Cycling threshold</span><strong>{{ cyclingThresholdLabel }}</strong><p>{{ cyclingThresholdCopy }}</p>
             <button type="button" class="card-action" @click="openDialog('ftp')">Log an FTP test</button>
           </article>
           <article class="card marker-card">
-            <span class="marker-label">Running threshold</span><strong>{{ runThresholdLabel }}</strong><p>{{ runThresholdCopy }}</p>
+            <span class="marker-symbol" aria-hidden="true">〰</span><span class="marker-label">Running threshold</span><strong>{{ runThresholdLabel }}</strong><p>{{ runThresholdCopy }}</p>
           </article>
           <article v-for="benchmark in visibleBenchmarks" :key="benchmark.key" class="card marker-card">
-            <span class="marker-label">{{ benchmark.label }}</span><strong>{{ benchmarkValue(benchmark) }}</strong><p>{{ benchmarkCopy(benchmark) }}</p>
+            <span class="marker-symbol" aria-hidden="true">◈</span><span class="marker-label">{{ benchmark.label }}</span><strong>{{ benchmarkValue(benchmark) }}</strong><p>{{ benchmarkCopy(benchmark) }}</p>
             <button v-if="benchmark.activity_id" type="button" class="card-action" @click="router.push(`/activities/${benchmark.activity_id}`)">View activity</button>
           </article>
         </div>
@@ -53,7 +78,7 @@
 
       <section aria-labelledby="supporting-heading">
         <div class="section-heading">
-          <div><span class="section-kicker">Supporting signals</span><h2 id="supporting-heading">Body, recovery and consistency</h2></div>
+          <div><span class="section-kicker">03 / The supporting cast</span><h2 id="supporting-heading">Body, recovery and consistency</h2></div>
           <p>Useful context, kept separate from readiness itself.</p>
         </div>
         <div class="support-grid">
@@ -96,7 +121,7 @@
 
       <section class="training-history" aria-labelledby="history-heading">
         <div class="section-heading">
-          <div><span class="section-kicker">Training footprint</span><h2 id="history-heading">How the work is accumulating</h2></div>
+          <div><span class="section-kicker">04 / Your footprint</span><h2 id="history-heading">How the work is accumulating</h2></div>
           <p>Intensity balance and long-range consistency—without turning rest days into broken streaks.</p>
         </div>
 
@@ -146,31 +171,40 @@
 
     <TrainingLoadPanel v-else-if="activeView === 'training_load'" title="Training load" subtitle="How short-term fatigue is moving against your longer-term fitness." :days="84" :focus-days="28" mode="full" />
 
-    <section v-else-if="activeView === 'recovery'" class="health-detail" aria-labelledby="recovery-heading">
+    <section v-else-if="activeView === 'recovery'" class="health-detail recovery-detail" aria-labelledby="recovery-heading">
       <div class="detail-head">
         <div><span class="section-kicker">Automatic context</span><h2 id="recovery-heading">Recovery signals</h2><p>Follow your personal direction across several days. One unusual reading is context, not a verdict on today’s training.</p></div>
         <span class="status-chip status-connected">Apple Health · automatic</span>
       </div>
+      <article class="sleep-story">
+        <div class="sleep-story-copy"><span class="detail-eyebrow">THE OTHER HALF OF TRAINING</span><h3>Make room<br>for recovery.</h3><p>Your nights, alongside your resting heart rate and HRV. Follow the pattern across days.</p><label v-if="sleepMetric?.history?.length" class="night-picker">Explore a night<select v-model="selectedSleepDate"><option value="">Latest · {{ formatDate(sleepMetric.latest?.date) }}</option><option v-for="night in sleepMetric.history" :key="night.date" :value="night.date">{{ formatDate(night.date) }}</option></select></label><span v-else class="detail-empty-note">Sleep appears here after an Apple Health import.</span></div>
+        <div class="sleep-dial" :style="{ '--sleep-fill': sleepStageGradient }" role="img" :aria-label="`Sleep on ${sleepNight?.date || 'unavailable date'}: ${sleepNight ? formatDuration(sleepNight.value * 60) : 'not imported'}. ${sleepBreakdown.map(stage => `${stage.label}: ${formatDuration(stage.minutes)}`).join(', ')}`"><div><span aria-hidden="true">☾</span><strong>{{ sleepNight ? formatDuration(sleepNight.value * 60) : '—' }}</strong><small>TIME ASLEEP</small><time v-if="sleepNight">{{ formatDate(sleepNight.date) }}</time></div></div>
+        <div class="sleep-breakdown"><div class="sleep-breakdown-title"><strong>Your sleep composition</strong><span>Stage totals · not a sleep timeline</span></div><div v-for="stage in sleepBreakdown" :key="stage.label" class="sleep-stage-row"><i :style="{ background: stage.color }"></i><span>{{ stage.label }}</span><strong>{{ formatDuration(stage.minutes) }}</strong><small>{{ stage.percent }}%</small></div><p v-if="!sleepBreakdown.length">Stage details haven’t been imported for this night.</p><div class="sleep-awake"><span>Awake <small>separate from time asleep</small></span><strong>{{ sleepNight && (sleepNight.awake_minutes != null || sleepNight.stages?.awake != null) ? formatDuration(sleepNight.awake_minutes ?? sleepNight.stages.awake * 60) : '—' }}</strong></div></div>
+      </article>
       <div class="metric-switcher" role="tablist" aria-label="Recovery metric">
         <button v-for="option in recoveryMetricOptions" :key="option.key" type="button" role="tab" :aria-selected="recoveryMetric === option.key" :class="{ active: recoveryMetric === option.key }" :style="{ '--metric-color': option.accent }" @click="recoveryMetric = option.key">
           <span>{{ option.label }}</span><strong>{{ metricOptionValue(option) }}</strong><small>{{ healthMetricDate(option.key) }}</small>
         </button>
       </div>
-      <div v-if="recoveryMetric === 'sleep' && sleepStages.length" class="sleep-stage-strip" aria-label="Latest sleep stages"><span v-for="stage in sleepStages" :key="stage.label"><i>{{ stage.label }}</i><strong>{{ stage.value }}</strong></span></div>
+
       <HealthTrendChart :key="selectedRecoveryMetric.key" v-bind="selectedRecoveryMetric" :history="healthHistory(selectedRecoveryMetric.key)" />
     </section>
 
-    <section v-else-if="activeView === 'daily_activity'" class="health-detail" aria-labelledby="daily-activity-heading">
+    <section v-else-if="activeView === 'daily_activity'" class="health-detail activity-detail" aria-labelledby="daily-activity-heading">
       <div class="detail-head">
         <div><span class="section-kicker">Whole-day movement</span><h2 id="daily-activity-heading">Daily activity</h2><p>See movement across the full day. Totals can include workout contributions; HealthFit remains authoritative for individual sessions.</p></div>
         <span class="status-chip status-connected">Apple Health · automatic</span>
       </div>
+      <article class="movement-story" :style="{ '--movement-color': selectedDailyMetric.accent }">
+        <div><span class="detail-eyebrow">LIFE IN MOTION</span><h3>Everyday movement.<br><em>It all adds up.</em></h3><p>Your whole-day {{ selectedDailyMetric.label.toLowerCase() }}, including movement recorded during workouts.</p><div class="movement-number"><strong>{{ metricOptionValue(selectedDailyMetric) }}</strong><span>{{ selectedDailyMetric.label }}<small>{{ healthMetricDate(selectedDailyMetric.key) }}</small></span></div></div>
+        <div class="movement-week"><div class="movement-week-head"><strong>Recent daily rhythm</strong><span>Latest 7 recorded days</span></div><div v-if="movementDays.length" class="movement-bars"><div v-for="day in movementDays" :key="day.date" class="movement-day"><strong>{{ Number(day.value).toLocaleString(undefined, { maximumFractionDigits: selectedDailyMetric.decimals }) }}</strong><div><i :style="{ height: `${day.height}%` }"></i></div><span>{{ format(new Date(`${day.date}T12:00:00`), 'EEE') }}</span><small>{{ format(new Date(`${day.date}T12:00:00`), 'd MMM') }}</small></div></div><p v-else class="movement-empty">Your daily rhythm will appear after an Apple Health import.</p><div class="movement-week-foot"><span>Daily totals, at your own pace.</span><a href="#daily-history">Explore the longer trend ↓</a></div></div>
+      </article>
       <div class="metric-switcher" role="tablist" aria-label="Daily activity metric">
         <button v-for="option in dailyMetricOptions" :key="option.key" type="button" role="tab" :aria-selected="dailyMetric === option.key" :class="{ active: dailyMetric === option.key }" :style="{ '--metric-color': option.accent }" @click="dailyMetric = option.key">
           <span>{{ option.label }}</span><strong>{{ metricOptionValue(option) }}</strong><small>{{ healthMetricDate(option.key) }}</small>
         </button>
       </div>
-      <HealthTrendChart :key="selectedDailyMetric.key" v-bind="selectedDailyMetric" :history="healthHistory(selectedDailyMetric.key)" />
+      <HealthTrendChart id="daily-history" :key="selectedDailyMetric.key" v-bind="selectedDailyMetric" :history="healthHistory(selectedDailyMetric.key)" />
     </section>
 
     <section v-else class="measurement-detail" :aria-labelledby="`${activeView}-heading`">
@@ -312,14 +346,32 @@ const sleepCopy = computed(() => {
   if (stages.rem) details.push(`${Number(stages.rem).toFixed(1)}h REM`)
   return details.join(' · ')
 })
-const sleepStages = computed(() => {
-  const stages = sleepMetric.value?.latest?.stages || {}
-  return [
-    { label: 'Core', value: stages.core ? `${Number(stages.core).toFixed(1)}h` : null },
-    { label: 'Deep', value: stages.deep ? `${Number(stages.deep).toFixed(1)}h` : null },
-    { label: 'REM', value: stages.rem ? `${Number(stages.rem).toFixed(1)}h` : null },
-    { label: 'Awake', value: sleepMetric.value?.latest?.awake_minutes ? `${Math.round(sleepMetric.value.latest.awake_minutes)}m` : null },
-  ].filter((stage) => stage.value)
+const selectedSleepDate = ref('')
+const sleepNight = computed(() => (sleepMetric.value?.history || []).find(night => night.date === selectedSleepDate.value) || sleepMetric.value?.latest || null)
+const sleepBreakdown = computed(() => {
+  const night = sleepNight.value
+  if (!night) return []
+  const stages = [
+    { label: 'Deep', minutes: Number(night.stages?.deep || 0) * 60, color: '#8074fa' },
+    { label: 'REM', minutes: Number(night.stages?.rem || 0) * 60, color: '#d3adff' },
+    { label: 'Core', minutes: Number(night.stages?.core || 0) * 60, color: '#659eeb' },
+  ]
+  const known = stages.reduce((sum, stage) => sum + stage.minutes, 0)
+  if (!known) return []
+  const unspecified = Math.max(0, Number(night.value) * 60 - known)
+  if (unspecified > 1) stages.push({ label: 'Unspecified', minutes: unspecified, color: '#64748b' })
+  const total = stages.reduce((sum, stage) => sum + stage.minutes, 0)
+  return stages.filter(stage => stage.minutes > 0).map(stage => ({ ...stage, percent: Math.round(stage.minutes / total * 100), share: stage.minutes / total * 100 }))
+})
+const sleepStageGradient = computed(() => {
+  if (!sleepBreakdown.value.length) return 'conic-gradient(#64748b33 0% 100%)'
+  let offset = 0
+  return `conic-gradient(${sleepBreakdown.value.map(stage => { const start = offset; offset += stage.share; return `${stage.color} ${start}% ${offset}%` }).join(', ')})`
+})
+const movementDays = computed(() => {
+  const history = healthHistory(selectedDailyMetric.value.key).slice(0, 7).slice().reverse()
+  const maximum = Math.max(1, ...history.map(day => Number(day.value)))
+  return history.map(day => ({ ...day, height: Number(day.value) / maximum * 100 }))
 })
 const selectedRecoveryMetric = computed(() => recoveryMetricOptions.find((option) => option.key === recoveryMetric.value) || recoveryMetricOptions[0])
 const selectedDailyMetric = computed(() => dailyMetricOptions.find((option) => option.key === dailyMetric.value) || dailyMetricOptions[0])
@@ -337,6 +389,30 @@ const heatmapCells = computed(() => activityHeatmap.value?.cells || [])
 const heatmapMonths = computed(() => (activityHeatmap.value?.month_labels || []).filter((month, index) => index > 0 || month.label === 'Jan'))
 const heatmapWeekCount = computed(() => Math.max(1, ...heatmapCells.value.map((cell) => Number(cell.week_index || 0) + 1)))
 const currentYear = computed(() => activityHeatmap.value?.year || format(new Date(), 'yyyy'))
+const momentumPeriod = ref(8)
+const momentumMode = ref('hours')
+const selectedWeek = ref(null)
+const momentumWeeks = computed(() => {
+  const weeks = new Map()
+  for (const cell of heatmapCells.value) {
+    if (!cell.in_year || cell.is_future) continue
+    const date = new Date(`${cell.date}T12:00:00`)
+    date.setDate(date.getDate() - (date.getDay() + 6) % 7)
+    const key = format(date, 'yyyy-MM-dd')
+    if (!weeks.has(key)) weeks.set(key, { date: key, minutes: 0, sessions: 0, days: 0 })
+    const week = weeks.get(key)
+    week.minutes += Number(cell.total_duration_min || 0)
+    week.sessions += Number(cell.sessions || 0)
+    week.days += Number(cell.sessions > 0)
+  }
+  const recent = [...weeks.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-momentumPeriod.value)
+  const value = week => momentumMode.value === 'hours' ? week.minutes / 60 : week.sessions
+  const max = Math.max(1, ...recent.map(value))
+  return recent.map(week => ({ ...week, height: value(week) / max * 100 }))
+})
+const momentumTotals = computed(() => momentumWeeks.value.reduce((total, week) => ({ minutes: total.minutes + week.minutes, sessions: total.sessions + week.sessions, days: total.days + week.days }), { minutes: 0, sessions: 0, days: 0 }))
+const focusedWeek = computed(() => momentumWeeks.value.find(week => week.date === selectedWeek.value) || momentumWeeks.value.at(-1))
+
 const restingHeartRateLabel = computed(() => restingHeartRate.value?.latest ? `${Math.round(restingHeartRate.value.latest.value)} bpm` : 'Not imported yet')
 const restingHeartRateCopy = computed(() => {
   const history = restingHeartRate.value?.history || []
@@ -499,4 +575,21 @@ function sparklineArea(entries, width, height, padding) {
 @media(max-width:900px){.support-card{min-height:220px}.support-sparkline{margin-top:10px}}
 @media(max-width:560px){.heatmap-footer{align-items:flex-start;flex-direction:column}.heatmap-selection{align-items:flex-start;flex-direction:column;gap:1px}}
 @media(prefers-reduced-motion:reduce){.support-card:hover,.daily-signal-card:hover,.zone-stack button:hover,.zone-stack button.active,.heatmap-cell:not(:disabled):hover,.heatmap-cell.active{transform:none}}
+/* A training journal with a visual rhythm, led by recorded weekly volume. */
+.trends-page{gap:32px}.page-title{font-size:38px;letter-spacing:-1.5px}.trend-nav{gap:24px}.trend-nav button{padding-inline:0;font-size:12px}.trend-nav button.active{border-color:#c8f582}.section-heading h2{font-size:24px;letter-spacing:-.6px}.section-kicker{color:#a6b6c9;font-size:10px}.section-heading{margin-bottom:18px}
+.momentum-hero{--momentum:#c8f582;position:relative;overflow:hidden;border:1px solid rgba(200,245,130,.2);border-radius:24px;background:radial-gradient(ellipse at 76% 15%,rgba(138,181,81,.12),transparent 55%),linear-gradient(125deg,#17241f,#111c22 60%,#172322);box-shadow:0 20px 65px #0002}
+.momentum-hero:before{position:absolute;inset:0;background:repeating-linear-gradient(115deg,transparent 0,transparent 90px,rgba(200,245,130,.025) 91px,transparent 92px);content:'';pointer-events:none}.momentum-topline,.momentum-layout,.momentum-footer{position:relative}.momentum-topline{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 30px 0}.momentum-eyebrow{display:flex;align-items:center;gap:9px;color:var(--momentum);font-size:9px;font-weight:800;letter-spacing:.18em}.momentum-eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--momentum);box-shadow:0 0 14px #c8f58588}.period-switch,.chart-mode{display:flex;gap:3px}.period-switch{padding:4px;border:1px solid #ffffff14;border-radius:9px;background:#07120e44}.period-switch button,.chart-mode button{border:0;background:transparent;color:#a9b8b5;font:inherit;cursor:pointer;font-size:10px;padding:6px 10px;border-radius:6px}.period-switch button.active{background:var(--momentum);color:#20301b;font-weight:800}.momentum-layout{display:grid;grid-template-columns:.85fr 1.15fr;gap:42px;padding:30px}.momentum-story h2{font-family:var(--font-display);font-size:clamp(28px,3vw,43px);font-weight:600;letter-spacing:-1.6px;line-height:1.12}.momentum-story h2 em{color:var(--momentum);font-style:normal}.momentum-story>p{max-width:350px;margin-top:16px;color:#a6b8b3;font-size:12px;line-height:1.8}.momentum-total{display:flex;align-items:center;gap:15px;margin-top:24px}.momentum-total>strong{font-family:var(--font-display);font-size:70px;line-height:1;letter-spacing:-4px;font-weight:500}.momentum-total>span{color:#e0e9e2;font-size:13px}.momentum-total small{display:block;max-width:170px;margin-top:4px;color:#9fafaa;font-size:10px}.momentum-facts{display:flex;gap:24px;margin-top:13px;color:#a9bab2;font-size:11px}.momentum-facts strong{color:#e8efe8;font-size:17px;margin-right:4px}.momentum-link{display:inline-flex;gap:20px;margin-top:27px;color:var(--momentum);font-size:11px;font-weight:650}.momentum-visual{display:flex;flex-direction:column;justify-content:flex-end;min-width:0;padding-top:7px}.momentum-chart-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.momentum-chart-head>span{color:#a2b2ac;font-size:9px;letter-spacing:.12em;font-weight:750}.chart-mode button{text-transform:capitalize;padding:4px 7px}.chart-mode button.active{color:var(--momentum);background:#c8f58212}.rhythm-chart{display:grid;grid-template-columns:repeat(var(--week-count),minmax(0,1fr));gap:10px;height:248px;margin-top:20px;background:repeating-linear-gradient(to top,transparent 0,transparent 51px,#c7e2be0c 52px,transparent 53px)}.rhythm-week{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:9px;min-width:0;padding:0 2px;border:0;background:transparent;color:#97aaa0;cursor:pointer;font:inherit}.rhythm-track{display:flex;align-items:flex-end;justify-content:center;width:100%;height:190px}.rhythm-bar{display:block;width:100%;max-width:44px;min-height:2px;border-radius:6px 6px 2px 2px;background:linear-gradient(0deg,#73975255,#a2c976aa);transition:height .35s ease,background .2s,box-shadow .2s}.rhythm-week.selected .rhythm-bar,.rhythm-week:hover .rhythm-bar{background:linear-gradient(0deg,#91bd58,var(--momentum));box-shadow:0 -8px 30px #c8f58215}.rhythm-value{font-family:var(--font-display);font-size:12px;opacity:.55}.rhythm-week.selected .rhythm-value{color:var(--momentum);opacity:1}.rhythm-date{font-size:8px;white-space:nowrap}.rhythm-caption{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #ffffff12;margin-top:15px;padding-top:14px;font-size:11px;min-height:53px}.rhythm-caption small{display:block;color:#96a89e;font-size:9px;margin-top:2px}.rhythm-caption strong{color:var(--momentum);font-size:12px;white-space:nowrap}.rhythm-caption i{padding:0 5px;color:#80917f;font-style:normal}.momentum-footer{display:flex;justify-content:space-between;gap:20px;align-items:center;border-top:1px solid #c8f58217;padding:16px 30px;background:#08140e25;color:#a8bab1;font-size:10px}.momentum-footer>span{display:flex;align-items:center;gap:9px}.momentum-footer i{color:var(--momentum);font-size:16px;font-style:normal}.momentum-footer button{display:flex;gap:20px;border:0;background:none;color:var(--momentum);font:inherit;font-weight:700;cursor:pointer}.rhythm-empty{display:grid;justify-items:center;gap:12px;text-align:center;padding:35px 10px;color:#a6b8b3;font-size:12px}.rhythm-empty>span{font-size:60px;color:var(--momentum)}
+.marker-grid{gap:0;border-block:1px solid var(--border);background:linear-gradient(90deg,#7ba3ff05,transparent)}.marker-card,.marker-card.marker-primary{border:0;border-right:1px solid var(--border);border-radius:0;background:transparent;padding:23px 20px;box-shadow:none}.marker-card:last-child{border-right:0}.marker-card:after{display:none}.marker-symbol{display:block;margin-bottom:18px;color:#b9cef3;font-size:23px;line-height:1}.marker-primary .marker-symbol{color:#c8f582}.marker-card>strong{font-size:29px;letter-spacing:-1px;margin:9px 0}.marker-card p{font-size:11px}.support-card{border-radius:20px}.support-head strong{font-size:30px;letter-spacing:-1px}.support-sparkline{height:64px}.daily-signal-grid{gap:0;margin-top:20px;border-block:1px solid var(--border)}.daily-signal-card{background:transparent;border:0;border-right:1px solid var(--border);border-radius:0;padding:20px}.daily-signal-card:last-child{border-right:0}.daily-signal-card:before{display:none}.daily-signal-card>strong{font-size:25px}.daily-signal-card>svg{height:32px}.history-insight-grid{grid-template-columns:minmax(260px,.65fr) minmax(0,1.35fr)}.heatmap-card,.hr-zone-card{border-radius:20px}.heatmap-card{padding:26px}.heatmap-card .insight-card-head strong{font-size:22px;letter-spacing:-.5px}.heatmap-card .history-total{color:#c8f582}.overview-lead :deep(.load-card){background:linear-gradient(120deg,#7ba3ff07,transparent);border-radius:20px}.overview-lead :deep(.readiness-card){background:transparent;border:0;border-left:2px solid var(--accent-strong);border-radius:0}.overview-lead :deep(.load-secondary-card){background:transparent;border:0;border-top:1px solid var(--border);border-radius:0}
+.trends-page button:focus-visible,.momentum-link:focus-visible{outline:2px solid #c8f582;outline-offset:4px}
+@media(min-width:1500px){.momentum-layout{gap:65px;padding:36px 40px}.momentum-topline{padding-inline:40px}.rhythm-chart{height:275px}.rhythm-track{height:217px}}
+@media(max-width:1100px){.momentum-layout{gap:24px}.momentum-story h2{font-size:32px}.momentum-total>strong{font-size:60px}.marker-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.marker-card{border-bottom:1px solid var(--border)}.history-insight-grid{grid-template-columns:1fr}.rhythm-chart{gap:5px}}
+@media(max-width:800px){.momentum-layout{grid-template-columns:1fr}.momentum-story>p{max-width:480px}.momentum-story h2{font-size:38px}.momentum-visual{padding-top:18px}.momentum-footer{align-items:flex-start;flex-direction:column;gap:12px}.daily-signal-grid{grid-template-columns:1fr 1fr}.daily-signal-card{border-bottom:1px solid var(--border)}.trend-nav{gap:22px}}
+@media(max-width:520px){.momentum-topline{padding:20px 18px 0;gap:8px}.momentum-eyebrow{font-size:8px;letter-spacing:.1em}.period-switch button{padding:5px 7px;font-size:9px}.momentum-layout{padding:24px 18px}.momentum-story h2{font-size:33px}.momentum-footer{padding:16px 18px}.momentum-total>strong{font-size:64px}.marker-grid{grid-template-columns:1fr 1fr}.marker-card{padding:20px 13px}.marker-card>strong{font-size:24px}.rhythm-chart{gap:3px}.rhythm-date{font-size:7px;writing-mode:vertical-rl;height:30px}.rhythm-caption{font-size:10px}.rhythm-caption strong{font-size:10px}.momentum-chart-head>span{font-size:8px}.section-heading h2{font-size:22px}.daily-signal-card{padding:16px 12px}.page-title{font-size:34px}}
+@media(prefers-reduced-motion:reduce){.rhythm-bar{transition:none}}
+
+.health-detail{gap:24px}.health-detail .detail-head h2{font-size:29px;letter-spacing:-1px}.detail-eyebrow{font-size:9px;font-weight:800;letter-spacing:.16em;color:#c0b2f5}.sleep-story{display:grid;grid-template-columns:1fr 240px 1fr;align-items:center;gap:30px;padding:34px;border:1px solid #a898ff30;border-radius:24px;background:radial-gradient(ellipse at 49% 70%,#8877f51c,transparent 60%),linear-gradient(125deg,#211e36,#141b2c);overflow:hidden}.sleep-story h3,.movement-story h3{font-family:var(--font-display);font-size:35px;letter-spacing:-1.2px;line-height:1.15;font-weight:500;margin-top:17px}.sleep-story-copy>p,.movement-story p{max-width:340px;color:#a5adc6;font-size:12px;line-height:1.8;margin-top:16px}.night-picker{display:grid;gap:7px;margin-top:24px;color:#b0abc9;font-size:10px}.night-picker select{width:100%;max-width:235px;padding:9px 12px;border:1px solid #bca9ff33;border-radius:8px;color:var(--text);background:#191e30;font:inherit}.sleep-dial{width:236px;aspect-ratio:1;padding:17px;border-radius:50%;background:var(--sleep-fill);box-shadow:0 0 70px #9381ff12;transform:rotate(-25deg)}.sleep-dial>div{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;background:#1a2032;transform:rotate(25deg)}.sleep-dial strong{font-family:var(--font-display);font-size:34px;letter-spacing:-1.5px}.sleep-dial span{font-size:27px;line-height:1;color:#c4b5fd;margin-bottom:8px}.sleep-dial small{font-size:8px;letter-spacing:.16em;color:#c1b5e1}.sleep-dial time{margin-top:8px;font-size:10px;color:#a4a8c0}.sleep-breakdown-title{display:grid;gap:4px;margin-bottom:19px}.sleep-breakdown-title strong{font-size:13px}.sleep-breakdown-title>span,.sleep-breakdown>p{color:#a5a5bf;font-size:10px}.sleep-stage-row{display:grid;grid-template-columns:9px 1fr auto 30px;align-items:center;gap:9px;padding:11px 0;border-bottom:1px solid #afa4e612;font-size:12px}.sleep-stage-row>i{width:7px;height:7px;border-radius:50%}.sleep-stage-row strong{font-weight:600}.sleep-stage-row small{color:#aba5c7;text-align:right;font-size:10px}.sleep-awake{display:flex;align-items:center;justify-content:space-between;margin-top:18px;color:#d4cce9;font-size:12px}.sleep-awake small{display:block;font-size:9px;color:#9c98b1}.detail-empty-note{display:block;margin-top:20px;color:#b1abc8;font-size:11px}.health-detail .metric-switcher{gap:0;border-block:1px solid var(--border)}.health-detail .metric-switcher button{padding:20px 22px;border:0;border-right:1px solid var(--border);border-radius:0;background:transparent}.health-detail .metric-switcher button:last-child{border-right:0}.health-detail .metric-switcher button.active{background:linear-gradient(0deg,color-mix(in srgb,var(--metric-color) 9%,transparent),transparent);box-shadow:inset 0 -2px var(--metric-color)}.health-detail .metric-switcher button:before{display:none}.health-detail .metric-switcher strong{font-size:30px;letter-spacing:-1px}.health-detail .metric-switcher span{font-size:10px}.health-detail .metric-switcher small{font-size:10px}
+.movement-story{display:grid;grid-template-columns:1fr 1.2fr;gap:45px;padding:34px;border:1px solid color-mix(in srgb,var(--movement-color) 25%,transparent);border-radius:24px;background:radial-gradient(ellipse at 90% 0%,color-mix(in srgb,var(--movement-color) 12%,transparent),transparent 65%),#121e2b}.movement-story .detail-eyebrow,.movement-story h3 em{color:var(--movement-color);font-style:normal}.movement-number{display:flex;align-items:center;gap:18px;margin-top:28px}.movement-number>strong{font-family:var(--font-display);font-size:48px;letter-spacing:-2px;line-height:1.15}.movement-number>span{font-size:11px;color:#bac8db}.movement-number small{display:block;color:#94a6bf;font-size:9px;margin-top:5px}.movement-week{align-self:end;min-width:0}.movement-week-head,.movement-week-foot{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:10px;color:#8fa9bf}.movement-week-head strong{font-size:12px;color:#c8d9e8}.movement-bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-top:22px}.movement-day{display:grid;justify-items:center;gap:5px;min-width:0}.movement-day>strong{font-family:var(--font-display);font-size:10px;color:#b9cde0}.movement-day>div{display:flex;align-items:end;justify-content:center;width:100%;height:140px;background:#88aecc06;border-radius:6px}.movement-day i{width:80%;max-width:35px;min-height:2px;border-radius:6px 6px 2px 2px;background:linear-gradient(0deg,color-mix(in srgb,var(--movement-color) 30%,transparent),var(--movement-color))}.movement-day>span{font-size:9px;color:#c7d8e7}.movement-day>small{font-size:8px;color:#8ba2b9}.movement-week-foot{border-top:1px solid var(--border);padding-top:15px;margin-top:18px;font-size:9px}.movement-week-foot a{color:var(--movement-color)}.movement-empty{padding:40px 0}.health-detail :deep(.health-trend-card){padding:28px;border-radius:22px;background:linear-gradient(160deg,color-mix(in srgb,var(--signal-color) 4%,transparent),var(--surface))}.health-detail :deep(.chart-title h3){font-size:24px;letter-spacing:-.6px}.health-detail :deep(.selected-value strong){font-size:33px}.health-detail :deep(.health-trend-card){--health-chart-height:280px}
+@media(max-width:1150px){.sleep-story{grid-template-columns:1fr 220px;gap:25px}.sleep-dial{width:220px}.sleep-breakdown{grid-column:1/-1}.sleep-stage-row{grid-template-columns:9px 1fr auto 40px}.movement-story{gap:25px}.movement-number>strong{font-size:38px}}
+@media(max-width:760px){.sleep-story,.movement-story{grid-template-columns:1fr;padding:25px}.sleep-dial{justify-self:center;margin:10px 0}.sleep-breakdown{grid-column:auto}.sleep-story-copy>p{max-width:none}.sleep-story h3,.movement-story h3{font-size:32px}.movement-number>strong{font-size:48px}.movement-week{margin-top:12px}.health-detail .metric-switcher{grid-template-columns:repeat(3,minmax(0,1fr))}.health-detail .metric-switcher button{padding:16px 10px}.health-detail .metric-switcher strong{font-size:21px}.health-detail .metric-switcher span{font-size:8px}.health-detail .metric-switcher small{font-size:8px}.health-detail :deep(.health-trend-card){padding:18px}.movement-week-head{align-items:flex-start;flex-direction:column}.movement-bars{gap:5px}.movement-number{flex-wrap:wrap}}
+
 </style>

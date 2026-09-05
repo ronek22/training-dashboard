@@ -167,6 +167,74 @@ class HealthFitImportTests(unittest.TestCase):
         ).fetchone()
         self.assertEqual(ref["activity_id"], healthfit_id)
 
+    def test_later_strava_virtual_ride_reuses_healthfit_indoor_ride(self):
+        healthfit_id = "healthfit:" + "v" * 24
+        self.conn.execute(
+            """INSERT INTO activities
+               (id, date, type, name, distance_km, duration_min, avg_hr)
+               VALUES (?, '2026-08-18', 'Ride', 'Indoor Cycling', 25.15, 49.0, 158)""",
+            (healthfit_id,),
+        )
+        raw_strava = {
+            "id": 19797867373,
+            "start_date": "2026-08-18T17:17:21Z",
+            "start_date_local": "2026-08-18T19:17:21Z",
+            "type": "VirtualRide", "sport_type": "VirtualRide", "name": "Zwift - Coast to Coast",
+            "distance": 25150.0, "moving_time": 2868, "average_speed": 8.77,
+            "average_heartrate": 158, "max_heartrate": 177, "average_watts": 146,
+        }
+        strava = importlib.import_module("backend.app.services.strava")
+        activities = importlib.import_module("backend.app.services.activities")
+        with patch.object(strava, "get_strava_access_token", return_value="token"), patch.object(
+            strava, "fetch_strava_activities", return_value=[raw_strava]
+        ):
+            strava.import_strava_activities_data(
+                self.conn,
+                SimpleNamespace(start_date="2026-08-18", end_date="2026-08-18", fetch_streams=False),
+                get_latest_activity_date_fn=lambda conn: "2026-08-18",
+                get_setting_fn=lambda key: None,
+                set_setting_fn=lambda key, value: None,
+                upsert_activity_fn=activities.upsert_activity,
+                estimate_thresholds_fn=lambda conn: {},
+                intensity_bucket_from_hr_fn=lambda hr, low, high: "low_aerobic",
+            )
+
+        self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM activities").fetchone()[0], 1)
+        activity = self.conn.execute("SELECT id, type FROM activities").fetchone()
+        self.assertEqual(activity["id"], healthfit_id)
+        self.assertEqual(activity["type"], "VirtualRide")
+        ref = self.conn.execute(
+            "SELECT activity_id FROM activity_source_refs WHERE source = 'strava' AND external_id = '19797867373'"
+        ).fetchone()
+        self.assertEqual(ref["activity_id"], healthfit_id)
+
+    def test_start_time_reconciles_elapsed_and_moving_time_difference(self):
+        healthfit_id = "healthfit:" + "w" * 24
+        self.conn.execute(
+            """INSERT INTO activities
+               (id, date, type, name, distance_km, duration_min, avg_hr)
+               VALUES (?, '2026-08-15', 'Walk', 'Outdoor Walking', 5.09, 101.1, 83)""",
+            (healthfit_id,),
+        )
+        self.conn.execute(
+            """INSERT INTO activity_source_refs
+               (source, external_id, activity_id, started_at, status)
+               VALUES ('healthfit', 'hash', ?, '2026-08-15T11:16:48+00:00', 'create')""",
+            (healthfit_id,),
+        )
+        candidate = {
+            "date": "2026-08-15", "type": "Walk", "distance_km": 5.09,
+            "duration_min": 82.7, "avg_hr": 84, "started_at": "2026-08-15T11:16:47+00:00",
+        }
+
+        match = importlib.import_module("backend.app.services.activity_sources").find_activity_match(
+            self.conn, candidate
+        )
+
+        self.assertEqual(match["status"], "matched")
+        self.assertEqual(match["activity"]["id"], healthfit_id)
+        self.assertIn("start time", match["reason"])
+
     def test_unseen_older_file_after_initialization_is_created(self):
         self.conn.execute("INSERT INTO activities (id, date, type) VALUES ('newer', '2026-07-17', 'Ride')")
         self.conn.execute(

@@ -23,6 +23,41 @@ from .settings import (
     get_performance_settings_for_conn,
     get_workout_template_settings_for_conn,
 )
+from .strength import get_strength_context_data
+
+
+def build_recent_strength_detail(conn: sqlite3.Connection) -> dict:
+    strength = get_strength_context_data(conn, weeks=2)
+    sessions = []
+    for session in strength.get("recent_sessions", [])[:3]:
+        sessions.append({
+            "workout_date": session.get("workout_date"),
+            "title": session.get("title"),
+            "source": session.get("source"),
+            "matched_activity": session.get("matched_activity"),
+            "duration_min": round(float(session.get("total_duration_seconds") or 0) / 60, 1),
+            "exercise_count": session.get("exercise_count"),
+            "set_count": session.get("set_count"),
+            "rep_count": session.get("rep_count"),
+            "total_volume_kg": session.get("total_volume_kg"),
+            "major_exercises": session.get("major_exercises", []),
+            "exercises": [
+                {
+                    "exercise_name": exercise.get("exercise_name"),
+                    "body_part": exercise.get("body_part"),
+                    "work_set_count": exercise.get("work_set_count"),
+                    "rep_count": exercise.get("rep_count"),
+                    "total_volume_kg": exercise.get("total_volume_kg"),
+                }
+                for exercise in session.get("exercises", [])
+            ],
+        })
+    return {
+        "available": bool(sessions),
+        "summary": strength.get("summary"),
+        "recent_sessions": sessions,
+        "data_source": strength.get("data_source"),
+    }
 
 
 def select_active_weekly_plan_row(conn: sqlite3.Connection) -> Optional[sqlite3.Row]:
@@ -988,6 +1023,7 @@ def build_recent_context(
 
     weekly_mix = build_weekly_mix(conn, 4)
     strength_consistency = build_strength_consistency(conn, 8, 2)
+    recent_strength_detail = build_recent_strength_detail(conn)
     computed_streak = compute_activity_streak(conn)
     training_load = build_training_load_summary(conn)
     active_goals = list_goals_data(conn, active_only=True, limit=8)
@@ -1092,6 +1128,7 @@ def build_recent_context(
         "latest_metrics": [dict(row) for row in latest_metrics],
         "weekly_mix": weekly_mix,
         "strength_consistency": strength_consistency,
+        "recent_strength_detail": recent_strength_detail,
         "athlete_profile": athlete_profile,
         "athlete_brief": athlete_profile.get("athlete_brief"),
         "athlete_coaching_brief": athlete_coaching_brief,

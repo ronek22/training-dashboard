@@ -41,6 +41,13 @@ class StrengthSetCompletionRequest(BaseModel):
     actual_weight_kg: Optional[float] = Field(default=None, ge=0, le=1000)
 
 
+class StrengthWarmupSetAddRequest(BaseModel):
+    target_reps: Optional[int] = Field(default=None, ge=1, le=100)
+    target_weight_kg: Optional[float] = Field(default=None, ge=0, le=1000)
+    rest_seconds: int = Field(default=60, ge=0, le=1800)
+    switch_to: bool = True
+
+
 class StrengthSessionPositionRequest(BaseModel):
     exercise_order: int = Field(ge=1)
     set_order: Optional[int] = Field(default=None, ge=1)

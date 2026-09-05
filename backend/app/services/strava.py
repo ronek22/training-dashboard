@@ -598,6 +598,7 @@ def import_strava_activities_data(
     activities = []
     for item in raw_items:
         activity = build_activity_from_strava(item)
+        activity["started_at"] = strava_started_at(item)
         strava_id = activity["id"]
         canonical_id = get_source_activity_id(conn, "strava", strava_id)
         if canonical_id is None:

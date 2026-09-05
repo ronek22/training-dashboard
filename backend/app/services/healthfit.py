@@ -243,7 +243,8 @@ def _preview_fit_import(conn: sqlite3.Connection, *, source: str, directory: Pat
             reason = existing["match_reason"] or f"Previously {existing['status']}."
             activity_id = existing["activity_id"]
         else:
-            match = find_activity_match(conn, parsed["activity"])
+            match_candidate = {**parsed["activity"], "started_at": parsed["started_at"]}
+            match = find_activity_match(conn, match_candidate)
             if match["status"] == "matched":
                 action, reason, activity_id = "link_existing", match["reason"], match["activity"]["id"]
             elif match["status"] == "ambiguous":

@@ -4,102 +4,155 @@
     <div v-else-if="error && !session" class="card error-card" role="alert">{{ error }}</div>
 
     <template v-else-if="session">
-      <section class="runner-head motion-section">
-        <div>
-          <router-link to="/strength/workouts" class="back-link">← Workout studio</router-link>
-          <div class="runner-kicker">{{ session.status === 'active' ? 'Workout in progress' : 'Workout review' }}</div>
-          <h1>{{ session.template_name }}</h1>
-          <p>{{ formatDate(session.started_at) }} · {{ elapsedLabel }}</p>
+      <section class="runner-head card motion-section">
+        <div class="runner-head-copy">
+          <router-link to="/strength/workouts" class="back-link">← Studio</router-link>
+          <div>
+            <div class="runner-kicker">{{ session.status === 'active' ? 'Live workout' : 'Workout review' }}</div>
+            <h1>{{ session.template_name }}</h1>
+            <p>{{ formatDate(session.started_at) }}</p>
+          </div>
+        </div>
+        <div class="session-vitals">
+          <div><span>Elapsed</span><strong>{{ elapsedClock }}</strong></div>
+          <div><span>Exercises</span><strong>{{ completedExerciseCount }}/{{ session.exercises.length }}</strong></div>
+          <div><span>Sets</span><strong>{{ session.progress.completed_sets }}/{{ session.progress.total_sets }}</strong></div>
         </div>
         <div class="runner-progress" :aria-label="`${session.progress.completed_sets} of ${session.progress.total_sets} sets completed`">
-          <strong>{{ Math.round(session.progress.fraction * 100) }}%</strong>
-          <div><span :style="{ width: `${session.progress.fraction * 100}%` }"></span></div>
-          <small>{{ session.progress.completed_sets }}/{{ session.progress.total_sets }} sets</small>
+          <div class="progress-copy"><span>Session progress</span><strong>{{ Math.round(session.progress.fraction * 100) }}%</strong></div>
+          <div class="progress-track"><span :style="{ width: `${session.progress.fraction * 100}%` }"></span></div>
         </div>
       </section>
 
       <div v-if="error" class="card error-card" role="alert">{{ error }}</div>
 
-      <section v-if="session.status === 'active'" class="watch-callout card motion-section">
-        <div class="watch-icon" aria-hidden="true">♥</div>
-        <div>
-          <strong>Start “Traditional Strength Training” on Apple Watch</strong>
-          <p>Keep it recording throughout this session. Once HealthFit imports the workout, attach it below to add heart rate, calories, and watch timing.</p>
-        </div>
-      </section>
-
       <template v-if="session.status === 'active' && currentExercise && currentSet">
-        <section class="runner-grid motion-section">
-          <article class="card current-set-card">
-            <div class="set-heading">
-              <div>
-                <span>Exercise {{ currentExercise.exercise_order }} of {{ session.exercises.length }}</span>
-                <h2>{{ currentExercise.exercise_name }}</h2>
-                <p>Set {{ currentSet.set_order }} of {{ currentExercise.sets.length }}</p>
+        <section class="runner-console motion-section">
+          <div class="work-zone">
+            <div v-if="restRemaining > 0" class="rest-banner card" aria-live="polite">
+              <div class="rest-dial" :style="restProgressStyle"><span>{{ formatClock(restRemaining) }}</span></div>
+              <div class="rest-copy">
+                <span>Recovery running</span>
+                <strong>Rest, breathe, then own the next set.</strong>
+                <small>Next: {{ currentExercise.exercise_name }} · set {{ currentSet.set_order }}</small>
               </div>
-              <div class="set-tools">
-                <button class="sound-toggle" type="button" :aria-pressed="soundEnabled" @click="toggleSound">
-                  <span aria-hidden="true">{{ soundEnabled ? '♪' : '×' }}</span>
-                  {{ soundEnabled ? 'Sound on' : 'Sound off' }}
+              <button class="sound-toggle" type="button" :aria-pressed="soundEnabled" @click="toggleSound">
+                <span aria-hidden="true">{{ soundEnabled ? '♪' : '×' }}</span>{{ soundEnabled ? 'Beep on' : 'Beep off' }}
+              </button>
+            </div>
+
+            <article class="card current-set-card">
+              <div class="set-heading">
+                <div class="set-ordinal" :class="{ warmup: currentSet.set_type === 'warmup' }">
+                  <span>{{ currentSet.set_type === 'warmup' ? 'Warm-up' : 'Set' }}</span>
+                  <strong>{{ setDisplayNumber(currentExercise, currentSet) }}</strong>
+                  <small>of {{ currentSet.set_type === 'warmup' ? currentExercise.warmup_set_count : currentExercise.sets.length - currentExercise.warmup_set_count }}</small>
+                </div>
+                <div class="set-heading-copy">
+                  <span>Exercise {{ currentExercise.exercise_order }} of {{ session.exercises.length }}</span>
+                  <h2>{{ currentExercise.exercise_name }}</h2>
+                  <p>{{ currentExercise.notes || 'Record what you actually performed.' }}</p>
+                </div>
+                <button v-if="restRemaining === 0" class="sound-toggle" type="button" :aria-pressed="soundEnabled" @click="toggleSound">
+                  <span aria-hidden="true">{{ soundEnabled ? '♪' : '×' }}</span>{{ soundEnabled ? 'Beep on' : 'Beep off' }}
                 </button>
-                <div v-if="restRemaining > 0" class="rest-clock" aria-live="polite">
-                  <span>Rest</span>
-                  <strong>{{ formatClock(restRemaining) }}</strong>
+              </div>
+
+              <div class="target-row">
+                <span class="target-label">Planned</span>
+                <strong>{{ currentSet.target_reps }} reps</strong>
+                <i></i>
+                <strong>{{ formatWeight(currentSet.target_weight_kg) }}</strong>
+                <i></i>
+                <strong>{{ formatRest(currentSet.rest_seconds) }} rest</strong>
+                <button type="button" @click="applyTarget">Reset to target</button>
+              </div>
+
+              <div class="current-exercise-sets">
+                <div class="current-sets-head">
+                  <div><span>Current exercise</span><strong>{{ currentExercise.exercise_name }} sets</strong></div>
+                  <button type="button" :disabled="addingWarmup" @click="addWarmupSet">
+                    {{ addingWarmup ? 'Adding…' : '+ Add warm-up' }}
+                  </button>
+                </div>
+                <div class="current-set-strip">
+                  <button
+                    v-for="workoutSet in currentExercise.sets"
+                    :key="workoutSet.id"
+                    type="button"
+                    :class="{
+                      current: isCurrent(currentExercise, workoutSet),
+                      completed: workoutSet.status === 'completed',
+                      warmup: workoutSet.set_type === 'warmup',
+                    }"
+                    @click="goToSet(currentExercise, workoutSet)"
+                  >
+                    <span>{{ setKindLabel(currentExercise, workoutSet) }}</span>
+                    <strong>{{ workoutSet.status === 'completed' ? `${workoutSet.actual_reps} × ${formatWeight(workoutSet.actual_weight_kg)}` : `${workoutSet.target_reps} × ${formatWeight(workoutSet.target_weight_kg)}` }}</strong>
+                    <small>{{ workoutSet.status === 'completed' ? 'Recorded' : isCurrent(currentExercise, workoutSet) ? 'Up now' : 'Planned' }}</small>
+                  </button>
                 </div>
               </div>
-            </div>
 
-            <div class="target-strip">
-              <div><span>Target reps</span><strong>{{ currentSet.target_reps }}</strong></div>
-              <div><span>Target load</span><strong>{{ formatWeight(currentSet.target_weight_kg) }}</strong></div>
-              <div><span>Rest after</span><strong>{{ formatRest(currentSet.rest_seconds) }}</strong></div>
-            </div>
+              <div class="actual-inputs">
+                <label class="performance-field">
+                  <span>Reps</span>
+                  <div class="stepper">
+                    <button type="button" aria-label="Decrease repetitions" @click="actualReps = Math.max(0, actualReps - 1)">−</button>
+                    <input v-model.number="actualReps" aria-label="Repetitions completed" type="number" min="0" max="100" inputmode="numeric" />
+                    <button type="button" aria-label="Increase repetitions" @click="actualReps = Math.min(100, actualReps + 1)">+</button>
+                  </div>
+                  <small>completed</small>
+                </label>
+                <div class="field-divider"></div>
+                <label class="performance-field">
+                  <span>Load</span>
+                  <div class="stepper weight-stepper">
+                    <button type="button" aria-label="Decrease weight" @click="adjustWeight(-2.5)">−</button>
+                    <input v-model.number="actualWeight" aria-label="Weight used in kilograms" type="number" min="0" max="1000" step="0.5" inputmode="decimal" placeholder="BW" />
+                    <button type="button" aria-label="Increase weight" @click="adjustWeight(2.5)">+</button>
+                  </div>
+                  <small>kilograms</small>
+                </label>
+              </div>
 
-            <div class="actual-inputs">
-              <label>
-                <span>Reps completed</span>
-                <div class="stepper">
-                  <button type="button" aria-label="Decrease repetitions" @click="actualReps = Math.max(0, actualReps - 1)">−</button>
-                  <input v-model.number="actualReps" type="number" min="0" max="100" inputmode="numeric" />
-                  <button type="button" aria-label="Increase repetitions" @click="actualReps = Math.min(100, actualReps + 1)">+</button>
+              <div class="weight-shortcuts" aria-label="Adjust weight quickly">
+                <span>Quick load</span>
+                <button type="button" @click="adjustWeight(-5)">−5</button>
+                <button type="button" @click="adjustWeight(-2.5)">−2.5</button>
+                <button type="button" @click="adjustWeight(2.5)">+2.5</button>
+                <button type="button" @click="adjustWeight(5)">+5</button>
+              </div>
+
+              <button class="complete-button" type="button" :disabled="savingSet" @click="completeCurrentSet">
+                <div>
+                  <span>{{ savingSet ? 'Saving…' : 'Complete set' }}</span>
+                  <small v-if="!savingSet">Starts {{ formatRest(currentSet.rest_seconds) }} rest</small>
                 </div>
-              </label>
-              <label>
-                <span>Weight used (kg)</span>
-                <div class="stepper">
-                  <button type="button" aria-label="Decrease weight" @click="adjustWeight(-2.5)">−</button>
-                  <input v-model.number="actualWeight" type="number" min="0" max="1000" step="0.5" inputmode="decimal" />
-                  <button type="button" aria-label="Increase weight" @click="adjustWeight(2.5)">+</button>
-                </div>
-              </label>
-            </div>
-
-            <button class="complete-button" type="button" :disabled="savingSet" @click="completeCurrentSet">
-              {{ savingSet ? 'Saving set…' : 'Complete set' }}
-            </button>
-          </article>
+                <b aria-hidden="true">→</b>
+              </button>
+            </article>
+          </div>
 
           <aside class="card exercise-switcher">
-            <div class="card-title">Switch exercise</div>
-            <p>Move freely without losing incomplete sets.</p>
+            <div class="queue-head">
+              <div><span>Workout queue</span><strong>{{ incompleteSetCount }} sets left</strong></div>
+              <button class="add-compact" type="button" aria-label="Add exercise" @click="showAddExercise = !showAddExercise">{{ showAddExercise ? '×' : '+' }}</button>
+            </div>
             <button
               v-for="exercise in session.exercises"
               :key="exercise.id"
               type="button"
-              :class="{ active: exercise.exercise_order === session.current_exercise_order, done: exercise.completed_set_count === exercise.sets.length }"
+              :class="{ active: exercise.exercise_order === session.current_exercise_order, done: exercise.completed_set_count === workingSetCount(exercise) }"
               @click="switchExercise(exercise)"
             >
-              <span>{{ exercise.exercise_order }}</span>
-              <div><strong>{{ exercise.exercise_name }}</strong><small>{{ exercise.completed_set_count }}/{{ exercise.sets.length }} sets</small></div>
-              <b>{{ exercise.completed_set_count === exercise.sets.length ? '✓' : '→' }}</b>
-            </button>
-            <button class="add-exercise-toggle" type="button" @click="showAddExercise = !showAddExercise">
-              <span aria-hidden="true">+</span>
-              <div><strong>Add exercise</strong><small>Append it to this workout</small></div>
-              <b>{{ showAddExercise ? '×' : '→' }}</b>
+              <span>{{ exercise.completed_set_count === workingSetCount(exercise) ? '✓' : exercise.exercise_order }}</span>
+              <div><strong>{{ exercise.exercise_name }}</strong><small>{{ exercise.completed_set_count }}/{{ workingSetCount(exercise) }} work sets<span v-if="exercise.warmup_set_count"> · {{ exercise.completed_warmup_set_count }}/{{ exercise.warmup_set_count }} warm-up</span></small></div>
+              <b>{{ exercise.exercise_order === session.current_exercise_order ? 'Now' : '→' }}</b>
             </button>
 
             <form v-if="showAddExercise" class="live-exercise-form" @submit.prevent="addExerciseToSession">
+              <div class="form-heading"><strong>Add exercise</strong><span>It will become the active movement.</span></div>
               <label class="live-exercise-name">
                 <span>Exercise</span>
                 <input
@@ -136,15 +189,22 @@
                 {{ addingExercise ? 'Adding…' : 'Add & switch to exercise' }}
               </button>
             </form>
+
+            <div class="watch-status">
+              <span class="watch-icon" aria-hidden="true">♥</span>
+              <div><strong>Apple Watch in parallel</strong><small>Keep Strength Training recording. Link it after finishing.</small></div>
+            </div>
           </aside>
         </section>
       </template>
 
       <section class="card workout-detail motion-section">
         <div class="section-head">
-          <div><div class="card-title">Set log</div><p class="section-copy">Planned targets and what you recorded.</p></div>
+          <div><div class="card-title">Workout details</div><p class="section-copy">Jump to any set or review what you recorded.</p></div>
+          <button class="log-toggle" type="button" :aria-expanded="showSetLog" @click="showSetLog = !showSetLog">{{ showSetLog ? 'Hide details' : 'Show all sets' }}</button>
         </div>
-        <article v-for="exercise in session.exercises" :key="exercise.id" class="log-exercise">
+        <div v-if="!showSetLog" class="collapsed-log"><span>{{ session.progress.completed_sets }} completed</span><i></i><span>{{ incompleteSetCount }} remaining</span></div>
+        <article v-for="exercise in showSetLog ? session.exercises : []" :key="exercise.id" class="log-exercise">
           <div class="log-title"><strong>{{ exercise.exercise_name }}</strong><span>{{ exercise.completed_set_count }}/{{ exercise.sets.length }} complete</span></div>
           <div class="set-log">
             <button
@@ -155,7 +215,7 @@
               :class="{ completed: workoutSet.status === 'completed', current: isCurrent(exercise, workoutSet) }"
               @click="goToSet(exercise, workoutSet)"
             >
-              <small>Set {{ workoutSet.set_order }}</small>
+              <small>{{ setKindLabel(exercise, workoutSet) }}</small>
               <strong>{{ workoutSet.status === 'completed' ? `${workoutSet.actual_reps} × ${formatWeight(workoutSet.actual_weight_kg)}` : `${workoutSet.target_reps} × ${formatWeight(workoutSet.target_weight_kg)}` }}</strong>
               <span>{{ workoutSet.status }}</span>
             </button>
@@ -164,7 +224,8 @@
       </section>
 
       <section v-if="session.status === 'active'" class="session-actions motion-section">
-        <button class="danger-button" type="button" @click="abandonWorkout">Abandon workout</button>
+        <button class="danger-button" type="button" @click="abandonWorkout">Discard workout</button>
+        <p>Your progress is saved after every completed set.</p>
         <button class="finish-button" type="button" :disabled="finishing" @click="finishWorkout">
           {{ finishing ? 'Finishing…' : incompleteSetCount ? `Finish with ${incompleteSetCount} incomplete sets` : 'Finish workout' }}
         </button>
@@ -221,6 +282,7 @@ const session = ref(null)
 const loading = ref(true)
 const error = ref('')
 const savingSet = ref(false)
+const addingWarmup = ref(false)
 const finishing = ref(false)
 const actualReps = ref(0)
 const actualWeight = ref(0)
@@ -234,6 +296,7 @@ const readRestSoundPreference = () => {
 }
 const soundEnabled = ref(readRestSoundPreference())
 const showAddExercise = ref(false)
+const showSetLog = ref(false)
 const addingExercise = ref(false)
 const liveSuggestions = ref([])
 const liveSuggestionsLoading = ref(false)
@@ -261,7 +324,15 @@ const elapsedSeconds = computed(() => {
   const end = session.value.completed_at ? new Date(session.value.completed_at).getTime() : now.value
   return Math.max(0, Math.floor((end - new Date(session.value.started_at).getTime()) / 1000))
 })
-const elapsedLabel = computed(() => `${Math.floor(elapsedSeconds.value / 60)} min elapsed`)
+const elapsedClock = computed(() => {
+  const hours = Math.floor(elapsedSeconds.value / 3600)
+  const minutes = Math.floor((elapsedSeconds.value % 3600) / 60)
+  const seconds = elapsedSeconds.value % 60
+  return hours
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+})
+const completedExerciseCount = computed(() => session.value?.exercises.filter((exercise) => exercise.completed_set_count === workingSetCount(exercise)).length || 0)
 const latestCompletedSet = computed(() => {
   const completed = session.value?.exercises.flatMap((exercise) => exercise.sets).filter((item) => item.completed_at) || []
   return completed.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))[0] || null
@@ -269,6 +340,11 @@ const latestCompletedSet = computed(() => {
 const restRemaining = computed(() => {
   const endsAt = latestCompletedSet.value?.rest_ends_at
   return endsAt ? Math.max(0, Math.ceil((new Date(endsAt).getTime() - now.value) / 1000)) : 0
+})
+const restProgressStyle = computed(() => {
+  const total = Number(latestCompletedSet.value?.rest_seconds || 0)
+  const progress = total ? Math.max(0, Math.min(1, restRemaining.value / total)) : 0
+  return { '--rest-progress': `${progress * 360}deg` }
 })
 const canAddExercise = computed(() => Boolean(
   exerciseDraft.value.exercise_name
@@ -360,6 +436,11 @@ const completeCurrentSet = async () => {
   }
 }
 
+const applyTarget = () => {
+  actualReps.value = currentSet.value?.target_reps ?? 0
+  actualWeight.value = currentSet.value?.target_weight_kg ?? ''
+}
+
 const changePosition = async (exercise, workoutSet = null) => {
   if (session.value.status !== 'active') return
   error.value = ''
@@ -435,6 +516,25 @@ const addExerciseToSession = async () => {
   }
 }
 
+const addWarmupSet = async () => {
+  if (!currentExercise.value || addingWarmup.value) return
+  addingWarmup.value = true
+  error.value = ''
+  try {
+    const { data } = await api.addStrengthWarmupSet(
+      session.value.id,
+      currentExercise.value.id,
+      { rest_seconds: 60, switch_to: true },
+    )
+    session.value = data
+    syncInputs()
+  } catch (warmupError) {
+    error.value = warmupError?.response?.data?.detail || 'Could not add warm-up set.'
+  } finally {
+    addingWarmup.value = false
+  }
+}
+
 const finishWorkout = async () => {
   if (finishing.value) return
   if (incompleteSetCount.value && !window.confirm(`Finish with ${incompleteSetCount.value} incomplete sets?`)) return
@@ -485,6 +585,12 @@ const linkActivity = async (activityId) => {
 }
 
 const isCurrent = (exercise, workoutSet) => exercise.exercise_order === session.value.current_exercise_order && workoutSet.set_order === session.value.current_set_order
+const workingSetCount = (exercise) => exercise.sets.length - (exercise.warmup_set_count || 0)
+const setDisplayNumber = (exercise, workoutSet) => {
+  const sameKind = exercise.sets.filter((item) => item.set_type === workoutSet.set_type)
+  return Math.max(1, sameKind.findIndex((item) => item.id === workoutSet.id) + 1)
+}
+const setKindLabel = (exercise, workoutSet) => `${workoutSet.set_type === 'warmup' ? 'Warm-up' : 'Set'} ${setDisplayNumber(exercise, workoutSet)}`
 const adjustWeight = (amount) => { actualWeight.value = Math.max(0, Math.round((Number(actualWeight.value || 0) + amount) * 2) / 2) }
 const formatClock = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 const formatRest = (seconds) => seconds >= 60 ? formatClock(seconds) : `${seconds}s`
@@ -521,25 +627,14 @@ onBeforeUnmount(() => {
 .runner-progress > div span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f59e2f, #ffd17d); }
 .runner-progress small { color: var(--muted); }
 .error-card { border-color: rgba(248, 113, 113, .35); color: #fecaca; }
-.watch-callout { display: flex; gap: 16px; align-items: center; padding: 18px 20px; border-color: rgba(248, 113, 113, .18); background: linear-gradient(135deg, rgba(127, 29, 29, .12), rgba(255,255,255,.02)); }
 .watch-icon { display: grid; place-items: center; width: 44px; height: 52px; border: 2px solid #fb7185; border-radius: 13px; color: #fb7185; font-size: 20px; }
-.watch-callout p { margin-top: 4px; color: var(--muted-soft); line-height: 1.45; }
-.runner-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, .65fr); gap: 16px; }
 .current-set-card { display: grid; gap: 24px; border-color: rgba(255, 179, 79, .3); }
 .set-heading { display: flex; justify-content: space-between; gap: 20px; }
 .set-heading span { color: #ffbd69; font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
 .set-heading h2 { margin: 6px 0; font-family: var(--font-display); font-size: clamp(28px, 4vw, 40px); }
 .set-heading p { color: var(--muted); }
-.set-tools { display: grid; justify-items: end; align-content: start; gap: 8px; }
 .sound-toggle { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,.025); color: var(--muted); padding: 6px 9px; font-size: 11px; font-weight: 800; }
 .sound-toggle[aria-pressed="true"] { color: #baf3d9; border-color: rgba(52,211,153,.2); background: rgba(52,211,153,.055); }
-.rest-clock { display: grid; place-items: center; min-width: 96px; padding: 12px; border: 1px solid rgba(52, 211, 153, .25); border-radius: 16px; background: rgba(52, 211, 153, .07); }
-.rest-clock span { color: #8be0bd; }
-.rest-clock strong { font-size: 28px; color: #baf3d9; }
-.target-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; overflow: hidden; border-radius: 15px; border: 1px solid var(--border); background: var(--border); }
-.target-strip div { display: grid; gap: 4px; padding: 16px; background: rgba(8,14,24,.8); }
-.target-strip span, .actual-inputs label > span { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
-.target-strip strong { font-size: 19px; }
 .actual-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .actual-inputs label { display: grid; gap: 8px; }
 .stepper { display: grid; grid-template-columns: 48px 1fr 48px; overflow: hidden; border: 1px solid var(--border-strong); border-radius: 14px; }
@@ -555,7 +650,6 @@ onBeforeUnmount(() => {
 .exercise-switcher button b { color: var(--muted); }
 .exercise-switcher button.active { border-color: rgba(255, 179, 79, .36); background: rgba(255, 159, 47, .08); }
 .exercise-switcher button.done { opacity: .7; }
-.exercise-switcher > button.add-exercise-toggle { margin-top: 5px; border-style: dashed; color: #ffd18d; }
 .live-exercise-form { display: grid; gap: 11px; margin-top: 5px; padding: 13px; border: 1px solid rgba(255,179,79,.22); border-radius: 14px; background: rgba(255,159,47,.045); }
 .live-exercise-form label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .live-exercise-form input { width: 100%; min-width: 0; border: 1px solid var(--border-strong); border-radius: 9px; background: rgba(8,14,24,.85); color: var(--text); padding: 9px; text-transform: none; }
@@ -597,6 +691,168 @@ onBeforeUnmount(() => {
 .candidate > div { display: grid; gap: 3px; }
 .candidate span { color: var(--muted); font-size: 12px; }
 .candidate button { min-height: 38px; padding: 0 14px; border: 1px solid rgba(255,179,79,.3); border-radius: 10px; background: rgba(255,159,47,.1); color: #ffd18d; font-weight: 800; }
-@media (max-width: 820px) { .runner-grid { grid-template-columns: 1fr; } .linked-activity { grid-template-columns: 1fr 1fr; } .runner-head, .watch-link-copy { align-items: stretch; flex-direction: column; } }
-@media (max-width: 560px) { .actual-inputs, .target-strip { grid-template-columns: 1fr; } .runner-progress { width: 100%; } .session-actions { flex-direction: column-reverse; } .candidate { grid-template-columns: 1fr; } }
+@media (max-width: 820px) { .linked-activity { grid-template-columns: 1fr 1fr; } .watch-link-copy { align-items: stretch; flex-direction: column; } }
+@media (max-width: 560px) { .runner-progress { width: 100%; } .session-actions { flex-direction: column-reverse; } .candidate { grid-template-columns: 1fr; } }
+
+/* Live workout console */
+.runner-page { max-width: 1440px; gap: 20px; }
+.runner-head { position: relative; display: grid; grid-template-columns: minmax(260px, 1.2fr) auto minmax(240px, .8fr); align-items: center; gap: 30px; padding: 20px 24px; overflow: hidden; border-color: rgba(255, 179, 79, .16); background: radial-gradient(circle at 93% 0%, rgba(245, 158, 47, .12), transparent 31%), linear-gradient(135deg, rgba(17,28,48,.98), rgba(10,17,29,.98)); }
+.runner-head::after { content: ''; position: absolute; right: -80px; top: -165px; width: 310px; height: 310px; border: 1px solid rgba(255,190,105,.08); border-radius: 50%; box-shadow: 0 0 0 44px rgba(255,190,105,.025), 0 0 0 88px rgba(255,190,105,.018); pointer-events: none; }
+.runner-head-copy { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.runner-head-copy > div { min-width: 0; }
+.back-link { display: grid; place-items: center; flex: 0 0 auto; width: 64px; height: 48px; margin: 0; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.025); color: var(--muted-soft); font-size: 12px; text-decoration: none; }
+.runner-head h1 { max-width: 100%; margin: 3px 0 1px; overflow: hidden; font-size: clamp(26px, 3vw, 40px); text-overflow: ellipsis; white-space: nowrap; }
+.runner-head p { margin: 0; font-size: 12px; }
+.session-vitals { display: grid; grid-template-columns: repeat(3, auto); gap: 28px; padding: 0 24px; border-right: 1px solid var(--border); border-left: 1px solid var(--border); }
+.session-vitals div { display: grid; gap: 4px; }
+.session-vitals span, .progress-copy span { color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+.session-vitals strong { font-size: 19px; font-variant-numeric: tabular-nums; }
+.runner-progress { z-index: 1; display: grid; grid-template-columns: 1fr; gap: 9px; width: 100%; }
+.progress-copy { display: flex; align-items: baseline; justify-content: space-between; }
+.progress-copy strong { color: #ffc477; font-size: 18px; }
+.progress-track { height: 9px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.07); }
+.progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f59e2f, #ffd17d); box-shadow: 0 0 18px rgba(245,158,47,.28); transition: width .35s ease; }
+
+.runner-console { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(310px, .62fr); gap: 18px; align-items: start; }
+.work-zone { display: grid; gap: 14px; min-width: 0; }
+.rest-banner { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px; padding: 15px 18px; border-color: rgba(52,211,153,.27); background: linear-gradient(110deg, rgba(6,78,59,.18), rgba(12,20,34,.98) 62%); }
+.rest-dial { --rest-progress: 0deg; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: radial-gradient(circle, #0d1926 57%, transparent 59%), conic-gradient(#34d399 var(--rest-progress), rgba(52,211,153,.1) 0); box-shadow: inset 0 0 18px rgba(52,211,153,.08), 0 0 24px rgba(52,211,153,.08); }
+.rest-dial span { color: #baf3d9; font-size: 19px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.rest-copy { display: grid; gap: 3px; }
+.rest-copy > span { color: #5ee0b0; font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.rest-copy strong { font-size: 17px; }
+.rest-copy small { color: var(--muted); }
+.sound-toggle { white-space: nowrap; }
+
+.current-set-card { position: relative; gap: 26px; padding: clamp(22px, 3vw, 34px); overflow: hidden; border-color: rgba(255,179,79,.32); background: radial-gradient(circle at 100% 0%, rgba(245,158,47,.13), transparent 34%), linear-gradient(145deg, rgba(18,29,49,.98), rgba(10,17,29,.98)); box-shadow: 0 24px 55px rgba(0,0,0,.17); }
+.current-set-card::before { content: ''; position: absolute; top: 0; right: 0; left: 0; height: 2px; background: linear-gradient(90deg, transparent, #f6a137 45%, #ffd17d 70%, transparent); }
+.set-heading { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 20px; }
+.set-ordinal { display: grid; place-items: center; width: 92px; height: 104px; border: 1px solid rgba(255,184,91,.26); border-radius: 23px; background: rgba(255,159,47,.075); }
+.set-ordinal span, .set-ordinal small { color: #dcae73; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.set-ordinal strong { margin: -3px 0; color: #ffd18d; font-family: var(--font-display); font-size: 42px; line-height: 1; }
+.set-ordinal.warmup { border-color: rgba(96,165,250,.3); background: rgba(59,130,246,.08); }
+.set-ordinal.warmup span, .set-ordinal.warmup small, .set-ordinal.warmup strong { color: #a9ccff; }
+.set-heading-copy { min-width: 0; }
+.set-heading-copy > span { color: #ffbd69; font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.set-heading h2 { margin: 5px 0 3px; font-size: clamp(30px, 4vw, 48px); letter-spacing: -.025em; }
+.set-heading p { color: var(--muted-soft); }
+.target-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; min-height: 50px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 14px; background: rgba(5,10,18,.38); }
+.target-row .target-label { color: #e9b975; font-size: 10px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+.target-row strong { font-size: 13px; }
+.target-row i { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+.target-row button { margin-left: auto; border: 0; background: transparent; color: #e9b975; font-size: 11px; font-weight: 800; }
+.current-exercise-sets { display: grid; gap: 11px; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: rgba(5,10,18,.3); }
+.current-sets-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.current-sets-head > div { display: grid; gap: 3px; }
+.current-sets-head span { color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+.current-sets-head strong { font-size: 13px; }
+.current-sets-head button { min-height: 34px; padding: 0 12px; border: 1px solid rgba(96,165,250,.28); border-radius: 10px; background: rgba(59,130,246,.07); color: #b8d6ff; font-size: 11px; font-weight: 900; }
+.current-sets-head button:disabled { opacity: .55; }
+.current-set-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px; }
+.current-set-strip > button { position: relative; display: grid; gap: 4px; min-width: 0; padding: 11px 12px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,.025); color: var(--text); text-align: left; }
+.current-set-strip > button::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: transparent; }
+.current-set-strip span { color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+.current-set-strip strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.current-set-strip small { color: var(--muted); font-size: 9px; }
+.current-set-strip > button.current { border-color: rgba(255,179,79,.42); background: rgba(255,159,47,.075); }
+.current-set-strip > button.current::after { background: #f6a137; }
+.current-set-strip > button.completed { border-color: rgba(52,211,153,.2); background: rgba(52,211,153,.04); }
+.current-set-strip > button.completed small { color: #73d6ae; }
+.current-set-strip > button.warmup span { color: #8fbcf7; }
+.current-set-strip > button.warmup::after { background: rgba(96,165,250,.7); }
+.actual-inputs { grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; padding: 12px 0; }
+.performance-field { display: grid; justify-items: center; gap: 9px; }
+.performance-field > span { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.performance-field > small { color: var(--muted); font-size: 11px; }
+.field-divider { width: 1px; height: 110px; background: linear-gradient(transparent, var(--border-strong), transparent); }
+.stepper { grid-template-columns: 52px minmax(90px, 160px) 52px; overflow: visible; border: 0; border-radius: 0; }
+.stepper input { width: 100%; height: 88px; border-top: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong); border-radius: 0; background: rgba(5,10,18,.46); font-family: var(--font-display); font-size: clamp(38px, 5vw, 60px); font-variant-numeric: tabular-nums; outline: none; }
+.stepper input[type='number'] { appearance: textfield; -moz-appearance: textfield; padding: 0; text-align: center; }
+.stepper input[type='number']::-webkit-inner-spin-button,
+.stepper input[type='number']::-webkit-outer-spin-button { margin: 0; appearance: none; -webkit-appearance: none; }
+.stepper input:focus { border-color: rgba(255,184,91,.55); background: rgba(255,159,47,.045); }
+.stepper button { border: 1px solid var(--border-strong); background: rgba(255,255,255,.035); font-size: 26px; transition: border-color .15s, background .15s, transform .15s; }
+.stepper button:first-child { border-radius: 18px 0 0 18px; }
+.stepper button:last-child { border-radius: 0 18px 18px 0; }
+.stepper button:hover { border-color: rgba(255,184,91,.4); background: rgba(255,159,47,.09); }
+.stepper button:active { transform: scale(.96); }
+.weight-shortcuts { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: -8px; }
+.weight-shortcuts span { margin-right: 4px; color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+.weight-shortcuts button { min-width: 54px; height: 32px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,.025); color: var(--text-soft); font-size: 11px; font-weight: 800; }
+.complete-button { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 68px; padding: 11px 18px 11px 24px; text-align: left; box-shadow: 0 13px 30px rgba(217,119,22,.17); }
+.complete-button > div { display: grid; gap: 3px; }
+.complete-button span { font-size: 18px; line-height: 1.15; }
+.complete-button small { color: rgba(17,24,39,.7); font-size: 10px; line-height: 1.2; }
+.complete-button b { display: grid; place-items: center; flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; background: rgba(17,24,39,.14); font-size: 20px; }
+
+.exercise-switcher { position: sticky; top: 18px; gap: 9px; max-height: calc(100vh - 36px); padding: 18px; overflow-y: auto; }
+.queue-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 2px 10px; }
+.queue-head > div { display: grid; gap: 4px; }
+.queue-head span { color: #ffbd69; font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.queue-head strong { font-size: 19px; }
+.add-compact { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid rgba(255,179,79,.3); border-radius: 12px; background: rgba(255,159,47,.08); color: #ffd18d; font-size: 22px; }
+.exercise-switcher > button { grid-template-columns: 34px minmax(0,1fr) auto; min-height: 62px; padding: 10px; }
+.exercise-switcher > button > span { width: 32px; height: 32px; font-size: 12px; }
+.exercise-switcher button div strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exercise-switcher button b { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.exercise-switcher button.active { border-color: rgba(255,179,79,.48); background: linear-gradient(100deg, rgba(255,159,47,.13), rgba(255,159,47,.035)); box-shadow: inset 3px 0 #f5a13a; }
+.exercise-switcher button.active b { color: #ffd18d; }
+.exercise-switcher button.done > span { color: #76e2b8; background: rgba(52,211,153,.11); }
+.form-heading { display: grid; gap: 2px; }
+.form-heading span { color: var(--muted); font-size: 11px; }
+.watch-status { display: flex; align-items: center; gap: 11px; margin-top: 6px; padding: 13px 4px 2px; border-top: 1px solid var(--border); }
+.watch-status .watch-icon { flex: 0 0 auto; width: 34px; height: 40px; border-radius: 10px; font-size: 14px; }
+.watch-status > div { display: grid; gap: 3px; }
+.watch-status strong { font-size: 12px; }
+.watch-status small { color: var(--muted); font-size: 10px; line-height: 1.35; }
+
+.workout-detail { gap: 14px; }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.log-toggle { min-height: 38px; padding: 0 13px; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,.025); color: var(--text-soft); font-weight: 800; }
+.collapsed-log { display: flex; align-items: center; gap: 10px; color: var(--muted-soft); font-size: 12px; }
+.collapsed-log i { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+.session-actions { align-items: center; }
+.session-actions p { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+@media (max-width: 1080px) {
+  .runner-head { grid-template-columns: minmax(0, 1fr) minmax(220px, .6fr); }
+  .session-vitals { order: 3; grid-column: 1 / -1; justify-content: start; border: 0; padding: 10px 0 0; border-top: 1px solid var(--border); }
+  .runner-console { grid-template-columns: minmax(0, 1fr) 300px; }
+}
+@media (max-width: 820px) {
+  .runner-head { grid-template-columns: 1fr; }
+  .runner-head-copy { align-items: flex-start; }
+  .runner-progress { grid-column: 1; }
+  .session-vitals { grid-column: 1; }
+  .runner-console { grid-template-columns: 1fr; }
+  .exercise-switcher { position: static; max-height: none; }
+  .rest-banner { grid-template-columns: auto 1fr; }
+  .rest-banner .sound-toggle { grid-column: 2; justify-self: start; }
+}
+@media (max-width: 560px) {
+  .runner-page { gap: 12px; }
+  .runner-head { padding: 16px; gap: 16px; }
+  .back-link { width: 48px; height: 42px; overflow: hidden; font-size: 0; }
+  .back-link::first-letter { font-size: 18px; }
+  .session-vitals { justify-content: space-between; gap: 12px; }
+  .set-heading { grid-template-columns: auto 1fr; }
+  .set-heading > .sound-toggle { grid-column: 1 / -1; justify-self: start; }
+  .set-ordinal { width: 70px; height: 84px; border-radius: 18px; }
+  .set-ordinal strong { font-size: 34px; }
+  .actual-inputs { grid-template-columns: 1fr; gap: 18px; }
+  .field-divider { width: 100%; height: 1px; }
+  .stepper { grid-template-columns: 48px minmax(90px, 1fr) 48px; width: 100%; }
+  .stepper input { height: 74px; }
+  .weight-shortcuts { flex-wrap: wrap; }
+  .weight-shortcuts span { width: 100%; text-align: center; }
+  .target-row button { width: 100%; margin-left: 0; padding: 5px 0; text-align: left; }
+  .current-sets-head { align-items: flex-start; }
+  .current-set-strip { display: flex; padding-bottom: 4px; overflow-x: auto; }
+  .current-set-strip > button { flex: 0 0 132px; }
+  .rest-banner { grid-template-columns: auto 1fr; gap: 12px; }
+  .rest-dial { width: 62px; height: 62px; }
+  .rest-copy strong { font-size: 14px; }
+  .session-actions { align-items: stretch; }
+  .session-actions p { margin: 0; text-align: center; }
+}
 </style>

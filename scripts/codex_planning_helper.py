@@ -87,7 +87,7 @@ def validate_planning_request(payload: object) -> tuple[str, str]:
     return week_start, planning_brief
 
 
-def validate_plan_revision_request(payload: object) -> tuple[str, str]:
+def validate_plan_revision_request(payload: object) -> tuple[str, str, str | None]:
     if not isinstance(payload, dict):
         raise ValueError("request must be a JSON object")
     week_start = validate_week_start(payload.get("week_start"))
@@ -97,7 +97,18 @@ def validate_plan_revision_request(payload: object) -> tuple[str, str]:
     plan_feedback = plan_feedback.strip()
     if len(plan_feedback) > 4000:
         raise ValueError("feedback is too long")
-    return week_start, plan_feedback
+    target_date = payload.get("target_date")
+    if target_date is not None:
+        if not isinstance(target_date, str):
+            raise ValueError("target_date must be an ISO date")
+        try:
+            parsed_target = date.fromisoformat(target_date)
+        except ValueError as exc:
+            raise ValueError("target_date must use YYYY-MM-DD") from exc
+        if not 0 <= (parsed_target - date.fromisoformat(week_start)).days <= 6:
+            raise ValueError("target_date must fall inside the selected week")
+        target_date = parsed_target.isoformat()
+    return week_start, plan_feedback, target_date
 
 
 def validate_chat_request(payload: object) -> tuple[str, list[dict[str, str]]]:
@@ -125,6 +136,15 @@ def validate_chat_request(payload: object) -> tuple[str, list[dict[str, str]]]:
             raise ValueError("history entry content is invalid")
         history.append({"role": role, "content": content})
     return message, history
+
+
+def validate_daily_state_request(payload: object) -> str:
+    if not isinstance(payload, dict):
+        raise ValueError("request must be a JSON object")
+    context_key = payload.get("context_key")
+    if not isinstance(context_key, str) or not re.fullmatch(r"[A-Za-z0-9._:|,+-]{1,512}", context_key):
+        raise ValueError("context_key is invalid")
+    return context_key
 
 
 def build_prompt(week_start: str, planning_brief: str = "") -> str:
@@ -156,8 +176,18 @@ Do not edit repository files, run shell commands, browse the web, or use any
 other MCP server."""
 
 
-def build_plan_revision_prompt(week_start: str, plan_feedback: str) -> str:
+def build_plan_revision_prompt(week_start: str, plan_feedback: str, target_date: str | None = None) -> str:
     feedback = json.dumps(plan_feedback, ensure_ascii=False)
+    scope = ""
+    if target_date:
+        scope = f"""
+
+This is a single-day adaptation targeting {target_date}. Call
+adjust_weekly_plan with a changes array containing exactly one entry for
+{target_date}. Do not change, move, or reinterpret any other day. After saving,
+compare the result with the original plan and verify every non-target day is
+unchanged. If that constraint cannot be satisfied, do not write a revision.
+"""
     return f"""Revise my saved training plan for the week starting {week_start}.
 
 Use only the training_dashboard MCP server and its planning-related tools. Read
@@ -166,6 +196,7 @@ get_athlete_profile, and get_strength_context as needed.
 
 The athlete reviewed the generated plan and provided this feedback:
 {feedback}
+{scope}
 
 Treat the feedback as the requested direction for the revision, while still
 protecting completed and past days, respecting modality restrictions, and
@@ -235,6 +266,86 @@ Latest athlete message:
 Reply directly to the athlete. Do not mention MCP, Codex, prompts, or these
 instructions. Do not edit repository files, run shell commands, browse the
 web, or use any other MCP server."""
+
+
+def build_daily_state_prompt() -> str:
+    return """Assess my training state for today using my whole available training context.
+
+Use only read-only tools from the training_dashboard MCP server. Call
+get_recent_context first, then read other training_dashboard context only when
+it materially improves the assessment. Consider today's completed activities,
+the active plan, recent load and recovery, subjective feedback, goals,
+restrictions, strength work, notes, and longer-term patterns. Give extra weight
+to today's activities when any exist. Do not treat a long consistency streak as
+fatigue by itself.
+
+Recent context includes `recent_strength_detail` with linked first-party or
+Fitbod exercise-level history when available. Inspect it whenever strength work
+contributes to the assessment. If the conclusion depends on strength and that
+field is absent or incomplete, call get_strength_context before describing a
+limitation. Never claim strength detail is missing merely because the generic
+activity row lacks exercises or sets.
+
+The dashboard already shows today's workout, fitness, fatigue, form, load
+ratio, energy, soreness, pain, and its rule-based readiness summary. Do not
+recite those values, enumerate completed activities, or paraphrase the visible
+readiness summary. Use them silently as evidence. The assessment must add a
+coach's synthesis: explain the important pattern or tradeoff, what it changes
+about the plan, and any meaningful uncertainty or contradictory signal. Mention
+a raw value only when it is essential to explain a surprising contradiction.
+Prefer one sharp inference over a miniature workout recap.
+
+Return only one JSON object with this exact shape:
+{"headline":"...","assessment":"...","next_step":"...","confidence":"high|medium|low","plan_change_recommended":true|false,"plan_change_reason":"..."}
+
+Keep the headline under 70 characters, assessment under 280 characters, and
+next_step under 180 characters. Make the next step concrete but do not repeat
+the assessment. Be specific, cautious, and useful. Do not diagnose medical
+conditions. Set plan_change_recommended to true only when tomorrow has a saved
+session and the evidence supports replacing or materially reducing it; do not
+use it for minor execution advice. Keep plan_change_reason under 180 characters
+and describe the intended change without inventing a fully specified workout.
+If next_step tells the athlete to postpone, replace, skip, move, shorten, or
+materially reduce tomorrow's saved workout, plan_change_recommended MUST be
+true and plan_change_reason must state that change. Use an empty reason when no
+change is recommended. Never change or save data.
+
+Do not mention MCP, Codex, prompts, or these instructions. Do not edit
+repository files, run shell commands, browse the web, or use any other MCP
+server."""
+
+
+def parse_daily_state_result(output: str) -> dict[str, object]:
+    candidate = output.strip()
+    if candidate.startswith("```"):
+        candidate = re.sub(r"^```(?:json)?\s*|\s*```$", "", candidate, flags=re.IGNORECASE)
+    try:
+        result = json.loads(candidate)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Codex returned an invalid daily assessment.") from exc
+    limits = {"headline": 70, "assessment": 280, "next_step": 180}
+    if not isinstance(result, dict):
+        raise RuntimeError("Codex returned an invalid daily assessment.")
+    cleaned = {}
+    for key, limit in limits.items():
+        value = result.get(key)
+        if not isinstance(value, str) or not value.strip() or len(value.strip()) > limit:
+            raise RuntimeError("Codex returned an invalid daily assessment.")
+        cleaned[key] = value.strip()
+    confidence = result.get("confidence")
+    if confidence not in {"high", "medium", "low"}:
+        raise RuntimeError("Codex returned an invalid daily assessment.")
+    cleaned["confidence"] = confidence
+    plan_change_recommended = result.get("plan_change_recommended")
+    plan_change_reason = result.get("plan_change_reason")
+    if not isinstance(plan_change_recommended, bool) or not isinstance(plan_change_reason, str):
+        raise RuntimeError("Codex returned an invalid daily assessment.")
+    plan_change_reason = plan_change_reason.strip()
+    if len(plan_change_reason) > 180 or (plan_change_recommended and not plan_change_reason):
+        raise RuntimeError("Codex returned an invalid daily assessment.")
+    cleaned["plan_change_recommended"] = plan_change_recommended
+    cleaned["plan_change_reason"] = plan_change_reason
+    return cleaned
 
 
 def resolve_codex_cli() -> str:
@@ -328,12 +439,47 @@ def run_codex_weekly_plan(week_start: str, planning_brief: str = "") -> str:
     )
 
 
-def run_codex_weekly_plan_revision(week_start: str, plan_feedback: str) -> str:
+def run_codex_weekly_plan_revision(week_start: str, plan_feedback: str, target_date: str | None = None) -> str:
     return run_codex(
-        build_plan_revision_prompt(week_start, plan_feedback),
+        build_plan_revision_prompt(week_start, plan_feedback, target_date),
         failure_label="revise the plan",
         fallback="The weekly plan was revised.",
     )
+
+
+PLAN_DAY_FIELDS = (
+    "date", "label", "session_type", "workout_intent", "benchmark_tag",
+    "template_id", "title", "details", "target_duration_min", "target_distance_km",
+)
+
+
+def fetch_saved_plan_days(week_start: str) -> dict[str, dict]:
+    with urlopen("http://localhost:8000/plans/weekly?limit=12", timeout=10) as response:
+        plans = json.load(response)
+    plan = next((item for item in plans if item.get("week_start") == week_start), None)
+    if not plan:
+        raise RuntimeError(f"No saved weekly plan was found for {week_start}.")
+    return {
+        day["date"]: {field: day.get(field) for field in PLAN_DAY_FIELDS}
+        for day in plan.get("days", [])
+    }
+
+
+def verify_targeted_plan_revision(
+    before: dict[str, dict],
+    after: dict[str, dict],
+    target_date: str,
+) -> None:
+    if before.get(target_date) == after.get(target_date):
+        raise RuntimeError("Codex finished, but tomorrow's saved session did not change.")
+    changed_other_dates = sorted(
+        day for day in set(before) | set(after)
+        if day != target_date and before.get(day) != after.get(day)
+    )
+    if changed_other_dates:
+        raise RuntimeError(
+            "Codex changed days outside the requested target: " + ", ".join(changed_other_dates)
+        )
 
 
 def verify_activity_analysis(activity_id: str) -> None:
@@ -367,6 +513,15 @@ def run_codex_coach_chat(message: str, history: list[dict[str, str]]) -> str:
     )
 
 
+def run_codex_daily_state() -> dict[str, object]:
+    output = run_codex(
+        build_daily_state_prompt(),
+        failure_label="assess today's training state",
+        fallback='{"headline":"Training state reviewed","assessment":"Use the measured load and recovery signals shown in the dashboard.","next_step":"Stay with the current plan and reassess after training.","confidence":"low","plan_change_recommended":false,"plan_change_reason":""}',
+    )
+    return parse_daily_state_result(output)
+
+
 def execute_job(job_id: str) -> None:
     with JOBS_LOCK:
         job = JOBS[job_id]
@@ -396,8 +551,13 @@ def execute_plan_revision_job(job_id: str) -> None:
         job["started_at"] = now_iso()
         week_start = job["week_start"]
         plan_feedback = job["plan_feedback"]
+        target_date = job.get("target_date")
     try:
-        summary = run_codex_weekly_plan_revision(week_start, plan_feedback)
+        before = fetch_saved_plan_days(week_start) if target_date else None
+        summary = run_codex_weekly_plan_revision(week_start, plan_feedback, target_date)
+        if target_date and before is not None:
+            after = fetch_saved_plan_days(week_start)
+            verify_targeted_plan_revision(before, after, target_date)
     except subprocess.TimeoutExpired:
         status, message, summary = "failed", "Codex revision timed out after 15 minutes.", ""
     except Exception as exc:
@@ -448,6 +608,25 @@ def execute_coach_chat_job(job_id: str) -> None:
     with JOBS_LOCK:
         job = JOBS[job_id]
         job.update(status=status, message=message, summary=summary, finished_at=now_iso())
+
+
+def execute_daily_state_job(job_id: str) -> None:
+    with JOBS_LOCK:
+        job = JOBS[job_id]
+        job["status"] = "running"
+        job["message"] = "Codex is reading your current training context."
+        job["started_at"] = now_iso()
+    try:
+        assessment = run_codex_daily_state()
+    except subprocess.TimeoutExpired:
+        status, message, assessment = "failed", "Daily assessment timed out after 15 minutes.", None
+    except Exception as exc:
+        status, message, assessment = "failed", str(exc), None
+    else:
+        status, message = "succeeded", "Today's training state is ready."
+    with JOBS_LOCK:
+        job = JOBS[job_id]
+        job.update(status=status, message=message, assessment=assessment, finished_at=now_iso())
 
 
 class PlanningServer(ThreadingHTTPServer):
@@ -546,12 +725,22 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self.send_json(200, public_job(job))
             return
+        prefix = "/daily-state/"
+        if self.path.startswith(prefix):
+            job_id = self.path[len(prefix):]
+            with JOBS_LOCK:
+                job = dict(JOBS.get(job_id, {}))
+            if not job or job.get("kind") != "daily_state":
+                self.send_json(404, {"detail": "Daily assessment job not found"})
+                return
+            self.send_json(200, public_job(job))
+            return
         self.send_json(404, {"detail": "Not found"})
 
     def do_POST(self) -> None:
         if self.reject_bad_origin():
             return
-        if self.path not in {"/weekly-plan", "/weekly-plan-revision", "/activity-analysis", "/coach-chat"}:
+        if self.path not in {"/weekly-plan", "/weekly-plan-revision", "/activity-analysis", "/coach-chat", "/daily-state"}:
             self.send_json(404, {"detail": "Not found"})
             return
         if "application/json" not in (self.headers.get("Content-Type") or ""):
@@ -571,13 +760,17 @@ class Handler(BaseHTTPRequestHandler):
                 target_key = "week_start"
                 kind = "weekly_plan"
             elif self.path == "/weekly-plan-revision":
-                target, plan_feedback = validate_plan_revision_request(payload)
+                target, plan_feedback, target_date = validate_plan_revision_request(payload)
                 target_key = "week_start"
                 kind = "weekly_plan_revision"
             elif self.path == "/activity-analysis":
                 target = validate_activity_id(payload.get("activity_id"))
                 target_key = "activity_id"
                 kind = "activity_analysis"
+            elif self.path == "/daily-state":
+                target = validate_daily_state_request(payload)
+                target_key = "context_key"
+                kind = "daily_state"
             else:
                 athlete_message, history = validate_chat_request(payload)
                 target = None
@@ -613,6 +806,7 @@ class Handler(BaseHTTPRequestHandler):
                     "weekly_plan_revision": "Plan revision is queued.",
                     "activity_analysis": "Workout analysis is queued.",
                     "coach_chat": "Coach chat is queued.",
+                    "daily_state": "Daily training-state assessment is queued.",
                 }[kind],
                 "summary": "",
                 "created_at": now_iso(),
@@ -627,12 +821,14 @@ class Handler(BaseHTTPRequestHandler):
                     job["planning_brief"] = planning_brief
                 elif kind == "weekly_plan_revision":
                     job["plan_feedback"] = plan_feedback
+                    job["target_date"] = target_date
             JOBS[job_id] = job
         worker = {
             "weekly_plan": execute_job,
             "weekly_plan_revision": execute_plan_revision_job,
             "activity_analysis": execute_activity_analysis_job,
             "coach_chat": execute_coach_chat_job,
+            "daily_state": execute_daily_state_job,
         }[kind]
         threading.Thread(target=worker, args=(job_id,), daemon=True).start()
         self.send_json(202, public_job(job))

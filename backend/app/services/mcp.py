@@ -752,8 +752,12 @@ def call_mcp_tool(
         else:
             raise ValueError(f"Unknown tool: {name}")
 
+        # MCP structuredContent must be a JSON object. Several read tools
+        # naturally return a top-level list; wrapping those prevents clients
+        # from rejecting an otherwise valid tool response.
+        structured_data = data if isinstance(data, dict) else {"items": data}
         return {
-            "structuredContent": data,
+            "structuredContent": structured_data,
             "content": [{"type": "text", "text": message}],
         }
     finally:

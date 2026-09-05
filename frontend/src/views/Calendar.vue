@@ -35,13 +35,25 @@
 
     <section v-if="summary" class="load-summary motion-section" aria-label="Period training summary">
       <article><span>Sessions</span><strong>{{ summary.total_sessions }}</strong><small>completed</small></article>
-      <article><span>Training time</span><strong>{{ formatHours(summary.total_duration_min) }}</strong><small>completed volume</small></article>
-      <article class="distance-summary" tabindex="0" aria-describedby="distance-sport-breakdown">
+      <article class="metric-summary" tabindex="0" aria-describedby="time-sport-breakdown">
+        <span>Training time</span><strong>{{ formatHours(summary.total_duration_min) }}</strong><small>completed volume</small>
+        <div id="time-sport-breakdown" class="metric-breakdown" role="tooltip">
+          <div class="metric-breakdown-title">Training time by type</div>
+          <div v-if="durationBySport.length" class="metric-breakdown-list">
+            <div v-for="sport in durationBySport" :key="sport.type" class="metric-breakdown-row">
+              <span><i :class="`tone-${sport.tone}`"></i>{{ sport.label }}</span>
+              <strong>{{ formatHours(sport.duration) }}</strong>
+            </div>
+          </div>
+          <small v-else>No training time recorded in this period.</small>
+        </div>
+      </article>
+      <article class="metric-summary" tabindex="0" aria-describedby="distance-sport-breakdown">
         <span>Distance</span><strong>{{ formatDistance(summary.total_distance_km) }}</strong><small>{{ activeMode === 'week' ? 'covered this week' : 'all sports' }}</small>
-        <div id="distance-sport-breakdown" class="distance-breakdown" role="tooltip">
-          <div class="distance-breakdown-title">Distance by sport</div>
-          <div v-if="distanceBySport.length" class="distance-breakdown-list">
-            <div v-for="sport in distanceBySport" :key="sport.type" class="distance-breakdown-row">
+        <div id="distance-sport-breakdown" class="metric-breakdown" role="tooltip">
+          <div class="metric-breakdown-title">Distance by sport</div>
+          <div v-if="distanceBySport.length" class="metric-breakdown-list">
+            <div v-for="sport in distanceBySport" :key="sport.type" class="metric-breakdown-row">
               <span><i :class="`tone-${sport.tone}`"></i>{{ sport.label }}</span>
               <strong>{{ formatDistance(sport.distance) }}</strong>
             </div>
@@ -200,7 +212,9 @@ const buildEmptyWeek = (weekStart) => {
 }
 const activeMonthKey = computed(() => format(anchorDate.value, 'yyyy-MM'))
 const activeWeekStart = computed(() => format(startOfWeek(anchorDate.value, { weekStartsOn: 1 }), 'yyyy-MM-dd'))
-const activeWeek = computed(() => weeks.value.find((week) => week.week_start === activeWeekStart.value) || buildEmptyWeek(activeWeekStart.value))
+const activeWeek = computed(() => weeks.value.find((week) => week.week_start === activeWeekStart.value)
+  || monthData.value?.weeks?.find((week) => week.week_start === activeWeekStart.value)
+  || buildEmptyWeek(activeWeekStart.value))
 const planDays = computed(() => plans.value.flatMap((plan) => plan.days || []))
 const planMap = computed(() => Object.fromEntries(planDays.value.map((day) => [day.date, day])))
 const displayDays = computed(() => activeMode.value === 'week' ? activeWeek.value?.days || [] : (monthData.value?.weeks || []).flatMap((week) => week.days))
@@ -246,6 +260,18 @@ const distanceBySport = computed(() => {
     .map(([type, distance]) => ({ type, distance, label: sportLabel(type), tone: activityTone(type) }))
     .sort((a, b) => b.distance - a.distance)
 })
+const durationBySport = computed(() => {
+  const totals = new Map()
+  periodActivities.value.forEach((activity) => {
+    const duration = Number(activity.duration_min || 0)
+    if (duration <= 0) return
+    const type = String(activity.type || 'Other')
+    totals.set(type, (totals.get(type) || 0) + duration)
+  })
+  return [...totals.entries()]
+    .map(([type, duration]) => ({ type, duration, label: sportLabel(type), tone: activityTone(type) }))
+    .sort((a, b) => b.duration - a.duration)
+})
 const periodTitle = computed(() => activeMode.value === 'month' ? format(anchorDate.value, 'MMMM yyyy') : `${format(safeDate(activeWeekStart.value), 'MMM d')} – ${format(endOfWeek(safeDate(activeWeekStart.value), { weekStartsOn: 1 }), 'MMM d, yyyy')}`)
 const periodContext = computed(() => activeMode.value === 'month' ? `${monthData.value?.weeks?.length || 0} training weeks` : activeWeekStart.value === format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd') ? 'Current training week' : 'Training week')
 const selectedDayLabel = computed(() => selectedDate.value === todayKey ? 'Today' : format(safeDate(selectedDate.value), 'EEEE'))
@@ -287,7 +313,7 @@ const loadMonth = async () => { const { data } = await api.getCalendarMonth({ mo
 const reload = async () => { loading.value = true; error.value = ''; try { await Promise.all([loadWeek(), loadMonth(), fetchPlans()]); syncSelectedDate() } catch (err) { error.value = err?.response?.data?.detail || 'Check the connection and try again.' } finally { loading.value = false } }
 const syncSelectedDate = () => { if (displayDays.value.some((day) => day.date === selectedDate.value)) return; selectedDate.value = activeMode.value === 'week' ? activeWeekStart.value : format(anchorDate.value, 'yyyy-MM-dd') }
 const setMode = async (mode) => { activeMode.value = mode; syncSelectedDate() }
-const shiftPeriod = async (offset) => { anchorDate.value = activeMode.value === 'month' ? addMonths(anchorDate.value, offset) : addDays(anchorDate.value, offset * 7); loading.value = true; error.value = ''; try { if (activeMode.value === 'month') await loadMonth(); syncSelectedDate() } catch (err) { error.value = err?.response?.data?.detail || 'Could not load this period.' } finally { loading.value = false } }
+const shiftPeriod = async (offset) => { anchorDate.value = activeMode.value === 'month' ? addMonths(anchorDate.value, offset) : addDays(anchorDate.value, offset * 7); loading.value = true; error.value = ''; try { if (activeMode.value === 'month' || monthData.value?.month !== activeMonthKey.value) await loadMonth(); syncSelectedDate() } catch (err) { error.value = err?.response?.data?.detail || 'Could not load this period.' } finally { loading.value = false } }
 const goToday = async () => { anchorDate.value = new Date(); selectedDate.value = todayKey; if (activeMode.value === 'month' && monthData.value?.month !== activeMonthKey.value) { loading.value = true; try { await loadMonth() } finally { loading.value = false } } }
 const selectDate = (date) => { selectedDate.value = date }
 const planFor = (date) => planMap.value[date] || null
@@ -345,17 +371,17 @@ onMounted(reload)
 .load-summary article { min-width: 0; padding: 12px 16px; background: rgba(17,24,38,.94); }
 .load-summary article:first-child { border-radius: 13px 0 0 13px; }.load-summary article:last-child { border-radius: 0 13px 13px 0; }
 .load-summary span, .load-summary small { display: block; color: var(--muted); font-size: 10px; }.load-summary span { font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }.load-summary strong { display: block; margin: 2px 0; font-family: var(--font-display); font-size: 18px; }
-.distance-summary { position: relative; outline: none; cursor: default; }
-.distance-summary:focus-visible { box-shadow: inset 0 0 0 2px var(--accent-strong); }
-.distance-breakdown { position: absolute; z-index: 20; top: calc(100% + 8px); left: 12px; width: min(250px,calc(100vw - 48px)); padding: 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: #111a2a; box-shadow: 0 14px 34px rgba(0,0,0,.38); opacity: 0; visibility: hidden; transform: translateY(-4px); pointer-events: none; transition: opacity .14s ease,transform .14s ease,visibility .14s; }
-.distance-summary:hover .distance-breakdown, .distance-summary:focus .distance-breakdown, .distance-summary:focus-within .distance-breakdown { opacity: 1; visibility: visible; transform: translateY(0); }
-.distance-breakdown-title { margin-bottom: 8px; color: var(--text-soft); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
-.distance-breakdown-list { display: grid; gap: 7px; }
-.distance-breakdown-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.distance-breakdown-row > span { display: flex; align-items: center; gap: 7px; color: var(--text-soft); font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-.distance-breakdown-row i { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--muted); }.distance-breakdown-row i.tone-ride { background: var(--ride); }.distance-breakdown-row i.tone-run { background: var(--run); }.distance-breakdown-row i.tone-strength { background: var(--strength); }.distance-breakdown-row i.tone-walk { background: var(--muted-soft); }
-.distance-breakdown-row strong { margin: 0; font-family: inherit; font-size: 11px; white-space: nowrap; }
-.distance-breakdown > small { color: var(--muted-soft); font-size: 11px; }
+.metric-summary { position: relative; outline: none; cursor: default; }
+.metric-summary:focus-visible { box-shadow: inset 0 0 0 2px var(--accent-strong); }
+.metric-breakdown { position: absolute; z-index: 20; top: calc(100% + 8px); left: 12px; width: min(250px,calc(100vw - 48px)); padding: 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: #111a2a; box-shadow: 0 14px 34px rgba(0,0,0,.38); opacity: 0; visibility: hidden; transform: translateY(-4px); pointer-events: none; transition: opacity .14s ease,transform .14s ease,visibility .14s; }
+.metric-summary:hover .metric-breakdown, .metric-summary:focus .metric-breakdown, .metric-summary:focus-within .metric-breakdown { opacity: 1; visibility: visible; transform: translateY(0); }
+.metric-breakdown-title { margin-bottom: 8px; color: var(--text-soft); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.metric-breakdown-list { display: grid; gap: 7px; }
+.metric-breakdown-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.metric-breakdown-row > span { display: flex; align-items: center; gap: 7px; color: var(--text-soft); font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.metric-breakdown-row i { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--muted); }.metric-breakdown-row i.tone-ride { background: var(--ride); }.metric-breakdown-row i.tone-run { background: var(--run); }.metric-breakdown-row i.tone-strength { background: var(--strength); }.metric-breakdown-row i.tone-walk { background: var(--muted-soft); }
+.metric-breakdown-row strong { margin: 0; font-family: inherit; font-size: 11px; white-space: nowrap; }
+.metric-breakdown > small { color: var(--muted-soft); font-size: 11px; }
 .calendar-layout { display: grid; grid-template-columns: minmax(0,1fr) 310px; gap: 14px; align-items: start; }
 .calendar-surface, .selected-panel, .discipline-panel { border: 1px solid var(--border); border-radius: 14px; background: rgba(17,24,38,.9); overflow: hidden; }
 .weekday-row { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)) 126px; border-bottom: 1px solid var(--border); }

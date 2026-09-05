@@ -2,19 +2,28 @@
   <div class="strength-page motion-page">
     <section class="page-head strength-hero motion-section">
       <div class="strength-hero-copy">
-        <div class="page-eyebrow">Strength training</div>
-        <h1 class="page-title">Strength</h1>
-        <p class="page-sub">Review recent gym work, movement balance, and measured lift progress alongside your endurance training.</p>
+        <div class="strength-mark" aria-hidden="true">
+          <span></span><i></i><b></b><i></i><span></span>
+        </div>
+        <div>
+          <div class="page-eyebrow">Performance · Strength</div>
+          <h1 class="page-title">Build strength that carries over.</h1>
+          <p class="page-sub">See consistency, training load, and lift progression without losing the session-level detail.</p>
+        </div>
       </div>
       <div class="strength-actions">
-        <router-link to="/strength/workouts" class="strength-action strength-action-primary">Plan &amp; train</router-link>
-        <router-link to="/sync" class="strength-action">Import workouts</router-link>
+        <router-link to="/sync" class="strength-action">Import</router-link>
+        <router-link to="/strength/workouts" class="strength-action strength-action-primary"><span aria-hidden="true">＋</span> Start workout</router-link>
       </div>
     </section>
 
     <section class="strength-toolbar motion-section" aria-label="Strength filters">
+      <div class="toolbar-intro">
+        <span class="toolbar-kicker">Analysis scope</span>
+        <strong>{{ selectedWeeks }} week view</strong>
+      </div>
       <div class="toolbar-block">
-        <span class="toolbar-label">Window</span>
+        <span class="toolbar-label">Time range</span>
         <div class="range-switch">
           <button
             v-for="option in weekOptions"
@@ -30,7 +39,7 @@
 
       <label class="toolbar-select">
         <span class="toolbar-label">Body-part focus</span>
-        <select v-model="selectedBodyPart">
+        <select v-model="selectedBodyPart" aria-label="Body-part focus">
           <option v-for="option in bodyPartOptions" :key="option.value" :value="option.value">
             {{ option.label }}
           </option>
@@ -39,7 +48,7 @@
 
       <label class="toolbar-select">
         <span class="toolbar-label">Exercise trend</span>
-        <select v-model="selectedExercise">
+        <select v-model="selectedExercise" aria-label="Exercise trend">
           <option value="">Most recurring lift</option>
           <option v-for="option in exerciseOptions" :key="option.exercise_name" :value="option.exercise_name">
             {{ option.exercise_name }}
@@ -58,15 +67,16 @@
       </div>
 
       <template v-else>
-        <section v-if="latestSession" class="card latest-session motion-section">
+        <section class="overview-grid motion-section">
+        <article v-if="latestSession" class="card latest-session">
           <div class="latest-session-main">
             <div class="section-head">
               <div>
-                <div class="card-title">Latest session</div>
+                <div class="card-title">Latest workout</div>
                 <h2 class="latest-session-title">{{ latestSession.title || 'Strength workout' }}</h2>
-                <p class="section-copy">{{ formatDateTime(latestSession.workout_timestamp) }} · Completed</p>
+                <p class="section-copy">{{ formatDateTime(latestSession.workout_timestamp) }}</p>
               </div>
-              <span class="status-badge status-complete"><span aria-hidden="true">✓</span> Completed</span>
+              <span class="status-badge status-complete"><span aria-hidden="true">✓</span> Logged</span>
             </div>
             <div class="latest-session-metrics">
               <div><span>Duration</span><strong>{{ formatDuration(latestSession) }}</strong></div>
@@ -75,21 +85,24 @@
               <div><span>Tracked volume</span><strong>{{ formatWorkload(latestSession.total_volume_kg) }}</strong></div>
             </div>
             <p class="latest-session-focus">{{ latestSession.major_exercises.join(' · ') }}</p>
+            <div class="next-step" aria-label="Recommended next action">
+              <div>
+                <span class="next-step-label">Next insight</span>
+                <strong>{{ latestSessionNextStep.title }}</strong>
+                <p>{{ latestSessionNextStep.copy }}</p>
+              </div>
+              <router-link :to="`/activities/${latestSession.matched_activity.id}`" class="detail-link">Open workout <span aria-hidden="true">↗</span></router-link>
+            </div>
           </div>
-          <aside class="next-step" aria-label="Recommended next action">
-            <span class="next-step-label">Next useful action</span>
-            <strong>{{ latestSessionNextStep.title }}</strong>
-            <p>{{ latestSessionNextStep.copy }}</p>
-            <router-link :to="`/activities/${latestSession.matched_activity.id}`" class="detail-link">Review session <span aria-hidden="true">→</span></router-link>
-          </aside>
-        </section>
+        </article>
 
-        <section class="summary-ribbon motion-section" :aria-busy="loading ? 'true' : 'false'">
+        <div class="summary-ribbon" :aria-busy="loading ? 'true' : 'false'">
           <article v-for="card in summaryCards" :key="card.label" class="card summary-tile">
             <span class="summary-label">{{ card.label }}</span>
             <strong class="summary-value">{{ card.value }}</strong>
             <small class="summary-copy">{{ card.copy }}</small>
           </article>
+        </div>
         </section>
 
         <section v-if="overview.important_prs?.length" class="card pr-stage motion-section">
@@ -114,7 +127,7 @@
             <div class="section-head">
               <div>
                 <div class="card-title">Weekly training volume</div>
-                <div class="section-copy">Tracked external load × repetitions. Session ticks appear below the curve.</div>
+                <div class="section-copy">Total lifted each week, with completed sessions shown inside the columns.</div>
               </div>
               <div class="section-callout">
                 <strong>{{ strongestWeek?.label || 'No peak week' }}</strong>
@@ -123,44 +136,27 @@
             </div>
 
             <div class="trend-frame">
-              <svg class="weekly-chart" viewBox="0 0 860 320" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Weekly strength volume and session count trend">
+              <svg class="weekly-chart" viewBox="0 0 860 280" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Weekly strength volume and session count trend">
                 <defs>
-                  <linearGradient id="strengthVolumeArea" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#ffb956" stop-opacity="0.42" />
-                    <stop offset="100%" stop-color="#ffb956" stop-opacity="0.02" />
-                  </linearGradient>
-                  <linearGradient id="strengthVolumeStroke" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#ff9f2f" />
-                    <stop offset="100%" stop-color="#ffd07a" />
+                  <linearGradient id="strengthVolumeBar" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#ffc66f" />
+                    <stop offset="100%" stop-color="#d98627" />
                   </linearGradient>
                 </defs>
-                <rect x="0" y="0" width="860" height="320" rx="30" class="weekly-chart-bg" />
+                <rect x="0" y="0" width="860" height="280" rx="26" class="weekly-chart-bg" />
                 <g class="weekly-grid">
                   <line v-for="line in weeklyGuideLines" :key="line" x1="40" :y1="line" x2="820" :y2="line" />
                 </g>
-                <path v-if="weeklyAreaPath" :d="weeklyAreaPath" class="weekly-area" />
-                <path v-if="weeklyLinePath" :d="weeklyLinePath" class="weekly-line" />
-                <g v-for="point in weeklyChartPoints" :key="point.key" class="weekly-point">
-                  <circle :cx="point.x" :cy="point.y" r="5.5" class="weekly-dot" />
-                </g>
-                <g class="weekly-sessions">
-                  <line
-                    v-for="bar in weeklySessionBars"
-                    :key="bar.key"
-                    :x1="bar.x1"
-                    :x2="bar.x2"
-                    :y1="bar.y"
-                    :y2="bar.y"
-                    class="weekly-session-tick"
-                  />
+                <g v-for="bar in weeklyBars" :key="bar.key" class="weekly-bar-group">
+                  <rect :x="bar.x" :y="bar.y" :width="bar.width" :height="bar.height" rx="9" class="weekly-bar" :class="{ empty: !bar.value }" />
+                  <text v-if="bar.sessions" :x="bar.x + bar.width / 2" :y="bar.labelY" text-anchor="middle" class="weekly-bar-label">{{ bar.sessions }}×</text>
                 </g>
               </svg>
 
               <div class="weekly-axis">
                 <div v-for="week in overview.weekly" :key="week.week_start" class="weekly-axis-label">
                   <strong>{{ formatDate(week.week_start) }}</strong>
-                  <span>{{ week.session_count }} sessions</span>
-                  <small>{{ formatMass(week.total_volume_kg) }}</small>
+                  <small :class="{ muted: !week.total_volume_kg }">{{ week.total_volume_kg ? formatWorkload(week.total_volume_kg) : '—' }}</small>
                 </div>
               </div>
             </div>
@@ -183,8 +179,8 @@
                 @click="selectedBodyPart = option.value"
               >
                 <div class="bucket-main">
-                  <strong>{{ option.label }}</strong>
-                  <span>{{ option.session_count || 0 }} sessions</span>
+                  <div><strong>{{ option.label }}</strong><span>{{ option.session_count || 0 }} session{{ option.session_count === 1 ? '' : 's' }}</span></div>
+                  <div class="bucket-meter" aria-hidden="true"><span :style="{ width: `${movementShare(option)}%` }"></span></div>
                 </div>
                 <div class="bucket-side">
                   <strong>{{ formatWorkload(option.total_volume_kg) }}</strong>
@@ -266,12 +262,19 @@
             </div>
 
             <div class="spotlight-chart-wrap">
-              <svg v-if="selectedTrendPath" class="trend-chart" viewBox="0 0 560 260" preserveAspectRatio="xMidYMid meet" role="img" :aria-label="`${overview.selected_exercise.exercise_name} trend`">
+              <svg v-if="selectedTrendBars.length" class="trend-chart" viewBox="0 0 560 240" preserveAspectRatio="xMidYMid meet" role="img" :aria-label="`${overview.selected_exercise.exercise_name} trend`">
+                <defs>
+                  <linearGradient id="selectedLiftBar" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#ffc66f" />
+                    <stop offset="100%" stop-color="#d98627" />
+                  </linearGradient>
+                </defs>
                 <rect x="0" y="0" width="560" height="260" rx="28" class="trend-chart-bg" />
                 <line v-for="line in chartGuideLines" :key="line" x1="48" :y1="line" x2="512" :y2="line" class="trend-chart-guide" />
-                <path :d="selectedTrendAreaPath" class="trend-chart-area" />
-                <path :d="selectedTrendPath" class="trend-chart-line" />
-                <circle v-for="point in selectedTrendPoints" :key="point.key" :cx="point.x" :cy="point.y" r="6" class="trend-chart-dot" />
+                <g v-for="bar in selectedTrendBars" :key="bar.key">
+                  <rect :x="bar.x" :y="bar.y" :width="bar.width" :height="bar.height" rx="10" class="trend-chart-bar" />
+                  <text :x="bar.x + bar.width / 2" :y="bar.y - 10" text-anchor="middle" class="trend-chart-value">{{ formatWorkload(bar.value) }}</text>
+                </g>
               </svg>
             </div>
 
@@ -376,8 +379,8 @@ const activeWeeks = computed(() => (overview.value?.weekly || []).filter((week) 
 const latestWorkSets = computed(() => latestSession.value?.exercises.reduce((total, exercise) => total + exercise.work_set_count, 0) || 0)
 const latestSessionNextStep = computed(() => {
   const exercise = overview.value?.selected_exercise || overview.value?.exercises?.[0]
-  if (!exercise) return { title: 'Review your session', copy: 'Check the linked activity and confirm the imported workout details.' }
-  return { title: `Review ${exercise.exercise_name}`, copy: `${exercise.appearance_count} appearances in this window. Open its progression below to check load and volume history.` }
+  if (!exercise) return { title: 'Review workout details', copy: 'Check the linked activity and confirm the recorded sets.' }
+  return { title: `${exercise.exercise_name} is your anchor lift`, copy: `${exercise.appearance_count} appearances in this window. Its progression is highlighted below.` }
 })
 
 const strongestWeek = computed(() => {
@@ -436,6 +439,30 @@ const weeklySessionBars = computed(() => {
   })
 })
 
+const weeklyBars = computed(() => {
+  const weekly = overview.value?.weekly || []
+  if (!weekly.length) return []
+  const maxValue = Math.max(...weekly.map((week) => week.total_volume_kg || 0), 1)
+  const slot = 752 / weekly.length
+  const width = Math.min(58, slot * 0.58)
+  return weekly.map((week, index) => {
+    const value = week.total_volume_kg || 0
+    const height = value ? Math.max(18, (168 * value) / maxValue) : 6
+    const x = 54 + slot * index + (slot - width) / 2
+    const y = 226 - height
+    return {
+      key: week.week_start,
+      x: round(x),
+      y: round(y),
+      width: round(width),
+      height: round(height),
+      labelY: round(Math.min(y + 24, 218)),
+      sessions: week.session_count || 0,
+      value,
+    }
+  })
+})
+
 const selectedTrendPoints = computed(() => {
   const trend = overview.value?.selected_exercise?.trend || []
   if (!trend.length) return []
@@ -465,6 +492,26 @@ const selectedTrendAreaPath = computed(() => {
   const start = points[0]
   const end = points[points.length - 1]
   return `${selectedTrendPath.value} L ${end.x} 202 L ${start.x} 202 Z`
+})
+
+const selectedTrendBars = computed(() => {
+  const trend = overview.value?.selected_exercise?.trend || []
+  if (!trend.length) return []
+  const maxValue = Math.max(...trend.map((point) => point.total_volume_kg || point.top_load_kg || 0), 1)
+  const slot = 440 / trend.length
+  const width = Math.min(72, slot * 0.58)
+  return trend.map((point, index) => {
+    const value = point.total_volume_kg || point.top_load_kg || 0
+    const height = Math.max(10, (132 * value) / maxValue)
+    return {
+      key: `${point.workout_timestamp}-${index}`,
+      x: round(60 + slot * index + (slot - width) / 2),
+      y: round(196 - height),
+      width: round(width),
+      height: round(height),
+      value,
+    }
+  })
 })
 
 const fetchStrengthOverview = async () => {
@@ -504,6 +551,12 @@ onMounted(() => {
 const selectExercise = (exerciseName) => {
   if (selectedExercise.value === exerciseName) return
   selectedExercise.value = exerciseName
+}
+
+const movementShare = (option) => {
+  const total = Number(bodyPartOptions.value.find((item) => item.value === 'all')?.total_volume_kg || 0)
+  if (!total) return 0
+  return Math.max(option.total_volume_kg ? 4 : 0, Math.min(100, (Number(option.total_volume_kg || 0) / total) * 100))
 }
 
 const bodyPartLabel = (value) => {
@@ -562,46 +615,84 @@ const round = (value) => Math.round(value * 10) / 10
 <style scoped>
 .strength-page {
   display: grid;
-  gap: 18px;
+  gap: 20px;
+  padding-bottom: 36px;
 }
 
 .strength-hero {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 0;
+  gap: 32px;
+  padding: 12px 0 8px;
   margin-bottom: 0;
 }
+
+.strength-hero-copy {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  max-width: 820px;
+}
+
+.strength-hero .page-title {
+  max-width: 760px;
+  margin: 2px 0 8px;
+  font-size: clamp(32px, 4vw, 48px);
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+}
+
+.strength-hero .page-sub { max-width: 680px; }
+
+.strength-mark {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid rgba(255, 182, 84, .28);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(255, 176, 72, .18), rgba(255, 176, 72, .04));
+  box-shadow: inset 0 1px rgba(255,255,255,.08), 0 16px 34px rgba(5,8,16,.22);
+}
+
+.strength-mark b { width: 22px; height: 4px; background: #ffc36d; }
+.strength-mark i { width: 5px; height: 22px; border-radius: 3px; background: #ffc36d; }
+.strength-mark span { width: 4px; height: 14px; border-radius: 3px; background: rgba(255,195,109,.7); }
 
 .strength-action {
   display: inline-flex;
   align-items: center;
-  min-height: 42px;
-  padding: 0 16px;
+  min-height: 46px;
+  padding: 0 18px;
   border: 1px solid var(--border-strong);
   border-radius: 12px;
   color: var(--text-soft);
   font-weight: 700;
 }
 
-.strength-action:hover { background: var(--surface2); color: var(--text); }
+.strength-action:hover { background: var(--surface2); color: var(--text); transform: translateY(-1px); }
 .strength-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-.strength-action-primary { color: #fff4e4; border-color: rgba(255, 179, 79, .4); background: rgba(255, 159, 47, .12); }
-
-.strength-hero-copy {
-  max-width: 720px;
-}
+.strength-action-primary { color: #231507; border-color: #ffb654; background: linear-gradient(135deg, #ffd089, #f5a83d); box-shadow: 0 10px 24px rgba(241,169,59,.16); }
+.strength-action-primary:hover { color: #180f06; background: #ffd089; }
 
 .strength-toolbar {
   display: grid;
-  grid-template-columns: 1.15fr 1fr 1fr;
-  gap: 18px;
+  grid-template-columns: .7fr 1.1fr 1fr 1fr;
+  gap: 14px;
   align-items: end;
-  padding: 16px 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  padding: 14px;
+  border: 1px solid rgba(132, 149, 181, 0.16);
+  border-radius: 18px;
+  background: rgba(13, 20, 32, .72);
+  box-shadow: inset 0 1px rgba(255,255,255,.025);
 }
+
+.toolbar-intro { display: grid; align-content: center; gap: 2px; padding: 0 8px; }
+.toolbar-intro strong { font-family: var(--font-display); font-size: 17px; }
+.toolbar-kicker { color: var(--strength); font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
 
 .toolbar-block,
 .toolbar-select {
@@ -610,7 +701,7 @@ const round = (value) => Math.round(value * 10) / 10
 }
 
 .toolbar-label {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -622,13 +713,14 @@ const round = (value) => Math.round(value * 10) / 10
   gap: 8px;
   align-items: center;
   padding: 5px;
-  width: fit-content;
+  width: 100%;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(132, 149, 181, 0.12);
 }
 
 .range-chip {
+  flex: 1;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -650,6 +742,7 @@ const round = (value) => Math.round(value * 10) / 10
 }
 
 .toolbar-select select {
+  width: 100%;
   appearance: none;
   border-radius: 14px;
   border: 1px solid rgba(132, 149, 181, 0.18);
@@ -657,37 +750,54 @@ const round = (value) => Math.round(value * 10) / 10
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
     rgba(8, 14, 24, 0.85);
   color: var(--text);
-  padding: 12px 14px;
+  min-height: 44px;
+  padding: 10px 38px 10px 14px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #8fa1bf 50%),
+    linear-gradient(135deg, #8fa1bf 50%, transparent 50%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  background-position: calc(100% - 18px) 19px, calc(100% - 13px) 19px, 0 0;
+  background-size: 5px 5px, 5px 5px, 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(320px, .72fr);
+  gap: 16px;
 }
 
 .summary-ribbon {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .latest-session {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(260px, .7fr);
-  gap: 0;
+  position: relative;
   padding: 0;
   overflow: hidden;
   border-color: rgba(241, 169, 59, .28);
+  background:
+    radial-gradient(circle at 80% 0%, rgba(241,169,59,.1), transparent 35%),
+    linear-gradient(145deg, rgba(19,27,42,.98), rgba(12,18,29,.98));
 }
 
-.latest-session-main { padding: 24px; }
-.latest-session-title { font-family: var(--font-display); font-size: 24px; line-height: 1.2; margin-bottom: 4px; }
+.latest-session-main { padding: 26px; }
+.latest-session-title { font-family: var(--font-display); font-size: clamp(24px, 2.4vw, 32px); line-height: 1.15; letter-spacing: -.025em; margin-bottom: 5px; }
 .status-badge { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .status-complete { color: #8be0bd; background: rgba(52, 211, 153, .1); border: 1px solid rgba(52, 211, 153, .2); }
-.latest-session-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.latest-session-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 24px; }
 .latest-session-metrics div { display: grid; gap: 4px; padding-right: 12px; border-right: 1px solid var(--border); }
 .latest-session-metrics div:last-child { border-right: 0; }
 .latest-session-metrics span, .next-step-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.latest-session-metrics strong { font-size: 17px; }
+.latest-session-metrics strong { font-family: var(--font-display); font-size: 20px; }
 .latest-session-focus { color: var(--muted-soft); margin-top: 18px; }
-.next-step { display: grid; align-content: center; gap: 9px; padding: 24px; background: rgba(241, 169, 59, .055); border-left: 1px solid rgba(241, 169, 59, .16); }
+.next-step { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 22px; padding: 15px 16px; border-radius: 14px; background: rgba(241, 169, 59, .065); border: 1px solid rgba(241, 169, 59, .15); }
+.next-step > div { display: grid; gap: 3px; }
 .next-step > strong { font-size: 17px; }
-.next-step p { color: var(--muted-soft); line-height: 1.5; }
+.next-step p { color: var(--muted-soft); line-height: 1.4; font-size: 12px; }
+.next-step .detail-link { flex: 0 0 auto; padding: 9px 11px; border-radius: 10px; background: rgba(255,255,255,.06); }
 
 .analysis-grid-refreshing {
   align-items: start;
@@ -753,8 +863,8 @@ const round = (value) => Math.round(value * 10) / 10
 }
 
 .summary-tile {
-  min-height: 116px;
-  padding: 18px 20px;
+  min-height: 0;
+  padding: 18px;
   display: grid;
   gap: 8px;
   background:
@@ -768,7 +878,8 @@ const round = (value) => Math.round(value * 10) / 10
 }
 
 .summary-value {
-  font-size: 27px;
+  font-family: var(--font-display);
+  font-size: 29px;
   line-height: 1.02;
   letter-spacing: -0.03em;
 }
@@ -828,7 +939,7 @@ const round = (value) => Math.round(value * 10) / 10
 
 .trend-frame {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .weekly-chart {
@@ -837,7 +948,7 @@ const round = (value) => Math.round(value * 10) / 10
 }
 
 .weekly-chart-bg {
-  fill: rgba(255, 255, 255, 0.025);
+  fill: rgba(255, 255, 255, 0.018);
 }
 
 .weekly-grid line {
@@ -845,29 +956,9 @@ const round = (value) => Math.round(value * 10) / 10
   stroke-width: 1;
 }
 
-.weekly-area {
-  fill: url(#strengthVolumeArea);
-}
-
-.weekly-line {
-  fill: none;
-  stroke: url(#strengthVolumeStroke);
-  stroke-width: 4.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.weekly-dot {
-  fill: #ffbd61;
-  stroke: rgba(14, 22, 36, 0.9);
-  stroke-width: 2.5;
-}
-
-.weekly-session-tick {
-  stroke: rgba(255, 191, 98, 0.72);
-  stroke-width: 10;
-  stroke-linecap: round;
-}
+.weekly-bar { fill: url(#strengthVolumeBar); filter: drop-shadow(0 8px 12px rgba(217,134,39,.12)); }
+.weekly-bar.empty { fill: rgba(143, 161, 191, .16); filter: none; }
+.weekly-bar-label { fill: #191107; font-size: 12px; font-weight: 800; }
 
 .weekly-axis {
   display: grid;
@@ -877,12 +968,16 @@ const round = (value) => Math.round(value * 10) / 10
 
 .weekly-axis-label {
   display: grid;
-  gap: 3px;
+  gap: 2px;
+  text-align: center;
 }
 
 .weekly-axis-label strong {
-  font-size: 13px;
+  font-size: 12px;
 }
+
+.weekly-axis-label small { color: #b9c6db; font-weight: 650; }
+.weekly-axis-label small.muted { color: #63728b; }
 
 .bucket-stack,
 .lift-table,
@@ -923,9 +1018,17 @@ const round = (value) => Math.round(value * 10) / 10
 
 .bucket-main {
   display: grid;
-  gap: 4px;
+  gap: 11px;
   text-align: left;
+  min-width: 0;
+  flex: 1;
 }
+
+.bucket-main > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.bucket-main span { color: var(--muted); font-size: 12px; }
+.bucket-meter { height: 6px; overflow: hidden; border-radius: 999px; background: rgba(143,161,191,.12); }
+.bucket-meter span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #d98627, #ffc66f); box-shadow: 0 0 14px rgba(255,190,94,.14); }
+.bucket-side { flex: 0 0 72px; text-align: right; }
 
 .lift-row {
   display: grid;
@@ -1064,7 +1167,7 @@ const round = (value) => Math.round(value * 10) / 10
 }
 
 .trend-chart-bg {
-  fill: rgba(255, 255, 255, 0.03);
+  fill: rgba(255, 255, 255, 0.02);
 }
 
 .trend-chart-guide {
@@ -1072,23 +1175,8 @@ const round = (value) => Math.round(value * 10) / 10
   stroke-width: 1;
 }
 
-.trend-chart-area {
-  fill: rgba(255, 187, 84, 0.12);
-}
-
-.trend-chart-line {
-  fill: none;
-  stroke: #ffb654;
-  stroke-width: 5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.trend-chart-dot {
-  fill: #ffb654;
-  stroke: rgba(14, 22, 36, 0.88);
-  stroke-width: 3;
-}
+.trend-chart-bar { fill: url(#selectedLiftBar); }
+.trend-chart-value { fill: #dce6f6; font-size: 11px; font-weight: 750; }
 
 .history-row {
   display: flex;
@@ -1178,19 +1266,19 @@ const round = (value) => Math.round(value * 10) / 10
 }
 
 @media (max-width: 1280px) {
-  .summary-ribbon {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .analysis-grid-top,
-  .analysis-grid-bottom,
-  .strength-toolbar,
-  .spotlight-stats {
+  .analysis-grid-bottom {
     grid-template-columns: 1fr;
   }
 
-  .latest-session { grid-template-columns: 1fr; }
-  .next-step { border-left: 0; border-top: 1px solid rgba(241, 169, 59, .16); }
+  .strength-toolbar { grid-template-columns: .7fr 1.2fr 1fr 1fr; }
+}
+
+@media (max-width: 1080px) {
+  .overview-grid { grid-template-columns: 1fr; }
+  .summary-ribbon { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .strength-toolbar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .toolbar-intro { grid-column: 1 / -1; grid-auto-flow: column; justify-content: space-between; }
 }
 
 @media (max-width: 860px) {
@@ -1203,16 +1291,23 @@ const round = (value) => Math.round(value * 10) / 10
   }
 
   .summary-ribbon,
-  .latest-session-metrics {
+  .latest-session-metrics,
+  .spotlight-stats,
+  .strength-toolbar {
     grid-template-columns: 1fr;
   }
 
+  .strength-hero-copy { align-items: flex-start; }
+  .strength-mark { width: 50px; height: 50px; border-radius: 16px; }
+  .strength-actions { justify-content: flex-start; }
+  .toolbar-intro { grid-column: auto; }
   .latest-session-metrics div { padding: 0 0 10px; border-right: 0; border-bottom: 1px solid var(--border); }
   .latest-session-metrics div:last-child { border-bottom: 0; }
   .session-card summary { grid-template-columns: 1fr; }
   .strength-action { width: fit-content; }
   .range-switch { width: 100%; }
   .range-chip { flex: 1; }
+  .next-step { display: grid; }
 
   .lift-row {
     grid-template-columns: 36px 1fr;

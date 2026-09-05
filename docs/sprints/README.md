@@ -43,6 +43,8 @@ The intended reading order is:
 33. [sprint-33-closed-loop-weekly-adaptation.md](sprint-33-closed-loop-weekly-adaptation.md) — closed-loop weekly adaptation sprint, proposed
 34. [sprint-34-strength-progression-and-stall-detection.md](sprint-34-strength-progression-and-stall-detection.md) — strength progression and stall detection sprint, proposed
 35. [sprint-35-weekly-retrospectives-and-data-quality-inbox.md](sprint-35-weekly-retrospectives-and-data-quality-inbox.md) — weekly retrospectives and data-quality inbox sprint, proposed
+36. [sprint-36-first-party-strength-workout-tracking.md](sprint-36-first-party-strength-workout-tracking.md) — first-party strength workout tracking sprint
+37. [sprint-37-context-aware-daily-training-state.md](sprint-37-context-aware-daily-training-state.md) — context-aware daily training state sprint, complete
 
 ## Sprint Plans
 
@@ -83,3 +85,5 @@ Available sprint documents:
 - [sprint-33-closed-loop-weekly-adaptation.md](sprint-33-closed-loop-weekly-adaptation.md)
 - [sprint-34-strength-progression-and-stall-detection.md](sprint-34-strength-progression-and-stall-detection.md)
 - [sprint-35-weekly-retrospectives-and-data-quality-inbox.md](sprint-35-weekly-retrospectives-and-data-quality-inbox.md)
+- [sprint-36-first-party-strength-workout-tracking.md](sprint-36-first-party-strength-workout-tracking.md)
+- [sprint-37-context-aware-daily-training-state.md](sprint-37-context-aware-daily-training-state.md)

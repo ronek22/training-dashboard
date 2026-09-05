@@ -6,7 +6,11 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-from ..models.strength_workouts import StrengthSessionExerciseAddRequest, StrengthTemplateInput
+from ..models.strength_workouts import (
+    StrengthSessionExerciseAddRequest,
+    StrengthTemplateInput,
+    StrengthWarmupSetAddRequest,
+)
 
 
 def _now() -> datetime:
@@ -90,7 +94,7 @@ def _suggestion_history_rows(conn: sqlite3.Connection) -> list[dict]:
             workout_set.set_order,
             workout_set.actual_reps AS reps,
             workout_set.actual_weight_kg AS weight_kg,
-            0 AS is_warmup
+            CASE WHEN workout_set.set_type = 'warmup' THEN 1 ELSE 0 END AS is_warmup
         FROM strength_session_sets workout_set
         JOIN strength_session_exercises exercise
           ON exercise.id = workout_set.session_exercise_id
@@ -275,8 +279,10 @@ def _serialize_session(conn: sqlite3.Connection, row: sqlite3.Row) -> dict:
             (exercise_row["id"],),
         ).fetchall()
         sets = [dict(set_row) for set_row in set_rows]
-        total_sets += len(sets)
-        completed_sets += sum(1 for item in sets if item["status"] == "completed")
+        working_sets = [item for item in sets if item["set_type"] != "warmup"]
+        warmup_sets = [item for item in sets if item["set_type"] == "warmup"]
+        total_sets += len(working_sets)
+        completed_sets += sum(1 for item in working_sets if item["status"] == "completed")
         exercises.append(
             {
                 "id": int(exercise_row["id"]),
@@ -284,7 +290,13 @@ def _serialize_session(conn: sqlite3.Connection, row: sqlite3.Row) -> dict:
                 "exercise_name": exercise_row["exercise_name"],
                 "notes": exercise_row["notes"],
                 "sets": sets,
-                "completed_set_count": sum(1 for item in sets if item["status"] == "completed"),
+                "completed_set_count": sum(
+                    1 for item in working_sets if item["status"] == "completed"
+                ),
+                "warmup_set_count": len(warmup_sets),
+                "completed_warmup_set_count": sum(
+                    1 for item in warmup_sets if item["status"] == "completed"
+                ),
             }
         )
 
@@ -366,27 +378,35 @@ def get_trainlog_strength_detail_for_activity(
                 "distance_m": None,
                 "incline": None,
                 "resistance": None,
-                "is_warmup": False,
+                "is_warmup": workout_set["set_type"] == "warmup",
                 "note": None,
                 "multiplier": None,
             }
             for workout_set in completed_sets
         ]
-        rep_count = sum(int(workout_set["actual_reps"] or 0) for workout_set in completed_sets)
+        working_sets = [
+            workout_set for workout_set in completed_sets
+            if workout_set["set_type"] != "warmup"
+        ]
+        warmup_sets = [
+            workout_set for workout_set in completed_sets
+            if workout_set["set_type"] == "warmup"
+        ]
+        rep_count = sum(int(workout_set["actual_reps"] or 0) for workout_set in working_sets)
         total_volume_kg = sum(
             int(workout_set["actual_reps"] or 0) * float(workout_set["actual_weight_kg"] or 0)
-            for workout_set in completed_sets
+            for workout_set in working_sets
         )
         exercises.append(
             {
                 "id": f"trainlog-exercise-{exercise['id']}",
                 "exercise_order": int(exercise["exercise_order"]),
                 "exercise_name": exercise["exercise_name"],
-                "set_count": len(sets),
+                "set_count": len(working_sets),
                 "rep_count": rep_count,
                 "total_volume_kg": round(total_volume_kg, 2),
-                "work_set_count": len(sets),
-                "warmup_set_count": 0,
+                "work_set_count": len(working_sets),
+                "warmup_set_count": len(warmup_sets),
                 "sets": sets,
             }
         )
@@ -552,6 +572,94 @@ def add_session_exercise(
         else:
             conn.execute(
                 "UPDATE strength_workout_sessions SET updated_at = ? WHERE id = ?",
+                (now, session_id),
+            )
+    return get_session(conn, session_id)
+
+
+def add_warmup_set(
+    conn: sqlite3.Connection,
+    session_id: int,
+    exercise_id: int,
+    payload: StrengthWarmupSetAddRequest,
+) -> dict:
+    session = _session_or_404(conn, session_id)
+    _assert_active(session)
+    exercise = conn.execute(
+        """
+        SELECT * FROM strength_session_exercises
+        WHERE id = ? AND session_id = ?
+        """,
+        (exercise_id, session_id),
+    ).fetchone()
+    if not exercise:
+        raise HTTPException(status_code=404, detail="Exercise not found in this session.")
+
+    warmup_count = int(
+        conn.execute(
+            """
+            SELECT COUNT(*) AS count FROM strength_session_sets
+            WHERE session_exercise_id = ? AND set_type = 'warmup'
+            """,
+            (exercise_id,),
+        ).fetchone()["count"]
+    )
+    if warmup_count >= 10:
+        raise HTTPException(status_code=400, detail="An exercise cannot contain more than 10 warm-up sets.")
+
+    reference = conn.execute(
+        """
+        SELECT target_reps, target_weight_kg
+        FROM strength_session_sets
+        WHERE session_exercise_id = ? AND set_type = 'working'
+        ORDER BY set_order LIMIT 1
+        """,
+        (exercise_id,),
+    ).fetchone()
+    target_reps = payload.target_reps or (int(reference["target_reps"]) if reference else 8)
+    if payload.target_weight_kg is not None:
+        target_weight_kg = payload.target_weight_kg
+    elif reference and reference["target_weight_kg"] is not None:
+        target_weight_kg = round(float(reference["target_weight_kg"]) * 0.5, 1)
+    else:
+        target_weight_kg = None
+
+    now = _iso(_now())
+    with conn:
+        # Move every existing set safely to leave the first position for warm-up work.
+        conn.execute(
+            "UPDATE strength_session_sets SET set_order = set_order + 1000 WHERE session_exercise_id = ?",
+            (exercise_id,),
+        )
+        conn.execute(
+            "UPDATE strength_session_sets SET set_order = set_order - 999 WHERE session_exercise_id = ?",
+            (exercise_id,),
+        )
+        conn.execute(
+            """
+            INSERT INTO strength_session_sets
+            (session_exercise_id, set_order, target_reps, target_weight_kg,
+             rest_seconds, set_type)
+            VALUES (?, 1, ?, ?, ?, 'warmup')
+            """,
+            (exercise_id, target_reps, target_weight_kg, payload.rest_seconds),
+        )
+        if payload.switch_to:
+            conn.execute(
+                """
+                UPDATE strength_workout_sessions
+                SET current_exercise_order = ?, current_set_order = 1, updated_at = ?
+                WHERE id = ?
+                """,
+                (exercise["exercise_order"], now, session_id),
+            )
+        elif int(session["current_exercise_order"]) == int(exercise["exercise_order"]):
+            conn.execute(
+                """
+                UPDATE strength_workout_sessions
+                SET current_set_order = current_set_order + 1, updated_at = ?
+                WHERE id = ?
+                """,
                 (now, session_id),
             )
     return get_session(conn, session_id)

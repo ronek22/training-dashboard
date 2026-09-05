@@ -232,11 +232,11 @@ def _load_strength_rows(conn: sqlite3.Connection, window_start: str) -> tuple[li
             -s.id AS session_id,
             e.exercise_order,
             e.exercise_name,
-            COUNT(workout_set.id) AS set_count,
-            COALESCE(SUM(workout_set.actual_reps), 0) AS rep_count,
-            COALESCE(SUM(workout_set.actual_reps * COALESCE(workout_set.actual_weight_kg, 0)), 0) AS total_volume_kg,
-            COUNT(workout_set.id) AS work_set_count,
-            0 AS warmup_set_count
+            SUM(CASE WHEN workout_set.set_type != 'warmup' THEN 1 ELSE 0 END) AS set_count,
+            COALESCE(SUM(CASE WHEN workout_set.set_type != 'warmup' THEN workout_set.actual_reps ELSE 0 END), 0) AS rep_count,
+            COALESCE(SUM(CASE WHEN workout_set.set_type != 'warmup' THEN workout_set.actual_reps * COALESCE(workout_set.actual_weight_kg, 0) ELSE 0 END), 0) AS total_volume_kg,
+            SUM(CASE WHEN workout_set.set_type != 'warmup' THEN 1 ELSE 0 END) AS work_set_count,
+            SUM(CASE WHEN workout_set.set_type = 'warmup' THEN 1 ELSE 0 END) AS warmup_set_count
         FROM strength_session_exercises e
         JOIN strength_workout_sessions s ON s.id = e.session_id
         JOIN activities a ON a.id = s.linked_activity_id
@@ -281,7 +281,7 @@ def _load_strength_rows(conn: sqlite3.Connection, window_start: str) -> tuple[li
             workout_set.set_order,
             workout_set.actual_reps AS reps,
             workout_set.actual_weight_kg AS weight_kg,
-            0 AS is_warmup
+            CASE WHEN workout_set.set_type = 'warmup' THEN 1 ELSE 0 END AS is_warmup
         FROM strength_session_sets workout_set
         JOIN strength_session_exercises e ON e.id = workout_set.session_exercise_id
         JOIN strength_workout_sessions s ON s.id = e.session_id

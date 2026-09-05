@@ -47,6 +47,41 @@
             </button>
             <span v-if="todayPlan?.template_label" class="template-note">{{ todayPlan.template_label }}</span>
           </div>
+
+          <section v-if="todaySessionGuide.length" class="session-guide" aria-labelledby="session-guide-heading">
+            <div class="session-guide-heading">
+              <span id="session-guide-heading">How to execute it</span>
+              <strong>Today’s prescription</strong>
+            </div>
+            <div class="session-guide-grid">
+              <article v-for="item in todaySessionGuide" :key="item.label" :class="{ 'is-guardrail': item.label === 'Guardrail' }">
+                <span>{{ item.label }}</span>
+                <p>{{ item.text }}</p>
+              </article>
+            </div>
+          </section>
+
+          <section v-if="todayActivityCards.length" class="completed-today" aria-labelledby="completed-today-heading">
+            <div class="completed-today-heading">
+              <span id="completed-today-heading">Completed today</span>
+              <strong>{{ todayActivityTotal }}</strong>
+            </div>
+            <div class="completed-today-grid">
+              <button
+                v-for="activity in todayActivityCards"
+                :key="activity.id"
+                type="button"
+                @click="router.push(`/activities/${encodeURIComponent(activity.id)}`)"
+              >
+                <span class="completed-activity-icon" :class="`icon-${activity.tone}`">
+                  <ActivityIcon v-if="isIconSessionType(activity.type)" :type="activity.type" :tone="activity.tone" :size="17" />
+                  <span v-else aria-hidden="true">·</span>
+                </span>
+                <span><strong>{{ activity.title }}</strong><small>{{ activity.detail }}</small></span>
+                <span aria-hidden="true">↗</span>
+              </button>
+            </div>
+          </section>
         </article>
 
         <aside class="signal-card" aria-labelledby="signals-heading">
@@ -57,6 +92,32 @@
           <div v-if="readiness" class="signal-summary">
             <strong>{{ loadRecoveryTitle }}</strong><p>{{ loadRecoverySummary }}</p>
           </div>
+          <div class="codex-state" :class="{ 'is-loading': codexStateLoading }">
+            <div class="codex-state-heading">
+              <span><i aria-hidden="true">✦</i> Today’s coaching insight</span>
+              <button type="button" :disabled="codexStateLoading" @click="refreshCodexState(true)">
+                {{ codexStateLoading ? 'Reviewing…' : codexState ? 'Refresh' : 'Try now' }}
+              </button>
+            </div>
+            <template v-if="codexState">
+              <strong>{{ codexState.headline }}</strong>
+              <p>{{ codexState.assessment }}</p>
+              <small><b>Next:</b> {{ codexState.next_step }}</small>
+              <p v-if="codexStateStale && codexStateLoading" class="codex-state-updating">Updating for the latest training data…</p>
+              <button
+                v-if="canAdaptTomorrow"
+                type="button"
+                class="codex-plan-action"
+                :disabled="codexPlanUpdate === 'running'"
+                @click="adaptTomorrowPlan"
+              >
+                <span>{{ codexPlanActionLabel }}</span><span aria-hidden="true">→</span>
+              </button>
+              <p v-if="codexPlanUpdate === 'failed'" class="codex-plan-error">Tomorrow was not changed. You can retry safely.</p>
+            </template>
+            <p v-else-if="codexStateLoading" class="codex-state-placeholder">Reading your plan, recovery, goals and recent training…</p>
+            <p v-else class="codex-state-placeholder">The measured state remains available. Start the local Codex helper for a whole-context interpretation.</p>
+          </div>
           <div v-if="loadMetrics.length" class="load-metrics" aria-label="Current training load">
             <div v-for="metric in loadMetrics" :key="metric.label" :class="metric.tone"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.hint }}</small></div>
           </div>
@@ -64,11 +125,6 @@
             <span>Latest check-in</span><div><strong v-for="metric in checkInMetrics" :key="metric.label" :class="metric.tone">{{ metric.label }} {{ metric.valueLabel }}</strong></div>
           </div>
           <p v-else class="signal-empty">Add post-workout feedback to pair how you feel with measured load.</p>
-          <div v-if="computedStreak" class="streak-summary" aria-label="Current activity streak">
-            <span class="streak-summary-icon" aria-hidden="true">🔥</span>
-            <div><small>Current streak</small><strong>{{ streakLabel }}</strong></div>
-            <p>{{ streakContext }}</p>
-          </div>
         </aside>
       </section>
 
@@ -190,7 +246,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { format } from 'date-fns'
+import { addDays, format, startOfWeek } from 'date-fns'
 import { useRouter } from 'vue-router'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import { useApi } from '../stores/api'
@@ -201,6 +257,11 @@ const dashboard = ref(null)
 const recentActivities = ref([])
 const loading = ref(true)
 const activeYearPoint = ref(null)
+const codexState = ref(null)
+const codexStateLoading = ref(false)
+const codexStateError = ref(null)
+const codexStateStale = ref(false)
+const codexPlanUpdate = ref('idle')
 const completedPlanStatuses = new Set(['linked', 'matched', 'partially_matched', 'moved', 'replaced', 'rest_day_changed'])
 
 const loadDashboard = async () => {
@@ -212,25 +273,153 @@ const loadDashboard = async () => {
     ])
     dashboard.value = dashboardResult.status === 'fulfilled' ? dashboardResult.value.data : null
     recentActivities.value = activitiesResult.status === 'fulfilled' ? activitiesResult.value.data : []
+    if (dashboard.value) void refreshCodexState(false)
   } finally { loading.value = false }
 }
 
 onMounted(loadDashboard)
 
 const todayKey = computed(() => format(new Date(), 'yyyy-MM-dd'))
+const tomorrowKey = computed(() => format(addDays(new Date(), 1), 'yyyy-MM-dd'))
 const dashboardPeriodLabel = computed(() => format(new Date(), 'EEEE, d MMMM'))
 const weeklyPlan = computed(() => dashboard.value?.weekly_plan || null)
 const dailyRecommendation = computed(() => dashboard.value?.daily_recommendation || null)
 const readiness = computed(() => dashboard.value?.readiness || null)
 const latestSubjectiveState = computed(() => dashboard.value?.latest_subjective_state || null)
 const trainingLoad = computed(() => dashboard.value?.training_load || null)
-const computedStreak = computed(() => dashboard.value?.computed_streak || null)
-const streakLabel = computed(() => {
-  const days = Number(computedStreak.value?.value || 0)
-  return `${days} ${days === 1 ? 'day' : 'days'}`
-})
 const todayPlan = computed(() => weeklyPlan.value?.days?.find((day) => day.date === todayKey.value) || dailyRecommendation.value?.today_plan || null)
+const tomorrowPlan = computed(() => weeklyPlan.value?.days?.find((day) => day.date === tomorrowKey.value) || null)
 const todayPlanCompleted = computed(() => completedPlanStatuses.has(todayPlan.value?.comparison?.status))
+const insightRecommendsPlanChange = computed(() => {
+  if (codexState.value?.plan_change_recommended) return true
+  const advice = `${codexState.value?.headline || ''} ${codexState.value?.next_step || ''}`
+  return /\b(postpone|replace|skip|move|shorten|reduce|swap|rest instead)\b/i.test(advice)
+})
+const planChangeReason = computed(() => codexState.value?.plan_change_reason || codexState.value?.next_step || '')
+const canAdaptTomorrow = computed(() => Boolean(
+  !codexStateStale.value
+  && !codexStateLoading.value
+  && insightRecommendsPlanChange.value
+  && planChangeReason.value
+  && tomorrowPlan.value
+  && !completedPlanStatuses.has(tomorrowPlan.value?.comparison?.status),
+))
+const codexPlanActionLabel = computed(() => ({
+  running: 'Adapting tomorrow…',
+  succeeded: 'Tomorrow updated',
+  failed: 'Try adapting again',
+}[codexPlanUpdate.value] || 'Adapt tomorrow’s plan'))
+
+const codexContextKey = computed(() => {
+  const current = trainingLoad.value?.current || {}
+  const state = latestSubjectiveState.value || {}
+  const todayActivities = recentActivities.value
+    .filter((activity) => activity.date === todayKey.value)
+    .map((activity) => activity.id)
+    .sort()
+  return [
+    todayKey.value,
+    ...todayActivities,
+    readiness.value?.state || 'none',
+    Math.round(Number(current.fitness || 0)),
+    Math.round(Number(current.fatigue || 0)),
+    state.energy ?? 'na',
+    state.muscle_soreness ?? 'na',
+    state.pain_level ?? 'na',
+    todayPlan.value?.comparison?.status || 'unplanned',
+    tomorrowPlan.value?.session_type || 'no_tomorrow_plan',
+    tomorrowPlan.value?.target_duration_min || 0,
+    tomorrowPlan.value?.target_distance_km || 0,
+    tomorrowPlan.value?.title || '',
+  ].join('|').replace(/[^A-Za-z0-9._:|,+-]/g, '_').slice(0, 512)
+})
+
+const codexCacheKey = 'training-dashboard:daily-state:v4'
+const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+
+const readCachedCodexState = () => {
+  try {
+    return JSON.parse(window.localStorage.getItem(codexCacheKey) || 'null')
+  } catch { return null }
+}
+
+async function refreshCodexState(force = false) {
+  if (codexStateLoading.value) return
+  const contextKey = codexContextKey.value
+  const cached = readCachedCodexState()
+  if (!force) {
+    if (cached?.contextKey === contextKey && cached.assessment) {
+      codexState.value = cached.assessment
+      codexStateStale.value = false
+      return
+    }
+    if (cached?.assessment) {
+      codexState.value = cached.assessment
+      codexStateStale.value = true
+    }
+  }
+  codexStateLoading.value = true
+  codexStateError.value = null
+  try {
+    const { data: started } = await api.startCodexDailyState({ context_key: contextKey })
+    for (let attempt = 0; attempt < 450; attempt += 1) {
+      const { data: job } = await api.getCodexDailyStateJob(started.job_id)
+      if (job.status === 'failed') throw new Error(job.message)
+      if (job.status === 'succeeded') {
+        if (contextKey === codexContextKey.value) {
+          codexState.value = job.assessment
+          codexStateStale.value = false
+          codexPlanUpdate.value = 'idle'
+          window.localStorage.setItem(codexCacheKey, JSON.stringify({ contextKey, assessment: job.assessment }))
+        }
+        return
+      }
+      await wait(2000)
+    }
+    throw new Error('Daily assessment timed out.')
+  } catch (error) {
+    codexStateError.value = error
+    codexStateStale.value = Boolean(codexState.value)
+  } finally {
+    codexStateLoading.value = false
+  }
+}
+
+async function adaptTomorrowPlan() {
+  if (!canAdaptTomorrow.value || codexPlanUpdate.value === 'running') return
+  codexPlanUpdate.value = 'running'
+  const targetDate = tomorrowKey.value
+  const weekStart = weeklyPlan.value?.week_start || format(
+    startOfWeek(new Date(`${targetDate}T12:00:00`), { weekStartsOn: 1 }),
+    'yyyy-MM-dd',
+  )
+  const feedback = [
+    `Change only the saved session on ${targetDate}; preserve every other day exactly as it is.`,
+    `Replace or materially reduce tomorrow's session based on today's coaching assessment: ${planChangeReason.value}`,
+    'Choose a concrete safer replacement that supports recovery and remains consistent with active goals and restrictions.',
+  ].join(' ')
+  try {
+    const { data: started } = await api.startCodexWeeklyPlanRevision({
+      week_start: weekStart,
+      target_date: targetDate,
+      feedback,
+    })
+    for (let attempt = 0; attempt < 450; attempt += 1) {
+      const { data: job } = await api.getCodexWeeklyPlanRevisionJob(started.job_id)
+      if (job.status === 'failed') throw new Error(job.message)
+      if (job.status === 'succeeded') {
+        codexPlanUpdate.value = 'succeeded'
+        codexState.value = null
+        await loadDashboard()
+        return
+      }
+      await wait(2000)
+    }
+    throw new Error('Tomorrow’s plan update timed out.')
+  } catch {
+    codexPlanUpdate.value = 'failed'
+  }
+}
 
 const primaryDecisionTone = computed(() => {
   if (todayPlanCompleted.value) return 'complete'
@@ -253,7 +442,8 @@ const primaryDecisionTitle = computed(() => {
 })
 const primaryDecisionSummary = computed(() => {
   if (todayPlanCompleted.value) return 'Your planned work is complete. Let the session settle and protect tomorrow’s training.'
-  return todayPlan.value?.details || dailyRecommendation.value?.action || 'Use your readiness and recent training to decide between recovery and easy movement.'
+  if (todayPlan.value?.details) return splitPlanSentences(todayPlan.value.details)[0]
+  return dailyRecommendation.value?.action || 'Use your readiness and recent training to decide between recovery and easy movement.'
 })
 const decisionReasons = computed(() => {
   const reasons = [...(dailyRecommendation.value?.reasons || [])]
@@ -290,13 +480,6 @@ const loadMetrics = computed(() => {
     { label: 'Load ratio', value: Number(ratio.value || 0).toFixed(2), hint: `${ratioStatus.charAt(0).toUpperCase()}${ratioStatus.slice(1)}`, tone: ratioStatus === 'high' ? 'metric-risk' : ratioStatus === 'balanced' ? 'metric-fitness' : ratioStatus === 'recovery' ? 'metric-positive' : 'metric-neutral' },
   ]
 })
-const streakContext = computed(() => {
-  const days = Number(computedStreak.value?.value || 0)
-  if (days >= 14) return 'Long-term consistency is treated as your baseline, not a warning by itself.'
-  if (days > 0) return 'Consecutive days with at least one logged activity.'
-  return 'Log an activity today to begin a new streak.'
-})
-
 const checkInMetrics = computed(() => {
   if (!latestSubjectiveState.value) return []
   const state = latestSubjectiveState.value
@@ -310,11 +493,49 @@ const checkInMetrics = computed(() => {
   ]
 })
 
+const todaySessionGuide = computed(() => {
+  if (!todayPlan.value || todayPlanCompleted.value || todayActivityCards.value.length) return []
+  const sentences = splitPlanSentences(todayPlan.value.details)
+  if (!sentences.length) return []
+  const guardrailIndex = sentences.findIndex((sentence) => /\b(stop|skip|avoid|abort|shorten|substitute|pain|symptom|worsen)\b/i.test(sentence))
+  const prescription = sentences[0]
+  const execution = sentences
+    .filter((_, index) => index !== 0 && index !== guardrailIndex)
+    .slice(0, 2)
+    .join(' ')
+  const guardrail = guardrailIndex >= 0 ? sentences[guardrailIndex] : ''
+  return [
+    { label: 'Prescription', text: prescription },
+    execution ? { label: 'Execution', text: execution } : null,
+    guardrail ? { label: 'Guardrail', text: guardrail } : null,
+  ].filter(Boolean)
+})
+
 const activitiesByDate = computed(() => recentActivities.value.reduce((groups, activity) => {
   if (!groups[activity.date]) groups[activity.date] = []
   groups[activity.date].push(activity)
   return groups
 }, {}))
+const todayActivityCards = computed(() => (activitiesByDate.value[todayKey.value] || []).map((activity) => {
+  const presentation = actualDayPresentation([activity])
+  return {
+    id: activity.id,
+    type: activity.type,
+    tone: activityTone(activity.type),
+    title: presentation.displayTitle,
+    detail: presentation.displayDetail || sessionTypeLabel(activity.type),
+  }
+}))
+const todayActivityTotal = computed(() => {
+  const activities = activitiesByDate.value[todayKey.value] || []
+  const duration = activities.reduce((sum, activity) => sum + Number(activity.duration_min || 0), 0)
+  const distance = activities.reduce((sum, activity) => sum + Number(activity.distance_km || 0), 0)
+  return [
+    `${activities.length} ${activities.length === 1 ? 'session' : 'sessions'}`,
+    duration ? formatDuration(duration) : '',
+    distance ? `${formatCompactNumber(distance)} km` : '',
+  ].filter(Boolean).join(' · ')
+})
 
 const weekDays = computed(() => (weeklyPlan.value?.days || []).map((day) => {
   const actualActivities = activitiesByDate.value[day.date] || []
@@ -360,6 +581,9 @@ const yearSeriesCards = computed(() => [
 ].filter((chart) => chart.points.length))
 
 function formatLocalDate(value, pattern) { return value ? format(new Date(`${value}T12:00:00`), pattern) : '' }
+function splitPlanSentences(value) {
+  return String(value || '').trim().split(/(?<=[.!?])\s+/).filter(Boolean)
+}
 function isIconSessionType(type) { return ['run', 'ride', 'cycling', 'strength', 'weighttraining'].includes(String(type || '').toLowerCase()) }
 function activityTone(type) {
   const value = String(type || '').toLowerCase()
@@ -597,6 +821,8 @@ button { color: inherit; }
 
 .decision-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
   isolation: isolate;
   overflow: hidden;
   min-height: 390px;
@@ -701,6 +927,28 @@ button { color: inherit; }
 .decision-reasons span::before { position: absolute; top: 0.63em; left: 1px; width: 4px; height: 4px; border-radius: 50%; background: var(--decision-color); content: ''; }
 .decision-actions { display: flex; align-items: center; gap: 16px; margin-top: 26px; }
 
+.session-guide { margin-top:auto; padding-top:32px; }
+.session-guide-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; border-top:1px solid var(--dash-border); padding-top:16px; }
+.session-guide-heading > span { color:var(--dash-muted); font-size:9px; font-weight:750; letter-spacing:.12em; text-transform:uppercase; }
+.session-guide-heading > strong { color:#7e90aa; font-size:9px; font-weight:650; }
+.session-guide-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:10px; }
+.session-guide-grid article { min-width:0; border:1px solid rgba(143,161,191,.12); border-radius:11px; background:rgba(12,19,30,.34); padding:12px; }
+.session-guide-grid article.is-guardrail { border-color:rgba(243,180,77,.18); background:rgba(243,180,77,.035); }
+.session-guide-grid span { color:#8798b3; font-size:8px; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
+.session-guide-grid p { margin-top:6px; color:#a4b2c8; font-size:10px; line-height:1.5; }
+.completed-today { margin-top:auto; padding-top:32px; }
+.completed-today-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; border-top:1px solid var(--dash-border); padding-top:16px; }
+.completed-today-heading > span { color:var(--dash-muted); font-size:9px; font-weight:750; letter-spacing:.12em; text-transform:uppercase; }
+.completed-today-heading > strong { color:#7e90aa; font-size:9px; font-weight:650; }
+.completed-today-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
+.completed-today-grid button { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; min-width:0; border:1px solid rgba(143,161,191,.12); border-radius:11px; background:rgba(12,19,30,.34); padding:10px; text-align:left; cursor:pointer; }
+.completed-today-grid button:hover { border-color:rgba(143,161,191,.25); background:rgba(28,39,58,.5); transform:translateY(-1px); }
+.completed-activity-icon { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:9px; }
+.completed-today-grid button > span:nth-child(2) { display:grid; min-width:0; gap:2px; }
+.completed-today-grid button strong { overflow:hidden; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.completed-today-grid button small { color:var(--dash-muted); font-size:9px; }
+.completed-today-grid button > span:last-child { color:#71829f; font-size:10px; }
+
 .primary-action {
   display: inline-flex;
   align-items: center;
@@ -730,6 +978,24 @@ button { color: inherit; }
 .signal-summary { display: grid; gap: 6px; margin-top: 22px; }
 .signal-summary strong { font-family: var(--font-display); font-size: 16px; }
 .signal-summary p { color: var(--dash-muted); font-size: 12px; line-height: 1.55; }
+.codex-state { display:grid; gap:8px; margin-top:18px; border:1px solid rgba(118,166,255,.18); border-radius:12px; background:linear-gradient(145deg,rgba(82,111,176,.11),rgba(255,255,255,.015)); padding:15px 16px; }
+.codex-state.is-loading { opacity:.82; }
+.codex-state-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.codex-state-heading > span { color:#9ab9f4; font-size:9px; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
+.codex-state-heading i { color:#78a6ff; font-style:normal; }
+.codex-state-heading button { border:0; background:transparent; padding:2px 0; color:#8399bd; font-size:9px; font-weight:700; cursor:pointer; }
+.codex-state-heading button:hover:not(:disabled) { color:#b7caff; }
+.codex-state-heading button:disabled { cursor:default; }
+.codex-state > strong { margin-top:3px; font-family:var(--font-display); font-size:14px; line-height:1.35; }
+.codex-state > p { color:#a0aec4; font-size:11px; line-height:1.55; }
+.codex-state > small { border-top:1px solid rgba(118,166,255,.1); margin-top:2px; padding-top:8px; color:#899bb7; font-size:10px; line-height:1.5; }
+.codex-state > small b { color:#9db8ea; }
+.codex-state .codex-state-placeholder { color:#71829f; }
+.codex-state .codex-state-updating { color:#7892c2; font-size:8px; font-weight:650; letter-spacing:.04em; }
+.codex-plan-action { display:flex; align-items:center; justify-content:space-between; gap:14px; width:100%; margin-top:2px; border:1px solid rgba(118,166,255,.22); border-radius:9px; background:rgba(87,125,214,.12); padding:9px 10px; color:#b8ccff; font-size:9px; font-weight:750; cursor:pointer; }
+.codex-plan-action:hover:not(:disabled) { border-color:rgba(118,166,255,.38); background:rgba(87,125,214,.2); transform:translateY(-1px); }
+.codex-plan-action:disabled { cursor:default; opacity:.68; }
+.codex-plan-error { color:#ef9a90 !important; font-size:9px !important; }
 .load-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; border-top: 1px solid var(--dash-border); border-bottom: 1px solid var(--dash-border); margin-top: 20px; padding: 10px 0; }
 .load-metrics div { --metric-color: #91a3bf; display: grid; min-width: 0; gap: 2px; border: 1px solid color-mix(in srgb, var(--metric-color) 17%, transparent); border-radius: 9px; background: linear-gradient(145deg, color-mix(in srgb, var(--metric-color) 10%, transparent), rgba(255, 255, 255, 0.01)); padding: 8px; }
 .load-metrics .metric-fitness { --metric-color: #76a6ff; }
@@ -747,13 +1013,6 @@ button { color: inherit; }
 .checkin-summary strong.neutral { border-color: rgba(118, 166, 255, 0.14); background: rgba(118, 166, 255, 0.08); color: #9ab9f4; }
 .checkin-summary strong.risk { border-color: rgba(239, 123, 110, 0.16); background: rgba(239, 123, 110, 0.09); color: #f09a90; }
 .signal-empty { margin-top: 18px; color: var(--dash-muted); font-size: 11px; }
-.streak-summary { display: grid; grid-template-columns:auto auto 1fr; align-items:center; gap:4px 10px; margin-top:16px; padding-top:14px; border-top:1px solid var(--dash-border); }
-.streak-summary-icon { grid-row:1 / 3; font-size:20px; }
-.streak-summary div { display:grid; gap:1px; }
-.streak-summary small { color:var(--dash-muted); font-size:8px; font-weight:750; letter-spacing:.08em; text-transform:uppercase; }
-.streak-summary strong { color:#f6a45d; font-family:var(--font-display); font-size:15px; }
-.streak-summary p { justify-self:end; max-width:210px; color:#71829f; font-size:9px; line-height:1.45; text-align:right; }
-
 .week-card,
 .year-section,
 .explore-section { padding: 24px; }
@@ -932,8 +1191,8 @@ button { color: inherit; }
   .session-prescription strong { font-size: 14px; }
   .decision-actions { align-items: flex-start; flex-direction: column; }
   .primary-action { justify-content: space-between; width: 100%; }
-  .streak-summary { grid-template-columns:auto 1fr; }
-  .streak-summary p { grid-column:1 / -1; justify-self:start; max-width:none; text-align:left; }
+  .session-guide-grid { grid-template-columns:1fr; }
+  .completed-today-grid { grid-template-columns:1fr; }
   .section-heading { align-items: flex-start; }
   .section-heading h2 { font-size: 17px; }
   .week-summary { grid-template-columns: repeat(2, 1fr); }

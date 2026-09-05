@@ -41,11 +41,12 @@ class CodexPlanningHelperTests(unittest.TestCase):
         self.assertIn("not be\nrepeated as a workout recap", prompt)
 
     def test_plan_feedback_builds_protected_revision_prompt(self):
-        week_start, feedback = helper.validate_plan_revision_request({
+        week_start, feedback, target_date = helper.validate_plan_revision_request({
             "week_start": "2026-08-24",
             "feedback": " Move the intervals to Thursday and shorten them. ",
         })
         self.assertEqual(feedback, "Move the intervals to Thursday and shorten them.")
+        self.assertIsNone(target_date)
         prompt = helper.build_plan_revision_prompt(week_start, feedback)
         self.assertIn("adjust_weekly_plan", prompt)
         self.assertIn("protecting completed and past days", prompt)
@@ -56,6 +57,38 @@ class CodexPlanningHelperTests(unittest.TestCase):
                 "week_start": "2026-08-24",
                 "feedback": "  ",
             })
+
+    def test_single_day_plan_revision_is_strictly_scoped(self):
+        week_start, feedback, target_date = helper.validate_plan_revision_request({
+            "week_start": "2026-08-24",
+            "feedback": "Replace tomorrow with recovery.",
+            "target_date": "2026-08-25",
+        })
+        prompt = helper.build_plan_revision_prompt(week_start, feedback, target_date)
+        self.assertIn("changes array containing exactly one entry", prompt)
+        self.assertIn("every non-target day", prompt)
+        with self.assertRaisesRegex(ValueError, "inside the selected week"):
+            helper.validate_plan_revision_request({
+                "week_start": "2026-08-24",
+                "feedback": "Change it.",
+                "target_date": "2026-09-01",
+            })
+
+    def test_targeted_revision_requires_a_real_single_day_change(self):
+        before = {
+            "2026-08-31": {"date": "2026-08-31", "title": "Easy ride"},
+            "2026-09-01": {"date": "2026-09-01", "title": "Run test"},
+        }
+        after = {
+            "2026-08-31": {"date": "2026-08-31", "title": "Easy ride"},
+            "2026-09-01": {"date": "2026-09-01", "title": "Recovery ride"},
+        }
+        helper.verify_targeted_plan_revision(before, after, "2026-09-01")
+        with self.assertRaisesRegex(RuntimeError, "did not change"):
+            helper.verify_targeted_plan_revision(before, before, "2026-09-01")
+        after["2026-08-31"]["title"] = "Changed too"
+        with self.assertRaisesRegex(RuntimeError, "outside the requested target"):
+            helper.verify_targeted_plan_revision(before, after, "2026-09-01")
 
     def test_coach_chat_validates_and_builds_read_only_prompt(self):
         message, history = helper.validate_chat_request({
@@ -82,6 +115,29 @@ class CodexPlanningHelperTests(unittest.TestCase):
         self.assertIn("/activities/healthfit:ride-123", requested_url)
         self.assertNotIn("/api/activities", requested_url)
         self.assertNotIn("%3A", requested_url)
+
+    def test_daily_state_is_read_only_and_returns_validated_json(self):
+        context_key = helper.validate_daily_state_request({"context_key": "2026-09-03|ride:123|watch|-16"})
+        self.assertEqual(context_key, "2026-09-03|ride:123|watch|-16")
+        prompt = helper.build_daily_state_prompt()
+        self.assertIn("get_recent_context", prompt)
+        self.assertIn("today's completed activities", prompt)
+        self.assertIn("Never change or save data", prompt)
+        self.assertIn("Do not\nrecite those values", prompt)
+        self.assertIn("Prefer one sharp inference", prompt)
+        self.assertIn("Set plan_change_recommended to true only", prompt)
+        self.assertIn("plan_change_recommended MUST be", prompt)
+        self.assertIn("recent_strength_detail", prompt)
+        self.assertIn("Never claim strength detail is missing", prompt)
+        result = helper.parse_daily_state_result(
+            '```json\n{"headline":"Hold steady","assessment":"The morning load is elevated.","next_step":"Keep the next session easy.","confidence":"medium","plan_change_recommended":true,"plan_change_reason":"Replace tomorrow’s test with easy recovery."}\n```'
+        )
+        self.assertEqual(result["confidence"], "medium")
+        self.assertTrue(result["plan_change_recommended"])
+        with self.assertRaisesRegex(ValueError, "context_key"):
+            helper.validate_daily_state_request({"context_key": "bad key with spaces"})
+        with self.assertRaisesRegex(RuntimeError, "invalid daily assessment"):
+            helper.parse_daily_state_result('{"headline":"Missing fields"}')
 
     @patch.object(helper, "resolve_codex_cli", return_value="/fake/codex")
     @patch.object(helper.subprocess, "run")

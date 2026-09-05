@@ -9,10 +9,12 @@ from ..models.strength_workouts import (
     StrengthSessionStartRequest,
     StrengthSetCompletionRequest,
     StrengthTemplateInput,
+    StrengthWarmupSetAddRequest,
 )
 from ..services.strength_workouts import (
     abandon_session,
     add_session_exercise,
+    add_warmup_set,
     activity_candidates,
     complete_set,
     delete_session,
@@ -95,6 +97,20 @@ def sessions_show(session_id: int):
 @router.post("/sessions/{session_id}/exercises", status_code=status.HTTP_201_CREATED)
 def sessions_add_exercise(session_id: int, payload: StrengthSessionExerciseAddRequest):
     return _with_db(lambda conn: add_session_exercise(conn, session_id, payload))
+
+
+@router.post(
+    "/sessions/{session_id}/exercises/{exercise_id}/warmup-sets",
+    status_code=status.HTTP_201_CREATED,
+)
+def sessions_add_warmup_set(
+    session_id: int,
+    exercise_id: int,
+    payload: StrengthWarmupSetAddRequest,
+):
+    return _with_db(
+        lambda conn: add_warmup_set(conn, session_id, exercise_id, payload)
+    )
 
 
 @router.post("/sessions/{session_id}/sets/{set_id}/complete")

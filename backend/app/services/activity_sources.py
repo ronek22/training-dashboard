@@ -53,13 +53,60 @@ def _relative_delta(left: Optional[float], right: Optional[float], floor: float)
     return abs(float(left) - float(right)) / max(abs(float(left)), abs(float(right)), floor)
 
 
+def _compatible_activity_types(left: str, right: str) -> bool:
+    if left == right:
+        return True
+    return {left, right} == {"Ride", "VirtualRide"}
+
+
+def _parse_started_at(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return parsed.replace(tzinfo=None) if parsed.tzinfo is None else parsed.astimezone().replace(tzinfo=None)
+    except ValueError:
+        return None
+
+
 def find_activity_match(conn: sqlite3.Connection, candidate: dict) -> dict:
     rows = conn.execute(
-        "SELECT * FROM activities WHERE date = ? AND type = ? ORDER BY created_at, id",
-        (candidate["date"], candidate["type"]),
+        "SELECT * FROM activities WHERE date = ? ORDER BY created_at, id",
+        (candidate["date"],),
     ).fetchall()
+    candidate_started_at = _parse_started_at(candidate.get("started_at"))
+    if candidate_started_at:
+        timed_matches = []
+        for row in rows:
+            if not _compatible_activity_types(candidate["type"], row["type"]):
+                continue
+            refs = conn.execute(
+                "SELECT started_at FROM activity_source_refs WHERE activity_id = ? AND started_at IS NOT NULL",
+                (row["id"],),
+            ).fetchall()
+            deltas = [
+                abs((candidate_started_at - started_at).total_seconds())
+                for ref in refs
+                if (started_at := _parse_started_at(ref["started_at"])) is not None
+            ]
+            if deltas and min(deltas) <= 120:
+                timed_matches.append((min(deltas), dict(row)))
+        timed_matches.sort(key=lambda item: item[0])
+        if len(timed_matches) == 1 or (
+            len(timed_matches) > 1 and timed_matches[1][0] - timed_matches[0][0] > 30
+        ):
+            return {
+                "status": "matched",
+                "activity": timed_matches[0][1],
+                "reason": "Unique compatible activity with a matching start time.",
+            }
+        if timed_matches:
+            return {"status": "ambiguous", "activity": None, "reason": "Multiple activities have similarly close start times."}
+
     scored = []
     for row in rows:
+        if not _compatible_activity_types(candidate["type"], row["type"]):
+            continue
         duration_delta = _relative_delta(candidate.get("duration_min"), row["duration_min"], 10.0)
         distance_delta = _relative_delta(candidate.get("distance_km"), row["distance_km"], 1.0)
         hr_delta = _relative_delta(candidate.get("avg_hr"), row["avg_hr"], 100.0)

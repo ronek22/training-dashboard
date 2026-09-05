@@ -711,7 +711,7 @@ def get_strength_overview_data(
     body_part: Optional[str] = None,
     exercise: Optional[str] = None,
 ) -> dict:
-    normalized_weeks = weeks if weeks in {4, 8, 12} else 8
+    normalized_weeks = weeks if weeks in {4, 8, 12, 26, 52} else 8
     selected_body_part = body_part if body_part in {"all", *BODY_PART_LABELS.keys()} else "all"
     window_start = _window_start_for_weeks(normalized_weeks)
 
@@ -757,7 +757,7 @@ def get_strength_overview_data(
         "important_prs": _important_prs(trends),
         "exercises": ranked_exercises[:12],
         "selected_exercise": selected_exercise,
-        "sessions": _recent_sessions_with_detail(filtered_sessions),
+        "sessions": _recent_sessions_with_detail(filtered_sessions, limit=len(filtered_sessions)),
         "heuristics": {
             "body_part_mapping_version": "strength_view_v1",
             "note": "Body-part filters use explicit keyword heuristics over recorded exercise names and may not classify every variant cleanly.",

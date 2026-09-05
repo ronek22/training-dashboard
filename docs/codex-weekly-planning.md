@@ -84,3 +84,12 @@ by Git.
 The Codex CLI must be installed or bundled with the ChatGPT/Codex macOS app, and
 the `training_dashboard` MCP connection must point to
 `http://localhost:8000/mcp`.
+
+## Automatic Sunday AI review
+
+The same helper also generates a short weekly review on Sundays at 23:59 in
+Europe/Warsaw. It runs independently of the dashboard browser tab and catches up
+the most recently due week when the helper starts again. Both backend and helper
+must be running. Failures retry after 15 minutes; generated reviews are retained
+and never overwritten. The dashboard shows the three takeaways and an evidence-based
+assessment of the previous week's suggestion, without asking the athlete to fill in a form.

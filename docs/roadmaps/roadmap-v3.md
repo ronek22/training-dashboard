@@ -306,3 +306,12 @@ When choosing between features, prefer the one that:
 2. makes uncertainty or missing evidence more explicit
 3. reuses structured context across dashboard, coaching, frontend, and MCP
 4. strengthens trust without over-automating the product
+
+
+## Implemented addition — Am I improving? (2026-09-05)
+
+- Trends now offers session comparisons over 90, 180 or 365 days, with dated source links, both recorded values, deltas, matching rules and visible conditions/data caveats.
+- Runs compare pace within 5 bpm average HR; rides compare HR within 5% average power. Both require duration within 20%, the same activity type and no conflicting known workout intent. The most recent matchable session is paired by control metric, duration and recency, without selecting for a favorable outcome.
+- Strength compares the best working-set reps at the exact same exercise name and recorded kg, showing all included working-set reps and flagging differing set counts or sources. Existing linked TrainLog/Fitbod history selection prevents double counting. Unlinked sessions and sessions without set detail remain outside coverage.
+- Missing required metrics are excluded and counted. Unverified weather, route, sensor coverage and lifting conditions are explicit; paired averages are observational evidence, not a fitness verdict.
+- Validation: comparison unit tests, empty-database API/parameter validation, real-data read-only smoke check and frontend production build passed.

@@ -1,41 +1,37 @@
 <template>
   <div class="ad-presentation strength-presentation">
     <section class="ad-outcome" aria-labelledby="strength-summary">
-      <div class="ad-section-heading"><div><span>Workout overview</span><h2 id="strength-summary">Strength work</h2></div><p v-if="enriched">{{ session.exercises.length }} exercises · {{ session.set_count }} total sets</p></div>
+      <div class="ad-section-heading"><div><h2 id="strength-summary">Session at a glance</h2></div><p v-if="enriched">{{ session.exercises.length }} exercises · {{ primaryFocus }}</p></div>
       <div class="ad-primary-metrics">
         <div v-for="metric in metrics" :key="metric.label" class="ad-primary-metric"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong></div>
       </div>
-      <div v-if="enriched" class="strength-insight-grid">
-        <div class="strength-focus">
-          <div class="strength-insight-heading">
-            <div><span>Muscle focus</span><strong>{{ primaryFocus }}</strong></div>
-            <small>Based on working sets</small>
-          </div>
-          <div class="strength-focus-bar" aria-hidden="true">
-            <i v-for="focus in muscleFocus" :key="focus.key" :class="`is-${focus.key}`" :style="{ width: `${focus.percent}%` }"></i>
-          </div>
-          <div class="strength-focus-legend">
-            <div v-for="focus in muscleFocus" :key="focus.key">
-              <span><i :class="`is-${focus.key}`"></i>{{ focus.label }}</span>
-              <strong>{{ focus.sets }} <small>sets</small></strong>
-            </div>
-          </div>
-        </div>
-        <div class="strength-volume-note">
-          <span>Volume coverage</span>
-          <strong>{{ loadedSetCount }} / {{ workingSetCount }}</strong>
-          <p>working sets include a recorded external load</p>
-        </div>
-      </div>
-      <p class="ad-context-note">Tracked volume is load × repetitions for sets with recorded weight. Bodyweight and unweighted work still count toward muscle focus.</p>
+      <div v-if="enriched" class="strength-coverage"><div class="strength-coverage-heading"><span>Muscle focus</span><small>{{ loadedSetCount }}/{{ workingSetCount }} sets with load</small></div><div class="strength-focus-bar" aria-hidden="true"><i v-for="focus in muscleFocus" :key="focus.key" :class="`is-${focus.key}`" :style="{width:`${focus.percent}%`}"></i></div><div class="strength-focus-legend"><div v-for="focus in muscleFocus" :key="focus.key"><span><i :class="`is-${focus.key}`"></i>{{ focus.label }}</span><strong>{{ focus.sets }} sets</strong></div></div><p>Tracked volume is load × reps; bodyweight work still counts toward muscle focus.</p></div>
     </section>
 
-    <slot name="after-overview"></slot>
 
+    <section v-if="enriched" class="ad-exercises strength-workbench" aria-labelledby="exercise-heading">
+      <div class="ad-section-heading"><div><h2 id="exercise-heading">The work you did</h2><p>Select a lift to inspect the recorded sets.</p></div><router-link to="/strength" class="ad-inline-action">Strength overview →</router-link></div>
+      <div class="strength-workbench-grid">
+        <nav class="exercise-roster" aria-label="Workout exercises"><button v-for="(exercise, index) in session.exercises" :key="exercise.id" type="button" :class="{active: activeExercise?.id === exercise.id}" :aria-pressed="activeExercise?.id === exercise.id" @click="selectedExerciseId = exercise.id"><span class="roster-number">{{ String(index + 1).padStart(2, '0') }}</span><span><strong>{{ exercise.exercise_name }}</strong><small>{{ exerciseWorkingSets(exercise).length }} working sets · {{ muscleLabel(exercise.exercise_name) }}</small></span><span class="roster-arrow" aria-hidden="true">›</span></button></nav>
+        <article v-if="activeExercise" class="selected-lift-log" aria-labelledby="selected-lift-heading">
+          <header><span class="lift-log-kicker">Exercise {{ session.exercises.indexOf(activeExercise) + 1 }} / {{ session.exercises.length }}</span><h3 id="selected-lift-heading">{{ activeExercise.exercise_name }}</h3><dl class="lift-session-stats"><div><dt>Working sets</dt><dd>{{ exerciseWorkingSets(activeExercise).length }}</dd></div><div><dt>Top working load</dt><dd>{{ topWorkingLoad == null ? '—' : `${number(topWorkingLoad)} kg` }}</dd></div><div><dt>Working reps</dt><dd>{{ workingReps }}</dd></div></dl></header>
+          <div v-if="warmupSets.length" class="warmup-strip"><span>Warm-up</span><strong v-for="set in warmupSets" :key="set.id">{{ set.reps ?? '—' }} × {{ set.weight_kg == null ? 'unrecorded load' : `${number(set.weight_kg)} kg` }}</strong></div>
+          <table class="working-set-table"><caption class="sr-only">{{ activeExercise.exercise_name }} working sets</caption><thead><tr><th scope="col">Set</th><th scope="col">Reps</th><th scope="col">Load</th><th scope="col">Volume</th></tr></thead><tbody><tr v-for="set in exerciseWorkingSets(activeExercise)" :key="set.id"><th scope="row"><span class="set-check" aria-hidden="true">✓</span>{{ set.set_order }}</th><td>{{ set.reps ?? '—' }}</td><td>{{ set.weight_kg == null ? 'Not recorded' : `${number(set.weight_kg)} kg` }}</td><td>{{ set.reps != null && set.weight_kg != null ? formatVolume(set.reps * set.weight_kg) : '—' }}</td></tr></tbody></table>
+          <p v-if="!exerciseWorkingSets(activeExercise).length" class="lift-log-note">No working sets recorded for this exercise.</p><p class="lift-log-note">{{ activeExercise.total_volume_kg ? `${formatVolume(activeExercise.total_volume_kg)} total recorded volume, including any loaded warm-ups.` : 'No external-load volume recorded. Bodyweight and untracked sets remain in the log.' }}</p>
+        </article>
+      </div>
+    </section>
+    <section v-else class="ad-section ad-strength-empty">
+      <div class="ad-section-heading"><div><span>Exercise detail unavailable</span><h2>Sets were not linked</h2></div></div>
+      <p>This activity is still a valid completed strength session. Link a recorded TrainLog workout or a matching Fitbod import to review exercise order, sets, repetitions, and load.</p>
+      <router-link to="/strength/workouts" class="ad-inline-action">Open Workout studio →</router-link>
+    </section>
+    <slot name="after-overview"></slot>
+    <section v-if="heartRateChart || averageHeartRate" class="strength-effort-disclosure"><div class="strength-effort-heading"><div><span>Heart rate &amp; effort</span><small>Session intensity context</small></div><strong v-if="averageHeartRate">{{ averageHeartRate }} bpm average</strong></div>
     <section v-if="heartRateChart" class="ad-section strength-heart-rate" aria-labelledby="strength-heart-rate-heading">
       <div class="ad-section-heading">
         <div><span>Apple Watch effort</span><h2 id="strength-heart-rate-heading">Heart rate through the workout</h2></div>
-        <p>See how effort rose during working sets and settled during recovery.</p>
+        <p>Heart-rate context across the session; samples are not aligned to individual sets.</p>
       </div>
       <div class="strength-heart-summary">
         <div><span>Average</span><strong>{{ averageHeartRate ?? '—' }} <small>bpm</small></strong></div>
@@ -85,26 +81,6 @@
       <router-link to="/sync" class="ad-inline-action">Open Data &amp; Sync →</router-link>
     </section>
 
-    <section v-if="enriched" class="ad-exercises" aria-labelledby="exercise-heading">
-      <div class="ad-section-heading"><div><span>Performed in order</span><h2 id="exercise-heading">Exercises and sets</h2></div></div>
-      <article v-for="(exercise, index) in session.exercises" :key="exercise.id" class="ad-exercise">
-        <header>
-          <span class="ad-exercise-order">{{ index + 1 }}</span>
-          <div><h3>{{ exercise.exercise_name }}</h3><p>{{ exercise.set_count }} sets · {{ exercise.rep_count }} reps</p></div>
-          <div class="ad-exercise-summary"><span>{{ muscleLabel(exercise.exercise_name) }}</span><strong>{{ exercise.total_volume_kg ? formatVolume(exercise.total_volume_kg) : 'Bodyweight / untracked' }}</strong></div>
-        </header>
-        <div class="ad-set-table" role="table" :aria-label="`${exercise.exercise_name} sets`">
-          <div class="ad-set-row ad-set-head" role="row"><span>Set</span><span>Type</span><span>Reps</span><span>Load</span></div>
-          <div v-for="set in exercise.sets" :key="set.id" class="ad-set-row" role="row">
-            <strong>{{ set.set_order }}</strong><span><span class="ad-set-kind">{{ set.is_warmup ? 'Warm-up' : 'Working' }}</span></span><span>{{ set.reps ?? '—' }}</span><span>{{ set.weight_kg == null ? 'Not recorded' : `${number(set.weight_kg)} kg` }}</span>
-          </div>
-        </div>
-      </article>
-    </section>
-    <section v-else class="ad-section ad-strength-empty">
-      <div class="ad-section-heading"><div><span>Exercise detail unavailable</span><h2>Sets were not linked</h2></div></div>
-      <p>This activity is still a valid completed strength session. Link a recorded TrainLog workout or a matching Fitbod import to review exercise order, sets, repetitions, and load.</p>
-      <router-link to="/strength/workouts" class="ad-inline-action">Open Workout studio →</router-link>
     </section>
   </div>
 </template>
@@ -197,6 +173,18 @@ const focusFor = (name = '') => {
   return focusGroups.find(group => group.words.some(word => normalized.includes(word))) || { key: 'other', label: 'Other' }
 }
 const muscleLabel = name => focusFor(name).label
+const selectedExerciseId = ref(null)
+const activeExercise = computed(() => (session.value.exercises || []).find(exercise => exercise.id === selectedExerciseId.value) || session.value.exercises?.[0] || null)
+const exerciseWorkingSets = exercise => (exercise?.sets || []).filter(set => !set.is_warmup)
+const warmupSets = computed(() => (activeExercise.value?.sets || []).filter(set => set.is_warmup))
+const topWorkingLoad = computed(() => {
+  const loads = exerciseWorkingSets(activeExercise.value).filter(set => set.weight_kg != null && Number.isFinite(Number(set.weight_kg))).map(set => Number(set.weight_kg))
+  return loads.length ? Math.max(...loads) : null
+})
+const workingReps = computed(() => {
+  const sets = exerciseWorkingSets(activeExercise.value)
+  return sets.length && sets.every(set => set.reps != null) ? sets.reduce((sum, set) => sum + Number(set.reps), 0) : '—'
+})
 const workingSets = computed(() => enriched.value
   ? session.value.exercises.flatMap(exercise => exercise.sets || []).filter(set => !set.is_warmup)
   : [])
@@ -227,9 +215,9 @@ const metrics = computed(() => {
   const duration = metricFromStats(['moving_time_min', 'elapsed_time_min', 'duration_min'])
   if (duration) output.push({ label: 'Duration', value: `${duration.value}${duration.unit ? ` ${duration.unit}` : ''}` })
   if (enriched.value) {
-    output.push({ label: 'Tracked volume', value: formatVolume(session.value.total_volume_kg) })
+    output.push({ label: 'Exercises', value: session.value.exercises.length })
     output.push({ label: 'Working sets', value: workingSetCount.value })
-    output.push({ label: 'Repetitions', value: session.value.rep_count })
+    output.push({ label: 'Recorded volume', value: formatVolume(session.value.total_volume_kg) })
   }
   return output
 })
@@ -269,5 +257,13 @@ const number = formatNumber
 .ad-exercise-summary{display:grid;gap:5px;margin-left:auto;text-align:right}.ad-exercise-summary span{color:var(--ad-muted);font-size:.7rem}.ad-exercise-summary strong{font-size:.78rem}
 .ad-set-table{border-top-color:rgba(132,149,181,.1)}.ad-set-row{border-top-color:rgba(132,149,181,.09)}
 .ad-set-row:not(.ad-set-head):hover{background:rgba(132,149,181,.035)}
-@media(max-width:700px){.strength-insight-grid{grid-template-columns:1fr}.strength-heart-summary{grid-template-columns:1fr}.strength-heart-chart svg{height:180px}.ad-exercise-summary{display:none}}
+.strength-coverage{margin-top:18px;border:1px solid rgba(132,149,181,.14);border-radius:14px;background:rgba(9,16,27,.28);overflow:hidden}
+.strength-coverage-heading,.strength-effort-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.strength-coverage-heading{padding:14px 16px 11px}.strength-coverage-heading span,.strength-effort-heading span{font-size:.82rem;font-weight:750}.strength-coverage-heading small,.strength-effort-heading small{color:var(--ad-muted);font-size:.7rem}.strength-coverage .strength-focus-bar{margin:0 16px 13px}.strength-coverage .strength-focus-legend{padding:0 16px 11px}.strength-coverage p{margin:0;padding:0 16px 15px;color:var(--ad-muted);font-size:.72rem;line-height:1.5}
+.strength-workbench{margin-top:20px}.strength-workbench-grid{display:grid;grid-template-columns:260px minmax(0,1fr);gap:14px;margin-top:18px}
+.exercise-roster{display:grid;align-content:start;gap:6px;padding:8px;border:1px solid rgba(132,149,181,.14);border-radius:14px;background:rgba(9,16,27,.3)}
+.exercise-roster button{display:grid;grid-template-columns:30px minmax(0,1fr) 18px;align-items:center;gap:10px;width:100%;padding:13px 11px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--text);text-align:left;cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .18s ease}
+.exercise-roster button:hover{background:rgba(132,149,181,.08);transform:translateX(2px)}.exercise-roster button.active{border-color:rgba(243,196,120,.45);background:linear-gradient(100deg,rgba(243,196,120,.15),rgba(132,149,181,.05))}.roster-number{color:var(--ad-muted);font-variant-numeric:tabular-nums;font-size:.7rem;font-weight:800;letter-spacing:.06em}.exercise-roster strong{display:block;font-size:.83rem;line-height:1.25}.exercise-roster small{display:block;margin-top:4px;color:var(--ad-muted);font-size:.68rem;line-height:1.3}.roster-arrow{color:var(--ad-muted);font-size:1.25rem;text-align:right}.exercise-roster button.active .roster-arrow{color:#f3c478}
+.selected-lift-log{min-width:0;padding:22px;border:1px solid rgba(243,196,120,.26);border-radius:14px;background:radial-gradient(circle at 100% 0,rgba(243,196,120,.1),transparent 42%),rgba(9,16,27,.38)}.selected-lift-log header{display:grid;gap:6px}.lift-log-kicker{color:#f3c478;font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.selected-lift-log h3{margin:0;font-size:1.35rem;letter-spacing:-.02em}.lift-session-stats{display:flex;flex-wrap:wrap;gap:18px;margin:15px 0 0}.lift-session-stats div{display:grid;gap:4px}.lift-session-stats dt{color:var(--ad-muted);font-size:.68rem}.lift-session-stats dd{margin:0;color:var(--text);font-size:.9rem;font-weight:750}.warmup-strip{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:20px 0 12px;padding:10px 12px;border:1px dashed rgba(132,149,181,.24);border-radius:9px;color:var(--ad-muted);font-size:.72rem}.warmup-strip span{margin-right:3px;color:var(--text);font-weight:750}.warmup-strip strong{padding:4px 7px;border-radius:6px;background:rgba(132,149,181,.1);font-size:.7rem;font-weight:600}
+.working-set-table{width:100%;border-collapse:collapse;margin-top:18px;font-variant-numeric:tabular-nums}.working-set-table th,.working-set-table td{padding:11px 8px;border-top:1px solid rgba(132,149,181,.12);text-align:left;font-size:.78rem}.working-set-table thead th{border-top:0;color:var(--ad-muted);font-size:.66rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.working-set-table tbody th{font-weight:650}.working-set-table tbody tr:hover{background:rgba(132,149,181,.045)}.working-set-table td:last-child{color:#8edfc3;font-weight:650}.set-check{display:inline-grid;place-items:center;width:18px;height:18px;margin-right:6px;border-radius:50%;background:rgba(55,212,162,.14);color:#37d4a2;font-size:.65rem}.lift-log-note{margin:14px 0 0;color:var(--ad-muted);font-size:.72rem;line-height:1.5}.strength-effort-disclosure{margin-top:20px;border:1px solid rgba(132,149,181,.14);border-radius:14px;background:radial-gradient(circle at 100% 0,rgba(255,102,119,.08),transparent 38%),rgba(9,16,27,.3);overflow:hidden}.strength-effort-heading{padding:18px 20px 14px}.strength-effort-heading>div{display:grid;gap:4px}.strength-effort-heading>strong{color:#ff8b98;font-size:.9rem}.strength-effort-disclosure>.strength-heart-rate{border:0;border-top:1px solid rgba(132,149,181,.1);border-radius:0;background:transparent}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:700px){.strength-insight-grid{grid-template-columns:1fr}.strength-heart-summary{grid-template-columns:1fr}.strength-heart-chart svg{height:180px}.ad-exercise-summary{display:none}.strength-workbench-grid{grid-template-columns:1fr}.exercise-roster{display:flex;overflow-x:auto;gap:6px}.exercise-roster button{min-width:190px}.selected-lift-log{padding:17px}.working-set-table th,.working-set-table td{padding:10px 5px;font-size:.7rem}.lift-session-stats{gap:12px}}
 </style>

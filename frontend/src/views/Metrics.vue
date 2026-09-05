@@ -169,6 +169,8 @@
       </section>
     </template>
 
+    <SessionComparisons v-else-if="activeView === 'improving'" />
+
     <TrainingLoadPanel v-else-if="activeView === 'training_load'" title="Training load" subtitle="How short-term fatigue is moving against your longer-term fitness." :days="84" :focus-days="28" mode="full" />
 
     <section v-else-if="activeView === 'recovery'" class="health-detail recovery-detail" aria-labelledby="recovery-heading">
@@ -187,7 +189,7 @@
         </button>
       </div>
 
-      <HealthTrendChart :key="selectedRecoveryMetric.key" v-bind="selectedRecoveryMetric" :history="healthHistory(selectedRecoveryMetric.key)" />
+      <HealthTrendChart :key="selectedRecoveryMetric.key" v-bind="selectedRecoveryMetric" :history="healthHistory(selectedRecoveryMetric.key)" :show-stages="selectedRecoveryMetric.key === 'sleep'" />
     </section>
 
     <section v-else-if="activeView === 'daily_activity'" class="health-detail activity-detail" aria-labelledby="daily-activity-heading">
@@ -256,13 +258,14 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import TrainingLoadPanel from '../components/TrainingLoadPanel.vue'
+import SessionComparisons from '../components/SessionComparisons.vue'
 import HealthTrendChart from '../components/HealthTrendChart.vue'
 import { useApi } from '../stores/api'
 
 const api = useApi()
 const route = useRoute()
 const router = useRouter()
-const views = [{ key: 'overview', label: 'Overview' }, { key: 'training_load', label: 'Training load' }, { key: 'recovery', label: 'Recovery' }, { key: 'daily_activity', label: 'Daily activity' }, { key: 'weight', label: 'Weight' }, { key: 'ftp', label: 'FTP' }]
+const views = [{ key: 'overview', label: 'Overview' }, { key: 'improving', label: 'Am I improving?' }, { key: 'training_load', label: 'Training load' }, { key: 'recovery', label: 'Recovery' }, { key: 'daily_activity', label: 'Daily activity' }, { key: 'weight', label: 'Weight' }, { key: 'ftp', label: 'FTP' }]
 const metricMeta = {
   weight: { label: 'Weight', description: 'A supporting body-composition signal. Interpret the longer trend, not a single weigh-in.', action: 'Log weight', empty: 'Add weigh-ins when useful; this does not need to become a daily obligation.' },
   ftp: { label: 'Cycling FTP', description: 'A tested performance anchor used to set cycling zones and compare future tests.', action: 'Log FTP test', empty: 'Add a result after a repeatable FTP test. Everyday ride power does not belong here.' },

@@ -147,6 +147,7 @@ class CodexPlanningHelperTests(unittest.TestCase):
         command = run.call_args.args[0]
         self.assertEqual(summary, "Saved the week")
         self.assertIn("exec", command)
+        self.assertEqual(command[command.index("--model") + 1], "gpt-5.6-luna")
         self.assertIn("--approve-for-me", command)
         self.assertIn("--output-last-message", command)
         self.assertNotIn("--sandbox", command)

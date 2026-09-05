@@ -17,7 +17,9 @@
           <rect v-if="targetBand" x="46" :y="targetBand.y" width="618" :height="targetBand.height" class="target-band"><title>{{ targetLabel }}</title></rect>
 
           <template v-if="chartType === 'bar'">
-            <rect v-for="point in points" :key="point.date" :x="point.barX" :y="point.y" :width="point.barWidth" :height="Math.max(2, chartBottom - point.y)" rx="3" class="signal-bar" :class="[{ active: isActive(point) }, `is-${point.averageState}`]" :fill-opacity="point.intensity" />
+            <template v-for="point in points" :key="point.date">
+              <rect v-for="(stage, stageIndex) in point.stages" :key="`${point.date}-${stage.key}`" :x="point.barX" :y="stage.y" :width="point.barWidth" :height="Math.max(1, stage.height)" :rx="stageIndex === point.stages.length - 1 ? 3 : 0" class="signal-bar" :class="[{ active: isActive(point) }, `is-${point.averageState}`]" :style="{ fill: stage.color }" :fill-opacity="point.intensity" />
+            </template>
           </template>
           <template v-else>
             <polyline :points="areaPoints" class="signal-area" />
@@ -66,7 +68,10 @@
       <div class="chart-axis"><span>{{ axisDates[0] }}</span><span>{{ axisDates[1] }}</span><span>{{ axisDates[2] }}</span></div>
       <div class="chart-footer">
         <div class="chart-legend">
-          <template v-if="chartType === 'bar'"><span><i class="low-swatch"></i>Lower</span><span><i class="high-swatch"></i>Higher</span></template>
+          <template v-if="chartType === 'bar'">
+            <template v-if="showStages"><span v-for="stage in stageLegend" :key="stage.key"><i class="stage-swatch" :style="{ background: stage.color }"></i>{{ stage.label }}</span></template>
+            <template v-else><span><i class="low-swatch"></i>Lower</span><span><i class="high-swatch"></i>Higher</span></template>
+          </template>
           <span v-else><i class="signal-swatch"></i>{{ title }}</span>
           <span v-if="targetBand"><i class="target-swatch"></i>{{ targetLabel }}</span>
         </div>
@@ -94,6 +99,7 @@ const props = defineProps({
   targetMin: { type: Number, default: null },
   targetMax: { type: Number, default: null },
   targetLabel: { type: String, default: '' },
+  showStages: { type: Boolean, default: false },
 })
 
 const ranges = [14, 30, 90]
@@ -131,9 +137,25 @@ const points = computed(() => {
     const ratio = item.value / Math.max(bounds.value.max, 1)
     const averageDelta = average ? (item.value - average) / average : 0
     const averageState = Math.abs(averageDelta) <= 0.05 ? 'near' : averageDelta > 0 ? 'above' : 'below'
-    return { ...item, x, y: yFor(item.value), barX: x - barWidth / 2, barWidth, hitX: chartLeft + slot * index, hitWidth: Math.max(slot, 5), intensity: 0.42 + Math.min(0.58, ratio * 0.72), averageState, tooltip: `${formatDate(item.date)}: ${formatValue(item.value)}` }
+    const stages = props.showStages ? stageSegmentsFor(item) : [{ key: 'total', label: 'Total', color: props.accent, y: yFor(item.value), height: Math.max(2, chartBottom - yFor(item.value)) }]
+    const stageText = props.showStages && item.stages ? stages.filter(stage => stage.key !== 'unspecified').map(stage => `${stage.label} ${formatStageDuration(stage.minutes)}`).join(', ') : ''
+    return { ...item, x, y: yFor(item.value), stages, barX: x - barWidth / 2, barWidth, hitX: chartLeft + slot * index, hitWidth: Math.max(slot, 5), intensity: 0.42 + Math.min(0.58, ratio * 0.72), averageState, tooltip: `${formatDate(item.date)}: ${formatValue(item.value)}${stageText ? `. ${stageText}` : ''}` }
   })
 })
+const stageColors = { deep: '#8074fa', rem: '#d3adff', core: '#659eeb', unspecified: '#64748b' }
+const stageLabels = { deep: 'Deep', rem: 'REM', core: 'Core', unspecified: 'Unspecified' }
+const stageLegend = computed(() => Object.keys(stageColors).map(key => ({ key, label: stageLabels[key], color: stageColors[key] })))
+function stageSegmentsFor(item) {
+  const asleepMinutes = Math.max(0, Number(item.value || 0) * 60)
+  const known = ['deep', 'rem', 'core'].map(key => ({ key, label: stageLabels[key], color: stageColors[key], minutes: Math.max(0, Number(item.stages?.[key] || 0) * 60) }))
+  const knownMinutes = known.reduce((sum, stage) => sum + stage.minutes, 0)
+  if (!knownMinutes) return [{ key: 'unspecified', label: stageLabels.unspecified, color: stageColors.unspecified, y: yFor(item.value), height: Math.max(2, chartBottom - yFor(item.value)), minutes: asleepMinutes }]
+  const unspecified = Math.max(0, asleepMinutes - knownMinutes)
+  if (unspecified > 1) known.push({ key: 'unspecified', label: stageLabels.unspecified, color: stageColors.unspecified, minutes: unspecified })
+  let offset = 0
+  return known.filter(stage => stage.minutes > 0).map(stage => { const height = Math.max(1, (stage.minutes / 60) / Math.max(bounds.value.max - bounds.value.min, 1) * (chartBottom - chartTop)); const segment = { ...stage, y: chartBottom - offset - height, height }; offset += height; return segment })
+}
+function formatStageDuration(minutes) { const hours = Number(minutes || 0) / 60; return `${hours.toFixed(1)}h` }
 const activePoint = computed(() => points.value.find((point) => point.date === (hoveredDate.value || selectedDate.value)) || null)
 const displayPoint = computed(() => activePoint.value || latest.value)
 const linePoints = computed(() => points.value.map((point) => `${point.x},${point.y}`).join(' '))
@@ -185,4 +207,6 @@ function formatDate(value, pattern = 'd MMM yyyy') { try { return format(new Dat
 <style scoped>
 .health-trend-card{min-width:0;padding:22px;overflow:hidden}.chart-header{display:flex;align-items:flex-start;justify-content:space-between;gap:22px}.chart-title{display:grid;max-width:580px;gap:5px}.chart-title>span{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}.chart-title h3{font-family:var(--font-display);font-size:18px}.chart-title p{margin-top:5px;color:var(--muted);font-size:10px;line-height:1.5}.chart-controls{display:flex;flex:0 0 auto;align-items:flex-start;gap:18px}.range-picker{display:flex;padding:3px;border:1px solid var(--border);border-radius:9px;background:rgba(8,13,23,.45)}.range-picker button{min-width:36px;border:0;border-radius:6px;background:transparent;padding:6px;color:var(--muted);cursor:pointer;font:inherit;font-size:9px;font-weight:750}.range-picker button:hover{color:var(--text)}.range-picker button.active{background:rgba(123,163,255,.16);color:#b8ccff}.selected-value{display:grid;min-width:104px;justify-items:end;gap:2px}.selected-value strong{font-family:var(--font-display);font-size:24px}.selected-value small{color:var(--muted);font-size:9px}.chart-wrap{min-width:0;margin-top:10px}.chart-canvas{position:relative;height:var(--health-chart-height,260px)}.chart-canvas svg{display:block;width:100%;height:100%;overflow:visible}.grid-line{stroke:rgba(132,149,181,.12);stroke-width:1}.y-axis-label{position:absolute;left:0;width:5.3%;transform:translateY(-50%);color:#8495b0;font-family:var(--font-body);font-size:9px;font-variant-numeric:tabular-nums;line-height:1;text-align:right}.target-band{fill:rgba(52,211,153,.07)}.signal-area{fill:color-mix(in srgb,var(--signal-color) 12%,transparent);stroke:none}.signal-line{fill:none;stroke:var(--signal-color);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}.line-dot{position:absolute;width:8px;height:8px;transform:translate(-50%,-50%);border:2px solid var(--signal-color);border-radius:50%;background:var(--surface);box-sizing:border-box;pointer-events:none;transition:width .12s ease,height .12s ease,background .12s ease}.line-dot.active{width:11px;height:11px;border-color:#eef3fb;background:var(--signal-color);box-shadow:0 0 0 4px color-mix(in srgb,var(--signal-color) 18%,transparent)}.signal-bar{fill:color-mix(in srgb,var(--signal-color) 70%,#6b7890);transition:fill .14s ease,fill-opacity .14s ease}.signal-bar.is-below{fill:color-mix(in srgb,var(--signal-color) 52%,#69758a)}.signal-bar.is-near{fill:color-mix(in srgb,var(--signal-color) 78%,#77849a)}.signal-bar.is-above{fill:var(--signal-color)}.signal-bar.active{fill:color-mix(in srgb,var(--signal-color) 88%,white);fill-opacity:1!important}.average-band{fill:color-mix(in srgb,var(--signal-color) 5%,transparent)}.average-line{stroke:color-mix(in srgb,var(--signal-color) 38%,#d7e0ee);stroke-width:.75;stroke-opacity:.58;vector-effect:non-scaling-stroke}.average-level{position:absolute;right:2.2%;transform:translateY(-50%);border:1px solid color-mix(in srgb,var(--signal-color) 24%,var(--border));border-radius:999px;background:#151d2b;padding:4px 7px;color:var(--muted);font-family:var(--font-body);font-size:8px;font-variant-numeric:tabular-nums;line-height:1;box-shadow:0 2px 8px rgba(3,7,15,.32)}.average-level strong{color:color-mix(in srgb,var(--signal-color) 62%,white);font-weight:800}.active-guide{pointer-events:none}.active-guide line{stroke:color-mix(in srgb,var(--signal-color) 58%,transparent);stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke}.hit-area{fill:transparent;cursor:crosshair;outline:none}.hit-area:focus{stroke:var(--signal-color);stroke-width:1;stroke-dasharray:2 3}.chart-axis{display:flex;justify-content:space-between;padding-left:46px;color:var(--muted);font-family:var(--font-body);font-size:8px;font-variant-numeric:tabular-nums}.chart-footer{display:flex;align-items:end;justify-content:space-between;gap:18px;margin-top:13px}.chart-legend{display:flex;flex-wrap:wrap;gap:8px 16px;color:var(--muted);font-size:8px}.chart-legend span{display:flex;align-items:center;gap:6px}.chart-legend i{width:13px;height:6px;border-radius:3px}.low-swatch{background:color-mix(in srgb,var(--signal-color) 45%,#69758a);opacity:.6}.high-swatch,.signal-swatch{background:var(--signal-color)}.signal-swatch{height:2px!important}.target-swatch{height:7px!important;background:rgba(52,211,153,.16)}.inspection{display:grid;min-width:180px;justify-items:end;gap:2px;color:var(--muted);opacity:.6}.inspection.visible{opacity:1}.inspection span{font-size:7px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.inspection strong{color:var(--text);font-size:9px}.empty-chart{display:grid;min-height:260px;place-items:center;color:var(--muted);font-size:11px}
 @media(max-width:760px){.health-trend-card{padding:17px}.chart-header{display:grid}.chart-controls{justify-content:space-between}.chart-canvas{height:220px}.y-axis-label{font-size:8px}.average-level{right:1%;font-size:7px}.chart-footer{align-items:flex-start;flex-direction:column}.inspection{min-width:0;justify-items:start}.selected-value strong{font-size:21px}}
+
+.chart-legend .stage-swatch{width:8px;height:8px;border-radius:50%}
 </style>

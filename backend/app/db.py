@@ -170,6 +170,17 @@ def init_db():
         os.makedirs(db_dir, exist_ok=True)
     conn = get_db()
     conn.executescript("""
+        CREATE TABLE IF NOT EXISTS weekly_reviews (
+            week_start TEXT PRIMARY KEY,
+            improved TEXT NOT NULL,
+            missed TEXT NOT NULL,
+            proposed_change TEXT NOT NULL,
+            previous_change TEXT,
+            previous_change_outcome TEXT NOT NULL DEFAULT 'not_assessed',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS activities (
             id TEXT PRIMARY KEY,
             date TEXT NOT NULL,
@@ -722,5 +733,10 @@ def init_db():
 
     _cleanup_existing_fitbod_non_strength_sessions(conn)
 
+    review_columns = {row[1] for row in conn.execute("PRAGMA table_info(weekly_reviews)")}
+    if 'generator' not in review_columns:
+        conn.execute("ALTER TABLE weekly_reviews ADD COLUMN generator TEXT NOT NULL DEFAULT 'manual'")
+    if 'outcome_reason' not in review_columns:
+        conn.execute("ALTER TABLE weekly_reviews ADD COLUMN outcome_reason TEXT NOT NULL DEFAULT ''")
     conn.commit()
     conn.close()

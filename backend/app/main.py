@@ -24,6 +24,7 @@ from .routers.settings import router as settings_router
 from .routers.strength import router as strength_router
 from .routers.strength_workouts import router as strength_workouts_router
 from .routers.weekly_summary import router as weekly_summary_router
+from .routers.weekly_reviews import router as weekly_reviews_router
 from .routers.weather import router as weather_router
 from .services.health_data import apply_health_data_import
 
@@ -86,6 +87,7 @@ app.include_router(strength_router)
 app.include_router(strength_workouts_router)
 app.include_router(integrations_router)
 app.include_router(weather_router)
+app.include_router(weekly_reviews_router)
 
 init_db()
 app.mount("/mcp", mcp_app)

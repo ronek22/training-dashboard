@@ -5,7 +5,7 @@
         <div>
           <p class="dashboard-date">{{ dashboardPeriodLabel }}</p>
           <h1>Today</h1>
-          <p class="dashboard-intro">One clear training decision, with the context that matters.</p>
+
         </div>
         <button class="header-plan-link" type="button" @click="router.push('/plan')">
           <span>Open weekly plan</span><span aria-hidden="true">→</span>
@@ -13,11 +13,12 @@
       </header>
 
       <section class="decision-layout" aria-labelledby="today-decision-heading">
-        <article class="decision-card" :class="`decision-${primaryDecisionTone}`">
+        <article class="decision-card" :class="[`decision-${primaryDecisionTone}`, { 'is-completed-day': todayPlanCompleted }]" :style="{ '--sport-accent': dashboardSportAccent(todayPlan?.session_type) }">
           <div class="decision-glow" aria-hidden="true"></div>
+          <div v-if="todayPlan && isIconSessionType(todayPlan.session_type)" class="session-backdrop" aria-hidden="true"><ActivityIcon :type="todayPlan.session_type" :tone="activityTone(todayPlan.session_type)" :size="190" /></div>
           <div class="decision-topline">
-            <span class="decision-kicker">Today’s training call</span>
-            <span class="decision-state"><i aria-hidden="true"></i>{{ primaryDecisionLabel }}</span>
+            <span class="decision-kicker">{{ todayPlanCompleted ? 'Today’s completed work' : todayPlan ? 'Today’s planned workout' : 'Today’s training' }}</span>
+            <span class="decision-state"><i aria-hidden="true"></i>{{ primaryDecisionTone === 'steady' ? 'Saved plan' : primaryDecisionLabel }}</span>
           </div>
 
           <div class="decision-session">
@@ -31,28 +32,33 @@
             </div>
           </div>
 
-          <div v-if="todayPlan" class="session-prescription" aria-label="Workout prescription">
-            <span v-if="todayPlan.target_duration_min"><small>Duration</small><strong>{{ todayPlan.target_duration_min }} min</strong></span>
-            <span v-if="todayPlan.target_distance_km"><small>Distance</small><strong>{{ todayPlan.target_distance_km }} km</strong></span>
-            <span><small>Intent</small><strong>{{ todayPlan.workout_intent_label || sessionTypeLabel(todayPlan.session_type) }}</strong></span>
-          </div>
+          <div class="completed-day-layout" :class="{ active: todayPlanCompleted }">
+          <div class="workout-body" :class="{ 'has-instructions': todaySessionGuide.length }">
+          <div class="workout-overview">
+          <section v-if="todayPlanCompleted && todayActivityCards.length" class="workout-target-summary"><h3>Today’s totals</h3><dl class="session-prescription"><div><dt>Training time</dt><dd>{{ formatDuration(todayActualTotals.duration) }}</dd></div><div v-if="todayActualTotals.distance"><dt>Distance</dt><dd>{{ formatCompactNumber(todayActualTotals.distance) }} <small>km</small></dd></div><div><dt>Sessions</dt><dd>{{ todayActivityCards.length }}</dd></div></dl></section>
+          <section v-else-if="todayPlan" class="workout-target-summary" aria-labelledby="dashboard-targets-heading">
+            <h3 id="dashboard-targets-heading">Session targets</h3>
+            <dl class="session-prescription">
+              <div v-if="todayPlan.target_duration_min"><dt>Duration</dt><dd>{{ todayPlan.target_duration_min }} <small>min</small></dd></div>
+              <div v-if="todayPlan.target_distance_km"><dt>Distance</dt><dd>{{ todayPlan.target_distance_km }} <small>km</small></dd></div>
+              <div class="prescription-intent"><dt>Intent</dt><dd>{{ todayPlan.workout_intent_label || sessionTypeLabel(todayPlan.session_type) }}</dd></div>
+            </dl>
+          </section>
 
-          <div v-if="decisionReasons.length" class="decision-reasons">
-            <span v-for="reason in decisionReasons" :key="reason">{{ reason }}</span>
-          </div>
-
+          <section v-if="decisionReasons.length && !todayPlanCompleted" class="workout-context-note" aria-labelledby="dashboard-context-heading">
+            <h3 id="dashboard-context-heading">Training context</h3>
+            <div class="decision-reasons"><span v-for="reason in decisionReasons" :key="reason">{{ reason }}</span></div>
+          </section>
           <div class="decision-actions">
             <button type="button" class="primary-action" @click="router.push('/plan')">
-              {{ todayPlanCompleted ? 'Review completed session' : 'View workout details' }}<span aria-hidden="true">→</span>
+              {{ todayPlanCompleted ? 'Review your week' : todayPlan ? 'Open today’s plan' : 'Build your week' }}<span aria-hidden="true">→</span>
             </button>
+            <a v-if="codexState" class="decision-coach-link" href="#dashboard-coaching">Read coach’s assessment <span aria-hidden="true">↓</span></a>
             <span v-if="todayPlan?.template_label" class="template-note">{{ todayPlan.template_label }}</span>
           </div>
 
-          <section v-if="todaySessionGuide.length" class="session-guide" aria-labelledby="session-guide-heading">
-            <div class="session-guide-heading">
-              <span id="session-guide-heading">How to execute it</span>
-              <strong>Today’s prescription</strong>
-            </div>
+          </div>
+          <section v-if="todaySessionGuide.length" class="session-guide workout-instructions" aria-labelledby="dashboard-instructions-heading"><h3 id="dashboard-instructions-heading">Session instructions</h3>
             <div class="session-guide-grid">
               <article v-for="item in todaySessionGuide" :key="item.label" :class="{ 'is-guardrail': item.label === 'Guardrail' }">
                 <span>{{ item.label }}</span>
@@ -60,11 +66,12 @@
               </article>
             </div>
           </section>
+          </div>
 
           <section v-if="todayActivityCards.length" class="completed-today" aria-labelledby="completed-today-heading">
             <div class="completed-today-heading">
               <span id="completed-today-heading">Completed today</span>
-              <strong>{{ todayActivityTotal }}</strong>
+              <strong v-if="!todayPlanCompleted">{{ todayActivityTotal }}</strong>
             </div>
             <div class="completed-today-grid">
               <button
@@ -74,7 +81,7 @@
                 @click="router.push(`/activities/${encodeURIComponent(activity.id)}`)"
               >
                 <span class="completed-activity-icon" :class="`icon-${activity.tone}`">
-                  <ActivityIcon v-if="isIconSessionType(activity.type)" :type="activity.type" :tone="activity.tone" :size="17" />
+                  <ActivityIcon v-if="isIconSessionType(activity.type)" :type="activity.tone" :tone="activity.tone" :size="17" />
                   <span v-else aria-hidden="true">·</span>
                 </span>
                 <span><strong>{{ activity.title }}</strong><small>{{ activity.detail }}</small></span>
@@ -82,6 +89,7 @@
               </button>
             </div>
           </section>
+          </div>
         </article>
 
         <aside class="signal-card" aria-labelledby="signals-heading">
@@ -92,17 +100,27 @@
           <div v-if="readiness" class="signal-summary">
             <strong>{{ loadRecoveryTitle }}</strong><p>{{ loadRecoverySummary }}</p>
           </div>
-          <div class="codex-state" :class="{ 'is-loading': codexStateLoading }">
+          <div v-if="loadMetrics.length" class="load-metrics" aria-label="Current training load">
+            <div v-for="metric in loadMetrics" :key="metric.label" :class="metric.tone"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.hint }}</small></div>
+          </div>
+          <div v-if="checkInMetrics.length" class="checkin-summary">
+            <span>Latest check-in</span><div><strong v-for="metric in checkInMetrics" :key="metric.label" :class="metric.tone">{{ metric.label }} {{ metric.valueLabel }}</strong></div>
+          </div>
+          <p v-else class="signal-empty">Add post-workout feedback to pair how you feel with measured load.</p>
+
+        </aside>
+      </section>
+
+          <section id="dashboard-coaching" class="codex-state coaching-row" aria-label="Coach’s perspective" :class="{ 'is-loading': codexStateLoading }">
             <div class="codex-state-heading">
-              <span><i aria-hidden="true">✦</i> Today’s coaching insight</span>
+              <span><i aria-hidden="true">✦</i> Coach’s perspective</span>
               <button type="button" :disabled="codexStateLoading" @click="refreshCodexState(true)">
                 {{ codexStateLoading ? 'Reviewing…' : codexState ? 'Refresh' : 'Try now' }}
               </button>
             </div>
             <template v-if="codexState">
-              <strong>{{ codexState.headline }}</strong>
-              <p>{{ codexState.assessment }}</p>
-              <small><b>Next:</b> {{ codexState.next_step }}</small>
+              <div class="coaching-assessment"><h2>{{ codexState.headline }}</h2><p>{{ codexState.assessment }}</p></div>
+              <div class="coaching-next"><p><strong>Next step</strong>{{ codexState.next_step }}</p>
               <p v-if="codexStateStale && codexStateLoading" class="codex-state-updating">Updating for the latest training data…</p>
               <button
                 v-if="canAdaptTomorrow"
@@ -114,34 +132,23 @@
                 <span>{{ codexPlanActionLabel }}</span><span aria-hidden="true">→</span>
               </button>
               <p v-if="codexPlanUpdate === 'failed'" class="codex-plan-error">Tomorrow was not changed. You can retry safely.</p>
+              </div>
             </template>
             <p v-else-if="codexStateLoading" class="codex-state-placeholder">Reading your plan, recovery, goals and recent training…</p>
             <p v-else class="codex-state-placeholder">The measured state remains available. Start the local Codex helper for a whole-context interpretation.</p>
-          </div>
-          <div v-if="loadMetrics.length" class="load-metrics" aria-label="Current training load">
-            <div v-for="metric in loadMetrics" :key="metric.label" :class="metric.tone"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.hint }}</small></div>
-          </div>
-          <div v-if="checkInMetrics.length" class="checkin-summary">
-            <span>Latest check-in</span><div><strong v-for="metric in checkInMetrics" :key="metric.label" :class="metric.tone">{{ metric.label }} {{ metric.valueLabel }}</strong></div>
-          </div>
-          <p v-else class="signal-empty">Add post-workout feedback to pair how you feel with measured load.</p>
-        </aside>
-      </section>
+          </section>
 
       <section v-if="weekDays.length" class="week-card" aria-labelledby="week-heading">
         <div class="section-heading">
-          <div><span class="section-kicker">This week</span><h2 id="week-heading">{{ weeklyPlan?.title || 'Training rhythm' }}</h2></div>
+          <div><h2 id="week-heading">Your week</h2><p class="section-caption">Completed work and what’s still ahead.</p></div><button type="button" class="dashboard-text-link" @click="router.push('/plan')">View plan →</button>
         </div>
 
         <div class="week-summary" aria-label="Actual training completed this week">
-          <article><span>Distance</span><strong>{{ weekActualSummary.distance }}</strong><small>completed</small></article>
-          <article><span>Training time</span><strong>{{ weekActualSummary.duration }}</strong><small>completed</small></article>
-          <article><span>Sessions</span><strong>{{ weekActualSummary.sessions }}</strong><small>logged</small></article>
-          <article><span>Week status</span><strong>{{ completedWeekSessions }} / {{ weekDays.length }}</strong><small>{{ upcomingWeekSessions }} still planned</small></article>
+          <span><strong>{{ weekActualSummary.distance }}</strong> distance</span><span><strong>{{ weekActualSummary.duration }}</strong> training</span><span><strong>{{ weekActualSummary.sessions }}</strong> sessions logged</span>
         </div>
 
         <div class="week-strip">
-          <button v-for="day in weekDays" :key="day.date" type="button" class="week-day" :class="[`week-day-${day.state}`, { 'week-day-today': day.isToday }]" :aria-label="`${day.dayLabel}, ${day.displayTitle}, ${day.sourceLabel}, ${day.displayDetail}. ${day.activityId ? 'Open activity detail' : 'Open weekly plan'}`" @click="openWeekDay(day)">
+          <button v-for="day in weekDays" :key="day.date" type="button" class="week-day" :style="{ '--day-accent': dashboardSportAccent(day.displayType) }" :class="[`week-day-${day.state}`, { 'week-day-today': day.isToday }]" :aria-label="`${day.dayLabel}, ${day.displayTitle}, ${day.sourceLabel}, ${day.displayDetail}. ${day.activityId ? 'Open activity detail' : 'Open weekly plan'}`" @click="openWeekDay(day)">
             <span class="week-day-name">{{ day.dayLabel }}</span><span class="week-day-date">{{ day.dateLabel }}</span>
             <span class="week-day-icon" :class="`icon-${day.tone}`">
               <ActivityIcon v-if="isIconSessionType(day.displayType)" :type="day.displayType" :tone="day.tone" :size="18" />
@@ -156,7 +163,7 @@
 
       <section v-if="yearSeriesCards.length" class="year-section" aria-labelledby="year-heading">
         <div class="section-heading year-heading">
-          <div><span class="section-kicker">Year to date</span><h2 id="year-heading">Year in motion</h2></div>
+          <div><h2 id="year-heading">The work adds up.</h2><p class="section-caption">Your year in motion.</p></div>
           <div class="year-heading-meta"><span>{{ currentYear }}</span><small>Through {{ currentMonthLabel }}</small></div>
         </div>
 
@@ -224,8 +231,10 @@
         </div>
       </section>
 
+      <SundayReview />
+
       <section class="explore-section" aria-labelledby="explore-heading">
-        <div class="section-heading"><div><span class="section-kicker">When you want the detail</span><h2 id="explore-heading">Explore your training</h2></div></div>
+        <div class="section-heading"><h2 id="explore-heading">Go a little deeper</h2></div>
         <div class="explore-grid">
           <button type="button" @click="router.push('/metrics?view=training-load')"><span class="explore-mark explore-mark-load" aria-hidden="true">⌁</span><span><strong>Training load</strong><small>Fitness, fatigue, form and trends</small></span><span aria-hidden="true">→</span></button>
           <button type="button" @click="router.push('/strength')"><span class="explore-mark explore-mark-strength" aria-hidden="true">＋</span><span><strong>Strength</strong><small>Progression, consistency and stalls</small></span><span aria-hidden="true">→</span></button>
@@ -248,6 +257,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { addDays, format, startOfWeek } from 'date-fns'
 import { useRouter } from 'vue-router'
+import SundayReview from '../components/SundayReview.vue'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import { useApi } from '../stores/api'
 
@@ -421,6 +431,8 @@ async function adaptTomorrowPlan() {
   }
 }
 
+const dashboardSportAccent = (type) => ({ ride: '#64dbb5', run: '#82afff', strength: '#f3c478', recovery: '#bcb0f6', walk: '#91cfba' }[activityTone(type)] || '#a8b7d0')
+
 const primaryDecisionTone = computed(() => {
   if (todayPlanCompleted.value) return 'complete'
   if (dailyRecommendation.value?.status === 'recover') return 'recover'
@@ -526,6 +538,10 @@ const todayActivityCards = computed(() => (activitiesByDate.value[todayKey.value
     detail: presentation.displayDetail || sessionTypeLabel(activity.type),
   }
 }))
+const todayActualTotals = computed(() => (activitiesByDate.value[todayKey.value] || []).reduce(
+  (total, activity) => ({ duration: total.duration + Number(activity.duration_min || 0), distance: total.distance + Number(activity.distance_km || 0) }),
+  { duration: 0, distance: 0 },
+))
 const todayActivityTotal = computed(() => {
   const activities = activitiesByDate.value[todayKey.value] || []
   const duration = activities.reduce((sum, activity) => sum + Number(activity.duration_min || 0), 0)
@@ -584,7 +600,7 @@ function formatLocalDate(value, pattern) { return value ? format(new Date(`${val
 function splitPlanSentences(value) {
   return String(value || '').trim().split(/(?<=[.!?])\s+/).filter(Boolean)
 }
-function isIconSessionType(type) { return ['run', 'ride', 'cycling', 'strength', 'weighttraining'].includes(String(type || '').toLowerCase()) }
+function isIconSessionType(type) { return ['run', 'ride', 'strength'].includes(activityTone(type)) }
 function activityTone(type) {
   const value = String(type || '').toLowerCase()
   if (value.includes('run')) return 'run'
@@ -1208,4 +1224,276 @@ button { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .loading-head span::after, .loading-primary::after, .loading-secondary::after, .loading-week::after { animation: none; }
 }
+/* Today leads; supporting context stays light and readable. */
+.dashboard-shell{gap:32px;max-width:1440px}
+.dashboard-header{align-items:center;padding:0}
+.dashboard-header h1{font-family:var(--font-body);font-size:30px;font-weight:650;letter-spacing:-.8px;margin-top:6px}
+.dashboard-date{font-size:12px;font-weight:400;letter-spacing:0;text-transform:none}
+.header-plan-link{font-size:12px;border-radius:9px;background:transparent;padding:9px 0}
+.decision-layout{grid-template-columns:minmax(0,1.4fr) minmax(320px,1fr);gap:28px;align-items:start}
+.decision-card{padding:30px;border-radius:22px;border:1px solid color-mix(in srgb,var(--sport-accent) 25%,var(--dash-border));background:radial-gradient(ellipse at 95% 0%,color-mix(in srgb,var(--sport-accent) 12%,transparent),transparent 65%),#131f29;min-height:0;box-shadow:none}
+.decision-card:before{width:3px;background:var(--sport-accent)}
+.decision-glow{display:none}
+.session-backdrop{position:absolute;right:-35px;top:95px;opacity:.045;transform:rotate(-14deg);pointer-events:none}
+.decision-topline,.decision-session,.session-prescription,.decision-reasons,.decision-actions,.session-guide,.completed-today{position:relative}
+.decision-kicker{font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--sport-accent)}
+.decision-state{font-size:11px;letter-spacing:0;text-transform:none;font-weight:600;gap:7px}
+.decision-session{gap:14px;margin-top:30px;align-items:start}
+.decision-icon{width:38px;height:38px;border-radius:50%;background:color-mix(in srgb,var(--sport-accent) 10%,transparent);margin-top:3px}
+.decision-session h2{font-family:var(--font-body);font-size:clamp(25px,2.7vw,35px);font-weight:600;letter-spacing:-.8px;line-height:1.2;max-width:540px}
+.decision-session p{font-size:13px;line-height:1.8;margin-top:16px;max-width:560px;display:block;overflow:visible}
+.session-prescription{gap:20px 30px;margin-top:27px}
+.session-prescription>span{padding:0;border:0;min-width:0;gap:5px}
+.session-prescription small{font-size:12px}
+.session-prescription strong{font-family:var(--font-body);font-size:20px;font-weight:600;letter-spacing:-.3px}
+.session-prescription>span:last-child strong{font-size:14px;line-height:1.7}
+.decision-reasons{margin-top:22px;gap:6px}
+.decision-reasons span{font-size:12px;line-height:1.65}
+.decision-actions{margin-top:24px;flex-wrap:wrap;gap:12px}
+.primary-action{background:var(--sport-accent);color:#122029;font-size:12px;font-weight:650;border-radius:9px;padding:12px 16px}
+.primary-action:hover{background:color-mix(in srgb,var(--sport-accent) 80%,white);transform:none}
+.template-note{font-size:11px}
+.session-guide{padding:16px 0 0;margin-top:24px;border-top:1px solid #ffffff0c}
+.session-guide summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:12px;font-weight:500;color:var(--dash-soft);list-style:none}
+.session-guide summary::-webkit-details-marker{display:none}
+.session-guide[open] summary>span{transform:rotate(45deg)}
+.session-guide-grid{grid-template-columns:1fr;gap:14px;margin-top:18px}
+.session-guide-grid article,.session-guide-grid article.is-guardrail{padding:0 0 0 12px;border:0;border-left:2px solid var(--dash-border);border-radius:0;background:transparent}
+.session-guide-grid article.is-guardrail{border-left-color:#e6b96c}
+.session-guide-grid span{font-size:12px;font-weight:600;text-transform:none;letter-spacing:0}
+.session-guide-grid p{font-size:12px;line-height:1.7;margin-top:4px}
+.completed-today{margin-top:24px;padding-top:0}
+.completed-today-heading{padding-top:18px}
+.completed-today-heading>span,.completed-today-heading>strong{font-size:12px;text-transform:none;letter-spacing:0;font-weight:500}
+.completed-today-grid{grid-template-columns:1fr;gap:6px}
+.completed-today-grid button{background:#08131c33;border:0;border-radius:10px;padding:12px}
+.completed-today-grid strong{font-size:13px}.completed-today-grid small{font-size:11px}
+.signal-card{padding:4px 0;border:0;border-radius:0;background:transparent;box-shadow:none;justify-content:flex-start}
+.signal-heading .section-kicker{display:none}
+.signal-heading h2,.section-heading h2{font-family:var(--font-body);font-size:20px;font-weight:600;letter-spacing:-.4px}
+.readiness-chip{font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;padding:4px 8px}
+.signal-summary{margin-top:18px;gap:7px}
+.signal-summary strong{font-family:var(--font-body);font-size:14px;font-weight:600}
+.signal-summary p{font-size:12px;line-height:1.7}
+.load-metrics{gap:14px;border:0;padding:0;margin-top:20px}
+.load-metrics div{padding:0;border:0;border-radius:0;background:transparent;gap:5px}
+.load-metrics span{font-size:11px;font-weight:400;text-transform:none;letter-spacing:0}
+.load-metrics strong{font-family:var(--font-body);font-size:24px;font-weight:600;letter-spacing:-.6px}
+.load-metrics small{font-size:10px;color:var(--dash-muted)}
+.checkin-summary{align-items:start;gap:10px;margin-top:18px}
+.checkin-summary>span{font-size:11px;text-transform:none;letter-spacing:0;font-weight:400}
+.checkin-summary strong{font-size:11px;padding:2px 6px;font-weight:500}
+.signal-empty{font-size:12px;line-height:1.65}
+.codex-state{border:0;border-top:1px solid var(--dash-border);padding:20px 0 0;border-radius:0;background:transparent;margin-top:22px;gap:10px}
+.codex-state-heading>span{font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:#b9c9ea}
+.codex-state-heading button{font-size:11px;font-weight:400}
+.codex-state>strong{font-family:var(--font-body);font-size:15px;font-weight:600;line-height:1.5}
+.codex-state>p{font-size:12px;line-height:1.7}
+.codex-state>small{font-size:12px;line-height:1.7;border:0;background:#7ba3ff08;padding:10px 12px;border-radius:8px}
+.codex-plan-action{font-size:12px;font-weight:500;padding:10px 12px}
+.week-card,.year-section,.explore-section{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.section-heading{gap:16px;align-items:center}
+.section-caption{font-size:12px;color:var(--dash-muted);margin-top:6px}
+.dashboard-text-link{border:0;background:transparent;color:var(--dash-soft);padding:7px 0;font:inherit;font-size:12px;cursor:pointer}
+.week-summary{display:flex;flex-wrap:wrap;gap:10px 24px;margin-top:18px;border:0;padding:0}
+.week-summary>span{font-size:12px;letter-spacing:0;text-transform:none;color:var(--dash-muted);font-weight:400}
+.week-summary strong{font-family:var(--font-body);font-size:14px;color:var(--text);font-weight:600;letter-spacing:0;margin-right:5px}
+.week-strip{grid-template-columns:repeat(7,minmax(0,1fr));gap:0;margin-top:18px;border-block:1px solid var(--dash-border);padding-block:12px}
+.week-day{border:0;border-right:1px solid #ffffff09;border-radius:0;background:transparent;padding:14px 13px;min-height:195px;gap:3px;align-content:start}
+.week-day:last-child{border-right:0}
+.week-day-today{background:linear-gradient(180deg,color-mix(in srgb,var(--day-accent) 10%,transparent),transparent);box-shadow:inset 0 -2px var(--day-accent)}
+.week-day:hover{background:color-mix(in srgb,var(--day-accent) 6%,transparent);transform:none}
+.week-day-name{font-size:12px;font-weight:500;text-transform:none;color:var(--dash-soft)}
+.week-day-date{position:static;font-family:var(--font-body);font-size:11px;color:var(--dash-muted)}
+.week-day-icon{margin-top:13px;border-radius:50%;width:30px;height:30px;background:color-mix(in srgb,var(--day-accent) 10%,transparent)}
+.week-day strong{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:12px;font-weight:500;line-height:1.5;min-height:36px;margin-top:9px}
+.week-day-detail{font-size:11px}
+.week-day-status{font-size:10px;text-transform:none;letter-spacing:0;font-weight:500;margin-top:9px}
+.year-heading{margin-bottom:20px}
+.year-heading-meta small{font-size:11px;letter-spacing:0;text-transform:none}
+.year-chart-grid{gap:24px}
+.year-chart-card{border:0;border-right:1px solid var(--dash-border);border-radius:0;padding:0 24px 0 0;background:transparent;box-shadow:none}
+.year-chart-card:last-child{border-right:0;padding-right:0}
+.year-chart-identity>div>span{font-size:13px;font-weight:600}
+.year-chart-identity small{font-size:11px}
+.year-chart-total strong{font-family:var(--font-body);font-size:26px;font-weight:600;letter-spacing:-.7px}
+.year-chart-total>span{font-size:12px}
+.year-chart-foot{border:0;gap:12px}
+.year-chart-foot small{font-size:11px;letter-spacing:0;text-transform:none}
+.year-chart-foot strong{font-size:12px;font-weight:500}
+.explore-grid{gap:20px;margin-top:16px}
+.explore-grid button{background:transparent;border:0;border-radius:10px;padding:12px 0;gap:12px}
+.explore-grid button:hover{background:#ffffff04}
+.explore-grid strong{font-size:13px;font-weight:500}.explore-grid small{font-size:11px}
+.dashboard-shell button:focus-visible,.dashboard-shell summary:focus-visible{outline:2px solid var(--accent-strong);outline-offset:4px}
+@media(max-width:1100px){.decision-layout{grid-template-columns:minmax(0,1.2fr) minmax(300px,1fr);gap:24px}.decision-card{padding:24px}.decision-session{gap:10px}.decision-icon{display:none}.year-chart-grid{gap:18px}.year-chart-card{padding-right:18px}.week-strip{grid-template-columns:repeat(7,minmax(130px,1fr));overflow-x:auto;scrollbar-width:thin}.year-chart-total strong{font-size:23px}}
+@media(max-width:800px){.decision-layout{grid-template-columns:1fr;gap:26px}.signal-card{padding:0}.decision-session h2{font-size:29px}.year-chart-grid{grid-template-columns:1fr;gap:24px}.year-chart-card,.year-chart-card:last-child{padding:0 0 20px;border:0;border-bottom:1px solid var(--dash-border)}.year-chart{height:175px}.explore-grid{grid-template-columns:1fr;gap:4px}.week-strip{grid-template-columns:repeat(7,minmax(135px,1fr))}.dashboard-shell{gap:28px}}
+@media(max-width:520px){.dashboard-header{align-items:center;gap:16px}.dashboard-header h1{font-size:28px}.dashboard-date{font-size:11px}.header-plan-link{font-size:11px}.decision-card{padding:22px 20px;border-radius:18px}.decision-session{display:flex;margin-top:24px}.decision-session h2{font-size:26px}.decision-state{font-size:11px}.decision-topline{gap:12px;flex-wrap:wrap}.session-prescription{gap:16px}.session-prescription>span{flex:initial;padding:0}.session-prescription strong{font-size:19px}.decision-actions{align-items:stretch}.template-note{font-size:11px}.signal-heading h2,.section-heading h2{font-size:20px}.week-summary strong{font-size:14px}.week-card,.year-section,.explore-section{border-radius:0}.section-heading{align-items:center}.checkin-summary{flex-wrap:wrap}.checkin-summary div{justify-content:flex-start}}
+@media(prefers-reduced-motion:reduce){.session-guide summary>span{transition:none}.primary-action:hover,.week-day:hover{transform:none}}
+
+
+/* Matched panel geometry; coaching is a separate, shared context row. */
+.decision-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(290px, 350px);
+  gap: 28px;
+  align-items: start;
+}
+.decision-card, .signal-card {
+  padding: 24px;
+  border-radius: 18px;
+  min-height: 0;
+}
+.signal-card {
+  background: transparent;
+  border: 0;
+  padding: 20px 0;
+}
+.decision-card { background: linear-gradient(125deg, color-mix(in srgb, var(--sport-accent) 6%, #131e29), #131e29); }
+.session-backdrop { display: none; }
+.decision-topline, .signal-heading { min-height: 26px; }
+.decision-kicker, .signal-heading h2 {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.decision-session { margin-top: 20px; display: flex; align-items: flex-start; gap: 14px; }
+.decision-icon { display: inline-flex; width: 44px; height: 44px; margin: 0; border-radius: 12px; }
+.decision-session h2 { font-size: 28px; line-height: 1.3; letter-spacing: -.4px; }
+.decision-session p { margin-top: 10px; font-size: 13px; line-height: 1.7; }
+.session-prescription { margin-top: 20px; gap: 16px 28px; }
+.session-prescription strong, .session-prescription > span:last-child strong {
+  font-size: 18px;
+  line-height: 1.4;
+}
+.decision-reasons { margin-top: 16px; gap: 4px; }
+.decision-actions { margin-top: 18px; }
+.session-guide { margin-top: 18px; padding-top: 14px; }
+.signal-summary { margin-top: 20px; }
+.signal-summary strong { font-size: 14px; line-height: 1.4; letter-spacing: -.2px; }
+.load-metrics { margin-top: 24px; }
+.checkin-summary { margin-top: 22px; flex-direction: column; align-items: start; }
+.checkin-summary div { justify-content: flex-start; }
+.header-plan-link { padding: 9px 12px; }
+.coaching-row {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 14px 28px;
+  margin: -10px 0 0;
+  padding: 20px 0 0;
+  border: 0;
+  border-top: 1px solid var(--dash-border);
+  border-radius: 0;
+  background: transparent;
+}
+.coaching-row > .codex-state-heading { grid-column: 1 / -1; }
+.coaching-assessment, .coaching-next { min-width: 0; }
+.coaching-assessment h2 { font-size: 16px; font-weight: 600; line-height: 1.5; letter-spacing: -.2px; }
+.coaching-assessment p, .coaching-next p { font-size: 12px; line-height: 1.75; color: var(--dash-muted); }
+.coaching-assessment p { margin-top: 8px; }
+.coaching-next { padding-left: 24px; border-left: 1px solid var(--dash-border); }
+.coaching-next p > strong { display: block; font-size: 12px; font-weight: 600; color: var(--dash-soft); margin-bottom: 6px; }
+.coaching-next .codex-plan-action { margin-top: 14px; }
+.coaching-row > .codex-state-placeholder { grid-column: 1 / -1; }
+@media(max-width:900px) {
+  .decision-layout { grid-template-columns: 1fr; }
+  .coaching-row { grid-template-columns: 1fr; }
+  .coaching-next { padding: 16px 0 0; border-left: 0; border-top: 1px solid var(--dash-border); }
+}
+@media(max-width:520px) {
+  .decision-card, .signal-card, .coaching-row { padding: 20px; }
+  .decision-session h2 { font-size: 23px; }
+  .signal-heading h2 { font-size: 13px; }
+  .session-prescription strong, .session-prescription > span:last-child strong { font-size: 18px; }
+}
+
+/* The workout owns the strong color and primary action. */
+.decision-state { color: var(--dash-muted); font-weight: 400; }
+.decision-caution .decision-state, .decision-recover .decision-state { color: var(--decision-color); font-weight: 600; }
+.signal-card .load-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; }
+.signal-card .load-metrics strong { font-size: 20px; }
+.signal-card .signal-summary p { font-size: 12px; }
+.decision-coach-link { display: inline-flex; align-items: center; gap: 10px; align-self: flex-start; margin-top: 16px; color: var(--dash-soft); font-size: 12px; }
+.decision-coach-link:hover { color: var(--text); }
+.decision-coach-link:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 4px; }
+#dashboard-coaching { scroll-margin-top: 24px; }
+@media(max-width:900px) {
+  .signal-card { padding: 0; }
+  .signal-card .load-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+}
+@media(max-width:520px) {
+  .decision-session { gap: 10px; }
+  .decision-icon { width: 36px; height: 36px; }
+  .coaching-row { padding: 18px 0 0; }
+}
+
+/* Use the available card width for the prescription, without a disclosure. */
+.decision-card { container-type: inline-size; }
+.workout-body { display: grid; gap: 24px; margin-top: 24px; }
+.workout-overview { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.workout-overview .session-prescription { margin-top: 0; }
+.workout-instructions.session-guide { margin: 0; padding: 18px 0 0; min-width: 0; border-top: 1px solid var(--dash-border); }
+.workout-instructions h3 { font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--dash-soft); margin: 0; }
+.workout-instructions .session-guide-grid { margin-top: 16px; gap: 16px; }
+.workout-instructions .session-guide-grid article { padding: 0; border: 0; background: transparent; }
+.workout-instructions .session-guide-grid span { font-size: 12px; font-weight: 500; color: var(--sport-accent); }
+.workout-instructions .session-guide-grid article.is-guardrail span { color: #e6b96c; }
+.workout-instructions .session-guide-grid p { margin-top: 5px; font-size: 12px; line-height: 1.75; overflow-wrap: anywhere; }
+@container (min-width: 600px) {
+  .workout-body.has-instructions { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 28px; }
+  .workout-instructions.session-guide { border-top: 0; border-left: 1px solid var(--dash-border); padding: 0 0 0 24px; }
+}
+
+/* Align targets, context and actions into a single deliberate left column. */
+.workout-overview { gap: 24px; }
+.workout-target-summary { width: 100%; }
+.workout-target-summary h3, .workout-context-note h3 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--dash-soft);
+}
+.workout-target-summary .session-prescription {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 18px 0 0;
+}
+.workout-target-summary dt { font-size: 12px; color: var(--dash-muted); }
+.workout-target-summary dd {
+  margin: 6px 0 0;
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -.5px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.workout-target-summary dd small { font-size: 12px; color: var(--dash-muted); font-weight: 400; letter-spacing: 0; }
+.workout-target-summary .prescription-intent dd { font-size: 16px; letter-spacing: 0; line-height: 1.5; padding-top: 4px; overflow-wrap: anywhere; }
+.workout-context-note { width: 100%; }
+.workout-context-note h3 { font-size: 12px; font-weight: 500; }
+.workout-context-note .decision-reasons { margin: 8px 0 0; gap: 6px; }
+.workout-context-note .decision-reasons span { padding: 0; font-size: 12px; line-height: 1.7; }
+.workout-context-note .decision-reasons span:before { display: none; }
+.workout-overview .decision-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin: 0; }
+.workout-overview .decision-coach-link { margin: 0; font-size: 11px; color: var(--dash-muted); }
+.workout-overview .decision-coach-link:hover { color: var(--dash-soft); }
+.workout-overview .primary-action { padding: 11px 16px; min-height: 40px; }
+@media(max-width:520px) {
+  .workout-target-summary .session-prescription { gap: 12px; }
+  .workout-target-summary dd { font-size: 23px; }
+  .workout-overview .decision-actions { width: 100%; }
+}
+
+.completed-day-layout.active{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:28px;margin-top:26px;align-items:start}
+.completed-day-layout.active .workout-body{margin-top:0}
+.completed-day-layout.active .completed-today{margin-top:0;padding-top:0}
+.completed-day-layout.active .completed-today-heading{border-top:0;padding-top:0}
+.completed-day-layout.active .completed-today-grid{max-height:280px;overflow-y:auto;scrollbar-width:thin;padding-right:4px}
+.completed-day-layout.active .session-prescription{display:flex;flex-wrap:wrap;gap:20px}
+.completed-day-layout.active .session-prescription dd{font-size:25px}
+.completed-day-layout.active .decision-actions{margin-top:22px}
+.is-completed-day .decision-session{margin-bottom:0}
+@media(max-width:900px){.completed-day-layout.active{grid-template-columns:1fr;gap:24px}}
 </style>

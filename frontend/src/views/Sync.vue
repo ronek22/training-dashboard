@@ -1,85 +1,67 @@
 <template>
-  <div>
+  <main class="sync-page motion-page">
     <div class="page-header">
       <div>
-        <div class="page-eyebrow">Import Workspace</div>
-        <h1 class="page-title">Sync</h1>
-        <p class="page-copy">Run Strava imports, backfill detailed load and cached streams, and review Fitbod enrichment links in one place.</p>
+        <div class="page-eyebrow">Your training, connected</div>
+        <h1 class="page-title">Data &amp; Sync</h1>
+        <p class="page-copy">Bring your workouts, recovery, and strength detail together.</p>
       </div>
-      <router-link to="/activities" class="back-link">Open Activities</router-link>
+      <router-link to="/activities" class="back-link">View activities <span aria-hidden="true">↗</span></router-link>
     </div>
 
-    <div class="card import-card">
+    <section class="sync-overview" aria-label="Data sources">
+      <div class="sources-heading"><div><span class="sync-kicker">Your sources</span><h2>A clearer picture of your training.</h2></div><p>Choose a source to import data or review what needs attention.</p></div>
+      <nav class="source-switcher" aria-label="Select data source">
+        <button v-for="source in sources" :key="source.key" type="button" :class="{ active: activeSource === source.key }" :aria-pressed="activeSource === source.key" :aria-controls="`source-${source.key}`" :style="{ '--source-color': source.color }" @click="activeSource = source.key">
+          <span class="source-top"><span class="source-symbol" aria-hidden="true">{{ source.symbol }}</span><span class="source-status" :class="source.state"><i></i>{{ source.status }}</span></span>
+          <strong>{{ source.name }}</strong><span class="source-purpose">{{ source.purpose }}</span>
+          <span class="source-foot">{{ source.note }}<span aria-hidden="true">↗</span></span>
+        </button>
+      </nav>
+    </section>
+    <p v-if="pageError" class="sync-error" role="alert">{{ pageError }} <button type="button" class="feedback-btn" :disabled="pageLoading" @click="loadPage">Retry</button></p>
+    <div class="source-workspace" :style="{ '--source-color': sources.find(source => source.key === activeSource)?.color }">
+    <section v-show="activeSource === 'strava'" id="source-strava" class="card import-card" aria-labelledby="strava-heading">
       <div class="import-header">
         <div>
-          <h2>Strava Sync</h2>
-          <p>Pull activities directly from Strava into the dashboard. Leave dates empty to sync from the last saved activity day.</p>
+          <span class="sync-kicker">Activities &amp; effort</span><h2 id="strava-heading">Bring in your latest workouts</h2>
+          <p>Sync recent activities from Strava, then fill in missing heart-rate and power detail.</p>
         </div>
         <span class="status-pill" :class="stravaStatus.configured ? 'status-ok' : 'status-missing'">
-          {{ stravaStatus.configured ? 'Configured' : 'Needs config' }}
+          {{ pageLoading ? 'Checking…' : stravaStatus.configured ? 'Ready to sync' : 'Setup needed' }}
         </span>
       </div>
 
-      <div class="import-form">
-        <label>
-          <span>Start date</span>
-          <input v-model="importForm.start_date" type="date" placeholder="Auto">
-        </label>
-        <label>
-          <span>End date</span>
-          <input v-model="importForm.end_date" type="date" placeholder="Today">
-        </label>
-        <button class="import-btn" :disabled="importing || !canImport" @click="runImport">
-          {{ importing ? 'Importing...' : 'Import from Strava' }}
-        </button>
-        <button
-          class="import-btn import-btn-secondary"
-          :disabled="backfilling || !canImport || !stravaStatus.pending_stream_backfill"
-          @click="runStreamBackfill"
-        >
-          {{ backfilling ? 'Backfilling...' : `Backfill Detailed Load (${stravaStatus.stream_fetch_limit || 12})` }}
-        </button>
-      </div>
+      <div class="sync-action-row"><div><strong>{{ stravaStatus.latest_activity_date ? 'Continue where you left off' : 'Start your activity history' }}</strong><p>{{ stravaRangeLabel }}</p></div><button class="import-btn" :disabled="importing || !canImport || pageLoading" @click="runImport">{{ importing ? 'Syncing…' : 'Sync activities' }}<span aria-hidden="true"> ↻</span></button></div>
+      <details class="sync-details"><summary>Choose a date range<span v-if="importForm.start_date || importForm.end_date">Custom range selected</span></summary><div class="import-form"><label><span>Start date</span><input v-model="importForm.start_date" type="date"></label><label><span>End date</span><input v-model="importForm.end_date" type="date" :min="importForm.start_date || undefined"></label><button type="button" class="feedback-btn" @click="importForm.start_date = ''; importForm.end_date = ''">Reset to automatic</button></div></details>
+      <p v-if="importForm.start_date && importForm.end_date && importForm.start_date > importForm.end_date" class="import-hint" role="alert">End date must be on or after the start date.</p>
+      <div v-if="stravaStatus.configured" class="stream-row"><div><strong>{{ stravaStatus.pending_stream_backfill || 0 }} activities missing detailed data</strong><p>Heart-rate and power samples improve activity charts and load analysis.</p></div><button class="import-btn import-btn-secondary" :disabled="backfilling || !canImport || !stravaStatus.pending_stream_backfill" @click="runStreamBackfill">{{ backfilling ? 'Fetching details…' : `Fetch next ${stravaStatus.stream_fetch_limit || 12}` }}</button></div>
+      <p v-if="importMessage" class="import-message" role="status">{{ importMessage }}</p>
+      <details v-if="!pageLoading && !stravaStatus.configured" class="sync-details"><summary>Connect Strava</summary><p class="import-hint">Add your Strava credentials to the backend configuration: <code>STRAVA_CLIENT_ID</code>, <code>STRAVA_CLIENT_SECRET</code>, and <code>STRAVA_REFRESH_TOKEN</code>.</p></details>
+      <p v-if="stravaStatus.configured && stravaStatus.last_import_at" class="import-hint">Last import: {{ formatDateTime(stravaStatus.last_import_at) }}</p>
+    </section>
 
-      <p v-if="importMessage" class="import-message">{{ importMessage }}</p>
-      <p v-if="!stravaStatus.configured" class="import-hint">
-        Set `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, and `STRAVA_REFRESH_TOKEN` for the backend service.
-      </p>
-      <p v-else-if="stravaStatus.latest_activity_date" class="import-hint">
-        Default sync range starts at {{ formatDate(stravaStatus.latest_activity_date) }} and includes that day.
-      </p>
-      <p v-if="stravaStatus.configured && stravaStatus.last_import_at" class="import-hint">
-        Last import: {{ formatDateTime(stravaStatus.last_import_at) }}
-      </p>
-      <p v-if="stravaStatus.configured" class="import-hint">
-        Detailed stream backfill pending: {{ stravaStatus.pending_stream_backfill || 0 }} activities.
-      </p>
-      <p v-if="stravaStatus.configured && !stravaStatus.latest_activity_date" class="import-hint">
-        No activities stored yet. Empty dates will import today by default; set a custom start date for an initial backfill.
-      </p>
-    </div>
-
-    <div class="card import-card fitbod-card">
+    <section v-show="activeSource === 'health'" id="source-health" class="card import-card fitbod-card" aria-labelledby="health-heading">
       <div class="import-header">
         <div>
-          <h2>Apple Health Data</h2>
-          <p>Import raw JSON exports from Health Data Export in iCloud Drive. Large backfills are streamed and daily files are deduplicated automatically.</p>
+          <span class="sync-kicker">Recovery &amp; daily movement</span><h2 id="health-heading">Your health signals, in one place</h2>
+          <p>Sleep stages, resting heart rate, HRV, and daily movement from your Health Data Export files.</p>
         </div>
         <span class="status-pill" :class="healthDataPreview?.configured ? 'status-ok' : 'status-missing'">
-          {{ healthDataPreview?.configured ? 'Directory ready' : 'Directory unavailable' }}
+          {{ healthDataScanning ? 'Checking…' : healthDataPreview?.configured ? 'Folder ready' : 'Folder unavailable' }}
         </span>
       </div>
 
       <div class="import-form">
-        <button class="import-btn import-btn-secondary" :disabled="healthDataScanning" @click="loadHealthDataPreview">
-          {{ healthDataScanning ? 'Scanning…' : 'Preview health data' }}
+        <button class="import-btn import-btn-secondary" :disabled="healthDataScanning || healthDataImporting" @click="loadHealthDataPreview">
+          {{ healthDataScanning ? 'Scanning…' : 'Check for new files' }}
         </button>
-        <button class="import-btn" :disabled="healthDataImporting || !healthDataPreview?.configured || !healthDataPendingCount" @click="runHealthDataImport">
-          {{ healthDataImporting ? 'Streaming import…' : 'Import new health data' }}
+        <button class="import-btn" :disabled="healthDataImporting || healthDataScanning || !healthDataPreview?.configured || !healthDataPendingCount" @click="runHealthDataImport">
+          {{ healthDataImporting ? 'Importing…' : 'Import new health data' }}
         </button>
       </div>
 
-      <p v-if="healthDataMessage" class="import-message">{{ healthDataMessage }}</p>
+      <p v-if="healthDataMessage" class="import-message" role="status">{{ healthDataMessage }}</p>
       <p v-if="healthDataPreview?.configured" class="import-hint">
         Imports sleep, resting heart rate, HRV, body weight, steps, walking/running distance, and flights climbed. Workouts and raw all-day heart rate remain in their purpose-built sources.
       </p>
@@ -90,40 +72,40 @@
         <div class="fitbod-summary-card"><span>Latest import</span><strong>{{ healthDataPreview.last_import ? formatDateTime(healthDataPreview.last_import.imported_at) : 'Never' }}</strong><small>{{ healthDataPreview.last_import ? `${healthDataPreview.last_import.samples_inserted || 0} new samples` : 'Initial export is ready' }}</small></div>
       </div>
 
-      <div v-if="healthDataPendingFiles.length" class="health-data-files">
+      <details v-if="healthDataPendingFiles.length" class="sync-details"><summary>Files ready to import <span>{{ healthDataPendingFiles.length }}</span></summary><div class="health-data-files">
         <article v-for="item in healthDataPendingFiles" :key="item.file_name">
           <div><strong>{{ item.file_name }}</strong><small>{{ item.file_size_mb }} MB</small></div>
           <span class="status-pill status-missing">Pending</span>
         </article>
-      </div>
-    </div>
+      </div></details>
+    </section>
 
-    <div class="card import-card fitbod-card">
+    <section v-show="activeSource === 'healthfit'" id="source-healthfit" class="card import-card fitbod-card" aria-labelledby="healthfit-heading">
       <div class="import-header">
         <div>
-          <h2>HealthFit Directory</h2>
-          <p>Scan HealthFit FIT backups from iCloud Drive. Preview is read-only; after the initial baseline, unseen files are eligible regardless of workout date.</p>
+          <span class="sync-kicker">Apple Watch workouts</span><h2 id="healthfit-heading">Keep every workout in the picture</h2>
+          <p>Import HealthFit backups, including workouts that arrive late and detailed heart-rate recordings.</p>
         </div>
         <span class="status-pill" :class="healthFitPreview?.configured ? 'status-ok' : 'status-missing'">
-          {{ healthFitPreview?.configured ? 'Directory ready' : 'Directory unavailable' }}
+          {{ healthFitScanning ? 'Checking…' : healthFitPreview?.configured ? 'Folder ready' : 'Folder unavailable' }}
         </span>
       </div>
 
       <div class="import-form">
-        <button class="import-btn import-btn-secondary" :disabled="healthFitScanning" @click="loadHealthFitPreview">
-          {{ healthFitScanning ? 'Scanning...' : 'Preview HealthFit scan' }}
+        <button class="import-btn import-btn-secondary" :disabled="healthFitScanning || healthFitImporting" @click="loadHealthFitPreview">
+          {{ healthFitScanning ? 'Scanning...' : 'Check for new workouts' }}
         </button>
         <button
           class="import-btn"
-          :disabled="healthFitImporting || !healthFitPreview?.configured || !healthFitPendingCount"
+          :disabled="healthFitImporting || healthFitScanning || !healthFitPreview?.configured || !healthFitPendingCount"
           @click="runHealthFitImport"
         >
-          {{ healthFitImporting ? 'Importing...' : 'Apply safe import' }}
+          {{ healthFitImporting ? 'Importing...' : 'Import workouts' }}
         </button>
       </div>
 
-      <p v-if="healthFitMessage" class="import-message">{{ healthFitMessage }}</p>
-      <p v-if="healthFitPreview" class="import-hint">
+      <p v-if="healthFitMessage" class="import-message" role="status">{{ healthFitMessage }}</p>
+      <details v-if="healthFitPreview" class="sync-details"><summary>How existing workouts are handled</summary><p class="import-hint">
         <template v-if="healthFitPreview.initialized">
           HealthFit is initialized. Any unseen file is parsed even when its workout predates the latest dashboard activity.
         </template>
@@ -133,6 +115,7 @@
         </template>
       </p>
 
+      </details>
       <div v-if="healthFitPreview?.configured" class="fitbod-summary-grid">
         <div class="fitbod-summary-card">
           <span>New activities</span>
@@ -140,13 +123,13 @@
           <small>{{ healthFitPreview.initialized ? 'Includes late-arriving older workouts' : 'Newer than the initial cutoff' }}</small>
         </div>
         <div class="fitbod-summary-card">
-          <span>Safe history</span>
-          <strong>{{ healthFitCount('link_existing') }} linked</strong>
-          <small>{{ healthFitCount('baseline') }} baselined without creation</small>
+          <span>Existing workouts</span>
+          <strong>{{ healthFitCount('link_existing') }} to link</strong>
+          <small>{{ healthFitCount('baseline') }} files to mark as existing</small>
         </div>
         <div class="fitbod-summary-card">
-          <span>Skipped</span>
-          <strong>{{ healthFitCount('ambiguous') }} ambiguous</strong>
+          <span>Needs attention</span>
+          <strong>{{ healthFitCount('ambiguous') + healthFitCount('error') }} files</strong>
           <small>{{ healthFitCount('already_processed') }} already processed · {{ healthFitCount('error') }} errors</small>
         </div>
       </div>
@@ -163,13 +146,13 @@
           <div class="fitbod-session-metrics"><span>{{ item.reason }}</span></div>
         </article>
       </div>
-    </div>
+    </section>
 
-    <div class="card import-card fitbod-card">
+    <section v-show="activeSource === 'fitbod'" id="source-fitbod" class="card import-card fitbod-card" aria-labelledby="fitbod-heading">
       <div class="import-header">
         <div>
-          <h2>Fitbod Enrichment</h2>
-          <p>Upload a Fitbod CSV export to reconstruct strength sessions, filter non-strength rows, and link them to stored Strava strength activities.</p>
+          <span class="sync-kicker">Strength detail</span><h2 id="fitbod-heading">Give your strength sessions their detail</h2>
+          <p>Add exercises, sets, reps, and load to your recorded strength activities with a Fitbod CSV export.</p>
         </div>
         <span class="status-pill" :class="fitbodImport ? 'status-ok' : 'status-missing'">
           {{ fitbodImport ? `${fitbodImport.session_count} sessions` : 'No import yet' }}
@@ -186,7 +169,7 @@
         </button>
       </div>
 
-      <p v-if="fitbodMessage" class="import-message">{{ fitbodMessage }}</p>
+      <p v-if="fitbodMessage" class="import-message" role="status">{{ fitbodMessage }}</p>
 
       <template v-if="fitbodImport">
         <div class="fitbod-summary-grid">
@@ -207,7 +190,7 @@
           </div>
         </div>
 
-        <p class="import-hint">Latest Fitbod import: {{ formatDateTime(fitbodImport.imported_at) }}.</p>
+        <details class="sync-details"><summary>Import history &amp; coverage</summary><p class="import-hint">Latest Fitbod import: {{ formatDateTime(fitbodImport.imported_at) }}.</p>
         <p class="import-hint">
           This import added {{ fitbodImport.new_session_count || 0 }} new sessions, updated {{ fitbodImport.updated_session_count || 0 }}, preserved {{ fitbodImport.preserved_manual_match_count || 0 }} manual matches, and skipped {{ fitbodImport.preserved_rejected_count || 0 }} rejected sessions.
         </p>
@@ -215,6 +198,8 @@
           Imported strength activity range: {{ formatDate(fitbodImport.activity_range.earliest_date) }} to {{ formatDate(fitbodImport.activity_range.latest_date) }}.
         </p>
 
+        </details>
+        <div class="review-heading"><h3>Session links</h3><p>Resolve uncertain matches or inspect your linked sessions.</p></div>
         <div class="fitbod-filter-row">
           <button
             v-for="filter in fitbodFilters"
@@ -227,6 +212,7 @@
           </button>
         </div>
 
+        <p v-if="!visibleFitbodSessions.length" class="review-empty">{{ activeFitbodFilter === 'actionable' ? 'You’re all caught up. No sessions need review.' : 'No sessions in this view.' }}</p>
         <div class="fitbod-session-list">
           <article v-for="session in visibleFitbodSessions" :key="session.id" class="fitbod-session-card">
             <div class="fitbod-session-head">
@@ -290,17 +276,18 @@
               </button>
             </div>
 
-            <div class="fitbod-exercise-preview">
+            <details class="sync-details exercise-details"><summary>Exercises <span>{{ session.exercise_count }}</span></summary><div class="fitbod-exercise-preview">
               <div v-for="exercise in session.exercises" :key="exercise.id" class="fitbod-exercise-chip">
                 <strong>{{ exercise.exercise_name }}</strong>
                 <span>{{ exercise.set_count }} sets · {{ exercise.rep_count }} reps</span>
               </div>
-            </div>
+            </div></details>
           </article>
         </div>
       </template>
+    </section>
     </div>
-  </div>
+  </main>
 </template>
 
 <script setup>
@@ -309,6 +296,15 @@ import { format } from 'date-fns'
 import { useApi } from '../stores/api'
 
 const api = useApi()
+const activeSource = ref('strava')
+const pageLoading = ref(true)
+const pageError = ref('')
+const sources = computed(() => [
+  { key: 'strava', name: 'Strava', symbol: '↗', purpose: 'Activities & effort', color: '#ff9b72', ready: stravaStatus.value.configured, note: stravaStatus.value.last_import_at ? `Last sync ${formatDateTime(stravaStatus.value.last_import_at)}` : 'Import your activity history' },
+  { key: 'health', name: 'Apple Health', symbol: '♥', purpose: 'Recovery & daily movement', color: '#b7a3ff', ready: healthDataPreview.value?.configured, note: healthDataPendingCount.value ? `${healthDataPendingCount.value} files ready to import` : healthDataPreview.value?.configured ? 'No new files waiting' : 'Check your export folder' },
+  { key: 'healthfit', name: 'HealthFit', symbol: '⌁', purpose: 'Apple Watch workouts', color: '#65dab8', ready: healthFitPreview.value?.configured, note: healthFitReviewItems.value.length ? `${healthFitReviewItems.value.length} files need review` : healthFitPendingCount.value ? `${healthFitPendingCount.value} files ready to process` : 'Workout backups & recordings' },
+  { key: 'fitbod', name: 'Fitbod', symbol: '▥', purpose: 'Exercises, sets & reps', color: '#efc57e', ready: Boolean(fitbodImport.value), note: fitbodImport.value?.actionable_count ? `${fitbodImport.value.actionable_count} sessions need review` : fitbodImport.value ? `${fitbodImport.value.session_count} sessions imported` : 'Add a CSV export to get started' },
+].map(source => ({ ...source, status: pageLoading.value ? 'Checking' : source.ready ? (source.key === 'fitbod' ? 'Imported' : 'Ready') : source.key === 'fitbod' ? 'No import' : 'Setup needed', state: pageLoading.value ? 'checking' : source.ready ? 'ready' : 'attention' })))
 const importing = ref(false)
 const backfilling = ref(false)
 const importMessage = ref('')
@@ -339,7 +335,11 @@ const fitbodFilters = [
   { label: 'All', value: 'all' },
 ]
 
-const canImport = computed(() => stravaStatus.value.configured)
+const stravaRangeLabel = computed(() => {
+  if (importForm.value.start_date || importForm.value.end_date) return `Custom range: ${importForm.value.start_date ? formatDate(importForm.value.start_date) : stravaStatus.value.latest_activity_date ? formatDate(stravaStatus.value.latest_activity_date) : 'today'} → ${importForm.value.end_date ? formatDate(importForm.value.end_date) : 'today'}.`
+  return stravaStatus.value.latest_activity_date ? `Sync from ${formatDate(stravaStatus.value.latest_activity_date)} through today.` : 'Choose an earlier start date to import your history. The default imports today.'
+})
+const canImport = computed(() => stravaStatus.value.configured && !(importForm.value.start_date && importForm.value.end_date && importForm.value.start_date > importForm.value.end_date))
 const healthFitPendingCount = computed(() => ['create', 'link_existing', 'baseline'].reduce((total, action) => total + healthFitCount(action), 0))
 const healthFitReviewItems = computed(() => (healthFitPreview.value?.items || []).filter((item) => item.action === 'ambiguous' || item.action === 'error'))
 const healthDataPendingCount = computed(() => healthDataCount('import'))
@@ -365,9 +365,14 @@ const loadFitbodImport = async () => {
   }
 }
 
-onMounted(async () => {
-  await Promise.all([loadActivities(), loadStravaStatus(), loadFitbodImport(), loadHealthFitPreview(), loadHealthDataPreview()])
-})
+async function loadPage() {
+  pageLoading.value = true
+  pageError.value = ''
+  const results = await Promise.allSettled([loadActivities(), loadStravaStatus(), loadFitbodImport(), loadHealthFitPreview(), loadHealthDataPreview()])
+  if (results.some(result => result.status === 'rejected')) pageError.value = 'Some source information could not be loaded. You can still use the available sources.'
+  pageLoading.value = false
+}
+onMounted(loadPage)
 
 const healthFitCount = (action) => healthFitPreview.value?.counts?.[action] || 0
 const healthDataCount = (action) => healthDataPreview.value?.counts?.[action] || 0
@@ -396,7 +401,9 @@ async function runHealthDataImport() {
     healthDataMessage.value = result.errors?.length
       ? `Imported ${result.samples_inserted || 0} samples with ${result.errors.length} file error${result.errors.length === 1 ? '' : 's'}.`
       : `Imported ${result.samples_inserted || 0} new health samples from ${result.files_imported || 0} file${result.files_imported === 1 ? '' : 's'}.`
+    const message = healthDataMessage.value
     await loadHealthDataPreview()
+    if (!healthDataMessage.value) healthDataMessage.value = message
   } catch (error) {
     healthDataMessage.value = error?.response?.data?.detail || 'Health data import failed.'
   } finally {
@@ -426,7 +433,9 @@ async function runHealthFitImport() {
     healthFitPreview.value = data
     const result = data.applied || {}
     healthFitMessage.value = `Created ${result.created || 0}, linked ${result.linked || 0}, baselined ${result.baselined || 0}, skipped ${result.skipped || 0}.`
+    const message = healthFitMessage.value
     await Promise.all([loadActivities(), loadStravaStatus(), loadHealthFitPreview()])
+    if (!healthFitMessage.value) healthFitMessage.value = message
   } catch (error) {
     healthFitMessage.value = error?.response?.data?.detail || 'HealthFit import failed.'
   } finally {
@@ -435,6 +444,7 @@ async function runHealthFitImport() {
 }
 
 const runImport = async () => {
+  if (!canImport.value || importing.value) return
   importing.value = true
   importMessage.value = ''
   try {
@@ -756,4 +766,17 @@ const formatSeconds = (value) => {
   .fitbod-summary-grid { grid-template-columns: 1fr; }
   .intent-select { max-width: none; }
 }
+/* Source navigation and focused import workspace. */
+.sync-page{max-width:1480px;margin:0 auto;padding-bottom:32px}
+.page-header{margin-bottom:38px;align-items:center}.page-title{font-size:34px;letter-spacing:-1px}.page-eyebrow{font-size:10px;letter-spacing:.14em;color:var(--muted)}.page-copy{font-size:14px;line-height:1.6}.back-link{display:flex;gap:24px;align-items:center;background:transparent;font-size:12px;font-weight:600;border-color:var(--border);white-space:nowrap}
+.sources-heading{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:18px}.sync-kicker{display:block;color:var(--muted);font-size:10px;letter-spacing:.1em;font-weight:700;text-transform:uppercase;margin-bottom:9px}.sources-heading h2{font-size:20px;font-weight:600;letter-spacing:-.4px}.sources-heading p{color:var(--muted);font-size:12px;max-width:320px;line-height:1.6}
+.source-switcher{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.source-switcher button{display:flex;flex-direction:column;min-width:0;text-align:left;border:1px solid var(--border);border-radius:18px;background:rgba(18,26,39,.45);color:var(--text);padding:20px;cursor:pointer;font:inherit;transition:background .15s,border-color .15s}.source-switcher button:hover{background:rgba(31,41,57,.6);border-color:color-mix(in srgb,var(--source-color) 40%,var(--border))}.source-switcher button.active{background:linear-gradient(135deg,color-mix(in srgb,var(--source-color) 12%,#101923),#101923);border-color:color-mix(in srgb,var(--source-color) 60%,var(--border));box-shadow:inset 0 3px var(--source-color)}.source-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:20px}.source-symbol{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;color:var(--source-color);background:color-mix(in srgb,var(--source-color) 12%,transparent);font-size:22px}.source-status{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted)}.source-status i{width:5px;height:5px;background:currentColor;border-radius:50%}.source-status.ready{color:#7bdcb6}.source-status.attention{color:#e7bd80}.source-switcher button>strong{font-size:18px;font-weight:650;letter-spacing:-.3px}.source-purpose{font-size:12px;color:var(--muted);margin-top:6px}.source-foot{display:flex;justify-content:space-between;gap:12px;margin-top:25px;font-size:11px;line-height:1.5;color:var(--muted)}.source-foot>span{color:var(--source-color)}
+.source-workspace{margin-top:28px}.import-card,.fitbod-card{margin:0;padding:28px 30px;border:1px solid var(--border);border-radius:20px;background:linear-gradient(130deg,color-mix(in srgb,var(--source-color) 4%,#111a26),#0e1622)}.import-header{margin-bottom:26px}.import-header .sync-kicker{color:var(--source-color)}.import-header h2{font-size:23px;font-weight:600;letter-spacing:-.5px;margin-bottom:9px}.import-header p{max-width:700px;font-size:13px;line-height:1.65}.status-pill{flex-shrink:0;font-size:10px;font-weight:600;padding:6px 10px}.status-ok{color:#79dfb9;background:#37cf9c16}.status-missing{color:#e8bc77;background:#e8bc7714}
+.sync-action-row,.stream-row{display:flex;justify-content:space-between;gap:22px;align-items:center}.sync-action-row{padding:22px;border-radius:14px;background:color-mix(in srgb,var(--source-color) 6%,transparent);margin-bottom:18px}.sync-action-row strong,.stream-row strong{font-size:14px;font-weight:600}.sync-action-row p,.stream-row p{color:var(--muted);font-size:12px;line-height:1.6;margin-top:5px}.stream-row{padding:20px 0;border-bottom:1px solid var(--border)}.import-btn{font-family:inherit;font-size:12px;border-radius:10px;padding:12px 18px;background:var(--source-color);color:#0b1520;font-weight:750;white-space:nowrap}.import-btn-secondary{background:transparent;color:var(--text);border-color:var(--border);font-weight:550}.import-btn:hover:not(:disabled){filter:brightness(1.1)}.import-form{gap:12px}.import-form input{font:inherit;color-scheme:dark;font-size:12px}.import-form label{font-size:11px}.file-upload{flex:1}.file-upload input{max-width:none;width:100%;box-sizing:border-box;border-style:dashed;padding:18px}.file-upload input::file-selector-button{background:#253246;color:var(--text);border:0;padding:8px 12px;border-radius:6px;margin-right:12px;cursor:pointer}
+.sync-details{margin-top:14px;border-top:1px solid var(--border);padding-top:14px}.sync-details>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;font-size:12px;color:#b9c7db;font-weight:550}.sync-details>summary::-webkit-details-marker{display:none}.sync-details>summary:after{content:'+';margin-left:auto;color:var(--muted)}.sync-details[open]>summary:after{content:'−'}.sync-details>summary>span{color:var(--muted);font-size:11px}.sync-details>.import-form{margin-top:18px}.import-message,.sync-error{padding:13px 16px;border-radius:10px;background:rgba(123,163,255,.08);border:1px solid rgba(123,163,255,.18);font-size:12px;line-height:1.6;font-weight:500;overflow-wrap:anywhere}.sync-error{margin-top:20px;color:#e5b985}.import-hint{font-size:11px;line-height:1.7}
+.fitbod-summary-grid{margin:24px 0 20px;gap:0;border-block:1px solid var(--border)}.fitbod-summary-card{padding:19px 22px;border:0;border-right:1px solid var(--border);border-radius:0;background:none;gap:7px;align-content:start}.fitbod-summary-card:first-child{padding-left:0}.fitbod-summary-card:last-child{border:0}.fitbod-summary-card span{font-size:11px}.fitbod-summary-card strong{font-family:var(--font-display);font-size:23px;font-weight:600;letter-spacing:-.5px;overflow-wrap:anywhere}.fitbod-summary-card small{font-size:11px;line-height:1.5}
+.health-data-files{max-height:300px;overflow-y:auto;scrollbar-width:thin}.health-data-files article{border:0;border-bottom:1px solid var(--border);border-radius:0;background:none;padding:12px 0}.review-heading{margin-top:30px}.review-heading h3{font-size:17px;font-weight:600}.review-heading p{font-size:12px;color:var(--muted);margin-top:5px}.fitbod-filter-row{flex-wrap:wrap;gap:6px}.filter-btn{padding:8px 13px;font-size:12px;border-radius:8px;background:transparent;border-color:transparent}.filter-btn.active{background:color-mix(in srgb,var(--source-color) 13%,transparent);border-color:color-mix(in srgb,var(--source-color) 24%,transparent);color:var(--source-color)}.review-empty{padding:35px 20px;text-align:center;color:var(--muted);font-size:13px;border:1px dashed var(--border);border-radius:12px;margin-top:18px}.fitbod-session-list{gap:12px}.fitbod-session-card{background:rgba(8,15,25,.4);border-color:var(--border);border-radius:14px;padding:20px}.fitbod-session-head h3{font-size:15px}.fitbod-session-head p,.fitbod-session-metrics,.fitbod-session-link{font-size:12px;line-height:1.6}.fitbod-session-status{flex-shrink:0}.fitbod-linker{flex-wrap:wrap}.reject-fitbod-btn{background:none;color:#dda6a6;border-color:transparent}.fitbod-exercise-chip{border:0;border-radius:8px;padding:10px 12px}.feedback-btn:disabled{opacity:.5;cursor:not-allowed}.sync-page button:focus-visible,.sync-page summary:focus-visible,.sync-page a:focus-visible{outline:2px solid var(--source-color,#8faeff);outline-offset:4px}
+@media(max-width:1050px){.source-switcher{grid-template-columns:repeat(2,minmax(0,1fr))}.source-top{margin-bottom:14px}.source-foot{margin-top:18px}}
+@media(max-width:700px){.page-header,.sources-heading,.sync-action-row,.stream-row{align-items:stretch;flex-direction:column}.page-header{margin-bottom:28px}.back-link{align-self:flex-start}.sources-heading p{max-width:none}.source-switcher{gap:8px}.source-switcher button{padding:14px;border-radius:12px}.source-symbol{width:29px;height:29px;font-size:18px}.source-status{font-size:9px}.source-switcher button>strong{font-size:16px}.source-purpose,.source-foot{font-size:10px}.import-card{padding:20px}.import-header{flex-direction:column;gap:12px}.import-header>.status-pill{align-self:flex-start}.import-header h2{font-size:21px}.fitbod-summary-grid{grid-template-columns:1fr}.fitbod-summary-card,.fitbod-summary-card:first-child{padding:14px 0;border:0;border-bottom:1px solid var(--border)}.fitbod-session-head{flex-direction:column}.fitbod-linker{align-items:stretch}.import-form>label{width:100%}.import-form input{min-width:0}.page-title{font-size:30px}}
+
 </style>

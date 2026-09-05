@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from ..db import get_db
 from ..models.metrics import Metric
@@ -55,6 +55,16 @@ def get_performance_summary():
     conn = get_db()
     try:
         return get_performance_summary_data(conn)
+    finally:
+        conn.close()
+
+
+@router.get("/metrics/session-comparisons")
+def session_comparisons(days: int = Query(default=180, ge=30, le=365)):
+    from ..services.session_comparisons import get_session_comparisons
+    conn = get_db()
+    try:
+        return get_session_comparisons(conn, days)
     finally:
         conn.close()
 

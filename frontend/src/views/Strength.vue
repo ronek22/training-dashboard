@@ -1,22 +1,27 @@
 <template>
-  <div class="strength-page motion-page">
+  <div class="strength-page motion-page" :class="`view-${strengthView}`">
     <section class="page-head strength-hero motion-section">
       <div class="strength-hero-copy">
         <div class="strength-mark" aria-hidden="true">
           <span></span><i></i><b></b><i></i><span></span>
         </div>
         <div>
-          <div class="page-eyebrow">Performance · Strength</div>
-          <h1 class="page-title">Build strength that carries over.</h1>
-          <p class="page-sub">See consistency, training load, and lift progression without losing the session-level detail.</p>
+          <div class="page-eyebrow">Your lifting companion</div>
+          <h1 class="page-title">Strength</h1>
+          <p class="page-sub">Your next session. The lifts that matter. Room for the rest of your training.</p>
         </div>
       </div>
       <div class="strength-actions">
         <router-link to="/sync" class="strength-action">Import</router-link>
-        <router-link to="/strength/workouts" class="strength-action strength-action-primary"><span aria-hidden="true">＋</span> Start workout</router-link>
+        <router-link to="/strength/workouts" class="strength-action strength-action-primary">Workout library</router-link>
       </div>
     </section>
 
+    <section v-if="strengthView === 'overview' && (activeWorkout || nextStrengthDay || !workoutContextLoading)" class="strength-launch" aria-labelledby="strength-launch-title">
+      <div class="launch-main"><div class="launch-label"><ActivityIcon type="WeightTraining" tone="strength" :size="22" /><span>{{ activeWorkout ? 'Workout in progress' : nextStrengthDay ? `Next in your plan · ${formatDate(nextStrengthDay.date)}` : 'Ready when you are' }}</span></div><h2 id="strength-launch-title">{{ activeWorkout?.template_name || nextStrengthDay?.title || 'Make your next session count.' }}</h2><p v-if="activeWorkout">{{ activeWorkout.progress?.completed_sets || 0 }} of {{ activeWorkout.progress?.total_sets || 0 }} sets recorded. Pick up where you left off.</p><p v-else-if="nextStrengthDay">{{ nextStrengthDay.workout_intent_label || 'Planned strength' }}<template v-if="nextStrengthDay.target_duration_min"> · {{ nextStrengthDay.target_duration_min }} min</template></p><p v-else>{{ workoutContextError ? 'Your next planned session could not be loaded. Your workout library is still available.' : 'Choose a saved workout and keep your sets, loads and rest in one place.' }}</p><router-link :to="activeWorkout ? `/strength/workouts/${activeWorkout.id}` : '/strength/workouts'" class="strength-action strength-action-primary">{{ activeWorkout ? 'Resume workout' : 'Choose workout' }} <span aria-hidden="true">→</span></router-link><router-link v-if="nextStrengthDay && !activeWorkout" to="/plan" class="launch-plan-link">Review plan</router-link></div>
+      <div v-if="nextStrengthDay?.details && !activeWorkout" class="launch-notes"><span>Before you lift</span><p>{{ nextStrengthDay.details }}</p></div><div v-else class="launch-notes"><span>Built for your training week</span><p>Use the saved plan to coordinate lifting with your rides and runs. Review your last sets before deciding what to load today.</p></div>
+    </section>
+    <nav class="strength-nav" aria-label="Strength views"><button v-for="tab in strengthTabs" :key="tab.key" type="button" :class="{ active: strengthView === tab.key }" :aria-current="strengthView === tab.key ? 'page' : undefined" @click="strengthView = tab.key">{{ tab.label }}</button></nav>
     <section class="strength-toolbar motion-section" aria-label="Strength filters">
       <div class="toolbar-intro">
         <span class="toolbar-kicker">Analysis scope</span>
@@ -29,7 +34,7 @@
             v-for="option in weekOptions"
             :key="option.value"
             class="range-chip"
-            :class="{ active: selectedWeeks === option.value }"
+            :class="{ active: selectedWeeks === option.value }" :aria-pressed="selectedWeeks === option.value"
             @click="selectedWeeks = option.value"
           >
             {{ option.label }}
@@ -37,7 +42,7 @@
         </div>
       </div>
 
-      <label class="toolbar-select">
+      <label v-if="strengthView !== 'overview'" class="toolbar-select">
         <span class="toolbar-label">Body-part focus</span>
         <select v-model="selectedBodyPart" aria-label="Body-part focus">
           <option v-for="option in bodyPartOptions" :key="option.value" :value="option.value">
@@ -46,7 +51,7 @@
         </select>
       </label>
 
-      <label class="toolbar-select">
+      <label v-if="strengthView === 'progression'" class="toolbar-select">
         <span class="toolbar-label">Exercise trend</span>
         <select v-model="selectedExercise" aria-label="Exercise trend">
           <option value="">Most recurring lift</option>
@@ -58,16 +63,18 @@
     </section>
 
     <div v-if="loading && !overview" class="card empty-state motion-section">Loading strength history…</div>
-    <div v-else-if="error && !overview" class="card empty-state motion-section">{{ error }}</div>
+    <div v-else-if="error && !overview" class="card empty-state motion-section" role="alert"><p>{{ error }}</p><button type="button" class="strength-action" @click="fetchStrengthOverview">Try again</button></div>
 
     <template v-else-if="overview">
+      <p v-if="error" class="strength-refresh-error" role="alert">{{ error }} Showing the last loaded results.</p>
       <div v-if="!overview.summary.session_count" class="card empty-state motion-section">
         <strong>No linked strength history is available in this window.</strong>
         <p>Record a workout in TrainLog or import Fitbod history, then link it to the matching Apple Watch activity.</p>
       </div>
 
       <template v-else>
-        <section class="overview-grid motion-section">
+        <section v-if="strengthView === 'overview'" class="overview-grid motion-section">
+        <article class="strength-rhythm"><div class="section-head"><div><h2>Your lifting rhythm</h2><p class="section-copy">Completed sessions · last {{ selectedWeeks }} weeks</p></div><strong class="rhythm-total">{{ overview.summary.session_count }} <small>sessions</small></strong></div><div class="strength-rhythm-bars" :class="{ 'extended-range': selectedWeeks > 12 }"><div v-for="week in overview.weekly" :key="week.week_start" class="strength-rhythm-week"><strong>{{ week.session_count }}</strong><div><i :style="{ height: `${Number(week.session_count || 0) / maxWeeklySessions * 100}%` }"></i></div><span>{{ formatDate(week.week_start) }}</span></div></div><p class="rhythm-caption">{{ activeWeeks }} active weeks · {{ trimNumber(overview.summary.session_count / selectedWeeks) }} sessions per week on average</p></article>
         <article v-if="latestSession" class="card latest-session">
           <div class="latest-session-main">
             <div class="section-head">
@@ -82,84 +89,27 @@
               <div><span>Duration</span><strong>{{ formatDuration(latestSession) }}</strong></div>
               <div><span>Exercises</span><strong>{{ latestSession.exercise_count }}</strong></div>
               <div><span>Working sets</span><strong>{{ latestWorkSets }}</strong></div>
-              <div><span>Tracked volume</span><strong>{{ formatWorkload(latestSession.total_volume_kg) }}</strong></div>
+
             </div>
             <p class="latest-session-focus">{{ latestSession.major_exercises.join(' · ') }}</p>
-            <div class="next-step" aria-label="Recommended next action">
-              <div>
-                <span class="next-step-label">Next insight</span>
-                <strong>{{ latestSessionNextStep.title }}</strong>
-                <p>{{ latestSessionNextStep.copy }}</p>
-              </div>
-              <router-link :to="`/activities/${latestSession.matched_activity.id}`" class="detail-link">Open workout <span aria-hidden="true">↗</span></router-link>
-            </div>
+            <router-link v-if="latestSession.matched_activity?.id" :to="`/activities/${latestSession.matched_activity.id}`" class="detail-link">Review last session <span aria-hidden="true">↗</span></router-link>
           </div>
         </article>
 
-        <div class="summary-ribbon" :aria-busy="loading ? 'true' : 'false'">
-          <article v-for="card in summaryCards" :key="card.label" class="card summary-tile">
-            <span class="summary-label">{{ card.label }}</span>
-            <strong class="summary-value">{{ card.value }}</strong>
-            <small class="summary-copy">{{ card.copy }}</small>
-          </article>
-        </div>
+        <article v-if="overview.selected_exercise" class="strength-anchor"><div><span class="card-title">A lift to follow</span><h2>{{ overview.selected_exercise.exercise_name }}</h2><p>{{ overview.selected_exercise.progression.detail }}</p></div><div class="anchor-result"><strong>{{ overview.selected_exercise.recent_best_load_kg != null ? `${trimNumber(overview.selected_exercise.recent_best_load_kg)} kg` : '—' }}</strong><span>Best top load in this window</span><button type="button" class="detail-link" @click="strengthView = 'progression'">Explore progression →</button></div></article>
         </section>
 
-        <section v-if="overview.important_prs?.length" class="card pr-stage motion-section">
-          <div class="section-head">
-            <div>
-              <div class="card-title">Key PRs</div>
-              <div class="section-copy">Best tracked top loads for the big recurring lifts present in this window.</div>
-            </div>
-          </div>
-
-          <div class="pr-grid">
-            <article v-for="pr in overview.important_prs" :key="pr.key" class="pr-card">
-              <span class="pr-label">{{ pr.label }}</span>
-              <strong class="pr-value">{{ trimNumber(pr.top_load_kg) }} kg</strong>
-              <small class="pr-date">{{ formatDate(pr.workout_date) }}</small>
-            </article>
-          </div>
-        </section>
-
-        <section class="analysis-grid analysis-grid-top motion-section">
+        <section v-if="strengthView === 'analysis'" class="analysis-grid analysis-grid-top motion-section">
           <article class="card trend-stage">
             <div class="section-head">
               <div>
-                <div class="card-title">Weekly training volume</div>
-                <div class="section-copy">Total lifted each week, with completed sessions shown inside the columns.</div>
-              </div>
-              <div class="section-callout">
-                <strong>{{ strongestWeek?.label || 'No peak week' }}</strong>
-                <span>{{ strongestWeek?.copy || 'Not enough data yet.' }}</span>
+                <div class="card-title">Your weekly workload</div>
+                <div class="section-copy">Follow consistency first, then explore sets and recorded volume.</div>
               </div>
             </div>
 
-            <div class="trend-frame">
-              <svg class="weekly-chart" viewBox="0 0 860 280" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Weekly strength volume and session count trend">
-                <defs>
-                  <linearGradient id="strengthVolumeBar" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#ffc66f" />
-                    <stop offset="100%" stop-color="#d98627" />
-                  </linearGradient>
-                </defs>
-                <rect x="0" y="0" width="860" height="280" rx="26" class="weekly-chart-bg" />
-                <g class="weekly-grid">
-                  <line v-for="line in weeklyGuideLines" :key="line" x1="40" :y1="line" x2="820" :y2="line" />
-                </g>
-                <g v-for="bar in weeklyBars" :key="bar.key" class="weekly-bar-group">
-                  <rect :x="bar.x" :y="bar.y" :width="bar.width" :height="bar.height" rx="9" class="weekly-bar" :class="{ empty: !bar.value }" />
-                  <text v-if="bar.sessions" :x="bar.x + bar.width / 2" :y="bar.labelY" text-anchor="middle" class="weekly-bar-label">{{ bar.sessions }}×</text>
-                </g>
-              </svg>
-
-              <div class="weekly-axis">
-                <div v-for="week in overview.weekly" :key="week.week_start" class="weekly-axis-label">
-                  <strong>{{ formatDate(week.week_start) }}</strong>
-                  <small :class="{ muted: !week.total_volume_kg }">{{ week.total_volume_kg ? formatWorkload(week.total_volume_kg) : '—' }}</small>
-                </div>
-              </div>
-            </div>
+            <div class="analysis-mode" aria-label="Weekly metric"><button v-for="metric in weeklyMetricOptions" :key="metric.key" type="button" :aria-pressed="weeklyMetric === metric.key" :class="{ active: weeklyMetric === metric.key }" @click="weeklyMetric = metric.key">{{ metric.label }}</button></div>
+            <div class="analysis-bars" :class="{ 'extended-range': selectedWeeks > 12 }"><div v-for="week in analysisWeeks" :key="week.week_start" class="analysis-week"><strong>{{ week.display }}</strong><div><i :style="{ height: `${week.height}%` }"></i></div><span>{{ formatDate(week.week_start) }}</span></div></div><p class="analysis-note">{{ weeklyMetric === 'total_volume_kg' ? 'External load × reps. Exercise mix affects volume; it is not a measure of readiness.' : weeklyMetric === 'total_sets' ? 'Recorded sets across your sessions. Set accounting follows the imported workout source.' : 'Completed strength sessions in each week. The current week may be partial.' }}</p>
           </article>
 
           <article class="card buckets-stage">
@@ -172,7 +122,7 @@
 
             <div class="bucket-stack">
               <button
-                v-for="option in bodyPartOptions"
+                v-for="option in bodyPartOptions.filter(item => item.value !== 'all')"
                 :key="option.value"
                 class="bucket-row"
                 :class="{ active: selectedBodyPart === option.value }"
@@ -192,7 +142,24 @@
           </article>
         </section>
 
-        <section class="analysis-grid analysis-grid-bottom motion-section" :class="{ 'analysis-grid-refreshing': loading }">
+        <section v-if="strengthView === 'analysis' && overview.important_prs?.length" class="card pr-stage motion-section">
+          <div class="section-head">
+            <div>
+              <div class="card-title">Best recorded loads</div>
+              <div class="section-copy">Best tracked top loads for the big recurring lifts present in this window.</div>
+            </div>
+          </div>
+
+          <div class="pr-grid">
+            <article v-for="pr in overview.important_prs" :key="pr.key" class="pr-card">
+              <span class="pr-label">{{ pr.label }}</span>
+              <strong class="pr-value">{{ trimNumber(pr.top_load_kg) }} kg</strong>
+              <small class="pr-date">{{ formatDate(pr.workout_date) }}</small>
+            </article>
+          </div>
+        </section>
+
+        <section v-if="strengthView === 'progression'" class="analysis-grid analysis-grid-bottom motion-section" :class="{ 'analysis-grid-refreshing': loading }">
           <article class="card lifts-stage" :class="{ 'panel-refreshing': loading }">
             <div class="section-head">
               <div>
@@ -202,21 +169,21 @@
               <span v-if="loading" class="inline-loading-chip">Updating…</span>
             </div>
 
+            <label class="strength-search"><span class="sr-only">Find an exercise</span><input v-model="liftSearch" type="search" placeholder="Find a lift…" /></label>
             <div class="lift-table">
               <button
-                v-for="(exercise, index) in overview.exercises"
+                v-for="(exercise, index) in filteredLifts"
                 :key="exercise.exercise_name"
                 class="lift-row"
-                :class="{ active: overview.selected_exercise?.exercise_name === exercise.exercise_name }"
+                :class="{ active: overview.selected_exercise?.exercise_name === exercise.exercise_name }" :aria-pressed="overview.selected_exercise?.exercise_name === exercise.exercise_name"
                 @click="selectExercise(exercise.exercise_name)"
               >
-                <div class="lift-rank">{{ index + 1 }}</div>
+
                 <div class="lift-name">
                   <strong>{{ exercise.exercise_name }}</strong>
                   <div class="lift-meta">
                     <span>{{ exercise.appearance_count }} sessions</span>
-                    <span>{{ exercise.total_sets }} sets</span>
-                    <span>{{ exercise.total_reps }} reps</span>
+
                   </div>
                 </div>
                 <div class="lift-trend">
@@ -227,7 +194,7 @@
                   <strong>{{ formatWorkload(exercise.total_volume_kg) }}</strong>
                 </div>
               </button>
-            </div>
+            </div><p v-if="!filteredLifts.length" class="analysis-note">No lifts match your search.</p>
           </article>
 
           <article v-if="overview.selected_exercise" class="card spotlight-stage" :class="{ 'panel-refreshing': loading }">
@@ -261,59 +228,31 @@
               </div>
             </div>
 
-            <div class="spotlight-chart-wrap">
-              <svg v-if="selectedTrendBars.length" class="trend-chart" viewBox="0 0 560 240" preserveAspectRatio="xMidYMid meet" role="img" :aria-label="`${overview.selected_exercise.exercise_name} trend`">
-                <defs>
-                  <linearGradient id="selectedLiftBar" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#ffc66f" />
-                    <stop offset="100%" stop-color="#d98627" />
-                  </linearGradient>
-                </defs>
-                <rect x="0" y="0" width="560" height="260" rx="28" class="trend-chart-bg" />
-                <line v-for="line in chartGuideLines" :key="line" x1="48" :y1="line" x2="512" :y2="line" class="trend-chart-guide" />
-                <g v-for="bar in selectedTrendBars" :key="bar.key">
-                  <rect :x="bar.x" :y="bar.y" :width="bar.width" :height="bar.height" rx="10" class="trend-chart-bar" />
-                  <text :x="bar.x + bar.width / 2" :y="bar.y - 10" text-anchor="middle" class="trend-chart-value">{{ formatWorkload(bar.value) }}</text>
-                </g>
-              </svg>
-            </div>
-
+            <div class="lift-chart-header"><h3>{{ liftMetric === 'top_load_kg' ? 'Top load per session' : 'Volume per session' }}</h3><div class="analysis-mode"><button v-for="metric in [{key:'top_load_kg',label:'Top load'}, {key:'total_volume_kg',label:'Volume'}]" :key="metric.key" type="button" :aria-pressed="liftMetric === metric.key" :class="{active:liftMetric === metric.key}" @click="liftMetric = metric.key">{{ metric.label }}</button></div></div>
+            <svg v-if="liftPlot.length" class="lift-line-chart" viewBox="0 0 560 210" role="img" :aria-label="`${overview.selected_exercise.exercise_name}: ${liftMetric === 'top_load_kg' ? 'top load' : 'volume'} in kilograms by session`"><line v-for="y in [25,95,165]" :key="y" x1="32" :y1="y" x2="528" :y2="y" class="lift-grid-line"/><polyline :points="liftPlot.map(point => `${point.x},${point.y}`).join(' ')" class="lift-progress-line"/><g v-for="point in liftPlot" :key="point.key"><circle :cx="point.x" :cy="point.y" r="4" class="lift-progress-point"><title>{{ point.label }}</title></circle></g><text x="32" y="199">{{ formatDate(liftPlot[0].date) }}</text><text x="528" y="199" text-anchor="end">{{ formatDate(liftPlot.at(-1).date) }}</text></svg><p v-else class="analysis-note">No recorded {{ liftMetric === 'top_load_kg' ? 'top loads' : 'volume' }} for this lift.</p>
+            <p class="analysis-note">{{ liftMetric === 'top_load_kg' ? 'Top recorded load, not an estimated one-rep max. Compare reps and sets below.' : 'Total external load × reps per session. Changes can reflect more sets or reps.' }}</p>
+            <div class="lift-log-heading"><span>Session</span><span>Sets / reps</span><span>Top load</span><span>Volume</span></div>
             <div class="spotlight-history">
               <article v-for="point in overview.selected_exercise.trend.slice().reverse()" :key="point.workout_timestamp" class="history-row">
-                <div class="history-left">
-                  <strong>{{ formatDate(point.workout_date) }}</strong>
-                  <span>{{ point.set_count }} sets</span>
-                  <span>{{ point.rep_count }} reps</span>
-                </div>
-                <div class="history-right">
-                  <strong>{{ formatWorkload(point.total_volume_kg) }}</strong>
-                  <small>{{ point.top_load_kg != null ? `${trimNumber(point.top_load_kg)} kg top set` : 'No load' }}</small>
-                </div>
+                <strong>{{ formatDate(point.workout_date) }}</strong><span>{{ point.set_count }} / {{ point.rep_count }}</span><strong>{{ point.top_load_kg != null ? `${trimNumber(point.top_load_kg)} kg` : '—' }}</strong><span>{{ formatWorkload(point.total_volume_kg) }}</span>
               </article>
             </div>
           </article>
         </section>
 
-        <section class="card sessions-stage">
+        <section v-if="strengthView === 'history'" class="card sessions-stage">
           <div class="section-head">
             <div>
               <div class="card-title">Recent Strength Sessions</div>
-              <div class="section-copy">The analysis layer stays compact; drill into the workout detail only when needed.</div>
+              <div class="section-copy">Expand a session to review exercises, sets and loads.</div>
             </div>
           </div>
 
+          <label class="strength-search history-search"><span class="sr-only">Search workout history</span><input v-model="historySearch" type="search" placeholder="Find a workout or exercise…" /></label><p v-if="!filteredSessions.length" class="analysis-note">No sessions match your search.</p>
           <div class="session-list">
-            <details v-for="session in overview.sessions" :key="session.id" class="session-card">
+            <details v-for="session in filteredSessions" :key="session.id" class="session-card">
               <summary>
-              <div class="session-card-top">
-                <div>
-                  <strong>{{ session.title || 'Strength workout' }}</strong>
-                  <div class="session-meta"><span>{{ formatDateTime(session.workout_timestamp) }}</span><span class="status-inline">Completed</span></div>
-                </div>
-                <strong class="session-volume">{{ formatWorkload(session.total_volume_kg) }}</strong>
-              </div>
-              <div class="session-meta"><span>{{ session.exercise_count }} exercises</span><span>{{ session.set_count }} sets</span><span>{{ session.rep_count }} reps</span></div>
-              <span class="session-expand">Show exercises <span aria-hidden="true">⌄</span></span>
+              <div class="session-log-date"><strong>{{ format(new Date(session.workout_timestamp), 'dd') }}</strong><span>{{ format(new Date(session.workout_timestamp), 'MMM') }}</span></div><div class="session-log-title"><strong>{{ session.title || 'Strength workout' }}</strong><span>{{ session.exercise_count }} exercises · {{ session.exercises.reduce((sum, exercise) => sum + Number(exercise.work_set_count || 0), 0) }} working sets</span></div><div class="session-log-duration"><strong>{{ formatDuration(session) }}</strong><span>{{ formatWorkload(session.total_volume_kg) }} recorded</span></div><span class="session-log-chevron" aria-hidden="true">⌄</span>
               </summary>
               <div class="session-exercises">
                 <article v-for="exercise in session.exercises" :key="exercise.id" class="session-exercise">
@@ -342,13 +281,36 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useApi } from '../stores/api'
+import ActivityIcon from '../components/ActivityIcon.vue'
 
 const api = useApi()
+
+const strengthTabs = [{ key: 'overview', label: 'Overview' }, { key: 'progression', label: 'Lift progression' }, { key: 'history', label: 'Session history' }, { key: 'analysis', label: 'Training analysis' }]
+const strengthView = ref('overview')
+const activeWorkout = ref(null)
+const strengthPlans = ref([])
+const workoutContextLoading = ref(true)
+const workoutContextError = ref(false)
+const nextStrengthDay = computed(() => {
+  const today = format(new Date(), 'yyyy-MM-dd')
+  return strengthPlans.value.flatMap(plan => plan.days || []).filter(day => day.date >= today && /^(weighttraining|strength|weights)$/i.test(String(day.session_type).replace(/[ _-]/g, '')) && !['linked', 'matched', 'partially_matched', 'moved'].includes(day.comparison?.status)).sort((a, b) => a.date.localeCompare(b.date))[0] || null
+})
+const maxWeeklySessions = computed(() => Math.max(1, ...(overview.value?.weekly || []).map(week => Number(week.session_count || 0))))
+const loadWorkoutContext = async () => {
+  const results = await Promise.allSettled([api.getActiveStrengthWorkoutSession(), api.getWeeklyPlans({ limit: 8 })])
+  activeWorkout.value = results[0].status === 'fulfilled' ? results[0].value.data : null
+  strengthPlans.value = results[1].status === 'fulfilled' ? results[1].value.data : []
+  workoutContextError.value = results.some(result => result.status === 'rejected')
+  workoutContextLoading.value = false
+}
+watch(strengthView, () => { if (selectedBodyPart.value !== 'all') selectedBodyPart.value = 'all' })
 
 const weekOptions = [
   { label: '4 weeks', value: 4 },
   { label: '8 weeks', value: 8 },
   { label: '12 weeks', value: 12 },
+  { label: '6 months', value: 26 },
+  { label: 'Past year', value: 52 },
 ]
 const chartGuideLines = [50, 95, 140, 185]
 const weeklyGuideLines = [54, 106, 158, 210]
@@ -359,6 +321,25 @@ const overview = ref(null)
 const selectedWeeks = ref(8)
 const selectedBodyPart = ref('all')
 const selectedExercise = ref('')
+
+const liftSearch = ref('')
+const historySearch = ref('')
+const liftMetric = ref('top_load_kg')
+const weeklyMetric = ref('session_count')
+const weeklyMetricOptions = [{ key: 'session_count', label: 'Sessions' }, { key: 'total_sets', label: 'Sets' }, { key: 'total_volume_kg', label: 'Volume' }]
+const filteredLifts = computed(() => (overview.value?.exercises || []).filter(exercise => exercise.exercise_name.toLowerCase().includes(liftSearch.value.trim().toLowerCase())))
+const filteredSessions = computed(() => (overview.value?.sessions || []).filter(session => `${session.title || ''} ${(session.exercises || []).map(exercise => exercise.exercise_name).join(' ')}`.toLowerCase().includes(historySearch.value.trim().toLowerCase())))
+const analysisWeeks = computed(() => {
+  const weeks = overview.value?.weekly || []
+  const max = Math.max(1, ...weeks.map(week => Number(week[weeklyMetric.value] || 0)))
+  return weeks.map(week => ({ ...week, height: Number(week[weeklyMetric.value] || 0) / max * 100, display: weeklyMetric.value === 'total_volume_kg' ? formatWorkload(week.total_volume_kg) : Number(week[weeklyMetric.value] || 0) }))
+})
+const liftPlot = computed(() => {
+  const entries = (overview.value?.selected_exercise?.trend || []).filter(point => point[liftMetric.value] != null && Number.isFinite(Number(point[liftMetric.value])))
+  const values = entries.map(point => Number(point[liftMetric.value]))
+  const min = Math.min(...values), max = Math.max(...values), range = max - min
+  return entries.map((point, index) => ({ key: `${point.workout_timestamp}-${index}`, date: point.workout_date, x: entries.length === 1 ? 280 : 32 + index / (entries.length - 1) * 496, y: range ? 165 - (values[index] - min) / range * 140 : 95, label: `${formatDate(point.workout_date)}: ${trimNumber(values[index])} kg · ${point.set_count} sets · ${point.rep_count} reps` }))
+})
 
 const bodyPartOptions = computed(() => overview.value?.filters?.body_part_options || [])
 const exerciseOptions = computed(() => overview.value?.filters?.exercise_options || [])
@@ -514,7 +495,9 @@ const selectedTrendBars = computed(() => {
   })
 })
 
+let overviewRequest = 0
 const fetchStrengthOverview = async () => {
+  const request = ++overviewRequest
   loading.value = true
   error.value = ''
   try {
@@ -524,14 +507,16 @@ const fetchStrengthOverview = async () => {
     }
     if (selectedExercise.value) params.exercise = selectedExercise.value
     const { data } = await api.getStrengthOverview(params)
+    if (request !== overviewRequest) return
     overview.value = data
     if (selectedExercise.value && !data.filters.exercise_options.some((option) => option.exercise_name === selectedExercise.value)) {
       selectedExercise.value = ''
     }
   } catch (loadError) {
+    if (request !== overviewRequest) return
     error.value = loadError?.response?.data?.detail || 'Could not load strength overview.'
   } finally {
-    loading.value = false
+    if (request === overviewRequest) loading.value = false
   }
 }
 
@@ -546,6 +531,7 @@ watch(selectedExercise, () => {
 
 onMounted(() => {
   fetchStrengthOverview()
+  loadWorkoutContext()
 })
 
 const selectExercise = (exerciseName) => {
@@ -1319,4 +1305,19 @@ const round = (value) => Math.round(value * 10) / 10
     justify-items: start;
   }
 }
+/* A concise lifting companion, with analysis one level deeper. */
+.strength-page{gap:24px;--strength-accent:#f3c478}.strength-hero{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}.strength-mark{display:none}.strength-hero-copy{gap:0}.strength-page .page-title{font-family:var(--font-body);font-size:30px;font-weight:650;letter-spacing:-.7px}.strength-page .page-eyebrow{display:none}.strength-page .page-sub{font-size:12px;color:var(--muted);margin-top:8px}.strength-actions .strength-action-primary{background:transparent;border-color:var(--border);color:var(--text-soft)}.strength-action{font-size:12px;border-radius:9px}.strength-launch{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:35px;padding:28px;border:1px solid #f3c47830;border-left:3px solid var(--strength-accent);border-radius:18px;background:linear-gradient(120deg,#f3c4780c,#141e29 70%)}.launch-label{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--strength-accent)}.strength-launch h2{font-family:var(--font-body);font-size:27px;font-weight:600;line-height:1.3;letter-spacing:-.6px;margin:18px 0 10px}.launch-main>p{font-size:13px;color:var(--muted);line-height:1.7}.launch-main .strength-action{display:inline-flex;gap:25px;margin-top:20px;background:var(--strength-accent);border:0;color:#251e14;padding:11px 16px;font-weight:650}.launch-plan-link{display:inline-block;margin-left:18px;font-size:12px;color:var(--text-soft)}.launch-notes{border-left:1px solid var(--border);padding-left:28px;align-self:center;min-width:0}.launch-notes>span{font-size:12px;font-weight:600;color:var(--text-soft)}.launch-notes p{font-size:12px;line-height:1.8;color:var(--muted);margin-top:10px;white-space:pre-line}.strength-nav{display:flex;gap:26px;border-bottom:1px solid var(--border);overflow-x:auto}.strength-nav button{border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);padding:12px 0;font:inherit;font-size:12px;white-space:nowrap;cursor:pointer}.strength-nav button.active{color:var(--text);border-bottom-color:var(--strength-accent)}.strength-toolbar{padding:0;border:0;background:transparent;box-shadow:none;gap:20px;flex-wrap:wrap}.toolbar-intro{display:none}.toolbar-label{font-size:11px;font-weight:400;letter-spacing:0;text-transform:none}.range-switch{background:transparent;border:0;gap:5px}.range-chip{font-size:11px;padding:7px 10px;border-radius:7px}.range-chip.active{background:#f3c47812;color:var(--strength-accent);border-color:#f3c47830}.toolbar-select select{font-size:12px;background:var(--surface);border-radius:8px}.strength-page .card-title{font-family:var(--font-body);font-size:13px;font-weight:600;letter-spacing:0;text-transform:none}.strength-page .section-copy{font-size:12px;line-height:1.7}.strength-page .overview-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px}.strength-page .latest-session{padding:0;border:0;background:transparent;box-shadow:none;border-radius:0}.strength-page .latest-session-main{padding:0}.strength-page .latest-session-title{font-family:var(--font-body);font-size:20px;font-weight:600;line-height:1.4;letter-spacing:-.3px}.strength-page .latest-session-metrics{display:flex;flex-wrap:wrap;gap:24px;background:none;border:0;padding:0;margin-top:20px}.latest-session-metrics>div{border:0;padding:0}.latest-session-metrics span{font-size:11px}.latest-session-metrics strong{font-family:var(--font-body);font-size:20px;font-weight:600}.strength-page .latest-session-focus{font-size:12px;line-height:1.8;color:var(--muted);margin:18px 0}.strength-page .detail-link{font:inherit;font-size:12px;border:0;background:transparent;color:var(--strength-accent);cursor:pointer;padding:0}.strength-page .status-badge{font-size:11px;letter-spacing:0;text-transform:none;padding:4px 8px;font-weight:500}.strength-rhythm{min-width:0;border-right:1px solid var(--border);padding-right:26px}.strength-rhythm h2,.strength-anchor h2{font-family:var(--font-body);font-size:20px;font-weight:600;letter-spacing:-.3px}.rhythm-total{font-size:22px;font-weight:600;white-space:nowrap}.rhythm-total small{font-size:11px;color:var(--muted);font-weight:400}.strength-rhythm-bars{display:flex;gap:9px;margin-top:18px}.strength-rhythm-week{flex:1;min-width:0;text-align:center}.strength-rhythm-week>strong{font-size:11px;color:var(--text-soft);font-weight:500}.strength-rhythm-week>div{display:flex;align-items:end;justify-content:center;height:88px;margin:8px 0;background:#f3c47804}.strength-rhythm-week i{display:block;width:70%;max-width:28px;min-height:2px;border-radius:4px 4px 0 0;background:linear-gradient(0deg,#ba8b4244,#f3c478)}.strength-rhythm-week>span{font-size:9px;color:var(--muted);white-space:nowrap}.rhythm-caption{font-size:11px;color:var(--muted);margin-top:14px}.strength-anchor{grid-column:1/-1;display:flex;justify-content:space-between;gap:28px;border-top:1px solid var(--border);padding-top:22px}.strength-anchor h2{margin:8px 0}.strength-anchor p{font-size:12px;line-height:1.7;color:var(--muted);max-width:620px}.anchor-result{display:grid;gap:5px;justify-items:end;flex-shrink:0}.anchor-result>strong{font-size:25px;font-weight:600;letter-spacing:-.5px}.anchor-result>span{font-size:11px;color:var(--muted)}.anchor-result .detail-link{margin-top:10px}.strength-page .analysis-grid,.strength-page .pr-grid{gap:22px}.strength-page .pr-stage,.strength-page .trend-stage,.strength-page .buckets-stage,.strength-page .lifts-stage,.strength-page .spotlight-stage,.strength-page .sessions-stage{padding:20px;border-radius:14px;background:var(--surface);box-shadow:none}.strength-page .pr-card{background:transparent;border:0;border-radius:0;padding:12px}.pr-value{font-family:var(--font-body);font-size:24px}.strength-page .lift-table{max-height:650px;overflow-y:auto}.strength-page .lift-row{padding:13px 8px}.strength-page .lift-name strong{font-size:13px}.strength-page .lift-meta{font-size:11px}.strength-page .lift-volume{display:none}.strength-page .spotlight-title{font-family:var(--font-body);font-size:23px;font-weight:600;letter-spacing:-.5px}.strength-page .spotlight-stats{gap:14px}.strength-page .spotlight-stat{background:transparent;border:0;padding:0}.strength-page .spotlight-stat strong{font-size:20px}.strength-page .spotlight-history{max-height:350px;overflow-y:auto}.strength-page .session-list{grid-template-columns:1fr;gap:10px}.strength-page .session-card{background:transparent;border:0;border-bottom:1px solid var(--border);border-radius:0}.strength-page .session-volume{font-size:16px}.strength-page .session-card-top strong{font-family:var(--font-body);font-size:14px}.strength-page .session-meta{font-size:11px}.strength-refresh-error{font-size:12px;color:#f3c478}.strength-page button:focus-visible,.strength-page a:focus-visible,.strength-page summary:focus-visible{outline:2px solid var(--strength-accent);outline-offset:4px}
+@media(max-width:1000px){.strength-launch{grid-template-columns:1fr;gap:22px}.launch-notes{padding:18px 0 0;border-left:0;border-top:1px solid var(--border)}.strength-page .analysis-grid-bottom{grid-template-columns:1fr}.strength-page .lift-table{max-height:330px}}
+@media(max-width:700px){.strength-page .overview-grid{grid-template-columns:1fr}.strength-rhythm{border-right:0;padding:0 0 22px;border-bottom:1px solid var(--border)}.strength-anchor{grid-column:auto;flex-direction:column;gap:15px}.anchor-result{justify-items:start}.strength-launch{padding:22px}.strength-launch h2{font-size:24px}.strength-hero{gap:18px;align-items:start;flex-direction:column}.strength-actions{width:100%;justify-content:flex-start}.strength-page .analysis-grid-top{grid-template-columns:1fr}.strength-nav{gap:22px}.strength-rhythm-week>span{font-size:8px}.strength-page .spotlight-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.strength-page .pr-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.strength-page .weekly-axis{overflow-x:auto}.strength-page .toolbar-select{max-width:100%}}
+
+/* Focused detail tabs: selector, evidence, and a compact training log. */
+.strength-search{display:block;margin:16px 0}.strength-search input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:#0b131e66;color:var(--text);font:inherit;font-size:12px}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.strength-page.view-progression .analysis-grid-bottom{grid-template-columns:minmax(230px,.65fr) minmax(0,1.7fr);align-items:start;gap:28px}.strength-page.view-progression .lifts-stage{padding:0;border:0;background:transparent}.strength-page.view-progression .lifts-stage .section-copy{display:none}.strength-page.view-progression .lift-table{max-height:650px;overflow:auto}.strength-page.view-progression .lift-row{display:flex;flex-direction:column;align-items:start;gap:6px;padding:14px 12px;border:0;border-left:2px solid transparent;border-radius:0;background:transparent;min-height:0;text-align:left}.strength-page.view-progression .lift-row.active{border-left-color:var(--strength-accent);background:#f3c4780a}.strength-page.view-progression .lift-row:hover{background:#ffffff04}.strength-page.view-progression .lift-trend{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.lift-trend .exercise-badge{padding:0;border:0;background:none;font-size:10px}.strength-page.view-progression .lift-trend small{font-size:11px}.strength-page.view-progression .spotlight-stage{padding:24px;border:1px solid #f3c47820;background:linear-gradient(145deg,#f3c47805,#131d2a);border-radius:18px}.strength-page .spotlight-top{flex-direction:column;align-items:start;gap:12px}.strength-page .spotlight-kicker{font-size:11px;letter-spacing:0;text-transform:none;color:var(--muted)}.strength-page .spotlight-title{font-size:25px;margin-top:8px}.strength-page .spotlight-copy{font-size:12px;line-height:1.75;margin-top:10px}.strength-page .trend-tone{font-size:11px;padding:4px 8px;letter-spacing:0;text-transform:none}.strength-page .spotlight-stats{display:flex;flex-wrap:wrap;gap:24px;padding:20px 0;margin-top:4px;border:0}.strength-page .spotlight-stat>span{font-size:11px;text-transform:none;letter-spacing:0}.strength-page .spotlight-stat>strong{font-size:19px}.lift-chart-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}.lift-chart-header h3{font-size:13px;font-weight:600}.analysis-mode{display:flex;gap:4px}.analysis-mode button{border:0;border-radius:6px;background:none;color:var(--muted);font:inherit;font-size:11px;padding:7px 10px;cursor:pointer}.analysis-mode button.active{background:#f3c47815;color:var(--strength-accent)}.lift-line-chart{display:block;width:100%;height:auto;margin-top:18px;overflow:visible}.lift-grid-line{stroke:#8fa1bf16;stroke-width:1}.lift-progress-line{fill:none;stroke:#f3c478;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}.lift-progress-point{fill:#18212c;stroke:#f3c478;stroke-width:2;vector-effect:non-scaling-stroke}.lift-line-chart text{fill:var(--muted);font-size:10px}.analysis-note{font-size:11px;line-height:1.7;color:var(--muted);margin-top:14px}.lift-log-heading,.strength-page.view-progression .history-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;align-items:center;font-size:12px}.lift-log-heading{color:var(--muted);font-size:11px;margin-top:22px;padding-bottom:10px}.strength-page.view-progression .history-row{padding:12px 0;border:0;border-top:1px solid var(--border);background:transparent;border-radius:0}.history-row>span{color:var(--muted)}.history-row>strong{font-weight:500}.strength-page.view-progression .spotlight-history{margin:0;gap:0}.strength-page.view-history .sessions-stage{padding:0;border:0;background:transparent}.history-search{max-width:430px;margin:20px 0}.strength-page.view-history .session-card{padding:0}.strength-page.view-history .session-card>summary{display:grid;grid-template-columns:46px minmax(0,1fr) auto 18px;gap:20px;align-items:center;list-style:none;padding:20px 4px;cursor:pointer}.session-card>summary::-webkit-details-marker{display:none}.session-log-date{display:grid;text-align:center;gap:0}.session-log-date strong{font-size:24px;font-weight:500;letter-spacing:-.6px}.session-log-date span{font-size:11px;color:var(--muted)}.session-log-title,.session-log-duration{display:grid;gap:5px}.session-log-title strong{font-size:14px;font-weight:600}.session-log-title span,.session-log-duration span{font-size:11px;color:var(--muted)}.session-log-duration{justify-items:end}.session-log-duration strong{font-size:13px;font-weight:500}.session-log-chevron{color:var(--muted)}.session-card[open] .session-log-chevron{transform:rotate(180deg)}.strength-page.view-history .session-exercises{padding:8px 0 22px 66px;gap:18px;background:transparent}.strength-page.view-history .session-exercise{padding:0;border:0;border-radius:0;background:transparent}.strength-page.view-history .exercise-head strong{font-size:13px}.strength-page.view-history .exercise-head span{font-size:11px}.strength-page.view-history .set-groups{gap:6px;margin-top:12px}.strength-page.view-history .set-pill{border:1px solid var(--border);border-radius:6px;background:transparent;padding:6px 9px}.strength-page.view-history .set-pill strong{font-size:12px}.strength-page.view-history .set-pill.warmup{opacity:.55}.strength-page.view-analysis .analysis-grid-top{grid-template-columns:minmax(0,1.5fr) minmax(250px,1fr);gap:28px}.strength-page.view-analysis .trend-stage,.strength-page.view-analysis .buckets-stage{border:0;padding:0;background:transparent}.view-analysis .trend-stage .card-title,.view-analysis .buckets-stage .card-title{font-size:20px}.view-analysis .trend-stage>.analysis-mode{margin-top:20px}.analysis-bars{display:flex;gap:12px;margin-top:22px}.analysis-week{flex:1;min-width:0;text-align:center}.analysis-week>strong{font-size:11px;font-weight:500}.analysis-week>div{height:190px;display:flex;align-items:end;justify-content:center;margin:12px 0;background:#f3c47804}.analysis-week i{width:70%;max-width:38px;min-height:2px;border-radius:5px 5px 0 0;background:linear-gradient(0deg,#98703844,#f3c478)}.analysis-week>span{font-size:10px;color:var(--muted)}.strength-page.view-analysis .bucket-row{padding:14px 0;border:0;border-bottom:1px solid var(--border);border-radius:0;background:transparent}.strength-page.view-analysis .bucket-row.active{background:#f3c47806}.bucket-main strong{font-size:13px}.bucket-main span,.bucket-side strong{font-size:11px}.strength-page.view-analysis .bucket-meter{height:4px}.strength-page.view-analysis .pr-stage{border:0;border-top:1px solid var(--border);border-radius:0;background:transparent;padding:22px 0 0}.strength-page.view-analysis .pr-grid{display:flex;flex-wrap:wrap;gap:28px}.strength-page.view-analysis .pr-card{padding:0;min-width:130px}.strength-page.view-analysis .pr-value{font-size:24px}.pr-label,.pr-date{font-size:11px;letter-spacing:0;text-transform:none}
+@media(max-width:900px){.strength-page.view-progression .analysis-grid-bottom{grid-template-columns:1fr}.strength-page.view-progression .lift-table{display:flex;max-height:none;overflow-x:auto;gap:8px}.strength-page.view-progression .lift-row{min-width:210px;flex:0 0 210px;border:1px solid var(--border);border-radius:9px}.strength-page.view-progression .lift-row.active{border-color:#f3c47855}.strength-page.view-analysis .analysis-grid-top{grid-template-columns:1fr}}
+@media(max-width:520px){.strength-page.view-progression .spotlight-stage{padding:18px}.lift-chart-header{align-items:start;flex-direction:column}.strength-page.view-history .session-card>summary{grid-template-columns:35px minmax(0,1fr) 16px;gap:12px}.session-log-duration{grid-column:2;grid-row:2;display:flex;justify-content:space-between;gap:12px}.session-log-chevron{grid-column:3;grid-row:1}.strength-page.view-history .session-exercises{padding-left:0}.analysis-bars{gap:5px}.analysis-week>span{font-size:8px}.analysis-week>strong{font-size:9px}.analysis-week>div{height:145px}.lift-log-heading,.strength-page.view-progression .history-row{gap:6px;font-size:11px}.strength-page .spotlight-stats{gap:18px}}
+
+
+.range-switch { flex-wrap: wrap; }
+.extended-range { overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; padding-bottom: 10px; }
+.extended-range .strength-rhythm-week { flex: 0 0 38px; }
+.extended-range .analysis-week { flex: 0 0 48px; }
 </style>

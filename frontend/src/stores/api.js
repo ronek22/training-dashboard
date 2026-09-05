@@ -7,6 +7,7 @@ const codexHelper = axios.create({
 })
 
 export const useApi = () => ({
+  getWeeklyReviews: () => api.get('/reviews/weekly'),
   getDashboard: () => api.get('/dashboard'),
   getCurrentWeather: (params) => api.get('/weather/current', { params }),
   getWeatherForecast: (params) => api.get('/weather/forecast', { params }),
@@ -87,6 +88,7 @@ export const useApi = () => ({
   getCodexCoachChatJob: (jobId) => codexHelper.get(`/coach-chat/${encodeURIComponent(jobId)}`),
   getWeekly: () => api.get('/weekly'),
   getMetric: (name) => api.get(`/metrics/${name}`),
+  getSessionComparisons: (params) => api.get('/metrics/session-comparisons', { params }),
   getPerformanceSummary: () => api.get('/metrics/performance-summary'),
   getHealthSummary: (params) => api.get('/metrics/health-summary', { params }),
   getTrainingHistory: () => api.get('/metrics/training-history'),

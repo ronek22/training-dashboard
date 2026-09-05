@@ -4,7 +4,7 @@
 
 Current status:
 
-- proposed
+- partially implemented: Sunday review and retained review history (2026-09-05)
 - follows proposed Sprint 34 strength progression and stall detection
 
 Starting point:
@@ -194,3 +194,32 @@ Sprint 35 should be considered complete when:
 - the app can surface a focused data-quality inbox
 - dashboard and MCP can read the same context
 - the retrospective stays evidence-based and the inbox stays high-signal
+
+## Implemented: Automatic AI Sunday Review (2026-09-05)
+
+The dashboard displays an AI-generated review with three short sections: what
+improved, what did not go to plan, and one proposed change for next week. There
+is no athlete input form. Reviews are immutable and retained by week in SQLite.
+
+The local planning helper runs the review worker independently of browser visits.
+It becomes due Sunday at 23:59 Europe/Warsaw (DST-aware). On startup or after sleep,
+it catches up the most recently due week. It checks saved state before invoking AI,
+retries failures after 15 minutes, and does not overwrite generated reviews.
+The app backend and local AI helper must be running; this does not wake a sleeping Mac.
+
+AI receives the exact week's activities, plans, feedback, coach notes, and four
+weeks of comparison data and prior reviews. It assesses the preceding week's
+suggestion using observed evidence, acknowledging uncertainty rather than claiming
+causation. Suggested changes do not automatically modify plans. The dashboard
+refreshes reviews while open and retains prior assessments in its history.
+
+API: `GET /reviews/weekly`, `GET /reviews/weekly/context?week_start=YYYY-MM-DD`,
+and `PUT /reviews/weekly` for validated AI output. Sunday timing is enforced on
+writes. The additive migration distinguishes legacy manual rows from AI reviews.
+Legacy manual rows are not presented as AI-generated content.
+
+Validation covers scheduling before/after the Sunday boundary, DST and UTC,
+restart deduplication, generation, invalid output, retry backoff, database
+persistence, immutable history, prior-suggestion linkage, and context date bounds.
+
+The data-quality inbox, block retrospectives, and MCP packaging remain pending.

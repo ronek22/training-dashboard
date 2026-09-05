@@ -35,7 +35,8 @@ PID_PATH = ROOT / ".codex-planning-helper.pid"
 LOG_PATH = ROOT / ".codex-planning-helper.log"
 JOBS: dict[str, dict] = {}
 JOBS_LOCK = threading.Lock()
-DEFAULT_FALLBACK_MODELS = ("gpt-5.6-terra", "gpt-5.6-luna")
+DEFAULT_MODEL = "gpt-5.6-luna"
+DEFAULT_FALLBACK_MODELS = ("gpt-5.6-terra",)
 CAPACITY_ERROR_MARKERS = (
     "selected model is at capacity",
     "model is at capacity",
@@ -384,7 +385,7 @@ def concise_codex_error(output: str) -> str:
 def run_codex(prompt: str, *, failure_label: str, fallback: str) -> str:
     with tempfile.TemporaryDirectory(prefix="training-dashboard-codex-") as workdir:
         last_message_path = Path(workdir) / "last-message.txt"
-        attempts: tuple[str | None, ...] = (None, *fallback_models())
+        attempts = tuple(dict.fromkeys((DEFAULT_MODEL, *fallback_models())))
         last_output = ""
         deadline = time.monotonic() + 900
         for model in attempts:
@@ -683,6 +684,8 @@ class Handler(BaseHTTPRequestHandler):
                 "status": "ok",
                 "service": "training-dashboard-codex-helper",
                 "pid": os.getpid(),
+                "model": DEFAULT_MODEL,
+                "sunday_review": {"enabled": True, "time": "23:59", "timezone": "Europe/Warsaw"},
             })
             return
         prefix = "/weekly-plan/"
@@ -893,6 +896,9 @@ def stop() -> int:
 
 def serve() -> int:
     server = PlanningServer((HOST, PORT), Handler)
+    from sunday_review import run_loop
+    review_stop = threading.Event()
+    threading.Thread(target=run_loop, args=(run_codex, review_stop), daemon=True).start()
 
     def shutdown(_signum: int, _frame: object) -> None:
         threading.Thread(target=server.shutdown, daemon=True).start()
@@ -902,6 +908,7 @@ def serve() -> int:
     try:
         server.serve_forever()
     finally:
+        review_stop.set()
         server.server_close()
     return 0
 

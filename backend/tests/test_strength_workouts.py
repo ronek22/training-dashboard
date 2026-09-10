@@ -31,6 +31,91 @@ class StrengthWorkoutTests(unittest.TestCase):
         os.environ.pop("TRAINING_DB_PATH", None)
         cls.temp_dir.cleanup()
 
+    def test_one_time_session_preserves_instructions_without_creating_template(self):
+        before = self.client.get('/strength/workouts/templates').json()
+        payload = {
+            'name': 'Workout D · Lower + Core, reduced',
+            'notes': '40 min. Use about 70% of usual load or leave 3–4 reps in reserve; no failure, no PRs.',
+            'exercises': [
+                {'exercise_name': name, 'set_count': 2, 'target_reps': 8,
+                 'target_weight_kg': None, 'rest_seconds': 90, 'notes': '2 easy work sets.'}
+                for name in ['Squat', 'Romanian Deadlift', 'Split Squat', 'Calf Raise', 'Dead Bug']
+            ],
+        }
+        response = self.client.post('/strength/workouts/sessions/one-time', json=payload)
+        self.assertEqual(response.status_code, 201, response.text)
+        session = response.json()
+        self.assertIsNone(session['template_id'])
+        self.assertEqual(session['template_name'], payload['name'])
+        self.assertEqual(session['notes'], payload['notes'])
+        self.assertEqual(session['progress']['total_sets'], 10)
+        self.assertEqual(session['exercises'][0]['notes'], '2 easy work sets.')
+        self.assertEqual(self.client.get('/strength/workouts/templates').json(), before)
+        duplicate = self.client.post('/strength/workouts/sessions/one-time', json=payload)
+        self.assertEqual(duplicate.status_code, 409)
+        self.assertEqual(duplicate.json()['detail']['session_id'], session['id'])
+        base = f"/strength/workouts/sessions/{session['id']}"
+        self.assertEqual(self.client.get(base).json()['notes'], payload['notes'])
+        set_id = session['exercises'][0]['sets'][0]['id']
+        completed = self.client.post(f'{base}/sets/{set_id}/complete', json={'actual_reps': 8, 'actual_weight_kg': 35})
+        self.assertEqual(completed.status_code, 200)
+        self.assertEqual(self.client.post(f'{base}/finish', json={}).status_code, 200)
+        self.assertEqual(self.client.get(base).json()['notes'], payload['notes'])
+        self.assertEqual(self.client.get('/strength/workouts/templates').json(), before)
+        invalid = {**payload, 'name': '   '}
+        self.assertEqual(self.client.post('/strength/workouts/sessions/one-time', json=invalid).status_code, 422)
+        self.assertEqual(self.client.post('/strength/workouts/sessions/one-time', json={**payload, 'exercises': []}).status_code, 422)
+
+    def test_live_workout_structure_changes(self):
+        template = self.client.post('/strength/workouts/templates', json={
+            'name': 'Mutable session', 'exercises': [
+                {'exercise_name': name, 'set_count': 3, 'target_reps': 8, 'target_weight_kg': 40, 'rest_seconds': 90}
+                for name in ['Bench Press', 'Cable Row']
+            ]
+        }).json()
+        session = self.client.post('/strength/workouts/sessions', json={'template_id': template['id']}).json()
+        base = f"/strength/workouts/sessions/{session['id']}"
+        first, second = session['exercises']
+        response = self.client.post(f"{base}/exercises/{first['id']}/sets")
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()['progress']['total_sets'], 7)
+        self.assertEqual(response.json()['exercises'][0]['sets'][-1]['target_weight_kg'], 40)
+        # Removing a preceding set must preserve the currently selected set by identity.
+        self.client.post(f'{base}/position', json={'exercise_order': 1, 'set_order': 3})
+        response = self.client.delete(f"{base}/sets/{first['sets'][0]['id']}")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['current_set_order'], 2)
+        self.assertEqual(response.json()['exercises'][0]['sets'][1]['id'], first['sets'][2]['id'])
+        completed = self.client.post(f"{base}/sets/{first['sets'][2]['id']}/complete", json={'actual_reps': 8, 'actual_weight_kg': 40}).json()
+        self.assertEqual(completed['progress']['completed_sets'], 1)
+        removed = self.client.delete(f"{base}/sets/{first['sets'][2]['id']}").json()
+        self.assertEqual(removed['progress']['completed_sets'], 0)
+        self.assertEqual([item['set_order'] for item in removed['exercises'][0]['sets']], [1, 2])
+        self.assertEqual(self.client.delete(f'{base}/sets/999999').status_code, 404)
+        self.assertEqual(self.client.post(f'{base}/exercises/999999/sets').status_code, 404)
+        # Removing the selected exercise finds a valid remaining set and renumbers exercises.
+        self.client.post(f'{base}/position', json={'exercise_order': 1, 'set_order': 1})
+        removed = self.client.delete(f"{base}/exercises/{first['id']}").json()
+        self.assertEqual(removed['exercises'][0]['id'], second['id'])
+        self.assertEqual(removed['current_exercise_order'], 1)
+        self.assertEqual(removed['progress']['total_sets'], 3)
+        self.assertEqual(self.client.delete(f"{base}/exercises/{second['id']}").status_code, 400)
+        for item in second['sets'][:2]:
+            self.assertEqual(self.client.delete(f"{base}/sets/{item['id']}").status_code, 200)
+        self.assertEqual(self.client.delete(f"{base}/sets/{second['sets'][2]['id']}").status_code, 400)
+        warmup = self.client.post(f"{base}/exercises/{second['id']}/warmup-sets", json={}).json()['exercises'][0]['sets'][0]
+        self.assertEqual(self.client.delete(f"{base}/sets/{warmup['id']}").status_code, 200)
+        for _ in range(19):
+            self.assertEqual(self.client.post(f"{base}/exercises/{second['id']}/sets").status_code, 201)
+        self.assertEqual(self.client.post(f"{base}/exercises/{second['id']}/sets").status_code, 400)
+        # Session changes never rewrite the reusable template.
+        unchanged = self.client.get(f"/strength/workouts/templates/{template['id']}").json()
+        self.assertEqual(unchanged['set_count'], 6)
+        self.client.post(f'{base}/finish', json={})
+        self.assertEqual(self.client.post(f"{base}/exercises/{second['id']}/sets").status_code, 409)
+        self.assertEqual(self.client.delete(f"{base}/sets/{second['sets'][2]['id']}").status_code, 409)
+        self.assertEqual(self.client.delete(f"{base}/exercises/{second['id']}").status_code, 409)
+
     def test_fitbod_history_drives_exercise_suggestions(self):
         conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])
         try:
@@ -80,6 +165,9 @@ class StrengthWorkoutTests(unittest.TestCase):
         self.assertEqual(suggestion["suggested_reps"], 10)
         self.assertEqual(suggestion["suggested_weight_kg"], 55.0)
         self.assertEqual(suggestion["sources"], ["Fitbod"])
+        self.assertEqual(suggestion["last_source"], "Fitbod")
+        self.assertEqual([item["weight_kg"] for item in suggestion["last_sets"]], [52.5, 55.0, 55.0])
+        self.assertTrue(all(item["reps"] == 10 and not item["is_warmup"] for item in suggestion["last_sets"]))
 
     def test_template_live_session_and_watch_activity_link(self):
         template_response = self.client.post(
@@ -301,6 +389,8 @@ class StrengthWorkoutTests(unittest.TestCase):
         self.assertEqual(suggestions[0]["suggested_reps"], 5)
         self.assertEqual(suggestions[0]["suggested_weight_kg"], 82.5)
         self.assertEqual(suggestions[0]["sources"], ["TrainLog"])
+        self.assertEqual(suggestions[0]["last_source"], "TrainLog")
+        self.assertEqual(suggestions[0]["last_sets"][0]["weight_kg"], 82.5)
 
         disposable_response = self.client.post(
             "/strength/workouts/sessions",

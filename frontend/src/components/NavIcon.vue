@@ -8,11 +8,13 @@
 defineProps({ name: { type: String, default: 'dashboard' } })
 
 const paths = {
+  ideas: 'M9 18h6m-5 3h4M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 3H9c0-1 0-2-1-3ZM12 1v1M3 5l1 1m16-1-1 1',
   dashboard: 'M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-13h6V4h-6v3Z',
   plan: 'M12 3 4 7v10l8 4 8-4V7l-8-4Zm0 0v18M4 7l8 4 8-4',
   calendar: 'M6 3v3m12-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Zm3 8h3m2 0h3m-8 4h3m2 0h3',
   goals: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-4a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0-5 7-7',
   strength: 'M6 8v8m12-8v8M3 10v4m18-4v4M6 12h12',
+  recovery: 'M20 5a5 5 0 0 0-8 1 5 5 0 0 0-8-1c-4 5 3 11 8 15 5-4 12-10 8-15ZM7 11h3l2-3 2 6 2-3h2',
   activities: 'M5 19 9 8l4 7 2-5 4 9M7 5h.01',
   sync: 'M20 7h-5V2m4.5 5A8 8 0 0 0 5 5m-1 12h5v5m-4.5-5A8 8 0 0 0 19 19',
   metrics: 'M4 19V9m5 10V5m6 14v-7m5 7V3',

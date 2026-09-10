@@ -14,7 +14,10 @@ class StrengthTemplateExerciseInput(BaseModel):
     @field_validator("exercise_name")
     @classmethod
     def clean_exercise_name(cls, value: str) -> str:
-        return value.strip()
+        value = value.strip()
+        if not value:
+            raise ValueError("Must not be blank")
+        return value
 
 
 class StrengthTemplateInput(BaseModel):
@@ -25,7 +28,10 @@ class StrengthTemplateInput(BaseModel):
     @field_validator("name")
     @classmethod
     def clean_name(cls, value: str) -> str:
-        return value.strip()
+        value = value.strip()
+        if not value:
+            raise ValueError("Must not be blank")
+        return value
 
 
 class StrengthSessionStartRequest(BaseModel):

@@ -22,6 +22,11 @@ from urllib.error import URLError
 from urllib.parse import quote
 from urllib.request import urlopen
 
+try:
+    from scripts import recovery_helper
+except ModuleNotFoundError:
+    import recovery_helper
+
 
 HOST = "127.0.0.1"
 PORT = 8765
@@ -611,6 +616,25 @@ def execute_coach_chat_job(job_id: str) -> None:
         job.update(status=status, message=message, summary=summary, finished_at=now_iso())
 
 
+def execute_recovery_job(job_id: str) -> None:
+    with JOBS_LOCK:
+        job = JOBS[job_id]
+        job.update(status="running", message="Reviewing your recovery issue.", started_at=now_iso())
+        issue_id, request_id = job["issue_id"], job["request_id"]
+    try:
+        recovery_helper.run_request(issue_id, request_id, run_codex)
+        status, message = "succeeded", "Recovery reply saved."
+    except Exception:
+        # Exceptions from the CLI can contain symptom text. Never expose or log them.
+        status, message = "failed", "Recovery reply unavailable or outdated. Your message is saved; reload the issue and retry."
+        try:
+            recovery_helper.backend_request(issue_id, request_id, "failed", {})
+        except Exception:
+            pass
+    with JOBS_LOCK:
+        JOBS[job_id].update(status=status, message=message, finished_at=now_iso())
+
+
 def execute_daily_state_job(job_id: str) -> None:
     with JOBS_LOCK:
         job = JOBS[job_id]
@@ -685,8 +709,18 @@ class Handler(BaseHTTPRequestHandler):
                 "service": "training-dashboard-codex-helper",
                 "pid": os.getpid(),
                 "model": DEFAULT_MODEL,
+                "capabilities": ["recovery_chat"],
                 "sunday_review": {"enabled": True, "time": "23:59", "timezone": "Europe/Warsaw"},
             })
+            return
+        prefix = "/recovery-chat/"
+        if self.path.startswith(prefix):
+            with JOBS_LOCK:
+                job = dict(JOBS.get(self.path[len(prefix):], {}))
+            if not job or job.get("kind") != "recovery_chat":
+                self.send_json(404, {"detail": "Recovery job not found"})
+                return
+            self.send_json(200, public_job(job))
             return
         prefix = "/weekly-plan/"
         if self.path.startswith(prefix):
@@ -743,7 +777,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         if self.reject_bad_origin():
             return
-        if self.path not in {"/weekly-plan", "/weekly-plan-revision", "/activity-analysis", "/coach-chat", "/daily-state"}:
+        if self.path not in {"/weekly-plan", "/weekly-plan-revision", "/activity-analysis", "/coach-chat", "/daily-state", "/recovery-chat"}:
             self.send_json(404, {"detail": "Not found"})
             return
         if "application/json" not in (self.headers.get("Content-Type") or ""):
@@ -758,7 +792,11 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             payload = json.loads(self.rfile.read(length))
-            if self.path == "/weekly-plan":
+            if self.path == "/recovery-chat":
+                issue_id, target = recovery_helper.validate_request(payload)
+                target_key = "request_id"
+                kind = "recovery_chat"
+            elif self.path == "/weekly-plan":
                 target, planning_brief = validate_planning_request(payload)
                 target_key = "week_start"
                 kind = "weekly_plan"
@@ -810,6 +848,7 @@ class Handler(BaseHTTPRequestHandler):
                     "activity_analysis": "Workout analysis is queued.",
                     "coach_chat": "Coach chat is queued.",
                     "daily_state": "Daily training-state assessment is queued.",
+                    "recovery_chat": "Recovery reply is queued.",
                 }[kind],
                 "summary": "",
                 "created_at": now_iso(),
@@ -820,6 +859,8 @@ class Handler(BaseHTTPRequestHandler):
                 job.update(athlete_message=athlete_message, history=history)
             else:
                 job[target_key] = target
+                if kind == "recovery_chat":
+                    job["issue_id"] = issue_id
                 if kind == "weekly_plan":
                     job["planning_brief"] = planning_brief
                 elif kind == "weekly_plan_revision":
@@ -832,6 +873,7 @@ class Handler(BaseHTTPRequestHandler):
             "activity_analysis": execute_activity_analysis_job,
             "coach_chat": execute_coach_chat_job,
             "daily_state": execute_daily_state_job,
+            "recovery_chat": execute_recovery_job,
         }[kind]
         threading.Thread(target=worker, args=(job_id,), daemon=True).start()
         self.send_json(202, public_job(job))
@@ -851,6 +893,9 @@ def health() -> dict | None:
 def start() -> int:
     existing = health()
     if existing:
+        if "recovery_chat" not in existing.get("capabilities", []):
+            print("The running helper is outdated. Run codex_planning_helper.py stop, then start, to enable Recovery.", file=sys.stderr)
+            return 1
         print(f"Codex planning helper is already running (PID {existing['pid']}).")
         PID_PATH.write_text(str(existing["pid"]), encoding="utf-8")
         return 0

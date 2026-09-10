@@ -266,3 +266,58 @@ class PlanDayComparisonTests(unittest.TestCase):
             [activity["id"] for activity in strength_comparison["completed_activities"]],
             ["strength-today"],
         )
+
+    def test_imported_recovery_ride_matches_recovery_plan(self):
+        activity = make_activity_row(
+            self.conn,
+            activity_id="zwift-recovery",
+            date="2026-07-22",
+            activity_type="VirtualRide",
+            name="Zwift - Recovery Ride With Activations",
+            duration_min=60,
+            distance_km=30.65,
+            avg_watts=122,
+        )
+
+        comparison = build_plan_day_comparison(
+            self.conn,
+            {
+                "date": "2026-07-22",
+                "session_id": "recovery-a",
+                "session_type": "Recovery",
+                "workout_intent": "recovery",
+            },
+            [activity],
+            {"2026-07-22": [activity]},
+            {"2026-07-22": {"date": "2026-07-22", "session_type": "Recovery"}},
+            [],
+        )
+
+        self.assertEqual(comparison["status"], "matched")
+        self.assertEqual(comparison["intent_alignment"], "aligned")
+
+    def test_hard_imported_ride_does_not_match_recovery_plan(self):
+        activity = make_activity_row(
+            self.conn,
+            activity_id="interval-ride",
+            date="2026-07-22",
+            activity_type="Ride",
+            name="Bike Intervals",
+            duration_min=60,
+        )
+
+        comparison = build_plan_day_comparison(
+            self.conn,
+            {
+                "date": "2026-07-22",
+                "session_id": "recovery-b",
+                "session_type": "Recovery",
+                "workout_intent": "recovery",
+            },
+            [activity],
+            {"2026-07-22": [activity]},
+            {"2026-07-22": {"date": "2026-07-22", "session_type": "Recovery"}},
+            [],
+        )
+
+        self.assertEqual(comparison["status"], "rest_day_changed")

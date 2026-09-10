@@ -298,6 +298,10 @@ These ideas are reasonable but should wait:
 - social features, leaderboards, or public sharing
 - aggressive predictive injury modeling
 
+## Implemented Addition: Recovery Foundation
+
+[Sprint 38](../sprints/sprint-38-ai-assisted-recovery.md) now provides persistent recovery issues, optional AI symptom conversations, confirmed symptom checks, care guidance, follow-up history, opt-in coaching summaries, and a direct restriction-editor handoff. Routine generation, validation, explicit save, and versioning are implemented, but exercise recommendations remain gated pending clinical review of screening and the initial library. The sprint is partially implemented, not a completed exercise-advice release. Existing restrictions and plans change only through the athlete's explicit editing workflow.
+
 ## Working Principle
 
 When choosing between features, prefer the one that:

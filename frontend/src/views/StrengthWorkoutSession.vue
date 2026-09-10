@@ -1,5 +1,5 @@
 <template>
-  <div class="runner-page motion-page">
+  <div class="runner-page motion-page" :class="{ 'session-busy': changingWorkout }" :inert="changingWorkout">
     <div v-if="loading" class="card empty-state">Loading workout…</div>
     <div v-else-if="error && !session" class="card error-card" role="alert">{{ error }}</div>
 
@@ -8,7 +8,7 @@
         <div class="runner-head-copy">
           <router-link to="/strength/workouts" class="back-link">← Studio</router-link>
           <div>
-            <div class="runner-kicker">{{ session.status === 'active' ? 'Live workout' : 'Workout review' }}</div>
+            <div class="runner-kicker" :class="{ live: session.status === 'active' }">{{ session.status === 'active' ? 'Live workout' : 'Workout review' }}</div>
             <h1>{{ session.template_name }}</h1>
             <p>{{ formatDate(session.started_at) }}</p>
           </div>
@@ -18,10 +18,15 @@
           <div><span>Exercises</span><strong>{{ completedExerciseCount }}/{{ session.exercises.length }}</strong></div>
           <div><span>Sets</span><strong>{{ session.progress.completed_sets }}/{{ session.progress.total_sets }}</strong></div>
         </div>
-        <div class="runner-progress" :aria-label="`${session.progress.completed_sets} of ${session.progress.total_sets} sets completed`">
+        <div class="runner-progress" role="progressbar" :aria-valuenow="session.progress.completed_sets" :aria-valuemax="session.progress.total_sets" aria-valuemin="0" :aria-label="`${session.progress.completed_sets} of ${session.progress.total_sets} sets completed`">
           <div class="progress-copy"><span>Session progress</span><strong>{{ Math.round(session.progress.fraction * 100) }}%</strong></div>
           <div class="progress-track"><span :style="{ width: `${session.progress.fraction * 100}%` }"></span></div>
         </div>
+      </section>
+
+      <section v-if="session.notes" class="card session-instructions">
+        <h2>Session instructions</h2>
+        <p style="white-space: pre-wrap; margin-top: 10px">{{ session.notes }}</p>
       </section>
 
       <div v-if="error" class="card error-card" role="alert">{{ error }}</div>
@@ -29,12 +34,12 @@
       <template v-if="session.status === 'active' && currentExercise && currentSet">
         <section class="runner-console motion-section">
           <div class="work-zone">
-            <div v-if="restRemaining > 0" class="rest-banner card" aria-live="polite">
-              <div class="rest-dial" :style="restProgressStyle"><span>{{ formatClock(restRemaining) }}</span></div>
+            <div class="rest-banner card" :class="{ recovering: restRemaining > 0 }">
+              <div class="rest-dial" :style="restProgressStyle"><span>{{ restRemaining > 0 ? formatClock(restRemaining) : 'GO' }}</span></div>
               <div class="rest-copy">
-                <span>Recovery running</span>
-                <strong>Rest, breathe, then own the next set.</strong>
-                <small>Next: {{ currentExercise.exercise_name }} · set {{ currentSet.set_order }}</small>
+                <span>{{ restRemaining > 0 ? 'Recovery' : 'Your next set' }}</span>
+                <strong role="status">{{ restRemaining > 0 ? 'Take a breath. You’ve earned it.' : 'Ready when you are.' }}</strong>
+                <small>{{ restRemaining > 0 ? 'Rest remaining · ' : 'Up now · ' }}{{ setKindLabel(currentExercise, currentSet) }} · {{ currentExercise.exercise_name }}</small>
               </div>
               <button class="sound-toggle" type="button" :aria-pressed="soundEnabled" @click="toggleSound">
                 <span aria-hidden="true">{{ soundEnabled ? '♪' : '×' }}</span>{{ soundEnabled ? 'Beep on' : 'Beep off' }}
@@ -53,9 +58,6 @@
                   <h2>{{ currentExercise.exercise_name }}</h2>
                   <p>{{ currentExercise.notes || 'Record what you actually performed.' }}</p>
                 </div>
-                <button v-if="restRemaining === 0" class="sound-toggle" type="button" :aria-pressed="soundEnabled" @click="toggleSound">
-                  <span aria-hidden="true">{{ soundEnabled ? '♪' : '×' }}</span>{{ soundEnabled ? 'Beep on' : 'Beep off' }}
-                </button>
               </div>
 
               <div class="target-row">
@@ -66,32 +68,6 @@
                 <i></i>
                 <strong>{{ formatRest(currentSet.rest_seconds) }} rest</strong>
                 <button type="button" @click="applyTarget">Reset to target</button>
-              </div>
-
-              <div class="current-exercise-sets">
-                <div class="current-sets-head">
-                  <div><span>Current exercise</span><strong>{{ currentExercise.exercise_name }} sets</strong></div>
-                  <button type="button" :disabled="addingWarmup" @click="addWarmupSet">
-                    {{ addingWarmup ? 'Adding…' : '+ Add warm-up' }}
-                  </button>
-                </div>
-                <div class="current-set-strip">
-                  <button
-                    v-for="workoutSet in currentExercise.sets"
-                    :key="workoutSet.id"
-                    type="button"
-                    :class="{
-                      current: isCurrent(currentExercise, workoutSet),
-                      completed: workoutSet.status === 'completed',
-                      warmup: workoutSet.set_type === 'warmup',
-                    }"
-                    @click="goToSet(currentExercise, workoutSet)"
-                  >
-                    <span>{{ setKindLabel(currentExercise, workoutSet) }}</span>
-                    <strong>{{ workoutSet.status === 'completed' ? `${workoutSet.actual_reps} × ${formatWeight(workoutSet.actual_weight_kg)}` : `${workoutSet.target_reps} × ${formatWeight(workoutSet.target_weight_kg)}` }}</strong>
-                    <small>{{ workoutSet.status === 'completed' ? 'Recorded' : isCurrent(currentExercise, workoutSet) ? 'Up now' : 'Planned' }}</small>
-                  </button>
-                </div>
               </div>
 
               <div class="actual-inputs">
@@ -126,17 +102,49 @@
 
               <button class="complete-button" type="button" :disabled="savingSet" @click="completeCurrentSet">
                 <div>
-                  <span>{{ savingSet ? 'Saving…' : 'Complete set' }}</span>
+                  <span>{{ savingSet ? 'Saving…' : currentSet.status === 'completed' ? 'Update set' : 'Log set' }}</span>
                   <small v-if="!savingSet">Starts {{ formatRest(currentSet.rest_seconds) }} rest</small>
                 </div>
-                <b aria-hidden="true">→</b>
+                <b aria-hidden="true">✓</b>
               </button>
+              <div class="current-exercise-sets">
+                <div class="current-sets-head">
+                  <div><span>Set history</span><strong>This exercise</strong></div>
+                  <button type="button" :disabled="mutationBusy || workingSetCount(currentExercise) >= 20" @click="addWorkingSet">+ Add set</button>
+                  <button type="button" :disabled="addingWarmup" @click="addWarmupSet">
+                    {{ addingWarmup ? 'Adding…' : '+ Add warm-up' }}
+                  </button>
+                </div>
+                <div class="current-set-strip">
+                  <button
+                    v-for="workoutSet in currentExercise.sets"
+                    :key="workoutSet.id"
+                    type="button"
+                    :class="{
+                      current: isCurrent(currentExercise, workoutSet),
+                      completed: workoutSet.status === 'completed',
+                      warmup: workoutSet.set_type === 'warmup',
+                    }"
+                    @click="goToSet(currentExercise, workoutSet)"
+                  >
+                    <span>{{ setKindLabel(currentExercise, workoutSet) }}</span>
+                    <strong>{{ workoutSet.status === 'completed' ? `${workoutSet.actual_reps} × ${formatWeight(workoutSet.actual_weight_kg)}` : `${workoutSet.target_reps} × ${formatWeight(workoutSet.target_weight_kg)}` }}</strong>
+                    <small>{{ workoutSet.status === 'completed' ? 'Recorded' : isCurrent(currentExercise, workoutSet) ? 'Up now' : 'Planned' }}</small>
+                  </button>
+                </div>
+              </div>
+              <div class="manage-workout">
+                <button type="button" :disabled="mutationBusy || (currentSet.set_type !== 'warmup' && workingSetCount(currentExercise) <= 1)" @click="removeCurrentSet">Remove {{ setKindLabel(currentExercise, currentSet).toLowerCase() }}</button>
+                <button type="button" :disabled="mutationBusy || session.exercises.length <= 1" @click="removeCurrentExercise">Remove exercise</button>
+                <small>Select a set above to remove it. Keep one working set per exercise and one exercise per workout.</small>
+              </div>
+
             </article>
           </div>
 
           <aside class="card exercise-switcher">
             <div class="queue-head">
-              <div><span>Workout queue</span><strong>{{ incompleteSetCount }} sets left</strong></div>
+              <div><span>Session lineup</span><strong>{{ session.exercises.length }} exercises <small>· {{ incompleteSetCount }} sets left</small></strong></div>
               <button class="add-compact" type="button" aria-label="Add exercise" @click="showAddExercise = !showAddExercise">{{ showAddExercise ? '×' : '+' }}</button>
             </div>
             <button
@@ -147,7 +155,7 @@
               @click="switchExercise(exercise)"
             >
               <span>{{ exercise.completed_set_count === workingSetCount(exercise) ? '✓' : exercise.exercise_order }}</span>
-              <div><strong>{{ exercise.exercise_name }}</strong><small>{{ exercise.completed_set_count }}/{{ workingSetCount(exercise) }} work sets<span v-if="exercise.warmup_set_count"> · {{ exercise.completed_warmup_set_count }}/{{ exercise.warmup_set_count }} warm-up</span></small></div>
+              <div><strong>{{ exercise.exercise_name }}</strong><span class="queue-set-markers" aria-hidden="true"><i v-for="item in exercise.sets" :key="item.id" :class="{ recorded: item.status === 'completed', selected: isCurrent(exercise, item) }"></i></span><small>{{ exercise.completed_set_count }}/{{ workingSetCount(exercise) }} work sets<span v-if="exercise.warmup_set_count"> · {{ exercise.completed_warmup_set_count }}/{{ exercise.warmup_set_count }} warm-up</span></small></div>
               <b>{{ exercise.exercise_order === session.current_exercise_order ? 'Now' : '→' }}</b>
             </button>
 
@@ -197,6 +205,11 @@
           </aside>
         </section>
       </template>
+
+      <section v-if="session.status === 'active' && incompleteSetCount === 0" class="card all-done" role="status">
+        <span aria-hidden="true">✓</span><div><h2>Every set. Done.</h2><p>Review your numbers below, or finish to save your workout.</p></div>
+        <button class="finish-button" type="button" :disabled="finishing" @click="finishWorkout">{{ finishing ? 'Finishing…' : 'Finish workout' }}</button>
+      </section>
 
       <section class="card workout-detail motion-section">
         <div class="section-head">
@@ -283,6 +296,30 @@ const loading = ref(true)
 const error = ref('')
 const savingSet = ref(false)
 const addingWarmup = ref(false)
+const changingWorkout = ref(false)
+const changingPosition = ref(false)
+const mutationBusy = computed(() => changingWorkout.value || changingPosition.value || savingSet.value || addingWarmup.value || addingExercise.value || finishing.value)
+const mutateWorkout = async action => {
+  if (mutationBusy.value) return
+  changingWorkout.value = true
+  error.value = ''
+  try {
+    const { data } = await action()
+    session.value = data
+    syncInputs()
+  } catch (mutationError) {
+    error.value = mutationError?.response?.data?.detail || 'Could not update workout.'
+  } finally { changingWorkout.value = false }
+}
+const addWorkingSet = () => mutateWorkout(() => api.addStrengthWorkingSet(session.value.id, currentExercise.value.id))
+const removeCurrentSet = () => {
+  if (currentSet.value.status === 'completed' && !window.confirm('Remove this recorded set and its reps and weight?')) return
+  mutateWorkout(() => api.removeStrengthSet(session.value.id, currentSet.value.id))
+}
+const removeCurrentExercise = () => {
+  if (!window.confirm(`Remove ${currentExercise.value.exercise_name} and all its sets from this workout?`)) return
+  mutateWorkout(() => api.removeStrengthExercise(session.value.id, currentExercise.value.id))
+}
 const finishing = ref(false)
 const actualReps = ref(0)
 const actualWeight = ref(0)
@@ -442,7 +479,8 @@ const applyTarget = () => {
 }
 
 const changePosition = async (exercise, workoutSet = null) => {
-  if (session.value.status !== 'active') return
+  if (session.value.status !== 'active' || mutationBusy.value) return
+  changingPosition.value = true
   error.value = ''
   try {
     const { data } = await api.setStrengthWorkoutPosition(session.value.id, {
@@ -453,7 +491,7 @@ const changePosition = async (exercise, workoutSet = null) => {
     syncInputs()
   } catch (positionError) {
     error.value = positionError?.response?.data?.detail || 'Could not switch exercise.'
-  }
+  } finally { changingPosition.value = false }
 }
 const switchExercise = (exercise) => changePosition(exercise)
 const goToSet = (exercise, workoutSet) => changePosition(exercise, workoutSet)
@@ -594,7 +632,7 @@ const setKindLabel = (exercise, workoutSet) => `${workoutSet.set_type === 'warmu
 const adjustWeight = (amount) => { actualWeight.value = Math.max(0, Math.round((Number(actualWeight.value || 0) + amount) * 2) / 2) }
 const formatClock = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 const formatRest = (seconds) => seconds >= 60 ? formatClock(seconds) : `${seconds}s`
-const formatWeight = (weight) => weight == null ? 'Bodyweight' : `${Number(weight).toFixed(Number(weight) % 1 ? 1 : 0)} kg`
+const formatWeight = (weight) => weight == null ? 'No weight target' : `${Number(weight).toFixed(Number(weight) % 1 ? 1 : 0)} kg`
 const formatDuration = (minutes) => minutes == null ? 'Duration unknown' : `${Number(minutes).toFixed(Number(minutes) % 1 ? 1 : 0)} min`
 const formatDate = (value) => { try { return format(new Date(value), 'MMM d, yyyy · HH:mm') } catch { return value } }
 const formatHistoricalTarget = (suggestion) => {
@@ -615,41 +653,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.runner-page { display: grid; gap: 18px; max-width: 1180px; margin: 0 auto; }
-.runner-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
-.back-link { display: inline-block; margin-bottom: 18px; color: var(--muted); font-weight: 700; }
-.runner-kicker { color: #ffbb66; font-size: 12px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
-.runner-head h1 { margin: 4px 0; font-family: var(--font-display); font-size: clamp(30px, 5vw, 48px); }
-.runner-head p { color: var(--muted-soft); }
-.runner-progress { display: grid; grid-template-columns: auto 150px; gap: 4px 12px; align-items: center; }
-.runner-progress > strong { grid-row: 1 / 3; color: #ffc477; font-size: 24px; }
-.runner-progress > div { height: 8px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.07); }
-.runner-progress > div span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f59e2f, #ffd17d); }
-.runner-progress small { color: var(--muted); }
-.error-card { border-color: rgba(248, 113, 113, .35); color: #fecaca; }
-.watch-icon { display: grid; place-items: center; width: 44px; height: 52px; border: 2px solid #fb7185; border-radius: 13px; color: #fb7185; font-size: 20px; }
-.current-set-card { display: grid; gap: 24px; border-color: rgba(255, 179, 79, .3); }
-.set-heading { display: flex; justify-content: space-between; gap: 20px; }
-.set-heading span { color: #ffbd69; font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
-.set-heading h2 { margin: 6px 0; font-family: var(--font-display); font-size: clamp(28px, 4vw, 40px); }
-.set-heading p { color: var(--muted); }
-.sound-toggle { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,.025); color: var(--muted); padding: 6px 9px; font-size: 11px; font-weight: 800; }
-.sound-toggle[aria-pressed="true"] { color: #baf3d9; border-color: rgba(52,211,153,.2); background: rgba(52,211,153,.055); }
-.actual-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.actual-inputs label { display: grid; gap: 8px; }
-.stepper { display: grid; grid-template-columns: 48px 1fr 48px; overflow: hidden; border: 1px solid var(--border-strong); border-radius: 14px; }
-.stepper input { min-width: 0; border: 0; background: rgba(8,14,24,.74); color: var(--text); text-align: center; font-size: 24px; font-weight: 800; }
-.stepper button { border: 0; background: rgba(255,255,255,.04); color: var(--text); font-size: 24px; }
-.complete-button, .finish-button { min-height: 54px; border: 1px solid rgba(255, 189, 105, .45); border-radius: 15px; background: linear-gradient(135deg, #f6a137, #d97716); color: #111827; font-size: 16px; font-weight: 900; }
-.exercise-switcher { display: grid; align-content: start; gap: 8px; }
-.exercise-switcher > p { margin-bottom: 8px; color: var(--muted-soft); }
-.exercise-switcher > button { display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: 10px; width: 100%; border: 1px solid var(--border); border-radius: 13px; background: rgba(255,255,255,.02); color: var(--text); padding: 11px; text-align: left; }
-.exercise-switcher > button > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--surface2); color: var(--muted); font-weight: 900; }
-.exercise-switcher button div { display: grid; gap: 3px; }
-.exercise-switcher button small { color: var(--muted); }
-.exercise-switcher button b { color: var(--muted); }
-.exercise-switcher button.active { border-color: rgba(255, 179, 79, .36); background: rgba(255, 159, 47, .08); }
-.exercise-switcher button.done { opacity: .7; }
 .live-exercise-form { display: grid; gap: 11px; margin-top: 5px; padding: 13px; border: 1px solid rgba(255,179,79,.22); border-radius: 14px; background: rgba(255,159,47,.045); }
 .live-exercise-form label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .live-exercise-form input { width: 100%; min-width: 0; border: 1px solid var(--border-strong); border-radius: 9px; background: rgba(8,14,24,.85); color: var(--text); padding: 9px; text-transform: none; }
@@ -694,165 +697,177 @@ onBeforeUnmount(() => {
 @media (max-width: 820px) { .linked-activity { grid-template-columns: 1fr 1fr; } .watch-link-copy { align-items: stretch; flex-direction: column; } }
 @media (max-width: 560px) { .runner-progress { width: 100%; } .session-actions { flex-direction: column-reverse; } .candidate { grid-template-columns: 1fr; } }
 
-/* Live workout console */
-.runner-page { max-width: 1440px; gap: 20px; }
-.runner-head { position: relative; display: grid; grid-template-columns: minmax(260px, 1.2fr) auto minmax(240px, .8fr); align-items: center; gap: 30px; padding: 20px 24px; overflow: hidden; border-color: rgba(255, 179, 79, .16); background: radial-gradient(circle at 93% 0%, rgba(245, 158, 47, .12), transparent 31%), linear-gradient(135deg, rgba(17,28,48,.98), rgba(10,17,29,.98)); }
-.runner-head::after { content: ''; position: absolute; right: -80px; top: -165px; width: 310px; height: 310px; border: 1px solid rgba(255,190,105,.08); border-radius: 50%; box-shadow: 0 0 0 44px rgba(255,190,105,.025), 0 0 0 88px rgba(255,190,105,.018); pointer-events: none; }
-.runner-head-copy { display: flex; align-items: center; gap: 18px; min-width: 0; }
+
+.session-busy { opacity: .65; }
+.manage-workout { display: flex; flex-wrap: wrap; gap: 10px; border-top: 1px solid var(--border); padding-top: 16px; }
+.manage-workout button { min-height: 40px; padding: 8px 12px; border: 1px solid #fca5a530; border-radius: 9px; background: transparent; color: #fca5a5; font-size: 11px; }
+.manage-workout small { flex-basis: 100%; color: var(--muted); font-size: 10px; }
+.current-sets-head { flex-wrap: wrap; }
+/* A focused training surface: amber for actions, mint for recorded work. */
+.runner-page { --runner-accent: #f6bd67; display: grid; gap: 22px; max-width: 1360px; margin: 0 auto; }
+.runner-page button { cursor: pointer; }
+.runner-page button:disabled { cursor: default; opacity: .5; }
+.runner-page :is(button, a, input):focus-visible { outline: 2px solid var(--runner-accent); outline-offset: 4px; }
+.runner-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 22px 40px; padding: 8px 0 22px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; box-shadow: none; }
+.runner-head-copy { display: flex; align-items: center; gap: 22px; min-width: 0; }
 .runner-head-copy > div { min-width: 0; }
-.back-link { display: grid; place-items: center; flex: 0 0 auto; width: 64px; height: 48px; margin: 0; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.025); color: var(--muted-soft); font-size: 12px; text-decoration: none; }
-.runner-head h1 { max-width: 100%; margin: 3px 0 1px; overflow: hidden; font-size: clamp(26px, 3vw, 40px); text-overflow: ellipsis; white-space: nowrap; }
-.runner-head p { margin: 0; font-size: 12px; }
-.session-vitals { display: grid; grid-template-columns: repeat(3, auto); gap: 28px; padding: 0 24px; border-right: 1px solid var(--border); border-left: 1px solid var(--border); }
-.session-vitals div { display: grid; gap: 4px; }
-.session-vitals span, .progress-copy span { color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
-.session-vitals strong { font-size: 19px; font-variant-numeric: tabular-nums; }
-.runner-progress { z-index: 1; display: grid; grid-template-columns: 1fr; gap: 9px; width: 100%; }
-.progress-copy { display: flex; align-items: baseline; justify-content: space-between; }
-.progress-copy strong { color: #ffc477; font-size: 18px; }
-.progress-track { height: 9px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.07); }
-.progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f59e2f, #ffd17d); box-shadow: 0 0 18px rgba(245,158,47,.28); transition: width .35s ease; }
-
-.runner-console { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(310px, .62fr); gap: 18px; align-items: start; }
-.work-zone { display: grid; gap: 14px; min-width: 0; }
-.rest-banner { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px; padding: 15px 18px; border-color: rgba(52,211,153,.27); background: linear-gradient(110deg, rgba(6,78,59,.18), rgba(12,20,34,.98) 62%); }
-.rest-dial { --rest-progress: 0deg; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: radial-gradient(circle, #0d1926 57%, transparent 59%), conic-gradient(#34d399 var(--rest-progress), rgba(52,211,153,.1) 0); box-shadow: inset 0 0 18px rgba(52,211,153,.08), 0 0 24px rgba(52,211,153,.08); }
-.rest-dial span { color: #baf3d9; font-size: 19px; font-weight: 900; font-variant-numeric: tabular-nums; }
-.rest-copy { display: grid; gap: 3px; }
-.rest-copy > span { color: #5ee0b0; font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
-.rest-copy strong { font-size: 17px; }
-.rest-copy small { color: var(--muted); }
-.sound-toggle { white-space: nowrap; }
-
-.current-set-card { position: relative; gap: 26px; padding: clamp(22px, 3vw, 34px); overflow: hidden; border-color: rgba(255,179,79,.32); background: radial-gradient(circle at 100% 0%, rgba(245,158,47,.13), transparent 34%), linear-gradient(145deg, rgba(18,29,49,.98), rgba(10,17,29,.98)); box-shadow: 0 24px 55px rgba(0,0,0,.17); }
-.current-set-card::before { content: ''; position: absolute; top: 0; right: 0; left: 0; height: 2px; background: linear-gradient(90deg, transparent, #f6a137 45%, #ffd17d 70%, transparent); }
-.set-heading { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 20px; }
-.set-ordinal { display: grid; place-items: center; width: 92px; height: 104px; border: 1px solid rgba(255,184,91,.26); border-radius: 23px; background: rgba(255,159,47,.075); }
-.set-ordinal span, .set-ordinal small { color: #dcae73; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
-.set-ordinal strong { margin: -3px 0; color: #ffd18d; font-family: var(--font-display); font-size: 42px; line-height: 1; }
-.set-ordinal.warmup { border-color: rgba(96,165,250,.3); background: rgba(59,130,246,.08); }
-.set-ordinal.warmup span, .set-ordinal.warmup small, .set-ordinal.warmup strong { color: #a9ccff; }
-.set-heading-copy { min-width: 0; }
-.set-heading-copy > span { color: #ffbd69; font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
-.set-heading h2 { margin: 5px 0 3px; font-size: clamp(30px, 4vw, 48px); letter-spacing: -.025em; }
-.set-heading p { color: var(--muted-soft); }
-.target-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; min-height: 50px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 14px; background: rgba(5,10,18,.38); }
-.target-row .target-label { color: #e9b975; font-size: 10px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
-.target-row strong { font-size: 13px; }
+.back-link { display: grid; place-items: center; min-width: 70px; min-height: 44px; border: 1px solid var(--border); border-radius: 12px; color: var(--text-soft); font-size: 12px; }
+.runner-kicker { display: flex; align-items: center; gap: 8px; color: var(--runner-accent); font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.runner-kicker.live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #72ddba; box-shadow: 0 0 0 4px #72ddba12; }
+.runner-head h1 { margin: 4px 0; font-family: var(--font-display); font-size: clamp(24px, 3vw, 36px); line-height: 1.2; letter-spacing: -.04em; overflow-wrap: anywhere; }
+.runner-head p { color: var(--muted); font-size: 12px; }
+.session-vitals { display: flex; align-items: center; gap: 28px; }
+.session-vitals div { display: grid; gap: 3px; }
+.session-vitals span, .progress-copy span { color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.session-vitals strong { font-family: var(--font-display); font-size: 22px; font-variant-numeric: tabular-nums; }
+.runner-progress { grid-column: 1 / -1; display: flex; align-items: center; gap: 20px; }
+.progress-copy { display: flex; align-items: center; gap: 12px; }
+.progress-copy strong { color: var(--runner-accent); font-size: 12px; }
+.progress-track { flex: 1; height: 4px; overflow: hidden; border-radius: 8px; background: var(--surface2); }
+.progress-track > span { display: block; height: 100%; border-radius: inherit; background: var(--runner-accent); transition: width .3s ease; }
+.runner-console { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
+.work-zone { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.rest-banner { display: flex; align-items: center; gap: 16px; padding: 14px 20px; background: #111e25; border-color: #72ddba25; }
+.rest-dial { flex: 0 0 auto; display: grid; place-items: center; width: 58px; height: 58px; border-radius: 50%; background: #72ddba12; color: #8ae4c3; font-family: var(--font-display); font-weight: 700; font-size: 19px; font-variant-numeric: tabular-nums; }
+.recovering .rest-dial { background: radial-gradient(circle, #111e25 61%, transparent 64%), conic-gradient(#72ddba var(--rest-progress), #72ddba15 0); }
+.rest-copy { display: grid; gap: 2px; min-width: 0; }
+.rest-copy > span { color: #8ae4c3; font-size: 9px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+.rest-copy strong { font-size: 15px; }
+.rest-copy small { color: var(--muted-soft); font-size: 11px; }
+.sound-toggle { margin-left: auto; flex-shrink: 0; display: flex; gap: 6px; align-items: center; min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; background: transparent; color: var(--muted-soft); font-size: 11px; }
+.sound-toggle[aria-pressed='true'] { color: #8ae4c3; }
+.current-set-card { display: grid; gap: 24px; padding: 30px; background: #141d2b; border-color: #ffffff16; border-radius: 22px; }
+.set-heading { display: flex; flex-direction: row-reverse; align-items: start; justify-content: space-between; gap: 20px; }
+.set-heading-copy { flex: 1; min-width: 0; }
+.set-heading-copy > span { color: var(--runner-accent); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.set-heading h2 { margin: 6px 0 8px; font-family: var(--font-display); font-size: clamp(28px, 3.3vw, 46px); line-height: 1.08; letter-spacing: -.045em; overflow-wrap: anywhere; }
+.set-heading p { color: var(--muted-soft); font-size: 12px; line-height: 1.5; }
+.set-ordinal { flex: 0 0 auto; display: grid; justify-items: center; padding: 10px 16px; min-width: 72px; border-left: 1px solid var(--border); }
+.set-ordinal span, .set-ordinal small { color: var(--muted); font-size: 10px; }
+.set-ordinal strong { color: var(--runner-accent); font: 500 38px/1.2 var(--font-display); }
+.set-ordinal.warmup strong { color: #a9ccff; }
+.target-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+.target-label { color: var(--muted); font-size: 11px; }
+.target-row strong { color: var(--text-soft); font-size: 12px; font-weight: 500; }
 .target-row i { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
-.target-row button { margin-left: auto; border: 0; background: transparent; color: #e9b975; font-size: 11px; font-weight: 800; }
-.current-exercise-sets { display: grid; gap: 11px; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: rgba(5,10,18,.3); }
-.current-sets-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-.current-sets-head > div { display: grid; gap: 3px; }
-.current-sets-head span { color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
-.current-sets-head strong { font-size: 13px; }
-.current-sets-head button { min-height: 34px; padding: 0 12px; border: 1px solid rgba(96,165,250,.28); border-radius: 10px; background: rgba(59,130,246,.07); color: #b8d6ff; font-size: 11px; font-weight: 900; }
-.current-sets-head button:disabled { opacity: .55; }
-.current-set-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px; }
-.current-set-strip > button { position: relative; display: grid; gap: 4px; min-width: 0; padding: 11px 12px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,.025); color: var(--text); text-align: left; }
-.current-set-strip > button::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: transparent; }
-.current-set-strip span { color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
-.current-set-strip strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.current-set-strip small { color: var(--muted); font-size: 9px; }
-.current-set-strip > button.current { border-color: rgba(255,179,79,.42); background: rgba(255,159,47,.075); }
-.current-set-strip > button.current::after { background: #f6a137; }
-.current-set-strip > button.completed { border-color: rgba(52,211,153,.2); background: rgba(52,211,153,.04); }
-.current-set-strip > button.completed small { color: #73d6ae; }
-.current-set-strip > button.warmup span { color: #8fbcf7; }
-.current-set-strip > button.warmup::after { background: rgba(96,165,250,.7); }
-.actual-inputs { grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; padding: 12px 0; }
-.performance-field { display: grid; justify-items: center; gap: 9px; }
-.performance-field > span { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
-.performance-field > small { color: var(--muted); font-size: 11px; }
-.field-divider { width: 1px; height: 110px; background: linear-gradient(transparent, var(--border-strong), transparent); }
-.stepper { grid-template-columns: 52px minmax(90px, 160px) 52px; overflow: visible; border: 0; border-radius: 0; }
-.stepper input { width: 100%; height: 88px; border-top: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong); border-radius: 0; background: rgba(5,10,18,.46); font-family: var(--font-display); font-size: clamp(38px, 5vw, 60px); font-variant-numeric: tabular-nums; outline: none; }
-.stepper input[type='number'] { appearance: textfield; -moz-appearance: textfield; padding: 0; text-align: center; }
-.stepper input[type='number']::-webkit-inner-spin-button,
-.stepper input[type='number']::-webkit-outer-spin-button { margin: 0; appearance: none; -webkit-appearance: none; }
-.stepper input:focus { border-color: rgba(255,184,91,.55); background: rgba(255,159,47,.045); }
-.stepper button { border: 1px solid var(--border-strong); background: rgba(255,255,255,.035); font-size: 26px; transition: border-color .15s, background .15s, transform .15s; }
-.stepper button:first-child { border-radius: 18px 0 0 18px; }
-.stepper button:last-child { border-radius: 0 18px 18px 0; }
-.stepper button:hover { border-color: rgba(255,184,91,.4); background: rgba(255,159,47,.09); }
-.stepper button:active { transform: scale(.96); }
-.weight-shortcuts { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: -8px; }
-.weight-shortcuts span { margin-right: 4px; color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
-.weight-shortcuts button { min-width: 54px; height: 32px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,.025); color: var(--text-soft); font-size: 11px; font-weight: 800; }
-.complete-button { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 68px; padding: 11px 18px 11px 24px; text-align: left; box-shadow: 0 13px 30px rgba(217,119,22,.17); }
-.complete-button > div { display: grid; gap: 3px; }
-.complete-button span { font-size: 18px; line-height: 1.15; }
-.complete-button small { color: rgba(17,24,39,.7); font-size: 10px; line-height: 1.2; }
-.complete-button b { display: grid; place-items: center; flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; background: rgba(17,24,39,.14); font-size: 20px; }
-
-.exercise-switcher { position: sticky; top: 18px; gap: 9px; max-height: calc(100vh - 36px); padding: 18px; overflow-y: auto; }
-.queue-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 2px 10px; }
-.queue-head > div { display: grid; gap: 4px; }
-.queue-head span { color: #ffbd69; font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
-.queue-head strong { font-size: 19px; }
-.add-compact { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid rgba(255,179,79,.3); border-radius: 12px; background: rgba(255,159,47,.08); color: #ffd18d; font-size: 22px; }
-.exercise-switcher > button { grid-template-columns: 34px minmax(0,1fr) auto; min-height: 62px; padding: 10px; }
-.exercise-switcher > button > span { width: 32px; height: 32px; font-size: 12px; }
-.exercise-switcher button div strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.exercise-switcher button b { color: var(--muted); font-size: 10px; text-transform: uppercase; }
-.exercise-switcher button.active { border-color: rgba(255,179,79,.48); background: linear-gradient(100deg, rgba(255,159,47,.13), rgba(255,159,47,.035)); box-shadow: inset 3px 0 #f5a13a; }
-.exercise-switcher button.active b { color: #ffd18d; }
-.exercise-switcher button.done > span { color: #76e2b8; background: rgba(52,211,153,.11); }
-.form-heading { display: grid; gap: 2px; }
+.target-row button { margin-left: auto; min-height: 32px; padding: 0 8px; background: none; border: 0; color: var(--runner-accent); font-size: 11px; }
+.actual-inputs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.performance-field { display: grid; gap: 9px; min-width: 0; }
+.performance-field > span { color: var(--text-soft); font-size: 12px; font-weight: 600; }
+.performance-field > small { text-align: center; color: var(--muted); font-size: 10px; }
+.field-divider { display: none; }
+.stepper { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; padding: 8px; border: 1px solid var(--border-strong); border-radius: 16px; background: #0c1420; }
+.stepper input { min-width: 0; width: 100%; height: 82px; padding: 0; border: 0; background: none; color: var(--text); text-align: center; font: 500 clamp(36px, 4vw, 58px)/1 var(--font-display); font-variant-numeric: tabular-nums; appearance: textfield; -moz-appearance: textfield; }
+.stepper input::-webkit-inner-spin-button, .stepper input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.stepper button { height: 44px; border: 0; border-radius: 10px; background: #ffffff08; color: var(--text-soft); font-size: 24px; }
+.stepper button:hover { background: #f6bd6720; color: var(--runner-accent); }
+.weight-shortcuts { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: -10px; }
+.weight-shortcuts span { margin-right: auto; color: var(--muted); font-size: 11px; }
+.weight-shortcuts button { min-width: 48px; min-height: 40px; border: 1px solid var(--border); border-radius: 9px; background: transparent; color: var(--text-soft); font-size: 12px; }
+.complete-button { display: flex; justify-content: space-between; align-items: center; min-height: 68px; padding: 12px 22px; border: 0; border-radius: 14px; background: var(--runner-accent); color: #201b13; text-align: left; }
+.complete-button > div { display: grid; gap: 2px; }
+.complete-button span { font-size: 18px; font-weight: 800; }
+.complete-button small { font-size: 11px; color: #54432b; }
+.complete-button b { font-size: 24px; }
+.complete-button:hover { background: #ffce85; }
+.current-exercise-sets { display: grid; gap: 12px; padding-top: 2px; }
+.current-sets-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.current-sets-head > div { display: flex; align-items: center; gap: 9px; }
+.current-sets-head span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.current-sets-head strong { display: none; }
+.current-sets-head button { min-height: 44px; padding: 0 8px; background: none; border: 0; color: #a9ccff; font-size: 11px; }
+.current-set-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.current-set-strip > button { display: grid; gap: 4px; min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: transparent; text-align: left; color: var(--text-soft); }
+.current-set-strip span, .current-set-strip small { font-size: 10px; color: var(--muted); }
+.current-set-strip strong { font-size: 12px; font-weight: 500; }
+.current-set-strip > button.current { border-color: #f6bd6780; background: #f6bd6708; }
+.current-set-strip > button.current small { color: var(--runner-accent); }
+.current-set-strip > button.completed small { color: #8ae4c3; }
+.current-set-strip > button.warmup span { color: #a9ccff; }
+.exercise-switcher { position: sticky; top: 20px; display: grid; gap: 4px; padding: 20px 14px; background: #101824; box-shadow: none; }
+.queue-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 18px; }
+.queue-head > div { display: grid; gap: 5px; }
+.queue-head span { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+.queue-head strong { font-size: 15px; }
+.queue-head strong small { color: var(--muted); font-size: 11px; font-weight: 400; }
+.add-compact { width: 44px; height: 44px; flex-shrink: 0; border: 1px solid var(--border); border-radius: 12px; background: transparent; color: var(--text-soft); font-size: 22px; }
+.exercise-switcher > button { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; align-items: center; gap: 10px; min-height: 84px; width: 100%; padding: 12px 8px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--text-soft); text-align: left; }
+.exercise-switcher > button > span { font: 500 15px var(--font-display); color: var(--muted); text-align: center; }
+.exercise-switcher > button > div { display: grid; gap: 5px; }
+.exercise-switcher > button strong { font-size: 13px; overflow-wrap: anywhere; }
+.exercise-switcher > button small { color: var(--muted); font-size: 10px; }
+.exercise-switcher > button b { color: var(--muted); font-size: 9px; text-transform: uppercase; }
+.exercise-switcher > button.active { border-color: #f6bd6728; background: #f6bd670b; }
+.exercise-switcher > button.active > span, .exercise-switcher > button.active b { color: var(--runner-accent); }
+.exercise-switcher > button.done > span { color: #8ae4c3; }
+.queue-set-markers { display: flex; flex-wrap: wrap; gap: 4px; }
+.queue-set-markers i { width: 14px; height: 3px; border-radius: 2px; background: var(--surface3); }
+.queue-set-markers i.recorded { background: #72ddba; }
+.queue-set-markers i.selected { background: var(--runner-accent); }
+.watch-status { display: flex; align-items: center; gap: 12px; margin: 16px 4px 0; padding-top: 20px; border-top: 1px solid var(--border); }
+.watch-icon { color: #f6a3b3; font-size: 22px; }
+.watch-status > div { display: grid; gap: 4px; }
+.watch-status strong { color: var(--text-soft); font-size: 11px; }
+.watch-status small { color: var(--muted); font-size: 10px; line-height: 1.5; }
+.form-heading { display: grid; gap: 3px; }
 .form-heading span { color: var(--muted); font-size: 11px; }
-.watch-status { display: flex; align-items: center; gap: 11px; margin-top: 6px; padding: 13px 4px 2px; border-top: 1px solid var(--border); }
-.watch-status .watch-icon { flex: 0 0 auto; width: 34px; height: 40px; border-radius: 10px; font-size: 14px; }
-.watch-status > div { display: grid; gap: 3px; }
-.watch-status strong { font-size: 12px; }
-.watch-status small { color: var(--muted); font-size: 10px; line-height: 1.35; }
-
-.workout-detail { gap: 14px; }
-.section-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.log-toggle { min-height: 38px; padding: 0 13px; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,.025); color: var(--text-soft); font-weight: 800; }
-.collapsed-log { display: flex; align-items: center; gap: 10px; color: var(--muted-soft); font-size: 12px; }
-.collapsed-log i { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
-.session-actions { align-items: center; }
-.session-actions p { margin-left: auto; color: var(--muted); font-size: 12px; }
-
-@media (max-width: 1080px) {
-  .runner-head { grid-template-columns: minmax(0, 1fr) minmax(220px, .6fr); }
-  .session-vitals { order: 3; grid-column: 1 / -1; justify-content: start; border: 0; padding: 10px 0 0; border-top: 1px solid var(--border); }
-  .runner-console { grid-template-columns: minmax(0, 1fr) 300px; }
-}
-@media (max-width: 820px) {
-  .runner-head { grid-template-columns: 1fr; }
-  .runner-head-copy { align-items: flex-start; }
-  .runner-progress { grid-column: 1; }
-  .session-vitals { grid-column: 1; }
-  .runner-console { grid-template-columns: 1fr; }
-  .exercise-switcher { position: static; max-height: none; }
-  .rest-banner { grid-template-columns: auto 1fr; }
-  .rest-banner .sound-toggle { grid-column: 2; justify-self: start; }
-}
+.workout-detail { background: transparent; box-shadow: none; }
+.section-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.section-copy { color: var(--muted); font-size: 12px; }
+.log-toggle { flex-shrink: 0; min-height: 44px; padding: 0 14px; background: transparent; border: 1px solid var(--border); border-radius: 10px; color: var(--text-soft); font-size: 12px; }
+.collapsed-log { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--muted); }
+.collapsed-log i { width: 3px; height: 3px; background: var(--muted); border-radius: 50%; }
+.session-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 20px; }
+.session-actions p { flex: 1; color: var(--muted); font-size: 11px; }
+.danger-button { background: transparent; font-size: 11px; }
+.finish-button { min-height: 48px; border: 1px solid #f6bd6740; border-radius: 12px; background: #f6bd6710; color: var(--runner-accent); padding: 10px 18px; font-weight: 700; font-size: 12px; }
+.all-done { display: flex; align-items: center; gap: 20px; border-color: #72ddba40; background: #72ddba08; }
+.all-done > span { font-size: 30px; color: #8ae4c3; }
+.all-done h2 { font-family: var(--font-display); }
+.all-done p { color: var(--muted-soft); font-size: 12px; }
+.all-done .finish-button { margin-left: auto; }
+.error-card { color: #fecaca; border-color: #f8717160; }
+.empty-state { padding: 60px; text-align: center; color: var(--muted); }
+@media (max-width: 1180px) { .runner-console { grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; } .current-set-card { padding: 24px; } .stepper { grid-template-columns: 36px minmax(0, 1fr) 36px; padding: 4px; } .queue-head strong small { display: block; } }
+@media (max-width: 960px) { .runner-console { grid-template-columns: minmax(0, 1fr); } .exercise-switcher { position: static; } .queue-head strong small { display: inline; } .session-vitals { gap: 18px; } }
 @media (max-width: 560px) {
-  .runner-page { gap: 12px; }
-  .runner-head { padding: 16px; gap: 16px; }
-  .back-link { width: 48px; height: 42px; overflow: hidden; font-size: 0; }
-  .back-link::first-letter { font-size: 18px; }
-  .session-vitals { justify-content: space-between; gap: 12px; }
-  .set-heading { grid-template-columns: auto 1fr; }
-  .set-heading > .sound-toggle { grid-column: 1 / -1; justify-self: start; }
-  .set-ordinal { width: 70px; height: 84px; border-radius: 18px; }
-  .set-ordinal strong { font-size: 34px; }
-  .actual-inputs { grid-template-columns: 1fr; gap: 18px; }
-  .field-divider { width: 100%; height: 1px; }
-  .stepper { grid-template-columns: 48px minmax(90px, 1fr) 48px; width: 100%; }
-  .stepper input { height: 74px; }
-  .weight-shortcuts { flex-wrap: wrap; }
-  .weight-shortcuts span { width: 100%; text-align: center; }
-  .target-row button { width: 100%; margin-left: 0; padding: 5px 0; text-align: left; }
-  .current-sets-head { align-items: flex-start; }
-  .current-set-strip { display: flex; padding-bottom: 4px; overflow-x: auto; }
-  .current-set-strip > button { flex: 0 0 132px; }
-  .rest-banner { grid-template-columns: auto 1fr; gap: 12px; }
-  .rest-dial { width: 62px; height: 62px; }
-  .rest-copy strong { font-size: 14px; }
-  .session-actions { align-items: stretch; }
-  .session-actions p { margin: 0; text-align: center; }
+  .runner-page { gap: 16px; }
+  .runner-head { grid-template-columns: 1fr; gap: 18px; padding-bottom: 16px; }
+  .runner-head-copy { gap: 14px; }
+  .back-link { min-width: 60px; }
+  .session-vitals { justify-content: space-between; padding: 0 4px; }
+  .session-vitals strong { font-size: 20px; }
+  .runner-progress { gap: 12px; }
+  .progress-copy span { font-size: 9px; }
+  .rest-banner { padding: 12px; gap: 10px; flex-wrap: wrap; }
+  .rest-dial { width: 50px; height: 50px; font-size: 16px; }
+  .rest-copy { flex: 1; }
+  .rest-copy strong { font-size: 13px; }
+  .rest-copy small { font-size: 10px; }
+  .sound-toggle { padding: 0 8px; font-size: 10px; }
+  .current-set-card { padding: 18px; gap: 18px; border-radius: 18px; }
+  .set-heading { gap: 10px; }
+  .set-heading h2 { font-size: 30px; }
+  .set-ordinal { padding: 6px 8px; min-width: 55px; }
+  .set-ordinal strong { font-size: 32px; }
+  .target-row { gap: 8px; padding-bottom: 12px; }
+  .target-row button { margin-left: 0; }
+  .actual-inputs { gap: 10px; }
+  .stepper { grid-template-columns: 30px minmax(0, 1fr) 30px; padding: 3px; border-radius: 12px; }
+  .stepper input { height: 72px; font-size: 34px; }
+  .stepper button { height: 48px; font-size: 20px; }
+  .weight-shortcuts { gap: 6px; margin-top: -4px; flex-wrap: wrap; }
+  .weight-shortcuts button { min-width: 42px; min-height: 44px; }
+  .current-set-strip { display: flex; overflow-x: auto; padding: 4px 4px 8px; margin: -4px; }
+  .current-set-strip > button { flex: 0 0 112px; }
+  .section-head { align-items: flex-start; }
+  .section-copy { font-size: 11px; }
+  .session-actions { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .session-actions p { order: 3; flex-basis: 100%; text-align: center; }
+  .session-actions .finish-button { flex: 1; }
+  .all-done { flex-wrap: wrap; }
+  .all-done .finish-button { width: 100%; }
 }
+@media (prefers-reduced-motion: reduce) { .progress-track > span { transition: none; } }
+
 </style>

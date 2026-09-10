@@ -1,0 +1,43 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: TL
+      - generic [ref=e7]:
+        - generic [ref=e8]: TrainLog
+        - generic [ref=e9]: Performance
+    - navigation [ref=e10]:
+      - generic [ref=e11]: Today
+      - link "Dashboard" [ref=e12] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e16]: Training
+      - link "Plan" [ref=e17] [cursor=pointer]:
+        - /url: /plan
+      - link "Calendar" [ref=e21] [cursor=pointer]:
+        - /url: /calendar
+      - link "Goals" [ref=e25] [cursor=pointer]:
+        - /url: /goals
+      - link "Strength" [ref=e29] [cursor=pointer]:
+        - /url: /strength
+      - link "Recovery" [ref=e33] [cursor=pointer]:
+        - /url: /recovery
+      - generic [ref=e37]: Review
+      - link "Activities" [ref=e38] [cursor=pointer]:
+        - /url: /activities
+      - link "Trends" [ref=e42] [cursor=pointer]:
+        - /url: /metrics
+      - link "Coach Notes" [ref=e46] [cursor=pointer]:
+        - /url: /notes
+      - generic [ref=e50]: System
+      - link "Data & Sync" [ref=e51] [cursor=pointer]:
+        - /url: /sync
+      - link "Roadmap" [ref=e55] [cursor=pointer]:
+        - /url: /roadmap
+      - link "Ideas" [ref=e59] [cursor=pointer]:
+        - /url: /ideas
+    - region "Loading weather" [ref=e64]:
+      - button "Loading weather…" [ref=e65] [cursor=pointer]:
+        - generic [aria-hidden] [ref=e66]: ◌
+        - text: Loading weather…
+  - main [ref=e67]
+  - button "Coach" [ref=e68] [cursor=pointer]:
+    - generic [aria-hidden] [ref=e69]: ✦

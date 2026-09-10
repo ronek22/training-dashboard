@@ -201,6 +201,19 @@ Recommended first copy direction:
 
 ## Definition Of Done
 
+### Implemented extension: cycling power zones
+
+Activity detail also shows a matching power-zone card for Ride, VirtualRide, and
+EBikeRide when cached time/watts streams and a positive FTP recorded on or before
+the activity date are available. It displays time, percentage, watt ranges,
+dominant zone, and the FTP used, independently of heart-rate availability.
+Seven zones use inclusive upper FTP boundaries of 55%, 75%, 90%, 105%, 120%, and
+150%, followed by an open-ended seventh zone. Duration is weighted by time-stream
+intervals using the sample at each interval's end. Zero watts counts as coasting
+in zone 1; invalid samples and nonpositive time intervals are excluded. No
+distribution is inferred from average power. Backend tests cover historical FTP,
+boundaries, missing/invalid data, duration weighting, and activity-detail delivery.
+
 Sprint 28 should be considered complete when:
 
 - activity detail shows per-activity heart-rate zone summaries when data is available

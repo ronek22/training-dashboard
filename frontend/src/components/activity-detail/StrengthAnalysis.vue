@@ -9,6 +9,8 @@
     </section>
 
 
+    <StrengthMuscleMap v-if="enriched" :exercises="session.exercises" :selected-exercise="activeExercise" />
+
     <section v-if="enriched" class="ad-exercises strength-workbench" aria-labelledby="exercise-heading">
       <div class="ad-section-heading"><div><h2 id="exercise-heading">The work you did</h2><p>Select a lift to inspect the recorded sets.</p></div><router-link to="/strength" class="ad-inline-action">Strength overview →</router-link></div>
       <div class="strength-workbench-grid">
@@ -87,6 +89,8 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import StrengthMuscleMap from './StrengthMuscleMap.vue'
+import { classifyExercise, MUSCLES } from '../../activity-detail/muscles.mjs'
 import { formatNumber } from '../../activity-detail/presentation'
 const props = defineProps({ detail: { type: Object, required: true } })
 const strength = computed(() => props.detail.strength_detail || {})
@@ -163,14 +167,15 @@ const formatHeartRateTime = minutes => {
     : `${mins}:${String(seconds).padStart(2, '0')}`
 }
 const focusGroups = [
-  { key: 'pull', label: 'Back & biceps', words: ['chin', 'pull up', 'pulldown', 'row', 'curl', 'lat', 'rear delt', 'face pull'] },
-  { key: 'push', label: 'Chest, shoulders & triceps', words: ['bench', 'press', 'push up', 'dip', 'fly', 'raise', 'tricep', 'skull crusher'] },
-  { key: 'lower', label: 'Lower body', words: ['squat', 'deadlift', 'lunge', 'leg ', 'calf', 'hip', 'glute', 'hamstring', 'quad', 'step up'] },
-  { key: 'core', label: 'Core', words: ['plank', 'crunch', 'sit up', 'ab ', 'core', 'rotation', 'woodchop'] },
+  { key: 'pull', label: 'Back & biceps' },
+  { key: 'push', label: 'Chest, shoulders & triceps' },
+  { key: 'lower', label: 'Lower body' },
+  { key: 'core', label: 'Core' },
 ]
 const focusFor = (name = '') => {
-  const normalized = String(name).toLowerCase().replaceAll('-', ' ')
-  return focusGroups.find(group => group.words.some(word => normalized.includes(word))) || { key: 'other', label: 'Other' }
+  const mapping = classifyExercise(name)
+  const focus = MUSCLES.find(muscle => muscle.key === mapping?.primary[0])?.focus
+  return focusGroups.find(group => group.key === focus) || { key: 'other', label: 'Other' }
 }
 const muscleLabel = name => focusFor(name).label
 const selectedExerciseId = ref(null)

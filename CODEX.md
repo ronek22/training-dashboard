@@ -10,6 +10,13 @@ This file is the root guidance note for working in this repository.
 - When a sprint or planned feature is implemented, update the corresponding documentation before closing the task.
 - Mark the relevant sprint, roadmap, or feature-status documents as complete or implemented when that work is done.
 
+## Spec Kit
+
+- For new features, follow `docs/spec-kit.md` and `.specify/memory/constitution.md`.
+- Store feature artifacts in `docs/specs/`; root `specs` is a compatibility symlink.
+- Link existing sprint/roadmap documents rather than duplicating their history.
+- Keep routine fixes proportionate; do not require a full specification for every small edit.
+
 ## Primary Documents
 
 - [docs/README.md](docs/README.md)

@@ -18,7 +18,9 @@ from .routers.integrations import router as integrations_router
 from .routers.mcp import build_mcp_app
 from .routers.metrics import router as metrics_router
 from .routers.notes import router as notes_router
+from .routers.recovery import router as recovery_router
 from .routers.planning_status import router as planning_status_router
+from .routers.project_ideas import router as project_ideas_router
 from .routers.plans import router as plans_router
 from .routers.settings import router as settings_router
 from .routers.strength import router as strength_router
@@ -77,7 +79,9 @@ app.include_router(activities_router)
 app.include_router(activity_feedback_router)
 app.include_router(coaching_router)
 app.include_router(notes_router)
+app.include_router(recovery_router)
 app.include_router(planning_status_router)
+app.include_router(project_ideas_router)
 app.include_router(settings_router)
 app.include_router(metrics_router)
 app.include_router(goals_router)

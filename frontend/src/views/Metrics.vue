@@ -176,7 +176,7 @@
     <section v-else-if="activeView === 'recovery'" class="health-detail recovery-detail" aria-labelledby="recovery-heading">
       <div class="detail-head">
         <div><span class="section-kicker">Automatic context</span><h2 id="recovery-heading">Recovery signals</h2><p>Follow your personal direction across several days. One unusual reading is context, not a verdict on today’s training.</p></div>
-        <span class="status-chip status-connected">Apple Health · automatic</span>
+        <router-link to="/recovery" class="status-chip status-connected">Symptoms & recovery support ↗</router-link>
       </div>
       <article class="sleep-story">
         <div class="sleep-story-copy"><span class="detail-eyebrow">THE OTHER HALF OF TRAINING</span><h3>Make room<br>for recovery.</h3><p>Your nights, alongside your resting heart rate and HRV. Follow the pattern across days.</p><label v-if="sleepMetric?.history?.length" class="night-picker">Explore a night<select v-model="selectedSleepDate"><option value="">Latest · {{ formatDate(sleepMetric.latest?.date) }}</option><option v-for="night in sleepMetric.history" :key="night.date" :value="night.date">{{ formatDate(night.date) }}</option></select></label><span v-else class="detail-empty-note">Sleep appears here after an Apple Health import.</span></div>

@@ -53,6 +53,7 @@
             <button type="button" class="primary-action" @click="router.push('/plan')">
               {{ todayPlanCompleted ? 'Review your week' : todayPlan ? 'Open today’s plan' : 'Build your week' }}<span aria-hidden="true">→</span>
             </button>
+            <router-link v-if="todayPlan && activityTone(todayPlan.session_type) === 'strength' && !todayPlanCompleted" class="primary-action" :to="{ path: '/strength/workouts', query: { planDate: todayPlan.date } }">Create one-time workout <span aria-hidden="true">→</span></router-link>
             <a v-if="codexState" class="decision-coach-link" href="#dashboard-coaching">Read coach’s assessment <span aria-hidden="true">↓</span></a>
             <span v-if="todayPlan?.template_label" class="template-note">{{ todayPlan.template_label }}</span>
           </div>
@@ -600,12 +601,14 @@ function formatLocalDate(value, pattern) { return value ? format(new Date(`${val
 function splitPlanSentences(value) {
   return String(value || '').trim().split(/(?<=[.!?])\s+/).filter(Boolean)
 }
-function isIconSessionType(type) { return ['run', 'ride', 'strength'].includes(activityTone(type)) }
+function isIconSessionType(type) { return ['run', 'ride', 'strength', 'recovery', 'walk'].includes(activityTone(type)) }
 function activityTone(type) {
   const value = String(type || '').toLowerCase()
   if (value.includes('run')) return 'run'
   if (value.includes('ride') || value.includes('cycl')) return 'ride'
   if (value.includes('strength') || value.includes('weight')) return 'strength'
+  if (value === 'recovery' || value === 'rest') return 'recovery'
+  if (value === 'walk') return 'walk'
   return 'neutral'
 }
 function sessionTypeLabel(type) {
@@ -910,6 +913,8 @@ button { color: inherit; }
 .icon-run { background: rgba(79, 141, 247, 0.13); color: var(--run); }
 .icon-ride { background: rgba(31, 190, 141, 0.13); color: var(--ride); }
 .icon-strength { background: rgba(241, 169, 59, 0.13); color: var(--strength); }
+.icon-recovery { background: rgba(188, 176, 246, 0.13); color: #bcb0f6; }
+.icon-walk { background: rgba(145, 207, 186, 0.13); color: #91cfba; }
 .icon-neutral { background: rgba(143, 161, 191, 0.11); color: var(--dash-muted); }
 
 .decision-session h2 {

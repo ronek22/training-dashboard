@@ -291,6 +291,14 @@ Completed slices:
 - `Data & Sync` can stream raw Health Data Export JSON from a read-only iCloud Drive mount; imports run automatically on backend startup and every 15 minutes by default, remain manually triggerable, and are idempotent across a large initial backfill and overlapping daily files
 - Health Data Export supplies sleep stages, resting HR, HRV, weight, steps, walking/running distance, and flights climbed; HealthFit remains authoritative for workouts, and raw all-day heart rate is intentionally left out of SQLite
 
+### Recovery foundation (Sprint 38)
+
+- Recovery now has dedicated issue histories, optional AI intake conversations, confirmed symptom checks, care guidance, and follow-up check-ins.
+- Recovery chat prepares a reviewable symptom summary with source quotes; the form fills automatically, preserves manual corrections, and shows a clear next action after confirmation.
+- AI requests use persisted context and revision checks; private notes remain usable when AI is unavailable or sharing is declined.
+- Athletes can opt into sharing compact symptom summaries with Coach/planning and open existing training restrictions for explicit review.
+- Routine generation/save/versioning is implemented but remains unavailable in the shipping configuration pending clinical review of screening and exercise entries. See [Sprint 38](sprints/sprint-38-ai-assisted-recovery.md) and [review requirements](recovery-library-review.md).
+
 ## Recommended Next Step
 
 Sprint 32 is complete. The next roadmap slice is ready for execution.

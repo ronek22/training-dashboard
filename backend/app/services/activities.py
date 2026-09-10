@@ -33,6 +33,7 @@ from .activity_analysis import (
 )
 from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
 from .heart_rate_zones import build_activity_heart_rate_zone_summary
+from .power_zones import build_activity_power_zone_summary
 from .plans import (
     build_execution_quality_for_completed_session,
     ensure_plan_day_ids,
@@ -742,6 +743,7 @@ def _build_activity_detail_payload(
             detail_row,
             settings=performance_settings,
         ),
+        "power_zones": build_activity_power_zone_summary(conn, activity, detail_row),
         "charts": charts,
         "best_efforts": best_efforts,
         "feedback": feedback,

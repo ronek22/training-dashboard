@@ -4,6 +4,9 @@ This directory is the source of truth for product planning and engineering decis
 
 ## Structure
 
+- `spec-kit.md` — Spec Kit setup and feature workflow
+- `specs/` — feature specifications, implementation plans, and task lists
+
 - `roadmap.md` — roadmap entrypoint and active-roadmap pointer
 - `roadmaps/` — archived and active roadmap files by generation
 - `decisions.md` — durable decisions, tradeoffs, and conventions

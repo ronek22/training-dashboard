@@ -1,6 +1,6 @@
 <template>
   <div class="workouts-page motion-page">
-    <section class="studio-hero motion-section">
+    <section v-if="studioView === 'library'" class="studio-hero motion-section">
       <div class="studio-hero-copy">
         <div class="page-eyebrow">Strength training</div>
         <h1 class="page-title">Workout studio</h1>
@@ -19,7 +19,7 @@
       </div>
     </section>
 
-    <section v-if="activeSession" class="active-banner card motion-section">
+    <section v-if="activeSession && studioView === 'library'" class="active-banner card motion-section">
       <div>
         <span class="live-dot">Live</span>
         <strong>{{ activeSession.template_name }}</strong>
@@ -30,15 +30,40 @@
 
     <div v-if="error" class="card error-card" role="alert">{{ error }}</div>
 
-    <section v-if="editing" class="card editor motion-section">
-      <div class="section-head">
+    <section v-if="activeSession && editing?.oneTime && studioView === 'editor'" class="card">
+      Finish or discard your active session before starting this workout.
+      <router-link :to="`/strength/workouts/${activeSession.id}`">Resume {{ activeSession.template_name }} →</router-link>
+    </section>
+
+    <nav class="studio-navigation" aria-label="Workout studio views">
+      <button type="button" :aria-current="studioView === 'library' ? 'page' : undefined" @click="studioView = 'library'">Workout library</button>
+      <button type="button" :aria-current="studioView === 'editor' ? 'page' : undefined" @click="openEditor">{{ editing ? (editing.oneTime ? 'One-time workout' : editing.id ? 'Edit workout' : 'New workout') : 'Create workout' }}<span v-if="editing" class="draft-marker">Draft</span></button>
+    </nav>
+
+    <section v-if="editing && studioView === 'editor'" class="card editor motion-section">
+      <div class="section-head editor-heading">
         <div>
-          <div class="card-title">{{ editing.id ? 'Edit workout' : 'Create workout' }}</div>
-          <p class="section-copy">Each exercise keeps its own set target, load, and rest timer.</p>
+          <div class="section-kicker">{{ addingExercise ? 'Exercise library' : 'Workout builder' }}</div>
+          <h1 ref="editorHeading" tabindex="-1">{{ addingExercise ? 'Add exercises' : editing.oneTime ? 'One-time workout' : editing.id ? 'Edit workout' : 'Create workout' }}</h1>
+          <p class="section-copy">{{ addingExercise ? 'Choose movements for your workout, then return to review your sets.' : 'Set up your session and see its muscle coverage as you build.' }}</p>
         </div>
-        <button class="quiet-button" type="button" @click="cancelEdit">Close</button>
+        <button v-if="addingExercise" class="quiet-button" type="button" @click="closeExercisePicker">← Back to workout</button>
+        <button v-else class="quiet-button" type="button" :disabled="saving" @click="cancelEdit">Discard draft</button>
       </div>
 
+      <template v-if="addingExercise">
+        <StrengthExerciseExplorer :templates="templates" :draft-exercises="editing.exercises" editing :workout-name="editing.name" @add="addDiscoveredExercise" />
+        <div class="editor-footer">
+          <button class="quiet-button" type="button" @click="addCustomExercise">Add custom exercise</button>
+          <button class="primary-button" type="button" @click="closeExercisePicker">Done · {{ editing.exercises.filter(exercise => exercise.exercise_name.trim()).length }} exercises</button>
+        </div>
+      </template>
+      <template v-else>
+      <div v-if="editing.oneTime" class="one-time-context">
+        <strong>For this session only</strong>
+        <p>Your reusable workouts stay unchanged. Review the targets before starting.</p>
+        <p v-if="editing.reviewNotice">{{ editing.reviewNotice }}</p>
+      </div>
       <div class="editor-basics">
         <label>
           <span>Workout name</span>
@@ -46,9 +71,11 @@
         </label>
         <label>
           <span>Notes</span>
-          <input v-model.trim="editing.notes" placeholder="Optional goal or coaching cue" maxlength="1000" />
+          <textarea v-model.trim="editing.notes" placeholder="Optional goal or coaching cue" maxlength="1000" rows="5"></textarea>
         </label>
       </div>
+
+      <StrengthMuscleMap :exercises="editing.exercises" planned />
 
       <div class="exercise-editor">
         <article v-for="(exercise, index) in editing.exercises" :key="exercise.key" class="exercise-row">
@@ -83,13 +110,8 @@
                 <b>{{ formatSuggestion(suggestion) }}</b>
               </button>
             </div>
-            <div v-if="exercise.history_suggestion" class="history-prescription">
-              <span>
-                Last done {{ formatShortDate(exercise.history_suggestion.last_performed_at) }}:
-                {{ formatSuggestion(exercise.history_suggestion) }}
-              </span>
-              <button type="button" @click="applySuggestion(exercise)">Use these targets</button>
-            </div>
+            <ExerciseHistory :name="exercise.exercise_name" @apply="applySuggestion(exercise, $event)" />
+            <input v-model.trim="exercise.notes" aria-label="Exercise instructions" placeholder="Exercise instructions" maxlength="500" />
           </div>
           <label><span>Sets</span><input v-model.number="exercise.set_count" type="number" min="1" max="20" /></label>
           <label><span>Reps</span><input v-model.number="exercise.target_reps" type="number" min="1" max="100" /></label>
@@ -98,20 +120,21 @@
           <div class="row-actions">
             <button type="button" :disabled="index === 0" aria-label="Move exercise up" @click="moveExercise(index, -1)">↑</button>
             <button type="button" :disabled="index === editing.exercises.length - 1" aria-label="Move exercise down" @click="moveExercise(index, 1)">↓</button>
-            <button type="button" :disabled="editing.exercises.length === 1" aria-label="Remove exercise" @click="removeExercise(index)">×</button>
+            <button type="button" aria-label="Remove exercise" @click="removeExercise(index)">×</button>
           </div>
         </article>
       </div>
 
       <div class="editor-footer">
-        <button class="quiet-button" type="button" @click="addExercise">Add exercise</button>
-        <button class="primary-button" type="button" :disabled="saving || !canSave" @click="saveTemplate">
-          {{ saving ? 'Saving…' : 'Save workout' }}
+        <button class="quiet-button" type="button" ref="addExerciseButton" @click="openExercisePicker">+ Add exercise</button>
+        <button class="primary-button" type="button" :disabled="saving || !canSave || (editing.oneTime && Boolean(activeSession))" @click="saveTemplate">
+          {{ saving ? (editing.oneTime ? 'Starting…' : 'Saving…') : editing.oneTime ? 'Start one-time workout' : 'Save workout' }}
         </button>
       </div>
+      </template>
     </section>
 
-    <div class="studio-grid motion-section">
+    <div v-if="studioView === 'library'" class="studio-grid motion-section">
       <section class="workout-library">
         <div class="library-head">
           <div>
@@ -146,6 +169,7 @@
                 <summary aria-label="Workout actions">•••</summary>
                 <div>
                   <button type="button" @click="beginEdit(template)">Edit workout</button>
+                  <button type="button" @click="beginOneTime(template)">Use once with changes</button>
                   <button class="delete-action" type="button" @click="removeTemplate(template)">Delete workout</button>
                 </div>
               </details>
@@ -236,17 +260,31 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { format } from 'date-fns'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
+import ExerciseHistory from '../components/ExerciseHistory.vue'
+import StrengthExerciseExplorer from '../components/StrengthExerciseExplorer.vue'
+import StrengthMuscleMap from '../components/activity-detail/StrengthMuscleMap.vue'
+import { buildStrengthPlanDraft } from '../strength-plan-draft.mjs'
+import { exerciseKey } from '../activity-detail/exercise-library.mjs'
 
 const api = useApi()
 const router = useRouter()
+const route = useRoute()
 const templates = ref([])
 const recentSessions = ref([])
 const activeSession = ref(null)
 const editing = ref(null)
+const studioView = ref('library')
+const addingExercise = ref(false)
+const editorHeading = ref(null)
+const addExerciseButton = ref(null)
+const focusEditor = async () => { await nextTick(); editorHeading.value?.focus(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+const openEditor = () => { if (!editing.value) beginCreate(); else { studioView.value = 'editor'; focusEditor() } }
+const openExercisePicker = () => { addingExercise.value = true; focusEditor() }
+const closeExercisePicker = async () => { addingExercise.value = false; await nextTick(); addExerciseButton.value?.focus() }
 const loading = ref(true)
 const saving = ref(false)
 const startingId = ref(null)
@@ -283,18 +321,70 @@ const load = async () => {
   }
 }
 
-const beginCreate = () => { editing.value = { id: null, name: '', notes: '', exercises: [emptyExercise()] } }
+const beginCreate = () => {
+  if (!editing.value) editing.value = { id: null, name: '', notes: '', exercises: [] }
+  studioView.value = 'editor'
+  addingExercise.value = false
+  focusEditor()
+}
 const beginEdit = (template) => {
+  if (editing.value && !window.confirm('Discard the current draft and edit this workout?')) return
+  studioView.value = 'editor'
+  addingExercise.value = false
   editing.value = {
     id: template.id,
     name: template.name,
     notes: template.notes || '',
     exercises: template.exercises.map((exercise) => ({ ...exercise, key: nextKey++, history_suggestion: null })),
   }
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  focusEditor()
 }
-const cancelEdit = () => { editing.value = null }
-const addExercise = () => editing.value.exercises.push(emptyExercise())
+const beginOneTime = (template) => {
+  if (editing.value && !window.confirm('Discard the current draft?')) return
+  editing.value = { id: null, oneTime: true, name: template.name, notes: template.notes || '', exercises: template.exercises.map(exercise => ({ ...exercise, key: nextKey++ })) }
+  studioView.value = 'editor'
+  addingExercise.value = false
+  focusEditor()
+}
+
+const openPlanDraft = async () => {
+  if (!route.query.planDate) return
+  try {
+    const { data } = await api.getDashboard()
+    const day = data.weekly_plan?.days?.find(day => day.date === route.query.planDate)
+      || (data.daily_recommendation?.today_plan?.date === route.query.planDate ? data.daily_recommendation.today_plan : null)
+    if (!day || !/strength|weight/i.test(day.session_type || '')) throw new Error('This strength recommendation is no longer available. Open today’s dashboard and try again.')
+    const draft = buildStrengthPlanDraft(day, templates.value)
+    editing.value = { ...draft, exercises: draft.exercises.map(exercise => ({ ...exercise, key: nextKey++ })) }
+    studioView.value = 'editor'
+    focusEditor()
+  } catch (draftError) {
+    error.value = draftError.message || 'Could not open the recommended workout.'
+  }
+}
+
+const addDiscoveredExercise = (candidate) => {
+  if (!editing.value) beginCreate()
+  if (editing.value.exercises.some(item => exerciseKey(item.exercise_name) === exerciseKey(candidate.exercise_name))) return
+  const exercise = editing.value.exercises.find(item => !item.exercise_name.trim()) || emptyExercise()
+  Object.assign(exercise, {
+    exercise_name: candidate.exercise_name,
+    set_count: candidate.set_count ?? 3,
+    target_reps: candidate.target_reps ?? 8,
+    target_weight_kg: candidate.target_weight_kg ?? null,
+    rest_seconds: candidate.rest_seconds ?? 90,
+    notes: candidate.notes || null,
+    history_suggestion: null,
+  })
+  if (!editing.value.exercises.includes(exercise)) editing.value.exercises.push(exercise)
+}
+const cancelEdit = () => { editing.value = null; addingExercise.value = false; studioView.value = 'library' }
+const addCustomExercise = async () => {
+  editing.value.exercises.push(emptyExercise())
+  addingExercise.value = false
+  await nextTick()
+  document.querySelector('.exercise-row:last-child .exercise-name input')?.focus()
+}
 const removeExercise = (index) => editing.value.exercises.splice(index, 1)
 const moveExercise = (index, offset) => {
   const target = index + offset
@@ -338,8 +428,7 @@ const selectSuggestion = (exercise, suggestion) => {
   suggestions.value = []
 }
 
-const applySuggestion = (exercise) => {
-  const suggestion = exercise.history_suggestion
+const applySuggestion = (exercise, suggestion = exercise.history_suggestion) => {
   if (!suggestion) return
   if (suggestion.suggested_set_count) exercise.set_count = suggestion.suggested_set_count
   if (suggestion.suggested_reps != null) exercise.target_reps = suggestion.suggested_reps
@@ -363,12 +452,19 @@ const saveTemplate = async () => {
     })),
   }
   try {
+    if (editing.value.oneTime) {
+      const { data } = await api.startOneTimeStrengthWorkout(payload)
+      await router.push(`/strength/workouts/${data.id}`)
+      return
+    }
     if (editing.value.id) await api.updateStrengthWorkoutTemplate(editing.value.id, payload)
     else await api.createStrengthWorkoutTemplate(payload)
-    editing.value = null
+    cancelEdit()
     await load()
   } catch (saveError) {
-    error.value = saveError?.response?.data?.detail || 'Could not save workout.'
+    const detail = saveError?.response?.data?.detail
+    error.value = detail?.message || (typeof detail === 'string' ? detail : 'Could not save workout. Check the fields and try again.')
+    if (detail?.session_id) activeSession.value = (await api.getActiveStrengthWorkoutSession()).data
   } finally {
     saving.value = false
   }
@@ -431,7 +527,7 @@ const formatSuggestion = (suggestion) => {
   return `${sets} × ${reps} · ${weight}`
 }
 
-onMounted(load)
+onMounted(async () => { await load(); await openPlanDraft() })
 onBeforeUnmount(() => {
   window.clearTimeout(suggestionTimer)
   window.clearTimeout(suggestionCloseTimer)
@@ -440,6 +536,13 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .workouts-page { display: grid; gap: 24px; padding-bottom: 42px; }
+.studio-navigation { display: flex; gap: 8px; border-bottom: 1px solid var(--border); }
+.studio-navigation button { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font: inherit; cursor: pointer; }
+.studio-navigation button[aria-current] { border-bottom-color: #ffc16b; color: var(--text); }
+.draft-marker { padding: 3px 6px; border-radius: 5px; background: #ffc16b15; color: #ffc16b; font-size: 10px; }
+.editor-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.editor-heading h1 { margin: 5px 0; font: 600 28px var(--font-display); }
+.editor-heading h1:focus { outline: none; }
 .studio-hero { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1.4fr) auto; align-items: center; gap: 32px; min-height: 228px; overflow: hidden; padding: 34px 38px; border: 1px solid rgba(133, 151, 184, .16); border-radius: 26px; background: linear-gradient(115deg, rgba(17, 28, 46, .98), rgba(10, 18, 31, .96)); box-shadow: 0 24px 70px rgba(0, 0, 0, .15); }
 .studio-hero::before { content: ''; position: absolute; z-index: -1; top: -160px; right: -70px; width: 520px; height: 420px; border-radius: 50%; background: radial-gradient(circle, rgba(245, 158, 47, .17), rgba(245, 158, 47, 0) 68%); }
 .studio-hero::after { content: ''; position: absolute; z-index: -1; right: 240px; bottom: -170px; width: 320px; height: 320px; border: 1px solid rgba(255, 184, 83, .08); border-radius: 50%; box-shadow: 0 0 0 38px rgba(255, 184, 83, .025), 0 0 0 76px rgba(255, 184, 83, .018); }
@@ -467,10 +570,14 @@ onBeforeUnmount(() => {
 .error-card { border-color: rgba(248, 113, 113, .35); color: #fecaca; }
 
 .editor { display: grid; gap: 20px; padding: 25px; border-color: rgba(255, 179, 79, .28); background: linear-gradient(145deg, rgba(19, 29, 47, .98), rgba(12, 20, 34, .98)); box-shadow: 0 24px 70px rgba(0, 0, 0, .2); }
+.one-time-context { display: grid; gap: 10px; color: var(--text-soft); line-height: 1.6; }
+textarea { resize: vertical; }
+.editor-basics label { align-content: start; }
+.editor-basics input, .editor-basics textarea { font-size: 14px; line-height: 1.5; }
 .editor-basics { display: grid; grid-template-columns: 1fr 1.4fr; gap: 14px; }
 label, .exercise-name { display: grid; gap: 7px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-input { width: 100%; min-width: 0; border: 1px solid var(--border-strong); border-radius: 11px; background: rgba(8, 14, 24, .72); color: var(--text); padding: 11px 12px; font: inherit; text-transform: none; letter-spacing: 0; }
-input:focus { outline: 2px solid rgba(255, 177, 72, .2); border-color: rgba(255, 177, 72, .38); }
+input, textarea { width: 100%; min-width: 0; border: 1px solid var(--border-strong); border-radius: 11px; background: rgba(8, 14, 24, .72); color: var(--text); padding: 11px 12px; font: inherit; text-transform: none; letter-spacing: 0; }
+input:focus, textarea:focus { outline: 2px solid rgba(255, 177, 72, .2); border-color: rgba(255, 177, 72, .38); }
 .exercise-name { position: relative; }
 .suggestion-menu { position: absolute; z-index: 20; top: calc(100% + 5px); left: 0; right: 0; display: grid; max-height: 310px; overflow-y: auto; padding: 6px; border: 1px solid var(--border-strong); border-radius: 13px; background: #0c1422; box-shadow: 0 18px 40px rgba(0,0,0,.42); text-transform: none; letter-spacing: 0; }
 .suggestion-menu > button { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; border: 0; border-radius: 9px; background: transparent; color: var(--text); padding: 10px; text-align: left; }
@@ -591,8 +698,10 @@ input:focus { outline: 2px solid rgba(255, 177, 72, .2); border-color: rgba(255,
   .library-empty .empty-glyph { display: none; }
   .history-list { grid-template-columns: 1fr; }
   .history-entry:nth-child(2) { border-top: 1px solid rgba(133, 151, 184, .12); }
-  .exercise-row { grid-template-columns: 30px 1fr 1fr; }
-  .exercise-name { grid-column: 2 / -1; }
+  .exercise-row { position: relative; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .exercise-index { position: absolute; top: 17px; left: 14px; }
+  .exercise-name { grid-column: 1 / -1; margin-left: 36px; }
+  .row-actions { grid-column: 1 / -1; }
   .template-footer { align-items: stretch; flex-direction: column; }
   .template-footer > span { display: none; }
   .start-button { width: 100%; }

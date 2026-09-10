@@ -4,6 +4,7 @@
       <div>
         <h1 class="page-title">Roadmap</h1>
         <p class="page-sub">Read-only roadmap and sprint progress sourced from the repo docs.</p>
+        <nav class="planning-tabs" aria-label="Product development"><router-link to="/roadmap" aria-current="page">Roadmap</router-link><router-link to="/ideas">Ideas ↗</router-link></nav>
       </div>
     </div>
 
@@ -131,6 +132,7 @@ const phaseStatusLabel = (phase) => {
 </script>
 
 <style scoped>
+.planning-tabs { display:flex; gap:20px; margin-top:18px; }.planning-tabs a { color:var(--muted); text-decoration:none; }.planning-tabs [aria-current] { color:var(--text); }
 .page-head { margin-bottom: 20px; }
 .page-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; margin-bottom: 4px; }
 .page-sub { color: var(--muted); font-size: 13px; }

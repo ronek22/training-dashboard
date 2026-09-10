@@ -691,6 +691,25 @@ class AppSmokeTests(unittest.TestCase):
         self.assertGreater(payload["zone2_minutes"], 0)
         self.assertEqual(next(zone for zone in payload["zones"] if zone["key"] == "zone2")["highlight"], True)
 
+    def test_activity_detail_surfaces_cycling_power_zones_without_heart_rate(self):
+        created = self.client.post("/activities", json={
+            "id": "power-zone-ride", "date": "2026-02-01", "type": "VirtualRide",
+            "name": "Power ride", "duration_min": 4,
+        })
+        self.assertEqual(created.status_code, 201)
+        with sqlite3.connect(os.environ["TRAINING_DB_PATH"]) as conn:
+            conn.execute("INSERT INTO metrics (date, metric, value, unit) VALUES ('2026-01-31', 'ftp', 200, 'W')")
+        self._insert_activity_detail_streams("power-zone-ride", {
+            "time": {"data": [0, 60, 240]}, "watts": {"data": [0, 120, 220]},
+        })
+        response = self.client.get("/activities/power-zone-ride")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload["heart_rate_zones"]["available"])
+        self.assertTrue(payload["power_zones"]["available"])
+        self.assertEqual(payload["power_zones"]["zone2_pct"], 25)
+        self.assertEqual(len(payload["power_zones"]["zones"]), 7)
+
     def test_activity_analysis_request_flow_surfaces_pending_then_saved_result(self):
         activity_date = (datetime.now().date() - timedelta(days=1)).isoformat()
         created = self.client.post(

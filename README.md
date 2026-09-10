@@ -4,6 +4,10 @@ Personal training dashboard with FastAPI backend, Vue 3 frontend, and MCP server
 
 See [docs/README.md](docs/README.md) for planning and decision documents, including the [roadmap](docs/roadmap.md).
 
+## Spec-driven development
+
+Spec Kit is configured for this project. See [the workflow guide](docs/spec-kit.md) for the skill sequence and artifact locations.
+
 ## Stack
 
 - **Backend**: FastAPI + SQLite (Python)

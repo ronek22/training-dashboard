@@ -46,6 +46,8 @@ The intended reading order is:
 36. [sprint-36-first-party-strength-workout-tracking.md](sprint-36-first-party-strength-workout-tracking.md) — first-party strength workout tracking sprint
 37. [sprint-37-context-aware-daily-training-state.md](sprint-37-context-aware-daily-training-state.md) — context-aware daily training state sprint, complete
 
+38. [sprint-38-ai-assisted-recovery.md](sprint-38-ai-assisted-recovery.md) — AI-assisted recovery foundation with exercise release pending clinical review, partially implemented
+
 ## Sprint Plans
 
 Available sprint documents:
@@ -87,3 +89,4 @@ Available sprint documents:
 - [sprint-35-weekly-retrospectives-and-data-quality-inbox.md](sprint-35-weekly-retrospectives-and-data-quality-inbox.md)
 - [sprint-36-first-party-strength-workout-tracking.md](sprint-36-first-party-strength-workout-tracking.md)
 - [sprint-37-context-aware-daily-training-state.md](sprint-37-context-aware-daily-training-state.md)
+- [sprint-38-ai-assisted-recovery.md](sprint-38-ai-assisted-recovery.md)

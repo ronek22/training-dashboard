@@ -23,6 +23,9 @@
         <router-link to="/strength" class="nav-item" :class="{ active: $route.path.startsWith('/strength') }">
           <NavIcon name="strength" class="nav-icon" /><span class="nav-label">Strength</span>
         </router-link>
+        <router-link to="/recovery" class="nav-item" :class="{ active: $route.path === '/recovery' }">
+          <NavIcon name="recovery" class="nav-icon" /><span class="nav-label">Recovery</span>
+        </router-link>
         <div class="nav-group-label">Review</div>
         <router-link to="/activities" class="nav-item" :class="{ active: $route.path.startsWith('/activities') }">
           <NavIcon name="activities" class="nav-icon" /><span class="nav-label">Activities</span>
@@ -40,8 +43,18 @@
         <router-link to="/roadmap" class="nav-item" :class="{ active: $route.path === '/roadmap' }">
           <NavIcon name="roadmap" class="nav-icon" /><span class="nav-label">Roadmap</span>
         </router-link>
+        <router-link to="/ideas" class="nav-item" :class="{ active: $route.path === '/ideas' }">
+          <NavIcon name="ideas" class="nav-icon" /><span class="nav-label">Ideas</span>
+        </router-link>
       </nav>
       <div class="sidebar-footer">
+        <div v-if="streakValue !== null" class="streak-badge" aria-label="Current daily activity streak">
+          <span class="streak-flame" aria-hidden="true">🔥</span>
+          <span class="streak-copy">
+            <small>Daily streak</small>
+            <strong>{{ streakLabel }}</strong>
+          </span>
+        </div>
         <section
           class="weather-card"
           :class="{ 'is-loading': weatherLoading }"
@@ -84,13 +97,6 @@
             </button>
           </template>
         </section>
-        <div v-if="streakValue !== null" class="streak-badge" aria-label="Current activity streak">
-          <span class="streak-flame" aria-hidden="true">🔥</span>
-          <span class="streak-copy">
-            <small>Current streak</small>
-            <strong>{{ streakLabel }}</strong>
-          </span>
-        </div>
       </div>
     </aside>
     <main class="main-content">

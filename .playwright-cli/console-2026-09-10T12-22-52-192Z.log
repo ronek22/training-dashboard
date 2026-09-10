@@ -1,0 +1,8 @@
+[     366ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:4178/api/dashboard:0
+[     367ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:4178/api/weather/current?latitude=54.352&longitude=18.6466:0
+[     416ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:4178/api/activities?limit=400:0
+[     416ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:4178/api/integrations/strava/status:0
+[     416ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:4178/api/integrations/healthfit/preview:0
+[     417ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:4178/api/fitbod/imports/latest:0
+[     417ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:4178/api/integrations/health-data/preview:0
+[     440ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4178/favicon.ico:0

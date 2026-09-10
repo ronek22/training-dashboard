@@ -934,6 +934,7 @@ def build_recent_context(
     recent_activity_limit: int = 12,
     recent_note_limit: int = 5,
 ) -> dict:
+    from .recovery import coaching_summary
     recent_rows = conn.execute(
         """
         SELECT
@@ -1103,6 +1104,7 @@ def build_recent_context(
 
     return {
         "generated_at": datetime.now().isoformat(),
+        "recovery_issues": coaching_summary(conn),
         "focus_window_days": lookback_days,
         "context_window_days": context_days,
         "streak": computed_streak,

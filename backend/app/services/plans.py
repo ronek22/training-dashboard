@@ -65,6 +65,21 @@ SESSION_TYPE_INTENT_OPTIONS = {
     "Rest": set(),
 }
 
+# Imported activities from Strava/HealthFit are normally typed as Ride or
+# VirtualRide, even when they fulfil a planned Recovery session. Recovery is
+# a planned intent, not a reliable imported activity type.
+RECOVERY_ACTIVITY_TYPES = {"Ride", "VirtualRide", "Cycling", "Bike"}
+HARD_ACTIVITY_NAME_MARKERS = (
+    "interval",
+    "tempo",
+    "threshold",
+    "vo2",
+    "race",
+    "crit",
+    "sprint",
+    "hill repeat",
+)
+
 COACHING_ADAPTATION_REASON = "Generated from one-shot coaching guidance."
 
 
@@ -466,6 +481,22 @@ def infer_best_completed_intent(completed_activities: list[dict]) -> Optional[st
         if item.get("workout_intent"):
             return item["workout_intent"]
     return None
+
+
+def is_recovery_activity(activity: dict) -> bool:
+    """Return whether an imported activity is a reasonable recovery-session match."""
+    activity_intent = activity.get("workout_intent")
+    if activity_intent in {"tempo", "interval", "race_specific"}:
+        return False
+    if activity_intent == "recovery":
+        return True
+
+    activity_type = normalize_plan_session_type(activity.get("type"))
+    if activity_type not in RECOVERY_ACTIVITY_TYPES:
+        return False
+
+    name = str(activity.get("name") or "").strip().lower()
+    return not any(marker in name for marker in HARD_ACTIVITY_NAME_MARKERS)
 
 
 def find_planned_session_by_id(conn: sqlite3.Connection, planned_session_id: str) -> Optional[dict]:
@@ -914,10 +945,32 @@ def build_plan_day_comparison(
     total_duration = sum((item["duration_min"] or 0) for item in completed)
     target_duration = day.get("target_duration_min")
 
-    if planned_type in {"Rest", "Recovery"}:
-        label = "Recovery changed" if planned_type == "Recovery" else "Rest day changed"
+    if planned_type == "Recovery":
+        recovery_match = bool(completed) and all(is_recovery_activity(activity) for activity in completed)
+        if recovery_match:
+            return {
+                "status": "matched",
+                "label": "Matched",
+                "planned_type": planned_type,
+                "completed_activities": completed,
+                "matching_strategy": "inferred",
+                "planned_intent": planned_intent,
+                "planned_intent_label": format_workout_intent_label(planned_intent),
+                "intent_alignment": "aligned",
+                "execution_quality": None,
+            }
+        label = "Recovery changed"
+        status = "rest_day_changed"
+    elif planned_type == "Rest":
+        label = "Rest day changed"
+        status = "rest_day_changed"
+    else:
+        label = None
+        status = None
+
+    if status:
         return {
-            "status": "rest_day_changed",
+            "status": status,
             "label": label,
             "planned_type": planned_type,
             "completed_activities": completed,

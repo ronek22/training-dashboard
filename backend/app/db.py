@@ -625,6 +625,11 @@ def init_db():
     chat_message_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(coach_chat_messages)").fetchall()
     }
+    strength_session_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(strength_workout_sessions)").fetchall()
+    }
+    if "notes" not in strength_session_columns:
+        conn.execute("ALTER TABLE strength_workout_sessions ADD COLUMN notes TEXT")
     strength_set_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(strength_session_sets)").fetchall()
     }
@@ -738,5 +743,9 @@ def init_db():
         conn.execute("ALTER TABLE weekly_reviews ADD COLUMN generator TEXT NOT NULL DEFAULT 'manual'")
     if 'outcome_reason' not in review_columns:
         conn.execute("ALTER TABLE weekly_reviews ADD COLUMN outcome_reason TEXT NOT NULL DEFAULT ''")
+    from .repositories.recovery import init_recovery_schema
+    init_recovery_schema(conn)
+    from .services.project_ideas import init_schema as init_project_ideas_schema
+    init_project_ideas_schema(conn)
     conn.commit()
     conn.close()

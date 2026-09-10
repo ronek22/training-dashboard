@@ -184,7 +184,12 @@ def exercise_suggestions(
                 "suggested_set_count": len(latest_session_rows),
                 "suggested_reps": _mode(rep_values),
                 "suggested_weight_kg": round(float(median(weight_values)), 2) if weight_values else None,
-                "basis": "Latest recorded work sets",
+                "basis": "Latest recorded work sets" if any(not row["is_warmup"] for row in latest_session_rows) else "Latest recorded warm-up sets",
+                "last_sets": [
+                    {"set_order": row["set_order"], "reps": row["reps"], "weight_kg": row["weight_kg"], "is_warmup": bool(row["is_warmup"])}
+                    for row in latest_session_rows
+                ],
+                "last_source": latest_row["source"],
             }
         )
 
@@ -192,7 +197,7 @@ def exercise_suggestions(
     suggestions.sort(key=lambda item: item["session_count"], reverse=True)
     if normalized_query:
         suggestions.sort(
-            key=lambda item: 0 if item["normalized_name"].startswith(normalized_query) else 1
+            key=lambda item: 0 if item["normalized_name"] == normalized_query else 1 if item["normalized_name"].startswith(normalized_query) else 2
         )
     return suggestions[: max(1, min(limit, 50))]
 
@@ -315,6 +320,7 @@ def _serialize_session(conn: sqlite3.Connection, row: sqlite3.Row) -> dict:
         "id": int(row["id"]),
         "template_id": row["template_id"],
         "template_name": row["template_name"],
+        "notes": row["notes"],
         "status": row["status"],
         "started_at": row["started_at"],
         "completed_at": row["completed_at"],
@@ -446,7 +452,9 @@ def get_trainlog_strength_detail_for_activity(
     }
 
 
-def start_session(conn: sqlite3.Connection, template_id: int) -> dict:
+def start_session(
+    conn: sqlite3.Connection, template_id: Optional[int], *, workout: Optional[StrengthTemplateInput] = None
+) -> dict:
     active = conn.execute(
         "SELECT id FROM strength_workout_sessions WHERE status = 'active' ORDER BY started_at DESC LIMIT 1"
     ).fetchone()
@@ -456,11 +464,19 @@ def start_session(conn: sqlite3.Connection, template_id: int) -> dict:
             detail={"message": "A strength workout is already active.", "session_id": int(active["id"])},
         )
 
-    template = _template_or_404(conn, template_id)
-    template_exercises = conn.execute(
-        "SELECT * FROM strength_template_exercises WHERE template_id = ? ORDER BY exercise_order",
-        (template_id,),
-    ).fetchall()
+    if workout is not None:
+        template_id = None
+        template = {"name": workout.name, "notes": workout.notes}
+        template_exercises = [
+            {**exercise.model_dump(), "exercise_order": order}
+            for order, exercise in enumerate(workout.exercises, start=1)
+        ]
+    else:
+        template = _template_or_404(conn, template_id)
+        template_exercises = conn.execute(
+            "SELECT * FROM strength_template_exercises WHERE template_id = ? ORDER BY exercise_order",
+            (template_id,),
+        ).fetchall()
     if not template_exercises:
         raise HTTPException(status_code=400, detail="The template has no exercises.")
 
@@ -470,10 +486,10 @@ def start_session(conn: sqlite3.Connection, template_id: int) -> dict:
             """
             INSERT INTO strength_workout_sessions
             (template_id, template_name, status, started_at, current_exercise_order,
-             current_set_order, created_at, updated_at)
-            VALUES (?, ?, 'active', ?, 1, 1, ?, ?)
+             current_set_order, created_at, updated_at, notes)
+            VALUES (?, ?, 'active', ?, 1, 1, ?, ?, ?)
             """,
-            (template_id, template["name"], now, now, now),
+            (template_id, template["name"], now, now, now, template["notes"]),
         )
         session_id = int(cursor.lastrowid)
         for exercise in template_exercises:
@@ -662,6 +678,95 @@ def add_warmup_set(
                 """,
                 (now, session_id),
             )
+    return get_session(conn, session_id)
+
+
+def _session_exercise(conn, session_id, exercise_id):
+    exercise = conn.execute(
+        "SELECT * FROM strength_session_exercises WHERE id = ? AND session_id = ?",
+        (exercise_id, session_id),
+    ).fetchone()
+    if not exercise:
+        raise HTTPException(status_code=404, detail="Exercise not found in this session.")
+    return exercise
+
+
+def add_working_set(conn: sqlite3.Connection, session_id: int, exercise_id: int) -> dict:
+    _assert_active(_session_or_404(conn, session_id))
+    _session_exercise(conn, session_id, exercise_id)
+    sets = conn.execute("SELECT * FROM strength_session_sets WHERE session_exercise_id = ? ORDER BY set_order", (exercise_id,)).fetchall()
+    working = [item for item in sets if item["set_type"] != "warmup"]
+    if len(working) >= 20:
+        raise HTTPException(status_code=400, detail="An exercise cannot contain more than 20 working sets.")
+    reference = working[-1] if working else sets[-1]
+    with conn:
+        conn.execute(
+            "INSERT INTO strength_session_sets (session_exercise_id, set_order, target_reps, target_weight_kg, rest_seconds, set_type) VALUES (?, ?, ?, ?, ?, 'working')",
+            (exercise_id, sets[-1]["set_order"] + 1, reference["target_reps"], reference["target_weight_kg"], reference["rest_seconds"]),
+        )
+        conn.execute("UPDATE strength_workout_sessions SET updated_at = ? WHERE id = ?", (_iso(_now()), session_id))
+    return get_session(conn, session_id)
+
+
+def _active_set_id(conn, session):
+    row = conn.execute(
+        "SELECT s.id FROM strength_session_sets s JOIN strength_session_exercises e ON e.id = s.session_exercise_id WHERE e.session_id = ? AND e.exercise_order = ? AND s.set_order = ?",
+        (session["id"], session["current_exercise_order"], session["current_set_order"]),
+    ).fetchone()
+    return row["id"] if row else None
+
+
+def _repair_position(conn, session_id, active_id, preferred_exercise_id):
+    row = conn.execute(
+        """SELECT e.exercise_order, s.set_order FROM strength_session_sets s
+        JOIN strength_session_exercises e ON e.id = s.session_exercise_id
+        WHERE e.session_id = ?
+        ORDER BY CASE WHEN s.id = ? THEN 0 ELSE 1 END,
+          CASE WHEN s.status = 'pending' THEN 0 ELSE 1 END,
+          CASE WHEN e.id = ? THEN 0 ELSE 1 END, e.exercise_order, s.set_order LIMIT 1""",
+        (session_id, active_id, preferred_exercise_id),
+    ).fetchone()
+    conn.execute("UPDATE strength_workout_sessions SET current_exercise_order = ?, current_set_order = ?, updated_at = ? WHERE id = ?",
+                 (row["exercise_order"], row["set_order"], _iso(_now()), session_id))
+
+
+def remove_session_set(conn: sqlite3.Connection, session_id: int, set_id: int) -> dict:
+    session = _session_or_404(conn, session_id)
+    _assert_active(session)
+    item = conn.execute("SELECT s.* FROM strength_session_sets s JOIN strength_session_exercises e ON e.id = s.session_exercise_id WHERE s.id = ? AND e.session_id = ?", (set_id, session_id)).fetchone()
+    if not item:
+        raise HTTPException(status_code=404, detail="Workout set not found in this session.")
+    exercise_id = item["session_exercise_id"]
+    remaining_work = conn.execute("SELECT COUNT(*) FROM strength_session_sets WHERE session_exercise_id = ? AND set_type = 'working' AND id != ?", (exercise_id, set_id)).fetchone()[0]
+    if not remaining_work:
+        raise HTTPException(status_code=400, detail="Keep one working set, or remove the exercise instead.")
+    active_id = _active_set_id(conn, session)
+    with conn:
+        conn.execute("DELETE FROM strength_session_sets WHERE id = ?", (set_id,))
+        rows = conn.execute("SELECT id FROM strength_session_sets WHERE session_exercise_id = ? ORDER BY set_order", (exercise_id,)).fetchall()
+        conn.execute("UPDATE strength_session_sets SET set_order = set_order + 1000 WHERE session_exercise_id = ?", (exercise_id,))
+        for order, row in enumerate(rows, 1):
+            conn.execute("UPDATE strength_session_sets SET set_order = ? WHERE id = ?", (order, row["id"]))
+        _repair_position(conn, session_id, active_id, exercise_id)
+    return get_session(conn, session_id)
+
+
+def remove_session_exercise(conn: sqlite3.Connection, session_id: int, exercise_id: int) -> dict:
+    session = _session_or_404(conn, session_id)
+    _assert_active(session)
+    _session_exercise(conn, session_id, exercise_id)
+    count = conn.execute("SELECT COUNT(*) FROM strength_session_exercises WHERE session_id = ?", (session_id,)).fetchone()[0]
+    if count <= 1:
+        raise HTTPException(status_code=400, detail="Keep one exercise, or discard the workout instead.")
+    active_id = _active_set_id(conn, session)
+    with conn:
+        conn.execute("DELETE FROM strength_session_sets WHERE session_exercise_id = ?", (exercise_id,))
+        conn.execute("DELETE FROM strength_session_exercises WHERE id = ?", (exercise_id,))
+        rows = conn.execute("SELECT id FROM strength_session_exercises WHERE session_id = ? ORDER BY exercise_order", (session_id,)).fetchall()
+        conn.execute("UPDATE strength_session_exercises SET exercise_order = exercise_order + 1000 WHERE session_id = ?", (session_id,))
+        for order, row in enumerate(rows, 1):
+            conn.execute("UPDATE strength_session_exercises SET exercise_order = ? WHERE id = ?", (order, row["id"]))
+        _repair_position(conn, session_id, active_id, None)
     return get_session(conn, session_id)
 
 

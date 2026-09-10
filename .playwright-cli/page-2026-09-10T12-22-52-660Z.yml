@@ -1,0 +1,113 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: TL
+      - generic [ref=e7]:
+        - generic [ref=e8]: TrainLog
+        - generic [ref=e9]: Performance
+    - navigation [ref=e10]:
+      - generic [ref=e11]: Today
+      - link "Dashboard" [ref=e12] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e16]: Training
+      - link "Plan" [ref=e17] [cursor=pointer]:
+        - /url: /plan
+      - link "Calendar" [ref=e21] [cursor=pointer]:
+        - /url: /calendar
+      - link "Goals" [ref=e25] [cursor=pointer]:
+        - /url: /goals
+      - link "Strength" [ref=e29] [cursor=pointer]:
+        - /url: /strength
+      - link "Recovery" [ref=e33] [cursor=pointer]:
+        - /url: /recovery
+      - generic [ref=e37]: Review
+      - link "Activities" [ref=e38] [cursor=pointer]:
+        - /url: /activities
+      - link "Trends" [ref=e42] [cursor=pointer]:
+        - /url: /metrics
+      - link "Coach Notes" [ref=e46] [cursor=pointer]:
+        - /url: /notes
+      - generic [ref=e50]: System
+      - link "Data & Sync" [ref=e51] [cursor=pointer]:
+        - /url: /sync
+      - link "Roadmap" [ref=e55] [cursor=pointer]:
+        - /url: /roadmap
+    - region "Weather unavailable" [ref=e60]:
+      - button "Weather unavailable" [ref=e61] [cursor=pointer]:
+        - generic [aria-hidden] [ref=e62]: ↻
+        - text: Weather unavailable
+  - main [ref=e63]:
+    - main [ref=e64]:
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]: Your training, connected
+          - heading "Data & Sync" [level=1] [ref=e68]
+          - paragraph [ref=e69]: Bring your workouts, recovery, and strength detail together.
+        - link "View activities" [ref=e70] [cursor=pointer]:
+          - /url: /activities
+          - text: View activities
+          - generic [aria-hidden] [ref=e71]: ↗
+      - region "Data sources" [ref=e72]:
+        - generic [ref=e73]:
+          - generic [ref=e74]:
+            - generic [ref=e75]: Your sources
+            - heading "A clearer picture of your training." [level=2] [ref=e76]
+          - paragraph [ref=e77]: Choose a source to import data or review what needs attention.
+        - navigation "Select data source" [ref=e78]:
+          - button "Setup needed Strava Activities & effort Import your activity history" [pressed] [ref=e79] [cursor=pointer]:
+            - generic [ref=e80]:
+              - generic [aria-hidden] [ref=e81]: ↗
+              - generic [ref=e82]: Setup needed
+            - strong [ref=e84]: Strava
+            - generic [ref=e85]: Activities & effort
+            - generic [ref=e86]:
+              - text: Import your activity history
+              - generic [aria-hidden] [ref=e87]: ↗
+          - button "Setup needed Apple Health Recovery & daily movement Check your export folder" [ref=e88] [cursor=pointer]:
+            - generic [ref=e89]:
+              - generic [aria-hidden] [ref=e90]: ♥
+              - generic [ref=e91]: Setup needed
+            - strong [ref=e93]: Apple Health
+            - generic [ref=e94]: Recovery & daily movement
+            - generic [ref=e95]:
+              - text: Check your export folder
+              - generic [aria-hidden] [ref=e96]: ↗
+          - button "Setup needed HealthFit Apple Watch workouts Workout backups & recordings" [ref=e97] [cursor=pointer]:
+            - generic [ref=e98]:
+              - generic [aria-hidden] [ref=e99]: ⌁
+              - generic [ref=e100]: Setup needed
+            - strong [ref=e102]: HealthFit
+            - generic [ref=e103]: Apple Watch workouts
+            - generic [ref=e104]:
+              - text: Workout backups & recordings
+              - generic [aria-hidden] [ref=e105]: ↗
+          - button "No import Fitbod Exercises, sets & reps Add a CSV export to get started" [ref=e106] [cursor=pointer]:
+            - generic [ref=e107]:
+              - generic [aria-hidden] [ref=e108]: ▥
+              - generic [ref=e109]: No import
+            - strong [ref=e111]: Fitbod
+            - generic [ref=e112]: Exercises, sets & reps
+            - generic [ref=e113]:
+              - text: Add a CSV export to get started
+              - generic [aria-hidden] [ref=e114]: ↗
+      - alert [ref=e115]:
+        - text: Some source information could not be loaded. You can still use the available sources.
+        - button "Retry" [ref=e116] [cursor=pointer]
+      - region [ref=e118]:
+        - generic [ref=e119]:
+          - generic [ref=e120]:
+            - generic [ref=e121]: Activities & effort
+            - heading "Bring in your latest workouts" [level=2] [ref=e122]
+            - paragraph [ref=e123]: Sync recent activities from Strava, then fill in missing heart-rate and power detail.
+          - generic [ref=e124]: Setup needed
+        - generic [ref=e125]:
+          - generic [ref=e126]:
+            - strong [ref=e127]: Start your activity history
+            - paragraph [ref=e128]: Choose an earlier start date to import your history. The default imports today.
+          - button "Sync activities" [disabled] [ref=e129]: Sync activities ↻
+        - group [ref=e130]:
+          - generic "Choose a date range +" [ref=e131] [cursor=pointer]
+        - group [ref=e132]:
+          - generic "Connect Strava +" [ref=e133] [cursor=pointer]
+  - button "Coach" [ref=e134] [cursor=pointer]:
+    - generic [aria-hidden] [ref=e135]: ✦

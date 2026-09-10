@@ -59,6 +59,12 @@
         <div class="zone-distribution" :class="{'has-active-zone':activeZoneKey}" aria-label="Heart-rate zone distribution"><span v-for="zone in zones.zones" :key="`dist-${zone.key}`" :class="[`zone-tone-${zone.key}`,{'is-active':activeZoneKey===zone.key,'is-muted':activeZoneKey&&activeZoneKey!==zone.key}]" :style="{width:`${zone.pct}%`}" :title="`${zone.label}: ${duration(zone.minutes)} (${zone.pct}%)`" @mouseenter="selectZone(zone.key)" @mouseleave="clearZone" @focus="selectZone(zone.key)" @blur="clearZone"></span></div>
         <div class="zone-cards"><article v-for="zone in zones.zones" :key="zone.key" :class="[`zone-tone-${zone.key}`,{'is-highlight':zone.highlight,'is-active':activeZoneKey===zone.key,'is-muted':activeZoneKey&&activeZoneKey!==zone.key}]" tabindex="0" @mouseenter="selectZone(zone.key)" @mouseleave="clearZone" @focus="selectZone(zone.key)" @blur="clearZone"><div><span class="zone-name"><i></i>{{ zone.label }}</span><strong>{{ zone.pct }}%</strong></div><p>{{ duration(zone.minutes) }}</p><small>{{ zone.bpm_range }}</small></article></div>
       </section>
+      <section v-if="powerZones?.available" class="ad-section activity-zones-card power-zones-card">
+        <div class="ad-section-heading"><div><span>Intensity distribution</span><h2>Power zones</h2><p>Based on FTP {{ powerZones.ftp_watts }} W at the time of this ride.</p></div><div class="zone-kpi"><span>Zone 2</span><strong>{{ powerZones.zone2_pct }}%</strong></div></div>
+        <div class="zone-hero"><div><span class="zone-hero-label">{{ powerZones.summary }}</span><strong>{{ duration(powerZones.zone2_minutes) }}</strong><small>{{ powerZones.zone2_pct }}% of {{ duration(powerZones.total_minutes) }} tracked</small></div><div class="zone-hero-dominant"><span>Dominant zone</span><strong>{{ dominantPowerZone?.label }}</strong><small>{{ dominantPowerZone?.watt_range }}</small></div></div>
+        <div class="zone-distribution" :class="{'has-active-zone':activePowerZoneKey}" aria-label="Power zone distribution"><span v-for="zone in powerZones.zones" :key="`dist-${zone.key}`" :class="[`zone-tone-${zone.key}`,{'is-active':activePowerZoneKey===zone.key,'is-muted':activePowerZoneKey&&activePowerZoneKey!==zone.key}]" :style="{width:`${zone.pct}%`}" :title="`${zone.label}: ${duration(zone.minutes)} (${zone.pct}%)`" @mouseenter="selectPowerZone(zone.key)" @mouseleave="clearPowerZone" @focus="selectPowerZone(zone.key)" @blur="clearPowerZone"></span></div>
+        <div class="zone-cards"><article v-for="zone in powerZones.zones" :key="zone.key" :class="[`zone-tone-${zone.key}`,{'is-highlight':zone.highlight,'is-active':activePowerZoneKey===zone.key,'is-muted':activePowerZoneKey&&activePowerZoneKey!==zone.key}]" tabindex="0" @mouseenter="selectPowerZone(zone.key)" @mouseleave="clearPowerZone" @focus="selectPowerZone(zone.key)" @blur="clearPowerZone"><div><span class="zone-name"><i></i>{{ zone.label }}</span><strong>{{ zone.pct }}%</strong></div><p>{{ duration(zone.minutes) }}</p><small>{{ zone.watt_range }}</small></article></div>
+      </section>
     </div>
   </div>
 </template>
@@ -75,6 +81,7 @@ const activeMinute = ref(null)
 const activeBestEffort = ref(null)
 const activeChartKey = ref('')
 const activeZoneKey = ref('')
+const activePowerZoneKey = ref('')
 let map, routeLayer, segmentLayer, startMarker, endMarker, hoverMarker
 
 const stats = computed(() => orderedStats(props.detail.stats, props.detail.activity.type))
@@ -82,6 +89,10 @@ const primary = computed(() => stats.value.slice(0, 4))
 const secondary = computed(() => stats.value.slice(4, 10))
 const zones = computed(() => props.detail.heart_rate_zones)
 const dominantZone = computed(() => zones.value?.zones?.find(zone => zone.key === zones.value.dominant_zone_key))
+const powerZones = computed(() => sportFamily(props.detail.activity.type) === 'cycling' ? props.detail.power_zones : null)
+const dominantPowerZone = computed(() => powerZones.value?.zones?.find(zone => zone.key === powerZones.value.dominant_zone_key))
+const selectPowerZone = key => { activePowerZoneKey.value = key }
+const clearPowerZone = () => { activePowerZoneKey.value = '' }
 const efforts = computed(() => props.detail.best_efforts?.efforts || [])
 const familyTitle = computed(() => ({ running:'Run performance',cycling:'Ride performance',swimming:'Swim performance',default:'Endurance performance' }[sportFamily(props.detail.activity.type)]))
 const preparedCharts = computed(() => (props.detail.charts || []).filter(c=>c.points?.length>1).slice(0,4).map(chart=>{const normalized=normalizePoints(chart);return {...chart,normalized,cockpitPolyline:normalized.map(p=>`${p.x},${p.y}`).join(' ')}}))
@@ -129,6 +140,7 @@ onBeforeUnmount(destroyMap)
 </script>
 
 <style scoped>
+.power-zones-card .zone-cards{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}.zone-tone-zone6{--zone-color:#b08aff}.zone-tone-zone7{--zone-color:#e780d6}
 .analysis-cockpit-section,.best-efforts-section,.activity-zones-card{display:block}.zone-analysis-grid{display:grid}
 .endurance-presentation>.ad-outcome{overflow:hidden;background:radial-gradient(circle at 100% 0,rgba(95,140,255,.08),transparent 34%),rgba(17,24,38,.94)}
 .overview-metric-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;border:0;padding:0}

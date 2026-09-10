@@ -603,9 +603,11 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useApi } from '../stores/api'
 
 const api = useApi()
+const route = useRoute()
 const loading = ref(true)
 const saving = ref(false)
 const draftingGoal = ref(false)
@@ -664,7 +666,10 @@ const loadGoals = async () => {
   }
 }
 
-onMounted(loadGoals)
+onMounted(async () => {
+  await loadGoals()
+  if (route.query.section === 'restrictions') await openRestrictionDialog()
+})
 
 const groupedGoals = computed(() => {
   const groups = [

@@ -1,0 +1,73 @@
+{
+  "reviewed_at": "2026-09-10T14:37:10+02:00",
+  "summary": "The dashboard already has a broad training toolkit. This first review focuses on making everyday navigation more dependable and making the next development cycle easier to verify.",
+  "ideas": [
+    {
+      "id": "dependable-project-checks",
+      "title": "One trustworthy check before shipping",
+      "category": "Engineering",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "Frontend behavior tests exist without an npm test command. The backend test command depends on a local dependency folder and mixed import roots. Some tests also use dates that age out of the period they query.",
+      "proposal": "Create a documented project check command that runs frontend behavior tests, the frontend build, and backend tests in a reproducible environment. Repair confirmed fixture and clock assumptions without weakening behavior assertions.",
+      "benefit": "Make every new feature faster to verify and catch regressions before they reach your training workflow.",
+      "evidence": [
+        "frontend/package.json and frontend/tests/",
+        "justfile: test-backend recipe",
+        "backend/tests/test_app_smoke.py: test_activity_crud_and_stats",
+        "backend/tests/test_plan_day_comparison.py: setUp",
+        "docs/skills-trial-2026-09-10.md"
+      ],
+      "acceptance_criteria": [
+        "One documented command runs the relevant frontend and backend checks from a fresh dependency environment.",
+        "Tests do not fail merely because today's date changes.",
+        "Strength comparison fixtures include the schema the production code needs.",
+        "Existing failing assertions are investigated; no tests are deleted or weakened to obtain a passing run."
+      ],
+      "created_on": "2026-09-10"
+    },
+    {
+      "id": "resumable-sync-workspace",
+      "title": "Pick up where you left off in Data & Sync",
+      "category": "Experience",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The selected source on Data & Sync is kept only in component state. Opening a link or refreshing returns to Strava even when you were reviewing another source.",
+      "proposal": "Keep the active source in a validated URL query parameter. Preserve it across refresh and browser navigation, and make direct links to Apple Health, HealthFit, and Fitbod work.",
+      "benefit": "Return directly to the import source you were working on and share precise troubleshooting links.",
+      "evidence": [
+        "frontend/src/views/Sync.vue: activeSource and source-switcher",
+        "frontend/src/router.js: /sync route"
+      ],
+      "acceptance_criteria": [
+        "A direct URL can select any of the four existing source panels.",
+        "Refresh and browser Back/Forward restore the selected source.",
+        "Unknown source values fall back safely to Strava.",
+        "Switching panels never starts an import."
+      ],
+      "created_on": "2026-09-10"
+    },
+    {
+      "id": "keyboard-first-dashboard-navigation",
+      "title": "A smoother dashboard without a mouse",
+      "category": "Experience",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The app shell provides a main landmark, while Data & Sync nests another main inside it. Repeated navigation and unclear landmark structure add friction for keyboard and screen-reader users.",
+      "proposal": "Audit the app shell and page wrappers for a single main landmark, add a visible-on-focus skip-to-content link, and check focus placement after route changes. Keep the current visual design.",
+      "benefit": "Make the dashboard easier to navigate with a keyboard and clearer for assistive technology.",
+      "evidence": [
+        "frontend/src/App.vue: main-content and sidebar-nav",
+        "frontend/src/views/Sync.vue: root main element",
+        "docs/skills-trial-2026-09-10.md: review findings"
+      ],
+      "acceptance_criteria": [
+        "Each route exposes exactly one main landmark.",
+        "The first keyboard shortcut target is a usable skip-to-content link.",
+        "Visible focus remains clear on desktop and mobile layouts.",
+        "A browser smoke check covers keyboard navigation on Dashboard and Data & Sync."
+      ],
+      "created_on": "2026-09-10"
+    }
+  ]
+}

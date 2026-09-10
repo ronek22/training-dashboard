@@ -12,6 +12,7 @@ const ActivityDetail = () => import('./views/ActivityDetail.vue')
 const Sync = () => import('./views/Sync.vue')
 const Strength = () => import('./views/Strength.vue')
 const StrengthWorkouts = () => import('./views/StrengthWorkouts.vue')
+const Recovery = () => import('./views/Recovery.vue')
 const StrengthWorkoutSession = () => import('./views/StrengthWorkoutSession.vue')
 
 export default createRouter({
@@ -20,8 +21,10 @@ export default createRouter({
     { path: '/', component: Dashboard },
     { path: '/plan', component: Plan },
     { path: '/roadmap', component: Roadmap },
+    { path: '/ideas', component: () => import('./views/Ideas.vue') },
     { path: '/calendar', component: Calendar },
     { path: '/goals', component: Goals },
+    { path: '/recovery', component: Recovery },
     { path: '/strength', component: Strength },
     { path: '/strength/workouts', component: StrengthWorkouts },
     { path: '/strength/workouts/:sessionId', component: StrengthWorkoutSession },

@@ -1,0 +1,40 @@
+[     231ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <App> @ http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:2225
+[     231ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <App> @ http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:2225
+[     238ms] TypeError: Cannot read properties of undefined (reading 'description')
+    at ComputedRefImpl.fn (http://127.0.0.1:4178/src/App.vue:52:66)
+    at refreshComputed (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:682:29)
+    at get value (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:1937:5)
+    at unref (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:1792:30)
+    at Object.get (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:1798:64)
+    at Proxy._sfc_render (http://127.0.0.1:4178/src/App.vue:379:32)
+    at renderComponentRoot (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:6801:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:8457:26)
+    at ReactiveEffect.run (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:528:19)
+    at ReactiveEffect.runIfDirty (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:566:12)
+[     235ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <App> @ http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:2225
+[     235ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <App> @ http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:2225
+[     239ms] TypeError: Cannot read properties of undefined (reading 'temperature_c')
+    at Proxy._sfc_render (http://127.0.0.1:4178/src/App.vue:386:97)
+    at renderComponentRoot (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:6801:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:8457:26)
+    at ReactiveEffect.run (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:528:19)
+    at ReactiveEffect.runIfDirty (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:566:12)
+    at callWithErrorHandling (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:2373:33)
+    at flushJobs (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:2581:9)
+[     295ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4178/favicon.ico:0
+[   49651ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <App> @ http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:2225
+[   49651ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <App> @ http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:2225
+[   49653ms] TypeError: Cannot read properties of undefined (reading 'temperature_c')
+    at Proxy._sfc_render (http://127.0.0.1:4178/src/App.vue:386:97)
+    at renderComponentRoot (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:6801:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:8457:26)
+    at ReactiveEffect.run (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:528:19)
+    at ReactiveEffect.runIfDirty (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:566:12)
+    at callWithErrorHandling (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:2373:33)
+    at flushJobs (http://127.0.0.1:4178/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=d6862f48:2581:9)

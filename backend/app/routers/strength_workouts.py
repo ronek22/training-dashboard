@@ -15,6 +15,9 @@ from ..services.strength_workouts import (
     abandon_session,
     add_session_exercise,
     add_warmup_set,
+    add_working_set,
+    remove_session_set,
+    remove_session_exercise,
     activity_candidates,
     complete_set,
     delete_session,
@@ -89,6 +92,11 @@ def sessions_create(payload: StrengthSessionStartRequest):
     return _with_db(lambda conn: start_session(conn, payload.template_id))
 
 
+@router.post("/sessions/one-time", status_code=status.HTTP_201_CREATED)
+def sessions_create_one_time(payload: StrengthTemplateInput):
+    return _with_db(lambda conn: start_session(conn, None, workout=payload))
+
+
 @router.get("/sessions/{session_id}")
 def sessions_show(session_id: int):
     return _with_db(lambda conn: get_session(conn, session_id))
@@ -111,6 +119,21 @@ def sessions_add_warmup_set(
     return _with_db(
         lambda conn: add_warmup_set(conn, session_id, exercise_id, payload)
     )
+
+
+@router.post("/sessions/{session_id}/exercises/{exercise_id}/sets", status_code=201)
+def sessions_add_working_set(session_id: int, exercise_id: int):
+    return _with_db(lambda conn: add_working_set(conn, session_id, exercise_id))
+
+
+@router.delete("/sessions/{session_id}/sets/{set_id}")
+def sessions_remove_set(session_id: int, set_id: int):
+    return _with_db(lambda conn: remove_session_set(conn, session_id, set_id))
+
+
+@router.delete("/sessions/{session_id}/exercises/{exercise_id}")
+def sessions_remove_exercise(session_id: int, exercise_id: int):
+    return _with_db(lambda conn: remove_session_exercise(conn, session_id, exercise_id))
 
 
 @router.post("/sessions/{session_id}/sets/{set_id}/complete")

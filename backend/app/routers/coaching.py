@@ -2,8 +2,39 @@ from fastapi import APIRouter
 
 from ..db import get_db
 from ..services.coaching import build_weekly_coaching, list_coaching_history_data
+from ..models.team_analysis import TeamAnalysisSave
 
 router = APIRouter()
+
+
+@router.get('/coaching/team-analysis/context')
+def team_analysis_context():
+    from ..services.team_analysis import analysis_context
+    conn = get_db()
+    try:
+        return analysis_context(conn)
+    finally:
+        conn.close()
+
+
+@router.get('/coaching/team-analysis')
+def team_analysis():
+    from ..services.team_analysis import get_analysis
+    conn = get_db()
+    try:
+        return get_analysis(conn)
+    finally:
+        conn.close()
+
+
+@router.put('/coaching/team-analysis')
+def save_team_analysis(result: TeamAnalysisSave):
+    from ..services.team_analysis import save_analysis
+    conn = get_db()
+    try:
+        return save_analysis(conn, result)
+    finally:
+        conn.close()
 
 
 @router.get("/coaching/weekly")

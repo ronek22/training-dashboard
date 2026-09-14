@@ -1,12 +1,18 @@
 <template>
   <section class="sunday-review" aria-labelledby="sunday-review-title">
-    <header><h2 id="sunday-review-title">A short Sunday review</h2><p>Your AI coach reviews the week every Sunday at 23:59 · Warsaw time.</p></header>
+    <header><h2 id="sunday-review-title">Completed weeks</h2><p>Your end-of-week assessment is scheduled for Sunday at 23:59 · Warsaw time.</p></header>
     <p v-if="loading" role="status">Loading reviews…</p>
     <div v-else-if="loadError"><p role="alert">Reviews could not be loaded.</p><button @click="load">Try again</button></div>
     <template v-else>
+      <div v-if="status?.missing" class="missing-review" role="status">
+        <h3>{{ weekLabel(status.due_week) }} · Review not available yet</h3>
+        <p>No review has been saved for this week. The automatic worker retries while the app and its AI connection are running.</p>
+        <button @click="load">Check again</button>
+      </div>
+      <p v-else-if="statusError" role="status">Could not check whether a newer review is due. Showing saved reviews.</p>
       <p v-if="!reviews.length">Your first AI review will appear here after Sunday’s training is done. It will cover what improved, what didn’t go to plan, and one change for next week.</p>
       <template v-else>
-        <p class="week-caption">{{ weekLabel(latest.week_start) }} · AI review</p>
+        <p class="week-caption">{{ weekLabel(latest.week_start) }} · {{ status?.missing ? 'Latest available AI review' : 'AI review' }}</p>
         <div class="review-prompts">
           <div><h3>What improved</h3><p>{{ latest.improved }}</p></div>
           <div><h3>What didn’t go to plan</h3><p>{{ latest.missed }}</p></div>
@@ -31,22 +37,27 @@
   </section>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { addDays, format, parseISO } from 'date-fns'
 import { useApi } from '../stores/api'
 const api = useApi()
-const reviews = ref([])
+type Review = {week_start: string; improved: string; missed: string; proposed_change: string; previous_change: string | null; previous_change_outcome: 'not_assessed' | 'helped' | 'did_not_help' | 'not_tried'; outcome_reason: string}
+const reviews = ref<Review[]>([])
 const loading = ref(true)
 const loadError = ref(false)
+const status = ref<{due_week: string; missing: boolean; latest_available_week: string | null} | null>(null)
+const statusError = ref(false)
 const latest = computed(() => reviews.value[0])
 const outcomeLabels = { not_assessed: 'Not enough evidence yet', helped: 'Evidence suggests it helped', did_not_help: 'No improvement observed', not_tried: 'Suggestion not followed' }
-const weekLabel = (value) => `${format(parseISO(value), 'd MMM')} – ${format(addDays(parseISO(value), 6), 'd MMM yyyy')}`
-let refreshTimer
+const weekLabel = (value: string) => `${format(parseISO(value), 'd MMM')} – ${format(addDays(parseISO(value), 6), 'd MMM yyyy')}`
+let refreshTimer: ReturnType<typeof setInterval>
 async function load() {
   try {
     reviews.value = (await api.getWeeklyReviews()).data
     loadError.value = false
+    try { status.value = (await api.getWeeklyReviewStatus()).data; statusError.value = false }
+    catch { status.value = null; statusError.value = true }
   } catch { loadError.value = true }
   finally { loading.value = false }
 }
@@ -59,6 +70,7 @@ onUnmounted(() => clearInterval(refreshTimer))
 h2 { font-size: 22px; } h3 { font-size: 14px; } p { margin: 8px 0 16px; color: var(--muted); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .week-caption, .schedule-note { font-size: 12px; } .review-prompts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 20px 0; }
 .previous-change { background: var(--surface2); padding: 16px; border-radius: 10px; margin-bottom: 20px; }
+.missing-review { background: var(--surface2); border-left: 3px solid var(--accent); padding: 18px; border-radius: 10px; margin: 20px 0; }
 button { border: 1px solid var(--border); background: var(--surface2); color: var(--text); padding: 10px 16px; border-radius: 8px; cursor: pointer; font: inherit; }
 .history { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 18px; } summary { cursor: pointer; font-weight: 600; }
 article { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); } dt { color: var(--muted); font-size: 12px; margin-top: 12px; } dd { margin: 4px 0 12px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }

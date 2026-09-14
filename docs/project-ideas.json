@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-09-10T14:37:10+02:00",
-  "summary": "The dashboard already has a broad training toolkit. This first review focuses on making everyday navigation more dependable and making the next development cycle easier to verify.",
+  "reviewed_at": "2026-09-14T11:30:21+02:00",
+  "summary": "Reviewed the new persisted AI specialist analyses, consolidated Weekly review page, current roadmap and feature tasks. Generated reports are saved per week, but the analysis read endpoint resolves only the current week; Completed weeks currently reads separate Sunday summaries. One focused proposal makes older saved specialist reports accessible without regeneration. Existing adaptation, progression and data-quality plans were excluded. This was a source/documentation review; no application tests or private records were accessed.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -68,6 +68,56 @@
         "A browser smoke check covers keyboard navigation on Dashboard and Data & Sync."
       ],
       "created_on": "2026-09-10"
+    },
+    {
+      "id": "recover-unlogged-strength-set-inputs",
+      "title": "Keep unfinished set entries when you switch away",
+      "category": "Experience",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The live strength runner stores reps and weight in component state until Log set succeeds. syncInputs replaces those inputs from saved or target values when the current set changes or the session reloads, so an unfinished entry can disappear after switching exercises or refreshing. Completed-set persistence does not cover this draft state.",
+      "proposal": "Keep a small local draft keyed by workout and set ID for unsubmitted reps and weight. Restore it when returning to the same active set, clearly label it as not logged, and offer an explicit discard action. Reconcile drafts with the latest server state before restoring so another tab or a completed workout cannot silently be overwritten. Keep the existing Log set action as the only completion step.",
+      "benefit": "Avoid retyping or forgetting the reps and load you just entered when you check another exercise or accidentally refresh mid-workout.",
+      "evidence": [
+        "frontend/src/views/StrengthWorkoutSession.vue: syncInputs and currentSet watcher replace unsaved input values",
+        "frontend/src/views/StrengthWorkoutSession.vue: changePosition calls syncInputs after changing the current exercise/set",
+        "frontend/src/views/StrengthWorkoutSession.vue: completeCurrentSet persists values only through the explicit completion API",
+        "frontend/src/views/StrengthWorkoutSession.vue: onMounted loads saved session state; localStorage usage currently concerns rest sound",
+        "docs/sprints/sprint-36-first-party-strength-workout-tracking.md: durable completed sets and live session runner"
+      ],
+      "acceptance_criteria": [
+        "Editing reps or weight, switching to another set, and returning restores the unfinished values for the original set without changing the other set.",
+        "Reloading the same active workout restores the draft with a clear Not logged label; no completion request is sent automatically.",
+        "Successful logging or explicit discard clears that set draft; failed logging preserves it for retry.",
+        "Completed, abandoned, deleted, or server-updated sets do not silently receive stale draft values; conflicts offer an explicit review or discard choice.",
+        "Unavailable browser storage does not prevent logging; explain that draft recovery is unavailable. Tests use synthetic workout data and cover navigation, reload, failed saves, and stale drafts."
+      ],
+      "created_on": "2026-09-12"
+    },
+    {
+      "id": "browse-saved-specialist-review-history",
+      "title": "Reopen last week’s specialist advice",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "AI team reports are saved under a week-specific settings key, but get_analysis always derives the current week. The Completed weeks view renders SundayReview, which reads the separate weekly-review history. Once the calendar advances, the inspected UI has no way to reopen an older saved specialist report and its HEAD COACH synthesis, even though that report remains stored.",
+      "proposal": "Extend Completed weeks with a clearly labeled list of saved specialist analyses alongside existing Sunday summaries. Add bounded read-only list and week-detail endpoints and a shareable selected-week URL. Render the original stored report with its generation time and through-date; do not regenerate it or combine it with present-day recovery context. For older reports without saved citation labels, show honest unavailable-evidence states rather than inventing historical context.",
+      "benefit": "Revisit the advice and tradeoffs you were given before deciding whether a training change helped, without spending another AI run.",
+      "evidence": [
+        "backend/app/services/team_analysis.py: read_saved_analysis and save_analysis use team_analysis:{week} keys; get_analysis derives only the current week",
+        "backend/app/routers/coaching.py: GET /coaching/team-analysis exposes no historical week parameter or listing",
+        "frontend/src/views/WeeklyReview.vue: Completed weeks renders SundayReview",
+        "frontend/src/components/SundayReview.vue: history comes from getWeeklyReviews",
+        "docs/specs/001-hybrid-coaching-team/plan.md: per-week AI persistence and separate completed Sunday history"
+      ],
+      "acceptance_criteria": [
+        "With synthetic saved analyses for two weeks, both appear in a bounded history list and each can be reopened through a selected-week URL.",
+        "Opening a historical report uses its saved specialist text, HEAD COACH synthesis, generation timestamp and through-date, with no AI request or plan write.",
+        "Sunday summaries remain available and are clearly distinguished from specialist analyses, including weeks with only one report type.",
+        "Missing or deleted supporting activities are labeled unavailable; current recovery or profile data is never silently inserted into historical advice.",
+        "Invalid weeks, missing reports, empty history and API failures have clear states; tests cover Monday rollover and verify stored reports remain unchanged."
+      ],
+      "created_on": "2026-09-14"
     }
   ]
 }

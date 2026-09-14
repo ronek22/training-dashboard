@@ -24,6 +24,19 @@ Implemented foundations:
 
 ## Recently Completed
 
+### HEAD COACH and weekly specialists
+
+2026-09-14 follow-up: the missing 7–13 September Sunday review was successfully generated and saved after explicit user approval to send its training context through the existing AI connection. Earlier saved reviews remain intact. Completed weeks now reads `/reviews/weekly/status`, names an overdue unsaved week, labels older content as latest available, and offers a read-only Check again action. Status follows the Warsaw Sunday 23:59 boundary; it does not imply an active generation job. Verified actual saved review in browser, synthetic missing/cleared states, 390px layout, 44 focused tests and production build. This verifies the Sunday review path, not the separate four-call specialist pipeline.
+
+Implemented a snapshot-based weekly coaching team, documented in [the feature spec](specs/001-hybrid-coaching-team/spec.md):
+
+- Running, cycling and strength reports share a complete calendar-week activity snapshot and matching-weekday comparisons across four prior weeks.
+- On request, three AI specialists run concurrently through the existing local helper, followed by HEAD COACH synthesis: verdict, tradeoff, one next-week change and an observable success check. Reports are validated, saved by week, and marked stale when inputs change. Failed generation preserves the last successful review; reports never save plan changes.
+- Dashboard shows one compact Weekly review entry with the main takeaway and a recorded-time allocation chart. `/weekly-review` holds the full analysis and a clickable seven-day session grid. Completed Sunday reviews remain accessible in the same page’s Completed weeks view; the duplicate dashboard section is removed.
+- Weekly HTTP/MCP coaching and historical Sunday review context share the team report. Historical reports exclude present-day recovery; existing saved Sunday reviews remain unchanged.
+- Deterministic facts remain the evidence foundation. No physiological predictions or numerical confidence scores are introduced. The build, 42 focused tests and synthetic responsive/error/retry/stale/navigation checks passed. A real AI review is still unverified: automatic approval blocked sending potentially sensitive training context, and explicit user permission was requested.
+
+
 ### Backend modularization
 
 The backend has already been split into routers, services, repositories, models, and DB bootstrap code.

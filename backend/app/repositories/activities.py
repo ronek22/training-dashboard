@@ -2,6 +2,14 @@ import sqlite3
 from typing import Optional
 
 
+def list_activity_rows_between(conn: sqlite3.Connection, start: str, end: str) -> list[dict]:
+    """Inclusive calendar dates, without the recent-activity display limit."""
+    return [dict(row) for row in conn.execute(
+        "SELECT * FROM activities WHERE substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ? ORDER BY date, id",
+        (start, end),
+    ).fetchall()]
+
+
 def get_latest_activity_date(conn: sqlite3.Connection) -> Optional[str]:
     row = conn.execute("SELECT MAX(date) AS date FROM activities").fetchone()
     return row["date"] if row and row["date"] else None

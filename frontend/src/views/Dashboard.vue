@@ -232,7 +232,7 @@
         </div>
       </section>
 
-      <SundayReview />
+      <TeamCoaching compact />
 
       <section class="explore-section" aria-labelledby="explore-heading">
         <div class="section-heading"><h2 id="explore-heading">Go a little deeper</h2></div>
@@ -258,7 +258,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { addDays, format, startOfWeek } from 'date-fns'
 import { useRouter } from 'vue-router'
-import SundayReview from '../components/SundayReview.vue'
+import TeamCoaching from '../components/TeamCoaching.vue'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import { useApi } from '../stores/api'
 
@@ -768,6 +768,7 @@ function formatChartValue(value) {
   --dash-muted: #8fa1bf;
   --dash-soft: #c7d3e6;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   max-width: 1440px;
   margin: 0 auto;

@@ -1,5 +1,6 @@
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 
@@ -10,7 +11,20 @@ def list_reviews(conn):
     ).fetchall()]
 
 
+def review_status(conn, now=None):
+    local = (now or datetime.now(ZoneInfo('Europe/Warsaw'))).astimezone(ZoneInfo('Europe/Warsaw'))
+    monday = local.date() - timedelta(days=local.weekday())
+    if local.weekday() != 6 or (local.hour, local.minute) < (23, 59):
+        monday -= timedelta(days=7)
+    due = monday.isoformat()
+    reviews = list_reviews(conn)
+    return {'due_week': due, 'missing': not any(row['week_start'] == due for row in reviews),
+            'latest_available_week': reviews[0]['week_start'] if reviews else None}
+
+
 def review_context(conn, week):
+    from .coaches import build_team_coaching
+    from .team_analysis import read_saved_analysis
     start = week.isoformat()
     end = (week + timedelta(days=7)).isoformat()
     baseline = (week - timedelta(days=28)).isoformat()
@@ -22,6 +36,8 @@ def review_context(conn, week):
     for plan in plans:
         plan['days'] = json.loads(plan.pop('days_json'))
     return {
+        'team_coaching': build_team_coaching(conn, week_start=week),
+        'saved_team_analysis': read_saved_analysis(conn, week.isoformat()),
         'review_week': start,
         'week_end': (week + timedelta(days=6)).isoformat(),
         'timezone': 'Europe/Warsaw',

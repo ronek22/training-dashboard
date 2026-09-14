@@ -23,9 +23,10 @@ from urllib.parse import quote
 from urllib.request import urlopen
 
 try:
-    from scripts import recovery_helper
+    from scripts import recovery_helper, team_coaching_helper
 except ModuleNotFoundError:
     import recovery_helper
+    import team_coaching_helper
 
 
 HOST = "127.0.0.1"
@@ -654,6 +655,22 @@ def execute_daily_state_job(job_id: str) -> None:
         job.update(status=status, message=message, assessment=assessment, finished_at=now_iso())
 
 
+def execute_team_review_job(job_id: str) -> None:
+    def progress(message):
+        with JOBS_LOCK:
+            JOBS[job_id].update(status='running', message=message)
+    progress('Preparing your weekly coaching review…')
+    try:
+        result = team_coaching_helper.run_review(run_codex, progress)
+    except Exception as exc:
+        with JOBS_LOCK:
+            JOBS[job_id].update(status='failed', message=str(exc), finished_at=now_iso())
+    else:
+        with JOBS_LOCK:
+            JOBS[job_id].update(status='succeeded', message='Your coaching team review is ready.',
+                                review=result, finished_at=now_iso())
+
+
 class PlanningServer(ThreadingHTTPServer):
     daemon_threads = True
 
@@ -709,9 +726,18 @@ class Handler(BaseHTTPRequestHandler):
                 "service": "training-dashboard-codex-helper",
                 "pid": os.getpid(),
                 "model": DEFAULT_MODEL,
-                "capabilities": ["recovery_chat"],
+                "capabilities": ["recovery_chat", "team_review"],
                 "sunday_review": {"enabled": True, "time": "23:59", "timezone": "Europe/Warsaw"},
             })
+            return
+        prefix = '/team-review/'
+        if self.path.startswith(prefix):
+            with JOBS_LOCK:
+                job = dict(JOBS.get(self.path[len(prefix):], {}))
+            if not job or job.get('kind') != 'team_review':
+                self.send_json(404, {'detail': 'Team review job not found'})
+                return
+            self.send_json(200, public_job(job))
             return
         prefix = "/recovery-chat/"
         if self.path.startswith(prefix):
@@ -777,7 +803,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         if self.reject_bad_origin():
             return
-        if self.path not in {"/weekly-plan", "/weekly-plan-revision", "/activity-analysis", "/coach-chat", "/daily-state", "/recovery-chat"}:
+        if self.path not in {"/weekly-plan", "/weekly-plan-revision", "/activity-analysis", "/coach-chat", "/daily-state", "/recovery-chat", "/team-review"}:
             self.send_json(404, {"detail": "Not found"})
             return
         if "application/json" not in (self.headers.get("Content-Type") or ""):
@@ -792,7 +818,11 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             payload = json.loads(self.rfile.read(length))
-            if self.path == "/recovery-chat":
+            if self.path == '/team-review':
+                target = validate_daily_state_request(payload)
+                target_key = 'context_key'
+                kind = 'team_review'
+            elif self.path == "/recovery-chat":
                 issue_id, target = recovery_helper.validate_request(payload)
                 target_key = "request_id"
                 kind = "recovery_chat"
@@ -831,7 +861,7 @@ class Handler(BaseHTTPRequestHandler):
                     and job.get("kind") in planning_kinds
                     and job.get("week_start") == target
                     or job.get("kind") == kind
-                    and (kind == "coach_chat" or job.get(target_key) == target)
+                    and (kind in {"coach_chat", "team_review"} or job.get(target_key) == target)
                 )
             ), None)
             if active:
@@ -849,6 +879,7 @@ class Handler(BaseHTTPRequestHandler):
                     "coach_chat": "Coach chat is queued.",
                     "daily_state": "Daily training-state assessment is queued.",
                     "recovery_chat": "Recovery reply is queued.",
+                    "team_review": "Your coaching team is queued.",
                 }[kind],
                 "summary": "",
                 "created_at": now_iso(),
@@ -874,6 +905,7 @@ class Handler(BaseHTTPRequestHandler):
             "coach_chat": execute_coach_chat_job,
             "daily_state": execute_daily_state_job,
             "recovery_chat": execute_recovery_job,
+            "team_review": execute_team_review_job,
         }[kind]
         threading.Thread(target=worker, args=(job_id,), daemon=True).start()
         self.send_json(202, public_job(job))
@@ -893,8 +925,8 @@ def health() -> dict | None:
 def start() -> int:
     existing = health()
     if existing:
-        if "recovery_chat" not in existing.get("capabilities", []):
-            print("The running helper is outdated. Run codex_planning_helper.py stop, then start, to enable Recovery.", file=sys.stderr)
+        if not {"recovery_chat", "team_review"}.issubset(existing.get("capabilities", [])):
+            print("The running helper is outdated. Run codex_planning_helper.py stop, then start, to enable the latest coaching features.", file=sys.stderr)
             return 1
         print(f"Codex planning helper is already running (PID {existing['pid']}).")
         PID_PATH.write_text(str(existing["pid"]), encoding="utf-8")

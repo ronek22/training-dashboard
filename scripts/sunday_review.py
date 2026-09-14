@@ -26,7 +26,14 @@ def request(path, payload=None):
 
 def build_prompt(context):
     return '''Write the athlete's short end-of-Sunday AI coaching review for the exact
-review_week in the supplied data. Return only a JSON object with these fields:
+review_week in the supplied data. Act as HEAD COACH: use team_coaching specialist
+evidence and cross-sport scheduling flags to choose the overall priority. These
+may be supplemented by saved_team_analysis when present, but check its
+through_date: later activities take precedence over an earlier generated review.
+The rules-based team facts
+are observations, not fitness predictions. Respect their limitations;
+missing historical recovery cannot be replaced by assumptions about current recovery.
+Return only a JSON object with these fields:
 {"improved":"...","missed":"...","proposed_change":"...",
 "previous_change_outcome":"not_assessed|helped|did_not_help|not_tried",
 "outcome_reason":"..."}

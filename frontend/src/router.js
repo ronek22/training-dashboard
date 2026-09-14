@@ -19,6 +19,7 @@ export default createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: Dashboard },
+    { path: '/weekly-review', component: () => import('./views/WeeklyReview.vue') },
     { path: '/plan', component: Plan },
     { path: '/roadmap', component: Roadmap },
     { path: '/ideas', component: () => import('./views/Ideas.vue') },

@@ -1,6 +1,8 @@
 import sqlite3
 import tempfile
 import unittest
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from unittest.mock import patch
 
@@ -46,6 +48,36 @@ class WeeklyReviewTests(unittest.TestCase):
         self.assertEqual(rows[1]['improved'], 'Better consistency')
         with sqlite3.connect(self.path) as conn:
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM weekly_reviews').fetchone()[0], 2)
+
+    def test_status_identifies_missing_due_week_then_clears_after_save(self):
+        from backend.app.services.weekly_reviews import review_status
+        self.save('2026-08-31')
+        conn = db.get_db()
+        try:
+            now = datetime(2026, 9, 14, 8, tzinfo=ZoneInfo('Europe/Warsaw'))
+            status = review_status(conn, now)
+            self.assertEqual(status['due_week'], '2026-09-07')
+            self.assertEqual(status['latest_available_week'], '2026-08-31')
+            self.assertTrue(status['missing'])
+            self.save('2026-09-07')
+            self.assertFalse(review_status(conn, now)['missing'])
+            self.assertEqual(self.client.get('/reviews/weekly/status').status_code, 200)
+        finally:
+            conn.close()
+
+    def test_status_uses_warsaw_sunday_boundary_even_without_reviews(self):
+        from backend.app.services.weekly_reviews import review_status
+        conn = db.get_db()
+        try:
+            for instant, expected in [('2026-09-13T21:58:59+00:00', '2026-08-31'),
+                                      ('2026-09-13T21:59:00+00:00', '2026-09-07'),
+                                      ('2026-10-25T22:59:00+00:00', '2026-10-19')]:
+                status = review_status(conn, datetime.fromisoformat(instant))
+                self.assertEqual(status['due_week'], expected)
+                self.assertTrue(status['missing'])
+                self.assertIsNone(status['latest_available_week'])
+        finally:
+            conn.close()
 
     def test_outcome_preserves_original_suggestion(self):
         self.save()

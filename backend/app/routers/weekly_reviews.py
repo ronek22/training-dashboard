@@ -4,9 +4,18 @@ from fastapi import APIRouter, HTTPException
 
 from ..db import get_db
 from ..models.weekly_reviews import WeeklyReview
-from ..services.weekly_reviews import list_reviews, save_review, review_context
+from ..services.weekly_reviews import list_reviews, save_review, review_context, review_status
 
 router = APIRouter()
+
+
+@router.get('/reviews/weekly/status')
+def get_weekly_review_status():
+    conn = get_db()
+    try:
+        return review_status(conn)
+    finally:
+        conn.close()
 
 
 @router.get('/reviews/weekly')

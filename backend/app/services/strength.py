@@ -704,6 +704,13 @@ def _important_prs(trends: dict[str, list[dict]]) -> list[dict]:
     return ordered
 
 
+def get_strength_sessions_between(conn: sqlite3.Connection, start: date, end: date) -> list[dict]:
+    """Reuse source deduplication and exercise detail for a bounded coaching window."""
+    _, sessions = _filtered_sessions(conn, window_start=start, body_part="all")
+    sessions = [session for session in sessions if start.isoformat() <= session["workout_date"][:10] <= end.isoformat()]
+    return _recent_sessions_with_detail(sessions, limit=len(sessions))
+
+
 def get_strength_overview_data(
     conn: sqlite3.Connection,
     *,

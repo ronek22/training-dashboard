@@ -1117,7 +1117,16 @@ def build_weekly_coaching(
         week_end = max(day["date"] for day in active_plan["days"] if day.get("date"))
 
     generated_at = datetime.now().isoformat()
+    from .coaches import build_team_coaching
+    from .team_analysis import get_analysis, read_saved_analysis
+    from zoneinfo import ZoneInfo
+    team_today = datetime.now(ZoneInfo('Europe/Warsaw')).date()
+    team_week = (team_today - timedelta(days=team_today.weekday())).isoformat()
+    saved_team_state = get_analysis(conn) if read_saved_analysis(conn, team_week) else None
+
     payload = {
+        "team_analysis": {key: saved_team_state[key] for key in ('review', 'stale', 'context_key')} if saved_team_state else None,
+        "team_coaching": build_team_coaching(conn, context=context, recommendation=recommendation, next_sessions=next_sessions),
         "generated_at": generated_at,
         "week_start": week_start,
         "week_end": week_end,

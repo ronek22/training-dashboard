@@ -61,6 +61,29 @@ message, polls the helper while Codex is working, and persists the returned
 coach response. Conversation history therefore survives browser and dashboard
 restarts, while Codex sessions themselves remain ephemeral.
 
+### Debugging coach chat
+
+Coach chat reads the CLI's JSON event stream while the agent is running. The
+chat shows the current stage, elapsed time, and time since the last reported
+activity. Expand the debug details to inspect the model, attempt, job ID, and
+timestamped tool activity. A quiet period means no new events have arrived;
+it does not prove the agent has stopped working. The request still has a shared
+15-minute deadline across model attempts.
+
+Use **Copy diagnostics** to capture the current run for troubleshooting. The
+diagnostics include tool names and statuses, retries, and token counts when
+reported. They exclude prompts, conversation text, reasoning, tool arguments,
+and tool results. The timeline retains at most 100 recent events and reports
+when older events have been dropped. Diagnostics remain available in the
+current chat view after success or failure; they are not saved with conversation
+history and are lost when the helper restarts.
+
+The same structured diagnostics are available from
+`GET http://127.0.0.1:8765/coach-chat/<job_id>`. The local helper log also records
+safe activity events with their job IDs. After updating the helper, restart it
+once existing requests finish to enable live diagnostics for new requests.
+Older helper processes continue to show the original status message.
+
 The helper accepts browser calls only from the local dashboard origins. Codex
 runs from a fresh empty temporary workspace with automatic approval review and
 is explicitly instructed not to edit files, run shell commands, browse, or use

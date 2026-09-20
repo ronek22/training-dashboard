@@ -12,6 +12,7 @@ from ..services.dashboard import (
 from ..services.health_data import get_health_summary
 from ..services.heart_rate_zones import build_recent_heart_rate_zone_summary
 from ..services.settings import get_performance_settings_for_conn
+from ..services.power_trends import get_cycling_power_trends_data
 
 router = APIRouter()
 
@@ -65,6 +66,15 @@ def session_comparisons(days: int = Query(default=180, ge=30, le=365)):
     conn = get_db()
     try:
         return get_session_comparisons(conn, days)
+    finally:
+        conn.close()
+
+
+@router.get("/metrics/cycling-power")
+def cycling_power_trends():
+    conn = get_db()
+    try:
+        return get_cycling_power_trends_data(conn)
     finally:
         conn.close()
 

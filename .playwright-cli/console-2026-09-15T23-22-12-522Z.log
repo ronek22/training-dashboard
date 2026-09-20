@@ -1,0 +1,346 @@
+[     175ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[     176ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[     215ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[     216ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[     216ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/settings/performance:0
+[     216ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[     216ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[     216ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/metrics/weight:0
+[     216ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[     217ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[     273ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:3000/favicon.ico:0
+[     512ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[     513ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[     555ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[     555ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[     556ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[     556ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[     556ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[     556ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[     556ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[    1781ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[  317863ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[  444127ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[  444143ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[  444143ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[  444144ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[  444147ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[  444148ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[  444148ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[  444148ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[  444149ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[  444149ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[  444163ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[  444163ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[  444164ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[  444164ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[  444164ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[  444164ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[  444164ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[  444164ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[  602498ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[  629344ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[  753213ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[  954198ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 1021318ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 1028978ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 1094200ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 1101798ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 1171110ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 1181207ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 1454841ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 1632604ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 1645219ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 1737547ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 1964776ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 2242689ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 2383877ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 2398525ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 2517028ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 2609967ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 2731310ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 2851293ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 2879771ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 3052873ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 3072842ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 3164382ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 3544810ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 3777270ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 4161179ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[ 4161516ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[ 4161518ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[ 4161571ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 4161571ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[ 4161572ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[ 4161572ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[ 4161572ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[ 4161573ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[ 4161573ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[ 4161573ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[ 4616198ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[ 4616487ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[ 4616488ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[ 4616513ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[ 4616514ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[ 4616514ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[ 4616514ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[ 4616514ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[ 4616514ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[ 4616514ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[ 4616514ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[48480443ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[48480901ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[48480901ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[48480943ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[48480943ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[48480943ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[48480944ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[48480944ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[48480944ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[48480944ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[48480944ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[54691797ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[54692210ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[54692211ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[54692262ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[54692263ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[54692263ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[54692263ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[54692264ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[54692264ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[54692267ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[54692267ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[59376089ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[59376443ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[59376446ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[59376478ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[59376480ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[59376480ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[59376480ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[59376480ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[59376480ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[59376481ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[59376481ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[79087186ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[79087571ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[79087574ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[79087617ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[79087617ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[79087617ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[79087617ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[79087617ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[79087617ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[79087618ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[79087618ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[84293678ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[84293899ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[84293899ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[84293929ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[84293929ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[84293930ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[84293930ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[84293930ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[84293930ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[84293930ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[84293930ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[130496567ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[130496767ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[130496768ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[130496801ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[130496801ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[130496802ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[130496802ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[130496802ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[130496802ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[130496802ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[130496802ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[153402887ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[153403290ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[153403293ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[153403356ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[153403356ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[153403356ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[153403357ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[153403357ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[153403357ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[153403357ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[153403357ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[154192652ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[154192907ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[154192907ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[154192932ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[154192932ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[154192934ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[154192934ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[154192934ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[154192934ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[154192934ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[154192934ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[154515645ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[154515803ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[154515804ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[154515852ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[154515854ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[154515854ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[154515854ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[154515854ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[154515854ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[154515855ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[154515855ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[154595701ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[154595935ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[154595936ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[154595963ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[154595964ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[154595964ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[154595964ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[154595964ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[154595964ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[154595965ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[154595965ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[222652108ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[222652457ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[222652459ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[222652488ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[222652489ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[222652489ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[222652489ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[222652489ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[222652490ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[222652490ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[222652490ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[234788516ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[234788723ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[234788723ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[234788748ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[234788748ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[234788749ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[234788749ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[234788749ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[234788750ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[234788750ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[234788750ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[237441462ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[237441682ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[237441682ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[237441706ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[237441706ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[237441706ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[237441707ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[237441707ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[237441707ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[237441707ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[237441707ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[238810611ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[238811039ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[238811039ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[238811081ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[238811083ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[238811083ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[238811083ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[238811083ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[238811083ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[238811083ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[238811083ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[301883851ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[301884031ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[301884033ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[301884062ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[301884062ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[301884063ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[301884063ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[301884063ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[301884063ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[301884063ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[301884063ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[310292555ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[310292699ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[310292700ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[310292728ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[310292729ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[310292729ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[310292730ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[310292730ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[310292730ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[310292730ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[310292730ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[312618037ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[312618333ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[312618334ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[312618359ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[312618360ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[312618360ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[312618360ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[312618360ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[312618361ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[312618361ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[312618361ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[320060846ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[320061068ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[320061068ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[320061092ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[320061093ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[320061093ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[320061093ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[320061093ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[320061094ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[320061094ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[320061094ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[321927948ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[321929169ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[321929173ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[321929397ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[321929402ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[321929402ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[321929402ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[321929402ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[321929402ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[321929410ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[321929410ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[324260804ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[324261273ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[324261277ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[324261323ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[324261323ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[324261324ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[324261325ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[324261325ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[324261325ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[324261325ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[324261325ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[381800012ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[381800273ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[381800274ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[381800327ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[381800327ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[381800327ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[381800329ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[381800329ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[381800329ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[381800330ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[381800330ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[383805762ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[383805920ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[383805921ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[383805960ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[383805960ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[383805964ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[383805964ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[383805964ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[383805964ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[383805965ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[383805965ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[385042460ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[385042689ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/dashboard:0
+[385042690ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[385042730ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[385042731ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/performance-summary:0
+[385042731ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/settings/performance:0
+[385042731ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/plans/weekly/trends?weeks=4:0
+[385042731ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/health-summary?days=90:0
+[385042731ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/weight:0
+[385042732ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/ftp:0
+[385042732ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/training-history:0
+[385942614ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[386317179ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0
+[386341539ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:3000/api/metrics/cycling-power:0

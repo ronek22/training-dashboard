@@ -36,8 +36,10 @@ class ReviewedExercise(BaseModel):
             raise ValueError("Locations must be normalized, explicit names.")
         return self
 
-STOP = "Stop if pain increases, movement hurts, or new symptoms appear. Do not force the range. If symptoms remain worse afterwards or the next morning, pause and seek advice."
+STOP = "Stop if pain increases, movement hurts, or new symptoms appear. Do not force the range. Pause the exercise if symptoms remain worse afterwards or the next morning."
 KNEE_SOURCE = "https://www.merseycare.nhs.uk/download_file/view/487/738"
+FLEXIBILITY_SOURCE = "https://www.nhs.uk/live-well/exercise/flexibility-exercises/"
+SHOULDER_SOURCE = "https://www.leedsth.nhs.uk/patients/resources/shoulder-exercises/"
 SITTING_SOURCE = "https://www.nhs.uk/live-well/exercise/sitting-exercises/"
 
 
@@ -69,6 +71,24 @@ EXERCISES = (
     entry("neck-rotation", ["neck"], "Comfortable neck rotation",
           "Maintain neck mobility.",
           "Sit tall with relaxed shoulders. Turn your head gently to one side, hold, then return to centre. Repeat each side without forcing the turn.", SITTING_SOURCE, 3, 5),
+    {**entry("back-seated-twist", ["upper back"], "Seated upper-body turn",
+          "Maintain upper-back mobility.",
+          "Sit with both feet resting on the floor and fold your arms across your chest. Keep your hips still while gently turning your chest left, then right. Repeat each side within a comfortable range.", SITTING_SOURCE, 5, 5),
+     "source_checked_on": "2026-09-14"},
+    {**entry("back-side-bend", ["lower back"], "Gentle standing side bend",
+          "Maintain lower-back flexibility.",
+          "Stand with feet hip-width apart. Slide one hand down the same-side leg, bending sideways only as far as comfortable. Return upright and repeat on the other side.", FLEXIBILITY_SOURCE, 3, 2),
+     "equipment": "No equipment", "source_checked_on": "2026-09-14"},
+    {**entry("calf-wall-stretch", ["calves"], "Supported calf stretch",
+          "Ease calf tightness with a gentle stretch.",
+          "Rest your hands against a wall. Step one foot back with that leg straight and heel down; bend your front knee. Gently shift forward, then release. Repeat on each side without forcing the stretch.", FLEXIBILITY_SOURCE, 3),
+     "equipment": "Wall", "source_checked_on": "2026-09-14"},
+    {**entry("shoulder-posture", ["shoulder"], "Shoulder-blade squeeze",
+          "Gently move the shoulder blades and practise upright posture.",
+          "Stand upright with your arms resting by your sides. Gently draw your shoulders back and bring your shoulder blades towards one another. Hold, then release. Skip this movement if it increases your symptoms.", SHOULDER_SOURCE, 5, 20),
+     "equipment": "No equipment", "source_publisher": "Leeds Teaching Hospitals NHS Trust",
+     "source_checked_on": "2026-09-14"},
+
 )
 
 
@@ -92,5 +112,9 @@ def matches_location(entry, location):
     words = set(re.findall(r"[a-z]+", location.lower()))
     aliases = {"knee": {"knee", "knees"}, "quads": {"quad", "quads", "quadriceps", "thigh", "thighs"},
                "calves": {"calf", "calves"}, "ankle": {"ankle", "ankles"},
-               "hip": {"hip", "hips"}, "neck": {"neck"}}
-    return any(words & aliases.get(area, {area}) for area in entry["locations"])
+               "hip": {"hip", "hips"}, "neck": {"neck"},
+               "shoulder": {"shoulder", "shoulders"}}
+    # Multi-word areas must match together; an upper-back exercise should not
+    # be selected simply because the athlete wrote "lower back".
+    return any((set(area.split()) <= words if " " in area else bool(words & aliases.get(area, {area})))
+               for area in entry["locations"])

@@ -1,6 +1,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
+  color-scheme: dark;
   --bg: #0b1018;
   --bg-elevated: #101725;
   --surface: rgba(18, 25, 39, 0.88);
@@ -46,10 +47,11 @@ html {
     radial-gradient(circle at top left, rgba(95, 140, 255, 0.08), transparent 28%),
     radial-gradient(circle at top right, rgba(31, 190, 141, 0.07), transparent 22%),
     linear-gradient(180deg, #09111b, #0b1018 30%, #0c121c 100%);
+  background-color: var(--bg);
 }
 
 body {
-  background: transparent;
+  background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
   font-size: 14px;
@@ -813,4 +815,11 @@ tr:hover td { background: var(--surface2); }
   .skeleton-pill::after {
     animation: none !important;
   }
+}
+
+/* Comfortable touch controls and no input zoom on iPhone. */
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px !important; }
+  button, a { touch-action: manipulation; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; }
 }

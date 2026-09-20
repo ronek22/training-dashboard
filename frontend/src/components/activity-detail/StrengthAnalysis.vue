@@ -17,6 +17,7 @@
         <nav class="exercise-roster" aria-label="Workout exercises"><button v-for="(exercise, index) in session.exercises" :key="exercise.id" type="button" :class="{active: activeExercise?.id === exercise.id}" :aria-pressed="activeExercise?.id === exercise.id" @click="selectedExerciseId = exercise.id"><span class="roster-number">{{ String(index + 1).padStart(2, '0') }}</span><span><strong>{{ exercise.exercise_name }}</strong><small>{{ exerciseWorkingSets(exercise).length }} working sets · {{ muscleLabel(exercise.exercise_name) }}</small></span><span class="roster-arrow" aria-hidden="true">›</span></button></nav>
         <article v-if="activeExercise" class="selected-lift-log" aria-labelledby="selected-lift-heading">
           <header><span class="lift-log-kicker">Exercise {{ session.exercises.indexOf(activeExercise) + 1 }} / {{ session.exercises.length }}</span><h3 id="selected-lift-heading">{{ activeExercise.exercise_name }}</h3><dl class="lift-session-stats"><div><dt>Working sets</dt><dd>{{ exerciseWorkingSets(activeExercise).length }}</dd></div><div><dt>Top working load</dt><dd>{{ topWorkingLoad == null ? '—' : `${number(topWorkingLoad)} kg` }}</dd></div><div><dt>Working reps</dt><dd>{{ workingReps }}</dd></div></dl></header>
+          <ExerciseGuide :name="activeExercise.exercise_name" />
           <div v-if="warmupSets.length" class="warmup-strip"><span>Warm-up</span><strong v-for="set in warmupSets" :key="set.id">{{ set.reps ?? '—' }} × {{ set.weight_kg == null ? 'unrecorded load' : `${number(set.weight_kg)} kg` }}</strong></div>
           <table class="working-set-table"><caption class="sr-only">{{ activeExercise.exercise_name }} working sets</caption><thead><tr><th scope="col">Set</th><th scope="col">Reps</th><th scope="col">Load</th><th scope="col">Volume</th></tr></thead><tbody><tr v-for="set in exerciseWorkingSets(activeExercise)" :key="set.id"><th scope="row"><span class="set-check" aria-hidden="true">✓</span>{{ set.set_order }}</th><td>{{ set.reps ?? '—' }}</td><td>{{ set.weight_kg == null ? 'Not recorded' : `${number(set.weight_kg)} kg` }}</td><td>{{ set.reps != null && set.weight_kg != null ? formatVolume(set.reps * set.weight_kg) : '—' }}</td></tr></tbody></table>
           <p v-if="!exerciseWorkingSets(activeExercise).length" class="lift-log-note">No working sets recorded for this exercise.</p><p class="lift-log-note">{{ activeExercise.total_volume_kg ? `${formatVolume(activeExercise.total_volume_kg)} total recorded volume, including any loaded warm-ups.` : 'No external-load volume recorded. Bodyweight and untracked sets remain in the log.' }}</p>
@@ -88,6 +89,7 @@
 </template>
 
 <script setup>
+import ExerciseGuide from '../ExerciseGuide.vue'
 import { computed, ref } from 'vue'
 import StrengthMuscleMap from './StrengthMuscleMap.vue'
 import { classifyExercise, MUSCLES } from '../../activity-detail/muscles.mjs'

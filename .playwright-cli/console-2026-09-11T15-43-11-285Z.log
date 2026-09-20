@@ -4,3 +4,11 @@
 [182402844ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3000/@vite/client:559
 [230757916ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3000/@vite/client:559
 [234178620ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3000/@vite/client:559
+[238577413ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3000/@vite/client:559
+[241428748ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3000/@vite/client:559
+[242716731ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3000/@vite/client:559
+[244198396ms] [ERROR] Blocked autofocusing on a <input> element in a cross-origin subframe. @ https://web.hop.earth/auth/authenticate:347
+[244198397ms] [ERROR] Blocked autofocusing on a <input> element in a cross-origin subframe. @ https://web.hop.earth/auth/authenticate:409
+[244198520ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ https://web.hop.earth/auth/authenticate:0
+[244198520ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ https://web.hop.earth/auth/authenticate:0
+[244198708ms] [WARNING] Mangled key incorrect: ptr overriding: zo @ https://hop.earth/assets/scripts/ammoworker.js:53

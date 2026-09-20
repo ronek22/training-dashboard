@@ -32,6 +32,14 @@
       <div v-if="error" class="card error-card" role="alert">{{ error }}</div>
 
       <template v-if="session.status === 'active' && currentExercise && currentSet">
+        <RecoveryTimerPill
+          :remaining="restRemaining"
+          :clock="formatClock(restRemaining)"
+          :progress-style="restProgressStyle"
+          :sound-enabled="soundEnabled"
+          :disabled="changingWorkout"
+          @toggle-sound="toggleSound"
+        />
         <section class="runner-console motion-section">
           <div class="work-zone">
             <div class="rest-banner card" :class="{ recovering: restRemaining > 0 }">
@@ -59,6 +67,8 @@
                   <p>{{ currentExercise.notes || 'Record what you actually performed.' }}</p>
                 </div>
               </div>
+
+              <ExerciseGuide :key="currentExercise.id" :name="currentExercise.exercise_name" />
 
               <div class="target-row">
                 <span class="target-label">Planned</span>
@@ -283,6 +293,8 @@
 </template>
 
 <script setup>
+import RecoveryTimerPill from '../components/RecoveryTimerPill.vue'
+import ExerciseGuide from '../components/ExerciseGuide.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'

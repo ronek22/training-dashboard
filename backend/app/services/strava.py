@@ -17,7 +17,8 @@ STRAVA_ACTIVITY_DETAIL_URL = "https://www.strava.com/api/v3/activities/{activity
 STRAVA_ACTIVITY_STREAMS_URL = "https://www.strava.com/api/v3/activities/{activity_id}/streams"
 STRAVA_PAGE_SIZE = 100
 STRAVA_STREAM_FETCH_LIMIT = 12
-STRAVA_STREAM_RECENT_DAYS = 120
+# Stream backfill is intentionally all-time. The per-run fetch limit keeps a
+# sync bounded while repeated backfills can progressively cover older history.
 STRAVA_DETAIL_STREAM_KEYS = "time,distance,latlng,altitude,heartrate,watts,velocity_smooth,cadence,grade_smooth"
 
 
@@ -410,7 +411,6 @@ def stream_fetch_candidates(conn: sqlite3.Connection, activities: list[dict], li
     if not activities:
         return []
 
-    cutoff = datetime.now().date() - timedelta(days=STRAVA_STREAM_RECENT_DAYS)
     activity_ids = [activity["id"] for activity in activities]
     placeholders = ",".join("?" for _ in activity_ids)
     existing_rows = conn.execute(
@@ -425,10 +425,7 @@ def stream_fetch_candidates(conn: sqlite3.Connection, activities: list[dict], li
             continue
         if activity["type"] not in {"Run", "Ride", "VirtualRide"}:
             continue
-        if not activity.get("avg_hr") and not activity.get("avg_watts"):
-            continue
-        activity_date = datetime.strptime(activity["date"], "%Y-%m-%d").date()
-        if activity_date < cutoff:
+        if activity["type"] == "Run" and not activity.get("avg_hr"):
             continue
         priority = 0
         if activity["type"] in {"Ride", "VirtualRide"} and activity.get("avg_watts"):
@@ -469,9 +466,10 @@ def upsert_activity_detail_stream_cache(conn: sqlite3.Connection, activity_id: s
     )
 
 
-def _stream_backfill_candidate_count(conn: sqlite3.Connection) -> int:
+def _stream_backfill_candidate_count(conn: sqlite3.Connection, *, cycling_only: bool = False) -> int:
+    type_clause = "AND a.type IN ('Ride', 'VirtualRide')" if cycling_only else ""
     row = conn.execute(
-        """
+        f"""
         SELECT COUNT(*) AS count
         FROM activities a
         LEFT JOIN activity_stream_summaries s ON s.activity_id = a.id
@@ -479,20 +477,24 @@ def _stream_backfill_candidate_count(conn: sqlite3.Connection) -> int:
         LEFT JOIN activity_source_refs sr ON sr.activity_id = a.id AND sr.source = 'strava'
         WHERE (s.activity_id IS NULL OR d.streams_json IS NULL)
           AND a.type IN ('Run', 'Ride', 'VirtualRide')
-          AND a.date >= ?
-          AND (a.avg_hr IS NOT NULL OR a.avg_watts IS NOT NULL)
+          AND (a.type IN ('Ride', 'VirtualRide') OR a.avg_hr IS NOT NULL)
           AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%')
+          {type_clause}
         """,
-        ((datetime.now().date() - timedelta(days=STRAVA_STREAM_RECENT_DAYS)).isoformat(),),
     ).fetchone()
     return int(row["count"] or 0) if row else 0
 
 
-def list_stream_backfill_candidates(conn: sqlite3.Connection, limit: int = STRAVA_STREAM_FETCH_LIMIT) -> list[dict]:
+def list_stream_backfill_candidates(
+    conn: sqlite3.Connection,
+    limit: int = STRAVA_STREAM_FETCH_LIMIT,
+    *,
+    cycling_only: bool = False,
+) -> list[dict]:
     safe_limit = max(1, min(limit, 50))
-    cutoff = (datetime.now().date() - timedelta(days=STRAVA_STREAM_RECENT_DAYS)).isoformat()
+    type_clause = "AND a.type IN ('Ride', 'VirtualRide')" if cycling_only else ""
     rows = conn.execute(
-        """
+        f"""
         SELECT
             a.id,
             COALESCE(sr.external_id, CASE WHEN a.id NOT LIKE 'healthfit:%' THEN a.id END) AS strava_id,
@@ -510,9 +512,9 @@ def list_stream_backfill_candidates(conn: sqlite3.Connection, limit: int = STRAV
         LEFT JOIN activity_source_refs sr ON sr.activity_id = a.id AND sr.source = 'strava'
         WHERE (s.activity_id IS NULL OR d.streams_json IS NULL)
           AND a.type IN ('Run', 'Ride', 'VirtualRide')
-          AND a.date >= ?
-          AND (a.avg_hr IS NOT NULL OR a.avg_watts IS NOT NULL)
+          AND (a.type IN ('Ride', 'VirtualRide') OR a.avg_hr IS NOT NULL)
           AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%')
+          {type_clause}
         ORDER BY
           CASE
             WHEN a.type IN ('Ride', 'VirtualRide') AND a.avg_watts IS NOT NULL THEN 3
@@ -523,7 +525,7 @@ def list_stream_backfill_candidates(conn: sqlite3.Connection, limit: int = STRAV
           a.date DESC
         LIMIT ?
         """,
-        (cutoff, safe_limit),
+        (safe_limit,),
     ).fetchall()
     return [dict(row) for row in rows]
 
@@ -656,7 +658,11 @@ def backfill_strava_streams_data(
     estimate_thresholds_fn: Callable[[sqlite3.Connection], dict],
     intensity_bucket_from_hr_fn: Callable[[Optional[int], int, int], str],
 ) -> dict:
-    candidates = list_stream_backfill_candidates(conn, limit=payload.limit or STRAVA_STREAM_FETCH_LIMIT)
+    candidates = list_stream_backfill_candidates(
+        conn,
+        limit=payload.limit or STRAVA_STREAM_FETCH_LIMIT,
+        cycling_only=bool(payload.cycling_only),
+    )
     streams_fetched = 0
     if candidates:
         access_token = get_strava_access_token(get_setting_fn, set_setting_fn)
@@ -673,5 +679,5 @@ def backfill_strava_streams_data(
     return {
         "scanned": len(candidates),
         "streams_fetched": streams_fetched,
-        "remaining_candidates": _stream_backfill_candidate_count(conn),
+        "remaining_candidates": _stream_backfill_candidate_count(conn, cycling_only=bool(payload.cycling_only)),
     }

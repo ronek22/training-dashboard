@@ -25,9 +25,10 @@ class RecoveryHelperTests(unittest.TestCase):
                 recovery_helper.parse_result(raw)
             self.assertNotIn("sensitive", str(exc.exception))
 
-    def test_extraction_contract_keeps_unknown_answers_unknown(self):
+    def test_tracking_prompt_keeps_unknown_answers_unknown(self):
         prompt = recovery_helper.build_prompt({})
-        self.assertIn("SPARSE", prompt)
+        self.assertIn("proposed_intake as null", prompt)
+        self.assertIn("Do not ask them to confirm an intake summary", prompt)
         self.assertIn("Do not infer negative warning signs", prompt)
         payload = {"summary": "Reported soreness.", "question_ids": [], "concern": "none", "exercises": [],
                    "proposed_intake": {"severity": 3}, "intake_evidence": {"severity": "3/10"}}

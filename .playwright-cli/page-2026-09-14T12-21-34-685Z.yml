@@ -1,0 +1,183 @@
+- generic [ref=f65e3]:
+  - complementary [ref=f65e4]:
+    - generic [ref=f65e5]:
+      - generic [ref=f65e6]: TL
+      - generic [ref=f65e7]:
+        - generic [ref=f65e8]: TrainLog
+        - generic [ref=f65e9]: Performance
+    - navigation [ref=f65e10]:
+      - generic [ref=f65e11]: Today
+      - link "Dashboard" [ref=f65e12] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f65e16]: Training
+      - link "Plan" [ref=f65e17] [cursor=pointer]:
+        - /url: /plan
+      - link "Calendar" [ref=f65e21] [cursor=pointer]:
+        - /url: /calendar
+      - link "Goals" [ref=f65e25] [cursor=pointer]:
+        - /url: /goals
+      - link "Strength" [ref=f65e29] [cursor=pointer]:
+        - /url: /strength
+      - link "Recovery" [ref=f65e33] [cursor=pointer]:
+        - /url: /recovery
+      - generic [ref=f65e37]: Review
+      - link "Activities" [ref=f65e38] [cursor=pointer]:
+        - /url: /activities
+      - link "Trends" [ref=f65e42] [cursor=pointer]:
+        - /url: /metrics
+      - link "Coach Notes" [ref=f65e46] [cursor=pointer]:
+        - /url: /notes
+      - generic [ref=f65e50]: System
+      - link "Data & Sync" [ref=f65e51] [cursor=pointer]:
+        - /url: /sync
+      - link "Roadmap" [ref=f65e55] [cursor=pointer]:
+        - /url: /roadmap
+      - link "Ideas" [ref=f65e59] [cursor=pointer]:
+        - /url: /ideas
+    - 'region "Gdańsk: Clear, 18 degrees Celsius. Dry next 6h." [ref=f65e64]':
+      - generic [ref=f65e65]:
+        - generic [aria-hidden] [ref=f65e66]: ☀️
+        - generic [ref=f65e67]:
+          - strong [ref=f65e68]: 18°
+          - generic [ref=f65e69]: Clear
+        - button "Use my current location for weather" [ref=f65e70] [cursor=pointer]
+      - generic [ref=f65e75]:
+        - generic [ref=f65e76]: Gdańsk
+        - generic [ref=f65e77]: Dry next 6h
+        - link "Open-Meteo" [ref=f65e78] [cursor=pointer]:
+          - /url: https://open-meteo.com/
+  - main [ref=f65e79]:
+    - generic [ref=f65e80]:
+      - navigation "Workout studio views" [ref=f65e100]:
+        - button "Workout library" [ref=f65e101] [cursor=pointer]
+        - button "New workout Draft" [ref=f65e134] [cursor=pointer]:
+          - text: New workout
+          - generic [ref=f65e135]: Draft
+      - generic [ref=f65e136]:
+        - generic [ref=f65e137]:
+          - generic [ref=f65e138]:
+            - generic [ref=f65e139]: Exercise library
+            - heading "Add exercises" [active] [level=1] [ref=f65e204]
+            - paragraph [ref=f65e141]: Choose movements for your workout, then return to review your sets.
+          - button "← Back to workout" [ref=f65e205]
+        - region [ref=f65e206]:
+          - generic [ref=f65e207]:
+            - generic [ref=f65e208]:
+              - text: Build around a muscle
+              - heading "Find your next exercise" [level=2] [ref=f65e209]
+              - paragraph [ref=f65e210]: Select a muscle on the body or choose a group below.
+            - generic [ref=f65e211]: Adding to your new workout
+          - generic [ref=f65e212]:
+            - generic [ref=f65e213]:
+              - generic "Exercise explorer body view" [ref=f65e214]:
+                - button "front" [pressed] [ref=f65e215] [cursor=pointer]
+                - button "back" [ref=f65e216] [cursor=pointer]
+              - 'img "Front muscle view. Chest: primary" [ref=f65e217]':
+                - generic [ref=f65e220]:
+                  - generic [ref=f65e221] [cursor=pointer]
+                  - generic [ref=f65e222] [cursor=pointer]
+                  - generic [ref=f65e223] [cursor=pointer]
+                  - generic [ref=f65e224] [cursor=pointer]
+                  - generic [ref=f65e225] [cursor=pointer]
+                  - generic [ref=f65e226] [cursor=pointer]
+                  - generic [ref=f65e227] [cursor=pointer]
+                  - generic [ref=f65e228] [cursor=pointer]
+                  - generic [ref=f65e229] [cursor=pointer]
+                - generic [ref=f65e231]:
+                  - generic [ref=f65e232] [cursor=pointer]
+                  - generic [ref=f65e233] [cursor=pointer]
+                  - generic [ref=f65e234] [cursor=pointer]
+                  - generic [ref=f65e235] [cursor=pointer]
+                  - generic [ref=f65e236] [cursor=pointer]
+                  - generic [ref=f65e237] [cursor=pointer]
+                  - generic [ref=f65e238] [cursor=pointer]
+                  - generic [ref=f65e239] [cursor=pointer]
+                  - generic [ref=f65e240] [cursor=pointer]
+              - strong [ref=f65e244]: Chest
+              - generic [ref=f65e245]: Selected muscle group
+            - generic [ref=f65e246]:
+              - generic "Choose muscle group" [ref=f65e247]:
+                - button "Chest" [pressed] [ref=f65e248] [cursor=pointer]
+                - button "Shoulders" [ref=f65e249] [cursor=pointer]
+                - button "Triceps" [ref=f65e250] [cursor=pointer]
+                - button "Biceps" [ref=f65e251] [cursor=pointer]
+                - button "Forearms" [ref=f65e252] [cursor=pointer]
+                - button "Upper back" [ref=f65e253] [cursor=pointer]
+                - button "Lats" [ref=f65e254] [cursor=pointer]
+                - button "Lower back" [ref=f65e255] [cursor=pointer]
+                - button "Abs" [ref=f65e256] [cursor=pointer]
+                - button "Obliques" [ref=f65e257] [cursor=pointer]
+                - button "Glutes" [ref=f65e258] [cursor=pointer]
+                - button "Quads" [ref=f65e259] [cursor=pointer]
+                - button "Hamstrings" [ref=f65e260] [cursor=pointer]
+                - button "Adductors" [ref=f65e261] [cursor=pointer]
+                - button "Calves" [ref=f65e262] [cursor=pointer]
+              - generic [ref=f65e263]:
+                - generic [ref=f65e264]:
+                  - generic [ref=f65e265]: Search chest exercises
+                  - searchbox "Search chest exercises" [ref=f65e266]
+                - generic [ref=f65e267] [cursor=pointer]:
+                  - checkbox "Include supporting muscles" [ref=f65e268]
+                  - text: Include supporting muscles
+              - generic [ref=f65e269]:
+                - heading "Chest exercises" [level=3] [ref=f65e270]
+                - status [ref=f65e271]: 4 matches
+              - generic [ref=f65e272]:
+                - article [ref=f65e273]:
+                  - generic [ref=f65e274]:
+                    - generic [ref=f65e275]:
+                      - heading "Barbell Bench Press" [level=4] [ref=f65e276]
+                      - paragraph [ref=f65e277]: Primary · Exercise library
+                    - button "Add Barbell Bench Press" [ref=f65e278] [cursor=pointer]: + Add
+                  - group [ref=f65e279]:
+                    - generic "Exercise guide How to perform Barbell Bench Press - Medium Grip" [ref=f65e280] [cursor=pointer]:
+                      - generic [ref=f65e281]:
+                        - generic [ref=f65e282]: Exercise guide
+                        - generic [ref=f65e283]: How to perform
+                        - generic [ref=f65e284]: Barbell Bench Press - Medium Grip
+                      - generic [aria-hidden] [ref=f65e287]: ⌄
+                - article [ref=f65e288]:
+                  - generic [ref=f65e289]:
+                    - generic [ref=f65e290]:
+                      - heading "Cable Chest Fly" [level=4] [ref=f65e291]
+                      - paragraph [ref=f65e292]: Primary · Exercise library
+                    - button "Add Cable Chest Fly" [ref=f65e293] [cursor=pointer]: + Add
+                  - group [ref=f65e294]:
+                    - generic "Exercise guide How to perform Cable Crossover" [ref=f65e295] [cursor=pointer]:
+                      - generic [ref=f65e296]:
+                        - generic [ref=f65e297]: Exercise guide
+                        - generic [ref=f65e298]: How to perform
+                        - generic [ref=f65e299]: Cable Crossover
+                      - generic [aria-hidden] [ref=f65e302]: ⌄
+                - article [ref=f65e303]:
+                  - generic [ref=f65e304]:
+                    - generic [ref=f65e305]:
+                      - heading "Dumbbell Bench Press" [level=4] [ref=f65e306]
+                      - paragraph [ref=f65e307]: Primary · Exercise library
+                    - button "Add Dumbbell Bench Press" [ref=f65e308] [cursor=pointer]: + Add
+                  - group [ref=f65e309]:
+                    - generic "Exercise guide How to perform Dumbbell Bench Press" [ref=f65e310] [cursor=pointer]:
+                      - generic [ref=f65e311]:
+                        - generic [ref=f65e312]: Exercise guide
+                        - generic [ref=f65e313]: How to perform
+                        - generic [ref=f65e314]: Dumbbell Bench Press
+                      - generic [aria-hidden] [ref=f65e317]: ⌄
+                - article [ref=f65e318]:
+                  - generic [ref=f65e319]:
+                    - generic [ref=f65e320]:
+                      - heading "Push-up" [level=4] [ref=f65e321]
+                      - paragraph [ref=f65e322]: Primary · Exercise library
+                    - button "Add Push-up" [ref=f65e323] [cursor=pointer]: + Add
+                  - group [ref=f65e324]:
+                    - generic "Exercise guide How to perform Pushups" [ref=f65e325] [cursor=pointer]:
+                      - generic [ref=f65e326]:
+                        - generic [ref=f65e327]: Exercise guide
+                        - generic [ref=f65e328]: How to perform
+                        - generic [ref=f65e329]: Pushups
+                      - generic [aria-hidden] [ref=f65e332]: ⌄
+              - paragraph [ref=f65e333]: Muscle involvement is estimated from exercise names. Add exercises to your draft, review sets and load, then save your workout.
+        - generic [ref=f65e334]:
+          - button "Add custom exercise" [ref=f65e335]
+          - button "Done · 0 exercises" [ref=f65e336]
+  - button "Coach" [ref=f65e131] [cursor=pointer]:
+    - generic [aria-hidden] [ref=f65e132]: ✦

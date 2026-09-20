@@ -35,7 +35,7 @@
       <div class="sync-action-row"><div><strong>{{ stravaStatus.latest_activity_date ? 'Continue where you left off' : 'Start your activity history' }}</strong><p>{{ stravaRangeLabel }}</p></div><button class="import-btn" :disabled="importing || !canImport || pageLoading" @click="runImport">{{ importing ? 'Syncing…' : 'Sync activities' }}<span aria-hidden="true"> ↻</span></button></div>
       <details class="sync-details"><summary>Choose a date range<span v-if="importForm.start_date || importForm.end_date">Custom range selected</span></summary><div class="import-form"><label><span>Start date</span><input v-model="importForm.start_date" type="date"></label><label><span>End date</span><input v-model="importForm.end_date" type="date" :min="importForm.start_date || undefined"></label><button type="button" class="feedback-btn" @click="importForm.start_date = ''; importForm.end_date = ''">Reset to automatic</button></div></details>
       <p v-if="importForm.start_date && importForm.end_date && importForm.start_date > importForm.end_date" class="import-hint" role="alert">End date must be on or after the start date.</p>
-      <div v-if="stravaStatus.configured" class="stream-row"><div><strong>{{ stravaStatus.pending_stream_backfill || 0 }} activities missing detailed data</strong><p>Heart-rate and power samples improve activity charts and load analysis.</p></div><button class="import-btn import-btn-secondary" :disabled="backfilling || !canImport || !stravaStatus.pending_stream_backfill" @click="runStreamBackfill">{{ backfilling ? 'Fetching details…' : `Fetch next ${stravaStatus.stream_fetch_limit || 12}` }}</button></div>
+      <div v-if="stravaStatus.configured" class="stream-row"><div><strong>{{ stravaStatus.pending_stream_backfill || 0 }} activities missing detailed data</strong><p>Heart-rate and power samples improve activity charts and load analysis.</p></div><div class="stream-actions"><button class="import-btn import-btn-secondary" :disabled="backfilling || !canImport || !stravaStatus.pending_stream_backfill" @click="runStreamBackfill">{{ backfilling ? 'Fetching details…' : `Fetch next ${stravaStatus.stream_fetch_limit || 12}` }}</button><button class="import-btn import-btn-secondary" :disabled="backfilling || !canImport" @click="runAllCyclingBackfill">{{ backfilling ? 'Loading cycling history…' : 'Fetch all cycling power' }}</button></div></div>
       <p v-if="importMessage" class="import-message" role="status">{{ importMessage }}</p>
       <details v-if="!pageLoading && !stravaStatus.configured" class="sync-details"><summary>Connect Strava</summary><p class="import-hint">Add your Strava credentials to the backend configuration: <code>STRAVA_CLIENT_ID</code>, <code>STRAVA_CLIENT_SECRET</code>, and <code>STRAVA_REFRESH_TOKEN</code>.</p></details>
       <p v-if="stravaStatus.configured && stravaStatus.last_import_at" class="import-hint">Last import: {{ formatDateTime(stravaStatus.last_import_at) }}</p>
@@ -475,6 +475,27 @@ const runStreamBackfill = async () => {
   }
 }
 
+const runAllCyclingBackfill = async () => {
+  backfilling.value = true
+  importMessage.value = ''
+  let fetched = 0
+  let remaining = 0
+  try {
+    for (let batch = 0; batch < 20; batch += 1) {
+      const { data } = await api.backfillStravaStreams({ limit: 50, cycling_only: true })
+      fetched += data.streams_fetched || 0
+      remaining = data.remaining_candidates || 0
+      importMessage.value = `Cycling power history: fetched ${fetched}. ${remaining} cycling activities remain.`
+      if (!data.scanned || !remaining || !data.streams_fetched) break
+    }
+    await Promise.all([loadActivities(), loadStravaStatus()])
+  } catch (error) {
+    importMessage.value = error?.response?.data?.detail || 'Cycling power backfill failed.'
+  } finally {
+    backfilling.value = false
+  }
+}
+
 const handleFitbodFileChange = (event) => {
   fitbodFile.value = event?.target?.files?.[0] || null
 }
@@ -779,4 +800,6 @@ const formatSeconds = (value) => {
 @media(max-width:1050px){.source-switcher{grid-template-columns:repeat(2,minmax(0,1fr))}.source-top{margin-bottom:14px}.source-foot{margin-top:18px}}
 @media(max-width:700px){.page-header,.sources-heading,.sync-action-row,.stream-row{align-items:stretch;flex-direction:column}.page-header{margin-bottom:28px}.back-link{align-self:flex-start}.sources-heading p{max-width:none}.source-switcher{gap:8px}.source-switcher button{padding:14px;border-radius:12px}.source-symbol{width:29px;height:29px;font-size:18px}.source-status{font-size:9px}.source-switcher button>strong{font-size:16px}.source-purpose,.source-foot{font-size:10px}.import-card{padding:20px}.import-header{flex-direction:column;gap:12px}.import-header>.status-pill{align-self:flex-start}.import-header h2{font-size:21px}.fitbod-summary-grid{grid-template-columns:1fr}.fitbod-summary-card,.fitbod-summary-card:first-child{padding:14px 0;border:0;border-bottom:1px solid var(--border)}.fitbod-session-head{flex-direction:column}.fitbod-linker{align-items:stretch}.import-form>label{width:100%}.import-form input{min-width:0}.page-title{font-size:30px}}
 
+.stream-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:700px){.stream-actions{justify-content:stretch}.stream-actions .import-btn{flex:1}}
 </style>

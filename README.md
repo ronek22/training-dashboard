@@ -8,6 +8,11 @@ See [docs/README.md](docs/README.md) for planning and decision documents, includ
 
 Spec Kit is configured for this project. See [the workflow guide](docs/spec-kit.md) for the skill sequence and artifact locations.
 
+## iPhone access
+
+Use TrainLog as a Home Screen web app on the same Wi-Fi as your Mac. See the
+[iPhone setup guide](docs/iphone.md) for `just phone`, installation, and local-network behavior.
+
 ## Stack
 
 - **Backend**: FastAPI + SQLite (Python)
@@ -311,11 +316,20 @@ The backend can still compute the legacy consecutive-day streak for compatibilit
 
 ## Development
 
+Strength exercise guides are available in the exercise picker, workout builder,
+live workout runner, and lift details. They use bundled exercise illustrations from
+[Workout Guide](https://github.com/bryllim/workout-guide), with optional
+frame-by-frame playback and written instructions. Unknown exercise names are left unmatched;
+guides never substitute a guessed variation. Assets and source attribution live
+in `frontend/public/exercise-guides/`.
+
 Backend hot-reloads automatically. For frontend changes:
 ```bash
 docker compose up
 ```
-Changes to `frontend/src/` reflect immediately.
+Changes to `frontend/src/` and `frontend/public/` reflect immediately. Recreate
+an existing frontend container once to pick up the public-assets mount:
+`docker compose up -d --force-recreate frontend`.
 
 To reset all data:
 ```bash

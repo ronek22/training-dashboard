@@ -18,6 +18,7 @@ class StravaImportResult(BaseModel):
 
 class StravaStreamBackfillRequest(BaseModel):
     limit: Optional[int] = 12
+    cycling_only: bool = False
 
 
 class StravaStreamBackfillResult(BaseModel):

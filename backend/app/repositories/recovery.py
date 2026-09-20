@@ -50,10 +50,17 @@ def init_recovery_schema(conn):
             note TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS recovery_status_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            issue_id INTEGER NOT NULL REFERENCES recovery_issues(id) ON DELETE CASCADE,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE INDEX IF NOT EXISTS recovery_messages_issue ON recovery_messages(issue_id, id);
         CREATE INDEX IF NOT EXISTS recovery_requests_issue ON recovery_requests(issue_id);
         CREATE INDEX IF NOT EXISTS recovery_checkins_issue ON recovery_checkins(issue_id, id);
         CREATE INDEX IF NOT EXISTS recovery_routines_issue ON recovery_routines(issue_id, id);
+        CREATE INDEX IF NOT EXISTS recovery_status_history_issue ON recovery_status_history(issue_id, id);
     """)
     columns = {row[1] for row in conn.execute("PRAGMA table_info(recovery_issues)")}
     if "share_coaching" not in columns:
@@ -72,7 +79,7 @@ def issue_row(conn, issue_id):
 def children(conn, issue_id):
     # Explicit table allowlist; never accept identifiers from an API request.
     result = {}
-    for table in ("messages", "routines", "checkins", "requests"):
+    for table in ("messages", "routines", "checkins", "requests", "status_history"):
         rows = conn.execute(
             f"SELECT * FROM recovery_{table} WHERE issue_id = ? ORDER BY created_at, rowid",
             (issue_id,),
@@ -86,6 +93,14 @@ def children(conn, issue_id):
 def delete_issue(conn, issue_id):
     issue_row(conn, issue_id)
     # Existing app connections do not enable foreign keys, so delete explicitly too.
-    for table in ("checkins", "routines", "requests", "messages"):
+    for table in ("status_history", "checkins", "routines", "requests", "messages"):
         conn.execute(f"DELETE FROM recovery_{table} WHERE issue_id = ?", (issue_id,))
     conn.execute("DELETE FROM recovery_issues WHERE id = ?", (issue_id,))
+
+
+def append_status_history(conn, issue_id, status):
+    """Record a lifecycle transition while retaining the issue itself."""
+    conn.execute(
+        "INSERT INTO recovery_status_history (issue_id, status) VALUES (?, ?)",
+        (issue_id, status),
+    )

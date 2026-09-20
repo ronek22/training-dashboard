@@ -115,8 +115,8 @@
           <section id="dashboard-coaching" class="codex-state coaching-row" aria-label="Coach’s perspective" :class="{ 'is-loading': codexStateLoading }">
             <div class="codex-state-heading">
               <span><i aria-hidden="true">✦</i> Coach’s perspective</span>
-              <button type="button" :disabled="codexStateLoading" @click="refreshCodexState(true)">
-                {{ codexStateLoading ? 'Reviewing…' : codexState ? 'Refresh' : 'Try now' }}
+              <button type="button" :disabled="codexStateLoading || !isLocalCodexHost" :title="isLocalCodexHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="refreshCodexState(true)">
+                {{ !isLocalCodexHost ? 'Mac only' : codexStateLoading ? 'Reviewing…' : codexState ? 'Refresh' : 'Try now' }}
               </button>
             </div>
             <template v-if="codexState">
@@ -136,6 +136,7 @@
               </div>
             </template>
             <p v-else-if="codexStateLoading" class="codex-state-placeholder">Reading your plan, recovery, goals and recent training…</p>
+            <p v-else-if="!isLocalCodexHost" class="codex-state-placeholder">Open TrainLog on your Mac to use the coach.</p>
             <p v-else class="codex-state-placeholder">The measured state remains available. Start the local Codex helper for a whole-context interpretation.</p>
           </section>
 
@@ -273,6 +274,11 @@ const codexStateLoading = ref(false)
 const codexStateError = ref(null)
 const codexStateStale = ref(false)
 const codexPlanUpdate = ref('idle')
+const localCodexHostnames = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
+const isLocalCodexHost = computed(() => {
+  if (typeof window === 'undefined') return false
+  return localCodexHostnames.has(window.location.hostname.toLowerCase())
+})
 const completedPlanStatuses = new Set(['linked', 'matched', 'partially_matched', 'moved', 'replaced', 'rest_day_changed'])
 
 const loadDashboard = async () => {
@@ -284,7 +290,7 @@ const loadDashboard = async () => {
     ])
     dashboard.value = dashboardResult.status === 'fulfilled' ? dashboardResult.value.data : null
     recentActivities.value = activitiesResult.status === 'fulfilled' ? activitiesResult.value.data : []
-    if (dashboard.value) void refreshCodexState(false)
+    if (dashboard.value && isLocalCodexHost.value) void refreshCodexState(false)
   } finally { loading.value = false }
 }
 
@@ -308,6 +314,8 @@ const insightRecommendsPlanChange = computed(() => {
 })
 const planChangeReason = computed(() => codexState.value?.plan_change_reason || codexState.value?.next_step || '')
 const canAdaptTomorrow = computed(() => Boolean(
+  isLocalCodexHost.value
+  &&
   !codexStateStale.value
   && !codexStateLoading.value
   && insightRecommendsPlanChange.value
@@ -355,7 +363,7 @@ const readCachedCodexState = () => {
 }
 
 async function refreshCodexState(force = false) {
-  if (codexStateLoading.value) return
+  if (!isLocalCodexHost.value || codexStateLoading.value) return
   const contextKey = codexContextKey.value
   const cached = readCachedCodexState()
   if (!force) {
@@ -397,7 +405,7 @@ async function refreshCodexState(force = false) {
 }
 
 async function adaptTomorrowPlan() {
-  if (!canAdaptTomorrow.value || codexPlanUpdate.value === 'running') return
+  if (!isLocalCodexHost.value || !canAdaptTomorrow.value || codexPlanUpdate.value === 'running') return
   codexPlanUpdate.value = 'running'
   const targetDate = tomorrowKey.value
   const weekStart = weeklyPlan.value?.week_start || format(
@@ -1502,4 +1510,75 @@ button { color: inherit; }
 .completed-day-layout.active .decision-actions{margin-top:22px}
 .is-completed-day .decision-session{margin-bottom:0}
 @media(max-width:900px){.completed-day-layout.active{grid-template-columns:1fr;gap:24px}}
+
+/* Keep the dashboard inside the phone viewport while preserving deliberate
+   horizontal scrollers for the week strip and chart data. */
+.dashboard-shell,
+.dashboard-shell > *,
+.dashboard-shell .decision-card,
+.dashboard-shell .signal-card,
+.dashboard-shell .coaching-row,
+.dashboard-shell .week-card,
+.dashboard-shell .year-section,
+.dashboard-shell .explore-section { min-width: 0; max-width: 100%; }
+.dashboard-header > div,
+.decision-topline > *,
+.decision-session > div,
+.signal-heading > div,
+.section-heading > div,
+.coaching-assessment,
+.coaching-next { min-width: 0; }
+.decision-session h2,
+.decision-session p,
+.workout-target-summary dd,
+.coaching-assessment h2,
+.coaching-next p,
+.year-chart-total strong,
+.year-chart-identity > div,
+.explore-grid strong { overflow-wrap: anywhere; }
+.dashboard-shell .header-plan-link,
+.dashboard-shell .dashboard-text-link,
+.dashboard-shell .codex-state-heading button,
+.dashboard-shell .decision-coach-link,
+.dashboard-shell .completed-today-grid button,
+.dashboard-shell .explore-grid button { min-height: 44px; }
+
+@media (max-width: 640px) {
+  .dashboard-shell { gap: 24px; overflow-x: hidden; }
+  .dashboard-header { flex-wrap: wrap; gap: 12px; }
+  .dashboard-header > div { flex: 1 1 180px; }
+  .dashboard-header h1 { font-size: 30px; }
+  .header-plan-link { flex: 0 0 auto; }
+  .decision-card { padding: 20px 16px; }
+  .decision-session { margin-top: 22px; }
+  .decision-session h2 { font-size: clamp(23px, 7vw, 28px); line-height: 1.25; }
+  .decision-session p { line-height: 1.7; }
+  .workout-target-summary .session-prescription { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .workout-target-summary .prescription-intent { grid-column: 1 / -1; }
+  .signal-card .load-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .signal-card .load-metrics div { padding: 8px 6px; }
+  .signal-card .load-metrics strong { font-size: 18px; }
+  .week-strip { max-width: 100%; }
+  .week-day { min-width: 132px; }
+  .section-heading { flex-wrap: wrap; }
+  .year-heading-meta { justify-items: start; }
+  .explore-grid button { min-height: 48px; }
+}
+
+@media (max-width: 380px) {
+  .dashboard-shell { gap: 20px; }
+  .dashboard-header { align-items: flex-start; }
+  .dashboard-header > div { flex-basis: 150px; }
+  .dashboard-header h1 { font-size: 28px; }
+  .decision-card { padding: 18px 14px; }
+  .decision-topline { gap: 8px; }
+  .decision-kicker { font-size: 11px; }
+  .decision-state { padding-inline: 8px; }
+  .workout-target-summary .session-prescription { gap: 14px 10px; }
+  .workout-target-summary dd { font-size: 21px; }
+  .signal-card .load-metrics { gap: 10px; }
+  .signal-card .load-metrics span { font-size: 10px; }
+  .coaching-row { padding-top: 16px; }
+  .year-chart-card { padding-bottom: 16px; }
+}
 </style>

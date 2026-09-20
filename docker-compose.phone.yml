@@ -1,0 +1,11 @@
+# Optional built frontend for local iPhone access; use with docker-compose.yml.
+services:
+  phone:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.local
+    ports:
+      - "${TRAINLOG_LAN_IP:?Set TRAINLOG_LAN_IP to your Mac Wi-Fi IP}:3080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

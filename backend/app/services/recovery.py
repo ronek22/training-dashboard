@@ -24,8 +24,7 @@ PRIORITY = {"none": 0, "assessment": 1, "urgent": 2, "emergency": 3}
 CARE = {
     "emergency": ("Get emergency help", "Contact local emergency services or an emergency department now. Do not wait for an AI reply or try a recovery routine."),
     "urgent": ("Seek urgent assessment", "Arrange urgent medical assessment for these symptoms. Exercise suggestions are paused; do not wait for this chat to decide whether to seek care."),
-    "assessment": ("Professional assessment recommended", "A clinician or physiotherapist should assess this issue before a recovery routine is suggested. Keep any existing clinician instructions and training restrictions."),
-    "incomplete": ("Complete your symptom check", "Confirm the missing or updated symptom details below. Unanswered questions stay unknown."),
+    "incomplete": ("Add the key symptom details", "Add the location and severity so the app can find a suitable recovery routine. Other details can remain unknown."),
     "review_required": ("Exercise suggestions unavailable", "You can track symptoms and discuss them here. Exercise suggestions are unavailable because the exercise catalogue is unavailable."),
     "unsupported": ("No matching routine available", "The source-backed library does not cover this location. Track the issue here and ask a clinician or physiotherapist about suitable exercises."),
     "eligible": ("Ready to review a routine", "You can request a general soreness or mobility routine from the source-backed library. This symptom check is not a diagnosis or clearance to exercise."),
@@ -34,25 +33,20 @@ CARE = {
 
 def screening(issue):
     intake = Intake.model_validate_json(issue["intake_json"])
-    concern = issue["concern"]
+    # Assessment was a legacy recommendation. Keep it in persisted rows for
+    # compatibility, but it must not turn a routine-capable issue into a
+    # doctor-reminder state. Urgent and emergency concerns remain sticky until
+    # the athlete explicitly records a new, safe issue state.
+    concern = issue.get("concern") if issue.get("concern") in {"urgent", "emergency"} else "none"
     if intake.emergency_signs is True:
         concern = "emergency"
     elif intake.urgent_signs is True or intake.function == "unable":
         concern = max((concern, "urgent"), key=PRIORITY.get)
-    elif (intake.injury_or_surgery is True or intake.persistent_symptoms is True
-          or intake.trend == "worsening" or intake.function == "limited"
-          or intake.general_soreness is False or intake.clinician_guidance.strip()
-          or (intake.severity is not None and intake.severity > 3)):
-        concern = max((concern, "assessment"), key=PRIORITY.get)
     missing = []
-    for key in QUESTIONS:
-        if key == "clinician_guidance":
-            continue
-        value = getattr(intake, key)
-        if value is None or value == "" or value == "unknown":
-            missing.append(key)
-    if intake.side == "unknown" and "location" not in missing:
+    if not intake.location.strip():
         missing.append("location")
+    if intake.severity is None:
+        missing.append("severity")
     library = reviewed_library()
     matching = [entry for entry in library if matches_location(entry, intake.location)]
     state = concern if concern != "none" else (
@@ -75,11 +69,19 @@ def get_issue(conn, issue_id):
     issue["next_action"] = next_action(issue)
     issue.update(repo.children(conn, issue_id))
     current = {entry["id"]: entry for entry in reviewed_library()}
+    location = issue["intake"].get("location", "")
     for routine in issue["routines"]:
-        routine["usable"] = (routine["status"] == "saved" and issue["screening"]["can_generate"]
-                             and routine["revision"] == issue["revision"]
-                             and all(entry["id"] in current and current[entry["id"]]["version"] == entry["version"]
-                                     for entry in routine["exercises"]))
+        routine["usable"] = (
+            routine["status"] == "saved"
+            and issue["screening"]["can_generate"]
+            and bool(routine["exercises"])
+            and all(
+                entry["id"] in current
+                and current[entry["id"]]["version"] == entry.get("version")
+                and matches_location(current[entry["id"]], location)
+                for entry in routine["exercises"]
+            )
+        )
     return issue
 
 
@@ -89,17 +91,11 @@ def next_action(issue):
         return {"title": "This issue is archived", "description": "Reopen it to continue the conversation or log a check-in.", "target": None, "label": None}
     if state in {"urgent", "emergency"}:
         return {"title": issue["screening"]["title"], "description": issue["screening"]["message"], "target": None, "label": None}
-    if issue["proposal"]:
-        return {"title": "Review the details from your conversation", "description": "Your answers are filled in below. Correct anything that looks wrong, then confirm. Unanswered questions remain unknown.", "target": "symptom-summary", "label": "Review & confirm summary"}
-    if not issue["needs_review"] and state == "assessment":
-        return {"title": "Arrange a professional assessment", "description": "Your summary is saved. This issue has an assessment recommendation, so the app will not suggest an exercise routine. You can review training restrictions and record follow-up symptoms while arranging care.", "target": "training-options", "label": "Review training options"}
-    if not issue["needs_review"] and issue["screening"]["missing"]:
-        return {"title": "Answer the remaining symptom questions", "description": "Your summary is saved; it does not need to be entered again. The unanswered questions below are still needed before the app can finish the symptom check.", "target": "remaining-questions", "label": "See unanswered questions"}
-    if issue["needs_review"]:
-        return {"title": "Confirm what we know and answer the gaps", "description": "Continue chatting to prepare a summary, or complete the missing details in the symptom check. You can confirm a partial summary.", "target": "symptom-summary", "label": "Review symptom details"}
+    if issue["screening"]["missing"] or issue["needs_review"]:
+        return {"title": "Add the location and severity", "description": "Save the key symptom details when you know them. Side, onset, movement, and warning-sign fields can remain unknown.", "target": "symptom-summary", "label": "Add symptom details"}
     if state == "eligible":
         return {"title": "Review a recovery routine", "description": "Your starter exercises are ready below. Review the instructions, then save your routine. You can also ask AI for an alternative.", "target": "recovery-routines", "label": "See my exercises"}
-    return {"title": "Track how symptoms change", "description": issue["screening"]["message"] + " Use a follow-up check-in to record changes; confirming a summary does not unlock unavailable exercises.", "target": "recovery-checkins", "label": "Log a follow-up"}
+    return {"title": "Track how symptoms change", "description": issue["screening"]["message"] + " Use a follow-up check-in to record changes.", "target": "recovery-checkins", "label": "Log a follow-up"}
 
 
 def list_issues(conn):
@@ -142,10 +138,82 @@ def training_context(conn):
     )}
 
 
-def invalidate(conn, issue_id):
+def validate_intake(intake):
+    if intake.onset_date and intake.onset_date > date.today():
+        raise ValueError("Symptom onset cannot be in the future.")
+
+
+def create_issue(conn, payload):
+    intake = payload.intake
+    if intake is not None:
+        validate_intake(intake)
+    values = intake.model_dump_json() if intake is not None else "{}"
+    needs_review = 0 if intake is not None else 1
+    cursor = conn.execute(
+        """INSERT INTO recovery_issues (title, intake_json, needs_review)
+           VALUES (?, ?, ?)""",
+        (payload.title, values, needs_review),
+    )
+    issue_id = cursor.lastrowid
+    if intake is not None:
+        ensure_starter_routine(conn, issue_id)
+    return get_issue(conn, issue_id)
+
+
+def set_status(conn, issue_id, status):
+    issue = repo.issue_row(conn, issue_id)
+    if issue["status"] == status:
+        # Repeating an archive/reopen action is safe and must not churn the
+        # revision or lifecycle history.
+        return get_issue(conn, issue_id)
+    invalidate(conn, issue_id, stale_drafts=False)
+    conn.execute(
+        """UPDATE recovery_issues
+           SET status = ?, revision = revision + 1, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?""",
+        (status, issue_id),
+    )
+    repo.append_status_history(conn, issue_id, status)
+    return get_issue(conn, issue_id)
+
+
+def invalidate(conn, issue_id, *, stale_drafts=True, pause_saved=False):
     conn.execute("UPDATE recovery_requests SET status = 'stale' WHERE issue_id = ? AND status = 'pending'", (issue_id,))
-    conn.execute("UPDATE recovery_routines SET status = 'stale' WHERE issue_id = ? AND status = 'draft'", (issue_id,))
-    conn.execute("UPDATE recovery_routines SET status = 'paused' WHERE issue_id = ? AND status = 'saved'", (issue_id,))
+    if stale_drafts:
+        conn.execute("UPDATE recovery_routines SET status = 'stale' WHERE issue_id = ? AND status = 'draft'", (issue_id,))
+    if pause_saved:
+        conn.execute("UPDATE recovery_routines SET status = 'paused' WHERE issue_id = ? AND status = 'saved'", (issue_id,))
+
+
+def _normalized_location(value):
+    return " ".join((value or "").strip().lower().split())
+
+
+def _location_changed(previous, current):
+    return _normalized_location(previous) != _normalized_location(current)
+
+
+def _routine_matches_library(routine, library, location):
+    try:
+        exercises = json.loads(routine["exercises_json"])
+    except (TypeError, json.JSONDecodeError):
+        return False
+    if not exercises:
+        return False
+    current = {entry["id"]: entry for entry in library}
+    return all(
+        entry.get("id") in current
+        and current[entry["id"]].get("version") == entry.get("version")
+        and matches_location(current[entry["id"]], location)
+        for entry in exercises
+    )
+
+
+def _pause_saved_if_blocked(conn, issue_id, issue=None, *, location_changed=False):
+    issue = issue or repo.issue_row(conn, issue_id)
+    blocked = screening(issue)["state"] in {"urgent", "emergency"}
+    if blocked or location_changed:
+        conn.execute("UPDATE recovery_routines SET status = 'paused' WHERE issue_id = ? AND status = 'saved'", (issue_id,))
 
 
 def save_intake(conn, issue_id, payload):

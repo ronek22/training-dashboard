@@ -4,9 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import codecs
+import inspect
 import json
 import os
 import re
+import selectors
 import shutil
 import signal
 import subprocess
@@ -23,8 +26,9 @@ from urllib.parse import quote
 from urllib.request import urlopen
 
 try:
-    from scripts import recovery_helper, team_coaching_helper
+    from scripts import codex_chat_diagnostics, recovery_helper, team_coaching_helper
 except ModuleNotFoundError:
+    import codex_chat_diagnostics
     import recovery_helper
     import team_coaching_helper
 
@@ -50,13 +54,21 @@ CAPACITY_ERROR_MARKERS = (
     "temporarily overloaded",
     "capacity exceeded",
 )
+CODEX_DEADLINE_SECONDS = 900
+STREAM_STDERR_LIMIT = 16 * 1024
+STREAM_READ_SIZE = 4096
+STREAM_LINE_LIMIT = 256 * 1024
 
 
 def public_job(job: dict) -> dict:
-    return {
+    result = {
         key: value for key, value in job.items()
-        if key not in {"history", "athlete_message", "planning_brief", "plan_feedback"}
+        if key not in {"history", "athlete_message", "planning_brief", "plan_feedback", "_diagnostics"}
     }
+    diagnostics = job.get("_diagnostics")
+    if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
+        result["diagnostics"] = diagnostics.snapshot()
+    return result
 
 
 def now_iso() -> str:
@@ -388,32 +400,333 @@ def concise_codex_error(output: str) -> str:
     return (lines[-1] if lines else "Codex exited without a message")[:600]
 
 
-def run_codex(prompt: str, *, failure_label: str, fallback: str) -> str:
+def _notify_progress(progress, event: dict[str, object]) -> None:
+    """Best-effort delivery of safe internal progress to a job snapshot."""
+
+    if progress is None:
+        return
+    try:
+        progress(dict(event))
+    except Exception:
+        # Diagnostics must never turn a successful answer into a failed job.
+        return
+
+
+def _codex_command(workdir: str, last_message_path: Path, model: str, *, json_stream: bool = False) -> list[str]:
+    command = [
+        resolve_codex_cli(),
+        "exec",
+        "--ephemeral",
+        "--approve-for-me",
+        "--skip-git-repo-check",
+        "--color",
+        "never",
+        "--output-last-message",
+        str(last_message_path),
+        "-C",
+        workdir,
+    ]
+    if json_stream:
+        command.append("--json")
+    if model:
+        command.extend(("--model", model))
+    command.append("-")
+    return command
+
+
+def _close_process_streams(process: subprocess.Popen) -> None:
+    for stream_name in ("stdin", "stdout", "stderr"):
+        stream = getattr(process, stream_name, None)
+        if stream is None:
+            continue
+        try:
+            stream.close()
+        except (OSError, ValueError):
+            pass
+
+
+def _terminate_process_group(process: subprocess.Popen) -> None:
+    """Stop a streaming CLI and reap it without draining output pipes."""
+
+    if process is None:
+        return
+    running = False
+    try:
+        running = process.poll() is None
+    except Exception:
+        running = True
+    if running:
+        try:
+            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        except (AttributeError, OSError, ProcessLookupError):
+            try:
+                process.terminate()
+            except (AttributeError, OSError):
+                pass
+        try:
+            process.wait(timeout=0.5)
+        except (subprocess.TimeoutExpired, OSError, AttributeError):
+            try:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            except (AttributeError, OSError, ProcessLookupError):
+                try:
+                    process.kill()
+                except (AttributeError, OSError):
+                    pass
+    try:
+        process.wait(timeout=0.5)
+    except (subprocess.TimeoutExpired, OSError, AttributeError):
+        pass
+    _close_process_streams(process)
+
+
+def _bounded_tail(value: str, limit: int = STREAM_STDERR_LIMIT) -> str:
+    if len(value) <= limit:
+        return value
+    return value[-limit:]
+
+
+def _run_codex_stream_attempt(
+    command: list[str],
+    prompt: str,
+    *,
+    deadline: float,
+    progress,
+) -> tuple[int, str, str | None, dict[str, int] | None]:
+    """Run one JSONL attempt while reading both pipes without blocking."""
+
+    process = None
+    selector = selectors.DefaultSelector()
+    stderr_tail = ""
+    final_message: str | None = None
+    usage: dict[str, int] | None = None
+    stdout_buffer = ""
+    stdout_decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+    attempt_started = time.monotonic()
+    writer = None
+
+    def handle_stdout_line(line: str) -> None:
+        nonlocal final_message, usage
+        if len(line) > STREAM_LINE_LIMIT:
+            line = line[-STREAM_LINE_LIMIT:]
+        at_seconds = max(0.0, time.monotonic() - attempt_started)
+        event = codex_chat_diagnostics.parse_cli_event(line, at_seconds=at_seconds)
+        if event is not None:
+            _notify_progress(progress, event)
+        parsed_usage = codex_chat_diagnostics.parse_cli_usage(line)
+        if parsed_usage:
+            usage = parsed_usage
+            _notify_progress(progress, {"usage": parsed_usage})
+        parsed_message = codex_chat_diagnostics.extract_cli_message(line)
+        if parsed_message:
+            # The final response is intentionally bounded in memory.  It is
+            # returned to the chat path, never copied into diagnostics.
+            final_message = parsed_message[-4000:]
+
+    def handle_stdout_chunk(chunk: bytes, *, final: bool = False) -> None:
+        nonlocal stdout_buffer
+        stdout_buffer += stdout_decoder.decode(chunk, final=final)
+        while "\n" in stdout_buffer:
+            line, stdout_buffer = stdout_buffer.split("\n", 1)
+            handle_stdout_line(line.rstrip("\r"))
+        if len(stdout_buffer) > STREAM_LINE_LIMIT:
+            stdout_buffer = stdout_buffer[-STREAM_LINE_LIMIT:]
+
+    try:
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            bufsize=0,
+            start_new_session=True,
+        )
+
+        def write_prompt() -> None:
+            try:
+                if process is not None and process.stdin is not None:
+                    process.stdin.write(prompt.encode("utf-8"))
+                    process.stdin.close()
+            except (BrokenPipeError, OSError, ValueError):
+                return
+
+        writer = threading.Thread(target=write_prompt, name="codex-chat-input", daemon=True)
+        writer.start()
+
+        for stream_name in ("stdout", "stderr"):
+            stream = getattr(process, stream_name, None)
+            if stream is None:
+                continue
+            try:
+                fd = stream.fileno()
+                os.set_blocking(fd, False)
+                selector.register(stream, selectors.EVENT_READ, stream_name)
+            except (AttributeError, OSError, ValueError):
+                continue
+
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                _notify_progress(progress, {"phase": "timeout", "status": "failed"})
+                _terminate_process_group(process)
+                raise subprocess.TimeoutExpired(command, CODEX_DEADLINE_SECONDS)
+
+            ready = selector.select(min(0.2, remaining))
+            for key, _mask in ready:
+                stream_name = key.data
+                stream = key.fileobj
+                try:
+                    chunk = os.read(stream.fileno(), STREAM_READ_SIZE)
+                except (BlockingIOError, InterruptedError):
+                    continue
+                except (OSError, ValueError):
+                    chunk = b""
+                if chunk:
+                    if stream_name == "stdout":
+                        handle_stdout_chunk(chunk)
+                    else:
+                        stderr_tail = _bounded_tail(
+                            stderr_tail + chunk.decode("utf-8", errors="replace")
+                        )
+                else:
+                    try:
+                        selector.unregister(stream)
+                    except (KeyError, ValueError):
+                        pass
+
+            returncode = process.poll()
+            if returncode is None:
+                continue
+
+            # Drain data already ready at process exit, but never wait for a
+            # descendant that inherited a pipe.  This keeps cleanup bounded.
+            for _ in range(64):
+                ready_after_exit = selector.select(0)
+                if not ready_after_exit:
+                    break
+                for key, _mask in ready_after_exit:
+                    stream_name = key.data
+                    stream = key.fileobj
+                    try:
+                        chunk = os.read(stream.fileno(), STREAM_READ_SIZE)
+                    except (BlockingIOError, InterruptedError, OSError, ValueError):
+                        chunk = b""
+                    if chunk:
+                        if stream_name == "stdout":
+                            handle_stdout_chunk(chunk)
+                        else:
+                            stderr_tail = _bounded_tail(
+                                stderr_tail + chunk.decode("utf-8", errors="replace")
+                            )
+            break
+
+        if stdout_buffer:
+            handle_stdout_chunk(b"", final=True)
+            if stdout_buffer:
+                handle_stdout_line(stdout_buffer.rstrip("\r"))
+                stdout_buffer = ""
+        return process.returncode or 0, stderr_tail, final_message, usage
+    except subprocess.TimeoutExpired:
+        raise
+    except BaseException:
+        if process is not None:
+            _terminate_process_group(process)
+        raise
+    finally:
+        try:
+            selector.close()
+        except Exception:
+            pass
+        if writer is not None:
+            writer.join(timeout=0.2)
+        if process is not None:
+            _close_process_streams(process)
+
+
+def _run_codex_streaming(prompt: str, *, failure_label: str, fallback: str, progress=None) -> str:
     with tempfile.TemporaryDirectory(prefix="training-dashboard-codex-") as workdir:
         last_message_path = Path(workdir) / "last-message.txt"
         attempts = tuple(dict.fromkeys((DEFAULT_MODEL, *fallback_models())))
         last_output = ""
-        deadline = time.monotonic() + 900
-        for model in attempts:
-            command = [
-                resolve_codex_cli(),
-                "exec",
-                "--ephemeral",
-                "--approve-for-me",
-                "--skip-git-repo-check",
-                "--color",
-                "never",
-                "--output-last-message",
-                str(last_message_path),
-                "-C",
-                workdir,
-            ]
-            if model:
-                command.extend(("--model", model))
-            command.append("-")
+        deadline = time.monotonic() + CODEX_DEADLINE_SECONDS
+        for attempt_number, model in enumerate(attempts, start=1):
+            _notify_progress(
+                progress,
+                {
+                    "phase": "model_selection",
+                    "model": codex_chat_diagnostics.sanitize_model_name(model),
+                    "attempt": attempt_number,
+                },
+            )
+            command = _codex_command(workdir, last_message_path, model, json_stream=True)
+            remaining = deadline - time.monotonic()
+            if remaining < 1:
+                _notify_progress(progress, {"phase": "timeout", "status": "failed"})
+                raise subprocess.TimeoutExpired(command, CODEX_DEADLINE_SECONDS)
+            try:
+                returncode, stderr_tail, stream_message, _usage = _run_codex_stream_attempt(
+                    command,
+                    prompt,
+                    deadline=deadline,
+                    progress=progress,
+                )
+            except subprocess.TimeoutExpired:
+                raise
+            last_output = stderr_tail
+            if returncode == 0:
+                final_message = ""
+                if last_message_path.exists():
+                    try:
+                        final_message = last_message_path.read_text(encoding="utf-8").strip()
+                    except (OSError, UnicodeError):
+                        final_message = ""
+                final_message = (final_message or stream_message or fallback).strip()
+                _notify_progress(progress, {"phase": "completed", "status": "completed"})
+                return final_message[-4000:]
+            if is_capacity_error(last_output) and attempt_number < len(attempts):
+                _notify_progress(
+                    progress,
+                    {
+                        "phase": "retrying",
+                        "status": "in_progress",
+                        "model": codex_chat_diagnostics.sanitize_model_name(model),
+                        "attempt": attempt_number,
+                    },
+                )
+                continue
+            if is_capacity_error(last_output):
+                _notify_progress(progress, {"phase": "failed", "status": "failed"})
+                raise RuntimeError(
+                    "Codex models are temporarily at capacity. The automatic fallbacks were also busy; please try again in a few minutes."
+                )
+            _notify_progress(progress, {"phase": "failed", "status": "failed"})
+            raise RuntimeError(f"Codex could not {failure_label}: {concise_codex_error(last_output)}")
+        _notify_progress(progress, {"phase": "failed", "status": "failed"})
+        raise RuntimeError(f"Codex could not {failure_label}: Codex exited without a message")
+
+
+def run_codex(prompt: str, *, failure_label: str, fallback: str, progress=None) -> str:
+    """Run a normal non-chat Codex request using the existing subprocess path."""
+
+    with tempfile.TemporaryDirectory(prefix="training-dashboard-codex-") as workdir:
+        last_message_path = Path(workdir) / "last-message.txt"
+        attempts = tuple(dict.fromkeys((DEFAULT_MODEL, *fallback_models())))
+        last_output = ""
+        deadline = time.monotonic() + CODEX_DEADLINE_SECONDS
+        for attempt_number, model in enumerate(attempts, start=1):
+            _notify_progress(
+                progress,
+                {
+                    "phase": "model_selection",
+                    "model": codex_chat_diagnostics.sanitize_model_name(model),
+                    "attempt": attempt_number,
+                },
+            )
+            command = _codex_command(workdir, last_message_path, model)
             remaining_seconds = int(deadline - time.monotonic())
             if remaining_seconds < 1:
-                raise subprocess.TimeoutExpired(command, 900)
+                _notify_progress(progress, {"phase": "timeout", "status": "failed"})
+                raise subprocess.TimeoutExpired(command, CODEX_DEADLINE_SECONDS)
             result = subprocess.run(
                 command,
                 input=prompt,
@@ -427,14 +740,21 @@ def run_codex(prompt: str, *, failure_label: str, fallback: str) -> str:
                 if last_message_path.exists():
                     final_message = last_message_path.read_text(encoding="utf-8").strip()
                     if final_message:
+                        _notify_progress(progress, {"phase": "completed", "status": "completed"})
                         return final_message[-4000:]
+                _notify_progress(progress, {"phase": "completed", "status": "completed"})
                 return (result.stdout or fallback).strip()[-4000:]
+            if is_capacity_error(last_output) and attempt_number < len(attempts):
+                _notify_progress(progress, {"phase": "retrying", "status": "in_progress", "attempt": attempt_number})
+                continue
             if not is_capacity_error(last_output):
                 break
         if is_capacity_error(last_output):
+            _notify_progress(progress, {"phase": "failed", "status": "failed"})
             raise RuntimeError(
                 "Codex models are temporarily at capacity. The automatic fallbacks were also busy; please try again in a few minutes."
             )
+        _notify_progress(progress, {"phase": "failed", "status": "failed"})
         raise RuntimeError(f"Codex could not {failure_label}: {concise_codex_error(last_output)}")
 
 
@@ -512,11 +832,14 @@ def run_codex_activity_analysis(activity_id: str) -> str:
     return summary
 
 
-def run_codex_coach_chat(message: str, history: list[dict[str, str]]) -> str:
-    return run_codex(
+def run_codex_coach_chat(message: str, history: list[dict[str, str]], progress=None) -> str:
+    """Run coach chat through the JSONL stream so progress can update live."""
+
+    return _run_codex_streaming(
         build_coach_chat_prompt(message, history),
         failure_label="answer the coach chat",
         fallback="I couldn't produce a coaching reply.",
+        progress=progress,
     )
 
 
@@ -527,6 +850,41 @@ def run_codex_daily_state() -> dict[str, object]:
         fallback='{"headline":"Training state reviewed","assessment":"Use the measured load and recovery signals shown in the dashboard.","next_step":"Stay with the current plan and reassess after training.","confidence":"low","plan_change_recommended":false,"plan_change_reason":""}',
     )
     return parse_daily_state_result(output)
+
+
+def _log_coach_diagnostic_event(job_id: str, event: object) -> None:
+    """Write one safe structured event for local troubleshooting."""
+
+    raw_at = event.get("at") if isinstance(event, dict) else None
+    safe = codex_chat_diagnostics.sanitize_progress_event(event, at_seconds=raw_at)
+    if safe is None or not isinstance(job_id, str):
+        return
+    if isinstance(event, dict) and isinstance(event.get("seq"), int) and event["seq"] > 0:
+        safe = {"seq": event["seq"], **safe}
+    payload = {"event": "coach_chat_diagnostic", "job_id": job_id[:64], **safe}
+    try:
+        sys.stderr.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n")
+        sys.stderr.flush()
+    except (OSError, ValueError):
+        return
+
+
+def _invoke_coach_chat(message: str, history: list[dict[str, str]], progress) -> str:
+    """Keep lightweight test doubles compatible with the additive callback."""
+
+    runner = run_codex_coach_chat
+    try:
+        parameters = inspect.signature(runner).parameters.values()
+        accepts_progress = any(
+            parameter.name == "progress"
+            or parameter.kind is inspect.Parameter.VAR_KEYWORD
+            for parameter in parameters
+        )
+    except (TypeError, ValueError):
+        accepts_progress = True
+    if accepts_progress:
+        return runner(message, history, progress=progress)
+    return runner(message, history)
 
 
 def execute_job(job_id: str) -> None:
@@ -604,14 +962,44 @@ def execute_coach_chat_job(job_id: str) -> None:
         job["started_at"] = now_iso()
         athlete_message = job["athlete_message"]
         history = job["history"]
+        diagnostics = job.get("_diagnostics")
+    if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
+        diagnostics.start(model=DEFAULT_MODEL, attempt=1)
+        _log_coach_diagnostic_event(job_id, {"phase": "starting"})
+
+        def progress(event: object) -> None:
+            safe_event = diagnostics.record(event)
+            if safe_event is not None:
+                _log_coach_diagnostic_event(job_id, safe_event)
+    else:
+        progress = None
     try:
-        summary = run_codex_coach_chat(athlete_message, history)
+        summary = _invoke_coach_chat(athlete_message, history, progress)
     except subprocess.TimeoutExpired:
         status, message, summary = "failed", "Coach chat timed out after 15 minutes.", ""
+        if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
+            terminal_event = diagnostics.mark_terminal("timeout", category="timeout")
+            if terminal_event is not None:
+                _log_coach_diagnostic_event(job_id, terminal_event)
     except Exception as exc:
-        status, message, summary = "failed", str(exc), ""
+        status = "failed"
+        message = (
+            "Coach models are temporarily busy. Please try again in a few minutes."
+            if is_capacity_error(str(exc))
+            else "Coach reply unavailable. Please try again."
+        )
+        summary = ""
+        if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
+            category = "capacity" if is_capacity_error(str(exc)) else "process"
+            terminal_event = diagnostics.mark_terminal("failed", category=category)
+            if terminal_event is not None:
+                _log_coach_diagnostic_event(job_id, terminal_event)
     else:
         status, message = "succeeded", "Coach replied."
+        if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
+            terminal_event = diagnostics.mark_terminal("completed")
+            if terminal_event is not None:
+                _log_coach_diagnostic_event(job_id, terminal_event)
     with JOBS_LOCK:
         job = JOBS[job_id]
         job.update(status=status, message=message, summary=summary, finished_at=now_iso())
@@ -726,7 +1114,7 @@ class Handler(BaseHTTPRequestHandler):
                 "service": "training-dashboard-codex-helper",
                 "pid": os.getpid(),
                 "model": DEFAULT_MODEL,
-                "capabilities": ["recovery_chat", "team_review"],
+                "capabilities": ["recovery_chat", "team_review", "coach_chat_diagnostics"],
                 "sunday_review": {"enabled": True, "time": "23:59", "timezone": "Europe/Warsaw"},
             })
             return
@@ -888,6 +1276,10 @@ class Handler(BaseHTTPRequestHandler):
             }
             if kind == "coach_chat":
                 job.update(athlete_message=athlete_message, history=history)
+                job["_diagnostics"] = codex_chat_diagnostics.ChatDiagnostics(
+                    model=DEFAULT_MODEL,
+                    attempt=1,
+                )
             else:
                 job[target_key] = target
                 if kind == "recovery_chat":
@@ -925,7 +1317,7 @@ def health() -> dict | None:
 def start() -> int:
     existing = health()
     if existing:
-        if not {"recovery_chat", "team_review"}.issubset(existing.get("capabilities", [])):
+        if not {"recovery_chat", "team_review", "coach_chat_diagnostics"}.issubset(existing.get("capabilities", [])):
             print("The running helper is outdated. Run codex_planning_helper.py stop, then start, to enable the latest coaching features.", file=sys.stderr)
             return 1
         print(f"Codex planning helper is already running (PID {existing['pid']}).")

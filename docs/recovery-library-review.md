@@ -1,38 +1,33 @@
-# Recovery Exercise Release Review
+# Recovery tracking and exercise suggestions
 
-## Current State
+Recovery keeps an issue's symptoms, exercise routines, notes, and archive/reopen events together. The interface uses active and archived lists; resolving an issue records zero symptoms and archives it atomically. Reopening keeps the previous history.
 
-The Recovery workflow is implemented, but generated exercises are release-gated. `backend/app/services/recovery_library.py` intentionally contains no approved exercises and no screening review record. There is no user-facing or environment-variable switch that marks unreviewed material approved.
+## Exercise selection
 
-Athletes can already record symptoms, use AI intake conversations, review care guidance, keep check-in history, and opt into sharing compact issue summaries with coaching. The routine-generation, validation, explicit-save, versioning, and follow-up code is present and tested with a test-only entry. It does not prescribe exercises in the shipping configuration.
+The AI selects bounded routines from `backend/app/services/recovery_library.py`, using the affected area, reported symptoms, training context, and prior routines/check-ins. These are general movement suggestions, not diagnosis-specific rehabilitation protocols. Unsupported areas remain trackable; the assistant must not invent catalogue entries or dosage.
 
-## Review Required Before Exercise Release
+Location and symptom intensity are sufficient for the ordinary workflow. The old mandatory screening questionnaire and generic assessment gate are removed. Explicit urgent/emergency reports still prevent routine generation. Unknown answers remain unknown; the app does not fill in negative screening answers.
 
-A qualified clinician must review the actual screening questions, routing logic, eligible population, supported presentations, exclusions, and escalation wording. The current warning-sign examples are not a validated screening instrument. A negative screen must never be framed as medical clearance.
+Saved exercise snapshots and recorded results remain historical records even when the catalogue changes. Current availability checks source-entry versions and area matching. New notes and routine symptom updates do not require repeated confirmation.
 
-The clinician must also review each exercise's instructions, dosage bounds, frequency, stop conditions, contraindications, and supported locations against that screening scope. If suitability needs information not captured by the current intake (for example age, comorbidities, or a particular restriction), add that information and server-side eligibility checks before enabling the entry. Do not rely on an AI prompt to enforce additional contraindications.
+## Source references
 
-Record the review in version-controlled code with:
+New upper-back, lower-back, calf and shoulder options were checked against these primary sources on 2026-09-14:
 
-- reviewer name and qualification;
-- actual review date and review-due date;
-- an evidence reference to the completed review;
-- an incremented exercise version whenever instructions, eligibility, or dose changes.
+- [NHS sitting exercises](https://www.nhs.uk/live-well/exercise/sitting-exercises/): seated upper-body turn.
+- [NHS flexibility exercises](https://www.nhs.uk/live-well/exercise/flexibility-exercises/): side bend and calf stretch.
+- [Leeds Teaching Hospitals shoulder exercises](https://www.leedsth.nhs.uk/patients/resources/shoulder-exercises/): stage-one shoulder-blade positioning.
 
-The `ClinicalReview` and `ReviewedExercise` models define the exact schema. Missing, invalid, future-dated, or expired reviews are excluded. Duplicate IDs invalidate the library. HTTPS source links, explicit normalized location names, and bounded sets/repetitions are required. The current selection contract supports repetition-based exercises; add a reviewed hold-duration contract before adding stretches that require timed holds.
+Instructions are paraphrased and linked per exercise. Existing knee, ankle, hip and neck entries retain their original source references. Source attribution is not a claim of independent clinical review.
 
-## Candidate Source Material
+## Manual acceptance checks
 
-These public resources may inform a professional review. They are not already-approved library entries, and their publication does not establish suitability for this app's symptom-based selection:
+1. Create an issue with an area and symptom score. Confirm it appears under Active without a screening questionnaire.
+2. Enable AI sharing and request exercises. Check that the reply completes and the list includes instructions, repetitions and source links. Save the routine.
+3. Add a symptom update and describe what helped. Link the completed routine if applicable; refresh and verify both the update and exercises remain.
+4. Mark the issue resolved. Verify it moves to Archive with a zero-score update and retains notes and exercises.
+5. Use “Symptoms returned” on the archived issue. Verify it returns to Active, retains earlier history, and accepts new updates/exercise requests.
+6. Try an unsupported area and an unavailable AI helper. Confirm the app explains the limitation and keeps the issue/history.
+7. Check the layout on the devices you use. Browser and mobile checks are intentionally left to the user for this redesign.
 
-- [NHS sitting exercises](https://www.nhs.uk/live-well/exercise/sitting-exercises/)
-- [NHS flexibility exercises](https://www.nhs.uk/live-well/exercise/flexibility-exercises/)
-- [NHS post-exercise stretches](https://www.nhs.uk/live-well/exercise/how-to-stretch-after-exercising/)
-
-Consulted on 2026-09-07. No exercise instructions from these pages have been copied into an active prescription library.
-
-## Engineering Verification Before Enabling Entries
-
-Test unanswered and contradictory screening answers, each escalation, newly reported symptoms, outdated replies, withdrawn/expired reviews, unsupported locations, invalid/duplicate exercise IDs, dosage bounds, and stale routine saves. Verify that worsening follow-ups pause saved guidance and that app deletion removes associated data. Run real-model evaluations with clinician-reviewed scenarios before release; deterministic fixture tests verify transport and validation, not the clinical quality of model behavior.
-
-Routine availability is re-evaluated when an issue is read or a draft is saved. A saved routine cannot remain usable after its library entry is withdrawn or its version changes. Historical routines and completion records remain available as history.
+Restart the backend to apply the additive status-history schema and restart the AI helper to load the revised prompt. Existing history is preserved; archive/reopen events from before this change cannot be reconstructed.

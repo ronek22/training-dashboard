@@ -209,6 +209,8 @@
               </span>
             </div>
 
+            <ExerciseGuide :name="overview.selected_exercise.exercise_name" />
+
             <div class="spotlight-stats">
               <div class="spotlight-stat">
                 <span>Appearances</span>
@@ -278,6 +280,7 @@
 </template>
 
 <script setup>
+import ExerciseGuide from '../components/ExerciseGuide.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useApi } from '../stores/api'

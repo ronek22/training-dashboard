@@ -33,6 +33,7 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend/src:/app/src
+      - ./frontend/public:/app/public:ro
     depends_on:
       - backend
     restart: unless-stopped

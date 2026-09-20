@@ -7,15 +7,15 @@
         <p class="page-sub">A little structure. A clear purpose. Your next week of progress.</p>
       </div>
       <div class="codex-plan-action">
-        <button type="button" class="codex-plan-button" :disabled="planningWithCodex" @click="openCodexPlanningBrief">
+        <button type="button" class="codex-plan-button" :disabled="planningWithCodex || !isLocalCodexHost" :title="isLocalCodexHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="openCodexPlanningBrief">
           <svg aria-hidden="true" viewBox="0 0 24 24">
             <path d="M12 3l1.25 3.75L17 8l-3.75 1.25L12 13l-1.25-3.75L7 8l3.75-1.25L12 3Z" />
             <path d="m18.5 13 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" />
             <path d="m5.5 13 .8 2.2 2.2.8-2.2.8L5.5 19l-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" />
           </svg>
-          <span>{{ planningWithCodex ? 'Codex is planning…' : 'Plan this week with Codex' }}</span>
+          <span>{{ planningWithCodex ? 'Codex is planning…' : isLocalCodexHost ? 'Plan this week with Codex' : 'Plan with Codex on Mac' }}</span>
         </button>
-        <span class="codex-plan-hint">{{ codexPlanningStage || 'Creates and saves the plan automatically' }}</span>
+        <span class="codex-plan-hint">{{ codexPlanningStage || (isLocalCodexHost ? 'Creates and saves the plan automatically' : 'Open TrainLog on your Mac to use the coach') }}</span>
       </div>
     </div>
 
@@ -81,7 +81,7 @@
       </section>
 
 
-      <div v-if="!plans.length" class="empty card plan-empty"><span aria-hidden="true">↗</span><h2>Your next chapter starts here.</h2><p>Build a week around your goals, your schedule, and where you are today.</p><button type="button" class="save-button" :disabled="planningWithCodex" @click="openCodexPlanningBrief">Create your first week →</button></div>
+      <div v-if="!plans.length" class="empty card plan-empty"><span aria-hidden="true">↗</span><h2>Your next chapter starts here.</h2><p>Build a week around your goals, your schedule, and where you are today.</p><button type="button" class="save-button" :disabled="planningWithCodex || !isLocalCodexHost" :title="isLocalCodexHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="openCodexPlanningBrief">Create your first week →</button></div>
 
       <div v-else id="weekly-agenda" class="weeks-list">
       <section
@@ -103,7 +103,7 @@
             </div>
           </div>
           <details class="week-actions plan-actions-menu"><summary>Manage week <span aria-hidden="true">⌄</span></summary><div class="plan-actions-menu-items">
-            <button v-if="isCurrentPlan(plan) && adjustableDays(plan).length" type="button" class="ghost-button codex-refine-button" :disabled="planningWithCodex" @click="openCodexPlanFeedback">Refine with Codex</button>
+            <button v-if="isLocalCodexHost && isCurrentPlan(plan) && adjustableDays(plan).length" type="button" class="ghost-button codex-refine-button" :disabled="planningWithCodex" @click="openCodexPlanFeedback">Refine with Codex</button>
             <button
               v-if="isHistoricalPlan(plan)"
               type="button"
@@ -950,6 +950,11 @@ const codexBriefOpen = ref(false)
 const codexPlanningBrief = ref('')
 const codexFeedbackOpen = ref(false)
 const codexPlanFeedback = ref('')
+const localCodexHostnames = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
+const isLocalCodexHost = computed(() => {
+  if (typeof window === 'undefined') return false
+  return localCodexHostnames.has(window.location.hostname.toLowerCase())
+})
 let viewActive = true
 const editor = ref({
   weekStart: null,
@@ -1035,7 +1040,7 @@ const requestWithTimeout = (request, timeoutMs = 8000) => Promise.race([
 const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 
 const openCodexPlanningBrief = () => {
-  if (planningWithCodex.value) return
+  if (!isLocalCodexHost.value || planningWithCodex.value) return
   codexBriefOpen.value = true
 }
 
@@ -1051,7 +1056,7 @@ const addCodexBriefSuggestion = (suggestion) => {
 }
 
 const openCodexPlanFeedback = () => {
-  if (planningWithCodex.value || !selectedPlan.value) return
+  if (!isLocalCodexHost.value || planningWithCodex.value || !selectedPlan.value) return
   codexFeedbackOpen.value = true
 }
 
@@ -1067,7 +1072,7 @@ const addCodexFeedbackSuggestion = (suggestion) => {
 }
 
 const planCurrentWeekWithCodex = async () => {
-  if (planningWithCodex.value) return
+  if (!isLocalCodexHost.value || planningWithCodex.value) return
   const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
   const planningBrief = codexPlanningBrief.value.trim()
   codexBriefOpen.value = false
@@ -1121,7 +1126,7 @@ const planCurrentWeekWithCodex = async () => {
 }
 
 const reviseCurrentPlanWithCodex = async () => {
-  if (planningWithCodex.value || !selectedPlan.value) return
+  if (!isLocalCodexHost.value || planningWithCodex.value || !selectedPlan.value) return
   const feedback = codexPlanFeedback.value.trim()
   if (!feedback) return
   const weekStart = selectedPlan.value.week_start
@@ -4687,5 +4692,114 @@ const savePlanLink = async (day) => {
   justify-self: end;
   font-size: 10px;
   white-space: nowrap;
+}
+/* Phone layout: keep wide week boards inside their own scrollers and give
+   the controls enough room for a thumb. */
+.plan-page,
+.plan-page > *,
+.plan-page > .page-head > *,
+.plan-page .plan-command,
+.plan-page .week-card,
+.plan-page .weeks-list,
+.plan-page .plan-grid-wrap,
+.plan-page .plan-day,
+.plan-page .today-brief,
+.plan-page .coaching-review-banner,
+.plan-page .adjust-panel { min-width: 0; }
+.plan-page .plan-command-focus,
+.plan-page .plan-day-title,
+.plan-page .plan-day-details,
+.plan-page .plan-status-detail,
+.plan-page .actual-name,
+.plan-page .link-editor-copy,
+.plan-page .editor-locked-details { overflow-wrap: anywhere; }
+.plan-page .plan-grid-wrap,
+.plan-page .week-rhythm { max-width: 100%; }
+.plan-page .day-select-button,
+.plan-page .plan-details-button,
+.plan-page .link-toggle-button,
+.plan-page .plan-actions-menu > summary { min-height: 44px; }
+
+@media (max-width: 640px) {
+  .plan-page { gap: 24px; overflow-x: hidden; }
+  .plan-page > .page-head { gap: 14px; margin-bottom: 20px; }
+  .plan-page > .page-head .page-title { font-size: 32px; }
+  .plan-page .codex-plan-action { width: 100%; }
+  .plan-page .codex-plan-hint { line-height: 1.45; }
+  .plan-page .plan-command-top { gap: 14px; }
+  .plan-page .plan-command-title { font-size: 25px; line-height: 1.2; }
+  .plan-page .period-navigation { width: 100%; justify-content: stretch; }
+  .plan-page .period-button,
+  .plan-page .period-today { min-height: 44px; }
+  .plan-page .workload-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 14px;
+    border-block: 1px solid var(--border);
+    padding: 14px 0;
+  }
+  .plan-page .workload-metric,
+  .plan-page .workload-metric:first-child,
+  .plan-page .workload-metric:nth-child(3) {
+    display: grid;
+    align-items: start;
+    gap: 2px;
+    min-width: 0;
+  }
+  .plan-page .workload-metric span { font-size: 11px; }
+  .plan-page .workload-metric strong { font-size: 16px; }
+  .plan-page .week-header { align-items: flex-start; }
+  .plan-page .week-actions > summary { width: max-content; max-width: 100%; }
+  .plan-page .week-rhythm {
+    grid-template-columns: repeat(7, minmax(84px, 1fr));
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+  .plan-page .rhythm-day { min-height: 132px; }
+  .plan-page .plan-grid-wrap {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+    padding-bottom: 14px;
+  }
+  .plan-page .plan-grid {
+    width: max-content;
+    min-width: max-content;
+  }
+  .plan-page .plan-day { width: 255px; min-width: 255px; }
+  .plan-page .goal-context-summary { align-items: flex-start; }
+  .plan-page .goal-context-summary-metrics { max-width: 100%; }
+  .plan-page .plan-actions-menu-items { max-width: calc(100vw - 48px); }
+  .plan-page .codex-brief-shell,
+  .plan-page .plan-details-modal-shell { padding: 12px; align-items: flex-end; }
+  .plan-page .codex-brief-modal {
+    width: 100%;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    padding: 18px;
+  }
+  .plan-page .codex-brief-head { gap: 12px; }
+  .plan-page .codex-brief-footer { align-items: stretch; flex-wrap: wrap; }
+  .plan-page .codex-brief-footer > div { width: 100%; }
+  .plan-page .codex-brief-footer button,
+  .plan-page .codex-brief-submit { min-height: 44px; }
+  .plan-page .plan-details-modal { max-width: 100%; }
+  .plan-page .workout-brief .plan-details-close { min-width: 44px; min-height: 44px; }
+}
+
+@media (max-width: 380px) {
+  .plan-page { gap: 20px; }
+  .plan-page > .page-head .page-title { font-size: 29px; }
+  .plan-page .codex-plan-button { padding-inline: 12px; }
+  .plan-page .plan-command-title { font-size: 22px; }
+  .plan-page .workload-summary { gap: 10px; }
+  .plan-page .workload-metric span { font-size: 10px; }
+  .plan-page .workload-metric strong { font-size: 15px; }
+  .plan-page .plan-day { width: 248px; min-width: 248px; }
+  .plan-page .day-heading-row { align-items: flex-start; }
+  .plan-page .day-heading-row .plan-day-weather { display: flex; flex-wrap: wrap; }
+  .plan-page .day-heading-row .plan-day-weather-rain { width: 100%; }
+  .plan-page .plan-actions-menu-items { max-width: calc(100vw - 32px); }
 }
 </style>

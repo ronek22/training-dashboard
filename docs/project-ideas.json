@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-09-14T11:30:21+02:00",
-  "summary": "Reviewed the new persisted AI specialist analyses, consolidated Weekly review page, current roadmap and feature tasks. Generated reports are saved per week, but the analysis read endpoint resolves only the current week; Completed weeks currently reads separate Sunday summaries. One focused proposal makes older saved specialist reports accessible without regeneration. Existing adaptation, progression and data-quality plans were excluded. This was a source/documentation review; no application tests or private records were accessed.",
+  "reviewed_at": "2026-09-20T12:29:16+02:00",
+  "summary": "Reviewed the active roadmap, current-state and strength sprint documentation, existing proposals, recent change summaries, and the new phone navigation and cycling power trends source and test declarations. Mobile navigation and power-history comparisons are already being implemented; coverage cleanup overlaps the planned data-quality inbox, while navigation and reproducible checks already have proposals. No sufficiently distinct new proposal was identified today. Refreshed review metadata without adding ideas. This was a source/documentation review; no application tests were run and no private training records were accessed.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -118,6 +118,32 @@
         "Invalid weeks, missing reports, empty history and API failures have clear states; tests cover Monday rollover and verify stored reports remain unchanged."
       ],
       "created_on": "2026-09-14"
+    },
+    {
+      "id": "filter-exercise-explorer-by-equipment",
+      "title": "Find exercises for the equipment you have",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The Workout Studio exercise explorer supports muscle selection, name search and supporting-muscle inclusion, but cannot narrow results by available equipment. The new exercise-guide catalog already contains equipment metadata, so users currently need to inspect individual guides to find movements compatible with their gym or home setup.",
+      "proposal": "Add an optional equipment filter to the existing exercise explorer, using explicitly mapped equipment requirements from the guide catalog. Keep the unfiltered list as the default and label exercises with unknown requirements separately. Combine equipment selection with the current muscle and name filters. This is a browsing aid: adding an exercise remains explicit and does not replace an existing movement or transfer its load prescription.",
+      "benefit": "Build a workout more quickly when you have limited equipment or a preferred station, without opening every exercise guide.",
+      "evidence": [
+        "frontend/src/components/StrengthExerciseExplorer.vue: explorer-filters and matches currently use query and includeSupporting",
+        "frontend/src/activity-detail/exercise-library.mjs: filterExercises filters muscle membership and exercise name",
+        "frontend/src/activity-detail/exercise-guides.mjs: getExerciseGuide returns explicit equipment metadata for matched aliases",
+        "frontend/src/activity-detail/exercise-guides.json: guide records contain equipment requirements",
+        "frontend/tests/exercise-guides.test.mjs: conservative alias matching leaves ambiguous exercise variants unmapped"
+      ],
+      "acceptance_criteria": [
+        "With no equipment filter, the existing results and ordering remain unchanged.",
+        "Equipment filtering composes with muscle selection, supporting-muscle inclusion and name search, with an accessible labeled control and accurate result count.",
+        "Exercises with multiple known requirements match only when all required items are available; bodyweight and unknown equipment have distinct states.",
+        "Unknown or ambiguously mapped exercises are labeled Equipment unknown and are never presented as verified matches; users can explicitly include or inspect them.",
+        "Browsing or changing filters never modifies a saved workout. Adding a movement uses the existing explicit draft action without assuming equivalent loads or automatically substituting exercises.",
+        "Synthetic filter tests cover combined requirements, unknown metadata, conservative aliases and reset behavior; keyboard and narrow-screen checks cover the controls and empty state."
+      ],
+      "created_on": "2026-09-15"
     }
   ]
 }

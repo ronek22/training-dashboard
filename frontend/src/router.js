@@ -17,6 +17,9 @@ const StrengthWorkoutSession = () => import('./views/StrengthWorkoutSession.vue'
 
 export default createRouter({
   history: createWebHistory(),
+  scrollBehavior(to, from, savedPosition) {
+    return savedPosition || { top: 0 }
+  },
   routes: [
     { path: '/', component: Dashboard },
     { path: '/weekly-review', component: () => import('./views/WeeklyReview.vue') },

@@ -39,3 +39,12 @@ codex-helper-status:
 # Run the backend test suite.
 test-backend:
     PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" python3 -m unittest discover -s backend/tests
+
+# Serve the built iPhone app on the Mac's Wi-Fi IP (find it in System Settings > Wi-Fi > Details).
+phone ip:
+    TRAINLOG_LAN_IP="{{ip}}" docker compose -f docker-compose.yml -f docker-compose.phone.yml up -d --build backend phone
+    @echo "Open http://{{ip}}:3080 on your iPhone, then Share > Add to Home Screen."
+
+# Stop only the iPhone frontend.
+phone-stop ip:
+    TRAINLOG_LAN_IP="{{ip}}" docker compose -f docker-compose.yml -f docker-compose.phone.yml stop phone

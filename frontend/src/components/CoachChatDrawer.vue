@@ -83,6 +83,85 @@
                 <span>Coach</span>
                 <p><i></i><i></i><i></i> {{ chatStage }}</p>
               </article>
+              <section
+                v-if="showCoachProgress"
+                class="coach-progress"
+                aria-labelledby="coach-progress-title"
+              >
+                <div class="coach-progress-heading">
+                  <div>
+                    <span class="coach-progress-kicker">Live job progress</span>
+                    <strong id="coach-progress-title" aria-live="polite" aria-atomic="true">{{ chatStage }}</strong>
+                  </div>
+                  <span class="coach-progress-state">{{ chatJobStatus || (chatSending ? 'running' : 'finished') }}</span>
+                </div>
+                <div class="coach-progress-stats" aria-label="Coach job timing">
+                  <span>
+                    <small>Elapsed</small>
+                    <strong>{{ formatCoachSeconds(displayElapsedSeconds) }}</strong>
+                  </span>
+                  <span>
+                    <small>Last activity</small>
+                    <strong>{{ displayIdleSeconds === null ? 'Unavailable' : `${formatCoachSeconds(displayIdleSeconds)} ago` }}</strong>
+                  </span>
+                </div>
+                <p v-if="!chatDiagnostics && chatSending" class="coach-progress-note">
+                  Live timing is from this browser. Activity details are unavailable from this helper.
+                </p>
+                <p v-if="chatIdleWarning" class="coach-progress-warning" role="status">{{ chatIdleWarning }}</p>
+
+                <details v-if="chatDiagnostics || chatJobId" class="coach-debug">
+                  <summary>
+                    <span>Debug activity</span>
+                    <span class="coach-debug-count">{{ chatDiagnostics ? `${chatDiagnostics.events.length} events` : 'Details unavailable' }}</span>
+                  </summary>
+                  <div class="coach-debug-content">
+                    <dl class="coach-debug-meta">
+                      <div v-if="chatDiagnostics?.model">
+                        <dt>Model</dt>
+                        <dd>{{ chatDiagnostics.model }}</dd>
+                      </div>
+                      <div v-if="chatDiagnostics?.attempt !== null && chatDiagnostics?.attempt !== undefined">
+                        <dt>Attempt</dt>
+                        <dd>{{ chatDiagnostics.attempt }}</dd>
+                      </div>
+                      <div v-if="chatJobId">
+                        <dt>Job ID</dt>
+                        <dd><code>{{ chatJobId }}</code></dd>
+                      </div>
+                      <div v-if="chatDiagnostics?.usage">
+                        <dt>Tokens</dt>
+                        <dd>{{ formatCoachUsage(chatDiagnostics.usage) }}</dd>
+                      </div>
+                    </dl>
+                    <p v-if="!chatDiagnostics" class="coach-progress-note">This helper did not report debug diagnostics.</p>
+                    <p v-if="chatDiagnostics?.events_dropped" class="coach-progress-note">
+                      {{ chatDiagnostics.events_dropped }} {{ chatDiagnostics.events_dropped === 1 ? 'event was' : 'events were' }} omitted by the helper.
+                    </p>
+                    <ol v-if="chatDiagnostics?.events.length" class="coach-timeline" aria-label="Coach activity timeline">
+                      <li v-for="event in chatDiagnostics.events" :key="`${event.seq}-${event.at}`">
+                        <time v-if="event.at" :datetime="event.at">{{ formatCoachEventTime(event.at) }}</time>
+                        <div>
+                          <strong>{{ event.phase }}</strong>
+                          <span>{{ event.message }}</span>
+                          <small v-if="event.tool || event.status">
+                            <template v-if="event.tool">{{ event.tool }}</template>
+                            <template v-if="event.tool && event.status"> · </template>
+                            <template v-if="event.status">{{ event.status }}</template>
+                          </small>
+                        </div>
+                      </li>
+                    </ol>
+                    <p v-else-if="chatDiagnostics" class="coach-progress-note">No activity events have been reported yet.</p>
+                    <div class="coach-debug-actions">
+                      <button type="button" :disabled="!chatDiagnostics" @click="copyDiagnostics">
+                        {{ chatCopyStatus === 'copied' ? 'Copied' : 'Copy diagnostics JSON' }}
+                      </button>
+                      <span v-if="chatCopyStatus === 'unavailable'" role="status">Clipboard access is unavailable.</span>
+                    </div>
+                  </div>
+                </details>
+              </section>
             </div>
 
             <form class="coach-composer" @submit.prevent="sendChatMessage">
@@ -110,8 +189,15 @@
 </template>
 
 <script setup>
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, onUnmounted, ref } from 'vue'
 import { useApi } from '../stores/api'
+import {
+  coachDiagnosticsPayload,
+  coachDiagnosticsWarning,
+  coachStageFromJob,
+  formatCoachSeconds,
+  normalizeCoachDiagnostics,
+} from '../utils/coach-job.mjs'
 
 const api = useApi()
 const drawerOpen = ref(false)
@@ -124,8 +210,122 @@ const chatInput = ref('')
 const chatSending = ref(false)
 const chatStage = ref('Reviewing your training context…')
 const chatError = ref('')
+const chatDiagnostics = ref(null)
+const chatJobId = ref('')
+const chatJobStatus = ref('')
+const chatCopyStatus = ref('')
+const chatClock = ref(Date.now())
+const chatJobStartedAt = ref(null)
+const chatClientElapsedSeconds = ref(0)
+const chatDiagnosticsReceivedAt = ref(null)
 const chatThread = ref(null)
 const chatInputElement = ref(null)
+
+let componentActive = true
+let progressClock = null
+let pendingPollWait = null
+
+const showCoachProgress = computed(() => chatSending.value || Boolean(chatDiagnostics.value) || Boolean(chatJobId.value))
+
+const displayElapsedSeconds = computed(() => {
+  const diagnostics = chatDiagnostics.value
+  if (diagnostics?.elapsed_seconds !== null && diagnostics?.elapsed_seconds !== undefined) {
+    const liveSeconds = chatSending.value && chatDiagnosticsReceivedAt.value
+      ? (chatClock.value - chatDiagnosticsReceivedAt.value) / 1000
+      : 0
+    return Math.max(0, diagnostics.elapsed_seconds + liveSeconds)
+  }
+  return chatClientElapsedSeconds.value
+})
+
+const displayIdleSeconds = computed(() => {
+  const diagnostics = chatDiagnostics.value
+  if (diagnostics?.idle_seconds === null || diagnostics?.idle_seconds === undefined) return null
+  const liveSeconds = chatSending.value && chatDiagnosticsReceivedAt.value
+    ? (chatClock.value - chatDiagnosticsReceivedAt.value) / 1000
+    : 0
+  return Math.max(0, diagnostics.idle_seconds + liveSeconds)
+})
+
+const chatIdleWarning = computed(() => {
+  const diagnostics = chatDiagnostics.value
+  if (!chatSending.value || !diagnostics || displayIdleSeconds.value === null || displayIdleSeconds.value < 60) return ''
+  return coachDiagnosticsWarning({ ...diagnostics, idle_seconds: displayIdleSeconds.value })
+})
+
+const stopProgressClock = () => {
+  if (progressClock !== null) {
+    window.clearInterval(progressClock)
+    progressClock = null
+  }
+}
+
+const startProgressClock = () => {
+  stopProgressClock()
+  chatJobStartedAt.value = Date.now()
+  chatClientElapsedSeconds.value = 0
+  chatClock.value = chatJobStartedAt.value
+  progressClock = window.setInterval(() => {
+    if (!componentActive || !chatJobStartedAt.value) return
+    const now = Date.now()
+    chatClock.value = now
+    chatClientElapsedSeconds.value = Math.max(0, Math.floor((now - chatJobStartedAt.value) / 1000))
+  }, 1000)
+}
+
+const clearCoachJobProgress = () => {
+  stopProgressClock()
+  chatDiagnostics.value = null
+  chatJobId.value = ''
+  chatJobStatus.value = ''
+  chatCopyStatus.value = ''
+  chatJobStartedAt.value = null
+  chatClientElapsedSeconds.value = 0
+  chatDiagnosticsReceivedAt.value = null
+  chatClock.value = Date.now()
+}
+
+const updateCoachJobSnapshot = (job) => {
+  if (!job || typeof job !== 'object') return
+  if (job.job_id) chatJobId.value = String(job.job_id)
+  if (job.status) chatJobStatus.value = String(job.status)
+  const diagnostics = normalizeCoachDiagnostics(job.diagnostics)
+  if (diagnostics) {
+    chatDiagnostics.value = diagnostics
+    chatDiagnosticsReceivedAt.value = Date.now()
+  }
+  chatStage.value = coachStageFromJob(job)
+}
+
+const formatCoachEventTime = value => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Time unavailable'
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+const formatCoachUsage = usage => {
+  const input = usage?.input_tokens ?? 0
+  const cached = usage?.cached_input_tokens ?? 0
+  const output = usage?.output_tokens ?? 0
+  return `${input} in · ${output} out${cached ? ` · ${cached} cached` : ''}`
+}
+
+const copyDiagnostics = async () => {
+  const payload = coachDiagnosticsPayload(chatDiagnostics.value)
+  if (!payload) return
+  chatCopyStatus.value = ''
+  try {
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) throw new Error('Clipboard unavailable')
+    await navigator.clipboard.writeText(JSON.stringify({
+      job_id: chatJobId.value,
+      status: chatJobStatus.value,
+      diagnostics: payload,
+    }, null, 2))
+    chatCopyStatus.value = 'copied'
+  } catch {
+    chatCopyStatus.value = 'unavailable'
+  }
+}
 
 const refreshConversations = async () => {
   const { data } = await api.getCoachChatConversations()
@@ -134,7 +334,7 @@ const refreshConversations = async () => {
 
 const scrollChatToBottom = async () => {
   await nextTick()
-  if (chatThread.value) chatThread.value.scrollTop = chatThread.value.scrollHeight
+  if (componentActive && chatThread.value) chatThread.value.scrollTop = chatThread.value.scrollHeight
 }
 
 const loadConversationMessages = async (conversationId) => {
@@ -173,6 +373,7 @@ const selectConversation = async (conversationId) => {
   if (chatSending.value || conversationId === activeConversationId.value) return
   activeConversationId.value = conversationId
   chatError.value = ''
+  clearCoachJobProgress()
   await loadConversationMessages(conversationId)
 }
 
@@ -182,6 +383,8 @@ const createConversation = () => {
   chatMessages.value = []
   chatInput.value = ''
   chatError.value = ''
+  clearCoachJobProgress()
+  chatStage.value = 'Reviewing your training context…'
   nextTick(() => chatInputElement.value?.focus())
 }
 
@@ -194,20 +397,38 @@ const deleteConversation = async (conversation) => {
     createConversation()
   } else if (activeConversationId.value === conversation.id) {
     activeConversationId.value = chatConversations.value[0].id
+    clearCoachJobProgress()
     await loadConversationMessages(activeConversationId.value)
   }
 }
 
-const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+const wait = (milliseconds) => new Promise((resolve) => {
+  const pending = { timer: null, resolve }
+  pending.timer = window.setTimeout(() => {
+    if (pendingPollWait !== pending) return
+    pendingPollWait = null
+    resolve(true)
+  }, milliseconds)
+  pendingPollWait = pending
+})
+
+const cancelPendingPollWait = () => {
+  if (!pendingPollWait) return
+  const pending = pendingPollWait
+  pendingPollWait = null
+  window.clearTimeout(pending.timer)
+  pending.resolve(false)
+}
 
 const sendChatMessage = async () => {
   const message = chatInput.value.trim()
-  if (!message || chatSending.value) return
+  if (!message || chatSending.value || !componentActive) return
 
   const history = chatMessages.value.slice(-20).map(({ role, content }) => ({
     role,
     content: String(content).slice(-6000),
   }))
+  clearCoachJobProgress()
   chatSending.value = true
   chatError.value = ''
   chatStage.value = 'Reviewing your training context…'
@@ -229,14 +450,21 @@ const sendChatMessage = async () => {
     await refreshConversations()
     await scrollChatToBottom()
 
+    startProgressClock()
     const { data: startedJob } = await api.startCodexCoachChat({ message, history })
+    if (!componentActive) return
     let job = startedJob
-    while (job.status === 'queued' || job.status === 'running') {
-      chatStage.value = job.message || 'Thinking through your training…'
-      await wait(1500)
+    updateCoachJobSnapshot(job)
+    while (componentActive && (job.status === 'queued' || job.status === 'running')) {
+      const shouldPoll = await wait(1500)
+      if (!shouldPoll || !componentActive) return
       const response = await api.getCodexCoachChatJob(job.job_id)
+      if (!componentActive) return
       job = response.data
+      updateCoachJobSnapshot(job)
     }
+    if (!componentActive) return
+    updateCoachJobSnapshot(job)
     if (job.status !== 'succeeded' || !String(job.summary || '').trim()) {
       throw new Error(job.message || 'The coach could not reply.')
     }
@@ -249,12 +477,21 @@ const sendChatMessage = async () => {
     chatMessages.value.push(savedReply)
     await refreshConversations()
   } catch (error) {
+    if (!componentActive) return
     chatError.value = error?.response?.data?.detail || error?.message || 'The coach could not reply.'
   } finally {
+    if (!componentActive) return
     chatSending.value = false
+    stopProgressClock()
     await scrollChatToBottom()
   }
 }
+
+onUnmounted(() => {
+  componentActive = false
+  cancelPendingPollWait()
+  stopProgressClock()
+})
 </script>
 
 <style scoped>
@@ -332,6 +569,42 @@ const sendChatMessage = async () => {
 .coach-message.is-thinking i { display: inline-block; width: 5px; height: 5px; margin-right: 3px; border-radius: 50%; background: var(--accent-strong); animation: coach-pulse 1.2s ease-in-out infinite; }
 .coach-message.is-thinking i:nth-child(2) { animation-delay: .15s; }
 .coach-message.is-thinking i:nth-child(3) { animation-delay: .3s; }
+.coach-progress { align-self: stretch; min-width: 0; padding: 13px 14px; border: 1px solid rgba(123, 163, 255, .22); border-radius: 13px; background: rgba(29, 42, 69, .48); }
+.coach-progress-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.coach-progress-heading > div { min-width: 0; }
+.coach-progress-kicker { display: block; margin-bottom: 4px; color: var(--accent-strong); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.coach-progress-heading strong { display: block; overflow-wrap: anywhere; color: var(--text); font-size: 12px; font-weight: 650; line-height: 1.45; }
+.coach-progress-state { flex: 0 0 auto; padding: 3px 7px; border: 1px solid rgba(123, 163, 255, .22); border-radius: 999px; color: var(--muted-soft); font-size: 9px; font-weight: 700; text-transform: capitalize; }
+.coach-progress-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.coach-progress-stats > span { min-width: 0; padding: 8px 9px; border-radius: 9px; background: rgba(8, 13, 22, .3); }
+.coach-progress-stats small, .coach-progress-stats strong { display: block; }
+.coach-progress-stats small { color: var(--muted); font-size: 9px; }
+.coach-progress-stats strong { margin-top: 2px; color: var(--text-soft); font-size: 11px; font-weight: 650; }
+.coach-progress-note, .coach-progress-warning { margin-top: 10px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.coach-progress-warning { color: #f3c478; }
+.coach-debug { margin-top: 11px; border-top: 1px solid rgba(143, 167, 205, .16); }
+.coach-debug summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 10px; color: var(--text-soft); cursor: pointer; font-size: 10px; font-weight: 700; list-style: none; }
+.coach-debug summary::-webkit-details-marker { display: none; }
+.coach-debug summary::after { content: '＋'; color: var(--muted); font-size: 14px; font-weight: 400; }
+.coach-debug[open] summary::after { content: '−'; }
+.coach-debug-count { margin-left: auto; color: var(--muted); font-size: 9px; font-weight: 500; }
+.coach-debug-content { min-width: 0; padding-top: 11px; }
+.coach-debug-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.coach-debug-meta > div { min-width: 0; padding: 7px 8px; border-radius: 8px; background: rgba(8, 13, 22, .3); }
+.coach-debug-meta dt { color: var(--muted); font-size: 8px; letter-spacing: .08em; text-transform: uppercase; }
+.coach-debug-meta dd { margin-top: 2px; overflow-wrap: anywhere; color: var(--text-soft); font-size: 10px; }
+.coach-debug-meta code { font: 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.coach-timeline { display: grid; gap: 8px; max-height: 240px; margin-top: 11px; padding: 0; overflow-y: auto; list-style: none; }
+.coach-timeline li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; min-width: 0; padding: 7px 0; border-top: 1px solid rgba(143, 167, 205, .11); }
+.coach-timeline time { color: var(--muted); font-size: 9px; font-variant-numeric: tabular-nums; }
+.coach-timeline li > div { display: grid; min-width: 0; gap: 2px; }
+.coach-timeline strong { color: var(--text-soft); font-size: 10px; font-weight: 700; overflow-wrap: anywhere; }
+.coach-timeline span { color: var(--muted-soft); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.coach-timeline small { color: var(--muted); font-size: 9px; overflow-wrap: anywhere; }
+.coach-debug-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 11px; }
+.coach-debug-actions button { padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; background: rgba(95, 140, 255, .12); color: var(--text-soft); font-size: 10px; font-weight: 700; cursor: pointer; }
+.coach-debug-actions button:disabled { cursor: not-allowed; opacity: .45; }
+.coach-debug-actions > span { color: #f2a8a8; font-size: 10px; }
 .coach-composer { display: grid; grid-template-columns: 1fr auto; gap: 9px; padding: 14px 16px; border-top: 1px solid var(--border); background: rgba(8, 13, 22, .66); }
 .coach-composer textarea { width: 100%; min-height: 52px; max-height: 140px; resize: vertical; padding: 11px 13px; border: 1px solid var(--border-strong); border-radius: 11px; background: rgba(20, 28, 43, .9); color: var(--text); line-height: 1.45; }
 .coach-composer button { min-width: 78px; border: 0; border-radius: 11px; background: var(--accent); color: white; font-weight: 750; cursor: pointer; }
@@ -354,6 +627,12 @@ const sendChatMessage = async () => {
   .coach-message { max-width: 92%; }
   .coach-header { padding: 15px; }
   .coach-header h2 { font-size: 17px; }
+  .coach-thread { padding: 15px; }
+  .coach-progress { padding: 12px; }
+  .coach-progress-heading { gap: 8px; }
+  .coach-progress-state { font-size: 8px; }
+  .coach-debug-meta { grid-template-columns: 1fr 1fr; }
+  .coach-timeline li { grid-template-columns: 54px minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
   .coach-drawer-enter-active, .coach-drawer-leave-active, .coach-drawer-enter-active .coach-drawer, .coach-drawer-leave-active .coach-drawer { transition: none; }

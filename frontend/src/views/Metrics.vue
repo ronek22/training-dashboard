@@ -15,7 +15,8 @@
       </button>
     </nav>
 
-    <div v-if="loading" class="card loading-state" role="status">Loading trends…</div>
+    <CyclingPowerTrends v-if="activeView === 'cycling-power'" />
+    <div v-else-if="loading" class="card loading-state" role="status">Loading trends…</div>
     <div v-else-if="loadError" class="card error-state">
       <strong>Trends are unavailable</strong>
       <p>{{ loadError }}</p>
@@ -258,6 +259,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import TrainingLoadPanel from '../components/TrainingLoadPanel.vue'
+import CyclingPowerTrends from '../components/CyclingPowerTrends.vue'
 import SessionComparisons from '../components/SessionComparisons.vue'
 import HealthTrendChart from '../components/HealthTrendChart.vue'
 import { useApi } from '../stores/api'
@@ -265,7 +267,7 @@ import { useApi } from '../stores/api'
 const api = useApi()
 const route = useRoute()
 const router = useRouter()
-const views = [{ key: 'overview', label: 'Overview' }, { key: 'improving', label: 'Am I improving?' }, { key: 'training_load', label: 'Training load' }, { key: 'recovery', label: 'Recovery' }, { key: 'daily_activity', label: 'Daily activity' }, { key: 'weight', label: 'Weight' }, { key: 'ftp', label: 'FTP' }]
+const views = [{ key: 'overview', label: 'Overview' }, { key: 'improving', label: 'Am I improving?' }, { key: 'cycling-power', label: 'Cycling power' }, { key: 'training_load', label: 'Training load' }, { key: 'recovery', label: 'Recovery' }, { key: 'daily_activity', label: 'Daily activity' }, { key: 'weight', label: 'Weight' }, { key: 'ftp', label: 'FTP' }]
 const metricMeta = {
   weight: { label: 'Weight', description: 'A supporting body-composition signal. Interpret the longer trend, not a single weigh-in.', action: 'Log weight', empty: 'Add weigh-ins when useful; this does not need to become a daily obligation.' },
   ftp: { label: 'Cycling FTP', description: 'A tested performance anchor used to set cycling zones and compare future tests.', action: 'Log FTP test', empty: 'Add a result after a repeatable FTP test. Everyday ride power does not belong here.' },
@@ -594,5 +596,98 @@ function sparklineArea(entries, width, height, padding) {
 .movement-story{display:grid;grid-template-columns:1fr 1.2fr;gap:45px;padding:34px;border:1px solid color-mix(in srgb,var(--movement-color) 25%,transparent);border-radius:24px;background:radial-gradient(ellipse at 90% 0%,color-mix(in srgb,var(--movement-color) 12%,transparent),transparent 65%),#121e2b}.movement-story .detail-eyebrow,.movement-story h3 em{color:var(--movement-color);font-style:normal}.movement-number{display:flex;align-items:center;gap:18px;margin-top:28px}.movement-number>strong{font-family:var(--font-display);font-size:48px;letter-spacing:-2px;line-height:1.15}.movement-number>span{font-size:11px;color:#bac8db}.movement-number small{display:block;color:#94a6bf;font-size:9px;margin-top:5px}.movement-week{align-self:end;min-width:0}.movement-week-head,.movement-week-foot{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:10px;color:#8fa9bf}.movement-week-head strong{font-size:12px;color:#c8d9e8}.movement-bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-top:22px}.movement-day{display:grid;justify-items:center;gap:5px;min-width:0}.movement-day>strong{font-family:var(--font-display);font-size:10px;color:#b9cde0}.movement-day>div{display:flex;align-items:end;justify-content:center;width:100%;height:140px;background:#88aecc06;border-radius:6px}.movement-day i{width:80%;max-width:35px;min-height:2px;border-radius:6px 6px 2px 2px;background:linear-gradient(0deg,color-mix(in srgb,var(--movement-color) 30%,transparent),var(--movement-color))}.movement-day>span{font-size:9px;color:#c7d8e7}.movement-day>small{font-size:8px;color:#8ba2b9}.movement-week-foot{border-top:1px solid var(--border);padding-top:15px;margin-top:18px;font-size:9px}.movement-week-foot a{color:var(--movement-color)}.movement-empty{padding:40px 0}.health-detail :deep(.health-trend-card){padding:28px;border-radius:22px;background:linear-gradient(160deg,color-mix(in srgb,var(--signal-color) 4%,transparent),var(--surface))}.health-detail :deep(.chart-title h3){font-size:24px;letter-spacing:-.6px}.health-detail :deep(.selected-value strong){font-size:33px}.health-detail :deep(.health-trend-card){--health-chart-height:280px}
 @media(max-width:1150px){.sleep-story{grid-template-columns:1fr 220px;gap:25px}.sleep-dial{width:220px}.sleep-breakdown{grid-column:1/-1}.sleep-stage-row{grid-template-columns:9px 1fr auto 40px}.movement-story{gap:25px}.movement-number>strong{font-size:38px}}
 @media(max-width:760px){.sleep-story,.movement-story{grid-template-columns:1fr;padding:25px}.sleep-dial{justify-self:center;margin:10px 0}.sleep-breakdown{grid-column:auto}.sleep-story-copy>p{max-width:none}.sleep-story h3,.movement-story h3{font-size:32px}.movement-number>strong{font-size:48px}.movement-week{margin-top:12px}.health-detail .metric-switcher{grid-template-columns:repeat(3,minmax(0,1fr))}.health-detail .metric-switcher button{padding:16px 10px}.health-detail .metric-switcher strong{font-size:21px}.health-detail .metric-switcher span{font-size:8px}.health-detail .metric-switcher small{font-size:8px}.health-detail :deep(.health-trend-card){padding:18px}.movement-week-head{align-items:flex-start;flex-direction:column}.movement-bars{gap:5px}.movement-number{flex-wrap:wrap}}
+
+/* Keep trend cards readable at phone widths and contain their intentional
+   data scrollers inside the page. */
+.trends-page,
+.trends-page > *,
+.trends-page .card,
+.trends-page section,
+.trends-page article,
+.trends-page .page-head > *,
+.trends-page .section-heading > *,
+.trends-page .detail-head > * { min-width: 0; }
+.trends-page { max-width: 100%; }
+.trends-page .page-sub,
+.trends-page h2,
+.trends-page h3,
+.trends-page p,
+.trends-page strong,
+.trends-page span { overflow-wrap: anywhere; }
+.trends-page .trend-nav,
+.trends-page .heatmap-scroll { max-width: 100%; }
+.trends-page .trend-nav button,
+.trends-page .text-btn,
+.trends-page .card-action,
+.trends-page .zone-list button,
+.trends-page .daily-signal-card,
+.trends-page .period-switch button,
+.trends-page .chart-mode button,
+.trends-page .momentum-footer button { min-height: 44px; }
+
+@media (max-width: 640px) {
+  .trends-page { gap: 24px; overflow-x: hidden; }
+  .trends-page .page-head { gap: 12px; margin-bottom: 18px; }
+  .trends-page .page-head .primary-btn { width: 100%; min-height: 44px; }
+  .trends-page .trend-nav { gap: 12px; margin-top: -4px; padding-bottom: 0; }
+  .trends-page .trend-nav button { flex: 0 0 auto; padding: 10px 4px; }
+  .trends-page .momentum-hero { border-radius: 18px; }
+  .trends-page .momentum-topline { flex-wrap: wrap; padding: 18px 16px 0; }
+  .trends-page .period-switch { max-width: 100%; }
+  .trends-page .period-switch button { padding-inline: 8px; }
+  .trends-page .momentum-layout { gap: 20px; padding: 22px 16px; }
+  .trends-page .momentum-story h2 { font-size: 31px; }
+  .trends-page .momentum-total { flex-wrap: wrap; gap: 8px 12px; }
+  .trends-page .momentum-total > strong { font-size: 56px; }
+  .trends-page .momentum-total > span { min-width: 0; }
+  .trends-page .rhythm-chart { height: 190px; margin-top: 14px; }
+  .trends-page .rhythm-track { height: 140px; }
+  .trends-page .momentum-footer { padding: 14px 16px; }
+  .trends-page .momentum-footer button { align-self: stretch; justify-content: space-between; }
+  .trends-page .marker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .trends-page .marker-card { padding: 18px 12px; }
+  .trends-page .marker-card > strong { font-size: 22px; }
+  .trends-page .support-card { padding: 18px; }
+  .trends-page .support-head strong { font-size: 24px; }
+  .trends-page .daily-signal-card { min-height: 68px; padding: 14px 12px; }
+  .trends-page .zone-list button { padding-block: 10px; }
+  .trends-page .heatmap-card,
+  .trends-page .hr-zone-card { padding: 18px; }
+  .trends-page .detail-head { gap: 12px; }
+  .trends-page .sleep-story,
+  .trends-page .movement-story { padding: 18px; border-radius: 18px; }
+  .trends-page .sleep-story h3,
+  .trends-page .movement-story h3 { font-size: 29px; }
+  .trends-page .sleep-dial { width: min(220px, 100%); }
+  .trends-page .movement-number > strong { font-size: 43px; }
+  .trends-page .movement-bars { gap: 3px; }
+  .trends-page .movement-day > strong { font-size: 9px; }
+  .trends-page .health-detail :deep(.health-trend-card) { padding: 14px; }
+  .trends-page .metric-dialog-backdrop { padding: 12px; align-items: flex-end; }
+  .trends-page .metric-dialog { max-height: calc(100dvh - 24px); overflow-y: auto; padding: 18px; }
+  .trends-page .metric-dialog-actions { display: grid; grid-template-columns: 1fr; }
+  .trends-page .metric-dialog-actions button,
+  .trends-page .metric-form input,
+  .trends-page .metric-form select { min-height: 44px; }
+}
+
+@media (max-width: 380px) {
+  .trends-page { gap: 20px; }
+  .trends-page .momentum-topline { align-items: flex-start; flex-direction: column; }
+  .trends-page .period-switch { width: 100%; }
+  .trends-page .period-switch button { flex: 1 1 0; }
+  .trends-page .momentum-layout { padding-inline: 14px; }
+  .trends-page .momentum-story h2 { font-size: 28px; }
+  .trends-page .momentum-total > strong { font-size: 50px; }
+  .trends-page .marker-grid { grid-template-columns: 1fr; }
+  .trends-page .marker-card { padding-inline: 14px; }
+  .trends-page .health-detail .metric-switcher { grid-template-columns: 1fr; }
+  .trends-page .health-detail .metric-switcher button { min-height: 64px; padding: 13px 14px; }
+  .trends-page .history-row { grid-template-columns: 1fr; gap: 5px; }
+  .trends-page .history-row span { grid-column: auto; }
+  .trends-page .movement-number { gap: 8px; }
+  .trends-page .movement-number > strong { font-size: 38px; }
+  .trends-page .rhythm-caption { align-items: flex-start; flex-direction: column; }
+}
 
 </style>

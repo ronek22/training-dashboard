@@ -122,6 +122,7 @@
             <button type="button" :disabled="index === editing.exercises.length - 1" aria-label="Move exercise down" @click="moveExercise(index, 1)">↓</button>
             <button type="button" aria-label="Remove exercise" @click="removeExercise(index)">×</button>
           </div>
+          <ExerciseGuide v-if="exercise.exercise_name.trim()" class="editor-guide" :name="exercise.exercise_name" />
         </article>
       </div>
 
@@ -260,6 +261,7 @@
 </template>
 
 <script setup>
+import ExerciseGuide from '../components/ExerciseGuide.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
@@ -589,6 +591,7 @@ input:focus, textarea:focus { outline: 2px solid rgba(255, 177, 72, .2); border-
 .history-prescription { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: 9px; background: rgba(255, 171, 66, .07); padding: 7px 9px; color: #d7e0ef; font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
 .history-prescription button { border: 0; background: transparent; color: #ffc577; font-weight: 800; white-space: nowrap; }
 .exercise-editor { display: grid; gap: 10px; }
+.editor-guide { grid-column: 1 / -1; }
 .exercise-row { display: grid; grid-template-columns: 34px minmax(180px, 1.8fr) repeat(4, minmax(76px, .55fr)) auto; align-items: end; gap: 10px; padding: 14px; border-radius: 16px; background: rgba(255,255,255,.025); border: 1px solid var(--border); }
 .exercise-index { align-self: center; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: rgba(255, 171, 66, .12); color: #ffc477; font-weight: 900; }
 .row-actions { display: flex; gap: 4px; padding-bottom: 2px; }

@@ -12,7 +12,7 @@
         <div class="explorer-filters"><label class="explorer-search"><span>Search {{ selectedGroup.label.toLowerCase() }} exercises</span><input v-model="query" type="search" placeholder="Search exercise names" /></label><label class="supporting-filter"><input v-model="includeSupporting" type="checkbox" />Include supporting muscles</label></div>
         <div class="results-heading"><h3>{{ selectedGroup.label }} exercises</h3><span role="status">{{ matches.length }} matches</span></div>
         <div v-if="matches.length" class="explorer-results">
-          <article v-for="exercise in matches" :key="exerciseKey(exercise.exercise_name)" class="explorer-result"><div><h4>{{ exercise.exercise_name }}</h4><p><span :class="{ direct: exercise.mapping.primary.includes(selected) }">{{ exercise.mapping.primary.includes(selected) ? 'Primary' : 'Supporting' }}</span> · {{ exercise.source }}</p></div><button type="button" :disabled="isAdded(exercise)" :aria-label="`${isAdded(exercise) ? 'Added' : 'Add'} ${exercise.exercise_name}`" @click="$emit('add', exercise)">{{ isAdded(exercise) ? '✓ Added' : '+ Add' }}</button></article>
+          <article v-for="exercise in matches" :key="exerciseKey(exercise.exercise_name)" class="explorer-result"><div class="explorer-result-heading"><div><h4>{{ exercise.exercise_name }}</h4><p><span :class="{ direct: exercise.mapping.primary.includes(selected) }">{{ exercise.mapping.primary.includes(selected) ? 'Primary' : 'Supporting' }}</span> · {{ exercise.source }}</p></div><button type="button" :disabled="isAdded(exercise)" :aria-label="`${isAdded(exercise) ? 'Added' : 'Add'} ${exercise.exercise_name}`" @click="$emit('add', exercise)">{{ isAdded(exercise) ? '✓ Added' : '+ Add' }}</button></div><ExerciseGuide :name="exercise.exercise_name" /></article>
         </div>
         <p v-else class="explorer-empty">No matching exercises. Try another search or include supporting muscles.</p>
         <p class="explorer-note">Muscle involvement is estimated from exercise names. Add exercises to your draft, review sets and load, then save your workout.</p>
@@ -22,6 +22,7 @@
 </template>
 
 <script setup>
+import ExerciseGuide from './ExerciseGuide.vue'
 import { computed, ref } from 'vue'
 import MuscleSilhouette from './activity-detail/MuscleSilhouette.vue'
 import { MUSCLES } from '../activity-detail/muscles.mjs'
@@ -71,12 +72,13 @@ const selectMuscle = key => {
 .results-heading h3 { font-size: 14px; }
 .results-heading span { color: var(--muted); font-size: 11px; }
 .explorer-results { max-height: 340px; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
-.explorer-result { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 6px; border-bottom: 1px solid #ffffff08; }
+.explorer-result { padding: 12px 6px; border-bottom: 1px solid #ffffff08; }
+.explorer-result-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .explorer-result h4 { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
 .explorer-result p { color: var(--muted); font-size: 10px; margin-top: 4px; }
 .explorer-result .direct { color: #f4a0b8; }
-.explorer-result button { min-width: 76px; min-height: 40px; flex-shrink: 0; border: 1px solid #f6bd6740; border-radius: 9px; background: #f6bd6710; color: #f6bd67; font-size: 12px; cursor: pointer; }
-.explorer-result button:disabled { color: #8ae4c3; border-color: #8ae4c325; background: transparent; cursor: default; }
+.explorer-result-heading > button { min-width: 76px; min-height: 40px; flex-shrink: 0; border: 1px solid #f6bd6740; border-radius: 9px; background: #f6bd6710; color: #f6bd67; font-size: 12px; cursor: pointer; }
+.explorer-result-heading > button:disabled { color: #8ae4c3; border-color: #8ae4c325; background: transparent; cursor: default; }
 .explorer-note, .explorer-empty { color: var(--muted-soft); font-size: 11px; line-height: 1.6; margin-top: 16px; }
 @media(max-width:800px) { .explorer-layout { grid-template-columns: minmax(0,1fr); } .explorer-heading { flex-direction: column; align-items: start; } .draft-status { max-width: 100%; } .explorer-body :deep(svg) { height: 270px; } }
 @media(max-width:480px) { .exercise-explorer { padding: 18px; } .explorer-filters { flex-direction: column; align-items: stretch; } }

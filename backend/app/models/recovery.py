@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 
 
 class RecoveryModel(BaseModel):
@@ -26,6 +26,7 @@ class Intake(RecoveryModel):
 
 class IssueCreate(RecoveryModel):
     title: str = Field(min_length=1, max_length=100)
+    intake: Intake | None = None
 
 
 class IntakeUpdate(RecoveryModel):
@@ -73,9 +74,18 @@ class RoutineSave(RecoveryModel):
 
 class CheckinCreate(RecoveryModel):
     severity: int = Field(ge=0, le=10, strict=True)
-    trend: Literal["improving", "unchanged", "worsening"]
-    function: Literal["normal", "limited", "unable"]
+    trend: Literal["unknown", "improving", "unchanged", "worsening"] = "unknown"
+    function: Literal["unknown", "normal", "limited", "unable"] = "unknown"
     note: str = Field(default="", max_length=2000)
     routine_id: int | None = Field(default=None, ge=1)
     completed: StrictBool = False
     before_severity: int | None = Field(default=None, ge=0, le=10, strict=True)
+    resolve: StrictBool = False
+
+    @field_validator("trend", "function", mode="before")
+    @classmethod
+    def missing_observation_is_unknown(cls, value):
+        # Older clients sent null while the form was untouched. Preserve that
+        # request shape, but never turn an unanswered observation into a
+        # reassuring normal/improving value.
+        return "unknown" if value is None else value

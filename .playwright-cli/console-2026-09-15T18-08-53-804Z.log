@@ -1,0 +1,117 @@
+[     604ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:3000/favicon.ico:0
+[    1338ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8765/daily-state:0
+[  250646ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8765/daily-state:0
+[10272298ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[10273400ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8765/daily-state:0
+[18508835ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8765/daily-state:0
+[22959897ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[22960181ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[22960181ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[22960241ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[22960241ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[23414915ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[23415084ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[23415084ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[23415113ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[23415113ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[67279161ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[67279584ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[67279587ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[67279613ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[67279613ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[73490515ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[73490911ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[73490913ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[73490939ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[73490939ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[78174807ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[78175122ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[78175122ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[78175137ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[78175137ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[97885904ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[97886237ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[97886244ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[97886279ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[97886280ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[103092395ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[103092583ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[103092586ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[103092613ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[103092614ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[149295286ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[149295424ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[149295429ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[149295439ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[149295439ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[172201618ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[172201971ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[172201972ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[172201988ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[172201989ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[172991368ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[172991535ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[172991544ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[172991561ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[172991561ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[173314360ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[173314437ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[173314437ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[173314457ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[173314460ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[173394419ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[173394638ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[173394640ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[173394644ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[173394644ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[241450826ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[241451129ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[241451130ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[241451149ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[241451149ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[253587232ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[253587387ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[253587388ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[253587395ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[253587399ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[256240178ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[256240305ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[256240305ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[256240346ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[256240350ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[257609329ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[257609676ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[257609688ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[257609709ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[257609712ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[320682571ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[320682701ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[320682707ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[320682723ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[320682723ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[329091270ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[329091358ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[329091359ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[329091373ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[329091381ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[331416755ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[331416910ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[331416910ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[331416926ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[331416933ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[338859544ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[338859726ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[338859727ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/weather/current?latitude=54.352&longitude=18.6466:0
+[338859732ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/activities?days=8&limit=100:0
+[338859741ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[340726666ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[340733605ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/api/dashboard:0
+[340734165ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8765/daily-state:0
+[343059522ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[343063955ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8765/daily-state:0
+[400598728ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[400603419ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8765/daily-state:0
+[402604477ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[402608350ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8765/daily-state:0
+[403841179ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[403845239ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8765/daily-state:0

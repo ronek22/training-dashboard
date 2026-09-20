@@ -113,6 +113,7 @@ export const useApi = () => ({
   getCodexCoachChatJob: (jobId) => codexHelper.get(`/coach-chat/${encodeURIComponent(jobId)}`),
   getWeekly: () => api.get('/weekly'),
   getMetric: (name) => api.get(`/metrics/${name}`),
+  getCyclingPower: () => api.get('/metrics/cycling-power'),
   getSessionComparisons: (params) => api.get('/metrics/session-comparisons', { params }),
   getPerformanceSummary: () => api.get('/metrics/performance-summary'),
   getHealthSummary: (params) => api.get('/metrics/health-summary', { params }),

@@ -106,7 +106,8 @@
         </Transition>
       </router-view>
     </main>
-    <CoachChatDrawer />
+    <MobileNavigation />
+    <CoachChatDrawer v-if="isMacLocal" />
   </div>
 </template>
 
@@ -116,6 +117,9 @@ import { useRoute } from 'vue-router'
 import { useApi } from './stores/api'
 import NavIcon from './components/NavIcon.vue'
 import CoachChatDrawer from './components/CoachChatDrawer.vue'
+import MobileNavigation from './components/MobileNavigation.vue'
+
+const isMacLocal = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
 
 const route = useRoute()
 const api = useApi()
@@ -486,53 +490,13 @@ const routeTransitionName = computed(() => {
 }
 
 @media (max-width: 640px) {
-  .layout {
-    display: block;
-  }
-
-  .sidebar {
-    position: sticky;
-    top: 0;
-    width: 100%;
-    height: auto;
-    z-index: 10;
-    padding: 14px 0;
-  }
-
-  .sidebar-logo,
-  .sidebar-footer {
-    display: none;
-  }
-
-  .sidebar-nav {
-    flex-direction: row;
-    gap: 8px;
-    padding: 0 12px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-    scroll-snap-type: x proximity;
-  }
-
-  .sidebar-nav::-webkit-scrollbar { display: none; }
-
-  .nav-item {
-    flex: 0 0 auto;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 68px;
-    padding: 8px 9px;
-    font-size: 10px;
-    scroll-snap-align: start;
-  }
-
-  .nav-label { display: inline; }
-
-  .nav-icon { width: 17px; height: 17px; }
-
+  .layout { display: block; min-height: 100dvh; }
+  .sidebar { display: none; }
   .main-content {
     margin-left: 0;
-    padding-top: 20px;
+    min-width: 0;
+    padding: calc(20px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(92px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   }
+  :deep(.coach-launcher) { bottom: calc(82px + env(safe-area-inset-bottom)); }
 }
 </style>

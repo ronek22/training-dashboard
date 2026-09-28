@@ -1,9 +1,11 @@
 import json
 import sqlite3
 import unittest
+from unittest.mock import patch
 
 from backend.app.services.power_trends import (
     POWER_EFFORT_DURATIONS,
+    _build_cycling_power_trends_data,
     get_cycling_power_trends_data,
 )
 
@@ -242,6 +244,73 @@ class CyclingPowerTrendTests(unittest.TestCase):
         self.assertEqual(result["coverage"]["measured_power_activities"], 1)
         self.assertEqual(result["coverage"]["analyzed_activities"], 1)
         self.assertEqual(result["efforts"][0]["activity_id"], "zwift-backfill")
+
+    def test_repeated_reads_use_the_persistent_profile_cache(self):
+        self.insert_activity(
+            "cached-ride",
+            "2026-05-01",
+            times=list(range(31)),
+            watts=[220] * 31,
+            device_watts=True,
+        )
+
+        with patch(
+            "backend.app.services.power_trends._build_cycling_power_trends_data",
+            wraps=_build_cycling_power_trends_data,
+        ) as build:
+            first = get_cycling_power_trends_data(self.conn)
+            second = get_cycling_power_trends_data(self.conn)
+
+        self.assertEqual(first, second)
+        self.assertEqual(build.call_count, 1)
+        cache = self.conn.execute(
+            "SELECT revision, result_json FROM cycling_power_trends_cache WHERE cache_key = 'all_time'"
+        ).fetchone()
+        self.assertIsNotNone(cache)
+        self.assertEqual(json.loads(cache["result_json"]), first)
+
+    def test_new_and_updated_indoor_streams_invalidate_profile_cache(self):
+        self.insert_activity(
+            "indoor-low",
+            "2026-05-01",
+            times=list(range(31)),
+            watts=[180] * 31,
+            device_watts=True,
+        )
+        first = get_cycling_power_trends_data(self.conn)
+        first_record = next(item for item in first["records"] if item["duration_seconds"] == 30)
+        self.assertEqual(first_record["watts"], 180.0)
+
+        self.insert_activity(
+            "indoor-high",
+            "2026-05-02",
+            times=list(range(31)),
+            watts=[240] * 31,
+            device_watts=True,
+        )
+        after_insert = get_cycling_power_trends_data(self.conn)
+        self.assertEqual(after_insert["coverage"]["cycling_activities"], 2)
+        self.assertEqual(
+            next(item for item in after_insert["records"] if item["duration_seconds"] == 30)["activity_id"],
+            "indoor-high",
+        )
+
+        updated_streams = json.dumps({"time": {"data": list(range(31))}, "watts": {"data": [260] * 31}})
+        self.conn.execute(
+            "UPDATE activity_details SET streams_json = ? WHERE activity_id = 'indoor-high'",
+            (updated_streams,),
+        )
+        after_update = get_cycling_power_trends_data(self.conn)
+        updated_record = next(item for item in after_update["records"] if item["duration_seconds"] == 30)
+        self.assertEqual(updated_record["watts"], 260.0)
+
+        self.conn.execute("DELETE FROM activities WHERE id = 'indoor-high'")
+        after_delete = get_cycling_power_trends_data(self.conn)
+        self.assertEqual(after_delete["coverage"]["cycling_activities"], 1)
+        self.assertEqual(
+            next(item for item in after_delete["records"] if item["duration_seconds"] == 30)["activity_id"],
+            "indoor-low",
+        )
 
 
 if __name__ == "__main__":

@@ -10,6 +10,15 @@
         <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">
           <NavIcon name="dashboard" class="nav-icon" /><span class="nav-label">Dashboard</span>
         </router-link>
+        <router-link
+          to="/strength/workouts"
+          class="nav-item studio-nav-item"
+          :class="{ active: $route.path.startsWith('/strength/workouts') }"
+          title="Workout Studio"
+          aria-label="Workout Studio"
+        >
+          <NavIcon name="strength" class="nav-icon" /><span class="nav-label">Workout Studio</span>
+        </router-link>
         <div class="nav-group-label">Training</div>
         <router-link to="/plan" class="nav-item" :class="{ active: $route.path === '/plan' }">
           <NavIcon name="plan" class="nav-icon" /><span class="nav-label">Plan</span>
@@ -20,7 +29,7 @@
         <router-link to="/goals" class="nav-item" :class="{ active: $route.path === '/goals' }">
           <NavIcon name="goals" class="nav-icon" /><span class="nav-label">Goals</span>
         </router-link>
-        <router-link to="/strength" class="nav-item" :class="{ active: $route.path.startsWith('/strength') }">
+        <router-link to="/strength" class="nav-item" :class="{ active: $route.path === '/strength' }">
           <NavIcon name="strength" class="nav-icon" /><span class="nav-label">Strength</span>
         </router-link>
         <router-link to="/recovery" class="nav-item" :class="{ active: $route.path === '/recovery' }">
@@ -100,6 +109,7 @@
       </div>
     </aside>
     <main class="main-content">
+      <WorkoutQuickAccess />
       <router-view v-slot="{ Component, route }">
         <Transition :name="routeTransitionName">
           <component :is="Component" :key="route.path" />
@@ -118,6 +128,7 @@ import { useApi } from './stores/api'
 import NavIcon from './components/NavIcon.vue'
 import CoachChatDrawer from './components/CoachChatDrawer.vue'
 import MobileNavigation from './components/MobileNavigation.vue'
+import WorkoutQuickAccess from './components/WorkoutQuickAccess.vue'
 
 const isMacLocal = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
 
@@ -290,6 +301,7 @@ const routeTransitionName = computed(() => {
   padding: 20px 0 18px;
   position: fixed;
   top: 0; left: 0; bottom: 0;
+  overflow-y: auto;
   backdrop-filter: blur(18px);
 }
 
@@ -437,9 +449,10 @@ const routeTransitionName = computed(() => {
 
 .main-content {
   flex: 1;
+  min-width: 0;
   margin-left: 232px;
   padding: 34px 32px 40px;
-  overflow-y: auto;
+  overflow: visible;
   position: relative;
 }
 

@@ -2,6 +2,14 @@
 
 Open **Trends → Cycling power** (`/metrics?view=cycling-power`).
 
+## Saved power profile and coaching advice
+
+Power calculations are saved in the local database and reused across page visits and backend restarts. Changes to cycling activities or their cached power streams invalidate the saved result, so the next visit or **Refresh** recalculates it. This includes a newly synced indoor ride and streams fetched later through backfill. Refreshing unchanged data reuses the cache.
+
+The **What to focus on** panel offers an on-demand Codex review with practical priorities, the evidence behind them, and a way to check progress. Click **Generate advice** with the local Codex helper running. The result is saved; opening the page, navigating away and back, or refreshing never starts AI generation. Unchanged advice is reused, including repeated requests to the helper. When the cycling profile changes, the previous advice stays visible with **Update advice**. Updating is an explicit choice, so each synced ride does not automatically consume tokens.
+
+Advice treats all-time bests, recent efforts, benchmark limitations and missing recordings as context. It does not automatically change your plan. A review based on an outdated snapshot is rejected if the data changes before it can be saved.
+
 The first version shows best sustained power for 5, 15 and 30 seconds, and 1, 2, 5, 10, 20 and 30 minutes, plus monthly bests and per-ride effort comparisons. Select a duration, then choose a reference ride and filter to efforts within ±5% of its power. Heart rate comes from the same interval as the winning power effort; it is not the whole-ride average.
 
 ## Data coverage

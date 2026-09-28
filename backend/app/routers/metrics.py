@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query
 
 from ..db import get_db
 from ..models.metrics import Metric
+from ..models.cycling_power_advice import CyclingPowerAdviceSave
 from ..services.metrics import create_metric_data, get_metric_history_data, get_performance_summary_data
 from ..services.dashboard import (
     build_activity_heatmap,
@@ -75,6 +76,36 @@ def cycling_power_trends():
     conn = get_db()
     try:
         return get_cycling_power_trends_data(conn)
+    finally:
+        conn.close()
+
+
+@router.get('/metrics/cycling-power/advice/context')
+def cycling_advice_context():
+    from ..services.cycling_power_advice import advice_context
+    conn = get_db()
+    try:
+        return advice_context(conn)
+    finally:
+        conn.close()
+
+
+@router.get('/metrics/cycling-power/advice')
+def cycling_advice():
+    from ..services.cycling_power_advice import get_advice
+    conn = get_db()
+    try:
+        return get_advice(conn)
+    finally:
+        conn.close()
+
+
+@router.put('/metrics/cycling-power/advice')
+def save_cycling_advice(result: CyclingPowerAdviceSave):
+    from ..services.cycling_power_advice import save_advice
+    conn = get_db()
+    try:
+        return save_advice(conn, result)
     finally:
         conn.close()
 

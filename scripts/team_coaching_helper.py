@@ -1,6 +1,5 @@
-"""Three specialist calls followed by a single head-coach decision."""
+"""One consolidated Codex call for the weekly team-coaching review."""
 import json
-from concurrent.futures import ThreadPoolExecutor
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
@@ -86,17 +85,55 @@ SPECIALISTS: {json.dumps(specialists, ensure_ascii=False)}
 DATA: {json.dumps(snapshot, ensure_ascii=False)}'''
 
 
+def team_prompt(snapshot):
+    specialist = {
+        'sport': 'running, cycling or strength (one report for each sport, in that order)',
+        'verdict': 'under 100 characters',
+        'assessment': 'under 600 characters: interpret goal support and session quality',
+        'next_week_focus': 'under 350 characters: specific proposed priority with rationale',
+        'evidence_ids': ['up to six exact activity IDs from the supplied data'],
+        'uncertainty': 'under 300 characters, or empty if none is material',
+    }
+    head = {
+        'headline': 'under 100 characters: the main conclusion about this week',
+        'verdict': 'under 700 characters: did the combined week serve the athlete goals, and why?',
+        'tradeoff': 'under 500 characters: resolve competing priorities; name what to protect and what can give way',
+        'next_week_change': 'under 400 characters: ONE concrete proposed change, not a list; tied to goals and actual schedule',
+        'success_check': 'under 300 characters: what observable result to check in next week review',
+        'uncertainty': 'under 300 characters: unresolved material disagreement or missing evidence',
+    }
+    schema = {'specialists': [specialist, specialist, specialist], 'head_coach': head}
+    return f'''You are the single HEAD COACH for this hybrid training week. In one
+pass, write three concise specialist reports and then a coordinated head-coach
+decision. Each specialist must use the shared evidence but focus only on their
+sport: running evaluates running consistency and goal pace/volume needs; cycling
+evaluates ride purpose, intensity evidence and whether riding crowds out higher-
+priority work; strength evaluates exercises, work sets, progression, rotation and
+goal frequency, distinguishing upper-body from lower-body work. Cite only exact
+activity IDs from the supplied data in each report. Return exactly one report for
+each of running, cycling and strength, followed by one head_coach decision.
+
+The head-coach decision must resolve competing priorities using athlete goals and
+recovery; do not concatenate the specialist reports. A recovery headline and
+'keep training' action must explain the distinction (for example upper-body work
+versus more leg loading). Daily readiness is context, not the weekly verdict. Do
+not let an isolated hard ride automatically make the whole week a recovery warning.
+Explain opportunity cost when one sport receives most of the time. Propose exactly
+one next-week change and how to assess it. If no change is warranted, name the
+specific pattern to retain and the evidence for that decision. No automatic plan
+changes.
+{RULES}
+Return only JSON matching this schema: {json.dumps(schema)}
+DATA: {json.dumps(snapshot, ensure_ascii=False)}'''
+
+
 def run_review(run_codex, progress=lambda message: None):
     context = request('/coaching/team-analysis/context')
     snapshot = context['snapshot']
-    progress('Running, cycling and strength coaches are reviewing your week…')
-    def analyze(sport):
-        report = parse(run_codex(specialist_prompt(sport, snapshot), failure_label=f'review {sport}', fallback=''))
-        if report.get('sport') != sport:
-            raise ValueError(f'The {sport} report did not match its assigned sport.')
-        return report
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        specialists = list(pool.map(analyze, SPORT_TYPES))
-    progress('HEAD COACH is resolving the tradeoffs and choosing next week’s priority…')
-    head = parse(run_codex(head_prompt(snapshot, specialists), failure_label='write the head coach review', fallback=''))
+    progress('Your coaching team is reviewing the week…')
+    result = parse(run_codex(team_prompt(snapshot), failure_label='write the team coaching review', fallback=''))
+    specialists = result.get('specialists')
+    head = result.get('head_coach')
+    if not isinstance(specialists, list) or len(specialists) != 3 or not isinstance(head, dict):
+        raise ValueError('The coach returned an invalid team review. Please retry.')
     return request('/coaching/team-analysis', {'context_key': context['context_key'], 'specialists': specialists, 'head_coach': head})

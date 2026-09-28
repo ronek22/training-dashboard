@@ -184,7 +184,7 @@ TOOLS = [
     },
     {
         "name": "get_recent_context",
-        "description": "Get a compact coaching context bundle with recent load, activities, notes, metrics, weekly mix, streak, and active plan",
+        "description": "Get a compact coaching context bundle with recent load, activities, notes, metrics, weekly mix, streak, active plan, and pointers to cycling power context",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -194,6 +194,11 @@ TOOLS = [
                 "recent_note_limit": {"type": "integer", "description": "How many recent notes to include"}
             }
         }
+    },
+    {
+        "name": "get_cycling_power_profile",
+        "description": "Read measured cycling power records, benchmark levels, data coverage, and monthly recording gaps for coaching",
+        "inputSchema": {"type": "object", "properties": {}}
     },
     {
         "name": "get_activities",
@@ -398,6 +403,10 @@ def handle_tool(name: str, args: dict) -> str:
 
         elif name == "get_recent_context":
             result = call_api("GET", "/context/recent", args)
+            return json.dumps(result, indent=2)
+
+        elif name == "get_cycling_power_profile":
+            result = call_remote_mcp_tool(name)
             return json.dumps(result, indent=2)
 
         elif name == "get_activities":

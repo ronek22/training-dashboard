@@ -113,7 +113,10 @@ def _evaluate_easy_or_long(
         evidence["higher_zone_pct"] = higher_zone_pct
 
         if planned_intent == "easy":
-            if higher_zone_pct <= 30 and int(heart_rate_zones.get("zone2_pct") or 0) >= 35:
+            # Easy intent is primarily violated by spending too much time above
+            # the aerobic band. A low Zone 2 share can mean the activity was
+            # easier than target, but it is not evidence of upward drift.
+            if higher_zone_pct <= 30:
                 return _build_result("matched", "Matched intended effort", reasons=["The session stayed mostly aerobic without much higher-zone drift."], evidence=evidence)
             if higher_zone_pct <= 45:
                 return _build_result("partial", "Partly matched intended effort", reasons=["Aerobic control was present, but the session drifted upward more than ideal for easy work."], evidence=evidence)

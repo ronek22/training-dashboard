@@ -19,15 +19,6 @@
       </div>
     </section>
 
-    <section v-if="activeSession && studioView === 'library'" class="active-banner card motion-section">
-      <div>
-        <span class="live-dot">Live</span>
-        <strong>{{ activeSession.template_name }}</strong>
-        <p>{{ activeSession.progress.completed_sets }} of {{ activeSession.progress.total_sets }} sets recorded.</p>
-      </div>
-      <router-link :to="`/strength/workouts/${activeSession.id}`" class="primary-button">Resume workout</router-link>
-    </section>
-
     <div v-if="error" class="card error-card" role="alert">{{ error }}</div>
 
     <section v-if="activeSession && editing?.oneTime && studioView === 'editor'" class="card">

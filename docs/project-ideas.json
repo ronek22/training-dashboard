@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-09-20T12:29:16+02:00",
-  "summary": "Reviewed the active roadmap, current-state and strength sprint documentation, existing proposals, recent change summaries, and the new phone navigation and cycling power trends source and test declarations. Mobile navigation and power-history comparisons are already being implemented; coverage cleanup overlaps the planned data-quality inbox, while navigation and reproducible checks already have proposals. No sufficiently distinct new proposal was identified today. Refreshed review metadata without adding ideas. This was a source/documentation review; no application tests were run and no private training records were accessed.",
+  "reviewed_at": "2026-09-28T09:14:51+02:00",
+  "summary": "Reviewed repository status and recent change summaries, current-state and strength sprint documentation, the active roadmap and all seven existing proposals. Revisited weekly review navigation, week-keyed specialist persistence and the helper/backend test declarations. Historical specialist access is already proposed, while coaching adaptation, data-quality cleanup and service contract coverage are on the roadmap. The inspected changes did not establish a sufficiently distinct new proposal today. Source/documentation review only; no application tests or model calls were run and no credentials, databases or private training records were accessed.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -144,6 +144,31 @@
         "Synthetic filter tests cover combined requirements, unknown metadata, conservative aliases and reset behavior; keyboard and narrow-screen checks cover the controls and empty state."
       ],
       "created_on": "2026-09-15"
+    },
+    {
+      "id": "synthetic-coaching-prompt-comparisons",
+      "title": "Check coaching advice before changing its prompt",
+      "category": "Engineering",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "The weekly coaching helper is changing from separate specialist calls to one consolidated call. The inspected helper tests use canned model responses and prompt-string assertions, while backend tests check validation, stale snapshots and persistence. These checks do not show whether a prompt revision improves the actual advice or loses important tradeoffs.",
+      "proposal": "Create a small developer-only suite of wholly synthetic weekly snapshots and a review rubric. Support an explicit comparison run of a baseline and candidate prompt using the same scenarios and model configuration, with saved outputs displayed side by side. Start with missing evidence, competing sport goals, a single hard ride in an otherwise ordinary week, and incomplete cycling-power coverage. Separate deterministic schema/citation checks from human judgments about evidence use, tradeoffs, uncertainty and the single proposed change. Keep model runs opt-in and outside the ordinary offline test command.",
+      "benefit": "Make coaching prompt changes faster to assess and catch plausible-sounding regressions before trying them on a real training week.",
+      "evidence": [
+        "scripts/team_coaching_helper.py: team_prompt and run_review now produce all specialist reports and HEAD COACH synthesis in one call",
+        "scripts/test_team_coaching_helper.py: test_one_consolidated_call_and_one_save supplies a canned response; prompt tests assert text inclusion",
+        "backend/tests/test_team_analysis.py: tests cover persistence, stale input rejection, citations and output length rather than generated advice quality",
+        "backend/app/services/power_trends.py: build_cycling_power_coaching_context documents missing-coverage and all-time-record interpretation limits",
+        "docs/roadmaps/roadmap-v3.md: engineering track targets service/API contracts; a synthetic prompt comparison workflow would complement those checks"
+      ],
+      "acceptance_criteria": [
+        "At least four versioned synthetic snapshots cover the named scenarios and include a short expected-behavior rubric without prescribing exact wording or one mandatory training recommendation.",
+        "An offline command validates fixtures and stored output structure/citations without reading the application database, calling a model, or contacting the running app.",
+        "An explicit model comparison command uses only the selected synthetic fixtures, bounds the number of calls, and records prompt hash, model configuration, scenario ID and run timestamp for both outputs.",
+        "The comparison artifact shows baseline and candidate advice side by side, distinguishing mechanical failures from human review judgments; it makes no unsupported claim that a single sample proves quality.",
+        "The workflow never saves a coaching review or changes a plan. Ordinary tests cannot trigger paid model runs, and a failed comparison preserves previously saved comparison artifacts."
+      ],
+      "created_on": "2026-09-22"
     }
   ]
 }

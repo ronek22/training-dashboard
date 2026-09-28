@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { Line, Radar } from 'vue-chartjs'
 import { Chart as ChartJS, CategoryScale, LinearScale, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend, type ChartOptions, type Plugin } from 'chart.js'
 import { useApi } from '../stores/api'
+import CyclingPowerAdvice from './CyclingPowerAdvice.vue'
 
 ChartJS.register(CategoryScale, LinearScale, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend)
 type Effort = { duration_seconds: number; watts: number; avg_hr: number | null; start_seconds: number; end_seconds: number; activity_id: string; activity_name: string; date: string; level?: number | null; level_name?: string | null; next_level?: number | null; next_level_name?: string | null; watts_to_next?: number | null; level_percent?: number | null; level_thresholds?: number[] }
@@ -247,6 +248,7 @@ const hrOptions = computed<ChartOptions<'line'>>(() => ({ ...baseOptions('Heart 
     <template v-else-if="data">
       <div v-if="!data.records.length" class="empty-state"><h3>Your power story starts with a measured ride.</h3><p>Open a power-meter or smart-trainer activity to load its power stream. Complete recorded efforts will appear here.</p></div>
       <template v-else>
+        <CyclingPowerAdvice />
         <article class="strengths section-surface" aria-labelledby="strengths-heading">
           <header class="section-heading"><div><span class="eyebrow">01 / Your strengths</span><h3 id="strengths-heading">A shape only your rides can make.</h3><p>Every spoke is an effort length. Every point is your best recorded power.</p></div><span class="ride-count">{{ data.coverage.analyzed_activities }} analyzed rides</span></header>
           <div class="discipline-legend"><span v-for="group in groups" :key="group.name" :style="{ '--tone': colors[group.name] }"><i></i>{{ group.name }}<small>{{ group.subtitle }}</small></span></div>

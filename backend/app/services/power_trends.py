@@ -13,6 +13,7 @@ import re
 import sqlite3
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
+from datetime import date, timedelta
 from typing import Any, Optional
 
 
@@ -44,6 +45,138 @@ POWER_SKILL_THRESHOLDS = {
 POWER_SKILL_PROFILE = "Men · age 24–29 · 75 kg"
 MAX_STREAM_GAP_SECONDS = 2.0
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}")
+_POWER_CACHE_KEY = "all_time"
+_POWER_CACHE_VERSION = "power-trends-v2"
+_POWER_CACHE_TABLE = "cycling_power_trends_cache"
+_POWER_REVISION_TABLE = "cycling_power_trends_revision"
+
+
+def _power_trends_table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+        (table_name,),
+    ).fetchone()
+    return row is not None
+
+
+def _ensure_power_trends_cache_schema(conn: sqlite3.Connection) -> None:
+    """Create the small persistent cache metadata and invalidation hooks.
+
+    The revision is bumped by SQLite triggers, so checking whether a cached
+    profile is current never requires reading the (potentially very large)
+    stream JSON blobs.  These objects are created lazily to keep this service
+    usable with the compact in-memory schemas used by unit tests and older
+    local databases.
+    """
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {_POWER_REVISION_TABLE} (
+            cache_key TEXT PRIMARY KEY,
+            revision INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+    conn.execute(
+        f"""
+        INSERT OR IGNORE INTO {_POWER_REVISION_TABLE} (cache_key, revision)
+        VALUES (?, 0)
+        """,
+        (_POWER_CACHE_KEY,),
+    )
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {_POWER_CACHE_TABLE} (
+            cache_key TEXT PRIMARY KEY,
+            revision INTEGER NOT NULL,
+            algorithm_version TEXT NOT NULL,
+            result_json TEXT NOT NULL,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    trigger_tables = ("activities", "activity_details", "app_settings")
+    for table_name in trigger_tables:
+        if not _power_trends_table_exists(conn, table_name):
+            continue
+        safe_table_name = table_name.replace("'", "''")
+        for operation, suffix in (("INSERT", "ai"), ("UPDATE", "au"), ("DELETE", "ad")):
+            if table_name == "activities":
+                condition = {
+                    "INSERT": "NEW.type IN ('Ride', 'VirtualRide')",
+                    "UPDATE": "OLD.type IN ('Ride', 'VirtualRide') OR NEW.type IN ('Ride', 'VirtualRide')",
+                    "DELETE": "OLD.type IN ('Ride', 'VirtualRide')",
+                }[operation]
+            elif table_name == "activity_details":
+                activity_ref = "NEW.activity_id, OLD.activity_id" if operation == "UPDATE" else ("NEW.activity_id" if operation == "INSERT" else "OLD.activity_id")
+                condition = (
+                    "EXISTS (SELECT 1 FROM activities AS cycling_activity "
+                    f"WHERE cycling_activity.id IN ({activity_ref}) "
+                    "AND cycling_activity.type IN ('Ride', 'VirtualRide'))"
+                )
+            else:
+                condition = "NEW.key = 'performance_settings'" if operation != "DELETE" else "OLD.key = 'performance_settings'"
+            conn.execute(
+                f"""
+                CREATE TRIGGER IF NOT EXISTS cycling_power_trends_{table_name}_{suffix}
+                AFTER {operation} ON {safe_table_name}
+                WHEN {condition}
+                BEGIN
+                    UPDATE {_POWER_REVISION_TABLE}
+                    SET revision = revision + 1
+                    WHERE cache_key = '{_POWER_CACHE_KEY}';
+                END
+                """
+            )
+
+
+def _power_trends_revision(conn: sqlite3.Connection) -> int:
+    row = conn.execute(
+        f"SELECT revision FROM {_POWER_REVISION_TABLE} WHERE cache_key = ?",
+        (_POWER_CACHE_KEY,),
+    ).fetchone()
+    return int(row[0] or 0) if row else 0
+
+
+def _cached_power_trends_result(
+    conn: sqlite3.Connection,
+    revision: int,
+) -> Optional[dict[str, Any]]:
+    row = conn.execute(
+        f"""
+        SELECT result_json
+        FROM {_POWER_CACHE_TABLE}
+        WHERE cache_key = ? AND revision = ? AND algorithm_version = ?
+        """,
+        (_POWER_CACHE_KEY, revision, _POWER_CACHE_VERSION),
+    ).fetchone()
+    if not row:
+        return None
+    try:
+        result = json.loads(row[0])
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+    return result if isinstance(result, dict) else None
+
+
+def _store_power_trends_result(
+    conn: sqlite3.Connection,
+    revision: int,
+    result: dict[str, Any],
+) -> None:
+    conn.execute(
+        f"""
+        INSERT INTO {_POWER_CACHE_TABLE}
+            (cache_key, revision, algorithm_version, result_json, updated_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(cache_key) DO UPDATE SET
+            revision = excluded.revision,
+            algorithm_version = excluded.algorithm_version,
+            result_json = excluded.result_json,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (_POWER_CACHE_KEY, revision, _POWER_CACHE_VERSION, json.dumps(result, separators=(",", ":"))),
+    )
 
 
 @dataclass(frozen=True)
@@ -405,7 +538,7 @@ def _category_level(records: dict[int, dict[str, Any]], durations: tuple[int, ..
     }
 
 
-def get_cycling_power_trends_data(conn: sqlite3.Connection) -> dict[str, Any]:
+def _build_cycling_power_trends_data(conn: sqlite3.Connection) -> dict[str, Any]:
     """Build all-time measured cycling power efforts from local cache rows."""
 
     rows = conn.execute(
@@ -510,6 +643,155 @@ def get_cycling_power_trends_data(conn: sqlite3.Connection) -> dict[str, Any]:
     }
 
 
+def get_cycling_power_trends_data(conn: sqlite3.Connection) -> dict[str, Any]:
+    """Return the cached profile, rebuilding it when source data changes.
+
+    The cache is intentionally keyed by a database revision rather than by
+    stream contents.  Activity/detail triggers increment that revision on
+    cycling inserts, updates, and deletes, so a warm read does not deserialize
+    every stream just to discover that nothing changed.
+    """
+    owns_transaction = not conn.in_transaction
+    _ensure_power_trends_cache_schema(conn)
+    if owns_transaction and conn.in_transaction:
+        # Persist the lazy schema and trigger installation without committing
+        # a transaction that the caller already had in progress.
+        conn.commit()
+
+    # A write can race the initial revision read. Recheck after a rebuild and
+    # retry once so a profile produced during an import is never stored under
+    # an older revision. A concurrent writer may still commit after the final
+    # check; the next request will then miss the stale revision safely.
+    for _ in range(2):
+        revision = _power_trends_revision(conn)
+        cached = _cached_power_trends_result(conn, revision)
+        if cached is not None:
+            return cached
+
+        result = _build_cycling_power_trends_data(conn)
+        if _power_trends_revision(conn) != revision:
+            continue
+        _store_power_trends_result(conn, revision, result)
+        if owns_transaction:
+            conn.commit()
+        return result
+
+    # Keep the response useful under a continuously changing import without
+    # writing a result whose revision is already stale.
+    return _build_cycling_power_trends_data(conn)
+
+
 # The shorter name is useful for callers that use the ``build_*`` convention
 # used by other deterministic services in this project.
 build_cycling_power_trends = get_cycling_power_trends_data
+
+
+def build_cycling_power_coaching_context(
+    conn: sqlite3.Connection, *, include_thresholds: bool = True
+) -> dict[str, Any]:
+    """Expose the UI's measured efforts and their limits without inferring fitness."""
+    profile = get_cycling_power_trends_data(conn)
+    today = date.today()
+    recent_start = (today - timedelta(days=89)).isoformat()
+    recent_end = today.isoformat()
+    recent_records: dict[int, dict[str, Any]] = {}
+    by_duration: dict[int, list[dict[str, Any]]] = {}
+    for effort in profile["efforts"]:
+        duration = effort["duration_seconds"]
+        by_duration.setdefault(duration, []).append(effort)
+        if recent_start <= str(effort["date"])[:10] <= recent_end:
+            if _prefer_effort(effort, recent_records.get(duration)):
+                recent_records[duration] = effort
+
+    # Reuse the exact record fields, omitting only repeated benchmark tables.
+    def compact_record(effort: dict[str, Any]) -> dict[str, Any]:
+        return {key: value for key, value in effort.items() if key != "level_thresholds"}
+
+    duration_coverage = []
+    for duration in profile["durations"]:
+        efforts = by_duration.get(duration["seconds"], [])
+        dates = sorted(str(effort["date"])[:10] for effort in efforts)
+        duration_coverage.append({
+            "duration_seconds": duration["seconds"],
+            "recorded_efforts": len(efforts),
+            "recent_recorded_efforts": sum(recent_start <= day <= recent_end for day in dates),
+            "first_effort_date": dates[0] if dates else None,
+            "latest_effort_date": dates[-1] if dates else None,
+        })
+
+    months = {month["month"]: month["efforts"] for month in profile["monthly"]}
+    monthly_coverage = []
+    recording_gaps: list[dict[str, str]] = []
+    if months:
+        first_month = min(months)
+        last_month = max(months)
+        cursor = date.fromisoformat(f"{first_month}-01")
+        gap: dict[str, str] | None = None
+        while cursor.isoformat()[:7] <= last_month:
+            month = cursor.isoformat()[:7]
+            recorded = {effort["duration_seconds"] for effort in months.get(month, [])}
+            monthly_coverage.append({
+                "month": month,
+                "recorded_durations_seconds": sorted(recorded),
+                "missing_durations_seconds": [
+                    duration["seconds"] for duration in profile["durations"]
+                    if duration["seconds"] not in recorded
+                ],
+            })
+            if not recorded:
+                if gap is None:
+                    gap = {"first_month": month, "last_month": month}
+                    recording_gaps.append(gap)
+                else:
+                    gap["last_month"] = month
+            else:
+                gap = None
+            cursor = date(cursor.year + 1, 1, 1) if cursor.month == 12 else date(cursor.year, cursor.month + 1, 1)
+
+    benchmarks = {
+        "profile": profile["skill_profile"],
+        "source": "Fixed table transcribed from supplied Strava benchmark panels; not a live Strava ranking.",
+        "automatically_personalized": False,
+        "units": "absolute watts, not watts per kilogram",
+        "level_names": {str(level): name for level, name in POWER_SKILL_LEVEL_NAMES.items()},
+        "category_durations_seconds": {
+            "Sprint": [d for d in POWER_EFFORT_DURATIONS if d <= 60],
+            "Attack": [d for d in POWER_EFFORT_DURATIONS if 60 < d <= 600],
+            "Climb": [d for d in POWER_EFFORT_DURATIONS if d > 600],
+        },
+        "scale": "level_percent is the API benchmark score on a 0–100 scale, not a population percentile. Below the first level is 0; the highest level is 100.",
+        "category_rule": "Category level is the lowest non-null attained level among available records. Missing and below-first-level durations are excluded from that minimum; intervals_available counts ranked durations. Inspect individual records and coverage before interpreting a category.",
+    }
+    if include_thresholds:
+        benchmarks["thresholds"] = [
+            {"duration_seconds": seconds, "watts_by_level": list(POWER_SKILL_THRESHOLDS.get(seconds, ()))}
+            for seconds in POWER_EFFORT_DURATIONS
+        ]
+    else:
+        benchmarks["thresholds_tool"] = "get_cycling_power_profile"
+
+    return {
+        "status": "available" if profile["records"] else "no_measured_efforts",
+        "as_of_date": recent_end,
+        "record_scope": "All-time best recorded efforts in locally cached, eligible power streams.",
+        "durations": profile["durations"],
+        "records": [compact_record(effort) for effort in profile["records"]],
+        "recent_window": {"start_date": recent_start, "end_date": recent_end, "days": 90},
+        "recent_records": [compact_record(recent_records[seconds]) for seconds in sorted(recent_records)],
+        "category_levels": profile["category_levels"],
+        "benchmarks": benchmarks,
+        "coverage": profile["coverage"],
+        "duration_coverage": duration_coverage,
+        "monthly_coverage": monthly_coverage,
+        "recording_gaps": recording_gaps,
+        "coverage_scope": "Monthly coverage spans the first through last recorded effort only. Gaps mean no eligible complete power effort, not no riding; the cause is unknown.",
+        "methodology": profile["methodology"],
+        "interpretation_limits": [
+            "Best recorded efforts are not necessarily maximal tests. Lower long-duration scores can reflect a lack of hard sustained efforts rather than an endurance weakness.",
+            "Outdoor rides without measured power do not contribute to this profile. Seasonal indoor-only recordings can omit substantial training; do not infer detraining from missing data.",
+            "All-time records may come from different rides and seasons. Use their dates, recent records and effort counts before making claims about current ability or progress.",
+            "Sprint, Attack and Climb are duration groups, not diagnoses or proof of climbing performance. Check whether the fixed benchmark profile fits the athlete.",
+            "Heart rate comes from each ride's best power window, not a controlled test. Cooling, fatigue and heart-rate lag affect it; lower HR alone does not establish improved fitness.",
+            "Treat a profile imbalance as a hypothesis. Consider goals, current plan, load and recovery, and ask about maximal-effort opportunities before recommending changes. Do not automatically modify the plan.",
+        ],
+    }

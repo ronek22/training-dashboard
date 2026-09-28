@@ -24,6 +24,7 @@ from .settings import (
     get_workout_template_settings_for_conn,
 )
 from .strength import get_strength_context_data
+from .power_trends import build_cycling_power_coaching_context
 
 
 def build_recent_strength_detail(conn: sqlite3.Connection) -> dict:
@@ -1131,6 +1132,7 @@ def build_recent_context(
         "weekly_mix": weekly_mix,
         "strength_consistency": strength_consistency,
         "recent_strength_detail": recent_strength_detail,
+        "cycling_power": build_cycling_power_coaching_context(conn, include_thresholds=False),
         "athlete_profile": athlete_profile,
         "athlete_brief": athlete_profile.get("athlete_brief"),
         "athlete_coaching_brief": athlete_coaching_brief,

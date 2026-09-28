@@ -1143,6 +1143,7 @@ def build_weekly_coaching(
         "recommended_next_sessions": next_sessions,
         "proposed_adjustment": proposed_adjustment,
         "reasoning_signals": {
+            "cycling_power": context.get("cycling_power"),
             "daily_recommendation": context.get("daily_recommendation"),
             "latest_subjective_state": context.get("latest_subjective_state"),
             "training_load": context.get("training_load"),

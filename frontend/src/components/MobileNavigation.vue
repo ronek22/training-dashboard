@@ -9,6 +9,7 @@ const tabs = [
   { path: '/', label: 'Today', icon: 'dashboard' },
   { path: '/plan', label: 'Plan', icon: 'plan' },
   { path: '/metrics', label: 'Trends', icon: 'metrics' },
+  { path: '/strength/workouts', label: 'Studio', icon: 'strength' },
 ]
 const moreLinks = [
   { path: '/calendar', label: 'Calendar' },
@@ -23,6 +24,9 @@ const moreLinks = [
   { path: '/ideas', label: 'Ideas' },
 ]
 watch(() => route.fullPath, () => { moreOpen.value = false })
+const isTabActive = (tab) => tab.path === '/'
+  ? route.path === '/'
+  : route.path === tab.path || route.path.startsWith(`${tab.path}/`)
 </script>
 
 <template>
@@ -35,10 +39,10 @@ watch(() => route.fullPath, () => { moreOpen.value = false })
       <p>On your iPhone: Safari → Share → Add to Home Screen. Enable Open as Web App if shown.</p>
     </section>
     <nav class="mobile-tabs" aria-label="Main navigation">
-      <router-link v-for="tab in tabs" :key="tab.path" :to="tab.path" :class="{ selected: route.path === tab.path }" :aria-current="route.path === tab.path ? 'page' : undefined">
+      <router-link v-for="tab in tabs" :key="tab.path" :to="tab.path" :class="{ selected: isTabActive(tab) }" :aria-current="isTabActive(tab) ? 'page' : undefined">
         <NavIcon :name="tab.icon" /><span>{{ tab.label }}</span>
       </router-link>
-      <button type="button" :class="{ selected: moreOpen || !tabs.some(tab => tab.path === route.path) }" :aria-expanded="moreOpen" aria-controls="mobile-more" @click="moreOpen = !moreOpen">
+      <button type="button" :class="{ selected: moreOpen || !tabs.some(isTabActive) }" :aria-expanded="moreOpen" aria-controls="mobile-more" @click="moreOpen = !moreOpen">
         <span class="more-icon" aria-hidden="true">•••</span><span>More</span>
       </button>
     </nav>
@@ -49,7 +53,7 @@ watch(() => route.fullPath, () => { moreOpen.value = false })
 .mobile-navigation { display: none; }
 @media (max-width: 640px) {
   .mobile-navigation { display: block; position: fixed; inset: auto 0 0; z-index: 45; }
-  .mobile-tabs { display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px max(8px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); background: rgba(13, 19, 30, .97); border-top: 1px solid var(--border); backdrop-filter: blur(20px); }
+  .mobile-tabs { display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px max(8px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); background: rgba(13, 19, 30, .97); border-top: 1px solid var(--border); backdrop-filter: blur(20px); }
   .mobile-tabs a, .mobile-tabs button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 52px; border: 0; border-radius: 12px; color: var(--muted); background: transparent; font: inherit; font-size: 11px; font-weight: 600; text-decoration: none; cursor: pointer; }
   .mobile-tabs .selected { color: var(--accent-strong); background: rgba(95, 140, 255, .1); }
   .mobile-tabs svg, .more-icon { width: 22px; height: 22px; }

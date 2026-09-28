@@ -1,7 +1,6 @@
-# Codex: Astra orchestrator + Luna subagents
+# Codex: app-selected main model + Luna subagents
 #
 # Main knobs to change:
-#   model / model_reasoning_effort
 #   agents.default_subagent_model
 #   agents.default_subagent_reasoning_effort
 #   agents.max_concurrent_threads_per_session
@@ -12,9 +11,8 @@
 # For a personal/global setup, merge the same settings into:
 #   ~/.codex/config.toml
 
-# Root / orchestrator
-model = "gpt-6-astra"
-model_reasoning_effort = "medium"
+# Main model and reasoning effort are selected in the app.
+# No project override: inherit personal defaults when no selection is supplied.
 
 # Safe interactive defaults. Change if your workflow needs otherwise.
 approval_policy = "on-request"

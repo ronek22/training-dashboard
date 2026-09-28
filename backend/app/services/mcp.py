@@ -202,7 +202,7 @@ MCP_TOOLS = [
     },
     {
         "name": "get_recent_context",
-        "description": "Get a compact coaching context bundle with recent load, latest activities, notes, metrics, weekly mix, streak, and active plan",
+        "description": "Get a compact coaching context bundle with recent load, latest activities, notes, metrics, weekly mix, streak, active plan, and pointers to cycling power context",
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False,
@@ -221,7 +221,7 @@ MCP_TOOLS = [
     },
     {
         "name": "coach_this_week",
-        "description": "Get a one-shot weekly coaching read that combines execution, recovery, goal, and recommendation context in one response",
+        "description": "Get a one-shot weekly coaching read that combines execution, recovery, goal, recommendation context, and cycling power context in one response",
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False,
@@ -356,6 +356,17 @@ MCP_TOOLS = [
                 "weeks": {"type": "integer", "description": "Number of recent weeks to return"},
             },
         },
+    },
+    {
+        "name": "get_cycling_power_profile",
+        "description": "Read measured cycling power records, benchmark levels, data coverage, and monthly recording gaps for coaching",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {"type": "object", "properties": {}},
     },
     {
         "name": "get_strength_context",
@@ -704,6 +715,12 @@ def call_mcp_tool(
 
         elif name == "get_calendar_weeks":
             data = calendar_weeks_fn(weeks=int(args.get("weeks", 8)))
+            message = json.dumps(data, indent=2)
+
+        elif name == "get_cycling_power_profile":
+            from .power_trends import build_cycling_power_coaching_context
+
+            data = build_cycling_power_coaching_context(conn)
             message = json.dumps(data, indent=2)
 
         elif name in {"get_strength_context", "get_exercise_history", "get_strength_workout_history"}:

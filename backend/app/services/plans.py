@@ -97,6 +97,7 @@ def normalize_plan_session_type(session_type: Optional[str]) -> Optional[str]:
     mapping = {
         "run": "Run",
         "ride": "Ride",
+        "virtualride": "Ride",
         "cycling": "Ride",
         "bike": "Ride",
         "strength": "WeightTraining",
@@ -941,7 +942,7 @@ def build_plan_day_comparison(
             "execution_quality": None,
         }
 
-    completed_types = {item["type"] for item in completed}
+    completed_types = {normalize_plan_session_type(item.get("type")) for item in completed}
     total_duration = sum((item["duration_min"] or 0) for item in completed)
     target_duration = day.get("target_duration_min")
 

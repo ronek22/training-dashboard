@@ -309,7 +309,10 @@ def build_day_change_details(before: Optional[dict], after: Optional[dict]) -> l
     for key, label in fields:
         before_value = before.get(key) if before else None
         after_value = after.get(key) if after else None
-        if before_value == after_value:
+        if key == "session_type":
+            if normalize_plan_session_type(before_value) == normalize_plan_session_type(after_value):
+                continue
+        elif before_value == after_value:
             continue
         details.append({
             "field": key,

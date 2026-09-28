@@ -310,7 +310,7 @@
                     <span>Session type</span>
                     <select v-model="editor.days[day.date].session_type">
                       <option value="">None</option>
-                      <option v-for="type in sessionTypeOptions" :key="type" :value="type">{{ type }}</option>
+                      <option v-for="type in sessionTypeOptionsFor(editor.days[day.date].session_type)" :key="type" :value="type">{{ type }}</option>
                     </select>
                   </label>
                   <label class="editor-field">
@@ -881,6 +881,28 @@ import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 
 const sessionTypeOptions = ['Run', 'Ride', 'WeightTraining', 'Recovery', 'Rest', 'Walk', 'Hike']
+// Mirrors normalize_plan_session_type in backend/app/services/plans.py.
+const sessionTypeAliases = {
+  run: 'Run',
+  ride: 'Ride',
+  virtualride: 'Ride',
+  cycling: 'Ride',
+  bike: 'Ride',
+  strength: 'WeightTraining',
+  weights: 'WeightTraining',
+  weighttraining: 'WeightTraining',
+  recovery: 'Recovery',
+  rest: 'Rest',
+  walk: 'Walk',
+  hike: 'Hike',
+}
+const sessionTypeOptionsFor = (current) => (
+  current && !sessionTypeOptions.includes(current) ? [...sessionTypeOptions, current] : sessionTypeOptions
+)
+const normalizeSessionType = (value) => {
+  if (!value) return ''
+  return sessionTypeAliases[String(value).trim().toLowerCase()] || value
+}
 const workoutIntentOptions = {
   Run: [
     { value: 'recovery', label: 'Recovery' },
@@ -1960,7 +1982,7 @@ const benchmarkTagOptions = [
 const cloneDayForEditor = (day) => ({
   date: day.date,
   label: day.label,
-  session_type: day.session_type || '',
+  session_type: normalizeSessionType(day.session_type),
   workout_intent: day.workout_intent || '',
   benchmark_tag: day.benchmark_tag || '',
   benchmark_label: day.benchmark_label || '',
@@ -2099,7 +2121,7 @@ const buildEditorStateFromCoachingDraft = (plan, draft) => {
     base.days[day.date] = {
       date: day.date,
       label: day.label || base.days[day.date].label,
-      session_type: day.session_type || '',
+      session_type: normalizeSessionType(day.session_type),
       workout_intent: day.workout_intent || '',
       benchmark_tag: day.benchmark_tag || '',
       benchmark_label: day.benchmark_label || '',

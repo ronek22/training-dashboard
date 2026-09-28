@@ -321,3 +321,47 @@ class PlanDayComparisonTests(unittest.TestCase):
         )
 
         self.assertEqual(comparison["status"], "rest_day_changed")
+
+
+class AdjustmentDiffSessionTypeTest(unittest.TestCase):
+    def _plan(self, session_type: str) -> dict:
+        return {
+            "week_start": "2026-09-28",
+            "days": [
+                {
+                    "date": "2026-09-29",
+                    "label": "Tue",
+                    "session_type": session_type,
+                    "workout_intent": "easy",
+                    "title": "Easy ride",
+                    "details": None,
+                    "target_duration_min": 60,
+                    "target_distance_km": None,
+                }
+            ],
+        }
+
+    def _diff(self, before_type: str, after_type: str) -> dict:
+        from backend.app.services.plans import build_adjustment_diff_payload
+
+        adjustment = {**self._plan(after_type), "effective_from": "2026-09-29"}
+        return build_adjustment_diff_payload(self._plan(before_type), adjustment, protected_dates=[])
+
+    def test_session_type_case_normalization_is_not_an_edit(self):
+        diff = self._diff("ride", "Ride")
+        self.assertEqual(diff["summary"]["edited"], 0)
+        self.assertEqual(diff["changed_dates"], [])
+        self.assertEqual(diff["days"][0]["status"], "unchanged")
+        self.assertEqual(diff["days"][0]["changes"], [])
+
+    def test_session_type_alias_normalization_is_not_an_edit(self):
+        from backend.app.services.plans import build_day_change_details
+
+        self.assertEqual(build_day_change_details({"session_type": "strength"}, {"session_type": "WeightTraining"}), [])
+        self.assertEqual(build_day_change_details({"session_type": "virtualride"}, {"session_type": "Ride"}), [])
+
+    def test_real_session_type_change_is_still_an_edit(self):
+        diff = self._diff("ride", "Run")
+        self.assertEqual(diff["summary"]["edited"], 1)
+        self.assertEqual(diff["changed_dates"], ["2026-09-29"])
+        self.assertEqual([change["field"] for change in diff["days"][0]["changes"]], ["session_type"])

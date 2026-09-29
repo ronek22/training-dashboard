@@ -19,7 +19,7 @@
 
     <section v-if="strengthView === 'overview' && (activeWorkout || nextStrengthDay || !workoutContextLoading)" class="strength-launch" aria-labelledby="strength-launch-title">
       <div class="launch-main"><div class="launch-label"><ActivityIcon type="WeightTraining" tone="strength" :size="22" /><span>{{ activeWorkout ? 'Workout in progress' : nextStrengthDay ? `Next in your plan · ${formatDate(nextStrengthDay.date)}` : 'Ready when you are' }}</span></div><h2 id="strength-launch-title">{{ activeWorkout?.template_name || nextStrengthDay?.title || 'Make your next session count.' }}</h2><p v-if="activeWorkout">{{ activeWorkout.progress?.completed_sets || 0 }} of {{ activeWorkout.progress?.total_sets || 0 }} sets recorded. Pick up where you left off.</p><p v-else-if="nextStrengthDay">{{ nextStrengthDay.workout_intent_label || 'Planned strength' }}<template v-if="nextStrengthDay.target_duration_min"> · {{ nextStrengthDay.target_duration_min }} min</template></p><p v-else>{{ workoutContextError ? 'Your next planned session could not be loaded. Your workout library is still available.' : 'Choose a saved workout and keep your sets, loads and rest in one place.' }}</p><router-link :to="activeWorkout ? `/strength/workouts/${activeWorkout.id}` : '/strength/workouts'" class="strength-action strength-action-primary">{{ activeWorkout ? 'Resume workout' : 'Choose workout' }} <span aria-hidden="true">→</span></router-link><router-link v-if="nextStrengthDay && !activeWorkout" to="/plan" class="launch-plan-link">Review plan</router-link></div>
-      <div v-if="nextStrengthDay?.details && !activeWorkout" class="launch-notes"><span>Before you lift</span><p>{{ nextStrengthDay.details }}</p></div><div v-else class="launch-notes"><span>Built for your training week</span><p>Use the saved plan to coordinate lifting with your rides and runs. Review your last sets before deciding what to load today.</p></div>
+      <div v-if="nextStrengthDay?.details && !activeWorkout" class="launch-notes"><span>Before you lift</span><ul v-if="launchNotes.items.length" class="launch-list"><li v-for="item in launchNotes.items" :key="item">{{ item }}</li></ul><p v-for="note in launchNotes.items.length ? launchNotes.notes : [launchNotes.plain]" :key="note">{{ note }}</p></div><div v-else class="launch-notes"><span>Built for your training week</span><p>Use the saved plan to coordinate lifting with your rides and runs. Review your last sets before deciding what to load today.</p></div>
     </section>
     <nav class="strength-nav" aria-label="Strength views"><button v-for="tab in strengthTabs" :key="tab.key" type="button" :class="{ active: strengthView === tab.key }" :aria-current="strengthView === tab.key ? 'page' : undefined" @click="strengthView = tab.key">{{ tab.label }}</button></nav>
     <section class="strength-toolbar motion-section" aria-label="Strength filters">
@@ -74,7 +74,7 @@
 
       <template v-else>
         <section v-if="strengthView === 'overview'" class="overview-grid motion-section">
-        <article class="strength-rhythm"><div class="section-head"><div><h2>Your lifting rhythm</h2><p class="section-copy">Completed sessions · last {{ selectedWeeks }} weeks</p></div><strong class="rhythm-total">{{ overview.summary.session_count }} <small>sessions</small></strong></div><div class="strength-rhythm-bars" :class="{ 'extended-range': selectedWeeks > 12 }"><div v-for="week in overview.weekly" :key="week.week_start" class="strength-rhythm-week"><strong>{{ week.session_count }}</strong><div><i :style="{ height: `${Number(week.session_count || 0) / maxWeeklySessions * 100}%` }"></i></div><span>{{ formatDate(week.week_start) }}</span></div></div><p class="rhythm-caption">{{ activeWeeks }} active weeks · {{ trimNumber(overview.summary.session_count / selectedWeeks) }} sessions per week on average</p></article>
+        <article class="strength-rhythm"><div class="section-head"><div><h2>Your lifting rhythm</h2><p class="section-copy">Completed sessions · last {{ selectedWeeks }} weeks</p></div><strong class="rhythm-total">{{ overview.summary.session_count }} <small>sessions</small></strong></div><div class="strength-rhythm-bars" :class="{ 'extended-range': selectedWeeks > 12 }"><div v-for="week in overview.weekly" :key="week.week_start" class="strength-rhythm-week" :class="{ 'rhythm-idle': !Number(week.session_count) }"><strong>{{ week.session_count }}</strong><div><i :style="{ height: `${Number(week.session_count || 0) / maxWeeklySessions * 100}%` }"></i></div><span>{{ formatDate(week.week_start) }}</span></div></div><p class="rhythm-caption">{{ activeWeeks }} active weeks · {{ trimNumber(overview.summary.session_count / selectedWeeks) }} sessions per week on average</p></article>
         <article v-if="latestSession" class="card latest-session">
           <div class="latest-session-main">
             <div class="section-head">
@@ -297,6 +297,18 @@ const workoutContextError = ref(false)
 const nextStrengthDay = computed(() => {
   const today = format(new Date(), 'yyyy-MM-dd')
   return strengthPlans.value.flatMap(plan => plan.days || []).filter(day => day.date >= today && /^(weighttraining|strength|weights)$/i.test(String(day.session_type).replace(/[ _-]/g, '')) && !['linked', 'matched', 'partially_matched', 'moved'].includes(day.comparison?.status)).sort((a, b) => a.date.localeCompare(b.date))[0] || null
+})
+// Split a saved session prescription into a scannable list; free-form sentences stay as notes.
+const launchNotes = computed(() => {
+  const text = String(nextStrengthDay.value?.details || '').trim()
+  const items = []
+  const notes = []
+  for (const sentence of text.split(/\n+|(?<=[.!?])\s+/).map(part => part.trim()).filter(Boolean)) {
+    const parts = sentence.replace(/[.!?]$/, '').split(/,\s*/).map(part => part.replace(/^(and|plus)\s+/i, '').trim()).filter(Boolean)
+    if (parts.length >= 3) items.push(...parts.map(part => part.charAt(0).toUpperCase() + part.slice(1)))
+    else notes.push(sentence)
+  }
+  return { items, notes, plain: text }
 })
 const maxWeeklySessions = computed(() => Math.max(1, ...(overview.value?.weekly || []).map(week => Number(week.session_count || 0))))
 const loadWorkoutContext = async () => {
@@ -1319,7 +1331,18 @@ const round = (value) => Math.round(value * 10) / 10
 @media(max-width:520px){.strength-page.view-progression .spotlight-stage{padding:18px}.lift-chart-header{align-items:start;flex-direction:column}.strength-page.view-history .session-card>summary{grid-template-columns:35px minmax(0,1fr) 16px;gap:12px}.session-log-duration{grid-column:2;grid-row:2;display:flex;justify-content:space-between;gap:12px}.session-log-chevron{grid-column:3;grid-row:1}.strength-page.view-history .session-exercises{padding-left:0}.analysis-bars{gap:5px}.analysis-week>span{font-size:8px}.analysis-week>strong{font-size:9px}.analysis-week>div{height:145px}.lift-log-heading,.strength-page.view-progression .history-row{gap:6px;font-size:11px}.strength-page .spotlight-stats{gap:18px}}
 
 
-.range-switch { flex-wrap: wrap; }
+/* Compact filter row: one line, no card, range chips never wrap. */
+.strength-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 14px 20px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.strength-toolbar .toolbar-intro, .strength-toolbar .toolbar-block > .toolbar-label { display: none; }
+.strength-toolbar .toolbar-block { display: block; }
+.strength-toolbar .toolbar-select { min-width: 200px; }
+.range-switch { display: inline-flex; flex-wrap: nowrap; width: auto; gap: 2px; padding: 3px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.range-chip { flex: none; white-space: nowrap; padding: 7px 14px; font-size: 12px; }
+.strength-rhythm-week.rhythm-idle > strong { opacity: .3; }
+.launch-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 7px; }
+.launch-list li { position: relative; padding-left: 16px; font-size: 13px; line-height: 1.5; color: var(--text-soft); }
+.launch-list li::before { content: ''; position: absolute; left: 0; top: .62em; width: 5px; height: 5px; border-radius: 50%; background: var(--strength-accent); }
+.launch-notes p + p, .launch-list + p { margin-top: 12px; }
 .extended-range { overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; padding-bottom: 10px; }
 .extended-range .strength-rhythm-week { flex: 0 0 38px; }
 .extended-range .analysis-week { flex: 0 0 48px; }

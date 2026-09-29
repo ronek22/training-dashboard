@@ -1,28 +1,29 @@
 <template>
   <div class="recovery-page">
     <header class="recovery-header">
-      <div><span class="eyebrow">TRAIN • RECOVER • RETURN</span><h1>Recovery</h1><p>Talk it through, get a plan, and remember what worked.</p></div>
+      <h1>Recovery</h1>
       <button class="primary" :disabled="busy" @click="startNew()">+ Something hurts</button>
     </header>
 
     <div v-if="error" class="error-banner" role="alert">{{ error }} <button @click="refresh">Reload</button></div>
     <p v-if="loading" class="empty" role="status">Loading your injuries…</p>
     <div v-else class="recovery-layout">
-      <aside class="issue-sidebar">
-        <div class="section-top"><span class="eyebrow">ACTIVE</span><span>{{ activeIssues.length }}</span></div>
+      <nav class="issue-strip" aria-label="Injuries">
         <p v-if="!activeIssues.length" class="subtle">Nothing hurting right now.</p>
-        <button v-for="item in activeIssues" :key="item.id" class="issue-button" :class="{ selected: isSelected(item) }" :disabled="busy" @click="select(item.id)">
+        <button v-for="item in activeIssues" :key="item.id" class="issue-chip" :class="{ selected: isSelected(item) }" :disabled="busy" @click="select(item.id)">
           <span class="issue-title">{{ item.title }}</span>
           <span class="issue-meta">Day {{ dayCount(item.started_on) }}<template v-if="item.current_pain !== null"> · pain {{ item.current_pain }}/10</template></span>
         </button>
-        <template v-if="healedIssues.length">
-          <div class="section-top healed-top"><span class="eyebrow">HEALED</span><span>{{ healedIssues.length }}</span></div>
-          <button v-for="item in healedIssues" :key="item.id" class="issue-button healed" :class="{ selected: isSelected(item) }" :disabled="busy" @click="select(item.id)">
-            <span class="issue-title">{{ item.title }}</span>
-            <span class="issue-meta">{{ formatDate(item.started_on) }} – {{ formatDate(item.healed_on) }}</span>
-          </button>
-        </template>
-      </aside>
+        <details v-if="healedIssues.length" class="healed-menu">
+          <summary>Healed · {{ healedIssues.length }}</summary>
+          <div class="healed-list">
+            <button v-for="item in healedIssues" :key="item.id" class="issue-chip healed" :class="{ selected: isSelected(item) }" :disabled="busy" @click="select(item.id)">
+              <span class="issue-title">{{ item.title }}</span>
+              <span class="issue-meta">{{ formatDate(item.started_on) }} – {{ formatDate(item.healed_on) }}</span>
+            </button>
+          </div>
+        </details>
+      </nav>
 
       <main class="recovery-main">
         <section v-if="creating || !issue" class="panel new-panel">
@@ -56,12 +57,12 @@
 
         <template v-else>
           <div class="issue-head">
-            <div>
-              <span class="eyebrow">{{ issue.status === 'healed' ? `HEALED ${formatDate(issue.healed_on).toUpperCase()}` : `DAY ${dayCount(issue.started_on)}` }}<template v-if="issue.related.length"> · HAPPENED {{ issue.related.length + 1 }}×</template></span>
+            <div class="issue-title-block">
               <h2>{{ issue.title }}</h2>
+              <p class="issue-sub">{{ issue.status === 'healed' ? `Healed ${formatDate(issue.healed_on)}` : `Day ${dayCount(issue.started_on)}` }}<template v-if="issue.related.length"> · happened {{ issue.related.length + 1 }}×</template></p>
             </div>
             <div class="issue-actions">
-              <span v-if="issue.current_pain !== null" class="pain-now">{{ issue.current_pain }}<small>/10</small></span>
+              <span v-if="issue.current_pain !== null" class="pain-now" title="Pain right now">{{ issue.current_pain }}<small>/10</small></span>
               <template v-if="issue.status === 'active'"><button class="primary" :disabled="busy" @click="healing = !healing">Mark healed</button></template>
               <template v-else><button class="primary" :disabled="busy" @click="cameBack">It came back</button><button :disabled="busy" @click="reopen">Reopen</button></template>
               <button class="danger-link" :disabled="busy" @click="remove">Delete</button>
@@ -77,8 +78,57 @@
           <p v-if="issue.status === 'healed' && issue.what_helped" class="helped-banner"><b>What helped:</b> {{ issue.what_helped }}</p>
 
           <div class="workspace">
+            <div class="plan-column">
+              <section class="panel plan-panel">
+                <div class="panel-head"><h3>Recovery plan</h3><span v-if="issue.current_plan" class="subtle">{{ formatDate(issue.current_plan.created_at) }}</span></div>
+                <template v-if="issue.current_plan">
+                  <p class="plan-summary">{{ issue.current_plan.summary }}</p>
+                  <ol class="exercises">
+                    <li v-for="(exercise, index) in issue.current_plan.exercises" :key="index">
+                      <details :class="{ 'no-how': !exercise.how }">
+                        <summary><span class="ex-index">{{ index + 1 }}</span><strong>{{ exercise.name }}</strong><span v-if="exercise.dose" class="dose">{{ exercise.dose }}</span></summary>
+                        <p v-if="exercise.how">{{ exercise.how }}</p>
+                      </details>
+                    </li>
+                  </ol>
+                  <details v-if="issue.current_plan.do.length || issue.current_plan.avoid.length" class="advice-fold"><summary>Do &amp; avoid</summary><div class="advice-grid">
+                    <div v-if="issue.current_plan.do.length" class="advice do"><b>Do</b><ul><li v-for="item in issue.current_plan.do" :key="item">{{ item }}</li></ul></div>
+                    <div v-if="issue.current_plan.avoid.length" class="advice avoid"><b>Avoid</b><ul><li v-for="item in issue.current_plan.avoid" :key="item">{{ item }}</li></ul></div>
+                  </div></details>
+                </template>
+                <p v-else class="subtle">No plan yet. Chat with the assistant, or ask for one with “Make me a recovery plan”.</p>
+              </section>
+
+              <section class="panel checkin-panel">
+                <div class="panel-head"><h3>How is it today?</h3><span class="subtle">{{ issue.checkins.length }} logged</span></div>
+                <form v-if="issue.status === 'active'" @submit.prevent="checkIn">
+                  <div class="pain-row" role="group" aria-label="Pain today"><button v-for="n in 11" :key="n" type="button" :class="{ chosen: checkin.pain === n - 1 }" @click="checkin.pain = n - 1">{{ n - 1 }}</button></div>
+                  <div v-if="checkin.pain !== null" class="checkin-line">
+                    <input v-model="checkin.note" maxlength="2000" placeholder="Optional note, e.g. fine on the bike, sore on stairs" />
+                    <label v-if="issue.current_plan" class="check"><input v-model="checkin.did_plan" type="checkbox" />Did the plan</label>
+                    <button class="primary" :disabled="busy || checkin.pain === null">Log pain</button>
+                  </div>
+                </form>
+                <details v-if="issue.checkins.length" class="timeline-fold">
+                  <summary>Check-in history</summary>
+                <svg v-if="painPoints.length > 1" class="spark" viewBox="0 0 300 60" preserveAspectRatio="none" role="img" :aria-label="`Pain trend from ${issue.checkins[0].pain} to ${issue.current_pain}`">
+                  <polyline :points="painPoints.join(' ')" />
+                </svg>
+                  <ol class="timeline"><li v-for="entry in [...issue.checkins].reverse().slice(0, 8)" :key="entry.id"><span class="timeline-score">{{ entry.pain }}</span><div><small>{{ formatTime(entry.created_at) }}<template v-if="entry.did_plan"> · did plan</template></small><p v-if="entry.note">{{ entry.note }}</p></div></li></ol>
+                </details>
+              </section>
+
+              <section v-if="issue.related.length" class="panel">
+                <div class="panel-head"><h3>Previous episodes</h3></div>
+                <button v-for="item in issue.related" :key="item.id" class="episode" :disabled="busy" @click="select(item.id)">
+                  <strong>{{ item.title }}</strong><small>{{ formatDate(item.started_on) }}{{ item.healed_on ? ` – ${formatDate(item.healed_on)}` : ' · active' }}</small>
+                  <span v-if="item.what_helped">Helped: {{ item.what_helped }}</span>
+                </button>
+              </section>
+            </div>
+
             <section class="panel chat-panel">
-              <div class="panel-head"><h3>Conversation</h3><span class="ai-badge">AI</span></div>
+              <div class="panel-head"><h3>Conversation</h3></div>
               <div ref="thread" class="conversation" aria-live="polite">
                 <p v-if="!issue.messages.length" class="subtle">Describe what you feel — where, since when, what makes it worse. The assistant will ask what it needs and prepare exercises.</p>
                 <article v-for="item in issue.messages" :key="item.id" class="message" :class="item.role"><span>{{ item.role === 'user' ? 'You' : 'Assistant' }} · {{ formatTime(item.created_at) }}</span><p>{{ item.content }}</p></article>
@@ -90,7 +140,7 @@
                 </div>
                 <form class="composer" @submit.prevent="send()">
                   <label class="sr-only" for="recovery-message">Message</label>
-                  <textarea id="recovery-message" v-model="message" rows="3" maxlength="4000" placeholder="How does it feel today?" :disabled="busy" @keydown.enter.meta.prevent="send()" @keydown.enter.ctrl.prevent="send()"></textarea>
+                  <textarea id="recovery-message" v-model="message" rows="1" maxlength="4000" placeholder="How does it feel today?" :disabled="busy" @keydown.enter.meta.prevent="send()" @keydown.enter.ctrl.prevent="send()"></textarea>
                   <div class="row-actions">
                     <button v-if="issue.latest_request?.status === 'failed' && !aiBusy" type="button" :disabled="busy" @click="retry">Retry reply</button>
                     <button class="primary" :disabled="busy || !message.trim()">Send</button>
@@ -98,41 +148,6 @@
                 </form>
               </template>
             </section>
-
-            <div class="side-column">
-              <section class="panel plan-panel">
-                <div class="panel-head"><h3>Recovery plan</h3><span v-if="issue.current_plan" class="subtle">{{ formatDate(issue.current_plan.created_at) }}</span></div>
-                <template v-if="issue.current_plan">
-                  <p class="plan-summary">{{ issue.current_plan.summary }}</p>
-                  <ol class="exercises"><li v-for="(exercise, index) in issue.current_plan.exercises" :key="index"><div><strong>{{ exercise.name }}</strong><span v-if="exercise.dose" class="dose">{{ exercise.dose }}</span></div><p v-if="exercise.how">{{ exercise.how }}</p></li></ol>
-                  <div v-if="issue.current_plan.do.length" class="advice do"><b>Do</b><ul><li v-for="item in issue.current_plan.do" :key="item">{{ item }}</li></ul></div>
-                  <div v-if="issue.current_plan.avoid.length" class="advice avoid"><b>Avoid</b><ul><li v-for="item in issue.current_plan.avoid" :key="item">{{ item }}</li></ul></div>
-                </template>
-                <p v-else class="subtle">No plan yet. Chat with the assistant, or ask for one with “Make me a recovery plan”.</p>
-              </section>
-
-              <section class="panel">
-                <div class="panel-head"><h3>How is it today?</h3><span class="subtle">{{ issue.checkins.length }} logged</span></div>
-                <form v-if="issue.status === 'active'" @submit.prevent="checkIn">
-                  <div class="pain-row" role="group" aria-label="Pain today"><button v-for="n in 11" :key="n" type="button" :class="{ chosen: checkin.pain === n - 1 }" @click="checkin.pain = n - 1">{{ n - 1 }}</button></div>
-                  <label v-if="issue.current_plan" class="check"><input v-model="checkin.did_plan" type="checkbox" />Did the plan exercises today</label>
-                  <input v-model="checkin.note" maxlength="2000" placeholder="Optional note, e.g. fine on the bike, sore on stairs" />
-                  <button class="full-width" :disabled="busy || checkin.pain === null">Log pain</button>
-                </form>
-                <svg v-if="painPoints.length > 1" class="spark" viewBox="0 0 300 60" preserveAspectRatio="none" role="img" :aria-label="`Pain trend from ${issue.checkins[0].pain} to ${issue.current_pain}`">
-                  <polyline :points="painPoints.join(' ')" />
-                </svg>
-                <ol v-if="issue.checkins.length" class="timeline"><li v-for="entry in [...issue.checkins].reverse().slice(0, 8)" :key="entry.id"><span class="timeline-score">{{ entry.pain }}</span><div><small>{{ formatTime(entry.created_at) }}<template v-if="entry.did_plan"> · did plan</template></small><p v-if="entry.note">{{ entry.note }}</p></div></li></ol>
-              </section>
-
-              <section v-if="issue.related.length" class="panel">
-                <div class="panel-head"><h3>Previous episodes</h3></div>
-                <button v-for="item in issue.related" :key="item.id" class="episode" :disabled="busy" @click="select(item.id)">
-                  <strong>{{ item.title }}</strong><small>{{ formatDate(item.started_on) }}{{ item.healed_on ? ` – ${formatDate(item.healed_on)}` : ' · active' }}</small>
-                  <span v-if="item.what_helped">Helped: {{ item.what_helped }}</span>
-                </button>
-              </section>
-            </div>
           </div>
         </template>
       </main>
@@ -297,39 +312,47 @@ onMounted(async () => { pollTimer = setInterval(refreshPendingReply, 2500); awai
 </script>
 
 <style scoped>
-.recovery-page { max-width: 1500px; margin: auto; padding-bottom: 80px; }
-.recovery-header, .issue-head, .section-top, .panel-head, .row-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.recovery-header { margin-bottom: 28px; }
+.recovery-page { max-width: 1500px; margin: auto; padding-bottom: 60px; }
+.recovery-header, .issue-head, .panel-head, .row-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.recovery-header { margin-bottom: 16px; }
 h1, h2, h3 { font-family: var(--font-display); line-height: 1.25; }
-h1 { font-size: clamp(30px, 4vw, 42px); margin: 6px 0 10px; letter-spacing: -1.5px; }
-h2 { font-size: 26px; margin-top: 6px; overflow-wrap: anywhere; } h3 { font-size: 16px; }
+h1 { font-size: 28px; margin: 0; letter-spacing: -1px; }
+h2 { font-size: 22px; margin: 0; overflow-wrap: anywhere; letter-spacing: -.5px; } h3 { font-size: 14px; margin: 0; }
 .eyebrow { font-size: 10px; font-weight: 750; letter-spacing: 1.8px; color: #7fd7b9; }
-p { color: var(--muted); line-height: 1.6; }
+p { color: var(--muted); line-height: 1.55; margin: 0; }
 button, input, textarea { font: inherit; }
-button { cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text); padding: 9px 13px; border-radius: 9px; }
+button { cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text); padding: 7px 12px; border-radius: 9px; font-size: 13px; }
 button:disabled { opacity: .55; cursor: not-allowed; }
 .primary { background: #83dfba; border-color: #83dfba; color: #09251d; font-weight: 750; }
-button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #83dfba; outline-offset: 3px; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid #83dfba; outline-offset: 3px; }
 .subtle { font-size: 12px; color: var(--muted); }
-.recovery-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 28px; }
-.issue-sidebar { border-right: 1px solid var(--border); padding-right: 22px; }
-.section-top { margin-bottom: 12px; color: var(--muted); } .healed-top { margin-top: 26px; }
-.issue-button { display: block; width: 100%; text-align: left; background: transparent; padding: 12px 14px; margin-bottom: 6px; border-color: transparent; }
-.issue-button.selected { background: linear-gradient(120deg, rgba(72, 168, 134, .16), rgba(72, 168, 134, .04)); border-color: rgba(131, 223, 186, .25); }
-.issue-button.healed .issue-title { color: var(--text-soft); font-weight: 600; }
-.issue-title { display: block; font-weight: 700; overflow-wrap: anywhere; }
-.issue-meta { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; }
+.recovery-layout { display: grid; gap: 16px; }
+
+/* Injury strip */
+.issue-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.issue-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; background: transparent; padding: 8px 14px; border-radius: 12px; border-color: var(--border); }
+.issue-chip.selected { background: linear-gradient(120deg, rgba(72, 168, 134, .18), rgba(72, 168, 134, .05)); border-color: rgba(131, 223, 186, .35); }
+.issue-title { font-weight: 650; font-size: 13px; overflow-wrap: anywhere; }
+.issue-meta { font-size: 11px; color: var(--muted); }
+.healed-menu { position: relative; margin-left: auto; }
+.healed-menu summary { cursor: pointer; list-style: none; font-size: 12px; color: var(--muted); padding: 8px 12px; border-radius: 9px; }
+.healed-menu summary::-webkit-details-marker { display: none; }
+.healed-menu[open] summary { color: var(--text); }
+.healed-list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; display: grid; gap: 6px; min-width: 260px; padding: 8px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
+.issue-chip.healed .issue-title { color: var(--text-soft); font-weight: 600; }
+
 .recovery-main { min-width: 0; }
-.panel { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 20px; min-width: 0; }
-.panel-head { margin-bottom: 14px; }
-.new-panel { max-width: 640px; }
-.new-form { margin-top: 18px; }
+.panel { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 16px 18px; min-width: 0; }
+.panel-head { margin-bottom: 10px; }
+.new-panel { max-width: 640px; padding: 22px; }
+.new-panel h2 { margin: 6px 0 0; }
+.new-form { margin-top: 14px; }
 label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; color: var(--text-soft); margin: 14px 0 8px; }
-input, textarea { width: 100%; min-width: 0; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: #101825; padding: 10px; font-size: 13px; }
+input, textarea { width: 100%; min-width: 0; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: #101825; padding: 9px 10px; font-size: 13px; }
 textarea { resize: vertical; }
 .choice-row, .pain-row, .quick-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.choice-row button, .quick-row button { font-size: 12px; padding: 7px 11px; }
-.pain-row button { flex: 1 0 28px; padding: 8px 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+.choice-row button, .quick-row button { font-size: 12px; padding: 6px 11px; }
+.pain-row button { flex: 1 0 28px; padding: 7px 0; font-size: 12px; font-variant-numeric: tabular-nums; }
 .chosen { background: rgba(131, 223, 186, .18); border-color: #83dfba; color: #c9f3e2; }
 .history-hint { margin: 16px 0; padding: 14px; border: 1px solid rgba(243, 180, 77, .35); background: rgba(243, 180, 77, .06); border-radius: 12px; font-size: 13px; }
 .history-option { flex-direction: row; align-items: start; margin: 10px 0 0; }
@@ -339,51 +362,110 @@ textarea { resize: vertical; }
 .history-option small { display: block; color: var(--muted); margin-top: 3px; }
 .full-width { width: 100%; margin-top: 12px; }
 .privacy { font-size: 11px; margin-top: 16px; }
-.issue-head { margin-bottom: 18px; align-items: start; }
+
+/* Issue header */
+.issue-head { margin-bottom: 14px; align-items: center; }
+.issue-sub { font-size: 12px; margin-top: 3px; }
 .issue-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: end; }
-.pain-now { font-size: 28px; color: #83dfba; margin-right: 8px; font-variant-numeric: tabular-nums; } .pain-now small { font-size: 12px; color: var(--muted); }
-.danger-link { color: #f38b8b; background: none; border-color: transparent; }
-.heal-panel { margin-bottom: 18px; } .heal-panel label { margin-top: 0; } .row-actions { justify-content: end; margin-top: 10px; }
-.pro-banner { margin-bottom: 18px; padding: 14px 16px; border: 1px solid rgba(243, 180, 77, .4); background: rgba(243, 180, 77, .08); color: #f3c782; border-radius: 12px; font-size: 13px; }
-.helped-banner { margin-bottom: 18px; padding: 14px 16px; border: 1px solid rgba(131, 223, 186, .3); background: rgba(131, 223, 186, .06); border-radius: 12px; font-size: 13px; color: var(--text-soft); }
-.workspace { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
-.side-column { display: grid; gap: 20px; min-width: 0; }
-.ai-badge { font-size: 10px; color: #9ecdbb; border: 1px solid var(--border); border-radius: 20px; padding: 3px 8px; }
-.conversation { min-height: 240px; max-height: 560px; overflow-y: auto; padding-right: 3px; }
-.message { padding: 12px 14px; margin: 10px 0; border-radius: 12px; background: rgba(131, 223, 186, .05); border: 1px solid rgba(131, 223, 186, .12); }
-.message.user { margin-left: 24px; background: var(--surface2); border-color: var(--border); }
-.message > span { color: var(--muted); font-size: 10px; }
-.message p { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-soft); font-size: 13px; margin-top: 6px; }
-.thinking { color: #9edfc5; font-size: 12px; padding: 10px 0; }
-.quick-row { margin: 14px 0 10px; padding-top: 14px; border-top: 1px solid var(--border); }
-.plan-summary { font-size: 13px; color: var(--text-soft); }
-.exercises { margin: 14px 0 0; padding-left: 20px; }
-.exercises li { padding: 10px 0; border-top: 1px solid var(--border); font-size: 13px; }
-.exercises li > div { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.exercises p { font-size: 12px; margin-top: 4px; }
+.pain-now { font-size: 24px; color: #83dfba; margin-right: 6px; font-variant-numeric: tabular-nums; } .pain-now small { font-size: 12px; color: var(--muted); }
+.danger-link { color: #f38b8b; background: none; border-color: transparent; padding: 7px 8px; }
+.heal-panel { margin-bottom: 14px; } .heal-panel label { margin-top: 0; } .row-actions { justify-content: end; margin-top: 8px; }
+.pro-banner { margin-bottom: 14px; padding: 12px 14px; border: 1px solid rgba(243, 180, 77, .4); background: rgba(243, 180, 77, .08); color: #f3c782; border-radius: 12px; font-size: 13px; }
+.helped-banner { margin-bottom: 14px; padding: 12px 14px; border: 1px solid rgba(131, 223, 186, .3); background: rgba(131, 223, 186, .06); border-radius: 12px; font-size: 13px; color: var(--text-soft); }
+
+/* Plan main, chat beside */
+.workspace { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(340px, 1fr); gap: 16px; align-items: start; }
+.plan-column { display: grid; gap: 16px; min-width: 0; }
+.plan-summary { font-size: 13px; color: var(--text-soft); max-width: 78ch; }
+.exercises { list-style: none; margin: 12px 0 0; padding: 0; }
+.exercises li { border-top: 1px solid var(--border); }
+.exercises summary { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: baseline; gap: 8px; padding: 9px 2px; cursor: pointer; list-style: none; font-size: 13px; }
+.exercises summary::-webkit-details-marker { display: none; }
+.exercises details.no-how summary { cursor: default; }
+.exercises summary:hover strong { color: #c9f3e2; }
+.ex-index { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.exercises strong { font-weight: 600; }
+.exercises details p { font-size: 12px; padding: 0 2px 10px 30px; max-width: 70ch; }
 .dose { color: #83dfba; font-size: 12px; white-space: nowrap; }
-.advice { margin-top: 14px; font-size: 12px; } .advice ul { margin: 6px 0 0 18px; color: var(--text-soft); } .advice li { margin: 3px 0; }
+.advice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.advice { font-size: 12px; } .advice ul { margin: 6px 0 0 16px; padding: 0; color: var(--text-soft); } .advice li { margin: 3px 0; }
 .advice.do b { color: #83dfba; } .advice.avoid b { color: #f3c782; }
-.check { flex-direction: row; align-items: center; }
-.spark { width: 100%; height: 60px; margin-top: 16px; }
+.check { flex-direction: row; align-items: center; margin: 0; white-space: nowrap; }
+.checkin-line { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; margin-top: 10px; }
+.spark { width: 100%; height: 44px; margin-top: 12px; }
 .spark polyline { fill: none; stroke: #83dfba; stroke-width: 2; vector-effect: non-scaling-stroke; }
-.timeline { list-style: none; margin-top: 10px; padding: 0; }
-.timeline li { display: flex; gap: 14px; padding: 9px 0; border-top: 1px solid var(--border); }
-.timeline-score { min-width: 26px; font-size: 18px; color: #83dfba; font-variant-numeric: tabular-nums; }
+.timeline-fold { margin-top: 8px; }
+.timeline-fold summary { cursor: pointer; font-size: 12px; color: var(--muted); padding: 4px 0; width: fit-content; }
+.timeline { list-style: none; margin: 6px 0 0; padding: 0; }
+.timeline li { display: flex; gap: 14px; padding: 8px 0; border-top: 1px solid var(--border); }
+.timeline-score { min-width: 26px; font-size: 16px; color: #83dfba; font-variant-numeric: tabular-nums; }
 .timeline small { color: var(--muted); font-size: 11px; } .timeline p { font-size: 12px; overflow-wrap: anywhere; }
 .episode { display: block; width: 100%; text-align: left; background: transparent; margin-top: 8px; }
 .episode small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
 .episode span { display: block; font-size: 12px; color: var(--text-soft); margin-top: 6px; }
-.error-banner { color: #ffb0b0; padding: 14px; border: 1px solid #804949; border-radius: 12px; margin-bottom: 20px; background: #301e28; }
+
+/* Chat: fixed-height column, scrolls inside */
+.chat-panel { display: flex; flex-direction: column; position: sticky; top: 12px; height: clamp(440px, calc(100vh - 262px), 720px); }
+.ai-badge { font-size: 10px; color: #9ecdbb; border: 1px solid var(--border); border-radius: 20px; padding: 2px 8px; }
+.conversation { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 10px; }
+.message { max-width: 92%; }
+.message > span { display: block; color: var(--muted); font-size: 10px; margin-bottom: 3px; }
+.message p { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-soft); font-size: 13px; line-height: 1.5; }
+.message.assistant { padding-left: 10px; border-left: 2px solid rgba(131, 223, 186, .35); }
+.message.user { align-self: flex-end; padding: 8px 12px; border-radius: 12px; background: var(--surface2); }
+.message.user > span { text-align: right; }
+.thinking { color: #9edfc5; font-size: 12px; padding: 6px 0; }
+.quick-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 10px 0 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.quick-row button { flex: none; white-space: nowrap; }
+.composer textarea { min-height: 0; }
+
+.error-banner { color: #ffb0b0; padding: 12px 14px; border: 1px solid #804949; border-radius: 12px; margin-bottom: 16px; background: #301e28; }
 .error-banner button { margin-left: 10px; } .empty { padding: 40px; text-align: center; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
-@media (max-width: 1200px) { .recovery-layout { grid-template-columns: 190px minmax(0, 1fr); gap: 20px; } .workspace { grid-template-columns: 1fr; } }
-@media (max-width: 700px) {
-  .recovery-header, .issue-head { flex-direction: column; align-items: start; }
-  .recovery-layout { grid-template-columns: 1fr; }
-  .issue-sidebar { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-  .issue-actions { justify-content: start; }
-  .panel { padding: 16px; }
-  .message.user { margin-left: 12px; }
+@media (max-width: 1100px) {
+  .workspace { grid-template-columns: 1fr; }
+  .chat-panel { position: static; height: 560px; }
 }
+@media (max-width: 700px) {
+  .issue-head { flex-direction: column; align-items: start; }
+  .issue-actions { justify-content: start; }
+  .panel { padding: 14px; }
+  .advice-grid { grid-template-columns: 1fr; }
+  .checkin-line { grid-template-columns: 1fr; }
+  .healed-menu { margin-left: 0; }
+  .healed-list { left: 0; right: auto; }
+}
+
+/* Calmer pass: fewer boxes, more air. */
+.plan-column .panel { border: 0; background: transparent; padding: 0; }
+.plan-column .panel + .panel { padding-top: 22px; border-top: 1px solid rgba(255, 255, 255, .06); border-radius: 0; }
+.plan-panel .panel-head h3, .checkin-panel .panel-head h3 { font-size: 17px; }
+.plan-summary { font-size: 14px; line-height: 1.7; }
+.exercises { margin-top: 18px; }
+.exercises li { border-top-color: rgba(255, 255, 255, .06); }
+.exercises summary { padding: 15px 2px; font-size: 15px; grid-template-columns: 26px minmax(0, 1fr) auto; }
+.exercises strong { font-weight: 500; }
+.dose { color: var(--text-soft); font-size: 13px; }
+.exercises details p { font-size: 13px; padding: 0 2px 14px 34px; }
+.advice-fold { margin-top: 14px; }
+.advice-fold > summary { cursor: pointer; font-size: 13px; color: var(--muted); width: fit-content; padding: 6px 0; }
+.advice-fold[open] > summary { color: var(--text); }
+.advice-fold .advice-grid { border-top: 0; margin-top: 4px; padding-top: 0; gap: 28px; }
+.advice { font-size: 13px; } .advice li { margin: 6px 0; }
+.pain-row button { padding: 9px 0; background: transparent; }
+.pain-row button.chosen { background: rgba(131, 223, 186, .18); }
+.checkin-panel .panel-head { margin-bottom: 12px; }
+.spark { margin: 4px 0 10px; }
+.chat-panel { background: rgba(255, 255, 255, .02); padding: 18px 20px; }
+.chat-panel .panel-head h3 { font-size: 17px; }
+.conversation { gap: 16px; }
+.message p { font-size: 14px; line-height: 1.65; }
+.message.assistant { border-left-color: rgba(131, 223, 186, .2); padding-left: 12px; }
+.message.user { background: rgba(255, 255, 255, .05); }
+.quick-row button { background: transparent; border-color: transparent; color: var(--muted); padding: 6px 4px; margin-right: 8px; }
+.quick-row button:hover { color: var(--text); }
+.quick-row { border-top-color: rgba(255, 255, 255, .06); }
+.composer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.composer .row-actions { margin: 0; }
+.composer textarea { resize: none; padding: 10px 12px; }
 </style>

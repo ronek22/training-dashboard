@@ -486,8 +486,8 @@ onBeforeUnmount(() => {
 .view-switch { padding: 3px; border-radius: 10px; background: var(--bg-elevated); }
 .view-switch button { min-width: 68px; min-height: 30px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--muted-soft); cursor: pointer; font-size: 13px; font-weight: 600; }
 .view-switch button:hover:not(.active) { color: var(--text); }
-.view-switch button.active { background: var(--surface3); color: #fff; }
-.plan-action { display: inline-flex; align-items: center; min-height: 36px; padding: 0 15px; border-radius: 9px; background: var(--cal-action); color: #fff; font-size: 13px; font-weight: 650; }
+.view-switch button.active { background: var(--surface3); color: var(--text); }
+.plan-action { display: inline-flex; align-items: center; min-height: 36px; padding: 0 15px; border-radius: 9px; background: var(--cal-action); color:#fff; font-size: 13px; font-weight: 650; }
 .plan-action:hover { background: color-mix(in srgb, white 8%, var(--cal-action)); }
 
 .summary-strip { display: flex; align-items: center; gap: 22px; margin-bottom: 12px; padding: 10px 16px; border-radius: 12px; background: var(--bg-elevated); transition: opacity var(--motion-duration-base) var(--motion-ease-standard); }
@@ -603,7 +603,7 @@ a.pop-title:hover { text-decoration: underline; }
 
 .calendar-state { display: grid; justify-items: center; gap: 8px; padding: 32px; border-radius: 14px; background: var(--bg-elevated); }
 .error-state strong { color: var(--danger); }
-.error-state button { padding: 7px 14px; border: 0; border-radius: 8px; background: var(--surface3); color: #fff; cursor: pointer; }
+.error-state button { padding: 7px 14px; border: 0; border-radius: 8px; background: var(--surface3); color: var(--text); cursor: pointer; }
 
 @media (max-width: 1340px) { .summary-sports li > span:last-child { display: none; } }
 @media (max-width: 1180px) {

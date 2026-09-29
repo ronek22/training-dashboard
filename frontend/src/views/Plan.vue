@@ -1392,7 +1392,7 @@ const selectPlanDay = (day) => {
   selectedDayDate.value = day.date
 }
 
-const planAccent = (type) => ({ run: '#82afff', ride: '#64dbb5', strength: '#f3c478', recovery: '#bcb0f6', walk: '#91cfba', neutral: '#a8b7d0' }[activityTone(type)])
+const planAccent = (type) => ({ run: 'var(--tone-run)', ride: 'var(--tone-ride)', strength: 'var(--tone-strength)', recovery: 'var(--tone-recovery)', walk: 'var(--tone-walk)', neutral: 'var(--tone-neutral)' }[activityTone(type)])
 
 const selectedWeekMetrics = computed(() => {
   const days = selectedPlan.value?.days || []

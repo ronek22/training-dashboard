@@ -126,7 +126,7 @@ import { summarizeMuscles } from '../activity-detail/muscles.mjs'
 
 const props = defineProps({
   state: { type: String, default: 'planned' },
-  accent: { type: String, default: '#a8b7d0' },
+  accent: { type: String, default: 'var(--tone-neutral)' },
   tone: { type: String, default: 'neutral' },
   iconType: { type: String, default: '' },
   kicker: { type: String, default: '' },

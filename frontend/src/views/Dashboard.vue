@@ -347,7 +347,7 @@ async function adaptTomorrowPlan() {
   }
 }
 
-const dashboardSportAccent = (type) => ({ ride: '#64dbb5', run: '#82afff', strength: '#f3c478', recovery: '#bcb0f6', walk: '#91cfba' }[activityTone(type)] || '#a8b7d0')
+const dashboardSportAccent = (type) => ({ ride: 'var(--tone-ride)', run: 'var(--tone-run)', strength: 'var(--tone-strength)', recovery: 'var(--tone-recovery)', walk: 'var(--tone-walk)' }[activityTone(type)] || 'var(--tone-neutral)')
 
 const primaryDecisionTone = computed(() => {
   if (todayPlanCompleted.value) return 'complete'

@@ -203,7 +203,7 @@ const submit = () => {
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: rgba(6, 10, 19, 0.74);
+  background: rgb(var(--deep-rgb) / 0.74);
   backdrop-filter: blur(10px);
   display: flex;
   justify-content: center;
@@ -219,12 +219,12 @@ const submit = () => {
   margin: 0 auto;
   padding: 24px;
   border-radius: 24px;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgb(var(--ov-rgb) / 0.08);
   background:
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 34%),
     radial-gradient(circle at top right, rgba(249, 115, 22, 0.14), transparent 28%),
-    linear-gradient(180deg, rgba(17, 23, 35, 0.98), rgba(11, 16, 26, 0.98));
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.98), rgb(var(--deep-rgb) / 0.98));
+  box-shadow: 0 30px 80px rgb(var(--shadow-rgb) / 0.45);
 }
 .feedback-modal-head {
   display: flex;
@@ -237,7 +237,7 @@ const submit = () => {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #93c5fd;
+  color: var(--info-text);
   margin-bottom: 8px;
 }
 .feedback-modal-head h2 {
@@ -253,8 +253,8 @@ const submit = () => {
   width: 38px;
   height: 38px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid rgb(var(--ov-rgb) / 0.08);
+  background: rgb(var(--ov-rgb) / 0.04);
   color: var(--text);
   cursor: pointer;
   font-size: 24px;
@@ -272,8 +272,8 @@ const submit = () => {
 .feedback-slider-card {
   padding: 16px;
   border-radius: 18px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgb(var(--ov-rgb) / 0.04);
+  border: 1px solid rgb(var(--ov-rgb) / 0.06);
 }
 .feedback-slider-top {
   display: flex;
@@ -300,12 +300,12 @@ const submit = () => {
   padding: 5px 9px;
   border-radius: 999px;
   background: rgba(99, 102, 241, 0.18);
-  color: #c7d2fe;
+  color:var(--text);
   font-weight: 700;
 }
 .feedback-slider {
   width: 100%;
-  accent-color: #60a5fa;
+  accent-color:color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000);
 }
 .feedback-slider-scale {
   display: flex;
@@ -335,8 +335,8 @@ const submit = () => {
   width: 100%;
   padding: 12px 14px;
   border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid rgb(var(--ov-rgb) / 0.08);
+  background: rgb(var(--ov-rgb) / 0.04);
   color: var(--text);
   resize: vertical;
 }
@@ -363,13 +363,13 @@ const submit = () => {
   font-weight: 700;
 }
 .feedback-secondary-btn {
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid rgb(var(--ov-rgb) / 0.08);
+  background: rgb(var(--ov-rgb) / 0.04);
   color: var(--text);
 }
 .feedback-primary-btn {
-  border: 1px solid #3b82f6;
-  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  border:1px solid #3b82f6;
+  background:linear-gradient(135deg, #2563eb, #4f46e5);
   color: white;
 }
 .feedback-secondary-btn:hover,

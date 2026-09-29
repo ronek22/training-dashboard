@@ -135,7 +135,7 @@ const label = computed(() => {
 .activity-icon-run { color: var(--run); }
 .activity-icon-ride { color: var(--ride); }
 .activity-icon-strength { color: var(--strength); }
-.activity-icon-recovery { color: #a5b4fc; }
-.activity-icon-walk { color: #94a3b8; }
+.activity-icon-recovery { color:var(--text); }
+.activity-icon-walk { color: var(--muted); }
 .activity-icon-neutral { color: var(--muted); }
 </style>

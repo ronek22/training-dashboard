@@ -287,7 +287,7 @@ tr:hover td { background: var(--surface2); }
 .skeleton-block,
 .skeleton-pill {
   position: relative;
-  background: rgba(148, 163, 184, 0.12);
+  background: rgb(var(--tint-rgb) / 0.12);
 }
 
 .skeleton-line,
@@ -309,7 +309,7 @@ tr:hover td { background: var(--surface2); }
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.08),
+    rgb(var(--ov-rgb) / 0.08),
     transparent
   );
   animation: skeleton-shimmer 1.2s ease-in-out infinite;
@@ -516,7 +516,7 @@ tr:hover td { background: var(--surface2); }
   padding: 8px 12px;
   border-radius: 999px;
   background: rgba(245, 183, 66, 0.14);
-  color: #f5b742;
+  color: var(--warning-text);
   font-size: 12px;
   font-weight: 700;
 }
@@ -529,7 +529,7 @@ tr:hover td { background: var(--surface2); }
   border: 1px solid rgba(245, 183, 66, 0.22);
   background:
     radial-gradient(circle at top right, rgba(245, 183, 66, 0.14), transparent 38%),
-    linear-gradient(135deg, rgba(24, 34, 58, 0.96), rgba(34, 40, 64, 0.92));
+    linear-gradient(135deg, rgb(var(--deep-rgb) / 0.96), rgba(34, 40, 64, 0.92));
   padding: 16px;
 }
 
@@ -578,9 +578,9 @@ tr:hover td { background: var(--surface2); }
 .dashboard-zone-row {
   padding: 12px 14px 13px;
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  background: linear-gradient(180deg, rgb(var(--ov-rgb) / 0.035), rgb(var(--ov-rgb) / 0.02));
+  border: 1px solid rgb(var(--ov-rgb) / 0.05);
+  box-shadow: inset 0 1px 0 rgb(var(--ov-rgb) / 0.03);
 }
 
 .hr-zones-panel .hr-zone-focus-card {
@@ -618,7 +618,7 @@ tr:hover td { background: var(--surface2); }
 .dashboard-zone-row-highlight {
   border-color: rgba(245, 183, 66, 0.34);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 rgb(var(--ov-rgb) / 0.04),
     0 0 0 1px rgba(245, 183, 66, 0.06);
 }
 
@@ -657,7 +657,7 @@ tr:hover td { background: var(--surface2); }
   margin-top: 10px;
   height: 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.055);
+  background: rgb(var(--ov-rgb) / 0.055);
   overflow: hidden;
 }
 
@@ -685,27 +685,27 @@ tr:hover td { background: var(--surface2); }
 }
 
 .zone-tone-zone1 {
-  --zone-color: #49a6ff;
+  --zone-color:color-mix(in srgb, #49a6ff calc(100% - var(--dim)), #000);
   border-color: rgba(73, 166, 255, 0.16);
 }
 
 .zone-tone-zone2 {
-  --zone-color: #43d17c;
+  --zone-color:color-mix(in srgb, #43d17c calc(100% - var(--dim)), #000);
   border-color: rgba(67, 209, 124, 0.18);
 }
 
 .zone-tone-zone3 {
-  --zone-color: #f5b742;
+  --zone-color:color-mix(in srgb, #f5b742 calc(100% - var(--dim)), #000);
   border-color: rgba(245, 183, 66, 0.18);
 }
 
 .zone-tone-zone4 {
-  --zone-color: #ff8b3d;
+  --zone-color:color-mix(in srgb, #ff8b3d calc(100% - var(--dim)), #000);
   border-color: rgba(255, 139, 61, 0.18);
 }
 
 .zone-tone-zone5 {
-  --zone-color: #ff5c6f;
+  --zone-color:color-mix(in srgb, #ff5c6f calc(100% - var(--dim)), #000);
   border-color: rgba(255, 92, 111, 0.2);
 }
 
@@ -713,35 +713,35 @@ tr:hover td { background: var(--surface2); }
 .zone-tone-zone1 .dashboard-zone-row-top span,
 .zone-tone-zone1 .hr-zone-row-top strong,
 .zone-tone-zone1 .dashboard-zone-row-top strong {
-  color: #7fc3ff;
+  color: var(--info-text);
 }
 
 .zone-tone-zone2 .hr-zone-row-top span,
 .zone-tone-zone2 .dashboard-zone-row-top span,
 .zone-tone-zone2 .hr-zone-row-top strong,
 .zone-tone-zone2 .dashboard-zone-row-top strong {
-  color: #77e0a0;
+  color: var(--success-text);
 }
 
 .zone-tone-zone3 .hr-zone-row-top span,
 .zone-tone-zone3 .dashboard-zone-row-top span,
 .zone-tone-zone3 .hr-zone-row-top strong,
 .zone-tone-zone3 .dashboard-zone-row-top strong {
-  color: #ffd074;
+  color: var(--warning-text);
 }
 
 .zone-tone-zone4 .hr-zone-row-top span,
 .zone-tone-zone4 .dashboard-zone-row-top span,
 .zone-tone-zone4 .hr-zone-row-top strong,
 .zone-tone-zone4 .dashboard-zone-row-top strong {
-  color: #ffab70;
+  color: var(--danger-text);
 }
 
 .zone-tone-zone5 .hr-zone-row-top span,
 .zone-tone-zone5 .dashboard-zone-row-top span,
 .zone-tone-zone5 .hr-zone-row-top strong,
 .zone-tone-zone5 .dashboard-zone-row-top strong {
-  color: #ff8f9c;
+  color: var(--danger-text);
 }
 
 /* Dashboard summary: compact distribution rather than a second detailed zone report. */
@@ -775,7 +775,7 @@ tr:hover td { background: var(--surface2); }
 }
 
 .dashboard-zone2-value strong {
-  color: #77e0a0;
+  color: var(--success-text);
   font-size: 28px;
 }
 
@@ -786,7 +786,7 @@ tr:hover td { background: var(--surface2); }
 
 .dashboard-zone2-coverage {
   padding-left: 20px;
-  border-left: 1px solid rgba(132, 149, 181, .14);
+  border-left: 1px solid rgb(var(--tint-rgb) / .14);
 }
 
 .dashboard-zone2-coverage strong {
@@ -801,7 +801,7 @@ tr:hover td { background: var(--surface2); }
   margin-top: 18px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(255,255,255,.04);
+  background: rgb(var(--ov-rgb) / .04);
 }
 
 .dashboard-zone-distribution > span {
@@ -821,7 +821,7 @@ tr:hover td { background: var(--surface2); }
   gap: 4px;
   padding: 8px 12px;
   border: 0;
-  border-left: 1px solid rgba(132, 149, 181, .11);
+  border-left: 1px solid rgb(var(--tint-rgb) / .11);
   border-radius: 0;
   background: none;
   box-shadow: none;
@@ -870,7 +870,7 @@ tr:hover td { background: var(--surface2); }
     gap: 1px;
     border-radius: 12px;
     overflow: hidden;
-    background: rgba(132,149,181,.08);
+    background: rgb(var(--tint-rgb) / .08);
   }
   .dashboard-zone-row,
   .dashboard-zone-row:first-child,

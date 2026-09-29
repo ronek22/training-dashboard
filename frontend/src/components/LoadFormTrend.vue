@@ -73,23 +73,23 @@ const chartLabel = computed(() => {
 .load-trend { display: grid; gap: 14px; margin-top: 22px; }
 .form-gauge { display: grid; gap: 8px; }
 .form-gauge-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.form-gauge-head span { color: var(--dash-muted, #8fa1bf); font-size: 11px; }
+.form-gauge-head span { color: var(--dash-muted, var(--muted)); font-size: 11px; }
 .form-gauge-head strong { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .form-gauge-track { position: relative; display: flex; gap: 2px; height: 8px; }
 .form-gauge-track span { flex-basis: 0; border-radius: 2px; opacity: 0.28; }
 .form-gauge-track span.is-active { opacity: 0.9; }
-.form-gauge-track i { position: absolute; top: -4px; width: 3px; height: 16px; margin-left: -1.5px; border-radius: 2px; background: #eef3fb; box-shadow: 0 0 0 2px #0f1722; }
-.form-gauge-scale { display: flex; justify-content: space-between; color: #63748f; font-size: 10px; }
+.form-gauge-track i { position: absolute; top: -4px; width: 3px; height: 16px; margin-left: -1.5px; border-radius: 2px; background:color-mix(in srgb, #eef3fb calc(100% - var(--dim)), #000); box-shadow: 0 0 0 2px var(--deep); }
+.form-gauge-scale { display: flex; justify-content: space-between; color:var(--muted); font-size: 10px; }
 .load-trend-chart { display: block; width: 100%; height: 86px; overflow: visible; }
-.load-trend-base { stroke: rgba(143, 161, 191, 0.14); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.load-trend-bar { fill: rgba(143, 161, 191, 0.2); }
+.load-trend-base { stroke: rgb(var(--tint-rgb) / 0.14); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.load-trend-bar { fill: rgb(var(--tint-rgb) / 0.2); }
 .load-trend-fitness, .load-trend-fatigue { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.load-trend-fitness { stroke: #76a6ff; }
-.load-trend-fatigue { stroke: #efb35a; }
-.load-trend-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; color: var(--dash-muted, #8fa1bf); font-size: 10px; }
+.load-trend-fitness { stroke:color-mix(in srgb, #76a6ff calc(100% - var(--dim)), #000); }
+.load-trend-fatigue { stroke:color-mix(in srgb, #efb35a calc(100% - var(--dim)), #000); }
+.load-trend-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; color: var(--dash-muted, var(--muted)); font-size: 10px; }
 .load-trend-legend span::before { display: inline-block; width: 10px; height: 2px; margin: 0 6px 3px 0; border-radius: 1px; vertical-align: middle; content: ''; }
-.load-trend-legend .is-fitness::before { background: #76a6ff; }
-.load-trend-legend .is-fatigue::before { background: #efb35a; }
-.load-trend-legend .is-load::before { height: 7px; width: 5px; background: rgba(143, 161, 191, 0.35); }
-.load-trend-legend small { margin-left: auto; color: #63748f; font-size: 10px; }
+.load-trend-legend .is-fitness::before { background:color-mix(in srgb, #76a6ff calc(100% - var(--dim)), #000); }
+.load-trend-legend .is-fatigue::before { background:color-mix(in srgb, #efb35a calc(100% - var(--dim)), #000); }
+.load-trend-legend .is-load::before { height: 7px; width: 5px; background: rgb(var(--tint-rgb) / 0.35); }
+.load-trend-legend small { margin-left: auto; color:var(--muted); font-size: 10px; }
 </style>

@@ -205,13 +205,13 @@ const planStatusLabel = (item) => {
 .day-number { min-width: 26px; height: 26px; display: grid; place-items: center; border-radius: 13px; color: var(--text-soft); font-family: var(--font-display); font-size: 13px; font-weight: 650; }
 .is-today .day-number { background: #3f66d6; color: #fff; }
 .day-month { color: var(--muted-soft); font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; }
-.day-hard { padding: 1px 7px; border-radius: 999px; background: rgba(243, 180, 77, .16); color: #ffc46b; font-size: 11px; font-weight: 650; }
+.day-hard { padding: 1px 7px; border-radius: 999px; background: rgba(243, 180, 77, .16); color:color-mix(in srgb, #ffc46b calc(100% - var(--dim)), #000); font-size: 11px; font-weight: 650; }
 
 .day-events { display: grid; gap: 4px; margin-top: 4px; }
 .calendar-event { --tone: var(--muted); --state: var(--success); position: relative; width: 100%; min-width: 0; display: flex; align-items: flex-start; gap: 7px; padding: 6px 7px; border: 0; border-radius: 8px; background: color-mix(in srgb, var(--tone) 17%, transparent); color: var(--text); text-align: left; cursor: pointer; }
 .is-compact .calendar-event { align-items: center; min-height: 26px; gap: 5px; padding: 4px 5px; }
 .calendar-event:hover { background: color-mix(in srgb, var(--tone) 26%, transparent); }
-.tone-ride { --tone: var(--ride); } .tone-run { --tone: var(--run); } .tone-strength { --tone: var(--strength); } .tone-walk { --tone: #94a3b8; }
+.tone-ride { --tone: var(--ride); } .tone-run { --tone: var(--run); } .tone-strength { --tone: var(--strength); } .tone-walk { --tone: var(--muted); }
 .status-planned { background: color-mix(in srgb, var(--tone) 7%, transparent); color: var(--text-soft); }
 .status-planned:hover { background: color-mix(in srgb, var(--tone) 15%, transparent); }
 .status-missed { background: rgba(239, 94, 94, .12); }
@@ -229,7 +229,7 @@ const planStatusLabel = (item) => {
 .calendar-day:not(.is-compact) .calendar-event { align-items: flex-start; gap: 10px; padding: 10px; border-radius: 10px; }
 .calendar-day:not(.is-compact) .event-icon { width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, var(--tone) 22%, transparent); }
 .calendar-day:not(.is-compact) .event-status { width: 16px; height: 22px; }
-.event-note { margin-top: 2px; color: #ffc46b !important; }
+.event-note { margin-top: 2px; color:color-mix(in srgb, #ffc46b calc(100% - var(--dim)), #000) !important; }
 .event-status { flex: none; display: grid; place-items: center; height: 16px; color: var(--success); }
 .event-status.is-planned { color: var(--muted-soft); }
 .event-status.is-changed { color: var(--warning); }
@@ -240,5 +240,5 @@ const planStatusLabel = (item) => {
   .is-compact .calendar-event.status-planned .event-inline { display: none; }
 }
 .more-events { width: 100%; min-height: 24px; padding: 2px 7px; border: 0; border-radius: 6px; background: transparent; color: var(--muted-soft); cursor: pointer; font-size: 11px; font-weight: 650; text-align: left; }
-.more-events:hover { background: rgba(255, 255, 255, .06); color: var(--text); }
+.more-events:hover { background: rgb(var(--ov-rgb) / .06); color: var(--text); }
 </style>

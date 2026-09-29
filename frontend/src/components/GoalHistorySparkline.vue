@@ -156,19 +156,19 @@ const readout = computed(() => {
 .goal-history { display: grid; gap: 6px; margin-top: 14px; }
 .goal-history-caption { color: var(--muted); font-size: 11px; line-height: 1.3; min-height: 14px; }
 .goal-history-chart { display: block; width: 100%; height: 44px; overflow: visible; }
-.goal-history-bar { fill: #3a4766; transition: fill .12s ease; }
-.goal-history-bar.is-hit { fill: var(--goal-tone, #6f91f8); }
+.goal-history-bar { fill:var(--deep); transition: fill .12s ease; }
+.goal-history-bar.is-hit { fill:var(--goal-tone, color-mix(in srgb, #6f91f8 calc(100% - var(--dim)), #000)); }
 .goal-history-bar.is-before { opacity: .55; }
-.goal-history-bar.is-partial { fill: transparent; stroke: var(--goal-tone, #6f91f8); stroke-width: 1; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }
-.goal-history-bar.is-hovered { fill: #9fb8ff; }
+.goal-history-bar.is-partial { fill: transparent; stroke:var(--goal-tone, color-mix(in srgb, #6f91f8 calc(100% - var(--dim)), #000)); stroke-width: 1; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }
+.goal-history-bar.is-hovered { fill:color-mix(in srgb, #9fb8ff calc(100% - var(--dim)), #000); }
 .goal-history-bar.is-partial.is-hovered { fill: rgba(159, 184, 255, .25); }
 .goal-history-hit { fill: transparent; cursor: default; }
-.goal-history-target { stroke: #cbd7f2; stroke-width: 1; stroke-dasharray: 3 3; opacity: .55; vector-effect: non-scaling-stroke; }
-.goal-history-cumulative { fill: none; stroke: var(--goal-tone, #6f91f8); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.goal-history-pace { fill: none; stroke: #cbd7f2; stroke-width: 1; stroke-dasharray: 3 3; opacity: .55; vector-effect: non-scaling-stroke; }
+.goal-history-target { stroke:color-mix(in srgb, #cbd7f2 calc(100% - var(--dim)), #000); stroke-width: 1; stroke-dasharray: 3 3; opacity: .55; vector-effect: non-scaling-stroke; }
+.goal-history-cumulative { fill: none; stroke:var(--goal-tone, color-mix(in srgb, #6f91f8 calc(100% - var(--dim)), #000)); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.goal-history-pace { fill: none; stroke:color-mix(in srgb, #cbd7f2 calc(100% - var(--dim)), #000); stroke-width: 1; stroke-dasharray: 3 3; opacity: .55; vector-effect: non-scaling-stroke; }
 .goal-history-crosshair { stroke: rgba(203, 215, 242, .35); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .goal-history-legend { display: flex; gap: 14px; color: var(--muted); font-size: 10px; }
 .goal-history-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.goal-history-legend span::before { content: ''; width: 14px; height: 0; border-top: 2px solid var(--goal-tone, #6f91f8); }
-.goal-history-legend .legend-pace::before { border-top: 1px dashed #cbd7f2; opacity: .7; }
+.goal-history-legend span::before { content: ''; width: 14px; height: 0; border-top:2px solid var(--goal-tone, color-mix(in srgb, #6f91f8 calc(100% - var(--dim)), #000)); }
+.goal-history-legend .legend-pace::before { border-top:1px dashed color-mix(in srgb, #cbd7f2 calc(100% - var(--dim)), #000); opacity: .7; }
 </style>

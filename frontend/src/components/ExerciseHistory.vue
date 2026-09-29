@@ -51,12 +51,12 @@ onBeforeUnmount(() => { clearTimeout(timer); ++requestId })
 </script>
 
 <style scoped>
-.exercise-history { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid #f6bd6720; border-radius: 10px; background: #f6bd6706; color: var(--muted-soft); font-size: 11px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.exercise-history { display: grid; gap: 8px; padding: 10px 12px; border:1px solid #f6bd6720; border-radius: 10px; background:#f6bd6706; color: var(--muted-soft); font-size: 11px; font-weight: 400; letter-spacing: 0; text-transform: none; }
 .history-heading, .history-unavailable { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
-.exercise-history button { min-height: 36px; border: 1px solid #f6bd6730; border-radius: 7px; padding: 5px 9px; color: #f6bd67; background: #f6bd6708; font-size: 11px; font-weight: 700; cursor: pointer; }
+.exercise-history button { min-height: 36px; border:1px solid #f6bd6730; border-radius: 7px; padding: 5px 9px; color:color-mix(in srgb, #f6bd67 calc(100% - var(--dim)), #000); background:#f6bd6708; font-size: 11px; font-weight: 700; cursor: pointer; }
 .exercise-history button:disabled { opacity: .45; cursor: default; }
 .history-sets { display: flex; flex-wrap: wrap; gap: 6px; }
-.history-sets > span { display: grid; gap: 3px; padding: 6px 8px; border-radius: 6px; background: #ffffff05; }
+.history-sets > span { display: grid; gap: 3px; padding: 6px 8px; border-radius: 6px; background: rgb(var(--ov-rgb) / 0.020); }
 .history-sets small { font-size: 9px; }
 .history-sets strong { color: var(--text-soft); font-size: 10px; font-weight: 500; }
 .exercise-history p { font-size: 10px; line-height: 1.5; }

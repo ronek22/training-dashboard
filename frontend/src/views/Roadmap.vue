@@ -166,7 +166,7 @@ const phaseStatusLabel = (phase) => {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  color: #cbd5e1;
+  color: var(--text-soft);
   font-size: 12px;
 }
 .big-stat {
@@ -178,13 +178,13 @@ const phaseStatusLabel = (phase) => {
   width: 100%;
   height: 10px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.06);
+  background: rgb(var(--ov-rgb) / 0.06);
   overflow: hidden;
 }
 .mini-bar-fill {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #10b981, #60a5fa);
+  background:linear-gradient(90deg, color-mix(in srgb, #10b981 calc(100% - var(--dim)), #000), color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000));
 }
 .roadmap-section { margin-bottom: 16px; }
 .section-head { margin-bottom: 16px; }
@@ -196,9 +196,9 @@ const phaseStatusLabel = (phase) => {
 }
 .phase-card {
   border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgb(var(--ov-rgb) / 0.06);
   padding: 16px;
-  background: rgba(255,255,255,0.02);
+  background: rgb(var(--ov-rgb) / 0.02);
 }
 .phase-complete { background: rgba(16, 185, 129, 0.08); }
 .phase-top {
@@ -228,7 +228,7 @@ const phaseStatusLabel = (phase) => {
   gap: 12px;
   align-items: flex-start;
   padding: 14px 0;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgb(var(--ov-rgb) / 0.06);
 }
 .sprint-row:first-child { border-top: none; padding-top: 0; }
 .sprint-title {
@@ -251,15 +251,15 @@ const phaseStatusLabel = (phase) => {
 }
 .chip-complete {
   background: rgba(16, 185, 129, 0.16);
-  color: #d1fae5;
+  color:var(--text);
 }
 .chip-active {
   background: rgba(96, 165, 250, 0.16);
-  color: #dbeafe;
+  color: var(--info-text);
 }
 .chip-planned {
-  background: rgba(148, 163, 184, 0.12);
-  color: #cbd5e1;
+  background: rgb(var(--tint-rgb) / 0.12);
+  color: var(--text-soft);
 }
 @media (max-width: 1000px) {
   .overview-grid { grid-template-columns: 1fr; }

@@ -282,10 +282,10 @@ onUnmounted(stopCycling)
 
 <style scoped>
 .exercise-guide {
-  --guide-pink: #ff86aa;
-  --guide-pink-soft: #ffb4c9;
-  --guide-ink: #f5f6fb;
-  --guide-muted: #a5aec0;
+  --guide-pink:color-mix(in srgb, #ff86aa calc(100% - var(--dim)), #000);
+  --guide-pink-soft:color-mix(in srgb, #ffb4c9 calc(100% - var(--dim)), #000);
+  --guide-ink:color-mix(in srgb, #f5f6fb calc(100% - var(--dim)), #000);
+  --guide-muted:#a5aec0;
   --guide-line: rgba(158, 168, 196, 0.18);
   display: block;
   min-width: 0;
@@ -295,7 +295,7 @@ onUnmounted(stopCycling)
   border-radius: 14px;
   background:
     radial-gradient(circle at 92% 0, rgba(255, 134, 170, 0.11), transparent 31%),
-    rgba(13, 18, 30, 0.82);
+    rgb(var(--deep-rgb) / 0.82);
   color: var(--guide-ink);
 }
 
@@ -468,7 +468,7 @@ onUnmounted(stopCycling)
   padding: 6px;
   border: 1px solid var(--guide-line);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.025);
+  background: rgb(var(--ov-rgb) / 0.025);
   transition: border-color 180ms ease, background-color 180ms ease;
 }
 
@@ -485,7 +485,7 @@ onUnmounted(stopCycling)
   overflow: hidden;
   place-items: center;
   border-radius: 7px;
-  background: #0a0e18;
+  background: var(--deep);
 }
 
 .guide-playback {
@@ -505,7 +505,7 @@ onUnmounted(stopCycling)
   place-items: center;
   border: 1px solid rgba(255, 134, 170, 0.52);
   border-radius: 10px;
-  background: #0a0e18;
+  background: var(--deep);
 }
 
 .guide-playback-controls {
@@ -523,7 +523,7 @@ onUnmounted(stopCycling)
   padding: 4px 8px;
   border: 1px solid var(--guide-line);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgb(var(--ov-rgb) / 0.035);
   color: var(--guide-pink-soft);
   cursor: pointer;
   font-size: 10px;
@@ -542,9 +542,9 @@ onUnmounted(stopCycling)
   width: 22px;
   height: 22px;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.34);
+  border: 1px solid rgb(var(--ov-rgb) / 0.34);
   border-radius: 50%;
-  background: rgba(10, 14, 24, 0.8);
+  background: rgb(var(--deep-rgb) / 0.8);
   color: var(--guide-pink-soft);
   font-size: 11px;
   font-weight: 800;
@@ -631,7 +631,7 @@ onUnmounted(stopCycling)
 .guide-badge-muscle {
   border-color: rgba(147, 174, 255, 0.23);
   background: rgba(123, 163, 255, 0.08);
-  color: #b9c9ff;
+  color:var(--text);
 }
 
 .guide-attribution {
@@ -653,7 +653,7 @@ onUnmounted(stopCycling)
   text-underline-offset: 3px;
 }
 
-.guide-attribution a:hover { color: #ffd9e3; }
+.guide-attribution a:hover { color:var(--text); }
 
 .guide-unavailable {
   padding: 15px 0 2px;

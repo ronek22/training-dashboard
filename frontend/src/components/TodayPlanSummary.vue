@@ -129,24 +129,24 @@ const tiles = computed(() => [durationTile.value, distanceTile.value, intensityT
 .plan-summary { display: grid; gap: 16px; }
 
 .plan-profile { display: grid; gap: 8px; margin: 0; --profile-height: 96px; }
-.plan-profile figcaption { display: flex; justify-content: space-between; gap: 12px; color: var(--dash-muted, #8fa1bf); font-size: 11px; }
+.plan-profile figcaption { display: flex; justify-content: space-between; gap: 12px; color: var(--dash-muted, var(--muted)); font-size: 11px; }
 .plan-axis { font-variant-numeric: tabular-nums; }
 
 .plan-lifts { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .plan-lifts li { display: grid; grid-template-columns: 28px minmax(0, 1.4fr) minmax(90px, 1fr) 72px; align-items: center; gap: 14px; border-radius: 10px; padding: 9px 12px; }
-.plan-lifts li:nth-child(odd) { background: rgba(6, 11, 18, 0.32); }
-.plan-lift-order { color: var(--dash-muted, #8fa1bf); font-size: 11px; font-variant-numeric: tabular-nums; }
+.plan-lifts li:nth-child(odd) { background: rgb(var(--deep-rgb) / 0.32); }
+.plan-lift-order { color: var(--dash-muted, var(--muted)); font-size: 11px; font-variant-numeric: tabular-nums; }
 .plan-lift-name { display: grid; min-width: 0; }
 .plan-lift-name strong { overflow: hidden; color: var(--text); font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.plan-lift-name small { color: var(--dash-muted, #8fa1bf); font-size: 11px; font-variant-numeric: tabular-nums; }
+.plan-lift-name small { color: var(--dash-muted, var(--muted)); font-size: 11px; font-variant-numeric: tabular-nums; }
 .plan-lift-sets { display: flex; gap: 4px; }
 .plan-lift-sets i { width: 14px; height: 14px; border: 1.5px solid color-mix(in srgb, var(--accent) 70%, transparent); border-radius: 4px; }
-.plan-lift-rest { color: var(--dash-muted, #8fa1bf); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+.plan-lift-rest { color: var(--dash-muted, var(--muted)); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
 
 .plan-guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-.plan-guide article { min-width: 0; border: 1px solid rgba(145, 164, 197, 0.08); border-radius: 14px; background: rgba(6, 11, 18, 0.42); padding: 14px 16px; }
+.plan-guide article { min-width: 0; border: 1px solid rgb(var(--tint-rgb) / 0.08); border-radius: 14px; background: rgb(var(--deep-rgb) / 0.42); padding: 14px 16px; }
 .plan-guide span { color: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
 .plan-guide .is-guardrail { border-color: rgba(230, 185, 108, 0.2); }
-.plan-guide .is-guardrail span { color: #e6b96c; }
-.plan-guide p { margin: 8px 0 0; color: #b3c0d4; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.plan-guide .is-guardrail span { color: var(--warning-text); }
+.plan-guide p { margin: 8px 0 0; color:var(--text-soft); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
 </style>

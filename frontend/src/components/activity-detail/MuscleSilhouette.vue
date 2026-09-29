@@ -52,14 +52,14 @@ const description = computed(() => `${props.view === 'front' ? 'Front' : 'Back'}
 <style scoped>
 .muscle-silhouette { display: block; width: 100%; height: 350px; }
 .interactive [data-muscle] { cursor: pointer; }
-.interactive [data-muscle]:hover { stroke: #ffe0ea; opacity: 1; }
-.body-base { fill: #303746; }
-.muscle-regions { fill: #495164; stroke: #1c2432; stroke-width: 2; stroke-linejoin: round; }
+.interactive [data-muscle]:hover { stroke:color-mix(in srgb, #ffe0ea calc(100% - var(--dim)), #000); opacity: 1; }
+.body-base { fill:var(--deep); }
+.muscle-regions { fill:#495164; stroke: var(--deep); stroke-width: 2; stroke-linejoin: round; }
 .muscle-regions path { transition: fill .18s, opacity .18s; }
-.muscle-regions .primary { fill: #f47798; }
-.muscle-regions .secondary { fill: #986780; }
-.muscle-regions .emphasized { stroke: #ffe0ea; stroke-width: 2.5; }
+.muscle-regions .primary { fill:color-mix(in srgb, #f47798 calc(100% - var(--dim)), #000); }
+.muscle-regions .secondary { fill:#986780; }
+.muscle-regions .emphasized { stroke:color-mix(in srgb, #ffe0ea calc(100% - var(--dim)), #000); stroke-width: 2.5; }
 .muscle-regions .subdued { opacity: .3; }
-.body-lines { fill: none; stroke: #1c2432; stroke-width: 2; }
+.body-lines { fill: none; stroke: var(--deep); stroke-width: 2; }
 @media(prefers-reduced-motion:reduce) { .muscle-regions path { transition: none; } }
 </style>

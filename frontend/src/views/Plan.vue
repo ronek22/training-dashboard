@@ -2448,9 +2448,9 @@ const savePlanLink = async (day) => {
   border-radius: 14px;
   background:
     linear-gradient(135deg, rgba(95, 140, 255, 0.28), rgba(31, 190, 141, 0.18)),
-    rgba(20, 29, 45, 0.96);
-  color: #f3f7ff;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 26px rgba(3, 8, 18, 0.18);
+    rgb(var(--deep-rgb) / 0.96);
+  color:var(--text);
+  box-shadow: inset 0 1px 0 rgb(var(--ov-rgb) / 0.08), 0 10px 26px rgb(var(--shadow-rgb) / 0.18);
   font-size: 12px;
   font-weight: 750;
   cursor: pointer;
@@ -2458,7 +2458,7 @@ const savePlanLink = async (day) => {
 .codex-plan-button:hover {
   transform: translateY(-1px);
   border-color: rgba(123, 163, 255, 0.62);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 14px 32px rgba(3, 8, 18, 0.24);
+  box-shadow: inset 0 1px 0 rgb(var(--ov-rgb) / 0.1), 0 14px 32px rgb(var(--shadow-rgb) / 0.24);
 }
 .codex-plan-button:disabled {
   cursor: wait;
@@ -2486,7 +2486,7 @@ const savePlanLink = async (day) => {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(2, 6, 23, .74);
+  background: rgb(var(--shadow-rgb) / .74);
   backdrop-filter: blur(16px);
 }
 .codex-brief-modal {
@@ -2495,8 +2495,8 @@ const savePlanLink = async (day) => {
   border-color: rgba(123, 163, 255, .26);
   background:
     radial-gradient(circle at top right, rgba(95, 140, 255, .18), transparent 32%),
-    linear-gradient(180deg, rgba(18, 26, 42, .99), rgba(10, 16, 27, .99));
-  box-shadow: 0 30px 90px rgba(2, 6, 23, .55);
+    linear-gradient(180deg, rgb(var(--deep-rgb) / .99), rgb(var(--deep-rgb) / .99));
+  box-shadow: 0 30px 90px rgb(var(--shadow-rgb) / .55);
 }
 .codex-brief-head {
   display: flex;
@@ -2536,11 +2536,11 @@ const savePlanLink = async (day) => {
   padding: 14px 15px;
   border: 1px solid var(--border-strong);
   border-radius: 14px;
-  background: rgba(8, 14, 24, .72);
+  background: rgb(var(--deep-rgb) / .72);
   color: var(--text);
   line-height: 1.55;
 }
-.codex-brief-modal textarea::placeholder { color: #667791; }
+.codex-brief-modal textarea::placeholder { color:var(--muted); }
 .codex-brief-suggestions {
   display: flex;
   flex-wrap: wrap;
@@ -2552,7 +2552,7 @@ const savePlanLink = async (day) => {
   border: 1px solid rgba(123, 163, 255, .2);
   border-radius: 999px;
   background: rgba(95, 140, 255, .08);
-  color: #b9c9e8;
+  color:var(--text);
   font-size: 10px;
   cursor: pointer;
 }
@@ -2584,13 +2584,13 @@ const savePlanLink = async (day) => {
 }
 .codex-refine-button {
   border-color: rgba(123, 163, 255, .3);
-  color: #c9d8f5;
+  color:var(--text);
 }
 .plan-command {
   margin-bottom: 18px;
   padding: 20px;
   border-color: rgba(123, 163, 255, 0.28);
-  background: linear-gradient(180deg, rgba(20, 29, 45, 0.98), rgba(15, 22, 34, 0.96));
+  background: linear-gradient(180deg, rgb(var(--deep-rgb) / 0.98), rgb(var(--deep-rgb) / 0.96));
 }
 .plan-command-top,
 .plan-command-grid,
@@ -2625,7 +2625,7 @@ const savePlanLink = async (day) => {
   padding: 16px;
   border-radius: 15px;
   border: 1px solid rgba(123, 163, 255, 0.2);
-  background: rgba(8, 14, 24, 0.5);
+  background: rgb(var(--deep-rgb) / 0.5);
 }
 .today-brief.is-rest { border-color: rgba(52, 211, 153, 0.22); }
 .today-brief-head { align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -2636,7 +2636,7 @@ const savePlanLink = async (day) => {
 .today-brief-actions { flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .today-brief-actions .save-button { min-width: 0; }
 .workload-summary { flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.workload-metric { min-width: 0; padding: 12px; border-radius: 14px; border: 1px solid rgba(114, 132, 162, 0.16); background: rgba(8, 14, 24, 0.36); display: grid; align-content: start; }
+.workload-metric { min-width: 0; padding: 12px; border-radius: 14px; border: 1px solid rgba(114, 132, 162, 0.16); background: rgb(var(--deep-rgb) / 0.36); display: grid; align-content: start; }
 .workload-metric span { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .workload-metric strong { margin-top: 4px; font-family: var(--font-display); font-size: 20px; line-height: 1.2; overflow-wrap: anywhere; }
 .workload-metric small { margin-top: 4px; color: var(--muted-soft); font-size: 10px; }
@@ -2654,17 +2654,17 @@ const savePlanLink = async (day) => {
 .week-card-current {
   background:
     radial-gradient(circle at top left, rgba(95, 140, 255, 0.12), transparent 28%),
-    linear-gradient(180deg, rgba(21, 29, 46, 0.98), rgba(16, 23, 36, 0.95));
+    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.98), rgb(var(--deep-rgb) / 0.95));
   border-color: rgba(123, 163, 255, 0.22);
   box-shadow: var(--shadow-md);
 }
 .week-card-upcoming {
   background:
     radial-gradient(circle at top right, rgba(31, 190, 141, 0.08), transparent 24%),
-    linear-gradient(180deg, rgba(20, 27, 41, 0.96), rgba(15, 22, 34, 0.92));
+    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.96), rgb(var(--deep-rgb) / 0.92));
 }
 .week-card-historical {
-  background: linear-gradient(180deg, rgba(18, 24, 36, 0.88), rgba(14, 19, 29, 0.86));
+  background: linear-gradient(180deg, rgb(var(--deep-rgb) / 0.88), rgb(var(--deep-rgb) / 0.86));
   border-color: rgba(114, 132, 162, 0.14);
   opacity: 0.9;
 }
@@ -2715,21 +2715,21 @@ const savePlanLink = async (day) => {
 }
 .week-emphasis-current {
   background: rgba(95, 140, 255, 0.16);
-  color: #b9ceff;
+  color:var(--text);
 }
 .week-emphasis-upcoming {
   background: rgba(31, 190, 141, 0.14);
-  color: #98f0cf;
+  color:color-mix(in srgb, #98f0cf calc(100% - var(--dim)), #000);
 }
 .week-emphasis-historical {
   background: rgba(127, 146, 178, 0.14);
-  color: #b2c0d8;
+  color:var(--text-soft);
 }
 .week-emphasis-alert {
   background: rgba(239, 94, 94, 0.14);
-  color: #ffb0b0;
+  color:var(--text);
 }
-.plan-focus { color: #d5e1ff; font-size: 13px; }
+.plan-focus { color:var(--text); font-size: 13px; }
 .week-guidance {
   color: var(--muted-soft);
   font-size: 13px;
@@ -2747,8 +2747,8 @@ const savePlanLink = async (day) => {
   margin-bottom: 14px;
   padding: 0;
   border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.06);
-  background: rgba(255,255,255,0.025);
+  border: 1px solid rgb(var(--ov-rgb) / 0.06);
+  background: rgb(var(--ov-rgb) / 0.025);
   overflow: hidden;
 }
 .goal-context-summary {
@@ -2768,23 +2768,23 @@ const savePlanLink = async (day) => {
   flex: 0 0 auto;
 }
 .goal-context-panel[open] .goal-context-summary::after { content: '−'; }
-.goal-context-summary:hover { background: rgba(255,255,255,0.025); }
+.goal-context-summary:hover { background: rgb(var(--ov-rgb) / 0.025); }
 .goal-context-summary-main { display: grid; gap: 2px; min-width: 0; }
 .goal-context-summary-main strong { font-family: var(--font-display); font-size: 13px; }
 .goal-context-summary-main small { color: var(--muted); font-size: 11px; }
 .goal-context-summary-metrics { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-left: auto; }
 .goal-summary-pill { padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; white-space: nowrap; }
-.goal-summary-supported { background: rgba(16,185,129,0.12); color: #86efac; }
-.goal-summary-attention { background: rgba(245,158,11,0.13); color: #f8d38b; }
-.goal-summary-completed { background: rgba(96,165,250,0.12); color: #bfdbfe; }
+.goal-summary-supported { background: rgba(16,185,129,0.12); color:color-mix(in srgb, #86efac calc(100% - var(--dim)), #000); }
+.goal-summary-attention { background: rgba(245,158,11,0.13); color: var(--warning-text); }
+.goal-summary-completed { background: rgba(96,165,250,0.12); color: var(--info-text); }
 .goal-context-body {
   padding: 0 15px 15px;
-  border-top: 1px solid rgba(255,255,255,0.05);
+  border-top: 1px solid rgb(var(--ov-rgb) / 0.05);
 }
 .goal-context-link {
   display: inline-flex;
   margin-top: 12px;
-  color: #bfdbfe;
+  color: var(--info-text);
   font-size: 12px;
   font-weight: 700;
 }
@@ -2808,10 +2808,10 @@ const savePlanLink = async (day) => {
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #f8d38b;
+  color: var(--warning-text);
 }
 .goal-conflict-pill span {
-  color: #e6edf9;
+  color:var(--text);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -2833,8 +2833,8 @@ const savePlanLink = async (day) => {
 .goal-context-card {
   padding: 12px;
   border-radius: 14px;
-  background: rgba(14, 17, 23, 0.52);
-  border: 1px solid rgba(255,255,255,0.05);
+  background: rgb(var(--panel-rgb) / 0.52);
+  border: 1px solid rgb(var(--ov-rgb) / 0.05);
 }
 .goal-context-top {
   display: flex;
@@ -2868,7 +2868,7 @@ const savePlanLink = async (day) => {
 }
 .goal-context-copy {
   margin-top: 8px;
-  color: #d5deef;
+  color:var(--text);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -2887,31 +2887,31 @@ const savePlanLink = async (day) => {
 }
 .goal-requirement-pill.support-supported {
   background: rgba(16,185,129,0.14);
-  color: #9ef0c4;
+  color:color-mix(in srgb, #9ef0c4 calc(100% - var(--dim)), #000);
 }
 .goal-requirement-pill.support-weakly_supported {
   background: rgba(245,158,11,0.14);
-  color: #f8d38b;
+  color: var(--warning-text);
 }
 .goal-requirement-pill.support-unsupported {
   background: rgba(239,68,68,0.14);
-  color: #ffb0b0;
+  color:var(--text);
 }
 .goal-context-copy-warn {
-  color: #f8d38b;
+  color: var(--warning-text);
 }
-.goal-context-status.risk-constrained { background: rgba(245,158,11,0.16); color: #fcd34d; }
-.goal-context-status.risk-on_track { background: rgba(59,130,246,0.16); color: #93c5fd; }
-.goal-context-status.risk-watch { background: rgba(96,165,250,0.16); color: #bfdbfe; }
-.goal-context-status.risk-under_pressure { background: rgba(245,158,11,0.16); color: #fcd34d; }
-.goal-context-status.risk-at_risk { background: rgba(239,68,68,0.16); color: #fda4af; }
-.goal-context-status.risk-completed { background: rgba(16,185,129,0.16); color: #6ee7b7; }
+.goal-context-status.risk-constrained { background: rgba(245,158,11,0.16); color:color-mix(in srgb, #fcd34d calc(100% - var(--dim)), #000); }
+.goal-context-status.risk-on_track { background: rgba(59,130,246,0.16); color: var(--info-text); }
+.goal-context-status.risk-watch { background: rgba(96,165,250,0.16); color: var(--info-text); }
+.goal-context-status.risk-under_pressure { background: rgba(245,158,11,0.16); color:color-mix(in srgb, #fcd34d calc(100% - var(--dim)), #000); }
+.goal-context-status.risk-at_risk { background: rgba(239,68,68,0.16); color:var(--text); }
+.goal-context-status.risk-completed { background: rgba(16,185,129,0.16); color: var(--success-text); }
 .revision-timeline {
   margin-top: 18px;
   display: grid;
   gap: 12px;
   padding-top: 14px;
-  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  border-top: 1px solid rgb(var(--tint-rgb) / 0.1);
 }
 .revision-timeline-head {
   display: flex;
@@ -2958,20 +2958,20 @@ const savePlanLink = async (day) => {
   width: 12px;
   height: 12px;
   border-radius: 999px;
-  background: #8ba4cf;
+  background:color-mix(in srgb, #8ba4cf calc(100% - var(--dim)), #000);
   box-shadow: 0 0 0 4px rgba(43, 58, 82, 0.9);
   flex: 0 0 auto;
 }
 .revision-entry-line {
   height: 1px;
   flex: 1;
-  background: rgba(148, 163, 184, 0.22);
+  background: rgb(var(--tint-rgb) / 0.22);
 }
 .revision-entry-body {
   padding: 12px 14px 14px;
   border-radius: 16px;
-  background: rgba(10, 16, 27, 0.52);
-  border: 1px solid rgba(148, 163, 184, 0.08);
+  background: rgb(var(--deep-rgb) / 0.52);
+  border: 1px solid rgb(var(--tint-rgb) / 0.08);
 }
 .revision-entry-top {
   display: grid;
@@ -2987,7 +2987,7 @@ const savePlanLink = async (day) => {
 }
 .revision-entry-title-row strong {
   font-size: 13px;
-  color: #dce6f7;
+  color:var(--text);
 }
 .revision-entry-effective {
   color: var(--muted);
@@ -3003,11 +3003,11 @@ const savePlanLink = async (day) => {
 }
 .revision-source-pill.source-manual {
   background: rgba(96, 165, 250, 0.12);
-  color: #bfdbfe;
+  color: var(--info-text);
 }
 .revision-source-pill.source-coaching {
   background: rgba(16, 185, 129, 0.14);
-  color: #a7f3d0;
+  color: var(--success-text);
 }
 .revision-entry-reason {
   color: var(--text-soft);
@@ -3023,8 +3023,8 @@ const savePlanLink = async (day) => {
 .revision-entry-meta span {
   border-radius: 999px;
   padding: 4px 8px;
-  background: rgba(148, 163, 184, 0.08);
-  color: #c5d2e6;
+  background: rgb(var(--tint-rgb) / 0.08);
+  color:var(--text);
   font-size: 11px;
 }
 .flash-banner {
@@ -3044,19 +3044,19 @@ const savePlanLink = async (day) => {
 .flash-title {
   font-size: 13px;
   font-weight: 700;
-  color: #ecfdf5;
+  color:var(--text);
 }
 .flash-error .flash-title {
-  color: #fee2e2;
+  color:var(--text);
 }
 .flash-detail {
   margin-top: 4px;
-  color: #d1fae5;
+  color:var(--text);
   font-size: 12px;
   line-height: 1.5;
 }
 .flash-error .flash-detail {
-  color: #fecaca;
+  color:var(--text);
 }
 .coaching-review-banner {
   margin-bottom: 18px;
@@ -3066,7 +3066,7 @@ const savePlanLink = async (day) => {
   align-items: flex-start;
   background:
     linear-gradient(140deg, rgba(95, 140, 255, 0.18), rgba(31, 190, 141, 0.1)),
-    linear-gradient(180deg, rgba(23, 32, 49, 0.98), rgba(17, 24, 37, 0.96));
+    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.98), rgb(var(--deep-rgb) / 0.96));
   border-color: rgba(123, 163, 255, 0.22);
 }
 .coaching-review-title {
@@ -3075,7 +3075,7 @@ const savePlanLink = async (day) => {
   margin-bottom: 6px;
 }
 .coaching-review-copy {
-  color: #d9e6ff;
+  color:var(--text);
   font-size: 13px;
   max-width: 720px;
 }
@@ -3104,21 +3104,21 @@ const savePlanLink = async (day) => {
 }
 .history-toggle {
   background: rgba(55, 68, 91, 0.46);
-  color: #dbe7ff;
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  color:var(--text);
+  border: 1px solid rgb(var(--tint-rgb) / 0.14);
 }
 .adjust-button {
-  background: linear-gradient(135deg, #6c98ff, #88a8ff);
-  color: #f8fbff;
+  background:linear-gradient(135deg, color-mix(in srgb, #6c98ff calc(100% - var(--dim)), #000), color-mix(in srgb, #88a8ff calc(100% - var(--dim)), #000));
+  color: var(--text);
 }
 .ghost-button {
   background: rgba(51, 65, 85, 0.54);
-  color: #e2e8f0;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: var(--text);
+  border: 1px solid rgb(var(--tint-rgb) / 0.18);
 }
 .save-button {
-  background: linear-gradient(135deg, #10b981, #34d399);
-  color: #042f2e;
+  background:linear-gradient(135deg, color-mix(in srgb, #10b981 calc(100% - var(--dim)), #000), color-mix(in srgb, #34d399 calc(100% - var(--dim)), #000));
+  color:#042f2e;
   min-width: 138px;
 }
 .save-button:disabled {
@@ -3134,7 +3134,7 @@ const savePlanLink = async (day) => {
   margin-top: 8px;
   padding: 14px 16px;
   border-radius: 14px;
-  background: rgba(11, 17, 27, 0.42);
+  background: rgb(var(--deep-rgb) / 0.42);
   border: 1px solid rgba(71, 85, 105, 0.2);
   color: var(--muted-soft);
   font-size: 13px;
@@ -3148,7 +3148,7 @@ const savePlanLink = async (day) => {
   padding: 18px;
   border-radius: 18px;
   border: 1px solid rgba(96, 165, 250, 0.22);
-  background: rgba(15, 23, 42, 0.5);
+  background: rgb(var(--panel-rgb) / 0.5);
 }
 .coaching-diff-head {
   display: flex;
@@ -3189,17 +3189,17 @@ const savePlanLink = async (day) => {
 .diff-edited,
 .diff-state-edited .diff-status {
   background: rgba(245, 158, 11, 0.14);
-  color: #fbbf24;
+  color: var(--warning-text);
 }
 .diff-protected,
 .diff-state-protected .diff-status {
-  background: rgba(148, 163, 184, 0.14);
-  color: #cbd5e1;
+  background: rgb(var(--tint-rgb) / 0.14);
+  color: var(--text-soft);
 }
 .diff-unchanged,
 .diff-state-unchanged .diff-status {
   background: rgba(16, 185, 129, 0.14);
-  color: #86efac;
+  color:color-mix(in srgb, #86efac calc(100% - var(--dim)), #000);
 }
 .coaching-diff-grid {
   display: grid;
@@ -3208,8 +3208,8 @@ const savePlanLink = async (day) => {
 }
 .coaching-diff-day {
   border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.06);
-  background: rgba(255,255,255,0.03);
+  border: 1px solid rgb(var(--ov-rgb) / 0.06);
+  background: rgb(var(--ov-rgb) / 0.03);
   padding: 14px;
 }
 .coaching-diff-day-top {
@@ -3235,8 +3235,8 @@ const savePlanLink = async (day) => {
 .coaching-diff-column {
   border-radius: 14px;
   padding: 12px;
-  background: rgba(2, 6, 23, 0.34);
-  border: 1px solid rgba(255,255,255,0.05);
+  background: rgb(var(--shadow-rgb) / 0.34);
+  border: 1px solid rgb(var(--ov-rgb) / 0.05);
 }
 .coaching-diff-column-label {
   color: var(--muted);
@@ -3254,7 +3254,7 @@ const savePlanLink = async (day) => {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  color: #cbd5e1;
+  color: var(--text-soft);
   font-size: 12px;
   margin-bottom: 6px;
 }
@@ -3273,7 +3273,7 @@ const savePlanLink = async (day) => {
   border-radius: 999px;
   padding: 4px 8px;
   background: rgba(96, 165, 250, 0.12);
-  color: #bfdbfe;
+  color: var(--info-text);
   font-size: 11px;
   font-weight: 700;
 }
@@ -3307,28 +3307,28 @@ const savePlanLink = async (day) => {
 }
 .summary-changed {
   background: rgba(239, 68, 68, 0.12);
-  color: #f87171;
+  color: var(--danger-text);
 }
 .summary-linked {
   background: rgba(96, 165, 250, 0.14);
-  color: #93c5fd;
+  color: var(--info-text);
 }
 .summary-matched {
   background: rgba(16, 185, 129, 0.14);
-  color: #34d399;
+  color: var(--success-text);
 }
 .summary-partial {
   background: rgba(245, 158, 11, 0.14);
-  color: #fbbf24;
+  color: var(--warning-text);
 }
 .summary-upcoming {
-  background: rgba(148, 163, 184, 0.14);
-  color: #cbd5e1;
+  background: rgb(var(--tint-rgb) / 0.14);
+  color: var(--text-soft);
 }
 .week-card-historical .week-range,
 .week-card-historical .plan-overview,
 .week-card-historical .week-guidance {
-  color: #c2cde0;
+  color:var(--text);
 }
 .week-card-historical .goal-context-panel,
 .week-card-historical .revision-banner,
@@ -3340,9 +3340,9 @@ const savePlanLink = async (day) => {
   margin-bottom: 18px;
   padding: 18px;
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(10, 15, 26, 0.98));
+  background: linear-gradient(180deg, rgb(var(--deep-rgb) / 0.94), rgb(var(--deep-rgb) / 0.98));
   border: 1px solid rgba(96, 165, 250, 0.2);
-  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
+  box-shadow: inset 0 1px 0 rgb(var(--tint-rgb) / 0.08);
 }
 .adjust-panel-head {
   display: flex;
@@ -3374,7 +3374,7 @@ const savePlanLink = async (day) => {
   margin-bottom: 16px;
 }
 .adjust-status-card {
-  background: rgba(30, 41, 59, 0.46);
+  background: rgb(var(--deep-rgb) / 0.46);
   border: 1px solid rgba(71, 85, 105, 0.35);
   border-radius: 14px;
   padding: 12px;
@@ -3399,7 +3399,7 @@ const savePlanLink = async (day) => {
   border-radius: 16px;
   padding: 14px;
   border: 1px solid rgba(71, 85, 105, 0.35);
-  background: rgba(15, 23, 42, 0.7);
+  background: rgb(var(--panel-rgb) / 0.7);
 }
 .editor-day.is-editable {
   box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.08);
@@ -3410,7 +3410,7 @@ const savePlanLink = async (day) => {
 }
 .editor-day.is-drop-target {
   border-color: rgba(96, 165, 250, 0.9);
-  box-shadow: inset 0 0 0 2px rgba(96, 165, 250, 0.28), 0 12px 28px rgba(2, 6, 23, 0.35);
+  box-shadow: inset 0 0 0 2px rgba(96, 165, 250, 0.28), 0 12px 28px rgb(var(--shadow-rgb) / 0.35);
   transform: translateY(-2px);
 }
 .editor-day.is-move-source {
@@ -3418,7 +3418,7 @@ const savePlanLink = async (day) => {
 }
 .editor-day.is-protected {
   opacity: 0.82;
-  background: rgba(17, 24, 39, 0.72);
+  background: rgb(var(--deep-rgb) / 0.72);
 }
 .editor-day-top {
   display: flex;
@@ -3449,11 +3449,11 @@ const savePlanLink = async (day) => {
 }
 .pill-protected {
   background: rgba(248, 113, 113, 0.14);
-  color: #fca5a5;
+  color: var(--danger-text);
 }
 .pill-editable {
   background: rgba(52, 211, 153, 0.14);
-  color: #6ee7b7;
+  color: var(--success-text);
 }
 .editor-move-handle {
   width: 100%;
@@ -3465,8 +3465,8 @@ const savePlanLink = async (day) => {
   padding: 9px 10px;
   border: 1px dashed rgba(96, 165, 250, 0.42);
   border-radius: 11px;
-  background: rgba(30, 41, 59, 0.58);
-  color: #bfdbfe;
+  background: rgb(var(--deep-rgb) / 0.58);
+  color: var(--info-text);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -3477,7 +3477,7 @@ const savePlanLink = async (day) => {
 .editor-move-handle.is-selected {
   border-color: rgba(52, 211, 153, 0.78);
   background: rgba(16, 185, 129, 0.13);
-  color: #a7f3d0;
+  color: var(--success-text);
   outline: none;
 }
 .editor-move-handle:active {
@@ -3505,7 +3505,7 @@ const savePlanLink = async (day) => {
   width: 100%;
   border-radius: 12px;
   border: 1px solid rgba(71, 85, 105, 0.5);
-  background: rgba(15, 23, 42, 0.9);
+  background: rgb(var(--panel-rgb) / 0.9);
   color: var(--text);
   padding: 10px 12px;
   font-size: 13px;
@@ -3538,7 +3538,7 @@ const savePlanLink = async (day) => {
 }
 .editor-locked-meta span,
 .editor-activity-count {
-  background: rgba(148, 163, 184, 0.08);
+  background: rgb(var(--tint-rgb) / 0.08);
   border-radius: 999px;
   padding: 4px 8px;
 }
@@ -3550,7 +3550,7 @@ const savePlanLink = async (day) => {
 }
 .editor-activity-count {
   display: inline-flex;
-  color: #cbd5e1;
+  color: var(--text-soft);
   font-size: 11px;
 }
 .editor-reason {
@@ -3558,7 +3558,7 @@ const savePlanLink = async (day) => {
 }
 .editor-error {
   margin-top: 10px;
-  color: #fca5a5;
+  color: var(--danger-text);
   font-size: 12px;
 }
 .editor-footer {
@@ -3583,15 +3583,15 @@ const savePlanLink = async (day) => {
   overscroll-behavior-inline: contain;
   padding: 2px 2px 12px;
   scroll-snap-type: x proximity;
-  scrollbar-color: rgba(123, 163, 255, 0.44) rgba(31, 41, 58, 0.42);
+  scrollbar-color: rgba(123, 163, 255, 0.44) rgb(var(--deep-rgb) / 0.42);
   scrollbar-width: thin;
 }
 .plan-grid-wrap::-webkit-scrollbar { height: 9px; }
-.plan-grid-wrap::-webkit-scrollbar-track { background: rgba(31, 41, 58, 0.42); border-radius: 999px; }
+.plan-grid-wrap::-webkit-scrollbar-track { background: rgb(var(--deep-rgb) / 0.42); border-radius: 999px; }
 .plan-grid-wrap::-webkit-scrollbar-thumb { background: rgba(123, 163, 255, 0.44); border-radius: 999px; }
 .plan-grid-wrap::-webkit-scrollbar-thumb:hover { background: rgba(123, 163, 255, 0.62); }
 .plan-grid-wrap:focus-within {
-  scrollbar-color: rgba(123, 163, 255, 0.68) rgba(31, 41, 58, 0.42);
+  scrollbar-color: rgba(123, 163, 255, 0.68) rgb(var(--deep-rgb) / 0.42);
 }
 .plan-day {
   position: relative;
@@ -3599,7 +3599,7 @@ const savePlanLink = async (day) => {
   flex-direction: column;
   gap: 14px;
   background:
-    linear-gradient(180deg, rgba(25, 31, 45, 0.98), rgba(17, 22, 33, 0.98)),
+    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.98), rgb(var(--deep-rgb) / 0.98)),
     radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 36%);
   border: 1px solid rgba(90, 105, 138, 0.24);
   border-radius: 20px;
@@ -3608,7 +3608,7 @@ const savePlanLink = async (day) => {
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
   overflow: hidden;
   scroll-snap-align: start;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px 0 rgb(var(--ov-rgb) / 0.03);
 }
 .plan-day.is-past {
   opacity: 0.96;
@@ -3618,10 +3618,10 @@ const savePlanLink = async (day) => {
 }
 .plan-day.is-today {
   border-color: rgba(96, 165, 250, 0.45);
-  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.18), 0 18px 34px rgba(15, 23, 42, 0.22);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.18), 0 18px 34px rgb(var(--panel-rgb) / 0.22);
   transform: translateY(-2px);
   background:
-    linear-gradient(180deg, rgba(31, 39, 58, 0.99), rgba(18, 24, 35, 1)),
+    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.99), rgb(var(--deep-rgb) / 1)),
     radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 36%);
 }
 .plan-day.is-selected {
@@ -3635,7 +3635,7 @@ const savePlanLink = async (day) => {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #60a5fa, #818cf8);
+  background:linear-gradient(90deg, color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000), color-mix(in srgb, #818cf8 calc(100% - var(--dim)), #000));
 }
 .plan-day.status-matched::before,
 .plan-day.status-linked::before,
@@ -3654,34 +3654,34 @@ const savePlanLink = async (day) => {
   height: 3px;
 }
 .plan-day.status-linked::before {
-  background: linear-gradient(90deg, #60a5fa, #38bdf8);
+  background:linear-gradient(90deg, color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000), color-mix(in srgb, #38bdf8 calc(100% - var(--dim)), #000));
 }
 .plan-day.status-matched::before {
-  background: linear-gradient(90deg, #10b981, #34d399);
+  background:linear-gradient(90deg, color-mix(in srgb, #10b981 calc(100% - var(--dim)), #000), color-mix(in srgb, #34d399 calc(100% - var(--dim)), #000));
 }
 .plan-day.status-partially_matched::before {
-  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  background:linear-gradient(90deg, color-mix(in srgb, #f59e0b calc(100% - var(--dim)), #000), color-mix(in srgb, #fbbf24 calc(100% - var(--dim)), #000));
 }
 .plan-day.status-moved::before {
-  background: linear-gradient(90deg, #38bdf8, #60a5fa);
+  background:linear-gradient(90deg, color-mix(in srgb, #38bdf8 calc(100% - var(--dim)), #000), color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000));
 }
 .plan-day.status-skipped::before,
 .plan-day.status-replaced::before,
 .plan-day.status-different::before,
 .plan-day.status-rest_day_changed::before {
-  background: linear-gradient(90deg, #ef4444, #f87171);
+  background:linear-gradient(90deg, #ef4444, color-mix(in srgb, #f87171 calc(100% - var(--dim)), #000));
 }
 .plan-day.status-not_completed_yet::before {
-  background: linear-gradient(90deg, rgba(148, 163, 184, 0.45), rgba(203, 213, 225, 0.45));
+  background: linear-gradient(90deg, rgb(var(--tint-rgb) / 0.45), rgba(203, 213, 225, 0.45));
 }
 .plan-day.is-today .plan-day-label {
-  color: #93c5fd;
+  color: var(--info-text);
 }
 .plan-day.is-today .plan-day-date {
-  color: #f8fbff;
+  color: var(--text);
 }
 .plan-day.is-today .plan-block-label {
-  color: #cbd5e1;
+  color: var(--text-soft);
 }
 .plan-day-top {
   display: flex;
@@ -3700,7 +3700,7 @@ const savePlanLink = async (day) => {
   cursor: pointer;
   border-radius: 8px;
 }
-.day-select-button:hover .plan-day-date { color: #bfdbfe; }
+.day-select-button:hover .plan-day-date { color: var(--info-text); }
 .plan-day-label {
   color: var(--muted);
   font-size: 11px;
@@ -3724,22 +3724,22 @@ const savePlanLink = async (day) => {
   padding: 8px 10px;
   border: 1px solid rgba(125, 211, 252, 0.12);
   border-radius: 12px;
-  background: rgba(14, 35, 52, 0.32);
-  color: #cbd5e1;
+  background: rgb(var(--deep-rgb) / 0.32);
+  color: var(--text-soft);
 }
 .plan-day-weather-icon { font-size: 20px; line-height: 1; }
 .plan-day-weather-copy { display: grid; min-width: 0; gap: 2px; }
-.plan-day-weather-copy strong { color: #e0f2fe; font-size: 12px; }
+.plan-day-weather-copy strong { color:var(--text); font-size: 12px; }
 .plan-day-weather-copy small {
   overflow: hidden;
-  color: #91a7be;
+  color:color-mix(in srgb, #91a7be calc(100% - var(--dim)), #000);
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .plan-day-weather-rain {
   margin-left: auto;
-  color: #7dd3fc;
+  color:color-mix(in srgb, #7dd3fc calc(100% - var(--dim)), #000);
   font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
@@ -3760,54 +3760,54 @@ const savePlanLink = async (day) => {
 }
 .plan-status.status-matched {
   background: rgba(16, 185, 129, 0.16);
-  color: #34d399;
+  color: var(--success-text);
 }
 .plan-status.status-linked {
   background: rgba(96, 165, 250, 0.16);
-  color: #93c5fd;
+  color: var(--info-text);
 }
 .plan-status.status-partially_matched {
   background: rgba(245, 158, 11, 0.16);
-  color: #fbbf24;
+  color: var(--warning-text);
 }
 .plan-status.status-moved {
   background: rgba(56, 189, 248, 0.16);
-  color: #7dd3fc;
+  color:color-mix(in srgb, #7dd3fc calc(100% - var(--dim)), #000);
 }
 .plan-status.status-skipped,
 .plan-status.status-replaced,
 .plan-status.status-different,
 .plan-status.status-rest_day_changed {
   background: rgba(239, 68, 68, 0.14);
-  color: #f87171;
+  color: var(--danger-text);
 }
 .plan-status.status-not_completed_yet {
-  background: rgba(148, 163, 184, 0.14);
-  color: #cbd5e1;
+  background: rgb(var(--tint-rgb) / 0.14);
+  color: var(--text-soft);
 }
 .plan-block,
 .actual-block {
   border: 1px solid rgba(76, 92, 125, 0.2);
-  background: rgba(9, 14, 24, 0.28);
+  background: rgb(var(--deep-rgb) / 0.28);
   border-radius: 16px;
   padding: 14px;
 }
 .execution-quality-chip.quality-matched {
   border-color: rgba(16, 185, 129, 0.28);
-  color: #6ee7b7;
+  color: var(--success-text);
 }
 .execution-quality-chip.quality-partial {
   border-color: rgba(245, 158, 11, 0.28);
-  color: #fbbf24;
+  color: var(--warning-text);
 }
 .execution-quality-chip.quality-drifted {
   border-color: rgba(239, 68, 68, 0.24);
-  color: #fca5a5;
+  color: var(--danger-text);
 }
 .execution-quality-chip.quality-completed_without_evidence,
 .execution-quality-chip.quality-unavailable {
-  border-color: rgba(148, 163, 184, 0.22);
-  color: #cbd5e1;
+  border-color: rgb(var(--tint-rgb) / 0.22);
+  color: var(--text-soft);
 }
 .execution-quality-chip {
   display: grid;
@@ -3817,12 +3817,12 @@ const savePlanLink = async (day) => {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(89, 108, 143, 0.2);
-  background: rgba(10, 16, 27, 0.54);
+  background: rgb(var(--deep-rgb) / 0.54);
   font-size: 12px;
   line-height: 1.45;
 }
 .execution-quality-chip strong {
-  color: #eef4ff;
+  color: var(--text);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -3835,7 +3835,7 @@ const savePlanLink = async (day) => {
   border-color: var(--workout-border, rgba(76, 92, 125, 0.2));
   background:
     linear-gradient(90deg, var(--workout-wash, transparent), transparent 42%),
-    rgba(9, 14, 24, 0.28);
+    rgb(var(--deep-rgb) / 0.28);
 }
 .plan-block-run {
   --workout-border: rgba(79, 141, 247, 0.3);
@@ -3854,8 +3854,8 @@ const savePlanLink = async (day) => {
   --workout-wash: rgba(165, 180, 252, 0.04);
 }
 .plan-block-walk {
-  --workout-border: rgba(148, 163, 184, 0.24);
-  --workout-wash: rgba(148, 163, 184, 0.035);
+  --workout-border: rgb(var(--tint-rgb) / 0.24);
+  --workout-wash: rgb(var(--tint-rgb) / 0.035);
 }
 .actual-block {
   margin-top: auto;
@@ -3887,17 +3887,17 @@ const savePlanLink = async (day) => {
 }
 .plan-restriction-pill.restriction-limited {
   background: rgba(245,158,11,0.16);
-  color: #fbbf24;
+  color: var(--warning-text);
 }
 .plan-restriction-pill.restriction-blocked {
   background: rgba(239,68,68,0.16);
-  color: #f87171;
+  color: var(--danger-text);
 }
 .link-toggle-button {
   border: 0;
   padding: 0;
   background: transparent;
-  color: #93c5fd;
+  color: var(--info-text);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -3905,7 +3905,7 @@ const savePlanLink = async (day) => {
   transition: color 160ms ease, opacity 160ms ease;
 }
 .link-toggle-button:hover {
-  color: #bfdbfe;
+  color: var(--info-text);
 }
 .plan-row {
   display: flex;
@@ -3915,7 +3915,7 @@ const savePlanLink = async (day) => {
 }
 .plan-type {
   text-transform: capitalize;
-  color: #c7d2fe;
+  color:var(--text);
   font-size: 11px;
   font-weight: 600;
   flex-shrink: 0;
@@ -3969,17 +3969,17 @@ const savePlanLink = async (day) => {
   letter-spacing: 0.02em;
 }
 .intent-planned {
-  color: #c4b5fd;
+  color:var(--text);
   background: rgba(109, 40, 217, 0.14);
   border: 1px solid rgba(139, 92, 246, 0.2);
 }
 .intent-actual {
-  color: #a7f3d0;
+  color: var(--success-text);
   background: rgba(5, 150, 105, 0.14);
   border: 1px solid rgba(16, 185, 129, 0.2);
 }
 .benchmark-pill {
-  color: #fbbf24;
+  color: var(--warning-text);
   background: rgba(245, 158, 11, 0.14);
   border: 1px solid rgba(245, 158, 11, 0.24);
 }
@@ -4000,7 +4000,7 @@ const savePlanLink = async (day) => {
   border: 0;
   padding: 0;
   background: transparent;
-  color: #bfdbfe;
+  color: var(--info-text);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -4008,11 +4008,11 @@ const savePlanLink = async (day) => {
   transition: color 160ms ease, opacity 160ms ease;
 }
 .plan-details-button:hover {
-  color: #dbeafe;
+  color: var(--info-text);
 }
 .plan-status-detail {
   margin-top: 10px;
-  color: #d5deef;
+  color:var(--text);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -4021,7 +4021,7 @@ const savePlanLink = async (day) => {
   font-size: 12px;
 }
 .actual-empty-future {
-  color: #7f8ba8;
+  color:var(--muted);
   font-style: italic;
 }
 .actual-list {
@@ -4030,7 +4030,7 @@ const savePlanLink = async (day) => {
   gap: 8px;
 }
 .actual-item {
-  background: rgba(13, 19, 31, 0.72);
+  background: rgb(var(--deep-rgb) / 0.72);
   border: 1px solid rgba(76, 92, 125, 0.2);
   border-radius: 14px;
   padding: 11px 12px;
@@ -4068,7 +4068,7 @@ const savePlanLink = async (day) => {
   margin-top: 10px;
   padding: 12px;
   border-radius: 14px;
-  background: rgba(10, 15, 25, 0.56);
+  background: rgb(var(--deep-rgb) / 0.56);
   border: 1px solid rgba(76, 92, 125, 0.18);
 }
 .link-editor-top {
@@ -4086,7 +4086,7 @@ const savePlanLink = async (day) => {
 }
 .link-editor-copy {
   margin-top: 4px;
-  color: #cbd5e1;
+  color: var(--text-soft);
   font-size: 11px;
   line-height: 1.4;
   max-width: 240px;
@@ -4100,15 +4100,15 @@ const savePlanLink = async (day) => {
 }
 .state-explicit {
   background: rgba(96, 165, 250, 0.14);
-  color: #bfdbfe;
+  color: var(--info-text);
 }
 .state-inferred {
   background: rgba(16, 185, 129, 0.14);
-  color: #a7f3d0;
+  color: var(--success-text);
 }
 .state-unmatched {
-  background: rgba(148, 163, 184, 0.14);
-  color: #cbd5e1;
+  background: rgb(var(--tint-rgb) / 0.14);
+  color: var(--text-soft);
 }
 .link-editor-row {
   display: flex;
@@ -4120,8 +4120,8 @@ const savePlanLink = async (day) => {
   flex: 1 1 240px;
   min-width: 0;
   border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgb(var(--tint-rgb) / 0.14);
+  background: rgb(var(--panel-rgb) / 0.72);
   color: var(--text);
   padding: 9px 11px;
   font-size: 12px;
@@ -4150,7 +4150,7 @@ const savePlanLink = async (day) => {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(2, 6, 23, 0.72);
+  background: rgb(var(--shadow-rgb) / 0.72);
   backdrop-filter: blur(18px);
 }
 .plan-details-modal {
@@ -4161,8 +4161,8 @@ const savePlanLink = async (day) => {
   border: 1px solid rgba(123, 163, 255, 0.2);
   background:
     radial-gradient(circle at top right, rgba(95, 140, 255, 0.18), transparent 28%),
-    linear-gradient(180deg, rgba(18, 25, 39, 0.98), rgba(10, 15, 24, 0.98));
-  box-shadow: 0 28px 80px rgba(2, 6, 23, 0.45);
+    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.98), rgb(var(--deep-rgb) / 0.98));
+  box-shadow: 0 28px 80px rgb(var(--shadow-rgb) / 0.45);
 }
 .plan-details-modal-head {
   display: flex;
@@ -4171,7 +4171,7 @@ const savePlanLink = async (day) => {
   align-items: flex-start;
 }
 .plan-details-kicker {
-  color: #9fb7dc;
+  color:var(--text-soft);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -4196,7 +4196,7 @@ const savePlanLink = async (day) => {
   border: 0;
   border-radius: 999px;
   background: rgba(51, 65, 85, 0.7);
-  color: #dbe7ff;
+  color:var(--text);
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
@@ -4212,7 +4212,7 @@ const savePlanLink = async (day) => {
   border-radius: 999px;
   padding: 6px 10px;
   background: rgba(71, 85, 105, 0.24);
-  color: #dce7f8;
+  color:var(--text);
   font-size: 12px;
 }
 .plan-details-intents {
@@ -4223,9 +4223,9 @@ const savePlanLink = async (day) => {
   margin-top: 18px;
   padding: 16px 18px;
   border-radius: 16px;
-  background: rgba(8, 12, 20, 0.58);
-  border: 1px solid rgba(148, 163, 184, 0.1);
-  color: #d8e2f3;
+  background: rgb(var(--deep-rgb) / 0.58);
+  border: 1px solid rgb(var(--tint-rgb) / 0.1);
+  color:var(--text);
   font-size: 14px;
   line-height: 1.75;
   white-space: pre-line;
@@ -4247,20 +4247,20 @@ const savePlanLink = async (day) => {
   padding: 6px 10px;
   background: rgba(96, 165, 250, 0.12);
   border: 1px solid rgba(123, 163, 255, 0.14);
-  color: #dbeafe;
+  color: var(--info-text);
   font-size: 12px;
   font-weight: 700;
 }
 .plan-details-section {
   padding: 14px 16px;
   border-radius: 16px;
-  background: rgba(8, 12, 20, 0.42);
-  border: 1px solid rgba(148, 163, 184, 0.08);
+  background: rgb(var(--deep-rgb) / 0.42);
+  border: 1px solid rgb(var(--tint-rgb) / 0.08);
 }
 .plan-details-section strong {
   display: block;
   margin-bottom: 10px;
-  color: #bfd3ff;
+  color:var(--text);
   font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -4270,23 +4270,23 @@ const savePlanLink = async (day) => {
   padding-left: 18px;
   display: grid;
   gap: 8px;
-  color: #e2e8f0;
+  color: var(--text);
   font-size: 14px;
   line-height: 1.6;
 }
 .plan-details-list-muted {
-  color: #cbd5e1;
+  color: var(--text-soft);
 }
 .plan-details-list-optional {
-  color: #d5deef;
+  color:var(--text);
 }
 .plan-details-list li::marker {
-  color: #7fb0ff;
+  color:color-mix(in srgb, #7fb0ff calc(100% - var(--dim)), #000);
 }
 .plan-details-support {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  border-top: 1px solid rgb(var(--tint-rgb) / 0.12);
 }
 .plan-details-support strong {
   display: block;
@@ -4294,11 +4294,11 @@ const savePlanLink = async (day) => {
   font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #b9ceff;
+  color:var(--text);
 }
 .plan-details-support p {
   margin: 0;
-  color: #d5deef;
+  color:var(--text);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -4331,15 +4331,15 @@ const savePlanLink = async (day) => {
 }
 .plan-trend-pill.trend-on_track {
   background: rgba(16, 185, 129, 0.14);
-  color: #a7f3d0;
+  color: var(--success-text);
 }
 .plan-trend-pill.trend-mixed {
   background: rgba(245, 158, 11, 0.14);
-  color: #fcd34d;
+  color:color-mix(in srgb, #fcd34d calc(100% - var(--dim)), #000);
 }
 .plan-trend-pill.trend-off_track {
   background: rgba(239, 68, 68, 0.14);
-  color: #fca5a5;
+  color: var(--danger-text);
 }
 .strength-rotation-week-context {
   display: flex;
@@ -4353,7 +4353,7 @@ const savePlanLink = async (day) => {
   padding: 6px 10px;
   background: rgba(96, 165, 250, 0.1);
   border: 1px solid rgba(123, 163, 255, 0.12);
-  color: #cfe2ff;
+  color:var(--text);
   font-size: 11px;
   font-weight: 700;
 }
@@ -4366,7 +4366,7 @@ const savePlanLink = async (day) => {
   gap: 12px;
 }
 .plan-trend-metric {
-  background: rgba(10, 15, 25, 0.48);
+  background: rgb(var(--deep-rgb) / 0.48);
   border: 1px solid rgba(76, 92, 125, 0.18);
   border-radius: 12px;
   padding: 12px 14px;
@@ -4393,7 +4393,7 @@ const savePlanLink = async (day) => {
   justify-content: start;
 }
 .plan-trend-week {
-  background: rgba(10, 15, 25, 0.56);
+  background: rgb(var(--deep-rgb) / 0.56);
   border: 1px solid rgba(76, 92, 125, 0.18);
   border-radius: 14px;
   padding: 14px;
@@ -4403,7 +4403,7 @@ const savePlanLink = async (day) => {
   height: 10px;
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(148, 163, 184, 0.12);
+  background: rgb(var(--tint-rgb) / 0.12);
   margin: 10px 0 8px;
 }
 .plan-trend-week-bars span {
@@ -4411,13 +4411,13 @@ const savePlanLink = async (day) => {
   height: 100%;
 }
 .plan-trend-week-bars .bar-fulfilled {
-  background: #34d399;
+  background:color-mix(in srgb, #34d399 calc(100% - var(--dim)), #000);
 }
 .plan-trend-week-bars .bar-modified {
-  background: #fbbf24;
+  background:color-mix(in srgb, #fbbf24 calc(100% - var(--dim)), #000);
 }
 .plan-trend-week-bars .bar-missed {
-  background: #f87171;
+  background:color-mix(in srgb, #f87171 calc(100% - var(--dim)), #000);
 }
 .plan-trend-observations {
   display: flex;
@@ -4425,7 +4425,7 @@ const savePlanLink = async (day) => {
   gap: 8px;
 }
 .plan-trend-observation {
-  background: rgba(15, 23, 42, 0.42);
+  background: rgb(var(--panel-rgb) / 0.42);
   border-radius: 10px;
   padding: 10px 12px;
 }
@@ -4568,11 +4568,11 @@ const savePlanLink = async (day) => {
   .plan-day.is-today { transform: none; }
 }
 /* Weekly rhythm and a session agenda replace the wide card carousel. */
-.plan-page{--plan-highlight:#dfc49c}.plan-page>.page-head{margin-bottom:28px}.plan-page>.page-head .page-title{font-size:40px;letter-spacing:-1.5px}.plan-page>.page-head .page-eyebrow{font-size:9px;letter-spacing:.16em;color:#b7b2a7}.plan-page .page-sub{color:var(--muted);font-size:13px}.plan-page .codex-plan-button{background:linear-gradient(125deg,#e7d3b1,#c6a879);border-color:#dec7a3;color:#251f18;box-shadow:0 8px 30px #d4b58312}.plan-page .codex-plan-button:hover:not(:disabled){background:#ead6b4;box-shadow:0 8px 30px #d4b58324}.plan-page .codex-plan-hint{color:#9eaaBC;font-size:10px}
-.plan-page .plan-command{position:relative;padding:30px 32px 0;border-radius:24px;border:1px solid #dec7a32b;background:radial-gradient(ellipse at 100% 0%,#b99e7020,transparent 55%),linear-gradient(130deg,#202327,#151e28 70%);overflow:hidden;margin-bottom:20px}.plan-page .plan-command-top{align-items:center;margin-bottom:28px}.plan-page .plan-command .page-eyebrow{color:var(--plan-highlight);font-size:9px;letter-spacing:.16em;margin-bottom:10px}.plan-page .plan-command-title{font-size:clamp(26px,3vw,38px);letter-spacing:-1.3px;font-weight:500}.plan-page .plan-command-focus{font-size:12px;margin-top:9px;max-width:660px}.plan-page .period-navigation{padding:4px;border:1px solid #d8c29824;border-radius:12px;background:#0c131a55;flex-shrink:0}.plan-page .period-button,.plan-page .period-today{border:0;background:transparent;border-radius:8px;min-height:36px;color:#d8c9ae}.plan-page .period-button:hover:not(:disabled),.plan-page .period-today:hover:not(:disabled){background:#d8c29812}
-.week-rhythm{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;border-block:1px solid #d8c29823;padding-block:15px;margin-bottom:28px}.rhythm-day{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;gap:4px;padding:12px 17px;border:0;border-right:1px solid #d8c29815;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;border-radius:0;transition:background .2s}.rhythm-day:last-child{border-right:0}.rhythm-day:hover{background:#ffffff04}.rhythm-day.active{background:linear-gradient(150deg,color-mix(in srgb,var(--day-accent) 12%,transparent),transparent);box-shadow:inset 0 -2px var(--day-accent)}.rhythm-day-name{display:flex;flex-wrap:wrap;align-items:center;gap:5px;color:#9ba9b9;font-size:10px;letter-spacing:.04em}.rhythm-day-name i{font-style:normal;color:var(--day-accent);font-size:6px;font-weight:800;letter-spacing:.05em}.rhythm-day-number{font-family:var(--font-display);font-weight:500;font-size:32px;letter-spacing:-1px;line-height:1.2}.rhythm-day.active .rhythm-day-number{color:var(--day-accent)}.rhythm-sport{display:grid;place-items:center;width:34px;height:34px;margin-top:9px;color:var(--day-accent);border-radius:50%;background:color-mix(in srgb,var(--day-accent) 10%,transparent)}.rhythm-day-type{font-size:10px;font-weight:650;margin-top:5px;max-width:100%;overflow-wrap:anywhere}.rhythm-day-duration{color:#98a7b6;font-size:9px}.rhythm-day-track{position:absolute;right:17px;top:53px;width:3px;height:50px;background:#ffffff09;border-radius:5px;display:flex;align-items:end}.rhythm-day-track>i{display:block;width:100%;border-radius:5px;background:var(--day-accent);opacity:.65}.rhythm-rest .rhythm-day-track{background:transparent}.rhythm-rest .rhythm-day-track>i{opacity:.4}
-.plan-page .plan-command-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;align-items:center;margin-bottom:28px}.plan-page .today-brief{position:relative;width:auto;padding:26px;border:1px solid color-mix(in srgb,var(--session-accent) 22%,transparent);border-radius:18px;background:linear-gradient(120deg,color-mix(in srgb,var(--session-accent) 9%,#111c27),#101923);overflow:hidden;min-height:250px;display:flex;flex-direction:column}.session-watermark{position:absolute;right:-16px;bottom:-35px;opacity:.07;transform:rotate(-15deg);pointer-events:none}.session-watermark>span{font-size:190px;line-height:1}.plan-page .today-brief-head,.plan-page .today-brief-meta,.plan-page .today-brief-copy,.plan-page .today-brief-actions{position:relative}.plan-page .today-brief .section-label{color:var(--session-accent);font-size:9px;letter-spacing:.13em}.plan-page .today-brief h3{font-size:clamp(22px,2.6vw,32px);font-weight:500;letter-spacing:-.8px;line-height:1.2;margin-top:12px}.plan-page .today-brief-head{gap:15px;flex-wrap:wrap}.plan-page .today-brief-meta{margin-top:18px;gap:8px 16px}.plan-page .today-brief-meta span{padding:0;background:transparent;color:#c2d0df;font-size:12px}.plan-page .today-brief-copy{margin-top:14px;line-height:1.8;-webkit-line-clamp:3}.plan-page .today-brief-actions{margin-top:auto;padding-top:22px}.plan-page .today-brief-actions .save-button{background:var(--session-accent);color:#15212c;border-color:transparent}.plan-page .today-brief-actions .ghost-button{background:transparent;font-size:10px}.week-intention{min-width:0;padding-right:14px}.week-intention .section-label{font-size:9px;letter-spacing:.13em;color:#b6ad9e}.week-intention h3{font-family:var(--font-display);font-size:clamp(24px,2.6vw,35px);line-height:1.2;font-weight:500;letter-spacing:-1px;margin-top:15px}.week-intention h3 em{color:var(--plan-highlight);font-style:normal}.week-intention p{color:#a9b5c3;font-size:12px;line-height:1.8;margin-top:15px;white-space:pre-line}.week-intention a{display:inline-flex;align-items:center;gap:18px;font-size:11px;color:var(--plan-highlight);margin-top:20px}.plan-page .workload-summary{width:auto;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid #d8c29823;margin-inline:-32px;background:#080f182b;padding:0 15px}.plan-page .workload-metric{border:0;border-right:1px solid #d8c29815;border-radius:0;background:transparent;padding:20px}.plan-page .workload-metric:last-child{border:0}.plan-page .workload-metric span{font-size:9px;letter-spacing:.12em}.plan-page .workload-metric strong{font-size:29px;letter-spacing:-1px;font-weight:500;margin-top:8px}.plan-page .workload-metric small{font-size:10px;margin-top:7px}
-.plan-page .plan-insights-disclosure{border-bottom:1px solid var(--border);margin-bottom:28px;padding-bottom:12px}.plan-page .plan-insights-disclosure>summary{font-size:11px;letter-spacing:.01em}.agenda-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-top:5px}.agenda-heading h2{font-family:var(--font-display);font-size:28px;letter-spacing:-.8px;font-weight:500;margin-top:5px}.agenda-heading .section-label{color:#b6ad9e;font-size:9px;letter-spacing:.13em}.agenda-heading>p{font-size:11px;color:var(--muted)}.plan-page .week-card{border:0;border-radius:0;box-shadow:none;background:transparent;padding:0}.plan-page .week-header{border-block:1px solid var(--border);padding:20px 0;margin-bottom:20px}.plan-page .week-range{font-size:20px}.plan-page .week-guidance{font-size:11px;margin-top:5px}.plan-page .plan-focus{font-size:12px}.plan-page .plan-overview{display:none}.plan-page .goal-context-panel{background:transparent;border-radius:12px}.plan-page .week-summary{background:transparent;border:0;border-radius:0;padding:0 0 16px}.plan-page .week-summary-pill{background:transparent;border:1px solid var(--border);font-size:10px}.plan-page .plan-grid-wrap{overflow:visible;scroll-snap-type:none;padding:0}.plan-page .plan-grid{grid-template-columns:1fr;gap:12px}.plan-page .plan-day{display:grid;grid-template-columns:150px minmax(0,1.2fr) minmax(0,1fr);gap:24px;align-items:start;padding:23px 24px;border:1px solid var(--border);border-left:3px solid color-mix(in srgb,var(--day-accent) 50%,transparent);border-radius:14px;background:linear-gradient(100deg,color-mix(in srgb,var(--day-accent) 3%,transparent),#111a270f);box-shadow:none;opacity:1;transform:none;overflow:visible}.plan-page .plan-day:before{display:none}.plan-page .plan-day.is-selected{border-color:color-mix(in srgb,var(--day-accent) 30%,var(--border));border-left-color:var(--day-accent);background:linear-gradient(100deg,color-mix(in srgb,var(--day-accent) 8%,transparent),#111a2744);box-shadow:0 6px 25px #00000010}.plan-page .plan-day.is-today .plan-day-label:after{content:' · TODAY';font-size:8px;color:var(--day-accent)}.agenda-date-column{min-width:0}.plan-page .plan-day-top{display:flex;flex-direction:column;align-items:start;gap:12px;padding:0;margin:0;border:0;background:none}.plan-page .plan-day-label{font-size:10px;letter-spacing:.1em;color:#9eacc0}.plan-page .plan-day-date{font-family:var(--font-display);font-size:25px;letter-spacing:-.8px;color:var(--text);margin-top:4px}.plan-page .plan-day-weather{margin-top:17px;padding:0;border:0;background:transparent;flex-wrap:wrap;gap:6px}.plan-page .plan-day-weather-copy strong{font-size:11px}.plan-page .plan-day-weather-copy small{font-size:9px}.plan-page .plan-day-weather-rain{font-size:9px}.plan-page .plan-block-workout{margin:0;border:0;border-radius:0;background:transparent;padding:0;min-width:0}.plan-page .plan-block-label{font-size:8px;letter-spacing:.14em;margin-bottom:9px;color:#92a2b7}.plan-page .plan-day-title{font-family:var(--font-display);font-size:20px;line-height:1.3;font-weight:500;letter-spacing:-.4px;display:block;overflow:visible;margin-bottom:10px}.plan-page .plan-type{background:color-mix(in srgb,var(--day-accent) 10%,transparent);color:var(--day-accent)}.plan-page .plan-day-meta span{padding:0;background:transparent;color:var(--day-accent);font-size:13px}.plan-page .plan-day-meta{gap:18px}.plan-page .actual-block{min-width:0;background:transparent;border:0;border-left:1px solid var(--border);border-radius:0;margin:0;padding:0 0 0 24px}.plan-page .actual-empty{background:transparent;border:0;padding:10px 0;font-size:11px}.plan-page .plan-status-detail{font-size:10px;line-height:1.7}.plan-page .plan-empty{display:grid;justify-items:center;gap:15px;padding:65px 25px;background:radial-gradient(ellipse at top,#d9c39e13,transparent 65%),var(--surface);text-align:center;border-color:#dec7a326}.plan-empty>span{font-size:55px;color:var(--plan-highlight)}.plan-empty h2{font-family:var(--font-display);font-size:30px;font-weight:500;letter-spacing:-1px}.plan-empty p{color:var(--muted);font-size:12px}.plan-page button:focus-visible,.plan-page a:focus-visible,.plan-page summary:focus-visible{outline:2px solid var(--plan-highlight);outline-offset:4px}
+.plan-page{--plan-highlight:color-mix(in srgb, #dfc49c calc(100% - var(--dim)), #000)}.plan-page>.page-head{margin-bottom:28px}.plan-page>.page-head .page-title{font-size:40px;letter-spacing:-1.5px}.plan-page>.page-head .page-eyebrow{font-size:9px;letter-spacing:.16em;color:var(--text-soft)}.plan-page .page-sub{color:var(--muted);font-size:13px}.plan-page .codex-plan-button{background:linear-gradient(125deg,color-mix(in srgb, #e7d3b1 calc(100% - var(--dim)), #000),color-mix(in srgb, #c6a879 calc(100% - var(--dim)), #000));border-color:color-mix(in srgb, #dec7a3 calc(100% - var(--dim)), #000);color:var(--on-accent);box-shadow:0 8px 30px #d4b58312}.plan-page .codex-plan-button:hover:not(:disabled){background:color-mix(in srgb, #ead6b4 calc(100% - var(--dim)), #000);box-shadow:0 8px 30px #d4b58324}.plan-page .codex-plan-hint{color:var(--text-soft);font-size:10px}
+.plan-page .plan-command{position:relative;padding:30px 32px 0;border-radius:24px;border:1px solid #dec7a32b;background:radial-gradient(ellipse at 100% 0%,#b99e7020,transparent 55%),linear-gradient(130deg,var(--deep),var(--deep) 70%);overflow:hidden;margin-bottom:20px}.plan-page .plan-command-top{align-items:center;margin-bottom:28px}.plan-page .plan-command .page-eyebrow{color:var(--plan-highlight);font-size:9px;letter-spacing:.16em;margin-bottom:10px}.plan-page .plan-command-title{font-size:clamp(26px,3vw,38px);letter-spacing:-1.3px;font-weight:500}.plan-page .plan-command-focus{font-size:12px;margin-top:9px;max-width:660px}.plan-page .period-navigation{padding:4px;border:1px solid #d8c29824;border-radius:12px;background:rgb(var(--deep-rgb) / 0.333);flex-shrink:0}.plan-page .period-button,.plan-page .period-today{border:0;background:transparent;border-radius:8px;min-height:36px;color:var(--text-soft)}.plan-page .period-button:hover:not(:disabled),.plan-page .period-today:hover:not(:disabled){background:#d8c29812}
+.week-rhythm{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;border-block:1px solid #d8c29823;padding-block:15px;margin-bottom:28px}.rhythm-day{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;gap:4px;padding:12px 17px;border:0;border-right:1px solid #d8c29815;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;border-radius:0;transition:background .2s}.rhythm-day:last-child{border-right:0}.rhythm-day:hover{background:rgb(var(--ov-rgb) / 0.016)}.rhythm-day.active{background:linear-gradient(150deg,color-mix(in srgb,var(--day-accent) 12%,transparent),transparent);box-shadow:inset 0 -2px var(--day-accent)}.rhythm-day-name{display:flex;flex-wrap:wrap;align-items:center;gap:5px;color:var(--text-soft);font-size:10px;letter-spacing:.04em}.rhythm-day-name i{font-style:normal;color:var(--day-accent);font-size:6px;font-weight:800;letter-spacing:.05em}.rhythm-day-number{font-family:var(--font-display);font-weight:500;font-size:32px;letter-spacing:-1px;line-height:1.2}.rhythm-day.active .rhythm-day-number{color:var(--day-accent)}.rhythm-sport{display:grid;place-items:center;width:34px;height:34px;margin-top:9px;color:var(--day-accent);border-radius:50%;background:color-mix(in srgb,var(--day-accent) 10%,transparent)}.rhythm-day-type{font-size:10px;font-weight:650;margin-top:5px;max-width:100%;overflow-wrap:anywhere}.rhythm-day-duration{color:var(--text-soft);font-size:9px}.rhythm-day-track{position:absolute;right:17px;top:53px;width:3px;height:50px;background:rgb(var(--ov-rgb) / 0.035);border-radius:5px;display:flex;align-items:end}.rhythm-day-track>i{display:block;width:100%;border-radius:5px;background:var(--day-accent);opacity:.65}.rhythm-rest .rhythm-day-track{background:transparent}.rhythm-rest .rhythm-day-track>i{opacity:.4}
+.plan-page .plan-command-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;align-items:center;margin-bottom:28px}.plan-page .today-brief{position:relative;width:auto;padding:26px;border:1px solid color-mix(in srgb,var(--session-accent) 22%,transparent);border-radius:18px;background:linear-gradient(120deg,color-mix(in srgb,var(--session-accent) 9%,var(--deep)),var(--deep));overflow:hidden;min-height:250px;display:flex;flex-direction:column}.session-watermark{position:absolute;right:-16px;bottom:-35px;opacity:.07;transform:rotate(-15deg);pointer-events:none}.session-watermark>span{font-size:190px;line-height:1}.plan-page .today-brief-head,.plan-page .today-brief-meta,.plan-page .today-brief-copy,.plan-page .today-brief-actions{position:relative}.plan-page .today-brief .section-label{color:var(--session-accent);font-size:9px;letter-spacing:.13em}.plan-page .today-brief h3{font-size:clamp(22px,2.6vw,32px);font-weight:500;letter-spacing:-.8px;line-height:1.2;margin-top:12px}.plan-page .today-brief-head{gap:15px;flex-wrap:wrap}.plan-page .today-brief-meta{margin-top:18px;gap:8px 16px}.plan-page .today-brief-meta span{padding:0;background:transparent;color:var(--text);font-size:12px}.plan-page .today-brief-copy{margin-top:14px;line-height:1.8;-webkit-line-clamp:3}.plan-page .today-brief-actions{margin-top:auto;padding-top:22px}.plan-page .today-brief-actions .save-button{background:var(--session-accent);color:var(--on-accent);border-color:transparent}.plan-page .today-brief-actions .ghost-button{background:transparent;font-size:10px}.week-intention{min-width:0;padding-right:14px}.week-intention .section-label{font-size:9px;letter-spacing:.13em;color:var(--text-soft)}.week-intention h3{font-family:var(--font-display);font-size:clamp(24px,2.6vw,35px);line-height:1.2;font-weight:500;letter-spacing:-1px;margin-top:15px}.week-intention h3 em{color:var(--plan-highlight);font-style:normal}.week-intention p{color:var(--text-soft);font-size:12px;line-height:1.8;margin-top:15px;white-space:pre-line}.week-intention a{display:inline-flex;align-items:center;gap:18px;font-size:11px;color:var(--plan-highlight);margin-top:20px}.plan-page .workload-summary{width:auto;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid #d8c29823;margin-inline:-32px;background:rgb(var(--deep-rgb) / 0.169);padding:0 15px}.plan-page .workload-metric{border:0;border-right:1px solid #d8c29815;border-radius:0;background:transparent;padding:20px}.plan-page .workload-metric:last-child{border:0}.plan-page .workload-metric span{font-size:9px;letter-spacing:.12em}.plan-page .workload-metric strong{font-size:29px;letter-spacing:-1px;font-weight:500;margin-top:8px}.plan-page .workload-metric small{font-size:10px;margin-top:7px}
+.plan-page .plan-insights-disclosure{border-bottom:1px solid var(--border);margin-bottom:28px;padding-bottom:12px}.plan-page .plan-insights-disclosure>summary{font-size:11px;letter-spacing:.01em}.agenda-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-top:5px}.agenda-heading h2{font-family:var(--font-display);font-size:28px;letter-spacing:-.8px;font-weight:500;margin-top:5px}.agenda-heading .section-label{color:var(--text-soft);font-size:9px;letter-spacing:.13em}.agenda-heading>p{font-size:11px;color:var(--muted)}.plan-page .week-card{border:0;border-radius:0;box-shadow:none;background:transparent;padding:0}.plan-page .week-header{border-block:1px solid var(--border);padding:20px 0;margin-bottom:20px}.plan-page .week-range{font-size:20px}.plan-page .week-guidance{font-size:11px;margin-top:5px}.plan-page .plan-focus{font-size:12px}.plan-page .plan-overview{display:none}.plan-page .goal-context-panel{background:transparent;border-radius:12px}.plan-page .week-summary{background:transparent;border:0;border-radius:0;padding:0 0 16px}.plan-page .week-summary-pill{background:transparent;border:1px solid var(--border);font-size:10px}.plan-page .plan-grid-wrap{overflow:visible;scroll-snap-type:none;padding:0}.plan-page .plan-grid{grid-template-columns:1fr;gap:12px}.plan-page .plan-day{display:grid;grid-template-columns:150px minmax(0,1.2fr) minmax(0,1fr);gap:24px;align-items:start;padding:23px 24px;border:1px solid var(--border);border-left:3px solid color-mix(in srgb,var(--day-accent) 50%,transparent);border-radius:14px;background:linear-gradient(100deg,color-mix(in srgb,var(--day-accent) 3%,transparent),rgb(var(--deep-rgb) / 0.059));box-shadow:none;opacity:1;transform:none;overflow:visible}.plan-page .plan-day:before{display:none}.plan-page .plan-day.is-selected{border-color:color-mix(in srgb,var(--day-accent) 30%,var(--border));border-left-color:var(--day-accent);background:linear-gradient(100deg,color-mix(in srgb,var(--day-accent) 8%,transparent),rgb(var(--deep-rgb) / 0.267));box-shadow:0 6px 25px rgb(var(--shadow-rgb) / 0.063)}.plan-page .plan-day.is-today .plan-day-label:after{content:' · TODAY';font-size:8px;color:var(--day-accent)}.agenda-date-column{min-width:0}.plan-page .plan-day-top{display:flex;flex-direction:column;align-items:start;gap:12px;padding:0;margin:0;border:0;background:none}.plan-page .plan-day-label{font-size:10px;letter-spacing:.1em;color:var(--text-soft)}.plan-page .plan-day-date{font-family:var(--font-display);font-size:25px;letter-spacing:-.8px;color:var(--text);margin-top:4px}.plan-page .plan-day-weather{margin-top:17px;padding:0;border:0;background:transparent;flex-wrap:wrap;gap:6px}.plan-page .plan-day-weather-copy strong{font-size:11px}.plan-page .plan-day-weather-copy small{font-size:9px}.plan-page .plan-day-weather-rain{font-size:9px}.plan-page .plan-block-workout{margin:0;border:0;border-radius:0;background:transparent;padding:0;min-width:0}.plan-page .plan-block-label{font-size:8px;letter-spacing:.14em;margin-bottom:9px;color:var(--text-soft)}.plan-page .plan-day-title{font-family:var(--font-display);font-size:20px;line-height:1.3;font-weight:500;letter-spacing:-.4px;display:block;overflow:visible;margin-bottom:10px}.plan-page .plan-type{background:color-mix(in srgb,var(--day-accent) 10%,transparent);color:var(--day-accent)}.plan-page .plan-day-meta span{padding:0;background:transparent;color:var(--day-accent);font-size:13px}.plan-page .plan-day-meta{gap:18px}.plan-page .actual-block{min-width:0;background:transparent;border:0;border-left:1px solid var(--border);border-radius:0;margin:0;padding:0 0 0 24px}.plan-page .actual-empty{background:transparent;border:0;padding:10px 0;font-size:11px}.plan-page .plan-status-detail{font-size:10px;line-height:1.7}.plan-page .plan-empty{display:grid;justify-items:center;gap:15px;padding:65px 25px;background:radial-gradient(ellipse at top,#d9c39e13,transparent 65%),var(--surface);text-align:center;border-color:#dec7a326}.plan-empty>span{font-size:55px;color:var(--plan-highlight)}.plan-empty h2{font-family:var(--font-display);font-size:30px;font-weight:500;letter-spacing:-1px}.plan-empty p{color:var(--muted);font-size:12px}.plan-page button:focus-visible,.plan-page a:focus-visible,.plan-page summary:focus-visible{outline:2px solid var(--plan-highlight);outline-offset:4px}
 @media(max-width:1100px){.plan-page .plan-command{padding:24px 24px 0}.plan-page .plan-command-grid{gap:24px;grid-template-columns:1.3fr 1fr}.plan-page .workload-summary{margin-inline:-24px}.rhythm-day{padding:10px}.rhythm-day-track{right:10px}.plan-page .plan-day{grid-template-columns:115px minmax(0,1.2fr) minmax(0,1fr);gap:18px;padding:20px 18px}.plan-page .actual-block{padding-left:18px}.plan-page .today-brief{padding:22px}.plan-page .today-brief h3{font-size:26px}}
 @media(max-width:800px){.plan-page .plan-command-grid{grid-template-columns:1fr}.week-intention{padding:0 5px}.week-intention h3{font-size:28px}.week-intention h3 br{display:none}.week-intention h3 em:before{content:' '}.week-rhythm{grid-template-columns:repeat(7,minmax(84px,1fr));overflow-x:auto;scrollbar-width:thin;padding-bottom:12px}.rhythm-day{padding:10px 9px}.rhythm-day-number{font-size:28px}.rhythm-day-type{font-size:9px}.rhythm-day-duration{font-size:8px}.plan-page .plan-day{grid-template-columns:110px minmax(0,1fr)}.plan-page .actual-block{grid-column:2;border-left:0;border-top:1px solid var(--border);padding:16px 0 0}.agenda-date-column{grid-row:1/span 2}.plan-page .plan-command-top{align-items:start;flex-direction:column;gap:18px}.plan-page .workload-metric{padding:18px 12px}.plan-page .workload-metric strong{font-size:24px}}
 @media(max-width:520px){.plan-page .plan-command{padding:22px 16px 0;border-radius:20px}.plan-page .plan-command-title{font-size:27px}.plan-page .workload-summary{grid-template-columns:repeat(2,minmax(0,1fr));margin-inline:-16px;padding:0 6px}.plan-page .workload-metric{border-bottom:1px solid #d8c29815}.plan-page .workload-metric:nth-child(2){border-right:0}.plan-page .plan-command-grid{margin-bottom:22px}.plan-page .today-brief{padding:21px 17px}.plan-page .today-brief h3{font-size:25px}.plan-page .today-brief-actions{gap:10px}.plan-page .plan-day{grid-template-columns:1fr;padding:20px 17px;gap:17px}.agenda-date-column{grid-row:auto}.plan-page .plan-day-top{flex-direction:row;align-items:center;justify-content:space-between;width:100%}.plan-page .plan-day-weather{margin-top:10px}.plan-page .actual-block{grid-column:auto}.plan-page .plan-day-title{font-size:21px}.agenda-heading{align-items:start;flex-direction:column;gap:8px}.agenda-heading h2{font-size:26px}.plan-page .week-header{gap:15px}.plan-page .week-summary-head{flex-wrap:wrap}.plan-page .plan-empty{padding:45px 20px}.plan-empty h2{font-size:25px}}
@@ -4596,8 +4596,8 @@ const savePlanLink = async (day) => {
 .week-purpose p{max-width:1000px;margin-top:12px;line-height:1.8;white-space:pre-line}
 .plan-page .plan-grid-wrap{overflow-x:auto;overscroll-behavior-inline:contain;scroll-snap-type:x proximity;padding:3px 2px 16px;scrollbar-width:thin}
 .plan-page .plan-grid{grid-template-columns:repeat(7,minmax(225px,1fr));gap:12px;align-items:stretch}
-.plan-page .plan-day{display:flex;flex-direction:column;gap:18px;padding:20px 17px;border:1px solid var(--border);border-top:3px solid var(--day-accent);border-radius:15px;background:linear-gradient(175deg,color-mix(in srgb,var(--day-accent) 8%,#141d2a),#101824 48%);scroll-snap-align:start;overflow:hidden;min-width:0}
-.plan-page .plan-day.is-selected{border-color:color-mix(in srgb,var(--day-accent) 32%,var(--border));border-top-color:var(--day-accent);background:linear-gradient(175deg,color-mix(in srgb,var(--day-accent) 13%,#141d2a),#101824 48%)}
+.plan-page .plan-day{display:flex;flex-direction:column;gap:18px;padding:20px 17px;border:1px solid var(--border);border-top:3px solid var(--day-accent);border-radius:15px;background:linear-gradient(175deg,color-mix(in srgb,var(--day-accent) 8%,var(--deep)),var(--deep) 48%);scroll-snap-align:start;overflow:hidden;min-width:0}
+.plan-page .plan-day.is-selected{border-color:color-mix(in srgb,var(--day-accent) 32%,var(--border));border-top-color:var(--day-accent);background:linear-gradient(175deg,color-mix(in srgb,var(--day-accent) 13%,var(--deep)),var(--deep) 48%)}
 .agenda-date-column{width:100%;grid-row:auto}
 .plan-page .plan-day-top{width:100%;flex-direction:column;align-items:flex-start;gap:10px}
 .plan-page .plan-day-date{font-size:29px;letter-spacing:-1px}
@@ -4629,9 +4629,9 @@ const savePlanLink = async (day) => {
 .plan-actions-menu{position:relative;display:block!important;margin-left:auto}
 .plan-actions-menu>summary{cursor:pointer;list-style:none;display:flex;gap:16px;align-items:center;font-size:12px;color:var(--text-soft);padding:8px 12px;border-radius:8px;background:var(--surface2)}
 .plan-actions-menu>summary::-webkit-details-marker{display:none}
-.plan-actions-menu-items{position:absolute;right:0;top:calc(100% + 6px);z-index:10;display:grid;gap:5px;min-width:210px;padding:8px;border:1px solid var(--border);border-radius:10px;background:#192334;box-shadow:var(--shadow-md)}
+.plan-actions-menu-items{position:absolute;right:0;top:calc(100% + 6px);z-index:10;display:grid;gap:5px;min-width:210px;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--deep);box-shadow:var(--shadow-md)}
 .plan-page .plan-actions-menu-items button{width:100%;border:0;background:transparent;color:var(--text);font-size:12px;font-weight:500;text-align:left;border-radius:6px;box-shadow:none;padding:10px 12px}
-.plan-page .plan-actions-menu-items button:hover{background:#ffffff08}
+.plan-page .plan-actions-menu-items button:hover{background:rgb(var(--ov-rgb) / 0.031)}
 .plan-page .plan-day-date{font-family:var(--font-body);font-size:20px;font-weight:650;letter-spacing:-.3px}
 .plan-page .plan-day-label{font-size:12px;font-weight:400;letter-spacing:0;text-transform:none}
 .plan-page .plan-day-title{font-family:var(--font-body);font-size:16px;font-weight:650;letter-spacing:0;line-height:1.45}
@@ -4641,10 +4641,10 @@ const savePlanLink = async (day) => {
 .plan-page .plan-day-weather-copy small,.plan-page .intent-pill{font-size:11px;letter-spacing:0}
 .session-match-status{display:flex;align-items:center;gap:8px;margin-top:14px;padding:9px 10px;border-radius:7px;font-size:12px;font-weight:600;line-height:1.4}
 .session-match-status>span{font-size:15px;line-height:1}
-.match-done{color:#8ce3bc;background:#34d39918}
-.match-partial{color:#efd08c;background:#fbbf2414}
-.match-changed{color:#f4a7a7;background:#ef5e5e18}
-.match-pending{color:#a5b2c7;background:#94a3b80b}
+.match-done{color:color-mix(in srgb, #8ce3bc calc(100% - var(--dim)), #000);background:#34d39918}
+.match-partial{color:color-mix(in srgb, #efd08c calc(100% - var(--dim)), #000);background:#fbbf2414}
+.match-changed{color:var(--text);background:#ef5e5e18}
+.match-pending{color:var(--text-soft);background:#94a3b80b}
 .plan-page .week-purpose{border:0;margin:18px 0 8px;padding:0;font-size:12px}
 .plan-page .goal-context-panel{border:0;margin:0;padding:0;background:transparent;overflow:visible}
 .plan-page .goal-context-summary{padding:10px 0;gap:12px}
@@ -4667,40 +4667,47 @@ const savePlanLink = async (day) => {
 .plan-page .revision-source-pill{background:transparent;padding:0;color:var(--muted)}
 .plan-page .revision-entry-reason{margin-top:6px;color:var(--text-soft)}
 @media(max-width:520px){.plan-page .plan-command-title{font-size:22px}.plan-page .workload-summary{gap:8px 18px}.plan-page .workload-metric strong{font-size:14px}.plan-page .goal-context-summary-metrics{width:auto;order:initial;flex-wrap:wrap}.plan-page .plan-day-date{font-size:20px}}
-/* A compact workout brief with one set of targets. */
-.plan-page .workout-brief{width:min(700px,100%);max-height:min(88dvh,900px);padding:0;border:1px solid color-mix(in srgb,var(--workout-accent) 25%,var(--border));border-top:3px solid var(--workout-accent);border-radius:20px;background:#121b28;overflow:auto;overscroll-behavior:contain}
-.workout-brief-header{padding:24px 28px 0;background:linear-gradient(140deg,color-mix(in srgb,var(--workout-accent) 8%,transparent),transparent)}
-.workout-brief-top{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--muted)}
-.workout-sport{display:flex;align-items:center;gap:9px;color:var(--workout-accent);font-weight:600;text-transform:capitalize}
-.workout-brief .plan-details-close{margin-left:auto;width:32px;height:32px;border-radius:8px;background:#ffffff06;color:var(--text-soft);font-size:22px}
-.workout-brief .plan-details-close:hover{background:#ffffff12}
-.workout-brief h2{font-family:var(--font-body);font-size:27px;font-weight:650;letter-spacing:-.6px;line-height:1.25;margin:20px 0 12px;overflow-wrap:anywhere}
-.workout-brief-sub{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted)}
-.workout-brief .session-match-status{margin:0;padding:5px 8px;font-size:11px}
-.workout-targets{display:flex;flex-wrap:wrap;gap:20px 32px;margin-top:24px;padding:19px 0;border-block:1px solid #ffffff0c}
-.workout-targets>div{display:grid;gap:5px;min-width:75px;flex:1}
-.workout-targets dt{font-size:12px;color:var(--muted)}
-.workout-targets dd{margin:0;font-size:20px;font-weight:600;letter-spacing:-.3px;color:var(--text);line-height:1.35}
-.workout-brief-content{padding:24px 28px 28px;display:grid;gap:24px}
-.workout-brief h3{font-size:13px;font-weight:650;line-height:1.5;color:var(--text);margin:0 0 12px}
-.workout-instructions ul,.workout-instructions ol{list-style:none;display:grid;gap:12px;margin:0;padding:0}
-.workout-instructions li{display:flex;align-items:baseline;gap:12px;font-size:13px;line-height:1.8;color:var(--text-soft)}
-.workout-instructions li>span{flex:0 0 22px;color:var(--workout-accent);font-size:12px;font-variant-numeric:tabular-nums}
+/* Workout brief: hero header with target tiles, then instructions, adapt callout and context. */
+.plan-page .workout-brief{width:min(680px,100%);max-height:min(88dvh,900px);padding:0;border:1px solid color-mix(in srgb,var(--workout-accent) 22%,var(--border));border-radius:20px;background:var(--deep);overflow:auto;overscroll-behavior:contain}
+.workout-brief-header{padding:22px 26px 22px;background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--workout-accent) 16%,transparent),transparent 62%),linear-gradient(180deg,rgb(var(--ov-rgb) / 0.020),transparent);border-bottom:1px solid rgb(var(--ov-rgb) / 0.047)}
+.workout-brief-top{display:flex;align-items:center;gap:12px}
+.workout-sport-tile{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:color-mix(in srgb,var(--workout-accent) 20%,transparent);color:var(--workout-accent)}
+.workout-brief-kicker{display:grid;gap:1px;min-width:0;line-height:1.3}
+.workout-brief-kicker strong{color:var(--workout-accent);font-size:13px;font-weight:650;text-transform:capitalize}
+.workout-brief-kicker span{color:var(--muted);font-size:12px}
+.workout-brief .plan-details-close{margin-left:auto;width:32px;height:32px;border-radius:9px;background:rgb(var(--ov-rgb) / 0.031);color:var(--text-soft);font-size:22px}
+.workout-brief .plan-details-close:hover{background:rgb(var(--ov-rgb) / 0.078)}
+.workout-brief h2{font-family:var(--font-body);font-size:28px;font-weight:700;letter-spacing:-.6px;line-height:1.2;margin:18px 0 12px;overflow-wrap:anywhere}
+.workout-chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.workout-chip{padding:4px 10px;border-radius:999px;background:color-mix(in srgb,var(--workout-accent) 14%,transparent);color:color-mix(in srgb,var(--workout-accent) 75%,white);font-size:12px;font-weight:600}
+.workout-brief .session-match-status{margin:0 0 0 auto;padding:4px 10px;font-size:12px}
+.workout-targets{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:10px;margin:20px 0 0}
+.workout-targets>div{display:grid;gap:4px;padding:12px 14px;border-radius:12px;background:rgb(var(--ov-rgb) / 0.031)}
+.workout-targets dt{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.workout-targets dd{margin:0;font-size:21px;font-weight:650;letter-spacing:-.3px;color:var(--text);line-height:1.25}
+.workout-brief-content{padding:22px 26px 26px;display:grid;gap:22px}
+.workout-brief h3{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;line-height:1.5;color:var(--muted-soft);margin:0 0 12px}
+.workout-instructions ul,.workout-instructions ol{list-style:none;display:grid;gap:8px;margin:0;padding:0}
+.workout-instructions li{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;background:rgb(var(--ov-rgb) / 0.024);font-size:14px;line-height:1.5;color:var(--text)}
+.workout-instructions ol li>span{flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:color-mix(in srgb,var(--workout-accent) 22%,transparent);color:var(--workout-accent);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.workout-instructions ul li{align-items:flex-start;color:var(--text-soft)}
+.workout-instructions ul li>span{flex:none;width:6px;height:6px;margin-top:8px;border-radius:50%;background:var(--workout-accent)}
 .workout-instructions p{margin:0}
 .workout-alternative{border-left:2px solid color-mix(in srgb,var(--workout-accent) 45%,transparent);padding:2px 0 2px 16px}
 .workout-alternative h3{color:var(--workout-accent);margin-bottom:8px}
-.workout-alternative p{font-size:13px;line-height:1.8;color:var(--muted);margin-top:8px}
-.workout-context{border-top:1px solid #ffffff0c;padding-top:18px}
-.workout-context summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--text-soft)}
-.workout-context summary>span{font-weight:400;color:var(--muted);margin-left:10px;font-size:11px}
-.workout-context-content{display:grid;gap:14px;margin-top:18px}
-.workout-context-content>p,.workout-goal p{font-size:12px;color:var(--muted);line-height:1.7}
+.workout-alternative p{font-size:13.5px;line-height:1.6;color:var(--text-soft);margin:0}
+.workout-alternative p+p{margin-top:8px}
+.workout-context{border-top:1px solid rgb(var(--ov-rgb) / 0.047);padding-top:16px}
+.workout-context summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--text-soft)}
+.workout-context summary>span{font-weight:400;color:var(--muted);margin-left:10px;font-size:12px}
+.workout-context-content{display:grid;gap:14px;margin-top:16px}
+.workout-context-content>p,.workout-goal p{font-size:12.5px;color:var(--muted-soft);line-height:1.7}
 .workout-goal{padding:0;background:transparent}
 .workout-goal>div{display:flex;align-items:baseline;justify-content:space-between;gap:16px}
 .workout-goal strong{font-size:12px;font-weight:600;color:var(--text-soft)}
 .workout-goal span{font-size:11px;flex-shrink:0;color:var(--muted)}
 .workout-goal p{margin-top:4px}
-.workout-restriction{font-size:12px;color:#f3c478;padding:10px 12px;background:#f3c4780b;border-radius:8px}
+.workout-restriction{font-size:12px;color:var(--warning-text);padding:10px 12px;background:#f3c4780b;border-radius:8px}
 .workout-no-instructions{font-size:13px;color:var(--muted)}
 @media(max-width:520px){.plan-page .workout-brief{border-radius:18px 18px 0 0;max-height:92dvh}.workout-brief-header{padding:20px 20px 0}.workout-brief-content{padding:20px}.workout-brief h2{font-size:23px}.workout-brief-top{gap:10px;font-size:11px}.workout-targets{gap:18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.workout-targets dd{font-size:19px}.workout-context summary>span{display:block;margin:5px 0 0 15px}}
 
@@ -4919,7 +4926,7 @@ const savePlanLink = async (day) => {
 
 .day-stats {
   display: grid; grid-template-columns: 1fr 1fr; margin: 0;
-  border: 1px solid var(--border); border-radius: 10px; background: #ffffff05;
+  border: 1px solid var(--border); border-radius: 10px; background: rgb(var(--ov-rgb) / 0.020);
 }
 .day-stats > div { padding: 8px 12px; min-width: 0; }
 .day-stats > div + div { border-left: 1px solid var(--border); }
@@ -4929,7 +4936,7 @@ const savePlanLink = async (day) => {
 .day-tags { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
 .day-tag {
   display: inline-flex; align-items: center; max-width: 100%; padding: 3px 9px; border-radius: 999px;
-  border: 1px solid var(--border); background: #ffffff06; color: var(--text-soft);
+  border: 1px solid var(--border); background: rgb(var(--ov-rgb) / 0.024); color: var(--text-soft);
   font: inherit; font-size: 11px; font-weight: 600; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .day-tag-intent {
@@ -4937,10 +4944,10 @@ const savePlanLink = async (day) => {
   border-color: color-mix(in srgb, var(--day-accent) 30%, transparent);
   background: color-mix(in srgb, var(--day-accent) 10%, transparent);
 }
-.day-tag-workout { cursor: pointer; color: #fdba74; border-color: rgba(249, 115, 22, .3); background: rgba(234, 88, 12, .12); }
+.day-tag-workout { cursor: pointer; color:color-mix(in srgb, #fdba74 calc(100% - var(--dim)), #000); border-color: rgba(249, 115, 22, .3); background: rgba(234, 88, 12, .12); }
 .day-tag-workout:hover { background: rgba(234, 88, 12, .22); }
-.day-tag-benchmark { color: #f3c478; border-color: #f3c47840; background: #f3c47812; }
-.day-tag-restriction { color: #fca5a5; border-color: #f8717140; background: #f8717112; text-transform: capitalize; }
+.day-tag-benchmark { color: var(--warning-text); border-color:#f3c47840; background:#f3c47812; }
+.day-tag-restriction { color: var(--danger-text); border-color:#f8717140; background:#f8717112; text-transform: capitalize; }
 
 .day-notes { display: grid; align-content: start; gap: 6px; }
 .plan-page .day-notes .plan-day-details {

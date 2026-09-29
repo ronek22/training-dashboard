@@ -65,18 +65,18 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.workout-access { display: flex; align-items: center; gap: 16px; padding: 18px 20px; margin-bottom: 24px; border: 1px solid rgba(123, 163, 255, .3); border-radius: 16px; background: #131f33; }
-.workout-access.is-live { position: sticky; top: 12px; z-index: 20; background: #18271f; border-color: rgba(110, 231, 183, .4); box-shadow: 0 8px 24px #0003; }
+.workout-access { display: flex; align-items: center; gap: 16px; padding: 18px 20px; margin-bottom: 24px; border: 1px solid rgba(123, 163, 255, .3); border-radius: 16px; background: var(--surface2); }
+.workout-access.is-live { position: sticky; top: 12px; z-index: 20; background: var(--deep); border-color: rgba(110, 231, 183, .4); box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 0.20); }
 .workout-icon { flex: 0 0 auto; color: var(--accent-strong); width: 26px; height: 26px; }
-.is-live .workout-icon { color: #6ee7b7; }
+.is-live .workout-icon { color: var(--success-text); }
 .workout-copy { display: grid; gap: 4px; flex: 1; min-width: 0; }
 .workout-eyebrow { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--accent-strong); }
-.is-live .workout-eyebrow { color: #6ee7b7; }
+.is-live .workout-eyebrow { color: var(--success-text); }
 .workout-eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .workout-copy strong { color: var(--text); font-size: 16px; overflow-wrap: anywhere; }
-.workout-detail { color: #b0bed0; font-size: 12px; }
-.workout-action { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 44px; padding: 10px 16px; border-radius: 10px; background: var(--accent); color: #07111f; font-weight: 800; font-size: 13px; text-decoration: none; }
-.is-live .workout-action { background: #6ee7b7; }
+.workout-detail { color:var(--text-soft); font-size: 12px; }
+.workout-action { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 44px; padding: 10px 16px; border-radius: 10px; background: var(--accent); color: var(--on-accent); font-weight: 800; font-size: 13px; text-decoration: none; }
+.is-live .workout-action { background:color-mix(in srgb, #6ee7b7 calc(100% - var(--dim)), #000); }
 .workout-action:hover { filter: brightness(1.1); }
 .workout-action:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; }
 @media (max-width: 640px) {

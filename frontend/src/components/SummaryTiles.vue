@@ -34,23 +34,23 @@ defineProps({ tiles: { type: Array, required: true } })
   align-items: center;
   gap: 8px;
   min-width: 0;
-  border: 1px solid rgba(145, 164, 197, 0.08);
+  border: 1px solid rgb(var(--tint-rgb) / 0.08);
   border-radius: 14px;
-  background: rgba(6, 11, 18, 0.42);
+  background: rgb(var(--deep-rgb) / 0.42);
   padding: 14px 16px 13px;
 }
-.tile-label { color: var(--dash-muted, #8fa1bf); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.tile-label { color: var(--dash-muted, var(--muted)); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
 .tile-value { overflow: hidden; color: var(--text); font-size: 32px; font-weight: 650; letter-spacing: -0.9px; line-height: 1; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
-.tile-value small { margin-left: 4px; color: var(--dash-muted, #8fa1bf); font-size: 13px; font-weight: 500; letter-spacing: 0; }
-.tile-caption { overflow: hidden; color: var(--dash-muted, #8fa1bf); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.tile-caption.is-over { color: #f4c66e; }
-.tile-caption.is-on { color: #6de0b7; }
-.tile-caption.is-under { color: #9ab9f4; }
+.tile-value small { margin-left: 4px; color: var(--dash-muted, var(--muted)); font-size: 13px; font-weight: 500; letter-spacing: 0; }
+.tile-caption { overflow: hidden; color: var(--dash-muted, var(--muted)); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tile-caption.is-over { color: var(--warning-text); }
+.tile-caption.is-on { color: var(--success-text); }
+.tile-caption.is-under { color: var(--info-text); }
 
 .tile-meter, .tile-zones { position: relative; display: flex; height: 6px; border-radius: 3px; }
-.tile-meter { background: rgba(143, 161, 191, 0.12); }
+.tile-meter { background: rgb(var(--tint-rgb) / 0.12); }
 .tile-meter i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 50%, transparent), var(--accent)); }
-.tile-meter b, .tile-zones b { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: #eef3fb; box-shadow: 0 0 0 2px #0c141e; }
+.tile-meter b, .tile-zones b { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background:color-mix(in srgb, #eef3fb calc(100% - var(--dim)), #000); box-shadow: 0 0 0 2px var(--deep); }
 .tile-zones { gap: 2px; }
 .tile-zones i { flex-basis: 0; min-width: 0; border-radius: 2px; }
 .tile-spark { width: 100%; height: 16px; overflow: visible; }

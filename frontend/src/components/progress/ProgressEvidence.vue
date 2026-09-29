@@ -66,7 +66,7 @@ const interpretation = computed(() => {
 
 <style scoped>
 .evidence { --signal: var(--accent-strong); display: grid; grid-template-columns: 1fr 1fr; column-gap: clamp(24px, 5vw, 72px); padding: 32px 0; border-top: 1px solid var(--border); }
-.improving { --signal: #93dfba; }.declining { --signal: #edbd8b; }
+.improving { --signal:color-mix(in srgb, #93dfba calc(100% - var(--dim)), #000); }.declining { --signal:color-mix(in srgb, #edbd8b calc(100% - var(--dim)), #000); }
 .eyebrow { color: var(--muted-soft); font-size: 10px; font-weight: 650; letter-spacing: .09em; text-transform: uppercase; }.eyebrow>span { margin: 0 7px; color: var(--border-strong); }
 .evidence-story h4 { font-family: var(--font-display); font-size: clamp(20px, 2.5vw, 25px); font-weight: 500; letter-spacing: -.035em; margin: 10px 0 18px; line-height: 1.25; overflow-wrap: anywhere; }
 .change { color: var(--signal); font-family: var(--font-display); font-size: clamp(24px, 3vw, 34px); line-height: 1.25; letter-spacing: -.04em; }.change>span { margin-right: 5px; }

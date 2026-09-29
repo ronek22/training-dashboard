@@ -166,11 +166,11 @@ const profile = computed(() => {
 .ride-summary { display: grid; gap: 18px; }
 .ride-profile { display: grid; gap: 8px; margin: 0; }
 .ride-profile svg { display: block; width: 100%; height: 120px; overflow: visible; }
-.ride-hr-line { fill: none; stroke: url(#ride-hr-zones); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.ride-profile figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; color: var(--dash-muted, #8fa1bf); font-size: 11px; }
+.ride-hr-line { fill: none; stroke:url(#ride-hr-zones); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.ride-profile figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; color: var(--dash-muted, var(--muted)); font-size: 11px; }
 .ride-legend { display: inline-flex; align-items: center; gap: 6px; }
 .ride-legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
-.ride-legend .is-hr { background: linear-gradient(90deg, #8b9bb4, #3b82f6, #22c55e, #eab308, #ef4444); }
+.ride-legend .is-hr { background:linear-gradient(90deg, #8b9bb4, #3b82f6, color-mix(in srgb, #22c55e calc(100% - var(--dim)), #000), color-mix(in srgb, #eab308 calc(100% - var(--dim)), #000), #ef4444); }
 .ride-legend .is-elevation { height: 8px; background: color-mix(in srgb, var(--accent) 30%, transparent); }
 .ride-axis { margin-left: auto; font-variant-numeric: tabular-nums; }
 </style>

@@ -150,51 +150,51 @@ const cards = computed(() => [
 .year { display: grid; gap: 16px; min-width: 0; }
 .year-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .year-head h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.4px; }
-.year-head p { margin: 4px 0 0; color: var(--dash-muted, #8fa1bf); font-size: 12px; }
-.year-head-meta { color: var(--dash-muted, #8fa1bf); font-size: 12px; font-variant-numeric: tabular-nums; }
+.year-head p { margin: 4px 0 0; color: var(--dash-muted, var(--muted)); font-size: 12px; }
+.year-head-meta { color: var(--dash-muted, var(--muted)); font-size: 12px; font-variant-numeric: tabular-nums; }
 
 .year-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .year-card {
   display: grid;
   gap: 14px;
   min-width: 0;
-  border: 1px solid rgba(145, 164, 197, 0.12);
+  border: 1px solid rgb(var(--tint-rgb) / 0.12);
   border-radius: 14px;
   background:
     radial-gradient(90% 60% at 100% 0%, color-mix(in srgb, var(--chart) 9%, transparent), transparent 70%),
-    rgba(17, 26, 38, 0.6);
+    rgb(var(--deep-rgb) / 0.6);
   padding: 18px 20px 16px;
 }
 .year-card-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
 .year-card-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 11px; background: color-mix(in srgb, var(--chart) 14%, transparent); color: var(--chart); }
 .year-card-name { display: grid; min-width: 0; }
 .year-card-name strong { font-size: 14px; font-weight: 600; }
-.year-card-name small { color: var(--dash-muted, #8fa1bf); font-size: 11px; }
+.year-card-name small { color: var(--dash-muted, var(--muted)); font-size: 11px; }
 .year-card-total { display: flex; align-items: baseline; gap: 4px; }
 .year-card-total strong { font-size: 30px; font-weight: 650; letter-spacing: -0.8px; line-height: 1; font-variant-numeric: tabular-nums; }
-.year-card-total span { color: var(--dash-muted, #8fa1bf); font-size: 12px; }
+.year-card-total span { color: var(--dash-muted, var(--muted)); font-size: 12px; }
 
 .year-chart { display: block; width: 100%; height: auto; overflow: visible; }
-.year-grid-line { stroke: rgba(143, 161, 191, 0.08); stroke-width: 1; }
+.year-grid-line { stroke: rgb(var(--tint-rgb) / 0.08); stroke-width: 1; }
 .year-bar { fill: var(--chart); opacity: 0.2; transition: opacity 120ms; }
 .year-bar.is-peak { opacity: 0.42; }
 .year-bar.is-active { opacity: 0.85; }
 .year-line { fill: none; stroke: var(--chart); stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; }
 .year-line-glow { fill: none; stroke: var(--chart); stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; opacity: 0.12; filter: blur(3px); }
 .year-projection { stroke: var(--chart); stroke-width: 1.6; stroke-dasharray: 4 5; opacity: 0.55; }
-.year-projection-dot { fill: #111a26; stroke: var(--chart); stroke-width: 1.5; opacity: 0.7; }
+.year-projection-dot { fill: var(--deep); stroke: var(--chart); stroke-width: 1.5; opacity: 0.7; }
 .year-last-halo { fill: var(--chart); opacity: 0.16; }
-.year-last-dot { fill: var(--chart); stroke: #111a26; stroke-width: 1.5; }
-.year-month { fill: #7d8da6; font-size: 9px; }
-.year-month.is-future { fill: #4b5a70; }
+.year-last-dot { fill: var(--chart); stroke: var(--deep); stroke-width: 1.5; }
+.year-month { fill:#7d8da6; font-size: 9px; }
+.year-month.is-future { fill:#4b5a70; }
 .year-hit { fill: transparent; cursor: crosshair; outline: none; }
 .year-hit:focus-visible { fill: color-mix(in srgb, var(--chart) 6%, transparent); }
 
-.year-foot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 40px; margin: 0; border-top: 1px solid rgba(145, 164, 197, 0.1); padding-top: 12px; }
+.year-foot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 40px; margin: 0; border-top: 1px solid rgb(var(--tint-rgb) / 0.1); padding-top: 12px; }
 .year-foot.is-detail { grid-template-columns: repeat(4, minmax(0, 1fr)); border-top-color: color-mix(in srgb, var(--chart) 35%, transparent); }
 .year-foot div { min-width: 0; }
-.year-foot dt { overflow: hidden; color: var(--dash-muted, #8fa1bf); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.year-foot dd { margin: 3px 0 0; overflow: hidden; color: var(--dash-soft, #c7d3e6); font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.year-foot dt { overflow: hidden; color: var(--dash-muted, var(--muted)); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.year-foot dd { margin: 3px 0 0; overflow: hidden; color: var(--dash-soft, var(--text-soft)); font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .year-foot dd.is-pace { color: var(--chart); font-weight: 600; }
 
 @media (max-width: 1100px) {

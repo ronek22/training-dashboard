@@ -93,14 +93,14 @@ const tiles = computed(() => {
   border-radius: 10px;
   padding: 9px 12px;
 }
-.strength-lifts li:nth-child(odd) { background: rgba(6, 11, 18, 0.32); }
-.strength-lift-order { color: var(--dash-muted, #8fa1bf); font-size: 11px; font-variant-numeric: tabular-nums; }
+.strength-lifts li:nth-child(odd) { background: rgb(var(--deep-rgb) / 0.32); }
+.strength-lift-order { color: var(--dash-muted, var(--muted)); font-size: 11px; font-variant-numeric: tabular-nums; }
 .strength-lift-name { display: grid; min-width: 0; }
 .strength-lift-name strong { overflow: hidden; color: var(--text); font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.strength-lift-name small { color: var(--dash-muted, #8fa1bf); font-size: 11px; font-variant-numeric: tabular-nums; }
-.strength-lift-bar { position: relative; height: 5px; border-radius: 3px; background: rgba(143, 161, 191, 0.1); }
+.strength-lift-name small { color: var(--dash-muted, var(--muted)); font-size: 11px; font-variant-numeric: tabular-nums; }
+.strength-lift-bar { position: relative; height: 5px; border-radius: 3px; background: rgb(var(--tint-rgb) / 0.1); }
 .strength-lift-bar i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent); opacity: 0.8; }
-.strength-lift-volume { color: var(--dash-soft, #c7d3e6); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
-.strength-unlinked { margin: 0; border-radius: 12px; background: rgba(6, 11, 18, 0.35); padding: 14px 16px; color: var(--dash-muted, #8fa1bf); font-size: 13px; }
+.strength-lift-volume { color: var(--dash-soft, var(--text-soft)); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+.strength-unlinked { margin: 0; border-radius: 12px; background: rgb(var(--deep-rgb) / 0.35); padding: 14px 16px; color: var(--dash-muted, var(--muted)); font-size: 13px; }
 .strength-unlinked a { margin-left: 6px; color: var(--accent); text-decoration: none; }
 </style>

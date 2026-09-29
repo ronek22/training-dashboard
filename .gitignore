@@ -12,3 +12,4 @@ backend/.venv/
 .codex-planning-helper.pid
 .codex-planning-helper.log
 docs/project-ideas.lock
+.playwright-cli/

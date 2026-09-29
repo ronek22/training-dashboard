@@ -66,6 +66,20 @@ class PlanDayComparisonTests(unittest.TestCase):
             )
             """
         )
+        # Recorded in-app sessions take display priority in _attach_strength_plan_identity (mirrors db.py).
+        self.conn.execute(
+            """
+            CREATE TABLE strength_workout_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                template_id INTEGER,
+                template_name TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'active',
+                started_at TEXT NOT NULL,
+                completed_at TEXT,
+                linked_activity_id TEXT
+            )
+            """
+        )
 
     def tearDown(self):
         self.conn.close()

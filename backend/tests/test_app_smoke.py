@@ -10,14 +10,24 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 
+def _is_app_module(name):
+    return name == "backend.app" or name.startswith("backend.app.")
+
+
 def import_fresh_app():
-    for name in list(sys.modules):
-        if name == "backend.app" or name.startswith("backend.app."):
-            sys.modules.pop(name)
+    """Re-import the app so DB_PATH picks up the test database; returns the app and the modules it replaced."""
+    replaced = {name: sys.modules.pop(name) for name in list(sys.modules) if _is_app_module(name)}
 
     import backend.app.main as main_module
 
-    return main_module.app
+    return main_module.app, replaced
+
+
+def restore_app_modules(replaced):
+    # Put back the modules other test files imported, so their patches and lazy imports agree.
+    for name in [name for name in sys.modules if _is_app_module(name)]:
+        sys.modules.pop(name)
+    sys.modules.update(replaced)
 
 
 class AppSmokeTests(unittest.TestCase):
@@ -25,8 +35,9 @@ class AppSmokeTests(unittest.TestCase):
     def setUpClass(cls):
         cls.temp_dir = tempfile.TemporaryDirectory()
         os.environ["TRAINING_DB_PATH"] = os.path.join(cls.temp_dir.name, "training-test.db")
+        app, cls.replaced_modules = import_fresh_app()
         cls.client = TestClient(
-            import_fresh_app(),
+            app,
             base_url="http://localhost:8000",
             headers={"Accept": "application/json, text/event-stream"},
         )
@@ -36,6 +47,7 @@ class AppSmokeTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.client.__exit__(None, None, None)
         os.environ.pop("TRAINING_DB_PATH", None)
+        restore_app_modules(cls.replaced_modules)
         cls.temp_dir.cleanup()
 
     def _find_plan(self, week_start: str):
@@ -266,7 +278,7 @@ class AppSmokeTests(unittest.TestCase):
             "/activities",
             json={
                 "id": "run-1",
-                "date": "2026-06-24",
+                "date": (datetime.now().date() - timedelta(days=3)).isoformat(),
                 "type": "Run",
                 "workout_intent": "easy",
                 "name": "Easy Run",
@@ -1249,9 +1261,9 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertEqual(structured["recurring_lifts"][0]["exercise_name"], "Bench Press")
         self.assertEqual(
             structured["data_source"]["kind"],
-            "fitbod_enriched_strength_history",
+            "linked_exercise_level_strength_history",
         )
-        self.assertIn("Unmatched Fitbod sessions", structured["data_source"]["exclusion_note"])
+        self.assertIn("Unlinked sessions", structured["data_source"]["exclusion_note"])
 
         matched_activity_ids = {
             session["matched_activity"]["id"]

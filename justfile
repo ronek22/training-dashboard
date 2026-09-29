@@ -38,7 +38,9 @@ codex-helper-status:
 
 # Run the backend test suite.
 test-backend:
-    PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" python3 -m unittest discover -s backend/tests
+    # Prefer the backend virtualenv (pip install -r backend/requirements.txt); fall back to .tmp_test_deps.
+    if [ -x "{{root}}/backend/.venv/bin/python" ]; then py="{{root}}/backend/.venv/bin/python"; else py=python3; fi; \
+    PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest discover -s backend/tests
 
 # Serve the built iPhone app on the Mac's Wi-Fi IP (find it in System Settings > Wi-Fi > Details).
 phone ip:

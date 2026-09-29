@@ -1,6 +1,6 @@
 import unittest
 
-from app.services.weather import summarize_daily_forecast_payload, summarize_weather_payload
+from backend.app.services.weather import summarize_daily_forecast_payload, summarize_weather_payload
 
 
 class WeatherSummaryTests(unittest.TestCase):

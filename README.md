@@ -98,7 +98,7 @@ just test-backend
 
 Notes:
 
-- The test command uses a workspace-local dependency directory at `.tmp_test_deps/`.
+- The test command uses `backend/.venv` when it exists (`python3 -m venv backend/.venv && backend/.venv/bin/pip install -r backend/requirements.txt`), otherwise system `python3` with a workspace-local dependency directory at `.tmp_test_deps/`.
 - The test app uses `TRAINING_DB_PATH` to point SQLite at a temporary test database instead of `/data/training.db`.
 - In normal app usage, `TRAINING_DB_PATH` is optional and defaults to `/data/training.db`.
 

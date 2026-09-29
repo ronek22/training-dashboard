@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from app.services.session_comparisons import endurance_comparison, pace_seconds, strength_comparisons
+from backend.app.services.session_comparisons import endurance_comparison, pace_seconds, strength_comparisons
 
 
 def activity(id, day, **changes):
@@ -35,7 +35,7 @@ class ComparisonTests(unittest.TestCase):
         self.assertEqual(result['excluded'], 2)
         self.assertIsNone(pace_seconds('nan'))
 
-    @patch('app.services.session_comparisons._load_strength_rows')
+    @patch('backend.app.services.session_comparisons._load_strength_rows')
     def test_strength_exact_weight_best_work_set_and_count_warning(self, loader):
         sessions = [dict(id=i, workout_date=f'2026-08-0{i}', activity_id=str(i), title='Lift', activity_name='Lift', source='trainlog') for i in (1, 2)]
         exercises = [dict(id=i, session_id=i, exercise_name='Bench Press') for i in (1, 2)]

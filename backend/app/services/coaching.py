@@ -347,6 +347,8 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
         status = "steady"
 
     observations = []
+    # Missing support and conflicts are what the athlete can act on, so they lead the truncated list.
+    priority_observations = []
     for goal in constrained_goals[:2]:
         if (goal.get("constraint_summary") or {}).get("summary"):
             observations.append(goal["constraint_summary"]["summary"])
@@ -358,12 +360,12 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
             _append_unique(observations, goal["weekly_requirement_summary"])
         if goal.get("requirement_support_status") == "unsupported" and goal.get("unsupported_requirements"):
             _append_unique(
-                observations,
+                priority_observations,
                 f"{goal['title']} is unsupported this week: {goal['unsupported_requirements'][0]['label']} is still missing.",
             )
         elif goal.get("requirement_support_status") == "weak" and goal.get("unsupported_requirements"):
             _append_unique(
-                observations,
+                priority_observations,
                 f"{goal['title']} only has partial support: {goal['unsupported_requirements'][0]['label']} is still thin.",
             )
         if goal.get("risk_summary", {}).get("status") in {"at_risk", "under_pressure"}:
@@ -386,7 +388,8 @@ def summarize_goals(context: dict, active_plan: Optional[dict]) -> dict:
     if deferred_goals:
         observations.append("Run-volume goals are temporarily backgrounded while recovery is the priority.")
     for conflict in plan_conflicts[:2]:
-        _append_unique(observations, conflict.get("summary"))
+        _append_unique(priority_observations, conflict.get("summary"))
+    observations = priority_observations + [item for item in observations if item not in priority_observations]
     if not observations:
         observations.append("Active goals are present, but plan support is still fairly lightweight.")
 

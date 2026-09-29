@@ -8,13 +8,22 @@ from datetime import date, timedelta
 from fastapi.testclient import TestClient
 
 
+def _is_app_module(name):
+    return name == "backend.app" or name.startswith("backend.app.")
+
+
 def import_fresh_app():
-    for name in list(sys.modules):
-        if name == "backend.app" or name.startswith("backend.app."):
-            sys.modules.pop(name)
+    replaced = {name: sys.modules.pop(name) for name in list(sys.modules) if _is_app_module(name)}
     import backend.app.main as main_module
 
-    return main_module.app
+    return main_module.app, replaced
+
+
+def restore_app_modules(replaced):
+    # Put back the modules other test files imported, so their patches and lazy imports agree.
+    for name in [name for name in sys.modules if _is_app_module(name)]:
+        sys.modules.pop(name)
+    sys.modules.update(replaced)
 
 
 class StrengthWorkoutTests(unittest.TestCase):
@@ -22,13 +31,15 @@ class StrengthWorkoutTests(unittest.TestCase):
     def setUpClass(cls):
         cls.temp_dir = tempfile.TemporaryDirectory()
         os.environ["TRAINING_DB_PATH"] = os.path.join(cls.temp_dir.name, "strength-workouts.db")
-        cls.client = TestClient(import_fresh_app(), base_url="http://localhost:8000")
+        app, cls.replaced_modules = import_fresh_app()
+        cls.client = TestClient(app, base_url="http://localhost:8000")
         cls.client.__enter__()
 
     @classmethod
     def tearDownClass(cls):
         cls.client.__exit__(None, None, None)
         os.environ.pop("TRAINING_DB_PATH", None)
+        restore_app_modules(cls.replaced_modules)
         cls.temp_dir.cleanup()
 
     def test_one_time_session_preserves_instructions_without_creating_template(self):

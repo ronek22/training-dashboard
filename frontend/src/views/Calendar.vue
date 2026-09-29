@@ -49,12 +49,12 @@
         <div class="weekday-row" :class="{ 'is-week-view': activeMode === 'week' }" aria-hidden="true"><span v-for="label in weekdayLabels" :key="label">{{ label }}</span><span v-if="activeMode === 'month'" class="week-total-label">Week</span></div>
 
         <div v-if="activeMode === 'week'" class="week-grid">
-          <CalendarDayCell v-for="day in activeWeek?.days || []" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :time-state="timeState(day.date)" :max-events="4" @select="openDay" />
+          <CalendarDayCell v-for="day in activeWeek?.days || []" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :time-state="timeState(day.date)" :max-events="4" v-bind="dragProps(day.date)" @select="openDay" @drag-start="onDragStart" @drag-end="onDragEnd" @drop="onDrop" />
         </div>
 
         <div v-else class="month-grid">
           <template v-for="week in monthData?.weeks || []" :key="week.week_start">
-            <CalendarDayCell v-for="day in week.days" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :outside="!isActiveMonth(day.date)" :time-state="timeState(day.date)" compact :max-events="3" @select="openDay" />
+            <CalendarDayCell v-for="day in week.days" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :outside="!isActiveMonth(day.date)" :time-state="timeState(day.date)" compact :max-events="3" v-bind="dragProps(day.date)" @select="openDay" @drag-start="onDragStart" @drag-end="onDragEnd" @drop="onDrop" />
             <aside class="week-total" :class="{ 'is-current': week.week_start === currentWeekStart }" :title="week.total_sessions ? `${week.total_sessions} ${week.total_sessions === 1 ? 'session' : 'sessions'}` : null">
               <span class="wt-range">{{ formatWeekRange(week.week_start, week.week_end) }}</span>
               <strong>{{ week.total_duration_min ? formatHours(week.total_duration_min) : '–' }}</strong>
@@ -171,6 +171,14 @@
         </div>
       </Transition>
     </Teleport>
+
+    <Transition name="pop">
+      <div v-if="moveNotice" class="move-toast" :class="{ 'is-error': moveNotice.error }" role="status">
+        <span>{{ moveNotice.text }}</span>
+        <button v-if="moveNotice.undo" type="button" @click="undoMove">Undo</button>
+        <button type="button" class="toast-close" aria-label="Dismiss" @click="moveNotice = null">×</button>
+      </div>
+    </Transition>
 
     <FeedbackDialog :open="Boolean(dialogActivity)" :activity="dialogActivity" :initial-feedback="dialogActivity?.feedback || null" :saving="feedbackSaving" :message="feedbackMessage" @close="closeFeedbackDialog" @save="saveFeedback" />
   </main>
@@ -449,6 +457,50 @@ const saveFeedback = async (payload) => {
   } catch (err) { feedbackMessage.value = err?.response?.data?.detail || 'Feedback save failed.' } finally { feedbackSaving.value = false }
 }
 
+// Drag & drop: rearrange planned sessions inside one week. Past days and days with a recorded activity are locked (the API enforces the same).
+const dragFrom = ref(null)
+const moveBusy = ref(false)
+const moveNotice = ref(null)
+let noticeTimer = null
+const weekKeyOf = (date) => format(startOfWeek(safeDate(date), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+const dayActivities = (date) => displayDays.value.find((day) => day.date === date)?.activities || []
+const isMovable = (date) => date >= todayKey && !dayActivities(date).length
+const canDragFrom = (date) => !moveBusy.value && Boolean(planFor(date)) && isMovable(date)
+const dropStateFor = (date) => {
+  if (!dragFrom.value || date === dragFrom.value) return ''
+  return weekKeyOf(date) === weekKeyOf(dragFrom.value) && isMovable(date) ? 'valid' : 'invalid'
+}
+const dragProps = (date) => ({ draggablePlan: canDragFrom(date), dragging: dragFrom.value === date, dropState: dropStateFor(date) })
+const showNotice = (text, { error = false, undo = null } = {}) => {
+  window.clearTimeout(noticeTimer)
+  moveNotice.value = { text, error, undo }
+  noticeTimer = window.setTimeout(() => { moveNotice.value = null }, error ? 6000 : 8000)
+}
+const onDragStart = (date) => { popupOpen.value = false; dragFrom.value = date }
+const onDragEnd = () => { dragFrom.value = null }
+const runMove = async (fromDate, toDate, { undoable = true } = {}) => {
+  moveBusy.value = true
+  try {
+    const { data } = await api.swapWeeklyPlanDays({ from_date: fromDate, to_date: toDate })
+    await Promise.all([fetchPlans(), loadWeek(), loadMonth()])
+    selectedDate.value = toDate
+    const label = (date) => format(safeDate(date), 'EEE d MMM')
+    showNotice(data.swapped ? `Swapped ${label(fromDate)} and ${label(toDate)}` : `Moved to ${label(toDate)}`, { undo: undoable ? { fromDate: toDate, toDate: fromDate } : null })
+  } catch (err) {
+    showNotice(err?.response?.data?.detail || 'Could not move the session.', { error: true })
+  } finally { moveBusy.value = false }
+}
+const onDrop = (date) => {
+  const fromDate = dragFrom.value
+  dragFrom.value = null
+  if (fromDate && fromDate !== date) runMove(fromDate, date)
+}
+const undoMove = () => {
+  const undo = moveNotice.value?.undo
+  moveNotice.value = null
+  if (undo) runMove(undo.fromDate, undo.toDate, { undoable: false })
+}
+
 watch([popupOpen, selectedDate, planCyclingWorkout, planDetailView], () => { if (popupOpen.value) nextTick(positionPopup) }, { flush: 'post' })
 
 onMounted(() => {
@@ -459,6 +511,7 @@ onMounted(() => {
   window.addEventListener('scroll', positionPopup, true)
 })
 onBeforeUnmount(() => {
+  window.clearTimeout(noticeTimer)
   window.removeEventListener('keydown', onShortcut)
   window.removeEventListener('pointerdown', onPointerDown)
   window.removeEventListener('resize', positionPopup)
@@ -601,6 +654,11 @@ a.pop-title:hover { text-decoration: underline; }
 .pop-enter-active, .pop-leave-active { transition: opacity .12s var(--motion-ease-standard), transform .12s var(--motion-ease-standard); }
 .pop-enter-from, .pop-leave-to { opacity: 0; transform: translateY(4px) scale(.98); }
 
+.move-toast { position: fixed; left: 50%; bottom: 24px; z-index: 40; display: flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 32px)); padding: 10px 12px 10px 16px; transform: translateX(-50%); border-radius: 12px; background: var(--deep); box-shadow: 0 12px 36px rgb(var(--shadow-rgb) / .55), 0 0 0 1px rgb(var(--ov-rgb) / .08); font-size: 13px; }
+.move-toast.is-error { box-shadow: 0 12px 36px rgb(var(--shadow-rgb) / .55), 0 0 0 1px rgba(239, 94, 94, .5); }
+.move-toast button { min-height: 28px; padding: 0 10px; border: 0; border-radius: 7px; background: rgb(var(--ov-rgb) / .1); color: var(--text); cursor: pointer; font-size: 12px; font-weight: 650; }
+.move-toast button:hover { background: rgb(var(--ov-rgb) / .18); }
+.move-toast .toast-close { padding: 0 8px; background: transparent; color: var(--muted-soft); font-size: 18px; line-height: 1; }
 .calendar-state { display: grid; justify-items: center; gap: 8px; padding: 32px; border-radius: 14px; background: var(--bg-elevated); }
 .error-state strong { color: var(--danger); }
 .error-state button { padding: 7px 14px; border: 0; border-radius: 8px; background: var(--surface3); color: var(--text); cursor: pointer; }

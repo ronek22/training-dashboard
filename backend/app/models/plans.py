@@ -64,3 +64,8 @@ class WeeklyPlanAdjustment(BaseModel):
     overview: Optional[str] = None
     notes: Optional[str] = None
     adaptation_reason: Optional[str] = None
+
+
+class WeeklyPlanSwap(BaseModel):
+    from_date: str
+    to_date: str

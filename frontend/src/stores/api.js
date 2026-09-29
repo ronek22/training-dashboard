@@ -99,6 +99,7 @@ export const useApi = () => ({
   getWeeklyPlanTrends: (params) => api.get('/plans/weekly/trends', { params }),
   previewWeeklyPlanAdjustment: (payload) => api.post('/plans/weekly/adjust/preview', payload),
   adjustWeeklyPlan: (payload) => api.post('/plans/weekly/adjust', payload),
+  swapWeeklyPlanDays: (payload) => api.post('/plans/weekly/swap', payload),
   startCodexWeeklyPlan: (payload) => codexHelper.post('/weekly-plan', payload),
   getCodexWeeklyPlanJob: (jobId) => codexHelper.get(`/weekly-plan/${encodeURIComponent(jobId)}`),
   startCodexWeeklyPlanRevision: (payload) => codexHelper.post('/weekly-plan-revision', payload),

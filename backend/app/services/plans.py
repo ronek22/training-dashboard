@@ -27,7 +27,7 @@ from .settings import (
     get_workout_template_settings_for_conn,
     modality_for_session_type,
 )
-from ..models.plans import WeeklyPlan, WeeklyPlanAdjustment, WeeklyPlanDay, WeeklyPlanRevision
+from ..models.plans import WeeklyPlan, WeeklyPlanAdjustment, WeeklyPlanDay, WeeklyPlanRevision, WeeklyPlanSwap
 from ..repositories.plans import (
     count_weekly_plan_revision_rows,
     create_weekly_plan_revision_row,
@@ -1575,5 +1575,110 @@ def adjust_weekly_plan_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdju
         "preserved_dates": sorted(protected_dates),
         "diff": diff,
         "latest_revision": serialize_weekly_plan_revision_row(get_latest_weekly_plan_revision_row(conn, adjustment.week_start)),
+        "plan": serialize_weekly_plan(updated_row, conn) if updated_row else None,
+    }
+
+
+def swap_weekly_plan_days_data(conn: sqlite3.Connection, swap: WeeklyPlanSwap) -> dict:
+    """Exchange the planned sessions of two dates in one week (or move one onto an empty date).
+
+    Session ids travel with the sessions; only the date and weekday label change.
+    Past days and days that already have a recorded activity are protected.
+    """
+    parse_plan_date(swap.from_date)
+    parse_plan_date(swap.to_date)
+    from_date = datetime.strptime(swap.from_date, "%Y-%m-%d").date()
+    to_date = datetime.strptime(swap.to_date, "%Y-%m-%d").date()
+    if from_date == to_date:
+        raise HTTPException(status_code=400, detail="Pick two different days")
+    week_start = from_date.fromordinal(from_date.toordinal() - from_date.weekday()).isoformat()
+    if week_start != to_date.fromordinal(to_date.toordinal() - to_date.weekday()).isoformat():
+        raise HTTPException(status_code=400, detail="Sessions can only be moved within the same week")
+
+    plan_row = get_weekly_plan_row(conn, week_start)
+    if not plan_row:
+        raise HTTPException(status_code=404, detail=f"Weekly plan not found for {week_start}")
+
+    template_settings = get_workout_template_settings_for_conn(conn)
+    restrictions = get_modality_restrictions_for_conn(conn)
+    existing_plan = prepare_weekly_plan_for_storage(WeeklyPlan(
+        week_start=plan_row["week_start"],
+        title=plan_row["title"],
+        focus=plan_row["focus"],
+        overview=plan_row["overview"],
+        days=[WeeklyPlanDay(**day) for day in json.loads(plan_row["days_json"])],
+        notes=plan_row["notes"],
+    ), template_settings=template_settings, restrictions=restrictions)
+
+    by_date = {day.date: day for day in existing_plan.days}
+    source = by_date.get(swap.from_date)
+    if source is None:
+        raise HTTPException(status_code=404, detail=f"Nothing is planned on {swap.from_date}")
+    target = by_date.get(swap.to_date)
+
+    today = datetime.now().date().isoformat()
+    busy_dates = {
+        row["date"]
+        for row in conn.execute(
+            "SELECT DISTINCT date FROM activities WHERE date IN (?, ?)",
+            (swap.from_date, swap.to_date),
+        ).fetchall()
+    }
+    blocked = sorted(
+        date_value for date_value in (swap.from_date, swap.to_date)
+        if date_value < today or date_value in busy_dates
+    )
+    if blocked:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot move sessions on past days or days with a recorded activity: {', '.join(blocked)}",
+        )
+
+    def relocated(day: WeeklyPlanDay, date_value: str) -> WeeklyPlanDay:
+        return day.model_copy(update={
+            "date": date_value,
+            "label": datetime.strptime(date_value, "%Y-%m-%d").strftime("%a"),
+        })
+
+    new_days = [day for day in existing_plan.days if day.date not in {swap.from_date, swap.to_date}]
+    new_days.append(relocated(source, swap.to_date))
+    if target is not None:
+        new_days.append(relocated(target, swap.from_date))
+    new_days.sort(key=lambda item: item.date)
+
+    reason = f"Moved {source.title} from {swap.from_date} to {swap.to_date}"
+    if target is not None:
+        reason = f"Swapped {source.title} ({swap.from_date}) with {target.title} ({swap.to_date})"
+    updated_plan = prepare_weekly_plan_for_storage(WeeklyPlan(
+        week_start=existing_plan.week_start,
+        title=existing_plan.title,
+        focus=existing_plan.focus,
+        overview=existing_plan.overview,
+        days=new_days,
+        notes=existing_plan.notes,
+    ), template_settings=template_settings, restrictions=restrictions)
+
+    changed_dates = sorted({swap.from_date, swap.to_date})
+    create_weekly_plan_revision_row(
+        conn,
+        WeeklyPlanRevision(
+            week_start=existing_plan.week_start,
+            effective_from=changed_dates[0],
+            adaptation_reason=reason,
+            changed_dates=changed_dates,
+            preserved_dates=sorted(day.date for day in existing_plan.days if day.date not in changed_dates),
+            previous_plan=existing_plan,
+            updated_plan=updated_plan,
+        ),
+    )
+    upsert_weekly_plan_row(conn, updated_plan)
+    conn.commit()
+
+    updated_row = get_weekly_plan_row(conn, week_start)
+    return {
+        "status": "ok",
+        "week_start": week_start,
+        "changed_dates": changed_dates,
+        "swapped": target is not None,
         "plan": serialize_weekly_plan(updated_row, conn) if updated_row else None,
     }

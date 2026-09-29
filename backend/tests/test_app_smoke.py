@@ -2524,6 +2524,46 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertEqual(weekly_list.status_code, 200)
         self.assertEqual(weekly_list.json()[0]["week_start"], week_start.isoformat())
 
+    def test_swap_weekly_plan_days_exchanges_sessions_within_a_week(self):
+        today = datetime.now().date()
+        week_start = today - timedelta(days=today.weekday()) + timedelta(days=28)
+        first, second, empty = (week_start + timedelta(days=offset) for offset in (1, 2, 4))
+
+        def plan_day(day, title, session_type, intent):
+            return {"date": day.isoformat(), "label": day.strftime("%a"), "session_type": session_type,
+                    "workout_intent": intent, "title": title, "target_duration_min": 45}
+
+        created = self.client.post("/plans/weekly", json={
+            "week_start": week_start.isoformat(),
+            "title": "Swap Week",
+            "days": [plan_day(first, "Upper body", "strength", "strength_upper"),
+                     plan_day(second, "Easy spin", "ride", "easy")],
+        })
+        self.assertEqual(created.status_code, 201)
+
+        swapped = self.client.post("/plans/weekly/swap", json={"from_date": first.isoformat(), "to_date": second.isoformat()})
+        self.assertEqual(swapped.status_code, 200)
+        body = swapped.json()
+        self.assertTrue(body["swapped"])
+        by_date = {day["date"]: day for day in body["plan"]["days"]}
+        self.assertEqual(by_date[first.isoformat()]["title"], "Easy spin")
+        self.assertEqual(by_date[first.isoformat()]["label"], first.strftime("%a"))
+        self.assertEqual(by_date[second.isoformat()]["title"], "Upper body")
+
+        moved = self.client.post("/plans/weekly/swap", json={"from_date": second.isoformat(), "to_date": empty.isoformat()})
+        self.assertEqual(moved.status_code, 200)
+        self.assertFalse(moved.json()["swapped"])
+        dates = {day["date"]: day["title"] for day in moved.json()["plan"]["days"]}
+        self.assertEqual(dates, {first.isoformat(): "Easy spin", empty.isoformat(): "Upper body"})
+        self.assertEqual(moved.json()["plan"]["revision_count"], 2)
+
+        outside_week = self.client.post("/plans/weekly/swap", json={"from_date": first.isoformat(), "to_date": (week_start + timedelta(days=8)).isoformat()})
+        self.assertEqual(outside_week.status_code, 400)
+        past = self.client.post("/plans/weekly/swap", json={"from_date": (today - timedelta(days=1)).isoformat(), "to_date": today.isoformat()})
+        self.assertIn(past.status_code, {400, 404})
+        nothing = self.client.post("/plans/weekly/swap", json={"from_date": second.isoformat(), "to_date": first.isoformat()})
+        self.assertEqual(nothing.status_code, 404)
+
     def test_dashboard_prefers_current_week_plan_over_next_week(self):
         today = datetime.now().date()
         current_week_start = today - timedelta(days=today.weekday())

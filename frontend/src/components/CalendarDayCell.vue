@@ -8,9 +8,14 @@
       'is-past': timeState === 'past',
       'is-future': timeState === 'future',
       'is-compact': compact,
+      'is-drop-valid': dropState === 'valid',
+      'is-drop-invalid': dropState === 'invalid',
     }"
     :data-date="day.date"
     @click="$emit('select', day.date)"
+    @dragenter="onDragEnter"
+    @dragover="onDragOver"
+    @drop="onDrop"
   >
     <button class="day-select" type="button" :tabindex="selected ? 0 : -1" :aria-label="ariaLabel" :aria-pressed="selected" @click.stop="$emit('select', day.date)">
       <span class="day-heading">
@@ -49,10 +54,13 @@
         v-if="visiblePlan"
         type="button"
         class="calendar-event"
-        :class="[`tone-${activityTone(visiblePlan.session_type)}`, `status-${planStatusTone(visiblePlan)}`, { 'is-rest': isRestPlan(visiblePlan) }]"
+        :class="[`tone-${activityTone(visiblePlan.session_type)}`, `status-${planStatusTone(visiblePlan)}`, { 'is-rest': isRestPlan(visiblePlan), 'is-draggable': draggablePlan, 'is-dragging': dragging }]"
+        :draggable="draggablePlan"
         :tabindex="selected ? 0 : -1"
         :title="planTitle(visiblePlan)"
         @click.stop="$emit('select', day.date)"
+        @dragstart="onDragStart"
+        @dragend="$emit('drag-end')"
       >
         <span class="event-icon"><ActivityIcon :type="visiblePlan.session_type" :tone="activityTone(visiblePlan.session_type)" :size="compact ? 13 : 17" /></span>
         <span class="event-copy">
@@ -89,9 +97,31 @@ const props = defineProps({
   compact: Boolean,
   timeState: { type: String, default: 'past' },
   maxEvents: { type: Number, default: 2 },
+  draggablePlan: Boolean,
+  dragging: Boolean,
+  dropState: { type: String, default: '' },
 })
 
-defineEmits(['select'])
+const emit = defineEmits(['select', 'drag-start', 'drag-end', 'drag-over', 'drop'])
+
+const onDragStart = (event) => {
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', props.day.date)
+  emit('drag-start', props.day.date)
+}
+// Only accept the drop when the parent marked this day as a valid target; the parent owns the drag state.
+const onDragEnter = (event) => { if (props.dropState === 'valid') event.preventDefault() }
+const onDragOver = (event) => {
+  emit('drag-over', props.day.date)
+  if (props.dropState !== 'valid') return
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'move'
+}
+const onDrop = (event) => {
+  if (props.dropState !== 'valid') return
+  event.preventDefault()
+  emit('drop', props.day.date)
+}
 
 const activities = computed(() => props.day.activities || [])
 const comparison = computed(() => props.plan?.comparison || null)
@@ -198,12 +228,17 @@ const planStatusLabel = (item) => {
 .calendar-day.is-outside { opacity: .42; }
 .calendar-day.is-outside:hover { opacity: .75; }
 .calendar-day.is-today { background: color-mix(in srgb, var(--accent) 9%, var(--cell)); }
+.calendar-day.is-drop-valid { background: color-mix(in srgb, var(--accent) 16%, var(--cell)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent-strong) 70%, transparent); }
+.calendar-day.is-drop-invalid { opacity: .4; cursor: not-allowed; }
+.calendar-event.is-draggable { cursor: grab; }
+.calendar-event.is-draggable:active { cursor: grabbing; }
+.calendar-event.is-dragging { opacity: .45; }
 .calendar-day.is-selected { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent-strong) 65%, transparent); }
 
 .day-select { width: 100%; min-height: 28px; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 2px; border: 0; border-radius: 6px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 .day-heading { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .day-number { min-width: 26px; height: 26px; display: grid; place-items: center; border-radius: 13px; color: var(--text-soft); font-family: var(--font-display); font-size: 13px; font-weight: 650; }
-.is-today .day-number { background: #3f66d6; color: #fff; }
+.is-today .day-number { background:#3f66d6; color:#fff; }
 .day-month { color: var(--muted-soft); font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; }
 .day-hard { padding: 1px 7px; border-radius: 999px; background: rgba(243, 180, 77, .16); color:color-mix(in srgb, #ffc46b calc(100% - var(--dim)), #000); font-size: 11px; font-weight: 650; }
 

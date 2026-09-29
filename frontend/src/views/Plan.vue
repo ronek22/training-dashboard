@@ -871,9 +871,16 @@
         <Transition name="modal-pop" appear>
           <div v-if="plannedSessionDialog" class="plan-details-modal workout-brief card" :style="{ '--workout-accent': planAccent(plannedSessionDialog.session_type) }" role="dialog" aria-modal="true" aria-labelledby="workout-brief-title" @keydown.tab="trapWorkoutFocus">
             <header class="workout-brief-header">
-              <div class="workout-brief-top"><span class="workout-sport"><ActivityIcon v-if="isIconSessionType(plannedSessionDialog.session_type)" :type="plannedSessionDialog.session_type" :tone="activityTone(plannedSessionDialog.session_type)" :size="22" />{{ displaySessionType(plannedSessionDialog.session_type) }}</span><span>{{ plannedSessionDialog.label }} · {{ formatDay(plannedSessionDialog.date) }}</span><button ref="workoutCloseButton" class="plan-details-close" type="button" aria-label="Close planned workout details" @click="closePlannedSessionDetails">×</button></div>
+              <div class="workout-brief-top">
+                <span class="workout-sport-tile"><ActivityIcon v-if="isIconSessionType(plannedSessionDialog.session_type)" :type="plannedSessionDialog.session_type" :tone="activityTone(plannedSessionDialog.session_type)" :size="22" /></span>
+                <div class="workout-brief-kicker"><strong>{{ displaySessionType(plannedSessionDialog.session_type) }}</strong><span>{{ plannedSessionDialog.label }} · {{ formatDay(plannedSessionDialog.date) }}</span></div>
+                <button ref="workoutCloseButton" class="plan-details-close" type="button" aria-label="Close planned workout details" @click="closePlannedSessionDetails">×</button>
+              </div>
               <h2 id="workout-brief-title">{{ plannedSessionDialog.title }}</h2>
-              <div class="workout-brief-sub"><span>{{ [plannedSessionDialog.template_label, plannedSessionDialog.workout_intent_label, plannedSessionDialog.benchmark_label].filter(Boolean).join(' · ') || 'Planned session' }}</span><span class="session-match-status" :class="`match-${sessionMatch(plannedSessionDialog).tone}`"><span aria-hidden="true">{{ sessionMatch(plannedSessionDialog).icon }}</span>{{ sessionMatch(plannedSessionDialog).label }}</span></div>
+              <div class="workout-chips">
+                <span v-for="chip in [plannedSessionDialog.workout_intent_label, plannedSessionDialog.template_label, plannedSessionDialog.benchmark_label].filter((chip) => chip && chip !== plannedSessionDialog.title)" :key="chip" class="workout-chip">{{ chip }}</span>
+                <span class="session-match-status" :class="`match-${sessionMatch(plannedSessionDialog).tone}`"><span aria-hidden="true">{{ sessionMatch(plannedSessionDialog).icon }}</span>{{ sessionMatch(plannedSessionDialog).label }}</span>
+              </div>
               <dl v-if="workoutBriefTargets.length" class="workout-targets"><div v-for="target in workoutBriefTargets" :key="target.label"><dt>{{ target.label }}</dt><dd>{{ target.value }}</dd></div></dl>
             </header>
             <div class="workout-brief-content">
@@ -885,9 +892,13 @@
               />
               <p v-if="plannedSessionDialog.modality_restriction?.status && plannedSessionDialog.modality_restriction.status !== 'allowed'" class="workout-restriction">{{ plannedSessionDialog.modality_restriction.label }} · {{ plannedSessionDialog.modality_restriction.status }}</p>
               <template v-if="plannedSessionDetailView">
-                <section v-if="plannedSessionDetailView.prescriptionItems.length" class="workout-instructions"><h3>{{ plannedSessionDetailView.prescriptionTitle || 'The session' }}</h3><ol><li v-for="(item, index) in plannedSessionDetailView.prescriptionItems" :key="index"><span aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span><p>{{ item }}</p></li></ol></section>
-                <section v-if="plannedSessionDetailView.guidance.length" class="workout-instructions"><h3>{{ plannedSessionDetailView.prescriptionItems.length ? 'Keep in mind' : plannedSessionDetailView.lead || 'The session' }}</h3><ul><li v-for="(item, index) in plannedSessionDetailView.guidance" :key="index"><span aria-hidden="true">·</span><p>{{ item }}</p></li></ul></section>
-                <aside v-if="plannedSessionDetailView.optional.length" class="workout-alternative"><h3>If you need to adapt</h3><p v-for="(item, index) in plannedSessionDetailView.optional" :key="index">{{ item }}</p></aside>
+                <section v-if="plannedSessionDetailView.prescriptionItems.length" class="workout-instructions"><h3>{{ plannedSessionDetailView.prescriptionTitle || 'The session' }}</h3><ol><li v-for="(item, index) in plannedSessionDetailView.prescriptionItems" :key="index"><span aria-hidden="true">{{ index + 1 }}</span><p>{{ item }}</p></li></ol></section>
+                <section v-if="plannedSessionDetailView.guidance.length" class="workout-instructions" :class="{ 'is-lead': !plannedSessionDetailView.prescriptionItems.length && plannedSessionDetailView.guidance.length === 1 }">
+                  <h3>{{ plannedSessionDetailView.prescriptionItems.length ? 'Keep in mind' : plannedSessionDetailView.lead || 'The session' }}</h3>
+                  <p v-if="!plannedSessionDetailView.prescriptionItems.length && plannedSessionDetailView.guidance.length === 1" class="workout-lead">{{ plannedSessionDetailView.guidance[0] }}</p>
+                  <ul v-else><li v-for="(item, index) in plannedSessionDetailView.guidance" :key="index"><span aria-hidden="true"></span><p>{{ item }}</p></li></ul>
+                </section>
+                <aside v-if="plannedSessionDetailView.optional.length" class="workout-alternative"><h3><svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><path d="M3 5.5h9.5M10 3l2.5 2.5L10 8M13 10.5H3.5M6 8l-2.5 2.5L6 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>If you need to adapt</h3><p v-for="(item, index) in plannedSessionDetailView.optional" :key="index">{{ item }}</p></aside>
               </template>
               <p v-else class="workout-no-instructions">No additional instructions for this session.</p>
               <details v-if="plannedSessionDialog.planning_rule_reason || statusDetail(plannedSessionDialog.comparison) || plannedSessionDialog.goal_links?.length" class="workout-context"><summary>Why this session <span>Goals &amp; plan context</span></summary><div class="workout-context-content"><p v-if="plannedSessionDialog.planning_rule_reason">{{ plannedSessionDialog.planning_rule_reason }}</p><p v-if="statusDetail(plannedSessionDialog.comparison)">{{ statusDetail(plannedSessionDialog.comparison) }}</p><div v-for="goalLink in plannedSessionDialog.goal_links || []" :key="goalLink.goal_id" class="workout-goal"><div><strong>{{ goalLink.goal_title }}</strong><span v-if="goalLink.risk_label">{{ goalLink.risk_label }}</span></div><p>{{ [...new Set([goalLink.requirement_label, goalLink.support_reason].filter(Boolean))].join(' · ') }}</p></div></div></details>
@@ -906,6 +917,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
+import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail'
 
 const sessionTypeOptions = ['Run', 'Ride', 'WeightTraining', 'Recovery', 'Rest', 'Walk', 'Hike']
 // Mirrors normalize_plan_session_type in backend/app/services/plans.py.
@@ -1795,101 +1807,8 @@ const emptyStateCopy = (day) => {
   return 'No activity logged yet.'
 }
 
-const splitDetailSentences = (details) => details
-  .replace(/\s+/g, ' ')
-  .split(/(?<=[.!?])\s+/)
-  .map((part) => part.trim())
-  .filter(Boolean)
-
-const splitPrescriptionItems = (value) => value
-  .split(/,(?![^()]*\))/)
-  .map((part) => part.trim().replace(/[.;]+$/, ''))
-  .filter(Boolean)
-
-const plannedSessionDetailView = computed(() => {
-  const day = plannedSessionDialog.value
-  const details = day?.details?.trim()
-  if (!details) return null
-
-  const rawSentences = splitDetailSentences(details)
-  const sentences = rawSentences.length ? rawSentences : [details]
-  const firstSentence = sentences[0] || ''
-  const colonIndex = firstSentence.indexOf(':')
-  const lead = colonIndex >= 0 ? firstSentence.slice(0, colonIndex).trim() : ''
-  const firstSentenceTail = colonIndex >= 0 ? firstSentence.slice(colonIndex + 1).trim() : ''
-
-  const prescriptionItems = []
-  const guidance = []
-  const optional = []
-
-  if (firstSentenceTail) {
-    const initialItems = splitPrescriptionItems(firstSentenceTail)
-    if (initialItems.length >= 2) prescriptionItems.push(...initialItems)
-    else guidance.push(firstSentenceTail)
-  } else if (firstSentence) {
-    guidance.push(firstSentence.replace(/[.;]+$/, ''))
-  }
-
-  for (const sentence of sentences.slice(1)) {
-    const normalized = sentence.toLowerCase()
-    const cleaned = sentence.replace(/[.;]+$/, '')
-    if (/^(optional|if |replace|swap)/i.test(sentence)) {
-      optional.push(cleaned)
-      continue
-    }
-    if (cleaned.includes(',') && /\d/.test(cleaned) && /x|\bmin\b|\bsec\b|\bside\b/i.test(cleaned)) {
-      const items = splitPrescriptionItems(cleaned)
-      if (items.length >= 2) {
-        guidance.push(...items)
-        continue
-      }
-    }
-    if (/(keep|stop|avoid|relaxed|easy|steady|safe|pain|weather)/i.test(normalized)) {
-      guidance.push(cleaned)
-      continue
-    }
-    optional.push(cleaned)
-  }
-
-  const highlights = []
-  const pushHighlights = (pattern) => {
-    for (const match of details.matchAll(pattern)) {
-      const value = match[0].trim().replace(/[.;,]+$/, '')
-      if (value && !highlights.includes(value)) highlights.push(value)
-    }
-  }
-
-  pushHighlights(/\bRPE\s*\d+(?:\s*[-–—]\s*\d+)?\b/gi)
-  pushHighlights(/\bZone\s*\d+(?:\s*[-–—]\s*\d+)?\b/gi)
-  pushHighlights(/\b\d+\s*(?:-\s*\d+)?\s*min\b/gi)
-  pushHighlights(/\b\d+(?:\.\d+)?\s*(?:-\s*\d+(?:\.\d+)?)?\s*km\b/gi)
-
-  return {
-    lead,
-    prescriptionTitle: lead || '',
-    prescriptionItems,
-    guidance,
-    optional,
-    highlights,
-  }
-})
-
-const workoutBriefTargets = computed(() => {
-  const day = plannedSessionDialog.value
-  if (!day) return []
-  const targets = []
-  if (day.target_duration_min) {
-    const minutes = Number(day.target_duration_min)
-    targets.push({ label: 'Duration', value: minutes >= 60 ? `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ''}` : `${minutes} min` })
-  }
-  if (day.target_distance_km) targets.push({ label: 'Distance', value: `${day.target_distance_km} km` })
-  const highlights = plannedSessionDetailView.value?.highlights || []
-  for (const [label, pattern] of [['Effort', /^RPE/i], ['Zone', /^Zone/i]]) {
-    const values = highlights.filter(value => pattern.test(value))
-    if (values.length) targets.push({ label, value: values.join(' / ') })
-  }
-  return targets
-})
+const plannedSessionDetailView = computed(() => buildSessionDetailView(plannedSessionDialog.value?.details))
+const workoutBriefTargets = computed(() => plannedSessionDialog.value ? sessionTargets(plannedSessionDialog.value, plannedSessionDetailView.value) : [])
 const trapWorkoutFocus = (event) => {
   const elements = [...event.currentTarget.querySelectorAll('button:not(:disabled), summary, a[href], [tabindex="0"]')].filter(element => element.getClientRects().length)
   const first = elements[0], last = elements.at(-1)
@@ -2571,7 +2490,7 @@ const savePlanLink = async (day) => {
   padding: 0 15px;
   border: 1px solid rgba(123, 163, 255, .36);
   border-radius: 11px;
-  background: linear-gradient(135deg, #668cf0, #4e6ec8);
+  background:linear-gradient(135deg, #668cf0, #4e6ec8);
   color: white;
   font-weight: 750;
   cursor: pointer;
@@ -4693,7 +4612,8 @@ const savePlanLink = async (day) => {
 .workout-instructions ul li{align-items:flex-start;color:var(--text-soft)}
 .workout-instructions ul li>span{flex:none;width:6px;height:6px;margin-top:8px;border-radius:50%;background:var(--workout-accent)}
 .workout-instructions p{margin:0}
-.workout-alternative{border-left:2px solid color-mix(in srgb,var(--workout-accent) 45%,transparent);padding:2px 0 2px 16px}
+.workout-lead{padding:14px 16px;border-radius:12px;border-left:3px solid var(--workout-accent);background:color-mix(in srgb,var(--workout-accent) 8%,transparent);font-size:15px;line-height:1.6;color:var(--text)}
+.workout-alternative{padding:14px 16px;border-radius:12px;background:rgb(var(--ov-rgb) / 0.024)}
 .workout-alternative h3{color:var(--workout-accent);margin-bottom:8px}
 .workout-alternative p{font-size:13.5px;line-height:1.6;color:var(--text-soft);margin:0}
 .workout-alternative p+p{margin-top:8px}
@@ -4704,12 +4624,12 @@ const savePlanLink = async (day) => {
 .workout-context-content>p,.workout-goal p{font-size:12.5px;color:var(--muted-soft);line-height:1.7}
 .workout-goal{padding:0;background:transparent}
 .workout-goal>div{display:flex;align-items:baseline;justify-content:space-between;gap:16px}
-.workout-goal strong{font-size:12px;font-weight:600;color:var(--text-soft)}
+.workout-goal strong{font-size:12.5px;font-weight:600;color:var(--text-soft)}
 .workout-goal span{font-size:11px;flex-shrink:0;color:var(--muted)}
 .workout-goal p{margin-top:4px}
 .workout-restriction{font-size:12px;color:var(--warning-text);padding:10px 12px;background:#f3c4780b;border-radius:8px}
 .workout-no-instructions{font-size:13px;color:var(--muted)}
-@media(max-width:520px){.plan-page .workout-brief{border-radius:18px 18px 0 0;max-height:92dvh}.workout-brief-header{padding:20px 20px 0}.workout-brief-content{padding:20px}.workout-brief h2{font-size:23px}.workout-brief-top{gap:10px;font-size:11px}.workout-targets{gap:18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.workout-targets dd{font-size:19px}.workout-context summary>span{display:block;margin:5px 0 0 15px}}
+@media(max-width:520px){.plan-page .workout-brief{border-radius:18px 18px 0 0;max-height:92dvh}.workout-brief-header{padding:18px 18px 18px}.workout-brief-content{padding:18px}.workout-brief h2{font-size:23px}.workout-targets{grid-template-columns:repeat(2,minmax(0,1fr))}.workout-targets dd{font-size:19px}.workout-brief .session-match-status{margin-left:0}.workout-context summary>span{display:block;margin:5px 0 0 15px}}
 
 
 /* Share natural row heights across days, independent of activity counts.

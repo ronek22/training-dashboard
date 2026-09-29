@@ -1,5 +1,5 @@
 // Splits a planned session's free-text details into prescription / guidance / adapt-if lists and key targets.
-// Mirrors the parsing used by the workout brief in views/Plan.vue.
+// Shared by the workout brief in views/Plan.vue and the day popup in views/Calendar.vue.
 const splitDetailSentences = (details) => details
   .replace(/\s+/g, ' ')
   .split(/(?<=[.!?])\s+/)
@@ -31,7 +31,11 @@ export const buildSessionDetailView = (rawDetails) => {
     if (initialItems.length >= 2) prescriptionItems.push(...initialItems)
     else guidance.push(firstSentenceTail)
   } else if (firstSentence) {
-    guidance.push(firstSentence.replace(/[.;]+$/, ''))
+    // A bare list of exercises ("Press 3×6–8, raise 3×12, ...") reads better as numbered steps than as one long bullet.
+    const listItems = splitPrescriptionItems(firstSentence)
+    const setRepItems = listItems.filter((item) => /\d+\s*[×x]\s*\d+/i.test(item))
+    if (listItems.length >= 3 && setRepItems.length >= 3) prescriptionItems.push(...listItems.map((item) => item.replace(/^plus\s+/i, '')))
+    else guidance.push(firstSentence.replace(/[.;]+$/, ''))
   }
 
   for (const sentence of sentences.slice(1)) {

@@ -5,8 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>TrainLog</title>
   <meta name="theme-color" content="#0b1018" />
-  <meta name="color-scheme" content="dark" />
-  <style>html, body { background-color: #0b1018; color-scheme: dark; }</style>
+  <meta name="color-scheme" content="dark light" />
+  <script>
+    (function () {
+      var mode = 'auto';
+      try { mode = localStorage.getItem('training-dashboard-theme') || 'auto'; } catch (e) {}
+      var light = mode === 'light' || (mode !== 'dark' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+      var root = document.documentElement;
+      root.dataset.theme = light ? 'light' : 'dark';
+      root.style.colorScheme = light ? 'light' : 'dark';
+      root.style.backgroundColor = light ? '#f3f5f9' : '#0b1018';
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', light ? '#f3f5f9' : '#0b1018');
+    })();
+  </script>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="TrainLog" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />

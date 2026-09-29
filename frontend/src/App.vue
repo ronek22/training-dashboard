@@ -106,6 +106,7 @@
             </button>
           </template>
         </section>
+        <ThemeToggle class="sidebar-theme-toggle" />
       </div>
     </aside>
     <main class="main-content">
@@ -126,6 +127,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from './stores/api'
 import NavIcon from './components/NavIcon.vue'
+import ThemeToggle from './components/ThemeToggle.vue'
 import CoachChatDrawer from './components/CoachChatDrawer.vue'
 import MobileNavigation from './components/MobileNavigation.vue'
 import WorkoutQuickAccess from './components/WorkoutQuickAccess.vue'
@@ -293,9 +295,9 @@ const routeTransitionName = computed(() => {
 .sidebar {
   width: 232px;
   background:
-    linear-gradient(180deg, rgba(13, 19, 30, 0.96), rgba(10, 15, 24, 0.94)),
+    var(--sidebar-bg),
     var(--bg-elevated);
-  border-right: 1px solid rgba(132, 149, 181, 0.16);
+  border-right: 1px solid rgb(var(--tint-rgb) / 0.16);
   display: flex;
   flex-direction: column;
   padding: 20px 0 18px;
@@ -310,7 +312,7 @@ const routeTransitionName = computed(() => {
   align-items: center;
   gap: 12px;
   padding: 0 22px 22px;
-  border-bottom: 1px solid rgba(132, 149, 181, 0.14);
+  border-bottom: 1px solid rgb(var(--tint-rgb) / 0.14);
   margin-bottom: 18px;
 }
 .logo-icon {
@@ -322,7 +324,7 @@ const routeTransitionName = computed(() => {
   justify-content: center;
   background: var(--accent);
   border: 1px solid rgba(123, 163, 255, 0.16);
-  color: #07111f;
+  color: var(--on-accent);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -345,7 +347,7 @@ const routeTransitionName = computed(() => {
 }
 .nav-group-label {
   padding: 12px 12px 5px;
-  color: #64748b;
+  color: var(--muted);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: .14em;
@@ -364,23 +366,23 @@ const routeTransitionName = computed(() => {
   border: 1px solid transparent;
 }
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgb(var(--ov-rgb) / 0.04);
   color: var(--text);
-  border-color: rgba(132, 149, 181, 0.12);
+  border-color: rgb(var(--tint-rgb) / 0.12);
 }
 .nav-item.active {
   background: rgba(95, 140, 255, 0.14);
-  color: #f8fbff;
+  color: var(--text);
   border-color: rgba(123, 163, 255, 0.22);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 rgb(var(--ov-rgb) / 0.04);
 }
-.nav-icon { flex: 0 0 auto; color: #8292ad; }
+.nav-icon { flex: 0 0 auto; color: var(--muted); }
 .nav-item.active .nav-icon { color: var(--accent-strong); }
 
 .sidebar-footer {
   margin-top: 14px;
   padding: 16px 16px 0;
-  border-top: 1px solid rgba(132, 149, 181, 0.14);
+  border-top: 1px solid rgb(var(--tint-rgb) / 0.14);
   display: grid;
   gap: 9px;
 }
@@ -389,36 +391,36 @@ const routeTransitionName = computed(() => {
   padding: 12px;
   border: 1px solid rgba(96, 165, 250, .18);
   border-radius: 12px;
-  background: linear-gradient(145deg, rgba(59, 130, 246, .11), rgba(15, 23, 42, .54));
+  background: linear-gradient(145deg, rgba(59, 130, 246, .11), rgb(var(--panel-rgb) / .54));
 }
 .weather-card.is-loading { opacity: .72; }
 .weather-current { display: flex; align-items: center; gap: 9px; }
 .weather-icon { font-size: 26px; line-height: 1; filter: saturate(.86); }
 .weather-reading { display: grid; min-width: 0; gap: 1px; flex: 1; }
-.weather-reading strong { color: #e0f2fe; font-family: var(--font-display); font-size: 20px; line-height: 1; }
-.weather-reading span { overflow: hidden; color: #a9bdd6; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.weather-reading strong { color: var(--text); font-family: var(--font-display); font-size: 20px; line-height: 1; }
+.weather-reading span { overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .weather-location-button {
   width: 27px;
   height: 27px;
   display: grid;
   place-items: center;
   padding: 0;
-  border: 1px solid rgba(148, 163, 184, .19);
+  border: 1px solid rgb(var(--tint-rgb) / .19);
   border-radius: 8px;
-  background: rgba(15, 23, 42, .46);
-  color: #91a6c2;
+  background: rgb(var(--panel-rgb) / .46);
+  color: var(--muted);
   cursor: pointer;
 }
 .weather-location-button:hover,
-.weather-location-button:focus-visible { color: #dbeafe; border-color: rgba(96, 165, 250, .5); outline: none; }
+.weather-location-button:focus-visible { color: var(--text); border-color: rgba(96, 165, 250, .5); outline: none; }
 .weather-location-button:disabled { cursor: wait; opacity: .5; }
 .weather-location-button svg { width: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 .weather-meta { display: grid; gap: 3px; margin-top: 9px; }
-.weather-place { color: #d4deeb; font-size: 9px; font-weight: 750; }
-.weather-rain { color: #8192aa; font-size: 9px; }
-.weather-rain.has-rain { color: #7dd3fc; }
-.weather-meta a { width: max-content; color: #667991; font-size: 7px; text-decoration: none; }
-.weather-meta a:hover { color: #a9bdd6; }
+.weather-place { color: var(--text-soft); font-size: 9px; font-weight: 750; }
+.weather-rain { color: var(--muted); font-size: 9px; }
+.weather-rain.has-rain { color: var(--run); }
+.weather-meta a { width: max-content; color: var(--muted); font-size: 7px; text-decoration: none; }
+.weather-meta a:hover { color: var(--muted); }
 .weather-retry {
   width: 100%;
   min-height: 66px;
@@ -440,12 +442,12 @@ const routeTransitionName = computed(() => {
   padding: 11px 12px;
   border: 1px solid rgba(249, 115, 22, .2);
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(249, 115, 22, .1), rgba(255, 255, 255, .025));
+  background: linear-gradient(135deg, rgba(249, 115, 22, .1), rgb(var(--ov-rgb) / .025));
 }
 .streak-flame { font-size: 18px; filter: saturate(.9); }
 .streak-copy { display: grid; gap: 2px; }
 .streak-copy small { color: var(--muted); font-size: 8px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
-.streak-copy strong { color: #f6a45d; font-family: var(--font-display); font-size: 13px; }
+.streak-copy strong { color:color-mix(in srgb, #f6a45d calc(100% - var(--dim)), #000); font-family: var(--font-display); font-size: 13px; }
 
 .main-content {
   flex: 1;
@@ -475,6 +477,7 @@ const routeTransitionName = computed(() => {
   }
 
   .sidebar-footer { padding: 14px 10px 0; }
+  .sidebar-theme-toggle { display: none; }
   .weather-card { min-height: auto; padding: 9px 6px; }
   .weather-current { justify-content: center; gap: 4px; }
   .weather-icon { font-size: 19px; }

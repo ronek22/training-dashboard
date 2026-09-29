@@ -6,6 +6,7 @@ from typing import Callable, Optional
 from .plans import build_multi_week_execution_trend, serialize_weekly_plan
 from .plans import format_workout_intent_label, normalize_workout_intent
 from .checkins import get_daily_checkin
+from .volume_trend import build_volume_trend
 from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
 from .coaching import (
     build_athlete_coaching_brief,
@@ -1131,6 +1132,7 @@ def build_recent_context(
         "recent_notes": context_payload["recent_notes"],
         "latest_metrics": [dict(row) for row in latest_metrics],
         "weekly_mix": weekly_mix,
+        "volume_trend": build_volume_trend(conn),
         "strength_consistency": strength_consistency,
         "recent_strength_detail": recent_strength_detail,
         "cycling_power": build_cycling_power_coaching_context(conn, include_thresholds=False),
@@ -1322,6 +1324,7 @@ def build_dashboard_data(
         "goal_planning_summary": goal_planning_summary,
         "readiness": readiness,
         "daily_checkin": get_daily_checkin(conn),
+        "volume_trend": build_volume_trend(conn),
         "training_load": training_load,
         "weekly_plan": serialized_latest_plan,
         "execution_trend": execution_trend,

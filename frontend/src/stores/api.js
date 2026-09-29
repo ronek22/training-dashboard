@@ -92,6 +92,7 @@ export const useApi = () => ({
   saveActivityFeedback: (activityId, payload) => api.post(`/activities/${activityId}/feedback`, payload),
   getDailyCheckin: (params) => api.get('/checkins/today', { params }),
   saveDailyCheckin: (payload) => api.post('/checkins', payload),
+  labelVolumeTrend: (payload) => api.post('/volume-trend/label', payload),
   getCalendarWeeks: (params) => api.get('/calendar/weeks', { params }),
   getCalendarMonth: (params) => api.get('/calendar/month', { params }),
   getWeeklyPlans: (params) => api.get('/plans/weekly', { params }),

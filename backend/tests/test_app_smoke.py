@@ -2564,6 +2564,15 @@ bad-date,Squat,5,100,60,,,,false,,1
         nothing = self.client.post("/plans/weekly/swap", json={"from_date": second.isoformat(), "to_date": first.isoformat()})
         self.assertEqual(nothing.status_code, 404)
 
+    def test_volume_trend_label_endpoint_validates_and_reaches_context(self):
+        week_start = "2026-09-21"
+        invalid = self.client.post("/volume-trend/label", json={"week_start": week_start, "label": "lazy"})
+        self.assertEqual(invalid.status_code, 422)
+        saved = self.client.post("/volume-trend/label", json={"week_start": week_start, "label": "illness_injury", "note": "Cold"})
+        self.assertEqual(saved.status_code, 200)
+        self.assertIn("status", saved.json()["volume_trend"])
+        self.assertIn("volume_trend", self.client.get("/dashboard").json())
+
     def test_dashboard_prefers_current_week_plan_over_next_week(self):
         today = datetime.now().date()
         current_week_start = today - timedelta(days=today.weekday())

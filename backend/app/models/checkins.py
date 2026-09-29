@@ -1,6 +1,12 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
+
+
+class VolumeTrendLabelInput(BaseModel):
+    week_start: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    label: Literal["planned", "life", "illness_injury"]
+    note: Optional[str] = Field(default=None, max_length=500)
 
 
 class DailyCheckinInput(BaseModel):

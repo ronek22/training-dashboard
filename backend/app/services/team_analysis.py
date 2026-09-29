@@ -32,7 +32,7 @@ def analysis_context(conn):
             'active_plan', 'active_goals', 'athlete_profile', 'athlete_brief',
             'latest_subjective_state', 'recent_feedback', 'recent_notes', 'readiness',
             'training_load', 'modality_restrictions', 'workout_template_settings',
-            'cycling_power',
+            'cycling_power', 'volume_trend',
         )},
     }
     # Remove response-generation timestamps so merely refreshing does not stale a review.

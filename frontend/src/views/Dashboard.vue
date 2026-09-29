@@ -31,6 +31,7 @@
           </ul>
           <p v-if="swapHint" class="swap-hint" :class="`score-${readinessScore.level}`">{{ swapHint }} <router-link to="/plan">Open plan</router-link></p>
           <p v-if="rampWarning" class="ramp-warning" :class="`ramp-${ramp.status}`">{{ rampWarning }}</p>
+          <VolumeTrendAlert :trend="volumeTrend" @labeled="onVolumeTrendLabeled" />
           <LoadFormTrend v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :form="Number(trainingLoad.current?.form || 0)" />
           <div v-if="loadMetrics.length" class="load-metrics" aria-label="Current training load">
             <div v-for="metric in loadMetrics" :key="metric.label" :class="metric.tone"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.hint }}</small></div>
@@ -129,6 +130,7 @@ import WeekStrip from '../components/WeekStrip.vue'
 import YearProgress from '../components/YearProgress.vue'
 import LoadFormTrend from '../components/LoadFormTrend.vue'
 import DailyCheckin from '../components/DailyCheckin.vue'
+import VolumeTrendAlert from '../components/VolumeTrendAlert.vue'
 import { useApi } from '../stores/api'
 import { buildStrengthPlanDraft } from '../strength-plan-draft.mjs'
 
@@ -213,6 +215,8 @@ const dailyRecommendation = computed(() => dashboard.value?.daily_recommendation
 const readiness = computed(() => dashboard.value?.readiness || null)
 const dailyCheckin = computed(() => dashboard.value?.daily_checkin || null)
 const onCheckinSaved = () => loadDashboard()
+const volumeTrend = computed(() => dashboard.value?.volume_trend || null)
+const onVolumeTrendLabeled = (trend) => { if (dashboard.value) dashboard.value = { ...dashboard.value, volume_trend: trend } }
 const readinessScore = computed(() => readiness.value?.score || null)
 const ramp = computed(() => readiness.value?.ramp || null)
 const rampWarning = computed(() => (['caution', 'high'].includes(ramp.value?.status) ? ramp.value.message : ''))

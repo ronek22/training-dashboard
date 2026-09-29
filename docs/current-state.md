@@ -24,6 +24,14 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Training volume trend alert
+
+2026-09-30: `services/volume_trend.py` flags an unplanned multi-week slide in training volume (completed Monday–Sunday weeks; walks and hikes excluded). It triggers when the last three completed weeks fall twice in a row, the last week is at most 75% of the first and at least 20% below the four weeks before. A falling week counts as planned only when its plan is 15%+ lighter than the previous three plans or its title says deload, taper or recovery week — plan overview wording is ignored because it almost always mentions recovery. It needs 4+ sessions across the baseline weeks and 120+ minutes in the first week.
+
+- `volume_trend` in `GET /dashboard`, MCP `get_recent_context` and the weekly specialist snapshot
+- Dashboard Load & recovery card shows a compact alert with a three-week mini bar chart and Planned / Life / Illness-injury buttons; `POST /volume-trend/label` stores the answer per week in `volume_trend_labels`, hides the alert and keeps the label in coaching context
+- Verified with 7 unit tests, an endpoint smoke test, the frontend build and the live Dashboard at 1512px (fires on real data: 726 → 457 → 341 min). The label buttons were not clicked against the real database.
+
 ### Goal intelligence (Sprint 39, complete)
 
 2026-09-29: goals have a lifecycle (active, paused, completed, retired), anchor commitments and purposes, per-period history, outcome and cost signals, a deterministic verdict engine, season awareness (athlete profile `off_season_months`, default Oct–Mar), and evidence-based suggestions. See [Sprint 39](sprints/sprint-39-goal-intelligence.md). Step 7 added the portfolio check and the monthly review rhythm:

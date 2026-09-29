@@ -18,19 +18,24 @@
         <aside class="signal-card" aria-labelledby="signals-heading">
           <div class="signal-heading">
             <div><span class="section-kicker">Training state</span><h2 id="signals-heading">Load &amp; recovery</h2></div>
-            <span v-if="readiness" class="readiness-chip" :class="`readiness-${readiness.state}`">{{ readiness.label }}</span>
+            <span v-if="readinessScore && readinessScore.level !== 'unknown'" class="readiness-chip score-chip" :class="`score-${readinessScore.level}`" :title="readinessScore.advice">
+              <i aria-hidden="true"></i>{{ readinessScore.label }}
+            </span>
+            <span v-else-if="readiness" class="readiness-chip" :class="`readiness-${readiness.state}`">{{ readiness.label }}</span>
           </div>
           <div v-if="readiness" class="signal-summary">
             <strong>{{ loadRecoveryTitle }}</strong><p>{{ loadRecoverySummary }}</p>
           </div>
+          <ul v-if="readinessScore?.drivers?.length" class="score-drivers" aria-label="What is pulling readiness down">
+            <li v-for="driver in readinessScore.drivers" :key="driver">{{ driver }}</li>
+          </ul>
+          <p v-if="swapHint" class="swap-hint" :class="`score-${readinessScore.level}`">{{ swapHint }} <router-link to="/plan">Open plan</router-link></p>
+          <p v-if="rampWarning" class="ramp-warning" :class="`ramp-${ramp.status}`">{{ rampWarning }}</p>
           <LoadFormTrend v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :form="Number(trainingLoad.current?.form || 0)" />
           <div v-if="loadMetrics.length" class="load-metrics" aria-label="Current training load">
             <div v-for="metric in loadMetrics" :key="metric.label" :class="metric.tone"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.hint }}</small></div>
           </div>
-          <div v-if="checkInMetrics.length" class="checkin-summary">
-            <span>Latest check-in</span><div><strong v-for="metric in checkInMetrics" :key="metric.label" :class="metric.tone">{{ metric.label }} {{ metric.valueLabel }}</strong></div>
-          </div>
-          <p v-else class="signal-empty">Add post-workout feedback to pair how you feel with measured load.</p>
+          <DailyCheckin :checkin="dailyCheckin" @saved="onCheckinSaved" />
 
         </aside>
       </section>
@@ -123,6 +128,7 @@ import TodayCard from '../components/TodayCard.vue'
 import WeekStrip from '../components/WeekStrip.vue'
 import YearProgress from '../components/YearProgress.vue'
 import LoadFormTrend from '../components/LoadFormTrend.vue'
+import DailyCheckin from '../components/DailyCheckin.vue'
 import { useApi } from '../stores/api'
 import { buildStrengthPlanDraft } from '../strength-plan-draft.mjs'
 
@@ -205,6 +211,18 @@ const dashboardPeriodLabel = computed(() => format(new Date(), 'EEEE, d MMMM'))
 const weeklyPlan = computed(() => dashboard.value?.weekly_plan || null)
 const dailyRecommendation = computed(() => dashboard.value?.daily_recommendation || null)
 const readiness = computed(() => dashboard.value?.readiness || null)
+const dailyCheckin = computed(() => dashboard.value?.daily_checkin || null)
+const onCheckinSaved = () => loadDashboard()
+const readinessScore = computed(() => readiness.value?.score || null)
+const ramp = computed(() => readiness.value?.ramp || null)
+const rampWarning = computed(() => (['caution', 'high'].includes(ramp.value?.status) ? ramp.value.message : ''))
+const hardPlanIntents = new Set(['tempo', 'interval', 'race_specific', 'strength_lower'])
+const swapHint = computed(() => {
+  if (!readinessScore.value?.suggests_swap || !todayPlan.value || todayPlanCompleted.value || todayActivities.value.length) return ''
+  const isHard = hardPlanIntents.has(String(todayPlan.value.workout_intent || '').toLowerCase())
+  if (readinessScore.value.level === 'red') return `Readiness is red. Swap ${isHard ? 'today’s hard session' : 'today’s session'} for recovery work or rest.`
+  return isHard ? 'Readiness is amber. Consider an easier version of today’s hard session.' : ''
+})
 const latestSubjectiveState = computed(() => dashboard.value?.latest_subjective_state || null)
 const trainingLoad = computed(() => dashboard.value?.training_load || null)
 const weeklyDirection = computed(() => dashboard.value?.weekly_direction || null)
@@ -352,14 +370,15 @@ const dashboardSportAccent = (type) => ({ ride: 'var(--tone-ride)', run: 'var(--
 const primaryDecisionTone = computed(() => {
   if (todayPlanCompleted.value) return 'complete'
   if (dailyRecommendation.value?.status === 'recover') return 'recover'
-  if (dailyRecommendation.value?.status === 'reduce' || readiness.value?.state === 'strained') return 'caution'
-  if (dailyRecommendation.value?.status === 'push') return 'go'
+  const scoreLevel = readinessScore.value?.level
+  if (dailyRecommendation.value?.status === 'reduce' || readiness.value?.state === 'strained' || scoreLevel === 'red') return 'caution'
+  if (dailyRecommendation.value?.status === 'push') return scoreLevel === 'amber' ? 'caution' : 'go'
   return 'steady'
 })
 const primaryDecisionLabel = computed(() => {
   if (todayPlanCompleted.value) return 'Session complete'
   if (primaryDecisionTone.value === 'recover') return 'Recovery first'
-  if (primaryDecisionTone.value === 'caution' && dailyRecommendation.value?.status === 'push') return 'Go, with guardrails'
+  if (primaryDecisionTone.value === 'caution' && dailyRecommendation.value?.status === 'push' && readinessScore.value?.level !== 'red') return 'Go, with guardrails'
   if (primaryDecisionTone.value === 'caution') return 'Dial it back'
   if (primaryDecisionTone.value === 'go') return 'Good to go'
   return 'Stay on plan'
@@ -369,7 +388,7 @@ const decisionReasons = computed(() => {
   if (readiness.value?.state === 'strained' && readiness.value?.reasons?.[0]) reasons.push(readiness.value.reasons[0])
   return [...new Set(reasons)].slice(0, 2)
 })
-const loadRecoveryTitle = computed(() => ({
+const loadRecoveryTitle = computed(() => ({ red: 'Recovery signals are off.', amber: 'Some recovery signals are off.' }[readinessScore.value?.level]) || ({
   ready: 'Load is being absorbed.',
   watch: 'Keep the next session controlled.',
   strained: 'Recovery needs attention.',
@@ -380,6 +399,7 @@ const checkInPositive = computed(() => latestSubjectiveState.value
   && Number(latestSubjectiveState.value.muscle_soreness || 0) <= 3
   && Number(latestSubjectiveState.value.pain_level || 0) <= 2)
 const loadRecoverySummary = computed(() => {
+  if (['amber', 'red'].includes(readinessScore.value?.level)) return readinessScore.value.advice
   const form = Number(trainingLoad.value?.current?.form || 0)
   if (readiness.value?.state === 'ready' && form >= 0 && checkInPositive.value) return 'Short-term fatigue is below your longer-term load, and your check-in is positive. Stay with the plan.'
   if (readiness.value?.state === 'strained') return readiness.value?.reasons?.[0] || readiness.value?.guidance_48h
@@ -850,10 +870,10 @@ button { color: inherit; }
 .load-metrics small { color:var(--muted); font-size: 8px; }
 .checkin-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .checkin-summary div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
-.checkin-summary strong { border: 1px solid transparent; border-radius: 999px; background: rgba(143, 161, 191, 0.08); padding: 4px 7px; color: var(--dash-soft); font-size: 9px; font-weight: 650; }
-.checkin-summary strong.positive { border-color: rgba(82, 215, 170, 0.16); background: rgba(82, 215, 170, 0.09); color: #6de0b7; }
-.checkin-summary strong.neutral { border-color: rgba(118, 166, 255, 0.14); background: rgba(118, 166, 255, 0.08); color: #9ab9f4; }
-.checkin-summary strong.risk { border-color: rgba(239, 123, 110, 0.16); background: rgba(239, 123, 110, 0.09); color: #f09a90; }
+.checkin-summary strong { border: 1px solid transparent; border-radius: 999px; background: rgb(var(--tint-rgb) / 0.08); padding: 4px 7px; color: var(--dash-soft); font-size: 9px; font-weight: 650; }
+.checkin-summary strong.positive { border-color: rgba(82, 215, 170, 0.16); background: rgba(82, 215, 170, 0.09); color: var(--success-text); }
+.checkin-summary strong.neutral { border-color: rgba(118, 166, 255, 0.14); background: rgba(118, 166, 255, 0.08); color: var(--info-text); }
+.checkin-summary strong.risk { border-color: rgba(239, 123, 110, 0.16); background: rgba(239, 123, 110, 0.09); color:color-mix(in srgb, #f09a90 calc(100% - var(--dim)), #000); }
 .signal-empty { margin-top: 18px; color: var(--dash-muted); font-size: 11px; }
 .explore-section{ padding: 24px; }
 

@@ -90,6 +90,8 @@ export const useApi = () => ({
   rejectFitbodSession: (sessionId, payload) => api.post(`/fitbod/sessions/${sessionId}/reject`, payload),
   getActivityFeedback: (activityId) => api.get(`/activities/${activityId}/feedback`),
   saveActivityFeedback: (activityId, payload) => api.post(`/activities/${activityId}/feedback`, payload),
+  getDailyCheckin: (params) => api.get('/checkins/today', { params }),
+  saveDailyCheckin: (payload) => api.post('/checkins', payload),
   getCalendarWeeks: (params) => api.get('/calendar/weeks', { params }),
   getCalendarMonth: (params) => api.get('/calendar/month', { params }),
   getWeeklyPlans: (params) => api.get('/plans/weekly', { params }),

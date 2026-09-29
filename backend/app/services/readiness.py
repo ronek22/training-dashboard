@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from .plans import normalize_workout_intent
+from .readiness_score import build_ramp_rate, build_readiness_score
 
 HARD_INTENTS = {
     "tempo",
@@ -280,8 +281,19 @@ def build_readiness_summary(
         _readiness_factor("load_ratio", "Load ratio", ratio_status, "risk" if ratio_status == "high" else "steady"),
     ]
 
+    ramp = build_ramp_rate(training_load_summary)
+    score = build_readiness_score(
+        conn,
+        state=state,
+        latest_feedback=latest_feedback,
+        training_load_summary=training_load_summary,
+        ramp=ramp,
+    )
+
     return {
         "state": state,
+        "score": score,
+        "ramp": ramp,
         "available": state != "insufficient_data",
         "label": label_map[state],
         "summary": summary_map[state],

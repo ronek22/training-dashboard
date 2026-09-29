@@ -11,6 +11,7 @@ from .adapters.mcp import build_mcp_router_dependencies
 from .db import get_db, init_db
 from .routers.activities import router as activities_router
 from .routers.activity_feedback import router as activity_feedback_router
+from .routers.checkins import router as checkins_router
 from .routers.coaching import router as coaching_router
 from .routers.cycling_workouts import router as cycling_workouts_router
 from .routers.dashboard import router as dashboard_router
@@ -78,6 +79,7 @@ app.add_middleware(
 app.include_router(plans_router)
 app.include_router(activities_router)
 app.include_router(activity_feedback_router)
+app.include_router(checkins_router)
 app.include_router(coaching_router)
 app.include_router(cycling_workouts_router)
 app.include_router(notes_router)

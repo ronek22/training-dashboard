@@ -5,6 +5,7 @@ from typing import Callable, Optional
 
 from .plans import build_multi_week_execution_trend, serialize_weekly_plan
 from .plans import format_workout_intent_label, normalize_workout_intent
+from .checkins import get_daily_checkin
 from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
 from .coaching import (
     build_athlete_coaching_brief,
@@ -1320,6 +1321,7 @@ def build_dashboard_data(
         "goal_readiness_summary": goal_readiness_summary,
         "goal_planning_summary": goal_planning_summary,
         "readiness": readiness,
+        "daily_checkin": get_daily_checkin(conn),
         "training_load": training_load,
         "weekly_plan": serialized_latest_plan,
         "execution_trend": execution_trend,

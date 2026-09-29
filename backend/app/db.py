@@ -463,6 +463,18 @@ def init_db():
             FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS daily_checkins (
+            date TEXT PRIMARY KEY,
+            energy INTEGER NOT NULL,
+            muscle_soreness INTEGER NOT NULL,
+            stress INTEGER NOT NULL,
+            sleep_quality INTEGER NOT NULL,
+            pain_level INTEGER NOT NULL DEFAULT 0,
+            note TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS fitbod_import_batches (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             file_name TEXT,

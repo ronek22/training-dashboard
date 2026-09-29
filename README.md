@@ -102,6 +102,14 @@ Notes:
 - The test app uses `TRAINING_DB_PATH` to point SQLite at a temporary test database instead of `/data/training.db`.
 - In normal app usage, `TRAINING_DB_PATH` is optional and defaults to `/data/training.db`.
 
+## Frontend Testing
+
+Frontend behavior tests use Node's built-in test runner (`frontend/tests/*.test.mjs`, no extra dependencies):
+
+```bash
+cd frontend && npm test
+```
+
 Quick verification before connecting ChatGPT:
 
 ```bash

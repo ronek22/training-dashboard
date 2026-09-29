@@ -1158,6 +1158,7 @@ def build_dashboard_data(
     list_goals_data_fn: Callable[[sqlite3.Connection, bool, int], list[dict]],
 ) -> dict:
     from .activities import reconcile_workout_template_rotation_state
+    from .team_analysis import get_weekly_direction
 
     reconcile_workout_template_rotation_state(conn)
     computed_streak = compute_activity_streak(conn)
@@ -1326,4 +1327,5 @@ def build_dashboard_data(
         "recent_feedback": context_payload["recent_feedback"],
         "latest_subjective_state": context_payload["latest_subjective_state"],
         "daily_recommendation": daily_recommendation,
+        "weekly_direction": get_weekly_direction(conn),
     }

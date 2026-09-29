@@ -13,85 +13,7 @@
       </header>
 
       <section class="decision-layout" aria-labelledby="today-decision-heading">
-        <article class="decision-card" :class="[`decision-${primaryDecisionTone}`, { 'is-completed-day': todayPlanCompleted }]" :style="{ '--sport-accent': dashboardSportAccent(todayPlan?.session_type) }">
-          <div class="decision-glow" aria-hidden="true"></div>
-          <div v-if="todayPlan && isIconSessionType(todayPlan.session_type)" class="session-backdrop" aria-hidden="true"><ActivityIcon :type="todayPlan.session_type" :tone="activityTone(todayPlan.session_type)" :size="190" /></div>
-          <div class="decision-topline">
-            <span class="decision-kicker">{{ todayPlanCompleted ? 'Today’s completed work' : todayPlan ? 'Today’s planned workout' : 'Today’s training' }}</span>
-            <span class="decision-state"><i aria-hidden="true"></i>{{ primaryDecisionTone === 'steady' ? 'Saved plan' : primaryDecisionLabel }}</span>
-          </div>
-
-          <div class="decision-session">
-            <span v-if="todayPlan" class="decision-icon" :class="`icon-${activityTone(todayPlan.session_type)}`">
-              <ActivityIcon v-if="isIconSessionType(todayPlan.session_type)" :type="todayPlan.session_type" :tone="activityTone(todayPlan.session_type)" :size="24" />
-              <span v-else aria-hidden="true">·</span>
-            </span>
-            <div>
-              <h2 id="today-decision-heading">{{ primaryDecisionTitle }}</h2>
-              <p>{{ primaryDecisionSummary }}</p>
-            </div>
-          </div>
-
-          <div class="completed-day-layout" :class="{ active: todayPlanCompleted }">
-          <div class="workout-body" :class="{ 'has-instructions': todaySessionGuide.length }">
-          <div class="workout-overview">
-          <section v-if="todayPlanCompleted && todayActivityCards.length" class="workout-target-summary"><h3>Today’s totals</h3><dl class="session-prescription"><div><dt>Training time</dt><dd>{{ formatDuration(todayActualTotals.duration) }}</dd></div><div v-if="todayActualTotals.distance"><dt>Distance</dt><dd>{{ formatCompactNumber(todayActualTotals.distance) }} <small>km</small></dd></div><div><dt>Sessions</dt><dd>{{ todayActivityCards.length }}</dd></div></dl></section>
-          <section v-else-if="todayPlan" class="workout-target-summary" aria-labelledby="dashboard-targets-heading">
-            <h3 id="dashboard-targets-heading">Session targets</h3>
-            <dl class="session-prescription">
-              <div v-if="todayPlan.target_duration_min"><dt>Duration</dt><dd>{{ todayPlan.target_duration_min }} <small>min</small></dd></div>
-              <div v-if="todayPlan.target_distance_km"><dt>Distance</dt><dd>{{ todayPlan.target_distance_km }} <small>km</small></dd></div>
-              <div class="prescription-intent"><dt>Intent</dt><dd>{{ todayPlan.workout_intent_label || sessionTypeLabel(todayPlan.session_type) }}</dd></div>
-            </dl>
-          </section>
-
-          <section v-if="decisionReasons.length && !todayPlanCompleted" class="workout-context-note" aria-labelledby="dashboard-context-heading">
-            <h3 id="dashboard-context-heading">Training context</h3>
-            <div class="decision-reasons"><span v-for="reason in decisionReasons" :key="reason">{{ reason }}</span></div>
-          </section>
-          <div class="decision-actions">
-            <button type="button" class="primary-action" @click="router.push('/plan')">
-              {{ todayPlanCompleted ? 'Review your week' : todayPlan ? 'Open today’s plan' : 'Build your week' }}<span aria-hidden="true">→</span>
-            </button>
-            <router-link v-if="todayPlan && activityTone(todayPlan.session_type) === 'strength' && !todayPlanCompleted" class="primary-action" :to="{ path: '/strength/workouts', query: { planDate: todayPlan.date } }">Create one-time workout <span aria-hidden="true">→</span></router-link>
-            <a v-if="codexState" class="decision-coach-link" href="#dashboard-coaching">Read coach’s assessment <span aria-hidden="true">↓</span></a>
-            <span v-if="todayPlan?.template_label" class="template-note">{{ todayPlan.template_label }}</span>
-          </div>
-
-          </div>
-          <section v-if="todaySessionGuide.length" class="session-guide workout-instructions" aria-labelledby="dashboard-instructions-heading"><h3 id="dashboard-instructions-heading">Session instructions</h3>
-            <div class="session-guide-grid">
-              <article v-for="item in todaySessionGuide" :key="item.label" :class="{ 'is-guardrail': item.label === 'Guardrail' }">
-                <span>{{ item.label }}</span>
-                <p>{{ item.text }}</p>
-              </article>
-            </div>
-          </section>
-          </div>
-
-          <section v-if="todayActivityCards.length" class="completed-today" aria-labelledby="completed-today-heading">
-            <div class="completed-today-heading">
-              <span id="completed-today-heading">Completed today</span>
-              <strong v-if="!todayPlanCompleted">{{ todayActivityTotal }}</strong>
-            </div>
-            <div class="completed-today-grid">
-              <button
-                v-for="activity in todayActivityCards"
-                :key="activity.id"
-                type="button"
-                @click="router.push(`/activities/${encodeURIComponent(activity.id)}`)"
-              >
-                <span class="completed-activity-icon" :class="`icon-${activity.tone}`">
-                  <ActivityIcon v-if="isIconSessionType(activity.type)" :type="activity.tone" :tone="activity.tone" :size="17" />
-                  <span v-else aria-hidden="true">·</span>
-                </span>
-                <span><strong>{{ activity.title }}</strong><small>{{ activity.detail }}</small></span>
-                <span aria-hidden="true">↗</span>
-              </button>
-            </div>
-          </section>
-          </div>
-        </article>
+        <TodayCard v-bind="todayCard" />
 
         <aside class="signal-card" aria-labelledby="signals-heading">
           <div class="signal-heading">
@@ -101,6 +23,7 @@
           <div v-if="readiness" class="signal-summary">
             <strong>{{ loadRecoveryTitle }}</strong><p>{{ loadRecoverySummary }}</p>
           </div>
+          <LoadFormTrend v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :form="Number(trainingLoad.current?.form || 0)" />
           <div v-if="loadMetrics.length" class="load-metrics" aria-label="Current training load">
             <div v-for="metric in loadMetrics" :key="metric.label" :class="metric.tone"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.hint }}</small></div>
           </div>
@@ -112,135 +35,70 @@
         </aside>
       </section>
 
-          <section id="dashboard-coaching" class="codex-state coaching-row" aria-label="Coach’s perspective" :class="{ 'is-loading': codexStateLoading }">
-            <div class="codex-state-heading">
-              <span><i aria-hidden="true">✦</i> Coach’s perspective</span>
-              <button type="button" :disabled="codexStateLoading || !isLocalCodexHost" :title="isLocalCodexHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="refreshCodexState(true)">
-                {{ !isLocalCodexHost ? 'Mac only' : codexStateLoading ? 'Reviewing…' : codexState ? 'Refresh' : 'Try now' }}
-              </button>
+      <section id="dashboard-coaching" class="coach-section" aria-labelledby="coach-heading">
+        <header class="coach-head">
+          <h2 id="coach-heading"><span aria-hidden="true">✦</span> Coach’s perspective</h2>
+          <button type="button" :disabled="codexStateLoading || !isLocalCodexHost" :title="isLocalCodexHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="refreshCodexState(true)">
+            {{ !isLocalCodexHost ? 'Mac only' : codexStateLoading ? 'Reviewing…' : codexState ? 'Refresh' : 'Try now' }}
+          </button>
+        </header>
+        <div class="coach-panel" :class="{ 'is-loading': codexStateLoading, 'is-empty': !codexState }">
+          <p v-if="weeklyDirection" class="coach-week-focus">
+            <span>{{ weeklyDirection.scope === 'week_so_far' ? 'This week’s review' : 'Focus from last week’s review' }}</span>
+            {{ weeklyDirection.next_week_change }}
+            <router-link to="/weekly-review">Open review ↗</router-link>
+          </p>
+          <template v-if="codexState">
+            <div class="coach-assessment">
+              <h3>{{ codexState.headline }}</h3>
+              <p>{{ codexState.assessment }}</p>
             </div>
-            <template v-if="codexState">
-              <div class="coaching-assessment"><h2>{{ codexState.headline }}</h2><p>{{ codexState.assessment }}</p></div>
-              <div class="coaching-next"><p><strong>Next step</strong>{{ codexState.next_step }}</p>
-              <p v-if="codexStateStale && codexStateLoading" class="codex-state-updating">Updating for the latest training data…</p>
+            <div class="coach-next">
+              <span class="coach-label">Next step</span>
+              <p>{{ codexState.next_step }}</p>
+              <p v-if="codexStateStale && codexStateLoading" class="coach-updating">Updating for the latest training data…</p>
               <button
                 v-if="canAdaptTomorrow"
                 type="button"
-                class="codex-plan-action"
+                class="coach-plan-action"
                 :disabled="codexPlanUpdate === 'running'"
                 @click="adaptTomorrowPlan"
               >
                 <span>{{ codexPlanActionLabel }}</span><span aria-hidden="true">→</span>
               </button>
-              <p v-if="codexPlanUpdate === 'failed'" class="codex-plan-error">Tomorrow was not changed. You can retry safely.</p>
-              </div>
-            </template>
-            <p v-else-if="codexStateLoading" class="codex-state-placeholder">Reading your plan, recovery, goals and recent training…</p>
-            <p v-else-if="!isLocalCodexHost" class="codex-state-placeholder">Open TrainLog on your Mac to use the coach.</p>
-            <p v-else class="codex-state-placeholder">The measured state remains available. Start the local Codex helper for a whole-context interpretation.</p>
-          </section>
-
-      <section v-if="weekDays.length" class="week-card" aria-labelledby="week-heading">
-        <div class="section-heading">
-          <div><h2 id="week-heading">Your week</h2><p class="section-caption">Completed work and what’s still ahead.</p></div><button type="button" class="dashboard-text-link" @click="router.push('/plan')">View plan →</button>
-        </div>
-
-        <div class="week-summary" aria-label="Actual training completed this week">
-          <span><strong>{{ weekActualSummary.distance }}</strong> distance</span><span><strong>{{ weekActualSummary.duration }}</strong> training</span><span><strong>{{ weekActualSummary.sessions }}</strong> sessions logged</span>
-        </div>
-
-        <div class="week-strip">
-          <button v-for="day in weekDays" :key="day.date" type="button" class="week-day" :style="{ '--day-accent': dashboardSportAccent(day.displayType) }" :class="[`week-day-${day.state}`, { 'week-day-today': day.isToday }]" :aria-label="`${day.dayLabel}, ${day.displayTitle}, ${day.sourceLabel}, ${day.displayDetail}. ${day.activityId ? 'Open activity detail' : 'Open weekly plan'}`" @click="openWeekDay(day)">
-            <span class="week-day-name">{{ day.dayLabel }}</span><span class="week-day-date">{{ day.dateLabel }}</span>
-            <span class="week-day-icon" :class="`icon-${day.tone}`">
-              <ActivityIcon v-if="isIconSessionType(day.displayType)" :type="day.displayType" :tone="day.tone" :size="18" />
-              <span v-else aria-hidden="true">·</span>
-            </span>
-            <strong>{{ day.displayTitle }}</strong>
-            <span class="week-day-detail">{{ day.displayDetail }}</span>
-            <span class="week-day-status" :class="`week-day-source-${day.source}`">{{ day.sourceLabel }}<span v-if="day.activityId" aria-hidden="true"> ↗</span></span>
-          </button>
+              <p v-if="codexPlanUpdate === 'failed'" class="coach-plan-error">Tomorrow was not changed. You can retry safely.</p>
+            </div>
+          </template>
+          <p v-else-if="codexStateLoading" class="coach-placeholder">Reading your plan, recovery, goals and recent training…</p>
+          <p v-else-if="!isLocalCodexHost" class="coach-placeholder">Open TrainLog on your Mac to use the coach.</p>
+          <p v-else class="coach-placeholder">The measured state remains available. Start the local Codex helper for a whole-context interpretation.</p>
         </div>
       </section>
 
-      <section v-if="yearSeriesCards.length" class="year-section" aria-labelledby="year-heading">
-        <div class="section-heading year-heading">
-          <div><h2 id="year-heading">The work adds up.</h2><p class="section-caption">Your year in motion.</p></div>
-          <div class="year-heading-meta"><span>{{ currentYear }}</span><small>Through {{ currentMonthLabel }}</small></div>
-        </div>
+      <WeekStrip
+        v-if="weekDays.length"
+        :days="weekDays"
+        :summary="weekActualSummary"
+        :planned-minutes="weekPlannedMinutes"
+        :planned-label="formatDuration(weekPlannedMinutes)"
+        :progress-pct="weekProgressPct"
+        @open="openWeekDay"
+      />
 
-        <div class="year-chart-grid">
-          <article v-for="chart in yearSeriesCards" :key="chart.key" class="year-chart-card" :class="`year-chart-${chart.tone}`">
-            <div class="year-chart-top">
-              <div class="year-chart-identity">
-                <span class="year-chart-icon" :class="`icon-${chart.tone}`"><ActivityIcon :type="chart.type" :tone="chart.tone" :size="18" /></span>
-                <div><span>{{ chart.title }}</span><small>Cumulative {{ chart.unitLabel }}</small></div>
-              </div>
-              <div class="year-chart-total"><strong>{{ chart.total }}</strong><span>{{ chart.unit }}</span></div>
-            </div>
+      <YearProgress
+        :ride-series="dashboard.ride_year_series || []"
+        :run-series="dashboard.run_year_series || []"
+        :strength-series="dashboard.strength_year_series || []"
+      />
 
-            <div class="year-chart-wrap" @mouseleave="hideYearTooltip(chart.key)">
-              <svg class="year-chart" viewBox="0 0 320 138" preserveAspectRatio="xMidYMid meet" role="img" :aria-label="`${chart.title} cumulative ${chart.unitLabel} in ${currentYear}`">
-                <defs>
-                  <linearGradient :id="`year-fill-${chart.key}`" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="currentColor" stop-opacity="0.22" />
-                    <stop offset="100%" stop-color="currentColor" stop-opacity="0" />
-                  </linearGradient>
-                </defs>
-                <line v-for="y in [24, 66, 108]" :key="`${chart.key}-${y}`" x1="16" :y1="y" x2="304" :y2="y" class="year-grid-line" />
-                <polygon :points="chart.areaPoints" :fill="`url(#year-fill-${chart.key})`" class="year-chart-area" />
-                <polyline :points="chart.linePoints" class="year-chart-line" />
-                <circle
-                  v-for="point in chart.points"
-                  :key="`${chart.key}-${point.month}`"
-                  :cx="point.x"
-                  :cy="point.y"
-                  r="3.2"
-                  class="year-chart-dot"
-                  :class="{ 'is-active': isYearPointActive(chart.key, point.month) }"
-                />
-                <text v-for="point in chart.points" :key="`${chart.key}-${point.month}-label`" :x="point.x" y="130" text-anchor="middle" class="year-month-label">{{ point.month }}</text>
-                <rect
-                  v-for="point in chart.points"
-                  :key="`${chart.key}-${point.month}-hit`"
-                  :x="point.hitX"
-                  y="0"
-                  :width="point.hitWidth"
-                  height="138"
-                  class="year-hit-area"
-                  tabindex="0"
-                  role="img"
-                  :aria-label="point.ariaLabel"
-                  @mouseenter="showYearTooltip(chart.key, point)"
-                  @focus="showYearTooltip(chart.key, point)"
-                  @blur="hideYearTooltip(chart.key)"
-                />
-              </svg>
-
-            </div>
-
-            <div v-if="activeYearPoint?.chartKey === chart.key" class="year-chart-detail" role="status">
-              <div class="year-chart-detail-title"><strong>{{ activeYearPoint.point.month }} {{ currentYear }}</strong><span>Month detail</span></div>
-              <div class="year-chart-detail-grid">
-                <span v-for="row in activeYearPoint.point.tooltipRows" :key="row.label"><small>{{ row.label }}</small><strong>{{ row.value }}</strong></span>
-              </div>
-            </div>
-            <div v-else class="year-chart-foot">
-              <span><small>{{ chart.latestMonth }} contribution</small><strong>{{ chart.latestValue }} {{ chart.unit }}</strong></span>
-              <span><small>Strongest month</small><strong>{{ chart.peakMonth }} · {{ chart.peakValue }} {{ chart.unit }}</strong></span>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <TeamCoaching compact />
+      <TeamCoaching v-if="isSunday" compact />
 
       <section class="explore-section" aria-labelledby="explore-heading">
         <div class="section-heading"><h2 id="explore-heading">Go a little deeper</h2></div>
         <div class="explore-grid">
           <button type="button" @click="router.push('/metrics?view=training-load')"><span class="explore-mark explore-mark-load" aria-hidden="true">⌁</span><span><strong>Training load</strong><small>Fitness, fatigue, form and trends</small></span><span aria-hidden="true">→</span></button>
           <button type="button" @click="router.push('/strength')"><span class="explore-mark explore-mark-strength" aria-hidden="true">＋</span><span><strong>Strength</strong><small>Progression, consistency and stalls</small></span><span aria-hidden="true">→</span></button>
-          <button type="button" @click="router.push('/goals')"><span class="explore-mark explore-mark-goals" aria-hidden="true">◎</span><span><strong>Goals</strong><small>Forecasts, risks and progress</small></span><span aria-hidden="true">→</span></button>
+          <button type="button" @click="router.push('/goals')"><span class="explore-mark explore-mark-goals" aria-hidden="true">◎</span><span><strong>Goals</strong><small :class="{ 'explore-alert': goalReviewCount }">{{ goalReviewLabel }}</small></span><span aria-hidden="true">→</span></button>
         </div>
       </section>
     </template>
@@ -261,14 +119,21 @@ import { addDays, format, startOfWeek } from 'date-fns'
 import { useRouter } from 'vue-router'
 import TeamCoaching from '../components/TeamCoaching.vue'
 import ActivityIcon from '../components/ActivityIcon.vue'
+import TodayCard from '../components/TodayCard.vue'
+import WeekStrip from '../components/WeekStrip.vue'
+import YearProgress from '../components/YearProgress.vue'
+import LoadFormTrend from '../components/LoadFormTrend.vue'
 import { useApi } from '../stores/api'
+import { buildStrengthPlanDraft } from '../strength-plan-draft.mjs'
 
 const api = useApi()
 const router = useRouter()
 const dashboard = ref(null)
 const recentActivities = ref([])
+const cyclingLibrary = ref(null)
+const todayActivityDetails = ref({})
+const strengthTemplates = ref([])
 const loading = ref(true)
-const activeYearPoint = ref(null)
 const codexState = ref(null)
 const codexStateLoading = ref(false)
 const codexStateError = ref(null)
@@ -278,6 +143,12 @@ const localCodexHostnames = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
 const isLocalCodexHost = computed(() => {
   if (typeof window === 'undefined') return false
   return localCodexHostnames.has(window.location.hostname.toLowerCase())
+})
+const goalReviewCount = ref(0)
+const goalReviewLabel = computed(() => {
+  const count = goalReviewCount.value
+  if (!count) return 'Forecasts, risks and progress'
+  return `${count} ${count === 1 ? 'goal needs' : 'goals need'} a review`
 })
 const completedPlanStatuses = new Set(['linked', 'matched', 'partially_matched', 'moved', 'replaced', 'rest_day_changed'])
 
@@ -291,7 +162,39 @@ const loadDashboard = async () => {
     dashboard.value = dashboardResult.status === 'fulfilled' ? dashboardResult.value.data : null
     recentActivities.value = activitiesResult.status === 'fulfilled' ? activitiesResult.value.data : []
     if (dashboard.value && isLocalCodexHost.value) void refreshCodexState(false)
+    if (todayPlan.value?.cycling_workout_id && !cyclingLibrary.value) void loadCyclingLibrary()
+    void loadTodayActivityDetails()
+    void loadGoalReviewCount()
+    if (activityTone(todayPlan.value?.session_type) === 'strength' && !strengthTemplates.value.length) void loadStrengthTemplates()
   } finally { loading.value = false }
+}
+
+// The completed-day card draws each session's route, ride profile or lifts from its detail.
+async function loadTodayActivityDetails() {
+  const ids = todayActivities.value.slice(0, 4).map((activity) => activity.id)
+  const missing = ids.filter((id) => !todayActivityDetails.value[id])
+  const results = await Promise.allSettled(missing.map((id) => api.getActivityDetail(id)))
+  const loaded = Object.fromEntries(missing.map((id, index) => [id, results[index].status === 'fulfilled' ? results[index].value.data : null]))
+  todayActivityDetails.value = Object.fromEntries(ids.map((id) => [id, todayActivityDetails.value[id] || loaded[id]]))
+}
+
+// Only the count is shown here; the Goals page carries the full review.
+async function loadGoalReviewCount() {
+  try {
+    goalReviewCount.value = (await api.getGoalReview()).data?.attention_count || 0
+  } catch { goalReviewCount.value = 0 }
+}
+
+async function loadStrengthTemplates() {
+  try {
+    strengthTemplates.value = (await api.getStrengthWorkoutTemplates()).data || []
+  } catch { strengthTemplates.value = [] }
+}
+
+async function loadCyclingLibrary() {
+  try {
+    cyclingLibrary.value = (await api.getCyclingWorkouts()).data
+  } catch { cyclingLibrary.value = null }
 }
 
 onMounted(loadDashboard)
@@ -304,6 +207,9 @@ const dailyRecommendation = computed(() => dashboard.value?.daily_recommendation
 const readiness = computed(() => dashboard.value?.readiness || null)
 const latestSubjectiveState = computed(() => dashboard.value?.latest_subjective_state || null)
 const trainingLoad = computed(() => dashboard.value?.training_load || null)
+const weeklyDirection = computed(() => dashboard.value?.weekly_direction || null)
+// The full weekly review card belongs to review day; other days link to it from the week header.
+const isSunday = computed(() => new Date().getDay() === 0)
 const todayPlan = computed(() => weeklyPlan.value?.days?.find((day) => day.date === todayKey.value) || dailyRecommendation.value?.today_plan || null)
 const tomorrowPlan = computed(() => weeklyPlan.value?.days?.find((day) => day.date === tomorrowKey.value) || null)
 const todayPlanCompleted = computed(() => completedPlanStatuses.has(todayPlan.value?.comparison?.status))
@@ -350,6 +256,7 @@ const codexContextKey = computed(() => {
     tomorrowPlan.value?.target_duration_min || 0,
     tomorrowPlan.value?.target_distance_km || 0,
     tomorrowPlan.value?.title || '',
+    weeklyDirection.value?.generated_at || 'no_weekly_direction',
   ].join('|').replace(/[^A-Za-z0-9._:|,+-]/g, '_').slice(0, 512)
 })
 
@@ -457,15 +364,6 @@ const primaryDecisionLabel = computed(() => {
   if (primaryDecisionTone.value === 'go') return 'Good to go'
   return 'Stay on plan'
 })
-const primaryDecisionTitle = computed(() => {
-  if (todayPlanCompleted.value) return 'That’s enough for today'
-  return todayPlan.value?.title || dailyRecommendation.value?.action || 'No workout planned today'
-})
-const primaryDecisionSummary = computed(() => {
-  if (todayPlanCompleted.value) return 'Your planned work is complete. Let the session settle and protect tomorrow’s training.'
-  if (todayPlan.value?.details) return splitPlanSentences(todayPlan.value.details)[0]
-  return dailyRecommendation.value?.action || 'Use your readiness and recent training to decide between recovery and easy movement.'
-})
 const decisionReasons = computed(() => {
   const reasons = [...(dailyRecommendation.value?.reasons || [])]
   if (readiness.value?.state === 'strained' && readiness.value?.reasons?.[0]) reasons.push(readiness.value.reasons[0])
@@ -491,13 +389,11 @@ const loadRecoverySummary = computed(() => {
 const loadMetrics = computed(() => {
   const current = trainingLoad.value?.current
   if (!current) return []
-  const form = Number(current.form || 0)
   const ratio = trainingLoad.value?.ratio || {}
   const ratioStatus = String(ratio.status || 'low')
   return [
     { label: 'Fitness', value: Math.round(Number(current.fitness || 0)), hint: '42-day load', tone: 'metric-fitness' },
     { label: 'Fatigue', value: Math.round(Number(current.fatigue || 0)), hint: '7-day load', tone: 'metric-fatigue' },
-    { label: 'Form', value: `${form > 0 ? '+' : ''}${Math.round(form)}`, hint: 'fitness − fatigue', tone: form >= 0 ? 'metric-positive' : form <= -12 ? 'metric-risk' : 'metric-caution' },
     { label: 'Load ratio', value: Number(ratio.value || 0).toFixed(2), hint: `${ratioStatus.charAt(0).toUpperCase()}${ratioStatus.slice(1)}`, tone: ratioStatus === 'high' ? 'metric-risk' : ratioStatus === 'balanced' ? 'metric-fitness' : ratioStatus === 'recovery' ? 'metric-positive' : 'metric-neutral' },
   ]
 })
@@ -547,22 +443,127 @@ const todayActivityCards = computed(() => (activitiesByDate.value[todayKey.value
     detail: presentation.displayDetail || sessionTypeLabel(activity.type),
   }
 }))
-const todayActualTotals = computed(() => (activitiesByDate.value[todayKey.value] || []).reduce(
-  (total, activity) => ({ duration: total.duration + Number(activity.duration_min || 0), distance: total.distance + Number(activity.distance_km || 0) }),
-  { duration: 0, distance: 0 },
-))
-const todayActivityTotal = computed(() => {
-  const activities = activitiesByDate.value[todayKey.value] || []
-  const duration = activities.reduce((sum, activity) => sum + Number(activity.duration_min || 0), 0)
-  const distance = activities.reduce((sum, activity) => sum + Number(activity.distance_km || 0), 0)
+const todayCyclingWorkout = computed(() => {
+  const id = todayPlan.value?.cycling_workout_id
+  return id ? cyclingLibrary.value?.workouts?.find((workout) => workout.id === id) || null : null
+})
+const todayActivities = computed(() => activitiesByDate.value[todayKey.value] || [])
+const todayCompletedStats = computed(() => {
+  const activities = todayActivities.value
+  const sum = (key) => activities.reduce((total, activity) => total + Number(activity[key] || 0), 0)
+  const weightedAverage = (key) => {
+    const rows = activities.filter((activity) => activity[key] && activity.duration_min)
+    const minutes = rows.reduce((total, activity) => total + Number(activity.duration_min), 0)
+    return minutes ? Math.round(rows.reduce((total, activity) => total + Number(activity[key]) * Number(activity.duration_min), 0) / minutes) : 0
+  }
+  const duration = sum('duration_min')
+  const distance = sum('distance_km')
+  const watts = weightedAverage('avg_watts')
+  const heartRate = weightedAverage('avg_hr')
+  const pace = activities.length === 1 ? activities[0].avg_pace : null
+  const todayLoad = trainingLoad.value?.chart?.find((item) => item.date === todayKey.value)?.load
+  const elevation = sum('elevation_m')
   return [
-    `${activities.length} ${activities.length === 1 ? 'session' : 'sessions'}`,
-    duration ? formatDuration(duration) : '',
-    distance ? `${formatCompactNumber(distance)} km` : '',
-  ].filter(Boolean).join(' · ')
+    duration ? { label: 'Time', value: formatDuration(duration) } : null,
+    distance ? { label: 'Distance', value: formatCompactNumber(distance), unit: 'km' } : null,
+    watts ? { label: 'Avg power', value: watts, unit: 'W' } : null,
+    pace ? { label: 'Avg pace', value: pace } : null,
+    heartRate ? { label: 'Avg HR', value: heartRate, unit: 'bpm' } : null,
+    todayLoad ? { label: 'Load', value: Math.round(todayLoad) } : null,
+    elevation ? { label: 'Elevation', value: Math.round(elevation), unit: 'm' } : null,
+  ].filter(Boolean).slice(0, 4)
+})
+// Endurance first, then strength, so the richest view opens by default.
+const todaySessions = computed(() => {
+  const plan = todayPlan.value
+  const matchedIds = new Set((plan?.comparison?.completed_activities || []).map((activity) => activity.id))
+  const plannedMin = Number(plan?.target_duration_min || 0)
+  const activities = todayActivities.value
+  const kindOf = (activity) => (['ride', 'run', 'walk'].includes(activityTone(activity.type)) ? 'endurance' : activityTone(activity.type) === 'strength' ? 'strength' : 'other')
+  const order = { endurance: 0, strength: 1, other: 2 }
+  return activities
+    .map((activity, index) => ({
+      id: activity.id,
+      kind: kindOf(activity),
+      title: todayActivityCards.value[index].title,
+      shortStat: [formatDuration(activity.duration_min), activity.distance_km ? `${formatCompactNumber(activity.distance_km)} km` : ''].filter(Boolean).join(' · '),
+      type: activity.type,
+      tone: activityTone(activity.type),
+      accent: dashboardSportAccent(activity.type),
+      detail: todayActivityDetails.value[activity.id] || null,
+      // The plan target belongs to the session the plan was matched to (or the only session).
+      plannedMinutes: plannedMin && (matchedIds.has(activity.id) || activities.length === 1) ? plannedMin : 0,
+    }))
+    .sort((a, b) => order[a.kind] - order[b.kind])
+})
+const todayCard = computed(() => {
+  const plan = todayPlan.value
+  const activities = todayActivities.value
+  const completed = todayPlanCompleted.value || (!plan && activities.length > 0)
+  const statusTone = { complete: 'done' }[primaryDecisionTone.value] || primaryDecisionTone.value
+  const coach = { showCoachLink: Boolean(codexState.value), statusLabel: primaryDecisionLabel.value, statusTone }
+  if (completed) {
+    const [first] = activities
+    const plannedMin = Number(plan?.target_duration_min || 0)
+    const actualMin = activities.reduce((total, activity) => total + Number(activity.duration_min || 0), 0)
+    return {
+      ...coach,
+      state: 'completed',
+      accent: dashboardSportAccent(first?.type),
+      tone: activityTone(first?.type),
+      iconType: isIconSessionType(first?.type) ? first.type : '',
+      kicker: activities.length > 1 ? `Today · ${activities.length} sessions` : `Today · ${sessionTypeLabel(first?.type)}`,
+      title: activities.length === 1 ? todayActivityCards.value[0].title : [...new Set(activities.map((activity) => sessionTypeLabel(activity.type)))].join(' + '),
+      subtitle: [
+        activities.length > 1 ? `${formatDuration(actualMin)} total` : '',
+        plan ? `Planned: ${plan.workout_intent_label || sessionTypeLabel(plan.session_type)}${plannedMin ? ` · ${plannedMin} min` : ''}` : 'Unplanned',
+      ].filter(Boolean).join(' · '),
+      sessions: todaySessions.value,
+      ftp: Number(trainingLoad.value?.model?.ftp || 0),
+      statusLabel: 'Done',
+      stats: todayCompletedStats.value,
+      comparison: plannedMin && actualMin ? { plannedLabel: (plan.workout_intent_label || sessionTypeLabel(plan.session_type)).toLowerCase(), plannedMin, actualMin } : null,
+      activities: activities.length > 1 ? todayActivityCards.value : [],
+      primaryAction: activities.length === 1 ? { label: 'View activity', to: `/activities/${encodeURIComponent(first.id)}` } : { label: 'Review your week', to: '/plan' },
+      secondaryActions: activities.length === 1 ? [{ label: 'Review your week', to: '/plan' }] : [],
+    }
+  }
+  if (!plan) {
+    return {
+      ...coach,
+      state: 'empty',
+      kicker: 'Today',
+      title: dailyRecommendation.value?.action || 'No workout planned today',
+      summary: 'Use your readiness and recent training to decide between recovery and easy movement.',
+      primaryAction: { label: 'Build your week', to: '/plan' },
+    }
+  }
+  const isStrength = activityTone(plan.session_type) === 'strength'
+  return {
+    ...coach,
+    state: 'planned',
+    accent: dashboardSportAccent(plan.session_type),
+    tone: activityTone(plan.session_type),
+    iconType: isIconSessionType(plan.session_type) ? plan.session_type : '',
+    kicker: `Today · ${plan.workout_intent_label || sessionTypeLabel(plan.session_type)}`,
+    title: plan.title || sessionTypeLabel(plan.session_type),
+    subtitle: splitPlanSentences(plan.details)[0] && !todaySessionGuide.value.length ? splitPlanSentences(plan.details)[0] : '',
+    plan,
+    plannedExercises: isStrength ? buildStrengthPlanDraft(plan, strengthTemplates.value).exercises : [],
+    form: trainingLoad.value?.current ? Number(trainingLoad.value.current.form || 0) : null,
+    checkIn: latestSubjectiveState.value,
+    workout: todayCyclingWorkout.value,
+    guide: todaySessionGuide.value,
+    reasons: decisionReasons.value,
+    activities: todayActivityCards.value,
+    primaryAction: isStrength
+      ? { label: 'Start in Workout Studio', to: { path: '/strength/workouts', query: { planDate: plan.date } } }
+      : { label: 'Open today’s plan', to: '/plan' },
+    secondaryActions: isStrength ? [{ label: 'Open plan', to: '/plan' }] : [],
+  }
 })
 
-const weekDays = computed(() => (weeklyPlan.value?.days || []).map((day) => {
+const weekDaysBase = computed(() => (weeklyPlan.value?.days || []).map((day) => {
   const actualActivities = activitiesByDate.value[day.date] || []
   const hasActual = actualActivities.length > 0
   const isToday = day.date === todayKey.value
@@ -580,8 +581,29 @@ const weekDays = computed(() => (weeklyPlan.value?.days || []).map((day) => {
     dayLabel: formatLocalDate(day.date, 'EEE'),
     dateLabel: formatLocalDate(day.date, 'd'),
     tone: activityTone(presentation.displayType),
+    plannedMinutes: Number(day.target_duration_min || 0),
+    actualMinutes: Math.round(actualActivities.reduce((sum, activity) => sum + Number(activity.duration_min || 0), 0)),
   }
 }))
+const weekDays = computed(() => {
+  return weekDaysBase.value.map((day) => {
+    const { plannedMinutes: planned, actualMinutes: actual } = day
+    const done = day.state === 'actual'
+    return {
+      ...day,
+      accent: dashboardSportAccent(day.displayType),
+      hasIcon: isIconSessionType(day.displayType),
+      progressPct: planned ? Math.min(100, Math.round((actual / planned) * 100)) : done ? 100 : 0,
+      overPlan: planned > 0 && actual > planned * 1.15,
+      minutesLabel: done || day.state === 'missed'
+        ? (planned ? `${actual} / ${planned} min` : `${actual} min`)
+        : (planned ? `${planned} min` : 'Rest'),
+      subtitle: done ? daySubtitle(activitiesByDate.value[day.date]) : (day.workout_intent_label || sessionTypeLabel(day.session_type)),
+      statusLabel: done ? 'Done ↗' : day.state === 'missed' ? (planned ? 'Missed' : '') : day.isToday ? 'Today' : 'Planned',
+    }
+  })
+})
+const weekPlannedMinutes = computed(() => (weeklyPlan.value?.days || []).reduce((sum, day) => sum + Number(day.target_duration_min || 0), 0))
 const completedWeekSessions = computed(() => weekDays.value.filter((day) => day.state === 'actual').length)
 const upcomingWeekSessions = computed(() => weekDays.value.filter((day) => ['today', 'upcoming'].includes(day.state)).length)
 const weekActualActivities = computed(() => {
@@ -597,13 +619,10 @@ const weekActualSummary = computed(() => {
     sessions: weekActualActivities.value.length,
   }
 })
-const currentYear = computed(() => format(new Date(), 'yyyy'))
-const currentMonthLabel = computed(() => format(new Date(), 'MMMM'))
-const yearSeriesCards = computed(() => [
-  buildYearChart({ key: 'ride', type: 'Ride', tone: 'ride', title: 'Cycling', unit: 'km', unitLabel: 'distance', series: dashboard.value?.ride_year_series || [], monthlyKey: 'monthly_km', cumulativeKey: 'cumulative_km' }),
-  buildYearChart({ key: 'run', type: 'Run', tone: 'run', title: 'Running', unit: 'km', unitLabel: 'distance', series: dashboard.value?.run_year_series || [], monthlyKey: 'monthly_km', cumulativeKey: 'cumulative_km' }),
-  buildYearChart({ key: 'strength', type: 'WeightTraining', tone: 'strength', title: 'Strength', unit: 'h', unitLabel: 'hours', series: dashboard.value?.strength_year_series || [], monthlyKey: 'monthly_hours', cumulativeKey: 'cumulative_hours' }),
-].filter((chart) => chart.points.length))
+const weekProgressPct = computed(() => {
+  const actual = weekActualActivities.value.reduce((sum, activity) => sum + Number(activity.duration_min || 0), 0)
+  return weekPlannedMinutes.value ? Math.min(100, Math.round((actual / weekPlannedMinutes.value) * 100)) : 0
+})
 
 function formatLocalDate(value, pattern) { return value ? format(new Date(`${value}T12:00:00`), pattern) : '' }
 function splitPlanSentences(value) {
@@ -700,71 +719,19 @@ function formatDuration(totalMinutes) {
   if (!hours) return `${minutes} min`
   return minutes ? `${hours}h ${minutes}m` : `${hours}h`
 }
+function daySubtitle(activities = []) {
+  const distance = activities.reduce((sum, activity) => sum + Number(activity.distance_km || 0), 0)
+  const watts = activities.find((activity) => activity.avg_watts)?.avg_watts
+  const pace = activities.find((activity) => activity.avg_pace)?.avg_pace
+  return [distance ? `${formatCompactNumber(distance)} km` : '', watts ? `${Math.round(watts)} W` : pace || ''].filter(Boolean).join(' · ')
+    || sessionTypeLabel(activities[0]?.type)
+}
 function openWeekDay(day) {
   if (day.activityId) {
     router.push(`/activities/${encodeURIComponent(day.activityId)}`)
     return
   }
   router.push('/plan')
-}
-function buildYearChart({ key, type, tone, title, unit, unitLabel, series, monthlyKey, cumulativeKey }) {
-  const chartWidth = 288
-  const minX = 16
-  const topY = 20
-  const bottomY = 108
-  const maxValue = Math.max(...series.map((item) => Number(item[cumulativeKey] || 0)), 1)
-  const stepX = series.length > 1 ? chartWidth / (series.length - 1) : 0
-  const points = series.map((item, index) => {
-    const x = minX + (index * stepX)
-    const primaryValue = `${formatChartValue(item[monthlyKey])} ${unit}`
-    const timeValue = `${formatChartValue(item.monthly_hours)} h`
-    const cumulativeValue = `${formatChartValue(item[cumulativeKey])} ${unit}`
-    const tooltipRows = unit === 'h'
-      ? [
-          { label: 'Training time', value: primaryValue },
-          { label: 'Sessions', value: formatChartValue(item.monthly_sessions) },
-          { label: 'Year total', value: cumulativeValue },
-        ]
-      : [
-          { label: 'Distance', value: primaryValue },
-          { label: 'Training time', value: timeValue },
-          { label: 'Sessions', value: formatChartValue(item.monthly_sessions) },
-          { label: 'Year total', value: cumulativeValue },
-        ]
-    return {
-      ...item,
-      x,
-      y: bottomY - ((Number(item[cumulativeKey] || 0) / maxValue) * (bottomY - topY)),
-      hitX: Math.max(0, x - ((stepX || chartWidth) / 2)),
-      hitWidth: stepX || chartWidth,
-      cumulativeLabel: formatChartValue(item[cumulativeKey]),
-      tooltipRows,
-      ariaLabel: `${title}, ${item.month}: ${tooltipRows.map((row) => `${row.label} ${row.value}`).join(', ')}`,
-    }
-  })
-  const latest = series.at(-1) || {}
-  const peak = series.reduce((best, item) => Number(item[monthlyKey] || 0) > Number(best?.[monthlyKey] || 0) ? item : best, null) || {}
-  return {
-    key, type, tone, title, unit, unitLabel, points,
-    linePoints: points.map((point) => `${point.x},${point.y}`).join(' '),
-    areaPoints: points.length ? [`${points[0].x},${bottomY}`, ...points.map((point) => `${point.x},${point.y}`), `${points.at(-1).x},${bottomY}`].join(' ') : '',
-    total: formatChartValue(latest[cumulativeKey]),
-    latestMonth: latest.month || 'Latest',
-    latestValue: formatChartValue(latest[monthlyKey]),
-    peakMonth: peak.month || '—',
-    peakValue: formatChartValue(peak[monthlyKey]),
-  }
-}
-function showYearTooltip(chartKey, point) { activeYearPoint.value = { chartKey, point } }
-function hideYearTooltip(chartKey) {
-  if (activeYearPoint.value?.chartKey === chartKey) activeYearPoint.value = null
-}
-function isYearPointActive(chartKey, month) {
-  return activeYearPoint.value?.chartKey === chartKey && activeYearPoint.value?.point.month === month
-}
-function formatChartValue(value) {
-  const numeric = Number(value || 0)
-  return numeric >= 1000 ? numeric.toLocaleString(undefined, { maximumFractionDigits: 0 }) : numeric.toLocaleString(undefined, { maximumFractionDigits: 1 })
 }
 </script>
 
@@ -793,9 +760,7 @@ button { color: inherit; }
   padding: 4px 2px 2px;
 }
 
-.dashboard-date,
-.section-kicker,
-.decision-kicker {
+.dashboard-date, .section-kicker {
   color: var(--dash-muted);
   font-size: 10px;
   font-weight: 750;
@@ -836,165 +801,20 @@ button { color: inherit; }
 
 .decision-layout { display: grid; grid-template-columns: minmax(0, 1.72fr) minmax(300px, 0.72fr); gap: 16px; }
 
-.decision-card,
-.signal-card,
-.week-card,
-.year-section,
-.explore-section {
+.signal-card, .explore-section {
   border: 1px solid var(--dash-border);
   border-radius: 22px;
   background: var(--dash-surface);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
-.decision-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  isolation: isolate;
-  overflow: hidden;
-  min-height: 390px;
-  padding: clamp(24px, 3vw, 36px);
-}
-
-.decision-card::before {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--decision-color, #7ba3ff);
-  content: '';
-}
-
-.decision-glow {
-  position: absolute;
-  z-index: -1;
-  top: -110px;
-  right: -70px;
-  width: 360px;
-  height: 360px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--decision-glow, rgba(95, 140, 255, 0.13)), transparent 68%);
-  pointer-events: none;
-}
-
-.decision-go { --decision-color: #48d7a8; --decision-glow: rgba(31, 190, 141, 0.18); }
-.decision-caution { --decision-color: #f3b44d; --decision-glow: rgba(243, 180, 77, 0.14); }
-.decision-recover { --decision-color: #8ca8ff; --decision-glow: rgba(95, 140, 255, 0.18); }
-.decision-complete { --decision-color: #7f91ad; --decision-glow: rgba(127, 145, 173, 0.12); }
-
-.decision-topline,
-.signal-heading,
-.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-
-.decision-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid color-mix(in srgb, var(--decision-color) 32%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--decision-color) 9%, transparent);
-  padding: 5px 10px;
-  color: color-mix(in srgb, var(--decision-color) 86%, white);
-  font-size: 11px;
-  font-weight: 750;
-}
-
-.decision-state i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--decision-color);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--decision-color) 11%, transparent);
-}
-
-.decision-session {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  max-width: 800px;
-  margin-top: clamp(30px, 5vw, 52px);
-}
-
-.decision-icon,
-.year-chart-icon,
-.week-day-icon { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; border-radius: 13px; }
-.decision-icon { width: 50px; height: 50px; }
+.signal-heading, .section-heading{ display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .icon-run { background: rgba(79, 141, 247, 0.13); color: var(--run); }
 .icon-ride { background: rgba(31, 190, 141, 0.13); color: var(--ride); }
 .icon-strength { background: rgba(241, 169, 59, 0.13); color: var(--strength); }
 .icon-recovery { background: rgba(188, 176, 246, 0.13); color: #bcb0f6; }
 .icon-walk { background: rgba(145, 207, 186, 0.13); color: #91cfba; }
 .icon-neutral { background: rgba(143, 161, 191, 0.11); color: var(--dash-muted); }
-
-.decision-session h2 {
-  font-family: var(--font-display);
-  font-size: clamp(26px, 3.3vw, 40px);
-  line-height: 1.04;
-  letter-spacing: -0.045em;
-}
-
-.decision-session p {
-  display: -webkit-box;
-  max-width: 74ch;
-  margin-top: 12px;
-  overflow: hidden;
-  color: var(--dash-soft);
-  font-size: 14px;
-  line-height: 1.65;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-}
-
-.session-prescription { display: flex; flex-wrap: wrap; margin-top: 28px; }
-.session-prescription > span { display: grid; min-width: 110px; gap: 3px; border-right: 1px solid var(--dash-border); padding: 0 22px; }
-.session-prescription > span:first-child { padding-left: 0; }
-.session-prescription > span:last-child { border-right: 0; }
-.session-prescription small { color: var(--dash-muted); font-size: 10px; }
-.session-prescription strong { font-family: var(--font-display); font-size: 16px; }
-
-.decision-reasons { display: grid; gap: 7px; margin-top: 24px; }
-.decision-reasons span { position: relative; padding-left: 15px; color: var(--dash-muted); font-size: 12px; }
-.decision-reasons span::before { position: absolute; top: 0.63em; left: 1px; width: 4px; height: 4px; border-radius: 50%; background: var(--decision-color); content: ''; }
-.decision-actions { display: flex; align-items: center; gap: 16px; margin-top: 26px; }
-
-.session-guide { margin-top:auto; padding-top:32px; }
-.session-guide-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; border-top:1px solid var(--dash-border); padding-top:16px; }
-.session-guide-heading > span { color:var(--dash-muted); font-size:9px; font-weight:750; letter-spacing:.12em; text-transform:uppercase; }
-.session-guide-heading > strong { color:#7e90aa; font-size:9px; font-weight:650; }
-.session-guide-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:10px; }
-.session-guide-grid article { min-width:0; border:1px solid rgba(143,161,191,.12); border-radius:11px; background:rgba(12,19,30,.34); padding:12px; }
-.session-guide-grid article.is-guardrail { border-color:rgba(243,180,77,.18); background:rgba(243,180,77,.035); }
-.session-guide-grid span { color:#8798b3; font-size:8px; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
-.session-guide-grid p { margin-top:6px; color:#a4b2c8; font-size:10px; line-height:1.5; }
-.completed-today { margin-top:auto; padding-top:32px; }
-.completed-today-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; border-top:1px solid var(--dash-border); padding-top:16px; }
-.completed-today-heading > span { color:var(--dash-muted); font-size:9px; font-weight:750; letter-spacing:.12em; text-transform:uppercase; }
-.completed-today-heading > strong { color:#7e90aa; font-size:9px; font-weight:650; }
-.completed-today-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
-.completed-today-grid button { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; min-width:0; border:1px solid rgba(143,161,191,.12); border-radius:11px; background:rgba(12,19,30,.34); padding:10px; text-align:left; cursor:pointer; }
-.completed-today-grid button:hover { border-color:rgba(143,161,191,.25); background:rgba(28,39,58,.5); transform:translateY(-1px); }
-.completed-activity-icon { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:9px; }
-.completed-today-grid button > span:nth-child(2) { display:grid; min-width:0; gap:2px; }
-.completed-today-grid button strong { overflow:hidden; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
-.completed-today-grid button small { color:var(--dash-muted); font-size:9px; }
-.completed-today-grid button > span:last-child { color:#71829f; font-size:10px; }
-
-.primary-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 28px;
-  border: 0;
-  border-radius: 11px;
-  background: #eef3fb;
-  padding: 11px 15px;
-  color: #101827;
-  font-size: 12px;
-  font-weight: 750;
-  cursor: pointer;
-}
-
-.primary-action:hover { background: white; transform: translateY(-1px); }
-.template-note { color: var(--dash-muted); font-size: 11px; }
 
 .signal-card { display: flex; flex-direction: column; justify-content: space-between; padding: 24px; }
 .signal-heading h2,
@@ -1008,24 +828,6 @@ button { color: inherit; }
 .signal-summary { display: grid; gap: 6px; margin-top: 22px; }
 .signal-summary strong { font-family: var(--font-display); font-size: 16px; }
 .signal-summary p { color: var(--dash-muted); font-size: 12px; line-height: 1.55; }
-.codex-state { display:grid; gap:8px; margin-top:18px; border:1px solid rgba(118,166,255,.18); border-radius:12px; background:linear-gradient(145deg,rgba(82,111,176,.11),rgba(255,255,255,.015)); padding:15px 16px; }
-.codex-state.is-loading { opacity:.82; }
-.codex-state-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-.codex-state-heading > span { color:#9ab9f4; font-size:9px; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
-.codex-state-heading i { color:#78a6ff; font-style:normal; }
-.codex-state-heading button { border:0; background:transparent; padding:2px 0; color:#8399bd; font-size:9px; font-weight:700; cursor:pointer; }
-.codex-state-heading button:hover:not(:disabled) { color:#b7caff; }
-.codex-state-heading button:disabled { cursor:default; }
-.codex-state > strong { margin-top:3px; font-family:var(--font-display); font-size:14px; line-height:1.35; }
-.codex-state > p { color:#a0aec4; font-size:11px; line-height:1.55; }
-.codex-state > small { border-top:1px solid rgba(118,166,255,.1); margin-top:2px; padding-top:8px; color:#899bb7; font-size:10px; line-height:1.5; }
-.codex-state > small b { color:#9db8ea; }
-.codex-state .codex-state-placeholder { color:#71829f; }
-.codex-state .codex-state-updating { color:#7892c2; font-size:8px; font-weight:650; letter-spacing:.04em; }
-.codex-plan-action { display:flex; align-items:center; justify-content:space-between; gap:14px; width:100%; margin-top:2px; border:1px solid rgba(118,166,255,.22); border-radius:9px; background:rgba(87,125,214,.12); padding:9px 10px; color:#b8ccff; font-size:9px; font-weight:750; cursor:pointer; }
-.codex-plan-action:hover:not(:disabled) { border-color:rgba(118,166,255,.38); background:rgba(87,125,214,.2); transform:translateY(-1px); }
-.codex-plan-action:disabled { cursor:default; opacity:.68; }
-.codex-plan-error { color:#ef9a90 !important; font-size:9px !important; }
 .load-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; border-top: 1px solid var(--dash-border); border-bottom: 1px solid var(--dash-border); margin-top: 20px; padding: 10px 0; }
 .load-metrics div { --metric-color: #91a3bf; display: grid; min-width: 0; gap: 2px; border: 1px solid color-mix(in srgb, var(--metric-color) 17%, transparent); border-radius: 9px; background: linear-gradient(145deg, color-mix(in srgb, var(--metric-color) 10%, transparent), rgba(255, 255, 255, 0.01)); padding: 8px; }
 .load-metrics .metric-fitness { --metric-color: #76a6ff; }
@@ -1043,108 +845,7 @@ button { color: inherit; }
 .checkin-summary strong.neutral { border-color: rgba(118, 166, 255, 0.14); background: rgba(118, 166, 255, 0.08); color: #9ab9f4; }
 .checkin-summary strong.risk { border-color: rgba(239, 123, 110, 0.16); background: rgba(239, 123, 110, 0.09); color: #f09a90; }
 .signal-empty { margin-top: 18px; color: var(--dash-muted); font-size: 11px; }
-.week-card,
-.year-section,
-.explore-section { padding: 24px; }
-.week-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--dash-border); border-bottom: 1px solid var(--dash-border); margin-top: 20px; }
-.week-summary article { display: grid; min-width: 0; gap: 1px; border-right: 1px solid var(--dash-border); padding: 12px 22px; }
-.week-summary article:first-child { padding-left: 0; }
-.week-summary article:last-child { border-right: 0; }
-.week-summary span { color: var(--dash-muted); font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
-.week-summary strong { font-family: var(--font-display); font-size: 17px; line-height: 1.2; letter-spacing: -0.03em; }
-.week-summary small { color: #63748f; font-size: 8px; }
-.week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 7px; margin-top: 16px; }
-
-.week-day {
-  position: relative;
-  display: grid;
-  min-width: 0;
-  min-height: 150px;
-  justify-items: start;
-  border: 1px solid transparent;
-  border-radius: 14px;
-  background: rgba(13, 19, 30, 0.54);
-  padding: 13px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.week-day:hover { border-color: var(--dash-border); background: rgba(26, 35, 53, 0.75); transform: translateY(-1px); }
-.week-day-today { border-color: rgba(123, 163, 255, 0.38); background: rgba(49, 75, 125, 0.17); }
-.week-day-actual { background: rgba(15, 27, 35, 0.62); }
-.week-day-missed { opacity: 0.62; }
-.week-day-name { color: var(--dash-muted); font-size: 10px; font-weight: 750; text-transform: uppercase; }
-.week-day-date { position: absolute; top: 13px; right: 13px; color: #71809a; font-family: var(--font-display); font-size: 11px; }
-.week-day-icon { width: 31px; height: 31px; margin-top: 17px; border-radius: 9px; }
-.week-day strong { width: 100%; margin-top: 10px; overflow: hidden; font-size: 11px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
-.week-day-detail { width: 100%; margin-top: 3px; overflow: hidden; color: var(--dash-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.week-day-status { align-self: end; margin-top: 9px; color: #71809a; font-size: 9px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.06em; }
-.week-day-source-actual { color: #54d0aa; }
-.week-day-source-planned { color: #9ab6ff; }
-.week-day-source-missing { color: #71809a; }
-
-.year-section {
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 8% 0%, rgba(31, 190, 141, 0.055), transparent 25%),
-    radial-gradient(circle at 92% 0%, rgba(95, 140, 255, 0.055), transparent 25%),
-    var(--dash-surface);
-}
-
-.year-heading { margin-bottom: 22px; }
-.year-heading-meta { display: grid; justify-items: end; }
-.year-heading-meta span { font-family: var(--font-display); font-size: 14px; font-weight: 700; }
-.year-heading-meta small { color: var(--dash-muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; }
-.year-chart-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-
-.year-chart-card {
-  --chart-color: #7ba3ff;
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--dash-border);
-  border-radius: 17px;
-  background: rgba(11, 17, 27, 0.62);
-  padding: 18px;
-  color: var(--chart-color);
-}
-
-.year-chart-ride { --chart-color: #34c89b; }
-.year-chart-run { --chart-color: #6b9cff; }
-.year-chart-strength { --chart-color: #efb557; }
-.year-chart-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-.year-chart-identity { display: flex; align-items: center; gap: 10px; }
-.year-chart-icon { width: 35px; height: 35px; border-radius: 10px; }
-.year-chart-identity > div { display: grid; }
-.year-chart-identity span { color: var(--text); font-size: 11px; font-weight: 700; }
-.year-chart-identity small { color: var(--dash-muted); font-size: 9px; }
-.year-chart-total { display: flex; align-items: baseline; gap: 4px; color: var(--text); }
-.year-chart-total strong { font-family: var(--font-display); font-size: clamp(22px, 2.4vw, 31px); line-height: 1; letter-spacing: -0.045em; }
-.year-chart-total span { color: var(--dash-muted); font-size: 10px; }
-
-.year-chart-wrap { position: relative; margin-top: 16px; }
-.year-chart { display: block; width: 100%; height: 150px; overflow: visible; }
-.year-grid-line { stroke: rgba(143, 161, 191, 0.11); stroke-width: 0.8; vector-effect: non-scaling-stroke; }
-.year-chart-area { color: var(--chart-color); }
-.year-chart-line { fill: none; stroke: var(--chart-color); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.year-chart-dot { fill: #111a29; stroke: var(--chart-color); stroke-width: 1.8; vector-effect: non-scaling-stroke; }
-.year-chart-dot.is-active { fill: var(--chart-color); stroke: #eef3fb; stroke-width: 2.2; }
-.year-month-label { fill: #65758f; font-family: var(--font-body); font-size: 7px; }
-.year-hit-area { fill: transparent; cursor: crosshair; outline: none; }
-.year-hit-area:focus { fill: color-mix(in srgb, var(--chart-color) 5%, transparent); }
-
-.year-chart-foot { display: grid; min-height: 61px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 14px; border-top: 1px solid var(--dash-border); padding-top: 13px; }
-.year-chart-foot > span { display: grid; min-width: 0; gap: 2px; }
-.year-chart-foot small { color: var(--dash-muted); font-size: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-.year-chart-foot strong { overflow: hidden; color: var(--dash-soft); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-
-.year-chart-detail { min-height: 61px; border-top: 1px solid color-mix(in srgb, var(--chart-color) 25%, var(--dash-border)); padding-top: 8px; }
-.year-chart-detail-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.year-chart-detail-title strong { color: var(--text); font-family: var(--font-display); font-size: 10px; }
-.year-chart-detail-title span { color: var(--chart-color); font-size: 7px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.08em; }
-.year-chart-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(54px, 1fr)); gap: 7px; margin-top: 7px; }
-.year-chart-detail-grid > span { display: grid; min-width: 0; }
-.year-chart-detail-grid small { overflow: hidden; color: var(--dash-muted); font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
-.year-chart-detail-grid strong { overflow: hidden; color: var(--dash-soft); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.explore-section{ padding: 24px; }
 
 .explore-section { background: rgba(14, 20, 31, 0.68); }
 .explore-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 18px; }
@@ -1158,6 +859,7 @@ button { color: inherit; }
 .explore-grid strong { font-size: 11px; }
 .explore-grid small { color: var(--dash-muted); font-size: 9px; }
 .explore-grid button > span:last-child { color: #64748d; }
+.explore-grid small.explore-alert { color: #f0bd6e; font-weight: 650; }
 
 .dashboard-loading { display: grid; gap: 22px; }
 .loading-head { display: grid; gap: 10px; padding: 8px 0; }
@@ -1186,9 +888,6 @@ button { color: inherit; }
 
 @media (max-width: 1050px) {
   .decision-layout { grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.72fr); }
-  .week-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .year-chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .year-chart-card:first-child { grid-column: 1 / -1; }
 }
 
 @media (max-width: 780px) {
@@ -1198,12 +897,8 @@ button { color: inherit; }
   .header-plan-link span:first-child { display: none; }
   .header-plan-link { gap: 0; padding-inline: 12px; }
   .decision-layout { grid-template-columns: 1fr; }
-  .decision-card { min-height: 0; }
   .signal-confidence { margin-top: 18px; }
-  .week-strip { display: flex; overflow-x: auto; padding-bottom: 5px; scroll-snap-type: x proximity; }
-  .week-day { min-width: 132px; scroll-snap-align: start; }
-  .year-chart-grid, .explore-grid { grid-template-columns: 1fr; }
-  .year-chart-card:first-child { grid-column: auto; }
+  .explore-grid{ grid-template-columns: 1fr; }
   .loading-grid { grid-template-columns: 1fr; }
   .loading-secondary { height: 260px; }
 }
@@ -1211,28 +906,9 @@ button { color: inherit; }
 @media (max-width: 520px) {
   .dashboard-header h1 { font-size: 36px; }
   .dashboard-intro { font-size: 12px; }
-  .decision-card, .signal-card, .week-card, .year-section, .explore-section { border-radius: 17px; }
-  .decision-card { padding: 21px; }
-  .decision-session { display: grid; margin-top: 30px; }
-  .decision-session h2 { font-size: 27px; }
-  .decision-session p { -webkit-line-clamp: 4; }
-  .decision-state { font-size: 9px; }
-  .session-prescription > span { min-width: 0; flex: 1; padding: 0 12px; }
-  .session-prescription strong { font-size: 14px; }
-  .decision-actions { align-items: flex-start; flex-direction: column; }
-  .primary-action { justify-content: space-between; width: 100%; }
-  .session-guide-grid { grid-template-columns:1fr; }
-  .completed-today-grid { grid-template-columns:1fr; }
+  .signal-card, .explore-section{ border-radius: 17px; }
   .section-heading { align-items: flex-start; }
   .section-heading h2 { font-size: 17px; }
-  .week-summary { grid-template-columns: repeat(2, 1fr); }
-  .week-summary article { min-width: 0; padding: 11px; }
-  .week-summary article:first-child { padding-left: 0; }
-  .week-summary article:nth-child(2) { border-right: 0; }
-  .week-summary article:nth-child(n + 3) { border-top: 1px solid var(--dash-border); }
-  .week-summary article:nth-child(3) { padding-left: 0; }
-  .week-summary strong { font-size: 14px; }
-  .year-chart { height: 140px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1245,43 +921,6 @@ button { color: inherit; }
 .dashboard-date{font-size:12px;font-weight:400;letter-spacing:0;text-transform:none}
 .header-plan-link{font-size:12px;border-radius:9px;background:transparent;padding:9px 0}
 .decision-layout{grid-template-columns:minmax(0,1.4fr) minmax(320px,1fr);gap:28px;align-items:start}
-.decision-card{padding:30px;border-radius:22px;border:1px solid color-mix(in srgb,var(--sport-accent) 25%,var(--dash-border));background:radial-gradient(ellipse at 95% 0%,color-mix(in srgb,var(--sport-accent) 12%,transparent),transparent 65%),#131f29;min-height:0;box-shadow:none}
-.decision-card:before{width:3px;background:var(--sport-accent)}
-.decision-glow{display:none}
-.session-backdrop{position:absolute;right:-35px;top:95px;opacity:.045;transform:rotate(-14deg);pointer-events:none}
-.decision-topline,.decision-session,.session-prescription,.decision-reasons,.decision-actions,.session-guide,.completed-today{position:relative}
-.decision-kicker{font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--sport-accent)}
-.decision-state{font-size:11px;letter-spacing:0;text-transform:none;font-weight:600;gap:7px}
-.decision-session{gap:14px;margin-top:30px;align-items:start}
-.decision-icon{width:38px;height:38px;border-radius:50%;background:color-mix(in srgb,var(--sport-accent) 10%,transparent);margin-top:3px}
-.decision-session h2{font-family:var(--font-body);font-size:clamp(25px,2.7vw,35px);font-weight:600;letter-spacing:-.8px;line-height:1.2;max-width:540px}
-.decision-session p{font-size:13px;line-height:1.8;margin-top:16px;max-width:560px;display:block;overflow:visible}
-.session-prescription{gap:20px 30px;margin-top:27px}
-.session-prescription>span{padding:0;border:0;min-width:0;gap:5px}
-.session-prescription small{font-size:12px}
-.session-prescription strong{font-family:var(--font-body);font-size:20px;font-weight:600;letter-spacing:-.3px}
-.session-prescription>span:last-child strong{font-size:14px;line-height:1.7}
-.decision-reasons{margin-top:22px;gap:6px}
-.decision-reasons span{font-size:12px;line-height:1.65}
-.decision-actions{margin-top:24px;flex-wrap:wrap;gap:12px}
-.primary-action{background:var(--sport-accent);color:#122029;font-size:12px;font-weight:650;border-radius:9px;padding:12px 16px}
-.primary-action:hover{background:color-mix(in srgb,var(--sport-accent) 80%,white);transform:none}
-.template-note{font-size:11px}
-.session-guide{padding:16px 0 0;margin-top:24px;border-top:1px solid #ffffff0c}
-.session-guide summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:12px;font-weight:500;color:var(--dash-soft);list-style:none}
-.session-guide summary::-webkit-details-marker{display:none}
-.session-guide[open] summary>span{transform:rotate(45deg)}
-.session-guide-grid{grid-template-columns:1fr;gap:14px;margin-top:18px}
-.session-guide-grid article,.session-guide-grid article.is-guardrail{padding:0 0 0 12px;border:0;border-left:2px solid var(--dash-border);border-radius:0;background:transparent}
-.session-guide-grid article.is-guardrail{border-left-color:#e6b96c}
-.session-guide-grid span{font-size:12px;font-weight:600;text-transform:none;letter-spacing:0}
-.session-guide-grid p{font-size:12px;line-height:1.7;margin-top:4px}
-.completed-today{margin-top:24px;padding-top:0}
-.completed-today-heading{padding-top:18px}
-.completed-today-heading>span,.completed-today-heading>strong{font-size:12px;text-transform:none;letter-spacing:0;font-weight:500}
-.completed-today-grid{grid-template-columns:1fr;gap:6px}
-.completed-today-grid button{background:#08131c33;border:0;border-radius:10px;padding:12px}
-.completed-today-grid strong{font-size:13px}.completed-today-grid small{font-size:11px}
 .signal-card{padding:4px 0;border:0;border-radius:0;background:transparent;box-shadow:none;justify-content:flex-start}
 .signal-heading .section-kicker{display:none}
 .signal-heading h2,.section-heading h2{font-family:var(--font-body);font-size:20px;font-weight:600;letter-spacing:-.4px}
@@ -1298,53 +937,16 @@ button { color: inherit; }
 .checkin-summary>span{font-size:11px;text-transform:none;letter-spacing:0;font-weight:400}
 .checkin-summary strong{font-size:11px;padding:2px 6px;font-weight:500}
 .signal-empty{font-size:12px;line-height:1.65}
-.codex-state{border:0;border-top:1px solid var(--dash-border);padding:20px 0 0;border-radius:0;background:transparent;margin-top:22px;gap:10px}
-.codex-state-heading>span{font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:#b9c9ea}
-.codex-state-heading button{font-size:11px;font-weight:400}
-.codex-state>strong{font-family:var(--font-body);font-size:15px;font-weight:600;line-height:1.5}
-.codex-state>p{font-size:12px;line-height:1.7}
-.codex-state>small{font-size:12px;line-height:1.7;border:0;background:#7ba3ff08;padding:10px 12px;border-radius:8px}
-.codex-plan-action{font-size:12px;font-weight:500;padding:10px 12px}
-.week-card,.year-section,.explore-section{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.explore-section{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
 .section-heading{gap:16px;align-items:center}
-.section-caption{font-size:12px;color:var(--dash-muted);margin-top:6px}
-.dashboard-text-link{border:0;background:transparent;color:var(--dash-soft);padding:7px 0;font:inherit;font-size:12px;cursor:pointer}
-.week-summary{display:flex;flex-wrap:wrap;gap:10px 24px;margin-top:18px;border:0;padding:0}
-.week-summary>span{font-size:12px;letter-spacing:0;text-transform:none;color:var(--dash-muted);font-weight:400}
-.week-summary strong{font-family:var(--font-body);font-size:14px;color:var(--text);font-weight:600;letter-spacing:0;margin-right:5px}
-.week-strip{grid-template-columns:repeat(7,minmax(0,1fr));gap:0;margin-top:18px;border-block:1px solid var(--dash-border);padding-block:12px}
-.week-day{border:0;border-right:1px solid #ffffff09;border-radius:0;background:transparent;padding:14px 13px;min-height:195px;gap:3px;align-content:start}
-.week-day:last-child{border-right:0}
-.week-day-today{background:linear-gradient(180deg,color-mix(in srgb,var(--day-accent) 10%,transparent),transparent);box-shadow:inset 0 -2px var(--day-accent)}
-.week-day:hover{background:color-mix(in srgb,var(--day-accent) 6%,transparent);transform:none}
-.week-day-name{font-size:12px;font-weight:500;text-transform:none;color:var(--dash-soft)}
-.week-day-date{position:static;font-family:var(--font-body);font-size:11px;color:var(--dash-muted)}
-.week-day-icon{margin-top:13px;border-radius:50%;width:30px;height:30px;background:color-mix(in srgb,var(--day-accent) 10%,transparent)}
-.week-day strong{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:12px;font-weight:500;line-height:1.5;min-height:36px;margin-top:9px}
-.week-day-detail{font-size:11px}
-.week-day-status{font-size:10px;text-transform:none;letter-spacing:0;font-weight:500;margin-top:9px}
-.year-heading{margin-bottom:20px}
-.year-heading-meta small{font-size:11px;letter-spacing:0;text-transform:none}
-.year-chart-grid{gap:24px}
-.year-chart-card{border:0;border-right:1px solid var(--dash-border);border-radius:0;padding:0 24px 0 0;background:transparent;box-shadow:none}
-.year-chart-card:last-child{border-right:0;padding-right:0}
-.year-chart-identity>div>span{font-size:13px;font-weight:600}
-.year-chart-identity small{font-size:11px}
-.year-chart-total strong{font-family:var(--font-body);font-size:26px;font-weight:600;letter-spacing:-.7px}
-.year-chart-total>span{font-size:12px}
-.year-chart-foot{border:0;gap:12px}
-.year-chart-foot small{font-size:11px;letter-spacing:0;text-transform:none}
-.year-chart-foot strong{font-size:12px;font-weight:500}
 .explore-grid{gap:20px;margin-top:16px}
 .explore-grid button{background:transparent;border:0;border-radius:10px;padding:12px 0;gap:12px}
 .explore-grid button:hover{background:#ffffff04}
 .explore-grid strong{font-size:13px;font-weight:500}.explore-grid small{font-size:11px}
 .dashboard-shell button:focus-visible,.dashboard-shell summary:focus-visible{outline:2px solid var(--accent-strong);outline-offset:4px}
-@media(max-width:1100px){.decision-layout{grid-template-columns:minmax(0,1.2fr) minmax(300px,1fr);gap:24px}.decision-card{padding:24px}.decision-session{gap:10px}.decision-icon{display:none}.year-chart-grid{gap:18px}.year-chart-card{padding-right:18px}.week-strip{grid-template-columns:repeat(7,minmax(130px,1fr));overflow-x:auto;scrollbar-width:thin}.year-chart-total strong{font-size:23px}}
-@media(max-width:800px){.decision-layout{grid-template-columns:1fr;gap:26px}.signal-card{padding:0}.decision-session h2{font-size:29px}.year-chart-grid{grid-template-columns:1fr;gap:24px}.year-chart-card,.year-chart-card:last-child{padding:0 0 20px;border:0;border-bottom:1px solid var(--dash-border)}.year-chart{height:175px}.explore-grid{grid-template-columns:1fr;gap:4px}.week-strip{grid-template-columns:repeat(7,minmax(135px,1fr))}.dashboard-shell{gap:28px}}
-@media(max-width:520px){.dashboard-header{align-items:center;gap:16px}.dashboard-header h1{font-size:28px}.dashboard-date{font-size:11px}.header-plan-link{font-size:11px}.decision-card{padding:22px 20px;border-radius:18px}.decision-session{display:flex;margin-top:24px}.decision-session h2{font-size:26px}.decision-state{font-size:11px}.decision-topline{gap:12px;flex-wrap:wrap}.session-prescription{gap:16px}.session-prescription>span{flex:initial;padding:0}.session-prescription strong{font-size:19px}.decision-actions{align-items:stretch}.template-note{font-size:11px}.signal-heading h2,.section-heading h2{font-size:20px}.week-summary strong{font-size:14px}.week-card,.year-section,.explore-section{border-radius:0}.section-heading{align-items:center}.checkin-summary{flex-wrap:wrap}.checkin-summary div{justify-content:flex-start}}
-@media(prefers-reduced-motion:reduce){.session-guide summary>span{transition:none}.primary-action:hover,.week-day:hover{transform:none}}
-
+@media(max-width:1100px) {.decision-layout{grid-template-columns:minmax(0,1.2fr) minmax(300px,1fr);gap:24px}}
+@media(max-width:800px) {.decision-layout{grid-template-columns:1fr;gap:26px}.signal-card{padding:0}.explore-grid{grid-template-columns:1fr;gap:4px}.dashboard-shell{gap:28px}}
+@media(max-width:520px) {.dashboard-header{align-items:center;gap:16px}.dashboard-header h1{font-size:28px}.dashboard-date{font-size:11px}.header-plan-link{font-size:11px}.signal-heading h2,.section-heading h2{font-size:20px}.explore-section{border-radius:0}.section-heading{align-items:center}.checkin-summary{flex-wrap:wrap}.checkin-summary div{justify-content:flex-start}}
 
 /* Matched panel geometry; coaching is a separate, shared context row. */
 .decision-layout {
@@ -1352,7 +954,7 @@ button { color: inherit; }
   gap: 28px;
   align-items: start;
 }
-.decision-card, .signal-card {
+.signal-card {
   padding: 24px;
   border-radius: 18px;
   min-height: 0;
@@ -1362,186 +964,47 @@ button { color: inherit; }
   border: 0;
   padding: 20px 0;
 }
-.decision-card { background: linear-gradient(125deg, color-mix(in srgb, var(--sport-accent) 6%, #131e29), #131e29); }
-.session-backdrop { display: none; }
-.decision-topline, .signal-heading { min-height: 26px; }
-.decision-kicker, .signal-heading h2 {
+.signal-heading{ min-height: 26px; }
+.signal-heading h2 {
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0;
 }
-.decision-session { margin-top: 20px; display: flex; align-items: flex-start; gap: 14px; }
-.decision-icon { display: inline-flex; width: 44px; height: 44px; margin: 0; border-radius: 12px; }
-.decision-session h2 { font-size: 28px; line-height: 1.3; letter-spacing: -.4px; }
-.decision-session p { margin-top: 10px; font-size: 13px; line-height: 1.7; }
-.session-prescription { margin-top: 20px; gap: 16px 28px; }
-.session-prescription strong, .session-prescription > span:last-child strong {
-  font-size: 18px;
-  line-height: 1.4;
-}
-.decision-reasons { margin-top: 16px; gap: 4px; }
-.decision-actions { margin-top: 18px; }
-.session-guide { margin-top: 18px; padding-top: 14px; }
 .signal-summary { margin-top: 20px; }
 .signal-summary strong { font-size: 14px; line-height: 1.4; letter-spacing: -.2px; }
 .load-metrics { margin-top: 24px; }
 .checkin-summary { margin-top: 22px; flex-direction: column; align-items: start; }
 .checkin-summary div { justify-content: flex-start; }
 .header-plan-link { padding: 9px 12px; }
-.coaching-row {
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: 14px 28px;
-  margin: -10px 0 0;
-  padding: 20px 0 0;
-  border: 0;
-  border-top: 1px solid var(--dash-border);
-  border-radius: 0;
-  background: transparent;
-}
-.coaching-row > .codex-state-heading { grid-column: 1 / -1; }
-.coaching-assessment, .coaching-next { min-width: 0; }
-.coaching-assessment h2 { font-size: 16px; font-weight: 600; line-height: 1.5; letter-spacing: -.2px; }
-.coaching-assessment p, .coaching-next p { font-size: 12px; line-height: 1.75; color: var(--dash-muted); }
-.coaching-assessment p { margin-top: 8px; }
-.coaching-next { padding-left: 24px; border-left: 1px solid var(--dash-border); }
-.coaching-next p > strong { display: block; font-size: 12px; font-weight: 600; color: var(--dash-soft); margin-bottom: 6px; }
-.coaching-next .codex-plan-action { margin-top: 14px; }
-.coaching-row > .codex-state-placeholder { grid-column: 1 / -1; }
 @media(max-width:900px) {
   .decision-layout { grid-template-columns: 1fr; }
-  .coaching-row { grid-template-columns: 1fr; }
-  .coaching-next { padding: 16px 0 0; border-left: 0; border-top: 1px solid var(--dash-border); }
 }
 @media(max-width:520px) {
-  .decision-card, .signal-card, .coaching-row { padding: 20px; }
-  .decision-session h2 { font-size: 23px; }
+  .signal-card{ padding: 20px; }
   .signal-heading h2 { font-size: 13px; }
-  .session-prescription strong, .session-prescription > span:last-child strong { font-size: 18px; }
 }
 
 /* The workout owns the strong color and primary action. */
-.decision-state { color: var(--dash-muted); font-weight: 400; }
-.decision-caution .decision-state, .decision-recover .decision-state { color: var(--decision-color); font-weight: 600; }
 .signal-card .load-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; }
 .signal-card .load-metrics strong { font-size: 20px; }
 .signal-card .signal-summary p { font-size: 12px; }
-.decision-coach-link { display: inline-flex; align-items: center; gap: 10px; align-self: flex-start; margin-top: 16px; color: var(--dash-soft); font-size: 12px; }
-.decision-coach-link:hover { color: var(--text); }
-.decision-coach-link:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 4px; }
 #dashboard-coaching { scroll-margin-top: 24px; }
 @media(max-width:900px) {
   .signal-card { padding: 0; }
   .signal-card .load-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 }
-@media(max-width:520px) {
-  .decision-session { gap: 10px; }
-  .decision-icon { width: 36px; height: 36px; }
-  .coaching-row { padding: 18px 0 0; }
-}
 
 /* Use the available card width for the prescription, without a disclosure. */
-.decision-card { container-type: inline-size; }
-.workout-body { display: grid; gap: 24px; margin-top: 24px; }
-.workout-overview { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
-.workout-overview .session-prescription { margin-top: 0; }
-.workout-instructions.session-guide { margin: 0; padding: 18px 0 0; min-width: 0; border-top: 1px solid var(--dash-border); }
-.workout-instructions h3 { font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--dash-soft); margin: 0; }
-.workout-instructions .session-guide-grid { margin-top: 16px; gap: 16px; }
-.workout-instructions .session-guide-grid article { padding: 0; border: 0; background: transparent; }
-.workout-instructions .session-guide-grid span { font-size: 12px; font-weight: 500; color: var(--sport-accent); }
-.workout-instructions .session-guide-grid article.is-guardrail span { color: #e6b96c; }
-.workout-instructions .session-guide-grid p { margin-top: 5px; font-size: 12px; line-height: 1.75; overflow-wrap: anywhere; }
-@container (min-width: 600px) {
-  .workout-body.has-instructions { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 28px; }
-  .workout-instructions.session-guide { border-top: 0; border-left: 1px solid var(--dash-border); padding: 0 0 0 24px; }
-}
 
 /* Align targets, context and actions into a single deliberate left column. */
-.workout-overview { gap: 24px; }
-.workout-target-summary { width: 100%; }
-.workout-target-summary h3, .workout-context-note h3 {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.5;
-  color: var(--dash-soft);
-}
-.workout-target-summary .session-prescription {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  margin: 18px 0 0;
-}
-.workout-target-summary dt { font-size: 12px; color: var(--dash-muted); }
-.workout-target-summary dd {
-  margin: 6px 0 0;
-  font-size: 25px;
-  font-weight: 600;
-  letter-spacing: -.5px;
-  line-height: 1.3;
-  font-variant-numeric: tabular-nums;
-}
-.workout-target-summary dd small { font-size: 12px; color: var(--dash-muted); font-weight: 400; letter-spacing: 0; }
-.workout-target-summary .prescription-intent dd { font-size: 16px; letter-spacing: 0; line-height: 1.5; padding-top: 4px; overflow-wrap: anywhere; }
-.workout-context-note { width: 100%; }
-.workout-context-note h3 { font-size: 12px; font-weight: 500; }
-.workout-context-note .decision-reasons { margin: 8px 0 0; gap: 6px; }
-.workout-context-note .decision-reasons span { padding: 0; font-size: 12px; line-height: 1.7; }
-.workout-context-note .decision-reasons span:before { display: none; }
-.workout-overview .decision-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin: 0; }
-.workout-overview .decision-coach-link { margin: 0; font-size: 11px; color: var(--dash-muted); }
-.workout-overview .decision-coach-link:hover { color: var(--dash-soft); }
-.workout-overview .primary-action { padding: 11px 16px; min-height: 40px; }
-@media(max-width:520px) {
-  .workout-target-summary .session-prescription { gap: 12px; }
-  .workout-target-summary dd { font-size: 23px; }
-  .workout-overview .decision-actions { width: 100%; }
-}
-
-.completed-day-layout.active{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:28px;margin-top:26px;align-items:start}
-.completed-day-layout.active .workout-body{margin-top:0}
-.completed-day-layout.active .completed-today{margin-top:0;padding-top:0}
-.completed-day-layout.active .completed-today-heading{border-top:0;padding-top:0}
-.completed-day-layout.active .completed-today-grid{max-height:280px;overflow-y:auto;scrollbar-width:thin;padding-right:4px}
-.completed-day-layout.active .session-prescription{display:flex;flex-wrap:wrap;gap:20px}
-.completed-day-layout.active .session-prescription dd{font-size:25px}
-.completed-day-layout.active .decision-actions{margin-top:22px}
-.is-completed-day .decision-session{margin-bottom:0}
-@media(max-width:900px){.completed-day-layout.active{grid-template-columns:1fr;gap:24px}}
 
 /* Keep the dashboard inside the phone viewport while preserving deliberate
    horizontal scrollers for the week strip and chart data. */
-.dashboard-shell,
-.dashboard-shell > *,
-.dashboard-shell .decision-card,
-.dashboard-shell .signal-card,
-.dashboard-shell .coaching-row,
-.dashboard-shell .week-card,
-.dashboard-shell .year-section,
-.dashboard-shell .explore-section { min-width: 0; max-width: 100%; }
-.dashboard-header > div,
-.decision-topline > *,
-.decision-session > div,
-.signal-heading > div,
-.section-heading > div,
-.coaching-assessment,
-.coaching-next { min-width: 0; }
-.decision-session h2,
-.decision-session p,
-.workout-target-summary dd,
-.coaching-assessment h2,
-.coaching-next p,
-.year-chart-total strong,
-.year-chart-identity > div,
-.explore-grid strong { overflow-wrap: anywhere; }
-.dashboard-shell .header-plan-link,
-.dashboard-shell .dashboard-text-link,
-.dashboard-shell .codex-state-heading button,
-.dashboard-shell .decision-coach-link,
-.dashboard-shell .completed-today-grid button,
-.dashboard-shell .explore-grid button { min-height: 44px; }
+.dashboard-shell, .dashboard-shell > *, .dashboard-shell .signal-card, .dashboard-shell .explore-section{ min-width: 0; max-width: 100%; }
+.dashboard-header > div, .signal-heading > div, .section-heading > div{ min-width: 0; }
+.explore-grid strong{ overflow-wrap: anywhere; }
+.dashboard-shell .header-plan-link, .dashboard-shell .explore-grid button{ min-height: 44px; }
 
 @media (max-width: 640px) {
   .dashboard-shell { gap: 24px; overflow-x: hidden; }
@@ -1549,19 +1012,10 @@ button { color: inherit; }
   .dashboard-header > div { flex: 1 1 180px; }
   .dashboard-header h1 { font-size: 30px; }
   .header-plan-link { flex: 0 0 auto; }
-  .decision-card { padding: 20px 16px; }
-  .decision-session { margin-top: 22px; }
-  .decision-session h2 { font-size: clamp(23px, 7vw, 28px); line-height: 1.25; }
-  .decision-session p { line-height: 1.7; }
-  .workout-target-summary .session-prescription { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .workout-target-summary .prescription-intent { grid-column: 1 / -1; }
   .signal-card .load-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .signal-card .load-metrics div { padding: 8px 6px; }
   .signal-card .load-metrics strong { font-size: 18px; }
-  .week-strip { max-width: 100%; }
-  .week-day { min-width: 132px; }
   .section-heading { flex-wrap: wrap; }
-  .year-heading-meta { justify-items: start; }
   .explore-grid button { min-height: 48px; }
 }
 
@@ -1570,15 +1024,49 @@ button { color: inherit; }
   .dashboard-header { align-items: flex-start; }
   .dashboard-header > div { flex-basis: 150px; }
   .dashboard-header h1 { font-size: 28px; }
-  .decision-card { padding: 18px 14px; }
-  .decision-topline { gap: 8px; }
-  .decision-kicker { font-size: 11px; }
-  .decision-state { padding-inline: 8px; }
-  .workout-target-summary .session-prescription { gap: 14px 10px; }
-  .workout-target-summary dd { font-size: 21px; }
   .signal-card .load-metrics { gap: 10px; }
   .signal-card .load-metrics span { font-size: 10px; }
-  .coaching-row { padding-top: 16px; }
-  .year-chart-card { padding-bottom: 16px; }
 }
+/* Visual pass: numbers first, volume shapes, trend over tables. */
+.signal-card .load-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 18px; }
+@media (max-width: 640px) {
+  .signal-card .load-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Every section: a heading row above a bordered panel, with generous space between sections. */
+.dashboard-shell { gap: 44px; }
+.coach-section { display: grid; gap: 14px; min-width: 0; }
+.coach-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.coach-head h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.4px; }
+.coach-head h2 span { color: #78a6ff; font-size: 16px; }
+.coach-head button { min-height: 32px; border: 1px solid rgba(145, 164, 197, 0.2); border-radius: 9px; background: transparent; padding: 0 12px; color: var(--dash-soft); font: inherit; font-size: 12px; cursor: pointer; }
+.coach-head button:hover:not(:disabled) { border-color: rgba(145, 164, 197, 0.4); color: var(--text); }
+.coach-head button:disabled { cursor: default; opacity: 0.6; }
+.coach-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 18px 32px;
+  border: 1px solid rgba(118, 166, 255, 0.16);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(82, 111, 176, 0.1), rgba(17, 26, 38, 0.6) 55%);
+  padding: 22px 24px;
+}
+.coach-panel.is-loading { opacity: 0.85; }
+.coach-panel.is-empty { grid-template-columns: 1fr; }
+.coach-week-focus { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; border-radius: 10px; background: rgba(118, 166, 255, 0.07); padding: 10px 14px; color: var(--dash-soft); font-size: 12px; line-height: 1.6; }
+.coach-week-focus span { color: #9ab9f4; font-weight: 600; }
+.coach-week-focus a { margin-left: auto; color: var(--dash-muted); text-decoration: none; }
+.coach-week-focus a:hover { color: var(--dash-soft); }
+.coach-assessment h3 { margin: 0; color: var(--text); font-size: 17px; font-weight: 600; line-height: 1.45; letter-spacing: -0.2px; }
+.coach-assessment p { margin: 8px 0 0; color: var(--dash-muted); font-size: 13px; line-height: 1.75; }
+.coach-next { display: grid; align-content: start; gap: 8px; border-left: 1px solid rgba(145, 164, 197, 0.12); padding-left: 28px; }
+.coach-label { color: #9ab9f4; font-size: 12px; font-weight: 600; }
+.coach-next p { margin: 0; color: var(--dash-soft); font-size: 13px; line-height: 1.7; }
+.coach-next .coach-updating { color: #7892c2; font-size: 11px; }
+.coach-plan-action { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 6px; min-height: 40px; border: 1px solid rgba(118, 166, 255, 0.26); border-radius: 10px; background: rgba(87, 125, 214, 0.14); padding: 0 14px; color: #b8ccff; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.coach-plan-action:hover:not(:disabled) { border-color: rgba(118, 166, 255, 0.45); background: rgba(87, 125, 214, 0.22); }
+.coach-plan-action:disabled { cursor: default; opacity: 0.68; }
+.coach-next .coach-plan-error { color: #ef9a90; font-size: 12px; }
+.coach-placeholder { margin: 0; color: var(--dash-muted); font-size: 13px; }
+#dashboard-coaching { scroll-margin-top: 24px; }
 </style>

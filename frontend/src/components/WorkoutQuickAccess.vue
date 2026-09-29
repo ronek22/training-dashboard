@@ -15,7 +15,8 @@ const route = useRoute()
 const api = useApi()
 const workout = shallowRef<ActiveWorkout | null>(null)
 const inRunner = computed(() => Boolean(route.params.sessionId))
-const visible = computed(() => !inRunner.value && (workout.value || route.path === '/'))
+// Only surface globally while a workout is live; the dashboard links to the studio itself.
+const visible = computed(() => !inRunner.value && Boolean(workout.value))
 let requestId = 0
 let refreshTimer: ReturnType<typeof setInterval> | undefined
 

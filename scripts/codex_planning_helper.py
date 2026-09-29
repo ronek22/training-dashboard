@@ -188,9 +188,13 @@ restriction, choose the safer plan and explain the tradeoff in the summary.
 If this week already has a plan, preserve all past and completed days and use
 adjust_weekly_plan to update only the remaining days. Otherwise use
 set_weekly_plan to save a new plan. Make sessions concrete, balanced, and
-goal-aware. This request explicitly authorizes creating or updating the current
-weekly plan, so do not ask for confirmation. After writing, verify the saved
-result with get_weekly_plans and provide a concise summary.
+goal-aware. For ride days with a structured purpose (recovery, endurance,
+tempo, sweet spot, threshold, VO2 max), you may set cycling_workout_id to a
+workout from get_cycling_workout_library whose intent and duration fit the
+day; leave it empty for unstructured or outdoor rides. This request explicitly
+authorizes creating or updating the current weekly plan, so do not ask for
+confirmation. After writing, verify the saved result with get_weekly_plans and
+provide a concise summary.
 
 Do not edit repository files, run shell commands, browse the web, or use any
 other MCP server."""
@@ -226,7 +230,8 @@ tradeoff in the summary.
 
 Use adjust_weekly_plan to update only eligible remaining days. Preserve every
 day that does not need to change, and include a concise adaptation reason that
-reflects the athlete feedback. This request explicitly authorizes revising the
+reflects the athlete feedback. Keep or set cycling_workout_id only from
+get_cycling_workout_library and only on ride days. This request explicitly authorizes revising the
 saved plan, so do not ask for confirmation. After writing, verify the saved
 result with get_weekly_plans and summarize what changed.
 
@@ -288,7 +293,34 @@ instructions. Do not edit repository files, run shell commands, browse the
 web, or use any other MCP server."""
 
 
-def build_daily_state_prompt() -> str:
+def fetch_weekly_direction() -> dict | None:
+    """Latest head-coach direction for this week; the daily coach must not contradict it silently."""
+    try:
+        with urlopen("http://localhost:8000/coaching/weekly-direction", timeout=10) as response:
+            return json.load(response).get("direction")
+    except (OSError, ValueError):
+        return None
+
+
+def build_weekly_direction_section(direction: dict | None) -> str:
+    if not direction:
+        return """
+There is no current weekly review from the coaching team. Do not invent one."""
+    source = (
+        "this week's coaching-team review of the week so far"
+        if direction.get("scope") == "week_so_far"
+        else "last week's coaching-team review, whose change for next week applies to this week"
+    )
+    return f"""
+The athlete's standing weekly direction comes from {source}:
+{json.dumps({key: direction.get(key) for key in ("headline", "next_week_change", "success_check", "through_date")}, ensure_ascii=False)}
+Treat it as the week's intent. Build today's advice on it. When today's
+evidence argues for departing from it, say so explicitly in the assessment
+(name the weekly intent and why today differs) instead of silently giving
+contradictory advice. Do not restate it when you simply agree."""
+
+
+def build_daily_state_prompt(direction: dict | None = None) -> str:
     return """Assess my training state for today using my whole available training context.
 
 Use only read-only tools from the training_dashboard MCP server. Call
@@ -314,6 +346,7 @@ coach's synthesis: explain the important pattern or tradeoff, what it changes
 about the plan, and any meaningful uncertainty or contradictory signal. Mention
 a raw value only when it is essential to explain a surprising contradiction.
 Prefer one sharp inference over a miniature workout recap.
+""" + build_weekly_direction_section(direction) + """
 
 Return only one JSON object with this exact shape:
 {"headline":"...","assessment":"...","next_step":"...","confidence":"high|medium|low","plan_change_recommended":true|false,"plan_change_reason":"..."}
@@ -778,6 +811,7 @@ def run_codex_weekly_plan_revision(week_start: str, plan_feedback: str, target_d
 PLAN_DAY_FIELDS = (
     "date", "label", "session_type", "workout_intent", "benchmark_tag",
     "template_id", "title", "details", "target_duration_min", "target_distance_km",
+    "cycling_workout_id",
 )
 
 
@@ -846,7 +880,7 @@ def run_codex_coach_chat(message: str, history: list[dict[str, str]], progress=N
 
 def run_codex_daily_state() -> dict[str, object]:
     output = run_codex(
-        build_daily_state_prompt(),
+        build_daily_state_prompt(fetch_weekly_direction()),
         failure_label="assess today's training state",
         fallback='{"headline":"Training state reviewed","assessment":"Use the measured load and recovery signals shown in the dashboard.","next_step":"Stay with the current plan and reassess after training.","confidence":"low","plan_change_recommended":false,"plan_change_reason":""}',
     )

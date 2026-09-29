@@ -4,6 +4,7 @@ from typing import Optional
 
 from ..db import get_db
 from ..repositories.settings import get_setting_value, set_setting_value
+from .seasons import normalize_off_season_months, season_label
 
 MODALITY_RESTRICTIONS_KEY = "modality_restrictions"
 ATHLETE_PROFILE_KEY = "athlete_profile"
@@ -203,6 +204,9 @@ def build_athlete_brief(profile: dict) -> dict:
         coaching_summary_parts.append(f"Availability: {availability_notes}.")
     if planning_notes:
         coaching_summary_parts.append(f"Planning notes: {planning_notes}.")
+    off_season = profile.get("off_season") or {}
+    if off_season.get("months"):
+        coaching_summary_parts.append(f"Off season (mostly indoor): {off_season['label']}.")
 
     return {
         "headline": headline,
@@ -217,6 +221,7 @@ def build_athlete_brief(profile: dict) -> dict:
         "preferred_long_session_day_labels": long_day_labels,
         "weekly_availability_notes": availability_notes,
         "planning_notes": planning_notes,
+        "off_season": off_season,
         "coaching_summary": " ".join(coaching_summary_parts),
     }
 
@@ -641,6 +646,9 @@ def normalize_athlete_profile(raw_value: Optional[dict]) -> dict:
         "weekly_availability_notes": _clean_text(raw.get("weekly_availability_notes")),
         "planning_notes": _clean_text(raw.get("planning_notes")),
     }
+    off_season_months = normalize_off_season_months(raw.get("off_season_months"))
+    profile["off_season_months"] = off_season_months
+    profile["off_season"] = {"months": off_season_months, "label": season_label(off_season_months)}
     profile["athlete_brief"] = build_athlete_brief(profile)
     return profile
 
@@ -655,6 +663,7 @@ def serialize_athlete_profile_for_storage(profile: dict) -> dict:
         ],
         "weekly_availability_notes": profile.get("weekly_availability_notes"),
         "planning_notes": profile.get("planning_notes"),
+        "off_season_months": profile.get("off_season_months"),
     }
 
 
@@ -669,6 +678,8 @@ def modality_for_goal(metric_type: Optional[str], activity_type: Optional[str] =
         return "ride"
     if metric_type == "strength_sessions":
         return "strength"
+    if metric_type == "quality_sessions":
+        return "ride"
     if metric_type == "zone2_hours":
         return normalize_modality(activity_type) or "run"
     if metric_type == "activities_count":

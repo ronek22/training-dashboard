@@ -29,7 +29,11 @@ from ..services.dashboard import (
     compute_activity_streak,
 )
 from ..services.coaching import build_weekly_coaching
-from ..services.goals import draft_goal_data, list_goals_data
+from ..services.goal_history import attach_goal_histories
+from ..services.goal_review import build_goal_review
+from ..services.goal_suggestions import build_goal_suggestions
+from ..services.goal_outcomes import build_cost_signals, build_goal_outcomes, build_outcome_signals
+from ..services.goals import draft_goal_data, get_goal_data, list_goals_data, set_goal_status_data, update_goal_data
 from ..services.metrics import get_metric_history_data
 from ..services.notes import list_notes_data
 from ..services.plans import adjust_weekly_plan_data, list_weekly_plans_data
@@ -255,6 +259,16 @@ def build_mcp_router_dependencies() -> dict:
         "calendar_weeks_fn": calendar_weeks,
         "metric_catalog": METRIC_CATALOG,
         "draft_goal_data_fn": draft_goal_data,
+        "list_goals_data_fn": list_goals_data,
+        "update_goal_data_fn": update_goal_data,
+        "set_goal_status_data_fn": set_goal_status_data,
+        "attach_goal_histories_fn": attach_goal_histories,
+        "get_goal_data_fn": get_goal_data,
+        "build_goal_outcomes_fn": build_goal_outcomes,
+        "build_outcome_signals_fn": build_outcome_signals,
+        "build_cost_signals_fn": build_cost_signals,
+        "build_goal_review_fn": build_goal_review,
+        "build_goal_suggestions_fn": build_goal_suggestions,
         "strength_context_fn": strength_context,
         "analyze_activity_fn": analyze_activity,
         "get_activity_analysis_context_fn": get_activity_analysis_context,

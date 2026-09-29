@@ -129,6 +129,15 @@ class CodexPlanningHelperTests(unittest.TestCase):
         self.assertIn("plan_change_recommended MUST be", prompt)
         self.assertIn("recent_strength_detail", prompt)
         self.assertIn("Never claim strength detail is missing", prompt)
+        self.assertIn("no current weekly review", prompt)
+        directed = helper.build_daily_state_prompt({
+            "scope": "previous_week", "headline": "Build ride volume",
+            "next_week_change": "Add one 90-minute endurance ride.", "success_check": "Ride hours rise.",
+            "through_date": "2026-09-27",
+        })
+        self.assertIn("Add one 90-minute endurance ride.", directed)
+        self.assertIn("last week's coaching-team review", directed)
+        self.assertIn("say so explicitly", directed)
         result = helper.parse_daily_state_result(
             '```json\n{"headline":"Hold steady","assessment":"The morning load is elevated.","next_step":"Keep the next session easy.","confidence":"medium","plan_change_recommended":true,"plan_change_reason":"Replace tomorrow’s test with easy recovery."}\n```'
         )

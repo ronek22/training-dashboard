@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..db import get_db
 from ..models.weekly_reviews import WeeklyReview
-from ..services.weekly_reviews import list_reviews, save_review, review_context, review_status
+from ..services.weekly_reviews import list_reviews, monthly_goal_review, save_review, review_context, review_status
 
 router = APIRouter()
 
@@ -43,5 +43,16 @@ def get_weekly_review_context(week_start: date):
     conn = get_db()
     try:
         return review_context(conn, week_start)
+    finally:
+        conn.close()
+
+
+@router.get('/reviews/weekly/goals')
+def get_weekly_review_goals(week_start: date):
+    if week_start.weekday() != 0:
+        raise HTTPException(422, 'Week must start on Monday')
+    conn = get_db()
+    try:
+        return {'goals': monthly_goal_review(conn, week_start)}
     finally:
         conn.close()

@@ -8,6 +8,9 @@
 defineProps({ name: { type: String, default: 'dashboard' } })
 
 const paths = {
+  ride: 'M9 17.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Zm13 0a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0ZM5.5 17.5 9 9h6l3.5 8.5M9 9l3 8.5 3-8.5M8 6h3',
+  run: 'M15 4.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM13 8l-3 3 3 3v5M10 11l-3 1m6-4 3 3 3 1m-6 2 4 1',
+  pulse: 'M3 12h4l2-5 4 10 2-5h6',
   ideas: 'M9 18h6m-5 3h4M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 3H9c0-1 0-2-1-3ZM12 1v1M3 5l1 1m16-1-1 1',
   dashboard: 'M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-13h6V4h-6v3Z',
   plan: 'M12 3 4 7v10l8 4 8-4V7l-8-4Zm0 0v18M4 7l8 4 8-4',

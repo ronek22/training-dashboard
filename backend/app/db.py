@@ -417,8 +417,39 @@ def init_db():
             activity_type TEXT,
             is_active INTEGER DEFAULT 1,
             target_config_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            lifecycle_status TEXT DEFAULT 'active',
+            status_reason TEXT,
+            status_changed_at TEXT,
+            updated_at TEXT,
+            purpose TEXT,
+            commitment TEXT DEFAULT 'flexible',
+            review_on TEXT,
+            season_end TEXT,
+            outcome_signal TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS goal_review_decisions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            goal_id INTEGER NOT NULL,
+            verdict TEXT NOT NULL,
+            decision TEXT NOT NULL,
+            until TEXT,
+            note TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(goal_id) REFERENCES goals(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_goal_review_decisions_goal ON goal_review_decisions(goal_id, created_at);
+
+        CREATE TABLE IF NOT EXISTS goal_suggestion_decisions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            key TEXT NOT NULL,
+            decision TEXT NOT NULL,
+            until TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE INDEX IF NOT EXISTS idx_goal_suggestion_decisions_key
+        ON goal_suggestion_decisions(key, created_at);
 
         CREATE TABLE IF NOT EXISTS activity_feedback (
             activity_id TEXT PRIMARY KEY,
@@ -667,6 +698,21 @@ def init_db():
         conn.execute("ALTER TABLE goals ADD COLUMN goal_family TEXT DEFAULT 'accumulation'")
     if "target_config_json" not in goal_columns:
         conn.execute("ALTER TABLE goals ADD COLUMN target_config_json TEXT")
+    if "lifecycle_status" not in goal_columns:
+        conn.execute("ALTER TABLE goals ADD COLUMN lifecycle_status TEXT DEFAULT 'active'")
+        conn.execute("UPDATE goals SET lifecycle_status = CASE WHEN is_active = 1 THEN 'active' ELSE 'paused' END")
+    for column, definition in (
+        ("status_reason", "TEXT"),
+        ("status_changed_at", "TEXT"),
+        ("updated_at", "TEXT"),
+        ("purpose", "TEXT"),
+        ("commitment", "TEXT DEFAULT 'flexible'"),
+        ("review_on", "TEXT"),
+        ("season_end", "TEXT"),
+        ("outcome_signal", "TEXT"),
+    ):
+        if column not in goal_columns:
+            conn.execute(f"ALTER TABLE goals ADD COLUMN {column} {definition}")
     if activity_detail_columns and "route_polyline" not in activity_detail_columns:
         conn.execute("ALTER TABLE activity_details ADD COLUMN route_polyline TEXT")
     if activity_detail_columns and "charts_json" not in activity_detail_columns:

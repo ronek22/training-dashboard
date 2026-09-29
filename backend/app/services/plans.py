@@ -14,11 +14,15 @@ from .benchmarks import (
     build_benchmark_session_lookup,
     normalize_benchmark_fields,
 )
+from .cycling_workouts import get_cycling_workout
 from .execution_quality import evaluate_execution_quality
 from .fitbod_imports import get_fitbod_strength_detail_for_activity
+from ..repositories.goals import ACTIVE_GOAL_CONDITION
+from .goal_portfolio import build_portfolio_check, portfolio_conflict
 from .goals import build_requirement_summary, serialize_goal
 from .heart_rate_zones import build_activity_heart_rate_zone_summary
 from .settings import (
+    get_athlete_profile_for_conn,
     get_modality_restrictions_for_conn,
     get_workout_template_settings_for_conn,
     modality_for_session_type,
@@ -178,7 +182,13 @@ def serialize_plan_day(day: dict | WeeklyPlanDay) -> dict:
     payload = normalize_benchmark_fields(payload)
     payload["workout_intent"] = normalize_workout_intent(payload.get("workout_intent"), payload.get("session_type"))
     payload["workout_intent_label"] = format_workout_intent_label(payload.get("workout_intent"))
+    payload["cycling_workout_name"] = cycling_workout_name(payload.get("cycling_workout_id"))
     return payload
+
+
+def cycling_workout_name(workout_id: Optional[str]) -> Optional[str]:
+    workout = get_cycling_workout(workout_id)
+    return workout["name"] if workout else None
 
 
 def _workout_template_by_id(template_settings: dict, template_id: Optional[str]) -> Optional[dict]:
@@ -300,6 +310,7 @@ def build_day_change_details(before: Optional[dict], after: Optional[dict]) -> l
         ("title", "Title"),
         ("template_label", "Template"),
         ("session_type", "Session type"),
+        ("cycling_workout_name", "Structured workout"),
         ("workout_intent_label", "Intent"),
         ("benchmark_label", "Benchmark tag"),
         ("target_duration_min", "Duration"),
@@ -666,9 +677,11 @@ def _build_requirement_status(requirement: dict, supporting_days: list[dict]) ->
     }
 
 
-def _build_goal_conflicts(enriched_goals: list[dict]) -> list[dict]:
+def _build_goal_conflicts(enriched_goals: list[dict], portfolio: Optional[dict] = None) -> list[dict]:
+    budget_conflict = portfolio_conflict(portfolio)
+    leading = [budget_conflict] if budget_conflict else []
     if len(enriched_goals) < 2:
-        return []
+        return leading
 
     conflicts: list[dict] = []
     unmet_goals = [goal for goal in enriched_goals if goal.get("requirement_support_status") in {"unsupported", "weak"}]
@@ -710,7 +723,7 @@ def _build_goal_conflicts(enriched_goals: list[dict]) -> list[dict]:
             "goal_titles": [goal["title"] for goal in unmet_goals[:2]],
         })
 
-    return conflicts[:3]
+    return (leading + conflicts)[:3]
 
 
 def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_start: str) -> dict:
@@ -719,13 +732,14 @@ def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_sta
 
     week_end = max(day["date"] for day in days if day.get("date"))
     goal_rows = conn.execute(
-        """
+        f"""
         SELECT *
         FROM goals
-        WHERE is_active = 1
+        WHERE {ACTIVE_GOAL_CONDITION}
         ORDER BY created_at DESC
         LIMIT 12
-        """
+        """,
+        (week_start,),
     ).fetchall()
     restrictions = get_modality_restrictions_for_conn(conn)
     active_goals = [serialize_goal(row, conn, restrictions) for row in goal_rows]
@@ -788,7 +802,10 @@ def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_sta
         "goal_ids": [goal["id"] for goal in enriched_goals],
         "constrained_goal_count": sum(1 for goal in enriched_goals if goal.get("is_constrained")),
         "unsupported_goal_count": sum(1 for goal in enriched_goals if goal.get("requirement_support_status") == "unsupported"),
-        "conflicts": _build_goal_conflicts(enriched_goals),
+        "conflicts": _build_goal_conflicts(
+            enriched_goals,
+            build_portfolio_check(conn, active_goals, off_season_months=get_athlete_profile_for_conn(conn)["off_season_months"]),
+        ),
     }
 
 
@@ -1112,6 +1129,7 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
             enriched_day = dict(day)
             enriched_day = normalize_benchmark_fields(enriched_day)
             enriched_day["workout_intent_label"] = format_workout_intent_label(enriched_day.get("workout_intent"))
+            enriched_day["cycling_workout_name"] = cycling_workout_name(enriched_day.get("cycling_workout_id"))
             day_modality = modality_for_session_type(enriched_day.get("session_type"))
             enriched_day["modality"] = day_modality
             enriched_day["modality_restriction"] = restrictions.get("modalities", {}).get(day_modality) if day_modality else None

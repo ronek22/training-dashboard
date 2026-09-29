@@ -18,6 +18,8 @@ def call_api(method: str, path: str, data: dict = None):
             r = client.post(f"{API_BASE}{path}", json=data)
         elif method == "GET":
             r = client.get(f"{API_BASE}{path}", params=data)
+        elif method == "PATCH":
+            r = client.patch(f"{API_BASE}{path}", json=data)
         else:
             return {"error": f"Unknown method {method}"}
         r.raise_for_status()
@@ -133,7 +135,8 @@ TOOLS = [
                             "title": {"type": "string"},
                             "details": {"type": "string"},
                             "target_duration_min": {"type": "integer"},
-                            "target_distance_km": {"type": "number"}
+                            "target_distance_km": {"type": "number"},
+                            "cycling_workout_id": {"type": "string", "description": "Optional structured workout ID from get_cycling_workout_library; ride sessions only"}
                         },
                         "required": ["date", "label", "title"]
                     }
@@ -168,7 +171,8 @@ TOOLS = [
                             "title": {"type": "string"},
                             "details": {"type": "string"},
                             "target_duration_min": {"type": "integer"},
-                            "target_distance_km": {"type": "number"}
+                            "target_distance_km": {"type": "number"},
+                            "cycling_workout_id": {"type": "string", "description": "Optional structured workout ID from get_cycling_workout_library; ride sessions only"}
                         },
                         "required": ["date", "label", "title"]
                     }
@@ -198,6 +202,11 @@ TOOLS = [
     {
         "name": "get_cycling_power_profile",
         "description": "Read measured cycling power records, benchmark levels, data coverage, and monthly recording gaps for coaching",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "get_cycling_workout_library",
+        "description": "Read the structured cycling workout library (FTP-relative steps, duration, intent, estimated TSS) that planned ride days can reference via cycling_workout_id",
         "inputSchema": {"type": "object", "properties": {}}
     },
     {
@@ -367,6 +376,73 @@ TOOLS = [
             },
             "required": ["text"]
         }
+    },
+    {
+        "name": "get_goals",
+        "description": "List goals with progress and lifecycle state (active, paused, completed, retired), purpose, and anchor commitment",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "enum": ["active", "paused", "completed", "retired"]},
+                "limit": {"type": "integer"},
+                "include_history": {"type": "boolean", "description": "Add per-period hit rate, median, streak and trend stats"}
+            }
+        }
+    },
+    {
+        "name": "get_goal_signals",
+        "description": "Outcome signals (power, efficiency, top-lift strength) and cost signals (HRV, resting HR, sleep) with trend and evidence. Optional goal_id scopes outcomes to that goal.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "goal_id": {"type": "integer"}
+            }
+        }
+    },
+    {
+        "name": "get_goal_review",
+        "description": "Review of every active goal: verdict (done, out_of_reach, too_easy, plateaued, anchor_under_pressure...), evidence, and recommended actions, plus a portfolio time-budget check (weekly hours the goals imply vs. hours actually trained). Never recommend lowering or dropping anchor goals.",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "get_goal_suggestions",
+        "description": "Deterministic goal suggestions based on training history, completed goals, power profile weaknesses, season changes, and neglected modalities. Suggestions are drafts only.",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "update_goal",
+        "description": "Edit an existing goal. Only provided fields change. Never lower or retire an anchor goal unless the athlete explicitly asks.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "goal_id": {"type": "integer"},
+                "title": {"type": "string"},
+                "period_type": {"type": "string", "enum": ["week", "month", "year"]},
+                "metric_type": {"type": "string"},
+                "target_value": {"type": "number"},
+                "end_date": {"type": "string"},
+                "activity_type": {"type": "string"},
+                "target_config": {"type": "object"},
+                "purpose": {"type": "string"},
+                "commitment": {"type": "string", "enum": ["flexible", "anchor"]},
+                "review_on": {"type": "string"},
+                "season_end": {"type": "string"}
+            },
+            "required": ["goal_id"]
+        }
+    },
+    {
+        "name": "set_goal_status",
+        "description": "Pause, complete, retire, or reactivate a goal. Only when the athlete asked for it.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "goal_id": {"type": "integer"},
+                "status": {"type": "string", "enum": ["active", "paused", "completed", "retired"]},
+                "reason": {"type": "string"}
+            },
+            "required": ["goal_id", "status"]
+        }
     }
 ]
 
@@ -407,6 +483,10 @@ def handle_tool(name: str, args: dict) -> str:
 
         elif name == "get_cycling_power_profile":
             result = call_remote_mcp_tool(name)
+            return json.dumps(result, indent=2)
+
+        elif name == "get_cycling_workout_library":
+            result = call_api("GET", "/cycling-workouts")
             return json.dumps(result, indent=2)
 
         elif name == "get_activities":
@@ -467,6 +547,32 @@ def handle_tool(name: str, args: dict) -> str:
         elif name == "draft_goal":
             result = call_api("POST", "/goals/draft", args)
             return json.dumps(result, indent=2)
+
+        elif name == "get_goals":
+            result = call_remote_mcp_tool("get_goals", args)
+            return json.dumps(result, indent=2)
+
+        elif name == "get_goal_signals":
+            result = call_remote_mcp_tool("get_goal_signals", args)
+            return json.dumps(result, indent=2)
+
+        elif name == "get_goal_review":
+            result = call_remote_mcp_tool("get_goal_review", args)
+            return json.dumps(result, indent=2)
+
+        elif name == "get_goal_suggestions":
+            result = call_remote_mcp_tool("get_goal_suggestions", args)
+            return json.dumps(result, indent=2)
+
+        elif name == "update_goal":
+            goal_id = args.pop("goal_id")
+            result = call_api("PATCH", f"/goals/{goal_id}", args)
+            return f"✅ Goal updated: {result.get('title')}"
+
+        elif name == "set_goal_status":
+            goal_id = args.pop("goal_id")
+            result = call_api("POST", f"/goals/{goal_id}/status", args)
+            return f"✅ Goal '{result.get('title')}' is now {result.get('lifecycle_status')}"
 
         else:
             return f"Unknown tool: {name}"

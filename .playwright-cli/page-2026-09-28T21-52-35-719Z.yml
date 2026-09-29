@@ -1,0 +1,250 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: TL
+      - generic [ref=e7]:
+        - generic [ref=e8]: TrainLog
+        - generic [ref=e9]: Performance
+    - navigation [ref=e10]:
+      - generic [ref=e11]: Today
+      - link "Dashboard" [ref=e12] [cursor=pointer]:
+        - /url: /
+      - link "Workout Studio" [ref=e16] [cursor=pointer]:
+        - /url: /strength/workouts
+      - generic [ref=e20]: Training
+      - link "Plan" [ref=e21] [cursor=pointer]:
+        - /url: /plan
+      - link "Calendar" [ref=e25] [cursor=pointer]:
+        - /url: /calendar
+      - link "Goals" [ref=e29] [cursor=pointer]:
+        - /url: /goals
+      - link "Strength" [ref=e33] [cursor=pointer]:
+        - /url: /strength
+      - link "Recovery" [ref=e37] [cursor=pointer]:
+        - /url: /recovery
+      - generic [ref=e41]: Review
+      - link "Activities" [ref=e42] [cursor=pointer]:
+        - /url: /activities
+      - link "Trends" [ref=e46] [cursor=pointer]:
+        - /url: /metrics
+      - link "Coach Notes" [ref=e50] [cursor=pointer]:
+        - /url: /notes
+      - generic [ref=e54]: System
+      - link "Data & Sync" [ref=e55] [cursor=pointer]:
+        - /url: /sync
+      - link "Roadmap" [ref=e59] [cursor=pointer]:
+        - /url: /roadmap
+      - link "Ideas" [ref=e63] [cursor=pointer]:
+        - /url: /ideas
+    - generic [ref=e67]:
+      - generic "Current daily activity streak" [ref=e96]:
+        - generic [aria-hidden] [ref=e97]: 🔥
+        - generic [ref=e98]:
+          - generic [ref=e99]: Daily streak
+          - strong [ref=e100]: 269 days
+      - 'region "Gdańsk: Partly cloudy, 14 degrees Celsius. Dry next 6h." [ref=e101]':
+        - generic [ref=e102]:
+          - generic [aria-hidden] [ref=e103]: ☁️
+          - generic [ref=e104]:
+            - strong [ref=e105]: 14°
+            - generic [ref=e106]: Partly cloudy
+          - button "Use my current location for weather" [ref=e107] [cursor=pointer]
+        - generic [ref=e112]:
+          - generic [ref=e113]: Gdańsk
+          - generic [ref=e114]: Dry next 6h
+          - link "Open-Meteo" [ref=e115] [cursor=pointer]:
+            - /url: https://open-meteo.com/
+  - main [ref=e71]:
+    - generic [ref=e648]:
+      - generic [ref=e649]:
+        - generic [ref=e650]:
+          - generic [ref=e651]: Performance planning
+          - heading "Goals" [level=1] [ref=e652]
+          - paragraph [ref=e653]: See what is moving, what needs attention, and the most useful next step.
+        - button "New goal" [ref=e654] [cursor=pointer]:
+          - generic [aria-hidden] [ref=e655]: ＋
+          - text: New goal
+      - generic [ref=e656]:
+        - region "Goal overview" [ref=e657]:
+          - generic [ref=e658]:
+            - generic [ref=e659]: Current focus
+            - strong [ref=e660]: 1 goal is behind pace
+            - paragraph [ref=e661]: "Lift three times per week: Keep 3 strength sessions in the week."
+          - generic [ref=e662]:
+            - generic [ref=e663]:
+              - strong [ref=e664]: "2"
+              - generic [ref=e665]: Active
+            - generic [ref=e666]:
+              - strong [ref=e667]: "1"
+              - generic [ref=e668]: Behind pace
+            - generic [ref=e669]:
+              - strong [ref=e670]: "0"
+              - generic [ref=e671]: To review
+        - region [ref=e672]:
+          - generic [ref=e673]:
+            - generic [ref=e674]:
+              - text: Goal suggestions
+              - heading "Suggested goals" [level=2] [ref=e675]
+            - generic [ref=e676]: Review the draft, then decide whether it belongs in your plan.
+          - generic [ref=e677]:
+            - article [ref=e678]:
+              - generic [ref=e679]:
+                - generic [ref=e680]: Completed goal
+                - generic [ref=e681]: Yearly
+              - heading "Ride 6,600 km in 2027" [level=3] [ref=e682]
+              - paragraph [ref=e683]: Carry the completed goal into next year with a target based on your riding or running history.
+              - list [ref=e684]:
+                - listitem [ref=e685]: "Completed: Ride 3500km in 2026."
+                - listitem [ref=e686]: "Season-aware projection: 6302.6; the draft adds 5% before rounding."
+              - generic [ref=e687]:
+                - generic [ref=e688]: Draft target
+                - strong [ref=e689]: 6,600 km per year
+              - generic [ref=e690]:
+                - button "Accept" [ref=e691] [cursor=pointer]
+                - button "Dismiss" [ref=e692] [cursor=pointer]
+            - article [ref=e693]:
+              - generic [ref=e694]:
+                - generic [ref=e695]: Training signal
+                - generic [ref=e696]: Weekly
+              - heading "1 quality ride per week" [level=3] [ref=e697]
+              - paragraph [ref=e698]: Try a structured quality target to give established volume a purpose. Review how it fits alongside your current goal.
+              - list [ref=e699]:
+                - listitem [ref=e700]: "Ride 100km weekly: on track unproven."
+                - listitem [ref=e701]: "Same-season quality history: p75 0 sessions across 13 weeks."
+                - listitem [ref=e702]: Count tempo, interval, sweet spot or race-specific rides; unlabelled rides need 20 measured minutes at 88% FTP or above. Use the cycling workout library for structured sessions.
+              - generic [ref=e703]:
+                - generic [ref=e704]: Draft target
+                - strong [ref=e705]: 1 quality session per week
+              - link "Browse structured cycling workouts" [ref=e706] [cursor=pointer]:
+                - /url: /plan
+                - text: Browse structured cycling workouts ↗
+              - generic [ref=e707]:
+                - button "Accept" [ref=e708] [cursor=pointer]
+                - button "Dismiss" [ref=e709] [cursor=pointer]
+        - generic [ref=e710]:
+          - generic [ref=e711]:
+            - generic [ref=e712]:
+              - generic [ref=e713]: Weekly
+              - generic [ref=e714]: 2 goals
+            - generic [ref=e715]: Resets each week
+          - generic [ref=e716]:
+            - article [ref=e717]:
+              - generic [ref=e718]:
+                - generic [ref=e719]:
+                  - generic [ref=e720]:
+                    - generic [ref=e721]: Process
+                    - generic [ref=e722]: This week
+                    - 'generic "Anchor goal: a deliberate standard you keep" [ref=e723]': Anchor
+                    - generic "Hit 42% of weeks and its purpose is served. It stays your standard." [ref=e724]: Anchor under pressure
+                  - heading "Lift three times per week" [level=2] [ref=e725]
+                  - paragraph [ref=e726]: Maintain muscle alongside heavy cardio
+                - generic [ref=e727]: Behind
+              - generic [ref=e728]:
+                - generic [ref=e729]:
+                  - strong [ref=e730]: "0"
+                  - generic [ref=e731]: sessions
+                - generic [ref=e732]:
+                  - generic [ref=e733]: Target
+                  - strong [ref=e734]: 3 sessions
+              - progressbar "Lift three times per week progress" [ref=e736]
+              - generic [ref=e737]:
+                - strong [ref=e738]: 0% complete
+                - generic [ref=e739]: 3 sessions remaining
+              - generic [ref=e740]:
+                - generic [ref=e741]: 5 of 12 weeks hit · median 2 sessions · 2 in a row
+                - img "5 of 12 weeks hit · median 2 sessions · 2 in a row" [ref=e742]
+              - list "Linked outcomes" [ref=e782]:
+                - listitem "Median change across 5 top lifts, last 6 weeks vs the months before." [ref=e783]:
+                  - generic [ref=e784]: → Holding ±0%
+                  - generic [ref=e785]: Top-lift strength (estimated 1RM)
+              - paragraph [ref=e786]: Hit 42% of weeks and its purpose is served. It stays your standard.
+              - generic [ref=e787]:
+                - generic [ref=e788]:
+                  - generic [ref=e789]: Against schedule
+                  - strong [ref=e790]: "-0 sessions"
+                - generic [ref=e791]:
+                  - generic [ref=e792]: Time remaining
+                  - strong [ref=e793]: 6 days
+                - generic [ref=e794]:
+                  - generic [ref=e795]: Needed this week
+                  - strong [ref=e796]: 3 sessions
+              - generic [ref=e797]:
+                - generic [ref=e798]: Recent training
+                - paragraph [ref=e799]: Goal pace is still alive, but recent support is inconsistent.
+              - generic [ref=e800]:
+                - generic [aria-hidden] [ref=e801]: →
+                - generic [ref=e802]:
+                  - strong [ref=e803]: What matters next
+                  - paragraph [ref=e804]: Lift three times per week is slipping. Need about 3.0 sessions this week to recover pace. Current trend finishes 3.0 sessions short.
+              - generic "Lift three times per week actions" [ref=e805]:
+                - button "Edit" [ref=e806] [cursor=pointer]
+                - button "Pause" [ref=e807] [cursor=pointer]
+                - button "Complete" [ref=e808] [cursor=pointer]
+                - button "Retire" [ref=e809] [cursor=pointer]
+            - article [ref=e810]:
+              - generic [ref=e811]:
+                - generic [ref=e812]:
+                  - generic [ref=e813]:
+                    - generic [ref=e814]: Accumulation
+                    - generic [ref=e815]: This week
+                    - 'generic "Ride 100km weekly is a realistic off season target: last off season you hit it 8 of 13 weeks. Outcome data is still too thin to prove it pays off." [ref=e816]': On track, unproven
+                    - generic [ref=e817]: Until Mar 31, 2027
+                  - heading "Ride 100km weekly" [level=2] [ref=e818]
+                - generic [ref=e819]: Ahead
+              - generic [ref=e820]:
+                - generic [ref=e821]:
+                  - strong [ref=e822]: "32.9"
+                  - generic [ref=e823]: km
+                - generic [ref=e824]:
+                  - generic [ref=e825]: Target
+                  - strong [ref=e826]: 100.0 km
+              - progressbar "Ride 100km weekly progress" [ref=e828]
+              - generic [ref=e830]:
+                - strong [ref=e831]: 32.9% complete
+                - generic [ref=e832]: 67.1 km remaining
+              - generic [ref=e833]:
+                - generic [ref=e834]: 11 of 12 weeks hit · median 181 km · 7 in a row
+                - img "11 of 12 weeks hit · median 181 km · 7 in a row" [ref=e835]
+              - list "Linked outcomes" [ref=e875]:
+                - listitem "Uses steady rides with verified power; outdoor rides without a power meter are excluded." [ref=e876]:
+                  - generic [ref=e877]: Not enough data
+                  - generic [ref=e878]: Cycling efficiency (watts per heartbeat)
+                - listitem "Monthly bests use rides with verified power only (49 of 146 rides); most recent months have no verified power." [ref=e879]:
+                  - generic [ref=e880]: Not enough data
+                  - generic [ref=e881]: 20-min power (monthly best)
+              - paragraph [ref=e882]: "Ride 100km weekly is a realistic off season target: last off season you hit it 8 of 13 weeks. Outcome data is still too thin to prove it pays off."
+              - generic [ref=e883]:
+                - generic [ref=e884]:
+                  - generic [ref=e885]: Against schedule
+                  - strong [ref=e886]: +18.6 km
+                - generic [ref=e887]:
+                  - generic [ref=e888]: Time remaining
+                  - strong [ref=e889]: 6 days
+                - generic [ref=e890]:
+                  - generic [ref=e891]: Needed this week
+                  - strong [ref=e892]: 67.1 km
+              - generic [ref=e893]:
+                - generic [ref=e894]: Recent training
+                - paragraph [ref=e895]: The goal is still building and needs one more recent exposure.
+              - generic [ref=e896]:
+                - generic [aria-hidden] [ref=e897]: →
+                - generic [ref=e898]:
+                  - strong [ref=e899]: What matters next
+                  - paragraph [ref=e900]: Current trend keeps Ride 100km weekly ahead of pace.
+              - generic "Ride 100km weekly actions" [ref=e901]:
+                - button "Edit" [ref=e902] [cursor=pointer]
+                - button "Pause" [ref=e903] [cursor=pointer]
+                - button "Complete" [ref=e904] [cursor=pointer]
+                - button "Retire" [ref=e905] [cursor=pointer]
+        - button "Paused & past goals 1 completed · 1 retired" [ref=e907] [cursor=pointer]:
+          - generic [ref=e908]:
+            - strong [ref=e909]: Paused & past goals
+            - generic [ref=e910]: 1 completed · 1 retired
+          - generic [aria-hidden] [ref=e911]: +
+        - button "Goal settings Profile, performance anchors, workout rotation, and restrictions" [ref=e913] [cursor=pointer]:
+          - generic [ref=e914]:
+            - strong [ref=e915]: Goal settings
+            - generic [ref=e916]: Profile, performance anchors, workout rotation, and restrictions
+          - generic [aria-hidden] [ref=e917]: +
+  - button "Coach" [ref=e93] [cursor=pointer]:
+    - generic [aria-hidden] [ref=e94]: ✦

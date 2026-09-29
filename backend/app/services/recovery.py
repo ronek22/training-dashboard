@@ -1,403 +1,264 @@
 import json
+import re
 import uuid
 from datetime import date
 
-from ..models.recovery import Intake
 from ..repositories import recovery as repo
-from .recovery_library import reviewed_library, matches_location
 
-
-QUESTIONS = {
-    "location": "Where do you feel the symptoms, and on which side?",
-    "onset": "When did this start, and was there a particular movement or injury?",
-    "severity": "How strong are the symptoms from 0 (none) to 10 (worst imaginable)?",
-    "trend": "Are symptoms improving, unchanged, or worsening?",
-    "function": "Can you walk and use the affected area normally?",
-    "emergency_signs": "Any deformity or a numb/cold injured limb; or back pain with new bladder/bowel changes, numbness around the genitals, or symptoms in both legs?",
-    "urgent_signs": "Any severe or rapidly worsening pain, major swelling/bruising, or fever/feeling unwell with the symptoms?",
-    "injury_or_surgery": "Is this related to an injury, a diagnosed condition, or recent surgery?",
-    "persistent_symptoms": "Have the symptoms persisted or returned despite trying to manage them?",
-    "general_soreness": "Does this feel like your usual muscle soreness following training?",
-    "clinician_guidance": "Has a clinician given you instructions or training restrictions for this issue?",
+# Words that describe where on a body part, not which body part. Ignored when
+# matching a new issue against past ones so "outside of left knee" finds "knee".
+AREA_NOISE = {
+    "a", "an", "and", "area", "both", "front", "inner", "inside", "left", "lower", "middle", "my",
+    "of", "on", "outer", "outside", "pain", "rear", "right", "side", "sides", "sore", "soreness",
+    "the", "upper",
 }
-PRIORITY = {"none": 0, "assessment": 1, "urgent": 2, "emergency": 3}
-CARE = {
-    "emergency": ("Get emergency help", "Contact local emergency services or an emergency department now. Do not wait for an AI reply or try a recovery routine."),
-    "urgent": ("Seek urgent assessment", "Arrange urgent medical assessment for these symptoms. Exercise suggestions are paused; do not wait for this chat to decide whether to seek care."),
-    "incomplete": ("Add the key symptom details", "Add the location and severity so the app can find a suitable recovery routine. Other details can remain unknown."),
-    "review_required": ("Exercise suggestions unavailable", "You can track symptoms and discuss them here. Exercise suggestions are unavailable because the exercise catalogue is unavailable."),
-    "unsupported": ("No matching routine available", "The source-backed library does not cover this location. Track the issue here and ask a clinician or physiotherapist about suitable exercises."),
-    "eligible": ("Ready to review a routine", "You can request a general soreness or mobility routine from the source-backed library. This symptom check is not a diagnosis or clearance to exercise."),
-}
+AREA_ALIASES = {"calves": "calf", "feet": "foot", "achilles": "achilles", "quadriceps": "quad"}
 
 
-def screening(issue):
-    intake = Intake.model_validate_json(issue["intake_json"])
-    # Assessment was a legacy recommendation. Keep it in persisted rows for
-    # compatibility, but it must not turn a routine-capable issue into a
-    # doctor-reminder state. Urgent and emergency concerns remain sticky until
-    # the athlete explicitly records a new, safe issue state.
-    concern = issue.get("concern") if issue.get("concern") in {"urgent", "emergency"} else "none"
-    if intake.emergency_signs is True:
-        concern = "emergency"
-    elif intake.urgent_signs is True or intake.function == "unable":
-        concern = max((concern, "urgent"), key=PRIORITY.get)
-    missing = []
-    if not intake.location.strip():
-        missing.append("location")
-    if intake.severity is None:
-        missing.append("severity")
-    library = reviewed_library()
-    matching = [entry for entry in library if matches_location(entry, intake.location)]
-    state = concern if concern != "none" else (
-        "incomplete" if missing or issue["needs_review"] else
-        "review_required" if not library else "eligible" if matching else "unsupported"
-    )
-    title, message = CARE[state]
-    return {"state": state, "title": title, "message": message, "missing": missing,
-            "can_generate": state == "eligible" and issue["status"] == "active"}
+def area_tokens(text):
+    tokens = set()
+    for word in re.findall(r"[a-z]+", (text or "").lower()):
+        if word in AREA_NOISE:
+            continue
+        word = AREA_ALIASES.get(word, word)
+        if len(word) > 4 and word.endswith("s") and not word.endswith("ss"):
+            word = word[:-1]
+        tokens.add(word)
+    return tokens
 
 
-def get_issue(conn, issue_id):
-    issue = repo.issue_row(conn, issue_id)
-    conn.execute("""UPDATE recovery_requests SET status = 'failed'
-        WHERE issue_id = ? AND status = 'pending' AND created_at < datetime('now', '-17 minutes')""", (issue_id,))
-    issue["screening"] = screening(issue)
-    issue["intake"] = Intake.model_validate_json(issue.pop("intake_json")).model_dump(mode="json")
-    proposal = json.loads(issue.pop("proposed_intake_json") or "null")
-    issue["proposal"] = proposal if proposal and proposal["revision"] == issue["revision"] else None
-    issue["next_action"] = next_action(issue)
-    issue.update(repo.children(conn, issue_id))
-    current = {entry["id"]: entry for entry in reviewed_library()}
-    location = issue["intake"].get("location", "")
-    for routine in issue["routines"]:
-        routine["usable"] = (
-            routine["status"] == "saved"
-            and issue["screening"]["can_generate"]
-            and bool(routine["exercises"])
-            and all(
-                entry["id"] in current
-                and current[entry["id"]]["version"] == entry.get("version")
-                and matches_location(current[entry["id"]], location)
-                for entry in routine["exercises"]
-            )
-        )
-    return issue
+def _checkins(conn, issue_id, limit=None):
+    sql = "SELECT * FROM recovery_checkins WHERE issue_id = ? ORDER BY created_at, id"
+    rows = [dict(row) for row in conn.execute(sql, (issue_id,))]
+    return rows[-limit:] if limit else rows
 
 
-def next_action(issue):
-    state = issue["screening"]["state"]
-    if issue["status"] == "archived":
-        return {"title": "This issue is archived", "description": "Reopen it to continue the conversation or log a check-in.", "target": None, "label": None}
-    if state in {"urgent", "emergency"}:
-        return {"title": issue["screening"]["title"], "description": issue["screening"]["message"], "target": None, "label": None}
-    if issue["screening"]["missing"] or issue["needs_review"]:
-        return {"title": "Add the location and severity", "description": "Save the key symptom details when you know them. Side, onset, movement, and warning-sign fields can remain unknown.", "target": "symptom-summary", "label": "Add symptom details"}
-    if state == "eligible":
-        return {"title": "Review a recovery routine", "description": "Your starter exercises are ready below. Review the instructions, then save your routine. You can also ask AI for an alternative.", "target": "recovery-routines", "label": "See my exercises"}
-    return {"title": "Track how symptoms change", "description": issue["screening"]["message"] + " Use a follow-up check-in to record changes.", "target": "recovery-checkins", "label": "Log a follow-up"}
+def _current_pain(conn, issue_id):
+    row = conn.execute(
+        "SELECT severity FROM recovery_checkins WHERE issue_id = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+        (issue_id,),
+    ).fetchone()
+    return row[0] if row else None
+
+
+def _brief(conn, row):
+    return {key: row[key] for key in (
+        "id", "title", "body_area", "side", "status", "started_on", "healed_on", "what_helped",
+        "previous_issue_id", "see_professional", "updated_at",
+    )} | {"current_pain": _current_pain(conn, row["id"])}
 
 
 def list_issues(conn):
-    results = []
-    for row in conn.execute("SELECT * FROM recovery_issues ORDER BY updated_at DESC, id DESC"):
-        item = dict(row)
-        item.pop("proposed_intake_json", None)
-        item["screening"] = screening(item)
-        intake = Intake.model_validate_json(item.pop("intake_json"))
-        item["location"] = intake.location
-        item["severity"] = intake.severity
-        results.append(item)
-    return results
+    rows = conn.execute("""SELECT * FROM recovery_issues
+        ORDER BY status = 'active' DESC, updated_at DESC, id DESC""").fetchall()
+    return [_brief(conn, dict(row)) for row in rows]
+
+
+def related_issues(conn, body_area, *, exclude_id=None, previous_issue_id=None):
+    """Past episodes of the same problem: the explicit recurrence chain plus same-area issues."""
+    rows = {row["id"]: dict(row) for row in conn.execute("SELECT * FROM recovery_issues")}
+    linked = set()
+    cursor = previous_issue_id
+    while cursor in rows and cursor not in linked:
+        linked.add(cursor)
+        cursor = rows[cursor]["previous_issue_id"]
+    wanted = area_tokens(body_area)
+    matches = [
+        row for issue_id, row in rows.items()
+        if issue_id != exclude_id and (issue_id in linked or (wanted and wanted & area_tokens(row["body_area"])))
+    ]
+    matches.sort(key=lambda row: (row["started_on"] or row["created_at"] or ""), reverse=True)
+    return [_brief(conn, row) for row in matches]
+
+
+def get_issue(conn, issue_id):
+    conn.execute("""UPDATE recovery_requests SET status = 'failed'
+        WHERE issue_id = ? AND status = 'pending' AND created_at < datetime('now', '-17 minutes')""", (issue_id,))
+    issue = _brief(conn, repo.issue_row(conn, issue_id))
+    children = repo.children(conn, issue_id)
+    issue["messages"] = [{key: row[key] for key in ("id", "role", "content", "created_at")} for row in children["messages"]]
+    issue["plans"] = children["plans"]
+    issue["current_plan"] = next((plan for plan in reversed(children["plans"]) if plan["status"] == "current"), None)
+    issue["checkins"] = [
+        {"id": row["id"], "pain": row["severity"], "did_plan": bool(row["completed"]), "note": row["note"],
+         "created_at": row["created_at"]}
+        for row in children["checkins"]
+    ]
+    issue["latest_request"] = children["requests"][-1] if children["requests"] else None
+    issue["related"] = related_issues(conn, issue["body_area"], exclude_id=issue_id,
+                                      previous_issue_id=issue["previous_issue_id"])
+    return issue
+
+
+def create_issue(conn, payload):
+    if payload.previous_issue_id is not None:
+        repo.issue_row(conn, payload.previous_issue_id)
+    title = payload.title or " ".join(part for part in (payload.side if payload.side != "both" else "", payload.body_area) if part)
+    cursor = conn.execute(
+        """INSERT INTO recovery_issues (title, body_area, side, started_on, previous_issue_id, needs_review)
+           VALUES (?, ?, ?, ?, ?, 0)""",
+        (title[:1].upper() + title[1:], payload.body_area, payload.side, date.today().isoformat(), payload.previous_issue_id),
+    )
+    issue_id = cursor.lastrowid
+    repo.append_status_history(conn, issue_id, "active")
+    if payload.pain is not None:
+        _insert_checkin(conn, issue_id, payload.pain, False, "Starting point")
+    return get_issue(conn, issue_id)
+
+
+def update_issue(conn, issue_id, payload):
+    repo.issue_row(conn, issue_id)
+    values = payload.model_dump(exclude_none=True)
+    for key, value in values.items():
+        # Keys come from the validated model, never from free-form request data.
+        conn.execute(f"UPDATE recovery_issues SET {key} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (value, issue_id))
+    return get_issue(conn, issue_id)
+
+
+def heal(conn, issue_id, what_helped):
+    issue = active_issue(conn, issue_id)
+    invalidate_requests(conn, issue_id)
+    conn.execute("""UPDATE recovery_issues SET status = 'healed', healed_on = ?, what_helped = ?,
+        updated_at = CURRENT_TIMESTAMP WHERE id = ?""", (date.today().isoformat(), what_helped, issue["id"]))
+    repo.append_status_history(conn, issue_id, "healed")
+    return get_issue(conn, issue_id)
+
+
+def reopen(conn, issue_id):
+    issue = repo.issue_row(conn, issue_id)
+    if issue["status"] != "active":
+        conn.execute("""UPDATE recovery_issues SET status = 'active', healed_on = NULL,
+            updated_at = CURRENT_TIMESTAMP WHERE id = ?""", (issue_id,))
+        repo.append_status_history(conn, issue_id, "active")
+    return get_issue(conn, issue_id)
 
 
 def active_issue(conn, issue_id):
     issue = repo.issue_row(conn, issue_id)
     if issue["status"] != "active":
-        raise ValueError("Reopen this issue before adding new information.")
+        raise ValueError("This issue is marked healed. Reopen it, or log that it came back.")
     return issue
 
 
-def coaching_summary(conn):
-    summaries = []
-    for row in conn.execute("SELECT * FROM recovery_issues WHERE status = 'active' AND share_coaching = 1 ORDER BY updated_at DESC, id DESC LIMIT 8"):
-        item = dict(row)
-        intake = Intake.model_validate_json(item["intake_json"])
-        summaries.append({"issue_id": item["id"], "location": intake.location, "side": intake.side,
-                          "severity": intake.severity, "trend": intake.trend, "function": intake.function,
-                          "screening_state": screening(item)["state"], "needs_review": bool(item["needs_review"]),
-                          "updated_at": item["updated_at"]})
-    return {"issues": summaries, "instruction": "Athlete-shared symptom reports, not diagnoses or clearance. Respect existing restrictions; any plan changes require athlete approval. No symptom transcript is included."}
+def invalidate_requests(conn, issue_id):
+    conn.execute("UPDATE recovery_requests SET status = 'stale' WHERE issue_id = ? AND status = 'pending'", (issue_id,))
+
+
+def add_message(conn, issue_id, payload):
+    active_issue(conn, issue_id)
+    conn.execute("INSERT INTO recovery_messages (issue_id, role, content) VALUES (?, 'user', ?)", (issue_id, payload.content))
+    conn.execute("UPDATE recovery_issues SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (issue_id,))
+    return new_request(conn, issue_id)
+
+
+def new_request(conn, issue_id):
+    active_issue(conn, issue_id)
+    if not conn.execute("SELECT 1 FROM recovery_messages WHERE issue_id = ? AND role = 'user'", (issue_id,)).fetchone():
+        raise ValueError("Write a message first.")
+    invalidate_requests(conn, issue_id)
+    request_id = uuid.uuid4().hex
+    conn.execute("INSERT INTO recovery_requests (id, issue_id, revision, kind) VALUES (?, ?, 0, 'chat')",
+                 (request_id, issue_id))
+    return {"request_id": request_id, "issue_id": issue_id}
+
+
+def request_row(conn, issue_id, request_id):
+    active_issue(conn, issue_id)
+    row = conn.execute("SELECT * FROM recovery_requests WHERE id = ? AND issue_id = ?", (request_id, issue_id)).fetchone()
+    if row is None:
+        raise LookupError("Recovery request not found.")
+    if row["status"] != "pending":
+        raise ValueError("This reply is no longer current. Ask again.")
+    return dict(row)
+
+
+def _plan_brief(plan):
+    return {key: plan.get(key) for key in ("summary", "exercises", "do", "avoid", "status", "created_at")}
+
+
+def _episode(conn, brief):
+    checkins = _checkins(conn, brief["id"])
+    plans = repo.children(conn, brief["id"])["plans"]
+    return {
+        **{key: brief[key] for key in ("title", "body_area", "side", "status", "started_on", "healed_on", "what_helped")},
+        "plans": [_plan_brief(plan) for plan in plans[-3:]],
+        "checkins": [{"date": row["created_at"][:10], "pain": row["severity"], "did_plan": bool(row["completed"]),
+                      "note": row["note"]} for row in checkins[-12:]],
+    }
 
 
 def training_context(conn):
     from .dashboard import build_recent_context
     context = build_recent_context(conn, recent_activity_limit=8, recent_note_limit=1)
-    return {key: context.get(key) for key in (
-        "readiness", "modality_restrictions", "recent_activities", "active_plan",
-    )}
-
-
-def validate_intake(intake):
-    if intake.onset_date and intake.onset_date > date.today():
-        raise ValueError("Symptom onset cannot be in the future.")
-
-
-def create_issue(conn, payload):
-    intake = payload.intake
-    if intake is not None:
-        validate_intake(intake)
-    values = intake.model_dump_json() if intake is not None else "{}"
-    needs_review = 0 if intake is not None else 1
-    cursor = conn.execute(
-        """INSERT INTO recovery_issues (title, intake_json, needs_review)
-           VALUES (?, ?, ?)""",
-        (payload.title, values, needs_review),
-    )
-    issue_id = cursor.lastrowid
-    if intake is not None:
-        ensure_starter_routine(conn, issue_id)
-    return get_issue(conn, issue_id)
-
-
-def set_status(conn, issue_id, status):
-    issue = repo.issue_row(conn, issue_id)
-    if issue["status"] == status:
-        # Repeating an archive/reopen action is safe and must not churn the
-        # revision or lifecycle history.
-        return get_issue(conn, issue_id)
-    invalidate(conn, issue_id, stale_drafts=False)
-    conn.execute(
-        """UPDATE recovery_issues
-           SET status = ?, revision = revision + 1, updated_at = CURRENT_TIMESTAMP
-           WHERE id = ?""",
-        (status, issue_id),
-    )
-    repo.append_status_history(conn, issue_id, status)
-    return get_issue(conn, issue_id)
-
-
-def invalidate(conn, issue_id, *, stale_drafts=True, pause_saved=False):
-    conn.execute("UPDATE recovery_requests SET status = 'stale' WHERE issue_id = ? AND status = 'pending'", (issue_id,))
-    if stale_drafts:
-        conn.execute("UPDATE recovery_routines SET status = 'stale' WHERE issue_id = ? AND status = 'draft'", (issue_id,))
-    if pause_saved:
-        conn.execute("UPDATE recovery_routines SET status = 'paused' WHERE issue_id = ? AND status = 'saved'", (issue_id,))
-
-
-def _normalized_location(value):
-    return " ".join((value or "").strip().lower().split())
-
-
-def _location_changed(previous, current):
-    return _normalized_location(previous) != _normalized_location(current)
-
-
-def _routine_matches_library(routine, library, location):
-    try:
-        exercises = json.loads(routine["exercises_json"])
-    except (TypeError, json.JSONDecodeError):
-        return False
-    if not exercises:
-        return False
-    current = {entry["id"]: entry for entry in library}
-    return all(
-        entry.get("id") in current
-        and current[entry["id"]].get("version") == entry.get("version")
-        and matches_location(current[entry["id"]], location)
-        for entry in exercises
-    )
-
-
-def _pause_saved_if_blocked(conn, issue_id, issue=None, *, location_changed=False):
-    issue = issue or repo.issue_row(conn, issue_id)
-    blocked = screening(issue)["state"] in {"urgent", "emergency"}
-    if blocked or location_changed:
-        conn.execute("UPDATE recovery_routines SET status = 'paused' WHERE issue_id = ? AND status = 'saved'", (issue_id,))
-
-
-def save_intake(conn, issue_id, payload):
-    issue = active_issue(conn, issue_id)
-    if issue["revision"] != payload.revision:
-        raise ValueError("Symptoms changed in another session. Reload before saving.")
-    if payload.intake.onset_date and payload.intake.onset_date > date.today():
-        raise ValueError("Symptom onset cannot be in the future.")
-    if payload.reassess_assessment and issue["concern"] == "assessment":
-        # Only an explicit athlete review may supersede an earlier non-urgent AI concern.
-        candidate = {**issue, "concern": "none", "needs_review": 0,
-                     "intake_json": payload.intake.model_dump_json()}
-        if screening(candidate)["can_generate"]:
-            conn.execute("UPDATE recovery_issues SET concern = 'none' WHERE id = ?", (issue_id,))
-    invalidate(conn, issue_id)
-    conn.execute("""UPDATE recovery_issues SET intake_json = ?, revision = revision + 1,
-        needs_review = 0, proposed_intake_json = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?""",
-        (payload.intake.model_dump_json(), issue_id))
-    ensure_starter_routine(conn, issue_id)
-    return get_issue(conn, issue_id)
-
-
-def ensure_starter_routine(conn, issue_id):
-    issue = repo.issue_row(conn, issue_id)
-    if not screening(issue)["can_generate"]:
-        return
-    if conn.execute("SELECT 1 FROM recovery_routines WHERE issue_id = ? AND revision = ? AND status IN ('draft', 'saved')", (issue_id, issue["revision"])).fetchone():
-        return
-    location = json.loads(issue["intake_json"])["location"]
-    entries = [{**entry, "repetitions": entry["repetitions_min"], "sets": entry["sets_min"]}
-               for entry in reviewed_library() if matches_location(entry, location)][:2]
-    conn.execute("INSERT INTO recovery_routines (issue_id, revision, exercises_json) VALUES (?, ?, ?)",
-                 (issue_id, issue["revision"], json.dumps(entries)))
-
-
-def new_request(conn, issue_id, kind, consent):
-    issue = active_issue(conn, issue_id)
-    if not consent:
-        raise ValueError("Confirm AI data sharing before requesting a reply.")
-    if kind == "routine" and not screening(issue)["can_generate"]:
-        raise ValueError(screening(issue)["message"])
-    if kind == "chat" and not conn.execute(
-        "SELECT 1 FROM recovery_messages WHERE issue_id = ? AND role = 'user'", (issue_id,)
-    ).fetchone():
-        raise ValueError("Write a message first.")
-    conn.execute("UPDATE recovery_requests SET status = 'stale' WHERE issue_id = ? AND status = 'pending'", (issue_id,))
-    request_id = uuid.uuid4().hex
-    conn.execute("INSERT INTO recovery_requests (id, issue_id, revision, kind) VALUES (?, ?, ?, ?)",
-                 (request_id, issue_id, issue["revision"], kind))
-    return {"request_id": request_id, "issue_id": issue_id}
-
-
-def add_message(conn, issue_id, payload):
-    active_issue(conn, issue_id)
-    # Store the athlete's text even when they choose not to share it with AI.
-    invalidate(conn, issue_id)
-    conn.execute("INSERT INTO recovery_messages (issue_id, role, content) VALUES (?, 'user', ?)", (issue_id, payload.content))
-    conn.execute("""UPDATE recovery_issues SET revision = revision + 1, needs_review = 1,
-        updated_at = CURRENT_TIMESTAMP WHERE id = ?""", (issue_id,))
-    return new_request(conn, issue_id, "chat", True) if payload.ai_consent else {"issue_id": issue_id, "request_id": None}
-
-
-def request_row(conn, issue_id, request_id):
-    issue = active_issue(conn, issue_id)
-    row = conn.execute("SELECT * FROM recovery_requests WHERE id = ? AND issue_id = ?", (request_id, issue_id)).fetchone()
-    if row is None:
-        raise LookupError("Recovery request not found.")
-    request = dict(row)
-    if request["status"] != "pending" or request["revision"] != issue["revision"]:
-        raise ValueError("This reply is no longer current. Request a new reply.")
-    return issue, request
+    return {key: context.get(key) for key in ("readiness", "modality_restrictions", "recent_activities", "active_plan")}
 
 
 def ai_context(conn, issue_id, request_id):
-    issue, request = request_row(conn, issue_id, request_id)
-    rows = conn.execute("""SELECT role, content FROM recovery_messages WHERE issue_id = ?
-        ORDER BY id DESC LIMIT 20""", (issue_id,)).fetchall()
-    # Explicit context allowlist: no unrelated coach notes or symptom transcripts.
-    checkins = [dict(row) for row in conn.execute("""SELECT severity, trend, function, note, created_at
-        FROM recovery_checkins WHERE issue_id = ? ORDER BY id DESC LIMIT 5""", (issue_id,))]
-    return {"kind": request["kind"], "issue_title": issue["title"], "intake": json.loads(issue["intake_json"]),
-            "previous_proposal": json.loads(issue["proposed_intake_json"] or "null"),
-            "today": date.today().isoformat(),
-            "screening": screening(issue), "history": [dict(row) for row in reversed(rows)],
-            "recent_checkins": checkins,
-            "questions": QUESTIONS, "training_context": training_context(conn),
-            "exercises": [entry for entry in reviewed_library() if matches_location(entry, json.loads(issue["intake_json"]).get("location", ""))] if request["kind"] == "routine" else []}
+    request_row(conn, issue_id, request_id)
+    issue = get_issue(conn, issue_id)
+    history = conn.execute("""SELECT role, content, created_at FROM recovery_messages WHERE issue_id = ?
+        ORDER BY id DESC LIMIT 30""", (issue_id,)).fetchall()
+    related = issue["related"]
+    all_past = [row for row in list_issues(conn) if row["id"] != issue_id and row["status"] == "healed"]
+    return {
+        "today": date.today().isoformat(),
+        "issue": {key: issue[key] for key in ("title", "body_area", "side", "started_on", "current_pain")},
+        "current_plan": _plan_brief(issue["current_plan"]) if issue["current_plan"] else None,
+        "checkins": [{"date": row["created_at"][:10], "pain": row["pain"], "did_plan": row["did_plan"], "note": row["note"]}
+                     for row in issue["checkins"][-15:]],
+        "conversation": [dict(row) for row in reversed(history)],
+        "previous_episodes_same_area": [_episode(conn, brief) for brief in related[:5]],
+        "other_past_injuries": [
+            {key: row[key] for key in ("title", "body_area", "side", "started_on", "healed_on", "what_helped")}
+            for row in all_past if row["id"] not in {item["id"] for item in related}
+        ][:15],
+        "training_context": training_context(conn),
+    }
 
 
 def finish_request(conn, issue_id, request_id, result):
-    issue, request = request_row(conn, issue_id, request_id)
-    if any(key not in QUESTIONS for key in result.question_ids):
-        raise ValueError("The AI returned an unsupported question.")
-    if result.exercises and request["kind"] != "routine":
-        raise ValueError("Exercise suggestions require a separate routine request.")
-    draft = None
-    if result.proposed_intake is not None and request["kind"] == "chat":
-        values = result.proposed_intake.model_dump(mode="json", exclude_unset=True)
-        if result.proposed_intake.onset_date and result.proposed_intake.onset_date > date.today():
-            raise ValueError("The proposed onset date is in the future.")
-        if set(values) != set(result.intake_evidence):
-            raise ValueError("Every proposed symptom field requires an athlete quote.")
-        reports = [row[0] for row in conn.execute("SELECT content FROM recovery_messages WHERE issue_id = ? AND role = 'user'", (issue_id,))]
-        for key, quote in result.intake_evidence.items():
-            if not quote.strip() or len(quote) > 1000 or not any(quote in report for report in reports):
-                raise ValueError("Symptom proposals must be grounded in the athlete's messages.")
-        if values:
-            draft = {"revision": issue["revision"], "values": values, "evidence": result.intake_evidence}
-    concern = max((issue["concern"], result.concern), key=PRIORITY.get)
-    proposed = {**issue, "concern": concern}
-    entries = []
-    if result.exercises and concern == "none":
-        if not screening(proposed)["can_generate"]:
-            raise ValueError("Exercise suggestions are unavailable for this symptom check.")
-        library = {entry["id"]: entry for entry in reviewed_library()}
-        seen = set()
-        for selection in result.exercises:
-            entry = library.get(selection.exercise_id)
-            intake = json.loads(issue["intake_json"])
-            if (not entry or entry["id"] in seen or not matches_location(entry, intake.get("location", ""))
-                or not entry["repetitions_min"] <= selection.repetitions <= entry["repetitions_max"]
-                or not entry["sets_min"] <= selection.sets <= entry["sets_max"]):
-                raise ValueError("The AI returned an ineligible exercise or prescription.")
-            seen.add(entry["id"])
-            entries.append({**entry, "repetitions": selection.repetitions, "sets": selection.sets})
-    if request["kind"] == "routine" and not entries and concern == "none":
-        raise ValueError("No eligible routine was returned. Your issue has been preserved.")
-    conn.execute("UPDATE recovery_issues SET concern = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (concern, issue_id))
-    if draft:
-        conn.execute("UPDATE recovery_issues SET proposed_intake_json = ?, needs_review = 1 WHERE id = ?", (json.dumps(draft), issue_id))
-    if concern != "none":
-        invalidate(conn, issue_id)
-    # AI summary is clearly attributed and never used as confirmed intake or a prescription.
-    content = result.summary
-    if result.question_ids:
-        content += "\n\n" + "\n".join(QUESTIONS[key] for key in dict.fromkeys(result.question_ids))
-    conn.execute("INSERT INTO recovery_messages (issue_id, role, content) VALUES (?, 'assistant', ?)", (issue_id, content))
-    if entries:
-        conn.execute("UPDATE recovery_routines SET status = 'stale' WHERE issue_id = ? AND status = 'draft'", (issue_id,))
-        conn.execute("INSERT INTO recovery_routines (issue_id, revision, exercises_json) VALUES (?, ?, ?)",
-                     (issue_id, issue["revision"], json.dumps(entries)))
+    request_row(conn, issue_id, request_id)
+    conn.execute("INSERT INTO recovery_messages (issue_id, role, content) VALUES (?, 'assistant', ?)", (issue_id, result.reply))
+    if result.plan is not None:
+        conn.execute("UPDATE recovery_routines SET status = 'replaced' WHERE issue_id = ? AND status = 'current'", (issue_id,))
+        conn.execute("INSERT INTO recovery_routines (issue_id, revision, status, exercises_json) VALUES (?, 0, 'current', ?)",
+                     (issue_id, result.plan.model_dump_json()))
+    conn.execute("""UPDATE recovery_issues SET see_professional = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?""", (result.see_professional, issue_id))
     conn.execute("UPDATE recovery_requests SET status = 'succeeded' WHERE id = ?", (request_id,))
     return {"status": "succeeded"}
 
 
-def save_routine(conn, issue_id, routine_id, revision):
-    issue = active_issue(conn, issue_id)
-    routine = conn.execute("SELECT * FROM recovery_routines WHERE id = ? AND issue_id = ?", (routine_id, issue_id)).fetchone()
-    if routine is None:
-        raise LookupError("Routine not found.")
-    if (routine["status"] != "draft" or routine["revision"] != revision or issue["revision"] != revision
-        or not screening(issue)["can_generate"]):
-        raise ValueError("This routine needs reassessment before it can be saved.")
-    current = {entry["id"]: entry for entry in reviewed_library()}
-    if any(entry["id"] not in current or current[entry["id"]]["version"] != entry["version"]
-           for entry in json.loads(routine["exercises_json"])):
-        raise ValueError("The exercise library changed. Request a new routine.")
-    conn.execute("UPDATE recovery_routines SET status = 'saved' WHERE id = ?", (routine_id,))
-    return get_issue(conn, issue_id)
+def fail_request(conn, issue_id, request_id):
+    conn.execute("UPDATE recovery_requests SET status = 'failed' WHERE id = ? AND issue_id = ? AND status = 'pending'",
+                 (request_id, issue_id))
+    return {"status": "failed"}
+
+
+def _insert_checkin(conn, issue_id, pain, did_plan, note):
+    plan = conn.execute("SELECT id FROM recovery_routines WHERE issue_id = ? AND status = 'current' ORDER BY id DESC LIMIT 1",
+                        (issue_id,)).fetchone()
+    conn.execute("""INSERT INTO recovery_checkins (issue_id, routine_id, severity, trend, function, completed, note)
+        VALUES (?, ?, ?, 'unknown', 'unknown', ?, ?)""", (issue_id, plan[0] if plan and did_plan else None, pain, did_plan, note))
+    conn.execute("UPDATE recovery_issues SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (issue_id,))
 
 
 def add_checkin(conn, issue_id, payload):
-    issue = active_issue(conn, issue_id)
-    if payload.completed and payload.routine_id is None:
-        raise ValueError("Choose the saved routine you completed.")
-    if payload.routine_id is not None:
-        routine = conn.execute("SELECT * FROM recovery_routines WHERE id = ? AND issue_id = ?", (payload.routine_id, issue_id)).fetchone()
-        if routine is None or routine["status"] not in {"saved", "paused"}:
-            raise ValueError("Choose a previously saved routine from this issue.")
-    conn.execute("""INSERT INTO recovery_checkins
-        (issue_id, routine_id, severity, before_severity, trend, function, completed, note)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", (issue_id, payload.routine_id, payload.severity,
-        payload.before_severity, payload.trend, payload.function, payload.completed, payload.note))
-    intake = Intake.model_validate_json(issue["intake_json"])
-    increased = intake.severity is not None and payload.severity > intake.severity
-    if payload.before_severity is not None:
-        increased = increased or payload.severity > payload.before_severity
-    intake.severity, intake.trend, intake.function = payload.severity, payload.trend, payload.function
-    concern = issue["concern"]
-    if payload.function == "unable":
-        concern = max((concern, "urgent"), key=PRIORITY.get)
-    elif increased or payload.trend == "worsening" or payload.function == "limited":
-        concern = max((concern, "assessment"), key=PRIORITY.get)
-    invalidate(conn, issue_id)
-    conn.execute("""UPDATE recovery_issues SET intake_json = ?, concern = ?, needs_review = 1,
-        revision = revision + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?""", (intake.model_dump_json(), concern, issue_id))
+    active_issue(conn, issue_id)
+    _insert_checkin(conn, issue_id, payload.pain, payload.did_plan, payload.note)
     return get_issue(conn, issue_id)
+
+
+def coaching_summary(conn):
+    """Active injuries for Coach and planning context: no conversation text."""
+    summaries = []
+    for row in conn.execute("SELECT * FROM recovery_issues WHERE status = 'active' ORDER BY updated_at DESC, id DESC LIMIT 8"):
+        item = dict(row)
+        plan = conn.execute("""SELECT exercises_json FROM recovery_routines WHERE issue_id = ? AND status = 'current'
+            ORDER BY id DESC LIMIT 1""", (item["id"],)).fetchone()
+        plan = json.loads(plan[0]) if plan else {}
+        summaries.append({"issue_id": item["id"], "title": item["title"], "body_area": item["body_area"], "side": item["side"],
+                          "started_on": item["started_on"], "current_pain": _current_pain(conn, item["id"]),
+                          "avoid": plan.get("avoid", []) if isinstance(plan, dict) else [],
+                          "see_professional": bool(item["see_professional"])})
+    return {"issues": summaries, "instruction": "Athlete-reported injuries and soreness, not diagnoses. Keep planned sessions from aggravating them; any plan changes require athlete approval."}

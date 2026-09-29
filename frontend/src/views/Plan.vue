@@ -328,6 +328,19 @@
                   </label>
                 </div>
 
+                <label v-if="isRideSessionType(editor.days[day.date].session_type) && cyclingWorkouts.length" class="editor-field">
+                  <span>Structured workout</span>
+                  <select
+                    v-model="editor.days[day.date].cycling_workout_id"
+                    @change="applyCyclingWorkoutDefaults(editor.days[day.date])"
+                  >
+                    <option value="">None</option>
+                    <option v-for="workout in cyclingWorkouts" :key="workout.id" :value="workout.id">
+                      {{ workout.name }} · {{ workout.duration_min }} min
+                    </option>
+                  </select>
+                </label>
+
                 <div class="editor-row editor-row-split">
                   <label class="editor-field">
                     <span>Duration</span>
@@ -425,57 +438,64 @@
 
 
               </div>
-              <div
-                class="plan-block plan-block-workout"
-                :class="`plan-block-${activityTone(day.session_type)}`"
-              >
-                <div class="plan-block-label">Planned</div>
-                <div class="plan-row">
-                  <div class="plan-day-title">{{ day.title }}</div>
-                  <div v-if="day.session_type" class="plan-type" :title="day.session_type">
+              <div class="day-plan">
+                <div class="day-session">
+                  <div class="day-sport">
                     <ActivityIcon
                       v-if="isIconSessionType(day.session_type)"
                       :type="day.session_type"
                       :tone="activityTone(day.session_type)"
-                      :size="16"
+                      :size="14"
                     />
-                    <span v-else>{{ day.session_type }}</span>
+                    <span>{{ sportLabel(day.session_type) }}</span>
                   </div>
-                </div>
-                <div v-if="day.template_label" class="intent-row">
-                  <span class="intent-pill intent-actual">{{ day.template_label }}</span>
-                </div>
-                <div v-if="day.benchmark_label" class="intent-row">
-                  <span class="intent-pill benchmark-pill">{{ day.benchmark_label }}</span>
-                </div>
-                <div v-if="day.modality_restriction?.status !== 'allowed'" class="plan-restriction-pill" :class="`restriction-${day.modality_restriction?.status}`">
-                  {{ day.modality_restriction?.label }} {{ day.modality_restriction?.status }}
+                  <h3 class="plan-day-title" :title="day.title">{{ day.title }}</h3>
                 </div>
 
-                <div class="plan-day-meta">
-                  <span v-if="day.target_duration_min">{{ day.target_duration_min }} min</span>
-                  <span v-if="day.target_distance_km">{{ day.target_distance_km }} km</span>
-                </div>
-                <div v-if="day.workout_intent_label" class="intent-row">
-                  <span class="intent-pill intent-planned">{{ day.workout_intent_label }}</span>
-                </div>
+                <dl class="day-stats">
+                  <div>
+                    <dt>Duration</dt>
+                    <dd>{{ day.target_duration_min ? `${day.target_duration_min} min` : '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Distance</dt>
+                    <dd>{{ day.target_distance_km ? `${day.target_distance_km} km` : '—' }}</dd>
+                  </div>
+                </dl>
 
-                <div v-if="day.details" class="plan-day-details-preview">
-                  <div class="plan-day-details">{{ day.details }}</div>
+                <div class="day-tags">
+                  <span v-if="day.workout_intent_label" class="day-tag day-tag-intent">{{ day.workout_intent_label }}</span>
+                  <span v-if="day.template_label && day.template_label !== day.title" class="day-tag">{{ day.template_label }}</span>
                   <button
-                    v-if="shouldShowDetailsAction(day)"
+                    v-if="day.cycling_workout_name"
+                    type="button"
+                    class="day-tag day-tag-workout"
+                    :aria-label="`Open structured workout ${day.cycling_workout_name}`"
+                    @click="openPlannedSessionDetails(day)"
+                  >
+                    {{ day.cycling_workout_name }} · .zwo
+                  </button>
+                  <span v-if="day.benchmark_label" class="day-tag day-tag-benchmark">{{ day.benchmark_label }}</span>
+                  <span
+                    v-if="day.modality_restriction && day.modality_restriction.status !== 'allowed'"
+                    class="day-tag day-tag-restriction"
+                  >
+                    {{ day.modality_restriction.label }} {{ day.modality_restriction.status }}
+                  </span>
+                </div>
+
+                <div class="day-notes">
+                  <p v-if="day.details" class="plan-day-details">{{ day.details }}</p>
+                  <p v-if="day.planning_rule_reason" class="plan-status-detail">{{ day.planning_rule_reason }}</p>
+                  <p v-if="statusDetail(day.comparison)" class="plan-status-detail">{{ statusDetail(day.comparison) }}</p>
+                  <button
+                    v-if="day.details || day.cycling_workout_name"
                     type="button"
                     class="plan-details-button"
                     @click="openPlannedSessionDetails(day)"
                   >
-                    View details
+                    View details <span aria-hidden="true">→</span>
                   </button>
-                </div>
-                <div v-if="day.planning_rule_reason" class="plan-status-detail">
-                  {{ day.planning_rule_reason }}
-                </div>
-                <div v-if="statusDetail(day.comparison)" class="plan-status-detail">
-                  {{ statusDetail(day.comparison) }}
                 </div>
               </div>
 
@@ -857,6 +877,12 @@
               <dl v-if="workoutBriefTargets.length" class="workout-targets"><div v-for="target in workoutBriefTargets" :key="target.label"><dt>{{ target.label }}</dt><dd>{{ target.value }}</dd></div></dl>
             </header>
             <div class="workout-brief-content">
+              <CyclingWorkoutSteps
+                v-if="cyclingWorkoutFor(plannedSessionDialog)"
+                :workout="cyclingWorkoutFor(plannedSessionDialog)"
+                :ftp="cyclingLibrary?.ftp"
+                :export-note="cyclingLibrary?.export_note"
+              />
               <p v-if="plannedSessionDialog.modality_restriction?.status && plannedSessionDialog.modality_restriction.status !== 'allowed'" class="workout-restriction">{{ plannedSessionDialog.modality_restriction.label }} · {{ plannedSessionDialog.modality_restriction.status }}</p>
               <template v-if="plannedSessionDetailView">
                 <section v-if="plannedSessionDetailView.prescriptionItems.length" class="workout-instructions"><h3>{{ plannedSessionDetailView.prescriptionTitle || 'The session' }}</h3><ol><li v-for="(item, index) in plannedSessionDetailView.prescriptionItems" :key="index"><span aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span><p>{{ item }}</p></li></ol></section>
@@ -879,6 +905,7 @@ import { format, startOfWeek } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
+import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
 
 const sessionTypeOptions = ['Run', 'Ride', 'WeightTraining', 'Recovery', 'Rest', 'Walk', 'Hike']
 // Mirrors normalize_plan_session_type in backend/app/services/plans.py.
@@ -959,6 +986,19 @@ const editorMoveSourceDate = ref(null)
 const editorMoveAnnouncement = ref('')
 const coachingReview = ref(null)
 const plannedSessionDialog = ref(null)
+const cyclingLibrary = ref(null)
+const cyclingWorkouts = computed(() => cyclingLibrary.value?.workouts || [])
+const isRideSessionType = (type) => ['ride', 'virtualride', 'cycling', 'bike'].includes(String(type || '').toLowerCase())
+const cyclingWorkoutFor = (day) => (
+  day?.cycling_workout_id ? cyclingWorkouts.value.find((workout) => workout.id === day.cycling_workout_id) || null : null
+)
+const applyCyclingWorkoutDefaults = (day) => {
+  const workout = cyclingWorkoutFor(day)
+  if (!workout) return
+  day.workout_intent = workout.workout_intent
+  day.target_duration_min = workout.duration_min
+  if (!day.title?.trim() || day.title === 'Planned session') day.title = workout.name
+}
 const workoutCloseButton = ref(null)
 let workoutPreviousFocus = null
 const selectedLinkedActivityIds = ref({})
@@ -1226,6 +1266,13 @@ const load = async () => {
     }
   } finally {
     loading.value = false
+  }
+
+  try {
+    const libraryResult = await requestWithTimeout(api.getCyclingWorkouts(), 6000)
+    cyclingLibrary.value = libraryResult.data
+  } catch {
+    cyclingLibrary.value = null
   }
 
   try {
@@ -1748,11 +1795,6 @@ const emptyStateCopy = (day) => {
   return 'No activity logged yet.'
 }
 
-const shouldShowDetailsAction = (day) => {
-  const details = day?.details?.trim() || ''
-  return details.length > 140 || details.includes('\n')
-}
-
 const splitDetailSentences = (details) => details
   .replace(/\s+/g, ' ')
   .split(/(?<=[.!?])\s+/)
@@ -1972,6 +2014,15 @@ const adjustableDays = (plan) => (plan.days || []).filter((day) => !isProtectedF
 const firstAdjustableDate = (plan) => adjustableDays(plan)[0]?.date || ''
 
 const displaySessionType = (value) => value || 'Unspecified'
+const SPORT_LABELS = {
+  run: 'Run', ride: 'Ride', virtualride: 'Indoor ride', weighttraining: 'Strength', strength: 'Strength',
+  recovery: 'Recovery', rest: 'Rest', walk: 'Walk', hike: 'Hike',
+}
+const sportLabel = (value) => {
+  if (!value) return 'Open day'
+  const key = String(value).replace(/[\s_-]+/g, '').toLowerCase()
+  return SPORT_LABELS[key] || String(value).charAt(0).toUpperCase() + String(value).slice(1)
+}
 const intentOptionsForSessionType = (sessionType) => workoutIntentOptions[sessionType] || []
 const benchmarkTagOptions = [
   { value: 'benchmark', label: 'Benchmark' },
@@ -1990,6 +2041,7 @@ const cloneDayForEditor = (day) => ({
   details: day.details || '',
   target_duration_min: day.target_duration_min ?? null,
   target_distance_km: day.target_distance_km ?? null,
+  cycling_workout_id: day.cycling_workout_id || '',
 })
 
 const editorSessionFields = [
@@ -2001,6 +2053,7 @@ const editorSessionFields = [
   'details',
   'target_duration_min',
   'target_distance_km',
+  'cycling_workout_id',
 ]
 
 const sessionTitleForDate = (date) => editor.value.days[date]?.title || 'Planned session'
@@ -2129,6 +2182,7 @@ const buildEditorStateFromCoachingDraft = (plan, draft) => {
       details: day.details || '',
       target_duration_min: day.target_duration_min ?? null,
       target_distance_km: day.target_distance_km ?? null,
+      cycling_workout_id: day.cycling_workout_id || '',
     }
   }
 
@@ -2161,6 +2215,7 @@ const sanitizeEditorDay = (day) => ({
   details: day.details?.trim() || null,
   target_duration_min: sanitizeNumber(day.target_duration_min),
   target_distance_km: sanitizeNumber(day.target_distance_km),
+  cycling_workout_id: isRideSessionType(day.session_type) ? day.cycling_workout_id || null : null,
 })
 
 const isEditingPlan = (weekStart) => editor.value.weekStart === weekStart
@@ -4824,4 +4879,84 @@ const savePlanLink = async (day) => {
   .plan-page .day-heading-row .plan-day-weather-rain { width: 100%; }
   .plan-page .plan-actions-menu-items { max-width: calc(100vw - 32px); }
 }
+/* Day cards: one fixed anatomy shared by every day. Each section is a row of
+   the week grid (subgrid), so stats, tags, notes and completion line up. */
+.plan-page .plan-grid { grid-template-rows: repeat(6, auto); row-gap: 14px; }
+.plan-page .plan-grid > .plan-day {
+  grid-row: 1 / span 6;
+  padding: 18px 18px 16px;
+  border-top-width: 2px;
+  border-radius: 16px;
+}
+.plan-page .plan-day > .day-plan { display: contents; }
+.plan-page .plan-day > .agenda-date-column { grid-row: 1; }
+.plan-page .day-session { grid-row: 2; }
+.plan-page .day-stats { grid-row: 3; }
+.plan-page .day-tags { grid-row: 4; }
+.plan-page .day-notes { grid-row: 5; }
+.plan-page .plan-day > .actual-block { grid-row: 6; }
+.plan-page .day-session,
+.plan-page .day-stats,
+.plan-page .day-tags,
+.plan-page .day-notes { grid-column: 1; min-width: 0; }
+
+.plan-page .plan-day-label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.plan-page .plan-day-date { font-size: 24px; margin-top: 2px; letter-spacing: -.6px; }
+.plan-page .plan-day .session-match-status {
+  display: inline-flex; width: fit-content; margin-top: 12px; padding: 4px 10px 4px 8px;
+  border-radius: 999px; font-size: 11px; font-weight: 600; gap: 6px;
+}
+.plan-page .plan-day .session-match-status > span { font-size: 12px; }
+
+.day-sport {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--day-accent);
+}
+.plan-page .day-session .plan-day-title {
+  margin: 0; font-family: var(--font-display); font-size: 19px; font-weight: 500; line-height: 1.3; letter-spacing: -.3px;
+  color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.day-stats {
+  display: grid; grid-template-columns: 1fr 1fr; margin: 0;
+  border: 1px solid var(--border); border-radius: 10px; background: #ffffff05;
+}
+.day-stats > div { padding: 8px 12px; min-width: 0; }
+.day-stats > div + div { border-left: 1px solid var(--border); }
+.day-stats dt { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.day-stats dd { margin: 2px 0 0; font-size: 15px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.day-tags { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
+.day-tag {
+  display: inline-flex; align-items: center; max-width: 100%; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--border); background: #ffffff06; color: var(--text-soft);
+  font: inherit; font-size: 11px; font-weight: 600; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.day-tag-intent {
+  color: var(--day-accent);
+  border-color: color-mix(in srgb, var(--day-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--day-accent) 10%, transparent);
+}
+.day-tag-workout { cursor: pointer; color: #fdba74; border-color: rgba(249, 115, 22, .3); background: rgba(234, 88, 12, .12); }
+.day-tag-workout:hover { background: rgba(234, 88, 12, .22); }
+.day-tag-benchmark { color: #f3c478; border-color: #f3c47840; background: #f3c47812; }
+.day-tag-restriction { color: #fca5a5; border-color: #f8717140; background: #f8717112; text-transform: capitalize; }
+
+.day-notes { display: grid; align-content: start; gap: 6px; }
+.plan-page .day-notes .plan-day-details {
+  margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--text-soft);
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+}
+.plan-page .day-notes .plan-status-detail { margin: 0; font-size: 11px; line-height: 1.5; color: var(--muted); }
+.plan-page .day-notes .plan-details-button {
+  justify-self: start; min-height: 32px; padding: 0; border: 0; background: none;
+  color: var(--day-accent); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.plan-page .day-notes .plan-details-button:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.plan-page .plan-day > .actual-block { padding-top: 12px; border-top: 1px solid var(--border); }
+.plan-page .actual-block-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
+.plan-page .actual-block .plan-block-label { margin: 0; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.plan-page .actual-block .link-toggle-button { min-height: 32px; padding: 0; font-size: 12px; }
+.plan-page .actual-empty { padding: 4px 0 0; font-size: 12px; font-style: normal; color: var(--muted); }
 </style>

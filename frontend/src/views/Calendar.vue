@@ -1,194 +1,197 @@
 <template>
   <main class="calendar-page motion-page">
-    <header class="calendar-toolbar motion-section">
-      <div>
-        <div class="page-eyebrow">Training schedule</div>
-        <h1 class="page-title">Calendar</h1>
-        <p class="page-sub">See planned work, completed training, and recovery in one place.</p>
+    <header class="cal-head motion-section">
+      <h1 class="cal-title">Calendar</h1>
+      <div class="period-navigation">
+        <button type="button" class="icon-btn" :disabled="loading" aria-label="Previous period" title="Previous ( [ )" @click="shiftPeriod(-1)">‹</button>
+        <button type="button" class="today-btn" :disabled="loading" title="Jump to today ( T )" @click="goToday">Today</button>
+        <button type="button" class="icon-btn" :disabled="loading" aria-label="Next period" title="Next ( ] )" @click="shiftPeriod(1)">›</button>
       </div>
-
-      <div class="toolbar-actions">
-        <div class="view-switch" aria-label="Calendar view">
+      <div class="period-title" aria-live="polite">
+        <strong>{{ periodTitle }}</strong>
+        <span v-if="periodContext">{{ periodContext }}</span>
+      </div>
+      <div class="head-actions">
+        <div class="view-switch" role="group" aria-label="Calendar view">
           <button v-for="mode in modes" :key="mode.value" type="button" :class="{ active: activeMode === mode.value }" :aria-pressed="activeMode === mode.value" @click="setMode(mode.value)">{{ mode.label }}</button>
         </div>
         <router-link class="plan-action" to="/plan">Adjust plan</router-link>
       </div>
     </header>
 
-    <section class="period-bar motion-section" aria-label="Calendar navigation">
-      <div class="period-navigation">
-        <button type="button" class="icon-btn" :disabled="loading" aria-label="Previous period" @click="shiftPeriod(-1)">‹</button>
-        <button type="button" class="today-btn" :disabled="loading" @click="goToday">Today</button>
-        <button type="button" class="icon-btn" :disabled="loading" aria-label="Next period" @click="shiftPeriod(1)">›</button>
+    <section v-if="summary" class="summary-strip motion-section" :class="{ 'is-stale': loading }" aria-label="Period training summary">
+      <div class="summary-stats">
+        <div class="stat"><strong>{{ summary.total_sessions }}</strong><span>{{ summary.total_sessions === 1 ? 'session' : 'sessions' }}</span></div>
+        <div class="stat"><strong>{{ formatHours(summary.total_duration_min) }}</strong><span>training time</span></div>
+        <div class="stat" :title="executionContext"><strong>{{ executionSummary }}</strong><span>plan followed</span></div>
       </div>
-      <div class="period-title" aria-live="polite">
-        <strong>{{ periodTitle }}</strong>
-        <span>{{ periodContext }}</span>
-      </div>
-      <div class="legend" aria-label="Workout status legend">
-        <span><i class="legend-mark completed"></i>Completed</span>
-        <span><i class="legend-mark planned"></i>Planned</span>
-        <span><i class="legend-mark changed"></i>Changed</span>
-        <span><i class="legend-mark missed"></i>Missed</span>
-      </div>
+
+      <ul v-if="disciplineSummary.length" class="summary-sports" aria-label="Completed training by sport">
+        <li v-for="item in disciplineSummary" :key="item.key" :class="`tone-${item.tone}`" :title="`${item.label} · ${item.sessions} ${item.sessions === 1 ? 'session' : 'sessions'}`">
+          <ActivityIcon :type="item.iconType" :tone="item.tone" :size="15" />
+          <strong>{{ item.value }}</strong>
+          <span>{{ item.sessions }}×</span>
+        </li>
+      </ul>
+      <p v-else class="summary-empty">Nothing completed in this period yet.</p>
+
     </section>
 
-    <section v-if="summary" class="load-summary motion-section" aria-label="Period training summary">
-      <article><span>Sessions</span><strong>{{ summary.total_sessions }}</strong><small>completed</small></article>
-      <article class="metric-summary" tabindex="0" aria-describedby="time-sport-breakdown">
-        <span>Training time</span><strong>{{ formatHours(summary.total_duration_min) }}</strong><small>completed volume</small>
-        <div id="time-sport-breakdown" class="metric-breakdown" role="tooltip">
-          <div class="metric-breakdown-title">Training time by type</div>
-          <div v-if="durationBySport.length" class="metric-breakdown-list">
-            <div v-for="sport in durationBySport" :key="sport.type" class="metric-breakdown-row">
-              <span><i :class="`tone-${sport.tone}`"></i>{{ sport.label }}</span>
-              <strong>{{ formatHours(sport.duration) }}</strong>
-            </div>
-          </div>
-          <small v-else>No training time recorded in this period.</small>
-        </div>
-      </article>
-      <article class="metric-summary" tabindex="0" aria-describedby="distance-sport-breakdown">
-        <span>Distance</span><strong>{{ formatDistance(summary.total_distance_km) }}</strong><small>{{ activeMode === 'week' ? 'covered this week' : 'all sports' }}</small>
-        <div id="distance-sport-breakdown" class="metric-breakdown" role="tooltip">
-          <div class="metric-breakdown-title">Distance by sport</div>
-          <div v-if="distanceBySport.length" class="metric-breakdown-list">
-            <div v-for="sport in distanceBySport" :key="sport.type" class="metric-breakdown-row">
-              <span><i :class="`tone-${sport.tone}`"></i>{{ sport.label }}</span>
-              <strong>{{ formatDistance(sport.distance) }}</strong>
-            </div>
-          </div>
-          <small v-else>No distance recorded in this period.</small>
-        </div>
-      </article>
-      <article><span>Plan execution</span><strong>{{ executionSummary }}</strong><small>{{ executionContext }}</small></article>
-    </section>
-
-    <section v-if="activeMode === 'week' && !loading && !error" class="discipline-panel motion-section" aria-label="Completed training by discipline">
-      <div class="discipline-heading">
-        <div>
-          <span>Completed this week</span>
-          <h2>By discipline</h2>
-        </div>
-        <strong>{{ weeklyCompletedCount }} sessions</strong>
-      </div>
-
-      <div v-if="weeklyDisciplineSummary.length" class="discipline-list">
-        <article v-for="item in weeklyDisciplineSummary" :key="item.key" class="discipline-row">
-          <span class="discipline-icon" :class="`discipline-${item.tone}`">
-            <ActivityIcon :type="item.iconType" :tone="item.tone" :size="16" />
-          </span>
-          <div class="discipline-copy">
-            <div class="discipline-label"><strong>{{ item.label }}</strong><span>{{ item.sessions }} {{ item.sessions === 1 ? 'session' : 'sessions' }}</span></div>
-            <div class="discipline-metric">
-              <strong>{{ item.isStrength ? formatHours(item.duration) : formatDistance(item.distance) }}</strong>
-              <span>{{ item.isStrength ? 'strength work' : formatHours(item.duration) }}</span>
-            </div>
-            <div class="discipline-track" aria-hidden="true"><i :style="{ width: `${item.share}%` }"></i></div>
-          </div>
-        </article>
-      </div>
-      <p v-else class="discipline-empty">No completed training in this week.</p>
-    </section>
-
-    <div v-if="loading" class="calendar-state card" role="status">Loading training calendar…</div>
-    <div v-else-if="error" class="calendar-state card error-state" role="alert">
+    <div v-if="initialLoading" class="calendar-layout" role="status" aria-label="Loading training calendar">
+      <div class="calendar-skeleton" aria-hidden="true"><i v-for="n in 14" :key="n" class="skeleton-block"></i></div>
+    </div>
+    <div v-else-if="error" class="calendar-state error-state" role="alert">
       <strong>Calendar could not be loaded</strong><span>{{ error }}</span><button type="button" @click="reload">Try again</button>
     </div>
 
     <div v-else class="calendar-layout motion-section">
-      <section class="calendar-surface" :aria-label="periodTitle">
-        <div class="weekday-row" :class="{ 'is-week-view': activeMode === 'week' }" aria-hidden="true"><span v-for="label in weekdayLabels" :key="label">{{ label }}</span><span v-if="activeMode === 'month'" class="week-total-label">Week total</span></div>
+      <section class="calendar-surface" :class="{ 'is-stale': loading }" :aria-label="periodTitle" :aria-busy="loading" @keydown="onGridKeydown">
+        <div class="weekday-row" :class="{ 'is-week-view': activeMode === 'week' }" aria-hidden="true"><span v-for="label in weekdayLabels" :key="label">{{ label }}</span><span v-if="activeMode === 'month'" class="week-total-label">Week</span></div>
 
         <div v-if="activeMode === 'week'" class="week-grid">
-          <CalendarDayCell v-for="day in activeWeek?.days || []" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :time-state="timeState(day.date)" :max-events="2" @select="selectDate" />
+          <CalendarDayCell v-for="day in activeWeek?.days || []" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :time-state="timeState(day.date)" :max-events="4" @select="openDay" />
         </div>
 
         <div v-else class="month-grid">
           <template v-for="week in monthData?.weeks || []" :key="week.week_start">
-            <CalendarDayCell v-for="day in week.days" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :outside="!isActiveMonth(day.date)" :time-state="timeState(day.date)" :max-events="2" @select="selectDate" />
-            <aside class="week-total">
-              <span>{{ formatWeekRange(week.week_start, week.week_end) }}</span>
-              <strong>{{ formatHours(week.total_duration_min) }}</strong>
-              <small>{{ week.total_sessions }} sessions</small>
-              <small class="week-distance">{{ formatDistance(week.total_distance_km) }} covered</small>
+            <CalendarDayCell v-for="day in week.days" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :outside="!isActiveMonth(day.date)" :time-state="timeState(day.date)" compact :max-events="3" @select="openDay" />
+            <aside class="week-total" :class="{ 'is-current': week.week_start === currentWeekStart }" :title="week.total_sessions ? `${week.total_sessions} ${week.total_sessions === 1 ? 'session' : 'sessions'}` : null">
+              <span class="wt-range">{{ formatWeekRange(week.week_start, week.week_end) }}</span>
+              <strong>{{ week.total_duration_min ? formatHours(week.total_duration_min) : '–' }}</strong>
+              <small v-if="week.total_distance_km">{{ formatDistance(week.total_distance_km) }}</small>
               <div class="volume-track"><i :style="{ width: `${weekVolumePercent(week)}%` }"></i></div>
             </aside>
           </template>
         </div>
 
-        <div v-if="!displayDays.some((day) => day.activities?.length || planFor(day.date))" class="empty-overlay">No training or planned sessions in this period.</div>
-      </section>
 
-      <div class="calendar-rail">
-      <aside class="selected-panel" aria-label="Selected day details">
-        <div class="selected-head">
-          <div><span>{{ selectedDayLabel }}</span><h2>{{ selectedDayTitle }}</h2></div>
-          <span class="selected-load" :class="`tone-${selectedLoad.tone}`">{{ selectedLoad.label }}</span>
-        </div>
-
-        <div v-if="selectedPlan && selectedExecutionActivity" class="detail-section execution-detail">
-          <div class="detail-kicker">Plan execution</div>
-          <article class="detail-workout">
-            <ActivityIcon :type="selectedExecutionActivity.type" :tone="activityTone(selectedExecutionActivity.type)" :size="18" />
-            <router-link :to="{ path: `/activities/${selectedExecutionActivity.id}`, query: { from: 'calendar' } }">
-              <strong>{{ selectedExecutionActivity.name || selectedExecutionActivity.type }}</strong>
-              <span>{{ formatMinutes(selectedExecutionActivity.duration_min) }}<template v-if="activityPerformance(selectedExecutionActivity)"> · {{ activityPerformance(selectedExecutionActivity) }}</template><template v-if="selectedExecutionActivity.avg_watts"> · {{ Math.round(selectedExecutionActivity.avg_watts) }} W</template></span>
-              <small class="execution-status" :class="`status-${selectedExecutionTone}`">{{ selectedExecutionLabel }}</small>
-            </router-link>
-            <button type="button" class="feedback-btn" @click="openFeedbackDialog(selectedExecutionActivity)">{{ selectedExecutionActivity.feedback ? 'Edit feedback' : 'Add feedback' }}</button>
-          </article>
-          <div class="planned-context">
-            <span>Planned</span>
-            <div>
-              <strong>{{ selectedPlan.title || selectedPlan.session_type }}</strong>
-              <small>{{ formatMinutes(selectedPlan.duration_min) }}<template v-if="selectedPlan.distance_km"> · {{ selectedPlan.distance_km }} km</template><template v-if="selectedPlan.workout_intent_label"> · {{ selectedPlan.workout_intent_label }}</template></small>
-            </div>
+        <section v-if="activeMode === 'week' && weekBrief" class="week-brief" aria-label="This week's plan">
+          <div class="brief-plan">
+            <span>{{ activeWeekStart === currentWeekStart ? "This week's plan" : 'Week plan' }}</span>
+            <h2>{{ weekBrief.title }}</h2>
+            <p v-if="weekBrief.focus">{{ weekBrief.focus }}</p>
           </div>
-          <p v-if="selectedPlan.notes || selectedPlan.rationale" class="detail-note">{{ selectedPlan.notes || selectedPlan.rationale }}</p>
+          <ul v-if="weekGoals.length" class="brief-goals" aria-label="Goals this week">
+            <li v-for="goal in weekGoals" :key="goal.id" :class="[`tone-${activityTone(goal.activity_type)}`, { 'is-behind': goal.status === 'behind_pace' }]">
+              <strong>{{ goal.title }}</strong>
+              <span class="goal-value">{{ formatGoalValue(goal.current_value) }}<small> / {{ formatGoalValue(goal.target_value) }} {{ goal.unit }}</small></span>
+              <span class="goal-state">{{ goal.status === 'behind_pace' ? 'Behind pace' : goal.status === 'ahead_of_pace' ? 'Ahead of pace' : goal.status === 'completed' ? 'Done' : 'On track' }}</span>
+              <i><b :style="{ width: `${Math.min(100, Math.round(goal.progress_pct || 0))}%` }"></b></i>
+            </li>
+          </ul>
+        </section>
+
+        <div class="legend legend-foot" aria-label="Workout status legend">
+          <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" class="lg-done"><path d="M3.5 8.5l3 3 6-6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>Done as planned</span>
+          <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" class="lg-planned"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.6" /><path d="M8 5v3.2l2 1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>Planned</span>
+          <span><svg viewBox="0 0 16 16" width="12" height="12" class="lg-changed"><circle cx="8" cy="8" r="3.5" fill="currentColor" /></svg>Changed</span>
+          <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" class="lg-missed"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>Missed</span>
         </div>
 
-        <div v-else-if="selectedPlan" class="detail-section">
-          <div class="detail-kicker">Planned</div>
-          <article class="detail-workout planned-detail">
-            <ActivityIcon :type="selectedPlan.session_type" :tone="activityTone(selectedPlan.session_type)" :size="18" />
-            <div><strong>{{ selectedPlan.title || selectedPlan.session_type }}</strong><span>{{ planStatusLabel(selectedPlan) }} · {{ formatMinutes(selectedPlan.duration_min) }}<template v-if="selectedPlan.distance_km"> · {{ selectedPlan.distance_km }} km</template></span><small v-if="selectedPlan.workout_intent_label">{{ selectedPlan.workout_intent_label }}</small></div>
-          </article>
-          <p v-if="selectedPlan.notes || selectedPlan.rationale" class="detail-note">{{ selectedPlan.notes || selectedPlan.rationale }}</p>
-        </div>
-
-        <div v-if="selectedStandaloneActivities.length" class="detail-section">
-          <div class="detail-kicker">{{ selectedExecutionActivity ? 'Additional completed' : 'Completed' }}</div>
-          <article v-for="activity in selectedStandaloneActivities" :key="activity.id" class="detail-workout">
-            <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="18" />
-            <router-link :to="{ path: `/activities/${activity.id}`, query: { from: 'calendar' } }"><strong>{{ activity.name || activity.type }}</strong><span>{{ formatMinutes(activity.duration_min) }}<template v-if="activityPerformance(activity)"> · {{ activityPerformance(activity) }}</template><template v-if="activity.avg_watts"> · {{ Math.round(activity.avg_watts) }} W</template></span><small v-if="activity.workout_intent_label">{{ activity.workout_intent_label }}</small></router-link>
-            <button type="button" class="feedback-btn" @click="openFeedbackDialog(activity)">{{ activity.feedback ? 'Edit feedback' : 'Add feedback' }}</button>
-          </article>
-        </div>
-
-        <div v-if="!selectedPlan && !selectedDay?.activities?.length" class="intentional-rest"><span aria-hidden="true">○</span><div><strong>Intentional recovery</strong><p>No workout is scheduled or recorded. Keep this space for recovery, or adjust the plan if training is expected.</p></div></div>
-        <router-link class="panel-action" to="/plan">Open planning workspace</router-link>
-      </aside>
-
-      </div>
+        <p v-if="!displayDays.some((day) => day.activities?.length || planFor(day.date))" class="empty-overlay">Nothing planned or recorded in this period.</p>
+      </section>
     </div>
+
+    <Teleport to="body">
+      <Transition name="pop">
+        <div v-if="popupOpen" ref="popupEl" class="day-popup" :class="{ 'is-wide': popupPlan }" role="dialog" :aria-label="`${selectedDayLabel}, ${selectedDayTitle}`" tabindex="-1" :style="popupStyle" @keydown.esc.stop="closePopup()">
+          <header class="pop-head">
+            <div><span>{{ selectedDayLabel }}</span><h2>{{ selectedDayTitle }}</h2></div>
+            <span v-if="selectedLoad" class="pop-hard">{{ selectedLoad.label }}</span>
+            <button type="button" class="pop-close" aria-label="Close" @click="closePopup()">×</button>
+          </header>
+
+          <ul v-if="popupSessions.length" class="pop-list">
+            <li v-for="activity in popupSessions" :key="activity.id" class="pop-item" :class="`tone-${activityTone(activity.type)}`">
+              <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="18" />
+              <div class="pop-body">
+                <router-link class="pop-title" :to="{ path: `/activities/${activity.id}`, query: { from: 'calendar' } }">{{ activity.name || activity.type }}</router-link>
+                <span class="pop-meta">{{ sessionMeta(activity) }}</span>
+                <span v-if="activity.id === selectedExecutionActivity?.id && selectedPlan" class="pop-status" :class="`status-${selectedExecutionTone}`">{{ selectedExecutionLabel }}</span>
+                <span v-else-if="activity.workout_intent_label" class="pop-intent">{{ activity.workout_intent_label }}</span>
+                <p v-if="activity.id === selectedExecutionActivity?.id && popupPlanWas" class="pop-planwas"><span>Plan was</span> {{ popupPlanWas }}</p>
+                <div v-if="activity.feedback" class="pop-feedback">
+                  <div class="fb-metrics">
+                    <div v-for="metric in feedbackMetrics(activity.feedback)" :key="metric.key" class="fb-metric" :class="`fb-${metric.tone}`">
+                      <span>{{ metric.label }}</span>
+                      <strong>{{ metric.value }}<small>/{{ metric.max }}</small></strong>
+                      <i :style="{ width: `${metric.pct}%` }"></i>
+                    </div>
+                  </div>
+                  <p v-if="activity.feedback.note" class="fb-note">{{ activity.feedback.note }}</p>
+                </div>
+              </div>
+              <button type="button" class="feedback-btn" @click="openFeedbackDialog(activity)">{{ activity.feedback ? 'Edit feedback' : 'Add feedback' }}</button>
+            </li>
+          </ul>
+
+          <div v-if="popupPlan" class="pop-brief" :class="[`tone-${activityTone(popupPlan.session_type)}`, { 'is-missed': popupPlanLabel === 'Missed' }]">
+            <div class="brief-top">
+              <ActivityIcon :type="popupPlan.session_type" :tone="activityTone(popupPlan.session_type)" :size="20" />
+              <div class="pop-body">
+                <span class="pop-kicker">{{ popupPlanLabel }}</span>
+                <strong class="pop-title">{{ popupPlan.title || popupPlan.session_type }}</strong>
+                <span v-if="planSubline" class="pop-meta">{{ planSubline }}</span>
+              </div>
+            </div>
+
+            <dl v-if="planTargets.length" class="brief-targets">
+              <div v-for="target in planTargets" :key="target.label"><dt>{{ target.label }}</dt><dd>{{ target.value }}</dd></div>
+            </dl>
+
+            <CyclingWorkoutSteps v-if="planCyclingWorkout" class="brief-cycling" :workout="planCyclingWorkout" :ftp="cyclingLibrary?.ftp" :export-note="cyclingLibrary?.export_note" />
+
+            <template v-if="planDetailView">
+              <section v-if="planDetailView.prescriptionItems.length" class="brief-section">
+                <h3>{{ planDetailView.prescriptionTitle || 'The session' }}</h3>
+                <ol><li v-for="(item, index) in planDetailView.prescriptionItems" :key="index"><span aria-hidden="true">{{ index + 1 }}</span>{{ item }}</li></ol>
+              </section>
+              <section v-if="planDetailView.guidance.length" class="brief-section">
+                <h3>{{ planDetailView.prescriptionItems.length ? 'Keep in mind' : planDetailView.lead || 'The session' }}</h3>
+                <ul><li v-for="(item, index) in planDetailView.guidance" :key="index">{{ item }}</li></ul>
+              </section>
+              <aside v-if="planDetailView.optional.length" class="brief-adapt">
+                <h3>If you need to adapt</h3>
+                <p v-for="(item, index) in planDetailView.optional" :key="index">{{ item }}</p>
+              </aside>
+            </template>
+            <p v-else-if="popupPlanNote" class="pop-note">{{ popupPlanNote }}</p>
+
+            <details v-if="popupPlan.planning_rule_reason || popupPlan.goal_links?.length" class="brief-why">
+              <summary>Why this session</summary>
+              <p v-if="popupPlan.planning_rule_reason">{{ popupPlan.planning_rule_reason }}</p>
+              <div v-for="goalLink in popupPlan.goal_links || []" :key="goalLink.goal_id" class="brief-goal">
+                <strong>{{ goalLink.goal_title }}</strong><span v-if="goalLink.risk_label"> · {{ goalLink.risk_label }}</span>
+                <p>{{ [...new Set([goalLink.requirement_label, goalLink.support_reason].filter(Boolean))].join(' · ') }}</p>
+              </div>
+            </details>
+          </div>
+
+          <p v-if="!popupSessions.length && !popupPlan" class="empty-day">{{ emptyDayText }}</p>
+        </div>
+      </Transition>
+    </Teleport>
 
     <FeedbackDialog :open="Boolean(dialogActivity)" :activity="dialogActivity" :initial-feedback="dialogActivity?.feedback || null" :saving="feedbackSaving" :message="feedbackMessage" @close="closeFeedbackDialog" @save="saveFeedback" />
   </main>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { addDays, addMonths, endOfWeek, format, isValid, parseISO, startOfWeek } from 'date-fns'
 import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import CalendarDayCell from '../components/CalendarDayCell.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
+import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
+import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail'
 
 const api = useApi()
+const MODE_KEY = 'training-dashboard:calendar-mode'
 const modes = [{ value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }]
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const activeMode = ref(window.innerWidth < 760 ? 'week' : 'month')
+const readStoredMode = () => { try { const value = localStorage.getItem(MODE_KEY); return modes.some((mode) => mode.value === value) ? value : null } catch { return null } }
+const activeMode = ref(readStoredMode() || (window.innerWidth < 760 ? 'week' : 'month'))
 const anchorDate = ref(new Date())
 const selectedDate = ref(format(new Date(), 'yyyy-MM-dd'))
 const weeks = ref([])
@@ -200,6 +203,8 @@ const dialogActivity = ref(null)
 const feedbackSaving = ref(false)
 const feedbackMessage = ref('')
 const todayKey = format(new Date(), 'yyyy-MM-dd')
+const currentWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+const initialLoading = computed(() => loading.value && !monthData.value)
 
 const safeDate = (value) => { const date = typeof value === 'string' ? parseISO(value) : value; return isValid(date) ? date : new Date() }
 const buildEmptyWeek = (weekStart) => {
@@ -237,90 +242,182 @@ const selectedExecutionActivity = computed(() => {
 const selectedStandaloneActivities = computed(() => (selectedDay.value?.activities || [])
   .filter((activity) => String(activity.id) !== String(selectedExecutionActivity.value?.id)))
 const selectedExecutionLabel = computed(() => ({
-  linked: selectedPlan.value?.comparison?.schedule_timing === 'early' ? 'Completed early' : selectedPlan.value?.comparison?.schedule_timing === 'late' ? 'Completed late' : 'Completed as planned',
-  matched: 'Completed as planned',
-  replaced: 'Changed from plan',
-  partially_matched: 'Modified from plan',
-  rest_day_changed: 'Trained on planned rest day',
-}[selectedPlan.value?.comparison?.status] || 'Completed'))
+  linked: selectedPlan.value?.comparison?.schedule_timing === 'early' ? 'Done early' : selectedPlan.value?.comparison?.schedule_timing === 'late' ? 'Done late' : 'As planned',
+  matched: 'As planned',
+  replaced: 'Changed',
+  partially_matched: 'Changed',
+  rest_day_changed: 'Trained on a rest day',
+}[selectedPlan.value?.comparison?.status] || 'Done'))
 const selectedExecutionTone = computed(() => ['replaced', 'partially_matched', 'rest_day_changed'].includes(selectedPlan.value?.comparison?.status) ? 'changed' : 'completed')
 const summary = computed(() => activeMode.value === 'month' ? monthData.value : activeWeek.value)
 const periodActivities = computed(() => displayDays.value
   .filter((day) => activeMode.value === 'week' || isActiveMonth(day.date))
   .flatMap((day) => day.activities || []))
-const distanceBySport = computed(() => {
-  const totals = new Map()
-  periodActivities.value.forEach((activity) => {
-    const distance = Number(activity.distance_km || 0)
-    if (distance <= 0) return
-    const type = String(activity.type || 'Other')
-    totals.set(type, (totals.get(type) || 0) + distance)
-  })
-  return [...totals.entries()]
-    .map(([type, distance]) => ({ type, distance, label: sportLabel(type), tone: activityTone(type) }))
-    .sort((a, b) => b.distance - a.distance)
-})
-const durationBySport = computed(() => {
-  const totals = new Map()
-  periodActivities.value.forEach((activity) => {
-    const duration = Number(activity.duration_min || 0)
-    if (duration <= 0) return
-    const type = String(activity.type || 'Other')
-    totals.set(type, (totals.get(type) || 0) + duration)
-  })
-  return [...totals.entries()]
-    .map(([type, duration]) => ({ type, duration, label: sportLabel(type), tone: activityTone(type) }))
-    .sort((a, b) => b.duration - a.duration)
-})
 const periodTitle = computed(() => activeMode.value === 'month' ? format(anchorDate.value, 'MMMM yyyy') : `${format(safeDate(activeWeekStart.value), 'MMM d')} – ${format(endOfWeek(safeDate(activeWeekStart.value), { weekStartsOn: 1 }), 'MMM d, yyyy')}`)
-const periodContext = computed(() => activeMode.value === 'month' ? `${monthData.value?.weeks?.length || 0} training weeks` : activeWeekStart.value === format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd') ? 'Current training week' : 'Training week')
+const periodContext = computed(() => activeMode.value === 'week' && activeWeekStart.value === currentWeekStart ? 'This week' : '')
 const selectedDayLabel = computed(() => selectedDate.value === todayKey ? 'Today' : format(safeDate(selectedDate.value), 'EEEE'))
 const selectedDayTitle = computed(() => format(safeDate(selectedDate.value), 'MMMM d, yyyy'))
-const selectedLoad = computed(() => { const intent = String(selectedPlan.value?.workout_intent || selectedPlan.value?.workout_intent_label || '').toLowerCase(); if (!selectedPlan.value && !selectedDay.value?.activities?.length) return { label: 'Rest', tone: 'rest' }; if (/interval|tempo|threshold|vo2|max|race/.test(intent)) return { label: 'Hard day', tone: 'hard' }; if (/recovery|easy/.test(intent)) return { label: 'Easy day', tone: 'easy' }; return { label: 'Training day', tone: 'steady' } })
-const relevantPlans = computed(() => planDays.value.filter((day) => displayDays.value.some((shown) => shown.date === day.date)))
-const executionSummary = computed(() => { const completed = relevantPlans.value.filter((day) => ['linked', 'matched', 'moved'].includes(day.comparison?.status)).length; return relevantPlans.value.length ? `${completed}/${relevantPlans.value.length}` : '—' })
-const executionContext = computed(() => { const changed = relevantPlans.value.filter((day) => ['replaced', 'partially_matched', 'rest_day_changed', 'skipped'].includes(day.comparison?.status)).length; return relevantPlans.value.length ? `${changed} changed or missed` : 'no plan in period' })
-const weeklyActivities = computed(() => (activeWeek.value?.days || []).flatMap((day) => day.activities || []))
-const weeklyCompletedCount = computed(() => weeklyActivities.value.length)
-const weeklyDisciplineSummary = computed(() => {
+const selectedLoad = computed(() => {
+  const intent = String(selectedPlan.value?.workout_intent || selectedPlan.value?.workout_intent_label || '').toLowerCase()
+  return /interval|tempo|threshold|vo2|max|race/.test(intent) ? { label: 'Hard day', tone: 'hard' } : null
+})
+const emptyDayText = computed(() => {
+  if (/rest/i.test(String(selectedPlan.value?.session_type || ''))) return 'Rest day.'
+  return selectedDate.value < todayKey ? 'Nothing recorded.' : 'Nothing scheduled.'
+})
+
+// Plan execution only counts days that are already due, so a week in progress does not read as "1/7".
+const isDoneStatus = (status) => ['linked', 'matched', 'moved'].includes(status)
+const relevantPlans = computed(() => planDays.value.filter((day) => displayDays.value.some((shown) => shown.date === day.date && (activeMode.value === 'week' || isActiveMonth(shown.date)))))
+const duePlans = computed(() => relevantPlans.value.filter((day) => day.date < todayKey || isDoneStatus(day.comparison?.status)))
+const executionSummary = computed(() => duePlans.value.length ? `${duePlans.value.filter((day) => isDoneStatus(day.comparison?.status)).length}/${duePlans.value.length}` : '–')
+const executionContext = computed(() => {
+  const changed = duePlans.value.filter((day) => ['replaced', 'partially_matched', 'rest_day_changed', 'skipped'].includes(day.comparison?.status)).length
+  return duePlans.value.length ? `${changed} changed or missed of ${duePlans.value.length} planned days so far` : 'No planned days are due yet'
+})
+const disciplineSummary = computed(() => {
   const definitions = [
     { key: 'ride', label: 'Cycling', iconType: 'Ride', tone: 'ride', match: (type) => /ride|cycl/i.test(type) },
     { key: 'run', label: 'Running', iconType: 'Run', tone: 'run', match: (type) => /run/i.test(type) },
-    { key: 'swim', label: 'Swimming', iconType: 'Swim', tone: 'neutral', match: (type) => /swim/i.test(type) },
-    { key: 'walk', label: 'Walking', iconType: 'Walk', tone: 'walk', match: (type) => /walk|hike/i.test(type) },
     { key: 'strength', label: 'Strength', iconType: 'WeightTraining', tone: 'strength', isStrength: true, match: (type) => /weight|strength/i.test(type) },
+    { key: 'walk', label: 'Walking', iconType: 'Walk', tone: 'walk', match: (type) => /walk|hike/i.test(type) },
+    { key: 'swim', label: 'Swimming', iconType: 'Swim', tone: 'neutral', match: (type) => /swim/i.test(type) },
   ]
   const groups = definitions.map((definition) => ({ ...definition, sessions: 0, distance: 0, duration: 0 }))
   const other = { key: 'other', label: 'Other', iconType: 'Workout', tone: 'neutral', sessions: 0, distance: 0, duration: 0 }
-  weeklyActivities.value.forEach((activity) => {
+  periodActivities.value.forEach((activity) => {
     const group = groups.find((item) => item.match(String(activity.type || ''))) || other
     group.sessions += 1
     group.distance += Number(activity.distance_km || 0)
     group.duration += Number(activity.duration_min || 0)
   })
-  const populated = [...groups, other].filter((item) => item.sessions || item.isStrength)
-  const maxValue = Math.max(...populated.map((item) => item.isStrength ? item.duration : item.distance || item.duration / 60), 1)
-  return populated.map((item) => ({
-    ...item,
-    distance: Math.round(item.distance * 10) / 10,
-    share: Math.max(8, Math.round(((item.isStrength ? item.duration : item.distance || item.duration / 60) / maxValue) * 100)),
-  }))
+  return [...groups, other]
+    .filter((item) => item.sessions)
+    .map((item) => ({ ...item, value: item.isStrength || !item.distance ? formatHours(item.duration) : formatDistance(item.distance) }))
 })
 
 const fetchPlans = async () => { const { data } = await api.getWeeklyPlans({ limit: 16 }); plans.value = data }
 const loadWeek = async () => { const { data } = await api.getCalendarWeeks({ weeks: 16 }); weeks.value = data }
 const loadMonth = async () => { const { data } = await api.getCalendarMonth({ month: activeMonthKey.value }); monthData.value = data }
-const reload = async () => { loading.value = true; error.value = ''; try { await Promise.all([loadWeek(), loadMonth(), fetchPlans()]); syncSelectedDate() } catch (err) { error.value = err?.response?.data?.detail || 'Check the connection and try again.' } finally { loading.value = false } }
-const syncSelectedDate = () => { if (displayDays.value.some((day) => day.date === selectedDate.value)) return; selectedDate.value = activeMode.value === 'week' ? activeWeekStart.value : format(anchorDate.value, 'yyyy-MM-dd') }
-const setMode = async (mode) => { activeMode.value = mode; syncSelectedDate() }
-const shiftPeriod = async (offset) => { anchorDate.value = activeMode.value === 'month' ? addMonths(anchorDate.value, offset) : addDays(anchorDate.value, offset * 7); loading.value = true; error.value = ''; try { if (activeMode.value === 'month' || monthData.value?.month !== activeMonthKey.value) await loadMonth(); syncSelectedDate() } catch (err) { error.value = err?.response?.data?.detail || 'Could not load this period.' } finally { loading.value = false } }
-const goToday = async () => { anchorDate.value = new Date(); selectedDate.value = todayKey; if (activeMode.value === 'month' && monthData.value?.month !== activeMonthKey.value) { loading.value = true; try { await loadMonth() } finally { loading.value = false } } }
-const selectDate = (date) => { selectedDate.value = date }
+const reload = async () => {
+  loading.value = true
+  error.value = ''
+  try { await Promise.all([loadWeek(), loadMonth(), fetchPlans()]); syncSelectedDate() } catch (err) { error.value = err?.response?.data?.detail || 'Check the connection and try again.' } finally { loading.value = false }
+}
+// Keep the selection inside the visible period (and inside the active month), preferring today.
+const syncSelectedDate = () => {
+  const visible = displayDays.value.filter((day) => activeMode.value === 'week' || isActiveMonth(day.date))
+  if (visible.some((day) => day.date === selectedDate.value)) return
+  selectedDate.value = visible.find((day) => day.date === todayKey)?.date || visible[0]?.date || selectedDate.value
+}
+const ensurePeriodLoaded = async () => {
+  if (monthData.value?.month === activeMonthKey.value) return
+  loading.value = true
+  error.value = ''
+  try { await loadMonth() } catch (err) { error.value = err?.response?.data?.detail || 'Could not load this period.' } finally { loading.value = false }
+}
+const setAnchor = async (date) => { popupOpen.value = false; anchorDate.value = date; await ensurePeriodLoaded(); if (!error.value) syncSelectedDate() }
+const setMode = async (mode) => {
+  activeMode.value = mode
+  try { localStorage.setItem(MODE_KEY, mode) } catch { /* ignore */ }
+  await ensurePeriodLoaded()
+  syncSelectedDate()
+}
+const shiftPeriod = (offset) => setAnchor(activeMode.value === 'month' ? addMonths(anchorDate.value, offset) : addDays(anchorDate.value, offset * 7))
+const goToday = async () => { await setAnchor(new Date()); selectedDate.value = todayKey }
+
+const popupOpen = ref(false)
+const popupEl = ref(null)
+const popupPos = ref({ left: 0, top: 0 })
+const popupStyle = computed(() => ({ left: `${popupPos.value.left}px`, top: `${popupPos.value.top}px` }))
+const positionPopup = () => {
+  const cell = document.querySelector(`.calendar-surface [data-date="${selectedDate.value}"]`)
+  const pop = popupEl.value
+  if (!cell || !pop) return
+  const rect = cell.getBoundingClientRect()
+  const gap = 8
+  const margin = 12
+  let left = rect.right + gap
+  if (left + pop.offsetWidth > window.innerWidth - margin) left = rect.left - gap - pop.offsetWidth
+  left = Math.max(margin, Math.min(left, window.innerWidth - pop.offsetWidth - margin))
+  const top = Math.max(margin, Math.min(rect.top, window.innerHeight - pop.offsetHeight - margin))
+  popupPos.value = { left, top }
+}
+const openPopup = async () => { popupOpen.value = true; if (selectedPlan.value?.cycling_workout_id) ensureCyclingLibrary(); await nextTick(); positionPopup(); popupEl.value?.focus({ preventScroll: true }) }
+const closePopup = (restoreFocus = true) => { if (!popupOpen.value) return; popupOpen.value = false; if (restoreFocus) focusDay(selectedDate.value) }
+const openDay = (date) => {
+  if (popupOpen.value && date === selectedDate.value) { closePopup(); return }
+  selectedDate.value = date
+  openPopup()
+}
+const onPointerDown = (event) => {
+  if (!popupOpen.value || popupEl.value?.contains(event.target) || event.target.closest?.('.calendar-day')) return
+  closePopup(false)
+}
+const popupSessions = computed(() => selectedExecutionActivity.value ? [selectedExecutionActivity.value, ...selectedStandaloneActivities.value] : selectedStandaloneActivities.value)
+const isRestPlan = computed(() => /rest/i.test(String(selectedPlan.value?.session_type || '')))
+// A separate plan card only for sessions that were not done yet (or missed); when done differently, the plan is a line inside the session card.
+const popupPlan = computed(() => selectedPlan.value && !selectedExecutionActivity.value ? selectedPlan.value : null)
+const popupPlanLabel = computed(() => isRestPlan.value ? 'Rest day' : planStatusLabel(selectedPlan.value))
+const popupPlanWas = computed(() => {
+  const plan = selectedPlan.value
+  if (!plan || selectedExecutionTone.value !== 'changed') return ''
+  return [plan.title || plan.session_type, planMinutes(plan) ? formatMinutes(planMinutes(plan)) : ''].filter(Boolean).join(' · ')
+})
+const toneFor = (value, goodAt, badAt) => (goodAt < badAt ? (value <= goodAt ? 'good' : value >= badAt ? 'bad' : 'mid') : (value >= goodAt ? 'good' : value <= badAt ? 'bad' : 'mid'))
+const feedbackMetrics = (feedback) => [
+  { key: 'rpe', label: 'Effort', value: feedback.rpe, max: 10, tone: toneFor(feedback.rpe, 4, 8) },
+  { key: 'energy', label: 'Energy', value: feedback.energy, max: 5, tone: toneFor(feedback.energy, 4, 2) },
+  { key: 'soreness', label: 'Soreness', value: feedback.muscle_soreness, max: 5, tone: toneFor(feedback.muscle_soreness, 2, 4) },
+  { key: 'pain', label: 'Pain', value: feedback.pain_level, max: 10, tone: toneFor(feedback.pain_level, 0, 4) },
+].map((metric) => ({ ...metric, pct: Math.max(4, Math.round((Number(metric.value) || 0) / metric.max * 100)) }))
+const cyclingLibrary = ref(null)
+const ensureCyclingLibrary = async () => {
+  if (cyclingLibrary.value) return
+  try { const { data } = await api.getCyclingWorkouts(); cyclingLibrary.value = data } catch { cyclingLibrary.value = { workouts: [] } }
+}
+const planDetailView = computed(() => buildSessionDetailView(popupPlan.value?.details))
+const planTargets = computed(() => popupPlan.value ? sessionTargets(popupPlan.value, planDetailView.value) : [])
+const planCyclingWorkout = computed(() => popupPlan.value?.cycling_workout_id ? (cyclingLibrary.value?.workouts || []).find((workout) => workout.id === popupPlan.value.cycling_workout_id) || null : null)
+const planSubline = computed(() => [popupPlan.value?.template_label, popupPlan.value?.workout_intent_label, popupPlan.value?.benchmark_label].filter(Boolean).join(' · '))
+const popupPlanNote = computed(() => selectedPlan.value?.notes || selectedPlan.value?.rationale || '')
+const sessionMeta = (activity) => [activity.duration_min ? formatMinutes(activity.duration_min) : '', activityPerformance(activity), activity.avg_watts ? `${Math.round(activity.avg_watts)} W` : ''].filter(Boolean).join(' · ') || 'Completed'
+const planMinutes = (plan) => plan.target_duration_min ?? plan.duration_min
+const planKm = (plan) => plan.target_distance_km ?? plan.distance_km
+const planMeta = (plan) => [planMinutes(plan) ? formatMinutes(planMinutes(plan)) : '', planKm(plan) ? `${planKm(plan)} km` : '', plan.workout_intent_label || ''].filter(Boolean).join(' · ') || 'No details set'
+
+const focusDay = async (date) => { await nextTick(); document.querySelector(`.calendar-surface [data-date="${date}"] .day-select`)?.focus() }
+const moveSelection = async (offsetDays) => {
+  const target = format(addDays(safeDate(selectedDate.value), offsetDays), 'yyyy-MM-dd')
+  popupOpen.value = false
+  if (!displayDays.value.some((day) => day.date === target)) await setAnchor(safeDate(target))
+  selectedDate.value = target
+  focusDay(target)
+}
+const onGridKeydown = (event) => {
+  if (!event.target.closest?.('.day-select')) return
+  const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[event.key]
+  if (!step) return
+  event.preventDefault()
+  moveSelection(step)
+}
+const onShortcut = (event) => {
+  if (event.key === 'Escape' && popupOpen.value && !dialogActivity.value) { closePopup(); return }
+  if (event.metaKey || event.ctrlKey || event.altKey || dialogActivity.value) return
+  if (/^(input|textarea|select)$/i.test(event.target?.tagName || '') || event.target?.isContentEditable) return
+  if (event.key === '[') shiftPeriod(-1)
+  else if (event.key === ']') shiftPeriod(1)
+  else if (event.key.toLowerCase() === 't') goToday()
+}
+
+const weekBrief = computed(() => plans.value.find((plan) => plan.week_start === activeWeekStart.value) || null)
+const weekGoals = computed(() => (weekBrief.value?.goal_context?.active_goals || []).filter((goal) => goal.is_active !== false).slice(0, 4))
+const formatGoalValue = (value) => Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })
 const planFor = (date) => planMap.value[date] || null
 const isActiveMonth = (date) => String(date).startsWith(activeMonthKey.value)
 const timeState = (date) => date === todayKey ? 'today' : date < todayKey ? 'past' : 'future'
 const formatHours = (minutes) => { const total = Math.round(minutes || 0); return `${Math.floor(total / 60)}h ${String(total % 60).padStart(2, '0')}m` }
-const formatMinutes = (minutes) => minutes ? `${Math.round(minutes)} min` : 'Duration not set'
+const formatMinutes = (minutes) => minutes ? `${Math.round(minutes)} min` : 'No duration set'
 const formatDistance = (distance) => `${Number(distance || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`
 const averageSpeedKmh = (activity) => {
   if (!/ride|cycl/i.test(String(activity?.type || '')) || !activity?.distance_km || !activity?.duration_min) return null
@@ -333,95 +430,192 @@ const activityPerformance = (activity) => {
   else if (averageSpeedKmh(activity)) parts.push(`${averageSpeedKmh(activity).toFixed(1)} km/h`)
   return parts.join(' · ')
 }
-const sportLabel = (type) => String(type || 'Other').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (letter) => letter.toUpperCase())
-const formatWeekRange = (start, end) => `${format(safeDate(start), 'MMM d')}–${format(safeDate(end), 'd')}`
+const formatWeekRange = (start, end) => { const a = safeDate(start); const b = safeDate(end); return `${format(a, 'MMM d')}–${format(b, a.getMonth() === b.getMonth() ? 'd' : 'MMM d')}` }
 const weekVolumePercent = (week) => { const max = Math.max(...(monthData.value?.weeks || []).map((item) => item.total_duration_min || 0), 1); return Math.round((week.total_duration_min || 0) / max * 100) }
 const activityTone = (type) => { const value = String(type || '').toLowerCase(); if (value.includes('run')) return 'run'; if (value.includes('ride') || value.includes('cycl')) return 'ride'; if (value.includes('weight') || value.includes('strength')) return 'strength'; if (value.includes('walk')) return 'walk'; return 'neutral' }
-const planStatusLabel = (day) => ({ linked: 'Completed as planned', matched: 'Completed', moved: 'Moved and completed', replaced: 'Changed', partially_matched: 'Modified', rest_day_changed: 'Rest changed', skipped: 'Missed', not_completed_yet: selectedDate.value === todayKey ? 'Planned today' : 'Upcoming' }[day.comparison?.status] || 'Planned')
-const openFeedbackDialog = (activity) => { feedbackMessage.value = ''; dialogActivity.value = { ...activity, dateLabel: selectedDayTitle.value } }
+const planStatusLabel = (day) => ({ linked: 'Done as planned', matched: 'Done', moved: 'Moved and done', replaced: 'Changed', partially_matched: 'Modified', rest_day_changed: 'Rest changed', skipped: 'Missed', not_completed_yet: selectedDate.value === todayKey ? 'Planned today' : selectedDate.value < todayKey ? 'Missed' : 'Upcoming' }[day.comparison?.status] || 'Planned')
+const openFeedbackDialog = (activity) => { popupOpen.value = false; feedbackMessage.value = ''; dialogActivity.value = { ...activity, dateLabel: selectedDayTitle.value } }
 const closeFeedbackDialog = () => { if (!feedbackSaving.value) { dialogActivity.value = null; feedbackMessage.value = '' } }
-const saveFeedback = async (payload) => { if (!dialogActivity.value) return; feedbackSaving.value = true; feedbackMessage.value = ''; try { await api.updateActivityIntent(dialogActivity.value.id, { workout_intent: payload.workout_intent || null }); await api.saveActivityFeedback(dialogActivity.value.id, { rpe: payload.rpe, energy: payload.energy, muscle_soreness: payload.muscle_soreness, pain_level: payload.pain_level, note: payload.note }); feedbackMessage.value = 'Saved.'; await reload(); window.setTimeout(closeFeedbackDialog, 300) } catch (err) { feedbackMessage.value = err?.response?.data?.detail || 'Feedback save failed.' } finally { feedbackSaving.value = false } }
+const saveFeedback = async (payload) => {
+  if (!dialogActivity.value) return
+  feedbackSaving.value = true
+  feedbackMessage.value = ''
+  try {
+    await api.updateActivityIntent(dialogActivity.value.id, { workout_intent: payload.workout_intent || null })
+    await api.saveActivityFeedback(dialogActivity.value.id, { rpe: payload.rpe, energy: payload.energy, muscle_soreness: payload.muscle_soreness, pain_level: payload.pain_level, note: payload.note })
+    feedbackMessage.value = 'Saved.'
+    await reload()
+    window.setTimeout(closeFeedbackDialog, 300)
+  } catch (err) { feedbackMessage.value = err?.response?.data?.detail || 'Feedback save failed.' } finally { feedbackSaving.value = false }
+}
 
-onMounted(reload)
+watch([popupOpen, selectedDate, planCyclingWorkout, planDetailView], () => { if (popupOpen.value) nextTick(positionPopup) }, { flush: 'post' })
+
+onMounted(() => {
+  reload()
+  window.addEventListener('keydown', onShortcut)
+  window.addEventListener('pointerdown', onPointerDown)
+  window.addEventListener('resize', positionPopup)
+  window.addEventListener('scroll', positionPopup, true)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onShortcut)
+  window.removeEventListener('pointerdown', onPointerDown)
+  window.removeEventListener('resize', positionPopup)
+  window.removeEventListener('scroll', positionPopup, true)
+})
 </script>
 
 <style scoped>
-.calendar-page { max-width: 1680px; margin: 0 auto; }
-.calendar-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
-.toolbar-actions, .period-navigation, .view-switch, .legend { display: flex; align-items: center; }
-.toolbar-actions { gap: 10px; }
-.view-switch { padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: rgba(10,16,26,.7); }
-.view-switch button { min-width: 72px; min-height: 36px; padding: 0 14px; border: 0; border-radius: 7px; background: transparent; color: var(--muted-soft); cursor: pointer; }
-.view-switch button.active { background: var(--surface3); color: white; box-shadow: inset 0 0 0 1px var(--border-strong); }
-.plan-action, .panel-action { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 15px; border-radius: 9px; background: var(--accent); color: white; font-weight: 700; }
-.period-bar { min-height: 68px; display: grid; grid-template-columns: auto minmax(220px,1fr) auto; align-items: center; gap: 18px; margin-bottom: 14px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 14px; background: rgba(17,24,38,.78); }
-.period-navigation { gap: 6px; }
-.icon-btn, .today-btn { min-height: 38px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-soft); cursor: pointer; }
-.icon-btn { width: 38px; border-radius: 9px; font-size: 23px; line-height: 1; }
-.today-btn { padding: 0 13px; border-radius: 9px; font-weight: 700; }
-.icon-btn:disabled, .today-btn:disabled { opacity: .45; cursor: wait; }
-.period-title { min-width: 0; display: grid; text-align: center; line-height: 1.3; }
+.calendar-page { --cal-action: #3f66d6; max-width: 1680px; margin: 0 auto; }
+.tone-ride { --tone: var(--ride); } .tone-run { --tone: var(--run); } .tone-strength { --tone: var(--strength); } .tone-walk { --tone: #94a3b8; }
+
+.cal-head { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+.cal-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; line-height: 1.2; }
+.period-navigation, .head-actions, .view-switch, .legend { display: flex; align-items: center; }
+.period-navigation { gap: 4px; margin-left: 8px; }
+.icon-btn, .today-btn { min-height: 34px; border: 0; background: var(--surface2); color: var(--text-soft); cursor: pointer; }
+.icon-btn { width: 34px; border-radius: 9px; font-size: 21px; line-height: 1; }
+.today-btn { padding: 0 13px; border-radius: 9px; font-size: 13px; font-weight: 650; }
+.icon-btn:hover:not(:disabled), .today-btn:hover:not(:disabled) { background: var(--surface3); color: var(--text); }
+.icon-btn:disabled, .today-btn:disabled { opacity: .5; cursor: progress; }
+.period-title { min-width: 0; display: flex; align-items: baseline; gap: 10px; }
 .period-title strong { font-family: var(--font-display); font-size: 18px; }
-.period-title span { color: var(--muted); font-size: 11px; }
-.legend { justify-content: flex-end; gap: 12px; color: var(--muted-soft); font-size: 10px; }
+.period-title span { padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: #a9c0ff; font-size: 12px; font-weight: 650; }
+.head-actions { gap: 10px; margin-left: auto; }
+.view-switch { padding: 3px; border-radius: 10px; background: var(--bg-elevated); }
+.view-switch button { min-width: 68px; min-height: 30px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--muted-soft); cursor: pointer; font-size: 13px; font-weight: 600; }
+.view-switch button:hover:not(.active) { color: var(--text); }
+.view-switch button.active { background: var(--surface3); color: #fff; }
+.plan-action { display: inline-flex; align-items: center; min-height: 36px; padding: 0 15px; border-radius: 9px; background: var(--cal-action); color: #fff; font-size: 13px; font-weight: 650; }
+.plan-action:hover { background: color-mix(in srgb, white 8%, var(--cal-action)); }
+
+.summary-strip { display: flex; align-items: center; gap: 22px; margin-bottom: 12px; padding: 10px 16px; border-radius: 12px; background: var(--bg-elevated); transition: opacity var(--motion-duration-base) var(--motion-ease-standard); }
+.summary-stats { display: flex; align-items: center; gap: 22px; }
+.stat { display: flex; align-items: baseline; gap: 6px; }
+.stat strong { font-family: var(--font-display); font-size: 18px; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted-soft); font-size: 12px; }
+.summary-sports { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px 8px; list-style: none; padding-left: 22px; border-left: 1px solid var(--border); }
+.summary-sports li { display: flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 8px; background: color-mix(in srgb, var(--tone, var(--muted)) 20%, transparent); }
+.summary-sports li :deep(.activity-icon-shell) { color: var(--tone, var(--muted)); }
+.summary-sports strong { font-size: 13px; font-variant-numeric: tabular-nums; }
+.summary-sports li > span:last-child { color: color-mix(in srgb, var(--tone, var(--muted)) 65%, white); font-size: 12px; }
+.summary-empty { flex: 1; color: var(--muted); font-size: 12px; }
+.legend { gap: 14px; justify-content: flex-end; padding: 10px 4px 0; color: var(--muted-soft); font-size: 12px; }
 .legend span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
-.legend-mark { width: 3px; height: 14px; border-radius: 2px; }
-.legend-mark.completed { background: var(--success); }.legend-mark.planned { background: var(--accent-strong); }.legend-mark.changed { background: var(--warning); }.legend-mark.missed { background: var(--danger); }
-.load-summary { position: relative; z-index: 10; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1px; margin-bottom: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--border); }
-.load-summary article { min-width: 0; padding: 12px 16px; background: rgba(17,24,38,.94); }
-.load-summary article:first-child { border-radius: 13px 0 0 13px; }.load-summary article:last-child { border-radius: 0 13px 13px 0; }
-.load-summary span, .load-summary small { display: block; color: var(--muted); font-size: 10px; }.load-summary span { font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }.load-summary strong { display: block; margin: 2px 0; font-family: var(--font-display); font-size: 18px; }
-.metric-summary { position: relative; outline: none; cursor: default; }
-.metric-summary:focus-visible { box-shadow: inset 0 0 0 2px var(--accent-strong); }
-.metric-breakdown { position: absolute; z-index: 20; top: calc(100% + 8px); left: 12px; width: min(250px,calc(100vw - 48px)); padding: 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: #111a2a; box-shadow: 0 14px 34px rgba(0,0,0,.38); opacity: 0; visibility: hidden; transform: translateY(-4px); pointer-events: none; transition: opacity .14s ease,transform .14s ease,visibility .14s; }
-.metric-summary:hover .metric-breakdown, .metric-summary:focus .metric-breakdown, .metric-summary:focus-within .metric-breakdown { opacity: 1; visibility: visible; transform: translateY(0); }
-.metric-breakdown-title { margin-bottom: 8px; color: var(--text-soft); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
-.metric-breakdown-list { display: grid; gap: 7px; }
-.metric-breakdown-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.metric-breakdown-row > span { display: flex; align-items: center; gap: 7px; color: var(--text-soft); font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-.metric-breakdown-row i { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--muted); }.metric-breakdown-row i.tone-ride { background: var(--ride); }.metric-breakdown-row i.tone-run { background: var(--run); }.metric-breakdown-row i.tone-strength { background: var(--strength); }.metric-breakdown-row i.tone-walk { background: var(--muted-soft); }
-.metric-breakdown-row strong { margin: 0; font-family: inherit; font-size: 11px; white-space: nowrap; }
-.metric-breakdown > small { color: var(--muted-soft); font-size: 11px; }
-.calendar-layout { display: grid; grid-template-columns: minmax(0,1fr) 310px; gap: 14px; align-items: start; }
-.calendar-surface, .selected-panel, .discipline-panel { border: 1px solid var(--border); border-radius: 14px; background: rgba(17,24,38,.9); overflow: hidden; }
-.weekday-row { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)) 126px; border-bottom: 1px solid var(--border); }
-.weekday-row.is-week-view { grid-template-columns: repeat(7,minmax(0,1fr)); }
-.weekday-row span { padding: 9px 10px; border-right: 1px solid var(--border); color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
-.week-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); }.week-grid :deep(.calendar-day) { min-height: 360px; }
-.month-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)) 126px; }
-.week-total { min-width: 0; min-height: 184px; padding: 13px 10px; border-bottom: 1px solid var(--border); background: rgba(23,31,48,.82); }
-.week-total span, .week-total small { display: block; color: var(--muted); font-size: 9px; }.week-total strong { display: block; margin: 12px 0 2px; font-size: 14px; }.week-total .week-distance { margin-top: 3px; color: var(--text-soft); font-weight: 650; }.volume-track { height: 3px; margin-top: 14px; overflow: hidden; border-radius: 3px; background: var(--surface3); }.volume-track i { display: block; height: 100%; background: var(--accent-strong); }
-.empty-overlay { padding: 24px; color: var(--muted); text-align: center; }
-.calendar-rail { position: sticky; top: 16px; display: grid; gap: 14px; }
-.selected-panel { padding: 18px; }
-.selected-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }.selected-head span:first-child { color: var(--accent-strong); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }.selected-head h2 { margin-top: 3px; font-family: var(--font-display); font-size: 17px; }.selected-load { flex: none; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 750; text-transform: uppercase; }.tone-rest { background: rgba(148,163,184,.12); color: var(--muted-soft); }.tone-easy { background: rgba(31,190,141,.13); color: #69d9bb; }.tone-steady { background: rgba(95,140,255,.13); color: #9db7ef; }.tone-hard { background: rgba(241,169,59,.15); color: #ffc46b; }
-.detail-section { padding: 15px 0; border-bottom: 1px solid var(--border); }.detail-kicker { margin-bottom: 8px; color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }.detail-workout { display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 8px; padding: 9px 0; }.detail-workout + .detail-workout { border-top: 1px solid var(--border); }.detail-workout > div, .detail-workout > a { min-width: 0; display: grid; line-height: 1.35; }.detail-workout strong { overflow-wrap: anywhere; font-size: 12px; }.detail-workout span { color: var(--muted-soft); font-size: 10px; }.detail-workout small { margin-top: 3px; color: var(--accent-strong); font-size: 10px; }.detail-workout .execution-status { width: fit-content; margin-top: 6px; padding: 2px 6px; border-radius: 999px; font-size: 9px; font-weight: 750; }.execution-status.status-completed { color: #69d9bb; background: rgba(31,190,141,.12); }.execution-status.status-changed { color: #ffc46b; background: rgba(241,169,59,.14); }.planned-context { display: grid; grid-template-columns: 58px minmax(0,1fr); gap: 9px; margin: 4px 0 2px 30px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: rgba(28,38,56,.42); }.planned-context > span { color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }.planned-context > div { min-width: 0; display: grid; gap: 2px; }.planned-context strong { overflow-wrap: anywhere; color: var(--text-soft); font-size: 10px; }.planned-context small { color: var(--muted-soft); font-size: 9px; }.feedback-btn { grid-column: 2; justify-self: start; min-height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface2); color: var(--text-soft); cursor: pointer; font-size: 10px; }.detail-note { margin-top: 5px; color: var(--muted-soft); font-size: 11px; line-height: 1.5; }.intentional-rest { display: flex; gap: 10px; padding: 18px 0; color: var(--muted-soft); }.intentional-rest strong { color: var(--text-soft); font-size: 12px; }.intentional-rest p { margin-top: 4px; font-size: 10px; }.panel-action { width: 100%; margin-top: 14px; min-height: 38px; font-size: 11px; }
-.calendar-state { display: grid; justify-items: center; gap: 8px; }.error-state strong { color: var(--danger); }.error-state button { padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); color: white; cursor: pointer; }
-.discipline-panel { display: grid; grid-template-columns: 180px minmax(0,1fr); align-items: stretch; margin-bottom: 14px; padding: 0; }
-.discipline-heading { display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 14px 18px; border-right: 1px solid var(--border); }
-.discipline-heading span { color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
-.discipline-heading h2 { margin-top: 2px; font-family: var(--font-display); font-size: 16px; }
-.discipline-heading > strong { color: var(--muted-soft); font-size: 10px; font-weight: 650; }
-.discipline-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(185px,1fr)); }
-.discipline-row { display: grid; grid-template-columns: 30px minmax(0,1fr); align-items: center; gap: 10px; min-width: 0; padding: 13px 16px; }
-.discipline-row + .discipline-row { border-left: 1px solid var(--border); }
-.discipline-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; background: var(--surface2); }
-.discipline-ride { background: rgba(31,190,141,.12); }.discipline-run { background: rgba(79,141,247,.12); }.discipline-strength { background: rgba(241,169,59,.12); }.discipline-walk { background: rgba(148,163,184,.12); }
-.discipline-copy { min-width: 0; }
-.discipline-label, .discipline-metric { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.discipline-label strong { font-size: 11px; }.discipline-label span, .discipline-metric span { color: var(--muted); font-size: 9px; }
-.discipline-metric { margin-top: 3px; }.discipline-metric strong { font-family: var(--font-display); font-size: 15px; }
-.discipline-track { height: 3px; margin-top: 8px; overflow: hidden; border-radius: 3px; background: var(--surface3); }.discipline-track i { display: block; height: 100%; border-radius: inherit; background: var(--accent-strong); }
-.discipline-empty { align-self: center; padding: 18px; color: var(--muted); font-size: 11px; }
-@media (max-width: 1400px) { .calendar-layout { grid-template-columns: minmax(0,1fr); }.calendar-rail { position: static; grid-template-columns: repeat(2,minmax(0,1fr)); }.weekday-row { grid-template-columns: repeat(7,minmax(0,1fr)) 118px; }.month-grid { grid-template-columns: repeat(7,minmax(0,1fr)) 118px; } }
-@media (max-width: 1100px) { .legend { display: none; }.period-bar { grid-template-columns: auto 1fr; }.weekday-row { grid-template-columns: repeat(7,minmax(0,1fr)); }.week-total-label, .week-total { display: none; }.month-grid { grid-template-columns: repeat(7,minmax(0,1fr)); } }
-@media (max-width: 760px) {
-  .calendar-toolbar { align-items: flex-start; }.toolbar-actions { align-items: stretch; flex-direction: column; }.plan-action { min-height: 36px; }.page-sub { max-width: 34ch; }
-  .period-bar { position: sticky; top: 0; z-index: 5; grid-template-columns: 1fr; gap: 7px; }.period-navigation { justify-content: center; }.period-title { grid-row: 1; }.load-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }.load-summary article { border-radius: 0; }.load-summary article:first-child { border-radius: 13px 0 0 0; }.load-summary article:nth-child(2) { border-radius: 0 13px 0 0; }.load-summary article:nth-child(3) { border-radius: 0 0 0 13px; }.load-summary article:last-child { border-radius: 0 0 13px 0; }.weekday-row { display: none; }
-  .month-grid, .week-grid { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 8px; }.month-grid :deep(.calendar-day.is-outside) { display: none; }.week-grid :deep(.calendar-day) { min-height: auto; }
-  .discipline-panel { grid-template-columns: 1fr; }.discipline-heading { flex-direction: row; align-items: center; justify-content: space-between; border-right: 0; border-bottom: 1px solid var(--border); }.discipline-list { grid-template-columns: 1fr; }.discipline-row + .discipline-row { border-left: 0; border-top: 1px solid var(--border); }
-  .calendar-layout { gap: 10px; }.calendar-rail { grid-template-columns: 1fr; order: -1; }.legend { display: none; }
+.lg-done { color: var(--success); } .lg-planned { color: var(--muted-soft); } .lg-changed { color: var(--warning); } .lg-missed { color: var(--danger); }
+
+.calendar-layout { display: block; }
+.calendar-surface { position: relative; min-width: 0; transition: opacity var(--motion-duration-base) var(--motion-ease-standard); }
+.is-stale { opacity: .55; }
+.weekday-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) 100px; gap: 3px; padding: 0 0 6px; }
+.weekday-row.is-week-view { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.weekday-row span { padding: 0 10px; color: var(--muted); font-size: 12px; font-weight: 650; letter-spacing: .03em; }
+.week-grid, .month-grid { display: grid; gap: 3px; }
+.week-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.week-grid :deep(.calendar-day) { min-height: 150px; }
+.month-grid { grid-template-columns: repeat(7, minmax(0, 1fr)) 100px; }
+.week-total { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 9px 10px; border-radius: 10px; background: color-mix(in srgb, white 3%, var(--bg-elevated)); }
+.week-total.is-current { background: color-mix(in srgb, var(--accent) 12%, var(--bg-elevated)); }
+.week-total span { color: var(--muted); font-size: 11px; }
+.week-total strong { margin-top: 4px; font-family: var(--font-display); font-size: 14px; font-variant-numeric: tabular-nums; }
+.week-total small { color: var(--muted-soft); font-size: 11px; }
+.week-total .wt-distance { color: var(--text-soft); }
+.volume-track { height: 3px; margin-top: auto; opacity: .8; overflow: hidden; border-radius: 3px; background: rgba(255, 255, 255, .08); }
+.volume-track i { display: block; height: 100%; border-radius: inherit; background: var(--accent-strong); }
+.week-brief { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 12px; padding: 18px 20px; border-radius: 14px; background: linear-gradient(120deg, rgba(95, 140, 255, .13), rgba(95, 140, 255, .03) 65%), var(--bg-elevated); }
+.brief-plan > span { color: var(--accent-strong); font-size: 12px; font-weight: 650; }
+.brief-plan h2 { margin: 2px 0 4px; font-family: var(--font-display); font-size: 18px; }
+.brief-plan p { max-width: 90ch; color: var(--muted-soft); font-size: 13px; line-height: 1.55; }
+.brief-goals { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.brief-goals li { --tone: var(--accent); display: grid; gap: 1px; padding: 10px 14px 12px; border-radius: 10px; background: color-mix(in srgb, var(--tone) 14%, transparent); }
+.brief-goals strong { color: var(--text-soft); font-size: 12.5px; font-weight: 600; }
+.brief-goals .goal-value { color: var(--text); font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+.brief-goals .goal-value small { color: var(--muted-soft); font-family: var(--font-body); font-size: 12px; font-weight: 500; }
+.brief-goals .goal-state { color: var(--muted-soft); font-size: 12px; }
+.brief-goals li.is-behind .goal-state { color: #ffc46b; }
+.brief-goals i { display: block; height: 4px; margin-top: 6px; overflow: hidden; border-radius: 4px; background: rgba(255, 255, 255, .09); }
+.brief-goals b { display: block; height: 100%; border-radius: inherit; background: var(--tone); }
+.empty-overlay { padding: 18px; color: var(--muted); font-size: 13px; text-align: center; }
+
+.calendar-skeleton { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.calendar-skeleton i { display: block; min-height: 112px; border-radius: 10px; }
+
+.day-popup { position: fixed; z-index: 30; width: 340px; max-height: calc(100vh - 24px); overflow-y: auto; padding: 16px; border-radius: 14px; background: #1a2436; box-shadow: 0 18px 50px rgba(3, 8, 18, .55), 0 0 0 1px rgba(255, 255, 255, .06); outline: none; }
+.pop-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.pop-head > div { flex: 1; min-width: 0; }
+.pop-head span:first-child { color: var(--accent-strong); font-size: 12px; font-weight: 650; }
+.pop-head h2 { margin-top: 1px; font-family: var(--font-display); font-size: 17px; }
+.pop-hard { padding: 2px 9px; border-radius: 999px; background: rgba(243, 180, 77, .16); color: #ffc46b; font-size: 12px; font-weight: 650; }
+.pop-close { flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--muted-soft); cursor: pointer; font-size: 20px; line-height: 1; }
+.pop-close:hover { background: rgba(255, 255, 255, .08); color: var(--text); }
+.pop-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.pop-item, .pop-plan { --tone: var(--muted); display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 4px 10px; padding: 10px; border-radius: 10px; background: color-mix(in srgb, var(--tone) 13%, transparent); }
+.pop-plan { margin-top: 8px; background: rgba(255, 255, 255, .05); }
+.pop-item > :first-child, .pop-plan > :first-child { margin-top: 1px; }
+.pop-body { min-width: 0; display: grid; gap: 2px; line-height: 1.4; }
+.pop-title { overflow-wrap: anywhere; color: var(--text); font-size: 14px; font-weight: 650; }
+a.pop-title:hover { text-decoration: underline; }
+.pop-meta { color: var(--muted-soft); font-size: 12px; }
+.pop-kicker { color: var(--muted-soft); font-size: 12px; font-weight: 650; }
+.pop-intent { color: var(--accent-strong); font-size: 12px; }
+.pop-status { width: fit-content; margin-top: 3px; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 650; }
+.pop-status.status-completed { color: #69d9bb; background: rgba(31, 190, 141, .15); }
+.pop-status.status-changed { color: #ffc46b; background: rgba(241, 169, 59, .16); }
+.pop-planwas { margin: 3px 0 0; color: var(--muted-soft); font-size: 12px; }
+.pop-planwas span { color: var(--muted); }
+.pop-feedback { margin-top: 8px; }
+.fb-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.fb-metric { --fb: var(--muted-soft); position: relative; display: grid; gap: 1px; padding: 6px 8px 8px; overflow: hidden; border-radius: 8px; background: color-mix(in srgb, var(--fb) 13%, transparent); }
+.fb-good { --fb: var(--success); } .fb-mid { --fb: var(--warning); } .fb-bad { --fb: var(--danger); }
+.fb-metric span { color: var(--muted-soft); font-size: 11px; }
+.fb-metric strong { color: var(--fb); font-family: var(--font-display); font-size: 16px; line-height: 1.2; }
+.fb-metric strong small { color: var(--muted); font-family: var(--font-body); font-size: 11px; font-weight: 500; }
+.fb-metric i { position: absolute; left: 0; bottom: 0; height: 3px; border-radius: 0 3px 3px 0; background: var(--fb); }
+.fb-note { margin: 8px 0 0; padding: 2px 0 2px 10px; border-left: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent); color: var(--text-soft); font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.day-popup.is-wide { width: 440px; }
+.pop-brief { --tone: var(--muted); display: grid; gap: 12px; margin-top: 8px; padding: 12px; border-radius: 12px; background: color-mix(in srgb, var(--tone) 11%, transparent); }
+.pop-brief.is-missed { background: rgba(239, 94, 94, .12); }
+.pop-brief.is-missed .pop-kicker { color: #ff8a8a; }
+.brief-top { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; }
+.brief-top > :first-child { margin-top: 2px; }
+.brief-targets { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.brief-targets div { padding: 5px 10px; border-radius: 8px; background: rgba(255, 255, 255, .06); }
+.brief-targets dt { color: var(--muted); font-size: 11px; }
+.brief-targets dd { margin: 0; font-family: var(--font-display); font-size: 14px; font-weight: 650; }
+.brief-section h3, .brief-adapt h3 { margin-bottom: 6px; color: var(--muted-soft); font-size: 12px; font-weight: 650; }
+.brief-section ol, .brief-section ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.brief-section li { display: flex; gap: 9px; color: var(--text-soft); font-size: 13px; line-height: 1.45; }
+.brief-section ol li span { flex: none; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--tone) 28%, transparent); color: var(--text); font-size: 11px; font-weight: 700; }
+.brief-section ul li::before { content: ''; flex: none; width: 5px; height: 5px; margin-top: 8px; border-radius: 50%; background: var(--tone); }
+.brief-adapt { padding: 9px 11px; border-radius: 9px; background: rgba(255, 255, 255, .05); }
+.brief-adapt p { color: var(--muted-soft); font-size: 12.5px; line-height: 1.5; }
+.brief-why summary { color: var(--muted-soft); cursor: pointer; font-size: 12px; font-weight: 650; }
+.brief-why p { margin-top: 6px; color: var(--muted-soft); font-size: 12.5px; line-height: 1.5; }
+.brief-goal { margin-top: 8px; font-size: 12.5px; }
+.brief-goal span { color: var(--muted-soft); }
+.pop-note { margin: 4px 0 0; color: var(--muted-soft); font-size: 12px; line-height: 1.5; }
+.feedback-btn { grid-column: 2; justify-self: start; min-height: 28px; margin-top: 4px; padding: 0 10px; border: 0; border-radius: 7px; background: rgba(255, 255, 255, .08); color: var(--text-soft); cursor: pointer; font-size: 12px; }
+.feedback-btn:hover { background: rgba(255, 255, 255, .14); color: var(--text); }
+.empty-day { padding: 4px 0 2px; color: var(--muted-soft); font-size: 13px; }
+.pop-enter-active, .pop-leave-active { transition: opacity .12s var(--motion-ease-standard), transform .12s var(--motion-ease-standard); }
+.pop-enter-from, .pop-leave-to { opacity: 0; transform: translateY(4px) scale(.98); }
+
+.calendar-state { display: grid; justify-items: center; gap: 8px; padding: 32px; border-radius: 14px; background: var(--bg-elevated); }
+.error-state strong { color: var(--danger); }
+.error-state button { padding: 7px 14px; border: 0; border-radius: 8px; background: var(--surface3); color: #fff; cursor: pointer; }
+
+@media (max-width: 1340px) { .summary-sports li > span:last-child { display: none; } }
+@media (max-width: 1180px) {
+  .cal-head { flex-wrap: wrap; }
 }
-@media (max-width: 480px) { .calendar-toolbar { display: grid; }.toolbar-actions { flex-direction: row; justify-content: space-between; }.view-switch button { min-width: 64px; }.load-summary strong { font-size: 16px; } }
+@media (max-width: 760px) {
+  .summary-strip, .summary-stats { flex-wrap: wrap; }
+  .summary-sports { padding-left: 0; border-left: 0; }
+  .weekday-row, .week-total { display: none; }
+  .month-grid, .week-grid, .calendar-skeleton { grid-template-columns: 1fr; }
+  .month-grid :deep(.calendar-day.is-outside) { display: none; }
+  .week-grid :deep(.calendar-day) { min-height: auto; }
+}
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 </style>

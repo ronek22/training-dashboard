@@ -417,3 +417,47 @@
 [1098258541ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
 [1098703758ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
 [1109266501ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[1129697425ms] [WARNING] [Vue warn]: Property "todayHeroStats" was accessed during render but is not defined on instance. 
+  at <Dashboard onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< Proxy(Object) > key="/" > 
+  at <BaseTransition appear=false persisted=false mode=undefined  ... > 
+  at <Transition name="route-none" > 
+  at <RouterView> 
+  at <App> @ http://127.0.0.1:3000/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=a5eebc02:2225
+[1129697430ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <Dashboard onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< Proxy(Object) > key="/" > 
+  at <BaseTransition appear=false persisted=false mode=undefined  ... > 
+  at <Transition name="route-none" > 
+  at <RouterView> 
+  at <App> @ http://127.0.0.1:3000/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=a5eebc02:2225
+[1129697430ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <Dashboard onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< Proxy(Object) > key="/" > 
+  at <BaseTransition appear=false persisted=false mode=undefined  ... > 
+  at <Transition name="route-none" > 
+  at <RouterView> 
+  at <App> @ http://127.0.0.1:3000/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=a5eebc02:2225
+[1129697442ms] TypeError: Cannot read properties of undefined (reading 'length')
+    at Proxy._sfc_render (http://127.0.0.1:3000/src/views/Dashboard.vue?t=1790625430201:797:69)
+    at renderComponentRoot (http://127.0.0.1:3000/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=a5eebc02:6801:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://127.0.0.1:3000/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=a5eebc02:8457:26)
+    at ReactiveEffect.run (http://127.0.0.1:3000/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=a5eebc02:528:19)
+    at ReactiveEffect.runIfDirty (http://127.0.0.1:3000/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=a5eebc02:566:12)
+    at callWithErrorHandling (http://127.0.0.1:3000/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=a5eebc02:2373:33)
+    at flushJobs (http://127.0.0.1:3000/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=a5eebc02:2581:9)
+[1130055572ms] [WARNING] [Vue warn]: Property "todayCard" was accessed during render but is not defined on instance. 
+  at <Dashboard onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< Proxy(Object) > key="/" > 
+  at <BaseTransition appear=false persisted=false mode=undefined  ... > 
+  at <Transition name="route-none" > 
+  at <RouterView> 
+  at <App> @ http://127.0.0.1:3000/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=a5eebc02:2225
+[1130055579ms] [WARNING] [Vue warn]: Missing required prop: "title" 
+  at <TodayCard> 
+  at <Dashboard onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< Proxy(Object) > key="/" > 
+  at <BaseTransition appear=false persisted=false mode=undefined  ... > 
+  at <Transition name="route-none" > 
+  at <RouterView> 
+  at <App> @ http://127.0.0.1:3000/node_modules/.vite/deps/chunk-ZK3RVVAP.js?v=a5eebc02:2225
+[1131531642ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:3000/src/components/TodayRideSummary.vue?t=1790627265399:0
+[1131531647ms] [ERROR] [hmr] Failed to reload /src/components/TodayRideSummary.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://127.0.0.1:3000/@vite/client:175
+[1131568764ms] [ERROR] [hmr] Failed to reload /src/components/TodayCard.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://127.0.0.1:3000/@vite/client:175
+[1134029696ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559
+[1139526935ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:559

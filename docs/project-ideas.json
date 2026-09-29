@@ -169,6 +169,160 @@
         "The workflow never saves a coaching review or changes a plan. Ordinary tests cannot trigger paid model runs, and a failed comparison preserves previously saved comparison artifacts."
       ],
       "created_on": "2026-09-22"
+    },
+    {
+      "id": "structured-cycling-workouts-zwo",
+      "title": "Ride structured workouts in Zwift straight from the plan",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "Recent riding is dominated by unstructured Zwift pacer group rides: the 28-day intensity focus is about 73% low aerobic and 3% anaerobic, with no hard sessions in the latest week. Planned ride days carry only an intent and a duration, so there is no concrete interval prescription to execute or judge afterwards.",
+      "proposal": "Add a deterministic library of structured cycling workouts (recovery, endurance, tempo, sweet spot, threshold, VO2 max) defined as FTP-relative steps. Let a planned ride day reference a library workout, show its steps with watt targets from the stored FTP, and export it as a Zwift .zwo file. Expose the library through MCP so the planner can assign workouts.",
+      "benefit": "Turn intended quality sessions into rides you can start in Zwift in one step, with targets that scale to your Zwift FTP.",
+      "evidence": [
+        "backend/app/models/plans.py: WeeklyPlanDay has intent and duration but no workout structure",
+        "backend/app/services/power_zones.py: FTP-relative zone limits",
+        "backend/app/services/dashboard.py: build_training_load_summary intensity focus",
+        "mcp/server.py: planning tools"
+      ],
+      "acceptance_criteria": [
+        "Each library workout has an ID, intent, total duration and FTP-relative steps.",
+        "A planned ride day can reference a workout and the Plan view shows its steps and a .zwo download.",
+        "Exported .zwo files use FTP fractions so Zwift scales them to its own FTP setting.",
+        "Watt targets in the app state which stored FTP and date they use.",
+        "The library is readable through MCP; unknown workout IDs are rejected."
+      ],
+      "created_on": "2026-09-28"
+    },
+    {
+      "id": "training-volume-trend-alert",
+      "title": "Notice when training volume quietly slides",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "High",
+      "problem": "Weekly minutes fell from 706 to 457 to 342 over three consecutive weeks and fitness drifted down from mid-August, but no surface calls out a multi-week decline unless you read the charts yourself.",
+      "proposal": "Detect two or three consecutive weeks of falling volume or fitness that do not match a planned lighter week. Show one compact dashboard alert that asks whether it was planned or life-driven, store the answer, and pass it into weekly coaching context.",
+      "benefit": "Catch unplanned detraining early and let coaching distinguish a deliberate deload from a stressful stretch.",
+      "evidence": [
+        "backend/app/services/dashboard.py: build_weekly_mix and build_training_load_summary",
+        "backend/app/services/readiness.py: build_readiness_summary",
+        "backend/app/services/team_analysis.py: weekly coaching snapshot"
+      ],
+      "acceptance_criteria": [
+        "The alert triggers on a documented rule over completed weeks only.",
+        "Weeks planned as lighter do not trigger it.",
+        "The athlete can label the drop as planned, life or illness/injury, and the label reaches coaching context.",
+        "No alert is shown when data coverage is insufficient."
+      ],
+      "created_on": "2026-09-28"
+    },
+    {
+      "id": "quick-morning-check-in",
+      "title": "Three-tap morning check-in including stress",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "Subjective state is only recorded as post-activity feedback, so readiness goes stale (the latest check-in is a week old) and nothing captures life stress or sleep, which currently affect training more than load does.",
+      "proposal": "Add a daily check-in, independent of activities, with energy, soreness, stress and sleep quality plus an optional pain/niggle score. Make it reachable in a few taps from mobile. Feed it into readiness so high-stress days bias toward easier sessions.",
+      "benefit": "Keep readiness current and let the plan respond to stressful days without requiring a hard test or a completed workout.",
+      "evidence": [
+        "backend/app/services/activity_feedback.py: feedback is keyed by activity",
+        "backend/app/services/readiness.py: stale-feedback limitation",
+        "frontend/src/components/MobileNavigation.vue",
+        "docs/iphone.md"
+      ],
+      "acceptance_criteria": [
+        "One check-in per day can be saved and edited without an activity.",
+        "Readiness uses the latest check-in and reports when it is missing or stale.",
+        "High stress or poor sleep produces visible, conservative guidance rather than silent plan changes.",
+        "The check-in fits a 390px viewport and is completable in three taps plus submit."
+      ],
+      "created_on": "2026-09-28"
+    },
+    {
+      "id": "test-free-ftp-estimate",
+      "title": "Suggest an FTP estimate without a test",
+      "category": "Reliability",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "The stored FTP is 242 W from March and drives power-based training load, zones and workout targets. A maximal test is not appealing during a stressful period, and recent best efforts come from submaximal group rides, so a guessed value would be no better.",
+      "proposal": "Compute a transparent FTP estimate from recent measured power (e.g. best efforts and sustained steady work) with the rides it came from and an explicit uncertainty note. Flag when the stored FTP is old or clearly inconsistent. Never write the estimate automatically; the athlete decides whether to log it.",
+      "benefit": "Keep load and workout targets honest without forcing a maximal test.",
+      "evidence": [
+        "backend/app/services/power_trends.py: recent_records over 90 days",
+        "backend/app/services/dashboard.py: estimate_thresholds",
+        "backend/app/services/power_zones.py: latest FTP metric lookup"
+      ],
+      "acceptance_criteria": [
+        "The estimate cites the efforts it uses and states that submaximal data can underestimate FTP.",
+        "A stale-FTP flag appears when the stored value is older than a documented threshold.",
+        "No FTP metric is created without an explicit user action.",
+        "Insufficient recent power data yields an unavailable state, not a number."
+      ],
+      "created_on": "2026-09-28"
+    },
+    {
+      "id": "streak-preserving-recovery-days",
+      "title": "Recovery days that keep the streak and count as rest",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "The daily streak is a deliberate goal and planning notes forbid rest days, while readiness flags seven active days out of seven as a risk. The planner already schedules easy sessions, but load and readiness do not treat a genuine recovery day differently from any other session.",
+      "proposal": "Define a recovery day by a documented cap (e.g. a short walk, mobility or Z1 spin under a load threshold). Such days extend the streak, count toward rest in readiness and fatigue reads, and are proposed by the planner when fatigue or stress is elevated.",
+      "benefit": "Protect the long streak without letting it block real recovery.",
+      "evidence": [
+        "backend/app/services/dashboard.py: compute_activity_streak",
+        "backend/app/services/readiness.py: active_days_7d factor",
+        "backend/app/services/plans.py: Recovery session type"
+      ],
+      "acceptance_criteria": [
+        "Recovery-day criteria are documented and deterministic.",
+        "A qualifying day keeps the streak and is not counted as a training day in readiness.",
+        "Planned recovery days show the cap they must stay under.",
+        "Exceeding the cap is visible after the fact without breaking the streak."
+      ],
+      "created_on": "2026-09-28"
+    },
+    {
+      "id": "align-strength-consistency-target",
+      "title": "Use one weekly strength target everywhere",
+      "category": "Reliability",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The active process goal and planning notes target three strength sessions per week, but the strength consistency summary uses a hard-coded target of two, so weeks can look hit on one surface and missed on another.",
+      "proposal": "Derive the consistency target from the active strength-frequency goal when one exists, falling back to the current default otherwise.",
+      "benefit": "See one consistent answer about whether a strength week counted.",
+      "evidence": [
+        "backend/app/services/dashboard.py: build_strength_consistency target_sessions=2",
+        "backend/app/services/goals.py: strength_sessions process goals"
+      ],
+      "acceptance_criteria": [
+        "With an active strength-frequency goal, consistency uses its target.",
+        "Without one, the previous default is used.",
+        "A test covers both cases."
+      ],
+      "created_on": "2026-09-28"
+    },
+    {
+      "id": "return-to-run-tracker",
+      "title": "Structured return-to-run progression",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Low",
+      "problem": "Running rules (reintroduce only while heel symptoms stay stable; never raise pace and distance in the same week) live only in free-text planning notes, and run heart rate averages are high for base rebuilding.",
+      "proposal": "Track run-specific heel pain after each run and the next morning, a staged progression, a check that blocks raising pace and distance in one week, and an easy-run heart-rate cap. Park until running becomes a focus again.",
+      "benefit": "Rebuild running confidently when the focus shifts back from cycling.",
+      "evidence": [
+        "backend/app/services/recovery.py: issue check-ins",
+        "backend/app/services/plans.py: plan adjustment rules",
+        "athlete profile planning notes"
+      ],
+      "acceptance_criteria": [
+        "Progression stage and heel scores are visible per run.",
+        "A plan that raises both pace and distance in one week is flagged before saving.",
+        "Easy runs above the heart-rate cap are marked in execution quality."
+      ],
+      "created_on": "2026-09-28"
     }
   ]
 }

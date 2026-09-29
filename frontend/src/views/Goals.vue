@@ -2,9 +2,9 @@
   <div class="motion-page">
     <div class="page-head goals-page-head motion-section">
       <div>
-        <div class="page-eyebrow">Performance planning</div>
+        <div class="page-eyebrow">Your targets</div>
         <h1 class="page-title">Goals</h1>
-        <p class="page-sub">See what is moving, what needs attention, and the most useful next step.</p>
+        <p class="page-sub">Where you stand, and the one thing worth doing next.</p>
       </div>
       <button class="add-goal-btn" @click="openDialog"><span aria-hidden="true">＋</span> New goal</button>
     </div>
@@ -15,15 +15,60 @@
     <div v-else class="goal-sections motion-section">
       <section v-if="goals.length" class="goal-overview" aria-label="Goal overview">
         <div class="goal-overview-copy">
-          <span class="overview-kicker">Current focus</span>
+          <span class="overview-kicker">Right now</span>
           <strong>{{ goalOverviewTitle }}</strong>
           <p>{{ goalOverviewCopy }}</p>
         </div>
         <div class="goal-overview-stats">
-          <div><strong>{{ goals.length }}</strong><span>Active</span></div>
-          <div><strong>{{ attentionGoalCount }}</strong><span>Need attention</span></div>
-          <div><strong>{{ completedGoalCount }}</strong><span>Achieved</span></div>
+          <div><strong>{{ goals.length }}</strong><span>In play</span></div>
+          <div :class="{ 'is-alert': attentionGoalCount }"><strong>{{ attentionGoalCount }}</strong><span>Need a push</span></div>
+          <div :class="{ 'is-alert': reviewItems.length }"><strong>{{ reviewItems.length }}</strong><span>Worth a look</span></div>
         </div>
+      </section>
+
+      <section v-if="reviewItems.length || portfolioFlag" class="goal-review" aria-labelledby="goal-review-title">
+        <div class="goal-review-head">
+          <div>
+            <span class="overview-kicker">Check-in</span>
+            <h2 id="goal-review-title">{{ reviewTitle }}</h2>
+          </div>
+          <small>Based on your recent weeks, results and recovery. Nothing changes until you say so.</small>
+        </div>
+        <article v-if="portfolioFlag" class="goal-review-item goal-portfolio">
+          <div class="goal-review-item-top">
+            <span class="goal-verdict-chip verdict-warn">Time budget</span>
+            <strong>Goals ask for {{ portfolioFlag.implied_weekly_hours }} h a week, you train {{ portfolioFlag.actual_weekly_hours }} h</strong>
+            
+          </div>
+          <p class="goal-review-headline">{{ portfolioFlag.summary }}</p>
+        </article>
+        <article v-for="item in reviewItems" :key="item.goal_id" class="goal-review-item">
+          <div class="goal-review-item-top">
+            <span class="goal-verdict-chip" :class="`verdict-${verdictTone(item.review.verdict)}`">{{ item.review.label }}</span>
+            <strong>{{ item.title }}</strong>
+            
+          </div>
+          <p class="goal-review-headline">{{ item.review.headline }}</p>
+          <ul class="goal-review-evidence">
+            <li v-for="line in item.review.evidence" :key="line">{{ line }}</li>
+          </ul>
+          <div class="goal-review-actions">
+            <button
+              v-for="(action, index) in reviewActions(item)"
+              :key="action.type + index"
+              type="button"
+              class="goal-review-action"
+              :class="{ 'is-primary': index === 0 }"
+              :disabled="savingReview"
+              @click="openReviewAction(item, action)"
+            >
+              {{ action.label }}
+            </button>
+            <button v-if="!hasBuiltInKeep(item)" type="button" class="goal-action" :disabled="savingReview" @click="decideReview(item, 'kept')">Keep as is</button>
+            <button type="button" class="goal-action goal-action-quiet" :disabled="savingReview" @click="decideReview(item, 'snoozed')">Snooze 4 weeks</button>
+          </div>
+        </article>
+        <p v-if="reviewMessage" class="goal-message">{{ reviewMessage }}</p>
       </section>
 
       <div v-if="!goals.length" class="card goal-empty">
@@ -39,70 +84,130 @@
           <span>{{ sectionWindowLabel(section.key) }}</span>
         </div>
         <div class="goal-grid">
-          <article v-for="goal in section.items" :key="goal.id" class="card goal-card" :class="`goal-card-${goal.status}`">
-            <div class="goal-top">
-              <div>
-                <div class="goal-meta-row">
-                  <span class="goal-family-chip">{{ goal.family_label }}</span>
-                  <span class="goal-meta">{{ goal.period_label || periodHeading(goal.period_type) }}</span>
-                </div>
-                <h2 class="goal-title">{{ goal.title }}</h2>
+          <article v-for="goal in section.items" :key="goal.id" class="gcard" :class="[`gcard-${goal.status}`, `tone-${goalTone(goal)}`]">
+            <header class="gcard-head">
+              <span class="gcard-icon" aria-hidden="true"><NavIcon :name="GOAL_ICONS[goalTone(goal)] || 'goals'" /></span>
+              <div class="gcard-titles">
+                <span class="gcard-kicker">
+                  {{ goal.period_label || periodHeading(goal.period_type) }}
+                  <em v-if="goal.commitment === 'anchor'" class="gcard-anchor" title="Anchor goal: a standard you keep no matter what">Anchor</em>
+                  <em v-if="goal.season_end" class="gcard-season" :class="{ 'is-ended': goal.season_ended }">{{ seasonLabel(goal) }}</em>
+                </span>
+                <h2>{{ goal.title }}</h2>
+                <p v-if="goal.purpose" class="gcard-purpose">{{ goal.purpose }}</p>
               </div>
-              <span class="goal-status" :class="`status-${goal.status}`">{{ statusLabel(goal.status) }}</span>
-            </div>
+              <span class="gcard-status" :class="`status-${goal.status}`">{{ friendlyStatus(goal.status) }}</span>
+            </header>
 
-            <template v-if="usesVolumeDisplay(goal)">
-              <div class="goal-progress-head">
-                <div class="goal-numbers"><strong>{{ formatGoalValue(goal, goal.current_value) }}</strong><span>{{ goal.unit }}</span></div>
-                <div class="goal-target"><span>Target</span><strong>{{ formatGoalValue(goal, goal.target_value) }} {{ goal.unit }}</strong></div>
+            <div v-if="usesVolumeDisplay(goal)" class="gcard-progress">
+              <div class="gcard-ring" role="progressbar" :aria-label="`${goal.title} progress`" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="Math.round(goal.progress_pct)">
+                <svg viewBox="0 0 80 80" aria-hidden="true">
+                  <circle class="ring-track" cx="40" cy="40" r="34" />
+                  <circle v-if="goal.progress_pct > 0" class="ring-fill" cx="40" cy="40" r="34" :stroke-dasharray="`${ringLength(goal)} ${RING_CIRCUMFERENCE}`" />
+                </svg>
+                <strong><span>{{ Math.round(goal.progress_pct) }}<small>%</small></span></strong>
               </div>
-              <div class="goal-track-wrap">
-                <div class="goal-track" role="progressbar" :aria-label="`${goal.title} progress`" aria-valuemin="0" :aria-valuemax="goal.target_value" :aria-valuenow="goal.current_value">
-                  <div class="goal-fill" :style="{ width: `${Math.min(goal.progress_pct, 100)}%` }"></div>
-                </div>
-              </div>
-              <div class="goal-progress-meta">
-                <strong>{{ goal.progress_pct }}% complete</strong>
-                <span>{{ remainingLabel(goal) }}</span>
-              </div>
-            </template>
-
-            <template v-else>
-              <div class="goal-planning-summary">{{ goal.target_summary }}</div>
-              <div class="goal-forecast-grid">
-                <div class="goal-forecast-stat">
-                  <span>Recent best</span>
-                  <strong>{{ performanceCurrentLabel(goal) }}</strong>
-                </div>
-                <div class="goal-forecast-stat">
-                  <span>Target</span>
-                  <strong>{{ performanceTargetLabel(goal) }}</strong>
-                </div>
-              </div>
-              <div class="goal-foot">
-                <span>{{ goal.compact_summary }}</span>
-                <span>{{ goal.days_remaining }}d left</span>
-              </div>
-            </template>
-
-            <div class="goal-insight-grid">
-              <div v-if="usesVolumeDisplay(goal) && goal.status !== 'completed'" class="goal-insight">
-                <span>Against schedule</span><strong :class="paceDeltaClass(goal)">{{ paceLabel(goal) }}</strong>
-              </div>
-              <div class="goal-insight"><span>Time remaining</span><strong>{{ timeRemainingLabel(goal) }}</strong></div>
-              <div v-if="goal.forecast && goal.status !== 'completed'" class="goal-insight">
-                <span>{{ goal.planning_guidance?.required_next_label || 'Needed next' }}</span><strong>{{ forecastNeed(goal) }}</strong>
+              <div class="gcard-figures">
+                <div class="gcard-value"><strong>{{ formatGoalValue(goal, goal.current_value) }}</strong><span>of {{ formatGoalValue(goal, goal.target_value) }} {{ goal.unit }}</span></div>
+                <p>{{ remainingLabel(goal) }} · {{ timeRemainingLabel(goal) }}</p>
               </div>
             </div>
+            <div v-else class="gcard-progress gcard-performance">
+              <div><span>Recent best</span><strong>{{ performanceCurrentLabel(goal) }}</strong></div>
+              <div><span>Target</span><strong>{{ performanceTargetLabel(goal) }}</strong></div>
+              <p>{{ goal.days_remaining }} days left</p>
+            </div>
 
-            <div v-if="primaryEvidence(goal)" class="goal-evidence" :class="`evidence-${goal.status}`">
-              <span>{{ evidenceLabel(goal) }}</span><p>{{ primaryEvidence(goal) }}</p>
+            <p class="gcard-coach" :class="{ 'is-empty': !coachLine(goal) }">{{ coachLine(goal) }}</p>
+
+            <div class="gcard-history">
+              <GoalHistorySparkline v-if="usesVolumeDisplay(goal)" :history="goal.history" :period-noun="goal.period_type === 'month' ? 'month' : 'week'" />
             </div>
-            <div v-if="nextAction(goal)" class="goal-next-action">
-              <span aria-hidden="true">→</span><div><strong>What matters next</strong><p>{{ nextAction(goal) }}</p></div>
-            </div>
+
+            <details class="gcard-more">
+              <summary>More detail</summary>
+              <div class="gcard-more-body">
+                <span v-if="reviewFor(goal)" class="goal-verdict-chip" :class="`verdict-${verdictTone(reviewFor(goal).verdict)}`">{{ reviewFor(goal).label }}{{ reviewFor(goal).snoozed_until ? ' · snoozed' : '' }}</span>
+                <dl v-if="usesVolumeDisplay(goal)" class="gcard-facts">
+                  <div v-if="goal.status !== 'completed'"><dt>Against schedule</dt><dd :class="paceDeltaClass(goal)">{{ paceLabel(goal) }}</dd></div>
+                  <div v-if="goal.forecast && goal.status !== 'completed'"><dt>{{ goal.planning_guidance?.required_next_label || 'Needed next' }}</dt><dd>{{ forecastNeed(goal) }}</dd></div>
+                </dl>
+                <p v-if="primaryEvidence(goal)" class="gcard-note"><strong>{{ evidenceLabel(goal) }}.</strong> {{ primaryEvidence(goal) }}</p>
+                <ul v-if="goal.outcomes?.signals?.length" class="goal-outcomes" aria-label="Linked outcomes">
+                  <li v-for="signal in goal.outcomes.signals" :key="signal.key" class="goal-outcome" :title="signal.note || ''">
+                    <span class="goal-outcome-trend" :class="`outcome-${signal.trend}`">{{ outcomeTrendLabel(signal) }}</span>
+                    <span class="goal-outcome-label">{{ signal.label }}</span>
+                  </li>
+                </ul>
+              </div>
+            </details>
+
+            <footer class="gcard-actions" :aria-label="`${goal.title} actions`">
+              <button type="button" class="goal-action" @click="openEditDialog(goal)">Edit</button>
+              <details class="gcard-menu">
+                <summary class="goal-action" aria-label="More actions">Manage ⋯</summary>
+                <div class="gcard-menu-list" @click="$event.currentTarget.parentElement.open = false">
+                  <button type="button" @click="openStatusDialog(goal, 'paused')">Pause</button>
+                  <button type="button" @click="openStatusDialog(goal, 'completed')">Mark complete</button>
+                  <button type="button" @click="openStatusDialog(goal, 'retired')">Retire</button>
+                </div>
+              </details>
+            </footer>
           </article>
         </div>
+      </section>
+
+      <section v-if="goalSuggestions.length" class="goal-suggestions" aria-labelledby="goal-suggestions-title">
+        <div class="goal-section-head">
+          <div>
+            <div id="goal-suggestions-title" class="section-title">Ideas for you</div>
+            <span>{{ goalSuggestions.length }} {{ goalSuggestions.length === 1 ? 'idea' : 'ideas' }} · nothing is added until you accept</span>
+          </div>
+        </div>
+        <ul class="card goal-suggestion-list">
+          <li v-for="suggestion in goalSuggestions" :key="suggestion.key" class="goal-suggestion-row">
+            <div class="goal-suggestion-main">
+              <span class="goal-suggestion-kind">{{ suggestionSourceLabel(suggestion.source) }} · {{ suggestionPeriodLabel(suggestion.draft?.period_type) }}</span>
+              <strong>{{ suggestion.title }}</strong>
+              <p>{{ suggestion.rationale }}</p>
+              <details v-if="suggestion.evidence?.length || isQualitySuggestion(suggestion)" class="goal-suggestion-why">
+                <summary>Why this?</summary>
+                <ul>
+                  <li v-for="(line, index) in suggestion.evidence" :key="`${suggestion.key}-evidence-${index}`">{{ suggestionEvidenceLine(line) }}</li>
+                </ul>
+                <router-link v-if="isQualitySuggestion(suggestion)" to="/plan">Browse structured cycling workouts <span aria-hidden="true">↗</span></router-link>
+              </details>
+            </div>
+            <div class="goal-suggestion-actions">
+              <button type="button" class="goal-review-action is-primary" :disabled="savingSuggestionKey === suggestion.key" @click="acceptSuggestion(suggestion)">Review &amp; add</button>
+              <button type="button" class="goal-action goal-action-quiet" :disabled="savingSuggestionKey === suggestion.key" @click="dismissSuggestion(suggestion)">
+                {{ savingSuggestionKey === suggestion.key ? 'Saving...' : 'Not now' }}
+              </button>
+            </div>
+          </li>
+        </ul>
+        <p v-if="suggestionMessage" class="goal-message">{{ suggestionMessage }}</p>
+      </section>
+
+      <section v-if="pastGoals.length" class="card goal-settings-card goal-past-card">
+        <button class="goal-settings-toggle" :aria-expanded="pastExpanded" @click="pastExpanded = !pastExpanded">
+          <span><strong>Paused &amp; past goals</strong><small>{{ pastGoalsSummary }}</small></span>
+          <span aria-hidden="true">{{ pastExpanded ? '−' : '+' }}</span>
+        </button>
+        <Transition name="expand-fade">
+          <ul v-if="pastExpanded" class="goal-past-list">
+            <li v-for="goal in pastGoals" :key="goal.id" class="goal-past-row">
+              <span class="goal-lifecycle-chip" :class="`lifecycle-${goal.lifecycle_status}`">{{ lifecycleLabel(goal.lifecycle_status) }}</span>
+              <div class="goal-past-copy">
+                <strong>{{ goal.title }}</strong>
+                <small>{{ pastGoalDetail(goal) }}</small>
+              </div>
+              <button type="button" class="goal-action" :disabled="savingStatus" @click="reactivateGoal(goal)">
+                {{ goal.lifecycle_status === 'paused' ? 'Resume' : 'Reactivate' }}
+              </button>
+            </li>
+          </ul>
+        </Transition>
       </section>
 
       <section class="card goal-settings-card">
@@ -126,13 +231,13 @@
       <div class="goal-dialog card" role="dialog" aria-modal="true" aria-labelledby="add-goal-title">
         <div class="goal-dialog-head">
           <div>
-            <div id="add-goal-title" class="card-title">Add Goal</div>
-            <div class="goal-dialog-sub">Set a target and let the app track progress automatically.</div>
+            <div id="add-goal-title" class="card-title">{{ editingGoalId ? 'Edit Goal' : 'Add Goal' }}</div>
+            <div class="goal-dialog-sub">{{ editingGoalId ? 'Adjust the target, or record why this goal matters.' : 'Set a target and let the app track progress automatically.' }}</div>
           </div>
-          <button class="dialog-close" aria-label="Close add goal dialog" @click="closeDialog">×</button>
+          <button class="dialog-close" aria-label="Close goal dialog" @click="closeDialog">×</button>
         </div>
 
-        <div class="goal-draft-shell">
+        <div v-if="!editingGoalId" class="goal-draft-shell">
           <label class="goal-draft-field">
             <span>Describe the goal naturally</span>
             <textarea
@@ -216,7 +321,7 @@
                 </option>
               </select>
             </label>
-            <label v-if="form.metric_type === 'activities_count'">
+            <label v-if="['activities_count', 'quality_sessions'].includes(form.metric_type)">
               <span>Activity type</span>
               <select v-model="form.activity_type" class="goal-control goal-select">
                 <option value="">Any activity</option>
@@ -285,6 +390,26 @@
               <input v-model.number="form.target_config.target_watts" type="number" min="1" step="1">
             </label>
           </template>
+
+          <label class="goal-form-wide">
+            <span>Why this goal matters <em>(optional)</em></span>
+            <input v-model="form.purpose" type="text" maxlength="280" placeholder="Example: maintain muscle alongside heavy cardio">
+          </label>
+          <label class="goal-anchor-toggle goal-form-wide">
+            <input v-model="form.anchor" type="checkbox">
+            <span>
+              <strong>Anchor goal</strong>
+              <small>A deliberate standard you keep even when it is hard to hit. Goal reviews check whether its purpose is served, but never suggest lowering or dropping it.</small>
+            </span>
+          </label>
+          <label v-if="usesSeasonEnd(form)">
+            <span>Season ends <em>(optional)</em></span>
+            <input v-model="form.season_end" type="date">
+          </label>
+          <label>
+            <span>Review on <em>(optional)</em></span>
+            <input v-model="form.review_on" type="date">
+          </label>
         </div>
 
         <p v-if="message" class="goal-message">{{ message }}</p>
@@ -292,7 +417,73 @@
         <div class="goal-dialog-actions">
           <button class="dialog-secondary" @click="closeDialog">Cancel</button>
           <button class="save-btn" :disabled="saving || !canSave" @click="saveGoal">
-            {{ saving ? 'Saving...' : 'Save Goal' }}
+            {{ saving ? 'Saving...' : editingGoalId ? 'Save Changes' : 'Save Goal' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="reviewConfirm" class="goal-dialog-backdrop" @click.self="closeReviewConfirm" @keydown.esc="closeReviewConfirm">
+      <div class="goal-dialog card goal-status-dialog" role="dialog" aria-modal="true" aria-labelledby="goal-review-confirm-title">
+        <div class="goal-dialog-head">
+          <div>
+            <div id="goal-review-confirm-title" class="card-title">{{ reviewConfirm.action.label }}</div>
+            <div class="goal-dialog-sub">{{ reviewConfirm.item.title }}</div>
+          </div>
+          <button class="dialog-close" aria-label="Close" @click="closeReviewConfirm">×</button>
+        </div>
+        <table v-if="reviewConfirm.changes.length" class="goal-change-table">
+          <thead><tr><th scope="col"></th><th scope="col">Now</th><th scope="col">After</th></tr></thead>
+          <tbody>
+            <tr v-for="change in reviewConfirm.changes" :key="change.label">
+              <th scope="row">{{ change.label }}</th><td>{{ change.before }}</td><td>{{ change.after }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-if="reviewConfirm.action.detail" class="goal-review-detail">{{ reviewConfirm.action.detail }}</p>
+        <label v-if="reviewConfirm.action.body?.status" class="goal-draft-field">
+          <span>Reason <em>(kept in goal history)</em></span>
+          <input v-model="reviewConfirm.reason" class="goal-status-reason" type="text" maxlength="280">
+        </label>
+        <p v-if="reviewMessage" class="goal-message">{{ reviewMessage }}</p>
+        <div class="goal-dialog-actions">
+          <button class="dialog-secondary" @click="closeReviewConfirm">Cancel</button>
+          <button class="save-btn" :disabled="savingReview" @click="confirmReviewAction">
+            {{ savingReview ? 'Saving...' : reviewConfirm.action.method ? 'Apply' : 'Open plan' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="statusDialog" class="goal-dialog-backdrop" @click.self="closeStatusDialog" @keydown.esc="closeStatusDialog">
+      <div class="goal-dialog card goal-status-dialog" role="dialog" aria-modal="true" aria-labelledby="goal-status-title">
+        <div class="goal-dialog-head">
+          <div>
+            <div id="goal-status-title" class="card-title">{{ statusDialogCopy.title }}</div>
+            <div class="goal-dialog-sub">{{ statusDialogCopy.sub }}</div>
+          </div>
+          <button class="dialog-close" aria-label="Close" @click="closeStatusDialog">×</button>
+        </div>
+        <p v-if="statusDialog.goal.commitment === 'anchor' && statusDialog.status !== 'completed'" class="goal-anchor-warning">
+          This is an anchor goal{{ statusDialog.goal.purpose ? ` — ${statusDialog.goal.purpose}` : '' }}. Only {{ statusDialog.status === 'paused' ? 'pause' : 'retire' }} it if that purpose no longer applies.
+        </p>
+        <label class="goal-draft-field">
+          <span>Reason <em>(optional, kept in goal history)</em></span>
+          <input
+            ref="statusReasonInput"
+            v-model="statusDialog.reason"
+            class="goal-status-reason"
+            type="text"
+            maxlength="280"
+            :placeholder="statusDialogCopy.placeholder"
+            @keydown.enter="confirmStatusChange"
+          >
+        </label>
+        <p v-if="statusMessage" class="goal-message">{{ statusMessage }}</p>
+        <div class="goal-dialog-actions">
+          <button class="dialog-secondary" @click="closeStatusDialog">Cancel</button>
+          <button class="save-btn" :disabled="savingStatus" @click="confirmStatusChange">
+            {{ savingStatus ? 'Saving...' : statusDialogCopy.confirm }}
           </button>
         </div>
       </div>
@@ -460,6 +651,21 @@
           </div>
         </div>
 
+        <div class="athlete-profile-days athlete-profile-season">
+          <span>Off season (mostly indoor)</span>
+          <div class="athlete-season-row">
+            <select v-model="profileForm.off_season_start" class="goal-control goal-select" aria-label="Off season starts">
+              <option value="">No off season</option>
+              <option v-for="month in monthOptions" :key="`start-${month.value}`" :value="month.value">{{ month.label }}</option>
+            </select>
+            <span aria-hidden="true">to</span>
+            <select v-model="profileForm.off_season_end" class="goal-control goal-select" aria-label="Off season ends" :disabled="!profileForm.off_season_start">
+              <option v-for="month in monthOptions" :key="`end-${month.value}`" :value="month.value">{{ month.label }}</option>
+            </select>
+          </div>
+          <small>Goal reviews compare off-season weeks with past off-season weeks, so a summer of outdoor riding doesn't set winter targets.</small>
+        </div>
+
         <div class="athlete-profile-textareas">
           <label class="goal-restriction-field">
             <span>Weekly availability notes</span>
@@ -603,11 +809,14 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
+import GoalHistorySparkline from '../components/GoalHistorySparkline.vue'
+import NavIcon from '../components/NavIcon.vue'
 
 const api = useApi()
 const route = useRoute()
+const router = useRouter()
 const loading = ref(true)
 const saving = ref(false)
 const draftingGoal = ref(false)
@@ -620,7 +829,27 @@ const restrictionMessage = ref('')
 const profileMessage = ref('')
 const workoutTemplateMessage = ref('')
 const performanceMessage = ref('')
-const goals = ref([])
+const allGoals = ref([])
+const goals = computed(() => allGoals.value.filter((goal) => goal.lifecycle_status === 'active'))
+const pastGoals = computed(() =>
+  allGoals.value
+    .filter((goal) => goal.lifecycle_status !== 'active')
+    .sort((left, right) => String(right.status_changed_at || '').localeCompare(String(left.status_changed_at || '')))
+)
+const pastExpanded = ref(false)
+const goalReview = ref(null)
+const goalSuggestions = ref([])
+const savingSuggestionKey = ref('')
+const suggestionMessage = ref('')
+const reviewConfirm = ref(null)
+const savingReview = ref(false)
+const reviewMessage = ref('')
+const pendingNextGoal = ref(null)
+const editingGoalId = ref(null)
+const statusDialog = ref(null)
+const statusReasonInput = ref(null)
+const savingStatus = ref(false)
+const statusMessage = ref('')
 const dialogOpen = ref(false)
 const restrictionDialogOpen = ref(false)
 const profileDialogOpen = ref(false)
@@ -645,14 +874,14 @@ const loadGoals = async () => {
   loading.value = true
   try {
     const [goalsResult, restrictionResult, profileResult, workoutTemplateResult, performanceResult, performanceSummaryResult] = await Promise.all([
-      api.getGoals({ limit: 24 }),
+      api.getGoals({ limit: 48, include_history: true, include_outcomes: true }),
       api.getModalityRestrictions(),
       api.getAthleteProfile(),
       api.getWorkoutTemplateSettings(),
       api.getPerformanceSettings(),
       api.getPerformanceSummary(),
     ])
-    goals.value = goalsResult.data
+    allGoals.value = goalsResult.data
     restrictionForm.value = restrictionFormFromPayload(restrictionResult.data)
     athleteProfile.value = profileResult.data
     profileForm.value = profileFormFromPayload(profileResult.data)
@@ -663,6 +892,26 @@ const loadGoals = async () => {
     performanceSummary.value = performanceSummaryResult.data
   } finally {
     loading.value = false
+  }
+  await Promise.all([loadReview(), loadSuggestions()])
+}
+
+// The review is a secondary layer: if it fails, the goals page still works.
+const loadReview = async () => {
+  try {
+    goalReview.value = (await api.getGoalReview()).data
+  } catch {
+    goalReview.value = null
+  }
+}
+
+const loadSuggestions = async () => {
+  try {
+    const result = await api.getGoalSuggestions()
+    const suggestions = result.data?.suggestions ?? result.data
+    goalSuggestions.value = Array.isArray(suggestions) ? suggestions.slice(0, 3) : []
+  } catch {
+    goalSuggestions.value = []
   }
 }
 
@@ -700,9 +949,9 @@ const priorityGoal = computed(() =>
   goals.value[0]
 )
 const goalOverviewTitle = computed(() => {
-  if (attentionGoalCount.value) return `${attentionGoalCount.value} ${attentionGoalCount.value === 1 ? 'goal needs' : 'goals need'} attention`
-  if (goals.value.length && completedGoalCount.value === goals.value.length) return 'Every current target is achieved'
-  return 'Your goals are moving in the right direction'
+  if (attentionGoalCount.value) return `${attentionGoalCount.value} ${attentionGoalCount.value === 1 ? 'goal needs' : 'goals need'} a push this week`
+  if (goals.value.length && completedGoalCount.value === goals.value.length) return 'Every target reached. Time to aim higher.'
+  return 'You are on track. Keep it rolling.'
 })
 const goalOverviewCopy = computed(() => {
   const goal = priorityGoal.value
@@ -775,6 +1024,7 @@ const canSave = computed(() =>
 
 const openDialog = () => {
   message.value = ''
+  editingGoalId.value = null
   form.value = defaultForm()
   goalDraftText.value = ''
   goalDraftPreview.value = null
@@ -791,8 +1041,257 @@ const openRestrictionDialog = async () => {
   restrictionDialogOpen.value = true
 }
 
+const openEditDialog = (goal) => {
+  message.value = ''
+  editingGoalId.value = goal.id
+  form.value = formFromGoal(goal)
+  goalDraftText.value = ''
+  goalDraftPreview.value = null
+  dialogOpen.value = true
+}
+
+const OUTCOME_TREND_LABELS = { improving: '↑ Improving', flat: '→ Holding', declining: '↓ Declining', insufficient: 'Not enough data' }
+const outcomeTrendLabel = (signal) => {
+  const label = OUTCOME_TREND_LABELS[signal.trend] || signal.trend
+  if (signal.change_pct == null || signal.trend === 'insufficient') return label
+  const sign = signal.change_pct > 0 ? '+' : signal.change_pct < 0 ? '−' : '±'
+  return `${label} ${sign}${Math.abs(signal.change_pct)}%`
+}
+
+const reviewByGoal = computed(() => Object.fromEntries((goalReview.value?.goals || []).map((item) => [item.goal_id, item.review])))
+const reviewFor = (goal) => reviewByGoal.value[goal.id] || null
+const reviewItems = computed(() => (goalReview.value?.goals || []).filter((item) => item.review.needs_attention))
+const portfolioFlag = computed(() => (goalReview.value?.portfolio?.status === 'over_committed' ? goalReview.value.portfolio : null))
+const reviewTitle = computed(() => {
+  const count = reviewItems.value.length
+  if (!count) return 'Your goals ask for more time than you train'
+  return `${count} ${count === 1 ? 'goal is' : 'goals are'} worth a look`
+})
+
+const SUGGESTION_SOURCE_LABELS = {
+  replace_completed: 'Completed goal',
+  plateau_to_quality: 'Training signal',
+  profile_weakness: 'Power profile',
+  season_template: 'Season change',
+  neglected_modality: 'Training mix',
+}
+const suggestionSourceLabel = (source) => SUGGESTION_SOURCE_LABELS[source] || 'Training signal'
+const suggestionPeriodLabel = (periodType) => ({ week: 'Weekly', month: 'Monthly', year: 'Yearly' }[periodType] || 'Suggested')
+const suggestionEvidenceLine = (line) => {
+  if (typeof line === 'string') return line
+  return line?.text || line?.label || line?.summary || String(line || '')
+}
+const isQualitySuggestion = (suggestion) => suggestion?.draft?.metric_type === 'quality_sessions'
+
+const VERDICT_TONES = {
+  done: 'good',
+  productive: 'good',
+  anchor_steady: 'good',
+  out_of_reach: 'warn',
+  crowding_out: 'warn',
+  inconsistent: 'warn',
+  too_easy: 'act',
+  plateaued: 'act',
+  review_due: 'act',
+}
+const verdictTone = (verdict) => VERDICT_TONES[verdict] || 'neutral'
+
+// Built-in "keep" actions (e.g. clearing a review date) replace the generic Keep button.
+const hasBuiltInKeep = (item) => item.review.actions.some((action) => action.type === 'keep' && action.method)
+const reviewActions = (item) => item.review.actions.filter((action) => action.method || action.type === 'plan_support')
+
+const describeDate = (value) => (value ? formatShortDate(value) : 'Not set')
+const reviewChanges = (item, action) => {
+  const body = action.body || {}
+  const unit = item.unit ? ` ${item.unit}` : ''
+  const changes = []
+  if ('target_value' in body) changes.push({ label: 'Target', before: `${item.target_value}${unit}`, after: `${body.target_value}${unit}` })
+  if ('season_end' in body) changes.push({ label: 'Season ends', before: describeDate(item.season_end), after: body.season_end ? formatShortDate(body.season_end) : 'No end' })
+  if ('review_on' in body) changes.push({ label: 'Next review', before: describeDate(item.review_on), after: body.review_on ? formatShortDate(body.review_on) : 'Cleared' })
+  if (body.status) changes.push({ label: 'Status', before: lifecycleLabel(item.lifecycle_status || 'active'), after: lifecycleLabel(body.status) })
+  return changes
+}
+
+const openReviewAction = (item, action) => {
+  reviewMessage.value = ''
+  if (action.type === 'create_next') {
+    openNextGoalDraft(item, action)
+    return
+  }
+  reviewConfirm.value = { item, action, changes: reviewChanges(item, action), reason: action.body?.reason || '' }
+}
+
+const closeReviewConfirm = () => {
+  if (savingReview.value) return
+  reviewConfirm.value = null
+}
+
+const decideReview = async (item, decision) => {
+  savingReview.value = true
+  reviewMessage.value = ''
+  try {
+    await api.recordGoalReviewDecision(item.goal_id, { verdict: item.review.verdict, decision })
+    await loadReview()
+  } catch (error) {
+    reviewMessage.value = error?.response?.data?.detail || 'Failed to save the review decision.'
+  } finally {
+    savingReview.value = false
+  }
+}
+
+const acceptSuggestion = (suggestion) => {
+  suggestionMessage.value = ''
+  openNextGoalDraft(
+    suggestion,
+    { body: suggestion.draft, detail: suggestion.rationale },
+    suggestion.key,
+  )
+}
+
+const dismissSuggestion = async (suggestion) => {
+  if (!suggestion?.key || savingSuggestionKey.value) return
+  savingSuggestionKey.value = suggestion.key
+  suggestionMessage.value = ''
+  try {
+    await api.recordGoalSuggestionDecision(suggestion.key, { decision: 'dismissed' })
+    goalSuggestions.value = goalSuggestions.value.filter((item) => item.key !== suggestion.key)
+  } catch (error) {
+    suggestionMessage.value = error?.response?.data?.detail || 'Failed to dismiss the suggestion.'
+  } finally {
+    savingSuggestionKey.value = ''
+  }
+}
+
+const confirmReviewAction = async () => {
+  const { item, action, reason } = reviewConfirm.value || {}
+  if (!action || savingReview.value) return
+  if (!action.method) {
+    await decideReview(item, 'kept')
+    reviewConfirm.value = null
+    router.push('/plan')
+    return
+  }
+  savingReview.value = true
+  reviewMessage.value = ''
+  try {
+    const body = action.body?.status ? { ...action.body, reason: reason?.trim() || null } : action.body
+    await api.applyGoalReviewAction({ ...action, body })
+    await api.recordGoalReviewDecision(item.goal_id, { verdict: item.review.verdict, decision: 'applied' })
+    reviewConfirm.value = null
+    await loadGoals()
+  } catch (error) {
+    reviewMessage.value = error?.response?.data?.detail || 'Failed to apply the change.'
+  } finally {
+    savingReview.value = false
+  }
+}
+
+// Next period's goal opens in the normal editor so its target can be adjusted
+// first. A goal that starts in the future is saved paused until its start date.
+const openNextGoalDraft = (item, action, suggestionKey = null) => {
+  message.value = ''
+  editingGoalId.value = null
+  goalDraftText.value = ''
+  goalDraftPreview.value = null
+  const draft = action.body || {}
+  form.value = formFromGoal(draft)
+  pendingNextGoal.value = { startDate: draft.start_date, detail: action.detail, suggestionKey }
+  message.value = action.detail || ''
+  dialogOpen.value = true
+}
+
+const LIFECYCLE_LABELS = { active: 'Active', paused: 'Paused', completed: 'Completed', retired: 'Retired' }
+const lifecycleLabel = (status) => LIFECYCLE_LABELS[status] || 'Goal'
+
+const STATUS_DIALOG_COPY = {
+  paused: {
+    verb: 'Pause',
+    sub: 'Paused goals stop counting toward planning. You can resume them any time.',
+    placeholder: 'Example: off season, travel, injury',
+  },
+  completed: {
+    verb: 'Complete',
+    sub: 'Marks the goal achieved and moves it to past goals with its final progress.',
+    placeholder: 'Example: target reached in August',
+  },
+  retired: {
+    verb: 'Retire',
+    sub: 'For goals that no longer serve your training. It stays in history with your reason.',
+    placeholder: 'Example: running paused since May, focus is cycling',
+  },
+}
+const statusDialogCopy = computed(() => {
+  const dialog = statusDialog.value
+  if (!dialog) return {}
+  const copy = STATUS_DIALOG_COPY[dialog.status]
+  return {
+    title: `${copy.verb} “${dialog.goal.title}”?`,
+    sub: copy.sub,
+    placeholder: copy.placeholder,
+    confirm: `${copy.verb} goal`,
+  }
+})
+const pastGoalsSummary = computed(() => {
+  const counts = pastGoals.value.reduce((acc, goal) => ({ ...acc, [goal.lifecycle_status]: (acc[goal.lifecycle_status] || 0) + 1 }), {})
+  return ['paused', 'completed', 'retired']
+    .filter((status) => counts[status])
+    .map((status) => `${counts[status]} ${lifecycleLabel(status).toLowerCase()}`)
+    .join(' · ')
+})
+
+const openStatusDialog = (goal, status) => {
+  statusMessage.value = ''
+  statusDialog.value = { goal, status, reason: '' }
+  nextTick(() => statusReasonInput.value?.focus())
+}
+
+const closeStatusDialog = () => {
+  if (savingStatus.value) return
+  statusDialog.value = null
+}
+
+const changeGoalStatus = async (goal, status, reason) => {
+  savingStatus.value = true
+  statusMessage.value = ''
+  try {
+    await api.setGoalStatus(goal.id, { status, reason: reason?.trim() || null })
+    await loadGoals()
+    return true
+  } catch (error) {
+    statusMessage.value = error?.response?.data?.detail || 'Failed to update goal.'
+    return false
+  } finally {
+    savingStatus.value = false
+  }
+}
+
+const confirmStatusChange = async () => {
+  const dialog = statusDialog.value
+  if (!dialog || savingStatus.value) return
+  if (await changeGoalStatus(dialog.goal, dialog.status, dialog.reason)) statusDialog.value = null
+}
+
+const reactivateGoal = (goal) => changeGoalStatus(goal, 'active', null)
+
+const seasonLabel = (goal) => {
+  const day = formatShortDate(goal.season_end)
+  return goal.season_ended ? `Season ended ${day}` : `Until ${day}`
+}
+
+const pastGoalDetail = (goal) => {
+  const parts = []
+  if (usesVolumeDisplay(goal) && goal.target_value) {
+    parts.push(`${formatGoalValue(goal, goal.current_value)} / ${formatGoalValue(goal, goal.target_value)} ${goal.unit}`.trim())
+  }
+  if (goal.status_changed_at) parts.push(`${lifecycleLabel(goal.lifecycle_status)} ${formatShortDate(goal.status_changed_at)}`)
+  if (goal.status_reason) parts.push(goal.status_reason)
+  return parts.join(' · ')
+}
+
 const closeDialog = () => {
   if (saving.value) return
+  editingGoalId.value = null
+  pendingNextGoal.value = null
   dialogOpen.value = false
   form.value = defaultForm()
   goalDraftText.value = ''
@@ -852,10 +1351,30 @@ const closePerformanceDialog = () => {
 const saveGoal = async () => {
   saving.value = true
   message.value = ''
+  suggestionMessage.value = ''
   try {
-    await api.createGoal(goalPayloadFromForm(form.value))
+    const payload = { ...goalPayloadFromForm(form.value), ...lifecyclePayloadFromForm(form.value) }
+    const pendingSuggestionKey = pendingNextGoal.value?.suggestionKey
+    const scheduledStart = pendingNextGoal.value?.startDate || form.value.start_date
+    if (editingGoalId.value) {
+      await api.updateGoal(editingGoalId.value, payload)
+    } else if (scheduledStart && scheduledStart > new Date().toISOString().slice(0, 10)) {
+      const { data } = await api.createGoal({ ...payload, is_active: false, review_on: scheduledStart })
+      await api.setGoalStatus(data.id, { status: 'paused', reason: `Starts ${formatShortDate(scheduledStart)}` })
+    } else {
+      await api.createGoal(payload)
+    }
+    if (pendingSuggestionKey) {
+      try {
+        await api.recordGoalSuggestionDecision(pendingSuggestionKey, { decision: 'accepted' })
+      } catch {
+        suggestionMessage.value = 'Goal saved, but the suggestion decision could not be recorded.'
+      }
+    }
+    pendingNextGoal.value = null
     await loadGoals()
     dialogOpen.value = false
+    editingGoalId.value = null
     form.value = defaultForm()
     message.value = 'Goal saved.'
   } catch (error) {
@@ -894,8 +1413,13 @@ const applyGoalDraft = () => {
   next.period_type = draft.period_type || next.period_type
   next.metric_type = draft.metric_type || next.metric_type
   next.target_value = draft.target_value == null ? null : Number(draft.target_value)
+  next.start_date = draft.start_date || ''
   next.activity_type = draft.activity_type || ''
   next.end_date = draft.end_date || ''
+  next.purpose = draft.purpose || ''
+  next.anchor = draft.commitment === 'anchor'
+  next.review_on = draft.review_on || ''
+  next.season_end = draft.season_end || ''
   next.target_config = {
     ...next.target_config,
     ...(draft.target_config || {}),
@@ -978,6 +1502,7 @@ function defaultForm() {
     period_type: 'week',
     metric_type: 'run_km',
     target_value: 50,
+    start_date: '',
     activity_type: '',
     end_date: '',
     target_config: {
@@ -985,8 +1510,46 @@ function defaultForm() {
       target_duration_min: null,
       duration_min: null,
       target_watts: null,
+      measurement: null,
     },
+    purpose: '',
+    anchor: false,
+    review_on: '',
+    season_end: '',
   }
+}
+
+function formFromGoal(goal) {
+  const base = defaultForm()
+  return {
+    ...base,
+    title: goal.title || '',
+    goal_family: goal.goal_family || base.goal_family,
+    period_type: goal.period_type || base.period_type,
+    metric_type: goal.metric_type || base.metric_type,
+    target_value: goal.target_value == null ? null : Number(goal.target_value),
+    start_date: goal.start_date || '',
+    activity_type: goal.activity_type || '',
+    end_date: goal.end_date || '',
+    target_config: { ...base.target_config, ...(goal.target_config || {}) },
+    purpose: goal.purpose || '',
+    anchor: goal.commitment === 'anchor',
+    review_on: goal.review_on || '',
+    season_end: goal.season_end || '',
+  }
+}
+
+function lifecyclePayloadFromForm(goal) {
+  return {
+    purpose: goal.purpose?.trim() || null,
+    commitment: goal.anchor ? 'anchor' : 'flexible',
+    review_on: goal.review_on || null,
+    season_end: usesSeasonEnd(goal) ? goal.season_end || null : null,
+  }
+}
+
+function usesSeasonEnd(goal) {
+  return goal.period_type !== 'year' && goal.goal_family !== 'event_performance'
 }
 
 function defaultRestrictionForm() {
@@ -1005,7 +1568,37 @@ function defaultProfileForm() {
     preferred_long_session_days: [],
     weekly_availability_notes: '',
     planning_notes: '',
+    off_season_start: 10,
+    off_season_end: 3,
   }
+}
+
+const monthOptions = Array.from({ length: 12 }, (_, index) => ({
+  value: index + 1,
+  label: new Date(2026, index, 1).toLocaleDateString(undefined, { month: 'long' }),
+}))
+
+// The profile stores a month list; the form edits it as a (possibly year-wrapping) range.
+function seasonRangeFromMonths(months) {
+  if (!months?.length) return { start: '', end: '' }
+  const set = new Set(months)
+  const previous = (month) => ((month + 10) % 12) + 1
+  const next = (month) => (month % 12) + 1
+  const start = months.find((month) => !set.has(previous(month))) ?? months[0]
+  let end = start
+  while (set.has(next(end)) && next(end) !== start) end = next(end)
+  return { start, end }
+}
+
+function monthsFromSeasonRange(start, end) {
+  if (!start) return []
+  const months = [Number(start)]
+  let month = Number(start)
+  while (month !== Number(end || start) && months.length < 12) {
+    month = (month % 12) + 1
+    months.push(month)
+  }
+  return months
 }
 
 function defaultWorkoutTemplateForm() {
@@ -1058,6 +1651,9 @@ function profileFormFromPayload(payload) {
   next.preferred_long_session_days = [...(payload?.athlete_brief?.preferred_long_session_days || [])]
   next.weekly_availability_notes = payload?.weekly_availability_notes || ''
   next.planning_notes = payload?.planning_notes || ''
+  const season = seasonRangeFromMonths(payload?.off_season_months)
+  next.off_season_start = season.start
+  next.off_season_end = season.end
   return next
 }
 
@@ -1069,6 +1665,7 @@ function profilePayloadFromForm(formState) {
     preferred_long_session_days: [...new Set(formState.preferred_long_session_days || [])],
     weekly_availability_notes: formState.weekly_availability_notes || null,
     planning_notes: formState.planning_notes || null,
+    off_season_months: monthsFromSeasonRange(formState.off_season_start, formState.off_season_end),
   }
 }
 
@@ -1206,6 +1803,19 @@ const nextAction = (goal) =>
   goal.weekly_requirement_summary ||
   ''
 
+const RING_CIRCUMFERENCE = 2 * Math.PI * 34
+const ringLength = (goal) => (Math.min(Math.max(Number(goal.progress_pct) || 0, 0), 100) / 100) * RING_CIRCUMFERENCE
+const FRIENDLY_STATUS = { completed: 'Goal reached', ahead_of_pace: 'Ahead of plan', on_pace: 'On track', constrained: 'Held back' }
+const friendlyStatus = (status) => FRIENDLY_STATUS[status] || 'Needs a push'
+const GOAL_TONES = { ride_km: 'ride', run_km: 'run', strength_sessions: 'strength', zone2_hours: 'z2', quality_sessions: 'ride' }
+const GOAL_ICONS = { ride: 'ride', run: 'run', strength: 'strength', z2: 'pulse' }
+const goalTone = (goal) => GOAL_TONES[goal.metric_type] || (goal.activity_type === 'Ride' ? 'ride' : goal.activity_type === 'Run' ? 'run' : 'accent')
+// One sentence per card: the review's verdict when it is calm, otherwise what to do next.
+const coachLine = (goal) => {
+  const review = reviewFor(goal)
+  if (review && !review.needs_attention && review.headline) return review.headline
+  return nextAction(goal) || primaryEvidence(goal)
+}
 const statusLabel = (status) => {
   if (status === 'constrained') return 'Constrained'
   if (status === 'completed') return 'Done'
@@ -1276,6 +1886,7 @@ const metricOptionsForFamily = (family) => {
     return [
       { value: 'strength_sessions', label: 'Strength sessions' },
       { value: 'activities_count', label: 'Activities count' },
+      { value: 'quality_sessions', label: 'Quality sessions' },
       { value: 'zone2_hours', label: 'Zone 2 hours' },
       { value: 'run_km', label: 'Run km' },
       { value: 'ride_km', label: 'Ride km' },
@@ -1286,6 +1897,7 @@ const metricOptionsForFamily = (family) => {
     { value: 'run_km', label: 'Run km' },
     { value: 'strength_sessions', label: 'Strength sessions' },
     { value: 'activities_count', label: 'Activities count' },
+    { value: 'quality_sessions', label: 'Quality sessions' },
   ]
 }
 
@@ -1319,7 +1931,9 @@ const goalPayloadFromForm = (goal) => {
   if (usesMetricTypeGoal(goal)) {
     payload.metric_type = goal.metric_type
     payload.target_value = Number(goal.target_value)
-    if (goal.metric_type === 'activities_count' && goal.activity_type) {
+    if (goal.start_date) payload.start_date = goal.start_date
+    if (goal.end_date) payload.end_date = goal.end_date
+    if (['activities_count', 'quality_sessions'].includes(goal.metric_type) && goal.activity_type) {
       payload.activity_type = goal.activity_type
     }
     return payload
@@ -1327,6 +1941,9 @@ const goalPayloadFromForm = (goal) => {
   payload.activity_type = goal.activity_type
   payload.end_date = goal.end_date || undefined
   payload.target_config = {}
+  if (goal.goal_family === 'benchmark' && goal.target_config?.measurement) {
+    payload.target_config.measurement = goal.target_config.measurement
+  }
   if (goal.goal_family === 'event_performance') {
     payload.target_config.distance_km = Number(goal.target_config.distance_km)
     payload.target_config.target_duration_min = Number(goal.target_config.target_duration_min)
@@ -1420,6 +2037,9 @@ const goalDraftSummary = (draft) => {
   if (goal.metric_type === 'strength_sessions') {
     return `Strength frequency target: ${goal.target_value || '?'} sessions per ${goal.period_type || 'period'}.`
   }
+  if (goal.metric_type === 'quality_sessions') {
+    return `Structured quality target: ${goal.target_value || '?'} sessions per ${goal.period_type || 'period'}.`
+  }
   if (goal.metric_type === 'run_km' || goal.metric_type === 'ride_km') {
     return `${goal.activity_type || 'Endurance'} volume target: ${goal.target_value || '?'} km this ${goal.period_type || 'period'}.`
   }
@@ -1432,6 +2052,9 @@ const goalTypeHintTitle = (goal) => {
 }
 
 const goalTypeHintCopy = (goal) => {
+  if (goal.metric_type === 'quality_sessions') {
+    return 'Counts structured tempo, interval, sweet spot, or race-specific rides, with a conservative power fallback when intent is missing.'
+  }
   if (goal.goal_family === 'process') {
     return 'Process goals are still measured, but they represent habits or training intent. Accumulation is for totals you want to end up with.'
   }
@@ -1443,7 +2066,7 @@ const goalTypeHintCopy = (goal) => {
 
 const usesVolumeDisplay = (goal) => goal.display_mode !== 'performance'
 
-const usesDiscreteCounts = (goal) => ['strength_sessions', 'activities_count'].includes(goal.metric_type)
+const usesDiscreteCounts = (goal) => ['strength_sessions', 'activities_count', 'quality_sessions'].includes(goal.metric_type)
 
 const formatGoalValue = (goal, value) => {
   const numeric = Number(value || 0)
@@ -1875,14 +2498,12 @@ const showWeeklyRequirement = (goal) => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
-.goal-card { padding: 18px; }
 .goal-top {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
 }
-.goal-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; }
 .goal-meta-row {
   margin-top: 6px;
   display: flex;
@@ -1890,7 +2511,6 @@ const showWeeklyRequirement = (goal) => {
   align-items: center;
   gap: 8px;
 }
-.goal-meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
 .goal-meta-row .goal-meta {
   margin-top: 0;
 }
@@ -1917,14 +2537,6 @@ const showWeeklyRequirement = (goal) => {
   text-align: center;
   align-self: flex-start;
 }
-.status-completed { background: rgba(16,185,129,0.16); color: #34d399; }
-.status-ahead_of_pace { background: rgba(34,197,94,0.16); color: #4ade80; }
-.status-on_pace { background: rgba(59,130,246,0.16); color: #60a5fa; }
-.status-behind_pace { background: rgba(239,68,68,0.16); color: #f87171; }
-.status-constrained { background: rgba(245,158,11,0.16); color: #fbbf24; }
-.goal-numbers { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
-.goal-numbers strong { font-family: var(--font-display); font-size: 32px; line-height: 1; }
-.goal-numbers span { color: var(--muted); }
 .goal-track-wrap {
   position: relative;
   margin-bottom: 38px;
@@ -2419,6 +3031,11 @@ const showWeeklyRequirement = (goal) => {
   border-color: rgba(59,130,246,0.28);
   color: #d9e6ff;
 }
+.athlete-season-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+.athlete-season-row select { width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; }
+.athlete-season-row select:disabled { opacity: .5; }
+.athlete-profile-season small { color: var(--muted); font-size: 12px; line-height: 1.45; }
+.athlete-profile-season { margin-bottom: 16px; }
 .athlete-profile-textareas {
   display: grid;
   gap: 12px;
@@ -2484,40 +3101,6 @@ const showWeeklyRequirement = (goal) => {
 .goal-section-head .section-title { margin: 0; font-size: 17px; }
 .goal-section-head span { color: var(--muted); font-size: 11px; }
 .goal-grid { align-items: start; }
-.goal-card { position: relative; overflow: hidden; padding: 20px; border-radius: 18px; }
-.goal-card::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: #6288ff; opacity: .85; }
-.goal-card-completed::before, .goal-card-ahead_of_pace::before { background: #2fc990; }
-.goal-card-behind_pace::before { background: #f0a743; }
-.goal-card-constrained::before { background: #df9a42; }
-.goal-top { align-items: flex-start; margin-bottom: 20px; }
-.goal-title { margin: 8px 0 0; max-width: 34ch; font-size: 19px; line-height: 1.3; overflow-wrap: anywhere; }
-.goal-meta { margin: 0; }
-.goal-status { min-width: 0; padding: 5px 9px; border: 1px solid currentColor; border-color: color-mix(in srgb, currentColor 28%, transparent); font-size: 10px; }
-.status-behind_pace { background: rgba(245,158,11,.1); color: #f8c36c; }
-.goal-progress-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
-.goal-numbers { margin: 0; gap: 6px; }
-.goal-numbers strong { font-size: 34px; letter-spacing: -.04em; }
-.goal-numbers span { font-size: 13px; }
-.goal-target { display: grid; justify-items: end; }
-.goal-target span, .goal-insight span, .goal-evidence > span, .goal-next-action strong { color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
-.goal-target strong { font-size: 13px; }
-.goal-track-wrap { margin: 14px 0 8px; }
-.goal-track { height: 7px; }
-.goal-fill { background: #6f91f8; }
-.goal-card-completed .goal-fill, .goal-card-ahead_of_pace .goal-fill { background: #35c696; }
-.goal-card-behind_pace .goal-fill, .goal-card-constrained .goal-fill { background: #d9a14e; }
-.goal-progress-meta { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; }
-.goal-progress-meta strong { color: #d9e4ff; font-weight: 650; }
-.goal-insight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1px; margin-top: 18px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--border); }
-.goal-insight { min-width: 0; padding: 10px 11px; background: rgba(14,21,34,.94); }
-.goal-insight span, .goal-insight strong { display: block; }
-.goal-insight strong { margin-top: 5px; font-size: 13px; overflow-wrap: anywhere; }
-.goal-evidence { display: grid; gap: 4px; margin-top: 14px; padding: 11px 12px; border-radius: 12px; border: 1px solid rgba(99,133,220,.15); background: rgba(85,116,193,.06); }
-.goal-evidence p, .goal-next-action p { margin: 0; color: #cbd7f2; font-size: 12px; line-height: 1.45; }
-.evidence-behind_pace, .evidence-constrained { border-color: rgba(221,157,68,.2); background: rgba(221,157,68,.06); }
-.goal-next-action { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 10px; align-items: start; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
-.goal-next-action > span { color: #8ca9f5; font-size: 17px; line-height: 1.2; }
-.goal-next-action div { display: grid; gap: 3px; }
 .goal-settings-card { padding: 0; overflow: hidden; }
 .goal-settings-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 20px; border: 0; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
 .goal-settings-toggle > span:first-child { display: grid; gap: 2px; }
@@ -2530,6 +3113,80 @@ const showWeeklyRequirement = (goal) => {
 .goal-settings-grid span { color: #8ea7e5; font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
 .goal-settings-grid strong { font-size: 13px; line-height: 1.35; }
 .goal-settings-grid small { color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
+
+.goal-review { display: grid; gap: 10px; padding: 20px 22px; border: 1px solid rgba(240,189,110,.22); border-radius: 18px; background: rgba(36,30,22,.35); }
+.goal-review-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.goal-review-head h2 { margin: 4px 0 0; font-family: var(--font-display); font-size: 18px; }
+.goal-review-head small { color: var(--muted); font-size: 11px; text-align: right; }
+.goal-review-item { display: grid; gap: 8px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border); background: rgba(14,21,34,.8); }
+.goal-review-item-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.goal-review-item-top strong { font-size: 14px; }
+.goal-review-confidence { margin-left: auto; color: var(--muted); font-size: 11px; }
+.goal-review-confidence::first-letter { text-transform: uppercase; }
+.goal-review-headline { margin: 0; color: #d9e4ff; font-size: 13px; line-height: 1.45; }
+.goal-review-evidence { margin: 0; padding-left: 18px; display: grid; gap: 3px; color: #b9c6e4; font-size: 12px; line-height: 1.45; }
+.goal-review-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.goal-review-action { padding: 7px 12px; border-radius: 9px; border: 1px solid rgba(123,156,255,.3); background: rgba(111,145,248,.1); color: #d9e4ff; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.goal-review-action.is-primary { background: #6f91f8; border-color: #6f91f8; color: #0b1220; }
+.goal-review-action:hover:not(:disabled) { filter: brightness(1.08); }
+.goal-review-action:disabled { opacity: .5; cursor: not-allowed; }
+.goal-suggestions { display: grid; gap: 0; }
+.goal-suggestions .goal-section-head { margin-bottom: 10px; }
+.goal-suggestion-list { list-style: none; margin: 0; padding: 0; overflow: hidden; }
+.goal-suggestion-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 24px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.goal-suggestion-row:last-child { border-bottom: 0; }
+.goal-suggestion-main { display: grid; gap: 3px; min-width: 0; }
+.goal-suggestion-kind { color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.goal-suggestion-main strong { font-family: var(--font-display); font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
+.goal-suggestion-main > p { margin: 0; color: var(--muted-soft, #9aa9c7); font-size: 12px; line-height: 1.5; }
+.goal-suggestion-why { margin-top: 4px; font-size: 12px; }
+.goal-suggestion-why summary { width: fit-content; color: #9fb8ff; font-weight: 650; cursor: pointer; }
+.goal-suggestion-why summary:hover { color: #c4d3ff; }
+.goal-suggestion-why ul { margin: 8px 0 0; padding-left: 17px; display: grid; gap: 3px; color: #b9c6e4; line-height: 1.45; }
+.goal-suggestion-why a { display: inline-block; margin-top: 8px; color: #9fb8ff; font-weight: 650; text-decoration: none; }
+.goal-suggestion-why a:hover { color: #c4d3ff; text-decoration: underline; }
+.goal-suggestion-actions { display: flex; align-items: center; gap: 8px; }
+.goal-review-detail { margin: 0 0 12px; color: #b9c6e4; font-size: 12px; line-height: 1.5; }
+.goal-verdict-chip { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--border); color: #b9c6e4; background: rgba(255,255,255,.04); }
+.goal-verdict-chip.verdict-good { border-color: rgba(53,198,150,.25); color: #5fd9ae; background: rgba(53,198,150,.08); }
+.goal-verdict-chip.verdict-warn { border-color: rgba(240,189,110,.3); color: #f0bd6e; background: rgba(240,189,110,.08); }
+.goal-verdict-chip.verdict-act { border-color: rgba(123,156,255,.35); color: #9fb8ff; background: rgba(111,145,248,.12); }
+.goal-change-table { width: 100%; margin: 0 0 14px; border-collapse: collapse; font-size: 13px; }
+.goal-change-table th, .goal-change-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+.goal-change-table thead th { color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.goal-change-table tbody th { color: var(--muted); font-weight: 600; }
+.goal-change-table td:last-child { color: #d9e4ff; font-weight: 650; }
+.goal-outcomes { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
+.goal-outcome { display: flex; align-items: baseline; gap: 8px; font-size: 11px; min-width: 0; }
+.goal-outcome-trend { flex: none; font-weight: 700; color: #9fb8ff; }
+.goal-outcome-trend.outcome-improving { color: #5fd9ae; }
+.goal-outcome-trend.outcome-declining { color: #f0bd6e; }
+.goal-outcome-trend.outcome-insufficient { color: var(--muted); font-weight: 600; }
+.goal-outcome-label { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.goal-action { padding: 6px 11px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: #cbd7f2; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.goal-action:hover:not(:disabled) { background: rgba(255,255,255,.05); border-color: rgba(123,156,255,.3); }
+.goal-action:disabled { opacity: .5; cursor: not-allowed; }
+.goal-action-quiet { margin-left: auto; color: var(--muted); }
+.goal-past-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+.goal-past-row { display: grid; grid-template-columns: 96px minmax(0,1fr) auto; align-items: center; gap: 14px; padding: 11px 20px; border-bottom: 1px solid var(--border); }
+.goal-past-row:last-child { border-bottom: 0; }
+.goal-past-row .goal-lifecycle-chip { justify-content: center; }
+.goal-past-copy { display: grid; gap: 2px; min-width: 0; }
+.goal-past-copy strong { font-size: 13px; }
+.goal-past-copy small { color: var(--muted); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+.lifecycle-paused { background: rgba(123,156,255,.1); border: 1px solid rgba(123,156,255,.2); color: #9fb8ff; }
+.lifecycle-completed { background: rgba(53,198,150,.1); border: 1px solid rgba(53,198,150,.22); color: #5fd9ae; }
+.lifecycle-retired { background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--muted); }
+.goal-form-wide { grid-column: 1 / -1; }
+.goal-form label em, .goal-draft-field em { font-style: normal; opacity: .7; }
+.goal-form .goal-anchor-toggle { flex-direction: row; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(53,198,150,.18); background: rgba(53,198,150,.05); cursor: pointer; }
+.goal-form .goal-anchor-toggle input { width: 18px; min-height: 18px; height: 18px; margin: 1px 0 0; padding: 0; flex: none; accent-color: #35c696; }
+.goal-anchor-toggle span { display: grid; gap: 3px; }
+.goal-anchor-toggle strong { color: var(--text); font-size: 13px; }
+.goal-anchor-toggle small { font-size: 12px; line-height: 1.45; }
+.goal-status-dialog { max-width: 480px; }
+.goal-status-reason { width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; box-sizing: border-box; }
+.goal-anchor-warning { margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(53,198,150,.22); background: rgba(53,198,150,.06); color: #b9e9d6; font-size: 12px; line-height: 1.45; }
 
 @media (max-width: 900px) {
   .goal-overview { grid-template-columns: 1fr; gap: 18px; }
@@ -2551,5 +3208,124 @@ const showWeeklyRequirement = (goal) => {
   .goal-insight-grid { grid-template-columns: 1fr; }
   .goal-settings-grid { grid-template-columns: 1fr; }
   .goal-section-head > span { display: none; }
+  .goal-past-row { grid-template-columns: minmax(0,1fr) auto; padding: 11px 16px; }
+  .goal-review { padding: 16px; }
+  .goal-suggestion-row { grid-template-columns: 1fr; gap: 12px; padding: 16px; }
+  .goal-suggestion-actions { justify-content: space-between; }
+  .goal-review-head { flex-direction: column; align-items: flex-start; }
+  .goal-review-head small { text-align: left; }
+  .goal-review-confidence { margin-left: 0; width: 100%; }
+  .goal-suggestions { padding: 16px; }
+  .goal-suggestions-head { flex-direction: column; align-items: flex-start; }
+  .goal-suggestions-head small { text-align: left; }
+  .goal-past-row .goal-lifecycle-chip { grid-column: 1 / -1; justify-self: start; }
+}
+
+/* ---- Goals redesign: athlete-first, flat surfaces (no outlines, tone instead of borders) ---- */
+.goal-sections { gap: 36px; }
+.goal-overview { padding: 28px 32px; border: 0; border-radius: 16px; background: linear-gradient(120deg, rgba(95,140,255,.16), rgba(95,140,255,.04) 60%), var(--bg-elevated); }
+.goal-overview-copy strong { font-size: 26px; line-height: 1.2; letter-spacing: -.03em; }
+.goal-overview-copy p { max-width: 62ch; font-size: 14px; }
+.goal-overview-stats { gap: 8px; }
+.goal-overview-stats div { min-width: 96px; padding: 12px 16px; border: 0; border-radius: 10px; background: rgba(255,255,255,.05); }
+.goal-overview-stats div.is-alert { background: rgba(243,180,77,.14); }
+.goal-overview-stats div.is-alert strong { color: var(--warning); }
+.goal-overview-stats span { text-transform: none; letter-spacing: 0; font-size: 12px; }
+
+.goal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 20px; align-items: stretch; }
+.gcard { --tone: var(--accent); display: grid; grid-row: span 6; grid-template-rows: subgrid; row-gap: 18px; padding: 24px; border: 0; border-radius: 16px; background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 11%, var(--bg-elevated)), var(--bg-elevated) 55%); box-shadow: none; }
+.tone-ride { --tone: var(--ride); } .tone-run { --tone: var(--run); } .tone-strength { --tone: var(--strength); } .tone-z2 { --tone: var(--z2); }
+.gcard-head { display: flex; align-items: flex-start; gap: 14px; }
+.gcard-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: color-mix(in srgb, var(--tone) 18%, transparent); color: var(--tone); }
+.gcard-icon svg { width: 22px; height: 22px; }
+.gcard-titles { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.gcard-kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.gcard-kicker em { font-style: normal; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 650; }
+.gcard-anchor { background: rgba(52,211,153,.14); color: #5fd9ae; }
+.gcard-season { background: rgba(255,255,255,.07); color: var(--muted-soft); }
+.gcard-season.is-ended { background: rgba(243,180,77,.16); color: #f0bd6e; }
+.gcard-titles h2 { margin: 0; font-family: var(--font-display); font-size: 20px; line-height: 1.25; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.gcard-purpose { margin: 2px 0 0; color: var(--muted-soft); font-size: 13px; line-height: 1.45; }
+.gcard-status { flex: none; display: inline-flex; align-items: center; gap: 7px; padding-top: 3px; font-size: 13px; font-weight: 650; color: #a9c0ff; white-space: nowrap; }
+.gcard-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.gcard-status.status-completed, .gcard-status.status-ahead_of_pace { color: #5fd9ae; }
+.gcard-status.status-behind_pace, .gcard-status.status-constrained { color: #f5c67a; }
+
+.gcard-progress { display: flex; align-items: center; gap: 22px; }
+.gcard-ring { position: relative; flex: none; width: 92px; height: 92px; }
+.gcard-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.gcard-ring circle { fill: none; stroke-width: 7; }
+.ring-track { stroke: rgba(255,255,255,.08); }
+.ring-fill { stroke: var(--tone); stroke-linecap: round; transition: stroke-dasharray var(--motion-duration-slow) var(--motion-ease-standard); }
+.gcard-completed .ring-fill, .gcard-ahead_of_pace .ring-fill { stroke: var(--success); }
+.gcard-ring strong { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-display); font-size: 26px; line-height: 1; letter-spacing: -.04em; }
+.gcard-ring strong span { position: relative; }
+.gcard-ring strong small { position: absolute; left: 100%; bottom: 2px; margin-left: 1px; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.gcard-figures { display: grid; gap: 8px; min-width: 0; }
+.gcard-value { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.gcard-value strong { font-family: var(--font-display); font-size: 36px; line-height: 1; letter-spacing: -.04em; }
+.gcard-value span { color: var(--muted-soft); font-size: 14px; }
+.gcard-figures p { margin: 0; color: var(--muted); font-size: 13px; }
+.gcard-performance { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.gcard-performance div { display: grid; gap: 4px; padding: 12px 14px; border-radius: 10px; background: rgba(255,255,255,.05); }
+.gcard-performance span { color: var(--muted); font-size: 12px; }
+.gcard-performance strong { font-family: var(--font-display); font-size: 20px; }
+.gcard-performance p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
+
+.gcard-coach { align-self: start; margin: 0; padding: 12px 14px; border-radius: 10px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--text-soft); font-size: 13.5px; line-height: 1.55; }
+.gcard-coach.is-empty { visibility: hidden; padding: 0; }
+.gcard-history { align-self: end; min-width: 0; }
+.gcard .goal-history { --goal-tone: var(--tone); margin-top: 0; }
+.gcard-more { align-self: start; }
+.gcard-more summary, .gcard-menu summary { cursor: pointer; list-style: none; }
+.gcard-more summary::-webkit-details-marker, .gcard-menu summary::-webkit-details-marker { display: none; }
+.gcard-more summary { width: fit-content; color: var(--muted); font-size: 13px; font-weight: 600; }
+.gcard-more summary::after { content: ' ▾'; }
+.gcard-more[open] summary::after { content: ' ▴'; }
+.gcard-more summary:hover { color: var(--text); }
+.gcard-more-body { display: grid; gap: 12px; margin-top: 12px; }
+.gcard-facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.gcard-facts div { flex: 1 1 130px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,.05); }
+.gcard-facts dt { color: var(--muted); font-size: 12px; }
+.gcard-facts dd { margin: 3px 0 0; font-size: 14px; font-weight: 650; }
+.gcard-note { margin: 0; color: var(--muted-soft); font-size: 12.5px; line-height: 1.55; }
+.gcard-note strong { color: var(--text-soft); }
+.gcard-more-body .goal-verdict-chip { width: fit-content; }
+.gcard-actions { display: flex; align-items: center; gap: 4px; margin: 0 -10px -10px; }
+.gcard-actions .goal-action { border: 0; background: transparent; color: var(--text-soft); }
+.gcard-actions .goal-action:hover { background: rgba(255,255,255,.07); }
+.gcard-menu { position: relative; }
+.gcard-menu summary { display: inline-block; color: var(--muted); }
+.gcard-menu-list { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 5; display: grid; min-width: 160px; padding: 6px; border-radius: 10px; background: var(--surface3); box-shadow: var(--shadow-lg); }
+.gcard-menu-list button { padding: 9px 12px; border: 0; border-radius: 6px; background: transparent; color: var(--text-soft); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.gcard-menu-list button:hover { background: rgba(255,255,255,.08); color: var(--text); }
+.goal-action { padding: 8px 14px; border-radius: 8px; }
+
+.goal-section-head .section-title { font-size: 20px; letter-spacing: -.02em; }
+.goal-review { padding: 24px 26px; border: 0; border-radius: 16px; background: linear-gradient(120deg, rgba(243,180,77,.13), rgba(243,180,77,.03) 60%), var(--bg-elevated); }
+.goal-review-head h2 { font-size: 22px; letter-spacing: -.02em; }
+.goal-review-item { padding: 16px 18px; border: 0; border-radius: 10px; background: rgba(255,255,255,.05); }
+.goal-review-headline { font-size: 14px; line-height: 1.55; }
+.goal-review-evidence { font-size: 13px; }
+.goal-review-action { padding: 9px 15px; border: 0; border-radius: 8px; background: rgba(255,255,255,.09); font-size: 13px; }
+.goal-review-action.is-primary { background: var(--accent); color: #fff; }
+.goal-verdict-chip { border: 0; border-radius: 6px; text-transform: none; letter-spacing: 0; font-size: 12px; padding: 4px 9px; }
+
+.goal-suggestion-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 16px; background: transparent; border: 0; box-shadow: none; overflow: visible; }
+.goal-suggestion-row { grid-template-columns: 1fr; align-content: space-between; gap: 16px; padding: 22px; border: 0; border-radius: 16px; background: var(--bg-elevated); }
+.goal-suggestion-row:last-child { border-bottom: 0; }
+.goal-suggestion-kind { text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--accent-strong); }
+.goal-suggestion-main strong { font-size: 17px; }
+.goal-suggestion-main > p { font-size: 13px; }
+.goal-suggestion-actions { justify-content: flex-start; }
+.goal-lifecycle-chip { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 650; }
+@media (max-width: 760px) { .goal-grid { grid-template-columns: 1fr; } .gcard { grid-row: auto; grid-template-rows: none; } }
+@media (max-width: 600px) {
+  .gcard { padding: 20px; }
+  .gcard-progress { gap: 16px; }
+  .gcard-ring { width: 80px; height: 80px; }
+  .gcard-value strong { font-size: 28px; }
+  .goal-overview { padding: 20px; }
+  .goal-overview-copy strong { font-size: 21px; }
 }
 </style>

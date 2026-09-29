@@ -47,6 +47,7 @@ The intended reading order is:
 37. [sprint-37-context-aware-daily-training-state.md](sprint-37-context-aware-daily-training-state.md) — context-aware daily training state sprint, complete
 
 38. [sprint-38-ai-assisted-recovery.md](sprint-38-ai-assisted-recovery.md) — AI-assisted recovery foundation with exercise release pending clinical review, partially implemented
+39. [sprint-39-goal-intelligence.md](sprint-39-goal-intelligence.md) — goal lifecycle, anchor goals, worth-it verdicts, calibrated suggestions, portfolio time budget and monthly review, complete
 
 ## Sprint Plans
 
@@ -90,3 +91,4 @@ Available sprint documents:
 - [sprint-36-first-party-strength-workout-tracking.md](sprint-36-first-party-strength-workout-tracking.md)
 - [sprint-37-context-aware-daily-training-state.md](sprint-37-context-aware-daily-training-state.md)
 - [sprint-38-ai-assisted-recovery.md](sprint-38-ai-assisted-recovery.md)
+- [sprint-39-goal-intelligence.md](sprint-39-goal-intelligence.md)

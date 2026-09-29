@@ -306,6 +306,8 @@ The primary Trends experience uses planned sessions fulfilled, adapted, or misse
 
 The backend can read raw JSON files produced by the iOS Health Data Export app from an iCloud Drive directory mounted read-only into the container. Set `HEALTH_DATA_EXPORT_DIR` in `.env`; the backend checks for new files on startup and every 15 minutes by default. **Data & Sync** also provides preview and immediate-import controls. The importer streams large files instead of loading them into memory and safely skips both already-processed files and overlapping samples in later daily exports. Set `HEALTH_DATA_AUTO_IMPORT=false` to disable the background check or adjust `HEALTH_DATA_IMPORT_INTERVAL_SECONDS` when needed.
 
+The same folder also accepts `Shortcut*.json` files written by a free iOS Shortcuts automation, which is more reliable than the export app's scheduled run; see [docs/apple-health-shortcut.md](docs/apple-health-shortcut.md).
+
 The selective import covers sleep stages, resting heart rate, HRV, body weight, steps, walking/running distance, and flights climbed. Apple sleep category codes are normalized into core, deep, REM, awake, and unspecified sleep, and overlapping sleep providers are resolved to one nightly source. Raw all-day heart-rate samples and HealthKit workout records remain in the source export; HealthFit and cached run/ride streams stay authoritative for workouts and training-zone distribution.
 
 The backend can still compute the legacy consecutive-day streak for compatibility and compact context:

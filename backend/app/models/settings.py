@@ -20,6 +20,8 @@ class AthleteProfilePayload(BaseModel):
     preferred_long_session_days: list[str] = Field(default_factory=list)
     weekly_availability_notes: Optional[str] = None
     planning_notes: Optional[str] = None
+    # None keeps the default (Oct–Mar); an empty list means no off season.
+    off_season_months: Optional[list[int]] = None
 
 
 class WorkoutTemplateSettingsPayload(BaseModel):

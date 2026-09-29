@@ -1,5 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional
+
+from ..services.cycling_workouts import CYCLING_WORKOUT_IDS
+
+RIDE_SESSION_TYPES = {"ride", "virtualride", "cycling", "bike"}
 
 
 class WeeklyPlanDay(BaseModel):
@@ -18,6 +22,18 @@ class WeeklyPlanDay(BaseModel):
     details: Optional[str] = None
     target_duration_min: Optional[int] = None
     target_distance_km: Optional[float] = None
+    cycling_workout_id: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_cycling_workout(self):
+        if not self.cycling_workout_id:
+            self.cycling_workout_id = None
+            return self
+        if self.cycling_workout_id not in CYCLING_WORKOUT_IDS:
+            raise ValueError(f"Unknown cycling_workout_id: {self.cycling_workout_id}")
+        if (self.session_type or "").strip().lower() not in RIDE_SESSION_TYPES:
+            raise ValueError("cycling_workout_id is only allowed on ride sessions")
+        return self
 
 
 class WeeklyPlan(BaseModel):

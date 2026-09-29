@@ -63,10 +63,40 @@ def init_recovery_schema(conn):
         CREATE INDEX IF NOT EXISTS recovery_status_history_issue ON recovery_status_history(issue_id, id);
     """)
     columns = {row[1] for row in conn.execute("PRAGMA table_info(recovery_issues)")}
-    if "share_coaching" not in columns:
-        conn.execute("ALTER TABLE recovery_issues ADD COLUMN share_coaching INTEGER NOT NULL DEFAULT 0")
-    if "proposed_intake_json" not in columns:
-        conn.execute("ALTER TABLE recovery_issues ADD COLUMN proposed_intake_json TEXT")
+    for name, ddl in (
+        ("share_coaching", "INTEGER NOT NULL DEFAULT 0"),
+        ("proposed_intake_json", "TEXT"),
+        ("body_area", "TEXT NOT NULL DEFAULT ''"),
+        ("side", "TEXT NOT NULL DEFAULT ''"),
+        ("started_on", "TEXT"),
+        ("healed_on", "TEXT"),
+        ("what_helped", "TEXT NOT NULL DEFAULT ''"),
+        ("previous_issue_id", "INTEGER"),
+        ("see_professional", "INTEGER NOT NULL DEFAULT 0"),
+    ):
+        if name not in columns:
+            conn.execute(f"ALTER TABLE recovery_issues ADD COLUMN {name} {ddl}")
+    if "body_area" not in columns:
+        _migrate_intake_issues(conn)
+
+
+def _migrate_intake_issues(conn):
+    """Carry the retired intake form's location/side/onset into the simple issue fields."""
+    rows = conn.execute("SELECT id, intake_json, status, created_at, updated_at FROM recovery_issues").fetchall()
+    for issue_id, intake_json, status, created_at, updated_at in rows:
+        try:
+            intake = json.loads(intake_json or "{}")
+        except json.JSONDecodeError:
+            intake = {}
+        side = intake.get("side") if intake.get("side") in {"left", "right", "both"} else ""
+        healed = status == "archived"
+        conn.execute(
+            """UPDATE recovery_issues SET body_area = ?, side = ?, started_on = ?, status = ?, healed_on = ?
+               WHERE id = ?""",
+            ((intake.get("location") or "").strip()[:80], side,
+             intake.get("onset_date") or (created_at or "")[:10] or None,
+             "healed" if healed else "active", (updated_at or "")[:10] if healed else None, issue_id),
+        )
 
 
 def issue_row(conn, issue_id):
@@ -85,8 +115,13 @@ def children(conn, issue_id):
             (issue_id,),
         ).fetchall()
         result[table] = [dict(row) for row in rows]
-    for routine in result["routines"]:
-        routine["exercises"] = json.loads(routine.pop("exercises_json"))
+    plans = []
+    for routine in result.pop("routines"):
+        plan = json.loads(routine.pop("exercises_json"))
+        # Rows from the retired exercise-library routines were lists; they are not plans.
+        if isinstance(plan, dict):
+            plans.append({"id": routine["id"], "status": routine["status"], "created_at": routine["created_at"], **plan})
+    result["plans"] = plans
     return result
 
 

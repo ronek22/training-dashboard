@@ -52,6 +52,25 @@ def read_saved_analysis(conn, week):
     return json.loads(raw) if raw else None
 
 
+def get_weekly_direction(conn, today=None):
+    """The head coach's standing advice for the current week, if any.
+
+    A review saved this week covers the week so far; otherwise last week's
+    "change for next week" is the direction for this week. Older reviews are ignored.
+    """
+    today = today or datetime.now(ZoneInfo('Europe/Warsaw')).date()
+    start = today - timedelta(days=today.weekday())
+    for week, scope in ((start, 'week_so_far'), (start - timedelta(weeks=1), 'previous_week')):
+        review = read_saved_analysis(conn, week.isoformat())
+        if review:
+            head = review['head_coach']
+            return {'scope': scope, 'review_week_start': week.isoformat(),
+                    'through_date': review.get('through_date'), 'generated_at': review.get('generated_at'),
+                    'headline': head['headline'], 'next_week_change': head['next_week_change'],
+                    'success_check': head['success_check']}
+    return None
+
+
 def get_analysis(conn):
     context = analysis_context(conn)
     week = context['snapshot']['week_start']

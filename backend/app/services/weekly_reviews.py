@@ -22,6 +22,37 @@ def review_status(conn, now=None):
             'latest_available_week': reviews[0]['week_start'] if reviews else None}
 
 
+MONTH_FIRST_REVIEW_LAST_DAY = 7
+
+
+def is_monthly_goal_review_week(week):
+    """The first weekly review of a month is the week whose Sunday falls on days 1-7."""
+    return (week + timedelta(days=6)).day <= MONTH_FIRST_REVIEW_LAST_DAY
+
+
+def monthly_goal_review(conn, week, today=None):
+    """Read-only goals digest for the month's first weekly review; applies nothing."""
+    if not is_monthly_goal_review_week(week):
+        return None
+    from .goal_review import build_goal_review
+    from .goal_suggestions import build_goal_suggestions
+    review = build_goal_review(conn, today=today)
+    suggestions = build_goal_suggestions(conn, today=today)
+    portfolio = review['portfolio']
+    return {
+        'month': (week + timedelta(days=6)).strftime('%Y-%m'),
+        'attention_count': review['attention_count'],
+        'decisions': [
+            {'goal_id': item['goal_id'], 'title': item['title'], 'verdict': item['review']['verdict'],
+             'label': item['review']['label'], 'headline': item['review']['headline']}
+            for item in review['goals'] if item['review']['needs_attention']
+        ],
+        'portfolio': {key: portfolio[key] for key in ('status', 'summary', 'ratio', 'implied_weekly_hours', 'actual_weekly_hours')},
+        'suggestions_count': len(suggestions['suggestions']),
+        'link': '/goals',
+    }
+
+
 def review_context(conn, week):
     from .coaches import build_team_coaching
     from .team_analysis import read_saved_analysis
@@ -38,6 +69,7 @@ def review_context(conn, week):
     return {
         'team_coaching': build_team_coaching(conn, week_start=week),
         'saved_team_analysis': read_saved_analysis(conn, week.isoformat()),
+        'goal_review': monthly_goal_review(conn, week),
         'review_week': start,
         'week_end': (week + timedelta(days=6)).isoformat(),
         'timezone': 'Europe/Warsaw',

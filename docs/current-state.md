@@ -24,6 +24,26 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Goal intelligence (Sprint 39, complete)
+
+2026-09-29: goals have a lifecycle (active, paused, completed, retired), anchor commitments and purposes, per-period history, outcome and cost signals, a deterministic verdict engine, season awareness (athlete profile `off_season_months`, default Oct–Mar), and evidence-based suggestions. See [Sprint 39](sprints/sprint-39-goal-intelligence.md). Step 7 added the portfolio check and the monthly review rhythm:
+
+- `services/goal_portfolio.py` estimates the weekly hours each active goal implies (distance ÷ the athlete's average speed for that sport, sessions × median session length, zone 2 hours as-is; long-running goals use remaining work over remaining weeks) and compares the sum with hours actually trained. The comparison uses the last 8 weeks, or the same season's past weeks when the season changes within 14 days. Over 1.15× is flagged with the biggest contributors; anchor goals count but are never listed for reduction, and zone 2 or quality goals share hours with a ride-distance goal instead of adding to it.
+- The check appears as `portfolio` in `GET /goals/review` and MCP `get_goal_review`, in the Goals review panel, and as a `time_budget` entry in the weekly plan's goal conflicts (`plans._build_goal_conflicts`).
+- The first weekly review of a month (the week whose Sunday falls on days 1–7) gets a read-only Goals section from `GET /reviews/weekly/goals?week_start=` (also `goal_review` in the review context): goals needing a decision, the portfolio flag, the suggestion count, and a link to `/goals`. It applies nothing.
+- Verified with 14 new backend tests, the goal/review test suites, live read-only endpoints and the frontend build. The over-committed and monthly Goals section layouts were not viewed against real data (the real goals fit the budget, and the latest review is not a month-first week).
+
+### Structured cycling workouts with Zwift export
+
+2026-09-28: added a deterministic library of nine structured cycling workouts (recovery, endurance, long endurance, tempo, sweet spot, threshold, VO2 max) in `backend/app/services/cycling_workouts.py`. Steps are FTP fractions; the app shows watt targets from the latest stored FTP and names its date and age (flagged after 56 days), while exported `.zwo` files stay FTP-relative so Zwift scales them to its own FTP.
+
+- `GET /cycling-workouts`, `GET /cycling-workouts/{id}` and `GET /cycling-workouts/{id}/zwo`
+- planned ride days accept an optional validated `cycling_workout_id`; plan diffs report changes as "Structured workout"
+- Plan shows a workout pill on ride cards, a power profile, step list and `.zwo` download in the session dialog, and a picker in Adjust Remaining Week that fills intent and duration
+- MCP `get_cycling_workout_library`; `set_weekly_plan`/`adjust_weekly_plan` accept `cycling_workout_id`; Codex planning prompts may assign library workouts to ride days
+- Verified with 7 focused backend tests, the frontend build, live endpoints, and an in-browser check of the picker and dialog at desktop and 375px widths without saving a plan change. Execution scoring against the workout's power targets is not implemented yet.
+
+
 ### HEAD COACH and weekly specialists
 
 2026-09-14 follow-up: the missing 7–13 September Sunday review was successfully generated and saved after explicit user approval to send its training context through the existing AI connection. Earlier saved reviews remain intact. Completed weeks now reads `/reviews/weekly/status`, names an overdue unsaved week, labels older content as latest available, and offers a read-only Check again action. Status follows the Warsaw Sunday 23:59 boundary; it does not imply an active generation job. Verified actual saved review in browser, synthetic missing/cleared states, 390px layout, 44 focused tests and production build. This verifies the Sunday review path, not the separate on-demand specialist review pipeline.
@@ -304,13 +324,16 @@ Completed slices:
 - `Data & Sync` can stream raw Health Data Export JSON from a read-only iCloud Drive mount; imports run automatically on backend startup and every 15 minutes by default, remain manually triggerable, and are idempotent across a large initial backfill and overlapping daily files
 - Health Data Export supplies sleep stages, resting HR, HRV, weight, steps, walking/running distance, and flights climbed; HealthFit remains authoritative for workouts, and raw all-day heart rate is intentionally left out of SQLite
 
-### Recovery foundation (Sprint 38)
+### Recovery (simplified 2026-09-28)
 
-- Recovery now has dedicated issue histories, optional AI intake conversations, confirmed symptom checks, care guidance, and follow-up check-ins.
-- Recovery chat prepares a reviewable symptom summary with source quotes; the form fills automatically, preserves manual corrections, and shows a clear next action after confirmation.
-- AI requests use persisted context and revision checks; private notes remain usable when AI is unavailable or sharing is declined.
-- Athletes can opt into sharing compact symptom summaries with Coach/planning and open existing training restrictions for explicit review.
-- Routine generation/save/versioning is implemented but remains unavailable in the shipping configuration pending clinical review of screening and exercise entries. See [Sprint 38](sprints/sprint-38-ai-assisted-recovery.md) and [review requirements](recovery-library-review.md).
+2026-09-28: replaced the Sprint 38 intake/screening workflow and fixed exercise library with a chat-first injury tracker.
+
+- An issue is a body area, optional side, and starting pain. Describing it sends the first message to the AI helper, which asks follow-up questions and returns a structured plan (exercises with dose and cues, do/avoid lists) plus a `see_professional` flag with red-flag reasons. A new plan replaces the current one.
+- Daily check-ins record pain 0–10, whether the plan was done, and a note; the page shows a pain trend.
+- Marking healed asks what helped. A new issue in the same body area (word match, e.g. "outside of knee" ↔ "left knee") or one started with "It came back" is linked to earlier episodes; the AI context includes those episodes' plans, check-ins and what helped, plus other healed injuries.
+- All active injuries (area, pain, current avoid list, no conversation text) are included in Coach/planning context; the old per-issue sharing opt-in is gone.
+- Existing issues were migrated (location/side/onset). Old intake columns remain unused in `recovery_issues`; `recovery_library.py` was removed, so `recovery-library-review.md` is historical.
+- Verified with 13 recovery backend/helper tests, the frontend build and recovery-chat tests, live endpoints, and an in-browser check at desktop and 375px without saving new issues. A real AI reply with the new prompt was not run; restart the Codex helper to load it.
 
 ## Recommended Next Step
 

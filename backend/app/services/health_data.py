@@ -40,6 +40,32 @@ SLEEP_STAGE_BY_VALUE = {
     4: "deep",
     5: "rem",
 }
+SLEEP_VALUE_BY_STAGE = {stage: value for value, stage in SLEEP_STAGE_BY_VALUE.items()}
+
+# Files written by the iOS Shortcut share the Health Data Export folder and are
+# recognised by name. See docs/apple-health-shortcut.md for the payload format.
+SHORTCUT_FILE_PREFIX = "shortcut"
+SHORTCUT_DAILY_METRICS = {"steps", "walking_running_distance", "flights_climbed"}
+SHORTCUT_DAILY_SOURCE_NAME = "iOS Shortcut (daily total)"
+SHORTCUT_DAILY_SOURCE_BUNDLE = "shortcut.daily"
+SHORTCUT_UNITS = {
+    "resting_hr": "bpm",
+    "hrv": "ms",
+    "weight": "kg",
+    "steps": "steps",
+    "walking_running_distance": "km",
+    "flights_climbed": "flights",
+}
+# Shortcuts prints sleep values in the phone's language; English and Polish are
+# matched by substring, most specific first.
+SHORTCUT_SLEEP_LABELS = (
+    ("deep", "deep"), ("głęb", "deep"),
+    ("rem", "rem"),
+    ("core", "core"), ("podstaw", "core"), ("rdzen", "core"), ("rdzeń", "core"),
+    ("awake", "awake"), ("przebudz", "awake"), ("czuwa", "awake"),
+    ("bed", "in_bed"), ("łóżk", "in_bed"),
+    ("unspecified", "asleep_unspecified"), ("asleep", "asleep_unspecified"), ("sen", "asleep_unspecified"),
+)
 
 
 class _HashingReader:
@@ -114,6 +140,7 @@ def preview_health_data_import(conn: sqlite3.Connection) -> dict:
         existing = _matching_import(conn, path)
         items.append({
             "file_name": path.name,
+            "format": "shortcut" if is_shortcut_export(path) else "health_data_export",
             "file_size": size,
             "file_size_mb": round(size / (1024 * 1024), 1),
             "file_modified_ns": modified_ns,
@@ -333,6 +360,192 @@ def _import_selected_metrics(
     return seen, inserted, dict(metric_counts)
 
 
+def is_shortcut_export(path: Path) -> bool:
+    return path.name.lower().startswith(SHORTCUT_FILE_PREFIX)
+
+
+def _shortcut_number(value) -> Optional[float]:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = "".join(str(value).split()).replace(" ", "")
+    if "," in text and "." in text:
+        # Whichever separator comes last is the decimal one.
+        text = text.replace(",", "") if text.rfind(".") > text.rfind(",") else text.replace(".", "").replace(",", ".")
+    else:
+        text = text.replace(",", ".")
+    digits = []
+    for char in text:
+        if char.isdigit() or char in ".-+":
+            digits.append(char)
+        elif digits:
+            break
+    try:
+        return float("".join(digits))
+    except ValueError:
+        return None
+
+
+def _shortcut_datetime(value) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        try:
+            parsed = parsed.replace(tzinfo=ZoneInfo(os.getenv("APP_TIMEZONE", DEFAULT_TIMEZONE)))
+        except ZoneInfoNotFoundError:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def _utc_timestamp(value: datetime) -> str:
+    # Same textual form Health Data Export uses, so both sources compare equal.
+    return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _shortcut_sleep_stage(value) -> Optional[str]:
+    number = _shortcut_number(value)
+    if number is not None and int(number) in SLEEP_STAGE_BY_VALUE:
+        return SLEEP_STAGE_BY_VALUE[int(number)]
+    text = str(value or "").strip().lower()
+    for needle, stage in SHORTCUT_SLEEP_LABELS:
+        if needle in text:
+            return stage
+    return None
+
+
+def _shortcut_source(conn: sqlite3.Connection, name: Optional[str], cache: dict) -> dict:
+    # Shortcuts only exposes the source's display name. Reuse the bundle id that
+    # Health Data Export recorded for that name so sleep stays one nightly source.
+    if not name:
+        return {}
+    if name not in cache:
+        row = conn.execute(
+            """
+            SELECT source_bundle, source_device FROM health_metric_samples
+            WHERE source_name = ? AND COALESCE(source_bundle, '') != '' AND source_bundle != ?
+            ORDER BY timestamp DESC LIMIT 1
+            """,
+            (name, SHORTCUT_DAILY_SOURCE_BUNDLE),
+        ).fetchone()
+        cache[name] = {
+            "name": name,
+            "bundle_identifier": row["source_bundle"] if row else None,
+            "device": row["source_device"] if row else None,
+        }
+    return cache[name]
+
+
+def _sample_exists(conn: sqlite3.Connection, metric: str, timestamp: str, category_label: Optional[str]) -> bool:
+    return conn.execute(
+        """
+        SELECT 1 FROM health_metric_samples
+        WHERE metric = ? AND timestamp = ? AND COALESCE(category_label, '') = ?
+        LIMIT 1
+        """,
+        (metric, timestamp, category_label or ""),
+    ).fetchone() is not None
+
+
+def _import_shortcut_payload(conn: sqlite3.Connection, payload: dict, import_id: int) -> tuple[int, int, dict]:
+    if not isinstance(payload, dict):
+        raise ValueError("Shortcut export must be a JSON object")
+    seen = 0
+    inserted = 0
+    metric_counts = defaultdict(int)
+    unrecognized_sleep = set()
+    source_cache = {}
+    raw_rows = []
+    daily_totals = defaultdict(float)
+    daily_bounds = {}
+
+    for metric in TARGET_LABELS:
+        points = payload.get(metric)
+        if not isinstance(points, list):
+            continue
+        for point in points:
+            if not isinstance(point, dict):
+                continue
+            seen += 1
+            start = _shortcut_datetime(point.get("start") or point.get("date"))
+            end = _shortcut_datetime(point.get("end")) or start
+            if start is None:
+                continue
+
+            if metric == "sleep":
+                stage = _shortcut_sleep_stage(point.get("value"))
+                if stage is None:
+                    unrecognized_sleep.add(str(point.get("value")))
+                    continue
+                value = float(SLEEP_VALUE_BY_STAGE[stage])
+                unit = "seconds"
+                duration_seconds = max(0.0, (end - start).total_seconds())
+                date = _sleep_date(_utc_timestamp(end))
+            else:
+                value = _shortcut_number(point.get("value"))
+                if value is None:
+                    continue
+                stage = None
+                duration_seconds = None
+                raw_unit = str(point.get("unit") or "").strip().lower()
+                if metric == "walking_running_distance" and raw_unit == "m":
+                    value /= 1000.0
+                elif metric == "weight" and raw_unit in {"lb", "lbs"}:
+                    value *= 0.45359237
+                unit = SHORTCUT_UNITS.get(metric)
+                # Take the calendar day as written by the phone, not a UTC conversion.
+                date = start.date().isoformat() if metric in SHORTCUT_DAILY_METRICS else _local_date(_utc_timestamp(start))
+
+            if metric in SHORTCUT_DAILY_METRICS:
+                daily_totals[(metric, date)] += value
+                daily_bounds.setdefault((metric, date), (start, end))
+                metric_counts[metric] += 1
+                continue
+
+            timestamp = _utc_timestamp(start)
+            if _sample_exists(conn, metric, timestamp, stage):
+                continue
+            source = _shortcut_source(conn, point.get("source"), source_cache)
+            end_timestamp = _utc_timestamp(end)
+            raw_rows.append((
+                _sample_key(metric, timestamp, end_timestamp, value, unit, stage, source),
+                metric, timestamp, end_timestamp, date, value, unit, stage, duration_seconds,
+                source.get("name"), source.get("bundle_identifier"), source.get("device"), import_id,
+            ))
+            metric_counts[metric] += 1
+
+    inserted += _insert_batch(conn, raw_rows)
+
+    # A daily total is re-sent (and grows) on every run, so it replaces the
+    # previous total for that day instead of accumulating.
+    for (metric, date), total in daily_totals.items():
+        start, end = daily_bounds[(metric, date)]
+        key = hashlib.sha256(f"shortcut-daily|{metric}|{date}".encode("utf-8")).hexdigest()
+        before = conn.total_changes
+        conn.execute(
+            """
+            INSERT INTO health_metric_samples
+                (sample_key, metric, timestamp, end_timestamp, date, value, unit, category_label,
+                 duration_seconds, source_name, source_bundle, source_device, import_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, NULL, ?)
+            ON CONFLICT(sample_key) DO UPDATE SET
+                timestamp = excluded.timestamp, end_timestamp = excluded.end_timestamp,
+                value = excluded.value, import_id = excluded.import_id
+            WHERE health_metric_samples.value != excluded.value
+            """,
+            (key, metric, _utc_timestamp(start), _utc_timestamp(end), date, total, SHORTCUT_UNITS[metric],
+             SHORTCUT_DAILY_SOURCE_NAME, SHORTCUT_DAILY_SOURCE_BUNDLE, import_id),
+        )
+        inserted += conn.total_changes - before
+
+    extra = {"unrecognized_sleep_labels": sorted(unrecognized_sleep)} if unrecognized_sleep else {}
+    return seen, inserted, {**dict(metric_counts), **extra}
+
+
 def apply_health_data_import(conn: sqlite3.Connection) -> dict:
     preview = preview_health_data_import(conn)
     if not preview["configured"]:
@@ -346,7 +559,20 @@ def apply_health_data_import(conn: sqlite3.Connection) -> dict:
             continue
         path = directory / item["file_name"]
         try:
-            metadata = _scan_metadata(path)
+            shortcut_payload = None
+            if is_shortcut_export(path):
+                raw = path.read_bytes()
+                shortcut_payload = json.loads(raw)
+                exported_at = shortcut_payload.get("exported_at") if isinstance(shortcut_payload, dict) else None
+                metadata = {
+                    "file_hash": hashlib.sha256(raw).hexdigest(),
+                    "export_date": str(exported_at) if exported_at else None,
+                    "metric_names": {},
+                    "category_metric_names": {},
+                    "format": "shortcut",
+                }
+            else:
+                metadata = _scan_metadata(path)
             duplicate = conn.execute(
                 "SELECT * FROM health_data_imports WHERE file_hash = ? AND status = 'imported'",
                 (metadata["file_hash"],),
@@ -356,6 +582,7 @@ def apply_health_data_import(conn: sqlite3.Connection) -> dict:
                 continue
             size, modified_ns = _file_signature(path)
             metadata_payload = {
+                "format": metadata.get("format", "health_data_export"),
                 "metric_names": metadata["metric_names"],
                 "category_metric_names": metadata["category_metric_names"],
             }
@@ -380,9 +607,12 @@ def apply_health_data_import(conn: sqlite3.Connection) -> dict:
                     (path.name, metadata["file_hash"], size, modified_ns, metadata["export_date"], CURRENT_IMPORT_VERSION, json.dumps(metadata_payload)),
                 )
                 import_id = cursor.lastrowid
-            seen, inserted, metric_counts = _import_selected_metrics(
-                conn, path, import_id, metadata["metric_names"], metadata["category_metric_names"]
-            )
+            if shortcut_payload is not None:
+                seen, inserted, metric_counts = _import_shortcut_payload(conn, shortcut_payload, import_id)
+            else:
+                seen, inserted, metric_counts = _import_selected_metrics(
+                    conn, path, import_id, metadata["metric_names"], metadata["category_metric_names"]
+                )
             conn.execute(
                 """
                 UPDATE health_data_imports
@@ -423,6 +653,11 @@ def get_health_metric_history(conn: sqlite3.Connection, metric: str, days: int =
     history = []
     for date in sorted(by_date, reverse=True):
         samples = by_date[date]
+        # A Shortcut daily total is HealthKit's de-duplicated sum for the day, so
+        # it supersedes any Health Data Export buckets for the same date.
+        daily_totals = [row for row in samples if row["source_bundle"] == SHORTCUT_DAILY_SOURCE_BUNDLE]
+        if daily_totals:
+            samples = daily_totals
         values = [float(row["value"]) for row in samples]
         if metric == "weight":
             value = values[0]

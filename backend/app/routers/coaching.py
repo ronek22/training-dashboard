@@ -27,6 +27,16 @@ def team_analysis():
         conn.close()
 
 
+@router.get('/coaching/weekly-direction')
+def weekly_direction():
+    from ..services.team_analysis import get_weekly_direction
+    conn = get_db()
+    try:
+        return {'direction': get_weekly_direction(conn)}
+    finally:
+        conn.close()
+
+
 @router.put('/coaching/team-analysis')
 def save_team_analysis(result: TeamAnalysisSave):
     from ..services.team_analysis import save_analysis

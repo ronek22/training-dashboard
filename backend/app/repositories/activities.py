@@ -176,7 +176,17 @@ def list_calendar_activity_rows(
             activity.linked_planned_session_id
         FROM activities activity
         WHERE activity.date >= ? AND activity.date <= ?
-        ORDER BY activity.date DESC, activity.created_at DESC
+        ORDER BY
+            activity.date DESC,
+            datetime(COALESCE(
+                (
+                    SELECT MIN(ref.started_at)
+                    FROM activity_source_refs ref
+                    WHERE ref.activity_id = activity.id AND ref.started_at IS NOT NULL AND ref.started_at != ''
+                ),
+                activity.created_at
+            )) ASC,
+            activity.id ASC
         """,
         (start_date, end_date),
     ).fetchall()

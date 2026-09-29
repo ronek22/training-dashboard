@@ -1,12 +1,13 @@
 import json
 import calendar
+import math
 import sqlite3
 import re
 from math import ceil
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
-from ..repositories.goals import insert_goal, list_goal_rows
+from ..repositories.goals import get_goal_row, insert_goal, list_goal_rows, set_goal_status, update_goal
 from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
 from .metrics import get_zone2_foundation_for_window
 from .settings import modality_for_goal, get_modality_restrictions_for_conn, restriction_summary_text
@@ -18,6 +19,27 @@ GOAL_FAMILY_LABELS = {
     "benchmark": "Benchmark",
 }
 
+GOAL_LIFECYCLE_STATUSES = ("active", "paused", "completed", "retired")
+GOAL_COMMITMENTS = ("flexible", "anchor")
+GOAL_PURPOSE_MAX_LENGTH = 280
+GOAL_STATUS_REASON_MAX_LENGTH = 280
+QUALITY_SESSION_INTENTS = {"tempo", "interval", "sweet_spot", "race_specific"}
+QUALITY_SESSION_MIN_DURATION_SECONDS = 20 * 60
+QUALITY_SESSION_MIN_FTP_FRACTION = 0.88
+POWER_STREAM_BENCHMARK_MEASUREMENT = "power_stream"
+LIFECYCLE_FIELD_NAMES = ("purpose", "commitment", "review_on", "season_end", "outcome_signal")
+CORE_GOAL_FIELD_NAMES = (
+    "title",
+    "period_type",
+    "goal_family",
+    "metric_type",
+    "target_value",
+    "start_date",
+    "end_date",
+    "activity_type",
+    "target_config",
+)
+
 REQUIREMENT_TYPE_LABELS = {
     "aerobic_volume": "Aerobic volume",
     "aerobic_endurance": "Aerobic endurance",
@@ -26,6 +48,7 @@ REQUIREMENT_TYPE_LABELS = {
     "event_specific_quality": "Event-specific quality",
     "long_aerobic_support": "Long aerobic support",
     "benchmark_specific_quality": "Benchmark-specific quality",
+    "quality_sessions": "Quality sessions",
 }
 
 COUNT_WORDS = {
@@ -97,6 +120,8 @@ def goal_metric_unit(metric_type: str) -> str:
         return "km"
     if metric_type == "strength_sessions":
         return "sessions"
+    if metric_type == "quality_sessions":
+        return "sessions"
     if metric_type == "activities_count":
         return "activities"
     if metric_type == "zone2_hours":
@@ -111,7 +136,7 @@ def goal_metric_unit(metric_type: str) -> str:
 
 
 def rounded_goal_value(metric_type: str, value: float) -> float:
-    if metric_type in {"strength_sessions", "activities_count"}:
+    if metric_type in {"strength_sessions", "quality_sessions", "activities_count"}:
         if value >= 0:
             return float(ceil(value))
         return float(-ceil(abs(value)))
@@ -127,6 +152,8 @@ def goal_metric_label(metric_type: str) -> str:
         return "run volume"
     if metric_type == "strength_sessions":
         return "strength frequency"
+    if metric_type == "quality_sessions":
+        return "quality sessions"
     if metric_type == "activities_count":
         return "activity count"
     if metric_type == "zone2_hours":
@@ -308,6 +335,16 @@ def build_goal_requirements(
             preferred_intents=["strength_general", "strength_lower", "strength_upper"],
             fallback_intents=["mobility"],
         )
+    elif metric_type == "quality_sessions":
+        required_sessions = _int_requirement_count(target_value, floor_value=1, cap=4)
+        add_requirement(
+            "quality_sessions",
+            priority="primary",
+            minimum_sessions=required_sessions,
+            summary=f"Include {required_sessions} structured quality ride session{'s' if required_sessions != 1 else ''} in the week.",
+            session_types=["Ride", "VirtualRide"],
+            preferred_intents=["tempo", "interval", "sweet_spot", "race_specific"],
+        )
     elif metric_type == "zone2_hours":
         minimum_sessions = 2 if target_value >= 3.5 else 1
         add_requirement(
@@ -321,7 +358,11 @@ def build_goal_requirements(
         )
     elif metric_type == "activities_count":
         normalized_activity_type = activity_type or session_type
-        session_types = [normalized_activity_type] if normalized_activity_type else ["Run", "Ride", "VirtualRide", "WeightTraining", "Walk", "Hike"]
+        session_types = (
+            ["Ride", "VirtualRide"] if normalized_activity_type == "Ride" else
+            [normalized_activity_type] if normalized_activity_type else
+            ["Run", "Ride", "VirtualRide", "WeightTraining", "Walk", "Hike"]
+        )
         required_sessions = _int_requirement_count(target_value, floor_value=1, cap=4)
         add_requirement(
             "session_frequency",
@@ -396,6 +437,138 @@ def goal_tracking_window(row: sqlite3.Row, today: Optional[date] = None) -> tupl
     return fallback_start, fallback_end, fallback_label
 
 
+def _goal_field(goal: Any, key: str, default: Any = None) -> Any:
+    """Read a goal field from either a sqlite row or a serialized mapping."""
+    if hasattr(goal, "keys"):
+        try:
+            if key in goal.keys():
+                return goal[key]
+        except (AttributeError, TypeError):
+            pass
+    if isinstance(goal, dict):
+        return goal.get(key, default)
+    return default
+
+
+def _quality_activity_matches_goal(activity_type: str, goal_activity_type: Optional[str]) -> bool:
+    if not goal_activity_type:
+        return True
+    if goal_activity_type == "Ride":
+        return activity_type in {"Ride", "VirtualRide"}
+    if goal_activity_type == "VirtualRide":
+        return activity_type in {"Ride", "VirtualRide"}
+    return activity_type == goal_activity_type
+
+
+def _quality_intent(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    normalized = str(value).strip().lower().replace("-", "_").replace(" ", "_")
+    return normalized if normalized in QUALITY_SESSION_INTENTS else normalized or None
+
+
+def _ftp_for_activity(conn: sqlite3.Connection, activity_date: str) -> Optional[float]:
+    try:
+        row = conn.execute(
+            "SELECT value FROM metrics WHERE metric = 'ftp' AND date <= ? ORDER BY date DESC, id DESC LIMIT 1",
+            (activity_date,),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        return None
+    try:
+        ftp = float(row["value"]) if row else 0.0
+    except (KeyError, TypeError, ValueError):
+        return None
+    return ftp if math.isfinite(ftp) and ftp > 0 else None
+
+
+def _stream_quality_duration_seconds(
+    conn: sqlite3.Connection,
+    activity_id: Any,
+    activity_date: str,
+    activity_type: str,
+) -> float:
+    """Return only time backed by high-power stream samples.
+
+    Average power and the activity duration can hide long easy sections, so the
+    fallback deliberately counts sample intervals at or above the FTP fraction.
+    """
+    ftp = _ftp_for_activity(conn, activity_date)
+    if ftp is None:
+        return 0.0
+    try:
+        detail = conn.execute(
+            "SELECT detail_json, streams_json, source_status FROM activity_details WHERE activity_id = ?",
+            (activity_id,),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        return 0.0
+    if not detail or not detail["streams_json"]:
+        return 0.0
+    try:
+        from .power_trends import _build_segments, _confirmed_power_meter
+        if not _confirmed_power_meter(
+            detail["detail_json"],
+            activity_type=activity_type,
+            source_status=detail["source_status"],
+            streams_json=detail["streams_json"],
+        ):
+            return 0.0
+        runs = _build_segments(detail["streams_json"])
+    except (ImportError, TypeError, ValueError):
+        return 0.0
+
+    threshold = ftp * QUALITY_SESSION_MIN_FTP_FRACTION
+    longest_high_power_run = 0.0
+    for run in runs:
+        high_power_seconds = 0.0
+        for segment in run:
+            if segment.watts >= threshold:
+                high_power_seconds += segment.end - segment.start
+        longest_high_power_run = max(longest_high_power_run, high_power_seconds)
+    return longest_high_power_run
+
+
+def _count_quality_sessions(
+    conn: sqlite3.Connection,
+    goal: Any,
+    start_date: str,
+    end_date: str,
+) -> int:
+    goal_activity_type = _goal_field(goal, "activity_type")
+    try:
+        rows = conn.execute(
+            """
+            SELECT a.id, a.date, a.type, a.workout_intent
+            FROM activities AS a
+            WHERE a.date >= ? AND a.date <= ?
+            ORDER BY a.date, a.id
+            """,
+            (start_date, end_date),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return 0
+
+    count = 0
+    for row in rows:
+        activity_type = row["type"]
+        if not _quality_activity_matches_goal(activity_type, goal_activity_type):
+            continue
+        intent = _quality_intent(row["workout_intent"])
+        if intent in QUALITY_SESSION_INTENTS:
+            count += 1
+            continue
+        # A known non-quality intent is stronger evidence than a power-only
+        # guess; use the stream fallback only when intent is genuinely absent.
+        if row["workout_intent"] is not None and str(row["workout_intent"]).strip():
+            continue
+        if activity_type not in {"Ride", "VirtualRide"}:
+            continue
+        if _stream_quality_duration_seconds(conn, row["id"], row["date"], activity_type) >= QUALITY_SESSION_MIN_DURATION_SECONDS:
+            count += 1
+    return count
+
+
 def goal_value_for_window(
     conn: sqlite3.Connection,
     goal: sqlite3.Row,
@@ -441,8 +614,22 @@ def goal_value_for_window(
         ).fetchone()
         return float(row["value"] or 0)
 
+    if metric_type == "quality_sessions":
+        return float(_count_quality_sessions(conn, goal, start_date, end_date))
+
     if metric_type == "activities_count":
-        if goal["activity_type"]:
+        activity_type = _goal_field(goal, "activity_type")
+        if activity_type == "Ride":
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS value
+                FROM activities
+                WHERE type IN ('Ride', 'VirtualRide')
+                  AND date >= ? AND date <= ?
+                """,
+                (start_date, end_date),
+            ).fetchone()
+        elif activity_type:
             row = conn.execute(
                 """
                 SELECT COUNT(*) AS value
@@ -450,7 +637,7 @@ def goal_value_for_window(
                 WHERE type = ?
                   AND date >= ? AND date <= ?
                 """,
-                (goal["activity_type"], start_date, end_date),
+                (activity_type, start_date, end_date),
             ).fetchone()
         else:
             row = conn.execute(
@@ -1185,6 +1372,72 @@ def _recent_best_run_effort(conn: sqlite3.Connection, activity_type: str, target
     return dict(row) if row else None
 
 
+def _power_stream_benchmark_entries(
+    conn: sqlite3.Connection,
+    duration_min: float,
+    activity_type: Optional[str] = None,
+    limit: Optional[int] = 6,
+) -> list[dict[str, Any]]:
+    """Return exact-duration measured efforts from the cached power profile."""
+    duration_seconds = int(round(duration_min * 60))
+    try:
+        from .power_trends import get_cycling_power_trends_data
+
+        profile = get_cycling_power_trends_data(conn)
+    except (ImportError, sqlite3.OperationalError, TypeError, ValueError):
+        return []
+    efforts = [
+        effort for effort in profile.get("efforts", [])
+        if int(effort.get("duration_seconds") or 0) == duration_seconds
+    ]
+    if not efforts:
+        return []
+    activity_ids = list(dict.fromkeys(effort.get("activity_id") for effort in efforts if effort.get("activity_id") is not None))
+    placeholders = ",".join("?" for _ in activity_ids)
+    if not placeholders:
+        return []
+    try:
+        activity_rows = conn.execute(
+            f"SELECT id, date, type, name, linked_planned_session_id FROM activities WHERE id IN ({placeholders})",
+            activity_ids,
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return []
+    by_id = {str(row["id"]): row for row in activity_rows}
+    entries = []
+    for effort in efforts:
+        row = by_id.get(str(effort.get("activity_id")))
+        if not row:
+            continue
+        if activity_type == "VirtualRide" and row["type"] != "VirtualRide":
+            continue
+        if activity_type == "Ride" and row["type"] not in {"Ride", "VirtualRide"}:
+            continue
+        entries.append({
+            "id": row["id"],
+            "date": effort.get("date") or row["date"],
+            "type": row["type"],
+            "name": effort.get("activity_name") or row["name"],
+            "duration_min": duration_seconds / 60,
+            "avg_watts": effort.get("watts"),
+            "linked_planned_session_id": row["linked_planned_session_id"],
+            "start_seconds": effort.get("start_seconds"),
+            "end_seconds": effort.get("end_seconds"),
+            "measurement": POWER_STREAM_BENCHMARK_MEASUREMENT,
+        })
+    entries.sort(key=lambda item: (str(item.get("date") or ""), str(item.get("id") or "")), reverse=True)
+    return entries if limit is None else entries[:limit]
+
+
+def _recent_best_ride_power_stream(conn: sqlite3.Connection, duration_min: float) -> Optional[dict]:
+    entries = _power_stream_benchmark_entries(conn, duration_min, limit=None)
+    return max(
+        entries,
+        key=lambda item: (float(item.get("avg_watts") or 0), str(item.get("date") or ""), str(item.get("id") or "")),
+        default=None,
+    )
+
+
 def _recent_best_ride_power(conn: sqlite3.Connection, minimum_duration_min: float) -> Optional[dict]:
     row = conn.execute(
         """
@@ -1228,21 +1481,24 @@ def _serialize_benchmark_history(
     target_config: dict[str, Any],
 ) -> dict:
     benchmark_lookup = build_benchmark_session_lookup(conn)
-    rows: list[sqlite3.Row]
+    rows: list[Any]
     if metric_type == "benchmark_power":
         duration_min = _safe_float(target_config.get("duration_min"))
-        rows = conn.execute(
-            """
-            SELECT id, date, type, name, duration_min, avg_watts, linked_planned_session_id
-            FROM activities
-            WHERE type IN ('Ride', 'VirtualRide')
-              AND duration_min >= ?
-              AND avg_watts IS NOT NULL
-            ORDER BY date DESC, created_at DESC
-            LIMIT 6
-            """,
-            (duration_min,),
-        ).fetchall()
+        if target_config.get("measurement") == POWER_STREAM_BENCHMARK_MEASUREMENT:
+            rows = _power_stream_benchmark_entries(conn, duration_min, activity_type=activity_type, limit=6)
+        else:
+            rows = conn.execute(
+                """
+                SELECT id, date, type, name, duration_min, avg_watts, linked_planned_session_id
+                FROM activities
+                WHERE type IN ('Ride', 'VirtualRide')
+                  AND duration_min >= ?
+                  AND avg_watts IS NOT NULL
+                ORDER BY date DESC, created_at DESC
+                LIMIT 6
+                """,
+                (duration_min,),
+            ).fetchall()
     else:
         distance_km = _safe_float(target_config.get("distance_km"))
         min_distance = max(distance_km * 0.9, distance_km - 1.0)
@@ -1320,6 +1576,8 @@ def _goal_modality(goal_family: str, metric_type: str, activity_type: Optional[s
             return "run" if activity_type == "Run" else "ride"
         if activity_type == "WeightTraining":
             return "strength"
+    if metric_type == "quality_sessions":
+        return "ride"
     return modality_for_goal(metric_type, activity_type)
 
 
@@ -1471,6 +1729,8 @@ def _serialize_volume_goal(
 
     if goal_family == "process" and row["metric_type"] == "zone2_hours":
         target_summary = f"Build {rounded_goal_value(row['metric_type'], target_value)} hours of zone 2 work by {end_day.isoformat()}."
+    elif goal_family == "process" and row["metric_type"] == "quality_sessions":
+        target_summary = f"Complete {rounded_goal_value(row['metric_type'], target_value)} structured quality ride sessions through {period_label.lower()}."
     elif goal_family == "process":
         target_summary = f"Hold {rounded_goal_value(row['metric_type'], target_value)} {unit} of {metric_label} through {period_label.lower()}."
     else:
@@ -1697,7 +1957,12 @@ def _serialize_benchmark_goal(
         )
     else:
         duration_min = _safe_float(target_config.get("duration_min"))
-        best_match = _recent_best_ride_power(conn, duration_min)
+        stream_measurement = target_config.get("measurement") == POWER_STREAM_BENCHMARK_MEASUREMENT
+        best_match = (
+            _recent_best_ride_power_stream(conn, duration_min)
+            if stream_measurement else
+            _recent_best_ride_power(conn, duration_min)
+        )
         best_power = _safe_float((best_match or {}).get("avg_watts"))
         target_watts = float(row["target_value"] or 0)
         progress_pct = round(min((best_power / target_watts) * 100, 100), 1) if best_power > 0 and target_watts > 0 else 0.0
@@ -1705,6 +1970,7 @@ def _serialize_benchmark_goal(
         performance_snapshot = {
             "target_duration_min": duration_min,
             "target_watts": target_watts,
+            "measurement": target_config.get("measurement") or "activity_average",
             "recent_best_watts": round(best_power, 0) if best_power else None,
             "recent_best_date": (best_match or {}).get("date"),
             "recent_best_name": (best_match or {}).get("name"),
@@ -1726,7 +1992,7 @@ def _serialize_benchmark_goal(
             activity_type=activity_type,
             metric_type="benchmark_power",
             target_value=target_watts,
-            target_config={"duration_min": duration_min},
+            target_config=target_config,
         )
 
     if achieved:
@@ -1801,16 +2067,46 @@ def _serialize_benchmark_goal(
     }
 
 
+def _row_value(row: sqlite3.Row, key: str, default: Any = None) -> Any:
+    return row[key] if key in row.keys() and row[key] is not None else default
+
+
+def goal_lifecycle_fields(row: sqlite3.Row, today: Optional[date] = None) -> dict[str, Any]:
+    current = today or datetime.now().date()
+    lifecycle_status = _row_value(row, "lifecycle_status") or ("active" if row["is_active"] else "paused")
+    season_end = _row_value(row, "season_end") or None
+    season_end_day = _parse_date(season_end)
+    season_ended = bool(season_end_day and season_end_day < current)
+    return {
+        "lifecycle_status": lifecycle_status,
+        "status_reason": _row_value(row, "status_reason"),
+        "status_changed_at": _row_value(row, "status_changed_at"),
+        "purpose": _row_value(row, "purpose"),
+        "commitment": _row_value(row, "commitment") or "flexible",
+        "review_on": _row_value(row, "review_on") or None,
+        "season_end": season_end,
+        "season_ended": season_ended,
+        "outcome_signal": _row_value(row, "outcome_signal") or None,
+        "created_at": _row_value(row, "created_at"),
+        "updated_at": _row_value(row, "updated_at"),
+        # Planning and the dashboard read is_active; a finished season pauses
+        # the goal for them without changing the athlete's lifecycle choice.
+        "is_active": lifecycle_status == "active" and not season_ended,
+    }
+
+
 def serialize_goal(row: sqlite3.Row, conn: sqlite3.Connection, restrictions: Optional[dict] = None) -> dict:
     goal_family = normalize_goal_family(row["goal_family"] if "goal_family" in row.keys() else None)
     target_config = _parse_target_config(row)
     normalized_restrictions = restrictions or get_modality_restrictions_for_conn(conn)
 
     if goal_family == "event_performance":
-        return attach_goal_readiness_summary(conn, _serialize_event_goal(row, conn, normalized_restrictions, target_config))
-    if goal_family == "benchmark":
-        return attach_goal_readiness_summary(conn, _serialize_benchmark_goal(row, conn, normalized_restrictions, target_config))
-    return attach_goal_readiness_summary(conn, _serialize_volume_goal(row, conn, normalized_restrictions, goal_family, target_config))
+        goal = _serialize_event_goal(row, conn, normalized_restrictions, target_config)
+    elif goal_family == "benchmark":
+        goal = _serialize_benchmark_goal(row, conn, normalized_restrictions, target_config)
+    else:
+        goal = _serialize_volume_goal(row, conn, normalized_restrictions, goal_family, target_config)
+    return attach_goal_readiness_summary(conn, {**goal, **goal_lifecycle_fields(row)})
 
 
 def _base_goal_draft(text: str) -> dict[str, Any]:
@@ -1986,6 +2282,34 @@ def _parse_goal_text(text: str, today: Optional[date] = None) -> dict[str, Any]:
             draft["is_supported"] = True
             return draft
 
+    quality_match = re.search(
+        r"\b([a-z0-9.]+)\s+(?:structured\s+)?quality\s+(rides?|sessions?)\s+(?:per|a)\s+(week|month|year)\b",
+        normalized,
+    )
+    if quality_match:
+        count_raw, session_raw, period_raw = quality_match.groups()
+        count = _number_from_token(count_raw)
+        if count is not None:
+            period_type = {"week": "week", "month": "month", "year": "year"}[period_raw]
+            session_label = "ride" if session_raw.startswith("ride") else "session"
+            plural = "s" if count != 1 else ""
+            title = f"{count:g} structured quality {session_label}{plural} per {period_type}"
+            draft["goal"] = {
+                "title": title,
+                "goal_family": "process",
+                "period_type": period_type,
+                "metric_type": "quality_sessions",
+                "target_value": count,
+                "start_date": None,
+                "end_date": None,
+                "activity_type": "Ride",
+                "target_config": _empty_goal_target_config(),
+            }
+            draft["title_suggestion"] = title
+            draft["confidence"] = "high"
+            draft["is_supported"] = True
+            return draft
+
     accumulation_match = re.search(
         r"\b(run|ride)\s+(\d+(?:\.\d+)?)\s*k(?:m)?\s+(?:this\s+|per\s+)?(week|month|year)\b",
         normalized,
@@ -2112,6 +2436,10 @@ def _validate_goal_payload(
             raise ValueError("metric_type is required for accumulation and process goals.")
         if target_value is None or float(target_value) <= 0:
             raise ValueError("target_value must be greater than zero.")
+        if metric_type == "quality_sessions":
+            if activity_type not in {None, "Ride", "VirtualRide"}:
+                raise ValueError("quality_sessions goals currently support Ride or VirtualRide activities.")
+            activity_type = activity_type or "Ride"
         normalized_start = start_date or default_start.isoformat()
         normalized_end = end_date or default_end.isoformat()
         return {
@@ -2171,6 +2499,15 @@ def _validate_goal_payload(
     target_watts = _safe_float(config.get("target_watts"))
     if duration_min <= 0 or target_watts <= 0:
         raise ValueError("Ride benchmark goals need target duration and watts.")
+    measurement = config.get("measurement")
+    if measurement is not None and measurement not in {"activity_average", POWER_STREAM_BENCHMARK_MEASUREMENT}:
+        raise ValueError("Ride benchmark measurement must be activity_average or power_stream.")
+    normalized_config = {
+        "duration_min": duration_min,
+        "target_watts": target_watts,
+    }
+    if measurement is not None:
+        normalized_config["measurement"] = measurement
     return {
         "goal_family": family,
         "metric_type": "benchmark_power",
@@ -2178,10 +2515,7 @@ def _validate_goal_payload(
         "start_date": start_date or default_start.isoformat(),
         "end_date": end_date or default_end.isoformat(),
         "activity_type": activity_type,
-        "target_config": {
-            "duration_min": duration_min,
-            "target_watts": target_watts,
-        },
+        "target_config": normalized_config,
     }
 
 
@@ -2198,7 +2532,19 @@ def create_goal_data(
     activity_type: Optional[str] = None,
     is_active: bool = True,
     target_config: Optional[dict[str, Any]] = None,
+    purpose: Optional[str] = None,
+    commitment: Optional[str] = None,
+    review_on: Optional[str] = None,
+    season_end: Optional[str] = None,
+    outcome_signal: Optional[str] = None,
 ) -> dict:
+    lifecycle_fields = _validate_lifecycle_fields({
+        "purpose": purpose,
+        "commitment": commitment,
+        "review_on": review_on,
+        "season_end": season_end,
+        "outcome_signal": outcome_signal,
+    })
     normalized = _validate_goal_payload(
         title=title,
         period_type=period_type,
@@ -2222,12 +2568,136 @@ def create_goal_data(
         activity_type=normalized["activity_type"],
         is_active=is_active,
         target_config_json=json.dumps(normalized["target_config"]),
+        lifecycle_fields=lifecycle_fields,
     )
     conn.commit()
     return {"status": "ok", "id": goal_id}
 
 
-def list_goals_data(conn: sqlite3.Connection, active_only: bool = False, limit: int = 24) -> list[dict]:
-    rows = list_goal_rows(conn, active_only=active_only, limit=limit)
+def _optional_text(value: Any, field: str, max_length: int) -> Optional[str]:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if len(text) > max_length:
+        raise ValueError(f"{field} must be at most {max_length} characters.")
+    return text or None
+
+
+def _optional_iso_date(value: Any, field: str) -> Optional[str]:
+    if value is None or value == "":
+        return None
+    if _parse_date(str(value)) is None:
+        raise ValueError(f"{field} must be a date in YYYY-MM-DD format.")
+    return str(value)
+
+
+def _validate_lifecycle_fields(fields: dict[str, Any]) -> dict[str, Any]:
+    """Validate only the lifecycle keys present, so partial updates stay partial."""
+    normalized: dict[str, Any] = {}
+    if "purpose" in fields:
+        normalized["purpose"] = _optional_text(fields["purpose"], "purpose", GOAL_PURPOSE_MAX_LENGTH)
+    if "commitment" in fields:
+        commitment = (fields["commitment"] or "flexible").strip().lower()
+        if commitment not in GOAL_COMMITMENTS:
+            raise ValueError(f"commitment must be one of: {', '.join(GOAL_COMMITMENTS)}.")
+        normalized["commitment"] = commitment
+    if "review_on" in fields:
+        normalized["review_on"] = _optional_iso_date(fields["review_on"], "review_on")
+    if "season_end" in fields:
+        normalized["season_end"] = _optional_iso_date(fields["season_end"], "season_end")
+    if "outcome_signal" in fields:
+        normalized["outcome_signal"] = _optional_text(fields["outcome_signal"], "outcome_signal", 64)
+    return normalized
+
+
+def _require_goal_row(conn: sqlite3.Connection, goal_id: int) -> sqlite3.Row:
+    row = get_goal_row(conn, goal_id)
+    if row is None:
+        raise LookupError(f"Goal {goal_id} not found.")
+    return row
+
+
+def update_goal_data(conn: sqlite3.Connection, goal_id: int, changes: dict[str, Any]) -> dict:
+    """Apply a partial edit. Core target fields are re-validated as a whole goal."""
+    row = _require_goal_row(conn, goal_id)
+    fields: dict[str, Any] = {}
+
+    if any(name in changes for name in CORE_GOAL_FIELD_NAMES):
+        merged = {
+            "title": row["title"],
+            "period_type": row["period_type"],
+            "goal_family": row["goal_family"],
+            "metric_type": row["metric_type"],
+            "target_value": row["target_value"],
+            "start_date": row["start_date"],
+            "end_date": row["end_date"],
+            "activity_type": row["activity_type"],
+            "target_config": _parse_target_config(row),
+        }
+        merged.update({name: changes[name] for name in CORE_GOAL_FIELD_NAMES if name in changes})
+        title = (merged["title"] or "").strip()
+        if not title:
+            raise ValueError("title is required.")
+        if merged["period_type"] not in {"week", "month", "year"}:
+            raise ValueError("period_type must be week, month, or year.")
+        if merged["goal_family"] != row["goal_family"] and "metric_type" not in changes:
+            # A family switch invalidates the old metric; let validation derive it.
+            merged["metric_type"] = None if normalize_goal_family(merged["goal_family"]) in {"accumulation", "process"} else merged["metric_type"]
+        normalized = _validate_goal_payload(**merged)
+        fields.update({
+            "title": title,
+            "period_type": merged["period_type"],
+            "goal_family": normalized["goal_family"],
+            "metric_type": normalized["metric_type"],
+            "target_value": normalized["target_value"],
+            "start_date": normalized["start_date"],
+            "end_date": normalized["end_date"],
+            "activity_type": normalized["activity_type"],
+            "target_config_json": json.dumps(normalized["target_config"]),
+        })
+
+    fields.update(_validate_lifecycle_fields({name: changes[name] for name in LIFECYCLE_FIELD_NAMES if name in changes}))
+    update_goal(conn, goal_id, fields)
+    conn.commit()
+    return serialize_goal(_require_goal_row(conn, goal_id), conn)
+
+
+def get_goal_data(conn: sqlite3.Connection, goal_id: int) -> dict:
+    return serialize_goal(_require_goal_row(conn, goal_id), conn)
+
+
+def set_goal_status_data(
+    conn: sqlite3.Connection,
+    goal_id: int,
+    status: str,
+    reason: Optional[str] = None,
+) -> dict:
+    row = _require_goal_row(conn, goal_id)
+    normalized_status = (status or "").strip().lower()
+    if normalized_status not in GOAL_LIFECYCLE_STATUSES:
+        raise ValueError(f"status must be one of: {', '.join(GOAL_LIFECYCLE_STATUSES)}.")
+    review_on = _row_value(row, "review_on")
+    if normalized_status == "active" and review_on and review_on <= datetime.now().date().isoformat():
+        # Reactivating is the review decision; a stale date would re-flag it at once.
+        update_goal(conn, goal_id, {"review_on": None})
+    set_goal_status(
+        conn,
+        goal_id,
+        normalized_status,
+        _optional_text(reason, "reason", GOAL_STATUS_REASON_MAX_LENGTH),
+    )
+    conn.commit()
+    return serialize_goal(_require_goal_row(conn, goal_id), conn)
+
+
+def list_goals_data(
+    conn: sqlite3.Connection,
+    active_only: bool = False,
+    limit: int = 24,
+    lifecycle_status: Optional[str] = None,
+) -> list[dict]:
+    if lifecycle_status and lifecycle_status not in GOAL_LIFECYCLE_STATUSES:
+        raise ValueError(f"status must be one of: {', '.join(GOAL_LIFECYCLE_STATUSES)}.")
+    rows = list_goal_rows(conn, active_only=active_only, limit=limit, lifecycle_status=lifecycle_status)
     restrictions = get_modality_restrictions_for_conn(conn)
     return [serialize_goal(row, conn, restrictions) for row in rows]

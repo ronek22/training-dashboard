@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -68,3 +69,25 @@ class TeamAnalysisTests(unittest.TestCase):
         self.assertEqual(self.client.put('/coaching/team-analysis', json=invalid).status_code, 422)
         invalid = result(key); invalid['head_coach']['headline'] = 'x' * 101
         self.assertEqual(self.client.put('/coaching/team-analysis', json=invalid).status_code, 422)
+
+    def test_weekly_direction_prefers_this_week_then_last_week_only(self):
+        from datetime import date
+        from backend.app.repositories.settings import set_setting_value
+        from backend.app.services.team_analysis import get_weekly_direction
+        conn = db.get_db()
+        try:
+            monday = date(2026, 9, 28)
+            self.assertIsNone(get_weekly_direction(conn, today=monday))
+            head = result('k')['head_coach']
+            set_setting_value(conn, 'team_analysis:2026-09-14', json.dumps({'head_coach': {**head, 'headline': 'Too old'}}))
+            self.assertIsNone(get_weekly_direction(conn, today=monday))
+            set_setting_value(conn, 'team_analysis:2026-09-21', json.dumps({'head_coach': head, 'through_date': '2026-09-27'}))
+            direction = get_weekly_direction(conn, today=monday)
+            self.assertEqual(direction['scope'], 'previous_week')
+            self.assertEqual(direction['next_week_change'], 'Record the next week.')
+            set_setting_value(conn, 'team_analysis:2026-09-28', json.dumps({'head_coach': {**head, 'headline': 'This week'}}))
+            direction = get_weekly_direction(conn, today=date(2026, 9, 30))
+            self.assertEqual((direction['scope'], direction['headline']), ('week_so_far', 'This week'))
+        finally:
+            conn.close()
+        self.assertIn('direction', self.client.get('/coaching/weekly-direction').json())

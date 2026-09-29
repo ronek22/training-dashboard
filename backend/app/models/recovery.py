@@ -1,91 +1,56 @@
-from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
+
+Side = Literal["", "left", "right", "both"]
 
 
 class RecoveryModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
-class Intake(RecoveryModel):
-    location: str = Field(default="", max_length=100)
-    side: Literal["unknown", "left", "right", "both", "central"] = "unknown"
-    onset_date: date | None = None
-    onset: str = Field(default="", max_length=1000)
-    severity: int | None = Field(default=None, ge=0, le=10, strict=True)
-    trend: Literal["unknown", "improving", "unchanged", "worsening"] = "unknown"
-    function: Literal["unknown", "normal", "limited", "unable"] = "unknown"
-    emergency_signs: StrictBool | None = None
-    urgent_signs: StrictBool | None = None
-    injury_or_surgery: StrictBool | None = None
-    persistent_symptoms: StrictBool | None = None
-    general_soreness: StrictBool | None = None
-    clinician_guidance: str = Field(default="", max_length=2000)
-
-
 class IssueCreate(RecoveryModel):
-    title: str = Field(min_length=1, max_length=100)
-    intake: Intake | None = None
+    title: str = Field(default="", max_length=100)
+    body_area: str = Field(min_length=1, max_length=80)
+    side: Side = ""
+    pain: int | None = Field(default=None, ge=0, le=10, strict=True)
+    previous_issue_id: int | None = Field(default=None, ge=1)
 
 
-class IntakeUpdate(RecoveryModel):
-    reassess_assessment: StrictBool = False
-    revision: int = Field(ge=1)
-    intake: Intake
+class IssueUpdate(RecoveryModel):
+    title: str | None = Field(default=None, min_length=1, max_length=100)
+    body_area: str | None = Field(default=None, min_length=1, max_length=80)
+    side: Side | None = None
 
 
-class IssueStatus(RecoveryModel):
-    status: Literal["active", "archived"]
-
-
-class IssueSharing(RecoveryModel):
-    share_coaching: StrictBool
+class HealIssue(RecoveryModel):
+    what_helped: str = Field(default="", max_length=2000)
 
 
 class MessageCreate(RecoveryModel):
     content: str = Field(min_length=1, max_length=4000)
-    ai_consent: StrictBool
-
-
-class AIRequestCreate(RecoveryModel):
-    kind: Literal["chat", "routine"] = "chat"
-    ai_consent: StrictBool
-
-
-class ExerciseSelection(RecoveryModel):
-    exercise_id: str = Field(min_length=1, max_length=80)
-    repetitions: int = Field(ge=1, le=30, strict=True)
-    sets: int = Field(ge=1, le=3, strict=True)
-
-
-class AIResult(RecoveryModel):
-    summary: str = Field(min_length=1, max_length=1400)
-    question_ids: list[str] = Field(default_factory=list, max_length=4)
-    concern: Literal["none", "assessment", "urgent", "emergency"]
-    exercises: list[ExerciseSelection] = Field(default_factory=list, max_length=4)
-    proposed_intake: Intake | None = None
-    intake_evidence: dict[str, str] = Field(default_factory=dict, max_length=14)
-
-
-class RoutineSave(RecoveryModel):
-    revision: int = Field(ge=1)
 
 
 class CheckinCreate(RecoveryModel):
-    severity: int = Field(ge=0, le=10, strict=True)
-    trend: Literal["unknown", "improving", "unchanged", "worsening"] = "unknown"
-    function: Literal["unknown", "normal", "limited", "unable"] = "unknown"
+    pain: int = Field(ge=0, le=10, strict=True)
+    did_plan: StrictBool = False
     note: str = Field(default="", max_length=2000)
-    routine_id: int | None = Field(default=None, ge=1)
-    completed: StrictBool = False
-    before_severity: int | None = Field(default=None, ge=0, le=10, strict=True)
-    resolve: StrictBool = False
 
-    @field_validator("trend", "function", mode="before")
-    @classmethod
-    def missing_observation_is_unknown(cls, value):
-        # Older clients sent null while the form was untouched. Preserve that
-        # request shape, but never turn an unanswered observation into a
-        # reassuring normal/improving value.
-        return "unknown" if value is None else value
+
+class PlanExercise(RecoveryModel):
+    name: str = Field(min_length=1, max_length=120)
+    dose: str = Field(default="", max_length=200)
+    how: str = Field(default="", max_length=1000)
+
+
+class RecoveryPlan(RecoveryModel):
+    summary: str = Field(min_length=1, max_length=600)
+    exercises: list[PlanExercise] = Field(default_factory=list, max_length=8)
+    do: list[str] = Field(default_factory=list, max_length=6)
+    avoid: list[str] = Field(default_factory=list, max_length=6)
+
+
+class AIResult(RecoveryModel):
+    reply: str = Field(min_length=1, max_length=4000)
+    plan: RecoveryPlan | None = None
+    see_professional: StrictBool = False

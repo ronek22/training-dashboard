@@ -243,5 +243,97 @@ class HealthDataImportTests(unittest.TestCase):
         self.assertEqual(self.conn.execute("SELECT import_version FROM health_data_imports").fetchone()[0], health_data.CURRENT_IMPORT_VERSION)
 
 
+def shortcut_payload(**metrics) -> dict:
+    return {"exported_at": "2026-09-28T09:15:00+02:00", **metrics}
+
+
+class ShortcutImportTests(unittest.TestCase):
+    setUp = HealthDataImportTests.setUp
+    tearDown = HealthDataImportTests.tearDown
+    write_export = HealthDataImportTests.write_export
+
+    def import_files(self):
+        with patch.object(health_data, "health_data_directory", return_value=self.directory):
+            return health_data.apply_health_data_import(self.conn)
+
+    def test_shortcut_file_imports_recovery_metrics_with_localised_values(self):
+        self.write_export("Shortcut_Health.json", shortcut_payload(
+            resting_hr=[{"start": "2026-09-27T00:07:58+02:00", "end": "2026-09-27T23:58:40+02:00", "value": "52", "unit": "count/min", "source": "Apple Watch (Jakub)"}],
+            hrv=[{"start": "2026-09-27T06:50:08+02:00", "end": "2026-09-27T06:51:08+02:00", "value": "91,86", "source": "Apple Watch (Jakub)"}],
+            weight=[{"start": "2026-09-27T07:00:00+02:00", "value": "75,4", "unit": "kg", "source": "MacroFactor"}],
+            sleep=[
+                {"start": "2026-09-26T23:00:00+02:00", "end": "2026-09-27T01:00:00+02:00", "value": "Core", "source": "Apple Watch (Jakub)"},
+                {"start": "2026-09-27T01:00:00+02:00", "end": "2026-09-27T02:30:00+02:00", "value": "Deep", "source": "Apple Watch (Jakub)"},
+                {"start": "2026-09-27T02:30:00+02:00", "end": "2026-09-27T02:45:00+02:00", "value": "Awake", "source": "Apple Watch (Jakub)"},
+                {"start": "2026-09-27T02:45:00+02:00", "end": "2026-09-27T03:15:00+02:00", "value": "Sen REM", "source": "Apple Watch (Jakub)"},
+                {"start": "2026-09-27T03:15:00+02:00", "end": "2026-09-27T03:20:00+02:00", "value": "???", "source": "Apple Watch (Jakub)"},
+            ],
+        ))
+        result = self.import_files()
+        summary = health_data.get_health_summary(self.conn, days=730)
+
+        self.assertEqual(result["applied"]["files_imported"], 1)
+        self.assertEqual(result["items"][0]["format"], "shortcut")
+        self.assertEqual(summary["metrics"]["resting_hr"]["latest"]["date"], "2026-09-27")
+        self.assertEqual(summary["metrics"]["resting_hr"]["latest"]["value"], 52.0)
+        self.assertEqual(summary["metrics"]["hrv"]["latest"]["value"], 91.9)
+        self.assertEqual(summary["metrics"]["weight"]["latest"]["value"], 75.4)
+        sleep = summary["metrics"]["sleep"]["latest"]
+        self.assertEqual(sleep["date"], "2026-09-27")
+        self.assertEqual(sleep["value"], 4.0)
+        self.assertEqual(sleep["stages"]["deep"], 1.5)
+        self.assertEqual(sleep["awake_minutes"], 15)
+        stored = self.conn.execute("SELECT timestamp FROM health_metric_samples WHERE metric = 'hrv'").fetchone()[0]
+        self.assertEqual(stored, "2026-09-27T04:50:08Z")
+        metadata = json.loads(self.conn.execute("SELECT metadata_json FROM health_data_imports").fetchone()[0])
+        self.assertEqual(metadata["target_counts"]["unrecognized_sleep_labels"], ["???"])
+
+    def test_rolling_window_reruns_are_idempotent_and_daily_totals_are_replaced(self):
+        hrv = [{"start": "2026-09-27T06:50:08+02:00", "end": "2026-09-27T06:51:08+02:00", "value": 91.86}]
+        self.write_export("Shortcut_Health.json", shortcut_payload(hrv=hrv, steps=[{"start": "2026-09-28T00:00:00+02:00", "value": "3200"}]))
+        first = self.import_files()
+        self.write_export("Shortcut_Health.json", shortcut_payload(hrv=hrv, steps=[
+            {"start": "2026-09-27T00:00:00+02:00", "value": "11 250"},
+            {"start": "2026-09-28T00:00:00+02:00", "value": "7400"},
+        ]))
+        second = self.import_files()
+
+        self.assertEqual(first["applied"]["samples_inserted"], 2)
+        self.assertEqual(second["applied"]["files_imported"], 1)
+        self.assertEqual(second["applied"]["samples_inserted"], 2)
+        self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM health_metric_samples WHERE metric = 'hrv'").fetchone()[0], 1)
+        steps = {row["date"]: row["value"] for row in health_data.get_health_metric_history(self.conn, "steps", 730)}
+        self.assertEqual(steps, {"2026-09-28": 7400, "2026-09-27": 11250})
+
+    def test_shortcut_samples_already_imported_from_health_data_export_are_skipped(self):
+        watch = {"name": "Apple Watch (Jakub)", "bundle_identifier": "com.apple.health.watch", "device": "Watch7,5"}
+        payload = export_payload([], include_large_ignored_metric=False)
+        payload["metrics"][1]["data_points"] = [{**point("2026-09-27T04:50:08Z", 91.861128, "ms"), "end_date": "2026-09-27T04:51:08Z", "source": watch}]
+        payload["metrics"].append({"data_points": [point("2026-09-27T08:00:00Z", 1200, ""), point("2026-09-27T09:00:00Z", 800, "")], "display_name": "Steps"})
+        payload["category_metrics"] = [{
+            "data_points": [{**sleep_point("2026-09-26T21:00:00Z", "2026-09-26T23:00:00Z", 3, "core"), "source": watch}],
+            "display_name": "Sleep Analysis",
+        }]
+        self.write_export("Automation_Daily.json", payload)
+        self.import_files()
+
+        self.write_export("Shortcut_Health.json", shortcut_payload(
+            hrv=[{"start": "2026-09-27T06:50:08+02:00", "end": "2026-09-27T06:51:08+02:00", "value": "91,86", "source": "Apple Watch (Jakub)"}],
+            sleep=[
+                {"start": "2026-09-26T23:00:00+02:00", "end": "2026-09-27T01:00:00+02:00", "value": "Core", "source": "Apple Watch (Jakub)"},
+                {"start": "2026-09-27T01:00:00+02:00", "end": "2026-09-27T02:00:00+02:00", "value": "Deep", "source": "Apple Watch (Jakub)"},
+            ],
+            steps=[{"start": "2026-09-27T00:00:00+02:00", "value": 2150}],
+        ))
+        result = self.import_files()
+
+        self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM health_metric_samples WHERE metric = 'hrv'").fetchone()[0], 1)
+        # The new deep-sleep sample inherits the watch bundle, so the night stays one source.
+        self.assertEqual(self.conn.execute("SELECT source_bundle FROM health_metric_samples WHERE category_label = 'deep'").fetchone()[0], "com.apple.health.watch")
+        self.assertEqual(health_data.get_sleep_history(self.conn, 730)[0]["value"], 3.0)
+        self.assertEqual(health_data.get_health_metric_history(self.conn, "steps", 730)[0]["value"], 2150)
+        self.assertEqual(result["applied"]["samples_inserted"], 2)
+
+
 if __name__ == "__main__":
     unittest.main()

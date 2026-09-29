@@ -12,7 +12,7 @@ export async function runRecoveryReply(api, request, {
       try { await api.failRecoveryRequest(request.issue_id, request.request_id) } catch {}
     }
     if (error?.response?.status === 404) {
-      throw new Error('The running AI helper needs an update for Recovery. Restart the helper, then retry your saved message.')
+      throw new Error('The running AI helper needs an update for Recovery. Restart the helper, then retry.')
     }
     throw new Error('Could not connect to the AI helper. Your message is saved. Check the helper connection, then retry; any reply already started will appear automatically.')
   }
@@ -25,5 +25,5 @@ export async function runRecoveryReply(api, request, {
     try { job = (await api.getRecoveryAIJob(job.job_id)).data }
     catch { throw new Error('The reply connection was interrupted. Your message is saved; completed replies will appear automatically.') }
   }
-  if (isActive() && job.status !== 'succeeded') throw new Error(job.message || 'The assistant could not reply. Retry your saved message.')
+  if (isActive() && job.status !== 'succeeded') throw new Error(job.message || 'The assistant could not reply. Retry your message.')
 }

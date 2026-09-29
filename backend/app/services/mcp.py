@@ -128,6 +128,7 @@ MCP_TOOLS = [
                             "details": {"type": "string"},
                             "target_duration_min": {"type": "integer"},
                             "target_distance_km": {"type": "number"},
+                            "cycling_workout_id": {"type": "string", "description": "Optional structured workout ID from get_cycling_workout_library; ride sessions only"},
                         },
                         "required": ["date", "label", "title"],
                     },
@@ -170,6 +171,7 @@ MCP_TOOLS = [
                             "details": {"type": "string"},
                             "target_duration_min": {"type": "integer"},
                             "target_distance_km": {"type": "number"},
+                            "cycling_workout_id": {"type": "string", "description": "Optional structured workout ID from get_cycling_workout_library; ride sessions only"},
                         },
                         "required": ["date", "label", "title"],
                     },
@@ -369,6 +371,17 @@ MCP_TOOLS = [
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
+        "name": "get_cycling_workout_library",
+        "description": "Read the structured cycling workout library (FTP-relative steps, duration, intent, estimated TSS) that planned ride days can reference via cycling_workout_id",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "get_strength_context",
         "description": "Read Fitbod-enriched strength history with recent sessions, exercise-level set and rep detail, recurring lifts, selected exercise trend, and important PRs",
         "annotations": {
@@ -516,7 +529,147 @@ MCP_TOOLS = [
             "required": ["text"],
         },
     },
+    {
+        "name": "get_goals",
+        "description": "List goals with progress and lifecycle state (active, paused, completed, retired), purpose, and whether the goal is an anchor the athlete keeps deliberately",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "enum": ["active", "paused", "completed", "retired"], "description": "Optional lifecycle filter"},
+                "limit": {"type": "integer", "description": "Maximum goals to return (default 24)"},
+                "include_history": {"type": "boolean", "description": "Add per-period history stats: hit rate, median, p75, streak, trend, required vs recent rate for yearly goals"},
+            },
+        },
+    },
+    {
+        "name": "update_goal",
+        "description": "Edit an existing goal. Only provided fields change; null clears optional fields. Never lower or retire an anchor goal unless the athlete explicitly asks.",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "goal_id": {"type": "integer"},
+                "title": {"type": "string"},
+                "period_type": {"type": "string", "enum": ["week", "month", "year"]},
+                "metric_type": {"type": "string"},
+                "target_value": {"type": "number"},
+                "end_date": {"type": "string", "description": "YYYY-MM-DD (event goals)"},
+                "activity_type": {"type": "string"},
+                "target_config": {"type": "object"},
+                "purpose": {"type": ["string", "null"], "description": "Why the athlete keeps this goal"},
+                "commitment": {"type": "string", "enum": ["flexible", "anchor"]},
+                "review_on": {"type": ["string", "null"], "description": "YYYY-MM-DD for the next deliberate review"},
+                "season_end": {"type": ["string", "null"], "description": "YYYY-MM-DD after which a recurring goal stops applying"},
+            },
+            "required": ["goal_id"],
+        },
+    },
+    {
+        "name": "set_goal_status",
+        "description": "Pause, complete, retire, or reactivate a goal. Only do this when the athlete asked for it.",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "goal_id": {"type": "integer"},
+                "status": {"type": "string", "enum": ["active", "paused", "completed", "retired"]},
+                "reason": {"type": "string", "description": "Short reason shown in the goal history"},
+            },
+            "required": ["goal_id", "status"],
+        },
+    },
+    {
+        "name": "get_goal_signals",
+        "description": "Outcome signals (cycling power and efficiency, running efficiency, top-lift strength) and cost signals (HRV, resting HR, sleep) with trend, change, and how much evidence backs each. With goal_id, returns only the outcomes linked to that goal plus costs. 'insufficient' means too little data to judge.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "goal_id": {"type": "integer", "description": "Optional goal to scope outcome signals to"},
+            },
+        },
+    },
+    {
+        "name": "get_goal_review",
+        "description": "Deterministic review of every active goal: is it still worth chasing? Returns a verdict (done, out_of_reach, too_easy, plateaued, inconsistent, crowding_out, review_due, productive, on_track_unproven, anchor_under_pressure, anchor_steady), the evidence, and recommended actions, plus a portfolio time-budget check (weekly hours the goals imply vs. hours actually trained, with the goals to scale back). Anchor goals are deliberate standards: discuss how to support them, never recommend lowering or dropping them. Actions are applied only when the athlete asks.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_goal_suggestions",
+        "description": "Deterministic goal suggestions based on completed goals, training history, power profile weaknesses, season changes, and neglected modalities. Suggestions are drafts only and are never applied automatically.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {"type": "object", "properties": {}},
+    },
 ]
+
+GOAL_TOOL_FIELDS = (
+    "id",
+    "title",
+    "period_type",
+    "goal_family",
+    "metric_type",
+    "activity_type",
+    "target_value",
+    "current_value",
+    "unit",
+    "progress_pct",
+    "status",
+    "lifecycle_status",
+    "status_reason",
+    "purpose",
+    "commitment",
+    "review_on",
+    "season_end",
+    "season_ended",
+    "is_active",
+)
+
+
+def compact_signal_for_tool(signal: dict) -> dict:
+    keys = ("key", "label", "kind", "unit", "trend", "change_pct", "evidence_count", "months_with_data",
+            "latest", "recent_mean", "baseline_mean", "latest_date", "stale", "note", "detail")
+    return {key: signal[key] for key in keys if key in signal and signal[key] not in (None, [])}
+
+
+def compact_goal_for_tool(goal: dict) -> dict:
+    compact = {key: goal.get(key) for key in GOAL_TOOL_FIELDS if key in goal}
+    history = goal.get("history")
+    if history:
+        # Stats carry the signal; per-period entries would mostly spend tokens.
+        compact["history"] = {key: history.get(key) for key in ("available", "reason", "kind", "unit", "target", "stats")}
+    return compact
 
 
 def make_mcp_response(msg_id, result=None, error=None):
@@ -565,6 +718,16 @@ def call_mcp_tool(
     calendar_weeks_fn,
     metric_catalog,
     draft_goal_data_fn,
+    list_goals_data_fn,
+    update_goal_data_fn,
+    set_goal_status_data_fn,
+    attach_goal_histories_fn,
+    get_goal_data_fn,
+    build_goal_outcomes_fn,
+    build_outcome_signals_fn,
+    build_cost_signals_fn,
+    build_goal_review_fn,
+    build_goal_suggestions_fn,
     strength_context_fn,
     analyze_activity_fn,
     get_activity_analysis_context_fn,
@@ -723,6 +886,12 @@ def call_mcp_tool(
             data = build_cycling_power_coaching_context(conn)
             message = json.dumps(data, indent=2)
 
+        elif name == "get_cycling_workout_library":
+            from .cycling_workouts import build_cycling_workout_library
+
+            data = build_cycling_workout_library(conn)
+            message = json.dumps(data, indent=2)
+
         elif name in {"get_strength_context", "get_exercise_history", "get_strength_workout_history"}:
             data = strength_context_fn(
                 weeks=int(args.get("weeks", 8)),
@@ -765,6 +934,73 @@ def call_mcp_tool(
         elif name == "draft_goal":
             data = draft_goal_data_fn(args.get("text", ""))
             message = json.dumps(data, indent=2)
+
+        elif name == "get_goals":
+            goals = list_goals_data_fn(conn, limit=int(args.get("limit") or 24), lifecycle_status=args.get("status"))
+            if args.get("include_history"):
+                goals = attach_goal_histories_fn(conn, goals)
+            data = {"goals": [compact_goal_for_tool(goal) for goal in goals]}
+            message = json.dumps(data, indent=2)
+
+        elif name == "get_goal_signals":
+            costs = [compact_signal_for_tool(signal) for signal in build_cost_signals_fn(conn).values()]
+            if args.get("goal_id") is not None:
+                goal_outcomes = build_goal_outcomes_fn(conn, get_goal_data_fn(conn, int(args["goal_id"])))
+                data = {
+                    "goal_id": int(args["goal_id"]),
+                    "linked": goal_outcomes["linked"],
+                    "outcomes": [compact_signal_for_tool(signal) for signal in goal_outcomes["signals"]],
+                    "costs": costs,
+                }
+            else:
+                data = {
+                    "outcomes": [compact_signal_for_tool(signal) for signal in build_outcome_signals_fn(conn).values()],
+                    "costs": costs,
+                }
+            message = json.dumps(data, indent=2)
+
+        elif name == "get_goal_review":
+            review = build_goal_review_fn(conn)
+            data = {
+                "attention_count": review["attention_count"],
+                "portfolio": {
+                    key: review["portfolio"][key] for key in (
+                        "status", "summary", "implied_weekly_hours", "actual_weekly_hours", "ratio",
+                        "basis", "contributors", "reduction_candidates",
+                    )
+                },
+                "goals": [
+                    {
+                        "goal_id": item["goal_id"],
+                        "title": item["title"],
+                        "commitment": item["commitment"],
+                        "purpose": item["purpose"],
+                        **{key: item["review"][key] for key in (
+                            "verdict", "label", "headline", "needs_attention", "confidence",
+                            "purpose_status", "evidence", "snoozed_until",
+                        )},
+                        "actions": [
+                            {key: action[key] for key in ("type", "label", "body", "detail") if action.get(key) is not None}
+                            for action in item["review"]["actions"]
+                        ],
+                    }
+                    for item in review["goals"]
+                ],
+            }
+            message = json.dumps(data, indent=2)
+
+        elif name == "get_goal_suggestions":
+            data = build_goal_suggestions_fn(conn)
+            message = json.dumps(data, indent=2)
+
+        elif name == "update_goal":
+            changes = {key: value for key, value in args.items() if key != "goal_id"}
+            data = compact_goal_for_tool(update_goal_data_fn(conn, int(args["goal_id"]), changes))
+            message = f"Goal updated: {data['title']}"
+
+        elif name == "set_goal_status":
+            data = compact_goal_for_tool(set_goal_status_data_fn(conn, int(args["goal_id"]), args["status"], args.get("reason")))
+            message = f"Goal '{data['title']}' is now {data['lifecycle_status']}"
 
         else:
             raise ValueError(f"Unknown tool: {name}")

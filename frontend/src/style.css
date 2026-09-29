@@ -3,16 +3,16 @@
 :root {
   color-scheme: dark;
   --bg: #0b1018;
-  --bg-elevated: var(--bg-elevated);
+  --bg-elevated: #101725;
   --surface: rgba(18, 25, 39, 0.88);
   --surface-strong: rgba(22, 30, 47, 0.96);
-  --surface2: var(--surface2);
-  --surface3: var(--surface3);
+  --surface2: #1c2638;
+  --surface3: #243149;
   --border: rgba(114, 132, 162, 0.2);
   --border-strong: rgba(143, 167, 205, 0.3);
-  --text: var(--text);
+  --text: #edf2fb;
   --text-soft: #c9d5e8;
-  --muted: var(--muted);
+  --muted: #8fa1bf;
   --muted-soft: #9cafca;
   --run: #4f8df7;
   --ride: #1fbe8d;

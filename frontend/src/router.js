@@ -29,6 +29,7 @@ export default createRouter({
     { path: '/calendar', component: Calendar },
     { path: '/goals', component: Goals },
     { path: '/recovery', component: Recovery },
+    { path: '/sick-mode/:sessionKey', component: () => import('./views/SickModeSession.vue') },
     { path: '/strength', component: Strength },
     { path: '/strength/workouts', component: StrengthWorkouts },
     { path: '/strength/workouts/:sessionId', component: StrengthWorkoutSession },

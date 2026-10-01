@@ -58,9 +58,9 @@
       </nav>
       <div class="sidebar-footer">
         <div v-if="streakValue !== null" class="streak-badge" aria-label="Current daily activity streak">
-          <span class="streak-flame" aria-hidden="true">🔥</span>
+          <span class="streak-flame" aria-hidden="true">{{ sickModeActive ? '🤒' : '🔥' }}</span>
           <span class="streak-copy">
-            <small>Daily streak</small>
+            <small>{{ sickModeActive ? 'Sick-mode streak' : 'Daily streak' }}</small>
             <strong>{{ streakLabel }}</strong>
           </span>
         </div>
@@ -138,6 +138,7 @@ const route = useRoute()
 const api = useApi()
 const previousPath = ref('')
 const streakValue = ref(null)
+const sickModeActive = ref(false)
 const weather = ref(null)
 const weatherLoading = ref(false)
 const weatherError = ref(false)
@@ -249,11 +250,13 @@ const loadStreak = async () => {
     const { data } = await api.getDashboard()
     const value = data.computed_streak?.value
     if (value !== undefined && value !== null) streakValue.value = Number(value)
+    sickModeActive.value = Boolean(data.sick_mode?.active)
   } catch {}
 }
 
 onMounted(() => {
   loadStreak()
+  window.addEventListener('trainlog:streak-changed', loadStreak)
   initializeWeather()
 })
 

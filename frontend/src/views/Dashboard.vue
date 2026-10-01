@@ -7,13 +7,22 @@
           <h1>Today</h1>
 
         </div>
-        <button class="header-plan-link" type="button" @click="router.push('/plan')">
-          <span>Open weekly plan</span><span aria-hidden="true">→</span>
-        </button>
+        <div class="header-actions">
+          <button v-if="!sickMode.active" class="header-sick-link" type="button" :disabled="sickModeStarting" @click="startSickMode">
+            <span aria-hidden="true">🤒</span><span>{{ sickModeStarting ? 'Starting…' : 'Feeling sick?' }}</span>
+          </button>
+          <button class="header-plan-link" type="button" @click="router.push('/plan')">
+            <span>Open weekly plan</span><span aria-hidden="true">→</span>
+          </button>
+        </div>
       </header>
 
       <section class="decision-layout" aria-labelledby="today-decision-heading">
-        <TodayCard v-bind="todayCard" />
+        <div v-if="sickMode.active" class="sick-stack">
+          <SickModeCard :state="sickMode" @changed="onSickModeChanged" />
+          <TodayCard v-if="todayActivities.length" v-bind="todayCard" />
+        </div>
+        <TodayCard v-else v-bind="todayCard" />
 
         <aside class="signal-card" aria-labelledby="signals-heading">
           <div class="signal-heading">
@@ -131,6 +140,7 @@ import YearProgress from '../components/YearProgress.vue'
 import LoadFormTrend from '../components/LoadFormTrend.vue'
 import DailyCheckin from '../components/DailyCheckin.vue'
 import VolumeTrendAlert from '../components/VolumeTrendAlert.vue'
+import SickModeCard from '../components/SickModeCard.vue'
 import { useApi } from '../stores/api'
 import { buildStrengthPlanDraft } from '../strength-plan-draft.mjs'
 
@@ -216,6 +226,20 @@ const readiness = computed(() => dashboard.value?.readiness || null)
 const dailyCheckin = computed(() => dashboard.value?.daily_checkin || null)
 const onCheckinSaved = () => loadDashboard()
 const volumeTrend = computed(() => dashboard.value?.volume_trend || null)
+const sickMode = computed(() => dashboard.value?.sick_mode || { active: false })
+const sickModeStarting = ref(false)
+const startSickMode = async () => {
+  sickModeStarting.value = true
+  try {
+    await api.startSickMode({ severity: 'above_neck' })
+    await loadDashboard()
+  } finally { sickModeStarting.value = false }
+}
+// Logging a session or ending sick mode changes the streak, readiness and today's activities.
+const onSickModeChanged = () => {
+  loadDashboard()
+  window.dispatchEvent(new Event('trainlog:streak-changed'))
+}
 const onVolumeTrendLabeled = (trend) => { if (dashboard.value) dashboard.value = { ...dashboard.value, volume_trend: trend } }
 const readinessScore = computed(() => readiness.value?.score || null)
 const ramp = computed(() => readiness.value?.ramp || null)
@@ -499,11 +523,14 @@ const todayCompletedStats = computed(() => {
 })
 // Endurance first, then strength, so the richest view opens by default.
 const todaySessions = computed(() => {
-  const plan = todayPlan.value
+  // On a sick day the plan no longer applies, so nothing is measured against it.
+  const plan = sickMode.value.active ? null : todayPlan.value
   const matchedIds = new Set((plan?.comparison?.completed_activities || []).map((activity) => activity.id))
   const plannedMin = Number(plan?.target_duration_min || 0)
   const activities = todayActivities.value
-  const kindOf = (activity) => (['ride', 'run', 'walk'].includes(activityTone(activity.type)) ? 'endurance' : activityTone(activity.type) === 'strength' ? 'strength' : 'other')
+  const sickIds = new Set((sickMode.value.completed_today || []).map((item) => item.activity_id).filter(Boolean))
+  const isSickSession = (activity) => sickIds.has(activity.id) || String(activity.id).startsWith('sick-')
+  const kindOf = (activity) => (isSickSession(activity) ? 'other' : ['ride', 'run', 'walk'].includes(activityTone(activity.type)) ? 'endurance' : activityTone(activity.type) === 'strength' ? 'strength' : 'other')
   const order = { endurance: 0, strength: 1, other: 2 }
   return activities
     .map((activity, index) => ({
@@ -520,10 +547,21 @@ const todaySessions = computed(() => {
     }))
     .sort((a, b) => order[a.kind] - order[b.kind])
 })
+// Guided sessions whose synced watch workout is among these activities.
+const linkedSickSessions = (activities) => {
+  const ids = new Set(activities.map((activity) => activity.id))
+  return (sickMode.value.completed_today || []).filter((item) => ids.has(item.activity_id))
+}
+// e.g. "Evening Workout · + Pull-ups ×5": the watch workout plus what was added live.
+const sickDaySubtitle = (activity) => {
+  const extras = activity ? linkedSickSessions([activity]).flatMap((item) => item.extras) : []
+  return [activity?.name || 'Light movement', extras.length ? `+ ${extras.join(', ')}` : ''].filter(Boolean).join(' · ')
+}
 const todayCard = computed(() => {
-  const plan = todayPlan.value
+  const sick = sickMode.value.active
+  const plan = sick ? null : todayPlan.value
   const activities = todayActivities.value
-  const completed = todayPlanCompleted.value || (!plan && activities.length > 0)
+  const completed = (!sick && todayPlanCompleted.value) || (!plan && activities.length > 0)
   const statusTone = { complete: 'done' }[primaryDecisionTone.value] || primaryDecisionTone.value
   const coach = { showCoachLink: Boolean(codexState.value), statusLabel: primaryDecisionLabel.value, statusTone }
   if (completed) {
@@ -536,11 +574,12 @@ const todayCard = computed(() => {
       accent: dashboardSportAccent(first?.type),
       tone: activityTone(first?.type),
       iconType: isIconSessionType(first?.type) ? first.type : '',
-      kicker: activities.length > 1 ? `Today · ${activities.length} sessions` : `Today · ${sessionTypeLabel(first?.type)}`,
-      title: activities.length === 1 ? todayActivityCards.value[0].title : [...new Set(activities.map((activity) => sessionTypeLabel(activity.type)))].join(' + '),
+      kicker: sick ? 'Today · Sick mode' : activities.length > 1 ? `Today · ${activities.length} sessions` : `Today · ${sessionTypeLabel(first?.type)}`,
+      title: sick && linkedSickSessions(activities).length ? [...new Set(linkedSickSessions(activities).map((item) => item.title))].join(' + ')
+        : activities.length === 1 ? todayActivityCards.value[0].title : [...new Set(activities.map((activity) => sessionTypeLabel(activity.type)))].join(' + '),
       subtitle: [
         activities.length > 1 ? `${formatDuration(actualMin)} total` : '',
-        plan ? `Planned: ${plan.workout_intent_label || sessionTypeLabel(plan.session_type)}${plannedMin ? ` · ${plannedMin} min` : ''}` : 'Unplanned',
+        sick ? sickDaySubtitle(first) : plan ? `Planned: ${plan.workout_intent_label || sessionTypeLabel(plan.session_type)}${plannedMin ? ` · ${plannedMin} min` : ''}` : 'Unplanned',
       ].filter(Boolean).join(' · '),
       sessions: todaySessions.value,
       ftp: Number(trainingLoad.value?.model?.ftp || 0),
@@ -823,6 +862,10 @@ button { color: inherit; }
   transform: translateY(-1px);
 }
 
+.sick-stack { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.header-actions { display: flex; align-items: center; gap: 14px; }
+.header-sick-link { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgb(var(--tint-rgb) / 0.14); border-radius: 999px; background: transparent; padding: 5px 12px; color: var(--dash-muted, var(--muted)); font: inherit; font-size: 12px; cursor: pointer; }
+.header-sick-link:hover:not(:disabled) { border-color: rgb(var(--tint-rgb) / 0.3); color: var(--text); }
 .decision-layout { display: grid; grid-template-columns: minmax(0, 1.72fr) minmax(300px, 0.72fr); gap: 16px; }
 
 .signal-card, .explore-section {

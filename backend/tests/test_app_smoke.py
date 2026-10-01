@@ -1773,6 +1773,40 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertEqual(dashboard.status_code, 200)
         self.assertEqual(dashboard.json()["athlete_brief"]["modality_priority"], ["ride", "strength", "run"])
 
+    def test_sick_mode_endpoints_round_trip(self):
+        self.assertEqual(self.client.get("/sick-mode/sessions/sprints").status_code, 404)
+        self.assertEqual(self.client.get("/sick-mode/sessions/light_circuit").json()["session"]["duration_min"], 12)
+        started = self.client.post("/sick-mode", json={"severity": "above_neck"})
+        self.assertTrue(started.json()["sick_mode"]["active"])
+        completion = {"session_key": "light_circuit", "started_at": "2026-10-01T18:06:00.000Z", "elapsed_seconds": 370, "extras": ["Pull-ups ×5"]}
+        done = self.client.post("/sick-mode/complete", json=completion)
+        self.assertEqual(done.status_code, 200)
+        self.assertEqual(self.client.post("/sick-mode/complete", json={**completion, "session_key": "sprints"}).status_code, 404)
+        self.assertFalse(self.client.post("/sick-mode/end").json()["sick_mode"]["active"])
+
+    def test_zzz_sick_day_weight_training_does_not_advance_strength_rotation(self):
+        before = self.client.get("/settings/workout-templates").json()["programs"]["strength"]["rotation_state"]
+        created = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": "2031-03-03",
+                "title": "Sick week",
+                "days": [{"date": "2031-03-04", "label": "Tue", "session_type": "WeightTraining", "title": "Strength", "target_duration_min": 55}],
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        with sqlite3.connect(os.environ["TRAINING_DB_PATH"]) as conn:
+            conn.execute("INSERT INTO sick_periods (start_date, end_date, severity) VALUES ('2031-03-03', '2031-03-05', 'above_neck')")
+        # The watch's Core Training workout syncs from Strava as WeightTraining, unlinked.
+        activity = self.client.post(
+            "/activities",
+            json={"id": "sick-day-core", "date": "2031-03-04", "type": "WeightTraining", "name": "Evening Workout", "duration_min": 10.1},
+        )
+        self.assertEqual(activity.status_code, 201)
+        after = self.client.get("/settings/workout-templates").json()["programs"]["strength"]["rotation_state"]
+        self.assertEqual(after.get("next_template_id"), before.get("next_template_id"))
+        self.assertNotIn("sick-day-core", after.get("processed_activity_ids") or [])
+
     def test_zz_strength_rotation_advances_on_completion_and_postpones_missed_sessions(self):
         settings = self.client.get("/settings/workout-templates")
         self.assertEqual(settings.status_code, 200)

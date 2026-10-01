@@ -41,6 +41,7 @@ from .plans import (
     format_workout_intent_label,
     normalize_workout_intent,
 )
+from .sick_mode import sick_dates
 from .settings import (
     get_performance_settings_for_conn,
     get_workout_template_settings_for_conn,
@@ -213,16 +214,20 @@ def reconcile_workout_template_rotation_state(conn: sqlite3.Connection) -> None:
 
     rows = conn.execute(
         """
-        SELECT id, date, type, name, linked_planned_session_id
+        SELECT id, date, type, name, linked_planned_session_id, workout_intent
         FROM activities
         ORDER BY date ASC, created_at ASC, id ASC
         """
     ).fetchall()
+    # Light sick-mode sessions (often synced as WeightTraining) are not planned lifts.
+    excluded_dates = sick_dates(conn)
 
     changed = False
     for row in rows:
         activity_id = row["id"]
         if activity_id in processed_lookup:
+            continue
+        if not row["linked_planned_session_id"] and (row["workout_intent"] in ("recovery", "mobility") or row["date"] in excluded_dates):
             continue
         template_id = _infer_strength_template_id_for_activity(row, session_lookup, templates_by_id)
         if template_id not in template_order:

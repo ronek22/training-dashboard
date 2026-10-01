@@ -9,13 +9,16 @@ Rule (completed Monday-Sunday weeks only; walks and hikes are not training volum
   says deload, taper or recovery week. If both falling weeks were planned, no alert.
 - Coverage: the four baseline weeks need 4+ sessions in total and W1 needs 120+ minutes.
 The athlete can label an alert (planned / life / illness_injury); the label is kept per
-W3 week, hides the alert and is passed to coaching context.
+W3 week, hides the alert and is passed to coaching context. A falling week with 3+ days in
+sick mode counts as illness automatically.
 """
 import json
 import re
 import sqlite3
 from datetime import date, datetime, timedelta
 from typing import Optional
+
+from .sick_mode import sick_days_between
 
 NON_TRAINING_TYPES = ("Walk", "Hike")
 LABELS = {"planned": "Planned lighter stretch", "life": "Life got in the way", "illness_injury": "Illness or injury"}
@@ -115,6 +118,8 @@ def build_volume_trend(conn: sqlite3.Connection, today: Optional[date] = None) -
 
     drop_pct = round(100 * (1 - last / first))
     label = get_volume_trend_label(conn, result["week_start"])
+    if label is None and any(sick_days_between(conn, start, start + timedelta(days=6)) >= 3 for start in window[1:]):
+        label = {"week_start": result["week_start"], "label": "illness_injury", "note": "Sick mode", "updated_at": None}
     return {
         **result,
         "status": "sliding",

@@ -6,6 +6,7 @@ from typing import Callable, Optional
 from .plans import build_multi_week_execution_trend, serialize_weekly_plan
 from .plans import format_workout_intent_label, normalize_workout_intent
 from .checkins import get_daily_checkin
+from .sick_mode import build_sick_mode, reconcile_sick_session_activities, sick_mode_coaching_context
 from .volume_trend import build_volume_trend
 from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
 from .coaching import (
@@ -1133,6 +1134,7 @@ def build_recent_context(
         "latest_metrics": [dict(row) for row in latest_metrics],
         "weekly_mix": weekly_mix,
         "volume_trend": build_volume_trend(conn),
+        "sick_mode": sick_mode_coaching_context(conn),
         "strength_consistency": strength_consistency,
         "recent_strength_detail": recent_strength_detail,
         "cycling_power": build_cycling_power_coaching_context(conn, include_thresholds=False),
@@ -1163,6 +1165,7 @@ def build_dashboard_data(
     from .activities import reconcile_workout_template_rotation_state
     from .team_analysis import get_weekly_direction
 
+    reconcile_sick_session_activities(conn)
     reconcile_workout_template_rotation_state(conn)
     computed_streak = compute_activity_streak(conn)
 
@@ -1325,6 +1328,7 @@ def build_dashboard_data(
         "readiness": readiness,
         "daily_checkin": get_daily_checkin(conn),
         "volume_trend": build_volume_trend(conn),
+        "sick_mode": build_sick_mode(conn),
         "training_load": training_load,
         "weekly_plan": serialized_latest_plan,
         "execution_trend": execution_trend,

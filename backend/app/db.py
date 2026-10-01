@@ -471,6 +471,30 @@ def init_db():
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS sick_periods (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            start_date TEXT NOT NULL,
+            end_date TEXT,
+            severity TEXT NOT NULL DEFAULT 'above_neck',
+            note TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS sick_session_completions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            session_key TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            elapsed_seconds INTEGER NOT NULL,
+            completed_steps INTEGER NOT NULL DEFAULT 0,
+            extras_json TEXT,
+            activity_id TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(session_key, started_at)
+        );
+
         CREATE TABLE IF NOT EXISTS daily_checkins (
             date TEXT PRIMARY KEY,
             energy INTEGER NOT NULL,

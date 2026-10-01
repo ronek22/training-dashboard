@@ -4,6 +4,7 @@ from statistics import mean
 from typing import Optional
 
 from .checkins import latest_daily_checkin
+from .sick_mode import get_active_sick_period
 from .health_data import get_health_metric_history
 
 # Weekly load growth above this is the classic "too much, too soon" line.
@@ -190,6 +191,13 @@ def build_readiness_score(
     checkin = checkin or _checkin_factor(latest_feedback, today)
     if checkin:
         factors.append(checkin)
+    sick = get_active_sick_period(conn)
+    if sick:
+        below_neck = sick["severity"] == "below_neck"
+        factors.insert(0, _factor(
+            "sick", "Sick mode", "fever or chest symptoms" if below_neck else "head cold",
+            "risk", 4 if below_neck else 2,
+        ))
 
     ratio_status = ((training_load_summary or {}).get("ratio") or {}).get("status")
     form = float(((training_load_summary or {}).get("current") or {}).get("form") or 0)

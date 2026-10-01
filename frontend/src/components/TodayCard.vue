@@ -47,6 +47,7 @@
     </nav>
 
     <TodayEnduranceSummary v-if="selected?.kind === 'endurance' && selected.detail" :key="selected.id" :detail="selected.detail" :ftp="ftp" :planned-minutes="selected.plannedMinutes" />
+    <TodaySickSummary v-else-if="selected?.kind === 'sick' && selected.detail?.sick_session" :key="selected.id" :detail="selected.detail" />
     <TodayStrengthSummary v-else-if="selected?.kind === 'strength' && selected.detail" :key="selected.id" :detail="selected.detail" :planned-minutes="selected.plannedMinutes" />
 
     <TodayPlanSummary
@@ -119,10 +120,12 @@ import ActivityIcon from './ActivityIcon.vue'
 import CyclingWorkoutProfile from './CyclingWorkoutProfile.vue'
 import TodayEnduranceSummary from './TodayEnduranceSummary.vue'
 import TodayStrengthSummary from './TodayStrengthSummary.vue'
+import TodaySickSummary from './TodaySickSummary.vue'
 import TodayPlanSummary from './TodayPlanSummary.vue'
 import MuscleSilhouette from './activity-detail/MuscleSilhouette.vue'
 import { decodePolyline, routeToSvg } from './activityVisuals'
 import { summarizeMuscles } from '../activity-detail/muscles.mjs'
+import { sickSessionMuscleInput } from '../sick-session-steps.mjs'
 
 const props = defineProps({
   state: { type: String, default: 'planned' },
@@ -162,6 +165,10 @@ const route = computed(() => (selected.value?.kind === 'endurance'
 const muscles = computed(() => {
   if (props.state === 'planned') {
     const summary = summarizeMuscles(props.plannedExercises, { planned: true })
+    return summary.muscles.length ? summary.muscles : null
+  }
+  if (selected.value?.kind === 'sick' && selected.value.detail?.sick_session) {
+    const summary = summarizeMuscles(sickSessionMuscleInput(selected.value.detail.sick_session), { planned: true })
     return summary.muscles.length ? summary.muscles : null
   }
   const session = selected.value?.kind === 'strength' && selected.value.detail?.strength_detail

@@ -4,7 +4,7 @@ import sys
 import tempfile
 import unittest
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -1782,6 +1782,24 @@ bad-date,Squat,5,100,60,,,,false,,1
         done = self.client.post("/sick-mode/complete", json=completion)
         self.assertEqual(done.status_code, 200)
         self.assertEqual(self.client.post("/sick-mode/complete", json={**completion, "session_key": "sprints"}).status_code, 404)
+
+        # A synced watch workout on the same day picks up the guided session.
+        today = date.today().isoformat()
+        watch = {"id": "watch-core", "date": today, "type": "WeightTraining", "name": "Evening Workout", "duration_min": 10.1, "avg_hr": 119, "max_hr": 142}
+        self.assertEqual(self.client.post("/activities", json=watch).status_code, 201)
+        with sqlite3.connect(os.environ["TRAINING_DB_PATH"]) as conn:
+            conn.execute(
+                "INSERT INTO activity_source_refs (source, external_id, activity_id, started_at) VALUES ('strava', 'watch-core', 'watch-core', ?)",
+                (f"{today}T18:07:34+00:00",),
+            )
+        guided = {**completion, "started_at": f"{today}T18:06:00Z"}
+        self.client.post("/sick-mode/complete", json=guided)
+        detail = self.client.get("/activities/watch-core").json()
+        self.assertIsNone(detail["strength_detail"])
+        self.assertEqual(detail["sick_session"]["extras"], ["Pull-ups ×5"])
+        context = self.client.get("/activities/watch-core/analysis/context").json()
+        self.assertTrue(context["available"])
+        self.assertEqual(context["context"]["sick_session"]["title"], "Light bodyweight circuit")
         self.assertFalse(self.client.post("/sick-mode/end").json()["sick_mode"]["active"])
 
     def test_zzz_sick_day_weight_training_does_not_advance_strength_rotation(self):

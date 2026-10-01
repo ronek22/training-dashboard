@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { buildSickSessionSteps, describeExercise, extraExerciseSteps, extraRoundSteps, formatClock, stepDose } from '../src/sick-session-steps.mjs'
+import { buildSickSessionSteps, describeExercise, extraExerciseSteps, extraRoundSteps, formatClock, sickSessionMuscleInput, stepDose } from '../src/sick-session-steps.mjs'
 
 const circuit = {
   rounds: 2,
@@ -49,4 +49,18 @@ test('added exercises become one step per side, flagged as extra', () => {
   assert.equal(extraExerciseSteps({ name: 'Side plank', seconds: 30, per_side: true }).length, 2)
   assert.equal(describeExercise({ name: 'Pull-ups', reps: 5 }), 'Pull-ups ×5')
   assert.equal(describeExercise({ name: 'Side plank', seconds: 30, per_side: true }), 'Side plank 0:30/side')
+})
+
+test('muscle input singularises names, counts rounds and skips extra-round markers', () => {
+  const input = sickSessionMuscleInput({
+    rounds: 3,
+    exercises: [{ name: 'Air squats' }, { name: 'Glute bridges' }],
+    extras: ['Pull-ups ×5', 'Pull-ups', 'round 4'],
+  })
+  assert.deepEqual(input, [
+    { exercise_name: 'Air squat', set_count: 3 },
+    { exercise_name: 'Glute bridge', set_count: 3 },
+    { exercise_name: 'Pull-up', set_count: 1 },
+    { exercise_name: 'Pull-up', set_count: 1 },
+  ])
 })

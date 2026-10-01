@@ -59,7 +59,13 @@ def build_activity_analysis_context(conn: sqlite3.Connection, detail_payload: di
     best_efforts = (detail_payload.get("best_efforts") or {}).get("efforts") or []
     limitations: list[str] = []
 
-    if activity.get("type") == "WeightTraining":
+    sick_session = detail_payload.get("sick_session")
+    if sick_session:
+        # A guided sick-mode session: the exercise list comes from TrainLog, effort from the watch.
+        available = bool(detail_payload.get("detail_available") or stats.get("avg_hr", {}).get("value"))
+        if not available:
+            limitations.append("No heart-rate data from the watch is available for this sick-mode session.")
+    elif activity.get("type") == "WeightTraining":
         available = strength_detail.get("status") == "enriched"
         if not available:
             limitations.append(
@@ -79,7 +85,7 @@ def build_activity_analysis_context(conn: sqlite3.Connection, detail_payload: di
         limitations.append("No explicit planned-session link is attached.")
     if not feedback:
         limitations.append("No post-workout subjective feedback is available.")
-    if activity.get("type") != "WeightTraining" and not best_efforts:
+    if activity.get("type") != "WeightTraining" and not sick_session and not best_efforts:
         limitations.append("No best-effort segment summary is available from the cached streams.")
 
     strength_session = strength_detail.get("session") or {}
@@ -166,6 +172,15 @@ def build_activity_analysis_context(conn: sqlite3.Connection, detail_payload: di
             "exercise_count": len(strength_exercises),
             "top_exercises": top_exercises,
         },
+        "sick_session": {
+            "title": sick_session.get("title"),
+            "planned_steps": sick_session.get("steps"),
+            "added_live": sick_session.get("extras"),
+            "guided_min": sick_session.get("guided_min"),
+            "guidance": "The athlete was sick (sick mode) and did this gentle home session to keep a daily streak. "
+                        "Judge whether effort stayed easy enough for someone who is ill (heart rate, duration), "
+                        "not training stimulus; never suggest pushing harder while symptoms last.",
+        } if sick_session else None,
         "recent_context": _recent_activity_hints(conn, activity.get("id")),
         "limitations": limitations,
         "available": available,

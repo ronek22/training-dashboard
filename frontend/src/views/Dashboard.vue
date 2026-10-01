@@ -530,8 +530,8 @@ const todaySessions = computed(() => {
   const activities = todayActivities.value
   const sickIds = new Set((sickMode.value.completed_today || []).map((item) => item.activity_id).filter(Boolean))
   const isSickSession = (activity) => sickIds.has(activity.id) || String(activity.id).startsWith('sick-')
-  const kindOf = (activity) => (isSickSession(activity) ? 'other' : ['ride', 'run', 'walk'].includes(activityTone(activity.type)) ? 'endurance' : activityTone(activity.type) === 'strength' ? 'strength' : 'other')
-  const order = { endurance: 0, strength: 1, other: 2 }
+  const kindOf = (activity) => (isSickSession(activity) ? 'sick' : ['ride', 'run', 'walk'].includes(activityTone(activity.type)) ? 'endurance' : activityTone(activity.type) === 'strength' ? 'strength' : 'other')
+  const order = { endurance: 0, strength: 1, sick: 1, other: 2 }
   return activities
     .map((activity, index) => ({
       id: activity.id,

@@ -24,6 +24,7 @@
         </article>
       </div>
     </section>
+    <SickSessionSummary v-else-if="detail.sick_session" :session="detail.sick_session" />
     <section v-else class="ad-section ad-strength-empty">
       <div class="ad-section-heading"><div><span>Exercise detail unavailable</span><h2>Sets were not linked</h2></div></div>
       <p>This activity is still a valid completed strength session. Link a recorded TrainLog workout or a matching Fitbod import to review exercise order, sets, repetitions, and load.</p>
@@ -94,6 +95,7 @@ import { computed, ref } from 'vue'
 import StrengthMuscleMap from './StrengthMuscleMap.vue'
 import { classifyExercise, MUSCLES } from '../../activity-detail/muscles.mjs'
 import { formatNumber } from '../../activity-detail/presentation'
+import SickSessionSummary from './SickSessionSummary.vue'
 const props = defineProps({ detail: { type: Object, required: true } })
 const strength = computed(() => props.detail.strength_detail || {})
 const session = computed(() => strength.value.session || {})
@@ -225,7 +227,12 @@ const metrics = computed(() => {
     output.push({ label: 'Exercises', value: session.value.exercises.length })
     output.push({ label: 'Working sets', value: workingSetCount.value })
     output.push({ label: 'Recorded volume', value: formatVolume(session.value.total_volume_kg) })
+  } else if (props.detail.sick_session) {
+    const sick = props.detail.sick_session
+    output.push({ label: 'Exercises', value: sick.exercises.length + sick.extras.length })
   }
+  if (averageHeartRate.value) output.push({ label: 'Avg heart rate', value: `${averageHeartRate.value} bpm` })
+  if (maximumHeartRate.value && !enriched.value) output.push({ label: 'Max heart rate', value: `${maximumHeartRate.value} bpm` })
   return output
 })
 const number = formatNumber

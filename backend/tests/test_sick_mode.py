@@ -9,6 +9,7 @@ from backend.app.services.sick_mode import (
     public_session,
     save_sick_session_completion,
     sick_dates,
+    sick_session_for_activity,
     build_sick_mode,
     end_sick_mode,
     log_sick_session,
@@ -115,6 +116,15 @@ class SickModeTests(unittest.TestCase):
         self.assertEqual(row["workout_intent"], "mobility")
         self.assertIn("Light bodyweight circuit + Pull-ups ×5", row["notes"])
         self.assertIsNone(self.conn.execute("SELECT workout_intent FROM activities WHERE id = 'morning'").fetchone()[0])
+
+    def test_activity_detail_finds_the_guided_session(self):
+        start_sick_mode(self.conn, "above_neck", today=TODAY)
+        self.add_synced("evening", f"{TODAY.isoformat()}T18:07:34+00:00")
+        save_sick_session_completion(self.conn, {"session_key": "light_circuit", "started_at": f"{TODAY.isoformat()}T18:06:00Z", "elapsed_seconds": 360, "extras": ["Pull-ups"]}, today=TODAY)
+        linked = sick_session_for_activity(self.conn, "evening")
+        self.assertEqual((linked["title"], linked["guided_min"], linked["extras"], linked["logged_manually"]), ("Light bodyweight circuit", 6.0, ["Pull-ups"], False))
+        self.assertEqual(sick_session_for_activity(self.conn, f"sick-{TODAY.isoformat()}-gentle_stretch")["title"], "Gentle stretch")
+        self.assertIsNone(sick_session_for_activity(self.conn, "unrelated"))
 
     def test_sick_dates_cover_open_periods(self):
         start_sick_mode(self.conn, "above_neck", today=TODAY - timedelta(days=1))

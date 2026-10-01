@@ -59,3 +59,15 @@ export function formatClock(totalSeconds) {
   const seconds = Math.max(0, Math.round(totalSeconds))
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
+
+// Shape a sick-mode session for summarizeMuscles (planned mode): one entry per exercise,
+// with names singularised so "Air squats" matches the "squat" rule. "round N" extras are skipped.
+export function sickSessionMuscleInput(session) {
+  const rounds = Math.max(1, Number(session?.rounds || 1))
+  const singular = (name) => String(name).replace(/(\w{2,})s\b/g, '$1')
+  const planned = (session?.exercises || []).map((exercise) => ({ exercise_name: singular(exercise.name), set_count: rounds }))
+  const added = (session?.extras || [])
+    .filter((extra) => !/^round \d+$/i.test(extra))
+    .map((extra) => ({ exercise_name: singular(extra.split(/ (?:×|\d)/)[0]), set_count: 1 }))
+  return [...planned, ...added]
+}

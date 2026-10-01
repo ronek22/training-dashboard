@@ -41,7 +41,7 @@ from .plans import (
     format_workout_intent_label,
     normalize_workout_intent,
 )
-from .sick_mode import sick_dates
+from .sick_mode import sick_dates, sick_session_for_activity
 from .settings import (
     get_performance_settings_for_conn,
     get_workout_template_settings_for_conn,
@@ -709,7 +709,8 @@ def _build_activity_detail_payload(
     source_status = cache_status_override or ("cached" if detail_row else ("summary_only" if not _is_strava_backed_activity(activity["id"]) else "not_cached"))
     feedback = get_activity_feedback_data(conn, activity["id"])
     strength_detail = None
-    if activity.get("type") == "WeightTraining":
+    sick_session = sick_session_for_activity(conn, activity["id"])
+    if activity.get("type") == "WeightTraining" and not sick_session:
         strength_detail = (
             get_trainlog_strength_detail_for_activity(conn, activity["id"])
             or get_fitbod_strength_detail_for_activity(conn, activity["id"])
@@ -764,6 +765,7 @@ def _build_activity_detail_payload(
         "source_stream_summary": dict(stream_summary) if stream_summary else None,
         "detail_available": bool(detail_row and (detail or streams or route_polyline)),
         "strength_detail": strength_detail,
+        "sick_session": sick_session,
         "linked_planned_session": linked_planned_session,
         "planned_session_match": planned_session_match,
         "execution_quality": execution_quality,

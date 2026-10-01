@@ -361,6 +361,26 @@ def _completions_on(conn: sqlite3.Connection, day: str) -> list[dict]:
     ]
 
 
+def sick_session_for_activity(conn: sqlite3.Connection, activity_id: str) -> Optional[dict]:
+    """The guided session behind an activity: a linked watch workout or a manual sick-mode log."""
+    try:
+        row = conn.execute(
+            "SELECT session_key, elapsed_seconds, extras_json FROM sick_session_completions WHERE activity_id = ? ORDER BY started_at DESC LIMIT 1",
+            (activity_id,),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        row = None
+    if row:
+        key, guided_min, extras = row["session_key"], round(row["elapsed_seconds"] / 60, 1), json.loads(row["extras_json"] or "[]")
+    else:
+        key = next((key for key in SESSIONS if str(activity_id).startswith("sick-") and str(activity_id).endswith(f"-{key}")), None)
+        guided_min, extras = None, []
+    session = public_session(key) if key else None
+    if not session:
+        return None
+    return {**session, "guided_min": guided_min, "extras": extras, "logged_manually": row is None}
+
+
 def build_sick_mode(conn: sqlite3.Connection, today: Optional[date] = None) -> dict:
     active = get_active_sick_period(conn)
     if not active:

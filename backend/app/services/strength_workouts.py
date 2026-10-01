@@ -981,18 +981,92 @@ def link_activity(
     return get_session(conn, session_id)
 
 
+def _parse_moment(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.astimezone()
+
+
+def _score_candidate(
+    activity: dict,
+    session_start: Optional[datetime],
+    session_end: Optional[datetime],
+    session_date: str,
+) -> dict:
+    activity_start = _parse_moment(activity.get("started_at"))
+    day_gap = abs(
+        (datetime.fromisoformat(activity["date"]) - datetime.fromisoformat(session_date)).days
+    )
+    if activity_start and session_start:
+        start_delta_min = abs((activity_start - session_start).total_seconds()) / 60
+        activity_end = activity_start + timedelta(minutes=activity.get("duration_min") or 0)
+        overlap_s = (min(activity_end, session_end) - max(activity_start, session_start)).total_seconds()
+        shorter_s = min(
+            (activity_end - activity_start).total_seconds(),
+            (session_end - session_start).total_seconds(),
+        )
+        overlap = max(0.0, overlap_s) / shorter_s if shorter_s > 0 else 0.0
+        activity["start_delta_min"] = round(start_delta_min, 1)
+        activity["overlap_pct"] = round(overlap * 100)
+        if start_delta_min <= 20 or overlap >= 0.5:
+            confidence = "strong"
+            if start_delta_min < 1:
+                reason = "Started within a minute of the session"
+            elif start_delta_min < 60:
+                reason = f"Started {round(start_delta_min)} min from the session"
+            else:
+                reason = "Overlaps most of the session"
+        elif overlap > 0 or start_delta_min <= 120:
+            confidence = "possible"
+            reason = f"Started {round(start_delta_min)} min from the session"
+        else:
+            confidence = "weak"
+            reason = "Recorded at a different time" if day_gap == 0 else f"{day_gap} day{'s' if day_gap > 1 else ''} away"
+        rank = (0 if confidence == "strong" else 1 if confidence == "possible" else 2, start_delta_min)
+    else:
+        activity["start_delta_min"] = None
+        activity["overlap_pct"] = None
+        confidence = "possible" if day_gap == 0 else "weak"
+        reason = "Same day, no start time recorded" if day_gap == 0 else f"{day_gap} day{'s' if day_gap > 1 else ''} away"
+        rank = (1 if day_gap == 0 else 2, 10_000 + day_gap * 1440)
+    activity["match"] = confidence
+    activity["match_reason"] = reason
+    activity["_rank"] = rank
+    return activity
+
+
 def activity_candidates(conn: sqlite3.Connection, session_id: int) -> list[dict]:
     session = _session_or_404(conn, session_id)
-    session_date = str(session["started_at"])[:10]
+    session_start = _parse_moment(session["started_at"])
+    session_end = _parse_moment(session["completed_at"]) or _now()
+    if session_start and session_end <= session_start:
+        session_end = session_start + timedelta(minutes=1)
+    # Match on the local calendar day, which is how activity dates are stored.
+    session_date = session_start.astimezone().date().isoformat() if session_start else str(session["started_at"])[:10]
     rows = conn.execute(
         """
-        SELECT id, date, type, name, duration_min, avg_hr, max_hr, calories
-        FROM activities
-        WHERE type IN ('WeightTraining', 'Workout')
-          AND date BETWEEN date(?, '-2 days') AND date(?, '+2 days')
-        ORDER BY ABS(julianday(date) - julianday(?)), date DESC
-        LIMIT 12
+        SELECT a.id, a.date, a.type, a.name, a.duration_min, a.avg_hr, a.max_hr, a.calories,
+               (SELECT MIN(r.started_at) FROM activity_source_refs r
+                WHERE r.activity_id = a.id AND r.started_at IS NOT NULL) AS started_at
+        FROM activities a
+        WHERE a.type IN ('WeightTraining', 'Workout')
+          AND a.date BETWEEN date(?, '-2 days') AND date(?, '+2 days')
+          AND NOT EXISTS (
+              SELECT 1 FROM strength_workout_sessions s
+              WHERE s.linked_activity_id = a.id AND s.id != ?
+          )
         """,
-        (session_date, session_date, session_date),
+        (session_date, session_date, session_id),
     ).fetchall()
-    return [dict(row) for row in rows]
+    scored = [
+        _score_candidate(dict(row), session_start, session_end, session_date)
+        for row in rows
+    ]
+    scored.sort(key=lambda item: item["_rank"])
+    for item in scored:
+        del item["_rank"]
+    return scored[:12]

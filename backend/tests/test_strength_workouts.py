@@ -469,6 +469,56 @@ class StrengthWorkoutTests(unittest.TestCase):
             404,
         )
 
+    def test_candidates_rank_by_time_overlap_and_skip_attached(self):
+        created = self.client.post('/strength/workouts/sessions/one-time', json={
+            'name': 'Ranking check',
+            'exercises': [{'exercise_name': 'Curl', 'set_count': 1, 'target_reps': 10, 'rest_seconds': 60}],
+        })
+        self.assertEqual(created.status_code, 201, created.text)
+        session_id = created.json()['id']
+        self.client.post(f'/strength/workouts/sessions/{session_id}/finish', json={})
+
+        day = '2031-03-12'
+        conn = sqlite3.connect(os.environ['TRAINING_DB_PATH'])
+        with conn:
+            conn.execute(
+                'UPDATE strength_workout_sessions SET started_at = ?, completed_at = ? WHERE id = ?',
+                (f'{day}T14:07:28+00:00', f'{day}T14:38:06+00:00', session_id),
+            )
+        for activity_id, name, started_at in [
+            ('rank-morning', 'Morning Workout', f'{day}T07:00:00+00:00'),
+            ('rank-match', 'Afternoon Weight Training', f'{day}T14:07:23+00:00'),
+            ('rank-untimed', 'Manual lift', None),
+        ]:
+            response = self.client.post('/activities', json={
+                'id': activity_id, 'date': day, 'type': 'WeightTraining',
+                'name': name, 'duration_min': 31,
+            })
+            self.assertEqual(response.status_code, 201, response.text)
+            if started_at:
+                with conn:
+                    conn.execute(
+                        'INSERT INTO activity_source_refs (source, external_id, activity_id, started_at) VALUES (?, ?, ?, ?)',
+                        ('strava', activity_id, activity_id, started_at),
+                    )
+        conn.close()
+
+        candidates = self.client.get(f'/strength/workouts/sessions/{session_id}/activity-candidates').json()
+        self.assertEqual([item['id'] for item in candidates], ['rank-match', 'rank-untimed', 'rank-morning'])
+        self.assertEqual(candidates[0]['match'], 'strong')
+        self.assertEqual(candidates[0]['overlap_pct'], 100)
+        self.assertEqual(candidates[1]['match'], 'possible')
+        self.assertEqual(candidates[2]['match'], 'weak')
+
+        other = self.client.post('/strength/workouts/sessions/one-time', json={
+            'name': 'Other session',
+            'exercises': [{'exercise_name': 'Curl', 'set_count': 1, 'target_reps': 10, 'rest_seconds': 60}],
+        }).json()
+        self.client.post(f"/strength/workouts/sessions/{other['id']}/finish", json={})
+        self.client.put(f"/strength/workouts/sessions/{other['id']}/activity", json={'activity_id': 'rank-match'})
+        remaining = self.client.get(f'/strength/workouts/sessions/{session_id}/activity-candidates').json()
+        self.assertNotIn('rank-match', [item['id'] for item in remaining])
+
 
 if __name__ == "__main__":
     unittest.main()

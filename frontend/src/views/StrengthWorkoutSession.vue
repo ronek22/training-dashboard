@@ -260,10 +260,17 @@
             <div class="card-title">Apple Watch data</div>
             <h2>{{ session.linked_activity ? 'Workout data attached' : 'Attach your recorded workout' }}</h2>
             <p v-if="session.linked_activity">Heart rate and energy stay sourced from the imported activity, while this session owns the exercise and set log.</p>
+            <p v-else-if="stravaReady">Pull the latest activities from Strava and the matching workout is attached automatically.</p>
             <p v-else>Import from HealthFit on Data &amp; Sync, then refresh candidates here.</p>
           </div>
-          <router-link to="/sync" class="quiet-button">Open Data &amp; Sync</router-link>
+          <div class="watch-link-actions">
+            <button v-if="stravaReady && !session.linked_activity" class="strava-button" type="button" :disabled="syncingStrava" @click="syncFromStrava">
+              {{ syncingStrava ? 'Syncing Strava…' : 'Sync from Strava' }}<span aria-hidden="true"> ↻</span>
+            </button>
+            <router-link to="/sync" class="quiet-button">Open Data &amp; Sync</router-link>
+          </div>
         </div>
+        <p v-if="syncMessage" class="sync-message" role="status">{{ syncMessage }}</p>
 
         <article v-if="session.linked_activity" class="linked-activity">
           <div><span>Activity</span><strong>{{ session.linked_activity.name || 'Strength training' }}</strong></div>
@@ -278,10 +285,14 @@
           <button class="refresh-button" type="button" :disabled="loadingCandidates" @click="loadCandidates">
             {{ loadingCandidates ? 'Looking for activities…' : 'Find imported activities' }}
           </button>
-          <div v-if="candidatesLoaded && !candidates.length" class="no-candidates">No WeightTraining or Workout activity was found within two days of this session.</div>
+          <div v-if="candidatesLoaded && !candidates.length" class="no-candidates">No unattached WeightTraining or Workout activity was found within two days of this session{{ stravaReady ? ' — try syncing from Strava.' : '.' }}</div>
           <div v-else class="candidate-list">
-            <article v-for="activity in candidates" :key="activity.id" class="candidate">
-              <div><strong>{{ activity.name || 'Strength training' }}</strong><span>{{ activity.date }} · {{ formatDuration(activity.duration_min) }}</span></div>
+            <article v-for="activity in candidates" :key="activity.id" class="candidate" :class="`match-${activity.match}`">
+              <div>
+                <strong>{{ activity.name || 'Strength training' }} <em class="match-badge">{{ matchLabel(activity.match) }}</em></strong>
+                <span>{{ formatCandidateTime(activity) }} · {{ formatDuration(activity.duration_min) }}</span>
+                <span>{{ activity.match_reason }}<template v-if="activity.overlap_pct"> · {{ activity.overlap_pct }}% overlap</template></span>
+              </div>
               <div><span>{{ activity.avg_hr ? `${activity.avg_hr} avg bpm` : 'No HR summary' }}</span><span>{{ activity.calories ? `${activity.calories} kcal` : 'No energy summary' }}</span></div>
               <button type="button" @click="linkActivity(activity.id)">Attach</button>
             </article>
@@ -339,6 +350,9 @@ const now = ref(Date.now())
 const candidates = ref([])
 const candidatesLoaded = ref(false)
 const loadingCandidates = ref(false)
+const stravaReady = ref(false)
+const syncingStrava = ref(false)
+const syncMessage = ref('')
 const restSoundStorageKey = 'training-dashboard-rest-sound'
 const readRestSoundPreference = () => {
   try { return window.localStorage.getItem(restSoundStorageKey) !== 'off' } catch { return true }
@@ -409,6 +423,7 @@ const loadSession = async () => {
     const { data } = await api.getStrengthWorkoutSession(route.params.sessionId)
     session.value = data
     syncInputs()
+    if (data.status === 'completed' && !data.linked_activity) prepareActivityLink()
   } catch (loadError) {
     error.value = loadError?.response?.data?.detail || 'Could not load workout.'
   } finally {
@@ -593,7 +608,7 @@ const finishWorkout = async () => {
   try {
     const { data } = await api.finishStrengthWorkoutSession(session.value.id, {})
     session.value = data
-    await loadCandidates()
+    await prepareActivityLink()
   } catch (finishError) {
     error.value = finishError?.response?.data?.detail || 'Could not finish workout.'
   } finally {
@@ -624,13 +639,48 @@ const loadCandidates = async () => {
   }
 }
 
+const prepareActivityLink = async () => {
+  api.getStravaStatus().then(({ data }) => { stravaReady.value = Boolean(data.configured) }).catch(() => {})
+  await loadCandidates()
+}
+
+const syncFromStrava = async () => {
+  if (syncingStrava.value) return
+  syncingStrava.value = true
+  syncMessage.value = ''
+  error.value = ''
+  try {
+    const { data } = await api.importStravaActivities({ start_date: session.value.started_at.slice(0, 10) })
+    await loadCandidates()
+    const strong = candidates.value.filter((activity) => activity.match === 'strong')
+    if (strong.length === 1 && await linkActivity(strong[0].id)) {
+      syncMessage.value = `Attached “${strong[0].name || 'Strength training'}” from Strava — ${strong[0].match_reason.toLowerCase()}.`
+    } else {
+      syncMessage.value = `Synced ${data.imported} Strava ${data.imported === 1 ? 'activity' : 'activities'}. ${strong.length ? 'Several activities match — pick the right one below.' : 'No activity lines up with this session yet; Strava may still be processing it.'}`
+    }
+  } catch (syncError) {
+    error.value = syncError?.response?.data?.detail || 'Strava sync failed.'
+  } finally {
+    syncingStrava.value = false
+  }
+}
+
+const matchLabel = (match) => ({ strong: 'Best match', possible: 'Possible', weak: 'Unlikely' }[match] || '')
+const formatCandidateTime = (activity) => (activity.started_at
+  ? format(new Date(activity.started_at), 'EEE d MMM · HH:mm')
+  : activity.date)
+
 const linkActivity = async (activityId) => {
+  syncMessage.value = ''
   try {
     const { data } = await api.linkStrengthWorkoutActivity(session.value.id, { activity_id: activityId })
     session.value = data
     if (activityId) candidates.value = []
+    else await loadCandidates()
+    return true
   } catch (linkError) {
     error.value = linkError?.response?.data?.detail || 'Could not update activity link.'
+    return false
   }
 }
 
@@ -705,6 +755,14 @@ onBeforeUnmount(() => {
 .candidate { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 16px; align-items: center; padding: 13px 15px; border: 1px solid var(--border); border-radius: 13px; }
 .candidate > div { display: grid; gap: 3px; }
 .candidate span { color: var(--muted); font-size: 12px; }
+.watch-link-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.strava-button { min-height: 42px; padding: 0 16px; border: 1px solid rgba(255,155,114,.4); border-radius: 12px; background: rgba(255,120,60,.14); color: color-mix(in srgb, #ffb38f calc(100% - var(--dim) * 2), #7a2c0c); font-weight: 800; }
+.strava-button:disabled { opacity: .6; }
+.sync-message { margin: 0; color: var(--muted-soft); font-size: 13px; }
+.match-badge { margin-left: 8px; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-style: normal; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; vertical-align: 2px; background: var(--surface2); color: var(--muted); }
+.candidate.match-strong { border-color: color-mix(in srgb, var(--success) 40%, transparent); background: color-mix(in srgb, var(--success) 5%, transparent); }
+.candidate.match-strong .match-badge { background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success-text); }
+.candidate.match-weak { opacity: .7; }
 .candidate button { min-height: 38px; padding: 0 14px; border: 1px solid rgba(255,179,79,.3); border-radius: 10px; background: rgba(255,159,47,.1); color:color-mix(in srgb, #ffd18d calc(100% - var(--dim)), #000); font-weight: 800; }
 @media (max-width: 820px) { .linked-activity { grid-template-columns: 1fr 1fr; } .watch-link-copy { align-items: stretch; flex-direction: column; } }
 @media (max-width: 560px) { .runner-progress { width: 100%; } .session-actions { flex-direction: column-reverse; } .candidate { grid-template-columns: 1fr; } }

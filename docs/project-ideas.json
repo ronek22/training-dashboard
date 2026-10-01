@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-09-28T09:14:51+02:00",
-  "summary": "Reviewed repository status and recent change summaries, current-state and strength sprint documentation, the active roadmap and all seven existing proposals. Revisited weekly review navigation, week-keyed specialist persistence and the helper/backend test declarations. Historical specialist access is already proposed, while coaching adaptation, data-quality cleanup and service contract coverage are on the roadmap. The inspected changes did not establish a sufficiently distinct new proposal today. Source/documentation review only; no application tests or model calls were run and no credentials, databases or private training records were accessed.",
+  "reviewed_at": "2026-10-01T09:04:01+02:00",
+  "summary": "Reviewed repository status, recent commits, current-state documentation, the active roadmap, Sprint 36 follow-ups and all 15 existing proposals. Inspected the current strength activity-matching changes: time/overlap ranking, exclusion of activities attached elsewhere, match explanations, in-runner Strava sync and the new synthetic ranking test. Matching assistance is already a planned sprint follow-up and active implementation; unlogged input recovery, equipment browsing and strength progression are also already captured. No sufficiently distinct new proposal was identified today. Source/documentation review only; no application tests, syncs or model calls were run, and no credentials, databases or private training exports were opened.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -323,6 +323,31 @@
         "Easy runs above the heart-rate cap are marked in execution quality."
       ],
       "created_on": "2026-09-28"
+    },
+    {
+      "id": "edit-saved-volume-drop-reason",
+      "title": "Correct the reason you gave for a quieter week",
+      "category": "Experience",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The new volume alert hides its entire component after a reason is saved. Although the service supports updating the week-specific label, the inspected frontend exposes no control for revisiting that answer. An accidental tap can therefore leave an incorrect reason in coaching context.",
+      "proposal": "Keep a compact saved-answer row for the currently evaluated volume-drop week, showing its date range and chosen reason with a Change action. Reuse the existing label endpoint to correct the same week explicitly. Keep the full warning dismissed after a successful save and show an inline retry state if a correction fails. This is a correction path for the existing alert, not another alert system.",
+      "benefit": "Let the athlete fix an accidental answer quickly and keep coaching context aligned with what they meant.",
+      "evidence": [
+        "frontend/src/components/VolumeTrendAlert.vue: root v-if requires trend.alert; label emits the response that hides the component",
+        "backend/app/services/volume_trend.py: build_volume_trend returns the saved label with alert false for a labeled sliding window",
+        "backend/app/services/volume_trend.py: save_volume_trend_label updates the same week on conflict",
+        "frontend/src/views/Dashboard.vue: onVolumeTrendLabeled replaces the dashboard trend",
+        "backend/tests/test_volume_trend.py: test_label_hides_alert_and_is_reported covers dismissal but not a visible correction path"
+      ],
+      "acceptance_criteria": [
+        "After saving a reason for a synthetic sliding week, the full alert disappears and a compact row shows the saved reason, evaluated week and a keyboard-accessible Change action.",
+        "Changing the reason updates the same week through the existing endpoint; a reload and coaching-context read return the corrected reason.",
+        "A failed correction preserves the last confirmed answer and offers retry without showing an unsaved choice as persisted.",
+        "Refreshing into a different evaluated week cannot send a pending correction to that new week; the user is asked to reopen the relevant current control.",
+        "Synthetic UI checks cover saving, correction, failed saves and reload at desktop and 390px widths. Merely opening the control never writes an answer."
+      ],
+      "created_on": "2026-09-30"
     }
   ]
 }

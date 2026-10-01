@@ -12,6 +12,7 @@ from ..services.sick_mode import (
     public_session,
     reconcile_sick_session_activities,
     save_sick_session_completion,
+    sick_dates,
     start_sick_mode,
 )
 from ..services.volume_trend import build_volume_trend, save_volume_trend_label
@@ -53,6 +54,15 @@ def get_sick_mode():
     try:
         reconcile_sick_session_activities(conn)
         return {"sick_mode": build_sick_mode(conn)}
+    finally:
+        conn.close()
+
+
+@router.get("/sick-mode/dates")
+def get_sick_dates():
+    conn = get_db()
+    try:
+        return {"dates": sorted(sick_dates(conn))}
     finally:
         conn.close()
 

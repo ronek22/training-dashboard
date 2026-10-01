@@ -1800,6 +1800,7 @@ bad-date,Squat,5,100,60,,,,false,,1
         context = self.client.get("/activities/watch-core/analysis/context").json()
         self.assertTrue(context["available"])
         self.assertEqual(context["context"]["sick_session"]["title"], "Light bodyweight circuit")
+        self.assertIn(today, self.client.get("/sick-mode/dates").json()["dates"])
         self.assertFalse(self.client.post("/sick-mode/end").json()["sick_mode"]["active"])
 
     def test_zzz_sick_day_weight_training_does_not_advance_strength_rotation(self):

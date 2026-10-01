@@ -49,12 +49,12 @@
         <div class="weekday-row" :class="{ 'is-week-view': activeMode === 'week' }" aria-hidden="true"><span v-for="label in weekdayLabels" :key="label">{{ label }}</span><span v-if="activeMode === 'month'" class="week-total-label">Week</span></div>
 
         <div v-if="activeMode === 'week'" class="week-grid">
-          <CalendarDayCell v-for="day in activeWeek?.days || []" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :time-state="timeState(day.date)" :max-events="4" v-bind="dragProps(day.date)" @select="openDay" @drag-start="onDragStart" @drag-end="onDragEnd" @drop="onDrop" />
+          <CalendarDayCell v-for="day in activeWeek?.days || []" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :sick="sickDates.has(day.date)" :time-state="timeState(day.date)" :max-events="4" v-bind="dragProps(day.date)" @select="openDay" @drag-start="onDragStart" @drag-end="onDragEnd" @drop="onDrop" />
         </div>
 
         <div v-else class="month-grid">
           <template v-for="week in monthData?.weeks || []" :key="week.week_start">
-            <CalendarDayCell v-for="day in week.days" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :outside="!isActiveMonth(day.date)" :time-state="timeState(day.date)" compact :max-events="3" v-bind="dragProps(day.date)" @select="openDay" @drag-start="onDragStart" @drag-end="onDragEnd" @drop="onDrop" />
+            <CalendarDayCell v-for="day in week.days" :key="day.date" :day="day" :plan="planFor(day.date)" :selected="selectedDate === day.date" :is-today="day.date === todayKey" :sick="sickDates.has(day.date)" :outside="!isActiveMonth(day.date)" :time-state="timeState(day.date)" compact :max-events="3" v-bind="dragProps(day.date)" @select="openDay" @drag-start="onDragStart" @drag-end="onDragEnd" @drop="onDrop" />
             <aside class="week-total" :class="{ 'is-current': week.week_start === currentWeekStart }" :title="week.total_sessions ? `${week.total_sessions} ${week.total_sessions === 1 ? 'session' : 'sessions'}` : null">
               <span class="wt-range">{{ formatWeekRange(week.week_start, week.week_end) }}</span>
               <strong>{{ week.total_duration_min ? formatHours(week.total_duration_min) : '–' }}</strong>
@@ -85,6 +85,7 @@
           <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" class="lg-done"><path d="M3.5 8.5l3 3 6-6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>Done as planned</span>
           <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" class="lg-planned"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.6" /><path d="M8 5v3.2l2 1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>Planned</span>
           <span><svg viewBox="0 0 16 16" width="12" height="12" class="lg-changed"><circle cx="8" cy="8" r="3.5" fill="currentColor" /></svg>Changed</span>
+          <span v-if="sickDates.size"><i class="lg-sick" aria-hidden="true"></i>Sick day</span>
           <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" class="lg-missed"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>Missed</span>
         </div>
 
@@ -304,6 +305,11 @@ const disciplineSummary = computed(() => {
     .map((item) => ({ ...item, value: item.isStrength || !item.distance ? formatHours(item.duration) : formatDistance(item.distance) }))
 })
 
+const sickDates = ref(new Set())
+// Sick days are decoration: the calendar still loads if this request fails.
+const loadSickDates = async () => {
+  try { sickDates.value = new Set((await api.getSickDates()).data.dates) } catch { sickDates.value = new Set() }
+}
 const fetchPlans = async () => { const { data } = await api.getWeeklyPlans({ limit: 16 }); plans.value = data }
 const loadWeek = async () => { const { data } = await api.getCalendarWeeks({ weeks: 16 }); weeks.value = data }
 const loadMonth = async () => { const { data } = await api.getCalendarMonth({ month: activeMonthKey.value }); monthData.value = data }
@@ -505,6 +511,7 @@ watch([popupOpen, selectedDate, planCyclingWorkout, planDetailView], () => { if 
 
 onMounted(() => {
   reload()
+  loadSickDates()
   window.addEventListener('keydown', onShortcut)
   window.addEventListener('pointerdown', onPointerDown)
   window.addEventListener('resize', positionPopup)
@@ -557,6 +564,7 @@ onBeforeUnmount(() => {
 .legend { gap: 14px; justify-content: flex-end; padding: 10px 4px 0; color: var(--muted-soft); font-size: 12px; }
 .legend span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .lg-done { color: var(--success); } .lg-planned { color: var(--muted-soft); } .lg-changed { color: var(--warning); } .lg-missed { color: var(--danger); }
+.lg-sick { width: 12px; height: 12px; border-radius: 3px; background: rgb(var(--sick-rgb) / .45); }
 
 .calendar-layout { display: block; }
 .calendar-surface { position: relative; min-width: 0; transition: opacity var(--motion-duration-base) var(--motion-ease-standard); }

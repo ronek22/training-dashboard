@@ -53,6 +53,9 @@
   --tone-run: #82afff;
   --tone-strength: #f3c478;
   --tone-recovery: #bcb0f6;
+  /* Sick days: a dusty rose, softer than danger so illness doesn't read as an error. */
+  --sick: #d9a3b4;
+  --sick-rgb: 217 163 180;
   --tone-walk: #91cfba;
   --tone-neutral: #a8b7d0;
   --deep: #111a26;
@@ -139,6 +142,8 @@
   --tone-run: #2f63e0;
   --tone-strength: #c77a0a;
   --tone-recovery: #7a5fd0;
+  --sick: #a8667e;
+  --sick-rgb: 168 102 126;
   --tone-walk: #3f8f77;
   --tone-neutral: #64748b;
   --deep: #f1f4f9;

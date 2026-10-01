@@ -3,6 +3,7 @@
     class="calendar-day"
     :class="{
       'is-today': isToday,
+      'is-sick': sick,
       'is-selected': selected,
       'is-outside': outside,
       'is-past': timeState === 'past',
@@ -22,7 +23,8 @@
         <span class="day-number">{{ day.day_of_month }}</span>
         <span v-if="showMonthLabel" class="day-month">{{ monthLabel }}</span>
       </span>
-      <span v-if="loadTone === 'hard'" class="day-hard">Hard</span>
+      <span v-if="sick" class="day-sick" title="Sick day">{{ compact ? 'Sick' : 'Sick day' }}</span>
+      <span v-else-if="loadTone === 'hard'" class="day-hard">Hard</span>
     </button>
 
     <div class="day-events">
@@ -100,6 +102,7 @@ const props = defineProps({
   draggablePlan: Boolean,
   dragging: Boolean,
   dropState: { type: String, default: '' },
+  sick: Boolean,
 })
 
 const emit = defineEmits(['select', 'drag-start', 'drag-end', 'drag-over', 'drop'])
@@ -155,7 +158,7 @@ const loadTone = computed(() => {
 })
 const monthLabel = computed(() => format(parseISO(props.day.date), 'MMM'))
 const showMonthLabel = computed(() => props.day.day_of_month === 1)
-const ariaLabel = computed(() => `${props.day.weekday} ${props.day.date}, ${eventCount.value ? `${eventCount.value} training item${eventCount.value === 1 ? '' : 's'}` : 'nothing scheduled'}`)
+const ariaLabel = computed(() => `${props.day.weekday} ${props.day.date}${props.sick ? ', sick day' : ''}, ${eventCount.value ? `${eventCount.value} training item${eventCount.value === 1 ? '' : 's'}` : 'nothing scheduled'}`)
 
 const activityTone = (type) => {
   const value = String(type || '').toLowerCase()
@@ -228,6 +231,8 @@ const planStatusLabel = (item) => {
 .calendar-day.is-outside { opacity: .42; }
 .calendar-day.is-outside:hover { opacity: .75; }
 .calendar-day.is-today { background: color-mix(in srgb, var(--accent) 9%, var(--cell)); }
+.calendar-day.is-sick { --cell: color-mix(in srgb, rgb(var(--sick-rgb)) 17%, var(--bg-elevated)); }
+.calendar-day.is-sick.is-today { background: var(--cell); }
 .calendar-day.is-drop-valid { background: color-mix(in srgb, var(--accent) 16%, var(--cell)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent-strong) 70%, transparent); }
 .calendar-day.is-drop-invalid { opacity: .4; cursor: not-allowed; }
 .calendar-event.is-draggable { cursor: grab; }
@@ -240,6 +245,7 @@ const planStatusLabel = (item) => {
 .day-number { min-width: 26px; height: 26px; display: grid; place-items: center; border-radius: 13px; color: var(--text-soft); font-family: var(--font-display); font-size: 13px; font-weight: 650; }
 .is-today .day-number { background:#3f66d6; color:#fff; }
 .day-month { color: var(--muted-soft); font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; }
+.day-sick { padding: 1px 7px; border-radius: 999px; background: rgb(var(--sick-rgb) / .22); color: var(--sick); font-size: 11px; font-weight: 650; white-space: nowrap; }
 .day-hard { padding: 1px 7px; border-radius: 999px; background: rgba(243, 180, 77, .16); color:color-mix(in srgb, #ffc46b calc(100% - var(--dim)), #000); font-size: 11px; font-weight: 650; }
 
 .day-events { display: grid; gap: 4px; margin-top: 4px; }

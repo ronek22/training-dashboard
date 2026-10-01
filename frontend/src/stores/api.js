@@ -93,6 +93,7 @@ export const useApi = () => ({
   getDailyCheckin: (params) => api.get('/checkins/today', { params }),
   saveDailyCheckin: (payload) => api.post('/checkins', payload),
   labelVolumeTrend: (payload) => api.post('/volume-trend/label', payload),
+  getSickDates: () => api.get('/sick-mode/dates'),
   getSickModeSession: (key) => api.get(`/sick-mode/sessions/${encodeURIComponent(key)}`),
   completeSickModeSession: (payload) => api.post('/sick-mode/complete', payload),
   startSickMode: (payload) => api.post('/sick-mode', payload),

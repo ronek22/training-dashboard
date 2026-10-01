@@ -406,7 +406,7 @@
               :key="day.date"
               class="plan-day"
               :style="{ '--day-accent': planAccent(day.session_type), gridColumn: dayIndex + 1 }"
-              :class="[dayStateClass(day.date), statusClass(day.comparison?.status), { 'is-selected': selectedFocusDay?.date === day.date }]"
+              :class="[dayStateClass(day.date), statusClass(day.comparison?.status), { 'is-selected': selectedFocusDay?.date === day.date, 'is-sick': sickDates.has(day.date) }]"
             >
               <div class="agenda-date-column">
               <div class="day-heading-row">
@@ -1320,7 +1320,14 @@ const load = async () => {
   }
 }
 
+// Sick days are decoration: the plan still loads if this request fails.
+const sickDates = ref(new Set())
+const loadSickDates = async () => {
+  try { sickDates.value = new Set((await api.getSickDates()).data.dates) } catch { sickDates.value = new Set() }
+}
+
 onMounted(load)
+onMounted(loadSickDates)
 
 const handlePlanDialogKeydown = (event) => {
   if (event.key === 'Escape' && plannedSessionDialog.value) closePlannedSessionDetails()
@@ -1713,6 +1720,12 @@ const displayPlanNotes = (plan) => {
 
 const sessionMatch = (day) => {
   const status = day.comparison?.status
+  // On a sick day the plan was paused on purpose; a light session isn't "different from plan".
+  if (sickDates.value.has(day.date) && !['linked', 'matched'].includes(status)) {
+    return day.comparison?.completed_activities?.length || ['different', 'replaced', 'rest_day_changed', 'partially_matched'].includes(status)
+      ? { label: 'Sick day · moved gently', tone: 'sick', icon: '♡' }
+      : { label: 'Sick day · plan paused', tone: 'sick', icon: '♡' }
+  }
   if (status === 'linked') return { label: 'Linked to activity', tone: 'done', icon: '✓' }
   if (status === 'matched') return { label: 'Matched automatically', tone: 'done', icon: '✓' }
   if (status === 'partially_matched') return { label: 'Partially matched', tone: 'partial', icon: '◐' }
@@ -4564,6 +4577,10 @@ const savePlanLink = async (day) => {
 .match-partial{color:color-mix(in srgb, #efd08c calc(100% - var(--dim)), #000);background:#fbbf2414}
 .match-changed{color:var(--text);background:#ef5e5e18}
 .match-pending{color:var(--text-soft);background:#94a3b80b}
+.match-sick{color:var(--sick);background:rgb(var(--sick-rgb) / .12)}
+/* Sick days: the whole card takes a rose wash so they stand out at a glance. */
+.plan-page .plan-day.is-sick,.plan-page .plan-day.is-sick.is-selected{background:linear-gradient(175deg,rgb(var(--sick-rgb) / .2),rgb(var(--sick-rgb) / .11) 60%),var(--deep);border-color:rgb(var(--sick-rgb) / .34);border-top-color:var(--day-accent)}
+.plan-page .plan-day.is-sick.is-selected{border-color:rgb(var(--sick-rgb) / .5);border-top-color:var(--day-accent)}
 .plan-page .week-purpose{border:0;margin:18px 0 8px;padding:0;font-size:12px}
 .plan-page .goal-context-panel{border:0;margin:0;padding:0;background:transparent;overflow:visible}
 .plan-page .goal-context-summary{padding:10px 0;gap:12px}

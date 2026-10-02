@@ -160,11 +160,12 @@ const cards = computed(() => [
   min-width: 0;
   border: 1px solid rgb(var(--tint-rgb) / 0.12);
   border-radius: 14px;
-  background:
-    radial-gradient(90% 60% at 100% 0%, color-mix(in srgb, var(--chart) 9%, transparent), transparent 70%),
-    rgb(var(--deep-rgb) / 0.6);
+  background: var(--deep);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--motion-duration-base) var(--motion-ease-standard), transform var(--motion-duration-base) var(--motion-ease-standard);
   padding: 18px 20px 16px;
 }
+.year-card:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-2px); }
 .year-card-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
 .year-card-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 11px; background: color-mix(in srgb, var(--chart) 14%, transparent); color: var(--chart); }
 .year-card-name { display: grid; min-width: 0; }

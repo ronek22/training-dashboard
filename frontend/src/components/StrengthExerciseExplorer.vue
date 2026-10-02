@@ -46,7 +46,7 @@ const selectMuscle = key => {
 </script>
 
 <style scoped>
-.exercise-explorer { padding: 26px; border-color:#f477982b; background:linear-gradient(120deg,#f4779805,transparent),var(--deep); }
+.exercise-explorer { padding: 26px; border-color:#f477982b; background:var(--deep); }
 .explorer-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
 .explorer-kicker { color:color-mix(in srgb, #f4a0b8 calc(100% - var(--dim)), #000); text-transform: uppercase; letter-spacing: .12em; font-size: 10px; font-weight: 700; }
 .explorer-heading h2 { margin: 5px 0; font: 600 26px var(--font-display); letter-spacing: -.03em; }

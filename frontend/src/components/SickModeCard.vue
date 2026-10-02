@@ -118,12 +118,12 @@ const endSickMode = () => run(() => api.endSickMode())
   gap: 18px;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, rgb(var(--tint-rgb) / 0.14));
+  border: 1px solid var(--border);
   border-radius: 20px;
-  background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%), var(--deep);
+  background: var(--deep);
+  box-shadow: var(--shadow-card);
   padding: 28px;
 }
-.sick-card::before { position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, var(--accent), transparent 70%); content: ''; }
 .sick-head { display: grid; gap: 10px; }
 .sick-card.is-compact { gap: 8px; border-radius: 16px; padding: 14px 20px; }
 .sick-compact-actions { display: inline-flex; gap: 14px; margin-left: auto; }

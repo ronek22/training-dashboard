@@ -113,7 +113,7 @@ defineEmits(['open'])
 .week-cell-title { overflow: hidden; color: var(--text); font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .week-cell-bar { position: relative; height: 5px; overflow: hidden; border-radius: 2px; background: rgb(var(--tint-rgb) / 0.13); }
 .week-cell-bar i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--day-accent); }
-.is-over .week-cell-bar i { background:linear-gradient(90deg, var(--day-accent) 60%, color-mix(in srgb, #f4c66e calc(100% - var(--dim)), #000)); }
+.is-over .week-cell-bar i { background:color-mix(in srgb, var(--day-accent), color-mix(in srgb, #f4c66e calc(100% - var(--dim)), #000)); }
 .week-cell-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; font-size: 11px; font-variant-numeric: tabular-nums; }
 .week-cell-minutes { color: var(--dash-soft, var(--text-soft)); white-space: nowrap; }
 .is-over .week-cell-minutes { color: var(--warning-text); }

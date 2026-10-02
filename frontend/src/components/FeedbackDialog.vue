@@ -221,9 +221,7 @@ const submit = () => {
   border-radius: 24px;
   border: 1px solid rgb(var(--ov-rgb) / 0.08);
   background:
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 34%),
-    radial-gradient(circle at top right, rgba(249, 115, 22, 0.14), transparent 28%),
-    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.98), rgb(var(--deep-rgb) / 0.98));
+    rgb(var(--deep-rgb) / 0.98);
   box-shadow: 0 30px 80px rgb(var(--shadow-rgb) / 0.45);
 }
 .feedback-modal-head {
@@ -369,7 +367,7 @@ const submit = () => {
 }
 .feedback-primary-btn {
   border:1px solid #3b82f6;
-  background:linear-gradient(135deg, #2563eb, #4f46e5);
+  background:color-mix(in srgb, #2563eb, #4f46e5);
   color: white;
 }
 .feedback-secondary-btn:hover,

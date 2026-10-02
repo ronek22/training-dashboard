@@ -294,7 +294,6 @@ onUnmounted(stopCycling)
   border: 1px solid rgba(255, 134, 170, 0.2);
   border-radius: 14px;
   background:
-    radial-gradient(circle at 92% 0, rgba(255, 134, 170, 0.11), transparent 31%),
     rgb(var(--deep-rgb) / 0.82);
   color: var(--guide-ink);
 }

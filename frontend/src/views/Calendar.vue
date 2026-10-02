@@ -584,7 +584,7 @@ onBeforeUnmount(() => {
 .week-total .wt-distance { color: var(--text-soft); }
 .volume-track { height: 3px; margin-top: auto; opacity: .8; overflow: hidden; border-radius: 3px; background: rgb(var(--ov-rgb) / .08); }
 .volume-track i { display: block; height: 100%; border-radius: inherit; background: var(--accent-strong); }
-.week-brief { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 12px; padding: 18px 20px; border-radius: 14px; background: linear-gradient(120deg, rgba(95, 140, 255, .13), rgba(95, 140, 255, .03) 65%), var(--bg-elevated); }
+.week-brief { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 12px; padding: 18px 20px; border-radius: 14px; background: var(--bg-elevated); }
 .brief-plan > span { color: var(--accent-strong); font-size: 12px; font-weight: 650; }
 .brief-plan h2 { margin: 2px 0 4px; font-family: var(--font-display); font-size: 18px; }
 .brief-plan p { max-width: 90ch; color: var(--muted-soft); font-size: 13px; line-height: 1.55; }

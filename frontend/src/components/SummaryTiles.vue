@@ -49,7 +49,7 @@ defineProps({ tiles: { type: Array, required: true } })
 
 .tile-meter, .tile-zones { position: relative; display: flex; height: 6px; border-radius: 3px; }
 .tile-meter { background: rgb(var(--tint-rgb) / 0.12); }
-.tile-meter i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 50%, transparent), var(--accent)); }
+.tile-meter i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent); }
 .tile-meter b, .tile-zones b { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background:color-mix(in srgb, #eef3fb calc(100% - var(--dim)), #000); box-shadow: 0 0 0 2px var(--deep); }
 .tile-zones { gap: 2px; }
 .tile-zones i { flex-basis: 0; min-width: 0; border-radius: 2px; }

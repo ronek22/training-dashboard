@@ -150,7 +150,6 @@ const phaseStatusLabel = (phase) => {
 }
 .focus-card {
   background:
-    linear-gradient(140deg, rgba(99, 102, 241, 0.14), rgba(16, 185, 129, 0.08)),
     var(--surface);
 }
 .focus-label {
@@ -184,7 +183,7 @@ const phaseStatusLabel = (phase) => {
 .mini-bar-fill {
   display: block;
   height: 100%;
-  background:linear-gradient(90deg, color-mix(in srgb, #10b981 calc(100% - var(--dim)), #000), color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, color-mix(in srgb, #10b981 calc(100% - var(--dim)), #000), color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000));
 }
 .roadmap-section { margin-bottom: 16px; }
 .section-head { margin-bottom: 16px; }

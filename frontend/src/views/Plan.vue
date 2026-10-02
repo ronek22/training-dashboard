@@ -2379,7 +2379,6 @@ const savePlanLink = async (day) => {
   border: 1px solid rgba(123, 163, 255, 0.38);
   border-radius: 14px;
   background:
-    linear-gradient(135deg, rgba(95, 140, 255, 0.28), rgba(31, 190, 141, 0.18)),
     rgb(var(--deep-rgb) / 0.96);
   color:var(--text);
   box-shadow: inset 0 1px 0 rgb(var(--ov-rgb) / 0.08), 0 10px 26px rgb(var(--shadow-rgb) / 0.18);
@@ -2426,8 +2425,7 @@ const savePlanLink = async (day) => {
   padding: 24px;
   border-color: rgba(123, 163, 255, .26);
   background:
-    radial-gradient(circle at top right, rgba(95, 140, 255, .18), transparent 32%),
-    linear-gradient(180deg, rgb(var(--deep-rgb) / .99), rgb(var(--deep-rgb) / .99));
+    rgb(var(--deep-rgb) / .99);
   box-shadow: 0 30px 90px rgb(var(--shadow-rgb) / .55);
 }
 .codex-brief-head {
@@ -2503,7 +2501,7 @@ const savePlanLink = async (day) => {
   padding: 0 15px;
   border: 1px solid rgba(123, 163, 255, .36);
   border-radius: 11px;
-  background:linear-gradient(135deg, #668cf0, #4e6ec8);
+  background:color-mix(in srgb, #668cf0, #4e6ec8);
   color: white;
   font-weight: 750;
   cursor: pointer;
@@ -2522,7 +2520,7 @@ const savePlanLink = async (day) => {
   margin-bottom: 18px;
   padding: 20px;
   border-color: rgba(123, 163, 255, 0.28);
-  background: linear-gradient(180deg, rgb(var(--deep-rgb) / 0.98), rgb(var(--deep-rgb) / 0.96));
+  background: rgb(var(--deep-rgb) / 0.98);
 }
 .plan-command-top,
 .plan-command-grid,
@@ -2585,18 +2583,16 @@ const savePlanLink = async (day) => {
 }
 .week-card-current {
   background:
-    radial-gradient(circle at top left, rgba(95, 140, 255, 0.12), transparent 28%),
-    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.98), rgb(var(--deep-rgb) / 0.95));
+    rgb(var(--deep-rgb) / 0.98);
   border-color: rgba(123, 163, 255, 0.22);
   box-shadow: var(--shadow-md);
 }
 .week-card-upcoming {
   background:
-    radial-gradient(circle at top right, rgba(31, 190, 141, 0.08), transparent 24%),
-    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.96), rgb(var(--deep-rgb) / 0.92));
+    rgb(var(--deep-rgb) / 0.96);
 }
 .week-card-historical {
-  background: linear-gradient(180deg, rgb(var(--deep-rgb) / 0.88), rgb(var(--deep-rgb) / 0.86));
+  background: rgb(var(--deep-rgb) / 0.88);
   border-color: rgba(114, 132, 162, 0.14);
   opacity: 0.9;
 }
@@ -2997,8 +2993,7 @@ const savePlanLink = async (day) => {
   gap: 16px;
   align-items: flex-start;
   background:
-    linear-gradient(140deg, rgba(95, 140, 255, 0.18), rgba(31, 190, 141, 0.1)),
-    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.98), rgb(var(--deep-rgb) / 0.96));
+    rgb(var(--deep-rgb) / 0.98);
   border-color: rgba(123, 163, 255, 0.22);
 }
 .coaching-review-title {
@@ -3040,7 +3035,7 @@ const savePlanLink = async (day) => {
   border: 1px solid rgb(var(--tint-rgb) / 0.14);
 }
 .adjust-button {
-  background:linear-gradient(135deg, color-mix(in srgb, #6c98ff calc(100% - var(--dim)), #000), color-mix(in srgb, #88a8ff calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, color-mix(in srgb, #6c98ff calc(100% - var(--dim)), #000), color-mix(in srgb, #88a8ff calc(100% - var(--dim)), #000));
   color: var(--text);
 }
 .ghost-button {
@@ -3049,7 +3044,7 @@ const savePlanLink = async (day) => {
   border: 1px solid rgb(var(--tint-rgb) / 0.18);
 }
 .save-button {
-  background:linear-gradient(135deg, color-mix(in srgb, #10b981 calc(100% - var(--dim)), #000), color-mix(in srgb, #34d399 calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, color-mix(in srgb, #10b981 calc(100% - var(--dim)), #000), color-mix(in srgb, #34d399 calc(100% - var(--dim)), #000));
   color:#042f2e;
   min-width: 138px;
 }
@@ -3272,7 +3267,7 @@ const savePlanLink = async (day) => {
   margin-bottom: 18px;
   padding: 18px;
   border-radius: 18px;
-  background: linear-gradient(180deg, rgb(var(--deep-rgb) / 0.94), rgb(var(--deep-rgb) / 0.98));
+  background: rgb(var(--deep-rgb) / 0.94);
   border: 1px solid rgba(96, 165, 250, 0.2);
   box-shadow: inset 0 1px 0 rgb(var(--tint-rgb) / 0.08);
 }
@@ -3531,8 +3526,7 @@ const savePlanLink = async (day) => {
   flex-direction: column;
   gap: 14px;
   background:
-    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.98), rgb(var(--deep-rgb) / 0.98)),
-    radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 36%);
+    rgb(var(--deep-rgb) / 0.98);
   border: 1px solid rgba(90, 105, 138, 0.24);
   border-radius: 20px;
   padding: 16px;
@@ -3553,8 +3547,7 @@ const savePlanLink = async (day) => {
   box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.18), 0 18px 34px rgb(var(--panel-rgb) / 0.22);
   transform: translateY(-2px);
   background:
-    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.99), rgb(var(--deep-rgb) / 1)),
-    radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 36%);
+    rgb(var(--deep-rgb) / 0.99);
 }
 .plan-day.is-selected {
   border-color: rgba(123, 163, 255, 0.64);
@@ -3567,7 +3560,7 @@ const savePlanLink = async (day) => {
   left: 0;
   right: 0;
   height: 3px;
-  background:linear-gradient(90deg, color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000), color-mix(in srgb, #818cf8 calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000), color-mix(in srgb, #818cf8 calc(100% - var(--dim)), #000));
 }
 .plan-day.status-matched::before,
 .plan-day.status-linked::before,
@@ -3586,25 +3579,25 @@ const savePlanLink = async (day) => {
   height: 3px;
 }
 .plan-day.status-linked::before {
-  background:linear-gradient(90deg, color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000), color-mix(in srgb, #38bdf8 calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000), color-mix(in srgb, #38bdf8 calc(100% - var(--dim)), #000));
 }
 .plan-day.status-matched::before {
-  background:linear-gradient(90deg, color-mix(in srgb, #10b981 calc(100% - var(--dim)), #000), color-mix(in srgb, #34d399 calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, color-mix(in srgb, #10b981 calc(100% - var(--dim)), #000), color-mix(in srgb, #34d399 calc(100% - var(--dim)), #000));
 }
 .plan-day.status-partially_matched::before {
-  background:linear-gradient(90deg, color-mix(in srgb, #f59e0b calc(100% - var(--dim)), #000), color-mix(in srgb, #fbbf24 calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, color-mix(in srgb, #f59e0b calc(100% - var(--dim)), #000), color-mix(in srgb, #fbbf24 calc(100% - var(--dim)), #000));
 }
 .plan-day.status-moved::before {
-  background:linear-gradient(90deg, color-mix(in srgb, #38bdf8 calc(100% - var(--dim)), #000), color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, color-mix(in srgb, #38bdf8 calc(100% - var(--dim)), #000), color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000));
 }
 .plan-day.status-skipped::before,
 .plan-day.status-replaced::before,
 .plan-day.status-different::before,
 .plan-day.status-rest_day_changed::before {
-  background:linear-gradient(90deg, #ef4444, color-mix(in srgb, #f87171 calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, #ef4444, color-mix(in srgb, #f87171 calc(100% - var(--dim)), #000));
 }
 .plan-day.status-not_completed_yet::before {
-  background: linear-gradient(90deg, rgb(var(--tint-rgb) / 0.45), rgba(203, 213, 225, 0.45));
+  background: color-mix(in srgb, rgb(var(--tint-rgb) / 0.45), rgba(203, 213, 225, 0.45));
 }
 .plan-day.is-today .plan-day-label {
   color: var(--info-text);
@@ -3766,7 +3759,6 @@ const savePlanLink = async (day) => {
 .plan-block-workout {
   border-color: var(--workout-border, rgba(76, 92, 125, 0.2));
   background:
-    linear-gradient(90deg, var(--workout-wash, transparent), transparent 42%),
     rgb(var(--deep-rgb) / 0.28);
 }
 .plan-block-run {
@@ -4092,8 +4084,7 @@ const savePlanLink = async (day) => {
   padding: 22px;
   border: 1px solid rgba(123, 163, 255, 0.2);
   background:
-    radial-gradient(circle at top right, rgba(95, 140, 255, 0.18), transparent 28%),
-    linear-gradient(180deg, rgb(var(--deep-rgb) / 0.98), rgb(var(--deep-rgb) / 0.98));
+    rgb(var(--deep-rgb) / 0.98);
   box-shadow: 0 28px 80px rgb(var(--shadow-rgb) / 0.45);
 }
 .plan-details-modal-head {
@@ -4500,11 +4491,11 @@ const savePlanLink = async (day) => {
   .plan-day.is-today { transform: none; }
 }
 /* Weekly rhythm and a session agenda replace the wide card carousel. */
-.plan-page{--plan-highlight:color-mix(in srgb, #dfc49c calc(100% - var(--dim)), #000)}.plan-page>.page-head{margin-bottom:28px}.plan-page>.page-head .page-title{font-size:40px;letter-spacing:-1.5px}.plan-page>.page-head .page-eyebrow{font-size:9px;letter-spacing:.16em;color:var(--text-soft)}.plan-page .page-sub{color:var(--muted);font-size:13px}.plan-page .codex-plan-button{background:linear-gradient(125deg,color-mix(in srgb, #e7d3b1 calc(100% - var(--dim)), #000),color-mix(in srgb, #c6a879 calc(100% - var(--dim)), #000));border-color:color-mix(in srgb, #dec7a3 calc(100% - var(--dim)), #000);color:var(--on-accent);box-shadow:0 8px 30px #d4b58312}.plan-page .codex-plan-button:hover:not(:disabled){background:color-mix(in srgb, #ead6b4 calc(100% - var(--dim)), #000);box-shadow:0 8px 30px #d4b58324}.plan-page .codex-plan-hint{color:var(--text-soft);font-size:10px}
-.plan-page .plan-command{position:relative;padding:30px 32px 0;border-radius:24px;border:1px solid #dec7a32b;background:radial-gradient(ellipse at 100% 0%,#b99e7020,transparent 55%),linear-gradient(130deg,var(--deep),var(--deep) 70%);overflow:hidden;margin-bottom:20px}.plan-page .plan-command-top{align-items:center;margin-bottom:28px}.plan-page .plan-command .page-eyebrow{color:var(--plan-highlight);font-size:9px;letter-spacing:.16em;margin-bottom:10px}.plan-page .plan-command-title{font-size:clamp(26px,3vw,38px);letter-spacing:-1.3px;font-weight:500}.plan-page .plan-command-focus{font-size:12px;margin-top:9px;max-width:660px}.plan-page .period-navigation{padding:4px;border:1px solid #d8c29824;border-radius:12px;background:rgb(var(--deep-rgb) / 0.333);flex-shrink:0}.plan-page .period-button,.plan-page .period-today{border:0;background:transparent;border-radius:8px;min-height:36px;color:var(--text-soft)}.plan-page .period-button:hover:not(:disabled),.plan-page .period-today:hover:not(:disabled){background:#d8c29812}
-.week-rhythm{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;border-block:1px solid #d8c29823;padding-block:15px;margin-bottom:28px}.rhythm-day{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;gap:4px;padding:12px 17px;border:0;border-right:1px solid #d8c29815;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;border-radius:0;transition:background .2s}.rhythm-day:last-child{border-right:0}.rhythm-day:hover{background:rgb(var(--ov-rgb) / 0.016)}.rhythm-day.active{background:linear-gradient(150deg,color-mix(in srgb,var(--day-accent) 12%,transparent),transparent);box-shadow:inset 0 -2px var(--day-accent)}.rhythm-day-name{display:flex;flex-wrap:wrap;align-items:center;gap:5px;color:var(--text-soft);font-size:10px;letter-spacing:.04em}.rhythm-day-name i{font-style:normal;color:var(--day-accent);font-size:6px;font-weight:800;letter-spacing:.05em}.rhythm-day-number{font-family:var(--font-display);font-weight:500;font-size:32px;letter-spacing:-1px;line-height:1.2}.rhythm-day.active .rhythm-day-number{color:var(--day-accent)}.rhythm-sport{display:grid;place-items:center;width:34px;height:34px;margin-top:9px;color:var(--day-accent);border-radius:50%;background:color-mix(in srgb,var(--day-accent) 10%,transparent)}.rhythm-day-type{font-size:10px;font-weight:650;margin-top:5px;max-width:100%;overflow-wrap:anywhere}.rhythm-day-duration{color:var(--text-soft);font-size:9px}.rhythm-day-track{position:absolute;right:17px;top:53px;width:3px;height:50px;background:rgb(var(--ov-rgb) / 0.035);border-radius:5px;display:flex;align-items:end}.rhythm-day-track>i{display:block;width:100%;border-radius:5px;background:var(--day-accent);opacity:.65}.rhythm-rest .rhythm-day-track{background:transparent}.rhythm-rest .rhythm-day-track>i{opacity:.4}
-.plan-page .plan-command-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;align-items:center;margin-bottom:28px}.plan-page .today-brief{position:relative;width:auto;padding:26px;border:1px solid color-mix(in srgb,var(--session-accent) 22%,transparent);border-radius:18px;background:linear-gradient(120deg,color-mix(in srgb,var(--session-accent) 9%,var(--deep)),var(--deep));overflow:hidden;min-height:250px;display:flex;flex-direction:column}.session-watermark{position:absolute;right:-16px;bottom:-35px;opacity:.07;transform:rotate(-15deg);pointer-events:none}.session-watermark>span{font-size:190px;line-height:1}.plan-page .today-brief-head,.plan-page .today-brief-meta,.plan-page .today-brief-copy,.plan-page .today-brief-actions{position:relative}.plan-page .today-brief .section-label{color:var(--session-accent);font-size:9px;letter-spacing:.13em}.plan-page .today-brief h3{font-size:clamp(22px,2.6vw,32px);font-weight:500;letter-spacing:-.8px;line-height:1.2;margin-top:12px}.plan-page .today-brief-head{gap:15px;flex-wrap:wrap}.plan-page .today-brief-meta{margin-top:18px;gap:8px 16px}.plan-page .today-brief-meta span{padding:0;background:transparent;color:var(--text);font-size:12px}.plan-page .today-brief-copy{margin-top:14px;line-height:1.8;-webkit-line-clamp:3}.plan-page .today-brief-actions{margin-top:auto;padding-top:22px}.plan-page .today-brief-actions .save-button{background:var(--session-accent);color:var(--on-accent);border-color:transparent}.plan-page .today-brief-actions .ghost-button{background:transparent;font-size:10px}.week-intention{min-width:0;padding-right:14px}.week-intention .section-label{font-size:9px;letter-spacing:.13em;color:var(--text-soft)}.week-intention h3{font-family:var(--font-display);font-size:clamp(24px,2.6vw,35px);line-height:1.2;font-weight:500;letter-spacing:-1px;margin-top:15px}.week-intention h3 em{color:var(--plan-highlight);font-style:normal}.week-intention p{color:var(--text-soft);font-size:12px;line-height:1.8;margin-top:15px;white-space:pre-line}.week-intention a{display:inline-flex;align-items:center;gap:18px;font-size:11px;color:var(--plan-highlight);margin-top:20px}.plan-page .workload-summary{width:auto;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid #d8c29823;margin-inline:-32px;background:rgb(var(--deep-rgb) / 0.169);padding:0 15px}.plan-page .workload-metric{border:0;border-right:1px solid #d8c29815;border-radius:0;background:transparent;padding:20px}.plan-page .workload-metric:last-child{border:0}.plan-page .workload-metric span{font-size:9px;letter-spacing:.12em}.plan-page .workload-metric strong{font-size:29px;letter-spacing:-1px;font-weight:500;margin-top:8px}.plan-page .workload-metric small{font-size:10px;margin-top:7px}
-.plan-page .plan-insights-disclosure{border-bottom:1px solid var(--border);margin-bottom:28px;padding-bottom:12px}.plan-page .plan-insights-disclosure>summary{font-size:11px;letter-spacing:.01em}.agenda-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-top:5px}.agenda-heading h2{font-family:var(--font-display);font-size:28px;letter-spacing:-.8px;font-weight:500;margin-top:5px}.agenda-heading .section-label{color:var(--text-soft);font-size:9px;letter-spacing:.13em}.agenda-heading>p{font-size:11px;color:var(--muted)}.plan-page .week-card{border:0;border-radius:0;box-shadow:none;background:transparent;padding:0}.plan-page .week-header{border-block:1px solid var(--border);padding:20px 0;margin-bottom:20px}.plan-page .week-range{font-size:20px}.plan-page .week-guidance{font-size:11px;margin-top:5px}.plan-page .plan-focus{font-size:12px}.plan-page .plan-overview{display:none}.plan-page .goal-context-panel{background:transparent;border-radius:12px}.plan-page .week-summary{background:transparent;border:0;border-radius:0;padding:0 0 16px}.plan-page .week-summary-pill{background:transparent;border:1px solid var(--border);font-size:10px}.plan-page .plan-grid-wrap{overflow:visible;scroll-snap-type:none;padding:0}.plan-page .plan-grid{grid-template-columns:1fr;gap:12px}.plan-page .plan-day{display:grid;grid-template-columns:150px minmax(0,1.2fr) minmax(0,1fr);gap:24px;align-items:start;padding:23px 24px;border:1px solid var(--border);border-left:3px solid color-mix(in srgb,var(--day-accent) 50%,transparent);border-radius:14px;background:linear-gradient(100deg,color-mix(in srgb,var(--day-accent) 3%,transparent),rgb(var(--deep-rgb) / 0.059));box-shadow:none;opacity:1;transform:none;overflow:visible}.plan-page .plan-day:before{display:none}.plan-page .plan-day.is-selected{border-color:color-mix(in srgb,var(--day-accent) 30%,var(--border));border-left-color:var(--day-accent);background:linear-gradient(100deg,color-mix(in srgb,var(--day-accent) 8%,transparent),rgb(var(--deep-rgb) / 0.267));box-shadow:0 6px 25px rgb(var(--shadow-rgb) / 0.063)}.plan-page .plan-day.is-today .plan-day-label:after{content:' · TODAY';font-size:8px;color:var(--day-accent)}.agenda-date-column{min-width:0}.plan-page .plan-day-top{display:flex;flex-direction:column;align-items:start;gap:12px;padding:0;margin:0;border:0;background:none}.plan-page .plan-day-label{font-size:10px;letter-spacing:.1em;color:var(--text-soft)}.plan-page .plan-day-date{font-family:var(--font-display);font-size:25px;letter-spacing:-.8px;color:var(--text);margin-top:4px}.plan-page .plan-day-weather{margin-top:17px;padding:0;border:0;background:transparent;flex-wrap:wrap;gap:6px}.plan-page .plan-day-weather-copy strong{font-size:11px}.plan-page .plan-day-weather-copy small{font-size:9px}.plan-page .plan-day-weather-rain{font-size:9px}.plan-page .plan-block-workout{margin:0;border:0;border-radius:0;background:transparent;padding:0;min-width:0}.plan-page .plan-block-label{font-size:8px;letter-spacing:.14em;margin-bottom:9px;color:var(--text-soft)}.plan-page .plan-day-title{font-family:var(--font-display);font-size:20px;line-height:1.3;font-weight:500;letter-spacing:-.4px;display:block;overflow:visible;margin-bottom:10px}.plan-page .plan-type{background:color-mix(in srgb,var(--day-accent) 10%,transparent);color:var(--day-accent)}.plan-page .plan-day-meta span{padding:0;background:transparent;color:var(--day-accent);font-size:13px}.plan-page .plan-day-meta{gap:18px}.plan-page .actual-block{min-width:0;background:transparent;border:0;border-left:1px solid var(--border);border-radius:0;margin:0;padding:0 0 0 24px}.plan-page .actual-empty{background:transparent;border:0;padding:10px 0;font-size:11px}.plan-page .plan-status-detail{font-size:10px;line-height:1.7}.plan-page .plan-empty{display:grid;justify-items:center;gap:15px;padding:65px 25px;background:radial-gradient(ellipse at top,#d9c39e13,transparent 65%),var(--surface);text-align:center;border-color:#dec7a326}.plan-empty>span{font-size:55px;color:var(--plan-highlight)}.plan-empty h2{font-family:var(--font-display);font-size:30px;font-weight:500;letter-spacing:-1px}.plan-empty p{color:var(--muted);font-size:12px}.plan-page button:focus-visible,.plan-page a:focus-visible,.plan-page summary:focus-visible{outline:2px solid var(--plan-highlight);outline-offset:4px}
+.plan-page{--plan-highlight:color-mix(in srgb, #dfc49c calc(100% - var(--dim)), #000)}.plan-page>.page-head{margin-bottom:28px}.plan-page>.page-head .page-title{font-size:40px;letter-spacing:-1.5px}.plan-page>.page-head .page-eyebrow{font-size:9px;letter-spacing:.16em;color:var(--text-soft)}.plan-page .page-sub{color:var(--muted);font-size:13px}.plan-page .codex-plan-button{background:color-mix(in srgb, color-mix(in srgb, #e7d3b1 calc(100% - var(--dim)), #000), color-mix(in srgb, #c6a879 calc(100% - var(--dim)), #000));border-color:color-mix(in srgb, #dec7a3 calc(100% - var(--dim)), #000);color:var(--on-accent);box-shadow:var(--shadow-card)}.plan-page .codex-plan-button:hover:not(:disabled){background:color-mix(in srgb, #ead6b4 calc(100% - var(--dim)), #000);box-shadow:var(--shadow-card-hover)}.plan-page .codex-plan-hint{color:var(--text-soft);font-size:10px}
+.plan-page .plan-command{position:relative;padding:30px 32px 0;border-radius:24px;border:1px solid #dec7a32b;background:var(--deep);overflow:hidden;margin-bottom:20px}.plan-page .plan-command-top{align-items:center;margin-bottom:28px}.plan-page .plan-command .page-eyebrow{color:var(--plan-highlight);font-size:9px;letter-spacing:.16em;margin-bottom:10px}.plan-page .plan-command-title{font-size:clamp(26px,3vw,38px);letter-spacing:-1.3px;font-weight:500}.plan-page .plan-command-focus{font-size:12px;margin-top:9px;max-width:660px}.plan-page .period-navigation{padding:4px;border:1px solid #d8c29824;border-radius:12px;background:rgb(var(--deep-rgb) / 0.333);flex-shrink:0}.plan-page .period-button,.plan-page .period-today{border:0;background:transparent;border-radius:8px;min-height:36px;color:var(--text-soft)}.plan-page .period-button:hover:not(:disabled),.plan-page .period-today:hover:not(:disabled){background:#d8c29812}
+.week-rhythm{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;border-block:1px solid #d8c29823;padding-block:15px;margin-bottom:28px}.rhythm-day{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;gap:4px;padding:12px 17px;border:0;border-right:1px solid #d8c29815;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;border-radius:0;transition:background .2s}.rhythm-day:last-child{border-right:0}.rhythm-day:hover{background:rgb(var(--ov-rgb) / 0.016)}.rhythm-day.active{background:color-mix(in srgb,var(--day-accent) 12%,transparent);box-shadow:inset 0 -2px var(--day-accent)}.rhythm-day-name{display:flex;flex-wrap:wrap;align-items:center;gap:5px;color:var(--text-soft);font-size:10px;letter-spacing:.04em}.rhythm-day-name i{font-style:normal;color:var(--day-accent);font-size:6px;font-weight:800;letter-spacing:.05em}.rhythm-day-number{font-family:var(--font-display);font-weight:500;font-size:32px;letter-spacing:-1px;line-height:1.2}.rhythm-day.active .rhythm-day-number{color:var(--day-accent)}.rhythm-sport{display:grid;place-items:center;width:34px;height:34px;margin-top:9px;color:var(--day-accent);border-radius:50%;background:color-mix(in srgb,var(--day-accent) 10%,transparent)}.rhythm-day-type{font-size:10px;font-weight:650;margin-top:5px;max-width:100%;overflow-wrap:anywhere}.rhythm-day-duration{color:var(--text-soft);font-size:9px}.rhythm-day-track{position:absolute;right:17px;top:53px;width:3px;height:50px;background:rgb(var(--ov-rgb) / 0.035);border-radius:5px;display:flex;align-items:end}.rhythm-day-track>i{display:block;width:100%;border-radius:5px;background:var(--day-accent);opacity:.65}.rhythm-rest .rhythm-day-track{background:transparent}.rhythm-rest .rhythm-day-track>i{opacity:.4}
+.plan-page .plan-command-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;align-items:center;margin-bottom:28px}.plan-page .today-brief{position:relative;width:auto;padding:26px;border:1px solid color-mix(in srgb,var(--session-accent) 22%,transparent);border-radius:18px;background:color-mix(in srgb, color-mix(in srgb,var(--session-accent) 9%,var(--deep)), var(--deep));overflow:hidden;min-height:250px;display:flex;flex-direction:column}.session-watermark{position:absolute;right:-16px;bottom:-35px;opacity:.07;transform:rotate(-15deg);pointer-events:none}.session-watermark>span{font-size:190px;line-height:1}.plan-page .today-brief-head,.plan-page .today-brief-meta,.plan-page .today-brief-copy,.plan-page .today-brief-actions{position:relative}.plan-page .today-brief .section-label{color:var(--session-accent);font-size:9px;letter-spacing:.13em}.plan-page .today-brief h3{font-size:clamp(22px,2.6vw,32px);font-weight:500;letter-spacing:-.8px;line-height:1.2;margin-top:12px}.plan-page .today-brief-head{gap:15px;flex-wrap:wrap}.plan-page .today-brief-meta{margin-top:18px;gap:8px 16px}.plan-page .today-brief-meta span{padding:0;background:transparent;color:var(--text);font-size:12px}.plan-page .today-brief-copy{margin-top:14px;line-height:1.8;-webkit-line-clamp:3}.plan-page .today-brief-actions{margin-top:auto;padding-top:22px}.plan-page .today-brief-actions .save-button{background:var(--session-accent);color:var(--on-accent);border-color:transparent}.plan-page .today-brief-actions .ghost-button{background:transparent;font-size:10px}.week-intention{min-width:0;padding-right:14px}.week-intention .section-label{font-size:9px;letter-spacing:.13em;color:var(--text-soft)}.week-intention h3{font-family:var(--font-display);font-size:clamp(24px,2.6vw,35px);line-height:1.2;font-weight:500;letter-spacing:-1px;margin-top:15px}.week-intention h3 em{color:var(--plan-highlight);font-style:normal}.week-intention p{color:var(--text-soft);font-size:12px;line-height:1.8;margin-top:15px;white-space:pre-line}.week-intention a{display:inline-flex;align-items:center;gap:18px;font-size:11px;color:var(--plan-highlight);margin-top:20px}.plan-page .workload-summary{width:auto;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid #d8c29823;margin-inline:-32px;background:rgb(var(--deep-rgb) / 0.169);padding:0 15px}.plan-page .workload-metric{border:0;border-right:1px solid #d8c29815;border-radius:0;background:transparent;padding:20px}.plan-page .workload-metric:last-child{border:0}.plan-page .workload-metric span{font-size:9px;letter-spacing:.12em}.plan-page .workload-metric strong{font-size:29px;letter-spacing:-1px;font-weight:500;margin-top:8px}.plan-page .workload-metric small{font-size:10px;margin-top:7px}
+.plan-page .plan-insights-disclosure{border-bottom:1px solid var(--border);margin-bottom:28px;padding-bottom:12px}.plan-page .plan-insights-disclosure>summary{font-size:11px;letter-spacing:.01em}.agenda-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-top:5px}.agenda-heading h2{font-family:var(--font-display);font-size:28px;letter-spacing:-.8px;font-weight:500;margin-top:5px}.agenda-heading .section-label{color:var(--text-soft);font-size:9px;letter-spacing:.13em}.agenda-heading>p{font-size:11px;color:var(--muted)}.plan-page .week-card{border:0;border-radius:0;box-shadow:none;background:transparent;padding:0}.plan-page .week-header{border-block:1px solid var(--border);padding:20px 0;margin-bottom:20px}.plan-page .week-range{font-size:20px}.plan-page .week-guidance{font-size:11px;margin-top:5px}.plan-page .plan-focus{font-size:12px}.plan-page .plan-overview{display:none}.plan-page .goal-context-panel{background:transparent;border-radius:12px}.plan-page .week-summary{background:transparent;border:0;border-radius:0;padding:0 0 16px}.plan-page .week-summary-pill{background:transparent;border:1px solid var(--border);font-size:10px}.plan-page .plan-grid-wrap{overflow:visible;scroll-snap-type:none;padding:0}.plan-page .plan-grid{grid-template-columns:1fr;gap:12px}.plan-page .plan-day{display:grid;grid-template-columns:150px minmax(0,1.2fr) minmax(0,1fr);gap:24px;align-items:start;padding:23px 24px;border:1px solid var(--border);border-left:3px solid color-mix(in srgb,var(--day-accent) 50%,transparent);border-radius:14px;background:color-mix(in srgb, color-mix(in srgb,var(--day-accent) 3%,transparent), rgb(var(--deep-rgb) / 0.059));box-shadow:none;opacity:1;transform:none;overflow:visible}.plan-page .plan-day:before{display:none}.plan-page .plan-day.is-selected{border-color:color-mix(in srgb,var(--day-accent) 30%,var(--border));border-left-color:var(--day-accent);background:color-mix(in srgb, color-mix(in srgb,var(--day-accent) 8%,transparent), rgb(var(--deep-rgb) / 0.267));box-shadow:0 6px 25px rgb(var(--shadow-rgb) / 0.063)}.plan-page .plan-day.is-today .plan-day-label:after{content:' · TODAY';font-size:8px;color:var(--day-accent)}.agenda-date-column{min-width:0}.plan-page .plan-day-top{display:flex;flex-direction:column;align-items:start;gap:12px;padding:0;margin:0;border:0;background:none}.plan-page .plan-day-label{font-size:10px;letter-spacing:.1em;color:var(--text-soft)}.plan-page .plan-day-date{font-family:var(--font-display);font-size:25px;letter-spacing:-.8px;color:var(--text);margin-top:4px}.plan-page .plan-day-weather{margin-top:17px;padding:0;border:0;background:transparent;flex-wrap:wrap;gap:6px}.plan-page .plan-day-weather-copy strong{font-size:11px}.plan-page .plan-day-weather-copy small{font-size:9px}.plan-page .plan-day-weather-rain{font-size:9px}.plan-page .plan-block-workout{margin:0;border:0;border-radius:0;background:transparent;padding:0;min-width:0}.plan-page .plan-block-label{font-size:8px;letter-spacing:.14em;margin-bottom:9px;color:var(--text-soft)}.plan-page .plan-day-title{font-family:var(--font-display);font-size:20px;line-height:1.3;font-weight:500;letter-spacing:-.4px;display:block;overflow:visible;margin-bottom:10px}.plan-page .plan-type{background:color-mix(in srgb,var(--day-accent) 10%,transparent);color:var(--day-accent)}.plan-page .plan-day-meta span{padding:0;background:transparent;color:var(--day-accent);font-size:13px}.plan-page .plan-day-meta{gap:18px}.plan-page .actual-block{min-width:0;background:transparent;border:0;border-left:1px solid var(--border);border-radius:0;margin:0;padding:0 0 0 24px}.plan-page .actual-empty{background:transparent;border:0;padding:10px 0;font-size:11px}.plan-page .plan-status-detail{font-size:10px;line-height:1.7}.plan-page .plan-empty{display:grid;justify-items:center;gap:15px;padding:65px 25px;background:var(--surface);text-align:center;border-color:#dec7a326}.plan-empty>span{font-size:55px;color:var(--plan-highlight)}.plan-empty h2{font-family:var(--font-display);font-size:30px;font-weight:500;letter-spacing:-1px}.plan-empty p{color:var(--muted);font-size:12px}.plan-page button:focus-visible,.plan-page a:focus-visible,.plan-page summary:focus-visible{outline:2px solid var(--plan-highlight);outline-offset:4px}
 @media(max-width:1100px){.plan-page .plan-command{padding:24px 24px 0}.plan-page .plan-command-grid{gap:24px;grid-template-columns:1.3fr 1fr}.plan-page .workload-summary{margin-inline:-24px}.rhythm-day{padding:10px}.rhythm-day-track{right:10px}.plan-page .plan-day{grid-template-columns:115px minmax(0,1.2fr) minmax(0,1fr);gap:18px;padding:20px 18px}.plan-page .actual-block{padding-left:18px}.plan-page .today-brief{padding:22px}.plan-page .today-brief h3{font-size:26px}}
 @media(max-width:800px){.plan-page .plan-command-grid{grid-template-columns:1fr}.week-intention{padding:0 5px}.week-intention h3{font-size:28px}.week-intention h3 br{display:none}.week-intention h3 em:before{content:' '}.week-rhythm{grid-template-columns:repeat(7,minmax(84px,1fr));overflow-x:auto;scrollbar-width:thin;padding-bottom:12px}.rhythm-day{padding:10px 9px}.rhythm-day-number{font-size:28px}.rhythm-day-type{font-size:9px}.rhythm-day-duration{font-size:8px}.plan-page .plan-day{grid-template-columns:110px minmax(0,1fr)}.plan-page .actual-block{grid-column:2;border-left:0;border-top:1px solid var(--border);padding:16px 0 0}.agenda-date-column{grid-row:1/span 2}.plan-page .plan-command-top{align-items:start;flex-direction:column;gap:18px}.plan-page .workload-metric{padding:18px 12px}.plan-page .workload-metric strong{font-size:24px}}
 @media(max-width:520px){.plan-page .plan-command{padding:22px 16px 0;border-radius:20px}.plan-page .plan-command-title{font-size:27px}.plan-page .workload-summary{grid-template-columns:repeat(2,minmax(0,1fr));margin-inline:-16px;padding:0 6px}.plan-page .workload-metric{border-bottom:1px solid #d8c29815}.plan-page .workload-metric:nth-child(2){border-right:0}.plan-page .plan-command-grid{margin-bottom:22px}.plan-page .today-brief{padding:21px 17px}.plan-page .today-brief h3{font-size:25px}.plan-page .today-brief-actions{gap:10px}.plan-page .plan-day{grid-template-columns:1fr;padding:20px 17px;gap:17px}.agenda-date-column{grid-row:auto}.plan-page .plan-day-top{flex-direction:row;align-items:center;justify-content:space-between;width:100%}.plan-page .plan-day-weather{margin-top:10px}.plan-page .actual-block{grid-column:auto}.plan-page .plan-day-title{font-size:21px}.agenda-heading{align-items:start;flex-direction:column;gap:8px}.agenda-heading h2{font-size:26px}.plan-page .week-header{gap:15px}.plan-page .week-summary-head{flex-wrap:wrap}.plan-page .plan-empty{padding:45px 20px}.plan-empty h2{font-size:25px}}
@@ -4528,8 +4519,8 @@ const savePlanLink = async (day) => {
 .week-purpose p{max-width:1000px;margin-top:12px;line-height:1.8;white-space:pre-line}
 .plan-page .plan-grid-wrap{overflow-x:auto;overscroll-behavior-inline:contain;scroll-snap-type:x proximity;padding:3px 2px 16px;scrollbar-width:thin}
 .plan-page .plan-grid{grid-template-columns:repeat(7,minmax(225px,1fr));gap:12px;align-items:stretch}
-.plan-page .plan-day{display:flex;flex-direction:column;gap:18px;padding:20px 17px;border:1px solid var(--border);border-top:3px solid var(--day-accent);border-radius:15px;background:linear-gradient(175deg,color-mix(in srgb,var(--day-accent) 8%,var(--deep)),var(--deep) 48%);scroll-snap-align:start;overflow:hidden;min-width:0}
-.plan-page .plan-day.is-selected{border-color:color-mix(in srgb,var(--day-accent) 32%,var(--border));border-top-color:var(--day-accent);background:linear-gradient(175deg,color-mix(in srgb,var(--day-accent) 13%,var(--deep)),var(--deep) 48%)}
+.plan-page .plan-day{display:flex;flex-direction:column;gap:18px;padding:20px 17px;border:1px solid var(--border);border-top:3px solid var(--day-accent);border-radius:15px;background:color-mix(in srgb, color-mix(in srgb,var(--day-accent) 8%,var(--deep)), var(--deep));scroll-snap-align:start;overflow:hidden;min-width:0}
+.plan-page .plan-day.is-selected{border-color:color-mix(in srgb,var(--day-accent) 32%,var(--border));border-top-color:var(--day-accent);background:color-mix(in srgb, color-mix(in srgb,var(--day-accent) 13%,var(--deep)), var(--deep))}
 .agenda-date-column{width:100%;grid-row:auto}
 .plan-page .plan-day-top{width:100%;flex-direction:column;align-items:flex-start;gap:10px}
 .plan-page .plan-day-date{font-size:29px;letter-spacing:-1px}
@@ -4579,7 +4570,7 @@ const savePlanLink = async (day) => {
 .match-pending{color:var(--text-soft);background:#94a3b80b}
 .match-sick{color:var(--sick);background:rgb(var(--sick-rgb) / .12)}
 /* Sick days: the whole card takes a rose wash so they stand out at a glance. */
-.plan-page .plan-day.is-sick,.plan-page .plan-day.is-sick.is-selected{background:linear-gradient(175deg,rgb(var(--sick-rgb) / .2),rgb(var(--sick-rgb) / .11) 60%),var(--deep);border-color:rgb(var(--sick-rgb) / .34);border-top-color:var(--day-accent)}
+.plan-page .plan-day.is-sick,.plan-page .plan-day.is-sick.is-selected{background:color-mix(in srgb,rgb(var(--sick-rgb)) 14%,var(--deep));border-color:rgb(var(--sick-rgb) / .34);border-top-color:var(--day-accent)}
 .plan-page .plan-day.is-sick.is-selected{border-color:rgb(var(--sick-rgb) / .5);border-top-color:var(--day-accent)}
 .plan-page .week-purpose{border:0;margin:18px 0 8px;padding:0;font-size:12px}
 .plan-page .goal-context-panel{border:0;margin:0;padding:0;background:transparent;overflow:visible}
@@ -4605,7 +4596,7 @@ const savePlanLink = async (day) => {
 @media(max-width:520px){.plan-page .plan-command-title{font-size:22px}.plan-page .workload-summary{gap:8px 18px}.plan-page .workload-metric strong{font-size:14px}.plan-page .goal-context-summary-metrics{width:auto;order:initial;flex-wrap:wrap}.plan-page .plan-day-date{font-size:20px}}
 /* Workout brief: hero header with target tiles, then instructions, adapt callout and context. */
 .plan-page .workout-brief{width:min(680px,100%);max-height:min(88dvh,900px);padding:0;border:1px solid color-mix(in srgb,var(--workout-accent) 22%,var(--border));border-radius:20px;background:var(--deep);overflow:auto;overscroll-behavior:contain}
-.workout-brief-header{padding:22px 26px 22px;background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--workout-accent) 16%,transparent),transparent 62%),linear-gradient(180deg,rgb(var(--ov-rgb) / 0.020),transparent);border-bottom:1px solid rgb(var(--ov-rgb) / 0.047)}
+.workout-brief-header{padding:22px 26px 22px;background:rgb(var(--ov-rgb) / 0.020);border-bottom:1px solid rgb(var(--ov-rgb) / 0.047)}
 .workout-brief-top{display:flex;align-items:center;gap:12px}
 .workout-sport-tile{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:color-mix(in srgb,var(--workout-accent) 20%,transparent);color:var(--workout-accent)}
 .workout-brief-kicker{display:grid;gap:1px;min-width:0;line-height:1.3}

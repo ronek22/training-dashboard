@@ -50,7 +50,7 @@ watch([scope, () => props.selectedExercise?.id, () => props.exercises], () => { 
 </script>
 
 <style scoped>
-.muscle-map { margin-top: 22px; padding: 24px; border:1px solid #f4779825; border-radius: 18px; background:linear-gradient(130deg, #f4779806, transparent 55%), var(--deep); }
+.muscle-map { margin-top: 22px; padding: 24px; border:1px solid #f4779825; border-radius: 18px; background:var(--deep); }
 .is-draft { margin-top: 0; padding: 16px 18px; border-color: var(--border); border-radius: 12px; background: transparent; }
 .is-draft .map-header { margin-bottom: 0; flex-wrap: wrap; gap: 12px; }
 .is-draft .map-header h2 { margin: 0; font-size: 15px; letter-spacing: 0; }
@@ -67,7 +67,7 @@ watch([scope, () => props.selectedExercise?.id, () => props.exercises], () => { 
 .map-toggle button[aria-pressed='true'], .view-toggle button[aria-pressed='true'] { background:#f477981c; color:var(--text); }
 .map-toggle button:disabled { opacity: .45; cursor: default; }
 .map-layout { display: grid; grid-template-columns: minmax(240px, .9fr) minmax(0, 1.1fr); gap: 32px; }
-.anatomy-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; border: 1px solid rgb(var(--ov-rgb) / 0.031); border-radius: 14px; background:radial-gradient(ellipse at center, #f4779809, transparent 65%), var(--deep); }
+.anatomy-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; border: 1px solid rgb(var(--ov-rgb) / 0.031); border-radius: 14px; background:var(--deep); }
 .view-toggle { margin-bottom: 8px; }
 .view-toggle button { min-width: 70px; text-transform: capitalize; }
 .map-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 12px; }

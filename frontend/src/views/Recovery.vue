@@ -331,7 +331,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 /* Injury strip */
 .issue-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
 .issue-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; background: transparent; padding: 8px 14px; border-radius: 12px; border-color: var(--border); }
-.issue-chip.selected { background: linear-gradient(120deg, rgba(72, 168, 134, .18), rgba(72, 168, 134, .05)); border-color: rgba(131, 223, 186, .35); }
+.issue-chip.selected { background: color-mix(in srgb, rgba(72, 168, 134, .18), rgba(72, 168, 134, .05)); border-color: rgba(131, 223, 186, .35); }
 .issue-title { font-weight: 650; font-size: 13px; overflow-wrap: anywhere; }
 .issue-meta { font-size: 11px; color: var(--muted); }
 .healed-menu { position: relative; margin-left: auto; }

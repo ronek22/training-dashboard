@@ -2234,7 +2234,7 @@ const showWeeklyRequirement = (goal) => {
   padding: 16px;
   border-radius: 16px;
   border: 1px solid rgba(120, 146, 214, 0.18);
-  background: linear-gradient(180deg, rgba(71, 98, 173, 0.12), rgb(var(--ov-rgb) / 0.03));
+  background: color-mix(in srgb, rgba(71, 98, 173, 0.12), rgb(var(--ov-rgb) / 0.03));
 }
 .goal-draft-field {
   display: grid;
@@ -2328,7 +2328,7 @@ const showWeeklyRequirement = (goal) => {
 .goal-inline-hint {
   border-radius: 14px;
   border: 1px solid rgba(120, 146, 214, 0.18);
-  background: linear-gradient(180deg, rgba(71, 98, 173, 0.12), rgb(var(--ov-rgb) / 0.03));
+  background: color-mix(in srgb, rgba(71, 98, 173, 0.12), rgb(var(--ov-rgb) / 0.03));
   padding: 14px 15px;
 }
 .goal-family-panel {
@@ -2550,7 +2550,7 @@ const showWeeklyRequirement = (goal) => {
 .goal-fill {
   height: 100%;
   border-radius: 999px;
-  background:linear-gradient(90deg, color-mix(in srgb, #38bdf8 calc(100% - var(--dim)), #000), #6366f1);
+  background:color-mix(in srgb, color-mix(in srgb, #38bdf8 calc(100% - var(--dim)), #000), #6366f1);
 }
 .goal-today-marker {
   position: absolute;
@@ -2815,7 +2815,7 @@ const showWeeklyRequirement = (goal) => {
   padding: 16px 18px;
   border-radius: 18px;
   border: 1px solid rgb(var(--ov-rgb) / 0.06);
-  background: linear-gradient(180deg, rgb(var(--ov-rgb) / 0.03), rgb(var(--ov-rgb) / 0.02));
+  background: rgb(var(--ov-rgb) / 0.03);
   display: grid;
   gap: 14px;
 }
@@ -3074,7 +3074,7 @@ const showWeeklyRequirement = (goal) => {
 /* Goals hierarchy — aligned with Dashboard, Plan, and Calendar */
 .goals-page-head { align-items: flex-end; margin-bottom: 28px; }
 .goals-page-head .page-title { font-size: clamp(28px, 4vw, 36px); letter-spacing: -0.04em; }
-.add-goal-btn { min-height: 42px; padding: 10px 16px; display: inline-flex; align-items: center; gap: 7px; border-radius: 12px; box-shadow: 0 8px 24px rgba(82, 115, 255, 0.18); }
+.add-goal-btn { min-height: 42px; padding: 10px 16px; display: inline-flex; align-items: center; gap: 7px; border-radius: 12px;  }
 .add-goal-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
 .goal-sections { gap: 28px; }
 .goal-loading { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
@@ -3223,7 +3223,7 @@ const showWeeklyRequirement = (goal) => {
 
 /* ---- Goals redesign: athlete-first, flat surfaces (no outlines, tone instead of borders) ---- */
 .goal-sections { gap: 36px; }
-.goal-overview { padding: 28px 32px; border: 0; border-radius: 16px; background: linear-gradient(120deg, rgba(95,140,255,.16), rgba(95,140,255,.04) 60%), var(--bg-elevated); }
+.goal-overview { padding: 28px 32px; border: 0; border-radius: 16px; background: var(--bg-elevated); }
 .goal-overview-copy strong { font-size: 26px; line-height: 1.2; letter-spacing: -.03em; }
 .goal-overview-copy p { max-width: 62ch; font-size: 14px; }
 .goal-overview-stats { gap: 8px; }
@@ -3233,7 +3233,7 @@ const showWeeklyRequirement = (goal) => {
 .goal-overview-stats span { text-transform: none; letter-spacing: 0; font-size: 12px; }
 
 .goal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 20px; align-items: stretch; }
-.gcard { --tone: var(--accent); display: grid; grid-row: span 6; grid-template-rows: subgrid; row-gap: 18px; padding: 24px; border: 0; border-radius: 16px; background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 11%, var(--bg-elevated)), var(--bg-elevated) 55%); box-shadow: none; }
+.gcard { --tone: var(--accent); display: grid; grid-row: span 6; grid-template-rows: subgrid; row-gap: 18px; padding: 24px; border: 0; border-radius: 16px; background: color-mix(in srgb, color-mix(in srgb, var(--tone) 11%, var(--bg-elevated)), var(--bg-elevated)); box-shadow: none; }
 .tone-ride { --tone: var(--ride); } .tone-run { --tone: var(--run); } .tone-strength { --tone: var(--strength); } .tone-z2 { --tone: var(--z2); }
 .gcard-head { display: flex; align-items: flex-start; gap: 14px; }
 .gcard-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: color-mix(in srgb, var(--tone) 18%, transparent); color: var(--tone); }
@@ -3302,7 +3302,7 @@ const showWeeklyRequirement = (goal) => {
 .goal-action { padding: 8px 14px; border-radius: 8px; }
 
 .goal-section-head .section-title { font-size: 20px; letter-spacing: -.02em; }
-.goal-review { padding: 24px 26px; border: 0; border-radius: 16px; background: linear-gradient(120deg, rgba(243,180,77,.13), rgba(243,180,77,.03) 60%), var(--bg-elevated); }
+.goal-review { padding: 24px 26px; border: 0; border-radius: 16px; background: var(--bg-elevated); }
 .goal-review-head h2 { font-size: 22px; letter-spacing: -.02em; }
 .goal-review-item { padding: 16px 18px; border: 0; border-radius: 10px; background: rgb(var(--ov-rgb) / .05); }
 .goal-review-headline { font-size: 14px; line-height: 1.55; }

@@ -307,7 +307,6 @@ const routeTransitionName = computed(() => {
   position: fixed;
   top: 0; left: 0; bottom: 0;
   overflow-y: auto;
-  backdrop-filter: blur(18px);
 }
 
 .sidebar-logo {
@@ -392,9 +391,9 @@ const routeTransitionName = computed(() => {
 .weather-card {
   min-height: 92px;
   padding: 12px;
-  border: 1px solid rgba(96, 165, 250, .18);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: linear-gradient(145deg, rgba(59, 130, 246, .11), rgb(var(--panel-rgb) / .54));
+  background: rgb(var(--ov-rgb) / .025);
 }
 .weather-card.is-loading { opacity: .72; }
 .weather-current { display: flex; align-items: center; gap: 9px; }
@@ -445,7 +444,7 @@ const routeTransitionName = computed(() => {
   padding: 11px 12px;
   border: 1px solid rgba(249, 115, 22, .2);
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(249, 115, 22, .1), rgb(var(--ov-rgb) / .025));
+  background: rgba(249, 115, 22, .06);
 }
 .streak-flame { font-size: 18px; filter: saturate(.9); }
 .streak-copy { display: grid; gap: 2px; }

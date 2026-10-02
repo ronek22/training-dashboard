@@ -364,7 +364,7 @@ onBeforeUnmount(() => {
 .guide-current {
   display: grid; justify-items: center; gap: 14px; min-height: 520px; align-content: center;
   border: 1px solid color-mix(in srgb, var(--accent) 22%, rgb(var(--tint-rgb) / 0.14)); border-radius: 24px;
-  background: radial-gradient(90% 70% at 50% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%), var(--deep);
+  background: var(--deep);
   padding: 36px; text-align: center;
 }
 .guide-current.is-rest { --accent: #7fcfb0; }

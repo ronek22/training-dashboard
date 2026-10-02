@@ -2,14 +2,14 @@
 
 :root {
   color-scheme: dark;
-  --bg: #0b1018;
-  --bg-elevated: #101725;
-  --surface: rgba(18, 25, 39, 0.88);
-  --surface-strong: rgba(22, 30, 47, 0.96);
-  --surface2: #1c2638;
-  --surface3: #243149;
-  --border: rgba(114, 132, 162, 0.2);
-  --border-strong: rgba(143, 167, 205, 0.3);
+  --bg: #15181e;
+  --bg-elevated: #191c23;
+  --surface: #1e222a;
+  --surface-strong: #222731;
+  --surface2: #272c37;
+  --surface3: #303644;
+  --border: rgba(160, 172, 196, 0.12);
+  --border-strong: rgba(170, 184, 210, 0.22);
   --text: #edf2fb;
   --text-soft: #c9d5e8;
   --muted: #8fa1bf;
@@ -24,10 +24,10 @@
   --success: #34d399;
   --warning: #f3b44d;
   --ov-rgb: 255 255 255;
-  --tint-rgb: 132 149 181;
-  --panel-rgb: 17 24 38;
-  --card-bg: rgba(17, 24, 38, 0.94);
-  --sidebar-bg: linear-gradient(180deg, rgba(13, 19, 30, 0.96), rgba(10, 15, 24, 0.94));
+  --tint-rgb: 140 152 176;
+  --panel-rgb: 30 34 42;
+  --card-bg: #1e222a;
+  --sidebar-bg: #191c23;
   --on-accent: #07111f;
   --dim: 0%;
   --cp-sprint: #88c9ff;
@@ -58,19 +58,19 @@
   --sick-rgb: 217 163 180;
   --tone-walk: #91cfba;
   --tone-neutral: #a8b7d0;
-  --deep: #111a26;
-  --deep-rgb: 8 14 22;
-  --shadow-rgb: 3 8 18;
+  --deep: #1e222a;
+  --deep-rgb: 26 30 37;
+  --shadow-rgb: 4 6 10;
   --success-text: #6de0b7;
   --warning-text: #f4c66e;
   --info-text: #9ab9f4;
   --danger-text: #fca5a5;
-  --page-bg:
-    radial-gradient(circle at top left, rgba(95, 140, 255, 0.08), transparent 28%),
-    radial-gradient(circle at top right, rgba(31, 190, 141, 0.07), transparent 22%),
-    linear-gradient(180deg, #09111b, #0b1018 30%, #0c121c 100%);
-  --shadow-lg: 0 24px 60px rgba(3, 8, 18, 0.38);
-  --shadow-md: 0 12px 32px rgba(3, 8, 18, 0.24);
+  --page-bg: var(--bg);
+  --shadow-lg: 0 24px 60px rgba(4, 6, 10, 0.38);
+  --shadow-md: 0 12px 32px rgba(4, 6, 10, 0.24);
+  /* Flat cards sit on soft, low shadows; hover lifts them slightly. */
+  --shadow-card: 0 1px 2px rgba(4, 6, 10, 0.28), 0 4px 14px rgba(4, 6, 10, 0.18);
+  --shadow-card-hover: 0 2px 4px rgba(4, 6, 10, 0.3), 0 12px 28px rgba(4, 6, 10, 0.28);
   --radius-card: 18px;
   --radius-panel: 14px;
   --font-display: 'Space Grotesk', sans-serif;
@@ -116,7 +116,7 @@
   --tint-rgb: 71 85 105;
   --panel-rgb: 255 255 255;
   --card-bg: rgba(255, 255, 255, 0.96);
-  --sidebar-bg: linear-gradient(180deg, #ffffff, #f6f8fc);
+  --sidebar-bg: #ffffff;
   --on-accent: #ffffff;
   --dim: 42%;
   --cp-sprint: #2b78bd;
@@ -153,12 +153,11 @@
   --warning-text: #96600a;
   --info-text: #2b4fbf;
   --danger-text: #b42f2f;
-  --page-bg:
-    radial-gradient(circle at top left, rgba(59, 98, 224, 0.06), transparent 28%),
-    radial-gradient(circle at top right, rgba(15, 155, 114, 0.05), transparent 22%),
-    linear-gradient(180deg, #f6f8fc, #f3f5f9 30%, #eff2f7 100%);
+  --page-bg: var(--bg);
   --shadow-lg: 0 24px 60px rgba(30, 41, 80, 0.14);
   --shadow-md: 0 12px 32px rgba(30, 41, 80, 0.1);
+  --shadow-card: 0 1px 2px rgba(30, 41, 80, 0.06), 0 4px 14px rgba(30, 41, 80, 0.05);
+  --shadow-card-hover: 0 2px 4px rgba(30, 41, 80, 0.07), 0 12px 28px rgba(30, 41, 80, 0.1);
 }
 
 html {
@@ -214,8 +213,10 @@ a:focus-visible {
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   padding: 22px;
-  box-shadow: inset 0 1px 0 rgb(var(--ov-rgb) / 0.03);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--motion-duration-base) var(--motion-ease-standard);
 }
+.card:hover { box-shadow: var(--shadow-card-hover); }
 
 .card-title {
   font-family: var(--font-display);
@@ -533,8 +534,7 @@ tr:hover td { background: var(--surface2); }
   border-radius: 20px;
   border: 1px solid rgba(245, 183, 66, 0.22);
   background:
-    radial-gradient(circle at top right, rgba(245, 183, 66, 0.14), transparent 38%),
-    linear-gradient(135deg, rgb(var(--deep-rgb) / 0.96), rgba(34, 40, 64, 0.92));
+    rgba(245, 183, 66, 0.05);
   padding: 16px;
 }
 
@@ -583,9 +583,8 @@ tr:hover td { background: var(--surface2); }
 .dashboard-zone-row {
   padding: 12px 14px 13px;
   border-radius: 18px;
-  background: linear-gradient(180deg, rgb(var(--ov-rgb) / 0.035), rgb(var(--ov-rgb) / 0.02));
+  background: rgb(var(--ov-rgb) / 0.025);
   border: 1px solid rgb(var(--ov-rgb) / 0.05);
-  box-shadow: inset 0 1px 0 rgb(var(--ov-rgb) / 0.03);
 }
 
 .hr-zones-panel .hr-zone-focus-card {
@@ -671,8 +670,7 @@ tr:hover td { background: var(--surface2); }
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--zone-color), color-mix(in srgb, var(--zone-color) 70%, white));
-  box-shadow: 0 0 18px color-mix(in srgb, var(--zone-color) 35%, transparent);
+  background: var(--zone-color);
 }
 
 .dashboard-zone2-kpi {

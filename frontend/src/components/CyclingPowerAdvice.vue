@@ -104,6 +104,6 @@ onUnmounted(() => { disposed = true; clearTimeout(timer) })
 </template>
 
 <style scoped>
-.cycling-advice{padding:30px 36px;border:1px solid #d0e99826;border-radius:28px;background:linear-gradient(135deg,var(--deep),var(--deep))}
+.cycling-advice{padding:30px 36px;border:1px solid #d0e99826;border-radius:28px;background:var(--deep)}
 header{display:flex;align-items:center;justify-content:space-between;gap:20px}h3{font-size:30px;margin:10px 0 16px}h4{font-size:19px;margin:16px 0 8px}p{line-height:1.75;color:var(--muted);font-size:14px;margin:10px 0}.eyebrow{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--success-text)}.saved,.cost-note,.limits{font-size:12px}.cost-note{margin-top:22px}.stale{color:color-mix(in srgb, #ffce99 calc(100% - var(--dim)), #000)}.focus-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;margin-top:24px}.focus-list section{border-top:1px solid #d0e99840;padding-top:8px}.action,strong{color:var(--text)}button{font:inherit;color:var(--text);border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:10px 16px;cursor:pointer}button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:3px solid color-mix(in srgb, #d0e998 calc(100% - var(--dim)), #000);outline-offset:4px}@media(max-width:600px){.cycling-advice{padding:24px 16px}header{align-items:flex-start;flex-direction:column;gap:4px}.focus-list{grid-template-columns:1fr}}
 </style>

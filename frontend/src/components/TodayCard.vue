@@ -200,19 +200,11 @@ const comparisonState = computed(() => {
   gap: 26px;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, rgb(var(--tint-rgb) / 0.14));
+  border: 1px solid var(--border);
   border-radius: 20px;
-  background:
-    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 60%),
-    var(--deep);
+  background: var(--deep);
+  box-shadow: var(--shadow-card);
   padding: 28px;
-}
-.today-card::before {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 2px;
-  background: linear-gradient(90deg, var(--accent), transparent 70%);
-  content: '';
 }
 
 .today-head { position: relative; display: grid; gap: 16px; }
@@ -237,9 +229,9 @@ const comparisonState = computed(() => {
 .today-art {
   position: absolute; top: 22px; right: 24px; width: min(30%, 300px); height: auto; pointer-events: none;
   border: 1px solid rgb(var(--tint-rgb) / 0.08); border-radius: 14px;
-  background: radial-gradient(circle, rgb(var(--tint-rgb) / 0.16) 1px, transparent 1.2px) 0 0 / 14px 14px, rgb(var(--deep-rgb) / 0.35);
+  background: rgb(var(--ov-rgb) / 0.02);
 }
-.today-route-glow { fill: none; stroke: var(--accent); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; opacity: 0.14; filter: blur(4px); }
+.today-route-glow { display: none; }
 .today-route-line { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; }
 .today-route-start { fill: var(--deep); stroke: var(--accent); stroke-width: 2; }
 .today-route-end { fill: var(--accent); stroke: var(--deep); stroke-width: 2; }
@@ -250,7 +242,6 @@ const comparisonState = computed(() => {
   width: 52px; height: 52px; border-radius: 16px;
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .today-kicker { margin: 0; color: var(--accent); font-size: 12px; font-weight: 600; }
 .today-title-row h2 { min-width: 0; margin: 0; color: var(--text); font-size: clamp(22px, 2.4vw, 28px); font-weight: 650; line-height: 1.2; letter-spacing: -0.5px; overflow-wrap: break-word; }
@@ -282,7 +273,7 @@ const comparisonState = computed(() => {
 .today-compare-head .is-over { color: var(--warning-text); }
 .today-compare-head .is-under { color: var(--info-text); }
 .today-compare-track { position: relative; height: 12px; border-radius: 6px; background: rgb(var(--tint-rgb) / 0.1); }
-.today-compare-track i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 55%, transparent), var(--accent)); }
+.today-compare-track i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent); }
 .today-compare-track b { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; border-radius: 1px; background:color-mix(in srgb, #eef3fb calc(100% - var(--dim)), #000); box-shadow: 0 0 0 2px var(--deep); }
 .today-compare-scale { display: flex; justify-content: space-between; gap: 12px; color: var(--dash-muted, var(--muted)); font-size: 11px; font-variant-numeric: tabular-nums; }
 

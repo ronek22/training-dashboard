@@ -506,13 +506,13 @@ onUnmounted(() => {
   padding: 12px 17px 12px 12px;
   border: 1px solid rgba(123, 163, 255, .35);
   border-radius: 999px;
-  background:linear-gradient(135deg, color-mix(in srgb, #6a92ff calc(100% - var(--dim)), #000), #506fd1);
+  background:var(--accent);
   color: white;
-  box-shadow: 0 16px 40px rgba(18, 38, 86, .46);
+  box-shadow: 0 2px 6px rgb(var(--shadow-rgb) / .3), 0 10px 24px rgb(var(--shadow-rgb) / .28);
   font-weight: 750;
   cursor: pointer;
 }
-.coach-launcher:hover { transform: translateY(-2px); box-shadow: 0 20px 46px rgba(18, 38, 86, .56); }
+.coach-launcher:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgb(var(--shadow-rgb) / .32), 0 16px 34px rgb(var(--shadow-rgb) / .34); }
 .coach-launcher-mark {
   display: grid;
   place-items: center;
@@ -531,7 +531,7 @@ onUnmounted(() => {
   width: min(760px, calc(100vw - 88px));
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, var(--deep), var(--deep));
+  background: var(--deep);
   border-left: 1px solid rgba(123, 163, 255, .2);
   box-shadow: -24px 0 70px rgb(var(--deep-rgb) / .52);
 }

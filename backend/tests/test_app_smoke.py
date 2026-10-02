@@ -134,6 +134,41 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         return response
 
+    def test_ride_fuelling_feedback_and_plan_fuel_hint(self):
+        today = datetime.now().date()
+        create = self.client.post(
+            "/activities",
+            json={"id": "fuel-ride-1", "date": today.isoformat(), "type": "Ride", "name": "Long ride", "duration_min": 150.0},
+        )
+        self.assertEqual(create.status_code, 201)
+        saved = self._save_feedback("fuel-ride-1", rpe=7, energy=2, muscle_soreness=2, pain_level=0, fuelling="bonked")
+        self.assertEqual(saved.json()["fuelling"], "bonked")
+        self.assertEqual(self.client.get("/activities/fuel-ride-1/feedback").json()["fuelling"], "bonked")
+        rejected = self.client.post(
+            "/activities/fuel-ride-1/feedback",
+            json={"rpe": 7, "energy": 2, "muscle_soreness": 2, "pain_level": 0, "fuelling": "starving"},
+        )
+        self.assertEqual(rejected.status_code, 422)
+
+        week_start = today - timedelta(days=today.weekday())
+        plan = self.client.post(
+            "/plans/weekly",
+            json={
+                "week_start": week_start.isoformat(),
+                "days": [
+                    {"date": today.isoformat(), "label": "Long", "session_type": "Ride", "workout_intent": "long",
+                     "title": "Long ride", "target_duration_min": 150},
+                    {"date": today.isoformat(), "label": "Spin", "session_type": "Ride", "workout_intent": "recovery",
+                     "title": "Spin", "target_duration_min": 40},
+                ],
+            },
+        )
+        self.assertIn(plan.status_code, (200, 201))
+        days = self.client.get("/plans/weekly?limit=1").json()[0]["days"]
+        long_ride = next(day for day in days if day["title"] == "Long ride")
+        self.assertEqual(long_ride["fuel_plan"]["carbs_g_per_h"]["target"], 50)
+        self.assertIsNone(next(day for day in days if day["title"] == "Spin")["fuel_plan"])
+
     def test_training_load_uses_activity_history_before_chart_window(self):
         old_activity_date = (datetime.now().date() - timedelta(days=20)).isoformat()
         self._create_activity(

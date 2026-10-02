@@ -11,6 +11,7 @@ def get_activity_feedback_row(conn: sqlite3.Connection, activity_id: str) -> sql
             f.muscle_soreness,
             f.pain_level,
             f.note,
+            f.fuelling,
             f.created_at,
             f.updated_at,
             a.date AS activity_date,
@@ -28,13 +29,14 @@ def upsert_activity_feedback_row(conn: sqlite3.Connection, activity_id: str, fee
     conn.execute(
         """
         INSERT INTO activity_feedback
-        (activity_id, rpe, energy, muscle_soreness, pain_level, note)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (activity_id, rpe, energy, muscle_soreness, pain_level, fuelling, note)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(activity_id) DO UPDATE SET
             rpe = excluded.rpe,
             energy = excluded.energy,
             muscle_soreness = excluded.muscle_soreness,
             pain_level = excluded.pain_level,
+            fuelling = excluded.fuelling,
             note = excluded.note,
             updated_at = CURRENT_TIMESTAMP
         """,
@@ -44,6 +46,7 @@ def upsert_activity_feedback_row(conn: sqlite3.Connection, activity_id: str, fee
             feedback["energy"],
             feedback["muscle_soreness"],
             feedback["pain_level"],
+            feedback.get("fuelling"),
             feedback.get("note"),
         ),
     )
@@ -59,6 +62,7 @@ def list_recent_feedback_rows(conn: sqlite3.Connection, limit: int = 5) -> list[
             f.muscle_soreness,
             f.pain_level,
             f.note,
+            f.fuelling,
             f.created_at,
             f.updated_at,
             a.date AS activity_date,

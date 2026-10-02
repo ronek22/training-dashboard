@@ -157,6 +157,7 @@ def build_activity_analysis_context(conn: sqlite3.Connection, detail_payload: di
             "energy": feedback.get("energy"),
             "muscle_soreness": feedback.get("muscle_soreness"),
             "pain_level": feedback.get("pain_level"),
+            "fuelling": feedback.get("fuelling"),
             "note": str(feedback.get("note") or "").strip() or None,
         } if feedback else None,
         "load_signals": {
@@ -308,6 +309,7 @@ def get_activity_analysis_context_payload(conn: sqlite3.Connection, detail_paylo
                 "Compare with recent_context when it supports a real pattern such as accumulating load, repeated intensity, consistency, recovery spacing, or a modality imbalance. Do not claim a trend from one data point.",
                 "Identify at least one positive signal when supported. Flag only meaningful concerns; if no concern is supported, say that plainly instead of inventing one.",
                 "Treat the athlete's feedback note as first-class coaching evidence. Use it to interpret pain, soreness, perceived difficulty, conditions, or session character when relevant, while distinguishing the athlete's report from measured data.",
+                "If feedback.fuelling is 'bonked', weigh under-fuelling as a likely cause of a late fade in power, pace or heart rate before blaming fitness, and suggest eating earlier and more next time. 'overate' points to GI discomfort rather than fitness.",
                 "End the summary with a practical implication for the next 24-72 hours or the next similar session, without rewriting the weekly plan.",
                 "Do not invent facts that are not supported by the provided context.",
                 "Do not give medical advice or injury diagnosis.",

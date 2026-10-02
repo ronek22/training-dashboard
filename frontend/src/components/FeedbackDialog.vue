@@ -47,6 +47,22 @@
             </select>
           </label>
 
+          <div v-if="asksFuelling" class="feedback-fuel-field" role="radiogroup" aria-label="How did fuelling go?">
+            <span>Fuelling</span>
+            <div class="feedback-fuel-options">
+              <button
+                v-for="option in fuellingOptions"
+                :key="option.value"
+                type="button"
+                role="radio"
+                :aria-checked="form.fuelling === option.value"
+                :class="{ on: form.fuelling === option.value }"
+                :title="option.hint"
+                @click="form.fuelling = form.fuelling === option.value ? null : option.value"
+              >{{ option.label }}</button>
+            </div>
+          </div>
+
           <label class="feedback-note-field">
             <span>Optional note</span>
             <textarea v-model="form.note" rows="3" placeholder="Anything that explains the numbers?"></textarea>
@@ -86,6 +102,7 @@ const defaults = () => ({
   energy: 3,
   muscle_soreness: 2,
   pain_level: 0,
+  fuelling: null,
   note: '',
   workout_intent: '',
 })
@@ -189,10 +206,20 @@ const workoutIntentOptions = {
 
 const intentOptions = computed(() => workoutIntentOptions[props.activity?.type] || [])
 
+// Long rides are where under-fuelling hides; shorter sessions skip the question.
+const FUELLING_MIN_MINUTES = 75
+const fuellingOptions = [
+  { value: 'bonked', label: 'Bonked', hint: 'Ran out of energy or faded hard late on' },
+  { value: 'fine', label: 'Fine', hint: 'Energy held up' },
+  { value: 'overate', label: 'Overate', hint: 'Too much: heavy or upset stomach' },
+]
+const asksFuelling = computed(() => /ride|cycl|bike/i.test(props.activity?.type || '') && Number(props.activity?.duration_min || 0) >= FUELLING_MIN_MINUTES)
+
 const submit = () => {
   emit('save', {
     ...form,
     note: form.note?.trim() || '',
+    fuelling: asksFuelling.value ? form.fuelling || null : props.initialFeedback?.fuelling || null,
     workout_intent: form.workout_intent || null,
   })
 }
@@ -337,6 +364,34 @@ const submit = () => {
   background: rgb(var(--ov-rgb) / 0.04);
   color: var(--text);
   resize: vertical;
+}
+.feedback-fuel-field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.feedback-fuel-field > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.feedback-fuel-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.feedback-fuel-options button {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--ov-rgb) / 0.08);
+  background: rgb(var(--ov-rgb) / 0.04);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.feedback-fuel-options button.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 .feedback-modal-actions {
   display: flex;

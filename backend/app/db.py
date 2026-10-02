@@ -825,6 +825,8 @@ def init_db():
         conn.execute("DROP TABLE activity_feedback_legacy")
     elif "pain_level" not in feedback_columns:
         conn.execute("ALTER TABLE activity_feedback ADD COLUMN pain_level INTEGER NOT NULL DEFAULT 0")
+    if "fuelling" not in {row["name"] for row in conn.execute("PRAGMA table_info(activity_feedback)").fetchall()}:
+        conn.execute("ALTER TABLE activity_feedback ADD COLUMN fuelling TEXT")
 
     _cleanup_existing_fitbod_non_strength_sessions(conn)
 

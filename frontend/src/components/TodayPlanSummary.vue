@@ -10,6 +10,16 @@
       </figcaption>
     </figure>
 
+    <section v-if="fuel" class="plan-fuel" aria-label="Ride fuelling">
+      <span class="plan-fuel-label">Fuel</span>
+      <div class="plan-fuel-stats">
+        <span><strong>~{{ fuel.carbs_g_per_h.target }}</strong> g carbs/h <small>{{ fuel.carbs_g_per_h.low }}–{{ fuel.carbs_g_per_h.high }}</small></span>
+        <span><strong>{{ fuel.total_carbs_g }}</strong> g total</span>
+        <span><strong>{{ fuel.bottles }}</strong> {{ fuel.bottles === 1 ? 'bottle' : 'bottles' }}<small v-if="fuel.hot_bottles !== fuel.bottles">{{ fuel.hot_bottles }} if hot</small></span>
+      </div>
+      <p>{{ fuel.tip }}</p>
+    </section>
+
     <ol v-if="lifts.length" class="plan-lifts">
       <li v-for="(lift, index) in lifts" :key="`${lift.name}-${index}`">
         <span class="plan-lift-order">{{ String(index + 1).padStart(2, '0') }}</span>
@@ -122,6 +132,7 @@ const readinessTile = computed(() => {
   }
 })
 
+const fuel = computed(() => props.plan?.fuel_plan || null)
 const tiles = computed(() => [durationTile.value, distanceTile.value, intensityTile.value, setsTile.value, readinessTile.value].filter(Boolean))
 </script>
 
@@ -149,4 +160,10 @@ const tiles = computed(() => [durationTile.value, distanceTile.value, intensityT
 .plan-guide .is-guardrail { border-color: rgba(230, 185, 108, 0.2); }
 .plan-guide .is-guardrail span { color: var(--warning-text); }
 .plan-guide p { margin: 8px 0 0; color:var(--text-soft); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.plan-fuel { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: baseline; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
+.plan-fuel-label { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.plan-fuel-stats { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 12px; color: var(--muted); }
+.plan-fuel-stats strong { color: var(--text); font-size: 15px; font-variant-numeric: tabular-nums; }
+.plan-fuel-stats small { margin-left: 4px; font-size: 10px; }
+.plan-fuel p { grid-column: 2; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
 </style>

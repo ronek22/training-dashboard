@@ -475,6 +475,7 @@
                   >
                     {{ day.cycling_workout_name }} · .zwo
                   </button>
+                  <span v-if="day.fuel_plan" class="day-tag day-tag-fuel" :title="`${day.fuel_plan.summary}. ${day.fuel_plan.tip}`">Fuel ~{{ day.fuel_plan.carbs_g_per_h.target }} g/h · {{ day.fuel_plan.bottles }}× bottle</span>
                   <span v-if="day.benchmark_label" class="day-tag day-tag-benchmark">{{ day.benchmark_label }}</span>
                   <span
                     v-if="day.modality_restriction && day.modality_restriction.status !== 'allowed'"
@@ -4875,6 +4876,7 @@ const savePlanLink = async (day) => {
 .day-tag-workout { cursor: pointer; color:color-mix(in srgb, #fdba74 calc(100% - var(--dim)), #000); border-color: rgba(249, 115, 22, .3); background: rgba(234, 88, 12, .12); }
 .day-tag-workout:hover { background: rgba(234, 88, 12, .22); }
 .day-tag-benchmark { color: var(--warning-text); border-color:#f3c47840; background:#f3c47812; }
+.day-tag-fuel { color: var(--text); border-color: color-mix(in srgb, #f59e0b 30%, transparent); background: color-mix(in srgb, #f59e0b 8%, transparent); }
 .day-tag-restriction { color: var(--danger-text); border-color:#f8717140; background:#f8717112; text-transform: capitalize; }
 
 .day-notes { display: grid; align-content: start; gap: 6px; }

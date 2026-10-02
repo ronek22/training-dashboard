@@ -313,7 +313,7 @@ const saveFeedback = async payload => {
   feedbackSaving.value=true; feedbackMessage.value=''
   try {
     await api.updateActivityIntent(dialogActivity.value.id,{ workout_intent:payload.workout_intent || null })
-    await api.saveActivityFeedback(dialogActivity.value.id,{ rpe:payload.rpe, energy:payload.energy, muscle_soreness:payload.muscle_soreness, pain_level:payload.pain_level, note:payload.note })
+    await api.saveActivityFeedback(dialogActivity.value.id,{ rpe:payload.rpe, energy:payload.energy, muscle_soreness:payload.muscle_soreness, pain_level:payload.pain_level, fuelling:payload.fuelling || null, note:payload.note })
     feedbackMessage.value='Saved.'; await load(); window.setTimeout(closeFeedbackDialog,250)
   } catch (error) { feedbackMessage.value=error?.response?.data?.detail || 'Feedback save failed.' } finally { feedbackSaving.value=false }
 }

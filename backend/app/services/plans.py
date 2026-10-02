@@ -15,6 +15,7 @@ from .benchmarks import (
     normalize_benchmark_fields,
 )
 from .cycling_workouts import get_cycling_workout
+from .fuelling import build_fuel_plan
 from .execution_quality import evaluate_execution_quality
 from .fitbod_imports import get_fitbod_strength_detail_for_activity
 from ..repositories.goals import ACTIVE_GOAL_CONDITION
@@ -1134,6 +1135,7 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
             enriched_day["modality"] = day_modality
             enriched_day["modality_restriction"] = restrictions.get("modalities", {}).get(day_modality) if day_modality else None
             enriched_day["comparison"] = comparison
+            enriched_day["fuel_plan"] = build_fuel_plan(enriched_day)
             enriched_day["link_candidates"] = build_link_candidates(day, activity_rows, benchmark_lookup)
             enriched_day["goal_links"] = []
             enriched_days.append(enriched_day)

@@ -280,7 +280,7 @@ const saveFeedback = async (payload) => {
   feedbackSaving.value = true; feedbackMessage.value = ''
   try {
     await api.updateActivityIntent(detail.value.activity.id, { workout_intent: payload.workout_intent || null })
-    await api.saveActivityFeedback(detail.value.activity.id, { rpe: payload.rpe, energy: payload.energy, muscle_soreness: payload.muscle_soreness, pain_level: payload.pain_level, note: payload.note })
+    await api.saveActivityFeedback(detail.value.activity.id, { rpe: payload.rpe, energy: payload.energy, muscle_soreness: payload.muscle_soreness, pain_level: payload.pain_level, fuelling: payload.fuelling || null, note: payload.note })
     feedbackMessage.value = 'Saved.'
     await load()
     window.setTimeout(closeFeedback, 250)

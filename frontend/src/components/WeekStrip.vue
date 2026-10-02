@@ -119,4 +119,26 @@ defineEmits(['open'])
 .is-over .week-cell-minutes { color: var(--warning-text); }
 .week-cell-status { color: var(--dash-muted, var(--muted)); white-space: nowrap; }
 .is-actual .week-cell-status { color:color-mix(in srgb, #54d0aa calc(100% - var(--dim)), #000); }
+
+/* Seven columns don't fit a phone: stack the days as compact rows. */
+@media (max-width: 780px) {
+  .week-progress { flex: 1 1 100%; margin-left: 0; }
+  .week-progress-track { flex: 1; width: auto; }
+  .week-grid { grid-template-columns: minmax(0, 1fr); }
+  .week-cell {
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    grid-template-areas: "top text foot" "top bar bar";
+    align-items: center;
+    gap: 6px 12px;
+    border-left: 0;
+    border-top: 1px solid rgb(var(--tint-rgb) / 0.08);
+    padding: 12px 14px;
+  }
+  .week-cell:first-child { border-top: 0; }
+  .week-cell.is-today { box-shadow: inset 3px 0 var(--day-accent); }
+  .week-cell-top { grid-area: top; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; }
+  .week-cell-text { grid-area: text; }
+  .week-cell-bar { grid-area: bar; height: 4px; }
+  .week-cell-foot { grid-area: foot; flex-direction: column; align-items: flex-end; gap: 0; }
+}
 </style>

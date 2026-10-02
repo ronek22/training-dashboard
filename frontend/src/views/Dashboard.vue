@@ -39,6 +39,7 @@
             <li v-for="driver in readinessScore.drivers" :key="driver">{{ driver }}</li>
           </ul>
           <p v-if="swapHint" class="swap-hint" :class="`score-${readinessScore.level}`">{{ swapHint }} <router-link to="/plan">Open plan</router-link></p>
+          <p v-if="sleepDebtHint" class="swap-hint" :class="`score-${readinessScore.sleep_debt.status === 'risk' ? 'red' : 'amber'}`">{{ sleepDebtHint }} <router-link to="/metrics?view=recovery">Sleep trend</router-link></p>
           <p v-if="rampWarning" class="ramp-warning" :class="`ramp-${ramp.status}`">{{ rampWarning }}</p>
           <VolumeTrendAlert :trend="volumeTrend" @labeled="onVolumeTrendLabeled" />
           <LoadFormTrend v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :form="Number(trainingLoad.current?.form || 0)" />
@@ -250,6 +251,17 @@ const swapHint = computed(() => {
   const isHard = hardPlanIntents.has(String(todayPlan.value.workout_intent || '').toLowerCase())
   if (readinessScore.value.level === 'red') return `Readiness is red. Swap ${isHard ? 'today’s hard session' : 'today’s session'} for recovery work or rest.`
   return isHard ? 'Readiness is amber. Consider an easier version of today’s hard session.' : ''
+})
+const sleepDebtHint = computed(() => {
+  const debt = readinessScore.value?.sleep_debt
+  if (!debt || !['caution', 'risk'].includes(debt.status) || swapHint.value) return ''
+  const hours = `~${Math.round(debt.debt_hours)} h sleep debt this week`
+  const isHard = (day) => day && hardPlanIntents.has(String(day.workout_intent || '').toLowerCase())
+  const todayOpen = !todayPlanCompleted.value && !todayActivities.value.length
+  const next = todayOpen && isHard(todayPlan.value) ? { day: todayPlan.value, when: 'today’s' } : isHard(tomorrowPlan.value) ? { day: tomorrowPlan.value, when: 'tomorrow’s' } : null
+  if (next && debt.status === 'risk') return `${hours}. Keep ${next.when} ${next.day.title || 'hard session'} easy or swap it, and bank an early night.`
+  if (next) return `${hours}. An early night before ${next.when} ${next.day.title || 'hard session'} keeps it on track.`
+  return debt.status === 'risk' ? `${hours}. An early night will do more than extra training.` : ''
 })
 const latestSubjectiveState = computed(() => dashboard.value?.latest_subjective_state || null)
 const trainingLoad = computed(() => dashboard.value?.training_load || null)

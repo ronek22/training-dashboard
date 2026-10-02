@@ -6,6 +6,7 @@ from typing import Optional
 from .checkins import latest_daily_checkin
 from .sick_mode import get_active_sick_period
 from .health_data import get_health_metric_history
+from .sleep_debt import BASELINE_NIGHTS, WINDOW_NIGHTS, build_sleep_debt
 
 # Weekly load growth above this is the classic "too much, too soon" line.
 RAMP_CAUTION_PCT = 10
@@ -107,14 +108,29 @@ def _physiology_factors(conn: sqlite3.Connection, today) -> list[dict]:
             "risk" if points == 2 else "caution" if points else "steady", points,
         ))
 
-    sleep_history = get_health_metric_history(conn, "sleep", BASELINE_DAYS + 7)
+    sleep_history = get_health_metric_history(conn, "sleep", BASELINE_NIGHTS + WINDOW_NIGHTS + 2)
+    sleep_points = 0
     if sleep_history and _fresh(sleep_history[0]["date"], today):
         hours = float(sleep_history[0]["value"])
-        points = 2 if hours < 6 else 1 if hours < 7 else 0
+        sleep_points = 2 if hours < 6 else 1 if hours < 7 else 0
         factors.append(_factor(
             "sleep", "Sleep", f"{hours:.1f} h last night",
-            "risk" if points == 2 else "caution" if points else "steady", points,
+            "risk" if sleep_points == 2 else "caution" if sleep_points else "steady", sleep_points,
         ))
+
+    debt = build_sleep_debt(sleep_history, today, series_days=2)
+    if debt["available"]:
+        tone = {"risk": "risk", "caution": "caution"}.get(debt["status"], "steady")
+        wanted = 2 if tone == "risk" else 1 if tone == "caution" else 0
+        # Last night and the weekly debt describe the same sleep; together they count at most 2.
+        points = max(0, min(wanted, 2 - sleep_points))
+        factor = _factor(
+            "sleep_debt", "Sleep debt",
+            f"{debt['debt_hours']:.1f} h over {debt['nights']} nights vs your {debt['baseline_hours']:.1f} h median",
+            tone, points,
+        )
+        factor["summary"] = {key: value for key, value in debt.items() if key != "history"}
+        factors.append(factor)
     return factors
 
 
@@ -235,5 +251,6 @@ def build_readiness_score(
         "suggests_swap": level in {"amber", "red"},
         "factors": factors,
         "drivers": [f"{item['label']}: {item['detail']}" for item in drivers[:3]],
-        "physiology_available": any(item["key"] in {"hrv", "resting_hr", "sleep"} for item in factors),
+        "physiology_available": any(item["key"] in {"hrv", "resting_hr", "sleep", "sleep_debt"} for item in factors),
+        "sleep_debt": next((item["summary"] for item in factors if item["key"] == "sleep_debt"), None),
     }

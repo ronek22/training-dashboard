@@ -70,6 +70,33 @@ class ReadinessScoreTests(unittest.TestCase):
             self.conn, state=state, latest_feedback=feedback, training_load_summary=self.load if load is None else load
         )
 
+    def _sleep_weeks(self, recent_hours, baseline_hours=7.5):
+        for days_ago in range(0, 37):
+            hours = recent_hours if days_ago < 7 else baseline_hours
+            self._add("sleep", days_ago, 0, label="asleep", seconds=hours * 3600)
+
+    def test_moderate_sleep_debt_is_flagged_but_stays_green(self):
+        self._sleep_weeks(7.0)  # fine for one night, 3.5 h short over the week
+        score = self._score()
+        debt = next(item for item in score["factors"] if item["key"] == "sleep_debt")
+        self.assertEqual(debt["tone"], "caution")
+        self.assertEqual(score["sleep_debt"]["status"], "caution")
+        self.assertEqual(score["level"], "green")
+
+    def test_heavy_sleep_debt_suggests_swap(self):
+        self._sleep_weeks(6.5)
+        score = self._score()
+        self.assertEqual(score["sleep_debt"]["status"], "risk")
+        self.assertEqual(score["level"], "amber")
+        self.assertTrue(score["suggests_swap"])
+
+    def test_last_night_and_debt_together_count_at_most_two(self):
+        self._sleep_weeks(5.5)
+        score = self._score()
+        sleep_points = sum(item["points"] for item in score["factors"] if item["key"] in {"sleep", "sleep_debt"})
+        self.assertEqual(sleep_points, 2)
+        self.assertEqual(score["level"], "amber")
+
     def test_good_signals_are_green(self):
         self._baseline()
         self._add("hrv", 0, 61)

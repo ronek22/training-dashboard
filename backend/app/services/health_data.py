@@ -11,6 +11,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import ijson
 from fastapi import HTTPException
 
+from .sleep_debt import BASELINE_NIGHTS, WINDOW_NIGHTS, build_sleep_debt
+
 
 TARGET_METRICS = {
     "Resting Heart Rate": "resting_hr",
@@ -733,4 +735,8 @@ def get_health_summary(conn: sqlite3.Connection, days: int = 90) -> dict:
     last_import = conn.execute(
         "SELECT file_name, export_date, samples_inserted, imported_at FROM health_data_imports WHERE status = 'imported' ORDER BY imported_at DESC, id DESC LIMIT 1"
     ).fetchone()
-    return {"metrics": metrics, "last_import": dict(last_import) if last_import else None}
+    series_days = max(7, min(days, 365))
+    sleep_debt = build_sleep_debt(
+        get_sleep_history(conn, series_days + WINDOW_NIGHTS + BASELINE_NIGHTS), series_days=series_days
+    )
+    return {"metrics": metrics, "sleep_debt": sleep_debt, "last_import": dict(last_import) if last_import else None}

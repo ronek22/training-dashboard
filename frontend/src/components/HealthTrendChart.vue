@@ -100,6 +100,8 @@ const props = defineProps({
   targetMax: { type: Number, default: null },
   targetLabel: { type: String, default: '' },
   showStages: { type: Boolean, default: false },
+  // Replaces the "latest vs average" sentence for signals where that comparison misleads.
+  summary: { type: String, default: '' },
 })
 
 const ranges = [14, 30, 90]
@@ -178,6 +180,7 @@ const axisDates = computed(() => {
   return [formatDate(source.value[0].date, 'd MMM'), formatDate(middle.date, 'd MMM'), formatDate(source.value.at(-1).date, 'd MMM')]
 })
 const insight = computed(() => {
+  if (props.summary) return props.summary
   if (!latest.value || rangeAverage.value === null) return 'Import more daily readings to establish a useful personal baseline.'
   const delta = Number(latest.value.value) - rangeAverage.value
   const threshold = Math.max(Math.abs(rangeAverage.value) * 0.025, props.decimals ? 0.1 : 1)

@@ -30,6 +30,7 @@ from .routers.strength_workouts import router as strength_workouts_router
 from .routers.weekly_summary import router as weekly_summary_router
 from .routers.weekly_reviews import router as weekly_reviews_router
 from .routers.weather import router as weather_router
+from .routers.nutrition import router as nutrition_router
 from .services.health_data import apply_health_data_import
 
 mcp_app = build_mcp_app(**build_mcp_router_dependencies())
@@ -96,6 +97,7 @@ app.include_router(strength_workouts_router)
 app.include_router(integrations_router)
 app.include_router(weather_router)
 app.include_router(weekly_reviews_router)
+app.include_router(nutrition_router)
 
 init_db()
 app.mount("/mcp", mcp_app)

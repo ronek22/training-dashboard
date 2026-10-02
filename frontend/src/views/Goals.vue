@@ -124,6 +124,8 @@
               <GoalHistorySparkline v-if="usesVolumeDisplay(goal)" :history="goal.history" :period-noun="goal.period_type === 'month' ? 'month' : 'week'" />
             </div>
 
+            <p v-if="goal.metric_type === 'strength_sessions' && proteinLine" class="gcard-note gcard-protein">{{ proteinLine }}</p>
+
             <details class="gcard-more">
               <summary>More detail</summary>
               <div class="gcard-more-body">
@@ -915,8 +917,18 @@ const loadSuggestions = async () => {
   }
 }
 
+// Protein on lift days backs the strength goal without becoming calorie tracking.
+const proteinStatus = ref(null)
+const proteinLine = computed(() => {
+  const week = proteinStatus.value?.week
+  if (!week?.lift_days) return ''
+  const target = proteinStatus.value.target_g ? ` (~${proteinStatus.value.target_g} g)` : ''
+  return `Protein on lift days this week: ${week.hits}/${week.lift_days}${target}`
+})
+
 onMounted(async () => {
   await loadGoals()
+  api.getProteinStatus().then(({ data }) => { proteinStatus.value = data }).catch(() => {})
   if (route.query.section === 'restrictions') await openRestrictionDialog()
 })
 
@@ -3290,6 +3302,7 @@ const showWeeklyRequirement = (goal) => {
 .gcard-facts dd { margin: 3px 0 0; font-size: 14px; font-weight: 650; }
 .gcard-note { margin: 0; color: var(--muted-soft); font-size: 12.5px; line-height: 1.55; }
 .gcard-note strong { color: var(--text-soft); }
+.gcard-protein { font-size: 11.5px; }
 .gcard-more-body .goal-verdict-chip { width: fit-content; }
 .gcard-actions { display: flex; align-items: center; gap: 4px; margin: 0 -10px -10px; }
 .gcard-actions .goal-action { border: 0; background: transparent; color: var(--text-soft); }

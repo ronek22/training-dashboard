@@ -169,6 +169,26 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(long_ride["fuel_plan"]["carbs_g_per_h"]["target"], 50)
         self.assertIsNone(next(day for day in days if day["title"] == "Spin")["fuel_plan"])
 
+    def test_protein_tick_on_lift_day(self):
+        today = datetime.now().date()
+        self.client.post("/metrics", json={"date": today.isoformat(), "metric": "weight", "value": 80, "unit": "kg"})
+        self.client.post("/activities", json={"id": "protein-lift-1", "date": today.isoformat(), "type": "WeightTraining", "name": "Lift", "duration_min": 45.0})
+
+        status = self.client.get("/nutrition/protein").json()
+        self.assertEqual(status["target_g"], 130)
+        self.assertTrue(status["today"]["is_lift_day"])
+        self.assertIsNone(status["today"]["hit"])
+
+        ticked = self.client.put(f"/nutrition/protein/{today.isoformat()}", json={"hit": True}).json()
+        self.assertTrue(ticked["today"]["hit"])
+        self.assertEqual(ticked["week"]["hits"], 1)
+        cleared = self.client.put(f"/nutrition/protein/{today.isoformat()}", json={"hit": None}).json()
+        self.assertIsNone(cleared["today"]["hit"])
+
+        future = (today + timedelta(days=1)).isoformat()
+        self.assertEqual(self.client.put(f"/nutrition/protein/{future}", json={"hit": True}).status_code, 422)
+        self.assertEqual(self.client.put("/nutrition/protein/not-a-date", json={"hit": True}).status_code, 422)
+
     def test_training_load_uses_activity_history_before_chart_window(self):
         old_activity_date = (datetime.now().date() - timedelta(days=20)).isoformat()
         self._create_activity(

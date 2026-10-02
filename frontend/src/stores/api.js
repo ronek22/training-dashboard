@@ -92,6 +92,8 @@ export const useApi = () => ({
   saveActivityFeedback: (activityId, payload) => api.post(`/activities/${activityId}/feedback`, payload),
   getDailyCheckin: (params) => api.get('/checkins/today', { params }),
   saveDailyCheckin: (payload) => api.post('/checkins', payload),
+  getProteinStatus: () => api.get('/nutrition/protein'),
+  setProteinTick: (date, hit) => api.put(`/nutrition/protein/${date}`, { hit }),
   labelVolumeTrend: (payload) => api.post('/volume-trend/label', payload),
   getSickDates: () => api.get('/sick-mode/dates'),
   getSickModeSession: (key) => api.get(`/sick-mode/sessions/${encodeURIComponent(key)}`),

@@ -47,6 +47,7 @@
             <div v-for="metric in loadMetrics" :key="metric.label" :class="metric.tone"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.hint }}</small></div>
           </div>
           <DailyCheckin :checkin="dailyCheckin" @saved="onCheckinSaved" />
+          <ProteinTick />
 
         </aside>
       </section>
@@ -140,6 +141,7 @@ import WeekStrip from '../components/WeekStrip.vue'
 import YearProgress from '../components/YearProgress.vue'
 import LoadFormTrend from '../components/LoadFormTrend.vue'
 import DailyCheckin from '../components/DailyCheckin.vue'
+import ProteinTick from '../components/ProteinTick.vue'
 import VolumeTrendAlert from '../components/VolumeTrendAlert.vue'
 import SickModeCard from '../components/SickModeCard.vue'
 import { useApi } from '../stores/api'

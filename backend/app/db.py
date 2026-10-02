@@ -495,6 +495,12 @@ def init_db():
             UNIQUE(session_key, started_at)
         );
 
+        CREATE TABLE IF NOT EXISTS daily_nutrition (
+            date TEXT PRIMARY KEY,
+            protein_hit INTEGER NOT NULL,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS daily_checkins (
             date TEXT PRIMARY KEY,
             energy INTEGER NOT NULL,

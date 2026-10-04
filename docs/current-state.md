@@ -24,6 +24,22 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Personal best wall
+
+2026-10-02: `services/personal_records.py` builds an all-time records wall from local data. It scans the cached streams of every ride and run, not just activities whose detail page was opened. Per-activity results are cached in `activity_record_efforts` and refreshed when the detail row's `updated_at` changes.
+
+- Bike power: 5 s plus the existing power-profile durations (15 s–60 min), indoor and outdoor combined. 5 s is computed here so the benchmark radar is unchanged.
+- Bike distance: 5K, 10K, 20K, 40K, 50K, 100K, longest ride and biggest climb. Outdoor and indoor (VirtualRide or `trainer`) are separate lists because indoor speed is simulated.
+- Run: Strava's distances from 400 m to marathon, plus longest run. Distances not yet covered are listed as locked.
+- Lifts: estimated 1RM (Epley, working sets of up to 12 reps), heaviest set, and most reps or added weight for bodyweight movements. Exercises need 3+ sessions.
+- Streaks: current, longest and milestones at 7–365 days.
+- Each record has date, activity, indoor/outdoor, average HR, time of day (where a start time is known), previous best, top 3 (ties go to the earlier date) and a progression derived chronologically.
+- FTP estimate: the higher of 95% of the best 20 min and the best 60 min from the last 90 days, shown beside the stored FTP and never written to it.
+- `GET /records`, `GET /records/activities`, MCP `get_personal_records`, and `personal_records` (new bests and FTP estimate) in `get_recent_context`.
+- UI: a new `/records` page, a 30-day new-records strip on the Dashboard after the year charts, record chips and PR medals on Activity Detail best efforts, and a PR / Top 3 tag in the Activities list.
+- Activity Detail best efforts now use the same distances and the same linear fastest-window search (`DETAIL_DERIVED_VERSION` v2). The old per-window scan took about 43 s for 12 activities; the new one takes 0.07 s with matching results.
+- Verified with 13 unit tests, the full backend suite (the existing `test_plan_and_coaching_surface_requirement_gaps_and_goal_tradeoffs` failure also fails before this change), 27 frontend tests, the build, and the live Records page, Dashboard strip, Activity Detail and Activities list at 1512px. The Records page was also checked at 375px.
+
 ### Training volume trend alert
 
 2026-09-30: `services/volume_trend.py` flags an unplanned multi-week slide in training volume (completed Monday–Sunday weeks; walks and hikes excluded). It triggers when the last three completed weeks fall twice in a row, the last week is at most 75% of the first and at least 20% below the four weeks before. A falling week counts as planned only when its plan is 15%+ lighter than the previous three plans or its title says deload, taper or recovery week — plan overview wording is ignored because it almost always mentions recovery. It needs 4+ sessions across the baseline weeks and 120+ minutes in the first week.

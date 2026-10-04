@@ -108,6 +108,8 @@
         :strength-series="dashboard.strength_year_series || []"
       />
 
+      <RecentRecords />
+
       <TeamCoaching v-if="isSunday" compact />
 
       <section class="explore-section" aria-labelledby="explore-heading">
@@ -139,6 +141,7 @@ import ActivityIcon from '../components/ActivityIcon.vue'
 import TodayCard from '../components/TodayCard.vue'
 import WeekStrip from '../components/WeekStrip.vue'
 import YearProgress from '../components/YearProgress.vue'
+import RecentRecords from '../components/RecentRecords.vue'
 import LoadFormTrend from '../components/LoadFormTrend.vue'
 import DailyCheckin from '../components/DailyCheckin.vue'
 import ProteinTick from '../components/ProteinTick.vue'

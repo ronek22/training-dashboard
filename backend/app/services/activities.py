@@ -31,6 +31,7 @@ from .activity_analysis import (
     request_activity_analysis,
     save_activity_analysis,
 )
+from .personal_records import RIDE_DISTANCES, RUN_DISTANCES, fastest_distance_window
 from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
 from .heart_rate_zones import build_activity_heart_rate_zone_summary
 from .power_zones import build_activity_power_zone_summary
@@ -48,7 +49,7 @@ from .settings import (
     set_workout_template_settings_for_conn,
 )
 
-DETAIL_DERIVED_VERSION = "v1"
+DETAIL_DERIVED_VERSION = "v2"
 
 
 def _normalize_text_for_match(value: Optional[str]) -> str:
@@ -395,22 +396,11 @@ def _build_stream_chart(
 
 
 def _best_effort_targets_for_activity(activity_type: Optional[str]) -> list[tuple[str, float]]:
+    # Same distances as the personal best wall, so every effort can be ranked.
     if activity_type == "Run":
-        return [
-            ("400m", 400.0),
-            ("1K", 1000.0),
-            ("1 mile", 1609.34),
-            ("5K", 5000.0),
-            ("10K", 10000.0),
-        ]
+        return list(RUN_DISTANCES)
     if activity_type in {"Ride", "VirtualRide"}:
-        return [
-            ("1K", 1000.0),
-            ("5K", 5000.0),
-            ("10K", 10000.0),
-            ("20K", 20000.0),
-            ("50K", 50000.0),
-        ]
+        return [("1K", 1000.0), *RIDE_DISTANCES]
     return []
 
 
@@ -435,14 +425,6 @@ def _sanitize_numeric_stream_pair(distance_stream: list[object], time_stream: li
     return points
 
 
-def _interpolate_time_at_distance(left_distance: float, left_time: float, right_distance: float, right_time: float, target_distance: float) -> float:
-    span = right_distance - left_distance
-    if span <= 0:
-        return right_time
-    ratio = (target_distance - left_distance) / span
-    return left_time + (right_time - left_time) * ratio
-
-
 def _compute_best_effort_for_distance(
     distance_points: list[tuple[float, float, int]],
     target_distance_m: float,
@@ -454,86 +436,63 @@ def _compute_best_effort_for_distance(
     metric_unit: str,
     value_transform: Callable[[float], float],
 ) -> Optional[dict]:
-    if len(distance_points) < 2:
+    # Find the fastest window first (linear), then summarise only that window.
+    window = fastest_distance_window(distance_points, target_distance_m)
+    if window is None:
         return None
+    start_stream_index = window["start_index"]
+    end_stream_index = window["end_index"]
+    duration_s = window["duration_s"]
+    start_time = window["start_s"]
 
-    best_effort = None
-    end_index = 1
-    total_points = len(distance_points)
-
-    for start_index in range(total_points - 1):
-        start_distance, start_time, start_stream_index = distance_points[start_index]
-        target_end_distance = start_distance + target_distance_m
-
-        while end_index < total_points and distance_points[end_index][0] < target_end_distance:
-            end_index += 1
-        if end_index >= total_points:
-            break
-
-        left_index = max(start_index, end_index - 1)
-        left_distance, left_time, _ = distance_points[left_index]
-        right_distance, right_time, end_stream_index = distance_points[end_index]
-        end_time = _interpolate_time_at_distance(left_distance, left_time, right_distance, right_time, target_end_distance)
-        duration_s = end_time - start_time
-        if duration_s <= 0:
+    hr_values = []
+    for raw_value in heartrate_stream[start_stream_index : end_stream_index + 1]:
+        if raw_value is None:
+            continue
+        try:
+            hr_values.append(float(raw_value))
+        except (TypeError, ValueError):
             continue
 
-        hr_values = []
-        if heartrate_stream:
-            for sample_index in range(start_stream_index, min(end_stream_index + 1, len(heartrate_stream))):
-                raw_value = heartrate_stream[sample_index]
-                if raw_value is None:
-                    continue
-                try:
-                    hr_values.append(float(raw_value))
-                except (TypeError, ValueError):
-                    continue
+    elevation_gain = None
+    if altitude_stream:
+        gain = 0.0
+        previous_altitude = None
+        for raw_value in altitude_stream[start_stream_index : end_stream_index + 1]:
+            if raw_value is None:
+                continue
+            try:
+                altitude_value = float(raw_value)
+            except (TypeError, ValueError):
+                continue
+            if previous_altitude is not None and altitude_value > previous_altitude:
+                gain += altitude_value - previous_altitude
+            previous_altitude = altitude_value
+        elevation_gain = round(gain)
 
-        elevation_gain = None
-        if altitude_stream:
-            gain = 0.0
-            previous_altitude = None
-            for sample_index in range(start_stream_index, min(end_stream_index + 1, len(altitude_stream))):
-                raw_value = altitude_stream[sample_index]
-                if raw_value is None:
-                    continue
-                try:
-                    altitude_value = float(raw_value)
-                except (TypeError, ValueError):
-                    continue
-                if previous_altitude is not None and altitude_value > previous_altitude:
-                    gain += altitude_value - previous_altitude
-                previous_altitude = altitude_value
-            elevation_gain = round(gain)
-
-        effort = {
-            "duration_s": round(duration_s, 1),
-            "start_time_s": round(start_time, 1),
-            "end_time_s": round(end_time, 1),
-            "start_stream_index": start_stream_index,
-            "end_stream_index": end_stream_index,
-            "metric_value": round(value_transform(duration_s), 2),
-            "metric_unit": metric_unit,
-            "metric_label": metric_label,
-            "avg_hr": round(sum(hr_values) / len(hr_values)) if hr_values else None,
-            "elevation_gain_m": elevation_gain,
-        }
-        if latlng_stream:
-            segment_coordinates = []
-            for sample_index in range(start_stream_index, min(end_stream_index + 1, len(latlng_stream))):
-                raw_value = latlng_stream[sample_index]
-                if not isinstance(raw_value, (list, tuple)) or len(raw_value) < 2:
-                    continue
-                try:
-                    segment_coordinates.append([float(raw_value[0]), float(raw_value[1])])
-                except (TypeError, ValueError):
-                    continue
-            if segment_coordinates:
-                effort["route_segment"] = segment_coordinates
-        if best_effort is None or effort["duration_s"] < best_effort["duration_s"]:
-            best_effort = effort
-
-    return best_effort
+    effort = {
+        "duration_s": round(duration_s, 1),
+        "start_time_s": round(start_time, 1),
+        "end_time_s": round(start_time + duration_s, 1),
+        "start_stream_index": start_stream_index,
+        "end_stream_index": end_stream_index,
+        "metric_value": round(value_transform(duration_s), 2),
+        "metric_unit": metric_unit,
+        "metric_label": metric_label,
+        "avg_hr": round(sum(hr_values) / len(hr_values)) if hr_values else None,
+        "elevation_gain_m": elevation_gain,
+    }
+    segment_coordinates = []
+    for raw_value in latlng_stream[start_stream_index : end_stream_index + 1]:
+        if not isinstance(raw_value, (list, tuple)) or len(raw_value) < 2:
+            continue
+        try:
+            segment_coordinates.append([float(raw_value[0]), float(raw_value[1])])
+        except (TypeError, ValueError):
+            continue
+    if segment_coordinates:
+        effort["route_segment"] = segment_coordinates
+    return effort
 
 
 def _build_best_efforts(activity: dict, streams: Optional[dict]) -> Optional[dict]:

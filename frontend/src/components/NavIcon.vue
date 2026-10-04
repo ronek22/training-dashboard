@@ -21,6 +21,7 @@ const paths = {
   activities: 'M5 19 9 8l4 7 2-5 4 9M7 5h.01',
   sync: 'M20 7h-5V2m4.5 5A8 8 0 0 0 5 5m-1 12h5v5m-4.5-5A8 8 0 0 0 19 19',
   metrics: 'M4 19V9m5 10V5m6 14v-7m5 7V3',
+  records: 'M8 21h8m-4-4v4M7 4h10v5a5 5 0 0 1-10 0V4Zm0 2H4a3 3 0 0 0 3 4m10-4h3a3 3 0 0 1-3 4',
   notes: 'M6 3h12v18H6V3Zm4 5h4m-4 4h4m-4 4h3',
   roadmap: 'M6 20V8m0 0 5-3 4 3 3-2v12l-3 2-4-3-5 3Zm5-15v12m4-9v12',
 }

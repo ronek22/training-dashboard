@@ -8,6 +8,7 @@ from .plans import format_workout_intent_label, normalize_workout_intent
 from .checkins import get_daily_checkin
 from .sick_mode import build_sick_mode, reconcile_sick_session_activities, sick_mode_coaching_context
 from .volume_trend import build_volume_trend
+from .personal_records import build_recent_records_context
 from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
 from .coaching import (
     build_athlete_coaching_brief,
@@ -1134,6 +1135,7 @@ def build_recent_context(
         "latest_metrics": [dict(row) for row in latest_metrics],
         "weekly_mix": weekly_mix,
         "volume_trend": build_volume_trend(conn),
+        "personal_records": build_recent_records_context(conn),
         "sick_mode": sick_mode_coaching_context(conn),
         "strength_consistency": strength_consistency,
         "recent_strength_detail": recent_strength_detail,

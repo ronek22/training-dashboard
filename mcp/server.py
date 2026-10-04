@@ -205,6 +205,11 @@ TOOLS = [
         "inputSchema": {"type": "object", "properties": {}}
     },
     {
+        "name": "get_personal_records",
+        "description": "Read the personal best wall: bike power (5 s-60 min), outdoor and indoor bike distance bests (5K-100K), Strava-style run bests (400 m-marathon), lift PRs (estimated 1RM), streaks, PRs from the last 30 days and an FTP estimate from recent efforts",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
         "name": "get_cycling_workout_library",
         "description": "Read the structured cycling workout library (FTP-relative steps, duration, intent, estimated TSS) that planned ride days can reference via cycling_workout_id",
         "inputSchema": {"type": "object", "properties": {}}
@@ -482,6 +487,10 @@ def handle_tool(name: str, args: dict) -> str:
             return json.dumps(result, indent=2)
 
         elif name == "get_cycling_power_profile":
+            result = call_remote_mcp_tool(name)
+            return json.dumps(result, indent=2)
+
+        elif name == "get_personal_records":
             result = call_remote_mcp_tool(name)
             return json.dumps(result, indent=2)
 

@@ -134,6 +134,8 @@ export const useApi = () => ({
   getCodexCoachChatJob: (jobId) => codexHelper.get(`/coach-chat/${encodeURIComponent(jobId)}`),
   getWeekly: () => api.get('/weekly'),
   getMetric: (name) => api.get(`/metrics/${name}`),
+  getPersonalRecords: () => api.get('/records'),
+  getActivityRecordRanks: () => api.get('/records/activities'),
   getCyclingPower: () => api.get('/metrics/cycling-power'),
   getCyclingPowerAdvice: () => api.get('/metrics/cycling-power/advice'),
   startCyclingPowerReview: (payload) => codexHelper.post('/cycling-power-review', payload),

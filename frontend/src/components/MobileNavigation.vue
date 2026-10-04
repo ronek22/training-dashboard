@@ -15,6 +15,7 @@ const tabs = [
 const moreLinks = [
   { path: '/calendar', label: 'Calendar' },
   { path: '/activities', label: 'Activities' },
+  { path: '/records', label: 'Records' },
   { path: '/strength', label: 'Strength' },
   { path: '/recovery', label: 'Recovery' },
   { path: '/goals', label: 'Goals' },

@@ -9,6 +9,10 @@
           <small>{{ metricHint(stat) }}</small>
         </div>
       </div>
+      <ul v-if="recordRanks.length" class="record-chips" aria-label="All-time records from this activity">
+        <li v-for="item in recordRanks" :key="`${item.category}-${item.label}`" :class="`medal-${item.rank}`"><i aria-hidden="true"></i><span>{{ rankLabel(item.rank) }}</span> {{ item.category }} · {{ item.label }} <strong>{{ item.display }}</strong></li>
+        <li class="record-chips-link"><router-link to="/records">All records →</router-link></li>
+      </ul>
       <dl v-if="secondary.length" class="ad-secondary-metrics"><div v-for="stat in secondary" :key="stat.key"><dt>{{ stat.label }}</dt><dd>{{ formatStat(stat) }}</dd></div></dl>
     </section>
 
@@ -44,7 +48,7 @@
       <div class="ad-section-heading"><div><span>Comparable segments</span><h2>Best efforts</h2></div><p>Hover or focus an effort to highlight its exact window on every chart and route.</p></div>
       <div class="effort-grid">
         <article v-for="effort in efforts" :key="effort.label" class="effort-card" :class="{'is-active':activeBestEffort?.label===effort.label}" tabindex="0" @mouseenter="selectEffort(effort)" @mouseleave="clearEffort" @focus="selectEffort(effort)" @blur="clearEffort">
-          <div class="effort-card-head"><span>{{ effort.label }}</span><strong>{{ seconds(effort.duration_s) }}</strong></div>
+          <div class="effort-card-head"><span>{{ effort.label }}<i v-if="effortRank(effort)" class="effort-medal" :class="`medal-${effortRank(effort).rank}`" :title="`${rankLabel(effortRank(effort).rank)} all-time`">{{ effortRank(effort).rank === 1 ? 'PR' : `#${effortRank(effort).rank}` }}</i></span><strong>{{ seconds(effort.duration_s) }}</strong></div>
           <div class="effort-primary"><span>{{ effort.metric_label }}</span><strong>{{ formatEffort(effort) }}</strong></div>
           <dl><div v-if="effort.avg_hr != null"><dt>Avg HR</dt><dd>{{ effort.avg_hr }} bpm</dd></div><div v-if="effort.elevation_gain_m != null"><dt>Elevation</dt><dd>{{ effort.elevation_gain_m }} m</dd></div></dl>
           <span class="effort-hint">Inspect segment →</span>
@@ -75,6 +79,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { resolveTheme } from '../../utils/theme'
 import { formatStat, orderedStats, sportFamily } from '../../activity-detail/presentation'
+import { useApi } from '../../stores/api'
 
 const props = defineProps({ detail: { type: Object, required: true } })
 const mapElement = ref(null)
@@ -84,6 +89,18 @@ const activeChartKey = ref('')
 const activeZoneKey = ref('')
 const activePowerZoneKey = ref('')
 let map, routeLayer, segmentLayer, startMarker, endMarker, hoverMarker
+
+// All-time top-3 places this activity holds on the records wall.
+const api = useApi()
+const allRecordRanks = ref({})
+const loadRecordRanks = async () => {
+  try { allRecordRanks.value = (await api.getActivityRecordRanks()).data || {} } catch { allRecordRanks.value = {} }
+}
+onMounted(loadRecordRanks)
+const recordRanks = computed(() => allRecordRanks.value[props.detail.activity.id] || [])
+const DISTANCE_CATEGORIES = ['Bike distance', 'Indoor bike distance', 'Run']
+const effortRank = effort => recordRanks.value.find(item => DISTANCE_CATEGORIES.includes(item.category) && item.label === effort.label)
+const rankLabel = rank => ({ 1: 'Best', 2: '2nd', 3: '3rd' }[rank] || '')
 
 const stats = computed(() => orderedStats(props.detail.stats, props.detail.activity.type))
 const primary = computed(() => stats.value.slice(0, 4))
@@ -166,4 +183,5 @@ onBeforeUnmount(() => { window.removeEventListener('themechange', syncMapTheme);
 @media(max-width:680px){.analysis-cockpit{grid-template-columns:1fr;height:auto;min-height:0}.cockpit-map-panel,.cockpit-chart-panel{height:360px}.analysis-cockpit .interactive-route-map{height:100%}}
 @media(max-width:560px){.overview-metric-grid .overview-metric{padding:15px 12px 14px!important}.overview-metric-grid .overview-metric strong{font-size:20px}.zone-hero{flex-direction:column}.zone-hero-dominant{text-align:left}.zone-cards{grid-template-columns:repeat(2,1fr)}.effort-grid{grid-template-columns:1fr}.cockpit-map-panel,.cockpit-chart-panel{height:320px}.interactive-route-map{height:300px}}
 @media(prefers-reduced-motion:reduce){.overview-metric,.zone-distribution span,.zone-cards article{transition:none}.zone-distribution span.is-active{animation:none}}
+.record-chips{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;padding:0}.record-chips li{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--text-soft);background:rgb(var(--ov-rgb) / .03)}.record-chips li span{font-weight:700;color:var(--text)}.record-chips li i{width:8px;height:8px;border-radius:50%;background:#cd8b5c}.record-chips li.medal-1{border-color:rgba(227,179,65,.5)}.record-chips li.medal-1 i{background:#e3b341}.record-chips li.medal-2 i{background:#b9c3d1}.record-chips-link{border:0!important;background:none!important}.record-chips-link a{color:var(--accent-strong);text-decoration:none}.effort-medal{margin-left:8px;padding:1px 6px;border-radius:999px;font:700 10px var(--font-display);font-style:normal;vertical-align:2px;color:#1a1406;background:#cd8b5c}.effort-medal.medal-1{background:#e3b341}.effort-medal.medal-2{background:#b9c3d1}
 </style>

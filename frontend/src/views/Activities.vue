@@ -117,6 +117,7 @@
               <router-link :to="detailRoute(activity)" class="activity-name">{{ activity.display_name || activity.name || 'Untitled activity' }}</router-link>
               <div class="status-line">
                 <span v-if="activity.benchmark_label" class="status-tag achievement">{{ activity.benchmark_label }}</span>
+                <router-link v-if="recordRanks[activity.id]" to="/records" class="status-tag record" :title="recordTitle(activity.id)">{{ recordTag(activity.id) }}</router-link>
                 <span v-if="activity.planned_strength_identity" class="status-tag linked">
                   {{ activity.planned_strength_identity.match_strategy === 'explicit' ? 'Linked to plan' : 'Matched by date' }}
                 </span>
@@ -237,6 +238,18 @@ const load = async () => {
 }
 onMounted(load)
 
+// All-time top-3 places per activity from the records wall; optional decoration.
+const recordRanks = ref({})
+onMounted(async () => {
+  try { recordRanks.value = (await api.getActivityRecordRanks()).data || {} } catch { recordRanks.value = {} }
+})
+const recordTag = (id) => {
+  const prs = (recordRanks.value[id] || []).filter(item => item.rank === 1).length
+  return prs ? `${prs} PR${prs > 1 ? 's' : ''}` : 'Top 3'
+}
+const recordTitle = (id) => (recordRanks.value[id] || [])
+  .map(item => `${['', 'Best', '2nd', '3rd'][item.rank]} · ${item.category} ${item.label}: ${item.display}`).join('\n')
+
 const matchesSport = (activity, filter) => filter === 'all' || activity.type === filter || (filter === 'Ride' && activity.type === 'VirtualRide')
 const filteredActivities = computed(() => {
   const query = search.value.toLowerCase()
@@ -352,7 +365,7 @@ const saveFeedback = async payload => {
 .activity-identity{display:flex;gap:12px;min-width:0;padding-right:18px}.sport-mark{width:38px;height:38px;flex:none;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--sport-color) 28%,transparent);border-radius:11px;background:color-mix(in srgb,var(--sport-color) 10%,transparent)}
 .identity-copy{min-width:0}.activity-meta{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:10px;font-weight:650;text-transform:uppercase;letter-spacing:.045em}
 .activity-name{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:3px 0 5px;font:650 14px/1.35 var(--font-display)}.activity-name:hover{color:var(--accent-strong)}
-.status-line{display:flex;align-items:center;gap:6px;min-height:17px}.status-tag,.source-label,.source-title{font-size:10px}.status-tag{padding:2px 6px;border-radius:999px}.achievement{background:rgba(241,169,59,.12);color:color-mix(in srgb, #f5bd62 calc(100% - var(--dim)), #000)}.linked{background:rgba(52,211,153,.1);color:var(--success-text)}.source-label,.source-title{color:var(--muted)}.source-title{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-line{display:flex;align-items:center;gap:6px;min-height:17px}.status-tag,.source-label,.source-title{font-size:10px}.status-tag{padding:2px 6px;border-radius:999px}.achievement{background:rgba(241,169,59,.12);color:color-mix(in srgb, #f5bd62 calc(100% - var(--dim)), #000)}.linked{background:rgba(52,211,153,.1);color:var(--success-text)}.status-tag.record{background:rgba(227,179,65,.16);color:color-mix(in srgb, #e3b341 calc(100% - var(--dim)), #000);font-weight:700;text-decoration:none}.source-label,.source-title{color:var(--muted)}.source-title{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .metric-group{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-right:14px}.metric-group div{min-width:0}.metric-group strong,.metric-group span{display:block}.metric-group strong{font:650 13px/1.25 var(--font-display);white-space:nowrap}.metric-group span{margin-top:3px;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.05em}
 .activity-context{display:flex;flex-direction:column;align-items:flex-start;gap:7px}.intent-display,.feedback-link{border:0;background:transparent;cursor:pointer;text-align:left}.intent-display{max-width:150px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;color:var(--text-soft);font-size:10px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.intent-display:hover{border-color:var(--border-strong)}.intent-display-empty{color:var(--muted)}
 .feedback-link,.feedback-summary{color:var(--success-text);font-size:10px;font-weight:650}.feedback-link:hover{color:var(--success-text)}.feedback-summary.muted{color:var(--muted);font-weight:500}

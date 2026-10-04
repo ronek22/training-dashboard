@@ -371,6 +371,17 @@ MCP_TOOLS = [
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
+        "name": "get_personal_records",
+        "description": "Read the personal best wall: bike power (5 s-60 min), outdoor and indoor bike distance bests (5K-100K), Strava-style run bests (400 m-marathon), lift PRs (estimated 1RM), streaks, PRs from the last 30 days and an FTP estimate from recent efforts",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "get_cycling_workout_library",
         "description": "Read the structured cycling workout library (FTP-relative steps, duration, intent, estimated TSS) that planned ride days can reference via cycling_workout_id",
         "annotations": {
@@ -884,6 +895,12 @@ def call_mcp_tool(
             from .power_trends import build_cycling_power_coaching_context
 
             data = build_cycling_power_coaching_context(conn)
+            message = json.dumps(data, indent=2)
+
+        elif name == "get_personal_records":
+            from .personal_records import build_records_coaching_context
+
+            data = build_records_coaching_context(conn)
             message = json.dumps(data, indent=2)
 
         elif name == "get_cycling_workout_library":

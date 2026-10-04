@@ -42,6 +42,9 @@
         <router-link to="/metrics" class="nav-item" :class="{ active: $route.path === '/metrics' }">
           <NavIcon name="metrics" class="nav-icon" /><span class="nav-label">Trends</span>
         </router-link>
+        <router-link to="/records" class="nav-item" :class="{ active: $route.path === '/records' }">
+          <NavIcon name="records" class="nav-icon" /><span class="nav-label">Records</span>
+        </router-link>
         <router-link to="/notes" class="nav-item" :class="{ active: $route.path === '/notes' }">
           <NavIcon name="notes" class="nav-icon" /><span class="nav-label">Coach Notes</span>
         </router-link>

@@ -38,5 +38,6 @@ export default createRouter({
     { path: '/sync', component: Sync },
     { path: '/notes', component: Notes },
     { path: '/metrics', component: Metrics },
+    { path: '/records', component: () => import('./views/Records.vue') },
   ]
 })

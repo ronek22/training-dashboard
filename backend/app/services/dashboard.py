@@ -6,7 +6,9 @@ from typing import Callable, Optional
 from .plans import build_multi_week_execution_trend, serialize_weekly_plan
 from .plans import format_workout_intent_label, normalize_workout_intent
 from .checkins import get_daily_checkin
-from .sick_mode import build_sick_mode, reconcile_sick_session_activities, sick_mode_coaching_context
+from .downshift import build_downshift, downshift_coaching_context
+from .guided_sessions import guided_completion_dates, reconcile_guided_session_activities
+from .sick_mode import build_sick_mode, sick_mode_coaching_context
 from .volume_trend import build_volume_trend
 from .personal_records import build_recent_records_context
 from .session_brief import build_briefs_for_date
@@ -114,13 +116,12 @@ def select_active_weekly_plan_row(conn: sqlite3.Connection) -> Optional[sqlite3.
 
 
 def compute_activity_streak(conn: sqlite3.Connection) -> dict:
-    rows = conn.execute(
-        "SELECT DISTINCT date FROM activities ORDER BY date DESC"
-    ).fetchall()
-    if not rows:
+    """Consecutive days with an activity or a finished guided session (sick mode or downshift)."""
+    keys = {row["date"] for row in conn.execute("SELECT DISTINCT date FROM activities")} | guided_completion_dates(conn)
+    if not keys:
         return {"value": 0, "unit": "days", "date": None}
 
-    dates = [datetime.strptime(row["date"], "%Y-%m-%d").date() for row in rows]
+    dates = sorted((datetime.strptime(key, "%Y-%m-%d").date() for key in keys), reverse=True)
     today = datetime.now().date()
     latest = dates[0]
 
@@ -1144,6 +1145,7 @@ def build_recent_context(
         "what_worked": build_what_worked_coaching_context(conn),
         "return_to_run": build_return_to_run_context(conn),
         "sick_mode": sick_mode_coaching_context(conn),
+        "downshift": downshift_coaching_context(conn),
         "life_load": life_load_coaching_context(conn),
         "minimum_week": minimum_week_state(conn, (datetime.now().date() - timedelta(days=datetime.now().weekday())).isoformat()),
         "strength_consistency": strength_consistency,
@@ -1176,7 +1178,7 @@ def build_dashboard_data(
     from .activities import reconcile_workout_template_rotation_state
     from .team_analysis import get_weekly_direction
 
-    reconcile_sick_session_activities(conn)
+    reconcile_guided_session_activities(conn)
     reconcile_workout_template_rotation_state(conn)
     computed_streak = compute_activity_streak(conn)
 
@@ -1340,6 +1342,7 @@ def build_dashboard_data(
         "daily_checkin": get_daily_checkin(conn),
         "volume_trend": build_volume_trend(conn),
         "sick_mode": build_sick_mode(conn),
+        "downshift": build_downshift(conn),
         "training_load": training_load,
         "weekly_plan": serialized_latest_plan,
         "session_briefs": build_briefs_for_date(conn, serialized_latest_plan, datetime.now().date()),

@@ -7,11 +7,11 @@
       <header class="guide-bar">
         <router-link to="/" class="guide-back">← Today</router-link>
         <div class="guide-title">
-          <span class="guide-kicker">Sick mode · {{ session.duration_min }} min</span>
+          <span class="guide-kicker">{{ session.context_label }} · {{ session.duration_min }} min</span>
           <h1>{{ session.title }}</h1>
         </div>
         <div class="guide-vitals">
-          <span class="guide-watch" :class="{ 'is-live': phase === 'running' }"><span aria-hidden="true">⌚</span> {{ session.watch_workout }}</span>
+          <span v-if="session.watch_workout" class="guide-watch" :class="{ 'is-live': phase === 'running' }"><span aria-hidden="true">⌚</span> {{ session.watch_workout }}</span>
           <div><small>Elapsed</small><strong>{{ formatClock(elapsed) }}</strong></div>
           <div><small>Step</small><strong>{{ Math.min(index + 1, steps.length) }}/{{ steps.length }}</strong></div>
           <button type="button" class="guide-sound" :aria-pressed="sound" @click="sound = !sound">{{ sound ? '♪ Beep on' : '× Beep off' }}</button>
@@ -20,7 +20,7 @@
       <div class="guide-progress" aria-hidden="true"><i :style="{ width: `${progressPct}%` }"></i></div>
 
       <section v-if="phase === 'intro'" class="guide-intro">
-        <div class="guide-watch-step">
+        <div v-if="session.watch_workout" class="guide-watch-step">
           <span class="guide-big-icon" aria-hidden="true">⌚</span>
           <div>
             <p class="guide-kicker">Step 1 · On your Apple Watch</p>
@@ -28,7 +28,15 @@
             <p>The watch records heart rate and syncs to Strava. TrainLog shows you what to do and when to switch.</p>
           </div>
         </div>
-        <button ref="startButton" type="button" class="guide-primary" @click="start">Watch is running — start <kbd>Space</kbd></button>
+        <div v-else class="guide-watch-step">
+          <span class="guide-big-icon" aria-hidden="true">≈</span>
+          <div>
+            <p class="guide-kicker">No watch needed</p>
+            <h2>{{ session.duration_min }} minutes, then back to your day</h2>
+            <p>Sit or stand somewhere you can breathe out slowly. Finishing it keeps today's streak.</p>
+          </div>
+        </div>
+        <button ref="startButton" type="button" class="guide-primary" @click="start">{{ session.watch_workout ? 'Watch is running — start' : 'Start' }} <kbd>Space</kbd></button>
         <ol class="guide-overview">
           <li v-for="step in overview" :key="step">{{ step }}</li>
         </ol>
@@ -68,8 +76,14 @@
 
       <section v-else class="guide-done">
         <span class="guide-big-icon" aria-hidden="true">✓</span>
-        <h2>Done. That's today's movement.</h2>
-        <p>Stop and save the <strong>{{ session.watch_workout }}</strong> workout on your watch. It'll sync through Strava with heart rate and keep the streak going. Now rest.</p>
+        <template v-if="session.watch_workout">
+          <h2>Done. That's today's movement.</h2>
+          <p>Stop and save the <strong>{{ session.watch_workout }}</strong> workout on your watch. It'll sync through Strava with heart rate and keep the streak going. Now rest.</p>
+        </template>
+        <template v-else>
+          <h2>Done. Shoulders down, back to it.</h2>
+          <p>This counts toward today's streak{{ saveState === 'saved' ? '' : ' once it is saved' }}.</p>
+        </template>
         <p class="guide-total">
           {{ formatClock(elapsed) }} in TrainLog<span v-if="extras.length"> · + {{ extras.join(', ') }}</span>
           <small v-if="saveState" :class="`is-${saveState}`">{{ { saving: 'Saving…', saved: 'Saved to today', failed: 'Not saved — finish again to retry' }[saveState] }}</small>
@@ -81,7 +95,7 @@
         </div>
         <div class="guide-controls">
           <router-link to="/" class="guide-primary">Back to Today</router-link>
-          <button type="button" :disabled="logging || logged" @click="logManually">{{ logged ? 'Logged ✓' : logging ? 'Logging…' : 'No watch? Log manually' }}</button>
+          <button v-if="session.context === 'sick'" type="button" :disabled="logging || logged" @click="logManually">{{ logged ? 'Logged ✓' : logging ? 'Logging…' : 'No watch? Log manually' }}</button>
         </div>
         <p v-if="logError" class="guide-error-text" role="alert">{{ logError }}</p>
       </section>
@@ -241,7 +255,7 @@ watch(adding, async (open) => {
 async function saveCompletion() {
   saveState.value = 'saving'
   try {
-    await api.completeSickModeSession({
+    await api.completeGuidedSession({
       session_key: session.value.key,
       started_at: startedAt,
       elapsed_seconds: Math.round(elapsed.value),
@@ -313,7 +327,7 @@ onMounted(async () => {
   window.addEventListener('keydown', onKey)
   document.addEventListener('visibilitychange', onVisibility)
   try {
-    session.value = (await api.getSickModeSession(route.params.sessionKey)).data.session
+    session.value = (await api.getGuidedSession(route.params.sessionKey)).data.session
     steps.value = buildSickSessionSteps(session.value)
     await nextTick()
     startButton.value?.focus()

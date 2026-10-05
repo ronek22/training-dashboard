@@ -22,6 +22,10 @@
           <SickModeCard :state="sickMode" @changed="onSickModeChanged" />
           <TodayCard v-if="todayActivities.length" v-bind="todayCard" />
         </div>
+        <div v-else-if="downshift.offer" class="sick-stack">
+          <TodayCard v-bind="todayCard" />
+          <DownshiftCard :state="downshift" />
+        </div>
         <TodayCard v-else v-bind="todayCard" />
 
         <aside class="signal-card" aria-labelledby="signals-heading">
@@ -147,6 +151,7 @@ import DailyCheckin from '../components/DailyCheckin.vue'
 import ProteinTick from '../components/ProteinTick.vue'
 import VolumeTrendAlert from '../components/VolumeTrendAlert.vue'
 import SickModeCard from '../components/SickModeCard.vue'
+import DownshiftCard from '../components/DownshiftCard.vue'
 import { useApi } from '../stores/api'
 import { buildStrengthPlanDraft } from '../strength-plan-draft.mjs'
 
@@ -233,6 +238,7 @@ const dailyCheckin = computed(() => dashboard.value?.daily_checkin || null)
 const onCheckinSaved = () => loadDashboard()
 const volumeTrend = computed(() => dashboard.value?.volume_trend || null)
 const sickMode = computed(() => dashboard.value?.sick_mode || { active: false })
+const downshift = computed(() => dashboard.value?.downshift || { offer: false })
 const sickModeStarting = ref(false)
 const startSickMode = async () => {
   sickModeStarting.value = true

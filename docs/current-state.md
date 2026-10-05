@@ -24,6 +24,17 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Two-minute downshift
+
+2026-10-05: `services/downshift.py` offers a guided breathing or mobility block on a high-stress day: today's check-in stress 4–5/5, or today tagged deadline or late night. It is never offered in sick mode. This is step 3 of the "stress and life" set.
+
+- Guided engine: `services/guided_sessions.py` now holds the session catalog, time estimates, finished-session records (still in `sick_session_completions`) and watch-workout matching, all moved from `sick_mode.py`. Each session has a `context`: `sick` (offered by severity, names an Apple Watch workout, matched to the synced activity) or `stress`. `sick_mode.py` keeps periods, severities, the manual log and the sick-mode state.
+- Sessions: "Two-minute downshift" (1 min physiological sighs, 1 min box breathing, no gap between them via `transition_seconds: 0`) and "Desk mobility" (about 7 min). Neither names a watch workout.
+- Streak: days with a finished guided session count toward the daily streak and the records-wall streaks, so a downshift keeps the streak without creating an activity (no fake training volume). Downshift sessions are never matched to a synced activity, so a real ride near the same time is never relabelled as mobility.
+- API: `GET /guided-sessions/{key}` and `POST /guided-sessions/complete` replace the old `/sick-mode/sessions/…` and `/sick-mode/complete`; `GET /downshift`; `downshift` in the dashboard payload and in `get_recent_context`.
+- UI: a compact Downshift card under the Today card when offered, showing the reasons, both sessions and its done state. The follow-along page is now `GuidedSession.vue` at `/guided/:key` (old `/sick-mode/:key` links redirect). It takes its label from the context, skips the watch step when a session has no watch workout, and offers the manual log only for sick sessions.
+- Verified with 8 unit tests and an API smoke test (441 backend, 26 helper and 27 frontend tests, plus the build). In the browser on a database copy with sick mode ended and a stress-5 check-in: the card appeared, the two-minute session ran without a watch step and saved, and the streak went from 275 to 276 days with no new activity.
+
 ### Minimum viable week
 
 2026-10-05: `services/minimum_week.py` shrinks the rest of the current week to the smallest plan that keeps the anchor goals. This is step 2 of the "stress and life" set. It is an ordinary plan adjustment, so past and completed days are protected and every change is a plan revision.

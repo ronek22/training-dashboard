@@ -254,6 +254,9 @@ class AppSmokeTests(unittest.TestCase):
                 "fitbod_import_rows",
                 "fitbod_import_batches",
                 "life_load_days",
+                "daily_checkins",
+                "sick_session_completions",
+                "sick_periods",
             ]:
                 conn.execute(f"DELETE FROM {table}")
             conn.commit()
@@ -1915,15 +1918,30 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertEqual([day["session_type"] for day in restored["plan"]["days"]], kinds)
         self.assertEqual(self.client.post(f"/plans/weekly/{week_start}/minimum-week/restore").status_code, 400)
 
+    def test_downshift_offer_and_streak(self):
+        self.assertFalse(self.client.get("/downshift").json()["downshift"]["offer"])
+        checkin = {"energy": 3, "muscle_soreness": 2, "stress": 5, "sleep_quality": 3}
+        self.assertEqual(self.client.post("/checkins", json=checkin).status_code, 201)
+        downshift = self.client.get("/dashboard").json()["downshift"]
+        self.assertEqual(downshift["reasons"], ["stress 5/5 in today's check-in"])
+        session = self.client.get("/guided-sessions/two_minute_downshift").json()["session"]
+        self.assertEqual((session["duration_min"], session["context"]), (2, "stress"))
+
+        self.assertEqual(self.client.get("/dashboard").json()["computed_streak"]["value"], 0)
+        done = self.client.post("/guided-sessions/complete", json={"session_key": "two_minute_downshift", "started_at": f"{date.today()}T12:00:00Z", "elapsed_seconds": 125})
+        self.assertEqual(done.json()["completed_today"][0]["title"], "Two-minute downshift")
+        self.assertEqual(self.client.get("/dashboard").json()["computed_streak"]["value"], 1)
+        self.assertEqual(self.client.post("/sick-mode/log", json={"session_key": "two_minute_downshift"}).status_code, 404)
+
     def test_sick_mode_endpoints_round_trip(self):
-        self.assertEqual(self.client.get("/sick-mode/sessions/sprints").status_code, 404)
-        self.assertEqual(self.client.get("/sick-mode/sessions/light_circuit").json()["session"]["duration_min"], 12)
+        self.assertEqual(self.client.get("/guided-sessions/sprints").status_code, 404)
+        self.assertEqual(self.client.get("/guided-sessions/light_circuit").json()["session"]["duration_min"], 12)
         started = self.client.post("/sick-mode", json={"severity": "above_neck"})
         self.assertTrue(started.json()["sick_mode"]["active"])
         completion = {"session_key": "light_circuit", "started_at": "2026-10-01T18:06:00.000Z", "elapsed_seconds": 370, "extras": ["Pull-ups ×5"]}
-        done = self.client.post("/sick-mode/complete", json=completion)
+        done = self.client.post("/guided-sessions/complete", json=completion)
         self.assertEqual(done.status_code, 200)
-        self.assertEqual(self.client.post("/sick-mode/complete", json={**completion, "session_key": "sprints"}).status_code, 404)
+        self.assertEqual(self.client.post("/guided-sessions/complete", json={**completion, "session_key": "sprints"}).status_code, 404)
 
         # A synced watch workout on the same day picks up the guided session.
         today = date.today().isoformat()
@@ -1935,7 +1953,7 @@ bad-date,Squat,5,100,60,,,,false,,1
                 (f"{today}T18:07:34+00:00",),
             )
         guided = {**completion, "started_at": f"{today}T18:06:00Z"}
-        self.client.post("/sick-mode/complete", json=guided)
+        self.client.post("/guided-sessions/complete", json=guided)
         detail = self.client.get("/activities/watch-core").json()
         self.assertIsNone(detail["strength_detail"])
         self.assertEqual(detail["sick_session"]["extras"], ["Pull-ups ×5"])

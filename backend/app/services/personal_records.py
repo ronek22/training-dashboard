@@ -22,6 +22,7 @@ from typing import Any, Iterable, Optional
 
 from .activity_times import start_times as _start_times, time_of_day as _time_of_day
 from .cycling_workouts import latest_ftp
+from .guided_sessions import guided_completion_dates
 from .power_trends import (
     POWER_EFFORT_LABELS,
     _best_effort_from_runs,
@@ -580,7 +581,9 @@ def _lift_section(conn: sqlite3.Connection) -> dict[str, Any]:
 
 
 def _streak_section(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
-    dates = sorted({date.fromisoformat(row[0][:10]) for row in conn.execute("SELECT DISTINCT date FROM activities")})
+    # A finished guided session (sick mode or downshift) keeps the streak like an activity.
+    keys = {row[0][:10] for row in conn.execute("SELECT DISTINCT date FROM activities")} | guided_completion_dates(conn)
+    dates = sorted(date.fromisoformat(key) for key in keys)
     runs: list[tuple[date, date]] = []
     for day in dates:
         if runs and day == runs[-1][1] + timedelta(days=1):
@@ -607,7 +610,7 @@ def _streak_section(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
         "top": [describe(run) for run in ranked[:TOP_N]],
         "milestones": milestones,
         "next_milestone": {"days": next_milestone, "days_to_go": next_milestone - current_days} if next_milestone else None,
-        "note": "A day counts when any activity is recorded, including guided sick-mode sessions.",
+        "note": "A day counts when any activity or finished guided session (sick mode or downshift) is recorded.",
     }
 
 

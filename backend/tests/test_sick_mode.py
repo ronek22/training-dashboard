@@ -4,12 +4,9 @@ from datetime import date, timedelta
 from unittest.mock import patch
 
 from backend.app.services.dashboard import compute_activity_streak
+from backend.app.services.guided_sessions import SESSIONS, guided_session_for_activity, public_session, save_guided_completion
 from backend.app.services.sick_mode import (
-    SESSIONS,
-    public_session,
-    save_sick_session_completion,
     sick_dates,
-    sick_session_for_activity,
     build_sick_mode,
     end_sick_mode,
     log_sick_session,
@@ -105,10 +102,11 @@ class SickModeTests(unittest.TestCase):
         start_sick_mode(self.conn, "above_neck", today=TODAY)
         self.add_synced("morning", f"{TODAY.isoformat()}T07:00:00+00:00", "Morning Walk")
         payload = {"session_key": "light_circuit", "started_at": f"{TODAY.isoformat()}T18:06:00.000Z", "elapsed_seconds": 380, "extras": ["Pull-ups ×5"]}
-        state = save_sick_session_completion(self.conn, payload, today=TODAY)
+        state = save_guided_completion(self.conn, payload, today=TODAY)
         self.assertIsNone(state["completed_today"][0]["activity_id"])  # watch workout not synced yet
         self.add_synced("evening", f"{TODAY.isoformat()}T18:07:34+00:00")
-        state = save_sick_session_completion(self.conn, {**payload, "elapsed_seconds": 610}, today=TODAY)  # extra round, same row
+        save_guided_completion(self.conn, {**payload, "elapsed_seconds": 610}, today=TODAY)  # extra round, same row
+        state = build_sick_mode(self.conn, today=TODAY)
         [completion] = state["completed_today"]
         self.assertEqual((completion["activity_id"], completion["elapsed_min"], completion["extras"]), ("evening", 10.2, ["Pull-ups ×5"]))
         self.assertTrue(next(s for s in state["sessions"] if s["key"] == "light_circuit")["completed_today"])
@@ -120,11 +118,11 @@ class SickModeTests(unittest.TestCase):
     def test_activity_detail_finds_the_guided_session(self):
         start_sick_mode(self.conn, "above_neck", today=TODAY)
         self.add_synced("evening", f"{TODAY.isoformat()}T18:07:34+00:00")
-        save_sick_session_completion(self.conn, {"session_key": "light_circuit", "started_at": f"{TODAY.isoformat()}T18:06:00Z", "elapsed_seconds": 360, "extras": ["Pull-ups"]}, today=TODAY)
-        linked = sick_session_for_activity(self.conn, "evening")
+        save_guided_completion(self.conn, {"session_key": "light_circuit", "started_at": f"{TODAY.isoformat()}T18:06:00Z", "elapsed_seconds": 360, "extras": ["Pull-ups"]}, today=TODAY)
+        linked = guided_session_for_activity(self.conn, "evening")
         self.assertEqual((linked["title"], linked["guided_min"], linked["extras"], linked["logged_manually"]), ("Light bodyweight circuit", 6.0, ["Pull-ups"], False))
-        self.assertEqual(sick_session_for_activity(self.conn, f"sick-{TODAY.isoformat()}-gentle_stretch")["title"], "Gentle stretch")
-        self.assertIsNone(sick_session_for_activity(self.conn, "unrelated"))
+        self.assertEqual(guided_session_for_activity(self.conn, f"sick-{TODAY.isoformat()}-gentle_stretch")["title"], "Gentle stretch")
+        self.assertIsNone(guided_session_for_activity(self.conn, "unrelated"))
 
     def test_sick_dates_cover_open_periods(self):
         start_sick_mode(self.conn, "above_neck", today=TODAY - timedelta(days=1))

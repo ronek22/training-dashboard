@@ -58,7 +58,7 @@
         <ul class="sick-steps">
           <li v-for="step in session.steps" :key="step">{{ step }}</li>
         </ul>
-        <router-link :to="`/sick-mode/${session.key}`" class="sick-start">Start guided →</router-link>
+        <router-link :to="`/guided/${session.key}`" class="sick-start">Start guided →</router-link>
         <span v-if="loggedKeys.has(session.key)" class="sick-logged">Logged manually ✓</span>
         <button v-else-if="!state.synced_today" type="button" class="sick-log" :disabled="busy" title="Only if you did it without the watch — a synced workout already counts" @click="logSession(session.key)">
           No watch? Log manually

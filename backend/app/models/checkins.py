@@ -28,7 +28,7 @@ class SickModeLogInput(BaseModel):
     session_key: str = Field(min_length=1, max_length=40)
 
 
-class SickSessionCompletionInput(BaseModel):
+class GuidedSessionCompletionInput(BaseModel):
     session_key: str = Field(min_length=1, max_length=40)
     started_at: str = Field(min_length=10, max_length=40)
     elapsed_seconds: int = Field(ge=0, le=6 * 3600)

@@ -99,9 +99,14 @@
           <div class="week-header-main">
             <div class="week-meta-row">
               <span class="week-emphasis-pill" :class="weekEmphasisClass(plan)">{{ weekEmphasisLabel(plan) }}</span>
+              <span v-if="plan.minimum_week?.active && !isHistoricalPlan(plan)" class="minimum-week-pill" :title="plan.minimum_week.summary || undefined">Minimum viable week</span>
 
             </div>
           </div>
+          <template v-if="isCurrentPlan(plan) && adjustableDays(plan).length">
+            <button v-if="plan.minimum_week?.active" type="button" class="ghost-button minimum-week-button" :disabled="minimumWeekBusy" @click="restoreFullWeek(plan)">{{ minimumWeekBusy ? 'Restoring…' : 'Restore full week' }}</button>
+            <button v-else type="button" class="ghost-button minimum-week-button" title="Shrink the rest of this week to the smallest version that keeps your anchors" :disabled="minimumWeekBusy" @click="openMinimumWeek(plan)">Minimum week</button>
+          </template>
           <details class="week-actions plan-actions-menu"><summary>Manage week <span aria-hidden="true">⌄</span></summary><div class="plan-actions-menu-items">
             <button v-if="isLocalCodexHost && isCurrentPlan(plan) && adjustableDays(plan).length" type="button" class="ghost-button codex-refine-button" :disabled="planningWithCodex" @click="openCodexPlanFeedback">Refine with Codex</button>
             <button
@@ -838,6 +843,37 @@
     </Transition>
 
     <Transition name="overlay-fade" appear>
+      <div v-if="minimumWeek" class="codex-brief-shell" @click.self="closeMinimumWeek">
+        <div class="codex-brief-modal card minimum-week-modal" role="dialog" aria-modal="true" aria-labelledby="minimum-week-title" @keydown.esc="closeMinimumWeek">
+          <div class="codex-brief-head">
+            <div>
+              <div class="plan-details-kicker">Minimum viable week</div>
+              <h2 id="minimum-week-title">Shrink the rest of this week</h2>
+              <p>{{ minimumWeek.summary }}<template v-if="minimumWeek.anchors.length"> Keeps {{ minimumWeek.anchors.join(', ') }}.</template> Done and past days stay as they are; you can restore the full week until Sunday.</p>
+            </div>
+            <button class="plan-details-close" type="button" aria-label="Close minimum viable week" @click="closeMinimumWeek">×</button>
+          </div>
+          <ol class="minimum-week-days">
+            <li v-for="day in minimumWeek.days" :key="day.date" :class="`is-${day.session_type.toLowerCase()}`">
+              <span class="mw-day">{{ day.label }} <small>{{ formatDay(day.date) }}</small></span>
+              <span class="mw-before">{{ minimumWeekBefore(day.date) }}</span>
+              <span class="mw-arrow" aria-hidden="true">→</span>
+              <strong class="mw-after">{{ minimumWeekLabel(day) }}</strong>
+            </li>
+          </ol>
+          <p v-if="minimumWeekError" class="minimum-week-error" role="alert">{{ minimumWeekError }}</p>
+          <div class="codex-brief-footer">
+            <span></span>
+            <div>
+              <button class="ghost-button" type="button" @click="closeMinimumWeek">Cancel</button>
+              <button class="codex-brief-submit" type="button" :disabled="minimumWeekBusy" @click="applyMinimumWeek">{{ minimumWeekBusy ? 'Shrinking…' : 'Shrink the week' }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="overlay-fade" appear>
       <div v-if="codexFeedbackOpen" class="codex-brief-shell" @click.self="closeCodexPlanFeedback">
         <form class="codex-brief-modal card" role="dialog" aria-modal="true" aria-labelledby="codex-feedback-title" @submit.prevent="reviseCurrentPlanWithCodex">
           <div class="codex-brief-head">
@@ -1368,6 +1404,55 @@ const moveOffLifeLoadDay = async (clash) => {
   }
 }
 onMounted(() => lifeLoad.load())
+
+// Minimum viable week: preview the shrunk rest of the week, apply it, or restore the full week.
+const minimumWeek = ref(null)
+const minimumWeekPlan = ref(null)
+const minimumWeekBusy = ref(false)
+const minimumWeekError = ref('')
+const requestError = (error, fallback) => error?.response?.data?.detail || fallback
+const openMinimumWeek = async (plan) => {
+  minimumWeekBusy.value = true
+  try {
+    minimumWeek.value = (await api.previewMinimumWeek(plan.week_start)).data
+    minimumWeekPlan.value = plan
+    minimumWeekError.value = ''
+  } catch (error) {
+    flashMessage.value = { type: 'error', title: 'Could not build a minimum week', detail: requestError(error, 'The preview request failed.') }
+  } finally {
+    minimumWeekBusy.value = false
+  }
+}
+const closeMinimumWeek = () => { if (!minimumWeekBusy.value) minimumWeek.value = null }
+const minimumWeekBefore = (date) => {
+  const day = minimumWeekPlan.value?.days?.find((item) => item.date === date)
+  return day ? `${day.title}${day.target_duration_min ? ` · ${day.target_duration_min} min` : ''}` : '—'
+}
+const minimumWeekLabel = (day) => ({ WeightTraining: `Short lift · ${day.target_duration_min} min`, Ride: `Easy ride · ${day.target_duration_min} min` })[day.session_type] || 'Rest'
+const applyMinimumWeek = async () => {
+  minimumWeekBusy.value = true
+  minimumWeekError.value = ''
+  try {
+    await api.applyMinimumWeek(minimumWeek.value.week_start)
+    minimumWeek.value = null
+    await refreshPlans()
+  } catch (error) {
+    minimumWeekError.value = requestError(error, 'Could not shrink the week.')
+  } finally {
+    minimumWeekBusy.value = false
+  }
+}
+const restoreFullWeek = async (plan) => {
+  minimumWeekBusy.value = true
+  try {
+    await api.restoreFullWeek(plan.week_start)
+    await refreshPlans()
+  } catch (error) {
+    flashMessage.value = { type: 'error', title: 'Could not restore the week', detail: requestError(error, 'The restore request failed.') }
+  } finally {
+    minimumWeekBusy.value = false
+  }
+}
 
 const handlePlanDialogKeydown = (event) => {
   if (event.key === 'Escape' && plannedSessionDialog.value) closePlannedSessionDetails()
@@ -2404,6 +2489,19 @@ const savePlanLink = async (day) => {
 </script>
 
 <style scoped>
+.minimum-week-pill { padding: 2px 9px; border-radius: 999px; background: rgb(var(--life-rgb) / .16); color: var(--life); font-size: 12px; font-weight: 650; }
+.minimum-week-button { align-self: center; white-space: nowrap; }
+.minimum-week-modal { max-width: 560px; }
+.minimum-week-days { display: grid; gap: 4px; margin: 4px 0 8px; padding: 0; list-style: none; }
+.minimum-week-days li { display: grid; grid-template-columns: 92px minmax(0, 1fr) 16px minmax(0, 1fr); align-items: baseline; gap: 8px; padding: 7px 10px; border-radius: 9px; background: rgb(var(--ov-rgb) / .03); font-size: 13px; }
+.minimum-week-days li.is-rest { opacity: .72; }
+.mw-day { font-weight: 650; } .mw-day small { color: var(--muted-soft); font-weight: 500; }
+.mw-before { overflow: hidden; color: var(--muted-soft); text-decoration: line-through; text-overflow: ellipsis; white-space: nowrap; }
+.mw-arrow { color: var(--muted-soft); }
+.mw-after { color: var(--text); font-weight: 650; }
+.minimum-week-days li.is-weighttraining .mw-after { color: var(--tone-strength); }
+.minimum-week-days li.is-ride .mw-after { color: var(--tone-ride); }
+.minimum-week-error { margin: 0 0 8px; color: var(--danger); font-size: 13px; }
 .life-load-clashes { display: grid; gap: 6px; margin: 12px 0; padding: 10px 14px; border-radius: 12px; border: 1px solid rgb(var(--life-rgb) / .35); border-left: 3px solid var(--life); background: rgb(var(--life-rgb) / .08); font-size: 13px; }
 .life-load-clash { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; color: var(--text-soft); }
 .life-load-clash strong { color: var(--text); }

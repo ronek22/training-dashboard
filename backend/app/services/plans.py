@@ -1183,8 +1183,17 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
         "goal_context": goal_context,
         "run_guardrail": _run_guardrail(conn, days, row["week_start"]),
         "life_load": build_plan_life_load(conn, days, row["week_start"]),
+        "minimum_week": _minimum_week_state(conn, row["week_start"]),
         "workout_template_programs": workout_template_programs,
     }
+
+
+def _minimum_week_state(conn: Optional[sqlite3.Connection], week_start: str) -> Optional[dict]:
+    if conn is None:
+        return None
+    from .minimum_week import minimum_week_state
+
+    return minimum_week_state(conn, week_start)
 
 
 def build_plan_life_load(conn: Optional[sqlite3.Connection], days: list[dict], week_start: str) -> Optional[dict]:

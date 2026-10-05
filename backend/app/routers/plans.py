@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter
 
 from ..db import get_db
@@ -10,6 +12,7 @@ from ..services.plans import (
     swap_weekly_plan_days_data,
     upsert_weekly_plan_data,
 )
+from ..services.minimum_week import apply_minimum_week, preview_minimum_week, restore_full_week
 
 router = APIRouter()
 
@@ -64,5 +67,32 @@ def weekly_plan_trends(weeks: int = 6):
     conn = get_db()
     try:
         return build_multi_week_execution_trend(conn, weeks=weeks)
+    finally:
+        conn.close()
+
+
+@router.post("/plans/weekly/{week_start}/minimum-week/preview")
+def preview_minimum_viable_week(week_start: date):
+    conn = get_db()
+    try:
+        return preview_minimum_week(conn, week_start.isoformat())
+    finally:
+        conn.close()
+
+
+@router.post("/plans/weekly/{week_start}/minimum-week")
+def apply_minimum_viable_week(week_start: date):
+    conn = get_db()
+    try:
+        return apply_minimum_week(conn, week_start.isoformat())
+    finally:
+        conn.close()
+
+
+@router.post("/plans/weekly/{week_start}/minimum-week/restore")
+def restore_minimum_viable_week(week_start: date):
+    conn = get_db()
+    try:
+        return restore_full_week(conn, week_start.isoformat())
     finally:
         conn.close()

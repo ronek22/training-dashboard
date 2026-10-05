@@ -1877,6 +1877,44 @@ bad-date,Squat,5,100,60,,,,false,,1
 
         self.assertIsNone(self.client.put(f"/life-load/{tuesday}", json={"tags": []}).json()["day"])
 
+    def test_minimum_viable_week_round_trip(self):
+        today = date.today()
+        week_start = today + timedelta(days=7 - today.weekday())
+        kinds = ["WeightTraining", "Ride", "WeightTraining", "Ride", "Run", "WeightTraining", "Ride"]
+        days = [
+            {
+                "date": (week_start + timedelta(days=index)).isoformat(),
+                "label": (week_start + timedelta(days=index)).strftime("%a"),
+                "session_type": kind,
+                "workout_intent": {"Ride": "interval", "Run": "easy"}.get(kind),
+                "title": "Strength" if kind == "WeightTraining" else f"{kind} session",
+                "target_duration_min": 75,
+            }
+            for index, kind in enumerate(kinds)
+        ]
+        self.assertEqual(self.client.post("/plans/weekly", json={"week_start": week_start.isoformat(), "title": "Full week", "days": days}).status_code, 201)
+        self.assertEqual(self.client.post(f"/plans/weekly/{week_start + timedelta(days=7)}/minimum-week/preview").status_code, 404)
+
+        preview = self.client.post(f"/plans/weekly/{week_start}/minimum-week/preview").json()
+        self.assertEqual(preview["targets"], {"lifts": 2, "rides": 2})
+        self.assertTrue(preview["diff"])
+        plan = next(item for item in self.client.get("/plans/weekly").json() if item["week_start"] == week_start.isoformat())
+        self.assertIsNone(plan["minimum_week"])
+
+        applied = self.client.post(f"/plans/weekly/{week_start}/minimum-week").json()
+        plan_days = applied["plan"]["days"]
+        lifts = [day for day in plan_days if day["session_type"] == "WeightTraining"]
+        self.assertEqual(len(lifts), 2)
+        self.assertTrue(all(day["template_id"] and day["target_duration_min"] == 30 for day in lifts))
+        self.assertEqual(sum(1 for day in plan_days if day["session_type"] == "Ride" and day["workout_intent"] == "easy"), 2)
+        self.assertTrue(applied["plan"]["minimum_week"]["active"])
+        self.assertIn("2 short lifts", applied["plan"]["minimum_week"]["summary"])
+
+        restored = self.client.post(f"/plans/weekly/{week_start}/minimum-week/restore").json()
+        self.assertIsNone(restored["plan"]["minimum_week"])
+        self.assertEqual([day["session_type"] for day in restored["plan"]["days"]], kinds)
+        self.assertEqual(self.client.post(f"/plans/weekly/{week_start}/minimum-week/restore").status_code, 400)
+
     def test_sick_mode_endpoints_round_trip(self):
         self.assertEqual(self.client.get("/sick-mode/sessions/sprints").status_code, 404)
         self.assertEqual(self.client.get("/sick-mode/sessions/light_circuit").json()["session"]["duration_min"], 12)

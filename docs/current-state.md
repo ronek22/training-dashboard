@@ -24,6 +24,17 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Minimum viable week
+
+2026-10-05: `services/minimum_week.py` shrinks the rest of the current week to the smallest plan that keeps the anchor goals. This is step 2 of the "stress and life" set. It is an ordinary plan adjustment, so past and completed days are protected and every change is a plan revision.
+
+- Targets: weekly session-count anchors (`strength_sessions`, or `activities_count` for WeightTraining or Ride) give the lift count, or 2 lifts if there's no anchor; rides are 2 easy, or more if a ride anchor asks. Anchors count even after their end date. Sessions already done this week count toward the target.
+- Shape: lifts stay lifts (title "Strength", so the template rotation still assigns A/B/C/D) at 30 min, main lifts only. Rides are easy at 40 min, and every other open day rests. Travel days and sick-mode days get nothing. Lifts are spread out, avoiding back-to-back days (including next to lifts already done) and life-load days, and prefer days that already had a lift. Rides prefer untagged days that were already rides. If the days left can't fit the anchor, the summary says so.
+- API: `POST /plans/weekly/{week_start}/minimum-week/preview` (proposal plus diff), `POST …/minimum-week` (apply), `POST …/minimum-week/restore` (puts back the open days from the plan saved in that revision). Plans get `minimum_week` (`active`, `summary`) from the latest such revision; a later "Restored full week" revision clears it. It ends with the week.
+- Coach: `minimum_week` in `get_recent_context`, and the plan-revision prompt keeps a shrunk week small unless the feedback asks for more.
+- UI: a "Minimum week" button next to "Manage week" on the current plan opens a before → after preview with a confirm. While it's on, the week shows a "Minimum viable week" pill and the button becomes "Restore full week".
+- Verified with 8 unit tests and an API round-trip smoke test (432 backend, 26 helper and 27 frontend tests, plus the build). Applied and restored in the browser on a copy of the database with a seeded week: Monday (sick) and the deadline Thursday rested, lifts landed Wed/Fri/Sun as C → D → A, and restore brought back the exact original days.
+
 ### Life-load tags
 
 2026-10-05: `services/life_load.py` lets the athlete tag days as travel, deadline, family, poor sleep or late night. Sick mode is a period about the body; these are per-day tags about time and attention, so they never add a body-risk penalty or pause the plan. This is step 1 of the "stress and life" set; a minimum viable week and a two-minute downshift will build on it.

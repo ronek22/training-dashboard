@@ -233,7 +233,9 @@ The athlete reviewed the generated plan and provided this feedback:
 
 Treat the feedback as the requested direction for the revision, while still
 protecting completed and past days, respecting modality restrictions, and
-avoiding unsafe load decisions. If the feedback conflicts with recovery
+avoiding unsafe load decisions. If the week's minimum_week is active, the
+athlete shrank it on purpose: keep it small unless the feedback asks for more.
+If the feedback conflicts with recovery
 evidence or an active restriction, choose the safer revision and explain the
 tradeoff in the summary.
 

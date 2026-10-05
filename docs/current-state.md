@@ -24,6 +24,18 @@ Implemented foundations:
 
 ## Recently Completed
 
+### "What worked" memory
+
+2026-10-05: sessions can be tagged loved / fine / hated, along with what was eaten before (fasted, snack < 1 h, meal 1–3 h, meal 3 h+). Tags are stored in `session_tags`, separately from the required feedback sliders, so a one-tap rating works on its own. `services/what_worked.py` compares two outcomes across conditions the app already knows:
+
+- Outcomes: the verdict (+1 / 0 / −1), and effort cost (post-workout RPE minus the session intent's target RPE). Effort cost uses existing feedback, so patterns can appear before any tagging.
+- Conditions: time of day (local start time from Strava detail or the import reference; helpers moved to `services/activity_times.py`), indoor vs outdoor (rides), fasted vs fed, morning-check-in sleep and energy (4–5 vs 1–2), and the day after a rest day vs back-to-back days.
+- Families: hard rides, easy rides, runs, strength and all sessions. A pattern is confirmed with 6+ sessions on each side and a gap of 0.5 (verdict) or 1.0 RPE (effort). With 3+ per side it is "emerging" and never presented as a rule. Sick days are excluded. Wording is descriptive: "were rated better / felt easier for the same job".
+- `PUT /activities/{id}/tags`, `GET /what-worked`. The feedback POST also accepts `verdict` and `pre_fuel` (omitted means unchanged). Activity detail and activity lists carry `session_tags`.
+- Coach: MCP `get_what_worked`; `what_worked` (confirmed and emerging patterns, with guidance) in `get_recent_context`. The weekly planning prompt asks Codex to place sessions where confirmed patterns say they go better. The pre-session brief adds the top confirmed pattern for that session family as a note.
+- UI: Loved / Fine / Hated on the Activity Detail "How it felt" strip and on the completed Today card; the two new questions at the top of the feedback form; a collapsible "What works for you" line on the Activities page with patterns, evidence and quick rating of recent sessions.
+- Verified with 5 unit tests, a smoke test of the tag round trip, the full backend suite, the planning helper tests, 27 frontend tests and the build. Against real data: 52 sessions are considered, 29 have effort data, and one emerging pattern shows (easy rides cost about 1.2 RPE more indoors, from only 3 indoor rides). The UI was viewed in the browser without saving any tags. The only backend failure, `test_performance_settings_and_zone_foundation_surface_available_and_missing_states`, also fails on the committed code (it depends on the date).
+
 ### Pre-session brief
 
 2026-10-04: `services/session_brief.py` gives each planned session a short, coach-style brief with three parts: purpose, how it should feel (an RPE range plus a description) and when to bail. It is deterministic and never changes the plan.

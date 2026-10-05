@@ -134,6 +134,28 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         return response
 
+    def test_session_tags_round_trip_through_feedback_and_tags_endpoint(self):
+        create = self.client.post(
+            "/activities",
+            json={"id": "tag-ride-1", "date": "2026-09-20", "type": "Ride", "name": "Tag ride", "duration_min": 60.0},
+        )
+        self.assertEqual(create.status_code, 201)
+        saved = self._save_feedback("tag-ride-1", rpe=4, energy=4, muscle_soreness=1, pain_level=0, verdict="loved", pre_fuel="fasted")
+        self.assertEqual((saved.json()["verdict"], saved.json()["pre_fuel"]), ("loved", "fasted"))
+        # Feedback saved without the tag fields leaves the tags alone.
+        self._save_feedback("tag-ride-1", rpe=5, energy=4, muscle_soreness=1, pain_level=0)
+        self.assertEqual(self.client.get("/activities/tag-ride-1/feedback").json()["verdict"], "loved")
+        # The quick tag endpoint updates only what it is given; null clears.
+        updated = self.client.put("/activities/tag-ride-1/tags", json={"verdict": None})
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual((updated.json()["verdict"], updated.json()["pre_fuel"]), (None, "fasted"))
+        self.assertEqual(self.client.put("/activities/tag-ride-1/tags", json={"verdict": "meh"}).status_code, 422)
+        self.assertEqual(self.client.put("/activities/missing/tags", json={"verdict": "fine"}).status_code, 404)
+        self.assertEqual(self.client.get("/activities/tag-ride-1").json()["session_tags"]["pre_fuel"], "fasted")
+        what = self.client.get("/what-worked")
+        self.assertEqual(what.status_code, 200)
+        self.assertIn("confirmed", what.json())
+
     def test_ride_fuelling_feedback_and_plan_fuel_hint(self):
         today = datetime.now().date()
         create = self.client.post(

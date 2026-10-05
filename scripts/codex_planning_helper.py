@@ -191,7 +191,10 @@ set_weekly_plan to save a new plan. Make sessions concrete, balanced, and
 goal-aware. For ride days with a structured purpose (recovery, endurance,
 tempo, sweet spot, threshold, VO2 max), you may set cycling_workout_id to a
 workout from get_cycling_workout_library whose intent and duration fit the
-day; leave it empty for unstructured or outdoor rides. This request explicitly
+day; leave it empty for unstructured or outdoor rides. get_recent_context
+includes what_worked: when the schedule allows, place sessions where the
+athlete's confirmed patterns say they went better, and treat emerging patterns
+as hints only. This request explicitly
 authorizes creating or updating the current weekly plan, so do not ask for
 confirmation. After writing, verify the saved result with get_weekly_plans and
 provide a concise summary.

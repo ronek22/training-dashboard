@@ -10,6 +10,7 @@ from .sick_mode import build_sick_mode, reconcile_sick_session_activities, sick_
 from .volume_trend import build_volume_trend
 from .personal_records import build_recent_records_context
 from .session_brief import build_briefs_for_date
+from .what_worked import build_what_worked_coaching_context
 from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
 from .coaching import (
     build_athlete_coaching_brief,
@@ -1137,6 +1138,7 @@ def build_recent_context(
         "weekly_mix": weekly_mix,
         "volume_trend": build_volume_trend(conn),
         "personal_records": build_recent_records_context(conn),
+        "what_worked": build_what_worked_coaching_context(conn),
         "sick_mode": sick_mode_coaching_context(conn),
         "strength_consistency": strength_consistency,
         "recent_strength_detail": recent_strength_detail,

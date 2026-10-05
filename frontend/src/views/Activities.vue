@@ -9,6 +9,8 @@
       <router-link to="/sync" class="sync-link">Manage data</router-link>
     </header>
 
+    <WhatWorkedPanel />
+
     <section v-if="loading" class="summary-grid motion-section" aria-label="Loading activity summary">
       <div v-for="item in 4" :key="item" class="summary-card skeleton-card">
         <span class="skeleton-line skeleton-line-sm"></span>
@@ -192,6 +194,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
 import { useApi } from '../stores/api'
+import WhatWorkedPanel from '../components/WhatWorkedPanel.vue'
 
 const api = useApi()
 const route = useRoute()

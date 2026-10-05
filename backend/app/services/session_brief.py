@@ -377,6 +377,17 @@ def build_session_brief(conn: sqlite3.Connection, day: dict, today: Optional[dat
         if low:
             brief["notes"].insert(0, f"Check-in shows low {' and '.join(low)} today. Hold the bottom of the targets, and use the bail rule early.")
 
+    family = {"ride": "ride_quality" if brief["kind"] in ("Tempo", "Sweet spot", "Threshold", "VO2 max") else "ride_easy",
+              "run": "run", "strength": "strength"}.get(brief["sport"])
+    if family:
+        try:
+            from .what_worked import patterns_for_family
+
+            for pattern in patterns_for_family(conn, family, today)[:1]:
+                brief["notes"].append(f"From your history: {pattern['statement']}")
+        except sqlite3.OperationalError:
+            pass
+
     brief["bail"] = brief["bail"][:3]
     brief["session_id"] = day.get("session_id")
     brief["date"] = day.get("date")

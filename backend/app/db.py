@@ -471,6 +471,15 @@ def init_db():
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS session_tags (
+            activity_id TEXT PRIMARY KEY,
+            verdict TEXT CHECK (verdict IN ('loved', 'fine', 'hated')),
+            pre_fuel TEXT CHECK (pre_fuel IN ('fasted', 'snack', 'meal_recent', 'meal_earlier')),
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS sick_periods (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             start_date TEXT NOT NULL,

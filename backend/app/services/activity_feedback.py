@@ -28,11 +28,29 @@ def serialize_activity_feedback(row: sqlite3.Row | None) -> dict | None:
     }
 
 
+def _tags_by_activity(conn: sqlite3.Connection, activity_ids: list[str]) -> dict[str, dict]:
+    """Session tags (verdict, pre-session fuel) live beside the feedback sliders."""
+    if not activity_ids:
+        return {}
+    placeholders = ",".join("?" for _ in activity_ids)
+    try:
+        rows = conn.execute(
+            f"SELECT activity_id, verdict, pre_fuel FROM session_tags WHERE activity_id IN ({placeholders})",
+            activity_ids,
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    return {row["activity_id"]: {"verdict": row["verdict"], "pre_fuel": row["pre_fuel"]} for row in rows}
+
+
 def get_activity_feedback_data(conn: sqlite3.Connection, activity_id: str) -> dict | None:
     activity = conn.execute("SELECT id FROM activities WHERE id = ?", (activity_id,)).fetchone()
     if not activity:
         raise HTTPException(status_code=404, detail=f"Activity {activity_id} not found")
-    return serialize_activity_feedback(get_activity_feedback_row(conn, activity_id))
+    feedback = serialize_activity_feedback(get_activity_feedback_row(conn, activity_id))
+    if feedback is not None:
+        feedback.update(_tags_by_activity(conn, [activity_id]).get(activity_id, {"verdict": None, "pre_fuel": None}))
+    return feedback
 
 
 def upsert_activity_feedback_data(conn: sqlite3.Connection, activity_id: str, feedback: dict) -> dict:
@@ -75,9 +93,16 @@ def attach_feedback_by_activity_id(conn: sqlite3.Connection, items: list[dict], 
         activity_ids,
     ).fetchall()
     by_id = {row["activity_id"]: serialize_activity_feedback(row) for row in rows}
+    tags = _tags_by_activity(conn, activity_ids)
 
     for item in items:
-        item["feedback"] = by_id.get(item.get(activity_id_key))
+        activity_id = item.get(activity_id_key)
+        feedback = by_id.get(activity_id)
+        item_tags = tags.get(activity_id, {"verdict": None, "pre_fuel": None})
+        if feedback is not None:
+            feedback.update(item_tags)
+        item["feedback"] = feedback
+        item["session_tags"] = item_tags
     return items
 
 

@@ -135,6 +135,8 @@ export const useApi = () => ({
   getWeekly: () => api.get('/weekly'),
   getMetric: (name) => api.get(`/metrics/${name}`),
   getPersonalRecords: () => api.get('/records'),
+  saveSessionTags: (activityId, payload) => api.put(`/activities/${encodeURIComponent(activityId)}/tags`, payload),
+  getWhatWorked: () => api.get('/what-worked'),
   getActivityRecordRanks: () => api.get('/records/activities'),
   getCyclingPower: () => api.get('/metrics/cycling-power'),
   getCyclingPowerAdvice: () => api.get('/metrics/cycling-power/advice'),

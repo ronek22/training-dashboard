@@ -32,6 +32,7 @@
           <p v-else class="ad-feedback-strip-empty">Capture effort, energy, soreness, and pain while the session is fresh.</p>
           <p v-if="detail.feedback?.note" class="ad-feedback-strip-note">“{{ detail.feedback.note }}”</p>
           <button class="ad-secondary-action" type="button" @click="feedbackOpen = true">{{ detail.feedback ? 'Edit' : 'Add feedback' }}</button>
+          <SessionVerdict v-if="isTaggable" class="ad-feedback-verdict" :activity-id="detail.activity.id" :verdict="detail.session_tags?.verdict" @saved="(tags) => { detail.session_tags = tags }" />
         </section>
 
         <div v-if="status.tone === 'partial'" class="ad-data-notice" role="status">
@@ -139,6 +140,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import SessionVerdict from '../components/SessionVerdict.vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '../stores/api'
 import ActivityHeader from '../components/activity-detail/ActivityHeader.vue'
@@ -162,6 +164,9 @@ const analysisMessageError = ref(false)
 const analysisModalOpen = ref(false)
 let viewActive = true
 let previousBodyOverflow = ''
+
+// Tags feed the what-worked memory; only training sessions are compared.
+const isTaggable = computed(() => ['Ride', 'VirtualRide', 'Run', 'WeightTraining'].includes(detail.value?.activity?.type))
 
 const load = async () => {
   loading.value = true; error.value = null
@@ -315,6 +320,7 @@ const saveFeedback = async (payload) => {
 .ad-analysis-confidence p{margin:0;color:var(--ad-muted);font-size:.76rem;line-height:1.5}
 @media(max-width:560px){.ad-analysis-confidence{margin:18px -19px -19px;padding:14px 19px}.ad-analysis-actions{width:100%;justify-content:space-between}.ad-codex-action{flex:1}}
 
+.ad-feedback-verdict{grid-column:1 / -1;padding-top:10px;border-top:1px solid rgb(var(--tint-rgb) / .12)}
 .ad-feedback-strip{
   --feedback-accent:color-mix(in srgb, #6f91ff calc(100% - var(--dim)), #000);
   display:grid;

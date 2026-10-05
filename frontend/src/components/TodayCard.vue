@@ -68,6 +68,15 @@
       </div>
     </dl>
 
+    <SessionVerdict
+      v-if="state === 'completed' && selected && ['endurance', 'strength'].includes(selected.kind) && selected.type !== 'Walk'"
+      :key="`verdict-${selected.id}`"
+      class="today-verdict"
+      compact
+      :activity-id="String(selected.id)"
+      :verdict="selected.detail?.session_tags?.verdict"
+    />
+
     <section v-if="comparison && !sessions.length" class="today-compare" aria-label="Planned versus actual duration">
       <div class="today-compare-head">
         <span>Plan vs actual</span>
@@ -117,6 +126,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import SessionVerdict from './SessionVerdict.vue'
 import ActivityIcon from './ActivityIcon.vue'
 import CyclingWorkoutProfile from './CyclingWorkoutProfile.vue'
 import TodayEnduranceSummary from './TodayEnduranceSummary.vue'
@@ -195,6 +205,7 @@ const comparisonState = computed(() => {
 </script>
 
 <style scoped>
+.today-verdict { margin-top: 12px; }
 .today-card {
   position: relative;
   display: flex;

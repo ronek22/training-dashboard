@@ -19,8 +19,8 @@ import math
 import sqlite3
 from datetime import date, datetime, timedelta
 from typing import Any, Iterable, Optional
-from zoneinfo import ZoneInfo
 
+from .activity_times import start_times as _start_times, time_of_day as _time_of_day
 from .cycling_workouts import latest_ftp
 from .power_trends import (
     POWER_EFFORT_LABELS,
@@ -36,7 +36,6 @@ from .strength import _filtered_sessions, _match_pr_pattern
 
 
 ALGORITHM_VERSION = "records-v1"
-LOCAL_TZ = ZoneInfo("Europe/Warsaw")
 RIDE_TYPES = ("Ride", "VirtualRide")
 RUN_TYPES = ("Run",)
 RIDE_DISTANCES = (
@@ -267,50 +266,6 @@ def _load_efforts(conn: sqlite3.Connection, rows: list[sqlite3.Row]) -> dict[str
 # ---------------------------------------------------------------------------
 # Context helpers
 # ---------------------------------------------------------------------------
-
-
-def _start_times(conn: sqlite3.Connection, rows: Iterable[sqlite3.Row]) -> dict[str, datetime]:
-    """Local start time per activity from Strava detail or the import reference."""
-    starts: dict[str, datetime] = {}
-    for row in rows:
-        detail = _decode_json(row["detail_json"])
-        value = detail.get("start_date") if isinstance(detail, dict) else None
-        parsed = _parse_timestamp(value)
-        if parsed:
-            starts[row["id"]] = parsed
-    try:
-        refs = conn.execute(
-            "SELECT activity_id, started_at FROM activity_source_refs WHERE activity_id IS NOT NULL AND started_at IS NOT NULL"
-        ).fetchall()
-    except sqlite3.OperationalError:
-        refs = []
-    for ref in refs:
-        if ref["activity_id"] not in starts:
-            parsed = _parse_timestamp(ref["started_at"])
-            if parsed:
-                starts[ref["activity_id"]] = parsed
-    return starts
-
-
-def _parse_timestamp(value: Any) -> Optional[datetime]:
-    if not isinstance(value, str) or "T" not in value:
-        return None
-    try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        return None
-    return parsed.astimezone(LOCAL_TZ)
-
-
-def _time_of_day(start: Optional[datetime], offset_s: float = 0.0) -> Optional[dict[str, str]]:
-    if start is None:
-        return None
-    moment = start + timedelta(seconds=offset_s)
-    hour = moment.hour
-    period = "night" if hour < 5 or hour >= 22 else "morning" if hour < 12 else "afternoon" if hour < 17 else "evening"
-    return {"clock": moment.strftime("%H:%M"), "period": period}
 
 
 def _is_indoor(row: sqlite3.Row) -> bool:

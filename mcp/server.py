@@ -205,6 +205,11 @@ TOOLS = [
         "inputSchema": {"type": "object", "properties": {}}
     },
     {
+        "name": "get_what_worked",
+        "description": "Read the athlete's \"what worked\" memory: loved/fine/hated session tags and RPE-versus-target compared across time of day, indoor/outdoor, pre-session fuel, sleep, morning energy and rest; returns confirmed and emerging patterns with evidence",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
         "name": "get_personal_records",
         "description": "Read the personal best wall: bike power (5 s-60 min), outdoor and indoor bike distance bests (5K-100K), Strava-style run bests (400 m-marathon), lift PRs (estimated 1RM), streaks, PRs from the last 30 days and an FTP estimate from recent efforts",
         "inputSchema": {"type": "object", "properties": {}}
@@ -488,6 +493,10 @@ def handle_tool(name: str, args: dict) -> str:
 
         elif name == "get_cycling_power_profile":
             result = call_remote_mcp_tool(name)
+            return json.dumps(result, indent=2)
+
+        elif name == "get_what_worked":
+            result = call_api("GET", "/what-worked")
             return json.dumps(result, indent=2)
 
         elif name == "get_personal_records":

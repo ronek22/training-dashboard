@@ -13,6 +13,21 @@
             <button class="feedback-modal-close" @click="$emit('close')" aria-label="Close feedback dialog">×</button>
           </div>
 
+          <div class="feedback-tags">
+            <div class="feedback-tag-field" role="radiogroup" aria-label="How was the session?">
+              <span>How was it?</span>
+              <div class="feedback-fuel-options">
+                <button v-for="option in verdictOptions" :key="option.value" type="button" role="radio" :aria-checked="form.verdict === option.value" :class="{ on: form.verdict === option.value }" @click="form.verdict = form.verdict === option.value ? null : option.value">{{ option.label }}</button>
+              </div>
+            </div>
+            <div class="feedback-tag-field" role="radiogroup" aria-label="What did you eat before?">
+              <span>Before the session</span>
+              <div class="feedback-fuel-options">
+                <button v-for="option in preFuelOptions" :key="option.value" type="button" role="radio" :aria-checked="form.pre_fuel === option.value" :class="{ on: form.pre_fuel === option.value }" @click="form.pre_fuel = form.pre_fuel === option.value ? null : option.value">{{ option.label }}</button>
+              </div>
+            </div>
+          </div>
+
           <div class="feedback-modal-grid">
             <section v-for="field in fields" :key="field.key" class="feedback-slider-card">
               <div class="feedback-slider-top">
@@ -105,12 +120,15 @@ const defaults = () => ({
   fuelling: null,
   note: '',
   workout_intent: '',
+  verdict: null,
+  pre_fuel: null,
 })
 
 const form = reactive(defaults())
 
 const syncForm = () => {
-  Object.assign(form, defaults(), props.initialFeedback || {}, {
+  const tags = props.activity?.session_tags || {}
+  Object.assign(form, defaults(), { verdict: tags.verdict ?? null, pre_fuel: tags.pre_fuel ?? null }, props.initialFeedback || {}, {
     workout_intent: props.activity?.workout_intent || '',
   })
 }
@@ -205,6 +223,19 @@ const workoutIntentOptions = {
 }
 
 const intentOptions = computed(() => workoutIntentOptions[props.activity?.type] || [])
+
+// "What worked" tags: compared across conditions to find what suits the athlete.
+const verdictOptions = [
+  { value: 'loved', label: 'Loved it' },
+  { value: 'fine', label: 'Fine' },
+  { value: 'hated', label: 'Hated it' },
+]
+const preFuelOptions = [
+  { value: 'fasted', label: 'Fasted' },
+  { value: 'snack', label: 'Snack < 1 h' },
+  { value: 'meal_recent', label: 'Meal 1–3 h' },
+  { value: 'meal_earlier', label: 'Meal 3 h+' },
+]
 
 // Long rides are where under-fuelling hides; shorter sessions skip the question.
 const FUELLING_MIN_MINUTES = 75
@@ -364,6 +395,24 @@ const submit = () => {
   background: rgb(var(--ov-rgb) / 0.04);
   color: var(--text);
   resize: vertical;
+}
+.feedback-tags {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px 28px;
+  margin-bottom: 18px;
+}
+.feedback-tag-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.feedback-tag-field > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+@media (max-width: 640px) {
+  .feedback-tags { grid-template-columns: 1fr; }
 }
 .feedback-fuel-field {
   display: grid;

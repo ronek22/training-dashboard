@@ -495,6 +495,15 @@ def _compute_best_effort_for_distance(
     return effort
 
 
+def _session_tags(conn: sqlite3.Connection, activity_id: str) -> dict:
+    from .what_worked import get_session_tags
+
+    try:
+        return get_session_tags(conn, activity_id)
+    except sqlite3.OperationalError:
+        return {"activity_id": activity_id, "verdict": None, "pre_fuel": None, "updated_at": None}
+
+
 def _build_best_efforts(activity: dict, streams: Optional[dict]) -> Optional[dict]:
     if not streams:
         return None
@@ -712,6 +721,7 @@ def _build_activity_detail_payload(
         "charts": charts,
         "best_efforts": best_efforts,
         "feedback": feedback,
+        "session_tags": _session_tags(conn, activity["id"]),
         "route": {
             "polyline": route_polyline,
             "has_stream_latlng": bool((streams or {}).get("latlng", {}).get("data")),

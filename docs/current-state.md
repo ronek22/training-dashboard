@@ -24,6 +24,14 @@ Implemented foundations:
 
 ## Recently Completed
 
+### One trustworthy check
+
+2026-10-05: `just check` runs the frontend behavior tests, the frontend build, the backend suite and the four helper-script test files, stopping at the first failure. `just setup-checks` creates the backend virtualenv and runs `npm ci` for a fresh checkout. Two smoke tests depended on the weekday and are fixed without weakening their assertions:
+
+- The zone 2 goal test logged its ride "yesterday", which is last week on a Monday. It now logs the ride today.
+- The goal-tradeoff test planned only Monday–Wednesday, so from Thursday the goal it created "today" started after the plan ended. The plan now runs to Sunday, like real plans.
+- Verified by running the backend suite with a patched clock on nine dates (weekdays, weekends, month and year boundaries, February). The only remaining failures under the patched clock are two sick-mode tests: their code reads SQLite's `date('now')`, which the patch cannot move, so they are an artifact of the method and pass on the real clock.
+
 ### "What worked" memory
 
 2026-10-05: sessions can be tagged loved / fine / hated, along with what was eaten before (fasted, snack < 1 h, meal 1–3 h, meal 3 h+). Tags are stored in `session_tags`, separately from the required feedback sliders, so a one-tap rating works on its own. `services/what_worked.py` compares two outcomes across conditions the app already knows:

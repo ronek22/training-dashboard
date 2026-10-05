@@ -42,6 +42,29 @@ test-backend:
     if [ -x "{{root}}/backend/.venv/bin/python" ]; then py="{{root}}/backend/.venv/bin/python"; else py=python3; fi; \
     PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest discover -s backend/tests
 
+# Run the helper-script tests (Codex planning, recovery, Sunday review, team coaching).
+test-scripts:
+    if [ -x "{{root}}/backend/.venv/bin/python" ]; then py="{{root}}/backend/.venv/bin/python"; else py=python3; fi; \
+    cd "{{root}}" && PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest scripts.test_codex_planning_helper scripts.test_recovery_helper scripts.test_sunday_review scripts.test_team_coaching_helper
+
+# Run the frontend behavior tests.
+test-frontend:
+    cd "{{root}}/frontend" && npm test
+
+# Build the frontend (catches template and import errors).
+build-frontend:
+    cd "{{root}}/frontend" && npm run build
+
+# One check before shipping: frontend tests, frontend build, backend and helper tests.
+check: test-frontend build-frontend test-backend test-scripts
+    @echo "All checks passed."
+
+# Create the test environments from scratch (backend virtualenv and frontend packages).
+setup-checks:
+    python3 -m venv "{{root}}/backend/.venv"
+    "{{root}}/backend/.venv/bin/pip" install -r "{{root}}/backend/requirements.txt"
+    cd "{{root}}/frontend" && npm ci
+
 # Serve the built iPhone app on the Mac's Wi-Fi IP (find it in System Settings > Wi-Fi > Details).
 phone ip:
     TRAINLOG_LAN_IP="{{ip}}" docker compose -f docker-compose.yml -f docker-compose.phone.yml up -d --build backend phone

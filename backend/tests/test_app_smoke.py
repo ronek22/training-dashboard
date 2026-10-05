@@ -2438,7 +2438,8 @@ bad-date,Squat,5,100,60,,,,false,,1
             "/activities",
             json={
                 "id": "zone-foundation-ride-1",
-                "date": (today - timedelta(days=1)).isoformat(),
+                # Today, not yesterday: on a Monday yesterday is last week, outside the weekly goal.
+                "date": today.isoformat(),
                 "type": "Ride",
                 "name": "Aerobic ride",
                 "duration_min": 90,
@@ -3075,6 +3076,7 @@ bad-date,Squat,5,100,60,,,,false,,1
         week_start = today - timedelta(days=today.weekday())
         second_day = week_start + timedelta(days=1)
         third_day = week_start + timedelta(days=2)
+        week_end = week_start + timedelta(days=6)
         event_date = today + timedelta(days=35)
 
         run_goal = self.client.post(
@@ -3149,6 +3151,15 @@ bad-date,Squat,5,100,60,,,,false,,1
                         "workout_intent": "easy",
                         "title": "Easy run",
                         "target_duration_min": 40,
+                    },
+                    # Real plans cover the whole week; a goal created later in
+                    # the week (today) must still fall inside the plan window.
+                    {
+                        "date": week_end.isoformat(),
+                        "label": week_end.strftime("%a"),
+                        "session_type": "Rest",
+                        "title": "Rest",
+                        "target_duration_min": 0,
                     },
                 ],
             },

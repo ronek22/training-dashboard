@@ -83,8 +83,24 @@ just up
 just restart
 just logs
 just down
-just test-backend
+just check
 ```
+
+## Checks Before Shipping
+
+One command runs everything: frontend behavior tests, the frontend build, the backend suite and the helper-script tests. It stops at the first failure.
+
+```bash
+just check
+```
+
+In a fresh checkout, create the environments first (backend virtualenv plus `npm ci`):
+
+```bash
+just setup-checks
+```
+
+Each part can also run on its own: `just test-frontend`, `just build-frontend`, `just test-backend`, `just test-scripts`. Tests must not depend on today's date: build dates relative to `date.today()` so they stay inside the window being checked (for example the current Monday–Sunday week), never fixed calendar days that age out.
 
 ## Backend Testing
 

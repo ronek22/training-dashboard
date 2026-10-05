@@ -253,6 +253,7 @@ class AppSmokeTests(unittest.TestCase):
                 "fitbod_session_decisions",
                 "fitbod_import_rows",
                 "fitbod_import_batches",
+                "life_load_days",
             ]:
                 conn.execute(f"DELETE FROM {table}")
             conn.commit()
@@ -1849,6 +1850,32 @@ bad-date,Squat,5,100,60,,,,false,,1
         dashboard = self.client.get("/dashboard")
         self.assertEqual(dashboard.status_code, 200)
         self.assertEqual(dashboard.json()["athlete_brief"]["modality_priority"], ["ride", "strength", "run"])
+
+    def test_life_load_tags_flag_hard_plan_days(self):
+        today = date.today()
+        week_start = today + timedelta(days=7 - today.weekday())
+        tuesday, thursday = week_start + timedelta(days=1), week_start + timedelta(days=3)
+        self.assertEqual(self.client.put(f"/life-load/{tuesday}", json={"tags": ["vacation"]}).status_code, 422)
+        saved = self.client.put(f"/life-load/{tuesday}", json={"tags": ["late_night", "deadline"], "note": "release"})
+        self.assertEqual(saved.json()["day"]["labels"], ["Deadline", "Late night"])
+        listed = self.client.get("/life-load", params={"start": week_start.isoformat(), "end": thursday.isoformat()}).json()
+        self.assertEqual([tag["key"] for tag in listed["tags"]][:2], ["travel", "deadline"])
+        self.assertEqual([item["date"] for item in listed["days"]], [tuesday.isoformat()])
+
+        days = [
+            {"date": tuesday.isoformat(), "label": "Tue", "session_type": "Ride", "workout_intent": "interval", "title": "Threshold intervals", "target_duration_min": 60},
+            {"date": thursday.isoformat(), "label": "Thu", "session_type": "Ride", "workout_intent": "easy", "title": "Easy spin", "target_duration_min": 45},
+        ]
+        self.assertEqual(self.client.post("/plans/weekly", json={"week_start": week_start.isoformat(), "title": "Busy week", "days": days}).status_code, 201)
+        plan = next(item for item in self.client.get("/plans/weekly").json() if item["week_start"] == week_start.isoformat())
+        conflict = plan["life_load"]["conflicts"][0]
+        self.assertEqual((conflict["date"], conflict["reason"]), (tuesday.isoformat(), "hard intensity"))
+        self.assertIsNotNone(conflict["suggested_date"])
+        self.assertEqual(self.client.post("/plans/weekly/swap", json={"from_date": tuesday.isoformat(), "to_date": conflict["suggested_date"]}).status_code, 200)
+        plan = next(item for item in self.client.get("/plans/weekly").json() if item["week_start"] == week_start.isoformat())
+        self.assertEqual(plan["life_load"]["conflicts"], [])
+
+        self.assertIsNone(self.client.put(f"/life-load/{tuesday}", json={"tags": []}).json()["day"])
 
     def test_sick_mode_endpoints_round_trip(self):
         self.assertEqual(self.client.get("/sick-mode/sessions/sprints").status_code, 404)

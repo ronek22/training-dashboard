@@ -1182,8 +1182,19 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
         "revisions": revisions,
         "goal_context": goal_context,
         "run_guardrail": _run_guardrail(conn, days, row["week_start"]),
+        "life_load": build_plan_life_load(conn, days, row["week_start"]),
         "workout_template_programs": workout_template_programs,
     }
+
+
+def build_plan_life_load(conn: Optional[sqlite3.Connection], days: list[dict], week_start: str) -> Optional[dict]:
+    """Life-load tags on this week's days and hard sessions that sit on them."""
+    from .life_load import build_plan_life_load as build
+
+    try:
+        return build(conn, days, week_start)
+    except sqlite3.OperationalError:
+        return None
 
 
 def _run_guardrail(conn: Optional[sqlite3.Connection], days: list[dict], week_start: str) -> Optional[dict]:

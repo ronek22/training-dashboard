@@ -34,3 +34,8 @@ class SickSessionCompletionInput(BaseModel):
     elapsed_seconds: int = Field(ge=0, le=6 * 3600)
     completed_steps: int = Field(default=0, ge=0, le=500)
     extras: list[str] = Field(default_factory=list, max_length=20)
+
+
+class LifeLoadDayInput(BaseModel):
+    tags: list[Literal["travel", "deadline", "family", "poor_sleep", "late_night"]] = Field(default_factory=list, max_length=5)
+    note: Optional[str] = Field(default=None, max_length=300)

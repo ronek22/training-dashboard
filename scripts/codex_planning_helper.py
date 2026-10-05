@@ -197,7 +197,10 @@ athlete's confirmed patterns say they went better, and treat emerging patterns
 as hints only. When get_recent_context shows return_to_run as active, plan run
 days only from the current stage's prescription and respect its next step
 (rest days, missing scores, flares); never raise run distance and pace in the
-same week. This request explicitly
+same week. get_recent_context includes life_load: never put intervals,
+tempo, race-specific or 90+ minute sessions on upcoming tagged days (travel,
+deadline, family, poor sleep, late night); easy sessions and short lifts are
+fine there, and anchor goals stay. This request explicitly
 authorizes creating or updating the current weekly plan, so do not ask for
 confirmation. After writing, verify the saved result with get_weekly_plans and
 provide a concise summary.

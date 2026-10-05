@@ -22,6 +22,7 @@ from .coaching import (
 )
 from .goals import aggregate_goal_risk_summary, build_goal_readiness_overview, list_goals_data
 from .heart_rate_zones import build_recent_heart_rate_zone_summary
+from .life_load import life_load_coaching_context
 from .readiness import build_readiness_summary
 from .recommendations import build_daily_recommendation, latest_subjective_state
 from .settings import (
@@ -1142,6 +1143,7 @@ def build_recent_context(
         "what_worked": build_what_worked_coaching_context(conn),
         "return_to_run": build_return_to_run_context(conn),
         "sick_mode": sick_mode_coaching_context(conn),
+        "life_load": life_load_coaching_context(conn),
         "strength_consistency": strength_consistency,
         "recent_strength_detail": recent_strength_detail,
         "cycling_power": build_cycling_power_coaching_context(conn, include_thresholds=False),

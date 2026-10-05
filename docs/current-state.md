@@ -24,6 +24,19 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Life-load tags
+
+2026-10-05: `services/life_load.py` lets the athlete tag days as travel, deadline, family, poor sleep or late night. Sick mode is a period about the body; these are per-day tags about time and attention, so they never add a body-risk penalty or pause the plan. This is step 1 of the "stress and life" set; a minimum viable week and a two-minute downshift will build on it.
+
+- Storage: one row per day in `life_load_days` (tags plus an optional note). `GET /life-load?start&end` returns the tag list and tagged days; `PUT /life-load/{date}` replaces a day's tags, and an empty list clears the day. A tag added after the day is marked `tagged_after`.
+- Plans get `life_load`: tags per day, plus conflicts for intervals, tempo, race-specific or 90+ min sessions on a tagged day from today on (lifts and easy sessions are fine). Each conflict suggests the nearest open day in the same week with a calm session and no hard neighbour. The Plan page lists them with a one-click swap through `/plans/weekly/swap`.
+- Weekly review context has `life_load` with the week's tags and `missed_on_tagged_days` (e.g. "Missed 2 sessions, both on deadline days."). The Sunday review prompt treats those misses as life load, not motivation.
+- Volume trend: a falling week with 3+ tagged days is labelled `life` automatically (sick mode still takes priority as `illness_injury`).
+- Readiness: poor sleep tagged today or a late night yesterday adds a 1-point caution, but only when there is no check-in today (the check-in already rates sleep).
+- Coach: `life_load` in `get_recent_context` (last 7 and next 14 days, with guidance); the weekly planning prompt keeps hard and long sessions off upcoming tagged days.
+- UI: a tag picker in the calendar day popup and in the Plan session dialog; tag icons on calendar cells with a legend entry; sand `--life` chips on plan cards, outlined when they clash.
+- Verified with 8 unit tests, 2 volume-trend tests and an API smoke test (423 backend, 26 helper and 27 frontend tests, plus the build). Checked in the browser against a copy of the database: tag picker, cell icons, clash banner and swap.
+
 ### Return-to-run tracker
 
 2026-10-05: `services/return_to_run.py` runs a six-stage return to running, driven by symptom scores: run/walk 1:2 → 2:1 → 5:1 → continuous 20 min → continuous 30–40 min → back to normal. The athlete switches it on with a starting stage and the symptom to watch (default heel). It never edits the plan.

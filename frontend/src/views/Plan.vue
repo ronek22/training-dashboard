@@ -434,6 +434,7 @@
               </div>
 
               <div class="session-match-status" :class="`match-${sessionMatch(day).tone}`"><span aria-hidden="true">{{ sessionMatch(day).icon }}</span>{{ sessionMatch(day).label }}</div>
+              <div v-if="lifeLoad.iconsFor(day.date).length" class="plan-day-life" :class="{ 'is-clash': lifeLoadConflict(plan, day.date) }"><span v-for="tag in lifeLoad.iconsFor(day.date)" :key="tag.key"><span aria-hidden="true">{{ tag.icon }}&#xFE0E;</span>{{ tag.label }}</span></div>
 
 
 
@@ -598,6 +599,14 @@
                 </div>
               </div>
             </article>
+          </div>
+        </div>
+
+        <div v-if="!isHistoricalPlan(plan) && plan.life_load?.conflicts?.length" class="life-load-clashes" role="status">
+          <div v-for="clash in plan.life_load.conflicts" :key="clash.date" class="life-load-clash">
+            <span><strong>{{ clash.title }}</strong> lands on a {{ clash.labels.join(' + ').toLowerCase() }} day ({{ formatDay(clash.date) }}) · {{ clash.reason }}</span>
+            <button v-if="clash.suggested_date" type="button" class="ghost-button" :disabled="movingLifeLoadDate === clash.date" @click="moveOffLifeLoadDay(clash)">{{ movingLifeLoadDate === clash.date ? 'Moving…' : `Swap with ${format(parseISO(clash.suggested_date), 'EEE')}` }}</button>
+            <span v-else class="life-load-clash-none">No calm day left this week</span>
           </div>
         </div>
 
@@ -883,6 +892,7 @@
                 <button ref="workoutCloseButton" class="plan-details-close" type="button" aria-label="Close planned workout details" @click="closePlannedSessionDetails">×</button>
               </div>
               <h2 id="workout-brief-title">{{ plannedSessionDialog.title }}</h2>
+              <LifeLoadPicker v-if="lifeLoad.tagMeta.value.length" class="workout-life-load" :date="plannedSessionDialog.date" :tags="lifeLoad.tagMeta.value" :selected="lifeLoad.tagsFor(plannedSessionDialog.date)" :past="plannedSessionDialog.date < todayIso" :save="saveLifeLoad" />
               <div class="workout-chips">
                 <span v-for="chip in [plannedSessionDialog.workout_intent_label, plannedSessionDialog.template_label, plannedSessionDialog.benchmark_label].filter((chip) => chip && chip !== plannedSessionDialog.title)" :key="chip" class="workout-chip">{{ chip }}</span>
                 <span class="session-match-status" :class="`match-${sessionMatch(plannedSessionDialog).tone}`"><span aria-hidden="true">{{ sessionMatch(plannedSessionDialog).icon }}</span>{{ sessionMatch(plannedSessionDialog).label }}</span>
@@ -918,11 +928,13 @@
 
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { format, startOfWeek } from 'date-fns'
+import { format, parseISO, startOfWeek } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
+import LifeLoadPicker from '../components/LifeLoadPicker.vue'
+import { useLifeLoad } from '../composables/useLifeLoad'
 import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail'
 
 const sessionTypeOptions = ['Run', 'Ride', 'WeightTraining', 'Recovery', 'Rest', 'Walk', 'Hike']
@@ -1334,6 +1346,28 @@ const loadSickDates = async () => {
 
 onMounted(load)
 onMounted(loadSickDates)
+
+// Life-load tags: chips on day cards, and the plan's clash list is rebuilt after each change.
+const lifeLoad = useLifeLoad()
+const todayIso = format(new Date(), 'yyyy-MM-dd')
+const movingLifeLoadDate = ref(null)
+const refreshPlans = async () => {
+  try { plans.value = (await api.getWeeklyPlans({ limit: 8 })).data } catch { /* keep the plans on screen */ }
+}
+const saveLifeLoad = async (date, tags) => { await lifeLoad.setDay(date, tags); await refreshPlans() }
+const lifeLoadConflict = (plan, date) => plan.life_load?.conflicts?.some((clash) => clash.date === date)
+const moveOffLifeLoadDay = async (clash) => {
+  movingLifeLoadDate.value = clash.date
+  try {
+    await api.swapWeeklyPlanDays({ from_date: clash.date, to_date: clash.suggested_date })
+    await refreshPlans()
+  } catch (error) {
+    flashMessage.value = { type: 'error', title: 'Could not move the session', detail: error?.response?.data?.detail || 'The swap request failed.' }
+  } finally {
+    movingLifeLoadDate.value = null
+  }
+}
+onMounted(() => lifeLoad.load())
 
 const handlePlanDialogKeydown = (event) => {
   if (event.key === 'Escape' && plannedSessionDialog.value) closePlannedSessionDetails()
@@ -2370,6 +2404,15 @@ const savePlanLink = async (day) => {
 </script>
 
 <style scoped>
+.life-load-clashes { display: grid; gap: 6px; margin: 12px 0; padding: 10px 14px; border-radius: 12px; border: 1px solid rgb(var(--life-rgb) / .35); border-left: 3px solid var(--life); background: rgb(var(--life-rgb) / .08); font-size: 13px; }
+.life-load-clash { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; color: var(--text-soft); }
+.life-load-clash strong { color: var(--text); }
+.life-load-clash .ghost-button { padding: 3px 10px; font-size: 12px; }
+.life-load-clash-none { color: var(--muted-soft); font-size: 12px; }
+.plan-day-life { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.plan-day-life > span { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px; background: rgb(var(--life-rgb) / .14); color: var(--life); font-size: 11px; font-weight: 650; }
+.plan-day-life.is-clash > span { box-shadow: inset 0 0 0 1px rgb(var(--life-rgb) / .6); }
+.workout-life-load { margin: 6px 0 10px; }
 .run-guardrail { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 12px 0; padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(243, 180, 77, 0.35); border-left: 3px solid var(--warning); background: rgba(243, 180, 77, 0.08); font-size: 13px; }
 .run-guardrail strong { color: var(--warning-text); }
 .run-guardrail span { color: var(--text-soft); }

@@ -56,6 +56,9 @@
   /* Sick days: a dusty rose, softer than danger so illness doesn't read as an error. */
   --sick: #d9a3b4;
   --sick-rgb: 217 163 180;
+  /* Life-load days (travel, deadline, family, sleep): muted sand, a note rather than a warning. */
+  --life: #cdbb8e;
+  --life-rgb: 205 187 142;
   --tone-walk: #91cfba;
   --tone-neutral: #a8b7d0;
   --deep: #1e222a;
@@ -144,6 +147,8 @@
   --tone-recovery: #7a5fd0;
   --sick: #a8667e;
   --sick-rgb: 168 102 126;
+  --life: #86703a;
+  --life-rgb: 134 112 58;
   --tone-walk: #3f8f77;
   --tone-neutral: #64748b;
   --deep: #f1f4f9;

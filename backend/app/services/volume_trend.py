@@ -18,6 +18,7 @@ import sqlite3
 from datetime import date, datetime, timedelta
 from typing import Optional
 
+from .life_load import tagged_days_between
 from .sick_mode import sick_days_between
 
 NON_TRAINING_TYPES = ("Walk", "Hike")
@@ -120,6 +121,8 @@ def build_volume_trend(conn: sqlite3.Connection, today: Optional[date] = None) -
     label = get_volume_trend_label(conn, result["week_start"])
     if label is None and any(sick_days_between(conn, start, start + timedelta(days=6)) >= 3 for start in window[1:]):
         label = {"week_start": result["week_start"], "label": "illness_injury", "note": "Sick mode", "updated_at": None}
+    if label is None and any(tagged_days_between(conn, start, start + timedelta(days=6)) >= 3 for start in window[1:]):
+        label = {"week_start": result["week_start"], "label": "life", "note": "Life-load tags", "updated_at": None}
     return {
         **result,
         "status": "sliding",

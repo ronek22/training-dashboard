@@ -3,6 +3,7 @@ import sqlite3
 import unittest
 from datetime import date, timedelta
 
+from backend.app.services.life_load import set_life_load_day
 from backend.app.services.volume_trend import build_volume_trend, save_volume_trend_label
 
 SCHEMA = """
@@ -10,6 +11,10 @@ CREATE TABLE activities (id INTEGER PRIMARY KEY, date TEXT, type TEXT, duration_
 CREATE TABLE weekly_plans (week_start TEXT PRIMARY KEY, title TEXT, days_json TEXT);
 CREATE TABLE volume_trend_labels (
     week_start TEXT PRIMARY KEY, label TEXT NOT NULL, note TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE life_load_days (
+    date TEXT PRIMARY KEY, tags_json TEXT NOT NULL, note TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 """
@@ -59,6 +64,20 @@ class VolumeTrendTests(unittest.TestCase):
         self.assertEqual(trend["week_start"], week(1).isoformat())
         self.assertEqual(trend["drop_pct"], 51)
         self.assertIn("700 → 460 → 340", trend["message"])
+
+    def test_three_life_load_days_in_a_falling_week_read_as_life(self):
+        self.seed_slide()
+        for index in range(3):
+            set_life_load_day(self.conn, (week(1) + timedelta(days=index)).isoformat(), ["deadline"])
+        trend = build_volume_trend(self.conn, today=TODAY)
+        self.assertFalse(trend["alert"])
+        self.assertEqual((trend["label"]["label"], trend["label"]["note"]), ("life", "Life-load tags"))
+
+    def test_two_life_load_days_still_alert(self):
+        self.seed_slide()
+        for index in range(2):
+            set_life_load_day(self.conn, (week(1) + timedelta(days=index)).isoformat(), ["travel"])
+        self.assertTrue(build_volume_trend(self.conn, today=TODAY)["alert"])
 
     def test_walks_are_not_training_volume(self):
         self.seed_slide(recent=(700, 460, 340))

@@ -22,6 +22,7 @@
       <span class="day-heading">
         <span class="day-number">{{ day.day_of_month }}</span>
         <span v-if="showMonthLabel" class="day-month">{{ monthLabel }}</span>
+        <span v-if="lifeLoad.length" class="day-life" :title="lifeLoad.map((tag) => tag.label).join(', ')" aria-hidden="true"><span v-for="tag in lifeLoad" :key="tag.key">{{ tag.icon }}&#xFE0E;</span></span>
       </span>
       <span v-if="sick" class="day-sick" title="Sick day">{{ compact ? 'Sick' : 'Sick day' }}</span>
       <span v-else-if="loadTone === 'hard'" class="day-hard">Hard</span>
@@ -103,6 +104,7 @@ const props = defineProps({
   dragging: Boolean,
   dropState: { type: String, default: '' },
   sick: Boolean,
+  lifeLoad: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['select', 'drag-start', 'drag-end', 'drag-over', 'drop'])
@@ -158,7 +160,7 @@ const loadTone = computed(() => {
 })
 const monthLabel = computed(() => format(parseISO(props.day.date), 'MMM'))
 const showMonthLabel = computed(() => props.day.day_of_month === 1)
-const ariaLabel = computed(() => `${props.day.weekday} ${props.day.date}${props.sick ? ', sick day' : ''}, ${eventCount.value ? `${eventCount.value} training item${eventCount.value === 1 ? '' : 's'}` : 'nothing scheduled'}`)
+const ariaLabel = computed(() => `${props.day.weekday} ${props.day.date}${props.sick ? ', sick day' : ''}${props.lifeLoad.length ? `, ${props.lifeLoad.map((tag) => tag.label.toLowerCase()).join(' and ')}` : ''}, ${eventCount.value ? `${eventCount.value} training item${eventCount.value === 1 ? '' : 's'}` : 'nothing scheduled'}`)
 
 const activityTone = (type) => {
   const value = String(type || '').toLowerCase()
@@ -245,6 +247,7 @@ const planStatusLabel = (item) => {
 .day-number { min-width: 26px; height: 26px; display: grid; place-items: center; border-radius: 13px; color: var(--text-soft); font-family: var(--font-display); font-size: 13px; font-weight: 650; }
 .is-today .day-number { background:#3f66d6; color:#fff; }
 .day-month { color: var(--muted-soft); font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; }
+.day-life { display: inline-flex; gap: 2px; color: var(--life); font-size: 12px; line-height: 1; }
 .day-sick { padding: 1px 7px; border-radius: 999px; background: rgb(var(--sick-rgb) / .22); color: var(--sick); font-size: 11px; font-weight: 650; white-space: nowrap; }
 .day-hard { padding: 1px 7px; border-radius: 999px; background: rgba(243, 180, 77, .16); color:color-mix(in srgb, #ffc46b calc(100% - var(--dim)), #000); font-size: 11px; font-weight: 650; }
 

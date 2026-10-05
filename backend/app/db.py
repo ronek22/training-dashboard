@@ -510,6 +510,14 @@ def init_db():
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS life_load_days (
+            date TEXT PRIMARY KEY,
+            tags_json TEXT NOT NULL,
+            note TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS daily_checkins (
             date TEXT PRIMARY KEY,
             energy INTEGER NOT NULL,

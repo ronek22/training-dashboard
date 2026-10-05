@@ -4,6 +4,7 @@ from statistics import mean
 from typing import Optional
 
 from .checkins import latest_daily_checkin
+from .life_load import life_load_readiness_factor
 from .sick_mode import get_active_sick_period
 from .health_data import get_health_metric_history
 from .sleep_debt import BASELINE_NIGHTS, WINDOW_NIGHTS, build_sleep_debt
@@ -203,10 +204,15 @@ def build_readiness_score(
         factors = _physiology_factors(conn, today)
     except sqlite3.OperationalError:
         factors = []
-    checkin = _daily_checkin_factor(daily_checkin if daily_checkin is not None else latest_daily_checkin(conn), today)
+    morning_checkin = daily_checkin if daily_checkin is not None else latest_daily_checkin(conn)
+    checkin = _daily_checkin_factor(morning_checkin, today)
     checkin = checkin or _checkin_factor(latest_feedback, today)
     if checkin:
         factors.append(checkin)
+    # Today's check-in already rates sleep; the tag only speaks when there is none.
+    life_load = None if (morning_checkin or {}).get("date") == today.isoformat() else life_load_readiness_factor(conn, today)
+    if life_load:
+        factors.append(life_load)
     sick = get_active_sick_period(conn)
     if sick:
         below_neck = sick["severity"] == "below_neck"

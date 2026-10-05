@@ -4,6 +4,8 @@ from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 
+from .life_load import get_life_load_days, missed_on_tagged_days
+
 
 def list_reviews(conn):
     return [dict(row) for row in conn.execute(
@@ -70,6 +72,10 @@ def review_context(conn, week):
         'team_coaching': build_team_coaching(conn, week_start=week),
         'saved_team_analysis': read_saved_analysis(conn, week.isoformat()),
         'goal_review': monthly_goal_review(conn, week),
+        'life_load': {
+            'days': list(get_life_load_days(conn, start, (week + timedelta(days=6)).isoformat()).values()),
+            **missed_on_tagged_days(conn, week),
+        },
         'review_week': start,
         'week_end': (week + timedelta(days=6)).isoformat(),
         'timezone': 'Europe/Warsaw',

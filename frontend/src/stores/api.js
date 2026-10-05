@@ -96,6 +96,8 @@ export const useApi = () => ({
   setProteinTick: (date, hit) => api.put(`/nutrition/protein/${date}`, { hit }),
   labelVolumeTrend: (payload) => api.post('/volume-trend/label', payload),
   getSickDates: () => api.get('/sick-mode/dates'),
+  getLifeLoad: (params) => api.get('/life-load', { params }),
+  setLifeLoadDay: (date, payload) => api.put(`/life-load/${date}`, payload),
   getSickModeSession: (key) => api.get(`/sick-mode/sessions/${encodeURIComponent(key)}`),
   completeSickModeSession: (payload) => api.post('/sick-mode/complete', payload),
   startSickMode: (payload) => api.post('/sick-mode', payload),

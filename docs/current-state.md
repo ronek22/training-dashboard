@@ -24,6 +24,19 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Pre-session brief
+
+2026-10-04: `services/session_brief.py` gives each planned session a short, coach-style brief with three parts: purpose, how it should feel (an RPE range plus a description) and when to bail. It is deterministic and never changes the plan.
+
+- Rides: templates per workout category (recovery, endurance, tempo, sweet spot, threshold, VO2 max). Watt targets come from the structured workout and the stored FTP; heart-rate caps come from the configured zones.
+- Endurance rides anchor the drift rule to the athlete's own data. `usual_hr_at_power` takes the median HR while 30 s power is within ±8% of the target, skipping the first 10 minutes, across the last 90 days (3+ rides needed). The rule is "HR more than 10 bpm above that at the same power". If the usual HR sits above zone 2, a note says to ride by HR.
+- If the stored FTP is stale, a note gives the work watts at the recent FTP estimate from the records wall.
+- Runs: HR cap, walk-break and pain rules. Strength: reps in reserve, load drop and joint-pain swap. Recovery-type sessions use the title to choose between a recovery ride and mobility.
+- Plan guardrail sentences (stop / skip / cut / ease off, up to 180 characters) come first. The rules also cover an active recovery issue (unless the plan already does) and a low morning check-in. At most 3 bail rules are shown.
+- Sick days get no brief, since guided home sessions replace the plan.
+- `session_briefs` in `GET /dashboard`, plus `GET /session-brief?day=`. The Today card shows the brief in place of the old sentence-split guide, which remains as a fallback.
+- Verified with 7 unit tests, the full backend suite (only the existing `test_plan_and_coaching_surface_requirement_gaps_and_goal_tradeoffs` failure), 27 frontend tests and the build. The real week's briefs were checked against a copy of the database. Today is a sick day, so the Today card was checked in the browser with an injected brief and sick mode switched off only in that tab.
+
 ### Personal best wall
 
 2026-10-02: `services/personal_records.py` builds an all-time records wall from local data. It scans the cached streams of every ride and run, not just activities whose detail page was opened. Per-activity results are cached in `activity_record_efforts` and refreshed when the detail row's `updated_at` changes.

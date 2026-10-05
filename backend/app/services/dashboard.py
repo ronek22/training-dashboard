@@ -9,6 +9,7 @@ from .checkins import get_daily_checkin
 from .sick_mode import build_sick_mode, reconcile_sick_session_activities, sick_mode_coaching_context
 from .volume_trend import build_volume_trend
 from .personal_records import build_recent_records_context
+from .session_brief import build_briefs_for_date
 from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
 from .coaching import (
     build_athlete_coaching_brief,
@@ -1333,6 +1334,7 @@ def build_dashboard_data(
         "sick_mode": build_sick_mode(conn),
         "training_load": training_load,
         "weekly_plan": serialized_latest_plan,
+        "session_briefs": build_briefs_for_date(conn, serialized_latest_plan, datetime.now().date()),
         "execution_trend": execution_trend,
         "computed_streak": computed_streak,
         "recent_feedback": context_payload["recent_feedback"],

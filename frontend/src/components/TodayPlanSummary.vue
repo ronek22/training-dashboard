@@ -2,6 +2,31 @@
   <div class="plan-summary">
     <SummaryTiles :tiles="tiles" />
 
+    <section v-if="brief" class="brief" aria-label="Before you start">
+      <article class="brief-purpose">
+        <span class="brief-label">Purpose</span>
+        <p>{{ brief.purpose }}</p>
+      </article>
+      <article class="brief-feel">
+        <span class="brief-label">How it should feel</span>
+        <div class="rpe-row">
+          <strong>RPE {{ brief.feel.rpe }}</strong>
+          <span class="rpe-scale" aria-hidden="true"><i v-for="n in 10" :key="n" :class="{ on: rpeRange[0] <= n && n <= rpeRange[1] }"></i></span>
+        </div>
+        <p>{{ brief.feel.text }}</p>
+        <ul v-if="brief.targets?.length" class="brief-targets">
+          <li v-for="target in brief.targets" :key="target.label"><span>{{ target.label }}</span> {{ target.value }}</li>
+        </ul>
+      </article>
+      <article class="brief-bail">
+        <span class="brief-label">When to bail</span>
+        <ul>
+          <li v-for="line in brief.bail" :key="line">{{ line }}</li>
+        </ul>
+      </article>
+      <p v-for="note in brief.notes" :key="note" class="brief-note">{{ note }}</p>
+    </section>
+
     <figure v-if="workout" class="plan-profile" :aria-label="`Power profile for ${workout.name}`">
       <CyclingWorkoutProfile :workout="workout" />
       <figcaption>
@@ -49,6 +74,7 @@ const props = defineProps({
   workout: { type: Object, default: null },
   exercises: { type: Array, default: () => [] },
   guide: { type: Array, default: () => [] },
+  brief: { type: Object, default: null },
   form: { type: Number, default: null },
   checkIn: { type: Object, default: null },
 })
@@ -68,6 +94,12 @@ const FORM_ZONES = [
   { min: 5, max: 25, label: 'Fresh', color: '#76a6ff' },
   { min: 25, max: 40, label: 'Very fresh', color: '#bcb0f6' },
 ]
+
+// "6–7" -> [6, 7]; "9" -> [9, 9]
+const rpeRange = computed(() => {
+  const numbers = String(props.brief?.feel?.rpe || '').split(/[–-]/).map(Number).filter(Number.isFinite)
+  return numbers.length ? [numbers[0], numbers.at(-1)] : [0, 0]
+})
 
 const isStrength = computed(() => /strength|weight/i.test(props.plan.session_type || ''))
 
@@ -160,6 +192,24 @@ const tiles = computed(() => [durationTile.value, distanceTile.value, intensityT
 .plan-guide .is-guardrail { border-color: rgba(230, 185, 108, 0.2); }
 .plan-guide .is-guardrail span { color: var(--warning-text); }
 .plan-guide p { margin: 8px 0 0; color:var(--text-soft); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.brief { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1.25fr); gap: 10px; }
+.brief article { min-width: 0; padding: 13px 15px; border: 1px solid rgb(var(--tint-rgb) / 0.08); border-radius: 14px; background: rgb(var(--deep-rgb) / 0.42); }
+.brief-label { color: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.brief p { margin: 7px 0 0; color: var(--text-soft); font-size: 13px; line-height: 1.55; }
+.rpe-row { display: flex; align-items: center; gap: 10px; margin-top: 7px; }
+.rpe-row strong { font-family: var(--font-display); font-size: 17px; color: var(--text); white-space: nowrap; }
+.rpe-scale { display: flex; gap: 2px; flex: 1; max-width: 140px; }
+.rpe-scale i { flex: 1; height: 6px; border-radius: 2px; background: rgb(var(--ov-rgb) / 0.08); }
+.rpe-scale i.on { background: var(--accent); }
+.brief-targets { display: flex; flex-wrap: wrap; gap: 6px; margin: 9px 0 0; padding: 0; list-style: none; }
+.brief-targets li { padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--text); background: color-mix(in srgb, var(--accent) 14%, transparent); font-variant-numeric: tabular-nums; }
+.brief-targets span { font-weight: 400; color: var(--muted-soft); }
+.brief-bail { border-color: rgba(230, 185, 108, 0.2) !important; }
+.brief-bail .brief-label { color: var(--warning-text); }
+.brief-bail ul { display: grid; gap: 6px; margin: 7px 0 0; padding-left: 16px; color: var(--text-soft); font-size: 13px; line-height: 1.5; }
+.brief-bail li::marker { color: var(--warning-text); }
+.brief-note { grid-column: 1 / -1; margin: 0 !important; padding: 0 4px; color: var(--muted) !important; font-size: 12px !important; }
+@media (max-width: 900px) { .brief { grid-template-columns: 1fr; } }
 .plan-fuel { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: baseline; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
 .plan-fuel-label { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .plan-fuel-stats { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 12px; color: var(--muted); }

@@ -475,6 +475,12 @@ const checkInMetrics = computed(() => {
   ]
 })
 
+const todayBrief = computed(() => {
+  const briefs = dashboard.value?.session_briefs || []
+  if (!todayPlan.value || todayPlanCompleted.value || todayActivityCards.value.length) return null
+  return briefs.find((brief) => brief.session_id === todayPlan.value.session_id) || briefs[0] || null
+})
+
 const todaySessionGuide = computed(() => {
   if (!todayPlan.value || todayPlanCompleted.value || todayActivityCards.value.length) return []
   const sentences = splitPlanSentences(todayPlan.value.details)
@@ -627,13 +633,14 @@ const todayCard = computed(() => {
     iconType: isIconSessionType(plan.session_type) ? plan.session_type : '',
     kicker: `Today · ${plan.workout_intent_label || sessionTypeLabel(plan.session_type)}`,
     title: plan.title || sessionTypeLabel(plan.session_type),
-    subtitle: splitPlanSentences(plan.details)[0] && !todaySessionGuide.value.length ? splitPlanSentences(plan.details)[0] : '',
+    subtitle: splitPlanSentences(plan.details)[0] && (todayBrief.value || !todaySessionGuide.value.length) ? splitPlanSentences(plan.details)[0] : '',
     plan,
     plannedExercises: isStrength ? buildStrengthPlanDraft(plan, strengthTemplates.value).exercises : [],
     form: trainingLoad.value?.current ? Number(trainingLoad.value.current.form || 0) : null,
     checkIn: latestSubjectiveState.value,
     workout: todayCyclingWorkout.value,
-    guide: todaySessionGuide.value,
+    guide: todayBrief.value ? [] : todaySessionGuide.value,
+    brief: todayBrief.value,
     reasons: decisionReasons.value,
     activities: todayActivityCards.value,
     primaryAction: isStrength

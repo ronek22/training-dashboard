@@ -56,6 +56,7 @@
       :workout="workout"
       :exercises="plannedExercises"
       :guide="guide"
+      :brief="brief"
       :form="form"
       :check-in="checkIn"
     />
@@ -142,6 +143,7 @@ const props = defineProps({
   comparison: { type: Object, default: null },
   workout: { type: Object, default: null },
   guide: { type: Array, default: () => [] },
+  brief: { type: Object, default: null },
   reasons: { type: Array, default: () => [] },
   activities: { type: Array, default: () => [] },
   primaryAction: { type: Object, default: null },

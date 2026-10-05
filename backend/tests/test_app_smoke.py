@@ -1880,6 +1880,45 @@ bad-date,Squat,5,100,60,,,,false,,1
 
         self.assertIsNone(self.client.put(f"/life-load/{tuesday}", json={"tags": []}).json()["day"])
 
+    def call_tool(self, name, arguments):
+        response = self.client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": arguments}})
+        self.assertEqual(response.status_code, 200)
+        return response.json()["result"]
+
+    def test_life_load_and_minimum_week_mcp_tools(self):
+        names = {tool["name"] for tool in self.client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"}).json()["result"]["tools"]}
+        self.assertTrue({"get_life_load", "set_life_load_day", "preview_minimum_week", "set_minimum_week"} <= names)
+
+        today = date.today()
+        week_start = today + timedelta(days=7 - today.weekday())
+        thursday = (week_start + timedelta(days=3)).isoformat()
+        saved = self.call_tool("set_life_load_day", {"date": thursday, "tags": ["travel"], "note": "Berlin"})
+        self.assertEqual(saved["structuredContent"]["day"]["labels"], ["Travel"])
+        self.assertIn("Travel", saved["content"][0]["text"])
+        self.assertTrue(self.call_tool("set_life_load_day", {"date": thursday, "tags": ["vacation"]})["isError"])
+        listed = self.call_tool("get_life_load", {"start": week_start.isoformat(), "end": thursday})["structuredContent"]
+        self.assertEqual([(day["date"], day["note"]) for day in listed["days"]], [(thursday, "Berlin")])
+
+        days = [
+            {"date": (week_start + timedelta(days=index)).isoformat(), "label": (week_start + timedelta(days=index)).strftime("%a"),
+             "session_type": kind, "workout_intent": "interval" if kind == "Ride" else None,
+             "title": "Strength" if kind == "WeightTraining" else "Ride session", "target_duration_min": 70}
+            for index, kind in enumerate(["WeightTraining", "Ride", "WeightTraining", "Ride", "Ride", "WeightTraining", "Ride"])
+        ]
+        self.assertEqual(self.client.post("/plans/weekly", json={"week_start": week_start.isoformat(), "title": "Full", "days": days}).status_code, 201)
+        preview = self.call_tool("preview_minimum_week", {"week_start": week_start.isoformat()})["structuredContent"]
+        self.assertEqual(next(day for day in preview["days"] if day["date"] == thursday)["session_type"], "Rest")
+
+        shrunk = self.call_tool("set_minimum_week", {"active": True, "week_start": week_start.isoformat()})
+        self.assertFalse(shrunk.get("isError"))
+        self.assertIn("Minimum viable week on", shrunk["content"][0]["text"])
+        self.assertTrue(next(plan for plan in self.client.get("/plans/weekly").json() if plan["week_start"] == week_start.isoformat())["minimum_week"]["active"])
+        restored = self.call_tool("set_minimum_week", {"active": False, "week_start": week_start.isoformat()})
+        self.assertIn("restored", restored["content"][0]["text"])
+        again = self.call_tool("set_minimum_week", {"active": False, "week_start": week_start.isoformat()})
+        self.assertTrue(again["isError"])
+        self.assertIn("not a minimum viable week", again["content"][0]["text"])
+
     def test_minimum_viable_week_round_trip(self):
         today = date.today()
         week_start = today + timedelta(days=7 - today.weekday())

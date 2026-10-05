@@ -36,13 +36,17 @@ def call_remote_mcp_tool(name: str, arguments: Optional[dict] = None):
             "arguments": arguments or {},
         },
     }
+    # The backend mounts its Streamable HTTP endpoint at /mcp/ and only answers clients that accept JSON.
     with httpx.Client(timeout=20) as client:
-        r = client.post(f"{API_BASE}/mcp", json=payload)
+        r = client.post(f"{API_BASE}/mcp/", json=payload, headers={"Accept": "application/json, text/event-stream"})
         r.raise_for_status()
         body = r.json()
     if "error" in body:
         raise RuntimeError(body["error"].get("message", "Unknown MCP error"))
-    return body["result"]["structuredContent"]
+    result = body["result"]
+    if result.get("isError"):
+        raise RuntimeError(" ".join(item.get("text", "") for item in result.get("content", [])) or "MCP tool failed")
+    return result["structuredContent"]
 
 TOOLS = [
     {
@@ -208,6 +212,91 @@ TOOLS = [
         "name": "get_return_to_run",
         "description": "Read the return-to-run tracker: current stage and its prescription, the next step (rest, log a score, ready, flare, graduated), recent runs with during and next-morning symptom scores, and the progression rules",
         "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "get_life_load",
+        "description": "Read life-load tags (travel, deadline, family, poor sleep, late night) on days between start and end (default: 120 days back to 60 ahead). These days limit time and attention, not the body: keep intervals, tempo, race-specific and 90+ minute sessions off them",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "start": {
+                    "type": "string",
+                    "description": "First date YYYY-MM-DD"
+                },
+                "end": {
+                    "type": "string",
+                    "description": "Last date YYYY-MM-DD"
+                }
+            }
+        }
+    },
+    {
+        "name": "set_life_load_day",
+        "description": "Set the life-load tags for one day when the athlete mentions travel, a deadline, family commitments, poor sleep or a late night. Replaces that day's tags, so read get_life_load first to keep existing ones; an empty list clears the day. Works ahead of time or afterwards",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "description": "Date YYYY-MM-DD"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "travel",
+                            "deadline",
+                            "family",
+                            "poor_sleep",
+                            "late_night"
+                        ]
+                    },
+                    "description": "All tags for the day"
+                },
+                "note": {
+                    "type": "string",
+                    "description": "Optional short note, e.g. where the travel is"
+                }
+            },
+            "required": [
+                "date",
+                "tags"
+            ]
+        }
+    },
+    {
+        "name": "preview_minimum_week",
+        "description": "Preview the minimum viable week for a plan week without changing it: anchor lifts as short sessions, two easy rides, rest elsewhere, counting what is already done; travel and sick days rest. Returns targets, the proposed days and a diff",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "week_start": {
+                    "type": "string",
+                    "description": "Monday date YYYY-MM-DD; defaults to the current week"
+                }
+            }
+        }
+    },
+    {
+        "name": "set_minimum_week",
+        "description": "Turn the minimum viable week on (shrink the remaining open days of the week) or off (restore the open days from the plan saved before it). Only when the athlete asked for it, e.g. when life blows up. Past and completed days are never changed",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean",
+                    "description": "true shrinks the week, false restores the full week"
+                },
+                "week_start": {
+                    "type": "string",
+                    "description": "Monday date YYYY-MM-DD; defaults to the current week"
+                }
+            },
+            "required": [
+                "active"
+            ]
+        }
     },
     {
         "name": "get_what_worked",
@@ -502,6 +591,10 @@ def handle_tool(name: str, args: dict) -> str:
 
         elif name == "get_return_to_run":
             result = call_api("GET", "/return-to-run")
+            return json.dumps(result, indent=2)
+
+        elif name in ("get_life_load", "set_life_load_day", "preview_minimum_week", "set_minimum_week"):
+            result = call_remote_mcp_tool(name, args)
             return json.dumps(result, indent=2)
 
         elif name == "get_what_worked":

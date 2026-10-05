@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta
 
 
 MCP_SERVER_INFO = {"name": "training-dashboard", "version": "1.3.0"}
@@ -380,6 +381,76 @@ MCP_TOOLS = [
             "idempotentHint": True,
         },
         "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_life_load",
+        "description": "Read life-load tags (travel, deadline, family, poor sleep, late night) on days between start and end (default: 120 days back to 60 ahead). These days limit time and attention, not the body: keep intervals, tempo, race-specific and 90+ minute sessions off them",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "start": {"type": "string", "description": "First date YYYY-MM-DD"},
+                "end": {"type": "string", "description": "Last date YYYY-MM-DD"},
+            },
+        },
+    },
+    {
+        "name": "set_life_load_day",
+        "description": "Set the life-load tags for one day when the athlete mentions travel, a deadline, family commitments, poor sleep or a late night. Replaces that day's tags, so read get_life_load first to keep existing ones; an empty list clears the day. Works ahead of time or afterwards",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "date": {"type": "string", "description": "Date YYYY-MM-DD"},
+                "tags": {"type": "array", "items": {"type": "string", "enum": ["travel", "deadline", "family", "poor_sleep", "late_night"]}, "description": "All tags for the day"},
+                "note": {"type": "string", "description": "Optional short note, e.g. where the travel is"},
+            },
+            "required": ["date", "tags"],
+        },
+    },
+    {
+        "name": "preview_minimum_week",
+        "description": "Preview the minimum viable week for a plan week without changing it: anchor lifts as short sessions, two easy rides, rest elsewhere, counting what is already done; travel and sick days rest. Returns targets, the proposed days and a diff",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "week_start": {"type": "string", "description": "Monday date YYYY-MM-DD; defaults to the current week"},
+            },
+        },
+    },
+    {
+        "name": "set_minimum_week",
+        "description": "Turn the minimum viable week on (shrink the remaining open days of the week) or off (restore the open days from the plan saved before it). Only when the athlete asked for it, e.g. when life blows up. Past and completed days are never changed",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": False,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "active": {"type": "boolean", "description": "true shrinks the week, false restores the full week"},
+                "week_start": {"type": "string", "description": "Monday date YYYY-MM-DD; defaults to the current week"},
+            },
+            "required": ["active"],
+        },
     },
     {
         "name": "get_what_worked",
@@ -924,6 +995,38 @@ def call_mcp_tool(
 
             data = build_return_to_run(conn)
             message = json.dumps(data, indent=2)
+
+        elif name == "get_life_load":
+            from .life_load import get_life_load_days, public_tags
+
+            today = datetime.now().date()
+            start = args.get("start") or (today - timedelta(days=120)).isoformat()
+            end = args.get("end") or (today + timedelta(days=60)).isoformat()
+            data = {"tags": public_tags(), "days": list(get_life_load_days(conn, start, end).values())}
+            message = json.dumps(data, indent=2)
+
+        elif name == "set_life_load_day":
+            from .life_load import set_life_load_day
+
+            day = set_life_load_day(conn, args["date"], list(args.get("tags") or []), args.get("note"))
+            data = {"date": args["date"], "day": day}
+            message = f"Life load on {args['date']}: {', '.join(day['labels']) if day else 'cleared'}"
+
+        elif name in ("preview_minimum_week", "set_minimum_week"):
+            from .minimum_week import apply_minimum_week, preview_minimum_week, restore_full_week
+
+            today = datetime.now().date()
+            week_start = args.get("week_start") or (today - timedelta(days=today.weekday())).isoformat()
+            if name == "preview_minimum_week":
+                data = preview_minimum_week(conn, week_start)
+                message = json.dumps(data, indent=2)
+            elif args["active"]:
+                result = apply_minimum_week(conn, week_start)
+                data = {key: result[key] for key in ("week_start", "summary", "targets", "done", "shortfall", "changed_dates")}
+                message = f"Minimum viable week on for {week_start}: {result['summary']}"
+            else:
+                data = {"week_start": week_start, **{key: value for key, value in restore_full_week(conn, week_start).items() if key != "plan"}}
+                message = f"Full week restored for {week_start}"
 
         elif name == "get_what_worked":
             from .what_worked import build_what_worked

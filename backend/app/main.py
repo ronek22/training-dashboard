@@ -34,6 +34,7 @@ from .routers.nutrition import router as nutrition_router
 from .routers.records import router as records_router
 from .routers.session_brief import router as session_brief_router
 from .routers.what_worked import router as what_worked_router
+from .routers.return_to_run import router as return_to_run_router
 from .services.health_data import apply_health_data_import
 
 mcp_app = build_mcp_app(**build_mcp_router_dependencies())
@@ -104,6 +105,7 @@ app.include_router(nutrition_router)
 app.include_router(records_router)
 app.include_router(session_brief_router)
 app.include_router(what_worked_router)
+app.include_router(return_to_run_router)
 
 init_db()
 app.mount("/mcp", mcp_app)

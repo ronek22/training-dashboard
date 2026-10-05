@@ -371,6 +371,17 @@ MCP_TOOLS = [
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
+        "name": "get_return_to_run",
+        "description": "Read the return-to-run tracker: current stage and its prescription, the next step (rest, log a score, ready, flare, graduated), recent runs with during and next-morning symptom scores, and the progression rules",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "get_what_worked",
         "description": "Read the athlete's \"what worked\" memory: loved/fine/hated session tags and RPE-versus-target compared across time of day, indoor/outdoor, pre-session fuel, sleep, morning energy and rest; returns confirmed and emerging patterns with evidence",
         "annotations": {
@@ -906,6 +917,12 @@ def call_mcp_tool(
             from .power_trends import build_cycling_power_coaching_context
 
             data = build_cycling_power_coaching_context(conn)
+            message = json.dumps(data, indent=2)
+
+        elif name == "get_return_to_run":
+            from .return_to_run import build_return_to_run
+
+            data = build_return_to_run(conn)
             message = json.dumps(data, indent=2)
 
         elif name == "get_what_worked":

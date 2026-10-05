@@ -601,6 +601,11 @@
           </div>
         </div>
 
+        <div v-if="!isHistoricalPlan(plan) && plan.run_guardrail" class="run-guardrail" role="status">
+          <strong>{{ plan.run_guardrail.label }}</strong>
+          <span>{{ plan.run_guardrail.summary }}</span>
+        </div>
+
         <details v-if="plan.overview" class="week-purpose"><summary>Week focus and coaching notes</summary><p>{{ plan.overview }}</p></details>
 
         <details v-if="!isHistoricalPlan(plan) && plan.goal_context?.active_goals?.length" class="goal-context-panel">
@@ -2365,6 +2370,9 @@ const savePlanLink = async (day) => {
 </script>
 
 <style scoped>
+.run-guardrail { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 12px 0; padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(243, 180, 77, 0.35); border-left: 3px solid var(--warning); background: rgba(243, 180, 77, 0.08); font-size: 13px; }
+.run-guardrail strong { color: var(--warning-text); }
+.run-guardrail span { color: var(--text-soft); }
 .codex-plan-action {
   display: grid;
   justify-items: end;

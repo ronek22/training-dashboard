@@ -205,6 +205,11 @@ TOOLS = [
         "inputSchema": {"type": "object", "properties": {}}
     },
     {
+        "name": "get_return_to_run",
+        "description": "Read the return-to-run tracker: current stage and its prescription, the next step (rest, log a score, ready, flare, graduated), recent runs with during and next-morning symptom scores, and the progression rules",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
         "name": "get_what_worked",
         "description": "Read the athlete's \"what worked\" memory: loved/fine/hated session tags and RPE-versus-target compared across time of day, indoor/outdoor, pre-session fuel, sleep, morning energy and rest; returns confirmed and emerging patterns with evidence",
         "inputSchema": {"type": "object", "properties": {}}
@@ -493,6 +498,10 @@ def handle_tool(name: str, args: dict) -> str:
 
         elif name == "get_cycling_power_profile":
             result = call_remote_mcp_tool(name)
+            return json.dumps(result, indent=2)
+
+        elif name == "get_return_to_run":
+            result = call_api("GET", "/return-to-run")
             return json.dumps(result, indent=2)
 
         elif name == "get_what_worked":

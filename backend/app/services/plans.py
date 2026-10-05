@@ -1181,8 +1181,21 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
         "latest_revision": latest_revision,
         "revisions": revisions,
         "goal_context": goal_context,
+        "run_guardrail": _run_guardrail(conn, days, row["week_start"]),
         "workout_template_programs": workout_template_programs,
     }
+
+
+def _run_guardrail(conn: Optional[sqlite3.Connection], days: list[dict], week_start: str) -> Optional[dict]:
+    """Flag weeks that raise both run distance and pace (return-to-run rule)."""
+    if conn is None:
+        return None
+    from .return_to_run import check_run_progression
+
+    try:
+        return check_run_progression(conn, days, week_start)
+    except sqlite3.OperationalError:
+        return None
 
 
 def list_weekly_plans_data(conn: sqlite3.Connection, limit: int = 8) -> list[dict]:

@@ -24,6 +24,20 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Return-to-run tracker
+
+2026-10-05: `services/return_to_run.py` runs a six-stage return to running, driven by symptom scores: run/walk 1:2 → 2:1 → 5:1 → continuous 20 min → continuous 30–40 min → back to normal. The athlete switches it on with a starting stage and the symptom to watch (default heel). It never edits the plan.
+
+- Scores: "during" and "next morning" (0–10) per run in `run_symptom_checks` (`PUT /activities/{id}/symptoms`). The feedback form's pain score stands in for "during" when no symptom score was logged.
+- Replay since the start date. Clean (≤ 2 during and the next morning): 2 in a row advance a stage, and the latest needs its morning score. Flare (≥ 4 during or ≥ 3 the next morning): one stage down. A break of 21+ days between runs, or since the last run, also costs a stage. Otherwise the stage holds.
+- Next step: needs a score, needs the morning score, flare, rest day (one full day between runs at stages 1–3), ready, or graduated (3 clean full runs in a row at stage 6, meaning symptoms look resolved).
+- Suggested start: the last pain-free run's duration maps to a stage, minus one after 3+ weeks off; recent pain above 2/10 starts at stage 1. On real data this suggests stage 3 (28 min at 0/10 on 9 Sep, 26 days ago).
+- Easy and long runs with average HR above the run zone 2 cap (162 bpm) are marked partial in execution quality. Every run since June averaged 162–180 bpm.
+- Plans get `run_guardrail` when planned run minutes rise 10%+ (and by 10+ min) over last week's actual runs and faster run sessions are added in the same week. It is shown as a banner on the Plan page. This is a warning on the saved plan, not a block.
+- Coach: MCP `get_return_to_run`; `return_to_run` in `get_recent_context`. The weekly planning prompt plans run days only from the current stage and respects its next step. Run briefs show the stage, its prescription and a stop-at-3/10 rule.
+- UI: a Return to run panel at the top of Recovery, with a start form and suggested stage; when active, a stage ladder, the next step and per-run scoring with HR-cap, longer-than-stage and after-a-break flags.
+- Verified with 9 unit tests and `just check` (412 backend, 26 helper and 27 frontend tests, plus the build). The start form was viewed on real data without starting the program. The active panel was viewed with a state built on a database copy and injected into the browser tab only.
+
 ### One trustworthy check
 
 2026-10-05: `just check` runs the frontend behavior tests, the frontend build, the backend suite and the four helper-script test files, stopping at the first failure. `just setup-checks` creates the backend virtualenv and runs `npm ci` for a fresh checkout. Two smoke tests depended on the weekday and are fixed without weakening their assertions:

@@ -194,7 +194,10 @@ workout from get_cycling_workout_library whose intent and duration fit the
 day; leave it empty for unstructured or outdoor rides. get_recent_context
 includes what_worked: when the schedule allows, place sessions where the
 athlete's confirmed patterns say they went better, and treat emerging patterns
-as hints only. This request explicitly
+as hints only. When get_recent_context shows return_to_run as active, plan run
+days only from the current stage's prescription and respect its next step
+(rest days, missing scores, flares); never raise run distance and pace in the
+same week. This request explicitly
 authorizes creating or updating the current weekly plan, so do not ask for
 confirmation. After writing, verify the saved result with get_weekly_plans and
 provide a concise summary.

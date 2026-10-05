@@ -5,6 +5,8 @@
       <button class="primary" :disabled="busy" @click="startNew()">+ Something hurts</button>
     </header>
 
+    <ReturnToRunPanel />
+
     <div v-if="error" class="error-banner" role="alert">{{ error }} <button @click="refresh">Reload</button></div>
     <p v-if="loading" class="empty" role="status">Loading your injuries…</p>
     <div v-else class="recovery-layout">
@@ -157,6 +159,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import ReturnToRunPanel from '../components/ReturnToRunPanel.vue'
 import { useApi } from '../stores/api'
 import { runRecoveryReply } from '../recovery-chat.mjs'
 

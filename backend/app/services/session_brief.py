@@ -284,6 +284,21 @@ def _run_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, An
         targets.append({"label": "HR ceiling", "value": f"~{z3} bpm on reps"})
         bail.append("If you cannot match the first rep's pace by rep 3, finish with easy running instead.")
     bail.append("Any sharp pain or a change in your stride: stop and walk home.")
+    notes = []
+    try:
+        from .return_to_run import FLARE_DURING, build_return_to_run
+
+        program = build_return_to_run(conn, today)
+    except sqlite3.OperationalError:
+        program = {"active": False}
+    if program.get("active"):
+        stage = program["stage"]
+        symptom = program["program"]["symptom"].lower()
+        purpose = f"Return to run, stage {stage['stage']} of {len(program['stages'])}: {stage['name']}."
+        notes.append(f"Stage prescription: {stage['prescription']}")
+        bail.insert(0, f"Stop and walk home if {symptom} pain reaches {FLARE_DURING - 1}/10, then log it.")
+        if program["next"]["status"] in ("rest", "needs_morning", "flare", "needs_score"):
+            notes.insert(0, program["next"]["message"])
     return {
         "sport": "run",
         "kind": intent,
@@ -291,7 +306,7 @@ def _run_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, An
         "feel": {"rpe": rpe, "text": feel},
         "targets": targets,
         "bail": bail,
-        "notes": [],
+        "notes": notes,
         "basis": {},
     }
 

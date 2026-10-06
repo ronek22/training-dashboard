@@ -137,6 +137,10 @@ class LinkedConversationTests(unittest.TestCase):
         self.assertEqual((day["context_kind"], day["context_id"]), ("day", "2026-10-07"))
         with self.assertRaisesRegex(ValueError, "ISO date"):
             open_context_conversation_data(self.conn, "day", "today", "Nope")
+        week = open_context_conversation_data(self.conn, "week", "2026-10-05", "Week of 5 Oct: wins and focus")
+        self.assertEqual(week["context_kind"], "week")
+        with self.assertRaisesRegex(ValueError, "Monday"):
+            open_context_conversation_data(self.conn, "week", "2026-10-07", "Nope")
 
 
 if __name__ == "__main__":

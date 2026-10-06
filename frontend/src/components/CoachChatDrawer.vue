@@ -49,7 +49,7 @@
                 @click="selectConversation(conversation.id)"
               >
                 <strong>{{ conversation.title }}</strong>
-                <span><b v-if="conversation.context_kind" class="conversation-tag">{{ conversation.context_kind === 'day' ? 'Day' : 'Session' }}</b>{{ conversation.message_count }} {{ conversation.message_count === 1 ? 'message' : 'messages' }}</span>
+                <span><b v-if="conversation.context_kind" class="conversation-tag">{{ CONTEXT_TAGS[conversation.context_kind] || 'Linked' }}</b>{{ conversation.message_count }} {{ conversation.message_count === 1 ? 'message' : 'messages' }}</span>
               </button>
               <button
                 class="conversation-delete"
@@ -76,6 +76,12 @@
                 to="/"
                 @click="closeDrawer"
               >About this day · open Today →</router-link>
+              <router-link
+                v-else-if="activeConversation?.context_kind === 'week'"
+                class="coach-context-link"
+                to="/weekly-review"
+                @click="closeDrawer"
+              >About this week · open the weekly review →</router-link>
               <div v-if="chatLoading" class="coach-welcome">Loading conversations…</div>
               <div v-else-if="!chatMessages.length" class="coach-welcome">
                 <span class="welcome-mark" aria-hidden="true">✦</span>
@@ -237,6 +243,8 @@ const chatInputElement = ref(null)
 let componentActive = true
 let progressClock = null
 let pendingPollWait = null
+
+const CONTEXT_TAGS = { activity: 'Session', day: 'Day', week: 'Week' }
 
 const activeConversation = computed(() => chatConversations.value.find(item => item.id === activeConversationId.value) || null)
 

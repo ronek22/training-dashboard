@@ -1,9 +1,11 @@
 from datetime import date
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
 from ..db import get_db
 from ..models.weekly_reviews import WeeklyReview
+from ..services.week_wins import build_week_wins
 from ..services.weekly_reviews import list_reviews, monthly_goal_review, save_review, review_context, review_status
 
 router = APIRouter()
@@ -54,5 +56,15 @@ def get_weekly_review_goals(week_start: date):
     conn = get_db()
     try:
         return {'goals': monthly_goal_review(conn, week_start)}
+    finally:
+        conn.close()
+
+
+@router.get('/reviews/weekly/wins')
+def get_week_wins(week_start: Optional[date] = None, day: Optional[date] = None):
+    """Three wins and one focus; ``day`` is the browser's local date (the container clock is UTC)."""
+    conn = get_db()
+    try:
+        return build_week_wins(conn, week_start, today=day)
     finally:
         conn.close()

@@ -45,7 +45,7 @@ def list_chat_conversations_data(
     return [dict(row) for row in list_chat_conversation_rows(conn, context_kind, context_id)]
 
 
-CHAT_CONTEXT_KINDS = {"activity", "day"}
+CHAT_CONTEXT_KINDS = {"activity", "day", "week"}
 
 
 def _validate_context(context_kind: str, context_id: str) -> tuple[str, str]:
@@ -55,11 +55,14 @@ def _validate_context(context_kind: str, context_id: str) -> tuple[str, str]:
         raise ValueError(f"context_kind must be one of: {', '.join(sorted(CHAT_CONTEXT_KINDS))}")
     if not identifier or len(identifier) > 64:
         raise ValueError("context_id is invalid")
-    if kind == "day":
+    if kind in {"day", "week"}:
         try:
-            identifier = date.fromisoformat(identifier).isoformat()
+            parsed = date.fromisoformat(identifier)
         except ValueError as exc:
-            raise ValueError("context_id must be an ISO date for a day") from exc
+            raise ValueError(f"context_id must be an ISO date for a {kind}") from exc
+        if kind == "week" and parsed.weekday() != 0:
+            raise ValueError("context_id for a week must be its Monday")
+        identifier = parsed.isoformat()
     return kind, identifier
 
 

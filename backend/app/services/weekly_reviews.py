@@ -85,9 +85,19 @@ def review_context(conn, week):
             JOIN activities a ON a.id = f.activity_id WHERE a.date >= ? AND a.date < ?''', (baseline, end)),
         'coaching_notes': rows('SELECT * FROM coach_notes WHERE date >= ? AND date < ? ORDER BY date', (baseline, end)),
         'prior_reviews': rows("SELECT * FROM weekly_reviews WHERE generator = 'codex-cli' AND week_start >= ? AND week_start < ? ORDER BY week_start DESC", (baseline, start)),
+        # The app's evidence-based wins for the week, so "improved" starts from what really went well.
+        'week_wins': _week_wins_for_review(conn, week),
         'previous_change': next((r['proposed_change'] for r in list_reviews(conn)
                                  if r['week_start'] == (week - timedelta(days=7)).isoformat()), None),
     }
+
+
+def _week_wins_for_review(conn, week):
+    from .week_wins import build_week_wins
+    try:
+        return build_week_wins(conn, week, today=week + timedelta(days=7))['wins']
+    except Exception:  # The review must still run if a win cannot be computed.
+        return []
 
 
 def save_review(conn, review):

@@ -112,6 +112,9 @@
         :strength-series="dashboard.strength_year_series || []"
       />
 
+      <!-- Sunday: this week's wins; Monday: last week's, before the new week has anything. -->
+      <WeekWinsCard v-if="isSunday || isMonday" compact :start-on-last-week="isMonday" />
+
       <RecentRecords />
 
       <TeamCoaching v-if="isSunday" compact />
@@ -152,6 +155,7 @@ import ProteinTick from '../components/ProteinTick.vue'
 import VolumeTrendAlert from '../components/VolumeTrendAlert.vue'
 import SickModeCard from '../components/SickModeCard.vue'
 import DownshiftCard from '../components/DownshiftCard.vue'
+import WeekWinsCard from '../components/WeekWinsCard.vue'
 import { useApi } from '../stores/api'
 import { buildStrengthPlanDraft } from '../strength-plan-draft.mjs'
 
@@ -279,6 +283,7 @@ const trainingLoad = computed(() => dashboard.value?.training_load || null)
 const weeklyDirection = computed(() => dashboard.value?.weekly_direction || null)
 // The full weekly review card belongs to review day; other days link to it from the week header.
 const isSunday = computed(() => new Date().getDay() === 0)
+const isMonday = computed(() => new Date().getDay() === 1)
 const todayPlan = computed(() => weeklyPlan.value?.days?.find((day) => day.date === todayKey.value) || dailyRecommendation.value?.today_plan || null)
 const tomorrowPlan = computed(() => weeklyPlan.value?.days?.find((day) => day.date === tomorrowKey.value) || null)
 const todayPlanCompleted = computed(() => completedPlanStatuses.has(todayPlan.value?.comparison?.status))

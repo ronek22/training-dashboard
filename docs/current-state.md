@@ -24,6 +24,16 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Three wins, one focus
+
+2026-10-07: the third coach moment. Each week gets up to three wins and one focus, built from the athlete's own data, so it shows instantly on any day.
+
+- `services/week_wins.py` (`GET /reviews/weekly/wins?week_start=&day=`): wins are the strongest session wins of the week (the same picker as the Activity Detail card, score 40+, one per session; walks are left out), weekly goals met (an anchor goal scores highest), every or most planned sessions done (from the plan comparison), and moving every day (3+ days so far). If nothing qualifies but something was logged, a "N min of movement in the bank" fallback. The focus is the saved Sunday review's proposed change when there is one; mid-week, the first open weekly goal (anchor first) with the days left; otherwise the most important "next time" from the week's flagged session reads; otherwise "Keep the rhythm".
+- Results are cached in memory, keyed on everything they depend on (the week's activities, feedback and detail, plan, saved review, goals and logged strength sets). A full week takes about 0.25 s to build.
+- The Sunday AI review's context now carries `week_wins`, and its prompt asks it to lead "improved" with the most meaningful of them, never adding wins the data doesn't show.
+- UI: `WeekWinsCard.vue` at the top of Weekly Review → This week, with a This week / Last week switch (it opens on last week on Monday and Tuesday), and on the Dashboard on Sunday (this week) and Monday (last week). Wins link to their session; "Talk it through" opens a chat linked to the week (`context_kind: "week"`, its Monday), and the helper tells Codex to help turn the focus into sessions.
+- Verified with 5 tests on a real schema (anchor goal and review focus, mid-week goal focus and moving every day, the fallback, at most three wins one per session, the cache noticing a new session), a week-chat test, helper and frontend tests, and `just check`. On real data: 28 Sep week shows the lift anchor kept (4 against 3), 7 of 7 planned sessions done and 1 of 5 lifts up, with the Sunday review's change as the focus; this week so far shows 73 min in the bank and "Lift three times per week: 2 to go". Checked at 1512 px and 375 px.
+
 ### "Feeling flat" / "Short on time" on Today
 
 2026-10-07: the second coach moment. A planned Today card has a "Going in" row with two chips; each one opens two or three ready-made versions of today's session instead of a blank chat.

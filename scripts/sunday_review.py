@@ -49,6 +49,10 @@ use not_tried only with evidence that the suggestion was not followed. Explain t
 evidence or uncertainty in outcome_reason. Do not equate more volume with improvement
 or missing activity data with a missed workout. Acknowledge missing data and do not
 invent progress, feedback, or compliance. Rest days are not missed sessions.
+week_wins lists the week's strongest wins found by the app from the athlete's own data
+(records, progress at the same effort, weekly goals met, planned sessions done). Lead
+"improved" with the most meaningful of them when they hold up against the rest of the
+context, in your own words; never add wins that the data does not show.
 life_load lists days tagged travel, deadline, family, poor sleep or late night, and
 which missed sessions fell on them. When it has a summary, use it in missed and treat
 those misses as life load, not a motivation or consistency problem.

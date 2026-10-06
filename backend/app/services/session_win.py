@@ -95,7 +95,13 @@ def _opener(activity: dict, win: dict, read: dict) -> str:
     return "\n\n".join(lines)
 
 
-def build_session_win(conn: sqlite3.Connection, detail_payload: dict, session_read: Optional[dict] = None) -> Optional[dict[str, Any]]:
+def build_session_win(
+    conn: sqlite3.Connection,
+    detail_payload: dict,
+    session_read: Optional[dict] = None,
+    record_ranks: Optional[dict[str, list[dict]]] = None,
+) -> Optional[dict[str, Any]]:
+    """``record_ranks`` lets a caller scoring many sessions compute the record wall once."""
     activity = detail_payload.get("activity") or {}
     if not activity.get("id"):
         return None
@@ -107,7 +113,8 @@ def build_session_win(conn: sqlite3.Connection, detail_payload: dict, session_re
         candidates.append({"score": 60, "kind": "consistency", "headline": "Kept moving while sick",
                            "detail": "A gentle session that keeps the habit without digging a hole."})
     try:
-        candidates.extend(_record_wins(build_activity_record_ranks(conn).get(str(activity["id"]), [])))
+        ranks = record_ranks if record_ranks is not None else build_activity_record_ranks(conn)
+        candidates.extend(_record_wins(ranks.get(str(activity["id"]), [])))
     except (sqlite3.Error, KeyError, ValueError):
         pass
     tough = _tough_day_win(detail_payload, read)
@@ -128,6 +135,7 @@ def build_session_win(conn: sqlite3.Connection, detail_payload: dict, session_re
     win = max(candidates, key=lambda item: item["score"])
     others = [item["headline"] for item in sorted(candidates, key=lambda item: -item["score"]) if item is not win and item["score"] >= 40][:2]
     return {
+        "score": win["score"],
         "kind": win["kind"],
         "headline": win["headline"],
         "detail": win["detail"],

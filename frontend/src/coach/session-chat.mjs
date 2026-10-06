@@ -24,6 +24,18 @@ export const dayChatRequest = (dateKey, state) => {
   return { context_kind: 'day', context_id: dateKey, title, opener, question: '' }
 }
 
+// The chat about one training week, opened from its "3 wins, 1 focus" card.
+export const weekChatRequest = (state) => {
+  const wins = (state?.wins || []).map((win) => `• ${win.headline}`)
+  const focus = state?.focus
+  const opener = [
+    wins.length ? `What went well ${state.finished ? 'that week' : 'so far this week'}:\n${wins.join('\n')}` : '',
+    focus ? `One focus: ${focus.headline}. ${focus.detail}` : '',
+    'Want to turn the focus into actual sessions, or look back at anything from the week?',
+  ].filter(Boolean).join('\n\n')
+  return { context_kind: 'week', context_id: state.week_start, title: `Week of ${shortDate(state.week_start)}: wins and focus`, opener, question: '' }
+}
+
 // The request that opens (or creates) the chat linked to one activity.
 export const sessionChatRequest = (activity, win, question = '') => ({
   context_kind: 'activity',

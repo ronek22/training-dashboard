@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { dayChatRequest, sessionChatRequest, sessionChatTitle } from '../src/coach/session-chat.mjs'
+import { dayChatRequest, sessionChatRequest, sessionChatTitle, weekChatRequest } from '../src/coach/session-chat.mjs'
 
 const ride = { id: 16001, type: 'VirtualRide', date: '2026-10-04T07:30:00' }
 
@@ -37,4 +37,17 @@ test('the day chat lists the ready-made options in the coach opener', () => {
   assert.equal(request.title, 'Today · 7 Oct: Feeling flat')
   assert.ok(request.opener.startsWith('Feeling flat today, got it. Flat days happen.'))
   assert.ok(request.opener.includes('• Lighter version: 30 min in Zone 2 instead of 45 min.'))
+})
+
+test('the week chat starts from the wins and the focus', () => {
+  const request = weekChatRequest({
+    week_start: '2026-09-28',
+    finished: true,
+    wins: [{ headline: 'Every planned session done (7 of 7)' }],
+    focus: { headline: 'One change for next week', detail: 'Keep the first ride easy.' },
+  })
+  assert.equal(request.context_kind, 'week')
+  assert.match(request.title, /^Week of 28 \S+: wins and focus$/)
+  assert.ok(request.opener.startsWith('What went well that week:\n• Every planned session done (7 of 7)'))
+  assert.ok(request.opener.includes('One focus: One change for next week. Keep the first ride easy.'))
 })

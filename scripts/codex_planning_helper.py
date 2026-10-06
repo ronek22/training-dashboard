@@ -163,10 +163,12 @@ def validate_chat_context(payload: object) -> dict[str, str] | None:
     context = payload.get("context") if isinstance(payload, dict) else None
     if context is None:
         return None
-    if not isinstance(context, dict) or context.get("kind") not in {"activity", "day"}:
-        raise ValueError("context must be an activity or a day")
+    if not isinstance(context, dict) or context.get("kind") not in {"activity", "day", "week"}:
+        raise ValueError("context must be an activity, a day or a week")
     if context["kind"] == "activity":
         return {"kind": "activity", "id": validate_activity_id(context.get("id"))}
+    if context["kind"] == "week":
+        return {"kind": "week", "id": validate_week_start(context.get("id"))}
     day = context.get("id")
     try:
         return {"kind": "day", "id": date.fromisoformat(day).isoformat()}
@@ -315,6 +317,14 @@ life-load and recovery in get_recent_context. If a change would help, say
 exactly what to change; the app's Today card can apply an easy version, a
 shorter version or a move, so I only need the recommendation. Be encouraging:
 a smaller session that gets done beats a skipped one."""
+    elif context and context["kind"] == "week":
+        focus = f"""
+
+This conversation is about my training week starting {context["id"]}. The
+app opened it from that week's "3 wins, 1 focus" card. Use get_weekly_plans,
+get_calendar_weeks and get_recent_context for that week. Start from what went
+well, then help me turn the one focus into concrete sessions for next week.
+Do not change the plan; say exactly what you would change."""
     return f"""Act as my personal training coach and answer my latest message.
 
 Use only read-only tools from the training_dashboard MCP server. Call

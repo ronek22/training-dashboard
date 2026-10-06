@@ -3,8 +3,11 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import TeamCoaching from '../components/TeamCoaching.vue'
 import SundayReview from '../components/SundayReview.vue'
+import WeekWinsCard from '../components/WeekWinsCard.vue'
 const route = useRoute()
 const history = computed(() => route.query.view === 'completed')
+// Early in the week there is little to show yet, so open on last week until Wednesday.
+const startOnLastWeek = [1, 2].includes(new Date().getDay())
 </script>
 
 <template>
@@ -17,7 +20,10 @@ const history = computed(() => route.query.view === 'completed')
       <RouterLink to="/weekly-review?view=completed" :aria-current="history ? 'page' : undefined">Completed weeks</RouterLink>
     </nav>
     <SundayReview v-if="history" />
-    <TeamCoaching v-else />
+    <template v-else>
+      <WeekWinsCard switchable :start-on-last-week="startOnLastWeek" />
+      <TeamCoaching />
+    </template>
   </main>
 </template>
 

@@ -116,8 +116,12 @@ class CodexPlanningHelperTests(unittest.TestCase):
         self.assertIn('get_activity_analysis_context with that activity_id', prompt)
         self.assertIn('"healthfit:ride-1"', prompt)
         self.assertNotIn("get_activity_analysis_context", helper.build_coach_chat_prompt("Hi", []))
-        with self.assertRaisesRegex(ValueError, "context must be an activity or a day"):
-            helper.validate_chat_context({"context": {"kind": "week", "id": "2026-10-05"}})
+        week = helper.validate_chat_context({"context": {"kind": "week", "id": "2026-10-05"}})
+        self.assertIn("my training week starting 2026-10-05", helper.build_coach_chat_prompt("Plan it", [], week))
+        with self.assertRaisesRegex(ValueError, "Monday"):
+            helper.validate_chat_context({"context": {"kind": "week", "id": "2026-10-07"}})
+        with self.assertRaisesRegex(ValueError, "context must be an activity, a day or a week"):
+            helper.validate_chat_context({"context": {"kind": "month", "id": "2026-10"}})
         day = helper.validate_chat_context({"context": {"kind": "day", "id": "2026-10-07"}})
         self.assertIn("my training on 2026-10-07", helper.build_coach_chat_prompt("I'm flat", [], day))
         with self.assertRaises(ValueError):

@@ -1,5 +1,5 @@
 <template>
-  <section class="muscle-map" :class="{ 'is-draft': planned }" :aria-labelledby="headingId">
+  <section class="muscle-map" :class="{ 'is-draft': planned, 'is-compact': compact }" :aria-labelledby="headingId">
     <header class="map-header">
       <div><span v-if="!planned" class="map-kicker">Training footprint</span><h2 :id="headingId">{{ planned ? 'Workout coverage' : 'Muscles worked' }}</h2><p v-if="!planned">{{ scope === 'exercise' ? selectedExercise?.exercise_name : 'Your workout, at a glance.' }}</p><p v-else-if="!plannedTotal">Add exercises to see which muscles your workout targets.</p></div>
       <div v-if="!planned" class="map-toggle" aria-label="Muscle map scope"><button type="button" :aria-pressed="scope === 'workout'" @click="scope = 'workout'">Whole workout</button><button type="button" :disabled="!selectedExercise" :aria-pressed="scope === 'exercise'" @click="scope = 'exercise'">Selected exercise</button></div>
@@ -32,7 +32,7 @@
 import { computed, ref, watch } from 'vue'
 import MuscleSilhouette from './MuscleSilhouette.vue'
 import { summarizeMuscles, plannedSetCount, MUSCLES } from '../../activity-detail/muscles.mjs'
-const props = defineProps({ exercises: { type: Array, required: true }, selectedExercise: { type: Object, default: null }, planned: Boolean })
+const props = defineProps({ exercises: { type: Array, required: true }, selectedExercise: { type: Object, default: null }, planned: Boolean, compact: Boolean })
 const headingId = computed(() => props.planned ? 'draft-muscle-map-heading' : 'muscle-map-heading')
 const plannedTotal = computed(() => props.exercises.reduce((total, exercise) => total + plannedSetCount(exercise), 0))
 const scope = ref('workout')
@@ -92,6 +92,21 @@ watch([scope, () => props.selectedExercise?.id, () => props.exercises], () => { 
 .unmapped { margin-top: 12px; color: var(--muted-soft); font-size: 11px; }
 .unmapped summary { cursor: pointer; padding: 6px 0; }
 .unmapped ul { padding-left: 18px; margin-top: 6px; }
+.is-compact { padding: 18px; border-radius: 16px; }
+.is-compact .map-header { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 14px; }
+.is-compact .map-header h2 { font-size: 18px; }
+.is-compact .map-toggle button { flex: 1; min-height: 30px; }
+.is-compact .map-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.is-compact .anatomy-panel { padding: 10px; }
+.is-compact :deep(.muscle-silhouette) { height: 220px; }
+.is-compact .view-toggle button { min-height: 28px; }
+.is-compact .muscle-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 6px; margin: 6px 0 10px; }
+.is-compact .muscle-list button { min-height: 38px; padding: 5px 6px; gap: 7px; }
+.is-compact .muscle-list b { font-size: 12px; }
+.is-compact .muscle-list b small { font-size: 9px; }
+.is-compact .muscle-list b small { display: inline; }
+.is-compact .breakdown-heading { padding-bottom: 8px; }
+.is-compact .map-note { font-size: 10px; line-height: 1.5; }
 @media(max-width:1050px) { .muscle-list { grid-template-columns: 1fr; } .map-layout { gap: 20px; } }
 @media(max-width:700px) { .muscle-map { padding: 18px; } .map-header { align-items: stretch; flex-direction: column; gap: 14px; } .map-toggle button { flex: 1; min-height: 40px; } .map-layout { grid-template-columns: minmax(0,1fr); } .muscle-list { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px; } .anatomy-panel { padding: 14px 8px; } }
 @media(max-width:380px) { .muscle-list { grid-template-columns: 1fr; } }

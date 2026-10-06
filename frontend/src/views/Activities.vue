@@ -4,59 +4,33 @@
       <div>
         <span class="page-eyebrow">Training history</span>
         <h1 class="page-title">Activities</h1>
-        <p class="page-sub">Find, compare, and review every completed session.</p>
+        <p class="page-sub">Every completed session, newest first.</p>
       </div>
       <router-link to="/sync" class="sync-link">Manage data</router-link>
     </header>
 
     <WhatWorkedPanel />
 
-    <section v-if="loading" class="summary-grid motion-section" aria-label="Loading activity summary">
-      <div v-for="item in 4" :key="item" class="summary-card skeleton-card">
-        <span class="skeleton-line skeleton-line-sm"></span>
-        <span class="skeleton-line skeleton-line-lg"></span>
-      </div>
-    </section>
-    <section v-else class="summary-grid motion-section" aria-label="Recent training summary">
-      <div class="summary-card">
-        <span class="summary-label">Last 30 days</span>
-        <strong>{{ recentSummary.count }}</strong>
-        <span class="summary-detail">sessions</span>
-      </div>
-      <div class="summary-card">
-        <span class="summary-label">Training time</span>
-        <strong>{{ formatHours(recentSummary.minutes) }}</strong>
-        <span class="summary-detail">completed</span>
-      </div>
-      <div class="summary-card">
-        <span class="summary-label">Distance</span>
-        <strong>{{ formatDistance(recentSummary.distance) }}</strong>
-        <span class="summary-detail">recorded</span>
-      </div>
-      <div class="summary-card">
-        <span class="summary-label">Feedback</span>
-        <strong>{{ recentSummary.feedback }}%</strong>
-        <span class="summary-detail">of sessions logged</span>
-      </div>
-    </section>
-
-    <section class="log-panel motion-section" aria-labelledby="activity-log-title">
-      <div class="log-heading">
-        <div>
-          <h2 id="activity-log-title">Training log</h2>
-          <p>{{ resultLabel }}</p>
-        </div>
-        <button v-if="hasFilters" class="clear-button" type="button" @click="clearFilters">Clear filters</button>
-      </div>
+    <section class="log motion-section" aria-labelledby="activity-log-title">
+      <h2 id="activity-log-title" class="sr-only">Training log</h2>
 
       <div class="toolbar">
         <label class="search-field">
           <span class="sr-only">Search activities</span>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-          <input v-model.trim="search" type="search" placeholder="Search by activity name" autocomplete="off">
+          <input v-model.trim="search" type="search" placeholder="Search name, intent or note" autocomplete="off">
         </label>
+        <div class="sport-filters" role="group" aria-label="Filter by sport">
+          <button v-for="filter in sportFilters" :key="filter.value" type="button"
+            class="sport-filter" :class="{ active: activeFilter === filter.value }"
+            :aria-pressed="activeFilter === filter.value" @click="activeFilter = filter.value">
+            <span v-if="filter.value !== 'all'" class="sport-dot" :class="`tone-${filter.value}`"></span>
+            <span>{{ filter.label }}</span>
+            <span class="filter-count">{{ filterCount(filter.value) }}</span>
+          </button>
+        </div>
         <label class="sort-field">
-          <span>Sort</span>
+          <span class="sr-only">Sort activities</span>
           <select v-model="sortOrder" aria-label="Sort activities">
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
@@ -66,20 +40,19 @@
         </label>
       </div>
 
-      <div class="sport-filters" role="group" aria-label="Filter by sport">
-        <button v-for="filter in sportFilters" :key="filter.value" type="button"
-          class="sport-filter" :class="{ active: activeFilter === filter.value }"
-          :aria-pressed="activeFilter === filter.value" @click="activeFilter = filter.value">
-          <ActivityIcon v-if="filter.icon" :type="filter.icon" :tone="iconTone(filter.icon)" :size="15" />
-          <span>{{ filter.label }}</span>
-          <span class="filter-count">{{ filterCount(filter.value) }}</span>
-        </button>
+      <div v-if="!loading && !errorMessage && activities.length" class="stat-strip" aria-live="polite">
+        <span><b>{{ filteredActivities.length }}</b> {{ filteredActivities.length === 1 ? 'session' : 'sessions' }}</span>
+        <span><b>{{ formatHours(filteredTotals.minutes) }}</b> total time</span>
+        <span><b>{{ Math.round(filteredTotals.distance).toLocaleString() }}</b> km</span>
+        <span v-if="firstDate">since {{ firstDate }}</span>
+        <span class="strip-muted">{{ recentFeedbackRate }}% of the last 30 days have feedback</span>
+        <button v-if="hasFilters" class="clear-button" type="button" @click="clearFilters">Clear filters</button>
       </div>
 
       <div v-if="loading" class="activity-skeletons" aria-live="polite" aria-label="Loading activities">
-        <div v-for="item in 6" :key="item" class="activity-skeleton skeleton-card">
-          <span class="skeleton-block"></span><span class="skeleton-line skeleton-line-md"></span>
-          <span class="skeleton-line skeleton-line-sm"></span><span class="skeleton-line skeleton-line-sm"></span>
+        <div v-for="item in 10" :key="item" class="activity-skeleton skeleton-card">
+          <span class="skeleton-line skeleton-line-sm"></span><span class="skeleton-block"></span>
+          <span class="skeleton-line skeleton-line-md"></span><span class="skeleton-line skeleton-line-sm"></span>
         </div>
       </div>
 
@@ -104,81 +77,95 @@
         <button class="state-action" type="button" @click="clearFilters">Clear filters</button>
       </div>
 
-      <div v-else class="activity-list">
-        <div class="list-header" aria-hidden="true">
-          <span>Session</span><span>Primary</span><span>Performance</span><span>Context</span><span></span>
+      <div v-else class="log-layout" :class="{ 'no-rail': !isChronological }">
+        <div class="activity-table">
+          <div class="cols row-grid" aria-hidden="true">
+            <span>Day</span><span></span><span>Session</span><span class="num">Distance</span><span class="num">Time</span>
+            <span class="num">Power / pace</span><span class="num">Avg HR</span><span class="num">Elev</span><span class="end">Intent · feel</span><span></span>
+          </div>
+
+          <section v-for="section in visibleSections" :key="section.key" class="month-section" :aria-label="isChronological ? format(section.date, 'MMMM yyyy') : 'Sessions'">
+            <div v-if="isChronological" :id="`month-${section.key}`" class="month-label">
+              <span>{{ format(section.date, 'MMMM yyyy') }}</span>
+              <span class="month-sums">{{ monthSummary(section.key) }}</span>
+            </div>
+              <template v-for="activity in section.items" :key="activity.id">
+                <article class="activity-row row-grid" @click="openRow($event, activity)">
+                  <time class="day" :datetime="activity.date"><b>{{ format(parseLocalDate(activity.date), 'EEE') }}</b>{{ format(parseLocalDate(activity.date), isChronological ? 'MMM d' : 'MMM d, yyyy') }}</time>
+                  <span class="sport-mark" :class="`tone-${sportBucket(activity.type)}`" :title="sportLabel(activity.type)">
+                    <ActivityIcon :type="activity.type" :tone="iconTone(activity.type)" :size="15" />
+                  </span>
+                  <div class="identity">
+                    <router-link :to="detailRoute(activity)" class="activity-name">{{ activityName(activity) }}</router-link>
+                    <div class="tags">
+                      <span v-if="activity.benchmark_label" class="tag achievement">{{ activity.benchmark_label }}</span>
+                      <router-link v-if="recordRanks[activity.id]" to="/records" class="tag record" :title="recordTitle(activity.id)">{{ recordTag(activity.id) }}</router-link>
+                      <span v-if="activity.planned_strength_identity" class="tag linked"
+                        :title="activity.source_name !== activity.display_name ? `Imported as ${activity.source_name}` : null">
+                        {{ activity.planned_strength_identity.match_strategy === 'explicit' ? 'Linked to plan' : 'Matched by date' }}
+                      </span>
+                      <span v-if="activity.recorded_strength_session" class="tag linked">Recorded in TrainLog</span>
+                      <span v-if="activity.feedback?.note" class="note" :title="activity.feedback.note">“{{ activity.feedback.note }}”</span>
+                    </div>
+                  </div>
+                  <span class="num" :class="{ 'is-empty': !(activity.distance_km > 0) }">
+                    <template v-if="activity.distance_km > 0">{{ formatKm(activity.distance_km) }}<small>km</small></template><template v-else>—</template>
+                  </span>
+                  <span class="num">{{ formatDuration(activity.duration_min) }}</span>
+                  <span class="num" :class="{ 'is-empty': !effort(activity) }">
+                    <template v-if="effort(activity)">{{ effort(activity).value }}<small>{{ effort(activity).unit }}</small></template><template v-else>—</template>
+                  </span>
+                  <span class="num" :class="{ 'is-empty': !activity.avg_hr }">{{ activity.avg_hr || '—' }}</span>
+                  <span class="num" :class="{ 'is-empty': !(activity.elevation_m > 20) }">
+                    <template v-if="activity.elevation_m > 20">{{ Math.round(activity.elevation_m) }}<small>m</small></template><template v-else>—</template>
+                  </span>
+                  <span class="context">
+                    <button class="pill" :class="{ ghost: !activity.workout_intent_label }" type="button" @click="openIntentEditor(activity)">
+                      {{ activity.workout_intent_label || '+ intent' }}
+                    </button>
+                    <button v-if="activity.feedback" class="pill" :class="rpeTone(activity.feedback.rpe)" type="button"
+                      :disabled="!isRecentActivity(activity.date)" :title="feedbackTitle(activity.feedback)" @click="openFeedbackDialog(activity)">
+                      RPE {{ activity.feedback.rpe }}
+                    </button>
+                    <button v-else-if="isRecentActivity(activity.date)" class="pill ghost" type="button" @click="openFeedbackDialog(activity)">+ feel</button>
+                  </span>
+                  <router-link :to="detailRoute(activity)" class="open-activity" :aria-label="`Open ${activityName(activity)} details`">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                  </router-link>
+                </article>
+
+                <div v-if="editingIntentId === activity.id" class="intent-editor">
+                  <label><span>Workout intent</span>
+                    <select class="intent-select" :value="selectedIntent(activity)" @change="setSelectedIntent(activity, $event.target.value)">
+                      <option value="">None</option>
+                      <option v-for="intent in intentOptionsForType(activity.type)" :key="intent.value" :value="intent.value">{{ intent.label }}</option>
+                    </select>
+                  </label>
+                  <button class="state-action compact" type="button" :disabled="savingIntentId === activity.id || !canSaveIntent(activity)" @click="saveIntent(activity)">
+                    {{ savingIntentId === activity.id ? 'Saving…' : 'Save' }}
+                  </button>
+                  <button class="clear-button" type="button" :disabled="savingIntentId === activity.id" @click="closeIntentEditor(activity.id)">Cancel</button>
+                </div>
+              </template>
+          </section>
+
+          <div ref="sentinel" class="list-end">
+            <button v-if="renderedCount < filteredActivities.length" class="clear-button" type="button" @click="showMore">
+              Show more ({{ remainingCount }} older {{ remainingCount === 1 ? 'session' : 'sessions' }})
+            </button>
+            <span v-else>Start of your history · {{ filteredActivities.length }} {{ filteredActivities.length === 1 ? 'activity' : 'activities' }}</span>
+          </div>
         </div>
-        <article v-for="activity in pagedActivities" :key="activity.id" class="activity-row" :class="`sport-${sportTone(activity.type)}`">
-          <div class="activity-identity">
-            <div class="sport-mark"><ActivityIcon :type="activity.type" :tone="iconTone(activity.type)" :size="18" /></div>
-            <div class="identity-copy">
-              <div class="activity-meta">
-                <span>{{ sportLabel(activity.type) }}</span><span aria-hidden="true">·</span>
-                <time :datetime="activity.date">{{ formatDateTime(activity.date) }}</time>
-              </div>
-              <router-link :to="detailRoute(activity)" class="activity-name">{{ activity.display_name || activity.name || 'Untitled activity' }}</router-link>
-              <div class="status-line">
-                <span v-if="activity.benchmark_label" class="status-tag achievement">{{ activity.benchmark_label }}</span>
-                <router-link v-if="recordRanks[activity.id]" to="/records" class="status-tag record" :title="recordTitle(activity.id)">{{ recordTag(activity.id) }}</router-link>
-                <span v-if="activity.planned_strength_identity" class="status-tag linked">
-                  {{ activity.planned_strength_identity.match_strategy === 'explicit' ? 'Linked to plan' : 'Matched by date' }}
-                </span>
-                <span v-if="activity.recorded_strength_session" class="status-tag linked">Recorded in TrainLog</span>
-                <span v-if="activity.planned_strength_identity && activity.source_name !== activity.display_name" class="source-title" :title="`Imported as ${activity.source_name}`">
-                  Imported as {{ activity.source_name }}
-                </span>
-                <span v-if="activity.id.startsWith('healthfit:')" class="source-label">HealthFit</span>
-                <span v-else class="source-label">Strava</span>
-              </div>
-            </div>
-          </div>
 
-          <div class="metric-group primary-metrics">
-            <div><strong>{{ primaryMetric(activity).value }}</strong><span>{{ primaryMetric(activity).label }}</span></div>
-            <div><strong>{{ formatDuration(activity.duration_min) }}</strong><span>duration</span></div>
-          </div>
-
-          <div class="metric-group secondary-metrics">
-            <div v-for="metric in secondaryMetrics(activity)" :key="metric.label">
-              <strong>{{ metric.value }}</strong><span>{{ metric.label }}</span>
-            </div>
-          </div>
-
-          <div class="activity-context">
-            <button class="intent-display" :class="{ 'intent-display-empty': !activity.workout_intent_label }" type="button" @click="openIntentEditor(activity)">
-              {{ activity.workout_intent_label || 'Set workout intent' }}
+        <nav v-if="isChronological" class="month-rail" aria-label="Jump to month">
+          <template v-for="(month, index) in sections" :key="month.key">
+            <span v-if="index === 0 || month.year !== sections[index - 1].year" class="rail-year">{{ month.year }}</span>
+            <button type="button" class="rail-month" :class="{ active: activeMonth === month.key }" @click="jumpToMonth(month)">
+              <span>{{ MONTHS[month.month] }}</span><span>{{ month.items.length }}</span>
             </button>
-            <button v-if="isRecentActivity(activity.date)" class="feedback-link" type="button" @click="openFeedbackDialog(activity)">
-              {{ activity.feedback ? feedbackSummary(activity.feedback) : 'Log feedback' }}
-            </button>
-            <span v-else-if="activity.feedback" class="feedback-summary">{{ feedbackSummary(activity.feedback) }}</span>
-            <span v-else class="feedback-summary muted">No feedback</span>
-          </div>
-
-          <router-link :to="detailRoute(activity)" class="open-activity" :aria-label="`Open ${activity.display_name || activity.name || 'activity'} details`">
-            <span>View</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-          </router-link>
-
-          <div v-if="editingIntentId === activity.id" class="intent-editor">
-            <label><span>Workout intent</span>
-              <select class="intent-select" :value="selectedIntent(activity)" @change="setSelectedIntent(activity, $event.target.value)">
-                <option value="">None</option>
-                <option v-for="intent in intentOptionsForType(activity.type)" :key="intent.value" :value="intent.value">{{ intent.label }}</option>
-              </select>
-            </label>
-            <button class="state-action compact" type="button" :disabled="savingIntentId === activity.id || !canSaveIntent(activity)" @click="saveIntent(activity)">
-              {{ savingIntentId === activity.id ? 'Saving…' : 'Save' }}
-            </button>
-            <button class="clear-button" type="button" :disabled="savingIntentId === activity.id" @click="closeIntentEditor(activity.id)">Cancel</button>
-          </div>
-        </article>
+          </template>
+        </nav>
       </div>
-
-      <nav v-if="totalPages > 1" class="pagination" aria-label="Activity pages">
-        <button type="button" :disabled="page === 1" @click="page--">Previous</button>
-        <span>Page {{ page }} of {{ totalPages }}</span>
-        <button type="button" :disabled="page === totalPages" @click="page++">Next</button>
-      </nav>
     </section>
 
     <FeedbackDialog :open="Boolean(dialogActivity)" :activity="dialogActivity"
@@ -188,13 +175,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
 import { useApi } from '../stores/api'
 import WhatWorkedPanel from '../components/WhatWorkedPanel.vue'
+import { groupByMonth, parseLocalDate, sliceMonths, sportBucket, totals } from '../activities/log.mjs'
 
 const api = useApi()
 const route = useRoute()
@@ -205,14 +193,20 @@ const errorMessage = ref('')
 const activeFilter = ref(route.query.sport || 'all')
 const search = ref(route.query.q || '')
 const sortOrder = ref(route.query.sort || 'newest')
-const page = ref(Math.max(1, Number(route.query.page) || 1))
-const pageSize = 20
 const savingIntentId = ref(null)
 const editingIntentId = ref(null)
 const feedbackSaving = ref(false)
 const feedbackMessage = ref('')
 const dialogActivity = ref(null)
 const selectedIntents = ref({})
+
+// Rows render in batches as the list scrolls, so the full history stays cheap to show.
+const ROW_BATCH = 60
+const ALL_ACTIVITIES_LIMIT = 100000
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const renderedCount = ref(ROW_BATCH)
+const sentinel = ref(null)
+const activeMonth = ref(null)
 
 const workoutIntentOptions = {
   Run: ['recovery','easy','long','tempo','interval','race_specific'],
@@ -224,15 +218,17 @@ const workoutIntentOptions = {
 const intentLabels = { recovery:'Recovery', easy:'Easy', long:'Long', tempo:'Tempo', interval:'Interval', race_specific:'Race-specific', strength_general:'General strength', strength_lower:'Lower-body strength', strength_upper:'Upper-body strength', mobility:'Mobility' }
 const intentOptionsForType = (type) => (workoutIntentOptions[type] || []).map(value => ({ value, label: intentLabels[value] }))
 const sportFilters = [
-  { label:'All', value:'all' }, { label:'Runs', value:'Run', icon:'Run' },
-  { label:'Rides', value:'Ride', icon:'Ride' }, { label:'Strength', value:'WeightTraining', icon:'WeightTraining' },
-  { label:'Walks', value:'Walk', icon:'Walk' },
+  { label:'All', value:'all' }, { label:'Rides', value:'ride' }, { label:'Strength', value:'strength' },
+  { label:'Walks', value:'walk' }, { label:'Runs', value:'run' }, { label:'Other', value:'other' },
 ]
+// Older links used Strava type names for the sport filter.
+const LEGACY_FILTERS = { Run:'run', Ride:'ride', WeightTraining:'strength', Walk:'walk' }
+if (LEGACY_FILTERS[activeFilter.value]) activeFilter.value = LEGACY_FILTERS[activeFilter.value]
 
 const load = async () => {
   loading.value = true; errorMessage.value = ''
   try {
-    const { data } = await api.getActivities({ limit: 100 })
+    const { data } = await api.getActivities({ limit: ALL_ACTIVITIES_LIMIT })
     activities.value = Array.isArray(data) ? data : []
     selectedIntents.value = {}
   } catch (error) {
@@ -253,68 +249,104 @@ const recordTag = (id) => {
 const recordTitle = (id) => (recordRanks.value[id] || [])
   .map(item => `${['', 'Best', '2nd', '3rd'][item.rank]} · ${item.category} ${item.label}: ${item.display}`).join('\n')
 
-const matchesSport = (activity, filter) => filter === 'all' || activity.type === filter || (filter === 'Ride' && activity.type === 'VirtualRide')
+const matchesSport = (activity, filter) => filter === 'all' || sportBucket(activity.type) === filter
+const activityName = a => a.display_name || a.name || 'Untitled activity'
 const filteredActivities = computed(() => {
   const query = search.value.toLowerCase()
   const list = activities.value.filter(a => {
-    const searchableName = `${a.display_name || ''} ${a.name || ''} ${a.source_name || ''}`.toLowerCase()
-    return matchesSport(a, activeFilter.value) && (!query || searchableName.includes(query))
+    const searchable = `${a.display_name || ''} ${a.name || ''} ${a.source_name || ''} ${a.workout_intent_label || ''} ${a.feedback?.note || ''}`.toLowerCase()
+    return matchesSport(a, activeFilter.value) && (!query || searchable.includes(query))
   })
   return [...list].sort((a,b) => {
-    if (sortOrder.value === 'oldest') return new Date(a.date) - new Date(b.date)
+    if (sortOrder.value === 'oldest') return a.date.localeCompare(b.date)
     if (sortOrder.value === 'longest') return (b.duration_min || 0) - (a.duration_min || 0)
     if (sortOrder.value === 'distance') return (b.distance_km || 0) - (a.distance_km || 0)
-    return new Date(b.date) - new Date(a.date)
+    return b.date.localeCompare(a.date)
   })
 })
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredActivities.value.length / pageSize)))
-const pagedActivities = computed(() => filteredActivities.value.slice((page.value - 1) * pageSize, page.value * pageSize))
+const isChronological = computed(() => sortOrder.value === 'newest' || sortOrder.value === 'oldest')
+// Duration/distance sorts are rankings, so they render as one unlabeled section.
+const sections = computed(() => isChronological.value
+  ? groupByMonth(filteredActivities.value)
+  : [{ key: 'ranked', offset: 0, items: filteredActivities.value }])
+const visibleSections = computed(() => sliceMonths(sections.value, renderedCount.value))
+const remainingCount = computed(() => Math.max(0, filteredActivities.value.length - renderedCount.value))
+const monthSummary = key => {
+  const month = sections.value.find(item => item.key === key)
+  if (!month) return ''
+  const sum = totals(month.items)
+  return [`${sum.count} ${sum.count === 1 ? 'session' : 'sessions'}`, formatHours(sum.minutes), sum.distance ? `${Math.round(sum.distance)} km` : null].filter(Boolean).join(' · ')
+}
+const filteredTotals = computed(() => totals(filteredActivities.value))
+const firstDate = computed(() => {
+  const dates = filteredActivities.value.map(a => a.date).sort()
+  return dates.length ? format(parseLocalDate(dates[0]), 'MMM d, yyyy') : ''
+})
 const hasFilters = computed(() => activeFilter.value !== 'all' || search.value || sortOrder.value !== 'newest')
-const resultLabel = computed(() => `${filteredActivities.value.length} ${filteredActivities.value.length === 1 ? 'activity' : 'activities'}${hasFilters.value ? ' found' : ' in recent history'}`)
 const filterCount = filter => activities.value.filter(a => matchesSport(a, filter)).length
+const recentFeedbackRate = computed(() => {
+  const recent = activities.value.filter(a => daysAgo(a.date) <= 30)
+  return recent.length ? Math.round(recent.filter(a => a.feedback).length / recent.length * 100) : 0
+})
 
-watch([activeFilter, search, sortOrder], () => { page.value = 1 })
-watch([activeFilter, search, sortOrder, page], () => {
+const showMore = () => { renderedCount.value += ROW_BATCH }
+let observer
+const observeSentinel = () => {
+  observer?.disconnect()
+  if (!sentinel.value) return
+  observer = new IntersectionObserver(entries => {
+    if (entries.some(entry => entry.isIntersecting) && renderedCount.value < filteredActivities.value.length) showMore()
+  }, { rootMargin: '600px 0px' })
+  observer.observe(sentinel.value)
+}
+watch(sentinel, observeSentinel)
+onBeforeUnmount(() => observer?.disconnect())
+
+const jumpToMonth = async month => {
+  if (renderedCount.value <= month.offset) renderedCount.value = month.offset + ROW_BATCH
+  activeMonth.value = month.key
+  await nextTick()
+  document.getElementById(`month-${month.key}`)?.scrollIntoView({ block: 'start' })
+}
+
+watch([activeFilter, search, sortOrder], () => { renderedCount.value = ROW_BATCH; activeMonth.value = null })
+watch([activeFilter, search, sortOrder], () => {
   const query = {}
   if (activeFilter.value !== 'all') query.sport = activeFilter.value
   if (search.value) query.q = search.value
   if (sortOrder.value !== 'newest') query.sort = sortOrder.value
-  if (page.value > 1) query.page = String(page.value)
   router.replace({ query })
 })
-watch(totalPages, total => { if (page.value > total) page.value = total })
-const clearFilters = () => { activeFilter.value = 'all'; search.value = ''; sortOrder.value = 'newest'; page.value = 1 }
+const clearFilters = () => { activeFilter.value = 'all'; search.value = ''; sortOrder.value = 'newest' }
 
-const recentActivities = computed(() => activities.value.filter(a => (Date.now() - new Date(a.date).getTime()) / 86400000 <= 30))
-const recentSummary = computed(() => {
-  const list = recentActivities.value
-  return { count:list.length, minutes:list.reduce((sum,a) => sum + (a.duration_min || 0),0), distance:list.reduce((sum,a) => sum + (a.distance_km || 0),0), feedback:list.length ? Math.round(list.filter(a => a.feedback).length / list.length * 100) : 0 }
-})
-
+const iconTone = type => sportBucket(type) === 'other' ? 'neutral' : sportBucket(type)
 const sportLabel = type => ({ Run:'Run', Ride:'Ride', VirtualRide:'Virtual ride', WeightTraining:'Strength', Walk:'Walk', Hike:'Hike', Swim:'Swim' }[type] || type || 'Activity')
-const sportTone = type => ({ Run:'run', Ride:'ride', VirtualRide:'ride', WeightTraining:'strength', Walk:'walk', Hike:'walk', Swim:'swim' }[type] || 'neutral')
-const iconTone = sportTone
-const formatDateTime = value => { try { return format(new Date(value), 'MMM d · h:mm a') } catch { return value } }
+const daysAgo = value => (Date.now() - parseLocalDate(value).getTime()) / 86400000
 const formatDuration = minutes => {
   if (minutes == null) return '—'
   const rounded = Math.round(minutes); const hours = Math.floor(rounded / 60); const mins = rounded % 60
-  return hours ? `${hours}h ${mins ? `${mins}m` : ''}`.trim() : `${mins}m`
+  return hours ? `${hours}h ${String(mins).padStart(2, '0')}m` : `${mins}m`
 }
-const formatHours = minutes => minutes >= 60 ? `${Math.floor(minutes/60)}h ${Math.round(minutes%60)}m` : `${Math.round(minutes)}m`
-const formatDistance = distance => distance ? `${distance.toFixed(distance >= 100 ? 0 : 1)} km` : '—'
-const primaryMetric = a => a.distance_km != null && a.distance_km > 0 ? { value:`${Number(a.distance_km).toFixed(a.distance_km >= 100 ? 0 : 1)} km`, label:'distance' } : { value:formatDuration(a.duration_min), label:'session time' }
-const secondaryMetrics = a => {
-  const metrics = []
-  if (a.type === 'Run' && a.avg_pace) metrics.push({ value:a.avg_pace, label:'avg pace /km' })
-  if ((a.type === 'Ride' || a.type === 'VirtualRide') && a.avg_watts) metrics.push({ value:`${Math.round(a.avg_watts)} W`, label:'avg power' })
-  if (a.avg_hr) metrics.push({ value:`${a.avg_hr} bpm`, label:'avg heart rate' })
-  if (a.elevation_m != null && a.elevation_m > 0 && metrics.length < 2) metrics.push({ value:`${Math.round(a.elevation_m)} m`, label:'elevation' })
-  while (metrics.length < 2) metrics.push({ value:'—', label:metrics.length ? 'secondary' : 'performance' })
-  return metrics.slice(0,2)
+const formatHours = minutes => minutes >= 60 ? `${Math.floor(minutes/60)}h ${String(Math.round(minutes%60)).padStart(2, '0')}m` : `${Math.round(minutes)}m`
+const formatKm = km => Number(km).toFixed(km >= 100 ? 0 : 1)
+const effort = a => {
+  const sport = sportBucket(a.type)
+  if (sport === 'ride' && a.avg_watts) return { value: Math.round(a.avg_watts), unit: 'W' }
+  if (sport === 'run' && a.distance_km > 0 && a.duration_min) {
+    const seconds = Math.round(a.duration_min * 60 / a.distance_km)
+    return { value: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`, unit: '/km' }
+  }
+  return null
 }
+const rpeTone = rpe => rpe >= 8 ? 'warn' : 'good'
+const feedbackTitle = f => [`RPE ${f.rpe}`, f.energy != null && `Energy ${f.energy}`, f.note].filter(Boolean).join(' · ')
 const detailRoute = a => ({ path:`/activities/${a.id}`, query:{ from:'activities', ...route.query } })
-const isRecentActivity = value => (Date.now() - new Date(value).getTime()) / 86400000 <= 10
-const feedbackSummary = f => `RPE ${f.rpe} · Energy ${f.energy}`
+const isRecentActivity = value => daysAgo(value) <= 10
+// The whole row opens the activity, except clicks on its own links and buttons.
+const openRow = (event, activity) => {
+  if (event.target.closest('a, button, select, label') || window.getSelection()?.toString()) return
+  router.push(detailRoute(activity))
+}
 
 const selectedIntent = a => typeof selectedIntents.value[a.id] !== 'undefined' ? selectedIntents.value[a.id] : (a.workout_intent || '')
 const setSelectedIntent = (a,value) => { selectedIntents.value = { ...selectedIntents.value, [a.id]:value } }
@@ -322,7 +354,7 @@ const openIntentEditor = a => { editingIntentId.value = a.id; setSelectedIntent(
 const closeIntentEditor = id => { if (editingIntentId.value === id) editingIntentId.value = null }
 const canSaveIntent = a => selectedIntent(a) !== (a.workout_intent || '')
 const saveIntent = async a => { savingIntentId.value = a.id; try { await api.updateActivityIntent(a.id,{ workout_intent:selectedIntent(a) || null }); await load(); editingIntentId.value = null } finally { savingIntentId.value = null } }
-const openFeedbackDialog = a => { feedbackMessage.value=''; dialogActivity.value={...a,dateLabel:formatDateTime(a.date)} }
+const openFeedbackDialog = a => { feedbackMessage.value=''; dialogActivity.value={...a,dateLabel:format(parseLocalDate(a.date), 'EEE, MMM d')} }
 const closeFeedbackDialog = () => { if (!feedbackSaving.value) { dialogActivity.value=null; feedbackMessage.value='' } }
 const saveFeedback = async payload => {
   if (!dialogActivity.value) return
@@ -340,43 +372,108 @@ const saveFeedback = async payload => {
 .page-head { align-items: flex-end; }
 .sync-link,.state-action { display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border:1px solid rgba(95,140,255,.38);border-radius:11px;background:rgba(95,140,255,.14);color:var(--text);font-size:12px;font-weight:700;cursor:pointer; }
 .sync-link:hover,.state-action:hover { background:rgba(95,140,255,.22);border-color:rgba(123,163,255,.55); }
-.summary-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px; }
-.summary-card { min-height:100px;padding:17px 18px;border:1px solid var(--border);border-radius:var(--radius-panel);background:rgb(var(--panel-rgb) / .72);display:grid;grid-template-columns:auto 1fr;align-content:center;gap:4px 8px; }
-.summary-card strong { font:700 22px/1.1 var(--font-display);color:var(--text); }
-.summary-label { grid-column:1/-1;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase; }
-.summary-detail { align-self:end;color:var(--muted);font-size:11px; }
-.summary-card .skeleton-line { display:block;width:55%;margin:5px 0; }.summary-card .skeleton-line-lg{width:75%}
-.log-panel { overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-card);background:rgb(var(--deep-rgb) / .9);box-shadow:inset 0 1px 0 rgb(var(--ov-rgb) / .025); }
-.log-heading { display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 22px 14px; }
-.log-heading h2 { font:650 17px/1.2 var(--font-display);letter-spacing:-.02em; }.log-heading p{margin-top:5px;color:var(--muted);font-size:12px}
-.clear-button { border:0;background:transparent;color:var(--muted-soft);font-size:12px;font-weight:650;cursor:pointer;padding:7px; }.clear-button:hover{color:var(--text)}
-.toolbar { display:grid;grid-template-columns:minmax(240px,1fr) auto;gap:12px;padding:0 22px 14px; }
-.search-field { position:relative;display:flex;align-items:center; }.search-field svg{position:absolute;left:12px;width:17px;fill:none;stroke:var(--muted);stroke-width:1.8}
-.search-field input,.sort-field select,.intent-select { width:100%;height:40px;border:1px solid var(--border);border-radius:10px;background:rgb(var(--deep-rgb) / .66);color:var(--text);padding:0 12px; }
-.search-field input{padding-left:38px}.search-field input::placeholder{color:var(--muted)}
-.sort-field{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:11px;font-weight:700}.sort-field select{width:170px}
-.sport-filters { display:flex;gap:7px;padding:0 22px 18px;overflow-x:auto;scrollbar-width:none; }
-.sport-filter { flex:none;display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--border);border-radius:999px;background:transparent;color:var(--muted-soft);cursor:pointer;font-size:12px; }
-.sport-filter:hover{border-color:var(--border-strong);color:var(--text)}.sport-filter.active{background:rgba(95,140,255,.14);border-color:rgba(95,140,255,.4);color:var(--text)}
-.filter-count{min-width:19px;padding:0 5px;border-radius:999px;background:rgb(var(--tint-rgb) / .1);color:var(--muted);font-size:10px;text-align:center}
-.list-header,.activity-row { display:grid;grid-template-columns:minmax(280px,1.7fr) minmax(160px,.8fr) minmax(190px,1fr) minmax(150px,.8fr) 54px; }
-.list-header { position:sticky;top:0;z-index:2;padding:9px 22px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--deep);color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase; }
-.activity-row { position:relative;align-items:center;min-height:104px;padding:14px 22px;border-bottom:1px solid var(--border); }
-.activity-row:last-child{border-bottom:0}.activity-row:hover{background:rgb(var(--deep-rgb) / .52)}
-.activity-row::before{content:'';position:absolute;left:0;top:18px;bottom:18px;width:2px;border-radius:2px;background:var(--sport-color,var(--muted))}
-.sport-run{--sport-color:var(--run)}.sport-ride{--sport-color:var(--ride)}.sport-strength{--sport-color:var(--strength)}.sport-walk{--sport-color:color-mix(in srgb, #a78bfa calc(100% - var(--dim)), #000)}.sport-swim{--sport-color:var(--z2)}
-.activity-identity{display:flex;gap:12px;min-width:0;padding-right:18px}.sport-mark{width:38px;height:38px;flex:none;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--sport-color) 28%,transparent);border-radius:11px;background:color-mix(in srgb,var(--sport-color) 10%,transparent)}
-.identity-copy{min-width:0}.activity-meta{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:10px;font-weight:650;text-transform:uppercase;letter-spacing:.045em}
-.activity-name{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:3px 0 5px;font:650 14px/1.35 var(--font-display)}.activity-name:hover{color:var(--accent-strong)}
-.status-line{display:flex;align-items:center;gap:6px;min-height:17px}.status-tag,.source-label,.source-title{font-size:10px}.status-tag{padding:2px 6px;border-radius:999px}.achievement{background:rgba(241,169,59,.12);color:color-mix(in srgb, #f5bd62 calc(100% - var(--dim)), #000)}.linked{background:rgba(52,211,153,.1);color:var(--success-text)}.status-tag.record{background:rgba(227,179,65,.16);color:color-mix(in srgb, #e3b341 calc(100% - var(--dim)), #000);font-weight:700;text-decoration:none}.source-label,.source-title{color:var(--muted)}.source-title{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.metric-group{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-right:14px}.metric-group div{min-width:0}.metric-group strong,.metric-group span{display:block}.metric-group strong{font:650 13px/1.25 var(--font-display);white-space:nowrap}.metric-group span{margin-top:3px;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.05em}
-.activity-context{display:flex;flex-direction:column;align-items:flex-start;gap:7px}.intent-display,.feedback-link{border:0;background:transparent;cursor:pointer;text-align:left}.intent-display{max-width:150px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;color:var(--text-soft);font-size:10px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.intent-display:hover{border-color:var(--border-strong)}.intent-display-empty{color:var(--muted)}
-.feedback-link,.feedback-summary{color:var(--success-text);font-size:10px;font-weight:650}.feedback-link:hover{color:var(--success-text)}.feedback-summary.muted{color:var(--muted);font-weight:500}
-.open-activity{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--border);border-radius:10px;color:var(--muted)}.open-activity span{display:none}.open-activity svg{width:17px;fill:none;stroke:currentColor;stroke-width:1.8}.open-activity:hover{color:var(--text);border-color:var(--border-strong);background:var(--surface2)}
-.intent-editor{grid-column:1/-1;display:flex;align-items:flex-end;gap:10px;margin:13px 0 -2px;padding:13px;border:1px solid var(--border);border-radius:12px;background:rgb(var(--deep-rgb) / .82)}.intent-editor label{display:grid;gap:5px;min-width:220px;color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}.intent-select{height:36px}.state-action.compact{height:36px;padding:8px 13px}.state-action:disabled{opacity:.45;cursor:not-allowed}
-.pagination{display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:14px 22px;border-top:1px solid var(--border);color:var(--muted);font-size:11px}.pagination button{padding:7px 10px;border:1px solid var(--border);border-radius:9px;background:transparent;color:var(--text-soft);cursor:pointer}.pagination button:disabled{opacity:.35;cursor:not-allowed}
-.state-panel{padding:70px 24px;text-align:center;border-top:1px solid var(--border)}.state-kicker{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}.state-panel h3{margin:7px 0 5px;font:650 18px/1.3 var(--font-display)}.state-panel p{margin:0 auto 16px;max-width:440px;color:var(--muted);font-size:12px}.activity-skeletons{border-top:1px solid var(--border)}.activity-skeleton{display:grid;grid-template-columns:40px 1.5fr 1fr 1fr;gap:14px;align-items:center;height:94px;padding:14px 22px;border-bottom:1px solid var(--border)}.activity-skeleton .skeleton-block{height:38px;width:38px}
-@media(max-width:1100px){.list-header,.activity-row{grid-template-columns:minmax(260px,1.5fr) minmax(150px,.8fr) minmax(170px,1fr) 48px}.list-header span:nth-child(4){display:none}.activity-context{grid-column:1/4;grid-row:2;flex-direction:row;align-items:center;margin:10px 0 0 50px}.activity-row{padding-block:16px}.open-activity{grid-column:4;grid-row:1}}
-@media(max-width:760px){.page-head{align-items:flex-start}.summary-grid{grid-template-columns:repeat(2,1fr)}.summary-card{min-height:88px;padding:14px}.toolbar{grid-template-columns:1fr}.sort-field{justify-content:space-between}.sort-field select{flex:1}.log-heading,.toolbar,.sport-filters{padding-left:16px;padding-right:16px}.list-header{display:none}.activity-row{display:grid;grid-template-columns:1fr auto;gap:14px;min-height:0;padding:17px 16px 17px 18px}.activity-identity{grid-column:1/-1;padding-right:0}.primary-metrics,.secondary-metrics{grid-column:auto;display:grid;padding:0}.secondary-metrics{grid-column:1/-1;padding-top:12px;border-top:1px solid var(--border)}.activity-context{grid-column:1;grid-row:auto;flex-direction:row;flex-wrap:wrap;margin:0}.open-activity{grid-column:2;grid-row:auto;width:auto;padding:0 10px;display:flex;gap:5px}.open-activity span{display:inline;font-size:11px;font-weight:650}.intent-editor{grid-column:1/-1;flex-wrap:wrap;margin:0}.intent-editor label{min-width:100%;}.pagination{justify-content:space-between}.activity-skeleton{grid-template-columns:40px 1fr;height:110px}.activity-skeleton span:nth-child(n+3){display:none}}
-@media(max-width:440px){.page-head{display:grid}.sync-link{justify-self:start}.summary-card strong{font-size:19px}.summary-detail{display:none}.metric-group strong{font-size:12px}.sport-mark{width:34px;height:34px}.activity-name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.activity-meta{flex-wrap:wrap}}
+.state-action:disabled { opacity:.45;cursor:not-allowed; }
+.state-action.compact { height:34px;padding:7px 13px; }
+
+/* Sport tones, shared by filter dots and icons. */
+.tone-ride { --tone: var(--ride); } .tone-run { --tone: var(--run); } .tone-strength { --tone: var(--strength); }
+.tone-walk { --tone: var(--tone-walk); } .tone-other { --tone: var(--tone-recovery); }
+
+.toolbar { display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px; }
+.search-field { position:relative;display:flex;align-items:center;flex:1 1 240px;max-width:360px; }
+.search-field svg { position:absolute;left:11px;width:16px;fill:none;stroke:var(--muted);stroke-width:1.8; }
+.search-field input,.sort-field select,.intent-select { width:100%;height:36px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);padding:0 12px;font:inherit;font-size:12.5px; }
+.search-field input { padding-left:34px; } .search-field input::placeholder { color:var(--muted); }
+.sort-field { margin-left:auto; } .sort-field select { width:160px; }
+.sport-filters { display:flex;gap:6px;flex-wrap:wrap; }
+.sport-filter { display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border:1px solid var(--border);border-radius:999px;background:transparent;color:var(--muted-soft);cursor:pointer;font-size:12px; }
+.sport-filter:hover { border-color:var(--border-strong);color:var(--text); }
+.sport-filter.active { background:rgba(95,140,255,.14);border-color:rgba(95,140,255,.4);color:var(--text); }
+.sport-dot { width:7px;height:7px;border-radius:50%;background:var(--tone); }
+.filter-count { color:var(--muted);font-size:10.5px; }
+
+.stat-strip { display:flex;align-items:center;flex-wrap:wrap;gap:6px 20px;padding:12px 2px;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px; }
+.stat-strip b { margin-right:3px;color:var(--text);font:600 14px var(--font-display); }
+.strip-muted { margin-left:auto; }
+.clear-button { border:0;background:transparent;color:var(--accent-strong);font-size:12px;font-weight:600;cursor:pointer;padding:6px; }
+.clear-button:hover { color:var(--text); }
+
+.log-layout { display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:24px;align-items:start; }
+.log-layout.no-rail { grid-template-columns:minmax(0,1fr); }
+
+.row-grid { display:grid;grid-template-columns:58px 28px minmax(200px,1fr) 72px 66px 84px 58px 58px minmax(118px,auto) 18px;align-items:center;gap:10px;padding:0 10px; }
+.cols { height:34px;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase; }
+.num { text-align:right;font-variant-numeric:tabular-nums;color:var(--text-soft);white-space:nowrap; }
+.num small { margin-left:2px;color:var(--muted);font-size:10.5px; }
+.num.is-empty { color:var(--surface3); }
+.end { text-align:right; }
+
+.month-label { position:sticky;top:0;z-index:1;display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:18px 10px 7px;border-bottom:1px solid var(--border);background:var(--page-bg);color:var(--text);font:600 12px var(--font-display);letter-spacing:.08em;text-transform:uppercase;scroll-margin-top:0; }
+.month-sums { color:var(--muted);font:400 11.5px var(--font-body);letter-spacing:0;text-transform:none; }
+
+.activity-row { height:50px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--motion-duration-fast) var(--motion-ease-standard); }
+.activity-row:hover { background:var(--surface); }
+.day { color:var(--muted);font-size:11.5px;line-height:1.2;white-space:nowrap; }
+.day b { display:block;color:var(--text-soft);font-weight:600; }
+.sport-mark { width:28px;height:28px;display:grid;place-items:center;border-radius:8px;background:color-mix(in srgb,var(--tone) 14%,transparent); }
+.identity { min-width:0; }
+.activity-name { display:block;overflow:hidden;color:var(--text);font-weight:600;font-size:13px;text-overflow:ellipsis;white-space:nowrap; }
+.activity-name:hover { color:var(--accent-strong); }
+.tags { display:flex;align-items:center;gap:6px;min-width:0;margin-top:1px;overflow:hidden;color:var(--muted);font-size:11px;white-space:nowrap; }
+.tags:empty { display:none; }
+.tag { flex:none;padding:0 6px;border-radius:999px;font-size:10.5px;line-height:16px;text-decoration:none; }
+.achievement { background:rgba(241,169,59,.12);color:var(--warning-text); }
+.linked { background:rgba(52,211,153,.1);color:var(--success-text); }
+.record { background:rgba(227,179,65,.16);color:var(--warning-text);font-weight:700; }
+.note { min-width:0;overflow:hidden;text-overflow:ellipsis; }
+
+.context { display:flex;justify-content:flex-end;gap:6px; }
+.pill { max-width:130px;height:22px;padding:0 9px;overflow:hidden;border:1px solid transparent;border-radius:999px;background:var(--surface2);color:var(--text-soft);font-size:11px;text-overflow:ellipsis;white-space:nowrap;cursor:pointer; }
+.pill:hover:not(:disabled) { border-color:var(--border-strong); }
+.pill:disabled { cursor:default; }
+.pill.good { background:rgba(52,211,153,.12);color:var(--success-text); }
+.pill.warn { background:rgba(243,180,77,.12);color:var(--warning-text); }
+.pill.ghost { border:1px dashed var(--border-strong);background:transparent;color:var(--muted);opacity:0; }
+.activity-row:hover .pill.ghost,.pill.ghost:focus-visible { opacity:1; }
+.open-activity { display:grid;place-items:center;color:var(--muted); }
+.open-activity svg { width:16px;fill:none;stroke:currentColor;stroke-width:1.8; }
+.activity-row:hover .open-activity { color:var(--text); }
+
+.intent-editor { display:flex;align-items:flex-end;gap:10px;padding:12px 10px 12px 106px;border-bottom:1px solid var(--border);background:var(--surface); }
+.intent-editor label { display:grid;gap:5px;min-width:220px;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase; }
+.intent-select { height:34px; }
+
+.list-end { padding:20px;color:var(--muted);font-size:12px;text-align:center; }
+
+.month-rail { position:sticky;top:16px;display:flex;flex-direction:column;max-height:calc(100vh - 32px);padding-top:34px;overflow-y:auto;font-size:12px;scrollbar-width:none; }
+.rail-year { margin:10px 0 3px 8px;color:var(--text);font:600 13px var(--font-display); }
+.rail-month { display:flex;justify-content:space-between;padding:3px 8px;border:0;border-radius:6px;background:transparent;color:var(--muted);font:inherit;cursor:pointer; }
+.rail-month:hover,.rail-month.active { background:var(--surface);color:var(--text); }
+
+.state-panel { padding:70px 24px;text-align:center; }
+.state-kicker { color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase; }
+.state-panel h3 { margin:7px 0 5px;font:650 18px/1.3 var(--font-display); }
+.state-panel p { max-width:440px;margin:0 auto 16px;color:var(--muted);font-size:12px; }
+.activity-skeletons { padding-top:12px; }
+.activity-skeleton { display:grid;grid-template-columns:58px 28px 1fr 160px;gap:10px;align-items:center;height:50px;padding:0 10px;border-bottom:1px solid var(--border); }
+.activity-skeleton .skeleton-block { width:28px;height:28px; }
+
+@media (max-width: 1180px) {
+  .row-grid { grid-template-columns:58px 28px minmax(180px,1fr) 66px 62px 76px 52px minmax(104px,auto) 18px; }
+  .row-grid > :nth-child(8) { display:none; }
+}
+@media (max-width: 900px) {
+  .log-layout { grid-template-columns:minmax(0,1fr); }
+  .month-rail { display:none; }
+  .row-grid { grid-template-columns:48px 28px minmax(0,1fr) 58px 60px 18px; }
+  .row-grid > :nth-child(6),.row-grid > :nth-child(7),.row-grid > :nth-child(9) { display:none; }
+  .strip-muted { margin-left:0; }
+  .intent-editor { padding-left:10px;flex-wrap:wrap; }
+}
+@media (max-width: 560px) {
+  .page-head { display:grid;align-items:flex-start; } .sync-link { justify-self:start; }
+  .search-field { max-width:none; } .sort-field { margin-left:0;flex:1; } .sort-field select { width:100%; }
+  .row-grid { grid-template-columns:44px 26px minmax(0,1fr) 54px 18px; }
+  .row-grid > :nth-child(4) { display:none; }
+}
 </style>

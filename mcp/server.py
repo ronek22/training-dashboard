@@ -209,6 +209,19 @@ TOOLS = [
         "inputSchema": {"type": "object", "properties": {}}
     },
     {
+        "name": "get_aerobic_fitness_trend",
+        "description": "Read aerobic fitness from steady rides of 45+ min with power and heart rate: per-ride heart-rate drift (Pw:HR decoupling, under 5% is steady) and efficiency (W/bpm), indoor and outdoor trends, a same-power heart-rate comparison, and excluded rides with reasons. No test needed; no FTP is written",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "weeks": {
+                    "type": "integer",
+                    "description": "Window in weeks, 8-26 (default 12)"
+                }
+            }
+        }
+    },
+    {
         "name": "get_return_to_run",
         "description": "Read the return-to-run tracker: current stage and its prescription, the next step (rest, log a score, ready, flare, graduated), recent runs with during and next-morning symptom scores, and the progression rules",
         "inputSchema": {"type": "object", "properties": {}}
@@ -587,6 +600,10 @@ def handle_tool(name: str, args: dict) -> str:
 
         elif name == "get_cycling_power_profile":
             result = call_remote_mcp_tool(name)
+            return json.dumps(result, indent=2)
+
+        elif name == "get_aerobic_fitness_trend":
+            result = call_api("GET", "/metrics/aerobic-decoupling", args)
             return json.dumps(result, indent=2)
 
         elif name == "get_return_to_run":

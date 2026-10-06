@@ -20,9 +20,32 @@ Implemented foundations:
 - one-click, non-interactive Codex planning that creates or updates the current week through MCP
 - optional pre-generation Codex planning briefs for schedule constraints, recovery feedback, and week-specific preferences
 - post-generation Codex plan feedback that revises eligible remaining days and records the plan change
-- always-visible workout analysis on Activity Detail with one-click Codex generation through MCP
+- a rule-based session read on Activity Detail (comparisons with your own past sessions), plus questions answered by Codex through MCP
 
 ## Recently Completed
+
+### Session read replaces the coach analysis
+
+2026-10-06: the old Activity Detail coach card mostly summarised the session, so it is replaced by `services/session_read.py`: a rule-based read that compares the session with your own earlier sessions (never later ones), shown below the charts in `SessionReadPanel.vue`.
+
+- Ride: heart-rate drift ranked against the last 6 steady rides (closest to zero wins), heart rate at the same power against the earliest comparable ride (both from `aerobic_decoupling`, same environment, 12 weeks), power bests for hard rides, and time above Zone 2 for easy rides without a power meter. Next time: +5–10 W when drift stays under 3.5%, hold under 5%, drop 10 W (or fix fuelling after a bonk) above it.
+- Run: return-to-run stage and symptom outcome, average heart rate against the easy cap, and pace against runs of similar duration at an average heart rate within 5 bpm (6 months). Next time comes from the return-to-run next step.
+- Strength: the two main lifts (compound lifts first) with their per-session e1RM series, lifts up/same/down on last time, and the weekly strength goal. A main lift with no increase in 4+ sessions sets the verdict, and its double-progression hint becomes the next-time line; fixed-load accessories are shown but never flagged.
+- Shared: planned vs done, and a "going in" tile from the day's check-in and life-load tags; one "watch" item (pain, a bonk, RPE 9+ with soreness, a hard session on a busy day, HR over the easy cap).
+- Asking: the panel has a question box. The app saves the question on the analysis request (`activity_analysis_requests.question`; omitting it keeps a pending one, `""` asks for a general read), then starts Codex as before. The analysis context carries `question`, `session_read` and question-aware instructions, and the saved analysis keeps the question. The full-analysis modal is gone.
+- Verified with 7 unit tests, a question round-trip smoke test, `just check`, and in the browser on a database copy at 1512 px (dark and light) and 375 px.
+
+### Aerobic fitness without a test
+
+2026-10-05: `services/aerobic_decoupling.py` tracks heart-rate drift (Pw:HR decoupling) and power per heartbeat (W/bpm) on steady rides, so winter base fitness shows up from ordinary Zone 2 rides with no FTP test. It reads the cached power and heart-rate streams through the `power_trends` segment parser; nothing is estimated or written as FTP.
+
+- Qualifying: Ride/VirtualRide of 45+ min with measured power (same `device_watts` / VirtualRide-backfill rule as the power profile), not planned as tempo, intervals or race-specific. The first 10 min and last 5 min are trimmed; power and heart rate must cover 90% of the rest, zero watts at most 10%, normalized/average power at most 1.10, and average power at most 80% of the latest stored FTP (skipped with no FTP). Every other ride in the window is listed with its reason.
+- Per ride: efficiency over the trimmed window, and decoupling = efficiency drop from the first to the second half (under 5% is steady).
+- Trend, per environment (indoor = VirtualRide or Strava `trainer`; outdoor otherwise): needs 3 qualifying rides, else `unavailable`. Direction comes from heart rate at the same power, a least-squares fit of `avg_hr ~ avg_watts + day` once there are 5+ rides with a 10 W spread, because raw W/bpm also rises on harder rides; with fewer it falls back to the efficiency slope (±2%). A same-power comparison (latest ride against the earliest within ±7% power) gives the coach line, e.g. "Same power, 7 bpm lower than on 4 Sep".
+- API: `GET /metrics/aerobic-decoupling?weeks=8..26` (default 12). Coach: `aerobic_fitness` in `get_recent_context` (trends, last 5 rides, rules), and MCP `get_aerobic_fitness_trend` on both servers.
+- UI: "05 / Your aerobic base", the last section on Trends → Cycling power. A two-line heading ("Same power. Lower heart rate."), a hero verdict (bpm change at the same power, with direction pill and three mini stats), a "then and now" pair of rides at similar power, two single-axis charts (power per heartbeat with a dashed trend line; drift with the steady zone under 5% shaded), a ride table with half-by-half heart rate and drift chips, and the excluded rides with reasons. Indoor/outdoor and 8/12/26-week toggles sit top right.
+- Real data (12 weeks to 2026-10-05): 7 indoor rides qualify, about 4.6 bpm lower at the same power over 17 days. No outdoor ride qualifies yet because outdoor rides have no power meter.
+- Verified with 10 unit tests and an endpoint/MCP smoke test (`just check`: backend, helper and frontend tests plus the build), and in the browser at 1512 px and 375 px.
 
 ### Two-minute downshift
 

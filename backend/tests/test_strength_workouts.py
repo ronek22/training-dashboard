@@ -403,6 +403,12 @@ class StrengthWorkoutTests(unittest.TestCase):
         self.assertEqual(suggestions[0]["last_source"], "TrainLog")
         self.assertEqual(suggestions[0]["last_sets"][0]["weight_kg"], 82.5)
 
+        excluded_response = self.client.get(
+            f"/strength/workouts/exercise-suggestions?q=back%20sq&exclude_session_id={session['id']}"
+        )
+        self.assertEqual(excluded_response.status_code, 200)
+        self.assertEqual(excluded_response.json(), [])
+
         disposable_response = self.client.post(
             "/strength/workouts/sessions",
             json={"template_id": template["id"]},

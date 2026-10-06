@@ -1,5 +1,5 @@
 <template>
-  <main class="activity-detail-v2 motion-page">
+  <main class="activity-detail-v2 motion-page" :class="{ 'is-strength': presentation === 'strength' }">
     <div class="ad-shell">
       <div v-if="loading" class="ad-state" role="status" aria-live="polite">
         <span class="ad-state-spinner"></span><h1>Loading activity</h1><p>Preparing the session record and available analysis.</p>
@@ -39,43 +39,14 @@
           <strong>Summary data only</strong><span>Some charts, route, or segment detail may still be processing or unavailable from the source.</span>
         </div>
 
-        <component :is="presentationComponent" :detail="detail">
-          <template #after-overview>
-            <section class="ad-coach-card" :class="{'is-running': analysisRunning}" aria-labelledby="coach-analysis-title">
-              <div class="ad-coach-mark" aria-hidden="true"><span></span></div>
-              <div class="ad-coach-copy">
-                <div class="ad-coach-meta">
-                  <span>Coach analysis</span>
-                  <span v-if="analysisState" class="ad-coach-state">{{ analysisState }}</span>
-                </div>
-                <template v-if="analysisReadable">
-                  <h2 id="coach-analysis-title">{{ analysis.headline }}</h2>
-                  <p class="ad-coach-preview">{{ analysis.summary }}</p>
-                </template>
-                <template v-else>
-                  <h2 id="coach-analysis-title">A deeper read of this workout</h2>
-                  <p v-if="analysis.status === 'unavailable'" class="ad-coach-preview">{{ analysis.reason || 'There is not enough workout data to generate an analysis.' }}</p>
-                  <p v-else-if="analysis.status === 'failed'" class="ad-coach-preview">{{ analysis.last_error || 'The previous analysis attempt failed. You can try again.' }}</p>
-                  <p v-else-if="analysis.status === 'requested' || analysisRunning" class="ad-coach-preview">Codex is reviewing patterns, execution, and longer-term training context.</p>
-                  <p v-else class="ad-coach-preview">Ask Codex to review patterns, execution quality, potential issues, and what this session means in your longer-term training.</p>
-                </template>
-                <p v-if="analysisMessage" class="ad-analysis-message" :class="{'is-error': analysisMessageError}">{{ analysisMessage }}</p>
-              </div>
-              <div class="ad-coach-actions">
-                <button v-if="analysisReadable" class="ad-primary-action" type="button" @click="openAnalysisModal">Open full analysis</button>
-                <button
-                  class="ad-secondary-action ad-codex-action"
-                  type="button"
-                  :disabled="analysisRunning || analysis.status === 'unavailable'"
-                  @click="analyzeWithCodex"
-                >
-                  {{ analysisRunning ? 'Codex is analyzing…' : (analysisReadable ? 'Refresh with Codex' : 'Analyze with Codex') }}
-                </button>
-              </div>
-              <div v-if="analysisRunning" class="ad-coach-progress" aria-hidden="true"><span></span></div>
-            </section>
-          </template>
-        </component>
+        <component :is="presentationComponent" :detail="detail" />
+
+        <SessionReadPanel
+          class="ad-shared-section"
+          :read="analysis.session_read" :analysis="analysis"
+          :running="analysisRunning" :message="analysisMessage" :message-error="analysisMessageError"
+          @ask="analyzeWithCodex"
+        />
 
         <section v-if="detail.execution_quality" class="ad-section ad-shared-section">
           <div class="ad-section-heading">
@@ -98,43 +69,6 @@
       </template>
     </div>
 
-    <Teleport to="body">
-      <Transition name="ad-modal">
-        <div v-if="analysisModalOpen && analysisReadable" class="ad-analysis-modal-backdrop" @click.self="closeAnalysisModal">
-          <section class="ad-analysis-modal ad-analysis" role="dialog" aria-modal="true" aria-labelledby="analysis-modal-title">
-            <header class="ad-analysis-modal-header">
-              <div><span>Coach analysis</span><p v-if="analysis.generated_at">Generated {{ formatDateTime(analysis.generated_at) }}</p></div>
-              <button class="ad-modal-close" type="button" aria-label="Close full analysis" @click="closeAnalysisModal">×</button>
-            </header>
-            <div class="ad-analysis-modal-body">
-              <div class="ad-analysis-intro">
-                <span class="ad-analysis-label">Assessment</span>
-                <h2 id="analysis-modal-title">{{ analysis.headline }}</h2>
-                <p class="ad-analysis-summary">{{ analysis.summary }}</p>
-              </div>
-              <div v-if="analysis.key_observations?.length" class="ad-analysis-findings">
-                <span class="ad-analysis-label">What supports this</span>
-                <ul class="ad-observations"><li v-for="item in analysis.key_observations" :key="item">{{ item }}</li></ul>
-              </div>
-              <div v-if="analysis.limitations?.length" class="ad-analysis-findings">
-                <span class="ad-analysis-label">Limitations</span>
-                <ul class="ad-observations ad-limitations"><li v-for="item in analysis.limitations" :key="item">{{ item }}</li></ul>
-              </div>
-              <div v-if="analysis.confidence_note" class="ad-analysis-confidence">
-                <span class="ad-confidence-icon" aria-hidden="true">i</span>
-                <p>{{ analysis.confidence_note }}</p>
-              </div>
-            </div>
-            <footer class="ad-analysis-modal-footer">
-              <span>This review uses the workout data and training context currently available.</span>
-              <button class="ad-secondary-action ad-codex-action" type="button" :disabled="analysisRunning" @click="analyzeWithCodex">
-                {{ analysisRunning ? 'Codex is analyzing…' : 'Refresh with Codex' }}
-              </button>
-            </footer>
-          </section>
-        </div>
-      </Transition>
-    </Teleport>
   </main>
 </template>
 
@@ -148,6 +82,7 @@ import EnduranceAnalysis from '../components/activity-detail/EnduranceAnalysis.v
 import StrengthAnalysis from '../components/activity-detail/StrengthAnalysis.vue'
 import GenericAnalysis from '../components/activity-detail/GenericAnalysis.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
+import SessionReadPanel from '../components/activity-detail/SessionReadPanel.vue'
 import { activityPresentation, sportLabel } from '../activity-detail/presentation'
 
 const route = useRoute()
@@ -161,9 +96,7 @@ const feedbackMessage = ref('')
 const analysisRunning = ref(false)
 const analysisMessage = ref('')
 const analysisMessageError = ref(false)
-const analysisModalOpen = ref(false)
 let viewActive = true
-let previousBodyOverflow = ''
 
 // Tags feed the what-worked memory; only training sessions are compared.
 const isTaggable = computed(() => ['Ride', 'VirtualRide', 'Run', 'WeightTraining'].includes(detail.value?.activity?.type))
@@ -182,18 +115,9 @@ const load = async () => {
 }
 onMounted(load)
 watch(() => route.params.activityId, () => {
-  analysisModalOpen.value = false
   analysisMessage.value = ''
   analysisMessageError.value = false
   load()
-})
-watch(analysisModalOpen, (open) => {
-  if (open) {
-    previousBodyOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-  } else {
-    document.body.style.overflow = previousBodyOverflow
-  }
 })
 
 const presentation = computed(() => activityPresentation(detail.value?.activity?.type))
@@ -232,22 +156,19 @@ const feedbackRead = computed(() => {
   return { tone: 'steady', label: 'Mixed but steady', summary: 'A balanced subjective read of the session.' }
 })
 const analysis = computed(() => detail.value?.analysis || {})
-const analysisReadable = computed(() => ['ready', 'stale'].includes(analysis.value.status) && (analysis.value.headline || analysis.value.summary))
-const analysisState = computed(() => ({ stale: 'May be outdated', requested: 'Processing', failed: 'Unavailable', not_requested: 'Not analyzed', unavailable: 'Unavailable' }[analysis.value.status] || ''))
 const value = (input) => input === null || input === undefined ? '—' : input
 const feedbackPercent = (input, maximum) => `${Math.max(0, Math.min(100, (Number(input) / maximum) * 100 || 0))}%`
 const formatDateTime = (input) => { const date = new Date(input); return Number.isNaN(date.getTime()) ? input : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date) }
 const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
-const openAnalysisModal = () => { analysisModalOpen.value = true }
-const closeAnalysisModal = () => { analysisModalOpen.value = false }
-const handleActivityKeydown = (event) => { if (event.key === 'Escape') closeAnalysisModal() }
-const analyzeWithCodex = async () => {
+// The question is saved on the request first; Codex then reads it from the analysis context over MCP.
+const analyzeWithCodex = async (question = '') => {
   if (analysisRunning.value || !detail.value?.activity?.id) return
   const activityId = String(detail.value.activity.id)
   analysisRunning.value = true
   analysisMessageError.value = false
   analysisMessage.value = 'Starting local Codex…'
   try {
+    await api.analyzeActivity(activityId, { force_refresh: true, question })
     const started = await api.startCodexActivityAnalysis({ activity_id: activityId })
     const jobId = started.data.job_id
     const deadline = Date.now() + (15 * 60 * 1000)
@@ -258,7 +179,7 @@ const analyzeWithCodex = async () => {
       if (job.status === 'failed') throw new Error(job.message || 'Codex could not analyze this activity.')
       if (job.status === 'succeeded') {
         await load()
-        analysisMessage.value = 'Analysis saved and refreshed.'
+        analysisMessage.value = ''
         return
       }
     }
@@ -274,12 +195,7 @@ const analyzeWithCodex = async () => {
     analysisRunning.value = false
   }
 }
-onMounted(() => window.addEventListener('keydown', handleActivityKeydown))
-onBeforeUnmount(() => {
-  viewActive = false
-  window.removeEventListener('keydown', handleActivityKeydown)
-  document.body.style.overflow = previousBodyOverflow
-})
+onBeforeUnmount(() => { viewActive = false })
 const closeFeedback = () => { if (!feedbackSaving.value) { feedbackOpen.value = false; feedbackMessage.value = '' } }
 const saveFeedback = async (payload) => {
   feedbackSaving.value = true; feedbackMessage.value = ''
@@ -304,21 +220,6 @@ const saveFeedback = async (payload) => {
 .ad-secondary-action{border:1px solid rgba(95,140,255,.38);border-radius:9px;background:rgba(95,140,255,.12);color:var(--text);padding:8px 11px;font-size:.76rem;font-weight:750;cursor:pointer}.ad-secondary-action:hover{background:rgba(95,140,255,.2)}.ad-secondary-action:disabled{cursor:wait;opacity:.62}
 .ad-shared-grid{align-items:start}
 .ad-shared-grid>.ad-shared-section{margin-top:0}
-.ad-analysis{overflow:hidden}
-.ad-analysis-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.ad-codex-action{white-space:nowrap}.ad-analysis-message{margin:-8px 0 18px;padding:10px 12px;border:1px solid rgba(31,190,141,.2);border-radius:9px;background:rgba(31,190,141,.07);color:var(--text-soft)!important;font-size:.8rem}.ad-analysis-message.is-error{border-color:rgba(235,104,92,.25);background:rgba(235,104,92,.08);color:color-mix(in srgb, #f1aaa3 calc(100% - var(--dim)), #000)!important}
-.ad-analysis-intro{padding:16px 18px 17px;border:1px solid rgba(31,190,141,.18);border-radius:12px;background:color-mix(in srgb, rgba(31,190,141,.09), rgba(31,190,141,.025))}
-.ad-analysis-label{display:block;margin-bottom:8px;color:color-mix(in srgb, #68d7b2 calc(100% - var(--dim)), #000);font-size:.66rem;font-weight:850;letter-spacing:.1em;text-transform:uppercase}
-.ad-analysis .ad-analysis-intro h3{margin:0 0 8px;font-size:1.05rem;letter-spacing:-.015em}
-.ad-analysis-summary{margin:0;color:var(--ad-muted);font-size:.88rem;line-height:1.6}
-.ad-analysis-findings{margin-top:20px}
-.ad-observations{display:grid;gap:8px;margin:0;padding:0;list-style:none}
-.ad-analysis .ad-observations li{position:relative;margin:0;padding:11px 13px 11px 36px;border:1px solid rgb(var(--tint-rgb) / .13);border-radius:10px;background:rgb(var(--panel-rgb) / .32);color:var(--text);font-size:.84rem;line-height:1.45}
-.ad-analysis .ad-observations li::before{content:'✓';position:absolute;top:11px;left:13px;display:grid;place-items:center;width:15px;height:15px;border-radius:50%;background:rgba(31,190,141,.14);color:color-mix(in srgb, #58d6aa calc(100% - var(--dim)), #000);font-size:.62rem;font-weight:900}
-.ad-analysis .ad-limitations li::before{content:'!';background:rgba(225,171,76,.12);color:color-mix(in srgb, #e1b65d calc(100% - var(--dim)), #000)}
-.ad-analysis-confidence{display:flex;align-items:flex-start;gap:10px;margin:18px -24px -24px;padding:14px 24px;border-top:1px solid rgb(var(--tint-rgb) / .13);background:rgb(var(--tint-rgb) / .045)}
-.ad-confidence-icon{display:grid;flex:0 0 auto;place-items:center;width:18px;height:18px;margin-top:1px;border:1px solid rgb(var(--tint-rgb) / .3);border-radius:50%;color:var(--ad-muted);font-size:.68rem;font-weight:850}
-.ad-analysis-confidence p{margin:0;color:var(--ad-muted);font-size:.76rem;line-height:1.5}
-@media(max-width:560px){.ad-analysis-confidence{margin:18px -19px -19px;padding:14px 19px}.ad-analysis-actions{width:100%;justify-content:space-between}.ad-codex-action{flex:1}}
 
 .ad-feedback-verdict{grid-column:1 / -1;padding-top:10px;border-top:1px solid rgb(var(--tint-rgb) / .12)}
 .ad-feedback-strip{
@@ -337,7 +238,7 @@ const saveFeedback = async (payload) => {
 }
 .ad-feedback-strip.is-positive{--feedback-accent:color-mix(in srgb, #43d17c calc(100% - var(--dim)), #000)}.ad-feedback-strip.is-recovery{--feedback-accent:color-mix(in srgb, #f5b742 calc(100% - var(--dim)), #000)}.ad-feedback-strip.is-attention{--feedback-accent:color-mix(in srgb, #ff6d72 calc(100% - var(--dim)), #000)}.ad-feedback-strip.is-steady{--feedback-accent:color-mix(in srgb, #6f91ff calc(100% - var(--dim)), #000)}
 .ad-feedback-strip-intro{display:flex;flex-direction:column;gap:3px;min-width:0}
-.ad-feedback-strip-intro span,.ad-coach-meta>span:first-child,.ad-analysis-modal-header>div>span{color:var(--ad-accent);font-size:.66rem;font-weight:850;letter-spacing:.1em;text-transform:uppercase}
+.ad-feedback-strip-intro span{color:var(--ad-accent);font-size:.66rem;font-weight:850;letter-spacing:.1em;text-transform:uppercase}
 .ad-feedback-strip-intro>span{color:var(--feedback-accent)}
 .ad-feedback-strip-intro strong{font-size:.96rem;letter-spacing:-.01em}
 .ad-feedback-strip-intro small{color:var(--ad-muted);font-size:.68rem;line-height:1.35}
@@ -354,66 +255,9 @@ const saveFeedback = async (payload) => {
 .ad-feedback-strip-empty{margin:0;color:var(--ad-muted);font-size:.8rem}
 .ad-feedback-strip-note{grid-column:2;margin:0;color:var(--ad-muted);font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.ad-coach-card{
-  position:relative;
-  display:grid;
-  grid-template-columns:auto minmax(0,1fr) auto;
-  align-items:center;
-  gap:22px;
-  margin-top:22px;
-  padding:25px;
-  overflow:hidden;
-  border:1px solid rgba(31,190,141,.3);
-  border-radius:17px;
-  background:rgb(var(--panel-rgb) / .96);
-  box-shadow:var(--shadow-card);
-}
-.ad-presentation>.ad-coach-card{margin-top:0}
-.ad-coach-card::after{content:'';position:absolute;right:-80px;top:-105px;width:260px;height:260px;border-radius:50%;background:transparent;pointer-events:none}
-.ad-coach-mark{position:relative;display:grid;place-items:center;width:54px;height:54px;border:1px solid rgba(77,218,168,.3);border-radius:16px;background:rgba(31,190,141,.11);box-shadow:none}
-.ad-coach-mark::before,.ad-coach-mark::after,.ad-coach-mark span{content:'';position:absolute;width:4px;border-radius:999px;background:color-mix(in srgb, #60dcb2 calc(100% - var(--dim)), #000)}
-.ad-coach-mark::before{height:25px;transform:rotate(-39deg) translate(-5px,-2px)}
-.ad-coach-mark::after{height:18px;transform:rotate(39deg) translate(6px,5px)}
-.ad-coach-mark span{width:5px;height:5px;top:12px;right:12px;box-shadow:-24px 24px 0 -1px color-mix(in srgb, #60dcb2 calc(100% - var(--dim)), #000)}
-.ad-coach-copy{min-width:0}
-.ad-coach-meta{display:flex;align-items:center;gap:10px;margin-bottom:7px}
-.ad-coach-state{padding-left:10px;border-left:1px solid rgb(var(--tint-rgb) / .23);color:var(--ad-muted);font-size:.68rem;font-weight:700}
-.ad-coach-copy h2{margin:0;color:var(--text);font-size:clamp(1.2rem,2vw,1.55rem);letter-spacing:-.025em}
-.ad-coach-preview{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;max-width:700px;margin:8px 0 0;color:var(--ad-muted);font-size:.86rem;line-height:1.55}
-.ad-coach-actions{position:relative;z-index:1;display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:158px}
-.ad-primary-action{border:1px solid rgba(84,226,174,.54);border-radius:9px;background:color-mix(in srgb, #1fbe8d calc(100% - var(--dim)), #000);color:var(--on-accent);padding:9px 13px;font-size:.77rem;font-weight:850;cursor:pointer;box-shadow:none}
-.ad-primary-action:hover{background:color-mix(in srgb, #42d0a4 calc(100% - var(--dim)), #000)}
-.ad-coach-card .ad-analysis-message{margin:12px 0 0}
-.ad-coach-progress{position:absolute;right:0;bottom:0;left:0;height:3px;overflow:hidden;background:rgba(31,190,141,.08)}
-.ad-coach-progress span{display:block;width:34%;height:100%;border-radius:999px;background:linear-gradient(90deg,transparent,color-mix(in srgb, #61ddb3 calc(100% - var(--dim)), #000) 35%,color-mix(in srgb, #79a4ff calc(100% - var(--dim)), #000) 75%,transparent);animation:ad-coach-progress 1.35s ease-in-out infinite}
-.ad-coach-card.is-running .ad-coach-mark{animation:ad-coach-pulse 1.7s ease-in-out infinite}
-.ad-coach-card.is-running .ad-codex-action::before,.ad-analysis-modal-footer .ad-codex-action:disabled::before{content:'';display:inline-block;width:10px;height:10px;margin-right:7px;border:2px solid rgba(220,231,255,.3);border-top-color:color-mix(in srgb, #dce7ff calc(100% - var(--dim)), #000);border-radius:50%;vertical-align:-1px;animation:ad-spin .7s linear infinite}
-@keyframes ad-coach-progress{0%{transform:translateX(-115%)}100%{transform:translateX(340%)}}
-@keyframes ad-coach-pulse{0%,100%{border-color:rgba(77,218,168,.3)}50%{border-color:rgba(77,218,168,.65);transform:scale(1.035)}}
-
-.ad-analysis-modal-backdrop{--ad-muted:var(--muted);--ad-accent:var(--ride);position:fixed;z-index:1000;inset:0;display:grid;place-items:center;padding:24px;background:rgb(var(--deep-rgb) / .76);backdrop-filter:blur(10px)}
-.ad-analysis-modal{display:flex;flex-direction:column;width:min(760px,100%);max-height:min(86vh,900px);overflow:hidden;border:1px solid rgb(var(--tint-rgb) / .24);border-radius:18px;background:var(--surface2);box-shadow:0 30px 100px rgb(var(--shadow-rgb) / .52)}
-.ad-analysis-modal-header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:19px 22px;border-bottom:1px solid rgb(var(--tint-rgb) / .14);background:rgb(var(--panel-rgb) / .52)}
-.ad-analysis-modal-header>div{display:flex;align-items:center;gap:12px}
-.ad-analysis-modal-header p{margin:0;padding-left:12px;border-left:1px solid rgb(var(--tint-rgb) / .2);color:var(--ad-muted);font-size:.7rem}
-.ad-modal-close{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgb(var(--tint-rgb) / .25);border-radius:9px;background:rgb(var(--tint-rgb) / .07);color:var(--text);font-size:1.45rem;line-height:1;cursor:pointer}
-.ad-modal-close:hover{background:rgb(var(--tint-rgb) / .14)}
-.ad-analysis-modal-body{overflow-y:auto;padding:26px 28px 28px}
-.ad-analysis-modal .ad-analysis-intro{padding:20px 21px}
-.ad-analysis-modal .ad-analysis-intro h2{margin:0 0 10px;color:var(--text);font-size:1.45rem;letter-spacing:-.025em}
-.ad-analysis-modal .ad-analysis-summary{font-size:.92rem}
-.ad-analysis-modal-footer{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:15px 22px;border-top:1px solid rgb(var(--tint-rgb) / .14);background:rgb(var(--panel-rgb) / .52)}
-.ad-analysis-modal-footer>span{max-width:430px;color:var(--ad-muted);font-size:.7rem;line-height:1.45}
-.ad-modal-enter-active,.ad-modal-leave-active{transition:opacity .18s ease}
-.ad-modal-enter-active .ad-analysis-modal,.ad-modal-leave-active .ad-analysis-modal{transition:transform .18s ease,opacity .18s ease}
-.ad-modal-enter-from,.ad-modal-leave-to{opacity:0}
-.ad-modal-enter-from .ad-analysis-modal,.ad-modal-leave-to .ad-analysis-modal{opacity:0;transform:translateY(12px) scale(.985)}
-
 @media(max-width:850px){
   .ad-feedback-strip{grid-template-columns:160px minmax(0,1fr) auto;gap:10px 14px}
   .ad-feedback-strip-metrics>div{padding:2px 8px;gap:4px 6px}
-  .ad-coach-card{grid-template-columns:auto minmax(0,1fr)}
-  .ad-coach-actions{grid-column:2;flex-direction:row;min-width:0}
 }
 @media(max-width:560px){
   .ad-feedback-strip{grid-template-columns:1fr auto;gap:13px 10px;padding:15px}
@@ -423,20 +267,6 @@ const saveFeedback = async (payload) => {
   .ad-feedback-strip-note{grid-column:1 / -1;grid-row:3;white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
   .ad-feedback-strip-empty{grid-column:1 / -1;grid-row:2}
   .ad-feedback-strip>.ad-secondary-action{grid-column:2;grid-row:1}
-  .ad-coach-card{grid-template-columns:1fr;gap:15px;padding:20px}
-  .ad-coach-mark{width:45px;height:45px;border-radius:13px}
-  .ad-coach-actions{grid-column:1;display:grid;grid-template-columns:1fr}
-  .ad-coach-actions .ad-secondary-action{width:100%}
-  .ad-coach-preview{-webkit-line-clamp:3}
-  .ad-analysis-modal-backdrop{align-items:end;padding:0;background:rgb(var(--deep-rgb) / .7)}
-  .ad-analysis-modal{width:100%;height:94dvh;max-height:none;border-width:1px 0 0;border-radius:20px 20px 0 0}
-  .ad-analysis-modal-header{padding:16px 17px}
-  .ad-analysis-modal-header p{display:none}
-  .ad-analysis-modal-body{padding:19px 17px 24px}
-  .ad-analysis-modal .ad-analysis-intro{padding:17px}
-  .ad-analysis-modal .ad-analysis-intro h2{font-size:1.25rem}
-  .ad-analysis-modal-footer{align-items:stretch;flex-direction:column;padding:13px 17px calc(13px + env(safe-area-inset-bottom))}
-  .ad-analysis-modal-footer .ad-secondary-action{width:100%}
 }
-@media(prefers-reduced-motion:reduce){.ad-modal-enter-active,.ad-modal-leave-active,.ad-modal-enter-active .ad-analysis-modal,.ad-modal-leave-active .ad-analysis-modal{transition:none}.ad-coach-progress span,.ad-coach-card.is-running .ad-coach-mark,.ad-coach-card.is-running .ad-codex-action::before,.ad-analysis-modal-footer .ad-codex-action:disabled::before{animation:none}}
+.activity-detail-v2.is-strength .ad-header{padding-bottom:22px}.activity-detail-v2.is-strength .ad-header-row{margin-top:18px}.activity-detail-v2.is-strength .ad-header h1{font-size:clamp(1.8rem,2.6vw,2.6rem);line-height:1.08;letter-spacing:-.04em;max-width:none}.activity-detail-v2.is-strength .ad-header p{margin-top:8px}
 </style>

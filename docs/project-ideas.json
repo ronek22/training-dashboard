@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-01T09:04:01+02:00",
-  "summary": "Reviewed repository status, recent commits, current-state documentation, the active roadmap, Sprint 36 follow-ups and all 15 existing proposals. Inspected the current strength activity-matching changes: time/overlap ranking, exclusion of activities attached elsewhere, match explanations, in-runner Strava sync and the new synthetic ranking test. Matching assistance is already a planned sprint follow-up and active implementation; unlogged input recovery, equipment browsing and strength progression are also already captured. No sufficiently distinct new proposal was identified today. Source/documentation review only; no application tests, syncs or model calls were run, and no credentials, databases or private training exports were opened.",
+  "reviewed_at": "2026-10-05T12:00:00+02:00",
+  "summary": "Manual review after a burst of athlete-facing work (2026-10-02 to 10-05): sleep debt, ride fuelling, protein tick, personal best wall with FTP estimate, pre-session brief, what-worked memory, return-to-run tracker, life-load tags, minimum viable week, two-minute downshift and the just check command. Marked six catalog ideas Done (structured .zwo workouts, volume trend alert, morning check-in, return-to-run tracker, dependable project checks, test-free FTP estimate). Added six athlete-facing proposals that do not overlap built or catalogued work. Source/documentation review only; no tests, syncs or model calls were run.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -348,6 +348,142 @@
         "Synthetic UI checks cover saving, correction, failed saves and reload at desktop and 390px widths. Merely opening the control never writes an answer."
       ],
       "created_on": "2026-09-30"
+    },
+    {
+      "id": "aerobic-decoupling-trend",
+      "title": "See aerobic fitness improve without a test",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "Aerobic progress during a cycling base block is invisible unless you do a maximal test, which you are avoiding for now. Power records only move on hard efforts, so steady endurance rides produce no fitness signal.",
+      "proposal": "For steady rides of 45 minutes or more with power and heart rate, compute heart-rate drift (Pw:HR decoupling between the first and second halves) and efficiency (average power per heartbeat at endurance intensity). Show an 8–12 week trend on Cycling power with the qualifying rides listed, and let the coach say things like 'same power, 6 bpm lower than in August'.",
+      "benefit": "Lets you watch indoor winter base fitness improve from normal Zone 2 rides, with no test and no extra fatigue.",
+      "evidence": [
+        "backend/app/services/power_trends.py: cached activity streams",
+        "backend/app/services/heart_rate_zones.py",
+        "backend/app/services/personal_records.py: estimate_ftp",
+        "backend/app/services/seasons.py: October–March off season"
+      ],
+      "acceptance_criteria": [
+        "Only rides that meet documented steadiness, duration and data-completeness rules qualify; others are listed as excluded with a reason.",
+        "Each trend point links to its ride and shows decoupling percent and power-per-heartbeat.",
+        "Indoor and outdoor rides can be compared separately.",
+        "Fewer than three qualifying rides in the window yields an unavailable state, not a trend line.",
+        "Coach context receives a compact summary and no FTP is written."
+      ],
+      "created_on": "2026-10-05"
+    },
+    {
+      "id": "kit-mileage-tracker",
+      "title": "Know when shoes, chain and tyres are worn out",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "Worn-out run shoes are a common, silent injury risk, and your heel history makes this matter as running returns. Chains and tyres also wear on a schedule nobody remembers.",
+      "proposal": "Add a small kit list (shoes, bike, chain, tyres, trainer) with a start date and replacement threshold. Assign kit to activities automatically by sport, with a manual override, using Strava gear where it exists. Show distance used and a calm 'nearly due' cue on Today and in the return-to-run panel.",
+      "benefit": "Replace shoes before they cost you a heel flare-up, and stop guessing how old your chain is.",
+      "evidence": [
+        "backend/app/services/strava.py",
+        "backend/app/services/return_to_run.py",
+        "frontend/src/components/ReturnToRunPanel.vue"
+      ],
+      "acceptance_criteria": [
+        "Kit items can be created, retired and given a distance or time threshold.",
+        "New runs and rides are assigned to the default kit for their sport, and the assignment can be changed.",
+        "Accumulated distance updates when activities are added, deleted or reassigned.",
+        "Items at 90% of threshold show a nearly-due cue; retired items keep their history."
+      ],
+      "created_on": "2026-10-05"
+    },
+    {
+      "id": "target-event-countdown-and-taper",
+      "title": "Train toward a target event with a countdown and taper",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "Seasons and goals describe months and totals, but nothing models a specific day you want to be fresh for: a gran fondo, a 10K or a spring sportive. The planner cannot taper or build toward a date.",
+      "proposal": "Let you set one A-event (and optional B-events) with date, sport and type. Show a countdown with the current phase (base, build, peak, taper, recovery) derived from weeks remaining. Give the planner and coach the phase so the last 7–14 days reduce volume while keeping some intensity, and add a race-week checklist (fuelling plan, kit check, travel).",
+      "benefit": "Gives the long streak a destination, and makes sure you arrive at the event fresh rather than tired.",
+      "evidence": [
+        "backend/app/services/seasons.py",
+        "backend/app/services/goal_portfolio.py",
+        "backend/app/services/fuelling.py",
+        "scripts/codex_planning_helper.py"
+      ],
+      "acceptance_criteria": [
+        "An event can be created, edited and removed; at most one A-event is active.",
+        "The phase is computed deterministically from weeks remaining and is visible on Today and Plan.",
+        "Planning context includes the phase, and taper weeks show a reduced-volume target.",
+        "After the event date, the countdown is replaced by a recovery week prompt and the event is kept in history."
+      ],
+      "created_on": "2026-10-05"
+    },
+    {
+      "id": "calendar-suggested-life-load",
+      "title": "Suggest life-load tags from your calendar",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "Life-load tags only work if you remember to add them. Busy days, travel and late events are usually already in your calendar.",
+      "proposal": "Read the local macOS calendar for the coming week (read-only, on this machine only) and suggest life-load tags for crowded days, travel and late evenings. Show suggestions next to the plan for one-click accept or ignore; never tag automatically or send event titles to the AI coach.",
+      "benefit": "The planner keeps hard sessions off chaotic days without you entering your schedule twice.",
+      "evidence": [
+        "backend/app/services/life_load.py",
+        "backend/app/services/minimum_week.py",
+        "frontend/src/views/Plan.vue"
+      ],
+      "acceptance_criteria": [
+        "Calendar access is opt-in and can be turned off; without access the feature is hidden.",
+        "Suggestions show the reason (e.g. '6 h of events', 'travel') but store no event titles.",
+        "Only accepted suggestions become life-load tags.",
+        "Coaching context receives tags only, never raw calendar data."
+      ],
+      "created_on": "2026-10-05"
+    },
+    {
+      "id": "sunday-athlete-reflection",
+      "title": "Add your own voice to the weekly review",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The HEAD COACH weekly review is built from data. It cannot know what felt good, what was hard emotionally, or what next week looks like, unless you write it into a planning brief separately.",
+      "proposal": "Before generating the Sunday review, ask three optional questions: best moment, hardest moment, and anything coming up next week. Save the answers with the week and include them in the review and next week's planning context. Show your own words at the top of the saved review.",
+      "benefit": "Reviews and plans reflect how training actually felt, and you build a journal of your season for free.",
+      "evidence": [
+        "backend/app/services/weekly_reviews.py",
+        "backend/app/services/team_analysis.py",
+        "frontend/src/views/WeeklyReview.vue"
+      ],
+      "acceptance_criteria": [
+        "All three questions are optional; skipping still generates the review.",
+        "Answers are saved per week and editable after the review is generated.",
+        "Saved reviews display the athlete's answers separately from coach text.",
+        "Next week's planning context includes the 'coming up' answer."
+      ],
+      "created_on": "2026-10-05"
+    },
+    {
+      "id": "monthly-coach-letter",
+      "title": "A short monthly letter from your coach",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Low",
+      "problem": "Weekly reviews are detailed but short-sighted. Month-scale wins such as new records, streak milestones, sleep trends and goal progress are spread across pages and easy to miss.",
+      "proposal": "On the first days of each month, offer a one-click letter covering the previous month: three wins (records, streak, consistency), one pattern noticed (from what-worked memory, sleep debt or life load) and one focus for next month. Keep a list of past letters.",
+      "benefit": "A motivating look back that shows progress the weekly view hides, and one clear focus for the month ahead.",
+      "evidence": [
+        "backend/app/services/personal_records.py",
+        "backend/app/services/what_worked.py",
+        "backend/app/services/sleep_debt.py",
+        "backend/app/services/weekly_reviews.py: monthly goals section"
+      ],
+      "acceptance_criteria": [
+        "Generation is explicit (one click), never automatic.",
+        "Wins cite the underlying records or numbers, with links.",
+        "Past letters are listed by month and stay unchanged once saved.",
+        "A month with little data produces a short honest letter rather than invented wins."
+      ],
+      "created_on": "2026-10-05"
     }
   ]
 }

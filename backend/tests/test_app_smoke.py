@@ -863,8 +863,9 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(context_body["context"]["activity"]["id"], "analysis-run-1")
         self.assertEqual(context_body["context"]["feedback"]["note"], "Felt controlled.")
         self.assertIn("recent training trajectory", context_body["instructions"]["task"])
-        self.assertTrue(any("do not repeat" in rule.lower() for rule in context_body["instructions"]["rules"]))
-        self.assertTrue(any("positive signal" in rule.lower() for rule in context_body["instructions"]["rules"]))
+        self.assertTrue(any("never restate" in rule.lower() for rule in context_body["instructions"]["rules"]))
+        self.assertIsNone(context_body["question"])
+        self.assertEqual(context_body["context"]["session_read"]["verdict"]["headline"], "Easy run stayed easy")
         self.assertTrue(any("feedback note" in rule.lower() for rule in context_body["instructions"]["rules"]))
 
         saved = self.client.post(
@@ -897,6 +898,51 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(detail_after.json()["analysis"]["status"], "ready")
         self.assertEqual(detail_after.json()["analysis"]["generated_at"], generated_at)
         self.assertEqual(detail_after.json()["analysis"]["headline"], "Aerobic control stayed intact")
+
+    def test_activity_analysis_question_survives_the_codex_request_and_is_saved(self):
+        activity_date = (datetime.now().date() - timedelta(days=1)).isoformat()
+        created = self.client.post(
+            "/activities",
+            json={"id": "analysis-question-run", "date": activity_date, "type": "Run", "workout_intent": "easy",
+                  "name": "Question Run", "distance_km": 8.0, "duration_min": 45.0, "avg_hr": 150},
+        )
+        self.assertEqual(created.status_code, 201)
+        self._insert_activity_detail_streams(
+            "analysis-question-run",
+            {"time": {"data": [0, 60, 120]}, "distance": {"data": [0, 180, 360]}, "heartrate": {"data": [140, 148, 150]}},
+        )
+
+        detail = self.client.get("/activities/analysis-question-run").json()
+        self.assertTrue(detail["analysis"]["session_read"]["available"])
+        self.assertEqual(detail["analysis"]["session_read"]["kind"], "run")
+
+        asked = self.client.post("/activities/analysis-question-run/analysis", json={"force_refresh": True, "question": "  Was this   too fast? "})
+        self.assertEqual(asked.json()["status"], "requested")
+        self.assertEqual(asked.json()["pending_question"], "Was this too fast?")
+
+        # Codex re-requests through MCP without a question; the pending one must survive.
+        mcp_request = self.client.post("/activities/analysis-question-run/analysis", json={"force_refresh": True})
+        self.assertEqual(mcp_request.json()["pending_question"], "Was this too fast?")
+
+        context = self.client.get("/activities/analysis-question-run/analysis/context").json()
+        self.assertEqual(context["question"], "Was this too fast?")
+        self.assertIn("Was this too fast?", context["instructions"]["task"])
+
+        saved = self.client.post(
+            "/activities/analysis-question-run/analysis/save",
+            json={"headline": "No, it was easy enough", "summary": "Heart rate stayed under the easy cap.",
+                  "confidence_note": "Based on average heart rate only."},
+        ).json()
+        self.assertEqual(saved["status"], "ready")
+        self.assertEqual(saved["question"], "Was this too fast?")
+        self.assertIsNone(saved["pending_question"])
+
+        # An empty question asks for a general read and clears the old one.
+        general = self.client.post("/activities/analysis-question-run/analysis", json={"force_refresh": True, "question": ""}).json()
+        self.assertIsNone(general["pending_question"])
+        context = self.client.get("/activities/analysis-question-run/analysis/context").json()
+        self.assertIsNone(context["question"])
+        self.assertIn("session_read", context["instructions"]["task"])
 
     def test_activity_analysis_is_unavailable_without_detail_context(self):
         activity_date = (datetime.now().date() - timedelta(days=1)).isoformat()
@@ -1884,6 +1930,16 @@ bad-date,Squat,5,100,60,,,,false,,1
         response = self.client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": arguments}})
         self.assertEqual(response.status_code, 200)
         return response.json()["result"]
+
+    def test_aerobic_fitness_trend_endpoint_and_mcp_tool(self):
+        response = self.client.get("/metrics/aerobic-decoupling", params={"weeks": 8})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["window"]["weeks"], 8)
+        self.assertIn(response.json()["status"], {"available", "unavailable"})
+        self.assertEqual(self.client.get("/metrics/aerobic-decoupling", params={"weeks": 2}).status_code, 422)
+        result = self.call_tool("get_aerobic_fitness_trend", {"weeks": 12})
+        self.assertFalse(result.get("isError"))
+        self.assertEqual(result["structuredContent"]["window"]["weeks"], 12)
 
     def test_life_load_and_minimum_week_mcp_tools(self):
         names = {tool["name"] for tool in self.client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"}).json()["result"]["tools"]}

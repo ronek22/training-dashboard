@@ -400,6 +400,7 @@ def init_db():
             requested_via TEXT NOT NULL,
             context_signature TEXT NOT NULL,
             last_error TEXT,
+            question TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
@@ -794,6 +795,8 @@ def init_db():
         conn.execute("ALTER TABLE activity_analyses ADD COLUMN model_name TEXT")
     if activity_analysis_columns and "requested_via" not in activity_analysis_columns:
         conn.execute("ALTER TABLE activity_analyses ADD COLUMN requested_via TEXT")
+    if activity_analysis_request_columns and "question" not in activity_analysis_request_columns:
+        conn.execute("ALTER TABLE activity_analysis_requests ADD COLUMN question TEXT")
     if not activity_analysis_request_columns:
         conn.execute(
             """
@@ -804,6 +807,7 @@ def init_db():
                 requested_via TEXT NOT NULL,
                 context_signature TEXT NOT NULL,
                 last_error TEXT,
+                question TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE

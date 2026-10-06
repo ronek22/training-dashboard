@@ -93,6 +93,8 @@ def analyze_activity(activity_id: str, payload: ActivityAnalysisRequest):
             conn,
             activity_id,
             force_refresh=payload.force_refresh,
+            question=payload.question,
+            question_set="question" in payload.model_fields_set,
             get_setting_fn=get_setting,
             set_setting_fn=set_setting,
             get_strava_access_token_fn=get_strava_access_token,

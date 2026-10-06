@@ -372,6 +372,22 @@ MCP_TOOLS = [
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
+        "name": "get_aerobic_fitness_trend",
+        "description": "Read aerobic fitness from steady rides of 45+ min with power and heart rate: per-ride heart-rate drift (Pw:HR decoupling, under 5% is steady) and efficiency (W/bpm), indoor and outdoor trends, a same-power heart-rate comparison, and excluded rides with reasons. No test needed; no FTP is written",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "weeks": {"type": "integer", "description": "Window in weeks, 8-26 (default 12)"},
+            },
+        },
+    },
+    {
         "name": "get_return_to_run",
         "description": "Read the return-to-run tracker: current stage and its prescription, the next step (rest, log a score, ready, flare, graduated), recent runs with during and next-morning symptom scores, and the progression rules",
         "annotations": {
@@ -988,6 +1004,13 @@ def call_mcp_tool(
             from .power_trends import build_cycling_power_coaching_context
 
             data = build_cycling_power_coaching_context(conn)
+            message = json.dumps(data, indent=2)
+
+        elif name == "get_aerobic_fitness_trend":
+            from .aerobic_decoupling import build_aerobic_decoupling
+
+            weeks = min(26, max(8, int(args.get("weeks") or 12)))
+            data = build_aerobic_decoupling(conn, weeks=weeks)
             message = json.dumps(data, indent=2)
 
         elif name == "get_return_to_run":

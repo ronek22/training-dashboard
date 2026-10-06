@@ -147,6 +147,7 @@ export const useApi = () => ({
   saveRunSymptoms: (activityId, payload) => api.put(`/activities/${encodeURIComponent(activityId)}/symptoms`, payload),
   getActivityRecordRanks: () => api.get('/records/activities'),
   getCyclingPower: () => api.get('/metrics/cycling-power'),
+  getAerobicDecoupling: (weeks = 12) => api.get('/metrics/aerobic-decoupling', { params: { weeks } }),
   getCyclingPowerAdvice: () => api.get('/metrics/cycling-power/advice'),
   startCyclingPowerReview: (payload) => codexHelper.post('/cycling-power-review', payload),
   getCyclingPowerReviewJob: (id) => codexHelper.get(`/cycling-power-review/${encodeURIComponent(id)}`),

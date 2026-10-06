@@ -83,7 +83,7 @@ def get_template(conn: sqlite3.Connection, template_id: int) -> dict:
     return _serialize_template(conn, _template_or_404(conn, template_id))
 
 
-def _suggestion_history_rows(conn: sqlite3.Connection) -> list[dict]:
+def _suggestion_history_rows(conn: sqlite3.Connection, exclude_session_id: Optional[int] = None) -> list[dict]:
     first_party_rows = conn.execute(
         """
         SELECT
@@ -101,7 +101,9 @@ def _suggestion_history_rows(conn: sqlite3.Connection) -> list[dict]:
         JOIN strength_workout_sessions session
           ON session.id = exercise.session_id
         WHERE workout_set.status = 'completed'
-        """
+          AND (? IS NULL OR session.id != ?)
+        """,
+        (exclude_session_id, exclude_session_id),
     ).fetchall()
     fitbod_rows = conn.execute(
         """
@@ -136,10 +138,11 @@ def exercise_suggestions(
     conn: sqlite3.Connection,
     query: Optional[str] = None,
     limit: int = 12,
+    exclude_session_id: Optional[int] = None,
 ) -> list[dict]:
     normalized_query = "".join(character.lower() for character in (query or "") if character.isalnum())
     grouped: dict[str, list[dict]] = defaultdict(list)
-    for row in _suggestion_history_rows(conn):
+    for row in _suggestion_history_rows(conn, exclude_session_id):
         normalized_name = "".join(
             character.lower() for character in (row["exercise_name"] or "") if character.isalnum()
         )
@@ -387,6 +390,9 @@ def get_trainlog_strength_detail_for_activity(
                 "is_warmup": workout_set["set_type"] == "warmup",
                 "note": None,
                 "multiplier": None,
+                "target_reps": workout_set["target_reps"],
+                "target_weight_kg": workout_set["target_weight_kg"],
+                "completed_at": workout_set["completed_at"],
             }
             for workout_set in completed_sets
         ]

@@ -4,6 +4,7 @@ import { Line, Radar } from 'vue-chartjs'
 import { Chart as ChartJS, CategoryScale, LinearScale, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend, type ChartOptions, type Plugin } from 'chart.js'
 import { useApi } from '../stores/api'
 import CyclingPowerAdvice from './CyclingPowerAdvice.vue'
+import AerobicFitnessTrend from './AerobicFitnessTrend.vue'
 import { themeColor } from '../utils/theme'
 
 ChartJS.register(CategoryScale, LinearScale, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend)
@@ -349,6 +350,8 @@ const hrOptions = computed<ChartOptions<'line'>>(() => ({ ...baseOptions('Heart 
           <p class="context-note">These are each ride’s best recorded power efforts, not controlled fitness tests. Cooling, fatigue and heart-rate lag can change the result; lower heart rate alone doesn’t establish improved fitness.</p>
         </article>
         </details>
+
+        <AerobicFitnessTrend />
       </template>
       <details class="method fine-print"><summary>Behind your profile · data & methodology</summary><p>{{ data.methodology }}</p><p>{{ data.coverage.analyzed_activities }} analyzed rides · {{ data.coverage.measured_power_activities }} measured-power activities · {{ data.coverage.cycling_activities }} cycling activities. {{ data.coverage.missing_streams }} missing streams · {{ data.coverage.unverified_activities }} unverified activities excluded.</p><p>Confirmed power-meter and smart-trainer streams only. Outdoor power estimates are excluded.</p></details>
     </template>

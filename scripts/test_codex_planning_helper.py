@@ -38,7 +38,8 @@ class CodexPlanningHelperTests(unittest.TestCase):
         self.assertIn("save_activity_analysis", prompt)
         self.assertIn('generator "codex-cli"', prompt)
         self.assertIn("recent training trajectory", prompt)
-        self.assertIn("not be\nrepeated as a workout recap", prompt)
+        self.assertIn('If the context has a "question"', prompt)
+        self.assertIn("Never restate\nthe session read", prompt)
 
     def test_plan_feedback_builds_protected_revision_prompt(self):
         week_start, feedback, target_date = helper.validate_plan_revision_request({

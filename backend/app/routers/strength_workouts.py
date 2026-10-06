@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Response, status
 
 from ..db import get_db
@@ -52,8 +54,10 @@ def templates_index():
 
 
 @router.get("/exercise-suggestions")
-def exercise_suggestion_index(q: str = "", limit: int = 12):
-    return _with_db(lambda conn: exercise_suggestions(conn, query=q, limit=limit))
+def exercise_suggestion_index(q: str = "", limit: int = 12, exclude_session_id: Optional[int] = None):
+    return _with_db(
+        lambda conn: exercise_suggestions(conn, query=q, limit=limit, exclude_session_id=exclude_session_id)
+    )
 
 
 @router.post("/templates", status_code=status.HTTP_201_CREATED)

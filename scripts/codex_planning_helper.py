@@ -253,11 +253,12 @@ other MCP server."""
 def build_activity_analysis_prompt(activity_id: str) -> str:
     return f"""Create and save a coach-level interpretation of activity {activity_id}.
 
-Success means the saved analysis adds insight beyond the activity page: what
-went well, any meaningful issue or fatigue signal, how the session fits the
-recent training trajectory, and what it implies for recovery or the next
-similar workout. Visible metrics should support those judgments, not be
-repeated as a workout recap.
+If the context has a "question", the athlete asked it about this session:
+success means the saved analysis answers that question directly. Otherwise,
+success means it adds insight beyond the page's rule-based session read
+(context.session_read), which the athlete already sees: why the session went
+the way it did and how it fits the recent training trajectory. Never restate
+the session read or recap visible metrics.
 
 Use only the training_dashboard MCP server and these activity-analysis tools:
 analyze_activity, get_activity_analysis_context, save_activity_analysis, and
@@ -417,6 +418,7 @@ def resolve_codex_cli() -> str:
     candidates = [
         configured,
         shutil.which("codex"),
+        "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
         "/Applications/ChatGPT.app/Contents/Resources/codex",
     ]
     for candidate in candidates:

@@ -80,6 +80,16 @@ def cycling_power_trends():
         conn.close()
 
 
+@router.get("/metrics/aerobic-decoupling")
+def aerobic_decoupling(weeks: int = Query(default=12, ge=8, le=26)):
+    from ..services.aerobic_decoupling import build_aerobic_decoupling
+    conn = get_db()
+    try:
+        return build_aerobic_decoupling(conn, weeks=weeks)
+    finally:
+        conn.close()
+
+
 @router.get('/metrics/cycling-power/advice/context')
 def cycling_advice_context():
     from ..services.cycling_power_advice import advice_context

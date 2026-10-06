@@ -60,7 +60,7 @@ def upsert_activity_analysis_row(
 def get_activity_analysis_request_row(conn: sqlite3.Connection, activity_id: str) -> Optional[sqlite3.Row]:
     return conn.execute(
         """
-        SELECT activity_id, status, requested_at, updated_at, requested_via, context_signature, last_error
+        SELECT activity_id, status, requested_at, updated_at, requested_via, context_signature, last_error, question
         FROM activity_analysis_requests
         WHERE activity_id = ?
         """,
@@ -77,21 +77,23 @@ def upsert_activity_analysis_request_row(
     requested_via: str,
     context_signature: str,
     last_error: Optional[str] = None,
+    question: Optional[str] = None,
 ) -> None:
     conn.execute(
         """
         INSERT INTO activity_analysis_requests
-        (activity_id, status, requested_at, requested_via, context_signature, last_error, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        (activity_id, status, requested_at, requested_via, context_signature, last_error, question, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT(activity_id) DO UPDATE SET
             status=excluded.status,
             requested_at=excluded.requested_at,
             requested_via=excluded.requested_via,
             context_signature=excluded.context_signature,
             last_error=excluded.last_error,
+            question=excluded.question,
             updated_at=CURRENT_TIMESTAMP
         """,
-        (activity_id, status, requested_at, requested_via, context_signature, last_error),
+        (activity_id, status, requested_at, requested_via, context_signature, last_error, question),
     )
 
 

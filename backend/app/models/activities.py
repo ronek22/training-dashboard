@@ -31,6 +31,8 @@ class ActivityIntentUpdate(BaseModel):
 
 class ActivityAnalysisRequest(BaseModel):
     force_refresh: bool = False
+    # Omitted keeps a pending question; "" asks for a general read.
+    question: Optional[str] = Field(default=None, max_length=500)
 
 
 class ActivityAnalysisSaveRequest(BaseModel):

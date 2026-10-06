@@ -2,7 +2,7 @@ import hashlib
 import json
 import sqlite3
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import HTTPException
 
@@ -15,8 +15,10 @@ from ..repositories.activity_analyses import (
     upsert_activity_analysis_request_row,
     upsert_activity_analysis_row,
 )
+from .session_read import build_session_read
 
 SUPPORTED_ENDURANCE_TYPES = {"Run", "Ride", "VirtualRide", "Walk", "Hike"}
+MAX_QUESTION_LENGTH = 500
 
 
 def _stats_by_key(detail_payload: dict) -> dict[str, dict]:
@@ -58,6 +60,7 @@ def build_activity_analysis_context(conn: sqlite3.Connection, detail_payload: di
     strength_detail = detail_payload.get("strength_detail") or {}
     best_efforts = (detail_payload.get("best_efforts") or {}).get("efforts") or []
     limitations: list[str] = []
+    session_read = build_session_read(conn, detail_payload)
 
     sick_session = detail_payload.get("sick_session")
     if sick_session:
@@ -183,6 +186,7 @@ def build_activity_analysis_context(conn: sqlite3.Connection, detail_payload: di
                         "not training stimulus; never suggest pushing harder while symptoms last.",
         } if sick_session else None,
         "recent_context": _recent_activity_hints(conn, activity.get("id")),
+        "session_read": _session_read_for_context(session_read),
         "limitations": limitations,
         "available": available,
     }
@@ -192,7 +196,30 @@ def build_activity_analysis_context(conn: sqlite3.Connection, detail_payload: di
         "limitations": limitations,
         "context": context,
         "context_signature": signature,
+        "session_read": session_read,
     }
+
+
+def _session_read_for_context(session_read: dict) -> Optional[dict]:
+    """The deterministic read without chart series, for the LLM context."""
+    if not session_read.get("available"):
+        return None
+    return {
+        "verdict": session_read["verdict"],
+        "signals": [{key: signal[key] for key in ("label", "value", "detail", "tone")} for signal in session_read["signals"]],
+        "next_time": session_read.get("next_time"),
+        "watch": session_read.get("watch"),
+        "method": session_read.get("method"),
+    }
+
+
+def _clean_question(question: Optional[str]) -> Optional[str]:
+    text = " ".join(str(question or "").split())
+    return text[:MAX_QUESTION_LENGTH] or None
+
+
+def _request_question(request_row: Optional[sqlite3.Row]) -> Optional[str]:
+    return request_row["question"] if request_row and "question" in request_row.keys() else None
 
 
 def _serialize_analysis_snapshot(
@@ -213,6 +240,8 @@ def _serialize_analysis_snapshot(
         "generator": analysis_row["generator"] if analysis_row else None,
         "model_name": analysis_row["model_name"] if analysis_row else None,
         "last_error": request_row["last_error"] if request_row else None,
+        "pending_question": _request_question(request_row) if request_row and request_row["status"] == "pending" else None,
+        "session_read": context_payload["session_read"],
         "stale": False,
     }
 
@@ -251,7 +280,22 @@ def get_activity_analysis_snapshot(conn: sqlite3.Connection, detail_payload: dic
     )
 
 
-def request_activity_analysis(conn: sqlite3.Connection, detail_payload: dict, *, force_refresh: bool = False, requested_via: str = "app") -> dict:
+_KEEP_QUESTION = object()
+
+
+def request_activity_analysis(
+    conn: sqlite3.Connection,
+    detail_payload: dict,
+    *,
+    force_refresh: bool = False,
+    requested_via: str = "app",
+    question: Any = _KEEP_QUESTION,
+) -> dict:
+    """Queue an LLM read. ``question`` replaces the athlete's question; leaving it out keeps a pending one.
+
+    The app saves the question first and then starts Codex, which calls this again
+    through MCP without a question, so a pending question must survive that call.
+    """
     snapshot = get_activity_analysis_snapshot(conn, detail_payload)
     if snapshot["status"] == "unavailable":
         return snapshot
@@ -262,6 +306,9 @@ def request_activity_analysis(conn: sqlite3.Connection, detail_payload: dict, *,
 
     context_payload = build_activity_analysis_context(conn, detail_payload)
     requested_at = datetime.now().isoformat()
+    if question is _KEEP_QUESTION:
+        existing = get_activity_analysis_request_row(conn, detail_payload["activity"]["id"])
+        question = _request_question(existing) if existing and existing["status"] == "pending" else None
     upsert_activity_analysis_request_row(
         conn,
         activity_id=detail_payload["activity"]["id"],
@@ -270,6 +317,7 @@ def request_activity_analysis(conn: sqlite3.Connection, detail_payload: dict, *,
         requested_via=requested_via,
         context_signature=context_payload["context_signature"],
         last_error=None,
+        question=_clean_question(question),
     )
     conn.commit()
     request_row = get_activity_analysis_request_row(conn, detail_payload["activity"]["id"])
@@ -281,9 +329,51 @@ def request_activity_analysis(conn: sqlite3.Connection, detail_payload: dict, *,
     )
 
 
+ANALYSIS_RULES = [
+    "The athlete already sees context.session_read on the page: its verdict, comparison signals, next-time instruction and watch item. Never restate them; build on them, explain them, or disagree with evidence.",
+    "Use metrics only as evidence for a judgment or comparison; do not recap the workout.",
+    "Compare with recent_context only when it supports a real pattern such as accumulating load, repeated intensity, recovery spacing or a modality imbalance. Do not claim a trend from one data point.",
+    "Treat the athlete's feedback note as first-class evidence, while distinguishing their report from measured data.",
+    "If feedback.fuelling is 'bonked', weigh under-fuelling as a likely cause of a late fade in power, pace or heart rate before blaming fitness. 'overate' points to GI discomfort rather than fitness.",
+    "If the evidence cannot answer the question, say so plainly and name the data that would.",
+    "Do not invent facts that are not supported by the provided context.",
+    "Do not give medical advice or injury diagnosis.",
+]
+
+
+def _analysis_instructions(question: Optional[str]) -> dict:
+    if question:
+        task = (
+            "Act as the athlete's endurance and strength coach and answer their question about this session: "
+            f"\"{question}\". Answer it directly, using this session's data, session_read and recent_context as evidence."
+        )
+        schema = {
+            "headline": "the direct answer in one short sentence",
+            "summary": "2-4 sentences explaining the answer and what to do about it",
+            "key_observations": "0-3 pieces of evidence behind the answer that the page does not already show",
+            "limitations": "0-3 evidence gaps that limit the answer",
+            "confidence_note": "single sentence distinguishing direct evidence from inference",
+        }
+    else:
+        task = (
+            "Act as the athlete's endurance and strength coach. The page already shows a rule-based read of this session "
+            "(context.session_read). Connect the dots it cannot: why the session went the way it did, how it fits the recent "
+            "training trajectory, and whether you agree with its next-time instruction."
+        )
+        schema = {
+            "headline": "one short coaching conclusion that adds to the session_read verdict, not a repeat of it",
+            "summary": "2-4 sentences: the likely why, how it fits recent work, and the practical implication for the next 24-72 hours",
+            "key_observations": "0-3 interpreted signals the page does not already show",
+            "limitations": "0-3 evidence gaps that materially limit the interpretation",
+            "confidence_note": "single sentence distinguishing direct evidence from inference",
+        }
+    return {"task": task, "output_schema": schema, "rules": ANALYSIS_RULES}
+
+
 def get_activity_analysis_context_payload(conn: sqlite3.Connection, detail_payload: dict) -> dict:
     context_payload = build_activity_analysis_context(conn, detail_payload)
     request_row = get_activity_analysis_request_row(conn, detail_payload["activity"]["id"])
+    question = _request_question(request_row) if request_row and request_row["status"] == "pending" else None
     snapshot = get_activity_analysis_snapshot(conn, detail_payload)
     return {
         "activity_id": detail_payload["activity"]["id"],
@@ -294,27 +384,8 @@ def get_activity_analysis_context_payload(conn: sqlite3.Connection, detail_paylo
         "available": context_payload["available"],
         "limitations": context_payload["limitations"],
         "context": context_payload["context"],
-        "instructions": {
-            "task": "Act as a thoughtful endurance and strength coach. Explain what this workout means within the athlete's recent training trajectory, rather than recapping fields already visible on the activity page.",
-            "output_schema": {
-                "headline": "short coaching conclusion, not an activity label or metric recap",
-                "summary": "3-5 sentences covering the session's training value, how it fits recent work, any meaningful concern, and the practical implication for recovery or upcoming training",
-                "key_observations": "list of 2-4 interpreted coaching signals; include what went well and any issue worth watching, not raw-stat restatements",
-                "limitations": "list of 0-4 evidence gaps that materially limit the coaching interpretation",
-                "confidence_note": "single sentence distinguishing direct evidence from inference",
-            },
-            "rules": [
-                "Lead with interpretation: adaptation value, execution quality, fatigue or recovery signal, consistency, progression, or mismatch with intended effort.",
-                "Use duration, distance, pace, heart rate, zones, power, and other visible metrics only as evidence for a coaching judgment or comparison; do not repeat them merely to summarize the workout.",
-                "Compare with recent_context when it supports a real pattern such as accumulating load, repeated intensity, consistency, recovery spacing, or a modality imbalance. Do not claim a trend from one data point.",
-                "Identify at least one positive signal when supported. Flag only meaningful concerns; if no concern is supported, say that plainly instead of inventing one.",
-                "Treat the athlete's feedback note as first-class coaching evidence. Use it to interpret pain, soreness, perceived difficulty, conditions, or session character when relevant, while distinguishing the athlete's report from measured data.",
-                "If feedback.fuelling is 'bonked', weigh under-fuelling as a likely cause of a late fade in power, pace or heart rate before blaming fitness, and suggest eating earlier and more next time. 'overate' points to GI discomfort rather than fitness.",
-                "End the summary with a practical implication for the next 24-72 hours or the next similar session, without rewriting the weekly plan.",
-                "Do not invent facts that are not supported by the provided context.",
-                "Do not give medical advice or injury diagnosis.",
-            ],
-        },
+        "question": question,
+        "instructions": _analysis_instructions(question),
     }
 
 
@@ -335,7 +406,9 @@ def save_activity_analysis(
     if not context_payload["available"]:
         raise HTTPException(status_code=400, detail="Analysis context is unavailable for this activity.")
 
+    request_row = get_activity_analysis_request_row(conn, detail_payload["activity"]["id"])
     analysis = {
+        "question": _request_question(request_row) if request_row and request_row["status"] == "pending" else None,
         "headline": headline.strip(),
         "summary": summary.strip(),
         "key_observations": [item.strip() for item in key_observations if str(item).strip()][:4],

@@ -1,29 +1,46 @@
 <template>
   <div class="ad-presentation strength-presentation">
-    <section class="ad-outcome" aria-labelledby="strength-summary">
-      <div class="ad-section-heading"><div><h2 id="strength-summary">Session at a glance</h2></div><p v-if="enriched">{{ session.exercises.length }} exercises · {{ primaryFocus }}</p></div>
+    <section class="ad-outcome strength-glance" aria-labelledby="strength-summary">
+      <div class="ad-section-heading"><div><h2 id="strength-summary">Session at a glance</h2></div><p v-if="progressHeadline" class="strength-progress-headline">{{ progressHeadline }}</p></div>
       <div class="ad-primary-metrics">
         <div v-for="metric in metrics" :key="metric.label" class="ad-primary-metric"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong></div>
       </div>
-      <div v-if="enriched" class="strength-coverage"><div class="strength-coverage-heading"><span>Muscle focus</span><small>{{ loadedSetCount }}/{{ workingSetCount }} sets with load</small></div><div class="strength-focus-bar" aria-hidden="true"><i v-for="focus in muscleFocus" :key="focus.key" :class="`is-${focus.key}`" :style="{width:`${focus.percent}%`}"></i></div><div class="strength-focus-legend"><div v-for="focus in muscleFocus" :key="focus.key"><span><i :class="`is-${focus.key}`"></i>{{ focus.label }}</span><strong>{{ focus.sets }} sets</strong></div></div><p>Tracked volume is load × reps; bodyweight work still counts toward muscle focus.</p></div>
     </section>
 
-
-    <StrengthMuscleMap v-if="enriched" :exercises="session.exercises" :selected-exercise="activeExercise" />
-
-    <section v-if="enriched" class="ad-exercises strength-workbench" aria-labelledby="exercise-heading">
-      <div class="ad-section-heading"><div><h2 id="exercise-heading">The work you did</h2><p>Select a lift to inspect the recorded sets.</p></div><router-link to="/strength" class="ad-inline-action">Strength overview →</router-link></div>
-      <div class="strength-workbench-grid">
-        <nav class="exercise-roster" aria-label="Workout exercises"><button v-for="(exercise, index) in session.exercises" :key="exercise.id" type="button" :class="{active: activeExercise?.id === exercise.id}" :aria-pressed="activeExercise?.id === exercise.id" @click="selectedExerciseId = exercise.id"><span class="roster-number">{{ String(index + 1).padStart(2, '0') }}</span><span><strong>{{ exercise.exercise_name }}</strong><small>{{ exerciseWorkingSets(exercise).length }} working sets · {{ muscleLabel(exercise.exercise_name) }}</small></span><span class="roster-arrow" aria-hidden="true">›</span></button></nav>
-        <article v-if="activeExercise" class="selected-lift-log" aria-labelledby="selected-lift-heading">
-          <header><span class="lift-log-kicker">Exercise {{ session.exercises.indexOf(activeExercise) + 1 }} / {{ session.exercises.length }}</span><h3 id="selected-lift-heading">{{ activeExercise.exercise_name }}</h3><dl class="lift-session-stats"><div><dt>Working sets</dt><dd>{{ exerciseWorkingSets(activeExercise).length }}</dd></div><div><dt>Top working load</dt><dd>{{ topWorkingLoad == null ? '—' : `${number(topWorkingLoad)} kg` }}</dd></div><div><dt>Working reps</dt><dd>{{ workingReps }}</dd></div></dl></header>
-          <ExerciseGuide :name="activeExercise.exercise_name" />
-          <div v-if="warmupSets.length" class="warmup-strip"><span>Warm-up</span><strong v-for="set in warmupSets" :key="set.id">{{ set.reps ?? '—' }} × {{ set.weight_kg == null ? 'unrecorded load' : `${number(set.weight_kg)} kg` }}</strong></div>
-          <table class="working-set-table"><caption class="sr-only">{{ activeExercise.exercise_name }} working sets</caption><thead><tr><th scope="col">Set</th><th scope="col">Reps</th><th scope="col">Load</th><th scope="col">Volume</th></tr></thead><tbody><tr v-for="set in exerciseWorkingSets(activeExercise)" :key="set.id"><th scope="row"><span class="set-check" aria-hidden="true">✓</span>{{ set.set_order }}</th><td>{{ set.reps ?? '—' }}</td><td>{{ set.weight_kg == null ? 'Not recorded' : `${number(set.weight_kg)} kg` }}</td><td>{{ set.reps != null && set.weight_kg != null ? formatVolume(set.reps * set.weight_kg) : '—' }}</td></tr></tbody></table>
-          <p v-if="!exerciseWorkingSets(activeExercise).length" class="lift-log-note">No working sets recorded for this exercise.</p><p class="lift-log-note">{{ activeExercise.total_volume_kg ? `${formatVolume(activeExercise.total_volume_kg)} total recorded volume, including any loaded warm-ups.` : 'No external-load volume recorded. Bodyweight and untracked sets remain in the log.' }}</p>
-        </article>
-      </div>
-    </section>
+    <div v-if="enriched" class="strength-body">
+      <section class="ad-exercises strength-log" aria-labelledby="exercise-heading">
+        <div class="ad-section-heading"><div><h2 id="exercise-heading">The work you did</h2><p>{{ progression?.compared_count ? 'Each lift compared with the last time you did it.' : 'Select a lift for warm-ups and technique notes.' }}</p></div><router-link to="/strength" class="ad-inline-action">Strength overview →</router-link></div>
+        <div class="log-head" aria-hidden="true"><span></span><span>Lift</span><span>Working sets</span><span>Last time</span><span>Change</span></div>
+        <ol class="log-rows">
+          <li v-for="(exercise, index) in session.exercises" :key="exercise.id" :class="{ open: expandedId === exercise.id }">
+            <button type="button" class="log-row" :aria-expanded="expandedId === exercise.id" @click="toggle(exercise.id)">
+              <span class="log-number">{{ String(index + 1).padStart(2, '0') }}</span>
+              <span class="log-lift"><strong>{{ exercise.exercise_name }}</strong><small>{{ muscleLabel(exercise.exercise_name) }}</small></span>
+              <span class="log-sets">
+                <span class="set-chips"><i v-for="set in warmups(exercise)" :key="set.id" class="is-warmup" title="Warm-up">{{ chip(set) }}</i><i v-for="set in exerciseWorkingSets(exercise)" :key="set.id">{{ chip(set) }}</i><em v-if="!exerciseWorkingSets(exercise).length">No working sets</em></span>
+                <small v-if="progressFor(exercise)?.next_hint" class="log-hint">→ {{ progressFor(exercise).next_hint }}</small>
+              </span>
+              <span class="log-last"><template v-if="progressFor(exercise)?.previous"><strong>{{ compactSets(progressFor(exercise).previous.sets) }}</strong><small>{{ shortDate(progressFor(exercise).previous.date) }}</small></template><small v-else>—</small></span>
+              <span class="log-change"><span v-if="progressFor(exercise)" class="change-badge" :class="badge(progressFor(exercise)).tone">{{ badge(progressFor(exercise)).label }}</span></span>
+            </button>
+            <div v-if="expandedId === exercise.id" class="log-detail">
+              <dl class="lift-session-stats">
+                <div><dt>Working reps</dt><dd>{{ repTotal(exercise) }}</dd></div>
+                <div><dt>Top working load</dt><dd>{{ topLoad(exercise) == null ? 'Bodyweight' : `${number(topLoad(exercise))} kg` }}</dd></div>
+                <div><dt>Volume</dt><dd>{{ exercise.total_volume_kg ? formatVolume(exercise.total_volume_kg) : '—' }}</dd></div>
+                <div v-if="progressFor(exercise)?.current.e1rm"><dt>Estimated 1RM</dt><dd>{{ number(progressFor(exercise).current.e1rm) }} kg</dd></div>
+                <div v-if="progressFor(exercise)?.best_before != null"><dt>Best before today</dt><dd>{{ metricValue(progressFor(exercise), progressFor(exercise).best_before) }}</dd></div>
+                <div v-if="progressFor(exercise)"><dt>Sessions logged</dt><dd>{{ progressFor(exercise).session_count }}</dd></div>
+              </dl>
+              <p v-if="progressFor(exercise)?.previous" class="lift-log-note">Last time: <router-link v-if="progressFor(exercise).previous.activity_id" :to="`/activities/${progressFor(exercise).previous.activity_id}`">{{ progressFor(exercise).previous.title || 'previous session' }}</router-link><template v-else>{{ progressFor(exercise).previous.title || 'previous session' }}</template> · {{ shortDate(progressFor(exercise).previous.date) }}</p>
+              <ExerciseGuide :name="exercise.exercise_name" />
+            </div>
+          </li>
+        </ol>
+        <p class="lift-log-note">{{ progression?.method || 'Tracked volume is load × reps on working sets.' }}</p>
+      </section>
+      <StrengthMuscleMap compact :exercises="session.exercises" :selected-exercise="expandedExercise" />
+    </div>
     <SickSessionSummary v-else-if="detail.sick_session" :session="detail.sick_session" />
     <section v-else class="ad-section ad-strength-empty">
       <div class="ad-section-heading"><div><span>Exercise detail unavailable</span><h2>Sets were not linked</h2></div></div>
@@ -31,17 +48,15 @@
       <router-link to="/strength/workouts" class="ad-inline-action">Open Workout studio →</router-link>
     </section>
     <slot name="after-overview"></slot>
-    <section v-if="heartRateChart || averageHeartRate" class="strength-effort-disclosure"><div class="strength-effort-heading"><div><span>Heart rate &amp; effort</span><small>Session intensity context</small></div><strong v-if="averageHeartRate">{{ averageHeartRate }} bpm average</strong></div>
-    <section v-if="heartRateChart" class="ad-section strength-heart-rate" aria-labelledby="strength-heart-rate-heading">
-      <div class="ad-section-heading">
-        <div><span>Apple Watch effort</span><h2 id="strength-heart-rate-heading">Heart rate through the workout</h2></div>
-        <p>Heart-rate context across the session; samples are not aligned to individual sets.</p>
-      </div>
-      <div class="strength-heart-summary">
-        <div><span>Average</span><strong>{{ averageHeartRate ?? '—' }} <small>bpm</small></strong></div>
-        <div><span>Maximum</span><strong>{{ maximumHeartRate ?? number(heartRateChart.max) }} <small>bpm</small></strong></div>
-        <div><span>Recorded range</span><strong>{{ number(heartRateChart.min) }}–{{ number(heartRateChart.max) }} <small>bpm</small></strong></div>
-      </div>
+    <section v-if="heartRateChart || averageHeartRate" class="strength-effort-disclosure" :class="{ open: effortOpen }">
+    <button type="button" class="strength-effort-heading" :aria-expanded="effortOpen" @click="effortOpen = !effortOpen">
+      <div><span>Heart rate</span><small>{{ heartRateChart ? (exerciseBands.length ? 'Shaded by exercise' : 'Session intensity context') : 'Summary only' }}</small></div>
+      <svg v-if="heartRateChart" class="effort-sparkline" viewBox="0 0 760 230" preserveAspectRatio="none" aria-hidden="true"><polyline :points="heartRateLine" fill="none" /></svg>
+      <dl class="effort-inline"><div v-if="averageHeartRate"><dt>Avg</dt><dd>{{ averageHeartRate }} <small>bpm</small></dd></div><div v-if="maximumHeartRate || heartRateChart"><dt>Max</dt><dd>{{ maximumHeartRate ?? number(heartRateChart.max) }} <small>bpm</small></dd></div></dl>
+      <span class="effort-toggle" aria-hidden="true">{{ effortOpen ? 'Hide' : 'Show' }} ⌄</span>
+    </button>
+    <template v-if="effortOpen">
+    <section v-if="heartRateChart" class="ad-section strength-heart-rate" aria-label="Heart rate through the workout">
       <div class="strength-heart-chart">
         <svg
           viewBox="0 0 760 230"
@@ -63,6 +78,7 @@
             </linearGradient>
           </defs>
           <line v-for="line in [38, 92, 146, 200]" :key="line" x1="0" :y1="line" x2="760" :y2="line" class="strength-heart-grid" />
+          <rect v-for="band in exerciseBands" :key="band.id" class="hr-band" :class="{ active: expandedId === band.id }" :x="band.x1" y="20" :width="band.x2 - band.x1" height="180" />
           <polygon :points="heartRateArea" fill="url(#strength-heart-fill)" />
           <polyline :points="heartRateLine" fill="none" class="strength-heart-line" />
           <g v-if="heartRateHover" class="strength-heart-marker" aria-hidden="true">
@@ -70,11 +86,12 @@
             <circle :cx="heartRateHover.x" :cy="heartRateHover.y" r="5" />
           </g>
         </svg>
+        <div class="hr-band-labels" aria-hidden="true"><span v-for="band in exerciseBands" :key="band.id" :style="{ left: `${(band.x1 + band.x2) / 2 / 7.6}%` }">{{ band.label }}</span></div>
         <div v-if="heartRateHover" class="strength-heart-tooltip" :style="heartRateTooltipStyle">
-          <span>{{ formatHeartRateTime(heartRateHover.minute) }}</span>
+          <span>{{ formatHeartRateTime(heartRateHover.minute) }}<template v-if="hoverBand"> · {{ hoverBand.name }}</template></span>
           <strong>{{ number(heartRateHover.bpm) }} bpm</strong>
         </div>
-        <div class="strength-heart-axis"><span>Start</span><span>{{ heartRateDuration }}</span></div>
+        <div class="strength-heart-axis"><span>Start</span><span v-if="exerciseBands.length">Numbers mark exercises, timed from logged sets</span><span>{{ heartRateDuration }}</span></div>
       </div>
     </section>
     <section v-else-if="averageHeartRate" class="ad-section strength-heart-rate is-summary-only">
@@ -84,7 +101,7 @@
       <p>The workout summary includes an average of {{ averageHeartRate }} bpm<span v-if="maximumHeartRate"> and a maximum of {{ maximumHeartRate }} bpm</span>, but the sample-by-sample FIT stream is not attached yet. Run the HealthFit import again in Data &amp; Sync to backfill the chart.</p>
       <router-link to="/sync" class="ad-inline-action">Open Data &amp; Sync →</router-link>
     </section>
-
+    </template>
     </section>
   </div>
 </template>
@@ -170,55 +187,94 @@ const formatHeartRateTime = minutes => {
     ? `${hours}:${String(mins).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
     : `${mins}:${String(seconds).padStart(2, '0')}`
 }
-const focusGroups = [
-  { key: 'pull', label: 'Back & biceps' },
-  { key: 'push', label: 'Chest, shoulders & triceps' },
-  { key: 'lower', label: 'Lower body' },
-  { key: 'core', label: 'Core' },
-]
-const focusFor = (name = '') => {
+const muscleLabel = (name = '') => {
   const mapping = classifyExercise(name)
-  const focus = MUSCLES.find(muscle => muscle.key === mapping?.primary[0])?.focus
-  return focusGroups.find(group => group.key === focus) || { key: 'other', label: 'Other' }
+  const labels = (mapping?.primary || []).map(key => MUSCLES.find(muscle => muscle.key === key)?.label).filter(Boolean)
+  return labels.length ? labels.slice(0, 2).join(' & ') : 'Unmapped'
 }
-const muscleLabel = name => focusFor(name).label
-const selectedExerciseId = ref(null)
-const activeExercise = computed(() => (session.value.exercises || []).find(exercise => exercise.id === selectedExerciseId.value) || session.value.exercises?.[0] || null)
 const exerciseWorkingSets = exercise => (exercise?.sets || []).filter(set => !set.is_warmup)
-const warmupSets = computed(() => (activeExercise.value?.sets || []).filter(set => set.is_warmup))
-const topWorkingLoad = computed(() => {
-  const loads = exerciseWorkingSets(activeExercise.value).filter(set => set.weight_kg != null && Number.isFinite(Number(set.weight_kg))).map(set => Number(set.weight_kg))
-  return loads.length ? Math.max(...loads) : null
+const warmups = exercise => (exercise?.sets || []).filter(set => set.is_warmup)
+const expandedId = ref(null)
+const toggle = id => { expandedId.value = expandedId.value === id ? null : id }
+const expandedExercise = computed(() => (session.value.exercises || []).find(exercise => exercise.id === expandedId.value) || null)
+const effortOpen = ref(false)
+
+const progression = computed(() => strength.value.progression || null)
+const normalizeName = (name = '') => name.toLowerCase().replace(/[^a-z0-9]/g, '')
+const progressFor = exercise => progression.value?.exercises?.[normalizeName(exercise.exercise_name)] || null
+const progressHeadline = computed(() => {
+  const items = Object.values(progression.value?.exercises || {}).filter(item => item.previous)
+  if (!items.length) return ''
+  const counts = { up: 0, same: 0, down: 0 }
+  items.forEach(item => { counts[item.direction] = (counts[item.direction] || 0) + 1 })
+  const parts = []
+  if (progression.value.pr_count) parts.push(`${progression.value.pr_count} PR${progression.value.pr_count === 1 ? '' : 's'}`)
+  if (counts.up) parts.push(`${counts.up} up`)
+  if (counts.same) parts.push(`${counts.same} matched`)
+  if (counts.down) parts.push(`${counts.down} down`)
+  return `${parts.join(' · ')} vs last time`
 })
-const workingReps = computed(() => {
-  const sets = exerciseWorkingSets(activeExercise.value)
-  return sets.length && sets.every(set => set.reps != null) ? sets.reduce((sum, set) => sum + Number(set.reps), 0) : '—'
-})
-const workingSets = computed(() => enriched.value
-  ? session.value.exercises.flatMap(exercise => exercise.sets || []).filter(set => !set.is_warmup)
-  : [])
-const workingSetCount = computed(() => workingSets.value.length)
-const loadedSetCount = computed(() => workingSets.value.filter(set => Number(set.weight_kg) > 0).length)
-const muscleFocus = computed(() => {
-  const counts = new Map()
-  for (const exercise of session.value.exercises || []) {
-    const group = focusFor(exercise.exercise_name)
-    const sets = exercise.work_set_count ?? (exercise.sets || []).filter(set => !set.is_warmup).length
-    const current = counts.get(group.key) || { key: group.key, label: group.label, sets: 0 }
-    current.sets += sets
-    counts.set(group.key, current)
+const metricUnit = { e1rm: 'kg e1RM', top_load: 'kg top set', reps: 'reps' }
+const metricValue = (item, value) => item.metric === 'reps' ? `${number(value)} reps` : `${number(value)} kg`
+const signed = value => `${value > 0 ? '+' : value < 0 ? '−' : '±'}${number(Math.abs(value))}`
+const badge = item => {
+  if (!item.previous) return { tone: 'is-first', label: 'First log' }
+  if (item.is_pr) return { tone: 'is-pr', label: `PR ${signed(item.delta ?? 0)} ${metricUnit[item.metric]}` }
+  if (item.direction === 'up') {
+    if (item.delta) return { tone: 'is-up', label: `▲ ${signed(item.delta)} ${metricUnit[item.metric]}` }
+    return { tone: 'is-up', label: `▲ +${item.current.total_reps - item.previous.total_reps} total reps` }
   }
-  const total = [...counts.values()].reduce((sum, item) => sum + item.sets, 0) || 1
-  return [...counts.values()]
-    .sort((a, b) => b.sets - a.sets)
-    .map(item => ({ ...item, percent: (item.sets / total) * 100 }))
+  if (item.direction === 'down') return { tone: 'is-down', label: `▼ ${signed(item.delta ?? 0)} ${metricUnit[item.metric]}` }
+  return { tone: 'is-same', label: '= Matched' }
+}
+const chip = set => set.weight_kg ? `${number(set.weight_kg)} × ${set.reps ?? '—'}` : `${set.reps ?? '—'} reps`
+const compactSets = (sets = []) => {
+  if (!sets.length) return '—'
+  const loads = [...new Set(sets.map(set => set.weight_kg || 0))]
+  const reps = sets.map(set => set.reps)
+  const sameReps = reps.every(rep => rep === reps[0])
+  if (loads.length === 1) {
+    const repText = sameReps ? `${sets.length} × ${reps[0]}` : reps.join('/')
+    return loads[0] ? `${repText} @ ${number(loads[0])} kg` : `${repText} reps`
+  }
+  return sets.map(set => chip(set)).join(', ')
+}
+const shortDate = value => value ? new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''
+const repTotal = exercise => exerciseWorkingSets(exercise).reduce((sum, set) => sum + Number(set.reps || 0), 0)
+const topLoad = exercise => {
+  const loads = exerciseWorkingSets(exercise).map(set => Number(set.weight_kg)).filter(load => load > 0)
+  return loads.length ? Math.max(...loads) : null
+}
+
+// Shade the heart-rate chart by exercise using logged set completion times (first-party sessions only).
+const exerciseBands = computed(() => {
+  const chart = heartRateChart.value
+  const start = Date.parse(session.value.workout_timestamp || '')
+  if (!chart || !enriched.value || !Number.isFinite(start)) return []
+  const finalMinute = Math.max(...chart.points.map(point => Number(point.x) || 0), 1)
+  return session.value.exercises.map((exercise, index) => {
+    const times = (exercise.sets || []).map(set => Date.parse(set.completed_at || '')).filter(Number.isFinite)
+    if (!times.length) return null
+    const from = (Math.min(...times) - 45000 - start) / 60000
+    const to = (Math.max(...times) - start) / 60000
+    const clamp = minute => Math.max(0, Math.min(finalMinute, minute))
+    const x1 = (clamp(from) / finalMinute) * 760
+    const x2 = (clamp(to) / finalMinute) * 760
+    return x2 - x1 > 2 ? { id: exercise.id, label: String(index + 1), name: exercise.exercise_name, from, to, x1, x2 } : null
+  }).filter(Boolean)
 })
-const primaryFocus = computed(() => muscleFocus.value[0]?.label || 'Not available')
+const hoverBand = computed(() => heartRateHover.value
+  ? exerciseBands.value.find(band => heartRateHover.value.minute >= band.from && heartRateHover.value.minute <= band.to) || null
+  : null)
+
 const formatVolume = value => {
   const amount = Number(value)
   if (!Number.isFinite(amount)) return '—'
   return amount >= 1000 ? `${number(amount / 1000)} t` : `${number(amount)} kg`
 }
+const workingSetCount = computed(() => enriched.value
+  ? session.value.exercises.flatMap(exercise => exercise.sets || []).filter(set => !set.is_warmup).length
+  : 0)
 const metrics = computed(() => {
   const output = []
   const duration = metricFromStats(['moving_time_min', 'elapsed_time_min', 'duration_min'])
@@ -227,37 +283,67 @@ const metrics = computed(() => {
     output.push({ label: 'Exercises', value: session.value.exercises.length })
     output.push({ label: 'Working sets', value: workingSetCount.value })
     output.push({ label: 'Recorded volume', value: formatVolume(session.value.total_volume_kg) })
-  } else if (props.detail.sick_session) {
-    const sick = props.detail.sick_session
-    output.push({ label: 'Exercises', value: sick.exercises.length + sick.extras.length })
+  } else {
+    if (props.detail.sick_session) {
+      const sick = props.detail.sick_session
+      output.push({ label: 'Exercises', value: sick.exercises.length + sick.extras.length })
+    }
+    if (averageHeartRate.value) output.push({ label: 'Avg heart rate', value: `${averageHeartRate.value} bpm` })
+    if (maximumHeartRate.value) output.push({ label: 'Max heart rate', value: `${maximumHeartRate.value} bpm` })
   }
-  if (averageHeartRate.value) output.push({ label: 'Avg heart rate', value: `${averageHeartRate.value} bpm` })
-  if (maximumHeartRate.value && !enriched.value) output.push({ label: 'Max heart rate', value: `${maximumHeartRate.value} bpm` })
   return output
 })
 const number = formatNumber
 </script>
 
 <style scoped>
-.strength-insight-grid{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:14px;margin-top:20px}
-.strength-focus,.strength-volume-note{padding:17px 18px;border:1px solid rgb(var(--tint-rgb) / .12);border-radius:12px;background:rgb(var(--panel-rgb) / .34)}
-.strength-insight-heading{display:flex;align-items:end;justify-content:space-between;gap:16px}
-.strength-insight-heading>div{display:grid;gap:3px}.strength-insight-heading span,.strength-volume-note>span{color:var(--ad-muted);font-size:.72rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
-.strength-insight-heading strong{font-size:1rem}.strength-insight-heading small{color:var(--ad-muted);font-size:.72rem}
-.strength-focus-bar{display:flex;height:7px;margin:15px 0 13px;overflow:hidden;border-radius:999px;background:rgb(var(--tint-rgb) / .1)}
-.strength-focus-bar i{display:block;min-width:3px}.strength-focus-bar i+ i{box-shadow:-2px 0 0 var(--surface2)}
-.is-pull{background:color-mix(in srgb, #50b9ff calc(100% - var(--dim)), #000)}.is-push{background:color-mix(in srgb, #a98bff calc(100% - var(--dim)), #000)}.is-lower{background:color-mix(in srgb, #37d4a2 calc(100% - var(--dim)), #000)}.is-core{background:color-mix(in srgb, #ffbd59 calc(100% - var(--dim)), #000)}.is-other{background:#7f8da8}
-.strength-focus-legend{display:flex;flex-wrap:wrap;gap:8px 22px}
-.strength-focus-legend>div{display:flex;align-items:center;gap:8px;color:var(--ad-muted);font-size:.76rem}
-.strength-focus-legend>div>span{display:flex;align-items:center;gap:6px}.strength-focus-legend span i{width:7px;height:7px;border-radius:50%}
-.strength-focus-legend strong{color:var(--text);font-size:.78rem}.strength-focus-legend small{color:var(--ad-muted);font-weight:500}
-.strength-volume-note{display:flex;flex-direction:column;justify-content:center}.strength-volume-note strong{margin:7px 0 4px;font-size:1.55rem;letter-spacing:-.04em}
-.strength-volume-note p{margin:0;color:var(--ad-muted);font-size:.75rem;line-height:1.45}
+.strength-glance{padding:22px 26px}.strength-glance .ad-section-heading{margin-bottom:14px}.strength-glance .ad-primary-metric{padding-top:16px;padding-bottom:14px}
+.strength-progress-headline{color:var(--text)!important;font-weight:650}
+.strength-body{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;margin-top:16px}
+.strength-log{min-width:0;padding:22px 22px 18px;border:1px solid rgb(var(--tint-rgb) / .14);border-radius:16px;background:rgb(var(--panel-rgb) / .3)}
+.strength-log>.ad-section-heading{margin:0 0 14px}.strength-log>.ad-section-heading p{margin:5px 0 0;color:var(--ad-muted);font-size:.8rem}
+.log-head,.log-row{display:grid;grid-template-columns:26px minmax(150px,1.1fr) minmax(0,1.6fr) minmax(110px,.75fr) 136px;gap:14px;align-items:center}
+.log-head{padding:0 12px 8px;border-bottom:1px solid rgb(var(--tint-rgb) / .12);color:var(--ad-muted);font-size:.64rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+.log-head span:last-child{text-align:right}
+.log-rows{margin:0;padding:0;list-style:none}
+.log-rows>li{border-bottom:1px solid rgb(var(--tint-rgb) / .09)}
+.log-rows>li.open{background:rgb(var(--tint-rgb) / .035)}
+.log-row{width:100%;padding:12px;border:0;background:transparent;color:var(--text);text-align:left;cursor:pointer;font:inherit}
+.log-row:hover{background:rgb(var(--tint-rgb) / .045)}
+.log-row:focus-visible{outline:2px solid rgba(243,196,120,.5);outline-offset:-2px;border-radius:8px}
+.log-number{color:var(--ad-muted);font-size:.7rem;font-weight:800;font-variant-numeric:tabular-nums}
+.log-lift{display:grid;gap:3px;min-width:0}.log-lift strong{font-size:.84rem;line-height:1.25}.log-lift small,.log-last small{color:var(--ad-muted);font-size:.68rem}
+.log-sets{display:grid;gap:6px;min-width:0}
+.set-chips{display:flex;flex-wrap:wrap;gap:5px}
+.set-chips i{padding:3px 7px;border-radius:6px;background:rgb(var(--tint-rgb) / .1);color:var(--text);font-size:.72rem;font-style:normal;font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
+.set-chips i.is-warmup{background:transparent;box-shadow:inset 0 0 0 1px rgb(var(--tint-rgb) / .2);color:var(--ad-muted);font-weight:500}
+.set-chips em{color:var(--ad-muted);font-size:.72rem}
+.log-hint{color:var(--ad-muted);font-size:.7rem;line-height:1.35}
+.log-last{display:grid;gap:3px}.log-last strong{font-size:.74rem;font-weight:600;font-variant-numeric:tabular-nums}
+.log-change{text-align:right}
+.change-badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:.68rem;font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap}
+.change-badge.is-pr{background:rgba(243,196,120,.18);color:var(--warning-text)}
+.change-badge.is-up{background:rgba(55,212,162,.14);color:color-mix(in srgb, #37d4a2 calc(100% - var(--dim)), #000)}
+.change-badge.is-same{background:rgb(var(--tint-rgb) / .09);color:var(--text-soft)}
+.change-badge.is-down{background:rgba(255,102,119,.12);color:color-mix(in srgb, #ff8b98 calc(100% - var(--dim)), #000)}
+.change-badge.is-first{background:rgba(80,185,255,.13);color:color-mix(in srgb, #7cc8ff calc(100% - var(--dim)), #000)}
+.log-detail{padding:2px 12px 16px 52px}
+.lift-session-stats{display:flex;flex-wrap:wrap;gap:22px;margin:4px 0 0}.lift-session-stats div{display:grid;gap:3px}.lift-session-stats dt{color:var(--ad-muted);font-size:.66rem}.lift-session-stats dd{margin:0;color:var(--text);font-size:.86rem;font-weight:750;font-variant-numeric:tabular-nums}
+.log-detail :deep(.exercise-guide){margin-top:12px}
+.lift-log-note{margin:12px 0 0;color:var(--ad-muted);font-size:.72rem;line-height:1.5}.lift-log-note a{color:var(--ad-accent);font-weight:650;text-decoration:none}
+.strength-body :deep(.muscle-map){margin-top:0}
+.strength-effort-disclosure{margin-top:16px;border:1px solid rgb(var(--tint-rgb) / .14);border-radius:14px;background:rgb(var(--panel-rgb) / .3);overflow:hidden}
+.strength-effort-heading{display:grid;grid-template-columns:minmax(140px,auto) minmax(0,1fr) auto auto;align-items:center;gap:22px;width:100%;padding:14px 20px;border:0;background:transparent;color:var(--text);text-align:left;cursor:pointer;font:inherit}
+.strength-effort-heading:hover{background:rgb(var(--tint-rgb) / .03)}
+.strength-effort-heading>div{display:grid;gap:3px}.strength-effort-heading>div span{font-size:.84rem;font-weight:750}.strength-effort-heading small{color:var(--ad-muted);font-size:.7rem}
+.effort-sparkline{width:100%;height:30px}.effort-sparkline polyline{stroke:color-mix(in srgb, #ff6677 calc(100% - var(--dim)), #000);stroke-width:1.5;vector-effect:non-scaling-stroke;opacity:.8}
+.effort-inline{display:flex;gap:18px;margin:0}.effort-inline div{display:grid;gap:2px}.effort-inline dt{color:var(--ad-muted);font-size:.64rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}.effort-inline dd{margin:0;font-size:.95rem;font-weight:750;font-variant-numeric:tabular-nums}.effort-inline small{color:var(--ad-muted);font-size:.66rem;font-weight:600}
+.effort-toggle{color:var(--ad-muted);font-size:.72rem;font-weight:650}
+.strength-effort-disclosure>.strength-heart-rate{border:0;border-top:1px solid rgb(var(--tint-rgb) / .1);border-radius:0;background:transparent}
+.hr-band{fill:rgb(var(--tint-rgb) / .055)}.hr-band.active{fill:rgba(243,196,120,.14)}
+.hr-band-labels{position:absolute;top:8px;left:12px;right:12px;height:0;pointer-events:none}.hr-band-labels span{position:absolute;transform:translateX(-50%);color:var(--ad-muted);font-size:.62rem;font-weight:800;font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .strength-heart-rate{overflow:hidden;background:rgb(var(--panel-rgb) / .94)}
-.strength-heart-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:18px}
-.strength-heart-summary>div{display:grid;gap:5px;padding:13px 15px;border:1px solid rgba(255,102,119,.15);border-radius:11px;background:rgb(var(--panel-rgb) / .34)}
-.strength-heart-summary span{color:var(--ad-muted);font-size:.7rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-.strength-heart-summary strong{font-size:1.1rem}.strength-heart-summary small{color:var(--ad-muted);font-size:.68rem;font-weight:600}
 .strength-heart-chart{position:relative;padding:6px 12px 8px;border:1px solid rgb(var(--tint-rgb) / .11);border-radius:12px;background:rgb(var(--deep-rgb) / .38)}
 .strength-heart-chart svg{display:block;width:100%;height:230px;margin:0;outline:none;cursor:crosshair}
 .strength-heart-chart svg:focus-visible{border-radius:8px;box-shadow:inset 0 0 0 2px rgba(255,102,119,.45)}
@@ -267,17 +353,6 @@ const number = formatNumber
 .strength-heart-tooltip span{color:var(--ad-muted);font-size:.66rem}.strength-heart-tooltip strong{font-size:.78rem}
 .strength-heart-axis{display:flex;justify-content:space-between;padding:0 16px 4px;color:var(--ad-muted);font-size:.68rem}
 .strength-heart-rate.is-summary-only p{max-width:780px;color:var(--ad-muted);line-height:1.6}
-.ad-exercise{border-color:rgb(var(--tint-rgb) / .14)}.ad-exercise>header{padding:18px 22px}
-.ad-exercise-summary{display:grid;gap:5px;margin-left:auto;text-align:right}.ad-exercise-summary span{color:var(--ad-muted);font-size:.7rem}.ad-exercise-summary strong{font-size:.78rem}
-.ad-set-table{border-top-color:rgb(var(--tint-rgb) / .1)}.ad-set-row{border-top-color:rgb(var(--tint-rgb) / .09)}
-.ad-set-row:not(.ad-set-head):hover{background:rgb(var(--tint-rgb) / .035)}
-.strength-coverage{margin-top:18px;border:1px solid rgb(var(--tint-rgb) / .14);border-radius:14px;background:rgb(var(--panel-rgb) / .28);overflow:hidden}
-.strength-coverage-heading,.strength-effort-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.strength-coverage-heading{padding:14px 16px 11px}.strength-coverage-heading span,.strength-effort-heading span{font-size:.82rem;font-weight:750}.strength-coverage-heading small,.strength-effort-heading small{color:var(--ad-muted);font-size:.7rem}.strength-coverage .strength-focus-bar{margin:0 16px 13px}.strength-coverage .strength-focus-legend{padding:0 16px 11px}.strength-coverage p{margin:0;padding:0 16px 15px;color:var(--ad-muted);font-size:.72rem;line-height:1.5}
-.strength-workbench{margin-top:20px}.strength-workbench-grid{display:grid;grid-template-columns:260px minmax(0,1fr);gap:14px;margin-top:18px}
-.exercise-roster{display:grid;align-content:start;gap:6px;padding:8px;border:1px solid rgb(var(--tint-rgb) / .14);border-radius:14px;background:rgb(var(--panel-rgb) / .3)}
-.exercise-roster button{display:grid;grid-template-columns:30px minmax(0,1fr) 18px;align-items:center;gap:10px;width:100%;padding:13px 11px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--text);text-align:left;cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .18s ease}
-.exercise-roster button:hover{background:rgb(var(--tint-rgb) / .08);transform:translateX(2px)}.exercise-roster button.active{border-color:rgba(243,196,120,.45);background:color-mix(in srgb, rgba(243,196,120,.15), rgb(var(--tint-rgb) / .05))}.roster-number{color:var(--ad-muted);font-variant-numeric:tabular-nums;font-size:.7rem;font-weight:800;letter-spacing:.06em}.exercise-roster strong{display:block;font-size:.83rem;line-height:1.25}.exercise-roster small{display:block;margin-top:4px;color:var(--ad-muted);font-size:.68rem;line-height:1.3}.roster-arrow{color:var(--ad-muted);font-size:1.25rem;text-align:right}.exercise-roster button.active .roster-arrow{color:var(--warning-text)}
-.selected-lift-log{min-width:0;padding:22px;border:1px solid rgba(243,196,120,.26);border-radius:14px;background:rgb(var(--panel-rgb) / .38)}.selected-lift-log header{display:grid;gap:6px}.lift-log-kicker{color:var(--warning-text);font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.selected-lift-log h3{margin:0;font-size:1.35rem;letter-spacing:-.02em}.lift-session-stats{display:flex;flex-wrap:wrap;gap:18px;margin:15px 0 0}.lift-session-stats div{display:grid;gap:4px}.lift-session-stats dt{color:var(--ad-muted);font-size:.68rem}.lift-session-stats dd{margin:0;color:var(--text);font-size:.9rem;font-weight:750}.warmup-strip{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:20px 0 12px;padding:10px 12px;border:1px dashed rgb(var(--tint-rgb) / .24);border-radius:9px;color:var(--ad-muted);font-size:.72rem}.warmup-strip span{margin-right:3px;color:var(--text);font-weight:750}.warmup-strip strong{padding:4px 7px;border-radius:6px;background:rgb(var(--tint-rgb) / .1);font-size:.7rem;font-weight:600}
-.working-set-table{width:100%;border-collapse:collapse;margin-top:18px;font-variant-numeric:tabular-nums}.working-set-table th,.working-set-table td{padding:11px 8px;border-top:1px solid rgb(var(--tint-rgb) / .12);text-align:left;font-size:.78rem}.working-set-table thead th{border-top:0;color:var(--ad-muted);font-size:.66rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.working-set-table tbody th{font-weight:650}.working-set-table tbody tr:hover{background:rgb(var(--tint-rgb) / .045)}.working-set-table td:last-child{color:var(--text-soft);font-weight:650}.set-check{display:inline-grid;place-items:center;width:18px;height:18px;margin-right:6px;border-radius:50%;background:rgba(55,212,162,.14);color:color-mix(in srgb, #37d4a2 calc(100% - var(--dim)), #000);font-size:.65rem}.lift-log-note{margin:14px 0 0;color:var(--ad-muted);font-size:.72rem;line-height:1.5}.strength-effort-disclosure{margin-top:20px;border:1px solid rgb(var(--tint-rgb) / .14);border-radius:14px;background:rgb(var(--panel-rgb) / .3);overflow:hidden}.strength-effort-heading{padding:18px 20px 14px}.strength-effort-heading>div{display:grid;gap:4px}.strength-effort-heading>strong{color:color-mix(in srgb, #ff8b98 calc(100% - var(--dim)), #000);font-size:.9rem}.strength-effort-disclosure>.strength-heart-rate{border:0;border-top:1px solid rgb(var(--tint-rgb) / .1);border-radius:0;background:transparent}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:700px){.strength-insight-grid{grid-template-columns:1fr}.strength-heart-summary{grid-template-columns:1fr}.strength-heart-chart svg{height:180px}.ad-exercise-summary{display:none}.strength-workbench-grid{grid-template-columns:1fr}.exercise-roster{display:flex;overflow-x:auto;gap:6px}.exercise-roster button{min-width:190px}.selected-lift-log{padding:17px}.working-set-table th,.working-set-table td{padding:10px 5px;font-size:.7rem}.lift-session-stats{gap:12px}}
+@media(max-width:1100px){.strength-body{grid-template-columns:1fr}}
+@media(max-width:760px){.log-head{display:none}.log-row{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:"num lift change" ". sets sets" ". last last";row-gap:8px}.log-number{grid-area:num}.log-lift{grid-area:lift}.log-sets{grid-area:sets}.log-last{grid-area:last;display:flex;gap:6px;align-items:baseline}.log-last::before{content:'Last time';color:var(--ad-muted);font-size:.68rem}.log-change{grid-area:change}.log-detail{padding-left:12px}.strength-effort-heading{grid-template-columns:1fr auto;gap:12px}.effort-sparkline,.effort-toggle{display:none}.strength-heart-chart svg{height:180px}.strength-glance{padding:18px}}
 </style>

@@ -22,6 +22,7 @@ from ..repositories.activities import (
     upsert_activity_row,
 )
 from .fitbod_imports import get_fitbod_strength_detail_for_activity
+from .strength_progression import build_strength_progression
 from .strength_workouts import get_trainlog_strength_detail_for_activity
 from .activity_feedback import attach_feedback_by_activity_id, get_activity_feedback_data
 from .activity_analysis import (
@@ -35,6 +36,7 @@ from .personal_records import RIDE_DISTANCES, RUN_DISTANCES, fastest_distance_wi
 from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
 from .heart_rate_zones import build_activity_heart_rate_zone_summary
 from .power_zones import build_activity_power_zone_summary
+from .ride_detail import build_ride_detail
 from .plans import (
     build_execution_quality_for_completed_session,
     ensure_plan_day_ids,
@@ -50,7 +52,7 @@ from .settings import (
     set_workout_template_settings_for_conn,
 )
 
-DETAIL_DERIVED_VERSION = "v2"
+DETAIL_DERIVED_VERSION = "v6"
 
 
 def _normalize_text_for_match(value: Optional[str]) -> str:
@@ -348,17 +350,97 @@ def _extract_route_polyline(detail: Optional[dict], streams: Optional[dict], cac
     return None
 
 
-def _downsample_series(points: list[dict], limit: int = 180) -> list[dict]:
+# A gap this long between samples is an auto-pause; below this speed the device
+# is still recording but the athlete is stopped (lights, a café, a gate).
+PAUSE_GAP_SECONDS = 10.0
+STOPPED_SPEED_MPS = 0.5
+# Pauses shorter than this are dropped from the chart silently, without a marker.
+PAUSE_MARKER_SECONDS = 60.0
+CHART_POINT_LIMIT = 240
+# GPS speed jitters second to second; runners read a ~45 s rolling pace, steady enough to see the effort, short enough to keep reps.
+PACE_SMOOTHING_SECONDS = 45.0
+SPEED_SMOOTHING_SECONDS = 30.0
+
+
+def _moving_timeline(time_stream: list[object], velocity_stream: list[object]) -> tuple[list[Optional[float]], list[dict]]:
+    """Moving seconds per sample (``None`` while stopped) and the pauses removed.
+
+    Charts are plotted against moving time so auto-pause gaps and recorded
+    stops do not draw long straight lines or drops to zero across the trace.
+    """
+    moving: list[Optional[float]] = []
+    pauses: list[dict] = []
+    clock = 0.0
+    previous_time: Optional[float] = None
+    previous_stopped = False
+    pause: Optional[dict] = None
+
+    for index, raw_time in enumerate(time_stream):
+        try:
+            current = float(raw_time)
+        except (TypeError, ValueError):
+            moving.append(None)
+            continue
+        delta = max(current - previous_time, 0.0) if previous_time is not None else 0.0
+        speed = velocity_stream[index] if index < len(velocity_stream) else None
+        try:
+            stopped = speed is not None and float(speed) < STOPPED_SPEED_MPS
+        except (TypeError, ValueError):
+            stopped = False
+
+        if delta > PAUSE_GAP_SECONDS or stopped or previous_stopped:
+            if pause is None:
+                pause = {"x": round(clock / 60.0, 2), "elapsed_min": round((previous_time or current) / 60.0, 2), "duration_s": 0.0}
+            pause["duration_s"] += delta
+        else:
+            clock += delta
+        if not stopped and pause is not None:
+            if pause["duration_s"] >= PAUSE_MARKER_SECONDS:
+                pauses.append({**pause, "duration_s": round(pause["duration_s"])})
+            pause = None
+        moving.append(None if stopped else clock)
+        previous_time = current
+        previous_stopped = stopped
+    return moving, pauses
+
+
+def _rolling_mean(points: list[dict], window_seconds: float) -> list[dict]:
+    """Centered rolling mean of ``y`` over ``window_seconds`` of the chart axis (minutes in ``x``)."""
+    if window_seconds <= 0 or len(points) < 3:
+        return points
+    half = window_seconds / 120.0
+    smoothed = []
+    start = end = 0
+    total = 0.0
+    for point in points:
+        while end < len(points) and points[end]["x"] <= point["x"] + half:
+            total += points[end]["y"]
+            end += 1
+        while points[start]["x"] < point["x"] - half:
+            total -= points[start]["y"]
+            start += 1
+        smoothed.append({**point, "y": total / (end - start)})
+    return smoothed
+
+
+def _downsample_series(points: list[dict], limit: int = CHART_POINT_LIMIT) -> list[dict]:
+    """Average consecutive samples into ``limit`` buckets.
+
+    Averaging keeps the shape of a 1 Hz stream; picking every Nth sample made
+    single noisy readings look like spikes and dips.
+    """
     if len(points) <= limit:
         return points
-    step = max(len(points) / limit, 1)
     sampled = []
-    index = 0.0
-    while round(index) < len(points):
-        sampled.append(points[int(index)])
-        index += step
-    if sampled[-1] != points[-1]:
-        sampled.append(points[-1])
+    size = len(points) / limit
+    for bucket in range(limit):
+        chunk = points[int(bucket * size):int((bucket + 1) * size)] or [points[min(int(bucket * size), len(points) - 1)]]
+        middle = chunk[len(chunk) // 2]
+        sampled.append({
+            "x": middle["x"],
+            "t": middle["t"],
+            "y": sum(point["y"] for point in chunk) / len(chunk),
+        })
     return sampled
 
 
@@ -369,30 +451,52 @@ def _build_stream_chart(
     values: list[object],
     time_stream: list[object],
     transform: Callable[[float], float] = lambda value: value,
+    *,
+    moving: Optional[list[Optional[float]]] = None,
+    pauses: Optional[list[dict]] = None,
+    smooth_seconds: float = 0.0,
 ) -> Optional[dict]:
+    """One trace on a moving-time axis: ``x`` is moving minutes, ``t`` elapsed minutes.
+
+    Raw stream values are averaged before ``transform`` runs, so a non-linear
+    transform such as speed to pace averages speed rather than letting one slow
+    sample blow up a bucket's pace.
+    """
     if not values or not time_stream:
         return None
     points = []
     for index, raw_value in enumerate(values):
         if raw_value is None or index >= len(time_stream):
             continue
+        moving_seconds = moving[index] if moving is not None and index < len(moving) else None
+        if moving is not None and moving_seconds is None:
+            continue
         try:
-            time_value = float(time_stream[index]) / 60.0
-            value = transform(float(raw_value))
+            elapsed_minutes = float(time_stream[index]) / 60.0
+            value = float(raw_value)
         except (TypeError, ValueError):
             continue
-        points.append({"x": round(time_value, 1), "y": round(value, 2)})
+        x = moving_seconds / 60.0 if moving_seconds is not None else elapsed_minutes
+        points.append({"x": x, "t": round(elapsed_minutes, 2), "y": value})
     if not points:
         return None
-    y_values = [point["y"] for point in points]
+    # Peaks come from the raw stream; the drawn trace is smoothed for reading.
+    y_values = [round(transform(point["y"]), 2) for point in points]
+    sampled = [
+        {**point, "x": round(point["x"], 2), "y": round(transform(point["y"]), 2)}
+        for point in _downsample_series(_rolling_mean(points, smooth_seconds))
+    ]
     return {
         "key": key,
         "label": label,
         "unit": unit,
-        "points": _downsample_series(points),
+        "axis": "moving" if moving is not None else "elapsed",
+        "points": sampled,
+        "smoothing_s": smooth_seconds or None,
+        "pauses": pauses or [],
         "min": round(min(y_values), 2),
         "max": round(max(y_values), 2),
-        "latest": round(points[-1]["y"], 2),
+        "latest": y_values[-1],
     }
 
 
@@ -602,6 +706,11 @@ def _build_activity_charts(activity: dict, detail: Optional[dict], streams: Opti
         return []
     streams = streams or {}
     time_stream = (streams.get("time") or {}).get("data") or []
+    velocity_stream = (streams.get("velocity_smooth") or {}).get("data") or []
+    # Trainer rides report zero speed while pedalling, so only gaps count as pauses there.
+    indoor = activity.get("type") == "VirtualRide" or (isinstance(detail, dict) and detail.get("trainer") is True)
+    moving, pauses = _moving_timeline(time_stream, [] if indoor else velocity_stream)
+    timeline = {"moving": moving, "pauses": pauses}
     charts = []
     if activity.get("type") == "Run":
         pace_chart = _build_stream_chart(
@@ -611,6 +720,8 @@ def _build_activity_charts(activity: dict, detail: Optional[dict], streams: Opti
             (streams.get("velocity_smooth") or {}).get("data") or [],
             time_stream,
             transform=lambda value: 1000 / value / 60 if value > 0 else 0,
+            smooth_seconds=PACE_SMOOTHING_SECONDS,
+            **timeline,
         )
         if pace_chart:
             charts.append(pace_chart)
@@ -622,6 +733,8 @@ def _build_activity_charts(activity: dict, detail: Optional[dict], streams: Opti
             (streams.get("velocity_smooth") or {}).get("data") or [],
             time_stream,
             transform=lambda value: value * 3.6,
+            smooth_seconds=SPEED_SMOOTHING_SECONDS,
+            **timeline,
         )
         if speed_chart:
             charts.append(speed_chart)
@@ -639,10 +752,20 @@ def _build_activity_charts(activity: dict, detail: Optional[dict], streams: Opti
             unit,
             (streams.get(key) or {}).get("data") or [],
             time_stream,
+            **timeline,
         )
         if chart:
             charts.append(chart)
     return charts
+
+
+def _strength_target_reps(strength_detail: dict) -> dict[str, list]:
+    targets = {}
+    for exercise in (strength_detail.get("session") or {}).get("exercises", []):
+        working = [item for item in exercise.get("sets", []) if not item.get("is_warmup") and (item.get("reps") or 0) > 0]
+        key = "".join(ch for ch in exercise["exercise_name"].lower() if ch.isalnum())
+        targets[key] = [item.get("target_reps") for item in working]
+    return targets
 
 
 def _build_activity_detail_payload(
@@ -685,6 +808,10 @@ def _build_activity_detail_payload(
             or get_fitbod_strength_detail_for_activity(conn, activity["id"])
             or {"status": "not_linked"}
         )
+        if strength_detail.get("status") == "enriched":
+            strength_detail["progression"] = build_strength_progression(
+                conn, activity["id"], _strength_target_reps(strength_detail)
+            )
     linked_planned_session = None
     planned_session_match = activity.get("planned_strength_identity")
     execution_quality = None
@@ -719,6 +846,7 @@ def _build_activity_detail_payload(
             settings=performance_settings,
         ),
         "power_zones": build_activity_power_zone_summary(conn, activity, detail_row),
+        "cycling": build_ride_detail(conn, activity, detail_row, stream_summary),
         "charts": charts,
         "best_efforts": best_efforts,
         "feedback": feedback,
@@ -812,6 +940,8 @@ def analyze_activity_data(
     activity_id: str,
     *,
     force_refresh: bool,
+    question: Optional[str] = None,
+    question_set: bool = False,
     get_setting_fn: Callable[[str], Optional[str]],
     set_setting_fn: Callable[[str, str], None],
     get_strava_access_token_fn: Callable[[Callable[[str], Optional[str]], Callable[[str, str], None]], str],
@@ -827,7 +957,8 @@ def analyze_activity_data(
         fetch_strava_activity_detail_fn=fetch_strava_activity_detail_fn,
         fetch_strava_activity_streams_fn=fetch_strava_activity_streams_fn,
     )
-    return request_activity_analysis(conn, detail_payload, force_refresh=force_refresh, requested_via="app")
+    extra = {"question": question} if question_set else {}
+    return request_activity_analysis(conn, detail_payload, force_refresh=force_refresh, requested_via="app", **extra)
 
 
 def get_activity_analysis_context_data(

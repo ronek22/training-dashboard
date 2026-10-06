@@ -21,23 +21,38 @@ def list_note_rows(conn: sqlite3.Connection, limit: int = 20, category: Optional
     return conn.execute(query, params).fetchall()
 
 
-def insert_chat_conversation(conn: sqlite3.Connection, title: str) -> int:
+def insert_chat_conversation(
+    conn: sqlite3.Connection,
+    title: str,
+    context_kind: Optional[str] = None,
+    context_id: Optional[str] = None,
+) -> int:
     cursor = conn.execute(
-        "INSERT INTO coach_chat_conversations (title) VALUES (?)",
-        (title,),
+        "INSERT INTO coach_chat_conversations (title, context_kind, context_id) VALUES (?, ?, ?)",
+        (title, context_kind, context_id),
     )
     return cursor.lastrowid
 
 
-def list_chat_conversation_rows(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+def list_chat_conversation_rows(
+    conn: sqlite3.Connection,
+    context_kind: Optional[str] = None,
+    context_id: Optional[str] = None,
+) -> list[sqlite3.Row]:
+    where, params = "", []
+    if context_kind:
+        where = "WHERE c.context_kind = ? AND c.context_id = ?"
+        params = [context_kind, context_id]
     return conn.execute(
-        """
+        f"""
         SELECT c.*, COUNT(m.id) AS message_count
         FROM coach_chat_conversations c
         LEFT JOIN coach_chat_messages m ON m.conversation_id = c.id
+        {where}
         GROUP BY c.id
         ORDER BY c.updated_at DESC, c.id DESC
-        """
+        """,
+        params,
     ).fetchall()
 
 

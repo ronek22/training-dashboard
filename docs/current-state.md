@@ -12,7 +12,7 @@ Implemented foundations:
 - Strava import
 - metrics
 - coach notes
-- a global floating Coach drawer available from every page, with separate persistent conversations, new-chat, switching, deletion, local Codex CLI replies, and read-only live training context
+- a global floating Coach drawer available from every page, with separate persistent conversations, new-chat, switching, deletion, local Codex CLI replies, and read-only live training context; conversations can be linked to an activity and opened from its win card
 - weekly plans
 - plan-vs-actual comparison
 - dashboard aggregation and training-load views
@@ -23,6 +23,17 @@ Implemented foundations:
 - a rule-based session read on Activity Detail (comparisons with your own past sessions), plus questions answered by Codex through MCP
 
 ## Recently Completed
+
+### Session win and session-linked coach chats
+
+2026-10-07: the first step of "coach moments". The coach now speaks first after a session, and the in-app Codex chat stays, attached to what it is about.
+
+- Win: `services/session_win.py` picks the single most encouraging fact about a session. Candidates: wins collected by the session read (`wins` on each read: a power best, heart rate lower at the same power, least drift of recent steady rides, pace faster at the same heart rate, a clean or stage-up return-to-run run, lifts up or a new best, the weekly strength goal done, easy kept easy), all-time top-3 places from the record wall, "showed up on a tough day" (going-in tile from check-in or life-load tags), a sick-mode session, done as planned, the streak, and a fallback "Nth session of the week in the bank", so there is always one. Streak milestones (7…365, then every 100) are a big win; other streak days are a fallback that counts down to the next milestone. The detail payload carries it as `win` (`kind`, `headline`, `detail`, up to two `also` lines, and `opener`).
+- UI: `SessionWinCard.vue` sits under "How it felt" on Activity Detail, with "Talk this through" (or "Continue the chat" with a message count) when the coach drawer is available.
+- Linked chats: `coach_chat_conversations` gains `context_kind` / `context_id` (only `activity` for now). `POST /notes/chat/conversations/open` returns the latest chat for that context or creates one whose first message is the coach's opener; `GET /notes/chat/conversations` filters by context. Linked chats keep their title, show a "Session" tag in the drawer and an "About this session" link back. Pages open the drawer through `coach/chat-bus.js`.
+- Codex: the drawer sends `context: {kind: "activity", id}` to `/coach-chat`; the helper validates it and tells Codex to read `get_activity_analysis_context` for that activity first and lead with what went well when the evidence supports it. The helper advertises a `coach_chat_context` capability, so an older running helper must be restarted.
+- A question typed in the session read's box now goes to the session's chat (when the drawer is available); "Get coach read" without a question still runs the one-shot analysis.
+- Verified with 7 unit tests (wins, streak, linked conversations), a helper test, 3 frontend tests and `just check` (485 backend, 27 helper and 43 frontend tests, plus the build). On real data at 1512 px and 375 px: the 29 Sep ride shows "Showed up on a tough day"; "Talk this through" created the linked chat with the opener (deleted again afterwards). No Codex message was sent.
 
 ### Session read replaces the coach analysis
 

@@ -234,6 +234,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS coach_chat_conversations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL DEFAULT 'New conversation',
+            context_kind TEXT,
+            context_id TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
@@ -736,6 +738,17 @@ def init_db():
         conn.execute(
             "ALTER TABLE strength_session_sets ADD COLUMN set_type TEXT NOT NULL DEFAULT 'working'"
         )
+    chat_conversation_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(coach_chat_conversations)").fetchall()
+    }
+    # A conversation can be about one thing (e.g. an activity); the link keeps related chats findable.
+    if "context_kind" not in chat_conversation_columns:
+        conn.execute("ALTER TABLE coach_chat_conversations ADD COLUMN context_kind TEXT")
+    if "context_id" not in chat_conversation_columns:
+        conn.execute("ALTER TABLE coach_chat_conversations ADD COLUMN context_id TEXT")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_coach_chat_conversations_context ON coach_chat_conversations(context_kind, context_id)"
+    )
     if "conversation_id" not in chat_message_columns:
         conn.execute("ALTER TABLE coach_chat_messages ADD COLUMN conversation_id INTEGER")
     if conn.execute("SELECT 1 FROM coach_chat_messages WHERE conversation_id IS NULL LIMIT 1").fetchone():

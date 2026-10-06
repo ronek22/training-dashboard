@@ -49,7 +49,7 @@
                 @click="selectConversation(conversation.id)"
               >
                 <strong>{{ conversation.title }}</strong>
-                <span>{{ conversation.message_count }} {{ conversation.message_count === 1 ? 'message' : 'messages' }}</span>
+                <span><b v-if="conversation.context_kind === 'activity'" class="conversation-tag">Session</b>{{ conversation.message_count }} {{ conversation.message_count === 1 ? 'message' : 'messages' }}</span>
               </button>
               <button
                 class="conversation-delete"
@@ -64,6 +64,12 @@
 
           <div class="coach-main">
             <div ref="chatThread" class="coach-thread" aria-live="polite">
+              <router-link
+                v-if="activeConversation?.context_kind === 'activity'"
+                class="coach-context-link"
+                :to="`/activities/${encodeURIComponent(activeConversation.context_id)}`"
+                @click="closeDrawer"
+              >About this session · open it →</router-link>
               <div v-if="chatLoading" class="coach-welcome">Loading conversations…</div>
               <div v-else-if="!chatMessages.length" class="coach-welcome">
                 <span class="welcome-mark" aria-hidden="true">✦</span>
@@ -189,8 +195,9 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useApi } from '../stores/api'
+import { coachChatAvailable, coachChatChanged, coachChatRequest } from '../coach/chat-bus'
 import {
   coachDiagnosticsPayload,
   coachDiagnosticsWarning,
@@ -224,6 +231,8 @@ const chatInputElement = ref(null)
 let componentActive = true
 let progressClock = null
 let pendingPollWait = null
+
+const activeConversation = computed(() => chatConversations.value.find(item => item.id === activeConversationId.value) || null)
 
 const showCoachProgress = computed(() => chatSending.value || Boolean(chatDiagnostics.value) || Boolean(chatJobId.value))
 
@@ -451,7 +460,9 @@ const sendChatMessage = async () => {
     await scrollChatToBottom()
 
     startProgressClock()
-    const { data: startedJob } = await api.startCodexCoachChat({ message, history })
+    const linked = chatConversations.value.find(item => item.id === conversationId)
+    const context = linked?.context_kind === 'activity' ? { kind: 'activity', id: linked.context_id } : undefined
+    const { data: startedJob } = await api.startCodexCoachChat({ message, history, context })
     if (!componentActive) return
     let job = startedJob
     updateCoachJobSnapshot(job)
@@ -476,6 +487,7 @@ const sendChatMessage = async () => {
     })
     chatMessages.value.push(savedReply)
     await refreshConversations()
+    coachChatChanged.value += 1
   } catch (error) {
     if (!componentActive) return
     chatError.value = error?.response?.data?.detail || error?.message || 'The coach could not reply.'
@@ -487,7 +499,41 @@ const sendChatMessage = async () => {
   }
 }
 
+// A page asked for the chat about one thing (e.g. a session): open, or create with the coach's opener.
+const openLinkedConversation = async (request) => {
+  if (!request || chatSending.value) return
+  drawerOpen.value = true
+  chatError.value = ''
+  try {
+    const { data: conversation } = await api.openCoachChatConversation({
+      context_kind: request.context_kind,
+      context_id: request.context_id,
+      title: request.title,
+      opener: request.opener,
+    })
+    await refreshConversations()
+    chatLoaded.value = true
+    activeConversationId.value = conversation.id
+    clearCoachJobProgress()
+    await loadConversationMessages(conversation.id)
+    coachChatChanged.value += 1
+    if (request.question) {
+      chatInput.value = request.question
+      await sendChatMessage()
+      return
+    }
+  } catch (error) {
+    chatError.value = error?.response?.data?.detail || error?.message || 'The conversation could not be opened.'
+  }
+  await nextTick()
+  chatInputElement.value?.focus()
+}
+
+watch(coachChatRequest, openLinkedConversation)
+onMounted(() => { coachChatAvailable.value = true })
+
 onUnmounted(() => {
+  coachChatAvailable.value = false
   componentActive = false
   cancelPendingPollWait()
   stopProgressClock()
@@ -552,6 +598,9 @@ onUnmounted(() => {
 .conversation-select strong, .conversation-select span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conversation-select strong { color: var(--text-soft); font-size: 10px; font-weight: 650; }
 .conversation-select span { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.conversation-tag { display: inline-block; margin-right: 5px; padding: 0 5px; border-radius: 5px; background: rgba(95, 140, 255, .14); color: var(--accent-strong); font-size: 8px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.coach-context-link { align-self: flex-start; padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted-soft); font-size: 10px; font-weight: 650; text-decoration: none; }
+.coach-context-link:hover { border-color: var(--border-strong); color: var(--text); }
 .conversation-delete { width: 25px; height: 25px; border-radius: 7px; color: var(--muted); font-size: 17px; opacity: 0; }
 .conversation-row:hover .conversation-delete, .conversation-row.active .conversation-delete, .conversation-delete:focus-visible { opacity: 1; }
 .conversation-delete:hover { background: rgba(239, 94, 94, .12); color:var(--text); }

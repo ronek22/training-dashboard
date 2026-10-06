@@ -69,6 +69,11 @@ def _verdict(tone: str, headline: str) -> dict[str, str]:
     return {"tone": tone, "badge": badge, "headline": headline}
 
 
+def _win(score: int, headline: str, detail: str) -> dict[str, Any]:
+    """Something that went well, for the encouraging win card; higher scores are stronger wins."""
+    return {"score": score, "headline": headline, "detail": detail}
+
+
 def _round_to(value: float, step: int = 5) -> int:
     return int(round(value / step) * step)
 
@@ -202,6 +207,7 @@ def _ride_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, Any]
     intent = activity.get("workout_intent")
     feedback = detail_payload.get("feedback") or {}
     signals: list[dict] = []
+    wins: list[dict] = []
     steady, earlier = (None, [])
     if cycling.get("power_source") == "measured":
         steady, earlier = _ride_history(conn, activity, cycling.get("environment") or "outdoor")
@@ -214,6 +220,8 @@ def _ride_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, Any]
         best_before = min((abs(ride["decoupling_pct"]) for ride in recent), default=None)
         if best_before is not None and len(recent) >= 2 and abs(drift) <= best_before:
             detail, tone = f"best of last {len(recent) + 1}", "good"
+            wins.append(_win(75, f"Least heart-rate drift of your last {len(recent) + 1} steady rides",
+                             f"Drift was {drift:.1f}%. Your heart rate held up better than on any recent steady ride."))
         elif drift <= -STEADY_DRIFT_PCT:
             detail, tone = "heart rate fell in the second half", "neutral"
         elif drift < COUPLED_DECOUPLING_PCT:
@@ -229,6 +237,9 @@ def _ride_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, Any]
             reference = comparable[0]
             hr_change = steady["avg_hr"] - reference["avg_hr"]
             tone = "good" if hr_change <= -2 else ("warn" if hr_change >= 2 else "neutral")
+            if hr_change <= -2:
+                wins.append(_win(90, f"{abs(round(hr_change))} bpm lower at {round(watts)} W than on {_short_date(reference['date'])}",
+                                 "Same power for less heart rate: your aerobic base is getting stronger."))
             detail = f"{hr_change:+.0f} bpm vs {_short_date(reference['date'])}" if abs(hr_change) >= 1 else f"same as {_short_date(reference['date'])}"
             series = [ride["avg_hr"] for ride in comparable[-(SERIES_LENGTH - 1):]] + [steady["avg_hr"]]
             signals.append(_signal("hr_at_power", f"Heart rate at {round(watts)} W", f"{round(steady['avg_hr'])} bpm",
@@ -236,6 +247,12 @@ def _ride_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, Any]
 
     efforts = [effort for effort in cycling.get("power_efforts") or [] if effort["duration_s"] >= 60 and effort.get("pct_of_best")]
     top_effort = max(efforts, key=lambda effort: (effort.get("is_record"), effort["pct_of_best"]), default=None)
+    if top_effort and top_effort.get("is_record"):
+        wins.append(_win(100, f"New {top_effort['label']} power best: {round(top_effort['watts'])} W",
+                         "Nothing you've ridden before beats it."))
+    elif top_effort and top_effort["pct_of_best"] >= 97:
+        wins.append(_win(60, f"{top_effort['label']} at {top_effort['pct_of_best']}% of your best",
+                         f"{round(top_effort['watts'])} W, right up against your all-time best."))
     if top_effort and (intent in HARD_INTENTS or not steady):
         record = top_effort.get("is_record")
         signals.append(_signal(
@@ -274,6 +291,7 @@ def _ride_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, Any]
             better = next((signal for signal in signals if signal["key"] == "decoupling" and signal["detail"].startswith("best")), None)
             headline = f"Steady ride: least drift of your last {better['detail'].split()[-1]}" if better else f"Steady ride: heart rate held at {watts} W"
             verdict = _verdict("good", headline)
+            wins.append(_win(50, f"Heart rate held steady at {watts} W", f"{minutes} min with only {drift:.1f}% drift."))
             next_time = f"Heart rate stayed flat at {watts} W. Next steady ride, try {_round_to(watts + 5)}–{_round_to(watts + 10)} W for about {minutes} min."
         elif drift < COUPLED_DECOUPLING_PCT:
             verdict = _verdict("good", f"Steady ride with a little drift ({drift:.1f}%)")
@@ -293,6 +311,7 @@ def _ride_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, Any]
             next_time = "Keep climbs in Zone 2 next time, even if it means spinning slower."
         else:
             verdict = _verdict("good", "Easy ride stayed easy")
+            wins.append(_win(40, "Easy ride stayed easy", f"Only {above}% of the time above Zone 2. That's the discipline that builds the base."))
     else:
         verdict = _verdict("neutral", "Ride logged")
 
@@ -300,7 +319,8 @@ def _ride_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, Any]
         method = "No power meter on this ride, so the read uses heart rate only."
     else:
         method = "Drift and heart rate at the same power use your steady rides from the last 12 weeks, same environment."
-    return {"signals": signals[:4], "verdict": verdict, "next_time": next_time, "watch": _watch(detail_payload, conn, []), "method": method}
+    return {"signals": signals[:4], "verdict": verdict, "next_time": next_time, "watch": _watch(detail_payload, conn, []),
+            "method": method, "wins": wins}
 
 
 # ---------------------------------------------------------------------------
@@ -319,6 +339,7 @@ def _run_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, Any]:
     intent = activity.get("workout_intent")
     day = str(activity["date"])[:10]
     signals: list[dict] = []
+    wins: list[dict] = []
     watch_extra: list[tuple[str, str]] = []
 
     program = build_return_to_run(conn, today=date.fromisoformat(day))
@@ -336,6 +357,8 @@ def _run_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, Any]:
         over = avg_hr > hr_cap
         signals.append(_signal("hr_cap", "Average heart rate", f"{round(avg_hr)} bpm",
                                f"{'over' if over else 'under'} the {hr_cap} bpm easy cap", "warn" if over else "good"))
+        if not over:
+            wins.append(_win(40, f"Kept it under the {hr_cap} bpm easy cap", f"Average {round(avg_hr)} bpm. Patient running is how the comeback sticks."))
         if over:
             watch_extra.append(("warn", f"Average heart rate {round(avg_hr)} bpm is over the {hr_cap} bpm easy cap. Slow down or walk more."))
 
@@ -359,6 +382,9 @@ def _run_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, Any]:
             paces = [_pace_seconds(row) for row in similar]
             change = pace - median(paces)
             tone = "good" if change <= -PACE_CHANGE_S else ("warn" if change >= PACE_CHANGE_S else "neutral")
+            if change <= -PACE_CHANGE_S:
+                wins.append(_win(90, f"{abs(round(change))} s/km faster at the same heart rate",
+                                 f"{_pace_label(pace)} at about {round(avg_hr)} bpm, against {len(similar)} similar runs."))
             detail = f"{abs(round(change))} s/km {'faster' if change < 0 else 'slower'} than {len(similar)} similar runs" if abs(change) >= 1 else "same as similar runs"
             signals.append(_signal("pace_at_hr", f"Pace at ~{round(avg_hr)} bpm", _pace_label(pace), detail, tone, paces + [pace], "down"))
 
@@ -384,6 +410,10 @@ def _run_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, Any]:
             verdict = _verdict("warn", f"Clean stage {stage} run, but {reason}")
         elif entry["outcome"] == "clean":
             verdict = _verdict("good", f"Clean stage {stage} run" + (", stage up" if entry["stage_change"] == "up" else ""))
+            if entry["stage_change"] == "up":
+                wins.append(_win(95, f"Up to stage {stage} of the return to run", "A clean run moved you up a stage."))
+            else:
+                wins.append(_win(80, f"Clean stage {stage} run", "No flare. Each clean run is a step back to normal running."))
         else:
             verdict = _verdict("neutral", f"Stage {stage} run, symptoms not scored yet")
         if latest and str(latest["activity_id"]) == str(activity["id"]) and program.get("next"):
@@ -399,11 +429,13 @@ def _run_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, Any]:
             next_time = "Start slower: the first 10 min set the heart rate for the rest of the run."
         else:
             verdict = _verdict("good", "Easy run stayed easy")
+            wins.append(_win(40, "Easy run stayed easy", f"Only {above}% of the time above Zone 2."))
     else:
         verdict = _verdict("neutral", "Run logged")
 
     method = "Pace is compared with runs of similar duration at an average heart rate within 5 bpm, from the last 6 months."
-    return {"signals": signals[:4], "verdict": verdict, "next_time": next_time, "watch": _watch(detail_payload, conn, watch_extra), "method": method}
+    return {"signals": signals[:4], "verdict": verdict, "next_time": next_time, "watch": _watch(detail_payload, conn, watch_extra),
+            "method": method, "wins": wins}
 
 
 # ---------------------------------------------------------------------------
@@ -517,6 +549,15 @@ def _strength_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, 
             signals.append(extra)
 
     prs = [item for _, item in compared if item["is_pr"]]
+    wins: list[dict] = []
+    if prs:
+        names = " and ".join(item["exercise_name"] for item in prs[:2])
+        wins.append(_win(100, f"New best on {names}", "Heavier than you've ever logged it. The work is paying off."))
+    if up and len(up) >= len(down):
+        wins.append(_win(70, f"{len(up)} of {len(compared)} lifts up on last time",
+                         ", ".join(item["exercise_name"] for item in up[:3]) + " moved up."))
+    if goal and goal["tone"] == "good":
+        wins.append(_win(65, f"{goal['label']}: done for the week", f"{goal['value']} sessions. Goal hit."))
     if not compared:
         verdict = _verdict("neutral", "First time logging these lifts here" if exercises else "Strength session logged")
     elif prs:
@@ -539,7 +580,8 @@ def _strength_read(conn: sqlite3.Connection, detail_payload: dict) -> dict[str, 
 
     method = (progression.get("method") or "Each lift is compared with the most recent earlier session of the same lift.") + \
         f" A main lift is flagged when it hasn't gone up in {STALL_SESSIONS}+ sessions."
-    return {"signals": signals[:4], "verdict": verdict, "next_time": next_time, "watch": _watch(detail_payload, conn, watch_extra), "method": method}
+    return {"signals": signals[:4], "verdict": verdict, "next_time": next_time, "watch": _watch(detail_payload, conn, watch_extra),
+            "method": method, "wins": wins}
 
 
 # ---------------------------------------------------------------------------

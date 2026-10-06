@@ -33,6 +33,7 @@ from .activity_analysis import (
     save_activity_analysis,
 )
 from .personal_records import RIDE_DISTANCES, RUN_DISTANCES, fastest_distance_window
+from .session_win import build_session_win
 from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
 from .heart_rate_zones import build_activity_heart_rate_zone_summary
 from .power_zones import build_activity_power_zone_summary
@@ -870,6 +871,11 @@ def _build_activity_detail_payload(
     }
 
 
+def _attach_analysis(conn: sqlite3.Connection, payload: dict) -> None:
+    payload["analysis"] = get_activity_analysis_snapshot(conn, payload)
+    payload["win"] = build_session_win(conn, payload, payload["analysis"].get("session_read"))
+
+
 def get_activity_detail_data(
     conn: sqlite3.Connection,
     activity_id: str,
@@ -887,12 +893,12 @@ def get_activity_detail_data(
     detail_row = get_activity_detail_row(conn, activity_id)
     if detail_row:
         payload = _build_activity_detail_payload(conn, activity_row, detail_row)
-        payload["analysis"] = get_activity_analysis_snapshot(conn, payload)
+        _attach_analysis(conn, payload)
         return payload
 
     if not _is_strava_backed_activity(activity_id):
         payload = _build_activity_detail_payload(conn, activity_row, None)
-        payload["analysis"] = get_activity_analysis_snapshot(conn, payload)
+        _attach_analysis(conn, payload)
         return payload
 
     import httpx
@@ -908,7 +914,7 @@ def get_activity_detail_data(
 
     if not detail and not streams:
         payload = _build_activity_detail_payload(conn, activity_row, None)
-        payload["analysis"] = get_activity_analysis_snapshot(conn, payload)
+        _attach_analysis(conn, payload)
         return payload
 
     fetched_at = datetime.now().isoformat()
@@ -931,7 +937,7 @@ def get_activity_detail_data(
     conn.commit()
     detail_row = get_activity_detail_row(conn, activity_id)
     payload = _build_activity_detail_payload(conn, activity_row, detail_row, cache_status_override="fetched")
-    payload["analysis"] = get_activity_analysis_snapshot(conn, payload)
+    _attach_analysis(conn, payload)
     return payload
 
 

@@ -34,8 +34,49 @@ def create_chat_conversation_data(conn: sqlite3.Connection, title: str = "New co
     return dict(get_chat_conversation_row(conn, conversation_id))
 
 
-def list_chat_conversations_data(conn: sqlite3.Connection) -> list[dict]:
-    return [dict(row) for row in list_chat_conversation_rows(conn)]
+def list_chat_conversations_data(
+    conn: sqlite3.Connection,
+    context_kind: Optional[str] = None,
+    context_id: Optional[str] = None,
+) -> list[dict]:
+    if context_kind:
+        context_kind, context_id = _validate_context(context_kind, context_id)
+    return [dict(row) for row in list_chat_conversation_rows(conn, context_kind, context_id)]
+
+
+CHAT_CONTEXT_KINDS = {"activity"}
+
+
+def _validate_context(context_kind: str, context_id: str) -> tuple[str, str]:
+    kind = str(context_kind or "").strip().lower()
+    identifier = str(context_id or "").strip()
+    if kind not in CHAT_CONTEXT_KINDS:
+        raise ValueError(f"context_kind must be one of: {', '.join(sorted(CHAT_CONTEXT_KINDS))}")
+    if not identifier or len(identifier) > 64:
+        raise ValueError("context_id is invalid")
+    return kind, identifier
+
+
+def open_context_conversation_data(
+    conn: sqlite3.Connection,
+    context_kind: str,
+    context_id: str,
+    title: str,
+    opener: Optional[str] = None,
+) -> dict:
+    """The latest chat about this context, or a new one that starts with the coach's opener."""
+    kind, identifier = _validate_context(context_kind, context_id)
+    existing = list_chat_conversation_rows(conn, kind, identifier)
+    if existing:
+        return {**dict(existing[0]), "created": False}
+    normalized_title = " ".join(str(title or "").split())[:80] or "New conversation"
+    conversation_id = insert_chat_conversation(conn, normalized_title, kind, identifier)
+    normalized_opener = str(opener or "").strip()[:6000]
+    if normalized_opener:
+        insert_chat_message(conn, conversation_id, "assistant", normalized_opener)
+    conn.commit()
+    row = list_chat_conversation_rows(conn, kind, identifier)[0]
+    return {**dict(row), "created": True}
 
 
 def delete_chat_conversation_data(conn: sqlite3.Connection, conversation_id: int) -> dict:

@@ -35,6 +35,8 @@
           <SessionVerdict v-if="isTaggable" class="ad-feedback-verdict" :activity-id="detail.activity.id" :verdict="detail.session_tags?.verdict" @saved="(tags) => { detail.session_tags = tags }" />
         </section>
 
+        <SessionWinCard v-if="detail.win" :activity="detail.activity" :win="detail.win" />
+
         <div v-if="status.tone === 'partial'" class="ad-data-notice" role="status">
           <strong>Summary data only</strong><span>Some charts, route, or segment detail may still be processing or unavailable from the source.</span>
         </div>
@@ -83,6 +85,9 @@ import StrengthAnalysis from '../components/activity-detail/StrengthAnalysis.vue
 import GenericAnalysis from '../components/activity-detail/GenericAnalysis.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
 import SessionReadPanel from '../components/activity-detail/SessionReadPanel.vue'
+import SessionWinCard from '../components/activity-detail/SessionWinCard.vue'
+import { coachChatAvailable, openCoachChat } from '../coach/chat-bus'
+import { sessionChatRequest } from '../coach/session-chat.mjs'
 import { activityPresentation, sportLabel } from '../activity-detail/presentation'
 
 const route = useRoute()
@@ -163,6 +168,11 @@ const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolv
 // The question is saved on the request first; Codex then reads it from the analysis context over MCP.
 const analyzeWithCodex = async (question = '') => {
   if (analysisRunning.value || !detail.value?.activity?.id) return
+  // A question goes to this session's chat, so the back-and-forth is kept with the session.
+  if (question && coachChatAvailable.value) {
+    openCoachChat(sessionChatRequest(detail.value.activity, detail.value.win, question))
+    return
+  }
   const activityId = String(detail.value.activity.id)
   analysisRunning.value = true
   analysisMessageError.value = false

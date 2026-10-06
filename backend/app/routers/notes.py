@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Optional
 
 from ..db import get_db
-from ..models.notes import CoachChatConversationCreate, CoachChatMessageCreate, CoachNote
+from ..models.notes import CoachChatContextOpen, CoachChatConversationCreate, CoachChatMessageCreate, CoachNote
 from ..services.notes import (
     create_chat_conversation_data,
     create_chat_message_data,
@@ -11,16 +11,34 @@ from ..services.notes import (
     list_chat_conversations_data,
     list_chat_messages_data,
     list_notes_data,
+    open_context_conversation_data,
 )
 
 router = APIRouter()
 
 
 @router.get("/notes/chat/conversations")
-def list_chat_conversations():
+def list_chat_conversations(context_kind: Optional[str] = None, context_id: Optional[str] = None):
     conn = get_db()
     try:
-        return list_chat_conversations_data(conn)
+        try:
+            return list_chat_conversations_data(conn, context_kind, context_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        conn.close()
+
+
+@router.post("/notes/chat/conversations/open")
+def open_context_conversation(request: CoachChatContextOpen):
+    conn = get_db()
+    try:
+        try:
+            return open_context_conversation_data(
+                conn, request.context_kind, request.context_id, request.title, request.opener
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     finally:
         conn.close()
 

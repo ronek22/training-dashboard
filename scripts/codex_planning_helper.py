@@ -158,6 +158,16 @@ def validate_chat_request(payload: object) -> tuple[str, list[dict[str, str]]]:
     return message, history
 
 
+def validate_chat_context(payload: object) -> str | None:
+    """The activity a chat is about, if any; the app links session chats to their activity."""
+    context = payload.get("context") if isinstance(payload, dict) else None
+    if context is None:
+        return None
+    if not isinstance(context, dict) or context.get("kind") != "activity":
+        raise ValueError("context must be an activity")
+    return validate_activity_id(context.get("id"))
+
+
 def validate_daily_state_request(payload: object) -> str:
     if not isinstance(payload, dict):
         raise ValueError("request must be a JSON object")
@@ -279,13 +289,20 @@ Do not edit repository files, run shell commands, browse the web, or use any
 other MCP server."""
 
 
-def build_coach_chat_prompt(message: str, history: list[dict[str, str]]) -> str:
+def build_coach_chat_prompt(message: str, history: list[dict[str, str]], activity_id: str | None = None) -> str:
     transcript = json.dumps(history[-20:], ensure_ascii=False, indent=2)
+    focus = f"""
+
+This conversation is about one session, activity {json.dumps(activity_id)}.
+Call get_activity_analysis_context with that activity_id before answering;
+its session_read holds the app's comparison with my earlier sessions. Keep the
+answer about this session and what it means for the next ones. Lead with what
+went well when the evidence supports it, and be honest about what did not.""" if activity_id else ""
     return f"""Act as my personal training coach and answer my latest message.
 
 Use only read-only tools from the training_dashboard MCP server. Call
 get_recent_context first, then use other read-only training_dashboard tools
-only when they materially improve the answer. Ground advice in my actual
+only when they materially improve the answer.{focus} Ground advice in my actual
 training, recovery, goals, restrictions, saved plans, and coach notes. Be
 concise, practical, and clear about uncertainty. Never change my plan, save
 data, or take actions from chat; explain a proposed change instead.
@@ -880,11 +897,11 @@ def run_codex_activity_analysis(activity_id: str) -> str:
     return summary
 
 
-def run_codex_coach_chat(message: str, history: list[dict[str, str]], progress=None) -> str:
+def run_codex_coach_chat(message: str, history: list[dict[str, str]], progress=None, activity_id: str | None = None) -> str:
     """Run coach chat through the JSONL stream so progress can update live."""
 
     return _run_codex_streaming(
-        build_coach_chat_prompt(message, history),
+        build_coach_chat_prompt(message, history, activity_id),
         failure_label="answer the coach chat",
         fallback="I couldn't produce a coaching reply.",
         progress=progress,
@@ -917,7 +934,7 @@ def _log_coach_diagnostic_event(job_id: str, event: object) -> None:
         return
 
 
-def _invoke_coach_chat(message: str, history: list[dict[str, str]], progress) -> str:
+def _invoke_coach_chat(message: str, history: list[dict[str, str]], progress, activity_id: str | None = None) -> str:
     """Keep lightweight test doubles compatible with the additive callback."""
 
     runner = run_codex_coach_chat
@@ -930,9 +947,10 @@ def _invoke_coach_chat(message: str, history: list[dict[str, str]], progress) ->
         )
     except (TypeError, ValueError):
         accepts_progress = True
+    extra = {"activity_id": activity_id} if activity_id else {}
     if accepts_progress:
-        return runner(message, history, progress=progress)
-    return runner(message, history)
+        return runner(message, history, progress=progress, **extra)
+    return runner(message, history, **extra)
 
 
 def execute_job(job_id: str) -> None:
@@ -1010,6 +1028,7 @@ def execute_coach_chat_job(job_id: str) -> None:
         job["started_at"] = now_iso()
         athlete_message = job["athlete_message"]
         history = job["history"]
+        activity_id = job.get("chat_activity_id")
         diagnostics = job.get("_diagnostics")
     if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
         diagnostics.start(model=DEFAULT_MODEL, attempt=1)
@@ -1022,7 +1041,7 @@ def execute_coach_chat_job(job_id: str) -> None:
     else:
         progress = None
     try:
-        summary = _invoke_coach_chat(athlete_message, history, progress)
+        summary = _invoke_coach_chat(athlete_message, history, progress, activity_id)
     except subprocess.TimeoutExpired:
         status, message, summary = "failed", "Coach chat timed out after 15 minutes.", ""
         if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
@@ -1178,7 +1197,7 @@ class Handler(BaseHTTPRequestHandler):
                 "service": "training-dashboard-codex-helper",
                 "pid": os.getpid(),
                 "model": DEFAULT_MODEL,
-                "capabilities": ["recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review"],
+                "capabilities": ["recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context"],
                 "sunday_review": {"enabled": True, "time": "23:59", "timezone": "Europe/Warsaw"},
             })
             return
@@ -1309,6 +1328,7 @@ class Handler(BaseHTTPRequestHandler):
                 kind = "daily_state"
             else:
                 athlete_message, history = validate_chat_request(payload)
+                chat_activity_id = validate_chat_context(payload)
                 target = None
                 target_key = None
                 kind = "coach_chat"
@@ -1353,7 +1373,7 @@ class Handler(BaseHTTPRequestHandler):
                 "finished_at": None,
             }
             if kind == "coach_chat":
-                job.update(athlete_message=athlete_message, history=history)
+                job.update(athlete_message=athlete_message, history=history, chat_activity_id=chat_activity_id)
                 job["_diagnostics"] = codex_chat_diagnostics.ChatDiagnostics(
                     model=DEFAULT_MODEL,
                     attempt=1,
@@ -1396,7 +1416,7 @@ def health() -> dict | None:
 def start() -> int:
     existing = health()
     if existing:
-        if not {"recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review"}.issubset(existing.get("capabilities", [])):
+        if not {"recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context"}.issubset(existing.get("capabilities", [])):
             print("The running helper is outdated. Run codex_planning_helper.py stop, then start, to enable the latest coaching features.", file=sys.stderr)
             return 1
         print(f"Codex planning helper is already running (PID {existing['pid']}).")

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -15,3 +17,10 @@ class CoachChatMessageCreate(BaseModel):
 
 class CoachChatConversationCreate(BaseModel):
     title: str = "New conversation"
+
+
+class CoachChatContextOpen(BaseModel):
+    context_kind: str
+    context_id: str
+    title: str
+    opener: Optional[str] = None

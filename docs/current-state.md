@@ -24,6 +24,17 @@ Implemented foundations:
 
 ## Recently Completed
 
+### "Feeling flat" / "Short on time" on Today
+
+2026-10-07: the second coach moment. A planned Today card has a "Going in" row with two chips; each one opens two or three ready-made versions of today's session instead of a blank chat.
+
+- Options (`services/today_options.py`, `GET /plans/today/options?reason=flat|short&day=`): flat gives an easy version (60% of the time, min 30 min, Zone 2; "Lighter version" when it is already easy) or, for a lift, the same lifts with 2 working sets and no new loads; a move to a later day that makes today lighter (a rest day, or an easy ride in place of a lift, never a tagged day, and a lift never next to another lift); and rest, never offered on a lift day because lifting three times a week is an anchor. Short gives a 30-min version (25 min for a lift: main lifts only, still counts), the move, and "Shrink the whole week" (the existing minimum week, previewed then applied) unless it is already on. Nothing is offered on a rest day or once a non-walk activity is recorded.
+- Applying (`POST /plans/today/options/apply`) is an ordinary plan adjustment or swap, so it is a plan revision with a reason like "Feeling flat: rest today". The card shows what changed with an Undo (`POST /plans/today/options/undo`), which puts the session back. A walk doesn't lock the day here: `adjust_weekly_plan_data` and `swap_weekly_plan_days_data` take `unprotected_dates` for days whose only activity doesn't complete the planned session.
+- The browser sends its local date, because the backend container runs on UTC and "today" differs around midnight.
+- "Talk it through" opens a chat linked to the day (`context_kind: "day"`), whose opener lists the options. The helper tells Codex the chat is about that day's plan and to recommend one change the card can apply.
+- A completed Today card shows the session win with "Talk this through".
+- Verified with 6 tests on a real schema (options per session type, the lift move, apply and undo with a walk logged, a move and its undo, nothing to change), a day-chat test, a helper test, a frontend test and `just check` (493 backend, 27 helper and 44 frontend tests, plus the build). On real data at 1512 px and 375 px both panels open for today's easy ride; nothing was applied to the real plan.
+
 ### Session win and session-linked coach chats
 
 2026-10-07: the first step of "coach moments". The coach now speaks first after a session, and the in-app Codex chat stays, attached to what it is about.

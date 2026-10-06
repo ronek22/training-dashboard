@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { sessionChatRequest, sessionChatTitle } from '../src/coach/session-chat.mjs'
+import { dayChatRequest, sessionChatRequest, sessionChatTitle } from '../src/coach/session-chat.mjs'
 
 const ride = { id: 16001, type: 'VirtualRide', date: '2026-10-04T07:30:00' }
 
@@ -24,4 +24,17 @@ test('the chat request links to the activity and carries the opener and question
     opener: 'Nice ride.',
     question: 'Why the drift?',
   })
+})
+
+test('the day chat lists the ready-made options in the coach opener', () => {
+  const request = dayChatRequest('2026-10-07', {
+    label: 'Feeling flat',
+    message: 'Flat days happen.',
+    options: [{ label: 'Lighter version', summary: '30 min in Zone 2 instead of 45 min.' }],
+  })
+  assert.equal(request.context_kind, 'day')
+  assert.equal(request.context_id, '2026-10-07')
+  assert.equal(request.title, 'Today · 7 Oct: Feeling flat')
+  assert.ok(request.opener.startsWith('Feeling flat today, got it. Flat days happen.'))
+  assert.ok(request.opener.includes('• Lighter version: 30 min in Zone 2 instead of 45 min.'))
 })

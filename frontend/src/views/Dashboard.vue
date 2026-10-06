@@ -23,10 +23,10 @@
           <TodayCard v-if="todayActivities.length" v-bind="todayCard" />
         </div>
         <div v-else-if="downshift.offer" class="sick-stack">
-          <TodayCard v-bind="todayCard" />
+          <TodayCard v-bind="todayCard" @plan-changed="loadDashboard" />
           <DownshiftCard :state="downshift" />
         </div>
-        <TodayCard v-else v-bind="todayCard" />
+        <TodayCard v-else v-bind="todayCard" @plan-changed="loadDashboard" />
 
         <aside class="signal-card" aria-labelledby="signals-heading">
           <div class="signal-heading">

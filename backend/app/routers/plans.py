@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Optional
 
 from fastapi import APIRouter
 
@@ -13,6 +14,8 @@ from ..services.plans import (
     upsert_weekly_plan_data,
 )
 from ..services.minimum_week import apply_minimum_week, preview_minimum_week, restore_full_week
+from ..services.today_options import apply_today_option, build_today_options, undo_today_option
+from ..models.plans import TodayOptionApply, TodayOptionUndo
 
 router = APIRouter()
 
@@ -94,5 +97,33 @@ def restore_minimum_viable_week(week_start: date):
     conn = get_db()
     try:
         return restore_full_week(conn, week_start.isoformat())
+    finally:
+        conn.close()
+
+
+@router.get("/plans/today/options")
+def today_options(reason: str, day: Optional[date] = None):
+    # The browser sends its local date: the container clock is UTC, so around midnight "today" differs.
+    conn = get_db()
+    try:
+        return build_today_options(conn, reason, day)
+    finally:
+        conn.close()
+
+
+@router.post("/plans/today/options/apply")
+def apply_today(request: TodayOptionApply):
+    conn = get_db()
+    try:
+        return apply_today_option(conn, request.reason, request.key, request.day)
+    finally:
+        conn.close()
+
+
+@router.post("/plans/today/options/undo")
+def undo_today(request: TodayOptionUndo):
+    conn = get_db()
+    try:
+        return undo_today_option(conn, request.undo, request.day)
     finally:
         conn.close()

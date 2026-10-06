@@ -1486,7 +1486,13 @@ def preview_weekly_plan_adjustment_data(conn: sqlite3.Connection, adjustment: We
     }
 
 
-def adjust_weekly_plan_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdjustment) -> dict:
+def adjust_weekly_plan_data(
+    conn: sqlite3.Connection,
+    adjustment: WeeklyPlanAdjustment,
+    *,
+    unprotected_dates: frozenset[str] = frozenset(),
+) -> dict:
+    """``unprotected_dates``: days whose recorded activity does not complete the planned session (e.g. a walk)."""
     plan_row = get_weekly_plan_row(conn, adjustment.week_start)
     if not plan_row:
         raise HTTPException(status_code=404, detail=f"Weekly plan not found for {adjustment.week_start}")
@@ -1540,7 +1546,7 @@ def adjust_weekly_plan_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdju
         """,
         (adjustment.week_start, week_end),
     ).fetchall()
-    completed_dates = {row["date"] for row in activity_rows}
+    completed_dates = {row["date"] for row in activity_rows} - set(unprotected_dates)
 
     protected_dates = {
         day.date
@@ -1614,7 +1620,12 @@ def adjust_weekly_plan_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdju
     }
 
 
-def swap_weekly_plan_days_data(conn: sqlite3.Connection, swap: WeeklyPlanSwap) -> dict:
+def swap_weekly_plan_days_data(
+    conn: sqlite3.Connection,
+    swap: WeeklyPlanSwap,
+    *,
+    unprotected_dates: frozenset[str] = frozenset(),
+) -> dict:
     """Exchange the planned sessions of two dates in one week (or move one onto an empty date).
 
     Session ids travel with the sessions; only the date and weekday label change.
@@ -1658,7 +1669,7 @@ def swap_weekly_plan_days_data(conn: sqlite3.Connection, swap: WeeklyPlanSwap) -
             "SELECT DISTINCT date FROM activities WHERE date IN (?, ?)",
             (swap.from_date, swap.to_date),
         ).fetchall()
-    }
+    } - set(unprotected_dates)
     blocked = sorted(
         date_value for date_value in (swap.from_date, swap.to_date)
         if date_value < today or date_value in busy_dates

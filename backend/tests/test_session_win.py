@@ -132,6 +132,12 @@ class LinkedConversationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "context_kind"):
             open_context_conversation_data(self.conn, "goal", "1", "Nope")
 
+    def test_a_chat_can_be_about_a_day(self):
+        day = open_context_conversation_data(self.conn, "day", "2026-10-07", "Today · 7 Oct: Feeling flat", "Flat days happen.")
+        self.assertEqual((day["context_kind"], day["context_id"]), ("day", "2026-10-07"))
+        with self.assertRaisesRegex(ValueError, "ISO date"):
+            open_context_conversation_data(self.conn, "day", "today", "Nope")
+
 
 if __name__ == "__main__":
     unittest.main()

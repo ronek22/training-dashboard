@@ -49,7 +49,7 @@
                 @click="selectConversation(conversation.id)"
               >
                 <strong>{{ conversation.title }}</strong>
-                <span><b v-if="conversation.context_kind === 'activity'" class="conversation-tag">Session</b>{{ conversation.message_count }} {{ conversation.message_count === 1 ? 'message' : 'messages' }}</span>
+                <span><b v-if="conversation.context_kind" class="conversation-tag">{{ conversation.context_kind === 'day' ? 'Day' : 'Session' }}</b>{{ conversation.message_count }} {{ conversation.message_count === 1 ? 'message' : 'messages' }}</span>
               </button>
               <button
                 class="conversation-delete"
@@ -70,6 +70,12 @@
                 :to="`/activities/${encodeURIComponent(activeConversation.context_id)}`"
                 @click="closeDrawer"
               >About this session · open it →</router-link>
+              <router-link
+                v-else-if="activeConversation?.context_kind === 'day'"
+                class="coach-context-link"
+                to="/"
+                @click="closeDrawer"
+              >About this day · open Today →</router-link>
               <div v-if="chatLoading" class="coach-welcome">Loading conversations…</div>
               <div v-else-if="!chatMessages.length" class="coach-welcome">
                 <span class="welcome-mark" aria-hidden="true">✦</span>
@@ -461,7 +467,7 @@ const sendChatMessage = async () => {
 
     startProgressClock()
     const linked = chatConversations.value.find(item => item.id === conversationId)
-    const context = linked?.context_kind === 'activity' ? { kind: 'activity', id: linked.context_id } : undefined
+    const context = linked?.context_kind ? { kind: linked.context_kind, id: linked.context_id } : undefined
     const { data: startedJob } = await api.startCodexCoachChat({ message, history, context })
     if (!componentActive) return
     let job = startedJob

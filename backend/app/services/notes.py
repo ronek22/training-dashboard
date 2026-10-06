@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import date
 from typing import Optional
 
 from ..repositories.notes import (
@@ -44,7 +45,7 @@ def list_chat_conversations_data(
     return [dict(row) for row in list_chat_conversation_rows(conn, context_kind, context_id)]
 
 
-CHAT_CONTEXT_KINDS = {"activity"}
+CHAT_CONTEXT_KINDS = {"activity", "day"}
 
 
 def _validate_context(context_kind: str, context_id: str) -> tuple[str, str]:
@@ -54,6 +55,11 @@ def _validate_context(context_kind: str, context_id: str) -> tuple[str, str]:
         raise ValueError(f"context_kind must be one of: {', '.join(sorted(CHAT_CONTEXT_KINDS))}")
     if not identifier or len(identifier) > 64:
         raise ValueError("context_id is invalid")
+    if kind == "day":
+        try:
+            identifier = date.fromisoformat(identifier).isoformat()
+        except ValueError as exc:
+            raise ValueError("context_id must be an ISO date for a day") from exc
     return kind, identifier
 
 

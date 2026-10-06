@@ -158,14 +158,20 @@ def validate_chat_request(payload: object) -> tuple[str, list[dict[str, str]]]:
     return message, history
 
 
-def validate_chat_context(payload: object) -> str | None:
-    """The activity a chat is about, if any; the app links session chats to their activity."""
+def validate_chat_context(payload: object) -> dict[str, str] | None:
+    """What a chat is about, if anything: one activity, or one day's training."""
     context = payload.get("context") if isinstance(payload, dict) else None
     if context is None:
         return None
-    if not isinstance(context, dict) or context.get("kind") != "activity":
-        raise ValueError("context must be an activity")
-    return validate_activity_id(context.get("id"))
+    if not isinstance(context, dict) or context.get("kind") not in {"activity", "day"}:
+        raise ValueError("context must be an activity or a day")
+    if context["kind"] == "activity":
+        return {"kind": "activity", "id": validate_activity_id(context.get("id"))}
+    day = context.get("id")
+    try:
+        return {"kind": "day", "id": date.fromisoformat(day).isoformat()}
+    except (TypeError, ValueError) as exc:
+        raise ValueError("a day context needs a YYYY-MM-DD date") from exc
 
 
 def validate_daily_state_request(payload: object) -> str:
@@ -289,15 +295,26 @@ Do not edit repository files, run shell commands, browse the web, or use any
 other MCP server."""
 
 
-def build_coach_chat_prompt(message: str, history: list[dict[str, str]], activity_id: str | None = None) -> str:
+def build_coach_chat_prompt(message: str, history: list[dict[str, str]], context: dict[str, str] | None = None) -> str:
     transcript = json.dumps(history[-20:], ensure_ascii=False, indent=2)
-    focus = f"""
+    focus = ""
+    if context and context["kind"] == "activity":
+        focus = f"""
 
-This conversation is about one session, activity {json.dumps(activity_id)}.
+This conversation is about one session, activity {json.dumps(context["id"])}.
 Call get_activity_analysis_context with that activity_id before answering;
 its session_read holds the app's comparison with my earlier sessions. Keep the
 answer about this session and what it means for the next ones. Lead with what
-went well when the evidence supports it, and be honest about what did not.""" if activity_id else ""
+went well when the evidence supports it, and be honest about what did not."""
+    elif context and context["kind"] == "day":
+        focus = f"""
+
+This conversation is about my training on {context["id"]}: how I'm going in
+and what to do with that day's planned session. Use the plan, check-in,
+life-load and recovery in get_recent_context. If a change would help, say
+exactly what to change; the app's Today card can apply an easy version, a
+shorter version or a move, so I only need the recommendation. Be encouraging:
+a smaller session that gets done beats a skipped one."""
     return f"""Act as my personal training coach and answer my latest message.
 
 Use only read-only tools from the training_dashboard MCP server. Call
@@ -897,11 +914,11 @@ def run_codex_activity_analysis(activity_id: str) -> str:
     return summary
 
 
-def run_codex_coach_chat(message: str, history: list[dict[str, str]], progress=None, activity_id: str | None = None) -> str:
+def run_codex_coach_chat(message: str, history: list[dict[str, str]], progress=None, context: dict[str, str] | None = None) -> str:
     """Run coach chat through the JSONL stream so progress can update live."""
 
     return _run_codex_streaming(
-        build_coach_chat_prompt(message, history, activity_id),
+        build_coach_chat_prompt(message, history, context),
         failure_label="answer the coach chat",
         fallback="I couldn't produce a coaching reply.",
         progress=progress,
@@ -934,7 +951,7 @@ def _log_coach_diagnostic_event(job_id: str, event: object) -> None:
         return
 
 
-def _invoke_coach_chat(message: str, history: list[dict[str, str]], progress, activity_id: str | None = None) -> str:
+def _invoke_coach_chat(message: str, history: list[dict[str, str]], progress, context: dict[str, str] | None = None) -> str:
     """Keep lightweight test doubles compatible with the additive callback."""
 
     runner = run_codex_coach_chat
@@ -947,7 +964,7 @@ def _invoke_coach_chat(message: str, history: list[dict[str, str]], progress, ac
         )
     except (TypeError, ValueError):
         accepts_progress = True
-    extra = {"activity_id": activity_id} if activity_id else {}
+    extra = {"context": context} if context else {}
     if accepts_progress:
         return runner(message, history, progress=progress, **extra)
     return runner(message, history, **extra)
@@ -1028,7 +1045,7 @@ def execute_coach_chat_job(job_id: str) -> None:
         job["started_at"] = now_iso()
         athlete_message = job["athlete_message"]
         history = job["history"]
-        activity_id = job.get("chat_activity_id")
+        chat_context = job.get("chat_context")
         diagnostics = job.get("_diagnostics")
     if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
         diagnostics.start(model=DEFAULT_MODEL, attempt=1)
@@ -1041,7 +1058,7 @@ def execute_coach_chat_job(job_id: str) -> None:
     else:
         progress = None
     try:
-        summary = _invoke_coach_chat(athlete_message, history, progress, activity_id)
+        summary = _invoke_coach_chat(athlete_message, history, progress, chat_context)
     except subprocess.TimeoutExpired:
         status, message, summary = "failed", "Coach chat timed out after 15 minutes.", ""
         if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
@@ -1328,7 +1345,7 @@ class Handler(BaseHTTPRequestHandler):
                 kind = "daily_state"
             else:
                 athlete_message, history = validate_chat_request(payload)
-                chat_activity_id = validate_chat_context(payload)
+                chat_context = validate_chat_context(payload)
                 target = None
                 target_key = None
                 kind = "coach_chat"
@@ -1373,7 +1390,7 @@ class Handler(BaseHTTPRequestHandler):
                 "finished_at": None,
             }
             if kind == "coach_chat":
-                job.update(athlete_message=athlete_message, history=history, chat_activity_id=chat_activity_id)
+                job.update(athlete_message=athlete_message, history=history, chat_context=chat_context)
                 job["_diagnostics"] = codex_chat_diagnostics.ChatDiagnostics(
                     model=DEFAULT_MODEL,
                     attempt=1,

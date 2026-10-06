@@ -77,6 +77,14 @@
       :verdict="selected.detail?.session_tags?.verdict"
     />
 
+    <div v-if="state === 'completed' && selected?.detail?.win" :key="`win-${selected.id}`" class="today-win">
+      <span aria-hidden="true">✓</span>
+      <p><strong>{{ selected.detail.win.headline }}</strong> {{ selected.detail.win.detail }}</p>
+      <button v-if="coachChatAvailable" type="button" @click="talkAboutSession">Talk this through</button>
+    </div>
+
+    <TodayAdjust v-if="state === 'planned' && plan?.date" :date-key="plan.date" @changed="emit('plan-changed')" />
+
     <section v-if="comparison && !sessions.length" class="today-compare" aria-label="Planned versus actual duration">
       <div class="today-compare-head">
         <span>Plan vs actual</span>
@@ -133,6 +141,9 @@ import TodayEnduranceSummary from './TodayEnduranceSummary.vue'
 import TodayStrengthSummary from './TodayStrengthSummary.vue'
 import TodaySickSummary from './TodaySickSummary.vue'
 import TodayPlanSummary from './TodayPlanSummary.vue'
+import TodayAdjust from './TodayAdjust.vue'
+import { coachChatAvailable, openCoachChat } from '../coach/chat-bus'
+import { sessionChatRequest } from '../coach/session-chat.mjs'
 import MuscleSilhouette from './activity-detail/MuscleSilhouette.vue'
 import { decodePolyline, routeToSvg } from './activityVisuals'
 import { summarizeMuscles } from '../activity-detail/muscles.mjs'
@@ -170,6 +181,8 @@ const props = defineProps({
 
 const selectedId = ref(null)
 watch(() => props.sessions.map((session) => session.id).join(), () => { selectedId.value = null })
+const emit = defineEmits(['plan-changed'])
+const talkAboutSession = () => openCoachChat(sessionChatRequest(selected.value.detail.activity, selected.value.detail.win))
 const selected = computed(() => props.sessions.find((session) => session.id === selectedId.value) || props.sessions[0] || null)
 const route = computed(() => (selected.value?.kind === 'endurance'
   ? routeToSvg(decodePolyline(selected.value.detail?.route?.polyline), 320, 130, 10)
@@ -297,6 +310,13 @@ const comparisonState = computed(() => {
 .today-guide span { color: var(--accent); font-size: 11px; font-weight: 600; }
 .today-guide .is-guardrail span { color: var(--warning-text); }
 .today-guide p { margin: 6px 0 0; color: var(--text-soft); font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
+
+.today-win { display: flex; align-items: center; gap: 12px; border-radius: 12px; background: rgba(82, 215, 170, 0.08); padding: 11px 14px; }
+.today-win > span { display: grid; flex: none; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: rgba(82, 215, 170, 0.16); color: var(--success-text); font-size: 12px; font-weight: 700; }
+.today-win p { flex: 1; margin: 0; color: var(--text-soft); font-size: 13px; line-height: 1.5; }
+.today-win strong { margin-right: 4px; color: var(--text); font-weight: 650; }
+.today-win button { flex: none; border: 0; background: transparent; padding: 0; color: var(--accent); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+@media (max-width: 560px) { .today-win { flex-wrap: wrap; } .today-win button { margin-left: 36px; } }
 
 .today-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin: -8px 0 0; padding: 0; list-style: none; }
 .today-reasons li { border-radius: 999px; background: rgb(var(--tint-rgb) / 0.08); padding: 5px 10px; color: var(--dash-muted, var(--muted)); font-size: 11px; line-height: 1.4; }

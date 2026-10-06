@@ -110,14 +110,18 @@ class CodexPlanningHelperTests(unittest.TestCase):
 
     def test_coach_chat_about_a_session_reads_that_activity(self):
         self.assertIsNone(helper.validate_chat_context({"message": "Hi"}))
-        activity_id = helper.validate_chat_context({"context": {"kind": "activity", "id": "healthfit:ride-1"}})
-        self.assertEqual(activity_id, "healthfit:ride-1")
-        prompt = helper.build_coach_chat_prompt("Why the drift?", [], activity_id)
+        context = helper.validate_chat_context({"context": {"kind": "activity", "id": "healthfit:ride-1"}})
+        self.assertEqual(context, {"kind": "activity", "id": "healthfit:ride-1"})
+        prompt = helper.build_coach_chat_prompt("Why the drift?", [], context)
         self.assertIn('get_activity_analysis_context with that activity_id', prompt)
         self.assertIn('"healthfit:ride-1"', prompt)
         self.assertNotIn("get_activity_analysis_context", helper.build_coach_chat_prompt("Hi", []))
-        with self.assertRaisesRegex(ValueError, "context must be an activity"):
+        with self.assertRaisesRegex(ValueError, "context must be an activity or a day"):
             helper.validate_chat_context({"context": {"kind": "week", "id": "2026-10-05"}})
+        day = helper.validate_chat_context({"context": {"kind": "day", "id": "2026-10-07"}})
+        self.assertIn("my training on 2026-10-07", helper.build_coach_chat_prompt("I'm flat", [], day))
+        with self.assertRaises(ValueError):
+            helper.validate_chat_context({"context": {"kind": "day", "id": "tomorrow"}})
         with self.assertRaisesRegex(ValueError, "activity_id is invalid"):
             helper.validate_chat_context({"context": {"kind": "activity", "id": "../etc"}})
 

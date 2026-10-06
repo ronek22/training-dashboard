@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, model_validator
+from datetime import date as Date
 from typing import Optional
 
 from ..services.cycling_workouts import CYCLING_WORKOUT_IDS
@@ -69,3 +70,14 @@ class WeeklyPlanAdjustment(BaseModel):
 class WeeklyPlanSwap(BaseModel):
     from_date: str
     to_date: str
+
+
+class TodayOptionApply(BaseModel):
+    reason: str
+    key: str
+    day: Optional[Date] = None
+
+
+class TodayOptionUndo(BaseModel):
+    undo: dict
+    day: Optional[Date] = None

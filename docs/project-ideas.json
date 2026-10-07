@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-07T00:59:39+02:00",
-  "summary": "Reviewed recent session-read, Today-options and weekly-wins commits, current coach-drawer changes, current-state documentation, the active roadmap, Sprint 33 and all 21 existing ideas. Inspected coach-moment selection/expiry, linked-chat retirement, conversation grouping, page suggestions and synthetic unread/moment test changes. Session and weekly conversation entry points, unread replies and lighter-session choices are already implemented or actively being integrated; reflection, monthly summaries, historical advice and coaching evaluation already have proposals. No sufficiently distinct new proposal was identified today. Source/documentation review only; no application tests or model calls were run, and no credentials, databases or private training exports were opened.",
+  "reviewed_at": "2026-10-07T14:00:00+02:00",
+  "summary": "Manual review after 2026-10-05 to 10-07 work: session read and session win card, Feeling flat / Short on time Today options, weekly three wins and one focus, coach moments with unread replies and linked chats, the Mountains page with trail coverage and route ideas, and the route planner with saved routes and GPX export. Checked every open catalog idea against the code: none of the remaining open proposals has been implemented since the last update (aerobic decoupling was already marked Done). Added four athlete-facing proposals that build on the new Mountains, strength and weekly-wins work. Source/documentation review only; no tests, syncs or model calls were run.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -484,6 +484,99 @@
         "A month with little data produces a short honest letter rather than invented wins."
       ],
       "created_on": "2026-10-05"
+    },
+    {
+      "id": "mountain-day-plan-and-check",
+      "title": "Put a mountain day into the training plan",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "Saved routes and route ideas live on the Mountains page, separate from the weekly plan. A big Tatra day is effectively a hard, long session, but the planner does not know about it. Daylight, the forecast and seasonal trail closures are also not checked against the route.",
+      "proposal": "Add 'Plan this hike' on a saved route or route idea. It puts the hike on a chosen day as a planned session with estimated time and ascent, so the planner keeps the day before easy and the day after light (lifts stay, per the anchor goal). Add a pre-trip check: walking time against daylight (sunrise/sunset), the mountain forecast for that day, any seasonal trail closures on the route from a small maintained list, and a short packing and fuelling list scaled to duration.",
+      "benefit": "Mountain days stop clashing with hard rides, and you know before you leave whether the route fits the daylight and the weather.",
+      "evidence": [
+        "backend/app/services/route_planner.py",
+        "backend/app/services/route_ideas.py: walking_hours",
+        "backend/app/services/weather.py",
+        "backend/app/services/fuelling.py",
+        "backend/app/services/plans.py"
+      ],
+      "acceptance_criteria": [
+        "A saved route or route idea can be added to a chosen plan day as a hike session with its time and ascent.",
+        "Planning context treats a hike above a documented time or ascent as a hard day and adjusts adjacent days without removing lift sessions.",
+        "The pre-trip check flags when estimated walking time plus a margin exceeds daylight for the date.",
+        "Routes crossing a trail in the closure list for that date show a warning naming the section.",
+        "Without forecast data, the check says so instead of showing a default."
+      ],
+      "created_on": "2026-10-07"
+    },
+    {
+      "id": "muscle-gain-check",
+      "title": "One place to see whether lifting is building muscle",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "Lifting three times a week is meant to build muscle, but the signals are spread out: per-exercise progression on each session, the protein tick, and body weight in metrics. Nothing answers 'is this working?' over a month.",
+      "proposal": "Add a monthly muscle-gain panel on Strength. Show weekly hard sets per muscle group against a simple target range, the share of lifts that progressed (from strength progression), protein-tick adherence on lift days, and the body-weight trend against a gentle gain rate. End with one deterministic suggestion, for example 'legs got 4 hard sets a week; add a set of split squats'.",
+      "benefit": "Lets you see whether the Lift 3× anchor goal is turning into muscle, and which single lever to pull if it is not.",
+      "evidence": [
+        "backend/app/services/strength_progression.py",
+        "backend/app/services/protein.py",
+        "backend/app/services/strength.py",
+        "frontend/src/views/Strength.vue"
+      ],
+      "acceptance_criteria": [
+        "Hard sets are counted per muscle group from logged sets using a documented exercise-to-muscle mapping.",
+        "Weight trend uses a smoothed rolling average and shows unavailable when there are fewer than a documented number of weigh-ins.",
+        "The suggestion never proposes fewer lift sessions per week.",
+        "Each number links to or names the sessions it came from."
+      ],
+      "created_on": "2026-10-07"
+    },
+    {
+      "id": "weekly-focus-follow-through",
+      "title": "Check whether last week's focus actually happened",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "Each week now ends with one focus, but nothing looks back to see if it was done. Advice that is never checked slowly loses weight.",
+      "proposal": "Store each week's focus in a checkable form where possible (e.g. 'two Zone 2 rides', 'protein on all lift days'). At the end of the next week, evaluate it from data, or ask a one-tap yes/partly/no when it cannot be measured. Show the result as the first line of the next wins card and give the coach a short follow-through history.",
+      "benefit": "Closes the loop on coaching advice, and repeated misses become visible patterns the coach can address.",
+      "evidence": [
+        "backend/app/services/week_wins.py: one focus",
+        "backend/app/services/coach_moments.py",
+        "backend/app/services/weekly_reviews.py"
+      ],
+      "acceptance_criteria": [
+        "Each saved focus records whether it is data-checkable and how.",
+        "The next week's card shows done, partly or missed, with the evidence or the athlete's answer.",
+        "Unmeasurable focuses ask once and accept no answer without blocking anything.",
+        "Coach context includes the last four focuses and their outcomes."
+      ],
+      "created_on": "2026-10-07"
+    },
+    {
+      "id": "trail-coverage-goals",
+      "title": "Turn trail coverage into a season goal",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Low",
+      "problem": "The Mountains page shows what is left to walk, but coverage and summits are not part of goals, the year view or coach context. Hiking progress does not count toward anything.",
+      "proposal": "Allow goals such as 'walk 30% of TPN trails in 2027' or 'reach 10 new summits this season', measured from trail coverage. Show them on Goals with a pace forecast that respects the hiking season, and celebrate new trail and summits in the session win.",
+      "benefit": "Gives mountain trips a long-term target and makes each new trail section count.",
+      "evidence": [
+        "backend/app/services/trail_coverage.py",
+        "backend/app/services/goals.py",
+        "backend/app/services/session_win.py",
+        "backend/app/services/seasons.py"
+      ],
+      "acceptance_criteria": [
+        "Coverage-percentage and summit-count goals can be created for a park and a date range.",
+        "Progress uses the same coverage numbers as the Mountains page.",
+        "Forecasts skip off-season months unless they are explicitly included.",
+        "A hike that adds new trail or a new summit shows it in the session win."
+      ],
+      "created_on": "2026-10-07"
     }
   ]
 }

@@ -31,6 +31,8 @@ PLATEAU_HIT_RATE = 0.7
 CROWDING_HIT_RATE_DROP = 0.3
 CROWDING_VOLUME_RISE_PCT = 5.0
 CALIBRATION_PERCENTILE_UPLIFT = 1.05
+# A lowered target below this share of the current one is a different goal, not a recalibration.
+MIN_LOWERED_TARGET_SHARE = 0.25
 DEFAULT_REVIEW_WEEKS = 8
 # Next year's goal is only worth setting when the year is nearly over.
 NEXT_YEAR_PLANNING_DAYS = 60
@@ -150,6 +152,11 @@ def _target_action(goal: dict, action_type: str, target: float) -> dict[str, Any
     verb = "Raise" if action_type == "raise_target" else "Lower"
     return _action(action_type, f"{verb} target to {_format(target, unit)}", method="PATCH", path=_goal_path(goal),
                    body={"target_value": target})
+
+
+def _worth_lowering(goal: dict, lowered: float) -> bool:
+    current = float(goal.get("target_value") or 0)
+    return 0 < lowered < current and lowered >= current * MIN_LOWERED_TARGET_SHARE
 
 
 def _review_action(goal: dict, today: date, weeks: int = DEFAULT_REVIEW_WEEKS) -> dict[str, Any]:
@@ -348,7 +355,7 @@ def _recurring_verdict(
             return "insufficient_evidence", started_lines, [_review_action(goal, today, MIN_VERDICT_PERIODS - since_created)]
         median_target = calibrated_target(metric_type, max(stats.get("median") or 0, stats.get("p75") or 0))
         actions = [_status_action(goal, "retired", "Retire it", "Rarely reached at the current training mix")]
-        if 0 < median_target < float(goal.get("target_value") or 0):
+        if _worth_lowering(goal, median_target):
             actions.insert(0, _target_action(goal, "lower_target", median_target))
         return "out_of_reach", [], actions
 
@@ -370,7 +377,7 @@ def _recurring_verdict(
             return "insufficient_evidence", started_lines, [_review_action(goal, today, MIN_REVIEW_PERIODS - since_created)]
         lowered = calibrated_target(metric_type, stats.get("median") or 0)
         actions = [_review_action(goal, today, 4)]
-        if 0 < lowered < float(goal.get("target_value") or 0):
+        if _worth_lowering(goal, lowered):
             actions.insert(0, _target_action(goal, "lower_target", lowered))
         return "inconsistent", [], actions
 
@@ -474,6 +481,9 @@ def build_goal_verdict(
     snoozed_until = None
     if decision is not None and decision["verdict"] == verdict and decision["until"] and decision["until"] > current.isoformat():
         snoozed_until = decision["until"]
+    # A future review date is the athlete's own "look again then"; only a finished goal interrupts it.
+    if verdict != "done" and review_on and review_on > current.isoformat():
+        snoozed_until = max(snoozed_until or "", review_on)
 
     return {
         "verdict": verdict,
@@ -506,6 +516,9 @@ def _headline(goal: dict, verdict: str, history: dict, outcome: dict, purpose_st
     if verdict == "plateaued":
         return f"{title} is being hit, but the result it should improve is not moving."
     if verdict == "inconsistent":
+        season = history.get("season") or {}
+        if season.get("shift") and season.get("reference"):
+            return f"Last {season['upcoming_label']} you reached {title} less often than not."
         return f"{title} is hit less often than not."
     if verdict in {"anchor_under_pressure", "anchor_steady"}:
         rate = stats.get("hit_rate")

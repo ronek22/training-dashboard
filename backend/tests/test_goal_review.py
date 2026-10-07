@@ -87,6 +87,17 @@ class VerdictTests(unittest.TestCase):
         review = verdict(goal(), [120, 80, 110, 90, 70, 130, 60, 105, 95, 115, 85, 100])
         self.assertEqual(review['verdict'], 'inconsistent')
 
+    def test_inconsistent_never_offers_a_token_target(self):
+        review = verdict(goal(), [120, 0, 0, 110, 0, 0, 130, 0, 0, 105, 0, 0])
+        self.assertEqual(review['verdict'], 'inconsistent')
+        self.assertNotIn('lower_target', [action['type'] for action in review['actions']])
+
+    def test_future_review_date_quiets_the_card(self):
+        review = verdict(goal(review_on='2026-10-26'), [120, 80, 110, 90, 70, 130, 60, 105, 95, 115, 85, 100])
+        self.assertEqual(review['verdict'], 'inconsistent')
+        self.assertFalse(review['needs_attention'])
+        self.assertEqual(review['snoozed_until'], '2026-10-26')
+
     def test_productive_when_outcome_improves(self):
         linked = outcomes(('cycling_power_20m', 'improving', 4.0))
         review = verdict(goal(target_value=150), [160, 150, 170, 140, 155, 165, 150, 160, 158, 152, 149, 162], linked=linked)

@@ -1,66 +1,40 @@
 <template>
-  <div class="layout">
+  <div class="layout" :class="{ 'is-collapsed': sidebarCollapsed }">
     <aside class="sidebar">
       <div class="sidebar-logo">
         <span class="logo-icon">TL</span>
         <span class="logo-lockup"><span class="logo-text">TrainLog</span><span class="logo-tagline">Performance</span></span>
+        <button
+          v-if="!isNarrowViewport"
+          type="button"
+          class="sidebar-collapse-button"
+          :title="sidebarCollapsed ? 'Expand navigation ([)' : 'Collapse navigation ([)'"
+          :aria-label="sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'"
+          :aria-expanded="!sidebarCollapsed"
+          @click="toggleSidebar"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+            <path d="M9 4.5v15" />
+            <path :d="sidebarCollapsed ? 'm13 10 2 2-2 2' : 'm15 10-2 2 2 2'" />
+          </svg>
+        </button>
       </div>
       <nav class="sidebar-nav">
-        <div class="nav-group-label">Today</div>
-        <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">
-          <NavIcon name="dashboard" class="nav-icon" /><span class="nav-label">Dashboard</span>
-        </router-link>
-        <router-link
-          to="/strength/workouts"
-          class="nav-item studio-nav-item"
-          :class="{ active: $route.path.startsWith('/strength/workouts') }"
-          title="Workout Studio"
-          aria-label="Workout Studio"
-        >
-          <NavIcon name="strength" class="nav-icon" /><span class="nav-label">Workout Studio</span>
-        </router-link>
-        <div class="nav-group-label">Training</div>
-        <router-link to="/plan" class="nav-item" :class="{ active: $route.path === '/plan' }">
-          <NavIcon name="plan" class="nav-icon" /><span class="nav-label">Plan</span>
-        </router-link>
-        <router-link to="/calendar" class="nav-item" :class="{ active: $route.path === '/calendar' }">
-          <NavIcon name="calendar" class="nav-icon" /><span class="nav-label">Calendar</span>
-        </router-link>
-        <router-link to="/goals" class="nav-item" :class="{ active: $route.path === '/goals' }">
-          <NavIcon name="goals" class="nav-icon" /><span class="nav-label">Goals</span>
-        </router-link>
-        <router-link to="/strength" class="nav-item" :class="{ active: $route.path === '/strength' }">
-          <NavIcon name="strength" class="nav-icon" /><span class="nav-label">Strength</span>
-        </router-link>
-        <router-link to="/recovery" class="nav-item" :class="{ active: $route.path === '/recovery' }">
-          <NavIcon name="recovery" class="nav-icon" /><span class="nav-label">Recovery</span>
-        </router-link>
-        <div class="nav-group-label">Review</div>
-        <router-link to="/activities" class="nav-item" :class="{ active: $route.path.startsWith('/activities') }">
-          <NavIcon name="activities" class="nav-icon" /><span class="nav-label">Activities</span>
-        </router-link>
-        <router-link to="/metrics" class="nav-item" :class="{ active: $route.path === '/metrics' }">
-          <NavIcon name="metrics" class="nav-icon" /><span class="nav-label">Trends</span>
-        </router-link>
-        <router-link to="/records" class="nav-item" :class="{ active: $route.path === '/records' }">
-          <NavIcon name="records" class="nav-icon" /><span class="nav-label">Records</span>
-        </router-link>
-        <router-link to="/mountains" class="nav-item" :class="{ active: $route.path.startsWith('/mountains') }">
-          <NavIcon name="mountains" class="nav-icon" /><span class="nav-label">Mountains</span>
-        </router-link>
-        <router-link to="/notes" class="nav-item" :class="{ active: $route.path === '/notes' }">
-          <NavIcon name="notes" class="nav-icon" /><span class="nav-label">Coach Notes</span>
-        </router-link>
-        <div class="nav-group-label">System</div>
-        <router-link to="/sync" class="nav-item" :class="{ active: $route.path === '/sync' }">
-          <NavIcon name="sync" class="nav-icon" /><span class="nav-label">Data & Sync</span>
-        </router-link>
-        <router-link to="/roadmap" class="nav-item" :class="{ active: $route.path === '/roadmap' }">
-          <NavIcon name="roadmap" class="nav-icon" /><span class="nav-label">Roadmap</span>
-        </router-link>
-        <router-link to="/ideas" class="nav-item" :class="{ active: $route.path === '/ideas' }">
-          <NavIcon name="ideas" class="nav-icon" /><span class="nav-label">Ideas</span>
-        </router-link>
+        <template v-for="group in navGroups" :key="group.label">
+          <div class="nav-group-label">{{ group.label }}</div>
+          <router-link
+            v-for="item in group.items"
+            :key="item.to"
+            :to="item.to"
+            class="nav-item"
+            :class="[item.class, { active: item.match($route.path) }]"
+            :title="sidebarCollapsed ? item.label : undefined"
+            :aria-label="item.label"
+          >
+            <NavIcon :name="item.icon" class="nav-icon" /><span class="nav-label">{{ item.label }}</span>
+          </router-link>
+        </template>
       </nav>
       <div class="sidebar-footer">
         <div v-if="streakValue !== null" class="streak-badge" aria-label="Current daily activity streak">
@@ -129,7 +103,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from './stores/api'
 import NavIcon from './components/NavIcon.vue'
@@ -153,6 +127,74 @@ const weatherLocationLabel = ref('Gdańsk')
 let weatherRequestId = 0
 const weatherLocationStorageKey = 'training-dashboard-weather-location'
 const defaultWeatherLocation = { latitude: 54.352, longitude: 18.6466, label: 'Gdańsk' }
+const sidebarStorageKey = 'training-dashboard-sidebar-collapsed'
+const narrowViewportQuery = window.matchMedia('(max-width: 900px)')
+const isNarrowViewport = ref(narrowViewportQuery.matches)
+const sidebarPreferenceCollapsed = ref(false)
+try {
+  sidebarPreferenceCollapsed.value = window.localStorage.getItem(sidebarStorageKey) === '1'
+} catch {}
+const sidebarCollapsed = computed(() => isNarrowViewport.value || sidebarPreferenceCollapsed.value)
+
+const toggleSidebar = () => {
+  sidebarPreferenceCollapsed.value = !sidebarPreferenceCollapsed.value
+  try {
+    window.localStorage.setItem(sidebarStorageKey, sidebarPreferenceCollapsed.value ? '1' : '0')
+  } catch {}
+}
+
+const onNarrowViewportChange = (event) => {
+  isNarrowViewport.value = event.matches
+}
+
+const onSidebarShortcut = (event) => {
+  if (event.key !== '[' || event.metaKey || event.ctrlKey || event.altKey || isNarrowViewport.value) return
+  const target = event.target
+  if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName)) return
+  event.preventDefault()
+  toggleSidebar()
+}
+
+const exactPath = (path) => (current) => current === path
+const pathPrefix = (path) => (current) => current.startsWith(path)
+const navGroups = [
+  {
+    label: 'Today',
+    items: [
+      { to: '/', label: 'Dashboard', icon: 'dashboard', match: exactPath('/') },
+      { to: '/strength/workouts', label: 'Workout Studio', icon: 'strength', match: pathPrefix('/strength/workouts'), class: 'studio-nav-item' },
+    ],
+  },
+  {
+    label: 'Training',
+    items: [
+      { to: '/plan', label: 'Plan', icon: 'plan', match: exactPath('/plan') },
+      { to: '/calendar', label: 'Calendar', icon: 'calendar', match: exactPath('/calendar') },
+      { to: '/goals', label: 'Goals', icon: 'goals', match: exactPath('/goals') },
+      { to: '/strength', label: 'Strength', icon: 'strength', match: exactPath('/strength') },
+      { to: '/recovery', label: 'Recovery', icon: 'recovery', match: exactPath('/recovery') },
+    ],
+  },
+  {
+    label: 'Review',
+    items: [
+      { to: '/activities', label: 'Activities', icon: 'activities', match: pathPrefix('/activities') },
+      { to: '/metrics', label: 'Trends', icon: 'metrics', match: exactPath('/metrics') },
+      { to: '/records', label: 'Records', icon: 'records', match: exactPath('/records') },
+      { to: '/mountains', label: 'Mountains', icon: 'mountains', match: pathPrefix('/mountains') },
+      { to: '/notes', label: 'Coach Notes', icon: 'notes', match: exactPath('/notes') },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { to: '/sync', label: 'Data & Sync', icon: 'sync', match: exactPath('/sync') },
+      { to: '/roadmap', label: 'Roadmap', icon: 'roadmap', match: exactPath('/roadmap') },
+      { to: '/ideas', label: 'Ideas', icon: 'ideas', match: exactPath('/ideas') },
+    ],
+  },
+]
+
 const streakLabel = computed(() => `${streakValue.value} ${streakValue.value === 1 ? 'day' : 'days'}`)
 
 const weatherIcon = computed(() => {
@@ -264,6 +306,13 @@ onMounted(() => {
   loadStreak()
   window.addEventListener('trainlog:streak-changed', loadStreak)
   initializeWeather()
+  narrowViewportQuery.addEventListener('change', onNarrowViewportChange)
+  window.addEventListener('keydown', onSidebarShortcut)
+})
+
+onBeforeUnmount(() => {
+  narrowViewportQuery.removeEventListener('change', onNarrowViewportChange)
+  window.removeEventListener('keydown', onSidebarShortcut)
 })
 
 watch(
@@ -466,49 +515,85 @@ const routeTransitionName = computed(() => {
   position: relative;
 }
 
+.sidebar-collapse-button {
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.sidebar-collapse-button:hover,
+.sidebar-collapse-button:focus-visible {
+  color: var(--text);
+  background: rgb(var(--ov-rgb) / 0.04);
+  border-color: rgb(var(--tint-rgb) / 0.16);
+  outline: none;
+}
+.sidebar-collapse-button svg { width: 17px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.sidebar,
+.main-content {
+  transition: width .18s ease, margin-left .18s ease;
+}
+
+.is-collapsed .sidebar {
+  width: 88px;
+}
+
+.is-collapsed .sidebar-logo {
+  padding: 0 18px 20px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+.is-collapsed .sidebar-collapse-button { margin-left: 0; }
+
+.is-collapsed .logo-text,
+.is-collapsed .logo-tagline,
+.is-collapsed .nav-label,
+.is-collapsed .nav-group-label,
+.is-collapsed .streak-copy {
+  display: none;
+}
+
+.is-collapsed .sidebar-footer { padding: 14px 10px 0; }
+.is-collapsed .sidebar-theme-toggle { display: none; }
+.is-collapsed .weather-card { min-height: auto; padding: 9px 6px; }
+.is-collapsed .weather-current { justify-content: center; gap: 4px; }
+.is-collapsed .weather-icon { font-size: 19px; }
+.is-collapsed .weather-reading { flex: 0 0 auto; }
+.is-collapsed .weather-reading strong { font-size: 14px; }
+.is-collapsed .weather-reading span,
+.is-collapsed .weather-meta,
+.is-collapsed .weather-location-button { display: none; }
+.is-collapsed .weather-retry { min-height: 32px; font-size: 0; }
+.is-collapsed .weather-retry span { font-size: 16px; }
+.is-collapsed .streak-badge { justify-content: center; padding: 10px; }
+
+.is-collapsed .sidebar-nav {
+  padding: 0 10px;
+}
+.is-collapsed .nav-group-label + .nav-item { margin-top: 10px; }
+.is-collapsed .nav-group-label:first-child + .nav-item { margin-top: 0; }
+
+.is-collapsed .nav-item {
+  justify-content: center;
+  padding: 12px 10px;
+}
+
+.is-collapsed .main-content {
+  margin-left: 88px;
+}
+
 @media (max-width: 900px) {
-  .sidebar {
-    width: 88px;
-  }
-
-  .sidebar-logo {
-    padding: 0 18px 20px;
-    justify-content: center;
-  }
-
-  .logo-text,
-  .logo-tagline,
-  .nav-label,
-  .nav-group-label,
-  .streak-copy {
-    display: none;
-  }
-
-  .sidebar-footer { padding: 14px 10px 0; }
-  .sidebar-theme-toggle { display: none; }
-  .weather-card { min-height: auto; padding: 9px 6px; }
-  .weather-current { justify-content: center; gap: 4px; }
-  .weather-icon { font-size: 19px; }
-  .weather-reading { flex: 0 0 auto; }
-  .weather-reading strong { font-size: 14px; }
-  .weather-reading span,
-  .weather-meta,
-  .weather-location-button { display: none; }
-  .weather-retry { min-height: 32px; font-size: 0; }
-  .weather-retry span { font-size: 16px; }
-  .streak-badge { justify-content: center; padding: 10px; }
-
-  .sidebar-nav {
-    padding: 0 10px;
-  }
-
-  .nav-item {
-    justify-content: center;
-    padding: 12px 10px;
-  }
-
   .main-content {
-    margin-left: 88px;
     padding: 28px 20px 32px;
   }
 }
@@ -516,7 +601,8 @@ const routeTransitionName = computed(() => {
 @media (max-width: 640px) {
   .layout { display: block; min-height: 100dvh; }
   .sidebar { display: none; }
-  .main-content {
+  .main-content,
+  .is-collapsed .main-content {
     margin-left: 0;
     min-width: 0;
     padding: calc(20px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(92px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));

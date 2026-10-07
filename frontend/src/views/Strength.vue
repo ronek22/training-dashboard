@@ -97,6 +97,7 @@
         </article>
 
         <article v-if="overview.selected_exercise" class="strength-anchor"><div><span class="card-title">A lift to follow</span><h2>{{ overview.selected_exercise.exercise_name }}</h2><p>{{ overview.selected_exercise.progression.detail }}</p></div><div class="anchor-result"><strong>{{ overview.selected_exercise.recent_best_load_kg != null ? `${trimNumber(overview.selected_exercise.recent_best_load_kg)} kg` : '—' }}</strong><span>Best top load in this window</span><button type="button" class="detail-link" @click="strengthView = 'progression'">Explore progression →</button></div></article>
+        <MuscleGainCheck />
         </section>
 
         <section v-if="strengthView === 'analysis'" class="analysis-grid analysis-grid-top motion-section">
@@ -285,6 +286,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
+import MuscleGainCheck from '../components/MuscleGainCheck.vue'
 
 const api = useApi()
 

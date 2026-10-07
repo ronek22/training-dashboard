@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import APIRouter
 
 from ..db import get_db
+from ..services.muscle_gain import build_muscle_gain_check
 from ..services.strength import get_strength_overview_data
 
 router = APIRouter()
@@ -22,5 +23,14 @@ def get_strength_overview(
             body_part=body_part,
             exercise=exercise,
         )
+    finally:
+        conn.close()
+
+
+@router.get("/strength/muscle-gain")
+def get_muscle_gain_check():
+    conn = get_db()
+    try:
+        return build_muscle_gain_check(conn)
     finally:
         conn.close()

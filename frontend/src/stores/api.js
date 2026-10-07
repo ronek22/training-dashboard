@@ -68,6 +68,7 @@ export const useApi = () => ({
   // Review actions carry their own method/path/body from the backend verdict.
   applyGoalReviewAction: (action) => api.request({ method: action.method, url: action.path, data: action.body }),
   getStrengthOverview: (params) => api.get('/strength/overview', { params }),
+  getMuscleGainCheck: () => api.get('/strength/muscle-gain'),
   getStrengthWorkoutTemplates: () => api.get('/strength/workouts/templates'),
   getStrengthExerciseSuggestions: (params) => api.get('/strength/workouts/exercise-suggestions', { params }),
   createStrengthWorkoutTemplate: (payload) => api.post('/strength/workouts/templates', payload),

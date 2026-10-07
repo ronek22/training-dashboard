@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-05T12:00:00+02:00",
-  "summary": "Manual review after a burst of athlete-facing work (2026-10-02 to 10-05): sleep debt, ride fuelling, protein tick, personal best wall with FTP estimate, pre-session brief, what-worked memory, return-to-run tracker, life-load tags, minimum viable week, two-minute downshift and the just check command. Marked six catalog ideas Done (structured .zwo workouts, volume trend alert, morning check-in, return-to-run tracker, dependable project checks, test-free FTP estimate). Added six athlete-facing proposals that do not overlap built or catalogued work. Source/documentation review only; no tests, syncs or model calls were run.",
+  "reviewed_at": "2026-10-07T00:59:39+02:00",
+  "summary": "Reviewed recent session-read, Today-options and weekly-wins commits, current coach-drawer changes, current-state documentation, the active roadmap, Sprint 33 and all 21 existing ideas. Inspected coach-moment selection/expiry, linked-chat retirement, conversation grouping, page suggestions and synthetic unread/moment test changes. Session and weekly conversation entry points, unread replies and lighter-session choices are already implemented or actively being integrated; reflection, monthly summaries, historical advice and coaching evaluation already have proposals. No sufficiently distinct new proposal was identified today. Source/documentation review only; no application tests or model calls were run, and no credentials, databases or private training exports were opened.",
   "ideas": [
     {
       "id": "dependable-project-checks",

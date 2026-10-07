@@ -6,9 +6,13 @@ const ENDURANCE_SPORTS = new Set([
 
 const STRENGTH_SPORTS = new Set(['weighttraining', 'strengthtraining', 'crossfit'])
 
-export function activityPresentation(type) {
+// Activities on foot in a mapped mountain range get the map-first page with the trails.
+const MOUNTAIN_SPORTS = new Set(['hike', 'walk', 'trailrun'])
+
+export function activityPresentation(type, mountainRegion = null) {
   const normalized = String(type || '').replace(/[^a-z]/gi, '').toLowerCase()
   if (STRENGTH_SPORTS.has(normalized)) return 'strength'
+  if (mountainRegion && MOUNTAIN_SPORTS.has(normalized)) return 'hike'
   if (ENDURANCE_SPORTS.has(normalized)) return 'endurance'
   return 'generic'
 }

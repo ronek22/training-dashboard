@@ -17,6 +17,9 @@
           :back-to="backTo" :back-label="backLabel"
         />
 
+        <!-- Hikes lead with the mountain map; other sports keep the analysis below the feedback strip. -->
+        <component :is="presentationComponent" v-if="presentation === 'hike'" :detail="detail" />
+
         <section class="ad-feedback-strip" :class="`is-${feedbackRead.tone}`" aria-labelledby="feedback-strip-title">
           <div class="ad-feedback-strip-intro">
             <span>How it felt</span>
@@ -41,7 +44,7 @@
           <strong>Summary data only</strong><span>Some charts, route, or segment detail may still be processing or unavailable from the source.</span>
         </div>
 
-        <component :is="presentationComponent" :detail="detail" />
+        <component :is="presentationComponent" v-if="presentation !== 'hike'" :detail="detail" />
 
         <SessionReadPanel
           class="ad-shared-section"
@@ -83,6 +86,7 @@ import ActivityHeader from '../components/activity-detail/ActivityHeader.vue'
 import EnduranceAnalysis from '../components/activity-detail/EnduranceAnalysis.vue'
 import StrengthAnalysis from '../components/activity-detail/StrengthAnalysis.vue'
 import GenericAnalysis from '../components/activity-detail/GenericAnalysis.vue'
+import HikeAnalysis from '../components/activity-detail/HikeAnalysis.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
 import SessionReadPanel from '../components/activity-detail/SessionReadPanel.vue'
 import SessionWinCard from '../components/activity-detail/SessionWinCard.vue'
@@ -125,8 +129,8 @@ watch(() => route.params.activityId, () => {
   load()
 })
 
-const presentation = computed(() => activityPresentation(detail.value?.activity?.type))
-const presentationComponent = computed(() => ({ endurance: EnduranceAnalysis, strength: StrengthAnalysis, generic: GenericAnalysis }[presentation.value]))
+const presentation = computed(() => activityPresentation(detail.value?.activity?.type, detail.value?.mountain_region))
+const presentationComponent = computed(() => ({ endurance: EnduranceAnalysis, hike: HikeAnalysis, strength: StrengthAnalysis, generic: GenericAnalysis }[presentation.value]))
 const sport = computed(() => sportLabel(detail.value?.activity?.type))
 const backContext = computed(() => {
   const from = String(route.query.from || '').toLowerCase()

@@ -879,5 +879,8 @@ def init_db():
     init_recovery_schema(conn)
     from .services.project_ideas import init_schema as init_project_ideas_schema
     init_project_ideas_schema(conn)
+    from .repositories.trails import SCHEMA as TRAILS_SCHEMA, migrate as migrate_trails
+    conn.executescript(TRAILS_SCHEMA)
+    migrate_trails(conn)
     conn.commit()
     conn.close()

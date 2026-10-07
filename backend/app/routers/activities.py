@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from typing import Optional
 
 from ..db import get_db
+from ..services.hike_detail import mountain_region
 from ..models.fitbod_imports import FitbodImportRequest, FitbodSessionLinkRequest, FitbodSessionRejectRequest
 from ..models.activities import (
     Activity,
@@ -72,7 +73,7 @@ def activity_stats(days: int = 30):
 def get_activity_detail(activity_id: str):
     conn = get_db()
     try:
-        return get_activity_detail_data(
+        payload = get_activity_detail_data(
             conn,
             activity_id,
             get_setting_fn=get_setting,
@@ -81,6 +82,9 @@ def get_activity_detail(activity_id: str):
             fetch_strava_activity_detail_fn=fetch_strava_activity_detail,
             fetch_strava_activity_streams_fn=fetch_strava_activity_streams_by_keys,
         )
+        # Hikes, walks and trail runs in a mapped range get the map-first page.
+        payload["mountain_region"] = mountain_region(conn, activity_id)
+        return payload
     finally:
         conn.close()
 

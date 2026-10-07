@@ -1,0 +1,39 @@
+/* Shared look of the mountain maps (Mountains page and hike detail): relief tiles, Mapy.cz-style
+   labels, place icons, start/finish pins and popups. Scoped to .mtn-map so other maps keep theirs. */
+.mtn-map .place-marker { background: none; border: 0; }
+.mtn-map .place-marker svg { display: block; filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / .45)); }
+.mtn-map .place-tip { background: rgb(var(--panel-rgb) / .97); color: var(--text); border: 1px solid var(--border); border-radius: 7px; box-shadow: 0 4px 14px rgb(var(--shadow-rgb) / .3); font-size: 12px; font-weight: 600; padding: 4px 8px; }
+.mtn-map .place-tip::before { display: none; }
+.mtn-map .route-pin-shell { background: none; border: 0; }
+.route-pin { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: #16a34a; color: #fff; font: 700 10.5px/1 var(--font-display); font-style: normal; border: 2px solid #0b0d11; box-shadow: 0 1px 4px rgb(0 0 0 / .4); white-space: nowrap; }
+.route-pin.is-end { background: #e6ebf2; color: #0b0d11; }
+.mtn-map .mountain-labels { position: absolute; left: 0; top: 0; --ml-text: #e6ebf2; --ml-muted: #aab6c8; --ml-halo: rgb(12 14 18 / .9); }
+.mtn-map .mountain-labels[data-theme="light"] { --ml-text: #1b2330; --ml-muted: #4d5b6e; --ml-halo: rgb(255 255 255 / .95); }
+.mtn-map .ml { position: absolute; white-space: nowrap; line-height: 1; transform-origin: center; color: var(--ml-text); text-shadow: 0 0 2px var(--ml-halo), 0 0 2px var(--ml-halo), 0 0 3px var(--ml-halo), 0 0 5px var(--ml-halo); }
+.mtn-map .ml-place { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
+.mtn-map .ml-place .ml-name { font: italic 600 12px Georgia, "Times New Roman", serif; }
+.mtn-map .ml-place .ml-ele { font: 11px Georgia, "Times New Roman", serif; color: var(--ml-muted); }
+.mtn-map .ml-pass .ml-name, .mtn-map .ml-cave .ml-name, .mtn-map .ml-hut .ml-name { font: italic 11px Georgia, "Times New Roman", serif; }
+.mtn-map .ml-valley { font: italic 12px Georgia, "Times New Roman", serif; letter-spacing: 2.2px; color: var(--ml-muted); text-align: center; }
+.mtn-map .ml-trail { font: 600 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-align: center; }
+.mtn-map .tiles-relief-dark { mix-blend-mode: overlay; opacity: .9; }
+.mtn-map .tiles-relief-light { mix-blend-mode: multiply; opacity: .5; }
+.mtn-map .tiles-mapy-dark { filter: grayscale(1) invert(1) brightness(.85) contrast(.9); }
+.mtn-map .tiles-mapy-light { filter: grayscale(1) contrast(.95); }
+.mtn-map .leaflet-container { background: var(--deep); font-family: inherit; }
+.mtn-map .leaflet-control-attribution { background: rgb(var(--deep-rgb) / .78) !important; color: var(--muted) !important; }
+.mtn-map .leaflet-control-attribution a { color: var(--text) !important; }
+.mtn-map .leaflet-control-zoom { border: 1px solid var(--border) !important; border-radius: 10px !important; overflow: hidden; }
+.mtn-map .leaflet-control-zoom a { background: rgb(var(--panel-rgb) / .94) !important; color: var(--text) !important; border-color: var(--border) !important; }
+.mtn-map .trail-popup .leaflet-popup-content-wrapper, .mtn-map .trail-popup .leaflet-popup-tip { background: rgb(var(--panel-rgb) / .98); color: var(--text); box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / .35); }
+.mtn-map .trail-popup .leaflet-popup-content { margin: 12px 14px; font-size: 12.5px; line-height: 1.45; }
+.mtn-map .trail-popup a.leaflet-popup-close-button { color: var(--muted); }
+.mtn-map .trail-pop strong { font: 600 14px var(--font-display); display: block; margin-bottom: 3px; padding-right: 12px; }
+.mtn-map .trail-pop-meta, .mtn-map .trail-pop-names { color: var(--muted-soft); }
+.mtn-map .trail-pop-names { margin-top: 3px; font-size: 11.5px; }
+.mtn-map .trail-pop-colours i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 0 3px 0 0; box-shadow: 0 0 0 1px rgb(var(--ov-rgb) / .25); }
+.mtn-map .trail-pop-state { margin-top: 8px; font-weight: 700; }
+.mtn-map .trail-pop-state.is-done { color: var(--success-text); }
+.mtn-map .trail-pop-state.is-partial { color: var(--warning-text); }
+.mtn-map .trail-pop-state.is-todo { color: var(--muted-soft); }
+.mtn-map .trail-pop ul { margin: 6px 0 0; padding-left: 16px; color: var(--muted-soft); }

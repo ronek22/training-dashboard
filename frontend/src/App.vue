@@ -45,6 +45,9 @@
         <router-link to="/records" class="nav-item" :class="{ active: $route.path === '/records' }">
           <NavIcon name="records" class="nav-icon" /><span class="nav-label">Records</span>
         </router-link>
+        <router-link to="/mountains" class="nav-item" :class="{ active: $route.path.startsWith('/mountains') }">
+          <NavIcon name="mountains" class="nav-icon" /><span class="nav-label">Mountains</span>
+        </router-link>
         <router-link to="/notes" class="nav-item" :class="{ active: $route.path === '/notes' }">
           <NavIcon name="notes" class="nav-icon" /><span class="nav-label">Coach Notes</span>
         </router-link>

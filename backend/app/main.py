@@ -6,6 +6,7 @@ from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from .adapters.mcp import build_mcp_router_dependencies
 from .db import get_db, init_db
@@ -36,6 +37,7 @@ from .routers.session_brief import router as session_brief_router
 from .routers.what_worked import router as what_worked_router
 from .routers.return_to_run import router as return_to_run_router
 from .routers.life_load import router as life_load_router
+from .routers.trails import router as trails_router
 from .services.health_data import apply_health_data_import
 
 mcp_app = build_mcp_app(**build_mcp_router_dependencies())
@@ -76,6 +78,7 @@ async def app_lifespan(app_instance: FastAPI):
 
 app = FastAPI(title="Training Dashboard API", lifespan=app_lifespan)
 
+app.add_middleware(GZipMiddleware, minimum_size=1024)  # trail maps are a few MB of coordinates
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -108,6 +111,7 @@ app.include_router(session_brief_router)
 app.include_router(what_worked_router)
 app.include_router(return_to_run_router)
 app.include_router(life_load_router)
+app.include_router(trails_router)
 
 init_db()
 app.mount("/mcp", mcp_app)

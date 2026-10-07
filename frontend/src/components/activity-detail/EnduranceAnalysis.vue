@@ -151,7 +151,7 @@ const dominantPowerZone = computed(() => powerZones.value?.zones?.find(zone => z
 const selectPowerZone = key => { activePowerZoneKey.value = key }
 const clearPowerZone = () => { activePowerZoneKey.value = '' }
 const efforts = computed(() => props.detail.best_efforts?.efforts || [])
-const familyTitle = computed(() => ({ running:'Run performance',cycling:'Ride performance',swimming:'Swim performance',default:'Endurance performance' }[sportFamily(props.detail.activity.type)]))
+const familyTitle = computed(() => ({ Hike:'Hike overview', Walk:'Walk overview' }[props.detail.activity.type] || { running:'Run performance',cycling:'Ride performance',swimming:'Swim performance',default:'Endurance performance' }[sportFamily(props.detail.activity.type)]))
 const chartWidth = computed(() => routeCoordinates.value.length ? 760 : 1240)
 const prepareChart = chart => {const normalized=normalizePoints(chart);return {...chart,normalized,clipped:chartRange(chart).clipped,avgLine:paceAverageLine(chart),cockpitPolyline:normalized.map(p=>`${p.x},${p.y}`).join(' ')}}
 // Average pace as a reference line: the stat is "m:ss" per km.

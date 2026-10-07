@@ -3,7 +3,8 @@ import { onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { useApi } from '../stores/api'
 import ActivityIcon from './ActivityIcon.vue'
 import TrainingWeekVisual from './TrainingWeekVisual.vue'
-defineProps<{ compact?: boolean }>()
+// hideVisual: the weekly review page already shows the week's sessions, so it only needs the coaches' take.
+defineProps<{ compact?: boolean; hideVisual?: boolean }>()
 
 type Specialist = { sport: string; verdict: string; assessment: string; next_week_focus: string; evidence_ids: string[]; uncertainty: string }
 type Review = { generated_at: string; through_date: string; specialists: Specialist[]; head_coach: { headline: string; verdict: string; tradeoff: string; next_week_change: string; success_check: string; uncertainty: string } }
@@ -74,7 +75,7 @@ onUnmounted(() => { disposed = true; clearTimeout(timer) })
       <div class="preview-takeaway"><h3>{{ state.review?.head_coach.headline || 'Your week, across all three sports' }}</h3><p>{{ state.review ? state.review.head_coach.next_week_change : 'See the balance of your training, get the team’s assessment, and revisit completed Sunday reviews.' }}</p></div>
       <TrainingWeekVisual v-if="state.facts" :facts="state.facts" :week-start="state.week_start" :through-date="state.through_date" compact />
     </div>
-    <TrainingWeekVisual v-if="!compact && state?.facts" class="full-visual" :facts="state.facts" :week-start="state.week_start" :through-date="state.through_date" />
+    <TrainingWeekVisual v-if="!compact && !hideVisual && state?.facts" class="full-visual" :facts="state.facts" :week-start="state.week_start" :through-date="state.through_date" />
     <template v-if="!compact && state?.review">
       <div class="verdict">
         <p class="eyebrow">Did this week move you forward?</p>

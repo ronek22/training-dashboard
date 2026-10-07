@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..db import get_db
 from ..models.weekly_reviews import WeeklyReview
+from ..services.week_report import build_week_report
 from ..services.week_wins import build_week_wins
 from ..services.weekly_reviews import list_reviews, monthly_goal_review, save_review, review_context, review_status
 
@@ -66,5 +67,17 @@ def get_week_wins(week_start: Optional[date] = None, day: Optional[date] = None)
     conn = get_db()
     try:
         return build_week_wins(conn, week_start, today=day)
+    finally:
+        conn.close()
+
+
+@router.get('/reviews/weekly/report')
+def get_week_report(week_start: Optional[date] = None, day: Optional[date] = None):
+    """The data-first week report; ``day`` is the browser's local date (the container clock is UTC)."""
+    conn = get_db()
+    try:
+        return build_week_report(conn, week_start, today=day)
+    except ValueError as error:
+        raise HTTPException(422, str(error))
     finally:
         conn.close()

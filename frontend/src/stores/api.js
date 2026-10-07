@@ -25,6 +25,7 @@ export const useApi = () => ({
   failRecoveryRequest: (id, requestId) => api.post(`/recovery/issues/${id}/requests/${requestId}/failed`),
   getWeeklyReviews: () => api.get('/reviews/weekly'),
   getWeeklyReviewStatus: () => api.get('/reviews/weekly/status'),
+  getWeekReport: (params) => api.get('/reviews/weekly/report', { params }),
   getWeeklyReviewGoals: (weekStart) => api.get('/reviews/weekly/goals', { params: { week_start: weekStart } }),
   getDashboard: () => api.get('/dashboard'),
   getTrailRegions: () => api.get('/trails'),

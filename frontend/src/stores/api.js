@@ -5,6 +5,13 @@ const codexHelper = axios.create({
   baseURL: import.meta.env.VITE_CODEX_HELPER_URL || 'http://127.0.0.1:8765',
   timeout: 8000,
 })
+// No response at all means the local helper process is down, not that the coach failed.
+codexHelper.interceptors.response.use(undefined, (error) => {
+  if (!error.response && error.code !== 'ECONNABORTED') {
+    error.message = 'The local Codex helper is not running. Start it with `just codex-helper-start`, then send again.'
+  }
+  return Promise.reject(error)
+})
 
 export const useApi = () => ({
   getProjectIdeas: () => api.get('/project-ideas'),

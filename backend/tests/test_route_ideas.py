@@ -85,7 +85,7 @@ class PlanRoutesTests(unittest.TestCase):
     def test_places_on_the_route_are_listed(self):
         summit = {"name": "Kopa", "kind": "peak", "ele": 2000, "lat": C[0], "lon": C[1], "visited_by": [], "parks": ["TPN"]}
         loop = next(r for r in plan_routes(self.sections, [head("Kuźnice", A)], [summit], "TPN", hours=1.2) if r["mode"] == "loop")
-        self.assertEqual(loop["places"], [{"name": "Kopa", "kind": "peak", "ele": 2000, "reached": False}])
+        self.assertEqual(loop["places"], [{"name": "Kopa", "kind": "peak", "ele": 2000, "lat": 49.21, "lon": 20.01, "reached": False}])
         self.assertEqual(loop["title"], "Kuźnice – Kopa – Kuźnice")
 
     def test_nothing_missing_means_no_routes(self):
@@ -179,6 +179,17 @@ class ElevationTests(unittest.TestCase):
         flat.pop("ascent_m"), flat.pop("descent_m")
         self.assertFalse(self.apply([flat], broken))
         self.assertNotIn("ascent_m", flat)
+
+    def test_route_profile_reads_the_cached_heights_in_walking_order(self):
+        from backend.app.services.trail_coverage import Projection, sample_polyline
+        from backend.app.services.trail_elevation import route_profile
+        climb = section(1, A, D, 1100)
+        self.apply([climb], lambda points: [1000 + (lat - LAT) * 10000 for lat, _ in points])
+        track = route_profile(self.conn, [(climb, True), (climb, False)], Projection(LAT), sample_polyline)
+        heights = [p[2] for p in track]
+        self.assertTrue(all(h is not None for h in heights))
+        self.assertEqual((heights[0], max(heights), heights[-1]), (1000, 1100, 1000))   # up and back down
+        self.assertEqual(len(track), 2 * len(sample_polyline([Projection(LAT).xy(*c) for c in climb["coords"]], 100)) - 1)  # shared junction once
 
 if __name__ == "__main__":
     unittest.main()

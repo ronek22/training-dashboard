@@ -19,32 +19,12 @@
       <div v-if="loadingContext" class="hike-map-state">Loading the mountain map…</div>
     </section>
 
-    <section v-if="chart" class="ad-section hike-profile" aria-labelledby="hike-profile-heading">
+    <section v-if="profile.length > 1" class="ad-section hike-profile" aria-labelledby="hike-profile-heading">
       <div class="ad-section-heading">
         <div><span>Elevation</span><h2 id="hike-profile-heading">Profile</h2></div>
         <p>{{ hover ? `km ${hover.km.toFixed(1)} · ${Math.round(hover.alt)} m` : 'Hover the profile to follow it on the map.' }}</p>
       </div>
-      <svg ref="chartEl" class="hike-profile-chart" :viewBox="`0 0 ${CHART_W} ${CHART_H}`" preserveAspectRatio="none"
-        @mousemove="onChartMove" @mouseleave="hover = null" role="img" aria-label="Elevation profile of the hike">
-        <g class="hike-grid">
-          <line v-for="t in chart.ticks" :key="`y${t.alt}`" :x1="chart.pad.left" :x2="CHART_W - chart.pad.right" :y1="t.y" :y2="t.y" />
-        </g>
-        <path :d="chart.area" class="hike-area" />
-        <path :d="chart.line" class="hike-line" />
-        <g class="hike-axis">
-          <text v-for="t in chart.ticks" :key="`ty${t.alt}`" :x="chart.pad.left - 6" :y="t.y + 3" text-anchor="end">{{ t.alt }}</text>
-          <text v-for="t in chart.kmTicks" :key="`tx${t.km}`" :x="t.x" :y="CHART_H - 6" text-anchor="middle">{{ t.km }} km</text>
-        </g>
-        <g v-for="m in profileMarks" :key="m.name" class="hike-mark" :class="{ 'is-first': m.firstTime }">
-          <line :x1="m.x" :x2="m.x" :y1="m.y - 4" :y2="m.y - 16" />
-          <circle :cx="m.x" :cy="m.y" r="3.5" />
-          <text v-if="m.showLabel" :x="m.x" :y="m.y - 20" text-anchor="middle">{{ m.name }}</text>
-        </g>
-        <g v-if="hover" class="hike-hover">
-          <line :x1="chart.x(hover.km)" :x2="chart.x(hover.km)" :y1="chart.pad.top" :y2="CHART_H - chart.pad.bottom" />
-          <circle :cx="chart.x(hover.km)" :cy="chart.y(hover.alt)" r="5" />
-        </g>
-      </svg>
+      <ElevationProfile v-model:hover="hover" :profile="profile" :marks="profileMarks" label="Elevation profile of the hike" />
     </section>
 
     <section class="ad-outcome hike-overview" aria-labelledby="hike-summary">
@@ -103,13 +83,12 @@ import { MountainLabels } from '../../trails/labelLayer.js'
 import { displayName } from '../../trails/labels.mjs'
 import { placeIconSvg, sectionLayers, trailColour } from '../../trails/coverage.mjs'
 import { formatDurationMinutes } from '../../activity-detail/presentation'
-import { nearestByKm, placesReached, profileChart, profileFromTrack, profileStats, trailsWalked } from '../../trails/hike.mjs'
+import { placesOnProfile, placesReached, profileFromTrack, profileStats, trailsWalked } from '../../trails/hike.mjs'
+import ElevationProfile from '../trails/ElevationProfile.vue'
 
 const props = defineProps({ detail: { type: Object, required: true } })
 const api = useApi()
 
-const CHART_W = 1000
-const CHART_H = 180
 const TRACK_COLOUR = '#b79cff'
 const NEW_GLOW = '#4ade80'
 const PLACE_LABELS = { peak: 'Summit', pass: 'Pass', hut: 'Hut', cave: 'Cave' }
@@ -120,7 +99,6 @@ const loadingContext = ref(true)
 const theme = ref(resolveTheme())
 const hover = ref(null)
 const mapEl = ref(null)
-const chartEl = ref(null)
 
 const activity = computed(() => props.detail.activity)
 const KINDS = { Hike: { title: 'Hike', noun: 'hike' }, Walk: { title: 'Walk', noun: 'walk' }, TrailRun: { title: 'Trail run', noun: 'run' } }
@@ -128,7 +106,6 @@ const kind = computed(() => KINDS[activity.value.type] || KINDS.Hike)
 const stat = (key) => props.detail.stats?.find((s) => s.key === key)?.value
 const profile = computed(() => (context.value ? profileFromTrack(context.value.track) : []))
 const stats = computed(() => profileStats(profile.value))
-const chart = computed(() => profileChart(profile.value, CHART_W, CHART_H))
 const reached = computed(() => (context.value ? placesReached(context.value.places) : []))
 const walked = computed(() => (context.value ? trailsWalked(context.value.sections) : []))
 const legendColour = computed(() => trailColour('red', theme.value))
@@ -162,34 +139,8 @@ const secondaryChips = computed(() => [
 ].filter(Boolean))
 
 // Reached summits, passes and huts marked on the profile where the track passes them.
-const profileMarks = computed(() => {
-  if (!chart.value) return []
-  const marks = []
-  for (const p of reached.value.filter((place) => place.kind !== 'cave')) {
-    let best = null
-    for (const point of profile.value) {
-      const d = (point.lat - p.lat) ** 2 + ((point.lon - p.lon) * 0.65) ** 2
-      if (!best || d < best.d) best = { d, point }
-    }
-    if (best) marks.push({ name: displayName(p.name), firstTime: p.first_time, kind: p.kind, x: chart.value.x(best.point.km), y: chart.value.y(best.point.alt) })
-  }
-  marks.sort((a, b) => a.x - b.x)
-  let lastLabel = -Infinity
-  for (const m of marks) {
-    m.showLabel = m.kind !== 'hut' && m.x - lastLabel > 120
-    if (m.showLabel) lastLabel = m.x
-  }
-  return marks
-})
-
-function onChartMove(event) {
-  if (!chart.value) return
-  const rect = chartEl.value.getBoundingClientRect()
-  const x = ((event.clientX - rect.left) / rect.width) * CHART_W
-  const span = CHART_W - chart.value.pad.left - chart.value.pad.right
-  const km = Math.max(0, Math.min(chart.value.km, ((x - chart.value.pad.left) / span) * chart.value.km))
-  hover.value = nearestByKm(profile.value, km)
-}
+const profileMarks = computed(() => placesOnProfile(profile.value, reached.value.filter((p) => p.kind !== 'cave'))
+  .map((p) => ({ name: displayName(p.name), km: p.km, alt: p.alt, highlight: p.first_time, labelled: p.kind !== 'hut' })))
 
 // ---------- map ----------
 let map = null
@@ -319,19 +270,8 @@ onBeforeUnmount(() => {
 
 .hike-profile { padding-top: 18px; padding-bottom: 14px; }
 .hike-profile .ad-section-heading { margin-bottom: 6px; }
-.hike-profile-chart { display: block; width: 100%; height: 180px; cursor: crosshair; }
-.hike-grid line { stroke: rgb(var(--ov-rgb) / .07); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.hike-area { fill: rgb(136 114 78 / .22); }
-.hike-line { fill: none; stroke: #c9a46a; stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
-.hike-axis text { fill: var(--muted); font-size: 11px; }
-.hike-mark line { stroke: var(--muted); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.hike-mark circle { fill: var(--text); stroke: var(--deep); stroke-width: 1.5; }
-.hike-mark.is-first circle { fill: #4ade80; }
-.hike-mark text { fill: var(--text); font: italic 600 12px Georgia, "Times New Roman", serif; paint-order: stroke; stroke: var(--deep); stroke-width: 3px; }
-.hike-hover line { stroke: rgb(var(--ov-rgb) / .35); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.hike-hover circle { fill: #f5f7fb; stroke: #0b0d11; stroke-width: 2; }
 
-.hike-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.hike-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }  /* long trail names truncate instead of widening the card */
 .hike-list li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--ad-line); font-size: .9rem; }
 .hike-list li:first-child { border-top: 0; }
 .hike-icon { display: inline-flex; width: 16px; height: 16px; flex: none; }

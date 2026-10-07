@@ -72,9 +72,17 @@ export function visibleSection(section, filter) {
 // that many pixels to the side of the trail, so shared trails show their colours next to each
 // other like on Mapy.cz. Done sections sit on a casing; partly walked ones are dashed; remaining
 // ones are thin neutral dots, so the states never look alike. Other parks are a faint hint only.
-export function sectionLayers(section, { theme = 'dark', colourRemaining = false, outsidePark = false } = {}) {
+export function sectionLayers(section, { theme = 'dark', colourRemaining = false, outsidePark = false, backdrop = false } = {}) {
   const colours = (section.colours.length ? section.colours : ['black']).slice(0, 3)
   const primary = trailColour(colours[0], theme)
+
+  // Planner backdrop: every trail in its colour but thin and half-transparent (dashed when not
+  // walked yet), so the planned route drawn on top stands out.
+  if (backdrop) {
+    return section.status === 'done'
+      ? [{ color: primary, weight: 2.5, opacity: 0.6, lineCap: 'round', lineJoin: 'round' }]
+      : [{ color: primary, weight: 2, opacity: 0.55, dashArray: '4 5', lineCap: 'round' }]
+  }
 
   if (outsidePark) {
     return section.status === 'done'

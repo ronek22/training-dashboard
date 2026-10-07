@@ -16,6 +16,7 @@ from collections import defaultdict
 from typing import Optional
 
 from .trail_coverage import REGIONS, Projection, sample_polyline
+from .trail_elevation import route_profile
 
 WALK_KMH = 5.0
 ASCENT_M_PER_H = 600
@@ -325,7 +326,7 @@ def _describe(items, head, mode, graph, tables, to_any_head, targets, heads, poi
         "new_m": round(new_m),
         "new_sections": new_sections,
         "steps": [{"section": sections[i]["id"], "forward": f, "new": i in targets} for i, f in steps],
-        "places": [{"name": p["name"], "kind": p["kind"], "ele": p.get("ele"), "reached": bool(p["visited_by"])} for p in on_route],
+        "places": [{"name": p["name"], "kind": p["kind"], "ele": p.get("ele"), "lat": p["lat"], "lon": p["lon"], "reached": bool(p["visited_by"])} for p in on_route],
     }
 
 
@@ -409,9 +410,16 @@ def route_ideas(conn, region_key: str, park: str, hours: float, include_around: 
     if signature not in _cache:
         trailheads = repo.list_trailheads(conn, region_key)
         pois = repo.list_pois(conn, region_key)
+        routes = plan_routes(sections, trailheads, pois, park, hours, include_around)
+        by_id = {s["id"]: s for s in sections}
+        bbox = REGIONS[region_key]["bbox"]
+        projection = Projection((bbox[0] + bbox[2]) / 2)  # the projection the heights were cached with
+        for route in routes:
+            steps = [(by_id[step["section"]], step["forward"]) for step in route["steps"]]
+            route["track"] = route_profile(conn, steps, projection, sample_polyline)
         _cache.clear()  # one entry is plenty; keeps memory flat
         _cache[signature] = {
-            "routes": plan_routes(sections, trailheads, pois, park, hours, include_around),
+            "routes": routes,
             "trailheads": len(trailheads),
             "has_heights": any(s.get("ascent_m") is not None for s in sections),
             "hours": hours,

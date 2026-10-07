@@ -7,6 +7,10 @@
 .mtn-map .route-pin-shell { background: none; border: 0; }
 .route-pin { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: #16a34a; color: #fff; font: 700 10.5px/1 var(--font-display); font-style: normal; border: 2px solid #0b0d11; box-shadow: 0 1px 4px rgb(0 0 0 / .4); white-space: nowrap; }
 .route-pin.is-end { background: #e6ebf2; color: #0b0d11; }
+.route-pin.is-via { min-width: 14px; width: 14px; height: 14px; padding: 0; border-radius: 50%; background: #f5f7fb; border-width: 3px; }
+.route-pin.is-off { background: #f59e0b; }
+.mtn-map .route-pin-shell.leaflet-marker-draggable { cursor: grab; }
+.mtn-map.is-planning { cursor: crosshair; }
 .mtn-map .mountain-labels { position: absolute; left: 0; top: 0; --ml-text: #e6ebf2; --ml-muted: #aab6c8; --ml-halo: rgb(12 14 18 / .9); }
 .mtn-map .mountain-labels[data-theme="light"] { --ml-text: #1b2330; --ml-muted: #4d5b6e; --ml-halo: rgb(255 255 255 / .95); }
 .mtn-map .ml { position: absolute; white-space: nowrap; line-height: 1; transform-origin: center; color: var(--ml-text); text-shadow: 0 0 2px var(--ml-halo), 0 0 2px var(--ml-halo), 0 0 3px var(--ml-halo), 0 0 5px var(--ml-halo); }

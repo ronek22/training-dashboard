@@ -87,6 +87,22 @@ CREATE TABLE IF NOT EXISTS elevation_cache (
     ele REAL NOT NULL,
     PRIMARY KEY (lat, lon)
 );
+
+CREATE TABLE IF NOT EXISTS saved_routes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    region TEXT NOT NULL,
+    name TEXT NOT NULL,
+    collection TEXT NOT NULL DEFAULT '',
+    points_json TEXT NOT NULL,
+    distance_m INTEGER,
+    hours REAL,
+    ascent_m INTEGER,
+    descent_m INTEGER,
+    max_ele INTEGER,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_saved_routes_region ON saved_routes(region);
 """
 
 
@@ -340,3 +356,63 @@ def list_trailheads(conn: sqlite3.Connection, region: str) -> list[dict]:
     rows = conn.execute("SELECT * FROM trailheads WHERE region = ? ORDER BY id", (region,)).fetchall()
     return [{"id": row["id"], "name": row["name"], "kind": row["kind"], "lat": row["lat"], "lon": row["lon"],
              "node": (row["node_lat"], row["node_lon"])} for row in rows]
+
+
+def tracks_missing_from_history(conn: sqlite3.Connection, sports: tuple) -> list[str]:
+    """Mountain tracks of these sports that have no row in the activity history yet."""
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT activity_id FROM mountain_tracks m
+            WHERE sport_type IN ({",".join("?" for _ in sports)})
+              AND NOT EXISTS (SELECT 1 FROM activities a WHERE a.id = m.activity_id)
+            ORDER BY date, activity_id
+            """,
+            sports,
+        ).fetchall()
+    except sqlite3.OperationalError:  # no activities table (isolated tests)
+        return []
+    return [row["activity_id"] for row in rows]
+
+
+# ---------- saved routes ----------
+
+SAVED_ROUTE_STATS = ("distance_m", "hours", "ascent_m", "descent_m", "max_ele")
+
+
+def _saved_route(row) -> dict:
+    out = {key: row[key] for key in ("id", "region", "name", "collection", *SAVED_ROUTE_STATS, "created_at", "updated_at")}
+    out["points"] = json.loads(row["points_json"])
+    return out
+
+
+def list_saved_routes(conn: sqlite3.Connection, region: str) -> list[dict]:
+    rows = conn.execute("SELECT * FROM saved_routes WHERE region = ? ORDER BY collection COLLATE NOCASE, updated_at DESC", (region,)).fetchall()
+    return [_saved_route(row) for row in rows]
+
+
+def get_saved_route(conn: sqlite3.Connection, route_id: int):
+    row = conn.execute("SELECT * FROM saved_routes WHERE id = ?", (route_id,)).fetchone()
+    return _saved_route(row) if row else None
+
+
+def insert_saved_route(conn: sqlite3.Connection, region: str, name: str, collection: str, points: list, stats: dict) -> int:
+    now = datetime.now().isoformat(timespec="seconds")
+    cursor = conn.execute(
+        f"INSERT INTO saved_routes (region, name, collection, points_json, {', '.join(SAVED_ROUTE_STATS)}, created_at, updated_at) "
+        f"VALUES (?, ?, ?, ?, {', '.join('?' for _ in SAVED_ROUTE_STATS)}, ?, ?)",
+        (region, name, collection, json.dumps(points), *(stats.get(key) for key in SAVED_ROUTE_STATS), now, now),
+    )
+    return cursor.lastrowid
+
+
+def update_saved_route(conn: sqlite3.Connection, route_id: int, fields: dict) -> None:
+    columns = {key: value for key, value in fields.items() if key in ("name", "collection", *SAVED_ROUTE_STATS)}
+    if "points" in fields:
+        columns["points_json"] = json.dumps(fields["points"])
+    columns["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    conn.execute(f"UPDATE saved_routes SET {', '.join(f'{key} = ?' for key in columns)} WHERE id = ?", (*columns.values(), route_id))
+
+
+def delete_saved_route(conn: sqlite3.Connection, route_id: int) -> bool:
+    return conn.execute("DELETE FROM saved_routes WHERE id = ?", (route_id,)).rowcount > 0

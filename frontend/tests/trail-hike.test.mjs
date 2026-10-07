@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { nearestByKm, placesReached, profileChart, profileFromTrack, profileStats, trailsWalked } from '../src/trails/hike.mjs'
+import { nearestByKm, placesOnProfile, placesReached, profileChart, profileFromTrack, profileStats, trailsWalked } from '../src/trails/hike.mjs'
 
 // ~111 m per 0.001° of latitude
 const track = [[49.2, 20, 1000], [49.201, 20, 1050], [49.202, 20, null], [49.203, 20, 1150], [49.204, 20, 1100]]
@@ -47,4 +47,14 @@ test('places reached: summits first, first visits before repeats', () => {
     { name: 'Missed', kind: 'peak', ele: 1500, reached_here: false, first_time: false },
   ])
   assert.deepEqual(rows.map((p) => p.name), ['New', 'Low', 'Hut'])
+})
+
+test('places are pinned to the nearest point of the profile, far ones left out', () => {
+  const profile = profileFromTrack(track)
+  const pinned = placesOnProfile(profile, [
+    { name: 'Top', lat: 49.2031, lon: 20.0001 },
+    { name: 'Start', lat: 49.2, lon: 20 },
+    { name: 'Far', lat: 49.25, lon: 20 },
+  ])
+  assert.deepEqual(pinned.map((p) => [p.name, p.alt]), [['Start', 1000], ['Top', 1150]])
 })

@@ -58,6 +58,9 @@ TRACK_STORE_SPACING_M = 5
 CELL_M = 50
 
 FOOT_SPORTS = {"Hike", "Walk", "Run", "TrailRun", "BackcountrySki", "Snowshoe"}
+# Mountain tracks of these sports are also added to the activity history (so they get a detail
+# page); runs are left out because old runs would land on the personal best wall.
+HISTORY_SPORTS = ("Hike", "Walk")
 OVERPASS_URLS = (
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
@@ -832,6 +835,10 @@ def sync_tracks(conn: sqlite3.Connection, client: httpx.Client) -> dict:
             repo.update_track_points(conn, activity_id, thin_track(latlng, TRACK_STORE_SPACING_M, Projection((bbox[0] + bbox[2]) / 2), altitude))
             altitude_added += 1
             regions.add(region_key)
+    history_added, history_pending = 0, 0
+    if complete and altitude_pending == 0:
+        history_added, history_pending = _add_missing_to_history(conn, client)
+
     for activity in listed:
         if activity.get("start_date"):
             newest = max(newest, _epoch(activity["start_date"]))
@@ -848,7 +855,30 @@ def sync_tracks(conn: sqlite3.Connection, client: httpx.Client) -> dict:
         "complete": complete,
         "altitude_added": altitude_added,
         "altitude_pending": altitude_pending,
+        "history_added": history_added,
+        "history_pending": history_pending,
     }
+
+
+def _add_missing_to_history(conn: sqlite3.Connection, client: httpx.Client) -> tuple[int, int]:
+    """Mountain hikes and walks older than the activity history (it starts in 2026) are added
+    with the regular Strava import code, one request per activity."""
+    from .activities import upsert_activity
+    from .strava import build_activity_from_strava
+
+    missing = repo.tracks_missing_from_history(conn, HISTORY_SPORTS)
+    added = 0
+    for index, activity_id in enumerate(missing):
+        response = client.get(f"https://www.strava.com/api/v3/activities/{activity_id}")
+        if response.status_code == 429:
+            conn.commit()
+            return added, len(missing) - index
+        if response.status_code >= 400:
+            continue
+        upsert_activity(conn, build_activity_from_strava(response.json()), preserve_annotations=True)
+        added += 1
+    conn.commit()
+    return added, 0
 
 
 # ---------- read models ----------

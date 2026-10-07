@@ -471,5 +471,53 @@ class ValleyLabelTests(unittest.TestCase):
         self.assertEqual([l["name"] for l in region_map(conn, "tatras")["labels"]], ["Dolina"])
         conn.close()
 
+
+class HistoryBackfillTests(unittest.TestCase):
+    """Old mountain hikes and walks join the activity history so they get a detail page; runs don't."""
+
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from backend.app import db
+        self.temp = tempfile.TemporaryDirectory()
+        self.patch = patch.object(db, "DB_PATH", str(Path(self.temp.name) / "test.db"))
+        self.patch.start()
+        db.init_db()
+        self.conn = db.get_db()
+        for activity_id, sport in (("101", "Hike"), ("102", "Walk"), ("103", "Run")):
+            repo.upsert_track(self.conn, {"activity_id": activity_id, "region": "tatras", "name": f"{sport} {activity_id}", "date": "2018-09-21",
+                                          "sport_type": sport, "distance_km": 20, "elevation_m": 1500, "latlng": [[LAT, LON, 1000.0], [LAT, LON + 0.01, 1100.0]]})
+        self.conn.commit()
+
+    def tearDown(self):
+        self.conn.close()
+        self.patch.stop()
+        self.temp.cleanup()
+
+    def test_sync_adds_missing_hikes_and_walks_but_not_runs(self):
+        def handler(request):
+            if request.url.path.endswith("/athlete/activities"):
+                return httpx.Response(200, json=[])
+            activity_id = request.url.path.rsplit("/", 1)[-1]
+            handler.calls.append(activity_id)
+            sport = {"101": "Hike", "102": "Walk"}[activity_id]
+            return httpx.Response(200, json={"id": int(activity_id), "name": f"Old {sport}", "type": sport, "sport_type": sport,
+                                             "start_date_local": "2018-09-21T08:00:00Z", "distance": 25200, "moving_time": 30000,
+                                             "total_elevation_gain": 1600, "average_heartrate": 118, "max_heartrate": 165})
+        handler.calls = []
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            result = sync_tracks(self.conn, client)
+        self.assertEqual((result["history_added"], result["history_pending"]), (2, 0))
+        self.assertEqual(handler.calls, ["101", "102"])
+        rows = {r["id"]: dict(r) for r in self.conn.execute("SELECT id, type, date, distance_km, duration_min, avg_hr FROM activities")}
+        self.assertEqual(sorted(rows), ["101", "102"])
+        self.assertEqual((rows["101"]["type"], rows["101"]["date"], rows["101"]["distance_km"], rows["101"]["duration_min"]), ("Hike", "2018-09-21", 25.2, 500.0))
+
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            again = sync_tracks(self.conn, client)
+        self.assertEqual(again["history_added"], 0)
+        self.assertEqual(handler.calls, ["101", "102"])
+
 if __name__ == "__main__":
     unittest.main()

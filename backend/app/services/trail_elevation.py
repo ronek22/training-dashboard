@@ -78,3 +78,20 @@ def apply_section_elevation(conn: sqlite3.Connection, sections: list[dict], proj
         section["ele_min"] = round(min(heights))
         section["ele_max"] = round(max(heights))
     return all(section.get("ascent_m") is not None for section in sections)
+
+
+def route_profile(conn: sqlite3.Connection, steps: list[tuple[dict, bool]], projection, sample_polyline) -> list[list]:
+    """[[lat, lon, ele]] along a route of (section, forward) steps, from the elevation cache only.
+    Samples each section exactly as apply_section_elevation did, so every point is a cache hit;
+    points that were never fetched get ele None."""
+    profiles = []
+    for section, forward in steps:
+        points = [projection.latlon(x, y) for x, y in sample_polyline([projection.xy(lat, lon) for lat, lon in section["coords"]], PROFILE_SPACING_M)]
+        profiles.append(points if forward else points[::-1])
+    known = repo.cached_elevations(conn, sorted({_key(*p) for profile in profiles for p in profile}))
+    track = []
+    for profile in profiles:
+        for lat, lon in profile[1:] if track else profile:  # consecutive sections share their junction point
+            ele = known.get(_key(lat, lon))
+            track.append([round(lat, 5), round(lon, 5), round(ele) if ele is not None else None])
+    return track

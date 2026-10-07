@@ -96,3 +96,18 @@ export function placesReached(places) {
     .filter((p) => p.reached_here)
     .sort((a, b) => (KIND_ORDER[a.kind] ?? 9) - (KIND_ORDER[b.kind] ?? 9) || Number(b.first_time) - Number(a.first_time) || (b.ele || 0) - (a.ele || 0))
 }
+
+// Places pinned to the profile at the point of the line closest to them: [{...place, km, alt}].
+// Places further than `maxMetres` from the line are left out.
+export function placesOnProfile(profile, places, maxMetres = 150) {
+  const out = []
+  for (const place of places) {
+    let best = null
+    for (const point of profile) {
+      const d = metresBetween([point.lat, point.lon], [place.lat, place.lon])
+      if (!best || d < best.d) best = { d, point }
+    }
+    if (best && best.d <= maxMetres) out.push({ ...place, km: best.point.km, alt: best.point.alt })
+  }
+  return out.sort((a, b) => a.km - b.km)
+}

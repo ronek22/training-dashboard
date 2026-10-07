@@ -103,7 +103,8 @@ class LinkedConversationTests(unittest.TestCase):
         self.conn.executescript(
             """
             CREATE TABLE coach_chat_conversations (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL,
-                context_kind TEXT, context_id TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
+                context_kind TEXT, context_id TEXT, last_read_message_id INTEGER, created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
             CREATE TABLE coach_chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id INTEGER, role TEXT NOT NULL,
                 content TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
             """
@@ -145,3 +146,55 @@ class LinkedConversationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UnreadAndMomentsTests(unittest.TestCase):
+    def setUp(self):
+        import os
+        import tempfile
+        from backend.app import db
+        from backend.app.services import week_wins
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        previous = db.DB_PATH
+        db.DB_PATH = os.path.join(temp.name, "training.db")
+        self.addCleanup(setattr, db, "DB_PATH", previous)
+        db.init_db()
+        self.conn = sqlite3.connect(db.DB_PATH)
+        self.conn.row_factory = sqlite3.Row
+        self.addCleanup(self.conn.close)
+        week_wins._CACHE.clear()
+
+    def test_a_coach_reply_is_unread_until_the_chat_is_read(self):
+        from backend.app.services.notes import create_chat_conversation_data, mark_chat_conversation_read_data
+        conversation = create_chat_conversation_data(self.conn)
+        create_chat_message_data(self.conn, conversation["id"], "user", "How was my week?")
+        create_chat_message_data(self.conn, conversation["id"], "assistant", "Solid.")
+        self.assertEqual(list_chat_conversations_data(self.conn)[0]["unread_count"], 1)
+        mark_chat_conversation_read_data(self.conn, conversation["id"])
+        self.assertEqual(list_chat_conversations_data(self.conn)[0]["unread_count"], 0)
+
+    def test_the_latest_session_is_a_moment_until_its_chat_exists(self):
+        from datetime import date
+        from backend.app.services.coach_moments import build_coach_moments
+        self.conn.execute("INSERT INTO activities (id, date, type, name, duration_min) VALUES ('r1', '2030-01-08', 'Ride', 'Ride', 45)")
+        self.conn.commit()
+        moments = build_coach_moments(self.conn, date(2030, 1, 9))
+        self.assertEqual([moment["kind"] for moment in moments], ["activity"])
+        self.assertEqual(moments[0]["context_id"], "r1")
+        self.assertIn("opener", moments[0]["win"])
+        open_context_conversation_data(self.conn, "activity", "r1", "Ride", moments[0]["win"]["opener"])
+        self.assertEqual(build_coach_moments(self.conn, date(2030, 1, 9)), [])
+        # Two days later it has expired.
+        self.conn.execute("DELETE FROM coach_chat_conversations")
+        self.assertEqual(build_coach_moments(self.conn, date(2030, 1, 10)), [])
+
+    def test_monday_offers_last_weeks_wins(self):
+        from datetime import date
+        from backend.app.services.coach_moments import build_coach_moments
+        self.conn.execute("INSERT INTO activities (id, date, type, name, duration_min) VALUES ('w1', '2030-01-09', 'Walk', 'Walk', 30)")
+        self.conn.commit()
+        moments = build_coach_moments(self.conn, date(2030, 1, 14))
+        self.assertEqual([(moment["kind"], moment["context_id"], moment["label"]) for moment in moments],
+                         [("week", "2030-01-07", "Last week")])
+        self.assertEqual(build_coach_moments(self.conn, date(2030, 1, 15)), [])

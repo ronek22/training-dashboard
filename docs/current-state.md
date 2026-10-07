@@ -47,6 +47,18 @@ Implemented foundations:
 - On real data: 55 Tatras and 37 Karkonosze activities; TPN 179 of 264 km (68%), 45 of 96 summits, all 8 huts.
 - Verified with 14 backend tests (sections, coverage, places, Strava sync with rate limit) and 12 frontend tests, the full suites (515 backend, 60 frontend) and the build. Checked in the browser at 1512 px in dark mode.
 
+### Coach drawer: check-ins, unread replies, groups and suggestions
+
+2026-10-07: the last coach-moments step. The coach drawer leads with what the coach has to say and keeps chats sorted by what they are about.
+
+- "From your coach" (`services/coach_moments.py`, `GET /notes/chat/moments?day=`): the latest training session's win for two days, and the week's "3 wins, 1 focus" on Sunday (this week) and Monday (last week), each until its linked chat exists. Session wins come from the week wins cache (`session_wins_for_week`). Opening one creates the chat with the coach's opener, which retires it. Refreshed when the drawer opens, after any linked chat changes, and every 10 minutes.
+- Unread: `coach_chat_conversations.last_read_message_id` (existing chats migrate as read); conversations list `unread_count` (coach messages after it), and `POST /notes/chat/conversations/{id}/read` marks one read. A reply that finishes while the drawer is closed stays unread; the drawer opens on the first unread chat.
+- The Coach launcher gets a dot when there is a moment or an unread reply.
+- The list is grouped Sessions / Days / Weeks / General, groups ordered by their newest chat.
+- An empty chat suggests three questions based on the page the drawer was opened from (Activity Detail, Today, Plan, Weekly Review, Strength, Recovery, or a default set).
+- While Codex works, the thinking bubble shows the stage and elapsed time; the timing and debug panel sit behind "Details" (and still open on their own for the idle warning).
+- Verified with 3 backend tests (unread until read, a session moment until its chat exists and its expiry, Monday's last-week moment), 3 frontend tests (grouping, page suggestions, moment requests) and `just check` (501 backend, 27 helper and 48 frontend tests, plus the build). In the browser at 1512 px on real data: the launcher dot, the 6 Oct lift as a moment, page suggestions, and opening the moment (the chat it created was deleted again). The thinking bubble was not seen live because no Codex message was sent.
+
 ### Three wins, one focus
 
 2026-10-07: the third coach moment. Each week gets up to three wins and one focus, built from the athlete's own data, so it shows instantly on any day.

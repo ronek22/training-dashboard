@@ -51,3 +51,33 @@ test('the week chat starts from the wins and the focus', () => {
   assert.ok(request.opener.startsWith('What went well that week:\n• Every planned session done (7 of 7)'))
   assert.ok(request.opener.includes('One focus: One change for next week. Keep the first ride easy.'))
 })
+
+import { groupConversations, momentRequest, pageSuggestions } from '../src/coach/session-chat.mjs'
+
+test('conversations are grouped by what they are about, most recent group first', () => {
+  const groups = groupConversations([
+    { id: 5, context_kind: 'week' },
+    { id: 4, context_kind: null },
+    { id: 3, context_kind: 'activity' },
+    { id: 2, context_kind: 'week' },
+  ])
+  assert.deepEqual(groups.map((group) => [group.label, group.items.map((item) => item.id)]), [
+    ['Weeks', [5, 2]],
+    ['General', [4]],
+    ['Sessions', [3]],
+  ])
+})
+
+test('suggestions follow the page the coach was opened from', () => {
+  assert.equal(pageSuggestions('/activities/123')[0], 'What should I take from this session?')
+  assert.equal(pageSuggestions('/')[0], 'I’m feeling flat today')
+  assert.equal(pageSuggestions('/settings')[0], 'What should I do today?')
+})
+
+test('a moment opens the chat it belongs to', () => {
+  const session = momentRequest({ kind: 'activity', activity: { id: 9, type: 'Run', date: '2026-10-06' }, win: { headline: 'Win', opener: 'Hi' } })
+  assert.equal(session.context_kind, 'activity')
+  assert.equal(session.opener, 'Hi')
+  const week = momentRequest({ kind: 'week', week: { week_start: '2026-09-28', finished: true, wins: [], focus: null } })
+  assert.equal(week.context_id, '2026-09-28')
+})

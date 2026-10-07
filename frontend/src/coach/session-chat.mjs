@@ -44,3 +44,40 @@ export const sessionChatRequest = (activity, win, question = '') => ({
   opener: win?.opener || '',
   question: String(question || '').trim(),
 })
+
+// A coach moment from /notes/chat/moments, turned into the request that opens its chat.
+export const momentRequest = (moment) => moment.kind === 'week'
+  ? weekChatRequest(moment.week)
+  : sessionChatRequest(moment.activity, moment.win)
+
+const GROUPS = [
+  { key: 'activity', label: 'Sessions' },
+  { key: 'day', label: 'Days' },
+  { key: 'week', label: 'Weeks' },
+  { key: 'general', label: 'General' },
+]
+
+// Conversations grouped by what they are about, keeping the server's newest-first order.
+// Groups appear in order of their most recent conversation.
+export const groupConversations = (conversations) => {
+  const groups = GROUPS.map((group) => ({ ...group, items: [] }))
+  for (const conversation of conversations || []) {
+    const key = GROUPS.some((group) => group.key === conversation.context_kind) ? conversation.context_kind : 'general'
+    groups.find((group) => group.key === key).items.push(conversation)
+  }
+  const rank = (group) => (conversations || []).indexOf(group.items[0])
+  return groups.filter((group) => group.items.length).sort((a, b) => rank(a) - rank(b))
+}
+
+const SUGGESTIONS = [
+  { match: /^\/activities\/[^/]+/, items: ['What should I take from this session?', 'Was this the right intensity?', 'How does this fit my week?'] },
+  { match: /^\/plan/, items: ['Is this week’s plan realistic for me?', 'Can I swap two days this week?', 'What matters most this week?'] },
+  { match: /^\/weekly-review/, items: ['What went best this week?', 'What should next week focus on?', 'Am I recovering well enough?'] },
+  { match: /^\/(strength|metrics)/, items: ['Are my lifts progressing?', 'Which lift should I push next?', 'Do I need a lighter week?'] },
+  { match: /^\/recovery/, items: ['How am I recovering?', 'Should I train hard this week?', 'What would help my sleep and energy?'] },
+  { match: /^\/$/, items: ['I’m feeling flat today', 'What should I do today?', 'How is my week going?'] },
+]
+const DEFAULT_SUGGESTIONS = ['What should I do today?', 'How is my training going?', 'What should I focus on this week?']
+
+// Questions for an empty chat, based on the page the athlete opened the coach from.
+export const pageSuggestions = (path) => (SUGGESTIONS.find((entry) => entry.match.test(path || '')) || { items: DEFAULT_SUGGESTIONS }).items

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from datetime import date
 from typing import Optional
 
 from ..db import get_db
@@ -11,8 +12,10 @@ from ..services.notes import (
     list_chat_conversations_data,
     list_chat_messages_data,
     list_notes_data,
+    mark_chat_conversation_read_data,
     open_context_conversation_data,
 )
+from ..services.coach_moments import build_coach_moments
 
 router = APIRouter()
 
@@ -63,6 +66,28 @@ def delete_chat_conversation(conversation_id: int):
             return delete_chat_conversation_data(conn, conversation_id)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+    finally:
+        conn.close()
+
+
+@router.post("/notes/chat/conversations/{conversation_id}/read")
+def mark_chat_conversation_read(conversation_id: int):
+    conn = get_db()
+    try:
+        try:
+            return mark_chat_conversation_read_data(conn, conversation_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+    finally:
+        conn.close()
+
+
+@router.get("/notes/chat/moments")
+def list_coach_moments(day: Optional[date] = None):
+    """``day`` is the browser's local date: the container clock is UTC."""
+    conn = get_db()
+    try:
+        return build_coach_moments(conn, day)
     finally:
         conn.close()
 

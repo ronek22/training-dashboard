@@ -8,6 +8,8 @@
   >
     <span class="coach-launcher-mark" aria-hidden="true">✦</span>
     <span>Coach</span>
+    <i v-if="hasNews" class="coach-launcher-dot" aria-hidden="true"></i>
+    <span v-if="hasNews" class="sr-only">New from your coach</span>
   </button>
 
   <Transition name="coach-drawer">
@@ -34,32 +36,48 @@
 
         <div class="coach-workspace">
           <aside class="coach-conversations" aria-label="Conversation history">
-            <span class="conversation-label">Conversations</span>
-            <div v-if="!chatConversations.length" class="conversation-empty">No saved chats</div>
-            <div
-              v-for="conversation in chatConversations"
-              :key="conversation.id"
-              class="conversation-row"
-              :class="{ active: activeConversationId === conversation.id }"
-            >
+            <template v-if="moments.length">
+              <span class="conversation-label is-news">From your coach</span>
               <button
-                class="conversation-select"
+                v-for="moment in moments"
+                :key="`${moment.kind}-${moment.context_id}`"
+                class="moment-row"
                 type="button"
                 :disabled="chatSending"
-                @click="selectConversation(conversation.id)"
+                @click="openMoment(moment)"
               >
-                <strong>{{ conversation.title }}</strong>
-                <span><b v-if="conversation.context_kind" class="conversation-tag">{{ CONTEXT_TAGS[conversation.context_kind] || 'Linked' }}</b>{{ conversation.message_count }} {{ conversation.message_count === 1 ? 'message' : 'messages' }}</span>
+                <small>{{ moment.label }}</small>
+                <strong>{{ moment.headline }}</strong>
               </button>
-              <button
-                class="conversation-delete"
-                type="button"
-                :disabled="chatSending"
-                :aria-label="`Delete ${conversation.title}`"
-                title="Delete conversation"
-                @click="deleteConversation(conversation)"
-              >×</button>
-            </div>
+            </template>
+            <div v-if="!chatConversations.length" class="conversation-empty">No saved chats</div>
+            <template v-for="group in conversationGroups" :key="group.key">
+              <span class="conversation-label">{{ group.label }}</span>
+              <div
+                v-for="conversation in group.items"
+                :key="conversation.id"
+                class="conversation-row"
+                :class="{ active: activeConversationId === conversation.id, unread: conversation.unread_count > 0 }"
+              >
+                <button
+                  class="conversation-select"
+                  type="button"
+                  :disabled="chatSending"
+                  @click="selectConversation(conversation.id)"
+                >
+                  <strong><i v-if="conversation.unread_count > 0" class="unread-dot" aria-label="Unread reply"></i>{{ conversation.title }}</strong>
+                  <span>{{ conversation.message_count }} {{ conversation.message_count === 1 ? 'message' : 'messages' }}</span>
+                </button>
+                <button
+                  class="conversation-delete"
+                  type="button"
+                  :disabled="chatSending"
+                  :aria-label="`Delete ${conversation.title}`"
+                  title="Delete conversation"
+                  @click="deleteConversation(conversation)"
+                >×</button>
+              </div>
+            </template>
           </aside>
 
           <div class="coach-main">
@@ -86,7 +104,10 @@
               <div v-else-if="!chatMessages.length" class="coach-welcome">
                 <span class="welcome-mark" aria-hidden="true">✦</span>
                 <strong>What do you want to work through?</strong>
-                <span>Ask about recovery, today’s session, fatigue, progress, or your weekly plan.</span>
+                <span>Pick a question or write your own.</span>
+                <div class="coach-suggestions">
+                  <button v-for="item in suggestions" :key="item" type="button" :disabled="chatSending" @click="sendSuggestion(item)">{{ item }}</button>
+                </div>
               </div>
               <article
                 v-for="message in chatMessages"
@@ -99,10 +120,17 @@
               </article>
               <article v-if="chatSending" class="coach-message is-assistant is-thinking">
                 <span>Coach</span>
-                <p><i></i><i></i><i></i> {{ chatStage }}</p>
+                <p><i></i><i></i><i></i> {{ chatStage }} · {{ formatCoachSeconds(displayElapsedSeconds) }}</p>
               </article>
-              <section
+              <button
                 v-if="showCoachProgress"
+                type="button"
+                class="coach-details-toggle"
+                :aria-expanded="progressDetailsOpen"
+                @click="progressDetailsOpen = !progressDetailsOpen"
+              >{{ progressDetailsOpen ? 'Hide details' : 'Details' }}</button>
+              <section
+                v-if="showCoachProgress && (progressDetailsOpen || chatIdleWarning)"
                 class="coach-progress"
                 aria-labelledby="coach-progress-title"
               >
@@ -208,8 +236,11 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { format } from 'date-fns'
 import { useApi } from '../stores/api'
 import { coachChatAvailable, coachChatChanged, coachChatRequest } from '../coach/chat-bus'
+import { groupConversations, momentRequest, pageSuggestions } from '../coach/session-chat.mjs'
 import {
   coachDiagnosticsPayload,
   coachDiagnosticsWarning,
@@ -244,7 +275,37 @@ let componentActive = true
 let progressClock = null
 let pendingPollWait = null
 
-const CONTEXT_TAGS = { activity: 'Session', day: 'Day', week: 'Week' }
+const route = useRoute()
+const moments = ref([])
+const progressDetailsOpen = ref(false)
+const conversationGroups = computed(() => groupConversations(chatConversations.value))
+const suggestions = computed(() => pageSuggestions(route.path))
+const hasNews = computed(() => moments.value.length > 0 || chatConversations.value.some((item) => item.unread_count > 0))
+const MOMENTS_REFRESH_MS = 10 * 60 * 1000
+let momentsTimer = null
+
+// Moments are the coach's unopened check-ins; a failure here must never break the chat.
+const loadMoments = async () => {
+  try {
+    moments.value = (await api.getCoachMoments(format(new Date(), 'yyyy-MM-dd'))).data
+  } catch {
+    moments.value = []
+  }
+}
+
+const markRead = async (conversationId) => {
+  const conversation = chatConversations.value.find((item) => item.id === conversationId)
+  if (!drawerOpen.value || !conversation?.unread_count) return
+  conversation.unread_count = 0
+  try { await api.markCoachChatRead(conversationId) } catch { /* stays unread next load */ }
+}
+
+const openMoment = (moment) => { void openLinkedConversation(momentRequest(moment)) }
+
+const sendSuggestion = async (text) => {
+  chatInput.value = text
+  await sendChatMessage()
+}
 
 const activeConversation = computed(() => chatConversations.value.find(item => item.id === activeConversationId.value) || null)
 
@@ -363,6 +424,7 @@ const scrollChatToBottom = async () => {
 const loadConversationMessages = async (conversationId) => {
   const { data } = await api.getCoachChatMessages({ conversation_id: conversationId, limit: 100 })
   chatMessages.value = data
+  await markRead(conversationId)
   await scrollChatToBottom()
 }
 
@@ -372,7 +434,9 @@ const loadChat = async () => {
   try {
     await refreshConversations()
     if (chatConversations.value.length) {
-      activeConversationId.value = chatConversations.value[0].id
+      // Land on a conversation with an unread reply first.
+      const unread = chatConversations.value.find((item) => item.unread_count > 0)
+      activeConversationId.value = (unread || chatConversations.value[0]).id
       await loadConversationMessages(activeConversationId.value)
     }
     chatLoaded.value = true
@@ -385,7 +449,9 @@ const loadChat = async () => {
 
 const openDrawer = async () => {
   drawerOpen.value = true
+  void loadMoments()
   if (!chatLoaded.value) await loadChat()
+  else if (activeConversationId.value) await markRead(activeConversationId.value)
   await nextTick()
   chatInputElement.value?.focus()
 }
@@ -501,6 +567,8 @@ const sendChatMessage = async () => {
     })
     chatMessages.value.push(savedReply)
     await refreshConversations()
+    // A reply that lands while the drawer is closed stays unread and lights the launcher dot.
+    if (activeConversationId.value === conversationId) await markRead(conversationId)
     coachChatChanged.value += 1
   } catch (error) {
     if (!componentActive) return
@@ -544,10 +612,17 @@ const openLinkedConversation = async (request) => {
 }
 
 watch(coachChatRequest, openLinkedConversation)
-onMounted(() => { coachChatAvailable.value = true })
+watch(coachChatChanged, loadMoments)
+onMounted(() => {
+  coachChatAvailable.value = true
+  void loadMoments()
+  refreshConversations().catch(() => {})
+  momentsTimer = window.setInterval(loadMoments, MOMENTS_REFRESH_MS)
+})
 
 onUnmounted(() => {
   coachChatAvailable.value = false
+  if (momentsTimer !== null) window.clearInterval(momentsTimer)
   componentActive = false
   cancelPendingPollWait()
   stopProgressClock()
@@ -612,6 +687,21 @@ onUnmounted(() => {
 .conversation-select strong, .conversation-select span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conversation-select strong { color: var(--text-soft); font-size: 10px; font-weight: 650; }
 .conversation-select span { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.coach-launcher-dot { position: absolute; top: 6px; right: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 0 2px var(--accent); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.conversation-label.is-news { color: var(--accent-strong); }
+.conversation-label:not(:first-child) { margin-top: 10px; }
+.moment-row { display: grid; gap: 2px; width: 100%; margin-bottom: 4px; padding: 9px 8px; border: 1px solid rgba(95, 140, 255, .28); border-radius: 9px; background: rgba(95, 140, 255, .1); color: inherit; text-align: left; cursor: pointer; }
+.moment-row:hover { background: rgba(95, 140, 255, .18); }
+.moment-row small { color: var(--accent-strong); font-size: 8px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.moment-row strong { overflow: hidden; color: var(--text); font-size: 10px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.unread-dot { display: inline-block; width: 6px; height: 6px; margin: 0 5px 1px 0; border-radius: 50%; background: var(--accent-strong); vertical-align: middle; }
+.conversation-row.unread .conversation-select strong { color: var(--text); font-weight: 750; }
+.coach-suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+.coach-suggestions button { padding: 7px 11px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text-soft); font: inherit; font-size: 11px; cursor: pointer; }
+.coach-suggestions button:hover { border-color: rgba(95, 140, 255, .5); color: var(--text); }
+.coach-details-toggle { align-self: flex-start; margin-top: -8px; padding: 0 3px; border: 0; background: transparent; color: var(--muted); font-size: 10px; cursor: pointer; }
+.coach-details-toggle:hover { color: var(--text-soft); }
 .conversation-tag { display: inline-block; margin-right: 5px; padding: 0 5px; border-radius: 5px; background: rgba(95, 140, 255, .14); color: var(--accent-strong); font-size: 8px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
 .coach-context-link { align-self: flex-start; padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted-soft); font-size: 10px; font-weight: 650; text-decoration: none; }
 .coach-context-link:hover { border-color: var(--border-strong); color: var(--text); }

@@ -236,6 +236,7 @@ def init_db():
             title TEXT NOT NULL DEFAULT 'New conversation',
             context_kind TEXT,
             context_id TEXT,
+            last_read_message_id INTEGER,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
@@ -746,6 +747,13 @@ def init_db():
         conn.execute("ALTER TABLE coach_chat_conversations ADD COLUMN context_kind TEXT")
     if "context_id" not in chat_conversation_columns:
         conn.execute("ALTER TABLE coach_chat_conversations ADD COLUMN context_id TEXT")
+    # Coach replies after this message are unread (e.g. a reply that finished while the drawer was closed).
+    if "last_read_message_id" not in chat_conversation_columns:
+        conn.execute("ALTER TABLE coach_chat_conversations ADD COLUMN last_read_message_id INTEGER")
+        conn.execute(
+            "UPDATE coach_chat_conversations SET last_read_message_id = "
+            "(SELECT MAX(id) FROM coach_chat_messages m WHERE m.conversation_id = coach_chat_conversations.id)"
+        )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_coach_chat_conversations_context ON coach_chat_conversations(context_kind, context_id)"
     )

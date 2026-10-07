@@ -179,6 +179,8 @@ def _focus(conn: sqlite3.Connection, start: str, goals: list[dict], items: list[
 
 
 _CACHE: dict[tuple, dict[str, Any]] = {}
+# Per cached week: activity id -> (activity, full session win with its chat opener), for coach moments.
+_SESSION_WINS: dict[tuple, dict[str, tuple[dict, dict]]] = {}
 CACHE_SIZE = 16
 
 
@@ -215,15 +217,30 @@ def build_week_wins(conn: sqlite3.Connection, week_start: Optional[date] = None,
     start, end = monday.isoformat(), (monday + timedelta(days=6)).isoformat()
     finished = today > monday + timedelta(days=6)
     through = end if finished else min(today, monday + timedelta(days=6)).isoformat()
-    key = (start, through, finished, _signature(conn, start, through))
+    key = _key(conn, monday, today)
     if key not in _CACHE:
         if len(_CACHE) >= CACHE_SIZE:
+            _SESSION_WINS.pop(next(iter(_CACHE)), None)
             _CACHE.pop(next(iter(_CACHE)))
-        _CACHE[key] = _build(conn, start, end, through, finished)
+        _CACHE[key], _SESSION_WINS[key] = _build(conn, start, end, through, finished)
     return _CACHE[key]
 
 
-def _build(conn: sqlite3.Connection, start: str, end: str, through: str, finished: bool) -> dict[str, Any]:
+def _key(conn: sqlite3.Connection, monday: date, today: date) -> tuple:
+    start, end = monday.isoformat(), (monday + timedelta(days=6)).isoformat()
+    finished = today > monday + timedelta(days=6)
+    through = end if finished else min(today, monday + timedelta(days=6)).isoformat()
+    return (start, through, finished, _signature(conn, start, through))
+
+
+def session_wins_for_week(conn: sqlite3.Connection, day: date, today: date) -> dict[str, tuple[dict, dict]]:
+    """Each training session's win in the week containing ``day``, sharing the week cache."""
+    monday = _monday(day)
+    build_week_wins(conn, monday, today=today)
+    return _SESSION_WINS.get(_key(conn, monday, today), {})
+
+
+def _build(conn: sqlite3.Connection, start: str, end: str, through: str, finished: bool) -> tuple[dict[str, Any], dict]:
     items = _session_items(conn, start, through)
     goals = _weekly_goals(conn, start, through)
     candidates = [
@@ -241,6 +258,7 @@ def _build(conn: sqlite3.Connection, start: str, end: str, through: str, finishe
     if not wins:
         fallback = _fallback_win(len(items), float(minutes), active_days)
         wins = [fallback] if fallback else []
+    session_wins = {str(item["activity"]["id"]): (item["activity"], item["win"]) for item in items if item["win"]}
     return {
         "week_start": start,
         "week_end": end,
@@ -250,4 +268,4 @@ def _build(conn: sqlite3.Connection, start: str, end: str, through: str, finishe
         "minutes": round(float(minutes)),
         "wins": [{key: value for key, value in win.items() if key != "score"} for win in wins],
         "focus": _focus(conn, start, goals, items, finished, through),
-    }
+    }, session_wins

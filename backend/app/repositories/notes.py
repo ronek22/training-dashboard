@@ -45,7 +45,8 @@ def list_chat_conversation_rows(
         params = [context_kind, context_id]
     return conn.execute(
         f"""
-        SELECT c.*, COUNT(m.id) AS message_count
+        SELECT c.*, COUNT(m.id) AS message_count,
+            COALESCE(SUM(CASE WHEN m.role = 'assistant' AND m.id > COALESCE(c.last_read_message_id, 0) THEN 1 ELSE 0 END), 0) AS unread_count
         FROM coach_chat_conversations c
         LEFT JOIN coach_chat_messages m ON m.conversation_id = c.id
         {where}
@@ -54,6 +55,15 @@ def list_chat_conversation_rows(
         """,
         params,
     ).fetchall()
+
+
+def mark_chat_conversation_read(conn: sqlite3.Connection, conversation_id: int) -> bool:
+    cursor = conn.execute(
+        "UPDATE coach_chat_conversations SET last_read_message_id = "
+        "(SELECT MAX(id) FROM coach_chat_messages WHERE conversation_id = ?) WHERE id = ?",
+        (conversation_id, conversation_id),
+    )
+    return cursor.rowcount > 0
 
 
 def get_chat_conversation_row(conn: sqlite3.Connection, conversation_id: int) -> Optional[sqlite3.Row]:

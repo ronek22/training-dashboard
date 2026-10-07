@@ -11,6 +11,7 @@ from ..repositories.notes import (
     list_chat_conversation_rows,
     list_chat_message_rows,
     list_note_rows,
+    mark_chat_conversation_read,
     touch_chat_conversation,
 )
 
@@ -43,6 +44,13 @@ def list_chat_conversations_data(
     if context_kind:
         context_kind, context_id = _validate_context(context_kind, context_id)
     return [dict(row) for row in list_chat_conversation_rows(conn, context_kind, context_id)]
+
+
+def mark_chat_conversation_read_data(conn: sqlite3.Connection, conversation_id: int) -> dict:
+    if not mark_chat_conversation_read(conn, conversation_id):
+        raise ValueError("conversation not found")
+    conn.commit()
+    return {"status": "ok", "id": conversation_id}
 
 
 CHAT_CONTEXT_KINDS = {"activity", "day", "week"}

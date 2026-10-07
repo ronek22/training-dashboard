@@ -142,6 +142,8 @@ export const useApi = () => ({
   getNotes: (params) => api.get('/notes', { params }),
   getCoachChatConversations: (params) => api.get('/notes/chat/conversations', { params }),
   openCoachChatConversation: (payload) => api.post('/notes/chat/conversations/open', payload),
+  getCoachMoments: (day) => api.get('/notes/chat/moments', { params: { day } }),
+  markCoachChatRead: (conversationId) => api.post(`/notes/chat/conversations/${conversationId}/read`),
   createCoachChatConversation: (payload = {}) => api.post('/notes/chat/conversations', payload),
   deleteCoachChatConversation: (conversationId) => api.delete(`/notes/chat/conversations/${conversationId}`),
   getCoachChatMessages: (params) => api.get('/notes/chat', { params }),

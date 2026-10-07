@@ -27,14 +27,27 @@ logs:
     docker compose logs -f
 
 # Manage the loopback-only Codex weekly-planning helper.
+# Prefers the launchd service when installed, so launchd keeps supervising it.
 codex-helper-start:
-    python3 "{{root}}/scripts/codex_planning_helper.py" start
+    if launchctl print "gui/$(id -u)/com.trainingdashboard.codex-helper" >/dev/null 2>&1; then \
+        launchctl kickstart "gui/$(id -u)/com.trainingdashboard.codex-helper"; \
+        python3 "{{root}}/scripts/codex_planning_helper.py" status; \
+    else \
+        python3 "{{root}}/scripts/codex_planning_helper.py" start; \
+    fi
 
 codex-helper-stop:
     python3 "{{root}}/scripts/codex_planning_helper.py" stop
 
 codex-helper-status:
     python3 "{{root}}/scripts/codex_planning_helper.py" status
+
+# Run the helper under launchd: starts at login, restarts if it dies.
+codex-helper-install:
+    "{{root}}/scripts/codex_helper_service.sh" install
+
+codex-helper-uninstall:
+    "{{root}}/scripts/codex_helper_service.sh" uninstall
 
 # Run the backend test suite.
 test-backend:

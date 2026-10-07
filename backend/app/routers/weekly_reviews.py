@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..db import get_db
 from ..models.weekly_reviews import WeeklyReview
+from ..services.monthly_letters import letter_status, list_letters, write_letter
 from ..services.week_report import build_week_report
 from ..services.week_wins import build_week_wins
 from ..services.weekly_reviews import list_reviews, monthly_goal_review, save_review, review_context, review_status
@@ -77,6 +78,29 @@ def get_week_report(week_start: Optional[date] = None, day: Optional[date] = Non
     conn = get_db()
     try:
         return build_week_report(conn, week_start, today=day)
+    except ValueError as error:
+        raise HTTPException(422, str(error))
+    finally:
+        conn.close()
+
+
+@router.get('/reviews/monthly-letters')
+def get_monthly_letters(day: Optional[date] = None):
+    """Saved letters, newest first, and whether last month's letter is on offer; ``day`` is the browser's date."""
+    conn = get_db()
+    try:
+        return {'letters': list_letters(conn), 'status': letter_status(conn, today=day)}
+    finally:
+        conn.close()
+
+
+@router.post('/reviews/monthly-letters/{month}')
+def post_monthly_letter(month: str, day: Optional[date] = None):
+    """Write one finished month's letter on request. A saved letter is returned as it was, never rewritten."""
+    conn = get_db()
+    try:
+        letter, created = write_letter(conn, month, today=day)
+        return {'letter': letter, 'created': created}
     except ValueError as error:
         raise HTTPException(422, str(error))
     finally:

@@ -181,6 +181,12 @@ def init_db():
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS monthly_letters (
+            month TEXT PRIMARY KEY,
+            letter_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS activities (
             id TEXT PRIMARY KEY,
             date TEXT NOT NULL,

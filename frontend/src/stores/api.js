@@ -125,6 +125,8 @@ export const useApi = () => ({
   adjustWeeklyPlan: (payload) => api.post('/plans/weekly/adjust', payload),
   swapWeeklyPlanDays: (payload) => api.post('/plans/weekly/swap', payload),
   getWeekWins: (params) => api.get('/reviews/weekly/wins', { params }),
+  getMonthlyLetters: (day) => api.get('/reviews/monthly-letters', { params: { day } }),
+  writeMonthlyLetter: (month, day) => api.post(`/reviews/monthly-letters/${month}`, null, { params: { day }, timeout: 60000 }),
   getTodayOptions: (reason, day) => api.get('/plans/today/options', { params: { reason, day } }),
   applyTodayOption: (payload) => api.post('/plans/today/options/apply', payload),
   undoTodayOption: (undo, day) => api.post('/plans/today/options/undo', { undo, day }),

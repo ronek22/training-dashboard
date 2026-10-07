@@ -10,6 +10,7 @@ import WeekDayGrid from '../components/weekly-review/WeekDayGrid.vue'
 import WeekTrend from '../components/weekly-review/WeekTrend.vue'
 import WeekRecovery from '../components/weekly-review/WeekRecovery.vue'
 import WeekCoachReview from '../components/weekly-review/WeekCoachReview.vue'
+import MonthlyLetters from '../components/weekly-review/MonthlyLetters.vue'
 import { duration, signedPct } from '../components/weekly-review/format.js'
 
 const api = useApi()
@@ -127,6 +128,8 @@ const talk = () => wins.value && openCoachChat(weekChatRequest(wins.value))
         <button v-if="!isCurrent" type="button" class="today" @click="goTo(thisMonday())">This week</button>
       </nav>
     </header>
+
+    <MonthlyLetters />
 
     <p v-if="error" class="notice" role="alert">{{ error }} <button type="button" @click="load">Try again</button></p>
     <p v-else-if="!report" class="notice" role="status">Reading your week…</p>

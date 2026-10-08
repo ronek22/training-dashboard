@@ -124,6 +124,8 @@
       </router-link>
     </section>
 
+    <WeeklyBodyCheckin />
+
     <footer class="today-actions">
       <router-link v-if="primaryAction" class="today-primary" :to="primaryAction.to">{{ primaryAction.label }} <span aria-hidden="true">→</span></router-link>
       <router-link v-for="action in secondaryActions" :key="action.label" class="today-secondary" :to="action.to">{{ action.label }}</router-link>
@@ -142,6 +144,7 @@ import TodayStrengthSummary from './TodayStrengthSummary.vue'
 import TodaySickSummary from './TodaySickSummary.vue'
 import TodayPlanSummary from './TodayPlanSummary.vue'
 import TodayAdjust from './TodayAdjust.vue'
+import WeeklyBodyCheckin from './WeeklyBodyCheckin.vue'
 import { coachChatAvailable, openCoachChat } from '../coach/chat-bus'
 import { sessionChatRequest } from '../coach/session-chat.mjs'
 import MuscleSilhouette from './activity-detail/MuscleSilhouette.vue'

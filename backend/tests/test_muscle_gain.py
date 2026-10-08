@@ -125,6 +125,22 @@ class MuscleGainCheckTests(unittest.TestCase):
         self.assertEqual((protein["lift_days"], protein["answered"], protein["hits"], protein["share"]), (2, 1, 1, 0.5))
         self.assertEqual(protein["days"][0]["activity_id"], f"lift-{lift_day}")
 
+    def test_weekly_checkin_fills_unticked_lift_days_of_its_week(self):
+        self.conn.execute("CREATE TABLE weekly_body_checkins (week_start TEXT PRIMARY KEY, protein_most_days INTEGER, weight_kg REAL, skipped INTEGER)")
+        ticked = TODAY - timedelta(days=TODAY.weekday() + 7)  # last Monday
+        covered = ticked + timedelta(days=2)
+        uncovered = ticked - timedelta(days=5)  # the week before, no check-in
+        for day in (ticked, covered, uncovered):
+            self._lift(day, [("Back Squat", [(8, 60)] * 3)])
+        self.conn.execute("INSERT INTO daily_nutrition VALUES (?, 0)", (ticked.isoformat(),))
+        self.conn.execute("INSERT INTO weekly_body_checkins VALUES (?, 1, NULL, 0)", (ticked.isoformat(),))
+        protein = self._check()["protein"]
+        by_date = {day["date"]: (day["hit"], day["source"]) for day in protein["days"]}
+        self.assertEqual(by_date[ticked.isoformat()], (False, "daily"))
+        self.assertEqual(by_date[covered.isoformat()], (True, "weekly"))
+        self.assertEqual(by_date[uncovered.isoformat()], (None, None))
+        self.assertEqual((protein["answered"], protein["hits"]), (2, 1))
+
     def test_weight_trend_is_unavailable_with_too_few_weigh_ins(self):
         for offset in (2, 10, 20):
             self.conn.execute("INSERT INTO metrics (date, metric, value) VALUES (?, 'weight', 79)", ((TODAY - timedelta(days=offset)).isoformat(),))

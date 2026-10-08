@@ -90,7 +90,7 @@
           <details class="mg-signal" :class="{ 'is-good': (state.protein.share ?? 0) >= 0.7 }">
             <summary>
               <span>Protein on lift days</span>
-              <strong v-if="state.protein.answered">{{ state.protein.hits }} of {{ state.protein.lift_days }}<small> · {{ state.protein.lift_days - state.protein.answered }} not ticked</small></strong>
+              <strong v-if="state.protein.answered">{{ state.protein.hits }} of {{ state.protein.lift_days }}<small> · {{ state.protein.lift_days - state.protein.answered }} unanswered</small></strong>
               <strong v-else class="mg-unavailable">{{ state.protein.lift_days ? 'Not ticked yet' : 'No lift days' }}</strong>
             </summary>
             <div class="mg-evidence">
@@ -98,7 +98,7 @@
                 <li v-for="item in state.protein.days" :key="item.date">
                   <span class="mg-direction" :class="item.hit === true ? 'is-up' : item.hit === false ? 'is-down' : 'is-first'">{{ item.hit === true ? '✓' : item.hit === false ? '✗' : '–' }}</span>
                   <SessionLink :session="item" />
-                  <span>{{ item.hit === true ? 'Hit' : item.hit === false ? 'Missed' : 'No answer' }}</span>
+                  <span>{{ item.hit === true ? 'Hit' : item.hit === false ? 'Missed' : 'No answer' }}<template v-if="item.source === 'weekly'"> · weekly check-in</template></span>
                 </li>
               </ul>
             </div>

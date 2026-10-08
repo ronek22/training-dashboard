@@ -520,6 +520,14 @@ def init_db():
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS weekly_body_checkins (
+            week_start TEXT PRIMARY KEY,
+            protein_most_days INTEGER,
+            weight_kg REAL,
+            skipped INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS life_load_days (
             date TEXT PRIMARY KEY,
             tags_json TEXT NOT NULL,

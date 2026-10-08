@@ -211,6 +211,15 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(self.client.put(f"/nutrition/protein/{future}", json={"hit": True}).status_code, 422)
         self.assertEqual(self.client.put("/nutrition/protein/not-a-date", json={"hit": True}).status_code, 422)
 
+    def test_weekly_body_checkin_round_trip(self):
+        state = self.client.get("/nutrition/weekly-checkin").json()
+        self.assertFalse(state["answered"])
+        saved = self.client.put("/nutrition/weekly-checkin", json={"protein_most_days": True, "weight_kg": 80.2}).json()
+        self.assertTrue(saved["answered"])
+        self.assertFalse(saved["due"])
+        self.assertEqual(saved["last_weight"]["kg"], 80.2)
+        self.assertEqual(self.client.put("/nutrition/weekly-checkin", json={}).status_code, 422)
+
     def test_training_load_uses_activity_history_before_chart_window(self):
         old_activity_date = (datetime.now().date() - timedelta(days=20)).isoformat()
         self._create_activity(

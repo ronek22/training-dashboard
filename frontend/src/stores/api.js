@@ -114,6 +114,8 @@ export const useApi = () => ({
   saveDailyCheckin: (payload) => api.post('/checkins', payload),
   getProteinStatus: () => api.get('/nutrition/protein'),
   setProteinTick: (date, hit) => api.put(`/nutrition/protein/${date}`, { hit }),
+  getWeeklyBodyCheckin: () => api.get('/nutrition/weekly-checkin'),
+  saveWeeklyBodyCheckin: (payload) => api.put('/nutrition/weekly-checkin', payload),
   labelVolumeTrend: (payload) => api.post('/volume-trend/label', payload),
   getSickDates: () => api.get('/sick-mode/dates'),
   getLifeLoad: (params) => api.get('/life-load', { params }),

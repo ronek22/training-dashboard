@@ -10,7 +10,8 @@ Four signals over the last four weeks, each naming the sessions it came from:
 * Share of lifts that progressed. Each lift's latest session in the window is
   compared with its most recent session before the window (or its first in the
   window), using the same like-for-like metric as strength progression.
-* Protein adherence on lift days, from the daily protein tick.
+* Protein adherence on lift days, from the daily protein tick, falling back to
+  the weekly check-in's "most days?" answer for that week.
 * Body-weight trend, from a 7-day trailing average of weigh-ins, against a
   gentle gain rate. Fewer than ``MIN_WEIGH_INS`` weigh-ins means unavailable.
 
@@ -27,6 +28,7 @@ from typing import Any, Optional
 from .health_data import get_health_metric_history
 from .protein import _logged_lift_dates
 from .sick_mode import sick_dates
+from .weekly_body_checkin import weekly_protein_answers
 from .strength_progression import _metric, _normalize, _session_index, _summary, _value_for, _working_sets
 
 WINDOW_DAYS = 28
@@ -229,7 +231,19 @@ def _protein(conn: sqlite3.Connection, window_start: str, window_end: str) -> di
         (window_start, window_end),
     ).fetchall():
         activity_ids.setdefault(row["date"], row["id"])
-    days = [{"date": day, "hit": ticks.get(day), "activity_id": activity_ids.get(day)} for day in lift_days]
+    weekly = weekly_protein_answers(conn, window_start, window_end)
+
+    def answer(day: str) -> tuple[Optional[bool], Optional[str]]:
+        if day in ticks:
+            return ticks[day], "daily"
+        monday = date.fromisoformat(day)
+        monday = (monday - timedelta(days=monday.weekday())).isoformat()
+        return (weekly[monday], "weekly") if monday in weekly else (None, None)
+
+    days = []
+    for day in lift_days:
+        hit, source = answer(day)
+        days.append({"date": day, "hit": hit, "source": source, "activity_id": activity_ids.get(day)})
     hits = sum(1 for day in days if day["hit"])
     answered = sum(1 for day in days if day["hit"] is not None)
     return {
@@ -341,8 +355,8 @@ def _suggestion(sessions_per_week: float, groups: list[dict], progression: dict,
     if protein["lift_days"] and protein["answered"] == 0:
         return {
             "lever": "protein",
-            "headline": "Tick protein on lift days",
-            "detail": f"None of the {protein['lift_days']} lift days this month have a protein answer, so this check can't tell whether food is backing the lifting.",
+            "headline": "Answer the Monday protein check-in",
+            "detail": f"None of the {protein['lift_days']} lift days this month have a protein answer, so this check can't tell whether food is backing the lifting. The Monday check-in on Today covers a whole week in one tap.",
         }
     if protein["share"] is not None and protein["share"] < PROTEIN_SHARE_GOOD:
         return {

@@ -70,50 +70,59 @@
 
       <div class="exercise-editor">
         <article v-for="(exercise, index) in editing.exercises" :key="exercise.key" class="exercise-row">
-          <div class="exercise-index">{{ index + 1 }}</div>
-          <div class="exercise-name">
-            <span>Exercise</span>
-            <input
-              v-model.trim="exercise.exercise_name"
-              placeholder="Start typing an exercise"
-              maxlength="120"
-              autocomplete="off"
-              @focus="requestSuggestions(exercise, true)"
-              @input="requestSuggestions(exercise)"
-              @blur="scheduleSuggestionClose"
-            />
-            <div
-              v-if="suggestionTargetKey === exercise.key && (suggestionsLoading || suggestions.length)"
-              class="suggestion-menu"
-              role="listbox"
-              aria-label="Exercise history suggestions"
-            >
-              <div v-if="suggestionsLoading" class="suggestion-loading">Searching your history…</div>
-              <button
-                v-for="suggestion in suggestions"
-                v-else
-                :key="suggestion.normalized_name"
-                type="button"
-                role="option"
-                @mousedown.prevent="selectSuggestion(exercise, suggestion)"
+          <header class="exercise-row-head">
+            <div class="exercise-index">{{ index + 1 }}</div>
+            <div class="exercise-name">
+              <input
+                v-model.trim="exercise.exercise_name"
+                aria-label="Exercise name"
+                placeholder="Start typing an exercise"
+                maxlength="120"
+                autocomplete="off"
+                @focus="requestSuggestions(exercise, true)"
+                @input="requestSuggestions(exercise)"
+                @blur="scheduleSuggestionClose"
+              />
+              <div
+                v-if="suggestionTargetKey === exercise.key && (suggestionsLoading || suggestions.length)"
+                class="suggestion-menu"
+                role="listbox"
+                aria-label="Exercise history suggestions"
               >
-                <span><strong>{{ suggestion.exercise_name }}</strong><small>{{ suggestion.session_count }} recorded session{{ suggestion.session_count === 1 ? '' : 's' }} · {{ suggestion.sources.join(' + ') }}</small></span>
-                <b>{{ formatSuggestion(suggestion) }}</b>
-              </button>
+                <div v-if="suggestionsLoading" class="suggestion-loading">Searching your history…</div>
+                <button
+                  v-for="suggestion in suggestions"
+                  v-else
+                  :key="suggestion.normalized_name"
+                  type="button"
+                  role="option"
+                  @mousedown.prevent="selectSuggestion(exercise, suggestion)"
+                >
+                  <span><strong>{{ suggestion.exercise_name }}</strong><small>{{ suggestion.session_count }} recorded session{{ suggestion.session_count === 1 ? '' : 's' }} · {{ suggestion.sources.join(' + ') }}</small></span>
+                  <b>{{ formatSuggestion(suggestion) }}</b>
+                </button>
+              </div>
             </div>
-            <ExerciseHistory :name="exercise.exercise_name" @apply="applySuggestion(exercise, $event)" />
-            <input v-model.trim="exercise.notes" aria-label="Exercise instructions" placeholder="Exercise instructions" maxlength="500" />
+            <span class="exercise-summary">{{ exercise.set_count || '—' }} × {{ exercise.target_reps || '—' }}<template v-if="exercise.target_weight_kg != null && exercise.target_weight_kg !== ''"> · {{ trimNumber(exercise.target_weight_kg) }} kg</template> · {{ formatRest(Number(exercise.rest_seconds) || 0) }} rest</span>
+            <div class="row-actions">
+              <button type="button" :disabled="index === 0" aria-label="Move exercise up" @click="moveExercise(index, -1)">↑</button>
+              <button type="button" :disabled="index === editing.exercises.length - 1" aria-label="Move exercise down" @click="moveExercise(index, 1)">↓</button>
+              <button type="button" class="remove-exercise" aria-label="Remove exercise" @click="removeExercise(index)">×</button>
+            </div>
+          </header>
+          <div class="exercise-row-body">
+            <div class="exercise-targets">
+              <div class="target-fields">
+                <label><span>Sets</span><input v-model.number="exercise.set_count" type="number" min="1" max="20" /></label>
+                <label><span>Reps</span><input v-model.number="exercise.target_reps" type="number" min="1" max="100" /></label>
+                <label><span>Weight kg</span><input v-model.number="exercise.target_weight_kg" type="number" min="0" max="1000" step="0.5" placeholder="BW" /></label>
+                <label><span>Rest sec</span><input v-model.number="exercise.rest_seconds" type="number" min="0" max="1800" step="5" /></label>
+              </div>
+              <input v-model.trim="exercise.notes" class="exercise-notes" aria-label="Exercise instructions" placeholder="Cue or instructions (optional)" maxlength="500" />
+            </div>
+            <ExerciseHistory class="exercise-last" :name="exercise.exercise_name" @apply="applySuggestion(exercise, $event)" />
           </div>
-          <label><span>Sets</span><input v-model.number="exercise.set_count" type="number" min="1" max="20" /></label>
-          <label><span>Reps</span><input v-model.number="exercise.target_reps" type="number" min="1" max="100" /></label>
-          <label><span>Weight kg</span><input v-model.number="exercise.target_weight_kg" type="number" min="0" max="1000" step="0.5" placeholder="—" /></label>
-          <label><span>Rest sec</span><input v-model.number="exercise.rest_seconds" type="number" min="0" max="1800" step="5" /></label>
-          <div class="row-actions">
-            <button type="button" :disabled="index === 0" aria-label="Move exercise up" @click="moveExercise(index, -1)">↑</button>
-            <button type="button" :disabled="index === editing.exercises.length - 1" aria-label="Move exercise down" @click="moveExercise(index, 1)">↓</button>
-            <button type="button" aria-label="Remove exercise" @click="removeExercise(index)">×</button>
-          </div>
-          <ExerciseGuide v-if="exercise.exercise_name.trim()" class="editor-guide" :name="exercise.exercise_name" />
+          <ExerciseGuide v-if="exercise.exercise_name.trim()" class="editor-guide" compact :name="exercise.exercise_name" />
         </article>
       </div>
 
@@ -579,13 +588,27 @@ input:focus, textarea:focus { outline: 2px solid rgba(255, 177, 72, .2); border-
 .suggestion-loading { padding: 12px; color: var(--muted); font-weight: 600; }
 .history-prescription { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: 9px; background: rgba(255, 171, 66, .07); padding: 7px 9px; color:var(--text); font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
 .history-prescription button { border: 0; background: transparent; color:color-mix(in srgb, #ffc577 calc(100% - var(--dim)), #000); font-weight: 800; white-space: nowrap; }
-.exercise-editor { display: grid; gap: 10px; }
-.editor-guide { grid-column: 1 / -1; }
-.exercise-row { display: grid; grid-template-columns: 34px minmax(180px, 1.8fr) repeat(4, minmax(76px, .55fr)) auto; align-items: end; gap: 10px; padding: 14px; border-radius: 16px; background: rgb(var(--ov-rgb) / .025); border: 1px solid var(--border); }
-.exercise-index { align-self: center; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: rgba(255, 171, 66, .12); color:color-mix(in srgb, #ffc477 calc(100% - var(--dim)), #000); font-weight: 900; }
-.row-actions { display: flex; gap: 4px; padding-bottom: 2px; }
-.row-actions button { border: 0; background: transparent; color: var(--muted); padding: 8px; }
-.row-actions button:hover { color: var(--text); }
+.exercise-editor { display: grid; gap: 12px; }
+.exercise-row { display: grid; gap: 12px; padding: 14px 16px 16px; border-radius: 16px; background: rgb(var(--ov-rgb) / .025); border: 1px solid var(--border); }
+.exercise-row:focus-within { border-color: rgba(255, 177, 72, .26); }
+.exercise-row-head { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; }
+.exercise-index { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: rgba(255, 171, 66, .12); color:color-mix(in srgb, #ffc477 calc(100% - var(--dim)), #000); font-weight: 900; }
+.exercise-name input { padding: 7px 10px; border-color: transparent; background: transparent; font: 600 18px var(--font-display); }
+.exercise-name input:hover { border-color: var(--border); }
+.exercise-name input:focus { background: rgb(var(--deep-rgb) / .72); }
+.exercise-summary { color: var(--muted); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row-actions { display: flex; gap: 2px; }
+.row-actions button { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); }
+.row-actions button:hover:not(:disabled) { color: var(--text); background: rgb(var(--ov-rgb) / .05); }
+.row-actions button:disabled { opacity: .35; }
+.row-actions .remove-exercise:hover { color: #f87171; }
+.exercise-row-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: stretch; padding-left: 42px; }
+.exercise-targets { display: grid; gap: 10px; align-content: start; }
+.target-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.target-fields label { gap: 5px; font-size: 10px; }
+.target-fields input { padding: 9px 10px; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.exercise-notes { padding: 9px 12px; font-size: 13px; }
+.editor-guide { margin-left: 42px; }
 .editor-footer { display: flex; justify-content: space-between; }
 
 .studio-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, .72fr); gap: 20px; align-items: start; }
@@ -671,9 +694,7 @@ input:focus, textarea:focus { outline: 2px solid rgba(255, 177, 72, .2); border-
   .history-list { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
   .history-entry:nth-child(2) { border-top: 0; }
   .template-card:only-child { max-width: none; }
-  .exercise-row { grid-template-columns: 34px 1fr 1fr 1fr; }
-  .exercise-name { grid-column: 2 / -1; }
-  .row-actions { grid-column: 2 / -1; }
+  .exercise-row-body { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
   .studio-hero { grid-template-columns: 1fr; min-height: 0; padding: 26px; }
@@ -689,10 +710,11 @@ input:focus, textarea:focus { outline: 2px solid rgba(255, 177, 72, .2); border-
   .library-empty .empty-glyph { display: none; }
   .history-list { grid-template-columns: 1fr; }
   .history-entry:nth-child(2) { border-top: 1px solid rgba(133, 151, 184, .12); }
-  .exercise-row { position: relative; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .exercise-index { position: absolute; top: 17px; left: 14px; }
-  .exercise-name { grid-column: 1 / -1; margin-left: 36px; }
-  .row-actions { grid-column: 1 / -1; }
+  .exercise-row-head { grid-template-columns: 30px minmax(0, 1fr) auto; }
+  .exercise-summary { display: none; }
+  .exercise-row-body { padding-left: 0; }
+  .editor-guide { margin-left: 0; }
+  .target-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .template-footer { align-items: stretch; flex-direction: column; }
   .template-footer > span { display: none; }
   .start-button { width: 100%; }

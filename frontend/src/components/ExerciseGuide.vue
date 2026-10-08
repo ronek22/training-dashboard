@@ -20,8 +20,10 @@ type ExerciseGuideData = {
 const props = withDefaults(defineProps<{
   name: string
   initiallyOpen?: boolean
+  compact?: boolean
 }>(), {
   initiallyOpen: false,
+  compact: false,
 })
 
 const detailsId = `exercise-guide-${getCurrentInstance()?.uid ?? Math.random().toString(36).slice(2)}`
@@ -139,6 +141,7 @@ onUnmounted(stopCycling)
   <details
     :id="detailsId"
     class="exercise-guide"
+    :class="{ compact }"
     :open="isOpen"
     @toggle="handleToggle"
   >
@@ -388,6 +391,15 @@ onUnmounted(stopCycling)
   transform: translateY(-2px);
   transition: transform 180ms ease;
 }
+
+.exercise-guide.compact { margin-top: 0; border-radius: 10px; }
+.exercise-guide.compact .guide-summary { gap: 10px; padding: 7px 12px; }
+.exercise-guide.compact .guide-summary-copy { display: flex; align-items: baseline; gap: 8px; }
+.exercise-guide.compact .guide-summary-kicker,
+.exercise-guide.compact .guide-summary-name { display: none; }
+.exercise-guide.compact .guide-summary-title { font-size: 12px; font-weight: 600; }
+.exercise-guide.compact .guide-thumbnail-frame { order: -1; flex-basis: 34px; width: 34px; height: 26px; border-radius: 6px; }
+.exercise-guide.compact .guide-summary-chevron { font-size: 16px; }
 
 .exercise-guide[open] .guide-summary-chevron { transform: rotate(180deg) translateY(2px); }
 

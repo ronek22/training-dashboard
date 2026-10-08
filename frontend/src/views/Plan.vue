@@ -622,6 +622,8 @@
 
         <details v-if="plan.overview" class="week-purpose"><summary>Week focus and coaching notes</summary><p>{{ plan.overview }}</p></details>
 
+        <LiftVolumePanel v-if="!isHistoricalPlan(plan) && plan.lift_volume" :volume="plan.lift_volume" :open="isCurrentPlan(plan)" />
+
         <details v-if="!isHistoricalPlan(plan) && plan.goal_context?.active_goals?.length" class="goal-context-panel">
           <summary class="goal-context-summary">
             <span class="goal-context-summary-main">
@@ -970,6 +972,7 @@ import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
 import LifeLoadPicker from '../components/LifeLoadPicker.vue'
+import LiftVolumePanel from '../components/LiftVolumePanel.vue'
 import { useLifeLoad } from '../composables/useLifeLoad'
 import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail'
 

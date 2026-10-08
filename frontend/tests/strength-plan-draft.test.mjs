@@ -39,3 +39,20 @@ test('uses matching Workout D variants with reduced loads without modifying the 
   assert.equal(template.exercises[0].target_weight_kg, 75)
   assert.equal(template.exercises[0].set_count, 3)
 })
+test('weekly lift volume adds sets to a matching lift and appends new accessories', () => {
+  const template = { name: 'Workout A', exercises: [
+    { exercise_name: 'Dumbbell Bench Press', set_count: 3, target_reps: 10, target_weight_kg: 24, rest_seconds: 120 },
+  ] }
+  const day = { title: 'Workout A', template_label: 'Workout A', lift_volume_additions: [
+    { exercise_name: 'Dumbbell Bench Press', group: 'chest', sets: 1, mode: 'extend', reason: 'Brings chest toward 8 hard sets this week' },
+    { exercise_name: 'Standing Dumbbell Calf Raise', group: 'legs', sets: 4, mode: 'add', target_reps: 15, target_weight_kg: 24, rest_seconds: 90, reason: 'Brings legs toward 8 hard sets this week' },
+  ] }
+  const draft = buildStrengthPlanDraft(day, [template])
+  assert.deepEqual(draft.exercises.map(e => [e.exercise_name, e.set_count, e.volume_added_sets]), [
+    ['Dumbbell Bench Press', 4, 1],
+    ['Standing Dumbbell Calf Raise', 4, 4],
+  ])
+  assert.equal(draft.exercises[1].target_weight_kg, 24)
+  assert.match(draft.exercises[1].notes, /legs toward 8 hard sets/)
+  assert.equal(template.exercises[0].set_count, 3)
+})

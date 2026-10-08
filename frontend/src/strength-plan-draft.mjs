@@ -13,6 +13,34 @@ function progressedExercise(exercise) {
   }
 }
 
+const exerciseKey = name => String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+
+// Weekly lift volume (backend `lift_volume_additions`): extra sets on a lift already
+// in the workout, or a new accessory at the end. Sets are only ever added.
+function withVolumeAdditions(exercises, additions = []) {
+  const result = exercises.map(exercise => ({ ...exercise }))
+  for (const addition of additions) {
+    const existing = result.find(exercise => exerciseKey(exercise.exercise_name) === exerciseKey(addition.exercise_name))
+    if (existing) {
+      existing.set_count = Number(existing.set_count || 0) + addition.sets
+      existing.volume_added_sets = (existing.volume_added_sets || 0) + addition.sets
+      existing.volume_reason = addition.reason
+      continue
+    }
+    result.push({
+      exercise_name: addition.exercise_name,
+      set_count: addition.sets,
+      target_reps: addition.target_reps ?? 10,
+      target_weight_kg: addition.target_weight_kg ?? null,
+      rest_seconds: addition.rest_seconds ?? 90,
+      notes: `Accessory. ${addition.reason}.`,
+      volume_added_sets: addition.sets,
+      volume_reason: addition.reason,
+    })
+  }
+  return result
+}
+
 // Keep the original prose. Convert only a recognized, explicit prescription;
 // unknown instructions require review rather than silently guessed reductions.
 export function buildStrengthPlanDraft(day, templates = []) {
@@ -43,7 +71,7 @@ export function buildStrengthPlanDraft(day, templates = []) {
           notes: [group.notes, base ? `Reps/rest from saved workout.${loadFactor && base.target_weight_kg != null ? ` Load: 70% of saved ${base.target_weight_kg} kg, rounded down to 0.5 kg.` : ''}` : 'Suggested movement; review reps (8) and rest (90 sec).'].join(' '),
         }))
       })
-    : (match?.exercises || []).map(progressedExercise)
+    : withVolumeAdditions((match?.exercises || []).map(progressedExercise), day.lift_volume_additions)
   return {
     id: null,
     oneTime: true,

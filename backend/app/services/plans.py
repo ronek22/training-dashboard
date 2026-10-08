@@ -1169,6 +1169,16 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
         ]
         revision_count = count_weekly_plan_revision_rows(conn, row["week_start"])
 
+    minimum_week = _minimum_week_state(conn, row["week_start"])
+    lift_volume = None
+    if conn:
+        from .strength_volume import apply_lift_volume, build_lift_volume
+
+        lift_volume = build_lift_volume(
+            conn, days, row["week_start"], minimum_week_active=bool((minimum_week or {}).get("active"))
+        )
+        days = apply_lift_volume(days, lift_volume)
+
     return {
         "week_start": row["week_start"],
         "title": row["title"],
@@ -1183,7 +1193,8 @@ def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] =
         "goal_context": goal_context,
         "run_guardrail": _run_guardrail(conn, days, row["week_start"]),
         "life_load": build_plan_life_load(conn, days, row["week_start"]),
-        "minimum_week": _minimum_week_state(conn, row["week_start"]),
+        "minimum_week": minimum_week,
+        "lift_volume": lift_volume,
         "workout_template_programs": workout_template_programs,
     }
 

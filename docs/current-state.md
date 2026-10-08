@@ -24,6 +24,15 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Compact coaching context for MCP
+
+2026-10-08: MCP `get_recent_context` returned about 200k characters, which coach sessions could not read in one go. It now returns a compact view by default (about 42k characters, minified). `services/recent_context_view.py` builds it from the unchanged `build_recent_context` bundle.
+
+- Every section stays. Plan days lose link candidates; goals appear once as summaries instead of three full copies; the training-load chart keeps only the last 7 days; cycling power keeps levels and records; strength sessions keep totals and major lifts. Null and empty values are dropped, but null top-level sections such as `sick_mode` stay explicit.
+- `detail_tools` names the tool to call for each section's detail. `workout_template_settings` is left out.
+- `detail: "full"` returns the original bundle. `GET /context/recent` and the internal callers (coaching, recovery, team analysis) are unchanged. The stdio server in `mcp/server.py` now calls the backend MCP tool, so both servers return the same output.
+- Verified with 3 unit tests, an MCP smoke test, the full backend and script suites, and the live server: 42,221 characters compact against 202,643 full.
+
 ### Monthly letter from your coach
 
 2026-10-07: implements the `monthly-coach-letter` idea. A short letter looks back at one finished calendar month: up to three wins, one pattern and one focus for the next month. It is deterministic (no LLM) and written only when the athlete presses the button; nothing generates it automatically.

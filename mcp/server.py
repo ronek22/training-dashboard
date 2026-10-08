@@ -192,14 +192,19 @@ TOOLS = [
     },
     {
         "name": "get_recent_context",
-        "description": "Get a compact coaching context bundle with recent load, activities, notes, metrics, weekly mix, streak, active plan, and pointers to cycling power context",
+        "description": "Get a compact coaching context bundle with recent load, latest activities, notes, metrics, weekly mix, streak, active plan, goals, readiness and recovery. Returns summaries by default (~45k characters); detail_tools names the tool for each section's full data. Pass detail='full' only when you need the whole raw bundle (~200k characters)",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "lookback_days": {"type": "integer", "description": "Primary analysis window, defaults to 14 days"},
                 "context_days": {"type": "integer", "description": "Broader context window, defaults to 30 days"},
                 "recent_activity_limit": {"type": "integer", "description": "How many recent activities to include"},
-                "recent_note_limit": {"type": "integer", "description": "How many recent notes to include"}
+                "recent_note_limit": {"type": "integer", "description": "How many recent notes to include"},
+                "detail": {
+                    "type": "string",
+                    "enum": ["compact", "full"],
+                    "description": "compact (default) returns section summaries; full returns the raw bundle"
+                }
             }
         }
     },
@@ -595,8 +600,10 @@ def handle_tool(name: str, args: dict) -> str:
             return json.dumps(result, indent=2)
 
         elif name == "get_recent_context":
-            result = call_api("GET", "/context/recent", args)
-            return json.dumps(result, indent=2)
+            result = call_remote_mcp_tool(name, args)
+            if args.get("detail") == "full":
+                return json.dumps(result, indent=2)
+            return json.dumps(result, separators=(",", ":"))
 
         elif name == "get_cycling_power_profile":
             result = call_remote_mcp_tool(name)

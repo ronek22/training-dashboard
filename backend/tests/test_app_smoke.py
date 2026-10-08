@@ -1940,6 +1940,16 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertEqual(response.status_code, 200)
         return response.json()["result"]
 
+    def test_recent_context_mcp_tool_is_compact_by_default(self):
+        compact = self.call_tool("get_recent_context", {})
+        self.assertFalse(compact.get("isError"))
+        self.assertEqual(compact["structuredContent"]["detail"], "compact")
+        self.assertNotIn("workout_template_settings", compact["structuredContent"])
+        full = self.call_tool("get_recent_context", {"detail": "full"})
+        self.assertNotIn("detail", full["structuredContent"])
+        self.assertIn("workout_template_settings", full["structuredContent"])
+        self.assertLess(len(compact["content"][0]["text"]), len(full["content"][0]["text"]))
+
     def test_aerobic_fitness_trend_endpoint_and_mcp_tool(self):
         response = self.client.get("/metrics/aerobic-decoupling", params={"weeks": 8})
         self.assertEqual(response.status_code, 200)

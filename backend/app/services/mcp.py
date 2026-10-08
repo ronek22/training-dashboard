@@ -1,6 +1,8 @@
 import json
 from datetime import datetime, timedelta
 
+from .recent_context_view import compact_recent_context
+
 
 MCP_SERVER_INFO = {"name": "training-dashboard", "version": "1.3.0"}
 MCP_SECURITY_SCHEMES = [{"type": "noauth"}]
@@ -205,7 +207,7 @@ MCP_TOOLS = [
     },
     {
         "name": "get_recent_context",
-        "description": "Get a compact coaching context bundle with recent load, latest activities, notes, metrics, weekly mix, streak, active plan, and pointers to cycling power context",
+        "description": "Get a compact coaching context bundle with recent load, latest activities, notes, metrics, weekly mix, streak, active plan, goals, readiness and recovery. Returns summaries by default (~45k characters); detail_tools names the tool for each section's full data. Pass detail='full' only when you need the whole raw bundle (~200k characters)",
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False,
@@ -219,6 +221,11 @@ MCP_TOOLS = [
                 "context_days": {"type": "integer", "description": "Broader context window, defaults to 30 days"},
                 "recent_activity_limit": {"type": "integer", "description": "How many recent activities to include"},
                 "recent_note_limit": {"type": "integer", "description": "How many recent notes to include"},
+                "detail": {
+                    "type": "string",
+                    "enum": ["compact", "full"],
+                    "description": "compact (default) returns section summaries; full returns the raw bundle",
+                },
             },
         },
     },
@@ -950,7 +957,11 @@ def call_mcp_tool(
                 recent_activity_limit=int(args.get("recent_activity_limit", 12)),
                 recent_note_limit=int(args.get("recent_note_limit", 5)),
             )
-            message = json.dumps(data, indent=2)
+            if args.get("detail") == "full":
+                message = json.dumps(data, indent=2)
+            else:
+                data = compact_recent_context(data)
+                message = json.dumps(data, separators=(",", ":"))
 
         elif name == "coach_this_week":
             data = weekly_coaching_fn(

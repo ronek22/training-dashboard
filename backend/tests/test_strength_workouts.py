@@ -416,6 +416,9 @@ class StrengthWorkoutTests(unittest.TestCase):
         self.assertEqual(disposable_response.status_code, 201)
         disposable = disposable_response.json()
         disposable_id = disposable["id"]
+        # Starting from the template picks up where the last session left off: 82.5 kg × 5 → 85 kg.
+        self.assertEqual(disposable["exercises"][0]["sets"][0]["target_weight_kg"], 85.0)
+        self.assertEqual(disposable["exercises"][0]["sets"][0]["target_reps"], 5)
 
         warmup_response = self.client.post(
             f"/strength/workouts/sessions/{disposable_id}/exercises/{disposable['exercises'][0]['id']}/warmup-sets",
@@ -428,7 +431,7 @@ class StrengthWorkoutTests(unittest.TestCase):
         self.assertEqual(with_warmup["exercises"][0]["warmup_set_count"], 1)
         warmup_set = with_warmup["exercises"][0]["sets"][0]
         self.assertEqual(warmup_set["set_type"], "warmup")
-        self.assertEqual(warmup_set["target_weight_kg"], 40.0)
+        self.assertEqual(warmup_set["target_weight_kg"], 42.5)
 
         completed_warmup_response = self.client.post(
             f"/strength/workouts/sessions/{disposable_id}/sets/{warmup_set['id']}/complete",

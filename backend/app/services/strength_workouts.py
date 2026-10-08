@@ -11,6 +11,7 @@ from ..models.strength_workouts import (
     StrengthTemplateInput,
     StrengthWarmupSetAddRequest,
 )
+from .strength_progression import _max_dumbbell_kg, _normalize, latest_next_steps, plan_next_step
 
 
 def _now() -> datetime:
@@ -41,7 +42,22 @@ def _session_or_404(conn: sqlite3.Connection, session_id: int) -> sqlite3.Row:
     return row
 
 
-def _serialize_template(conn: sqlite3.Connection, row: sqlite3.Row) -> dict:
+def _next_steps(conn: sqlite3.Connection, exercises: list, history: Optional[dict] = None) -> list[Optional[dict]]:
+    """Progressed target per template exercise, from the latest logged session of each lift."""
+    history = latest_next_steps(conn) if history is None else history
+    max_dumbbell_kg = _max_dumbbell_kg(conn)
+    return [
+        plan_next_step(
+            history.get(_normalize(exercise["exercise_name"])),
+            exercise["exercise_name"],
+            exercise["target_reps"],
+            max_dumbbell_kg,
+        )
+        for exercise in exercises
+    ]
+
+
+def _serialize_template(conn: sqlite3.Connection, row: sqlite3.Row, history: Optional[dict] = None) -> dict:
     exercises = conn.execute(
         """
         SELECT id, exercise_order, exercise_name, set_count, target_reps,
@@ -68,7 +84,10 @@ def _serialize_template(conn: sqlite3.Connection, row: sqlite3.Row) -> dict:
             )
             / 60
         ),
-        "exercises": [dict(exercise) for exercise in exercises],
+        "exercises": [
+            {**dict(exercise), "next": step}
+            for exercise, step in zip(exercises, _next_steps(conn, exercises, history))
+        ],
     }
 
 
@@ -76,7 +95,8 @@ def list_templates(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute(
         "SELECT * FROM strength_workout_templates ORDER BY updated_at DESC, id DESC"
     ).fetchall()
-    return [_serialize_template(conn, row) for row in rows]
+    history = latest_next_steps(conn) if rows else {}
+    return [_serialize_template(conn, row, history) for row in rows]
 
 
 def get_template(conn: sqlite3.Connection, template_id: int) -> dict:
@@ -479,10 +499,18 @@ def start_session(
         ]
     else:
         template = _template_or_404(conn, template_id)
-        template_exercises = conn.execute(
+        saved_exercises = conn.execute(
             "SELECT * FROM strength_template_exercises WHERE template_id = ? ORDER BY exercise_order",
             (template_id,),
         ).fetchall()
+        # Start from where the last session left off rather than the saved targets.
+        template_exercises = [
+            {
+                **dict(exercise),
+                **({"target_weight_kg": step["target_weight_kg"], "target_reps": step["target_reps"]} if step else {}),
+            }
+            for exercise, step in zip(saved_exercises, _next_steps(conn, saved_exercises))
+        ]
     if not template_exercises:
         raise HTTPException(status_code=400, detail="The template has no exercises.")
 

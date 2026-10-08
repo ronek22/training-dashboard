@@ -48,7 +48,7 @@
     <ol v-if="lifts.length" class="plan-lifts">
       <li v-for="(lift, index) in lifts" :key="`${lift.name}-${index}`">
         <span class="plan-lift-order">{{ String(index + 1).padStart(2, '0') }}</span>
-        <span class="plan-lift-name"><strong>{{ lift.name }}</strong><small>{{ lift.summary }}</small></span>
+        <span class="plan-lift-name"><strong>{{ lift.name }}</strong><small>{{ lift.summary }}<em v-if="lift.change" class="plan-lift-change" :title="lift.hint">{{ lift.change }}</em></small></span>
         <span class="plan-lift-sets" aria-hidden="true"><i v-for="set in lift.sets" :key="set"></i></span>
         <span class="plan-lift-rest">{{ lift.rest }}</span>
       </li>
@@ -103,10 +103,20 @@ const rpeRange = computed(() => {
 
 const isStrength = computed(() => /strength|weight/i.test(props.plan.session_type || ''))
 
+const liftChange = (exercise) => {
+  const kg = Number(exercise.target_weight_kg || 0) - Number(exercise.saved_weight_kg || 0)
+  if (exercise.saved_weight_kg != null && kg) return `${kg > 0 ? '+' : '−'}${Math.abs(Number(kg.toFixed(1)))} kg`
+  const reps = Number(exercise.target_reps || 0) - Number(exercise.saved_reps || 0)
+  if (exercise.saved_reps != null && reps) return `${reps > 0 ? '+' : '−'}${Math.abs(reps)} rep${Math.abs(reps) === 1 ? '' : 's'}`
+  return ''
+}
+
 const lifts = computed(() => props.exercises.filter((exercise) => exercise.exercise_name?.trim()).map((exercise) => ({
   name: exercise.exercise_name,
   summary: `${exercise.set_count} × ${exercise.target_reps ?? '—'}${exercise.target_weight_kg ? ` · ${exercise.target_weight_kg} kg` : ''}`,
   sets: Array.from({ length: Math.min(Number(exercise.set_count) || 0, 8) }, (_, index) => index),
+  change: liftChange(exercise),
+  hint: exercise.progress_hint || '',
   rest: !exercise.rest_seconds ? '' : exercise.rest_seconds >= 60 ? `${Number((exercise.rest_seconds / 60).toFixed(1))} min rest` : `${exercise.rest_seconds} s rest`,
 })))
 
@@ -182,6 +192,7 @@ const tiles = computed(() => [durationTile.value, distanceTile.value, intensityT
 .plan-lift-name { display: grid; min-width: 0; }
 .plan-lift-name strong { overflow: hidden; color: var(--text); font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .plan-lift-name small { color: var(--dash-muted, var(--muted)); font-size: 11px; font-variant-numeric: tabular-nums; }
+.plan-lift-change { margin-left: 6px; color: var(--success-text); font-style: normal; font-weight: 600; }
 .plan-lift-sets { display: flex; gap: 4px; }
 .plan-lift-sets i { width: 14px; height: 14px; border: 1.5px solid color-mix(in srgb, var(--accent) 70%, transparent); border-radius: 4px; }
 .plan-lift-rest { color: var(--dash-muted, var(--muted)); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }

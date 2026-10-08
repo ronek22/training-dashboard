@@ -610,6 +610,14 @@ def set_workout_template_settings_data(payload: dict) -> dict:
         conn.close()
 
 
+def _positive_kg(value) -> Optional[float]:
+    try:
+        kg = float(value)
+    except (TypeError, ValueError):
+        return None
+    return kg if 0 < kg <= 500 else None
+
+
 def normalize_athlete_profile(raw_value: Optional[dict]) -> dict:
     raw = raw_value if isinstance(raw_value, dict) else {}
     focus = _clean_text(raw.get("primary_focus")) or "general_fitness"
@@ -649,6 +657,7 @@ def normalize_athlete_profile(raw_value: Optional[dict]) -> dict:
     off_season_months = normalize_off_season_months(raw.get("off_season_months"))
     profile["off_season_months"] = off_season_months
     profile["off_season"] = {"months": off_season_months, "label": season_label(off_season_months)}
+    profile["max_dumbbell_kg"] = _positive_kg(raw.get("max_dumbbell_kg"))
     profile["athlete_brief"] = build_athlete_brief(profile)
     return profile
 
@@ -664,6 +673,7 @@ def serialize_athlete_profile_for_storage(profile: dict) -> dict:
         "weekly_availability_notes": profile.get("weekly_availability_notes"),
         "planning_notes": profile.get("planning_notes"),
         "off_season_months": profile.get("off_season_months"),
+        "max_dumbbell_kg": profile.get("max_dumbbell_kg"),
     }
 
 

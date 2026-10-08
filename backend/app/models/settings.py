@@ -22,6 +22,8 @@ class AthleteProfilePayload(BaseModel):
     planning_notes: Optional[str] = None
     # None keeps the default (Oct–Mar); an empty list means no off season.
     off_season_months: Optional[list[int]] = None
+    # Heaviest dumbbell available; progression switches to reps once it is reached.
+    max_dumbbell_kg: Optional[float] = None
 
 
 class WorkoutTemplateSettingsPayload(BaseModel):

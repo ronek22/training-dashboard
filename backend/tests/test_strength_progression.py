@@ -2,6 +2,7 @@ import unittest
 from unittest import mock
 
 from backend.app.services import strength_progression
+from backend.app.services.strength_progression import max_load_for, next_step, plan_next_step
 
 
 def _session(day, activity_id, exercises):
@@ -85,3 +86,30 @@ class StrengthProgressionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NextStepTests(unittest.TestCase):
+    def test_capped_dumbbell_progresses_reps_then_tempo(self):
+        sets = [{"reps": 10, "weight_kg": 24.0}] * 3
+        uncapped = next_step("Dumbbell Row", sets, None)
+        self.assertEqual((uncapped["weight_kg"], uncapped["reps"]), (26.0, 10))
+        capped = next_step("Dumbbell Row", sets, None, max_load_for("Dumbbell Row", 24))
+        self.assertEqual((capped["weight_kg"], capped["reps"]), (24.0, 11))
+        self.assertIn("heaviest dumbbell", capped["hint"])
+        maxed = next_step("Dumbbell Row", [{"reps": 15, "weight_kg": 24.0}] * 3, None, 24.0)
+        self.assertEqual((maxed["weight_kg"], maxed["reps"]), (24.0, 15))
+        self.assertIn("3 seconds", maxed["hint"])
+
+    def test_dumbbell_names_and_ramp_up_sets(self):
+        self.assertEqual(max_load_for("Hammer Curls", 24), 24.0)
+        self.assertIsNone(max_load_for("Bent Over Barbell Row", 24))
+        self.assertEqual(next_step("Hammer Curls", [{"reps": 10, "weight_kg": 14.0}] * 3, None)["weight_kg"], 16.0)
+        # An unflagged light warm-up must not block the load increase.
+        sets = [{"reps": 40, "weight_kg": 40.0}] + [{"reps": 8, "weight_kg": 80.0}] * 3
+        self.assertEqual(next_step("Bent Over Barbell Row", sets, None)["weight_kg"], 82.5)
+
+    def test_plan_step_respects_saved_rep_target(self):
+        lift = {"sets": [{"reps": 8, "weight_kg": 80.0}] * 3, "previous": None, "date": "2026-09-17"}
+        step = plan_next_step(lift, "Bent Over Barbell Row", 10, None)
+        self.assertEqual((step["target_weight_kg"], step["target_reps"]), (80.0, 10))
+        self.assertIsNone(plan_next_step(None, "Bent Over Barbell Row", 10, None))

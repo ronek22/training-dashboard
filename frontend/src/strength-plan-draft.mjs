@@ -1,3 +1,18 @@
+// Start from where the last session left off (backend `next`), keeping the saved
+// targets alongside so the plan can show what changed.
+function progressedExercise(exercise) {
+  const next = exercise.next
+  if (!next) return { ...exercise }
+  return {
+    ...exercise,
+    target_weight_kg: next.target_weight_kg ?? exercise.target_weight_kg,
+    target_reps: next.target_reps ?? exercise.target_reps,
+    saved_weight_kg: exercise.target_weight_kg,
+    saved_reps: exercise.target_reps,
+    progress_hint: next.hint,
+  }
+}
+
 // Keep the original prose. Convert only a recognized, explicit prescription;
 // unknown instructions require review rather than silently guessed reductions.
 export function buildStrengthPlanDraft(day, templates = []) {
@@ -28,7 +43,7 @@ export function buildStrengthPlanDraft(day, templates = []) {
           notes: [group.notes, base ? `Reps/rest from saved workout.${loadFactor && base.target_weight_kg != null ? ` Load: 70% of saved ${base.target_weight_kg} kg, rounded down to 0.5 kg.` : ''}` : 'Suggested movement; review reps (8) and rest (90 sec).'].join(' '),
         }))
       })
-    : (match?.exercises || []).map(exercise => ({ ...exercise }))
+    : (match?.exercises || []).map(progressedExercise)
   return {
     id: null,
     oneTime: true,

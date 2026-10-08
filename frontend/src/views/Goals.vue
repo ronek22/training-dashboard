@@ -668,6 +668,15 @@
           <small>Goal reviews compare off-season weeks with past off-season weeks, so a summer of outdoor riding doesn't set winter targets.</small>
         </div>
 
+        <div class="athlete-profile-days athlete-profile-season">
+          <span>Heaviest dumbbell</span>
+          <div class="athlete-season-row athlete-equipment-row">
+            <input v-model.number="profileForm.max_dumbbell_kg" type="number" min="0" max="500" step="0.5" placeholder="No limit" aria-label="Heaviest dumbbell in kg" />
+            <span aria-hidden="true">kg</span>
+          </div>
+          <small>Once a dumbbell lift reaches this load, progression adds reps instead of weight.</small>
+        </div>
+
         <div class="athlete-profile-textareas">
           <label class="goal-restriction-field">
             <span>Weekly availability notes</span>
@@ -1582,6 +1591,7 @@ function defaultProfileForm() {
     planning_notes: '',
     off_season_start: 10,
     off_season_end: 3,
+    max_dumbbell_kg: '',
   }
 }
 
@@ -1666,6 +1676,7 @@ function profileFormFromPayload(payload) {
   const season = seasonRangeFromMonths(payload?.off_season_months)
   next.off_season_start = season.start
   next.off_season_end = season.end
+  next.max_dumbbell_kg = payload?.max_dumbbell_kg ?? ''
   return next
 }
 
@@ -1678,6 +1689,7 @@ function profilePayloadFromForm(formState) {
     weekly_availability_notes: formState.weekly_availability_notes || null,
     planning_notes: formState.planning_notes || null,
     off_season_months: monthsFromSeasonRange(formState.off_season_start, formState.off_season_end),
+    max_dumbbell_kg: Number(formState.max_dumbbell_kg) > 0 ? Number(formState.max_dumbbell_kg) : null,
   }
 }
 
@@ -3046,6 +3058,8 @@ const showWeeklyRequirement = (goal) => {
 .athlete-season-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
 .athlete-season-row select { width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; }
 .athlete-season-row select:disabled { opacity: .5; }
+.athlete-equipment-row { grid-template-columns: minmax(0, 160px) auto; justify-content: start; }
+.athlete-equipment-row input { width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; }
 .athlete-profile-season small { color: var(--muted); font-size: 12px; line-height: 1.45; }
 .athlete-profile-season { margin-bottom: 16px; }
 .athlete-profile-textareas {

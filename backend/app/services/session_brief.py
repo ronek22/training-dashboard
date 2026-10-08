@@ -311,6 +311,21 @@ def _run_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, An
     }
 
 
+def _session_plateaus(day: dict, conn: sqlite3.Connection, today: date) -> list[dict]:
+    """Stalled lifts among today's saved-workout exercises, longest stall first."""
+    from .strength_plateaus import find_plateaus
+    from .strength_volume import _day_exercises, _templates_by_name
+
+    names = [item["exercise_name"] for item in _day_exercises(day, _templates_by_name(conn))]
+    names += [item.get("exercise_name") for item in day.get("lift_volume_additions") or [] if item.get("exercise_name")]
+    if not names:
+        return []
+    try:
+        return find_plateaus(conn, today, names)
+    except sqlite3.OperationalError:
+        return []
+
+
 def _strength_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, Any]:
     intent = day.get("workout_intent") or "strength_general"
     return {
@@ -324,6 +339,7 @@ def _strength_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[st
             "Joint pain (not muscle burn) on a lift: swap the exercise rather than push through.",
         ],
         "notes": [],
+        "plateaus": _session_plateaus(day, conn, today),
         "basis": {},
     }
 

@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from ..db import get_db
 from ..services.dashboard import build_dashboard_data, build_recent_context, build_training_load_summary
 from ..services.goals import list_goals_data
+from ..services.widget_brief import build_widget_brief
 
 router = APIRouter()
 
@@ -12,6 +13,15 @@ def dashboard():
     conn = get_db()
     try:
         return build_dashboard_data(conn, list_goals_data_fn=list_goals_data)
+    finally:
+        conn.close()
+
+
+@router.get("/widget/today")
+def widget_today():
+    conn = get_db()
+    try:
+        return build_widget_brief(conn)
     finally:
         conn.close()
 

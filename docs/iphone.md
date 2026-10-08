@@ -50,6 +50,70 @@ app; the app does not currently have a login. This is local-network access, not
 an identity check or a check of the Wi-Fi network name. Existing backend and dev
 frontend port bindings are controlled by the base Compose file.
 
+## Home Screen widget
+
+A large Home Screen widget shows today's session, the readiness level with its
+top reasons, a morning check-in nudge, the week's progress, and tomorrow's session.
+It works away from home Wi-Fi: the backend writes a small file to iCloud Drive
+and the free **Scriptable** app draws the widget from it.
+
+```
+backend (every 15 min, after the Health import)
+  → iCloud Drive/TrainLog/trainlog-today.json
+  → Scriptable widget on the iPhone
+```
+
+### On the Mac
+
+1. In `.env`, point the widget folder at iCloud Drive (quotes are needed because
+   of the space):
+
+   ```sh
+   TRAINLOG_WIDGET_DIR="/Users/<you>/Library/Mobile Documents/com~apple~CloudDocs/TrainLog"
+   ```
+
+2. Recreate the backend so it picks up the folder (it is created if missing):
+
+   ```sh
+   docker compose up -d backend
+   ```
+
+3. Within a minute `iCloud Drive/TrainLog/trainlog-today.json` appears. The same
+   data is at `http://localhost:8000/widget/today` for checking.
+
+### On the iPhone
+
+1. Install **Scriptable** from the App Store.
+2. In Scriptable, tap **+**, name the script **TrainLog Today**, and paste in
+   [`iphone-widget.js`](iphone-widget.js) (AirDrop it, or open the file from the
+   repository in iCloud/Files and copy it).
+3. Scriptable → **Settings → File Bookmarks → +** → pick the `TrainLog` folder in
+   iCloud Drive → name it exactly `TrainLog`.
+4. Run the script once in Scriptable: it previews the large widget.
+5. Long-press the Home Screen → **Edit → Add Widget → Scriptable** → the **large**
+   size → **Add Widget**. Long-press it → **Edit Widget**:
+   - **Script**: TrainLog Today
+   - **When Interacting**: Open URL
+   - **Parameter**: the phone app address, e.g. `http://192.168.1.42:3080`
+     (optional; tapping then opens TrainLog when you are on home Wi-Fi)
+
+Medium and small sizes also work and show less.
+
+### What it shows and when it updates
+
+- The file is rewritten every `HEALTH_DATA_IMPORT_INTERVAL_SECONDS` (15 minutes by
+  default), right after the Health import, so this morning's sleep, HRV and
+  resting HR count once the Health Shortcut has run. Plan changes, logged sessions
+  and check-ins appear on the next cycle.
+- iOS decides when widgets redraw (roughly every 15–60 minutes). Opening
+  Scriptable or the widget's script forces a refresh.
+- The footer shows the update time. Data older than 3 hours turns it amber with
+  "Mac offline?": the Mac was asleep, Docker stopped, or iCloud had not synced yet.
+- Week dots: green filled = done, blue ring = today, red ring = missed or
+  skipped, grey dash = rest, grey = upcoming.
+- The date follows the backend's UTC clock, like the dashboard, so it keeps
+  showing the previous day until 02:00 (01:00 in winter).
+
 ## Offline behavior and HTTPS
 
 This first version has no service worker and does not save a separate offline

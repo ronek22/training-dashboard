@@ -13,6 +13,7 @@ services:
       HEALTH_DATA_EXPORT_DIR: /health-data-export
       HEALTH_DATA_AUTO_IMPORT: ${HEALTH_DATA_AUTO_IMPORT:-true}
       HEALTH_DATA_IMPORT_INTERVAL_SECONDS: ${HEALTH_DATA_IMPORT_INTERVAL_SECONDS:-900}
+      WIDGET_EXPORT_DIR: /widget-export
     volumes:
       - ./data:/data
       - ./backend/app:/app/app
@@ -25,6 +26,12 @@ services:
         source: ${HEALTH_DATA_EXPORT_DIR:-./data/health-data-export-inbox}
         target: /health-data-export
         read_only: true
+      # iPhone widget file; point TRAINLOG_WIDGET_DIR at an iCloud Drive folder (docs/iphone.md).
+      - type: bind
+        source: ${TRAINLOG_WIDGET_DIR:-./data/widget-export}
+        target: /widget-export
+        bind:
+          create_host_path: true
     restart: unless-stopped
 
   frontend:

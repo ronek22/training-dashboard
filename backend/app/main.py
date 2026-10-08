@@ -39,6 +39,7 @@ from .routers.return_to_run import router as return_to_run_router
 from .routers.life_load import router as life_load_router
 from .routers.trails import router as trails_router
 from .services.health_data import apply_health_data_import
+from .services.widget_brief import write_widget_brief
 
 mcp_app = build_mcp_app(**build_mcp_router_dependencies())
 logger = logging.getLogger(__name__)
@@ -54,10 +55,24 @@ def _import_health_data_once() -> None:
         conn.close()
 
 
-async def _health_data_import_loop() -> None:
+def _write_widget_brief_once(directory: str) -> None:
+    conn = get_db()
+    try:
+        write_widget_brief(conn, directory)
+    except Exception:
+        logger.exception("Writing the iPhone widget file failed")
+    finally:
+        conn.close()
+
+
+async def _background_sync_loop(import_health: bool, widget_dir: str) -> None:
     interval = max(60, int(os.getenv("HEALTH_DATA_IMPORT_INTERVAL_SECONDS", "900")))
     while True:
-        await asyncio.to_thread(_import_health_data_once)
+        if import_health:
+            await asyncio.to_thread(_import_health_data_once)
+        # After the import, so the widget sees this morning's sleep, HRV and resting HR.
+        if widget_dir:
+            await asyncio.to_thread(_write_widget_brief_once, widget_dir)
         await asyncio.sleep(interval)
 
 
@@ -65,8 +80,10 @@ async def _health_data_import_loop() -> None:
 async def app_lifespan(app_instance: FastAPI):
     async with mcp_app.router.lifespan_context(app_instance):
         task = None
-        if os.getenv("HEALTH_DATA_AUTO_IMPORT", "false").lower() in {"1", "true", "yes", "on"}:
-            task = asyncio.create_task(_health_data_import_loop())
+        import_health = os.getenv("HEALTH_DATA_AUTO_IMPORT", "false").lower() in {"1", "true", "yes", "on"}
+        widget_dir = os.getenv("WIDGET_EXPORT_DIR", "").strip()
+        if import_health or widget_dir:
+            task = asyncio.create_task(_background_sync_loop(import_health, widget_dir))
         try:
             yield
         finally:

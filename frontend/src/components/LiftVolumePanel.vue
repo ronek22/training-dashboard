@@ -1,5 +1,5 @@
 <template>
-  <details class="lift-volume" :open="open">
+  <details class="lift-volume-panel" :open="open">
     <summary class="lv-summary">
       <span class="lv-summary-main">
         <strong>Weekly lift volume</strong>
@@ -75,11 +75,11 @@ const groupAria = group => `${group.label}: ${group.done_sets} logged, ${group.p
 </script>
 
 <style scoped>
-.lift-volume { margin-bottom: 14px; border: 1px solid rgb(var(--ov-rgb) / 0.06); border-radius: 16px; background: rgb(var(--ov-rgb) / 0.025); overflow: hidden; }
+.lift-volume-panel { margin-bottom: 14px; border: 1px solid rgb(var(--ov-rgb) / 0.06); border-radius: 16px; background: rgb(var(--ov-rgb) / 0.025); overflow: hidden; }
 .lv-summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 15px; cursor: pointer; list-style: none; }
 .lv-summary::-webkit-details-marker { display: none; }
 .lv-summary::after { content: '＋'; flex: 0 0 auto; color: var(--accent-strong); font-weight: 700; }
-.lift-volume[open] .lv-summary::after { content: '−'; }
+.lift-volume-panel[open] .lv-summary::after { content: '−'; }
 .lv-summary:hover { background: rgb(var(--ov-rgb) / 0.025); }
 .lv-summary-main { display: grid; gap: 2px; min-width: 0; }
 .lv-summary-main strong { font-family: var(--font-display); font-size: 13px; }

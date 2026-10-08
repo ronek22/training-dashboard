@@ -472,6 +472,7 @@
                 <div class="day-tags">
                   <span v-if="day.workout_intent_label" class="day-tag day-tag-intent">{{ day.workout_intent_label }}</span>
                   <span v-if="day.template_label && day.template_label !== day.title" class="day-tag">{{ day.template_label }}</span>
+                  <router-link v-if="day.lift_volume_additions?.length" to="/strength" class="day-tag day-tag-volume" :title="liftVolumeTitle(day)">{{ liftVolumeLabel(day) }}</router-link>
                   <button
                     v-if="day.cycling_workout_name"
                     type="button"
@@ -621,8 +622,6 @@
         </div>
 
         <details v-if="plan.overview" class="week-purpose"><summary>Week focus and coaching notes</summary><p>{{ plan.overview }}</p></details>
-
-        <LiftVolumePanel v-if="!isHistoricalPlan(plan) && plan.lift_volume" :volume="plan.lift_volume" :open="isCurrentPlan(plan)" />
 
         <details v-if="!isHistoricalPlan(plan) && plan.goal_context?.active_goals?.length" class="goal-context-panel">
           <summary class="goal-context-summary">
@@ -972,7 +971,6 @@ import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
 import LifeLoadPicker from '../components/LifeLoadPicker.vue'
-import LiftVolumePanel from '../components/LiftVolumePanel.vue'
 import { useLifeLoad } from '../composables/useLifeLoad'
 import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail'
 
@@ -1473,6 +1471,15 @@ onBeforeUnmount(() => {
 const formatWeek = (start) => {
   try { return format(new Date(start), 'MMM d, yyyy') } catch { return start }
 }
+
+// Accessory sets the weekly volume check added to this lift day; the full readout lives on Strength.
+const liftVolumeLabel = (day) => {
+  const sets = day.lift_volume_additions.reduce((sum, item) => sum + Number(item.sets || 0), 0)
+  return `+${sets} set${sets === 1 ? '' : 's'} · volume top-up`
+}
+const liftVolumeTitle = (day) => day.lift_volume_additions
+  .map(item => `${item.mode === 'extend' ? `+${item.sets} of` : `${item.sets} ×`} ${item.exercise_name}${item.reason ? ` (${item.reason})` : ''}`)
+  .join('\n')
 
 const formatDay = (day) => {
   try { return format(new Date(day), 'MMM d') } catch { return day }
@@ -5025,6 +5032,8 @@ const savePlanLink = async (day) => {
   border-color: color-mix(in srgb, var(--day-accent) 30%, transparent);
   background: color-mix(in srgb, var(--day-accent) 10%, transparent);
 }
+.day-tag-volume { color: var(--text); text-decoration: none; border-color: color-mix(in srgb, var(--day-accent) 30%, transparent); }
+.day-tag-volume:hover { background: color-mix(in srgb, var(--day-accent) 10%, transparent); }
 .day-tag-workout { cursor: pointer; color:color-mix(in srgb, #fdba74 calc(100% - var(--dim)), #000); border-color: rgba(249, 115, 22, .3); background: rgba(234, 88, 12, .12); }
 .day-tag-workout:hover { background: rgba(234, 88, 12, .22); }
 .day-tag-benchmark { color: var(--warning-text); border-color:#f3c47840; background:#f3c47812; }

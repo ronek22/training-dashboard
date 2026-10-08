@@ -98,6 +98,7 @@
 
         <article v-if="overview.selected_exercise" class="strength-anchor"><div><span class="card-title">A lift to follow</span><h2>{{ overview.selected_exercise.exercise_name }}</h2><p>{{ overview.selected_exercise.progression.detail }}</p></div><div class="anchor-result"><strong>{{ overview.selected_exercise.recent_best_load_kg != null ? `${trimNumber(overview.selected_exercise.recent_best_load_kg)} kg` : '—' }}</strong><span>Best top load in this window</span><button type="button" class="detail-link" @click="strengthView = 'progression'">Explore progression →</button></div></article>
         <MuscleGainCheck />
+        <LiftVolumePanel v-if="weekLiftVolume" class="strength-lift-volume" :volume="weekLiftVolume" open />
         </section>
 
         <section v-if="strengthView === 'analysis'" class="analysis-grid analysis-grid-top motion-section">
@@ -283,10 +284,11 @@
 <script setup>
 import ExerciseGuide from '../components/ExerciseGuide.vue'
 import { computed, onMounted, ref, watch } from 'vue'
-import { format } from 'date-fns'
+import { format, startOfWeek } from 'date-fns'
 import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import MuscleGainCheck from '../components/MuscleGainCheck.vue'
+import LiftVolumePanel from '../components/LiftVolumePanel.vue'
 
 const api = useApi()
 
@@ -311,6 +313,11 @@ const launchNotes = computed(() => {
     else notes.push(sentence)
   }
   return { items, notes, plain: text }
+})
+// This week's hard sets per muscle group (logged + planned + added), computed with the plan.
+const weekLiftVolume = computed(() => {
+  const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+  return strengthPlans.value.find(plan => plan.week_start === weekStart)?.lift_volume || null
 })
 const maxWeeklySessions = computed(() => Math.max(1, ...(overview.value?.weekly || []).map(week => Number(week.session_count || 0))))
 const loadWorkoutContext = async () => {
@@ -768,6 +775,7 @@ const round = (value) => Math.round(value * 10) / 10
   grid-template-columns: minmax(0, 1.65fr) minmax(320px, .72fr);
   gap: 16px;
 }
+.overview-grid > .strength-lift-volume { grid-column: 1 / -1; margin-bottom: 0; }
 
 .summary-ribbon {
   display: grid;

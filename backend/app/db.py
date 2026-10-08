@@ -709,6 +709,7 @@ def init_db():
             completed_at TEXT,
             rest_ends_at TEXT,
             set_type TEXT NOT NULL DEFAULT 'working',
+            effort TEXT,
             FOREIGN KEY(session_exercise_id) REFERENCES strength_session_exercises(id) ON DELETE CASCADE,
             UNIQUE(session_exercise_id, set_order)
         );
@@ -753,6 +754,8 @@ def init_db():
         conn.execute(
             "ALTER TABLE strength_session_sets ADD COLUMN set_type TEXT NOT NULL DEFAULT 'working'"
         )
+    if "effort" not in strength_set_columns:
+        conn.execute("ALTER TABLE strength_session_sets ADD COLUMN effort TEXT")
     chat_conversation_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(coach_chat_conversations)").fetchall()
     }

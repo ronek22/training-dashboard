@@ -10,6 +10,7 @@ from ..models.strength_workouts import (
     StrengthSessionPositionRequest,
     StrengthSessionStartRequest,
     StrengthSetCompletionRequest,
+    StrengthSetEffortRequest,
     StrengthTemplateInput,
     StrengthWarmupSetAddRequest,
 )
@@ -34,6 +35,7 @@ from ..services.strength_workouts import (
     list_templates,
     save_template,
     set_session_position,
+    set_set_effort,
     start_session,
 )
 
@@ -151,6 +153,11 @@ def sessions_complete_set(session_id: int, set_id: int, payload: StrengthSetComp
             payload.actual_weight_kg,
         )
     )
+
+
+@router.put("/sessions/{session_id}/sets/{set_id}/effort")
+def sessions_set_effort(session_id: int, set_id: int, payload: StrengthSetEffortRequest):
+    return _with_db(lambda conn: set_set_effort(conn, session_id, set_id, payload.effort))
 
 
 @router.post("/sessions/{session_id}/position")

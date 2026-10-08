@@ -76,10 +76,26 @@
                 <span>Last time<template v-if="lastTimeDate"> · {{ lastTimeDate }}</template></span>
                 <strong v-if="lastTimeSet">{{ lastTimeSet.reps ?? '—' }} × {{ formatWeight(lastTimeSet.weight_kg, 'BW') }}</strong>
                 <strong v-else class="muted">{{ historyLoading ? '…' : 'No history' }}</strong>
-                <small v-if="lastTimeDelta" :class="lastTimeDelta.tone">{{ lastTimeDelta.label }}</small>
+                <small v-if="lastTimeDelta" :class="lastTimeDelta.tone">{{ lastTimeDelta.label }}<template v-if="lastTimeEffort"> · felt {{ lastTimeEffort }}</template></small>
               </div>
               <button type="button" class="reset-target" :disabled="isAtTarget" @click="applyTarget">Reset to target</button>
             </div>
+
+            <SetCoach
+              v-if="coachPrevious && currentSet && !(coachPrevious.rateOnly && setEfforts[coachPrevious.id] && restRemaining === 0)"
+              :exercise-name="currentExercise.exercise_name"
+              :previous="coachPrevious"
+              :target="{ reps: currentSet.target_reps, weight: currentSet.target_weight_kg }"
+              :current="{ reps: actualReps, weight: actualWeight }"
+              :effort="setEfforts[coachPrevious.id] || null"
+              :sets-left="coachSetsLeft"
+              :last-time="lastTimeSet ? { reps: lastTimeSet.reps, weight: lastTimeSet.weight_kg } : null"
+              :rest-remaining="restRemaining"
+              :rate-only="Boolean(coachPrevious.rateOnly)"
+              @rate="rateSet(coachPrevious.id, $event)"
+              @apply="applyCoach"
+              @extend-rest="adjustRest"
+            />
 
             <form class="log-form" @submit.prevent="completeCurrentSet">
               <div class="actual-inputs">
@@ -302,6 +318,7 @@
 <script setup>
 import RecoveryTimerPill from '../components/RecoveryTimerPill.vue'
 import ExerciseGuide from '../components/ExerciseGuide.vue'
+import SetCoach from '../components/SetCoach.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
@@ -489,6 +506,7 @@ const lastSetFor = (exercise, workoutSet) => {
   return match ? `last ${match.reps ?? '—'} × ${formatWeight(match.weight_kg, 'BW')}` : ''
 }
 const lastTimeSet = computed(() => currentExercise.value && currentSet.value ? lastSetMatch(currentExercise.value, currentSet.value) : null)
+const lastTimeEffort = computed(() => ({ easy: 'easy', solid: 'solid', grinding: 'grinding', form: 'form broke' })[lastTimeSet.value?.effort] || '')
 const lastTimeDate = computed(() => {
   const value = historyFor(currentExercise.value)?.last_performed_at
   try { return value ? format(new Date(value), 'd MMM') : '' } catch { return '' }
@@ -505,6 +523,65 @@ const lastTimeDelta = computed(() => {
 })
 watch(() => currentExercise.value?.exercise_name, (name) => { if (name) loadExerciseHistory(name) })
 
+// Set coach: how the previous working set felt drives a suggestion for the one up next.
+// Taps are saved on the set so the next session's brief can use them.
+const allSets = computed(() => (session.value?.exercises || []).flatMap((exercise) => exercise.sets.map((item) => ({ exercise, item }))))
+const setEfforts = computed(() => Object.fromEntries(allSets.value.filter(({ item }) => item.effort).map(({ item }) => [item.id, item.effort])))
+const rateSet = async (setId, effort) => {
+  const entry = allSets.value.find(({ item }) => item.id === setId)
+  if (!entry) return
+  const previous = entry.item.effort ?? null
+  entry.item.effort = effort
+  try {
+    const { data } = await api.setStrengthSetEffort(session.value.id, setId, effort)
+    const updated = data.exercises.flatMap((exercise) => exercise.sets).find((item) => item.id === setId)
+    if (updated) entry.item.effort = updated.effort
+  } catch (rateError) {
+    entry.item.effort = previous
+    error.value = rateError?.response?.data?.detail || 'Could not save how the set felt.'
+  }
+}
+// Taps from before efforts were saved on the server lived in this browser only.
+const migrateLocalEfforts = async () => {
+  const key = `trainlog.setEffort.${route.params.sessionId}`
+  let stored = null
+  try { stored = JSON.parse(window.localStorage.getItem(key) || 'null') } catch {}
+  if (!stored) return
+  for (const [setId, effort] of Object.entries(stored)) {
+    const entry = allSets.value.find(({ item }) => String(item.id) === setId)
+    if (entry && entry.item.status === 'completed' && !entry.item.effort) await rateSet(entry.item.id, effort)
+  }
+  try { window.localStorage.removeItem(key) } catch {}
+}
+const coachPrevious = computed(() => {
+  const exercise = currentExercise.value
+  const upcoming = currentSet.value
+  if (!session.value || !exercise) return null
+  const working = (item) => item.set_type !== 'warmup' && item.status === 'completed'
+  if (session.value.status === 'active' && upcoming && upcoming.set_type !== 'warmup' && upcoming.status !== 'completed') {
+    const done = exercise.sets.filter((item) => working(item) && item.set_order < upcoming.set_order).sort((a, b) => b.set_order - a.set_order)[0]
+    if (done) return { id: done.id, reps: done.actual_reps, weight: done.actual_weight_kg, label: setKindLabel(exercise, done) }
+  }
+  // Otherwise offer a rating for the set just logged (an exercise's last set, or the workout's).
+  const latest = allSets.value
+    .filter(({ item }) => working(item) && item.completed_at)
+    .sort((a, b) => b.item.completed_at.localeCompare(a.item.completed_at))[0]
+  if (!latest) return null
+  const sameExercise = latest.exercise.id === exercise.id
+  return {
+    id: latest.item.id,
+    reps: latest.item.actual_reps,
+    weight: latest.item.actual_weight_kg,
+    label: sameExercise ? setKindLabel(exercise, latest.item) : `${latest.exercise.exercise_name} ${setKindLabel(latest.exercise, latest.item).toLowerCase()}`,
+    rateOnly: !sameExercise || session.value.status !== 'active' || !upcoming || upcoming.status === 'completed' || upcoming.set_type === 'warmup',
+  }
+})
+const coachSetsLeft = computed(() => currentExercise.value?.sets.filter((item) => item.set_type !== 'warmup' && item.status !== 'completed').length || 1)
+const applyCoach = ({ reps, weight }) => {
+  actualReps.value = reps
+  actualWeight.value = weight ?? ''
+}
+
 const canAddExercise = computed(() => Boolean(
   exerciseDraft.value.exercise_name
   && exerciseDraft.value.set_count >= 1
@@ -520,6 +597,7 @@ const loadSession = async () => {
     session.value = data
     syncInputs()
     if (currentExercise.value) loadExerciseHistory(currentExercise.value.exercise_name)
+    migrateLocalEfforts()
     if (data.status === 'completed' && !data.linked_activity) prepareActivityLink()
   } catch (loadError) {
     error.value = loadError?.response?.data?.detail || 'Could not load workout.'

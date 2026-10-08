@@ -92,6 +92,7 @@ export const useApi = () => ({
   removeStrengthExercise: (sessionId, exerciseId) => api.delete(`/strength/workouts/sessions/${sessionId}/exercises/${exerciseId}`),
   addStrengthWarmupSet: (sessionId, exerciseId, payload = {}) => api.post(`/strength/workouts/sessions/${sessionId}/exercises/${exerciseId}/warmup-sets`, payload),
   completeStrengthWorkoutSet: (sessionId, setId, payload) => api.post(`/strength/workouts/sessions/${sessionId}/sets/${setId}/complete`, payload),
+  setStrengthSetEffort: (sessionId, setId, effort) => api.put(`/strength/workouts/sessions/${sessionId}/sets/${setId}/effort`, { effort }),
   setStrengthWorkoutPosition: (sessionId, payload) => api.post(`/strength/workouts/sessions/${sessionId}/position`, payload),
   finishStrengthWorkoutSession: (sessionId, payload = {}) => api.post(`/strength/workouts/sessions/${sessionId}/finish`, payload),
   abandonStrengthWorkoutSession: (sessionId) => api.post(`/strength/workouts/sessions/${sessionId}/abandon`),

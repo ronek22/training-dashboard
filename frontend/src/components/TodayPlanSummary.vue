@@ -35,6 +35,15 @@
         </ul>
         <p v-if="morePlateaus" class="brief-plateaus-more">+{{ morePlateaus }} more {{ morePlateaus === 1 ? 'lift' : 'lifts' }} marked stalled below; hover for the suggestion. Change one lift at a time.</p>
       </article>
+      <article v-if="brief.effort_notes?.length" class="brief-plateaus brief-efforts">
+        <span class="brief-label">How it felt last time</span>
+        <ul>
+          <li v-for="lift in brief.effort_notes" :key="lift.exercise_name">
+            <strong>{{ lift.exercise_name }}</strong>
+            <p><em :class="lift.effort">{{ effortLabel[lift.effort] }}</em> {{ lift.text }}</p>
+          </li>
+        </ul>
+      </article>
       <p v-for="note in brief.notes" :key="note" class="brief-note">{{ note }}</p>
     </section>
 
@@ -124,6 +133,7 @@ const liftChange = (exercise) => {
 
 // The brief lists the longest stalls; the rest are tagged in the lift list.
 const SHOWN_PLATEAUS = 2
+const effortLabel = { form: 'Form broke', grinding: 'Grinding', easy: 'Easy' }
 const plateaus = computed(() => props.brief?.plateaus || [])
 const shownPlateaus = computed(() => plateaus.value.slice(0, SHOWN_PLATEAUS))
 const morePlateaus = computed(() => Math.max(plateaus.value.length - SHOWN_PLATEAUS, 0))
@@ -252,6 +262,8 @@ const tiles = computed(() => [durationTile.value, distanceTile.value, intensityT
 .brief-plateaus small { margin-left: 8px; color: var(--muted-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
 .brief-plateaus li p { margin-top: 3px; }
 .brief-plateaus em { margin-right: 6px; color: var(--accent); font-style: normal; font-weight: 600; }
+.brief-efforts em.form, .brief-efforts em.grinding { color: var(--warning-text); }
+.brief-efforts em.easy { color: var(--success-text); }
 .brief-plateaus .brief-plateaus-more { margin-top: 8px; color: var(--muted); font-size: 12px; }
 .brief-note { grid-column: 1 / -1; margin: 0 !important; padding: 0 4px; color: var(--muted) !important; font-size: 12px !important; }
 @media (max-width: 900px) { .brief { grid-template-columns: 1fr; } }

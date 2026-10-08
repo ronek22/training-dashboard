@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -45,6 +45,11 @@ class StrengthSessionExerciseAddRequest(StrengthTemplateExerciseInput):
 class StrengthSetCompletionRequest(BaseModel):
     actual_reps: int = Field(ge=0, le=100)
     actual_weight_kg: Optional[float] = Field(default=None, ge=0, le=1000)
+
+
+class StrengthSetEffortRequest(BaseModel):
+    # How a completed set felt, tapped between sets; null clears it.
+    effort: Optional[Literal["easy", "solid", "grinding", "form"]] = None
 
 
 class StrengthWarmupSetAddRequest(BaseModel):

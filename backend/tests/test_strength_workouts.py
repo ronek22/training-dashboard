@@ -127,6 +127,31 @@ class StrengthWorkoutTests(unittest.TestCase):
         self.assertEqual(self.client.delete(f"{base}/sets/{second['sets'][2]['id']}").status_code, 409)
         self.assertEqual(self.client.delete(f"{base}/exercises/{second['id']}").status_code, 409)
 
+    def test_set_effort_is_saved_and_shows_in_history(self):
+        template = self.client.post('/strength/workouts/templates', json={
+            'name': 'Effort session', 'exercises': [
+                {'exercise_name': 'Pendlay Row', 'set_count': 2, 'target_reps': 8, 'target_weight_kg': 60, 'rest_seconds': 90}
+            ]
+        }).json()
+        session = self.client.post('/strength/workouts/sessions', json={'template_id': template['id']}).json()
+        base = f"/strength/workouts/sessions/{session['id']}"
+        first, second = session['exercises'][0]['sets']
+        self.assertEqual(self.client.put(f"{base}/sets/{first['id']}/effort", json={'effort': 'grinding'}).status_code, 409)
+        self.client.post(f"{base}/sets/{first['id']}/complete", json={'actual_reps': 8, 'actual_weight_kg': 60})
+        rated = self.client.put(f"{base}/sets/{first['id']}/effort", json={'effort': 'grinding'})
+        self.assertEqual(rated.status_code, 200, rated.text)
+        self.assertEqual(rated.json()['exercises'][0]['sets'][0]['effort'], 'grinding')
+        self.assertEqual(self.client.put(f"{base}/sets/{first['id']}/effort", json={'effort': 'meh'}).status_code, 422)
+        self.assertEqual(self.client.put(f"{base}/sets/999999/effort", json={'effort': 'easy'}).status_code, 404)
+        self.client.post(f"{base}/sets/{second['id']}/complete", json={'actual_reps': 6, 'actual_weight_kg': 60})
+        self.client.post(f'{base}/finish', json={})
+        # The last set can still be rated after finishing, and cleared with null.
+        self.assertEqual(self.client.put(f"{base}/sets/{second['id']}/effort", json={'effort': 'form'}).status_code, 200)
+        history = self.client.get('/strength/workouts/exercise-suggestions', params={'q': 'Pendlay Row', 'limit': 1}).json()[0]
+        self.assertEqual([item['effort'] for item in history['last_sets']], ['grinding', 'form'])
+        cleared = self.client.put(f"{base}/sets/{first['id']}/effort", json={'effort': None}).json()
+        self.assertIsNone(cleared['exercises'][0]['sets'][0]['effort'])
+
     def test_fitbod_history_drives_exercise_suggestions(self):
         conn = sqlite3.connect(os.environ["TRAINING_DB_PATH"])
         try:

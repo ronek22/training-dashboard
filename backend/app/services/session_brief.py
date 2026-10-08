@@ -326,6 +326,19 @@ def _session_plateaus(day: dict, conn: sqlite3.Connection, today: date) -> list[
         return []
 
 
+def _session_effort_notes(day: dict, conn: sqlite3.Connection) -> list[dict]:
+    """How today's lifts felt last time, from the between-set effort taps."""
+    from .set_effort import effort_carryover
+    from .strength_volume import _day_exercises, _templates_by_name
+
+    names = [item["exercise_name"] for item in _day_exercises(day, _templates_by_name(conn))]
+    names += [item.get("exercise_name") for item in day.get("lift_volume_additions") or [] if item.get("exercise_name")]
+    try:
+        return effort_carryover(conn, names)
+    except sqlite3.OperationalError:
+        return []
+
+
 def _strength_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, Any]:
     intent = day.get("workout_intent") or "strength_general"
     return {
@@ -340,6 +353,7 @@ def _strength_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[st
         ],
         "notes": [],
         "plateaus": _session_plateaus(day, conn, today),
+        "effort_notes": _session_effort_notes(day, conn),
         "basis": {},
     }
 

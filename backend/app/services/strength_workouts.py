@@ -114,7 +114,8 @@ def _suggestion_history_rows(conn: sqlite3.Connection, exclude_session_id: Optio
             workout_set.set_order,
             workout_set.actual_reps AS reps,
             workout_set.actual_weight_kg AS weight_kg,
-            CASE WHEN workout_set.set_type = 'warmup' THEN 1 ELSE 0 END AS is_warmup
+            CASE WHEN workout_set.set_type = 'warmup' THEN 1 ELSE 0 END AS is_warmup,
+            workout_set.effort
         FROM strength_session_sets workout_set
         JOIN strength_session_exercises exercise
           ON exercise.id = workout_set.session_exercise_id
@@ -135,7 +136,8 @@ def _suggestion_history_rows(conn: sqlite3.Connection, exclude_session_id: Optio
             workout_set.set_order,
             workout_set.reps,
             workout_set.weight_kg,
-            workout_set.is_warmup
+            workout_set.is_warmup,
+            NULL AS effort
         FROM fitbod_workout_sets workout_set
         JOIN fitbod_workout_exercises exercise
           ON exercise.id = workout_set.exercise_id
@@ -209,7 +211,7 @@ def exercise_suggestions(
                 "suggested_weight_kg": round(float(median(weight_values)), 2) if weight_values else None,
                 "basis": "Latest recorded work sets" if any(not row["is_warmup"] for row in latest_session_rows) else "Latest recorded warm-up sets",
                 "last_sets": [
-                    {"set_order": row["set_order"], "reps": row["reps"], "weight_kg": row["weight_kg"], "is_warmup": bool(row["is_warmup"])}
+                    {"set_order": row["set_order"], "reps": row["reps"], "weight_kg": row["weight_kg"], "is_warmup": bool(row["is_warmup"]), "effort": row["effort"]}
                     for row in latest_session_rows
                 ],
                 "last_source": latest_row["source"],
@@ -815,6 +817,32 @@ def list_sessions(conn: sqlite3.Connection, limit: int = 20) -> list[dict]:
 def _assert_active(session: sqlite3.Row) -> None:
     if session["status"] != "active":
         raise HTTPException(status_code=409, detail="This workout is no longer active.")
+
+
+def set_set_effort(
+    conn: sqlite3.Connection,
+    session_id: int,
+    set_id: int,
+    effort: Optional[str],
+) -> dict:
+    """Record how a completed set felt. Allowed after finishing so the last set can still be rated."""
+    _session_or_404(conn, session_id)
+    set_row = conn.execute(
+        """
+        SELECT workout_set.status
+        FROM strength_session_sets workout_set
+        JOIN strength_session_exercises exercise ON exercise.id = workout_set.session_exercise_id
+        WHERE workout_set.id = ? AND exercise.session_id = ?
+        """,
+        (set_id, session_id),
+    ).fetchone()
+    if not set_row:
+        raise HTTPException(status_code=404, detail="Workout set not found in this session.")
+    if set_row["status"] != "completed":
+        raise HTTPException(status_code=409, detail="Log the set before rating it.")
+    with conn:
+        conn.execute("UPDATE strength_session_sets SET effort = ? WHERE id = ?", (effort, set_id))
+    return get_session(conn, session_id)
 
 
 def complete_set(

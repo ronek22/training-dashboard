@@ -9,7 +9,7 @@
 
     <div v-if="enriched" class="strength-body">
       <section class="ad-exercises strength-log" aria-labelledby="exercise-heading">
-        <div class="ad-section-heading"><div><h2 id="exercise-heading">The work you did</h2><p>{{ progression?.compared_count ? 'Each lift compared with the last time you did it.' : 'Select a lift for warm-ups and technique notes.' }}</p></div><router-link to="/strength" class="ad-inline-action">Strength overview →</router-link></div>
+        <div class="ad-section-heading"><div><h2 id="exercise-heading">The work you did</h2><p>{{ progression?.compared_count ? 'Each lift compared with the last time you did it.' : 'Select a lift for session details.' }}</p></div><router-link to="/strength" class="ad-inline-action">Strength overview →</router-link></div>
         <div class="log-head" aria-hidden="true"><span></span><span>Lift</span><span>Working sets</span><span>Last time</span><span>Change</span></div>
         <ol class="log-rows">
           <li v-for="(exercise, index) in session.exercises" :key="exercise.id" :class="{ open: expandedId === exercise.id }">
@@ -18,7 +18,6 @@
               <span class="log-lift"><strong>{{ exercise.exercise_name }}</strong><small>{{ muscleLabel(exercise.exercise_name) }}</small></span>
               <span class="log-sets">
                 <span class="set-chips"><i v-for="set in warmups(exercise)" :key="set.id" class="is-warmup" title="Warm-up">{{ chip(set) }}</i><i v-for="set in exerciseWorkingSets(exercise)" :key="set.id">{{ chip(set) }}</i><em v-if="!exerciseWorkingSets(exercise).length">No working sets</em></span>
-                <small v-if="progressFor(exercise)?.next_hint" class="log-hint">→ {{ progressFor(exercise).next_hint }}</small>
               </span>
               <span class="log-last"><template v-if="progressFor(exercise)?.previous"><strong>{{ compactSets(progressFor(exercise).previous.sets) }}</strong><small>{{ shortDate(progressFor(exercise).previous.date) }}</small></template><small v-else>—</small></span>
               <span class="log-change"><span v-if="progressFor(exercise)" class="change-badge" :class="badge(progressFor(exercise)).tone">{{ badge(progressFor(exercise)).label }}</span></span>
@@ -33,7 +32,6 @@
                 <div v-if="progressFor(exercise)"><dt>Sessions logged</dt><dd>{{ progressFor(exercise).session_count }}</dd></div>
               </dl>
               <p v-if="progressFor(exercise)?.previous" class="lift-log-note">Last time: <router-link v-if="progressFor(exercise).previous.activity_id" :to="`/activities/${progressFor(exercise).previous.activity_id}`">{{ progressFor(exercise).previous.title || 'previous session' }}</router-link><template v-else>{{ progressFor(exercise).previous.title || 'previous session' }}</template> · {{ shortDate(progressFor(exercise).previous.date) }}</p>
-              <ExerciseGuide :name="exercise.exercise_name" />
             </div>
           </li>
         </ol>
@@ -107,7 +105,6 @@
 </template>
 
 <script setup>
-import ExerciseGuide from '../ExerciseGuide.vue'
 import { computed, ref } from 'vue'
 import StrengthMuscleMap from './StrengthMuscleMap.vue'
 import { classifyExercise, MUSCLES } from '../../activity-detail/muscles.mjs'
@@ -318,7 +315,6 @@ const number = formatNumber
 .set-chips i{padding:3px 7px;border-radius:6px;background:rgb(var(--tint-rgb) / .1);color:var(--text);font-size:.72rem;font-style:normal;font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
 .set-chips i.is-warmup{background:transparent;box-shadow:inset 0 0 0 1px rgb(var(--tint-rgb) / .2);color:var(--ad-muted);font-weight:500}
 .set-chips em{color:var(--ad-muted);font-size:.72rem}
-.log-hint{color:var(--ad-muted);font-size:.7rem;line-height:1.35}
 .log-last{display:grid;gap:3px}.log-last strong{font-size:.74rem;font-weight:600;font-variant-numeric:tabular-nums}
 .log-change{text-align:right}
 .change-badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:.68rem;font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -329,7 +325,6 @@ const number = formatNumber
 .change-badge.is-first{background:rgba(80,185,255,.13);color:color-mix(in srgb, #7cc8ff calc(100% - var(--dim)), #000)}
 .log-detail{padding:2px 12px 16px 52px}
 .lift-session-stats{display:flex;flex-wrap:wrap;gap:22px;margin:4px 0 0}.lift-session-stats div{display:grid;gap:3px}.lift-session-stats dt{color:var(--ad-muted);font-size:.66rem}.lift-session-stats dd{margin:0;color:var(--text);font-size:.86rem;font-weight:750;font-variant-numeric:tabular-nums}
-.log-detail :deep(.exercise-guide){margin-top:12px}
 .lift-log-note{margin:12px 0 0;color:var(--ad-muted);font-size:.72rem;line-height:1.5}.lift-log-note a{color:var(--ad-accent);font-weight:650;text-decoration:none}
 .strength-body :deep(.muscle-map){margin-top:0}
 .strength-effort-disclosure{margin-top:16px;border:1px solid rgb(var(--tint-rgb) / .14);border-radius:14px;background:rgb(var(--panel-rgb) / .3);overflow:hidden}

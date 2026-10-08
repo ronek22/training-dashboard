@@ -5,6 +5,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, RadialLinearScale, PointE
 import { useApi } from '../stores/api'
 import CyclingPowerAdvice from './CyclingPowerAdvice.vue'
 import AerobicFitnessTrend from './AerobicFitnessTrend.vue'
+import RideBalancePanel from './RideBalancePanel.vue'
 import { themeColor } from '../utils/theme'
 
 ChartJS.register(CategoryScale, LinearScale, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend)
@@ -14,6 +15,11 @@ const api = useApi()
 const data = shallowRef<PowerData | null>(null)
 const loading = ref(true)
 const error = ref(false)
+type RideType = { key: string; label: string; days_since: number | null }
+const rideBalance = shallowRef<{ ride_count: number; weeks: unknown[]; types: RideType[]; flags: { type: string | null; message: string }[]; reference_ftp?: { watts: number } } | null>(null)
+const rideType = (key: string) => rideBalance.value?.types.find(type => type.key === key)
+const rideTypeLabel = (key: string) => rideType(key)?.label ?? key
+const rideTypeDays = (key: string) => { const days = rideType(key)?.days_since; return days == null ? 'in window' : `${days} days` }
 const profileDuration = ref(300)
 const momentDuration = ref(300)
 const progressDuration = ref(300)
@@ -29,12 +35,17 @@ const load = async () => {
   error.value = false
   try { data.value = (await api.getCyclingPower()).data } catch { error.value = true } finally { loading.value = false }
 }
+// Separate request: the power page still renders if the ride-type split fails.
+const loadRideBalance = async () => {
+  try { rideBalance.value = (await api.getRideBalance({ weeks: 6 })).data } catch { rideBalance.value = null }
+}
 onMounted(() => {
   motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
   updateMotion()
   motionQuery.addEventListener('change', updateMotion)
   window.addEventListener('themechange', onThemeChange)
   load()
+  loadRideBalance()
 })
 onUnmounted(() => {
   motionQuery?.removeEventListener('change', updateMotion)
@@ -307,8 +318,19 @@ const hrOptions = computed<ChartOptions<'line'>>(() => ({ ...baseOptions('Heart 
 
         <CyclingPowerAdvice />
 
+        <article v-if="rideBalance?.ride_count" class="ride-mix-section section-surface" aria-labelledby="ride-mix-heading">
+          <header class="section-heading">
+            <div><span class="eyebrow">02 / Your ride mix</span><h3 id="ride-mix-heading">What you’ve actually been riding.</h3><p>Every ride of 20+ minutes from the last {{ rideBalance.weeks.length }} weeks, sorted by what you actually rode{{ rideBalance.reference_ftp?.watts ? ` against ${rideBalance.reference_ftp.watts} W FTP` : '' }}.</p></div>
+            <ul v-if="rideBalance.flags.length" class="ride-mix-flags" aria-label="Missing ride types">
+              <li v-for="flag in rideBalance.flags" :key="flag.type || 'none'" :title="flag.message">{{ flag.type ? `No ${rideTypeLabel(flag.type)}` : 'No rides' }}<small v-if="flag.type">{{ rideTypeDays(flag.type) }}</small></li>
+            </ul>
+            <span v-else class="ride-mix-ok">Every type in the last 2 weeks</span>
+          </header>
+          <RideBalancePanel :balance="rideBalance" />
+        </article>
+
         <section class="moments-section" aria-labelledby="moments-heading">
-          <header class="section-heading"><div><span class="eyebrow">02 / Your best moments</span><h3 id="moments-heading">Worth another look.</h3><p>Your highest benchmark score in each discipline. Real efforts, memorable rides.</p></div></header>
+          <header class="section-heading"><div><span class="eyebrow">03 / Your best moments</span><h3 id="moments-heading">Worth another look.</h3><p>Your highest benchmark score in each discipline. Real efforts, memorable rides.</p></div></header>
           <div class="moment-highlights"><button v-for="group in groups" :key="group.name" class="moment-highlight" type="button" :style="{ '--tone': colors[group.name] }" :disabled="!group.best" :aria-pressed="momentDuration === group.best?.duration_seconds" @click="group.best && (momentDuration = group.best.duration_seconds)"><span class="moment-category">{{ group.name }} <span aria-hidden="true">↗</span></span><template v-if="group.best"><strong>{{ watts(group.best.watts) }} <small>W</small></strong><span>{{ labelFor(group.best.duration_seconds) }} · {{ levelLabel(group.best) }}</span><b>{{ group.best.activity_name || 'Ride' }}</b><time>{{ dateLabel(group.best.date) }}</time></template><p v-else>No complete effort yet.</p></button></div>
           <div class="moment-explorer section-surface"><div class="explorer-heading"><h4>Every duration has a story.</h4><span>Choose an effort to revisit</span></div>
             <div class="duration-picker" role="group" aria-label="Best moment duration"><button v-for="item in durations" :key="item.seconds" type="button" :style="{ '--tone': colorFor(item.seconds) }" :aria-pressed="momentDuration === item.seconds" @click="momentDuration = item.seconds">{{ item.label }}</button></div>
@@ -318,7 +340,7 @@ const hrOptions = computed<ChartOptions<'line'>>(() => ({ ...baseOptions('Heart 
         </section>
 
         <article class="progress-section section-surface" aria-labelledby="progress-heading">
-          <header class="section-heading"><div><span class="eyebrow">03 / Your progress</span><h3 id="progress-heading">The longer view.</h3><p>Your best {{ labelFor(progressDuration) }} efforts, through the seasons. Shaded intervals show where recordings pause.</p></div></header>
+          <header class="section-heading"><div><span class="eyebrow">04 / Your progress</span><h3 id="progress-heading">The longer view.</h3><p>Your best {{ labelFor(progressDuration) }} efforts, through the seasons. Shaded intervals show where recordings pause.</p></div></header>
           <div class="duration-picker" role="group" aria-label="Progress duration"><button v-for="item in durations" :key="item.seconds" type="button" :style="{ '--tone': colorFor(item.seconds) }" :aria-pressed="progressDuration === item.seconds" @click="progressDuration = item.seconds">{{ item.label }}</button></div>
           <template v-if="recordedMonths.length"><div class="chart progress-chart"><Line :data="progressData" :options="progressOptions" :plugins="[progressGapPlugin]" role="img" aria-label="Monthly best power, spaced by effort date. Shaded intervals mark missing recordings, with descriptions below. Use the month picker to explore every result." /></div>
             <ul v-if="progressGaps.length" class="recording-gaps" aria-label="Shaded recording intervals">
@@ -334,7 +356,7 @@ const hrOptions = computed<ChartOptions<'line'>>(() => ({ ...baseOptions('Heart 
 
         <details class="hr-fold"><summary>Compare heart rate at similar power <small>04 / optional</small></summary>
         <article class="hr-section section-surface" aria-labelledby="hr-heading">
-          <header class="section-heading"><div><span class="eyebrow">04 / A different perspective</span><h3 id="hr-heading">Similar power.<br><em>Different heart rate.</em></h3><p>For the same effort length, see how your heart rate varied around a reference ride.</p></div></header>
+          <header class="section-heading"><div><span class="eyebrow">05 / A different perspective</span><h3 id="hr-heading">Similar power.<br><em>Different heart rate.</em></h3><p>For the same effort length, see how your heart rate varied around a reference ride.</p></div></header>
           <div class="control-caption"><span class="step">1</span><h4>Choose your effort length</h4></div>
           <div class="duration-picker" role="group" aria-label="Heart-rate comparison duration"><button v-for="item in durations" :key="item.seconds" type="button" :style="{ '--tone': 'var(--cp-pink)' }" :aria-pressed="hrDuration === item.seconds" @click="hrDuration = item.seconds">{{ item.label }}</button></div>
           <template v-if="reference">
@@ -365,4 +387,9 @@ const hrOptions = computed<ChartOptions<'line'>>(() => ({ ...baseOptions('Heart 
 @media(max-width:1000px){.strengths-body{grid-template-columns:1fr}.headline-strip{grid-template-columns:repeat(3,minmax(0,1fr))}.comparison-layout{grid-template-columns:1fr}.comparison-result{max-width:none}.ride-pair{gap:30px}.comparison-result h4{max-width:none}.reference-bar{grid-template-columns:1fr}.reference-bar .control-caption{margin:0}.radar-stage{height:500px}.hr-chart{height:310px}}
 @media(max-width:600px){.headline-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.headline-tile strong{font-size:28px}.power-trends{gap:34px}.page-heading{align-items:flex-start;gap:10px}.page-heading p{font-size:12px}.quiet-button{padding:8px 10px!important;font-size:11px!important}.section-surface{padding:24px 16px;border-radius:22px}.section-heading{display:block}.ride-count{display:block;margin-top:15px}.discipline-legend{gap:24px;margin-top:28px}.discipline-legend>span{font-size:12px}.discipline-legend small{font-size:10px}.radar-stage{height:365px;margin:0 -12px}.profile-readout{gap:10px 18px;flex-wrap:wrap;padding:20px 0}.profile-readout>span:last-child{flex-basis:100%;text-align:center}.profile-readout strong{font-size:32px}.duration-picker{gap:6px}.power-trends .duration-picker button{padding:8px 12px;min-height:42px}.moment-highlights{grid-template-columns:1fr;gap:12px}.power-trends .moment-highlight{display:grid;grid-template-columns:1fr auto;gap:8px 16px;padding:20px 4px}.moment-category{grid-column:1}.moment-highlight strong{grid-column:2;grid-row:1/4;align-self:center;font-size:38px}.moment-highlight>span:not(:first-child){grid-column:1}.moment-highlight>b{margin-top:8px;grid-column:1}.moment-highlight time{grid-column:1}.explorer-heading{display:block}.explorer-heading>span{display:block;margin-top:8px}.moment-detail{grid-template-columns:1fr;gap:22px}.benchmark{max-width:none}.progress-selection{display:grid;gap:20px;padding:16px}.chart{height:270px}.progress-selection strong span{display:block;margin-top:5px}.reference-picker summary{padding:12px;gap:8px}.change-label{font-size:10px}.match-caption strong{font-size:22px}.comparison-result{padding:22px 16px}.comparison-result h4{font-size:25px}.ride-pair{gap:12px}.ride-pair strong{font-size:21px}.ride-pair>div+div{padding-left:12px}.method{margin-top:0}}
 @media(prefers-reduced-motion:reduce){.power-trends *{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+.ride-mix-flags{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin:0;padding:0;list-style:none}
+.ride-mix-flags li{display:grid;gap:2px;padding:10px 14px;border:1px solid rgba(245,158,11,.32);border-radius:14px;background:rgba(245,158,11,.08);color:var(--warning-text);font-size:12px;font-weight:650;white-space:nowrap}
+.ride-mix-flags small{color:var(--muted);font-size:11px;font-weight:500}
+.ride-mix-ok{padding:8px 12px;border-radius:999px;background:color-mix(in srgb,var(--success) 13%,transparent);color:var(--success-text);font-size:12px;font-weight:650;white-space:nowrap}
+@media(max-width:600px){.ride-mix-flags{justify-content:flex-start;margin-top:14px}}
 </style>

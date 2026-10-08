@@ -80,6 +80,16 @@ def cycling_power_trends():
         conn.close()
 
 
+@router.get("/metrics/ride-balance")
+def ride_balance(weeks: int = Query(default=6, ge=4, le=8)):
+    from ..services.ride_balance import build_ride_balance
+    conn = get_db()
+    try:
+        return build_ride_balance(conn, weeks=weeks)
+    finally:
+        conn.close()
+
+
 @router.get("/metrics/aerobic-decoupling")
 def aerobic_decoupling(weeks: int = Query(default=12, ge=8, le=26)):
     from ..services.aerobic_decoupling import build_aerobic_decoupling

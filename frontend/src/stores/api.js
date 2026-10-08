@@ -177,6 +177,7 @@ export const useApi = () => ({
   saveReturnToRun: (payload) => api.put('/return-to-run', payload),
   saveRunSymptoms: (activityId, payload) => api.put(`/activities/${encodeURIComponent(activityId)}/symptoms`, payload),
   getActivityRecordRanks: () => api.get('/records/activities'),
+  getRideBalance: (params) => api.get('/metrics/ride-balance', { params }),
   getCyclingPower: () => api.get('/metrics/cycling-power'),
   getAerobicDecoupling: (weeks = 12) => api.get('/metrics/aerobic-decoupling', { params: { weeks } }),
   getCyclingPowerAdvice: () => api.get('/metrics/cycling-power/advice'),

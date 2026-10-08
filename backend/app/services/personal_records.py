@@ -674,6 +674,7 @@ def _recent(sections: dict[str, Any], today: date) -> list[dict[str, Any]]:
                     "rank": entry["rank"],
                     "display": entry["display"],
                     "detail": entry.get("detail"),
+                    "metric": ranked.get("metric"),
                     "date": entry["date"],
                     "activity_id": entry.get("activity_id"),
                     "activity_name": entry.get("activity_name"),

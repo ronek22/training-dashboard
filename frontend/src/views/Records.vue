@@ -195,6 +195,7 @@ const ringOffset = computed(() => {
           <span class="spot-ribbon">New PR · {{ shortDate(spotlight.date) }}</span>
           <span class="spot-what">{{ spotlight.category }} · {{ spotlight.label }}</span>
           <strong class="spot-value">{{ splitDisplay(spotlight.display)[0] }}<small>{{ splitDisplay(spotlight.display)[1] }}</small></strong>
+          <span v-if="spotlight.metric === 'e1rm' && spotlight.detail" class="spot-was">Estimated 1RM from {{ spotlight.detail }}</span>
           <span v-if="spotlight.previous" class="spot-was">Previous best {{ spotlight.previous.display }} · {{ formatDate(spotlight.previous.date) }}</span>
           <router-link v-if="spotlight.activity_id" :to="`/activities/${spotlight.activity_id}`" class="spot-link">{{ spotlight.activity_name }} →</router-link>
         </div>
@@ -202,7 +203,7 @@ const ringOffset = computed(() => {
           <li v-for="item in otherPrs" :key="`${item.category}-${item.label}-${item.date}`">
             <router-link :to="item.activity_id ? `/activities/${item.activity_id}` : '/records'">
               <span>{{ item.label }} <em>{{ shortCategory(item.category) }} · {{ shortDate(item.date) }}</em></span>
-              <strong>{{ item.display }}</strong>
+              <strong>{{ item.display }}<em v-if="item.metric === 'e1rm' && item.detail"> e1RM · {{ item.detail }}</em></strong>
             </router-link>
           </li>
         </ul>
@@ -414,6 +415,7 @@ const ringOffset = computed(() => {
 .spot-more span { font-size: 12px; font-weight: 600; opacity: 0.92; }
 .spot-more em { font-style: normal; opacity: 0.72; font-weight: 400; }
 .spot-more strong { font-family: var(--font-display); font-size: 20px; font-variant-numeric: tabular-nums; }
+.spot-more strong em { font-family: var(--font-body, inherit); font-size: 12px; margin-left: 6px; }
 
 /* ---- Sport cards ---- */
 .sport-card {

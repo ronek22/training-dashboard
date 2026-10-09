@@ -37,5 +37,5 @@ class GuidedSessionCompletionInput(BaseModel):
 
 
 class LifeLoadDayInput(BaseModel):
-    tags: list[Literal["travel", "deadline", "family", "poor_sleep", "late_night"]] = Field(default_factory=list, max_length=5)
+    tags: list[Literal["travel", "deadline", "family", "poor_sleep", "late_night", "mountains"]] = Field(default_factory=list, max_length=6)
     note: Optional[str] = Field(default=None, max_length=300)

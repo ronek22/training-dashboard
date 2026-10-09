@@ -1918,6 +1918,9 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertEqual(saved.json()["day"]["labels"], ["Deadline", "Late night"])
         listed = self.client.get("/life-load", params={"start": week_start.isoformat(), "end": thursday.isoformat()}).json()
         self.assertEqual([tag["key"] for tag in listed["tags"]][:2], ["travel", "deadline"])
+        # Every tag the picker offers must be accepted by the API.
+        self.assertEqual(self.client.put(f"/life-load/{thursday}", json={"tags": [tag["key"] for tag in listed["tags"]]}).status_code, 200)
+        self.client.put(f"/life-load/{thursday}", json={"tags": []})
         self.assertEqual([item["date"] for item in listed["days"]], [tuesday.isoformat()])
 
         days = [

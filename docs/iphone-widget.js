@@ -1,7 +1,8 @@
 // TrainLog Today: a Scriptable Home Screen widget (large; medium and small also work).
 // Reads trainlog-today.json, which the backend writes to an iCloud Drive folder.
 // Setup: docs/iphone.md → "Home Screen widget".
-// Widget parameter (optional): the phone app URL to open on tap, e.g. http://192.168.1.42:3080
+// Widget parameter (optional): the phone app URL, e.g. http://192.168.1.42:3080. Opened on tap,
+// and on home Wi-Fi the widget reads /api/widget/today from it before falling back to iCloud.
 
 const BOOKMARK = "TrainLog";
 const FILE_NAME = "trainlog-today.json";
@@ -32,15 +33,64 @@ const SPORT_SYMBOLS = {
   mobility: "figure.flexibility",
 };
 
-async function loadBrief() {
+function parseBrief(raw) {
+  if (!raw) return null;
+  try {
+    const brief = JSON.parse(raw);
+    return brief?.date && brief?.readiness ? brief : null;
+  } catch {
+    return null;
+  }
+}
+
+// Live API first (home Wi-Fi), so the widget is fresh without waiting on iCloud.
+async function fromApi(appUrl) {
+  if (!appUrl) return null;
+  try {
+    const request = new Request(`${appUrl.replace(/\/+$/, "")}/api/widget/today`);
+    request.timeoutInterval = 4;
+    return parseBrief(await request.loadString());
+  } catch {
+    return null;
+  }
+}
+
+// The backend replaces the file every 15 min; mid-sync the read can come back empty.
+async function fromICloud() {
   const fm = FileManager.iCloud();
-  if (!fm.bookmarkExists(BOOKMARK)) {
+  if (!fm.bookmarkExists(BOOKMARK)) return null;
+  const path = fm.joinPath(fm.bookmarkedPath(BOOKMARK), FILE_NAME);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      if (fm.fileExists(path)) {
+        await fm.downloadFileFromiCloud(path);
+        const brief = parseBrief(fm.readString(path));
+        if (brief) return brief;
+      }
+    } catch {}
+  }
+  return null;
+}
+
+function cachePath() {
+  const fm = FileManager.local();
+  return fm.joinPath(fm.cacheDirectory(), "trainlog-today-last.json");
+}
+
+async function loadBrief(appUrl) {
+  const fm = FileManager.local();
+  const fresh = (await fromApi(appUrl)) || (await fromICloud());
+  if (fresh) {
+    fm.writeString(cachePath(), JSON.stringify(fresh));
+    return fresh;
+  }
+  // Last good copy; the footer turns amber once it is older than STALE_HOURS.
+  const cached = fm.fileExists(cachePath()) ? parseBrief(fm.readString(cachePath())) : null;
+  if (cached) return cached;
+  if (!FileManager.iCloud().bookmarkExists(BOOKMARK)) {
     throw new Error(`Add a File Bookmark named "${BOOKMARK}" in Scriptable settings.`);
   }
-  const path = fm.joinPath(fm.bookmarkedPath(BOOKMARK), FILE_NAME);
-  if (!fm.fileExists(path)) throw new Error(`${FILE_NAME} has not synced yet.`);
-  await fm.downloadFileFromiCloud(path);
-  return JSON.parse(fm.readString(path));
+  throw new Error(`${FILE_NAME} has not synced yet. Open Files → iCloud Drive → TrainLog once, then refresh.`);
 }
 
 function text(stack, value, size, color = C.text, weight = "regular", lines = 1) {
@@ -308,7 +358,7 @@ async function main() {
   if (appUrl) widget.url = appUrl;
 
   try {
-    const brief = await loadBrief();
+    const brief = await loadBrief(appUrl);
     if (family === "small") buildSmall(widget, brief);
     else if (family === "medium") buildMedium(widget, brief);
     else buildLarge(widget, brief);

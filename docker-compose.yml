@@ -5,6 +5,8 @@ services:
     ports:
       - "8000:8000"
     environment:
+      # Local day boundaries for date.today() (widget, plans, check-ins).
+      TZ: ${TZ:-Europe/Warsaw}
       STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID:-}
       STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:-}
       STRAVA_REFRESH_TOKEN: ${STRAVA_REFRESH_TOKEN:-}

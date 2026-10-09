@@ -86,3 +86,12 @@ phone ip:
 # Stop only the iPhone frontend.
 phone-stop ip:
     TRAINLOG_LAN_IP="{{ip}}" docker compose -f docker-compose.yml -f docker-compose.phone.yml stop phone
+
+# Push the widget script to Scriptable's iCloud folder (keeps Scriptable's icon header).
+widget-sync:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    target="$HOME/Library/Mobile Documents/iCloud~dk~simonbs~Scriptable/Documents/TrainLog.js"
+    { head -n 3 "$target" | grep '^//' || true; cat "{{root}}/docs/iphone-widget.js"; } > "$target.tmp"
+    mv "$target.tmp" "$target"
+    echo "Synced to Scriptable/TrainLog.js"

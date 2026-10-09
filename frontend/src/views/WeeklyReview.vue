@@ -11,6 +11,7 @@ import WeekTrend from '../components/weekly-review/WeekTrend.vue'
 import WeekRecovery from '../components/weekly-review/WeekRecovery.vue'
 import WeekCoachReview from '../components/weekly-review/WeekCoachReview.vue'
 import MonthlyLetters from '../components/weekly-review/MonthlyLetters.vue'
+import PlanFollowThrough from '../components/weekly-review/PlanFollowThrough.vue'
 import { duration, signedPct } from '../components/weekly-review/format.js'
 
 const api = useApi()
@@ -191,6 +192,8 @@ const talk = () => wins.value && openCoachChat(weekChatRequest(wins.value))
         <div class="card-head"><h2 id="day-by-day">Plan vs done</h2><RouterLink v-if="isCurrent" to="/plan">Open plan ↗</RouterLink></div>
         <WeekDayGrid :days="report.days" :has-plan="!!report.plan" />
       </section>
+
+      <PlanFollowThrough class="full" />
 
       <div class="layout" :class="{ stale: loading }">
         <section class="card" aria-labelledby="trend">

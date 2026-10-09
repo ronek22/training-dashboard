@@ -10,6 +10,7 @@ from .downshift import build_downshift, downshift_coaching_context
 from .guided_sessions import guided_completion_dates, reconcile_guided_session_activities
 from .sick_mode import build_sick_mode, sick_mode_coaching_context
 from .volume_trend import build_volume_trend
+from .plan_follow_through import plan_follow_through_coaching_context
 from .personal_records import build_recent_records_context
 from .session_brief import build_briefs_for_date
 from .what_worked import build_what_worked_coaching_context
@@ -1142,6 +1143,7 @@ def build_recent_context(
         "latest_metrics": [dict(row) for row in latest_metrics],
         "weekly_mix": weekly_mix,
         "volume_trend": build_volume_trend(conn),
+        "plan_follow_through": plan_follow_through_coaching_context(conn),
         "personal_records": build_recent_records_context(conn),
         "what_worked": build_what_worked_coaching_context(conn),
         "return_to_run": build_return_to_run_context(conn),

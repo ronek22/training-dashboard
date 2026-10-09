@@ -13,6 +13,7 @@ from ..services.plans import (
     swap_weekly_plan_days_data,
     upsert_weekly_plan_data,
 )
+from ..services.plan_follow_through import build_plan_follow_through
 from ..services.minimum_week import apply_minimum_week, preview_minimum_week, restore_full_week
 from ..services.today_options import apply_today_option, build_today_options, undo_today_option
 from ..models.plans import TodayOptionApply, TodayOptionUndo
@@ -70,6 +71,15 @@ def weekly_plan_trends(weeks: int = 6):
     conn = get_db()
     try:
         return build_multi_week_execution_trend(conn, weeks=weeks)
+    finally:
+        conn.close()
+
+
+@router.get("/plans/follow-through")
+def plan_follow_through(weeks: int = 12, day: Optional[date] = None):
+    conn = get_db()
+    try:
+        return build_plan_follow_through(conn, weeks=weeks, today=day)
     finally:
         conn.close()
 

@@ -142,20 +142,32 @@
           <article v-for="group in mealGroups" :key="group.value" class="card meal-tile" :class="{ empty: !group.entries.length, current: !rows.length && meal === group.value }">
             <header>
               <h3>{{ group.label }}</h3>
-              <span v-if="group.entries.length" class="tile-total"><b>{{ fmt(group.kcal) }}</b> kcal · <b class="protein">{{ Math.round(group.protein) }}</b> g P</span>
               <button type="button" class="add-button" :aria-label="`Add to ${group.label.toLowerCase()}`" :title="`Add to ${group.label.toLowerCase()}`" @click="startMeal(group.value)">+</button>
             </header>
             <button v-if="!group.entries.length" type="button" class="empty-slot" @click="startMeal(group.value)">Nothing logged</button>
+            <div v-else class="item col-head" aria-hidden="true">
+              <span></span><span>kcal</span><span class="protein">P</span><span class="carbs">C</span><span class="fat">F</span><span></span>
+            </div>
             <div v-for="entry in group.entries" :key="entry.id" class="entry" :class="{ editing: editingId === entry.id }"
               role="button" tabindex="0" :title="'Click to edit'" @click="editEntry(entry)" @keydown.enter="editEntry(entry)">
               <div v-for="item in entry.items" :key="item.id" class="item">
-                <span class="item-name">{{ item.name }}<small v-if="item.grams">{{ Math.round(item.grams) }} g</small></span>
-                <span class="item-kcal">{{ Math.round(item.kcal) }}</span>
-                <span class="item-protein">{{ Math.round(item.protein_g) }} g</span>
+                <span class="item-name" :title="item.grams ? `${item.name} · ${Math.round(item.grams)} g` : item.name">{{ item.name }}<small v-if="item.grams">{{ Math.round(item.grams) }} g</small></span>
+                <span class="num">{{ Math.round(item.kcal) }}</span>
+                <span class="num">{{ grams(item.protein_g) }}</span>
+                <span class="num">{{ grams(item.carbs_g) }}</span>
+                <span class="num">{{ grams(item.fat_g) }}</span>
                 <button type="button" class="star" :class="{ saved: isSaved(item) }" :title="isSaved(item) ? 'In saved foods' : 'Save as a staple'"
                   :aria-label="`Save ${item.name} as a staple`" :disabled="isSaved(item)" @click.stop="saveStaple(item)">{{ isSaved(item) ? '★' : '☆' }}</button>
               </div>
               <span v-if="entry.source === 'photo'" class="badge">photo</span>
+            </div>
+            <div v-if="group.entries.length" class="item total-row">
+              <span>Total</span>
+              <span class="num">{{ fmt(group.kcal) }}</span>
+              <span class="num protein">{{ grams(group.protein) }}</span>
+              <span class="num carbs">{{ grams(group.carbs) }}</span>
+              <span class="num fat">{{ grams(group.fat) }}</span>
+              <span></span>
             </div>
           </article>
         </div>
@@ -258,6 +270,11 @@ const isToday = computed(() => selectedDay.value === todayKey())
 const dayLabel = computed(() => (isToday.value ? 'Today' : format(parseISO(selectedDay.value), 'EEE d MMM')))
 const eyebrow = computed(() => format(parseISO(selectedDay.value), 'EEEE, d MMMM'))
 const mealName = (value) => meals.find((option) => option.value === value)?.label || 'meal'
+// Whole grams, but keep one decimal under 10 g so small amounts don't read as zero.
+const grams = (value) => {
+  const n = Number(value) || 0
+  return n > 0 && n < 10 ? String(Math.round(n * 10) / 10) : String(Math.round(n))
+}
 const kShort = (kcal) => (kcal >= 1000 ? `${(kcal / 1000).toFixed(1)}k` : String(Math.round(kcal)))
 const signed = (value) => (value == null ? '—' : `${value > 0 ? '+' : value < 0 ? '−' : ''}${fmt(Math.abs(value))}`)
 const draftTotals = computed(() => sumRows(rows.value))
@@ -317,6 +334,8 @@ const mealGroups = computed(() => meals.map((option) => {
     entries,
     kcal: entries.reduce((total, entry) => total + entry.totals.kcal, 0),
     protein: entries.reduce((total, entry) => total + entry.totals.protein_g, 0),
+    carbs: entries.reduce((total, entry) => total + entry.totals.carbs_g, 0),
+    fat: entries.reduce((total, entry) => total + entry.totals.fat_g, 0),
   }
 }))
 
@@ -654,11 +673,8 @@ onUnmounted(() => {
 .meal-tile header { display: flex; align-items: center; gap: 10px; }
 .meal-tile h3 { margin: 0; font-size: 14px; font-weight: 650; }
 .meal-tile.empty h3 { color: var(--text-soft); }
-.tile-total { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.tile-total b { color: var(--text); font-weight: 650; }
-.tile-total b.protein { color: var(--protein); }
 .add-button { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 7px; background: var(--surface2); color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
-.meal-tile.empty .add-button { margin-left: auto; }
+.meal-tile .add-button { margin-left: auto; }
 .add-button:hover { background: var(--accent); color: var(--on-accent); }
 .empty-slot { border: 1px dashed var(--border-strong); background: none; border-radius: 10px; color: var(--muted); font: inherit; font-size: 12px; padding: 12px; cursor: pointer; text-align: center; }
 .empty-slot:hover { color: var(--text-soft); border-color: var(--muted); }
@@ -666,12 +682,19 @@ onUnmounted(() => {
 .entry + .entry { margin-top: 2px; }
 .entry:hover, .entry:focus-visible { background: var(--surface2); outline: none; }
 .entry.editing { background: var(--surface2); box-shadow: inset 3px 0 0 var(--accent); }
-.item { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px 20px; align-items: baseline; gap: 6px; padding: 4px 0; font-size: 13px; }
-.item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item { display: grid; grid-template-columns: minmax(0, 1fr) 40px 34px 34px 34px 16px; align-items: baseline; gap: 6px; padding: 4px 0; font-size: 13px; }
+.col-head { padding: 2px 0 0; color: var(--muted); font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
+.col-head span { text-align: right; }
+.protein { color: var(--protein); }
+.carbs { color: var(--carbs); }
+.fat { color: var(--fat); }
+.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-soft); }
+.total-row { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); font-weight: 650; }
+.total-row > span:first-child { color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
+.total-row .num:not(.protein):not(.carbs):not(.fat) { color: var(--text); }
+.item-name { line-height: 1.35; overflow-wrap: anywhere; }
+.item-name small { white-space: nowrap; }
 .item-name small { margin-left: 6px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-.item-kcal, .item-protein { text-align: right; font-variant-numeric: tabular-nums; }
-.item-kcal { color: var(--text-soft); }
-.item-protein { color: var(--protein); font-size: 12px; }
 .star { border: 0; background: none; padding: 0; color: var(--muted); font-size: 12px; cursor: pointer; opacity: 0; transition: opacity .12s; }
 .star.saved { opacity: 1; color: var(--warning); cursor: default; }
 .entry:hover .star, .entry:focus-within .star { opacity: 1; }

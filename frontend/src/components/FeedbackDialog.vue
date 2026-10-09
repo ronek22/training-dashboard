@@ -361,7 +361,7 @@ const submit = () => {
 }
 .feedback-slider {
   width: 100%;
-  accent-color:color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000);
+  accent-color:oklch(from #60a5fa calc(l - var(--dim-l)) c h);
 }
 .feedback-slider-scale {
   display: flex;

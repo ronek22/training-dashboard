@@ -2807,7 +2807,7 @@ const savePlanLink = async (day) => {
 }
 .week-emphasis-upcoming {
   background: rgba(31, 190, 141, 0.14);
-  color:color-mix(in srgb, #98f0cf calc(100% - var(--dim)), #000);
+  color:oklch(from #98f0cf calc(l - var(--dim-l)) c h);
 }
 .week-emphasis-historical {
   background: rgba(127, 146, 178, 0.14);
@@ -2862,7 +2862,7 @@ const savePlanLink = async (day) => {
 .goal-context-summary-main small { color: var(--muted); font-size: 11px; }
 .goal-context-summary-metrics { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-left: auto; }
 .goal-summary-pill { padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; white-space: nowrap; }
-.goal-summary-supported { background: rgba(16,185,129,0.12); color:color-mix(in srgb, #86efac calc(100% - var(--dim)), #000); }
+.goal-summary-supported { background: rgba(16,185,129,0.12); color:oklch(from #86efac calc(l - var(--dim-l)) c h); }
 .goal-summary-attention { background: rgba(245,158,11,0.13); color: var(--warning-text); }
 .goal-summary-completed { background: rgba(96,165,250,0.12); color: var(--info-text); }
 .goal-context-body {
@@ -2975,7 +2975,7 @@ const savePlanLink = async (day) => {
 }
 .goal-requirement-pill.support-supported {
   background: rgba(16,185,129,0.14);
-  color:color-mix(in srgb, #9ef0c4 calc(100% - var(--dim)), #000);
+  color:oklch(from #9ef0c4 calc(l - var(--dim-l)) c h);
 }
 .goal-requirement-pill.support-weakly_supported {
   background: rgba(245,158,11,0.14);
@@ -2988,10 +2988,10 @@ const savePlanLink = async (day) => {
 .goal-context-copy-warn {
   color: var(--warning-text);
 }
-.goal-context-status.risk-constrained { background: rgba(245,158,11,0.16); color:color-mix(in srgb, #fcd34d calc(100% - var(--dim)), #000); }
+.goal-context-status.risk-constrained { background: rgba(245,158,11,0.16); color:oklch(from #fcd34d calc(l - var(--dim-l)) c h); }
 .goal-context-status.risk-on_track { background: rgba(59,130,246,0.16); color: var(--info-text); }
 .goal-context-status.risk-watch { background: rgba(96,165,250,0.16); color: var(--info-text); }
-.goal-context-status.risk-under_pressure { background: rgba(245,158,11,0.16); color:color-mix(in srgb, #fcd34d calc(100% - var(--dim)), #000); }
+.goal-context-status.risk-under_pressure { background: rgba(245,158,11,0.16); color:oklch(from #fcd34d calc(l - var(--dim-l)) c h); }
 .goal-context-status.risk-at_risk { background: rgba(239,68,68,0.16); color:var(--text); }
 .goal-context-status.risk-completed { background: rgba(16,185,129,0.16); color: var(--success-text); }
 .revision-timeline {
@@ -3046,7 +3046,7 @@ const savePlanLink = async (day) => {
   width: 12px;
   height: 12px;
   border-radius: 999px;
-  background:color-mix(in srgb, #8ba4cf calc(100% - var(--dim)), #000);
+  background:oklch(from #8ba4cf calc(l - var(--dim-l)) c h);
   box-shadow: 0 0 0 4px rgba(43, 58, 82, 0.9);
   flex: 0 0 auto;
 }
@@ -3195,16 +3195,16 @@ const savePlanLink = async (day) => {
   border: 1px solid rgb(var(--tint-rgb) / 0.14);
 }
 .adjust-button {
-  background:color-mix(in srgb, color-mix(in srgb, #6c98ff calc(100% - var(--dim)), #000), color-mix(in srgb, #88a8ff calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, oklch(from #6c98ff calc(l - var(--dim-l)) c h), oklch(from #88a8ff calc(l - var(--dim-l)) c h));
   color: var(--text);
 }
 .ghost-button {
-  background: rgba(51, 65, 85, 0.54);
+  background: var(--chip-bg);
   color: var(--text);
   border: 1px solid rgb(var(--tint-rgb) / 0.18);
 }
 .save-button {
-  background:color-mix(in srgb, color-mix(in srgb, #10b981 calc(100% - var(--dim)), #000), color-mix(in srgb, #34d399 calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, oklch(from #10b981 calc(l - var(--dim-l)) c h), oklch(from #34d399 calc(l - var(--dim-l)) c h));
   color:#042f2e;
   min-width: 138px;
 }
@@ -3286,7 +3286,7 @@ const savePlanLink = async (day) => {
 .diff-unchanged,
 .diff-state-unchanged .diff-status {
   background: rgba(16, 185, 129, 0.14);
-  color:color-mix(in srgb, #86efac calc(100% - var(--dim)), #000);
+  color:oklch(from #86efac calc(l - var(--dim-l)) c h);
 }
 .coaching-diff-grid {
   display: grid;
@@ -3720,7 +3720,7 @@ const savePlanLink = async (day) => {
   left: 0;
   right: 0;
   height: 3px;
-  background:color-mix(in srgb, color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000), color-mix(in srgb, #818cf8 calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, oklch(from #60a5fa calc(l - var(--dim-l)) c h), oklch(from #818cf8 calc(l - var(--dim-l)) c h));
 }
 .plan-day.status-matched::before,
 .plan-day.status-linked::before,
@@ -3739,22 +3739,22 @@ const savePlanLink = async (day) => {
   height: 3px;
 }
 .plan-day.status-linked::before {
-  background:color-mix(in srgb, color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000), color-mix(in srgb, #38bdf8 calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, oklch(from #60a5fa calc(l - var(--dim-l)) c h), oklch(from #38bdf8 calc(l - var(--dim-l)) c h));
 }
 .plan-day.status-matched::before {
-  background:color-mix(in srgb, color-mix(in srgb, #10b981 calc(100% - var(--dim)), #000), color-mix(in srgb, #34d399 calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, oklch(from #10b981 calc(l - var(--dim-l)) c h), oklch(from #34d399 calc(l - var(--dim-l)) c h));
 }
 .plan-day.status-partially_matched::before {
-  background:color-mix(in srgb, color-mix(in srgb, #f59e0b calc(100% - var(--dim)), #000), color-mix(in srgb, #fbbf24 calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, oklch(from #f59e0b calc(l - var(--dim-l)) c h), oklch(from #fbbf24 calc(l - var(--dim-l)) c h));
 }
 .plan-day.status-moved::before {
-  background:color-mix(in srgb, color-mix(in srgb, #38bdf8 calc(100% - var(--dim)), #000), color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, oklch(from #38bdf8 calc(l - var(--dim-l)) c h), oklch(from #60a5fa calc(l - var(--dim-l)) c h));
 }
 .plan-day.status-skipped::before,
 .plan-day.status-replaced::before,
 .plan-day.status-different::before,
 .plan-day.status-rest_day_changed::before {
-  background:color-mix(in srgb, #ef4444, color-mix(in srgb, #f87171 calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, #ef4444, oklch(from #f87171 calc(l - var(--dim-l)) c h));
 }
 .plan-day.status-not_completed_yet::before {
   background: color-mix(in srgb, rgb(var(--tint-rgb) / 0.45), rgba(203, 213, 225, 0.45));
@@ -3817,14 +3817,14 @@ const savePlanLink = async (day) => {
 .plan-day-weather-copy strong { color:var(--text); font-size: 12px; }
 .plan-day-weather-copy small {
   overflow: hidden;
-  color:color-mix(in srgb, #91a7be calc(100% - var(--dim)), #000);
+  color:oklch(from #91a7be calc(l - var(--dim-l)) c h);
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .plan-day-weather-rain {
   margin-left: auto;
-  color:color-mix(in srgb, #7dd3fc calc(100% - var(--dim)), #000);
+  color:oklch(from #7dd3fc calc(l - var(--dim-l)) c h);
   font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
@@ -3857,7 +3857,7 @@ const savePlanLink = async (day) => {
 }
 .plan-status.status-moved {
   background: rgba(56, 189, 248, 0.16);
-  color:color-mix(in srgb, #7dd3fc calc(100% - var(--dim)), #000);
+  color:oklch(from #7dd3fc calc(l - var(--dim-l)) c h);
 }
 .plan-status.status-skipped,
 .plan-status.status-replaced,
@@ -4278,7 +4278,7 @@ const savePlanLink = async (day) => {
   height: 38px;
   border: 0;
   border-radius: 999px;
-  background: rgba(51, 65, 85, 0.7);
+  background: var(--chip-bg-strong);
   color:var(--text);
   font-size: 22px;
   line-height: 1;
@@ -4364,7 +4364,7 @@ const savePlanLink = async (day) => {
   color:var(--text);
 }
 .plan-details-list li::marker {
-  color:color-mix(in srgb, #7fb0ff calc(100% - var(--dim)), #000);
+  color:oklch(from #7fb0ff calc(l - var(--dim-l)) c h);
 }
 .plan-details-support {
   margin-top: 16px;
@@ -4418,7 +4418,7 @@ const savePlanLink = async (day) => {
 }
 .plan-trend-pill.trend-mixed {
   background: rgba(245, 158, 11, 0.14);
-  color:color-mix(in srgb, #fcd34d calc(100% - var(--dim)), #000);
+  color:oklch(from #fcd34d calc(l - var(--dim-l)) c h);
 }
 .plan-trend-pill.trend-off_track {
   background: rgba(239, 68, 68, 0.14);
@@ -4494,13 +4494,13 @@ const savePlanLink = async (day) => {
   height: 100%;
 }
 .plan-trend-week-bars .bar-fulfilled {
-  background:color-mix(in srgb, #34d399 calc(100% - var(--dim)), #000);
+  background:oklch(from #34d399 calc(l - var(--dim-l)) c h);
 }
 .plan-trend-week-bars .bar-modified {
-  background:color-mix(in srgb, #fbbf24 calc(100% - var(--dim)), #000);
+  background:oklch(from #fbbf24 calc(l - var(--dim-l)) c h);
 }
 .plan-trend-week-bars .bar-missed {
-  background:color-mix(in srgb, #f87171 calc(100% - var(--dim)), #000);
+  background:oklch(from #f87171 calc(l - var(--dim-l)) c h);
 }
 .plan-trend-observations {
   display: flex;
@@ -4651,7 +4651,7 @@ const savePlanLink = async (day) => {
   .plan-day.is-today { transform: none; }
 }
 /* Weekly rhythm and a session agenda replace the wide card carousel. */
-.plan-page{--plan-highlight:color-mix(in srgb, #dfc49c calc(100% - var(--dim)), #000)}.plan-page>.page-head{margin-bottom:28px}.plan-page>.page-head .page-title{font-size:40px;letter-spacing:-1.5px}.plan-page>.page-head .page-eyebrow{font-size:9px;letter-spacing:.16em;color:var(--text-soft)}.plan-page .page-sub{color:var(--muted);font-size:13px}.plan-page .planner-button{background:color-mix(in srgb, color-mix(in srgb, #e7d3b1 calc(100% - var(--dim)), #000), color-mix(in srgb, #c6a879 calc(100% - var(--dim)), #000));border-color:color-mix(in srgb, #dec7a3 calc(100% - var(--dim)), #000);color:var(--on-accent);box-shadow:var(--shadow-card)}.plan-page .planner-button:hover:not(:disabled){background:color-mix(in srgb, #ead6b4 calc(100% - var(--dim)), #000);box-shadow:var(--shadow-card-hover)}.plan-page .planner-hint{color:var(--text-soft);font-size:10px}
+.plan-page{--plan-highlight:oklch(from #dfc49c calc(l - var(--dim-l)) c h)}.plan-page>.page-head{margin-bottom:28px}.plan-page>.page-head .page-title{font-size:40px;letter-spacing:-1.5px}.plan-page>.page-head .page-eyebrow{font-size:9px;letter-spacing:.16em;color:var(--text-soft)}.plan-page .page-sub{color:var(--muted);font-size:13px}.plan-page .planner-button{background:var(--plan-cta-bg);border-color:var(--plan-cta-border);color:var(--on-accent);box-shadow:var(--shadow-card)}.plan-page .planner-button:hover:not(:disabled){background:var(--plan-cta-hover);box-shadow:var(--shadow-card-hover)}.plan-page .planner-hint{color:var(--text-soft);font-size:10px}
 .plan-page .plan-command{position:relative;padding:30px 32px 0;border-radius:24px;border:1px solid #dec7a32b;background:var(--deep);overflow:hidden;margin-bottom:20px}.plan-page .plan-command-top{align-items:center;margin-bottom:28px}.plan-page .plan-command .page-eyebrow{color:var(--plan-highlight);font-size:9px;letter-spacing:.16em;margin-bottom:10px}.plan-page .plan-command-title{font-size:clamp(26px,3vw,38px);letter-spacing:-1.3px;font-weight:500}.plan-page .plan-command-focus{font-size:12px;margin-top:9px;max-width:660px}.plan-page .period-navigation{padding:4px;border:1px solid #d8c29824;border-radius:12px;background:rgb(var(--deep-rgb) / 0.333);flex-shrink:0}.plan-page .period-button,.plan-page .period-today{border:0;background:transparent;border-radius:8px;min-height:36px;color:var(--text-soft)}.plan-page .period-button:hover:not(:disabled),.plan-page .period-today:hover:not(:disabled){background:#d8c29812}
 .week-rhythm{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;border-block:1px solid #d8c29823;padding-block:15px;margin-bottom:28px}.rhythm-day{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;gap:4px;padding:12px 17px;border:0;border-right:1px solid #d8c29815;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;border-radius:0;transition:background .2s}.rhythm-day:last-child{border-right:0}.rhythm-day:hover{background:rgb(var(--ov-rgb) / 0.016)}.rhythm-day.active{background:color-mix(in srgb,var(--day-accent) 12%,transparent);box-shadow:inset 0 -2px var(--day-accent)}.rhythm-day-name{display:flex;flex-wrap:wrap;align-items:center;gap:5px;color:var(--text-soft);font-size:10px;letter-spacing:.04em}.rhythm-day-name i{font-style:normal;color:var(--day-accent);font-size:6px;font-weight:800;letter-spacing:.05em}.rhythm-day-number{font-family:var(--font-display);font-weight:500;font-size:32px;letter-spacing:-1px;line-height:1.2}.rhythm-day.active .rhythm-day-number{color:var(--day-accent)}.rhythm-sport{display:grid;place-items:center;width:34px;height:34px;margin-top:9px;color:var(--day-accent);border-radius:50%;background:color-mix(in srgb,var(--day-accent) 10%,transparent)}.rhythm-day-type{font-size:10px;font-weight:650;margin-top:5px;max-width:100%;overflow-wrap:anywhere}.rhythm-day-duration{color:var(--text-soft);font-size:9px}.rhythm-day-track{position:absolute;right:17px;top:53px;width:3px;height:50px;background:rgb(var(--ov-rgb) / 0.035);border-radius:5px;display:flex;align-items:end}.rhythm-day-track>i{display:block;width:100%;border-radius:5px;background:var(--day-accent);opacity:.65}.rhythm-rest .rhythm-day-track{background:transparent}.rhythm-rest .rhythm-day-track>i{opacity:.4}
 .plan-page .plan-command-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;align-items:center;margin-bottom:28px}.plan-page .today-brief{position:relative;width:auto;padding:26px;border:1px solid color-mix(in srgb,var(--session-accent) 22%,transparent);border-radius:18px;background:color-mix(in srgb, color-mix(in srgb,var(--session-accent) 9%,var(--deep)), var(--deep));overflow:hidden;min-height:250px;display:flex;flex-direction:column}.session-watermark{position:absolute;right:-16px;bottom:-35px;opacity:.07;transform:rotate(-15deg);pointer-events:none}.session-watermark>span{font-size:190px;line-height:1}.plan-page .today-brief-head,.plan-page .today-brief-meta,.plan-page .today-brief-copy,.plan-page .today-brief-actions{position:relative}.plan-page .today-brief .section-label{color:var(--session-accent);font-size:9px;letter-spacing:.13em}.plan-page .today-brief h3{font-size:clamp(22px,2.6vw,32px);font-weight:500;letter-spacing:-.8px;line-height:1.2;margin-top:12px}.plan-page .today-brief-head{gap:15px;flex-wrap:wrap}.plan-page .today-brief-meta{margin-top:18px;gap:8px 16px}.plan-page .today-brief-meta span{padding:0;background:transparent;color:var(--text);font-size:12px}.plan-page .today-brief-copy{margin-top:14px;line-height:1.8;-webkit-line-clamp:3}.plan-page .today-brief-actions{margin-top:auto;padding-top:22px}.plan-page .today-brief-actions .save-button{background:var(--session-accent);color:var(--on-accent);border-color:transparent}.plan-page .today-brief-actions .ghost-button{background:transparent;font-size:10px}.week-intention{min-width:0;padding-right:14px}.week-intention .section-label{font-size:9px;letter-spacing:.13em;color:var(--text-soft)}.week-intention h3{font-family:var(--font-display);font-size:clamp(24px,2.6vw,35px);line-height:1.2;font-weight:500;letter-spacing:-1px;margin-top:15px}.week-intention h3 em{color:var(--plan-highlight);font-style:normal}.week-intention p{color:var(--text-soft);font-size:12px;line-height:1.8;margin-top:15px;white-space:pre-line}.week-intention a{display:inline-flex;align-items:center;gap:18px;font-size:11px;color:var(--plan-highlight);margin-top:20px}.plan-page .workload-summary{width:auto;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid #d8c29823;margin-inline:-32px;background:rgb(var(--deep-rgb) / 0.169);padding:0 15px}.plan-page .workload-metric{border:0;border-right:1px solid #d8c29815;border-radius:0;background:transparent;padding:20px}.plan-page .workload-metric:last-child{border:0}.plan-page .workload-metric span{font-size:9px;letter-spacing:.12em}.plan-page .workload-metric strong{font-size:29px;letter-spacing:-1px;font-weight:500;margin-top:8px}.plan-page .workload-metric small{font-size:10px;margin-top:7px}
@@ -4724,8 +4724,8 @@ const savePlanLink = async (day) => {
 .plan-page .plan-day-weather-copy small,.plan-page .intent-pill{font-size:11px;letter-spacing:0}
 .session-match-status{display:flex;align-items:center;gap:8px;margin-top:14px;padding:9px 10px;border-radius:7px;font-size:12px;font-weight:600;line-height:1.4}
 .session-match-status>span{font-size:15px;line-height:1}
-.match-done{color:color-mix(in srgb, #8ce3bc calc(100% - var(--dim)), #000);background:#34d39918}
-.match-partial{color:color-mix(in srgb, #efd08c calc(100% - var(--dim)), #000);background:#fbbf2414}
+.match-done{color:oklch(from #8ce3bc calc(l - var(--dim-l)) c h);background:#34d39918}
+.match-partial{color:oklch(from #efd08c calc(l - var(--dim-l)) c h);background:#fbbf2414}
 .match-changed{color:var(--text);background:#ef5e5e18}
 .match-pending{color:var(--text-soft);background:#94a3b80b}
 .match-sick{color:var(--sick);background:rgb(var(--sick-rgb) / .12)}
@@ -5034,7 +5034,7 @@ const savePlanLink = async (day) => {
 }
 .day-tag-volume { color: var(--text); text-decoration: none; border-color: color-mix(in srgb, var(--day-accent) 30%, transparent); }
 .day-tag-volume:hover { background: color-mix(in srgb, var(--day-accent) 10%, transparent); }
-.day-tag-workout { cursor: pointer; color:color-mix(in srgb, #fdba74 calc(100% - var(--dim)), #000); border-color: rgba(249, 115, 22, .3); background: rgba(234, 88, 12, .12); }
+.day-tag-workout { cursor: pointer; color:oklch(from #fdba74 calc(l - var(--dim-l)) c h); border-color: rgba(249, 115, 22, .3); background: rgba(234, 88, 12, .12); }
 .day-tag-workout:hover { background: rgba(234, 88, 12, .22); }
 .day-tag-benchmark { color: var(--warning-text); border-color:#f3c47840; background:#f3c47812; }
 .day-tag-fuel { color: var(--text); border-color: color-mix(in srgb, #f59e0b 30%, transparent); background: color-mix(in srgb, #f59e0b 8%, transparent); }

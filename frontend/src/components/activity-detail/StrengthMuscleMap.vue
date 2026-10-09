@@ -59,7 +59,7 @@ watch([scope, () => props.selectedExercise?.id, () => props.exercises], () => { 
 .is-draft :deep(.muscle-silhouette) { height: 260px; }
 .draft-total { color:var(--text); font-size: 12px; }
 .map-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
-.map-kicker { color:color-mix(in srgb, #f4a0b8 calc(100% - var(--dim)), #000); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.map-kicker { color:oklch(from #f4a0b8 calc(l - var(--dim-l)) c h); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .map-header h2 { margin: 5px 0; font-family: var(--font-display); font-size: 24px; letter-spacing: -.03em; }
 .map-header p { color: var(--muted); font-size: 12px; }
 .map-toggle, .view-toggle { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 11px; background: var(--deep); }
@@ -73,7 +73,7 @@ watch([scope, () => props.selectedExercise?.id, () => props.exercises], () => { 
 .map-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
 .map-legend span { display: flex; align-items: center; gap: 5px; color: var(--muted-soft); font-size: 10px; }
 .map-legend i, .muscle-list button > i { width: 7px; height: 7px; border-radius: 50%; background:#495164; flex-shrink: 0; }
-.map-legend .primary, .muscle-list .primary { background:color-mix(in srgb, #f47798 calc(100% - var(--dim)), #000); }
+.map-legend .primary, .muscle-list .primary { background:oklch(from #f47798 calc(l - var(--dim-l)) c h); }
 .map-legend .secondary, .muscle-list .secondary { background:#986780; }
 .muscle-breakdown { min-width: 0; align-self: center; }
 .breakdown-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }

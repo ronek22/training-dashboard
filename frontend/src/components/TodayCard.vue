@@ -303,7 +303,7 @@ const comparisonState = computed(() => {
 .today-compare-head .is-under { color: var(--info-text); }
 .today-compare-track { position: relative; height: 12px; border-radius: 6px; background: rgb(var(--tint-rgb) / 0.1); }
 .today-compare-track i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent); }
-.today-compare-track b { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; border-radius: 1px; background:color-mix(in srgb, #eef3fb calc(100% - var(--dim)), #000); box-shadow: 0 0 0 2px var(--deep); }
+.today-compare-track b { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; border-radius: 1px; background:oklch(from #eef3fb calc(l - var(--dim-l)) c h); box-shadow: 0 0 0 2px var(--deep); }
 .today-compare-scale { display: flex; justify-content: space-between; gap: 12px; color: var(--dash-muted, var(--muted)); font-size: 11px; font-variant-numeric: tabular-nums; }
 
 .today-profile { display: grid; gap: 12px; --profile-height: 84px; }

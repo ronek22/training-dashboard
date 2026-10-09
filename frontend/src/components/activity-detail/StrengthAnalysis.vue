@@ -319,10 +319,10 @@ const number = formatNumber
 .log-change{text-align:right}
 .change-badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:.68rem;font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap}
 .change-badge.is-pr{background:rgba(243,196,120,.18);color:var(--warning-text)}
-.change-badge.is-up{background:rgba(55,212,162,.14);color:color-mix(in srgb, #37d4a2 calc(100% - var(--dim)), #000)}
+.change-badge.is-up{background:rgba(55,212,162,.14);color:oklch(from #37d4a2 calc(l - var(--dim-l)) c h)}
 .change-badge.is-same{background:rgb(var(--tint-rgb) / .09);color:var(--text-soft)}
-.change-badge.is-down{background:rgba(255,102,119,.12);color:color-mix(in srgb, #ff8b98 calc(100% - var(--dim)), #000)}
-.change-badge.is-first{background:rgba(80,185,255,.13);color:color-mix(in srgb, #7cc8ff calc(100% - var(--dim)), #000)}
+.change-badge.is-down{background:rgba(255,102,119,.12);color:oklch(from #ff8b98 calc(l - var(--dim-l)) c h)}
+.change-badge.is-first{background:rgba(80,185,255,.13);color:oklch(from #7cc8ff calc(l - var(--dim-l)) c h)}
 .log-detail{padding:2px 12px 16px 52px}
 .lift-session-stats{display:flex;flex-wrap:wrap;gap:22px;margin:4px 0 0}.lift-session-stats div{display:grid;gap:3px}.lift-session-stats dt{color:var(--ad-muted);font-size:.66rem}.lift-session-stats dd{margin:0;color:var(--text);font-size:.86rem;font-weight:750;font-variant-numeric:tabular-nums}
 .lift-log-note{margin:12px 0 0;color:var(--ad-muted);font-size:.72rem;line-height:1.5}.lift-log-note a{color:var(--ad-accent);font-weight:650;text-decoration:none}
@@ -331,7 +331,7 @@ const number = formatNumber
 .strength-effort-heading{display:grid;grid-template-columns:minmax(140px,auto) minmax(0,1fr) auto auto;align-items:center;gap:22px;width:100%;padding:14px 20px;border:0;background:transparent;color:var(--text);text-align:left;cursor:pointer;font:inherit}
 .strength-effort-heading:hover{background:rgb(var(--tint-rgb) / .03)}
 .strength-effort-heading>div{display:grid;gap:3px}.strength-effort-heading>div span{font-size:.84rem;font-weight:750}.strength-effort-heading small{color:var(--ad-muted);font-size:.7rem}
-.effort-sparkline{width:100%;height:30px}.effort-sparkline polyline{stroke:color-mix(in srgb, #ff6677 calc(100% - var(--dim)), #000);stroke-width:1.5;vector-effect:non-scaling-stroke;opacity:.8}
+.effort-sparkline{width:100%;height:30px}.effort-sparkline polyline{stroke:oklch(from #ff6677 calc(l - var(--dim-l)) c h);stroke-width:1.5;vector-effect:non-scaling-stroke;opacity:.8}
 .effort-inline{display:flex;gap:18px;margin:0}.effort-inline div{display:grid;gap:2px}.effort-inline dt{color:var(--ad-muted);font-size:.64rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}.effort-inline dd{margin:0;font-size:.95rem;font-weight:750;font-variant-numeric:tabular-nums}.effort-inline small{color:var(--ad-muted);font-size:.66rem;font-weight:600}
 .effort-toggle{color:var(--ad-muted);font-size:.72rem;font-weight:650}
 .strength-effort-disclosure>.strength-heart-rate{border:0;border-top:1px solid rgb(var(--tint-rgb) / .1);border-radius:0;background:transparent}
@@ -342,8 +342,8 @@ const number = formatNumber
 .strength-heart-chart{position:relative;padding:6px 12px 8px;border:1px solid rgb(var(--tint-rgb) / .11);border-radius:12px;background:rgb(var(--deep-rgb) / .38)}
 .strength-heart-chart svg{display:block;width:100%;height:230px;margin:0;outline:none;cursor:crosshair}
 .strength-heart-chart svg:focus-visible{border-radius:8px;box-shadow:inset 0 0 0 2px rgba(255,102,119,.45)}
-.strength-heart-grid{stroke:rgb(var(--tint-rgb) / .11);stroke-width:1;vector-effect:non-scaling-stroke}.strength-heart-line{stroke:color-mix(in srgb, #ff6677 calc(100% - var(--dim)), #000);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 5px rgba(255,102,119,.22))}
-.strength-heart-marker line{stroke:rgba(229,236,249,.55);stroke-width:1;stroke-dasharray:4 4;vector-effect:non-scaling-stroke}.strength-heart-marker circle{fill:color-mix(in srgb, #ff6677 calc(100% - var(--dim)), #000);stroke:color-mix(in srgb, #f5f7fb calc(100% - var(--dim)), #000);stroke-width:2;vector-effect:non-scaling-stroke}
+.strength-heart-grid{stroke:rgb(var(--tint-rgb) / .11);stroke-width:1;vector-effect:non-scaling-stroke}.strength-heart-line{stroke:oklch(from #ff6677 calc(l - var(--dim-l)) c h);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 5px rgba(255,102,119,.22))}
+.strength-heart-marker line{stroke:rgba(229,236,249,.55);stroke-width:1;stroke-dasharray:4 4;vector-effect:non-scaling-stroke}.strength-heart-marker circle{fill:oklch(from #ff6677 calc(l - var(--dim-l)) c h);stroke:oklch(from #f5f7fb calc(l - var(--dim-l)) c h);stroke-width:2;vector-effect:non-scaling-stroke}
 .strength-heart-tooltip{position:absolute;z-index:2;top:15px;display:grid;gap:2px;min-width:78px;padding:8px 10px;border:1px solid rgba(255,102,119,.32);border-radius:9px;background:rgb(var(--deep-rgb) / .94);box-shadow:0 8px 24px rgb(var(--shadow-rgb) / .3);pointer-events:none;transform:translateX(-50%)}
 .strength-heart-tooltip span{color:var(--ad-muted);font-size:.66rem}.strength-heart-tooltip strong{font-size:.78rem}
 .strength-heart-axis{display:flex;justify-content:space-between;padding:0 16px 4px;color:var(--ad-muted);font-size:.68rem}

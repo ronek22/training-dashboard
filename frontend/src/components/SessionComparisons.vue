@@ -151,7 +151,7 @@ h2 { font-family: var(--font-display); font-size: 26px; font-weight: 500; letter
 .window-picker { display: grid; gap: 7px; color: var(--muted-soft); font-size: 11px; }
 select, button { min-height: 44px; padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: 9px; color: var(--text); background: var(--surface); }select { cursor: pointer; }button { cursor: pointer; margin-top: 18px; }
 .progress-story { --story-accent: var(--accent-strong); border: 1px solid var(--border-strong); border-radius: 22px; overflow: hidden; background: var(--surface); }
-.progress-story.improving { --story-accent:color-mix(in srgb, #93dfba calc(100% - var(--dim)), #000); }.progress-story.declining, .progress-story.mixed { --story-accent:color-mix(in srgb, #edbd8b calc(100% - var(--dim)), #000); }
+.progress-story.improving { --story-accent:oklch(from #93dfba calc(l - var(--dim-l)) c h); }.progress-story.declining, .progress-story.mixed { --story-accent:oklch(from #edbd8b calc(l - var(--dim-l)) c h); }
 .story-topline { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 10px; padding: 24px 32px; border-bottom: 1px solid var(--border); }.period { font-size: 11px; color: var(--muted-soft); font-variant-numeric: tabular-nums; }
 .story-layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 72px); padding: 40px 32px; }
 .state-label { display: inline-flex; align-items: center; gap: 9px; color: var(--story-accent); font-size: 12px; }.state-label>span { font-size: 20px; }

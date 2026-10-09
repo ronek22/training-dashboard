@@ -30,6 +30,13 @@
   --sidebar-bg: #191c23;
   --on-accent: #07111f;
   --dim: 0%;
+  /* Light theme darkens bright dark-theme colours by lightness only, so hues stay vivid instead of going muddy. */
+  --dim-l: 0;
+  --chip-bg: rgba(51, 65, 85, 0.54);
+  --chip-bg-strong: rgba(51, 65, 85, 0.7);
+  --plan-cta-bg: color-mix(in srgb, #e7d3b1, #c6a879);
+  --plan-cta-border: #dec7a3;
+  --plan-cta-hover: #ead6b4;
   --cp-sprint: #88c9ff;
   --cp-attack: #d0e998;
   --cp-climb: #ffb18b;
@@ -94,18 +101,18 @@
 /* Light theme. Applied via <html data-theme="light"> (see utils/theme.js). */
 :root[data-theme='light'] {
   color-scheme: light;
-  --bg: #f3f5f9;
+  --bg: #f5f5f3;
   --bg-elevated: #ffffff;
-  --surface: rgba(255, 255, 255, 0.9);
-  --surface-strong: rgba(255, 255, 255, 0.98);
-  --surface2: #edf1f7;
-  --surface3: #e1e7f0;
-  --border: rgba(51, 65, 99, 0.14);
-  --border-strong: rgba(51, 65, 99, 0.26);
-  --text: #131b2b;
-  --text-soft: #2d3a52;
-  --muted: #5b6b86;
-  --muted-soft: #4d5d78;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface2: #f2f2ef;
+  --surface3: #e7e7e3;
+  --border: rgba(28, 28, 24, 0.1);
+  --border-strong: rgba(28, 28, 24, 0.18);
+  --text: #18181b;
+  --text-soft: #3b3b42;
+  --muted: #6b6b74;
+  --muted-soft: #5b5b64;
   --run: #2563eb;
   --ride: #0f9b72;
   --strength: #c77a0a;
@@ -115,32 +122,38 @@
   --accent-strong: #2a4bc4;
   --success: #0f9b72;
   --warning: #b7791f;
-  --ov-rgb: 15 23 42;
-  --tint-rgb: 71 85 105;
+  --ov-rgb: 24 24 27;
+  --tint-rgb: 113 113 122;
   --panel-rgb: 255 255 255;
-  --card-bg: rgba(255, 255, 255, 0.96);
+  --card-bg: #ffffff;
   --sidebar-bg: #ffffff;
   --on-accent: #ffffff;
   --dim: 42%;
+  --dim-l: 0.2;
+  --chip-bg: rgba(24, 24, 27, 0.06);
+  --chip-bg-strong: rgba(24, 24, 27, 0.08);
+  --plan-cta-bg: #1f1f23;
+  --plan-cta-border: #1f1f23;
+  --plan-cta-hover: #34343a;
   --cp-sprint: #2b78bd;
   --cp-attack: #5a8420;
   --cp-climb: #c2621f;
   --cp-pink: #b04d77;
   --cp-cream: #3a3527;
-  --cp-soft: #5b6b86;
+  --cp-soft: #6b6b74;
   --cp-profile: #4d4630;
   --cp-profile-fill: rgba(107, 93, 47, 0.1);
   --cp-sprint-fill: rgba(43, 120, 189, 0.07);
   --cp-point-border: #ffffff;
   --cp-point-ring: #ffffff;
-  --cp-grid: rgba(15, 23, 42, 0.08);
-  --cp-grid-strong: rgba(15, 23, 42, 0.14);
-  --cp-axis: #5b6b86;
-  --cp-gap-fill: rgba(71, 85, 105, 0.07);
+  --cp-grid: rgba(24, 24, 27, 0.07);
+  --cp-grid-strong: rgba(24, 24, 27, 0.12);
+  --cp-axis: #6b6b74;
+  --cp-gap-fill: rgba(113, 113, 122, 0.07);
   --cp-gap-fill-2: rgba(194, 98, 31, 0.06);
-  --cp-gap-line: rgba(71, 85, 105, 0.28);
+  --cp-gap-line: rgba(113, 113, 122, 0.28);
   --cp-label-bg: #ffffff;
-  --cp-label-text: #2d3a52;
+  --cp-label-text: #3b3b42;
   --tone-ride: #0f9b72;
   --tone-run: #2f63e0;
   --tone-strength: #c77a0a;
@@ -150,19 +163,19 @@
   --life: #86703a;
   --life-rgb: 134 112 58;
   --tone-walk: #3f8f77;
-  --tone-neutral: #64748b;
-  --deep: #f1f4f9;
-  --deep-rgb: 226 232 244;
-  --shadow-rgb: 15 23 42;
+  --tone-neutral: #71717a;
+  --deep: #ffffff;
+  --deep-rgb: 250 250 249;
+  --shadow-rgb: 24 24 27;
   --success-text: #0b7d5b;
   --warning-text: #96600a;
   --info-text: #2b4fbf;
   --danger-text: #b42f2f;
   --page-bg: var(--bg);
-  --shadow-lg: 0 24px 60px rgba(30, 41, 80, 0.14);
-  --shadow-md: 0 12px 32px rgba(30, 41, 80, 0.1);
-  --shadow-card: 0 1px 2px rgba(30, 41, 80, 0.06), 0 4px 14px rgba(30, 41, 80, 0.05);
-  --shadow-card-hover: 0 2px 4px rgba(30, 41, 80, 0.07), 0 12px 28px rgba(30, 41, 80, 0.1);
+  --shadow-lg: 0 24px 60px rgba(24, 24, 27, 0.12);
+  --shadow-md: 0 12px 32px rgba(24, 24, 27, 0.08);
+  --shadow-card: 0 1px 2px rgba(24, 24, 27, 0.05), 0 2px 8px rgba(24, 24, 27, 0.04);
+  --shadow-card-hover: 0 2px 4px rgba(24, 24, 27, 0.06), 0 10px 24px rgba(24, 24, 27, 0.08);
 }
 
 html {
@@ -693,27 +706,27 @@ tr:hover td { background: var(--surface2); }
 }
 
 .zone-tone-zone1 {
-  --zone-color:color-mix(in srgb, #49a6ff calc(100% - var(--dim)), #000);
+  --zone-color:oklch(from #49a6ff calc(l - var(--dim-l)) c h);
   border-color: rgba(73, 166, 255, 0.16);
 }
 
 .zone-tone-zone2 {
-  --zone-color:color-mix(in srgb, #43d17c calc(100% - var(--dim)), #000);
+  --zone-color:oklch(from #43d17c calc(l - var(--dim-l)) c h);
   border-color: rgba(67, 209, 124, 0.18);
 }
 
 .zone-tone-zone3 {
-  --zone-color:color-mix(in srgb, #f5b742 calc(100% - var(--dim)), #000);
+  --zone-color:oklch(from #f5b742 calc(l - var(--dim-l)) c h);
   border-color: rgba(245, 183, 66, 0.18);
 }
 
 .zone-tone-zone4 {
-  --zone-color:color-mix(in srgb, #ff8b3d calc(100% - var(--dim)), #000);
+  --zone-color:oklch(from #ff8b3d calc(l - var(--dim-l)) c h);
   border-color: rgba(255, 139, 61, 0.18);
 }
 
 .zone-tone-zone5 {
-  --zone-color:color-mix(in srgb, #ff5c6f calc(100% - var(--dim)), #000);
+  --zone-color:oklch(from #ff5c6f calc(l - var(--dim-l)) c h);
   border-color: rgba(255, 92, 111, 0.2);
 }
 

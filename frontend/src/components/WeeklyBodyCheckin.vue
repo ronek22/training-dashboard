@@ -106,8 +106,8 @@ onMounted(load)
 .body-checkin-actions { display: flex; gap: 6px; margin-left: auto; }
 .body-checkin .body-checkin-save { border-color: rgba(118, 166, 255, 0.45); color: var(--text); font-weight: 650; }
 .body-checkin .body-checkin-skip { border-color: transparent; background: none; }
-.body-checkin button:focus-visible, .body-checkin input:focus-visible { outline: 2px solid color-mix(in srgb, #91b1ff calc(100% - var(--dim)), #000); outline-offset: 2px; }
+.body-checkin button:focus-visible, .body-checkin input:focus-visible { outline: 2px solid oklch(from #91b1ff calc(l - var(--dim-l)) c h); outline-offset: 2px; }
 .body-checkin-done { margin: 0; color: var(--dash-soft, var(--text-soft)); font-size: 12px; }
-.body-checkin-error { margin: 0; color: color-mix(in srgb, #f09a90 calc(100% - var(--dim)), #000); font-size: 11px; }
+.body-checkin-error { margin: 0; color: oklch(from #f09a90 calc(l - var(--dim-l)) c h); font-size: 11px; }
 @media (max-width: 480px) { .body-checkin button, .body-checkin-weight input { height: 34px; } .body-checkin-actions { margin-left: 0; } }
 </style>

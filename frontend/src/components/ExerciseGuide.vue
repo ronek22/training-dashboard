@@ -285,9 +285,9 @@ onUnmounted(stopCycling)
 
 <style scoped>
 .exercise-guide {
-  --guide-pink:color-mix(in srgb, #ff86aa calc(100% - var(--dim)), #000);
-  --guide-pink-soft:color-mix(in srgb, #ffb4c9 calc(100% - var(--dim)), #000);
-  --guide-ink:color-mix(in srgb, #f5f6fb calc(100% - var(--dim)), #000);
+  --guide-pink:oklch(from #ff86aa calc(l - var(--dim-l)) c h);
+  --guide-pink-soft:oklch(from #ffb4c9 calc(l - var(--dim-l)) c h);
+  --guide-ink:oklch(from #f5f6fb calc(l - var(--dim-l)) c h);
   --guide-muted:#a5aec0;
   --guide-line: rgba(158, 168, 196, 0.18);
   display: block;

@@ -417,7 +417,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .guide-more { align-items: center; color: var(--muted); font-size: 14px; }
 .guide-total small { display: block; margin-top: 4px; font-family: var(--font-body); font-size: 12px; }
 .guide-total small.is-saved { color: var(--success-text); }
-.guide-total small.is-failed { color: color-mix(in srgb, #f09a90 calc(100% - var(--dim)), #000); }
+.guide-total small.is-failed { color: oklch(from #f09a90 calc(l - var(--dim-l)) c h); }
 .guide-add {
   position: fixed; left: 50%; bottom: 28px; z-index: 30; display: grid; gap: 12px; width: min(720px, calc(100vw - 32px)); transform: translateX(-50%);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, rgb(var(--tint-rgb) / 0.2)); border-radius: 18px; background: var(--deep);
@@ -436,7 +436,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 }
 .guide-custom label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
 .guide-custom .guide-primary { padding: 8px 18px; }
-.guide-error-text { color: color-mix(in srgb, #f09a90 calc(100% - var(--dim)), #000); }
+.guide-error-text { color: oklch(from #f09a90 calc(l - var(--dim-l)) c h); }
 
 @media (max-width: 900px) {
   .guide-page { padding: 16px; }

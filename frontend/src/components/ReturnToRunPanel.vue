@@ -144,10 +144,10 @@ const scores = Array.from({ length: 11 }, (_, n) => n)
 .rtr { margin-bottom: 16px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
 .rtr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .rtr-head h2 { margin: 4px 0 0; font-size: 17px; }
-.eyebrow { font-size: 10px; font-weight: 750; letter-spacing: 1.8px; color: color-mix(in srgb, #7fd7b9 calc(100% - var(--dim)), #000); }
+.eyebrow { font-size: 10px; font-weight: 750; letter-spacing: 1.8px; color: oklch(from #7fd7b9 calc(l - var(--dim-l)) c h); }
 button { cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text); padding: 7px 12px; border-radius: 9px; font: inherit; font-size: 13px; }
 button:disabled { cursor: progress; opacity: 0.7; }
-.primary { background: color-mix(in srgb, #83dfba calc(100% - var(--dim)), #000); border-color: color-mix(in srgb, #83dfba calc(100% - var(--dim)), #000); color: var(--on-accent); font-weight: 750; }
+.primary { background: oklch(from #83dfba calc(l - var(--dim-l)) c h); border-color: oklch(from #83dfba calc(l - var(--dim-l)) c h); color: var(--on-accent); font-weight: 750; }
 .link { background: none; border: 0; color: var(--muted); font-size: 12px; padding: 4px; }
 .link:hover { color: var(--text); }
 .rtr-intro { margin: 8px 0 0; font-size: 13px; color: var(--muted); line-height: 1.55; max-width: 80ch; }
@@ -162,7 +162,7 @@ legend { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .stage-pick button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 8px 10px; }
 .stage-pick strong { font-family: var(--font-display); font-size: 16px; }
 .stage-pick span { font-size: 11px; color: var(--muted-soft); }
-.stage-pick .chosen { border-color: color-mix(in srgb, #83dfba calc(100% - var(--dim)), #000); background: color-mix(in srgb, #83dfba 14%, transparent); }
+.stage-pick .chosen { border-color: oklch(from #83dfba calc(l - var(--dim-l)) c h); background: color-mix(in srgb, #83dfba 14%, transparent); }
 .rtr-suggest { font-size: 12px; color: var(--text-soft); }
 .rtr-actions { display: flex; gap: 8px; justify-content: flex-end; }
 

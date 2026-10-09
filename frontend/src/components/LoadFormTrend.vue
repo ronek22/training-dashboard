@@ -78,18 +78,18 @@ const chartLabel = computed(() => {
 .form-gauge-track { position: relative; display: flex; gap: 2px; height: 8px; }
 .form-gauge-track span { flex-basis: 0; border-radius: 2px; opacity: 0.28; }
 .form-gauge-track span.is-active { opacity: 0.9; }
-.form-gauge-track i { position: absolute; top: -4px; width: 3px; height: 16px; margin-left: -1.5px; border-radius: 2px; background:color-mix(in srgb, #eef3fb calc(100% - var(--dim)), #000); box-shadow: 0 0 0 2px var(--deep); }
+.form-gauge-track i { position: absolute; top: -4px; width: 3px; height: 16px; margin-left: -1.5px; border-radius: 2px; background:oklch(from #eef3fb calc(l - var(--dim-l)) c h); box-shadow: 0 0 0 2px var(--deep); }
 .form-gauge-scale { display: flex; justify-content: space-between; color:var(--muted); font-size: 10px; }
 .load-trend-chart { display: block; width: 100%; height: 86px; overflow: visible; }
 .load-trend-base { stroke: rgb(var(--tint-rgb) / 0.14); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .load-trend-bar { fill: rgb(var(--tint-rgb) / 0.2); }
 .load-trend-fitness, .load-trend-fatigue { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.load-trend-fitness { stroke:color-mix(in srgb, #76a6ff calc(100% - var(--dim)), #000); }
-.load-trend-fatigue { stroke:color-mix(in srgb, #efb35a calc(100% - var(--dim)), #000); }
+.load-trend-fitness { stroke:oklch(from #76a6ff calc(l - var(--dim-l)) c h); }
+.load-trend-fatigue { stroke:oklch(from #efb35a calc(l - var(--dim-l)) c h); }
 .load-trend-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; color: var(--dash-muted, var(--muted)); font-size: 10px; }
 .load-trend-legend span::before { display: inline-block; width: 10px; height: 2px; margin: 0 6px 3px 0; border-radius: 1px; vertical-align: middle; content: ''; }
-.load-trend-legend .is-fitness::before { background:color-mix(in srgb, #76a6ff calc(100% - var(--dim)), #000); }
-.load-trend-legend .is-fatigue::before { background:color-mix(in srgb, #efb35a calc(100% - var(--dim)), #000); }
+.load-trend-legend .is-fitness::before { background:oklch(from #76a6ff calc(l - var(--dim-l)) c h); }
+.load-trend-legend .is-fatigue::before { background:oklch(from #efb35a calc(l - var(--dim-l)) c h); }
 .load-trend-legend .is-load::before { height: 7px; width: 5px; background: rgb(var(--tint-rgb) / 0.35); }
 .load-trend-legend small { margin-left: auto; color:var(--muted); font-size: 10px; }
 </style>

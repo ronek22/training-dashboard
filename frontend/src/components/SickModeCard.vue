@@ -168,6 +168,6 @@ button:disabled { opacity: .55; cursor: default; }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sick-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; }
 .sick-footer a { color: var(--dash-muted, var(--muted)); }
-.sick-error { margin: 0; color: color-mix(in srgb, #f09a90 calc(100% - var(--dim)), #000); font-size: 12px; }
+.sick-error { margin: 0; color: oklch(from #f09a90 calc(l - var(--dim-l)) c h); font-size: 12px; }
 @media (max-width: 520px) { .sick-card { padding: 20px 16px; } .sick-footer { flex-direction: column; align-items: flex-start; } }
 </style>

@@ -72,5 +72,5 @@ async function label(value) {
 .trend-actions button:hover:not(:disabled) { background: rgba(243, 180, 77, 0.14); }
 .trend-actions button:disabled { opacity: 0.5; cursor: wait; }
 .trend-actions button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
-.trend-error { color:color-mix(in srgb, #f09a90 calc(100% - var(--dim)), #000); }
+.trend-error { color:oklch(from #f09a90 calc(l - var(--dim-l)) c h); }
 </style>

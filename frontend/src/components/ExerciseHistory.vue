@@ -70,8 +70,8 @@ onBeforeUnmount(() => { clearTimeout(timer); ++requestId })
 <style scoped>
 .exercise-history { display: grid; align-content: start; gap: 10px; min-width: 0; padding: 10px 12px; border: 1px solid #f6bd6720; border-radius: 12px; background: #f6bd6706; color: var(--muted-soft); font-size: 11px; font-weight: 400; letter-spacing: 0; text-transform: none; }
 .history-heading, .history-unavailable { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
-.history-heading b { color: color-mix(in srgb, #f6bd67 calc(100% - var(--dim)), #000); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.exercise-history button { min-height: 30px; border: 1px solid #f6bd6730; border-radius: 7px; padding: 4px 10px; color: color-mix(in srgb, #f6bd67 calc(100% - var(--dim)), #000); background: #f6bd6708; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; white-space: nowrap; }
+.history-heading b { color: oklch(from #f6bd67 calc(l - var(--dim-l)) c h); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.exercise-history button { min-height: 30px; border: 1px solid #f6bd6730; border-radius: 7px; padding: 4px 10px; color: oklch(from #f6bd67 calc(l - var(--dim-l)) c h); background: #f6bd6708; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; white-space: nowrap; }
 .exercise-history button:hover:not(:disabled) { background: #f6bd6714; }
 .exercise-history button:disabled { opacity: .45; cursor: default; }
 .history-sets { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }

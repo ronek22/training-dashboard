@@ -183,7 +183,7 @@ const phaseStatusLabel = (phase) => {
 .mini-bar-fill {
   display: block;
   height: 100%;
-  background:color-mix(in srgb, color-mix(in srgb, #10b981 calc(100% - var(--dim)), #000), color-mix(in srgb, #60a5fa calc(100% - var(--dim)), #000));
+  background:color-mix(in srgb, oklch(from #10b981 calc(l - var(--dim-l)) c h), oklch(from #60a5fa calc(l - var(--dim-l)) c h));
 }
 .roadmap-section { margin-bottom: 16px; }
 .section-head { margin-bottom: 16px; }

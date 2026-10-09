@@ -170,7 +170,7 @@ const profile = computed(() => {
 .ride-profile figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; color: var(--dash-muted, var(--muted)); font-size: 11px; }
 .ride-legend { display: inline-flex; align-items: center; gap: 6px; }
 .ride-legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
-.ride-legend .is-hr { background:linear-gradient(90deg, #8b9bb4, #3b82f6, color-mix(in srgb, #22c55e calc(100% - var(--dim)), #000), color-mix(in srgb, #eab308 calc(100% - var(--dim)), #000), #ef4444); }
+.ride-legend .is-hr { background:linear-gradient(90deg, #8b9bb4, #3b82f6, oklch(from #22c55e calc(l - var(--dim-l)) c h), oklch(from #eab308 calc(l - var(--dim-l)) c h), #ef4444); }
 .ride-legend .is-elevation { height: 8px; background: color-mix(in srgb, var(--accent) 30%, transparent); }
 .ride-axis { margin-left: auto; font-variant-numeric: tabular-nums; }
 </style>

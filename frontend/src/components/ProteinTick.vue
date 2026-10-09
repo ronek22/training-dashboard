@@ -83,9 +83,9 @@ onMounted(load)
 .protein-choice button:hover { border-color: rgba(118, 166, 255, 0.4); }
 .protein-choice button.on { border-color: rgba(82, 215, 170, 0.6); background: rgba(82, 215, 170, 0.14); color: var(--text); font-weight: 650; }
 .protein-choice button.on.miss { border-color: rgba(239, 123, 110, 0.55); background: rgba(239, 123, 110, 0.12); }
-.protein-choice button:focus-visible { outline: 2px solid color-mix(in srgb, #91b1ff calc(100% - var(--dim)), #000); outline-offset: 2px; }
+.protein-choice button:focus-visible { outline: 2px solid oklch(from #91b1ff calc(l - var(--dim-l)) c h); outline-offset: 2px; }
 .protein-week { margin-left: auto; color: var(--dash-muted); font-size: 10px; white-space: nowrap; }
-.protein-link { flex: 1; color: color-mix(in srgb, #91b1ff calc(100% - var(--dim)), #000); font-size: 11px; }
-.protein-error { color: color-mix(in srgb, #f09a90 calc(100% - var(--dim)), #000); font-size: 11px; }
+.protein-link { flex: 1; color: oklch(from #91b1ff calc(l - var(--dim-l)) c h); font-size: 11px; }
+.protein-error { color: oklch(from #f09a90 calc(l - var(--dim-l)) c h); font-size: 11px; }
 @media (max-width: 480px) { .protein-choice button { height: 32px; } }
 </style>

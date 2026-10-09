@@ -76,7 +76,7 @@ onUnmounted(() => {
 .workout-copy strong { color: var(--text); font-size: 16px; overflow-wrap: anywhere; }
 .workout-detail { color:var(--text-soft); font-size: 12px; }
 .workout-action { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 44px; padding: 10px 16px; border-radius: 10px; background: var(--accent); color: var(--on-accent); font-weight: 800; font-size: 13px; text-decoration: none; }
-.is-live .workout-action { background:color-mix(in srgb, #6ee7b7 calc(100% - var(--dim)), #000); }
+.is-live .workout-action { background:oklch(from #6ee7b7 calc(l - var(--dim-l)) c h); }
 .workout-action:hover { filter: brightness(1.1); }
 .workout-action:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; }
 @media (max-width: 640px) {

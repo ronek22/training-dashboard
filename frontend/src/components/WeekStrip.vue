@@ -69,7 +69,7 @@ defineEmits(['open'])
 .week-totals strong { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 .week-progress { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .week-progress-track { position: relative; width: 140px; height: 5px; overflow: hidden; border-radius: 3px; background: rgb(var(--tint-rgb) / 0.14); }
-.week-progress-track i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background:color-mix(in srgb, #54d0aa calc(100% - var(--dim)), #000); }
+.week-progress-track i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background:oklch(from #54d0aa calc(l - var(--dim-l)) c h); }
 .week-progress small { color: var(--dash-muted, var(--muted)); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .week-links { display: flex; gap: 18px; }
 .week-link { color: var(--dash-soft, var(--text-soft)); font-size: 12px; text-decoration: none; }
@@ -113,12 +113,12 @@ defineEmits(['open'])
 .week-cell-title { overflow: hidden; color: var(--text); font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .week-cell-bar { position: relative; height: 5px; overflow: hidden; border-radius: 2px; background: rgb(var(--tint-rgb) / 0.13); }
 .week-cell-bar i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--day-accent); }
-.is-over .week-cell-bar i { background:color-mix(in srgb, var(--day-accent), color-mix(in srgb, #f4c66e calc(100% - var(--dim)), #000)); }
+.is-over .week-cell-bar i { background:color-mix(in srgb, var(--day-accent), oklch(from #f4c66e calc(l - var(--dim-l)) c h)); }
 .week-cell-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; font-size: 11px; font-variant-numeric: tabular-nums; }
 .week-cell-minutes { color: var(--dash-soft, var(--text-soft)); white-space: nowrap; }
 .is-over .week-cell-minutes { color: var(--warning-text); }
 .week-cell-status { color: var(--dash-muted, var(--muted)); white-space: nowrap; }
-.is-actual .week-cell-status { color:color-mix(in srgb, #54d0aa calc(100% - var(--dim)), #000); }
+.is-actual .week-cell-status { color:oklch(from #54d0aa calc(l - var(--dim-l)) c h); }
 
 /* Seven columns don't fit a phone: stack the days as compact rows. */
 @media (max-width: 780px) {

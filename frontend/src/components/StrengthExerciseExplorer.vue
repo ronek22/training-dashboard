@@ -48,7 +48,7 @@ const selectMuscle = key => {
 <style scoped>
 .exercise-explorer { padding: 26px; border-color:#f477982b; background:var(--deep); }
 .explorer-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
-.explorer-kicker { color:color-mix(in srgb, #f4a0b8 calc(100% - var(--dim)), #000); text-transform: uppercase; letter-spacing: .12em; font-size: 10px; font-weight: 700; }
+.explorer-kicker { color:oklch(from #f4a0b8 calc(l - var(--dim-l)) c h); text-transform: uppercase; letter-spacing: .12em; font-size: 10px; font-weight: 700; }
 .explorer-heading h2 { margin: 5px 0; font: 600 26px var(--font-display); letter-spacing: -.03em; }
 .explorer-heading p, .draft-status { color: var(--muted-soft); font-size: 12px; }
 .draft-status { max-width: 240px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; }
@@ -67,7 +67,7 @@ const selectMuscle = key => {
 .explorer-search { display: grid; gap: 6px; flex: 1; min-width: 150px; color: var(--muted-soft); font-size: 11px; }
 .explorer-search input { width: 100%; min-height: 42px; border: 1px solid var(--border-strong); border-radius: 9px; padding: 9px 12px; color: var(--text); background: var(--deep); }
 .supporting-filter { display: flex; align-items: center; gap: 7px; min-height: 42px; font-size: 11px; color: var(--muted-soft); cursor: pointer; }
-.supporting-filter input { accent-color:color-mix(in srgb, #f47798 calc(100% - var(--dim)), #000); }
+.supporting-filter input { accent-color:oklch(from #f47798 calc(l - var(--dim-l)) c h); }
 .results-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 .results-heading h3 { font-size: 14px; }
 .results-heading span { color: var(--muted); font-size: 11px; }
@@ -76,8 +76,8 @@ const selectMuscle = key => {
 .explorer-result-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .explorer-result h4 { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
 .explorer-result p { color: var(--muted); font-size: 10px; margin-top: 4px; }
-.explorer-result .direct { color:color-mix(in srgb, #f4a0b8 calc(100% - var(--dim)), #000); }
-.explorer-result-heading > button { min-width: 76px; min-height: 40px; flex-shrink: 0; border:1px solid #f6bd6740; border-radius: 9px; background:#f6bd6710; color:color-mix(in srgb, #f6bd67 calc(100% - var(--dim)), #000); font-size: 12px; cursor: pointer; }
+.explorer-result .direct { color:oklch(from #f4a0b8 calc(l - var(--dim-l)) c h); }
+.explorer-result-heading > button { min-width: 76px; min-height: 40px; flex-shrink: 0; border:1px solid #f6bd6740; border-radius: 9px; background:#f6bd6710; color:oklch(from #f6bd67 calc(l - var(--dim-l)) c h); font-size: 12px; cursor: pointer; }
 .explorer-result-heading > button:disabled { color: var(--success-text); border-color:#8ae4c325; background: transparent; cursor: default; }
 .explorer-note, .explorer-empty { color: var(--muted-soft); font-size: 11px; line-height: 1.6; margin-top: 16px; }
 @media(max-width:800px) { .explorer-layout { grid-template-columns: minmax(0,1fr); } .explorer-heading { flex-direction: column; align-items: start; } .draft-status { max-width: 100%; } .explorer-body :deep(svg) { height: 270px; } }

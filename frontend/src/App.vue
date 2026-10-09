@@ -506,7 +506,7 @@ const routeTransitionName = computed(() => {
 .streak-flame { font-size: 18px; filter: saturate(.9); }
 .streak-copy { display: grid; gap: 2px; }
 .streak-copy small { color: var(--muted); font-size: 8px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
-.streak-copy strong { color:color-mix(in srgb, #f6a45d calc(100% - var(--dim)), #000); font-family: var(--font-display); font-size: 13px; }
+.streak-copy strong { color:oklch(from #f6a45d calc(l - var(--dim-l)) c h); font-family: var(--font-display); font-size: 13px; }
 
 .main-content {
   flex: 1;

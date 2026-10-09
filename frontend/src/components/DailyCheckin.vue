@@ -133,19 +133,19 @@ async function save() {
 .checkin-scale.pain button { flex: none; padding: 0 9px; }
 .checkin-scale button:hover { border-color: rgba(118, 166, 255, 0.4); }
 .checkin-scale button.on { border-color: rgba(118, 166, 255, 0.7); background: rgba(118, 166, 255, 0.18); color:var(--text); font-weight: 650; }
-.checkin-scale button:focus-visible, .checkin-save:focus-visible, .checkin-link:focus-visible { outline:2px solid color-mix(in srgb, #91b1ff calc(100% - var(--dim)), #000); outline-offset: 2px; }
+.checkin-scale button:focus-visible, .checkin-save:focus-visible, .checkin-link:focus-visible { outline:2px solid oklch(from #91b1ff calc(l - var(--dim-l)) c h); outline-offset: 2px; }
 .checkin-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .checkin-actions { display: flex; align-items: center; gap: 10px; }
 .checkin-save { border: 0; border-radius: 7px; background:#5f8cff; padding: 5px 14px; color:#fff; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; }
 .checkin-save:disabled { opacity: 0.4; cursor: not-allowed; }
-.checkin-link { border: 0; background: none; padding: 0; color:color-mix(in srgb, #91b1ff calc(100% - var(--dim)), #000); font: inherit; font-size: 11px; cursor: pointer; text-underline-offset: 2px; white-space: nowrap; }
+.checkin-link { border: 0; background: none; padding: 0; color:oklch(from #91b1ff calc(l - var(--dim-l)) c h); font: inherit; font-size: 11px; cursor: pointer; text-underline-offset: 2px; white-space: nowrap; }
 .checkin-link:hover { text-decoration: underline; }
 .checkin-chips { display: flex; flex-wrap: wrap; justify-content: flex-end; flex: 1; gap: 4px; }
 .checkin-chips strong { border-radius: 999px; background: rgb(var(--tint-rgb) / 0.08); padding: 2px 6px; color: var(--dash-soft); font-size: 10px; font-weight: 600; }
 .checkin-chips strong.positive { background: rgba(82, 215, 170, 0.09); color: var(--success-text); }
 .checkin-chips strong.neutral { background: rgba(118, 166, 255, 0.08); color: var(--info-text); }
-.checkin-chips strong.risk { background: rgba(239, 123, 110, 0.09); color:color-mix(in srgb, #f09a90 calc(100% - var(--dim)), #000); }
-.checkin-error { color:color-mix(in srgb, #f09a90 calc(100% - var(--dim)), #000); font-size: 11px; }
+.checkin-chips strong.risk { background: rgba(239, 123, 110, 0.09); color:oklch(from #f09a90 calc(l - var(--dim-l)) c h); }
+.checkin-error { color:oklch(from #f09a90 calc(l - var(--dim-l)) c h); font-size: 11px; }
 @media (max-width: 480px) {
   .checkin-grid { grid-template-columns: 1fr; }
   .checkin-scale button { height: 32px; }

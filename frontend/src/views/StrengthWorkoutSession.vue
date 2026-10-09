@@ -905,10 +905,10 @@ onBeforeUnmount(() => {
 .live-suggestions button:hover { background: rgba(255,177,72,.09); }
 .live-suggestions button > span { display: grid; gap: 2px; }
 .live-suggestions small { color: var(--muted); }
-.live-suggestions b { color:color-mix(in srgb, #ffd18d calc(100% - var(--dim)), #000); font-size: 11px; white-space: nowrap; }
+.live-suggestions b { color:oklch(from #ffd18d calc(l - var(--dim-l)) c h); font-size: 11px; white-space: nowrap; }
 .live-history-basis { margin: -2px 0 0; color:var(--text-soft); font-size: 11px; }
 .live-exercise-fields { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-.append-exercise-button { min-height: 40px; border: 1px solid rgba(255,189,105,.36); border-radius: 10px; background: rgba(255,159,47,.13); color:color-mix(in srgb, #ffd18d calc(100% - var(--dim)), #000); font-weight: 900; }
+.append-exercise-button { min-height: 40px; border: 1px solid rgba(255,189,105,.36); border-radius: 10px; background: rgba(255,159,47,.13); color:oklch(from #ffd18d calc(l - var(--dim-l)) c h); font-weight: 900; }
 .append-exercise-button:disabled { opacity: .45; }
 .workout-detail { display: grid; gap: 18px; }
 .log-exercise { display: grid; gap: 10px; }
@@ -942,14 +942,14 @@ onBeforeUnmount(() => {
 .candidate.match-strong { border-color: color-mix(in srgb, var(--success) 40%, transparent); background: color-mix(in srgb, var(--success) 5%, transparent); }
 .candidate.match-strong .match-badge { background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success-text); }
 .candidate.match-weak { opacity: .7; }
-.candidate button { min-height: 38px; padding: 0 14px; border: 1px solid rgba(255,179,79,.3); border-radius: 10px; background: rgba(255,159,47,.1); color:color-mix(in srgb, #ffd18d calc(100% - var(--dim)), #000); font-weight: 800; }
+.candidate button { min-height: 38px; padding: 0 14px; border: 1px solid rgba(255,179,79,.3); border-radius: 10px; background: rgba(255,159,47,.1); color:oklch(from #ffd18d calc(l - var(--dim-l)) c h); font-weight: 800; }
 @media (max-width: 820px) { .linked-activity { grid-template-columns: 1fr 1fr; } .watch-link-copy { align-items: stretch; flex-direction: column; } }
 @media (max-width: 560px) { .candidate { grid-template-columns: 1fr; } }
 
 
 .session-busy { opacity: .65; }
 /* A focused training surface: amber for actions, mint for recorded work. */
-.runner-page { --runner-accent:color-mix(in srgb, #f6bd67 calc(100% - var(--dim)), #000); --runner-mint:color-mix(in srgb, #72ddba calc(100% - var(--dim)), #000); display: grid; gap: 16px; max-width: 1360px; margin: 0 auto; }
+.runner-page { --runner-accent:oklch(from #f6bd67 calc(l - var(--dim-l)) c h); --runner-mint:oklch(from #72ddba calc(l - var(--dim-l)) c h); display: grid; gap: 16px; max-width: 1360px; margin: 0 auto; }
 .runner-page button { cursor: pointer; }
 .runner-page button:disabled { cursor: default; opacity: .45; }
 .runner-page :is(button, a, input):focus-visible { outline: 2px solid var(--runner-accent); outline-offset: 3px; }
@@ -1040,7 +1040,7 @@ onBeforeUnmount(() => {
 .complete-button > span { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .complete-button small { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; opacity: .75; }
 .complete-button kbd { padding: 2px 6px; border: 1px solid rgb(0 0 0 / .2); border-radius: 5px; font: 600 11px var(--font-mono, inherit); }
-.complete-button:hover:not(:disabled) { background: color-mix(in srgb, #ffce85 calc(100% - var(--dim)), #000); }
+.complete-button:hover:not(:disabled) { background: oklch(from #ffce85 calc(l - var(--dim-l)) c h); }
 
 /* Per-set ledger: target, last time, what you did. */
 .current-exercise-sets { display: grid; gap: 8px; }

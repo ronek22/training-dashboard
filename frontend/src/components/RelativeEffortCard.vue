@@ -101,7 +101,7 @@ const chartLabel = computed(() => weeks.value.map((week) => `${format(parseISO(w
 
 <style scoped>
 .effort {
-  --effort-accent: color-mix(in srgb, #a58ff2 calc(100% - var(--dim)), #000);
+  --effort-accent: oklch(from #a58ff2 calc(l - var(--dim-l)) c h);
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
   gap: 28px;
@@ -112,8 +112,8 @@ const chartLabel = computed(() => weeks.value.map((week) => `${format(parseISO(w
   box-shadow: var(--shadow-card);
   padding: 22px 24px;
 }
-.effort.is-in { --effort-accent: color-mix(in srgb, #52d7aa calc(100% - var(--dim)), #000); }
-.effort.is-above { --effort-accent: color-mix(in srgb, #efb35a calc(100% - var(--dim)), #000); }
+.effort.is-in { --effort-accent: oklch(from #52d7aa calc(l - var(--dim-l)) c h); }
+.effort.is-above { --effort-accent: oklch(from #efb35a calc(l - var(--dim-l)) c h); }
 .effort.is-unknown { --effort-accent: var(--dash-muted, var(--muted)); }
 
 .effort-main { display: grid; gap: 8px; min-width: 0; }

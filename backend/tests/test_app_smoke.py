@@ -908,7 +908,7 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(detail_after.json()["analysis"]["generated_at"], generated_at)
         self.assertEqual(detail_after.json()["analysis"]["headline"], "Aerobic control stayed intact")
 
-    def test_activity_analysis_question_survives_the_codex_request_and_is_saved(self):
+    def test_activity_analysis_question_survives_the_coach_request_and_is_saved(self):
         activity_date = (datetime.now().date() - timedelta(days=1)).isoformat()
         created = self.client.post(
             "/activities",
@@ -929,7 +929,7 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(asked.json()["status"], "requested")
         self.assertEqual(asked.json()["pending_question"], "Was this too fast?")
 
-        # Codex re-requests through MCP without a question; the pending one must survive.
+        # The coach CLI re-requests through MCP without a question; the pending one must survive.
         mcp_request = self.client.post("/activities/analysis-question-run/analysis", json={"force_refresh": True})
         self.assertEqual(mcp_request.json()["pending_question"], "Was this too fast?")
 

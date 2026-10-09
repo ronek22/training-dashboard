@@ -1,4 +1,4 @@
-"""One explicit Codex call per changed cycling profile."""
+"""One explicit coach CLI call per changed cycling profile."""
 import json
 try:
     from scripts.team_coaching_helper import request, parse
@@ -6,7 +6,7 @@ except ModuleNotFoundError:
     from team_coaching_helper import request, parse
 
 
-def run_review(run_codex, progress):
+def run_review(run_coach, progress):
     saved = request('/metrics/cycling-power/advice')
     if saved.get('review') and not saved.get('stale'):
         return saved['review']
@@ -31,7 +31,7 @@ Goals, schedule and recovery are not supplied: avoid prescribing a full plan or 
 If evidence is too thin, prioritize the missing observation or repeatable test instead of inventing a weakness.
 Keep the response concise, with at most 3 focus items and 12 evidence IDs.
 Schema: ''' + json.dumps(schema) + '\nSnapshot: ' + json.dumps(context['snapshot'], separators=(',', ':'))
-    output = run_codex(prompt, failure_label='Cycling review failed', fallback='No cycling advice returned.')
+    output = run_coach(prompt, failure_label='Cycling review failed', fallback='No cycling advice returned.')
     result = parse(output)
     if result.get('context_key') != context['context_key']:
         raise ValueError('The cycling review returned a different snapshot key. Please retry.')

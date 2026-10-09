@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-// The coach drawer is only mounted on the Mac (it needs the local Codex helper);
+// The coach drawer is only mounted on the Mac (it needs the local coach helper);
 // it flips this on so pages know whether to offer "Talk this through".
 export const coachChatAvailable = ref(false)
 

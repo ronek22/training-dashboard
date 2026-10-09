@@ -24,6 +24,8 @@ const paths = {
   records: 'M8 21h8m-4-4v4M7 4h10v5a5 5 0 0 1-10 0V4Zm0 2H4a3 3 0 0 0 3 4m10-4h3a3 3 0 0 1-3 4',
   notes: 'M6 3h12v18H6V3Zm4 5h4m-4 4h4m-4 4h3',
   mountains: 'M2 20 9 7l4 6 2.5-3.5L22 20H2Zm7-13 2.2 4',
+  food: 'M7 3v8m-3-8v5a3 3 0 0 0 6 0V3M7 11v10m10-18c-2 0-3 3-3 7h3v11m0-18v18',
+  usage: 'M4 16a8 8 0 1 1 16 0m-8 0 4-5M4 20h16',
   roadmap: 'M6 20V8m0 0 5-3 4 3 3-2v12l-3 2-4-3-5 3Zm5-15v12m4-9v12',
 }
 </script>

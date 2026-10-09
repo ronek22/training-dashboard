@@ -232,6 +232,11 @@ TOOLS = [
         "inputSchema": {"type": "object", "properties": {}}
     },
     {
+        "name": "get_nutrition",
+        "description": "Read the last 7 days of logged food against estimated daily burn: per logged day kcal, protein, target and gap, plus under-fuelled day counts. Unlogged days are unknown, not zero. The athlete tends to under-eat",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
         "name": "get_life_load",
         "description": "Read life-load tags (travel, deadline, family, poor sleep, late night) on days between start and end (default: 120 days back to 60 ahead). These days limit time and attention, not the body: keep intervals, tempo, race-specific and 90+ minute sessions off them",
         "inputSchema": {
@@ -615,6 +620,10 @@ def handle_tool(name: str, args: dict) -> str:
 
         elif name == "get_return_to_run":
             result = call_api("GET", "/return-to-run")
+            return json.dumps(result, indent=2)
+
+        elif name == "get_nutrition":
+            result = call_api("GET", "/nutrition/context")
             return json.dumps(result, indent=2)
 
         elif name in ("get_life_load", "set_life_load_day", "preview_minimum_week", "set_minimum_week"):

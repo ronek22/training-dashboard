@@ -6,16 +6,16 @@
         <h1 class="page-title">Plan</h1>
         <p class="page-sub">A little structure. A clear purpose. Your next week of progress.</p>
       </div>
-      <div class="codex-plan-action">
-        <button type="button" class="codex-plan-button" :disabled="planningWithCodex || !isLocalCodexHost" :title="isLocalCodexHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="openCodexPlanningBrief">
+      <div class="planner-action">
+        <button type="button" class="planner-button" :disabled="planningWithCoach || !isLocalCoachHost" :title="isLocalCoachHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="openCoachPlanningBrief">
           <svg aria-hidden="true" viewBox="0 0 24 24">
             <path d="M12 3l1.25 3.75L17 8l-3.75 1.25L12 13l-1.25-3.75L7 8l3.75-1.25L12 3Z" />
             <path d="m18.5 13 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" />
             <path d="m5.5 13 .8 2.2 2.2.8-2.2.8L5.5 19l-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" />
           </svg>
-          <span>{{ planningWithCodex ? 'Codex is planning…' : isLocalCodexHost ? 'Plan this week with Codex' : 'Plan with Codex on Mac' }}</span>
+          <span>{{ planningWithCoach ? 'The coach is planning…' : isLocalCoachHost ? 'Plan this week with the coach' : 'Plan with the coach on Mac' }}</span>
         </button>
-        <span class="codex-plan-hint">{{ codexPlanningStage || (isLocalCodexHost ? 'Creates and saves the plan automatically' : 'Open TrainLog on your Mac to use the coach') }}</span>
+        <span class="planner-hint">{{ coachPlanningStage || (isLocalCoachHost ? 'Creates and saves the plan automatically' : 'Open TrainLog on your Mac to use the coach') }}</span>
       </div>
     </div>
 
@@ -81,7 +81,7 @@
       </section>
 
 
-      <div v-if="!plans.length" class="empty card plan-empty"><span aria-hidden="true">↗</span><h2>Your next chapter starts here.</h2><p>Build a week around your goals, your schedule, and where you are today.</p><button type="button" class="save-button" :disabled="planningWithCodex || !isLocalCodexHost" :title="isLocalCodexHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="openCodexPlanningBrief">Create your first week →</button></div>
+      <div v-if="!plans.length" class="empty card plan-empty"><span aria-hidden="true">↗</span><h2>Your next chapter starts here.</h2><p>Build a week around your goals, your schedule, and where you are today.</p><button type="button" class="save-button" :disabled="planningWithCoach || !isLocalCoachHost" :title="isLocalCoachHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="openCoachPlanningBrief">Create your first week →</button></div>
 
       <div v-else id="weekly-agenda" class="weeks-list">
       <section
@@ -108,7 +108,7 @@
             <button v-else type="button" class="ghost-button minimum-week-button" title="Shrink the rest of this week to the smallest version that keeps your anchors" :disabled="minimumWeekBusy" @click="openMinimumWeek(plan)">Minimum week</button>
           </template>
           <details class="week-actions plan-actions-menu"><summary>Manage week <span aria-hidden="true">⌄</span></summary><div class="plan-actions-menu-items">
-            <button v-if="isLocalCodexHost && isCurrentPlan(plan) && adjustableDays(plan).length" type="button" class="ghost-button codex-refine-button" :disabled="planningWithCodex" @click="openCodexPlanFeedback">Refine with Codex</button>
+            <button v-if="isLocalCoachHost && isCurrentPlan(plan) && adjustableDays(plan).length" type="button" class="ghost-button planner-refine-button" :disabled="planningWithCoach" @click="openCoachPlanFeedback">Refine with the coach</button>
             <button
               v-if="isHistoricalPlan(plan)"
               type="button"
@@ -800,42 +800,42 @@
     </template>
 
     <Transition name="overlay-fade" appear>
-      <div v-if="codexBriefOpen" class="codex-brief-shell" @click.self="closeCodexPlanningBrief">
-        <form class="codex-brief-modal card" role="dialog" aria-modal="true" aria-labelledby="codex-brief-title" @submit.prevent="planCurrentWeekWithCodex">
-          <div class="codex-brief-head">
+      <div v-if="coachBriefOpen" class="planner-brief-shell" @click.self="closeCoachPlanningBrief">
+        <form class="planner-brief-modal card" role="dialog" aria-modal="true" aria-labelledby="planner-brief-title" @submit.prevent="planCurrentWeekWithCoach">
+          <div class="planner-brief-head">
             <div>
-              <div class="plan-details-kicker">Plan with Codex</div>
-              <h2 id="codex-brief-title">Anything Codex should consider?</h2>
+              <div class="plan-details-kicker">Plan with the coach</div>
+              <h2 id="planner-brief-title">Anything the coach should consider?</h2>
               <p>Add schedule constraints, recovery feedback, session preferences, or a specific priority for this week.</p>
             </div>
-            <button class="plan-details-close" type="button" aria-label="Close planning brief" @click="closeCodexPlanningBrief">×</button>
+            <button class="plan-details-close" type="button" aria-label="Close planning brief" @click="closeCoachPlanningBrief">×</button>
           </div>
 
-          <label class="codex-brief-label" for="codex-planning-brief">Additional input <span>optional</span></label>
+          <label class="planner-brief-label" for="coach-planning-brief">Additional input <span>optional</span></label>
           <textarea
-            id="codex-planning-brief"
-            v-model="codexPlanningBrief"
+            id="coach-planning-brief"
+            v-model="coachPlanningBrief"
             rows="5"
             maxlength="4000"
             placeholder="For example: I feel more fatigued than usual. Keep Friday free, make Saturday the long ride, and avoid hard running this week."
             autofocus
           ></textarea>
 
-          <div class="codex-brief-suggestions" aria-label="Quick planning inputs">
+          <div class="planner-brief-suggestions" aria-label="Quick planning inputs">
             <button
-              v-for="suggestion in codexBriefSuggestions"
+              v-for="suggestion in coachBriefSuggestions"
               :key="suggestion"
               type="button"
-              @click="addCodexBriefSuggestion(suggestion)"
+              @click="addCoachBriefSuggestion(suggestion)"
             >{{ suggestion }}</button>
           </div>
 
-          <div class="codex-brief-footer">
-            <span>{{ codexPlanningBrief.length }} / 4000</span>
+          <div class="planner-brief-footer">
+            <span>{{ coachPlanningBrief.length }} / 4000</span>
             <div>
-              <button class="ghost-button" type="button" @click="closeCodexPlanningBrief">Cancel</button>
-              <button class="codex-brief-submit" type="submit">
-                {{ codexPlanningBrief.trim() ? 'Generate with this input' : 'Generate from dashboard data' }}
+              <button class="ghost-button" type="button" @click="closeCoachPlanningBrief">Cancel</button>
+              <button class="planner-brief-submit" type="submit">
+                {{ coachPlanningBrief.trim() ? 'Generate with this input' : 'Generate from dashboard data' }}
               </button>
             </div>
           </div>
@@ -844,9 +844,9 @@
     </Transition>
 
     <Transition name="overlay-fade" appear>
-      <div v-if="minimumWeek" class="codex-brief-shell" @click.self="closeMinimumWeek">
-        <div class="codex-brief-modal card minimum-week-modal" role="dialog" aria-modal="true" aria-labelledby="minimum-week-title" @keydown.esc="closeMinimumWeek">
-          <div class="codex-brief-head">
+      <div v-if="minimumWeek" class="planner-brief-shell" @click.self="closeMinimumWeek">
+        <div class="planner-brief-modal card minimum-week-modal" role="dialog" aria-modal="true" aria-labelledby="minimum-week-title" @keydown.esc="closeMinimumWeek">
+          <div class="planner-brief-head">
             <div>
               <div class="plan-details-kicker">Minimum viable week</div>
               <h2 id="minimum-week-title">Shrink the rest of this week</h2>
@@ -863,11 +863,11 @@
             </li>
           </ol>
           <p v-if="minimumWeekError" class="minimum-week-error" role="alert">{{ minimumWeekError }}</p>
-          <div class="codex-brief-footer">
+          <div class="planner-brief-footer">
             <span></span>
             <div>
               <button class="ghost-button" type="button" @click="closeMinimumWeek">Cancel</button>
-              <button class="codex-brief-submit" type="button" :disabled="minimumWeekBusy" @click="applyMinimumWeek">{{ minimumWeekBusy ? 'Shrinking…' : 'Shrink the week' }}</button>
+              <button class="planner-brief-submit" type="button" :disabled="minimumWeekBusy" @click="applyMinimumWeek">{{ minimumWeekBusy ? 'Shrinking…' : 'Shrink the week' }}</button>
             </div>
           </div>
         </div>
@@ -875,42 +875,42 @@
     </Transition>
 
     <Transition name="overlay-fade" appear>
-      <div v-if="codexFeedbackOpen" class="codex-brief-shell" @click.self="closeCodexPlanFeedback">
-        <form class="codex-brief-modal card" role="dialog" aria-modal="true" aria-labelledby="codex-feedback-title" @submit.prevent="reviseCurrentPlanWithCodex">
-          <div class="codex-brief-head">
+      <div v-if="coachFeedbackOpen" class="planner-brief-shell" @click.self="closeCoachPlanFeedback">
+        <form class="planner-brief-modal card" role="dialog" aria-modal="true" aria-labelledby="coach-feedback-title" @submit.prevent="reviseCurrentPlanWithCoach">
+          <div class="planner-brief-head">
             <div>
-              <div class="plan-details-kicker">Refine with Codex</div>
-              <h2 id="codex-feedback-title">How should Codex revise this plan?</h2>
+              <div class="plan-details-kicker">Refine with the coach</div>
+              <h2 id="coach-feedback-title">How should the coach revise this plan?</h2>
               <p>Review the generated week, then describe what should move, change, or receive more emphasis. Completed and past days stay protected.</p>
             </div>
-            <button class="plan-details-close" type="button" aria-label="Close plan feedback" @click="closeCodexPlanFeedback">×</button>
+            <button class="plan-details-close" type="button" aria-label="Close plan feedback" @click="closeCoachPlanFeedback">×</button>
           </div>
 
-          <label class="codex-brief-label" for="codex-plan-feedback">Feedback on this plan</label>
+          <label class="planner-brief-label" for="coach-plan-feedback">Feedback on this plan</label>
           <textarea
-            id="codex-plan-feedback"
-            v-model="codexPlanFeedback"
+            id="coach-plan-feedback"
+            v-model="coachPlanFeedback"
             rows="5"
             maxlength="4000"
             placeholder="For example: Thursday looks too hard after Wednesday. Move the intervals to Saturday and make Friday a recovery day."
             autofocus
           ></textarea>
 
-          <div class="codex-brief-suggestions" aria-label="Quick plan feedback">
+          <div class="planner-brief-suggestions" aria-label="Quick plan feedback">
             <button
-              v-for="suggestion in codexFeedbackSuggestions"
+              v-for="suggestion in coachFeedbackSuggestions"
               :key="suggestion"
               type="button"
-              @click="addCodexFeedbackSuggestion(suggestion)"
+              @click="addCoachFeedbackSuggestion(suggestion)"
             >{{ suggestion }}</button>
           </div>
 
-          <div class="codex-brief-footer">
-            <span>{{ codexPlanFeedback.length }} / 4000</span>
+          <div class="planner-brief-footer">
+            <span>{{ coachPlanFeedback.length }} / 4000</span>
             <div>
-              <button class="ghost-button" type="button" @click="closeCodexPlanFeedback">Cancel</button>
-              <button class="codex-brief-submit" type="submit" :disabled="!codexPlanFeedback.trim()">
-                Revise plan with Codex
+              <button class="ghost-button" type="button" @click="closeCoachPlanFeedback">Cancel</button>
+              <button class="planner-brief-submit" type="submit" :disabled="!coachPlanFeedback.trim()">
+                Revise plan with the coach
               </button>
             </div>
           </div>
@@ -1073,16 +1073,16 @@ const openLinkEditors = ref({})
 const expandedHistoricalWeeks = ref({})
 const selectedWeekStart = ref(null)
 const selectedDayDate = ref(null)
-const planningWithCodex = ref(false)
-const codexPlanningStage = ref('')
-const codexBriefOpen = ref(false)
-const codexPlanningBrief = ref('')
-const codexFeedbackOpen = ref(false)
-const codexPlanFeedback = ref('')
-const localCodexHostnames = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
-const isLocalCodexHost = computed(() => {
+const planningWithCoach = ref(false)
+const coachPlanningStage = ref('')
+const coachBriefOpen = ref(false)
+const coachPlanningBrief = ref('')
+const coachFeedbackOpen = ref(false)
+const coachPlanFeedback = ref('')
+const localCoachHostnames = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
+const isLocalCoachHost = computed(() => {
   if (typeof window === 'undefined') return false
-  return localCodexHostnames.has(window.location.hostname.toLowerCase())
+  return localCoachHostnames.has(window.location.hostname.toLowerCase())
 })
 let viewActive = true
 const editor = ref({
@@ -1092,13 +1092,13 @@ const editor = ref({
   days: {},
 })
 const coachingDraftKey = 'coaching-adjustment-draft'
-const codexBriefSuggestions = [
+const coachBriefSuggestions = [
   'Prioritize recovery',
   'Keep Friday free',
   'Long ride on Saturday',
   'Limit weekday sessions to 60 minutes',
 ]
-const codexFeedbackSuggestions = [
+const coachFeedbackSuggestions = [
   'Reduce the overall load',
   'Add another recovery day',
   'Move the hardest session later',
@@ -1168,52 +1168,52 @@ const requestWithTimeout = (request, timeoutMs = 8000) => Promise.race([
 
 const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 
-const openCodexPlanningBrief = () => {
-  if (!isLocalCodexHost.value || planningWithCodex.value) return
-  codexBriefOpen.value = true
+const openCoachPlanningBrief = () => {
+  if (!isLocalCoachHost.value || planningWithCoach.value) return
+  coachBriefOpen.value = true
 }
 
-const closeCodexPlanningBrief = () => {
-  if (planningWithCodex.value) return
-  codexBriefOpen.value = false
+const closeCoachPlanningBrief = () => {
+  if (planningWithCoach.value) return
+  coachBriefOpen.value = false
 }
 
-const addCodexBriefSuggestion = (suggestion) => {
-  if (codexPlanningBrief.value.includes(suggestion)) return
-  const separator = codexPlanningBrief.value.trim() ? '\n' : ''
-  codexPlanningBrief.value = `${codexPlanningBrief.value.trimEnd()}${separator}${suggestion}`
+const addCoachBriefSuggestion = (suggestion) => {
+  if (coachPlanningBrief.value.includes(suggestion)) return
+  const separator = coachPlanningBrief.value.trim() ? '\n' : ''
+  coachPlanningBrief.value = `${coachPlanningBrief.value.trimEnd()}${separator}${suggestion}`
 }
 
-const openCodexPlanFeedback = () => {
-  if (!isLocalCodexHost.value || planningWithCodex.value || !selectedPlan.value) return
-  codexFeedbackOpen.value = true
+const openCoachPlanFeedback = () => {
+  if (!isLocalCoachHost.value || planningWithCoach.value || !selectedPlan.value) return
+  coachFeedbackOpen.value = true
 }
 
-const closeCodexPlanFeedback = () => {
-  if (planningWithCodex.value) return
-  codexFeedbackOpen.value = false
+const closeCoachPlanFeedback = () => {
+  if (planningWithCoach.value) return
+  coachFeedbackOpen.value = false
 }
 
-const addCodexFeedbackSuggestion = (suggestion) => {
-  if (codexPlanFeedback.value.includes(suggestion)) return
-  const separator = codexPlanFeedback.value.trim() ? '\n' : ''
-  codexPlanFeedback.value = `${codexPlanFeedback.value.trimEnd()}${separator}${suggestion}`
+const addCoachFeedbackSuggestion = (suggestion) => {
+  if (coachPlanFeedback.value.includes(suggestion)) return
+  const separator = coachPlanFeedback.value.trim() ? '\n' : ''
+  coachPlanFeedback.value = `${coachPlanFeedback.value.trimEnd()}${separator}${suggestion}`
 }
 
-const planCurrentWeekWithCodex = async () => {
-  if (!isLocalCodexHost.value || planningWithCodex.value) return
+const planCurrentWeekWithCoach = async () => {
+  if (!isLocalCoachHost.value || planningWithCoach.value) return
   const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
-  const planningBrief = codexPlanningBrief.value.trim()
-  codexBriefOpen.value = false
-  planningWithCodex.value = true
-  codexPlanningStage.value = 'Starting local Codex…'
+  const planningBrief = coachPlanningBrief.value.trim()
+  coachBriefOpen.value = false
+  planningWithCoach.value = true
+  coachPlanningStage.value = 'Starting the coach…'
   flashMessage.value = {
     type: 'success',
-    title: 'Codex is planning this week',
+    title: 'The coach is planning this week',
     detail: 'You can stay on this page. The plan will refresh automatically when it is saved.',
   }
   try {
-    const started = await api.startCodexWeeklyPlan({
+    const started = await api.startCoachWeeklyPlan({
       week_start: weekStart,
       planning_brief: planningBrief,
     })
@@ -1221,54 +1221,54 @@ const planCurrentWeekWithCodex = async () => {
     const deadline = Date.now() + (15 * 60 * 1000)
     while (viewActive && Date.now() < deadline) {
       await wait(1800)
-      const result = await api.getCodexWeeklyPlanJob(jobId)
+      const result = await api.getCoachWeeklyPlanJob(jobId)
       const job = result.data
-      codexPlanningStage.value = job.message || 'Codex is planning…'
-      if (job.status === 'failed') throw new Error(job.message || 'Codex could not create the weekly plan.')
+      coachPlanningStage.value = job.message || 'The coach is planning…'
+      if (job.status === 'failed') throw new Error(job.message || 'The coach could not create the weekly plan.')
       if (job.status === 'succeeded') {
         selectedWeekStart.value = weekStart
         selectedDayDate.value = null
         await load()
         flashMessage.value = {
           type: 'success',
-          title: 'Weekly plan saved by Codex',
-          detail: job.summary || 'The current plan has been refreshed. Use Refine with Codex if you want anything changed.',
+          title: 'Weekly plan saved by the coach',
+          detail: job.summary || 'The current plan has been refreshed. Use Refine with the coach if you want anything changed.',
         }
         return
       }
     }
-    if (viewActive) throw new Error('Codex planning timed out after 15 minutes.')
+    if (viewActive) throw new Error('Planning timed out after 15 minutes.')
   } catch (error) {
     if (!viewActive) return
     const helperUnavailable = Boolean(error?.request && !error?.response)
     flashMessage.value = {
       type: 'error',
-      title: helperUnavailable ? 'Local Codex helper is not running' : 'Codex could not create the plan',
+      title: helperUnavailable ? 'Local coach helper is not running' : 'The coach could not create the plan',
       detail: helperUnavailable
         ? 'Restart the dashboard with its normal start command, then try again.'
         : (error?.response?.data?.detail || error?.message || 'The weekly planning request failed.'),
     }
   } finally {
-    planningWithCodex.value = false
-    codexPlanningStage.value = ''
+    planningWithCoach.value = false
+    coachPlanningStage.value = ''
   }
 }
 
-const reviseCurrentPlanWithCodex = async () => {
-  if (!isLocalCodexHost.value || planningWithCodex.value || !selectedPlan.value) return
-  const feedback = codexPlanFeedback.value.trim()
+const reviseCurrentPlanWithCoach = async () => {
+  if (!isLocalCoachHost.value || planningWithCoach.value || !selectedPlan.value) return
+  const feedback = coachPlanFeedback.value.trim()
   if (!feedback) return
   const weekStart = selectedPlan.value.week_start
-  codexFeedbackOpen.value = false
-  planningWithCodex.value = true
-  codexPlanningStage.value = 'Sending plan feedback to Codex…'
+  coachFeedbackOpen.value = false
+  planningWithCoach.value = true
+  coachPlanningStage.value = 'Sending plan feedback to the coach…'
   flashMessage.value = {
     type: 'success',
-    title: 'Codex is revising the plan',
+    title: 'The coach is revising the plan',
     detail: 'The saved plan will refresh automatically after the revision is complete.',
   }
   try {
-    const started = await api.startCodexWeeklyPlanRevision({
+    const started = await api.startCoachWeeklyPlanRevision({
       week_start: weekStart,
       feedback,
     })
@@ -1276,12 +1276,12 @@ const reviseCurrentPlanWithCodex = async () => {
     const deadline = Date.now() + (15 * 60 * 1000)
     while (viewActive && Date.now() < deadline) {
       await wait(1800)
-      const result = await api.getCodexWeeklyPlanRevisionJob(jobId)
+      const result = await api.getCoachWeeklyPlanRevisionJob(jobId)
       const job = result.data
-      codexPlanningStage.value = job.message || 'Codex is revising the plan…'
-      if (job.status === 'failed') throw new Error(job.message || 'Codex could not revise the weekly plan.')
+      coachPlanningStage.value = job.message || 'The coach is revising the plan…'
+      if (job.status === 'failed') throw new Error(job.message || 'The coach could not revise the weekly plan.')
       if (job.status === 'succeeded') {
-        codexPlanFeedback.value = ''
+        coachPlanFeedback.value = ''
         await load()
         flashMessage.value = {
           type: 'success',
@@ -1291,20 +1291,20 @@ const reviseCurrentPlanWithCodex = async () => {
         return
       }
     }
-    if (viewActive) throw new Error('Codex revision timed out after 15 minutes.')
+    if (viewActive) throw new Error('Revision timed out after 15 minutes.')
   } catch (error) {
     if (!viewActive) return
     const helperUnavailable = Boolean(error?.request && !error?.response)
     flashMessage.value = {
       type: 'error',
-      title: helperUnavailable ? 'Local Codex helper is not running' : 'Codex could not revise the plan',
+      title: helperUnavailable ? 'Local coach helper is not running' : 'The coach could not revise the plan',
       detail: helperUnavailable
         ? 'Restart the dashboard with its normal start command, then try again.'
         : (error?.response?.data?.detail || error?.message || 'The weekly plan revision failed.'),
     }
   } finally {
-    planningWithCodex.value = false
-    codexPlanningStage.value = ''
+    planningWithCoach.value = false
+    coachPlanningStage.value = ''
   }
 }
 
@@ -2524,13 +2524,13 @@ const savePlanLink = async (day) => {
 .run-guardrail { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 12px 0; padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(243, 180, 77, 0.35); border-left: 3px solid var(--warning); background: rgba(243, 180, 77, 0.08); font-size: 13px; }
 .run-guardrail strong { color: var(--warning-text); }
 .run-guardrail span { color: var(--text-soft); }
-.codex-plan-action {
+.planner-action {
   display: grid;
   justify-items: end;
   gap: 5px;
   flex: 0 0 auto;
 }
-.codex-plan-button {
+.planner-button {
   display: inline-flex;
   align-items: center;
   gap: 9px;
@@ -2546,17 +2546,17 @@ const savePlanLink = async (day) => {
   font-weight: 750;
   cursor: pointer;
 }
-.codex-plan-button:hover {
+.planner-button:hover {
   transform: translateY(-1px);
   border-color: rgba(123, 163, 255, 0.62);
   box-shadow: inset 0 1px 0 rgb(var(--ov-rgb) / 0.1), 0 14px 32px rgb(var(--shadow-rgb) / 0.24);
 }
-.codex-plan-button:disabled {
+.planner-button:disabled {
   cursor: wait;
   opacity: 0.72;
   transform: none;
 }
-.codex-plan-button svg {
+.planner-button svg {
   width: 18px;
   height: 18px;
   fill: none;
@@ -2565,11 +2565,11 @@ const savePlanLink = async (day) => {
   stroke-linejoin: round;
   stroke-width: 1.55;
 }
-.codex-plan-hint {
+.planner-hint {
   color: var(--muted);
   font-size: 10px;
 }
-.codex-brief-shell {
+.planner-brief-shell {
   position: fixed;
   inset: 0;
   z-index: 90;
@@ -2580,7 +2580,7 @@ const savePlanLink = async (day) => {
   background: rgb(var(--shadow-rgb) / .74);
   backdrop-filter: blur(16px);
 }
-.codex-brief-modal {
+.planner-brief-modal {
   width: min(650px, 100%);
   padding: 24px;
   border-color: rgba(123, 163, 255, .26);
@@ -2588,27 +2588,27 @@ const savePlanLink = async (day) => {
     rgb(var(--deep-rgb) / .99);
   box-shadow: 0 30px 90px rgb(var(--shadow-rgb) / .55);
 }
-.codex-brief-head {
+.planner-brief-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
 }
-.codex-brief-head h2 {
+.planner-brief-head h2 {
   margin: 0;
   font-family: var(--font-display);
   font-size: clamp(25px, 4vw, 34px);
   line-height: 1.08;
   letter-spacing: -.03em;
 }
-.codex-brief-head p {
+.planner-brief-head p {
   max-width: 540px;
   margin: 9px 0 0;
   color: var(--muted-soft);
   font-size: 13px;
   line-height: 1.55;
 }
-.codex-brief-label {
+.planner-brief-label {
   display: flex;
   justify-content: space-between;
   margin: 22px 0 8px;
@@ -2618,8 +2618,8 @@ const savePlanLink = async (day) => {
   letter-spacing: .05em;
   text-transform: uppercase;
 }
-.codex-brief-label span { color: var(--muted); font-weight: 600; }
-.codex-brief-modal textarea {
+.planner-brief-label span { color: var(--muted); font-weight: 600; }
+.planner-brief-modal textarea {
   width: 100%;
   min-height: 128px;
   resize: vertical;
@@ -2630,14 +2630,14 @@ const savePlanLink = async (day) => {
   color: var(--text);
   line-height: 1.55;
 }
-.codex-brief-modal textarea::placeholder { color:var(--muted); }
-.codex-brief-suggestions {
+.planner-brief-modal textarea::placeholder { color:var(--muted); }
+.planner-brief-suggestions {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
   margin-top: 11px;
 }
-.codex-brief-suggestions button {
+.planner-brief-suggestions button {
   padding: 6px 10px;
   border: 1px solid rgba(123, 163, 255, .2);
   border-radius: 999px;
@@ -2646,17 +2646,17 @@ const savePlanLink = async (day) => {
   font-size: 10px;
   cursor: pointer;
 }
-.codex-brief-suggestions button:hover { background: rgba(95, 140, 255, .16); color: var(--text); }
-.codex-brief-footer {
+.planner-brief-suggestions button:hover { background: rgba(95, 140, 255, .16); color: var(--text); }
+.planner-brief-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
   margin-top: 22px;
 }
-.codex-brief-footer > span { color: var(--muted); font-size: 10px; }
-.codex-brief-footer > div { display: flex; gap: 8px; }
-.codex-brief-submit {
+.planner-brief-footer > span { color: var(--muted); font-size: 10px; }
+.planner-brief-footer > div { display: flex; gap: 8px; }
+.planner-brief-submit {
   min-height: 40px;
   padding: 0 15px;
   border: 1px solid rgba(123, 163, 255, .36);
@@ -2666,13 +2666,13 @@ const savePlanLink = async (day) => {
   font-weight: 750;
   cursor: pointer;
 }
-.codex-brief-submit:hover { transform: translateY(-1px); }
-.codex-brief-submit:disabled {
+.planner-brief-submit:hover { transform: translateY(-1px); }
+.planner-brief-submit:disabled {
   cursor: not-allowed;
   opacity: .5;
   transform: none;
 }
-.codex-refine-button {
+.planner-refine-button {
   border-color: rgba(123, 163, 255, .3);
   color:var(--text);
 }
@@ -4579,23 +4579,23 @@ const savePlanLink = async (day) => {
 }
 
 @media (max-width: 760px) {
-  .codex-plan-action {
+  .planner-action {
     width: 100%;
     justify-items: stretch;
   }
-  .codex-plan-button {
+  .planner-button {
     justify-content: center;
     width: 100%;
   }
-  .codex-plan-hint { text-align: center; }
-  .codex-brief-shell { padding: 12px; align-items: flex-end; }
-  .codex-brief-modal {
+  .planner-hint { text-align: center; }
+  .planner-brief-shell { padding: 12px; align-items: flex-end; }
+  .planner-brief-modal {
     padding: 19px;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
   }
-  .codex-brief-footer { align-items: flex-end; }
-  .codex-brief-footer > div { flex-direction: column-reverse; }
+  .planner-brief-footer { align-items: flex-end; }
+  .planner-brief-footer > div { flex-direction: column-reverse; }
   .plan-command { padding: 16px; }
   .plan-command-top { align-items: flex-start; flex-direction: column; }
   .period-navigation { width: 100%; }
@@ -4651,7 +4651,7 @@ const savePlanLink = async (day) => {
   .plan-day.is-today { transform: none; }
 }
 /* Weekly rhythm and a session agenda replace the wide card carousel. */
-.plan-page{--plan-highlight:color-mix(in srgb, #dfc49c calc(100% - var(--dim)), #000)}.plan-page>.page-head{margin-bottom:28px}.plan-page>.page-head .page-title{font-size:40px;letter-spacing:-1.5px}.plan-page>.page-head .page-eyebrow{font-size:9px;letter-spacing:.16em;color:var(--text-soft)}.plan-page .page-sub{color:var(--muted);font-size:13px}.plan-page .codex-plan-button{background:color-mix(in srgb, color-mix(in srgb, #e7d3b1 calc(100% - var(--dim)), #000), color-mix(in srgb, #c6a879 calc(100% - var(--dim)), #000));border-color:color-mix(in srgb, #dec7a3 calc(100% - var(--dim)), #000);color:var(--on-accent);box-shadow:var(--shadow-card)}.plan-page .codex-plan-button:hover:not(:disabled){background:color-mix(in srgb, #ead6b4 calc(100% - var(--dim)), #000);box-shadow:var(--shadow-card-hover)}.plan-page .codex-plan-hint{color:var(--text-soft);font-size:10px}
+.plan-page{--plan-highlight:color-mix(in srgb, #dfc49c calc(100% - var(--dim)), #000)}.plan-page>.page-head{margin-bottom:28px}.plan-page>.page-head .page-title{font-size:40px;letter-spacing:-1.5px}.plan-page>.page-head .page-eyebrow{font-size:9px;letter-spacing:.16em;color:var(--text-soft)}.plan-page .page-sub{color:var(--muted);font-size:13px}.plan-page .planner-button{background:color-mix(in srgb, color-mix(in srgb, #e7d3b1 calc(100% - var(--dim)), #000), color-mix(in srgb, #c6a879 calc(100% - var(--dim)), #000));border-color:color-mix(in srgb, #dec7a3 calc(100% - var(--dim)), #000);color:var(--on-accent);box-shadow:var(--shadow-card)}.plan-page .planner-button:hover:not(:disabled){background:color-mix(in srgb, #ead6b4 calc(100% - var(--dim)), #000);box-shadow:var(--shadow-card-hover)}.plan-page .planner-hint{color:var(--text-soft);font-size:10px}
 .plan-page .plan-command{position:relative;padding:30px 32px 0;border-radius:24px;border:1px solid #dec7a32b;background:var(--deep);overflow:hidden;margin-bottom:20px}.plan-page .plan-command-top{align-items:center;margin-bottom:28px}.plan-page .plan-command .page-eyebrow{color:var(--plan-highlight);font-size:9px;letter-spacing:.16em;margin-bottom:10px}.plan-page .plan-command-title{font-size:clamp(26px,3vw,38px);letter-spacing:-1.3px;font-weight:500}.plan-page .plan-command-focus{font-size:12px;margin-top:9px;max-width:660px}.plan-page .period-navigation{padding:4px;border:1px solid #d8c29824;border-radius:12px;background:rgb(var(--deep-rgb) / 0.333);flex-shrink:0}.plan-page .period-button,.plan-page .period-today{border:0;background:transparent;border-radius:8px;min-height:36px;color:var(--text-soft)}.plan-page .period-button:hover:not(:disabled),.plan-page .period-today:hover:not(:disabled){background:#d8c29812}
 .week-rhythm{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;border-block:1px solid #d8c29823;padding-block:15px;margin-bottom:28px}.rhythm-day{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;gap:4px;padding:12px 17px;border:0;border-right:1px solid #d8c29815;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;border-radius:0;transition:background .2s}.rhythm-day:last-child{border-right:0}.rhythm-day:hover{background:rgb(var(--ov-rgb) / 0.016)}.rhythm-day.active{background:color-mix(in srgb,var(--day-accent) 12%,transparent);box-shadow:inset 0 -2px var(--day-accent)}.rhythm-day-name{display:flex;flex-wrap:wrap;align-items:center;gap:5px;color:var(--text-soft);font-size:10px;letter-spacing:.04em}.rhythm-day-name i{font-style:normal;color:var(--day-accent);font-size:6px;font-weight:800;letter-spacing:.05em}.rhythm-day-number{font-family:var(--font-display);font-weight:500;font-size:32px;letter-spacing:-1px;line-height:1.2}.rhythm-day.active .rhythm-day-number{color:var(--day-accent)}.rhythm-sport{display:grid;place-items:center;width:34px;height:34px;margin-top:9px;color:var(--day-accent);border-radius:50%;background:color-mix(in srgb,var(--day-accent) 10%,transparent)}.rhythm-day-type{font-size:10px;font-weight:650;margin-top:5px;max-width:100%;overflow-wrap:anywhere}.rhythm-day-duration{color:var(--text-soft);font-size:9px}.rhythm-day-track{position:absolute;right:17px;top:53px;width:3px;height:50px;background:rgb(var(--ov-rgb) / 0.035);border-radius:5px;display:flex;align-items:end}.rhythm-day-track>i{display:block;width:100%;border-radius:5px;background:var(--day-accent);opacity:.65}.rhythm-rest .rhythm-day-track{background:transparent}.rhythm-rest .rhythm-day-track>i{opacity:.4}
 .plan-page .plan-command-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;align-items:center;margin-bottom:28px}.plan-page .today-brief{position:relative;width:auto;padding:26px;border:1px solid color-mix(in srgb,var(--session-accent) 22%,transparent);border-radius:18px;background:color-mix(in srgb, color-mix(in srgb,var(--session-accent) 9%,var(--deep)), var(--deep));overflow:hidden;min-height:250px;display:flex;flex-direction:column}.session-watermark{position:absolute;right:-16px;bottom:-35px;opacity:.07;transform:rotate(-15deg);pointer-events:none}.session-watermark>span{font-size:190px;line-height:1}.plan-page .today-brief-head,.plan-page .today-brief-meta,.plan-page .today-brief-copy,.plan-page .today-brief-actions{position:relative}.plan-page .today-brief .section-label{color:var(--session-accent);font-size:9px;letter-spacing:.13em}.plan-page .today-brief h3{font-size:clamp(22px,2.6vw,32px);font-weight:500;letter-spacing:-.8px;line-height:1.2;margin-top:12px}.plan-page .today-brief-head{gap:15px;flex-wrap:wrap}.plan-page .today-brief-meta{margin-top:18px;gap:8px 16px}.plan-page .today-brief-meta span{padding:0;background:transparent;color:var(--text);font-size:12px}.plan-page .today-brief-copy{margin-top:14px;line-height:1.8;-webkit-line-clamp:3}.plan-page .today-brief-actions{margin-top:auto;padding-top:22px}.plan-page .today-brief-actions .save-button{background:var(--session-accent);color:var(--on-accent);border-color:transparent}.plan-page .today-brief-actions .ghost-button{background:transparent;font-size:10px}.week-intention{min-width:0;padding-right:14px}.week-intention .section-label{font-size:9px;letter-spacing:.13em;color:var(--text-soft)}.week-intention h3{font-family:var(--font-display);font-size:clamp(24px,2.6vw,35px);line-height:1.2;font-weight:500;letter-spacing:-1px;margin-top:15px}.week-intention h3 em{color:var(--plan-highlight);font-style:normal}.week-intention p{color:var(--text-soft);font-size:12px;line-height:1.8;margin-top:15px;white-space:pre-line}.week-intention a{display:inline-flex;align-items:center;gap:18px;font-size:11px;color:var(--plan-highlight);margin-top:20px}.plan-page .workload-summary{width:auto;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid #d8c29823;margin-inline:-32px;background:rgb(var(--deep-rgb) / 0.169);padding:0 15px}.plan-page .workload-metric{border:0;border-right:1px solid #d8c29815;border-radius:0;background:transparent;padding:20px}.plan-page .workload-metric:last-child{border:0}.plan-page .workload-metric span{font-size:9px;letter-spacing:.12em}.plan-page .workload-metric strong{font-size:29px;letter-spacing:-1px;font-weight:500;margin-top:8px}.plan-page .workload-metric small{font-size:10px;margin-top:7px}
@@ -4896,8 +4896,8 @@ const savePlanLink = async (day) => {
   .plan-page { gap: 24px; overflow-x: hidden; }
   .plan-page > .page-head { gap: 14px; margin-bottom: 20px; }
   .plan-page > .page-head .page-title { font-size: 32px; }
-  .plan-page .codex-plan-action { width: 100%; }
-  .plan-page .codex-plan-hint { line-height: 1.45; }
+  .plan-page .planner-action { width: 100%; }
+  .plan-page .planner-hint { line-height: 1.45; }
   .plan-page .plan-command-top { gap: 14px; }
   .plan-page .plan-command-title { font-size: 25px; line-height: 1.2; }
   .plan-page .period-navigation { width: 100%; justify-content: stretch; }
@@ -4943,19 +4943,19 @@ const savePlanLink = async (day) => {
   .plan-page .goal-context-summary { align-items: flex-start; }
   .plan-page .goal-context-summary-metrics { max-width: 100%; }
   .plan-page .plan-actions-menu-items { max-width: calc(100vw - 48px); }
-  .plan-page .codex-brief-shell,
+  .plan-page .planner-brief-shell,
   .plan-page .plan-details-modal-shell { padding: 12px; align-items: flex-end; }
-  .plan-page .codex-brief-modal {
+  .plan-page .planner-brief-modal {
     width: 100%;
     max-height: calc(100dvh - 24px);
     overflow-y: auto;
     padding: 18px;
   }
-  .plan-page .codex-brief-head { gap: 12px; }
-  .plan-page .codex-brief-footer { align-items: stretch; flex-wrap: wrap; }
-  .plan-page .codex-brief-footer > div { width: 100%; }
-  .plan-page .codex-brief-footer button,
-  .plan-page .codex-brief-submit { min-height: 44px; }
+  .plan-page .planner-brief-head { gap: 12px; }
+  .plan-page .planner-brief-footer { align-items: stretch; flex-wrap: wrap; }
+  .plan-page .planner-brief-footer > div { width: 100%; }
+  .plan-page .planner-brief-footer button,
+  .plan-page .planner-brief-submit { min-height: 44px; }
   .plan-page .plan-details-modal { max-width: 100%; }
   .plan-page .workout-brief .plan-details-close { min-width: 44px; min-height: 44px; }
 }
@@ -4963,7 +4963,7 @@ const savePlanLink = async (day) => {
 @media (max-width: 380px) {
   .plan-page { gap: 20px; }
   .plan-page > .page-head .page-title { font-size: 29px; }
-  .plan-page .codex-plan-button { padding-inline: 12px; }
+  .plan-page .planner-button { padding-inline: 12px; }
   .plan-page .plan-command-title { font-size: 22px; }
   .plan-page .workload-summary { gap: 10px; }
   .plan-page .workload-metric span { font-size: 10px; }

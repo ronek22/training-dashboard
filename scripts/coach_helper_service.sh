@@ -1,9 +1,9 @@
 #!/bin/bash
-# Run the Codex helper as a launchd user agent so it starts at login and comes back if it dies.
-# Usage: codex_helper_service.sh install | uninstall
+# Run the coach helper as a launchd user agent so it starts at login and comes back if it dies.
+# Usage: coach_helper_service.sh install | uninstall
 set -euo pipefail
 
-LABEL="com.trainingdashboard.codex-helper"
+LABEL="com.trainingdashboard.coach-helper"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DOMAIN="gui/$(id -u)"
@@ -12,7 +12,7 @@ case "${1:-}" in
   install)
     python="$(command -v python3)"
     # A helper started by hand holds the port; launchd takes over from here.
-    "$python" "$ROOT/scripts/codex_planning_helper.py" stop >/dev/null || true
+    "$python" "$ROOT/scripts/coach_helper.py" stop >/dev/null || true
     launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
     mkdir -p "$(dirname "$PLIST")"
     cat > "$PLIST" <<EOF
@@ -24,7 +24,7 @@ case "${1:-}" in
   <key>ProgramArguments</key>
   <array>
     <string>$python</string>
-    <string>$ROOT/scripts/codex_planning_helper.py</string>
+    <string>$ROOT/scripts/coach_helper.py</string>
     <string>serve</string>
   </array>
   <key>WorkingDirectory</key><string>$ROOT</string>
@@ -34,11 +34,11 @@ case "${1:-}" in
     <key>PYTHONUNBUFFERED</key><string>1</string>
   </dict>
   <key>RunAtLoad</key><true/>
-  <!-- Restart after crashes or kills; a clean stop (just codex-helper-stop) stays stopped. -->
+  <!-- Restart after crashes or kills; a clean stop (just coach-helper-stop) stays stopped. -->
   <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
   <key>ThrottleInterval</key><integer>10</integer>
-  <key>StandardOutPath</key><string>$ROOT/.codex-planning-helper.log</string>
-  <key>StandardErrorPath</key><string>$ROOT/.codex-planning-helper.log</string>
+  <key>StandardOutPath</key><string>$ROOT/.coach-helper.log</string>
+  <key>StandardErrorPath</key><string>$ROOT/.coach-helper.log</string>
 </dict>
 </plist>
 EOF

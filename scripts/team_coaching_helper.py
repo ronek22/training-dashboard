@@ -1,4 +1,4 @@
-"""One consolidated Codex call for the weekly team-coaching review."""
+"""One consolidated coach CLI call for the weekly team-coaching review."""
 import json
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
@@ -127,11 +127,11 @@ Return only JSON matching this schema: {json.dumps(schema)}
 DATA: {json.dumps(snapshot, ensure_ascii=False)}'''
 
 
-def run_review(run_codex, progress=lambda message: None):
+def run_review(run_coach, progress=lambda message: None):
     context = request('/coaching/team-analysis/context')
     snapshot = context['snapshot']
     progress('Your coaching team is reviewing the week…')
-    result = parse(run_codex(team_prompt(snapshot), failure_label='write the team coaching review', fallback=''))
+    result = parse(run_coach(team_prompt(snapshot), failure_label='write the team coaching review', fallback=''))
     specialists = result.get('specialists')
     head = result.get('head_coach')
     if not isinstance(specialists, list) or len(specialists) != 3 or not isinstance(head, dict):

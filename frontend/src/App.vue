@@ -173,6 +173,7 @@ const navGroups = [
       { to: '/goals', label: 'Goals', icon: 'goals', match: exactPath('/goals') },
       { to: '/strength', label: 'Strength', icon: 'strength', match: exactPath('/strength') },
       { to: '/recovery', label: 'Recovery', icon: 'recovery', match: exactPath('/recovery') },
+      { to: '/food', label: 'Food', icon: 'food', match: exactPath('/food') },
     ],
   },
   {
@@ -189,6 +190,7 @@ const navGroups = [
     label: 'System',
     items: [
       { to: '/sync', label: 'Data & Sync', icon: 'sync', match: exactPath('/sync') },
+      { to: '/usage', label: 'Coach usage', icon: 'usage', match: exactPath('/usage') },
       { to: '/roadmap', label: 'Roadmap', icon: 'roadmap', match: exactPath('/roadmap') },
       { to: '/ideas', label: 'Ideas', icon: 'ideas', match: exactPath('/ideas') },
     ],

@@ -56,7 +56,7 @@ async function generate() {
     if (!disposed) {
       generating.value = false
       retryAction.value = 'generate'
-      error.value = 'Advice could not start. Check that your local Codex helper is running, then retry.'
+      error.value = 'Advice could not start. Check that the local coach helper is running, then retry.'
     }
   }
 }

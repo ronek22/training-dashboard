@@ -13,12 +13,12 @@
         <div class="review-mark" aria-hidden="true">✦</div>
         <div class="review-copy"><p class="eyebrow">Daily project review</p><h2 id="review-title">Small ideas. Meaningful progress.</h2><p>{{ board.summary }}</p>
           <div class="review-meta"><span>Reviewed {{ formatDate(board.reviewed_at) }}</span><span>Daily · 09:00 Warsaw</span><span v-if="reviewIsOld" class="stale">Awaiting a fresh review</span></div>
-          <p class="schedule-note">Reviews run through Codex on this Mac. New proposals appear here after each completed review.</p>
+          <p class="schedule-note">Reviews run through your coding agent on this Mac. New proposals appear here after each completed review.</p>
         </div>
         <div class="review-count"><strong>{{ counts.shortlisted }}</strong><span>on your shortlist</span></div>
       </section>
 
-      <div class="board-heading"><div><h2>Your next improvements</h2><p>Explore a proposal, save the good ones, then take a build brief into Codex.</p></div><span class="total-count">{{ board.ideas.length }} ideas</span></div>
+      <div class="board-heading"><div><h2>Your next improvements</h2><p>Explore a proposal, save the good ones, then take a build brief to your coding agent.</p></div><span class="total-count">{{ board.ideas.length }} ideas</span></div>
       <nav class="filters" aria-label="Filter ideas">
         <button v-for="item in filters" :key="item.value" type="button" :aria-pressed="filter === item.value" :class="{ selected: filter === item.value }" @click="setFilter(item.value)">{{ item.label }} <span>{{ counts[item.value] }}</span></button>
       </nav>
@@ -37,7 +37,7 @@
             <h4>Done looks like</h4><ul><li v-for="criterion in idea.acceptance_criteria" :key="criterion">{{ criterion }}</li></ul>
             <details class="evidence"><summary>Based on the project</summary><ul><li v-for="source in idea.evidence" :key="source">{{ source }}</li></ul></details>
             <div class="brief-head"><h4>Ready-to-build brief</h4><button class="copy-button" type="button" @click="copyBrief(idea)">{{ copied === idea.id ? 'Copied ✓' : 'Copy build brief' }}</button></div>
-            <p class="brief-hint">Paste this into a Codex task for this project. Mark the idea as building when you start.</p>
+            <p class="brief-hint">Paste this into your coding agent for this project. Mark the idea as building when you start.</p>
             <textarea :id="`brief-${idea.id}`" :value="idea.build_brief" :aria-label="`Build brief for ${idea.title}`" readonly rows="7" @focus="$event.target.select()"></textarea>
             <p v-if="copyFallback === idea.id" class="notice" role="status">Clipboard access is unavailable. Select the brief above and copy it manually.</p>
           </div>
@@ -85,7 +85,7 @@ async function changeStatus(idea, event) {
 }
 async function copyBrief(idea) {
   copyFallback.value = null
-  try { await navigator.clipboard.writeText(idea.build_brief); copied.value = idea.id; message.value = 'Build brief copied. Paste it into Codex to get started.' }
+  try { await navigator.clipboard.writeText(idea.build_brief); copied.value = idea.id; message.value = 'Build brief copied. Paste it into your coding agent to get started.' }
   catch { copyFallback.value = idea.id }
 }
 onMounted(load)

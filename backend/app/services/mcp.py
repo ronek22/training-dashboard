@@ -406,6 +406,17 @@ MCP_TOOLS = [
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
+        "name": "get_nutrition",
+        "description": "Read the last 7 days of logged food against estimated daily burn (resting + daily life + net training kcal): per logged day kcal, protein, target and gap, plus under-fuelled day counts. Estimates from text/photo logging; unlogged days are unknown, not zero. The athlete tends to under-eat",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "get_life_load",
         "description": "Read life-load tags (travel, deadline, family, poor sleep, late night) on days between start and end (default: 120 days back to 60 ahead). These days limit time and attention, not the body: keep intervals, tempo, race-specific and 90+ minute sessions off them",
         "annotations": {
@@ -1029,6 +1040,11 @@ def call_mcp_tool(
 
             data = build_return_to_run(conn)
             message = json.dumps(data, indent=2)
+
+        elif name == "get_nutrition":
+            from .food_log import build_nutrition_context
+
+            message = json.dumps(build_nutrition_context(conn), indent=2)
 
         elif name == "get_life_load":
             from .life_load import get_life_load_days, public_tags

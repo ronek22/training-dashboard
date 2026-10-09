@@ -111,7 +111,7 @@ def parse_result(raw):
         raise RuntimeError("The recovery assistant returned an invalid response. Please retry.") from None
 
 
-def run_request(issue_id, request_id, run_codex):
+def run_request(issue_id, request_id, run_coach):
     context = backend_request(issue_id, request_id, "context")
-    result = parse_result(run_codex(build_prompt(context), failure_label="reply about recovery", fallback=""))
+    result = parse_result(run_coach(build_prompt(context), failure_label="reply about recovery", fallback=""))
     backend_request(issue_id, request_id, "result", result)

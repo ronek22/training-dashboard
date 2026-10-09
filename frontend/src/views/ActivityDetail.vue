@@ -50,7 +50,7 @@
           class="ad-shared-section"
           :read="analysis.session_read" :analysis="analysis"
           :running="analysisRunning" :message="analysisMessage" :message-error="analysisMessageError"
-          @ask="analyzeWithCodex"
+          @ask="analyzeWithCoach"
         />
 
         <section v-if="detail.execution_quality" class="ad-section ad-shared-section">
@@ -169,8 +169,8 @@ const value = (input) => input === null || input === undefined ? '—' : input
 const feedbackPercent = (input, maximum) => `${Math.max(0, Math.min(100, (Number(input) / maximum) * 100 || 0))}%`
 const formatDateTime = (input) => { const date = new Date(input); return Number.isNaN(date.getTime()) ? input : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date) }
 const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
-// The question is saved on the request first; Codex then reads it from the analysis context over MCP.
-const analyzeWithCodex = async (question = '') => {
+// The question is saved on the request first; Coach then reads it from the analysis context over MCP.
+const analyzeWithCoach = async (question = '') => {
   if (analysisRunning.value || !detail.value?.activity?.id) return
   // A question goes to this session's chat, so the back-and-forth is kept with the session.
   if (question && coachChatAvailable.value) {
@@ -180,30 +180,30 @@ const analyzeWithCodex = async (question = '') => {
   const activityId = String(detail.value.activity.id)
   analysisRunning.value = true
   analysisMessageError.value = false
-  analysisMessage.value = 'Starting local Codex…'
+  analysisMessage.value = 'Starting the coach…'
   try {
     await api.analyzeActivity(activityId, { force_refresh: true, question })
-    const started = await api.startCodexActivityAnalysis({ activity_id: activityId })
+    const started = await api.startCoachActivityAnalysis({ activity_id: activityId })
     const jobId = started.data.job_id
     const deadline = Date.now() + (15 * 60 * 1000)
     while (viewActive && String(route.params.activityId) === activityId && Date.now() < deadline) {
       await wait(1800)
-      const job = (await api.getCodexActivityAnalysisJob(jobId)).data
-      analysisMessage.value = job.message || 'Codex is analyzing the workout…'
-      if (job.status === 'failed') throw new Error(job.message || 'Codex could not analyze this activity.')
+      const job = (await api.getCoachActivityAnalysisJob(jobId)).data
+      analysisMessage.value = job.message || 'The coach is analyzing the workout…'
+      if (job.status === 'failed') throw new Error(job.message || 'The coach could not analyze this activity.')
       if (job.status === 'succeeded') {
         await load()
         analysisMessage.value = ''
         return
       }
     }
-    if (viewActive && String(route.params.activityId) === activityId) throw new Error('Codex analysis timed out after 15 minutes.')
+    if (viewActive && String(route.params.activityId) === activityId) throw new Error('Analysis timed out after 15 minutes.')
   } catch (analysisError) {
     if (!viewActive || String(route.params.activityId) !== activityId) return
     analysisMessageError.value = true
     const helperUnavailable = Boolean(analysisError?.request && !analysisError?.response)
     analysisMessage.value = helperUnavailable
-      ? 'The local Codex helper is not running. Restart the dashboard, then try again.'
+      ? 'The local coach helper is not running. Restart the dashboard, then try again.'
       : (analysisError?.response?.data?.detail || analysisError?.message || 'The activity analysis failed.')
   } finally {
     analysisRunning.value = false

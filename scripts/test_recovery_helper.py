@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import patch
 
 from scripts import recovery_helper
-from scripts import codex_planning_helper as helper
+from scripts import coach_helper as helper
 
 
 class RecoveryHelperTests(unittest.TestCase):

@@ -81,14 +81,25 @@ def build_protein_status(conn: sqlite3.Connection, today: Optional[date] = None)
         ).fetchall()
     }
 
+    weight = latest_body_weight(conn)
+    target = protein_target_g(weight["kg"]) if weight else None
+    # Logged food that reaches the target answers the tick; a manual tick still wins.
+    auto_hits = set()
+    if target:
+        from .food_log import logged_protein_by_day
+
+        for key, grams in logged_protein_by_day(conn, window_start.isoformat(), today.isoformat()).items():
+            if key not in ticks and grams >= target:
+                ticks[key] = True
+                auto_hits.add(key)
+
     def day_status(day: date) -> dict:
         key = day.isoformat()
-        return {"date": key, "is_lift_day": key in lift_dates, "hit": ticks.get(key)}
+        return {"date": key, "is_lift_day": key in lift_dates, "hit": ticks.get(key), "from_food_log": key in auto_hits}
 
     week_lift_days = sorted(d for d in lift_dates if d >= week_start.isoformat())
-    weight = latest_body_weight(conn)
     return {
-        "target_g": protein_target_g(weight["kg"]) if weight else None,
+        "target_g": target,
         "g_per_kg": PROTEIN_G_PER_KG,
         "weight": weight,
         "today": day_status(today),

@@ -1,12 +1,33 @@
 import io
+import json
 import subprocess
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from scripts import codex_planning_helper as helper
+from scripts import coach_chat_diagnostics as diagnostics
+from scripts import coach_usage
+from scripts import coach_helper as helper
 
 
-class CodexPlanningHelperTests(unittest.TestCase):
+def setUpModule():
+    # Mocked runs must never land in the real .coach-usage.jsonl.
+    directory = tempfile.TemporaryDirectory()
+    log = patch.object(helper, "USAGE_LOG", coach_usage.UsageLog(Path(directory.name) / "usage.jsonl"))
+    log.start()
+    unittest.addModuleCleanup(log.stop)
+    unittest.addModuleCleanup(directory.cleanup)
+
+
+class CoachHelperTests(unittest.TestCase):
+    def setUp(self):
+        # A COACH_CLI in the developer's .env must not change these Codex expectations.
+        env = patch.dict(helper.os.environ, {"COACH_CLI": "codex"})
+        env.start()
+        self.addCleanup(env.stop)
+
     def test_week_start_must_be_monday(self):
         self.assertEqual(helper.validate_week_start("2026-08-24"), "2026-08-24")
         with self.assertRaisesRegex(ValueError, "Monday"):
@@ -174,7 +195,7 @@ class CodexPlanningHelperTests(unittest.TestCase):
     @patch.object(helper.subprocess, "run")
     def test_codex_runs_non_interactively_in_isolated_workspace(self, run, _resolve):
         run.return_value = subprocess.CompletedProcess([], 0, stdout="Saved the week", stderr="")
-        summary = helper.run_codex_weekly_plan("2026-08-24")
+        summary = helper.run_coach_weekly_plan("2026-08-24")
         command = run.call_args.args[0]
         self.assertEqual(summary, "Saved the week")
         self.assertIn("exec", command)
@@ -183,7 +204,7 @@ class CodexPlanningHelperTests(unittest.TestCase):
         self.assertIn("--output-last-message", command)
         self.assertNotIn("--sandbox", command)
         self.assertIn("--skip-git-repo-check", command)
-        self.assertIn("training-dashboard-codex-", command[command.index("-C") + 1])
+        self.assertIn("training-dashboard-coach-", command[command.index("-C") + 1])
         self.assertIn("2026-08-24", run.call_args.kwargs["input"])
 
     @patch.object(helper, "resolve_codex_cli", return_value="/fake/codex")
@@ -193,7 +214,7 @@ class CodexPlanningHelperTests(unittest.TestCase):
             subprocess.CompletedProcess([], 1, stdout="", stderr="ERROR: Selected model is at capacity."),
             subprocess.CompletedProcess([], 0, stdout="Saved with fallback", stderr=""),
         ]
-        summary = helper.run_codex_weekly_plan("2026-08-24")
+        summary = helper.run_coach_weekly_plan("2026-08-24")
         self.assertEqual(summary, "Saved with fallback")
         self.assertEqual(run.call_count, 2)
         fallback_command = run.call_args_list[1].args[0]
@@ -207,8 +228,169 @@ class CodexPlanningHelperTests(unittest.TestCase):
             [], 1, stdout="large raw output", stderr="ERROR: Selected model is at capacity."
         )
         with self.assertRaisesRegex(RuntimeError, "automatic fallbacks were also busy") as raised:
-            helper.run_codex_weekly_plan("2026-08-24")
+            helper.run_coach_weekly_plan("2026-08-24")
         self.assertNotIn("large raw output", str(raised.exception))
+
+
+
+def claude_result(text, *, is_error=False):
+    return json.dumps({"type": "result", "subtype": "success", "is_error": is_error, "result": text})
+
+
+@patch.dict(helper.os.environ, {"COACH_CLI": "claude"})
+class ClaudeCoachCliTests(unittest.TestCase):
+    @patch.object(helper, "resolve_claude_cli", return_value="/fake/claude")
+    @patch.object(helper.subprocess, "run")
+    def test_claude_runs_headless_with_only_the_dashboard_mcp(self, run, _resolve):
+        run.return_value = subprocess.CompletedProcess([], 0, stdout=claude_result("Saved the week"), stderr="")
+        summary = helper.run_coach_weekly_plan("2026-08-24")
+        command = run.call_args.args[0]
+        self.assertEqual(summary, "Saved the week")
+        self.assertEqual(command[:2], ["/fake/claude", "-p"])
+        self.assertEqual(command[command.index("--model") + 1], "sonnet")
+        self.assertEqual(command[command.index("--tools") + 1], "")
+        self.assertEqual(command[command.index("--allowedTools") + 1], "mcp__training_dashboard")
+        self.assertEqual(command[command.index("--permission-mode") + 1], "dontAsk")
+        self.assertIn("--strict-mcp-config", command)
+        mcp = json.loads(command[command.index("--mcp-config") + 1])
+        self.assertEqual(mcp["mcpServers"]["training_dashboard"]["url"], "http://localhost:8000/mcp")
+        self.assertIn("training-dashboard-coach-", run.call_args.kwargs["cwd"])
+        self.assertEqual(run.call_args.kwargs["env"]["MAX_MCP_OUTPUT_TOKENS"], "60000")
+        self.assertIn("2026-08-24", run.call_args.kwargs["input"])
+
+    @patch.object(helper, "resolve_claude_cli", return_value="/fake/claude")
+    @patch.object(helper.subprocess, "run")
+    def test_claude_overload_retries_with_fallback_model(self, run, _resolve):
+        run.side_effect = [
+            subprocess.CompletedProcess([], 1, stdout=claude_result('API Error: 529 {"type":"overloaded_error"}', is_error=True), stderr=""),
+            subprocess.CompletedProcess([], 0, stdout=claude_result("Saved with fallback"), stderr=""),
+        ]
+        summary = helper.run_coach_weekly_plan("2026-08-24")
+        self.assertEqual(summary, "Saved with fallback")
+        fallback_command = run.call_args_list[1].args[0]
+        self.assertEqual(fallback_command[fallback_command.index("--model") + 1], "opus")
+
+    @patch.object(helper, "resolve_claude_cli", return_value="/fake/claude")
+    @patch.object(helper.subprocess, "run")
+    def test_claude_error_result_fails_with_claude_label(self, run, _resolve):
+        run.return_value = subprocess.CompletedProcess([], 0, stdout=claude_result("MCP server unavailable", is_error=True), stderr="")
+        with self.assertRaisesRegex(RuntimeError, "Claude could not create the plan: MCP server unavailable"):
+            helper.run_coach_weekly_plan("2026-08-24")
+
+    def test_invalid_coach_cli_is_rejected(self):
+        with patch.dict(helper.os.environ, {"COACH_CLI": "gemini"}):
+            with self.assertRaisesRegex(RuntimeError, "COACH_CLI must be one of"):
+                helper.coach_cli()
+            self.assertEqual(helper.current_cli(), "invalid")
+
+    def test_claude_stream_events_become_safe_diagnostics(self):
+        tool_line = json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "name": "mcp__training_dashboard__get_recent_context", "input": {"secret": "x"}},
+        ]}})
+        event = diagnostics.parse_cli_event(tool_line)
+        self.assertEqual(event["phase"], "tool")
+        self.assertEqual(event["tool"], "get_recent_context")
+        self.assertNotIn("secret", json.dumps(event))
+        unknown_tool = json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash"}]}})
+        self.assertNotIn("tool", diagnostics.parse_cli_event(unknown_tool))
+        result_line = json.dumps({
+            "type": "result", "subtype": "success", "is_error": False, "result": "Easy spin today.",
+            "usage": {"input_tokens": 10, "cache_creation_input_tokens": 5, "cache_read_input_tokens": 100, "output_tokens": 40},
+        })
+        self.assertEqual(diagnostics.extract_cli_message(result_line), "Easy spin today.")
+        self.assertEqual(diagnostics.parse_cli_usage(result_line), {"input_tokens": 115, "cached_input_tokens": 100, "output_tokens": 40})
+        self.assertIsNone(diagnostics.extract_cli_error(result_line))
+        error_line = claude_result("API Error: 529 overloaded_error", is_error=True)
+        self.assertIn("overloaded_error", diagnostics.extract_cli_error(error_line))
+        self.assertIsNone(diagnostics.extract_cli_message(error_line))
+
+
+
+@patch.dict(helper.os.environ, {"COACH_CLI": "claude"})
+class CoachUsageTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        log = patch.object(helper, "USAGE_LOG", coach_usage.UsageLog(Path(directory.name) / "usage.jsonl"))
+        log.start()
+        self.addCleanup(log.stop)
+
+    @patch.object(helper, "resolve_claude_cli", return_value="/fake/claude")
+    @patch.object(helper.subprocess, "run")
+    def test_claude_run_records_tokens_cost_and_plan_limits(self, run, _resolve):
+        events = [
+            {"type": "system", "subtype": "init"},
+            {"type": "rate_limit_event", "rate_limit_info": {"unifiedWindows": {
+                "five_hour": {"utilization": 0.4, "resetsAt": 1791531600},
+                "seven_day": {"utilization": 0.05, "resetsAt": 1791712800},
+            }}},
+            {"type": "result", "subtype": "success", "is_error": False, "result": "Saved the week", "num_turns": 4,
+             "total_cost_usd": 0.12, "usage": {"input_tokens": 10, "cache_creation_input_tokens": 90,
+                                               "cache_read_input_tokens": 900, "output_tokens": 300}},
+        ]
+        run.return_value = subprocess.CompletedProcess([], 0, stdout=json.dumps(events), stderr="")
+        self.assertEqual(helper.run_coach_weekly_plan("2026-08-24"), "Saved the week")
+        self.assertIn("--verbose", run.call_args.args[0])
+        summary = helper.USAGE_LOG.summary()
+        today = summary["periods"]["today"]
+        self.assertEqual((today["runs"], today["failed"]), (1, 0))
+        self.assertEqual((today["input_tokens"], today["cached_input_tokens"], today["output_tokens"]), (1000, 900, 300))
+        self.assertEqual(today["cost_usd"], 0.12)
+        self.assertEqual(summary["by_kind_7d"][0]["kind"], "Weekly plan")
+        self.assertEqual(summary["limits"]["five_hour"]["utilization"], 0.4)
+        self.assertTrue(summary["limits"]["seven_day"]["resets_at"].startswith("2026-10-1"))
+        recent = summary["recent"][0]
+        self.assertEqual((recent["cli"], recent["model"], recent["turns"]), ("claude", "sonnet", 4))
+        self.assertNotIn("Saved the week", json.dumps(summary))
+
+    @patch.object(helper, "resolve_claude_cli", return_value="/fake/claude")
+    @patch.object(helper.subprocess, "run")
+    def test_failed_attempts_count_and_old_rows_drop_out(self, run, _resolve):
+        helper.USAGE_LOG.record({"at": "2026-01-01T00:00:00+00:00", "kind": "Coach chat", "ok": True, "output_tokens": 5})
+        run.return_value = subprocess.CompletedProcess([], 1, stdout=claude_result("boom", is_error=True), stderr="")
+        with self.assertRaises(RuntimeError):
+            helper.run_coach_daily_state()
+        periods = helper.USAGE_LOG.summary()["periods"]
+        self.assertEqual((periods["30d"]["runs"], periods["30d"]["failed"]), (1, 1))
+
+    def test_codex_stream_usage_is_absorbed(self):
+        metrics = {}
+        coach_usage.absorb_line(metrics, json.dumps({"type": "turn.completed", "usage": {
+            "input_tokens": 50, "cached_input_tokens": 20, "output_tokens": 7}}))
+        coach_usage.absorb_line(metrics, "not json")
+        self.assertEqual(metrics, {"input_tokens": 50, "cached_input_tokens": 20, "output_tokens": 7})
+
+
+
+class ClaudeCodeShareTests(unittest.TestCase):
+    def test_message_cost_matches_claude_reported_cost(self):
+        usage = {"input_tokens": 4, "cache_creation_input_tokens": 12895, "cache_read_input_tokens": 11934,
+                 "output_tokens": 312, "cache_creation": {"ephemeral_1h_input_tokens": 12895, "ephemeral_5m_input_tokens": 0}}
+        self.assertAlmostEqual(coach_usage.message_cost("claude-sonnet-5-5", usage), 0.0570948, places=6)
+        self.assertEqual(coach_usage.message_cost("<synthetic>", usage), 0.0)
+
+    def test_coach_share_of_window_from_claude_code_transcripts(self):
+        with tempfile.TemporaryDirectory() as root:
+            projects = Path(root) / "projects"
+            session = projects / "-Users-me-repo"
+            session.mkdir(parents=True)
+            line = json.dumps({"type": "assistant", "requestId": "req_1", "timestamp": "2026-10-09T11:00:00.000Z",
+                               "message": {"id": "msg_1", "model": "claude-opus-5-5", "usage": {"output_tokens": 450000}}})
+            # Claude Code repeats a response on several lines; it must count once.
+            (session / "a.jsonl").write_text(line + "\n" + line + "\n")
+            coach_dir = projects / "-private-var-T-training-dashboard-coach-abc"
+            coach_dir.mkdir()
+            (coach_dir / "b.jsonl").write_text(line.replace("msg_1", "msg_2") + "\n")
+            log = coach_usage.UsageLog(Path(root) / "usage.jsonl", coach_usage.ClaudeCodeUsage(projects))
+            log.record({"at": "2026-10-09T11:30:00+00:00", "kind": "Coach chat", "cli": "claude", "ok": True, "cost_usd": 1.0,
+                        "limits": {"five_hour": {"utilization": 0.2, "resets_at": "2026-10-09T14:00:00+00:00"},
+                                   "seven_day": {"utilization": 0.1, "resets_at": "2026-10-01T00:00:00+00:00"}}})
+            limits = log.summary(datetime(2026, 10, 9, 12, 0, tzinfo=timezone.utc))["limits"]
+        # Claude Code spent $9 (450k Opus output tokens), the coach $1: the coach is a tenth of 20%.
+        estimate = limits["five_hour"]["coach_estimate"]
+        self.assertEqual(estimate["claude_code_cost_usd"], 9.0)
+        self.assertEqual(estimate["utilization"], 0.02)
+        self.assertTrue(limits["seven_day"]["stale"])
 
 
 if __name__ == "__main__":

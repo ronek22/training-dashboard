@@ -520,6 +520,42 @@ def init_db():
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS food_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            meal TEXT NOT NULL,
+            source TEXT NOT NULL,
+            raw_text TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_food_entries_date ON food_entries(date);
+
+        CREATE TABLE IF NOT EXISTS food_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            entry_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            grams REAL,
+            kcal REAL NOT NULL DEFAULT 0,
+            protein_g REAL NOT NULL DEFAULT 0,
+            carbs_g REAL NOT NULL DEFAULT 0,
+            fat_g REAL NOT NULL DEFAULT 0,
+            confidence TEXT,
+            FOREIGN KEY(entry_id) REFERENCES food_entries(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS saved_foods (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            grams REAL,
+            kcal REAL NOT NULL DEFAULT 0,
+            protein_g REAL NOT NULL DEFAULT 0,
+            carbs_g REAL NOT NULL DEFAULT 0,
+            fat_g REAL NOT NULL DEFAULT 0,
+            use_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS weekly_body_checkins (
             week_start TEXT PRIMARY KEY,
             protein_most_days INTEGER,

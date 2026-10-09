@@ -1,14 +1,14 @@
 import axios from 'axios'
 
 const api = axios.create({ baseURL: '/api' })
-const codexHelper = axios.create({
-  baseURL: import.meta.env.VITE_CODEX_HELPER_URL || 'http://127.0.0.1:8765',
+const coachHelper = axios.create({
+  baseURL: import.meta.env.VITE_COACH_HELPER_URL || 'http://127.0.0.1:8765',
   timeout: 8000,
 })
 // No response at all means the local helper process is down, not that the coach failed.
-codexHelper.interceptors.response.use(undefined, (error) => {
+coachHelper.interceptors.response.use(undefined, (error) => {
   if (!error.response && error.code !== 'ECONNABORTED') {
-    error.message = 'The local Codex helper is not running. Start it with `just codex-helper-start`, then send again.'
+    error.message = 'The local coach helper is not running. Start it with `just coach-helper-start`, then send again.'
   }
   return Promise.reject(error)
 })
@@ -27,8 +27,8 @@ export const useApi = () => ({
   sendRecoveryMessage: (id, payload) => api.post(`/recovery/issues/${id}/messages`, payload),
   requestRecoveryAI: (id) => api.post(`/recovery/issues/${id}/requests`),
   addRecoveryCheckin: (id, payload) => api.post(`/recovery/issues/${id}/checkins`, payload),
-  startRecoveryAI: (payload) => codexHelper.post('/recovery-chat', payload),
-  getRecoveryAIJob: (id) => codexHelper.get(`/recovery-chat/${encodeURIComponent(id)}`),
+  startRecoveryAI: (payload) => coachHelper.post('/recovery-chat', payload),
+  getRecoveryAIJob: (id) => coachHelper.get(`/recovery-chat/${encodeURIComponent(id)}`),
   failRecoveryRequest: (id, requestId) => api.post(`/recovery/issues/${id}/requests/${requestId}/failed`),
   getWeeklyReviews: () => api.get('/reviews/weekly'),
   getWeeklyReviewStatus: () => api.get('/reviews/weekly/status'),
@@ -59,8 +59,8 @@ export const useApi = () => ({
   getPlanningStatus: () => api.get('/planning/status'),
   getWeeklyCoaching: (params) => api.get('/coaching/weekly', { params }),
   getTeamAnalysis: () => api.get('/coaching/team-analysis'),
-  startTeamReview: (payload) => codexHelper.post('/team-review', payload),
-  getTeamReviewJob: (id) => codexHelper.get(`/team-review/${encodeURIComponent(id)}`),
+  startTeamReview: (payload) => coachHelper.post('/team-review', payload),
+  getTeamReviewJob: (id) => coachHelper.get(`/team-review/${encodeURIComponent(id)}`),
   getCoachingHistory: (params) => api.get('/coaching/history', { params }),
   getTrainingLoad: (params) => api.get('/training-load', { params }),
   getGoals: (params) => api.get('/goals', { params }),
@@ -115,6 +115,17 @@ export const useApi = () => ({
   saveDailyCheckin: (payload) => api.post('/checkins', payload),
   getProteinStatus: () => api.get('/nutrition/protein'),
   setProteinTick: (date, hit) => api.put(`/nutrition/protein/${date}`, { hit }),
+  getFoodDay: (date) => api.get('/nutrition/food', { params: { date } }),
+  createFoodEntry: (payload) => api.post('/nutrition/food/entries', payload),
+  updateFoodEntry: (id, payload) => api.put(`/nutrition/food/entries/${id}`, payload),
+  deleteFoodEntry: (id) => api.delete(`/nutrition/food/entries/${id}`),
+  getSavedFoods: () => api.get('/nutrition/food/saved'),
+  saveFood: (payload) => api.post('/nutrition/food/saved', payload),
+  useSavedFood: (id) => api.post(`/nutrition/food/saved/${id}/use`),
+  deleteSavedFood: (id) => api.delete(`/nutrition/food/saved/${id}`),
+  updateNutritionProfile: (payload) => api.put('/nutrition/profile', payload),
+  startMealEstimate: (payload) => coachHelper.post('/meal-estimate', payload, { timeout: 30000 }),
+  getMealEstimateJob: (id) => coachHelper.get(`/meal-estimate/${encodeURIComponent(id)}`),
   getWeeklyBodyCheckin: () => api.get('/nutrition/weekly-checkin'),
   saveWeeklyBodyCheckin: (payload) => api.put('/nutrition/weekly-checkin', payload),
   labelVolumeTrend: (payload) => api.post('/volume-trend/label', payload),
@@ -144,14 +155,14 @@ export const useApi = () => ({
   previewMinimumWeek: (weekStart) => api.post(`/plans/weekly/${weekStart}/minimum-week/preview`),
   applyMinimumWeek: (weekStart) => api.post(`/plans/weekly/${weekStart}/minimum-week`),
   restoreFullWeek: (weekStart) => api.post(`/plans/weekly/${weekStart}/minimum-week/restore`),
-  startCodexWeeklyPlan: (payload) => codexHelper.post('/weekly-plan', payload),
-  getCodexWeeklyPlanJob: (jobId) => codexHelper.get(`/weekly-plan/${encodeURIComponent(jobId)}`),
-  startCodexWeeklyPlanRevision: (payload) => codexHelper.post('/weekly-plan-revision', payload),
-  getCodexWeeklyPlanRevisionJob: (jobId) => codexHelper.get(`/weekly-plan-revision/${encodeURIComponent(jobId)}`),
-  startCodexActivityAnalysis: (payload) => codexHelper.post('/activity-analysis', payload),
-  getCodexActivityAnalysisJob: (jobId) => codexHelper.get(`/activity-analysis/${encodeURIComponent(jobId)}`),
-  startCodexDailyState: (payload) => codexHelper.post('/daily-state', payload),
-  getCodexDailyStateJob: (jobId) => codexHelper.get(`/daily-state/${encodeURIComponent(jobId)}`),
+  startCoachWeeklyPlan: (payload) => coachHelper.post('/weekly-plan', payload),
+  getCoachWeeklyPlanJob: (jobId) => coachHelper.get(`/weekly-plan/${encodeURIComponent(jobId)}`),
+  startCoachWeeklyPlanRevision: (payload) => coachHelper.post('/weekly-plan-revision', payload),
+  getCoachWeeklyPlanRevisionJob: (jobId) => coachHelper.get(`/weekly-plan-revision/${encodeURIComponent(jobId)}`),
+  startCoachActivityAnalysis: (payload) => coachHelper.post('/activity-analysis', payload),
+  getCoachActivityAnalysisJob: (jobId) => coachHelper.get(`/activity-analysis/${encodeURIComponent(jobId)}`),
+  startCoachDailyState: (payload) => coachHelper.post('/daily-state', payload),
+  getCoachDailyStateJob: (jobId) => coachHelper.get(`/daily-state/${encodeURIComponent(jobId)}`),
   getStravaStatus: () => api.get('/integrations/strava/status'),
   importStravaActivities: (payload) => api.post('/integrations/strava/import', payload),
   backfillStravaStreams: (payload) => api.post('/integrations/strava/streams/backfill', payload),
@@ -168,8 +179,9 @@ export const useApi = () => ({
   deleteCoachChatConversation: (conversationId) => api.delete(`/notes/chat/conversations/${conversationId}`),
   getCoachChatMessages: (params) => api.get('/notes/chat', { params }),
   createCoachChatMessage: (payload) => api.post('/notes/chat', payload),
-  startCodexCoachChat: (payload) => codexHelper.post('/coach-chat', payload),
-  getCodexCoachChatJob: (jobId) => codexHelper.get(`/coach-chat/${encodeURIComponent(jobId)}`),
+  startCoachChat: (payload) => coachHelper.post('/coach-chat', payload),
+  getCoachUsage: () => coachHelper.get('/usage'),
+  getCoachChatJob: (jobId) => coachHelper.get(`/coach-chat/${encodeURIComponent(jobId)}`),
   getWeekly: () => api.get('/weekly'),
   getMetric: (name) => api.get(`/metrics/${name}`),
   getPersonalRecords: () => api.get('/records'),
@@ -183,8 +195,8 @@ export const useApi = () => ({
   getCyclingPower: () => api.get('/metrics/cycling-power'),
   getAerobicDecoupling: (weeks = 12) => api.get('/metrics/aerobic-decoupling', { params: { weeks } }),
   getCyclingPowerAdvice: () => api.get('/metrics/cycling-power/advice'),
-  startCyclingPowerReview: (payload) => codexHelper.post('/cycling-power-review', payload),
-  getCyclingPowerReviewJob: (id) => codexHelper.get(`/cycling-power-review/${encodeURIComponent(id)}`),
+  startCyclingPowerReview: (payload) => coachHelper.post('/cycling-power-review', payload),
+  getCyclingPowerReviewJob: (id) => coachHelper.get(`/cycling-power-review/${encodeURIComponent(id)}`),
   getSessionComparisons: (params) => api.get('/metrics/session-comparisons', { params }),
   getPerformanceSummary: () => api.get('/metrics/performance-summary'),
   getHealthSummary: (params) => api.get('/metrics/health-summary', { params }),

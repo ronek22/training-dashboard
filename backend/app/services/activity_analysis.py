@@ -293,7 +293,7 @@ def request_activity_analysis(
 ) -> dict:
     """Queue an LLM read. ``question`` replaces the athlete's question; leaving it out keeps a pending one.
 
-    The app saves the question first and then starts Codex, which calls this again
+    The app saves the question first and then starts the coach CLI, which calls this again
     through MCP without a question, so a pending question must survive that call.
     """
     snapshot = get_activity_analysis_snapshot(conn, detail_payload)

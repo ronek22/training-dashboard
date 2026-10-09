@@ -26,6 +26,7 @@ from .coaching import (
 from .goals import aggregate_goal_risk_summary, build_goal_readiness_overview, list_goals_data
 from .heart_rate_zones import build_recent_heart_rate_zone_summary
 from .life_load import life_load_coaching_context
+from .food_log import nutrition_coaching_context
 from .minimum_week import minimum_week_state
 from .readiness import build_readiness_summary
 from .recommendations import build_daily_recommendation, latest_subjective_state
@@ -1150,6 +1151,7 @@ def build_recent_context(
         "sick_mode": sick_mode_coaching_context(conn),
         "downshift": downshift_coaching_context(conn),
         "life_load": life_load_coaching_context(conn),
+        "nutrition": nutrition_coaching_context(conn),
         "minimum_week": minimum_week_state(conn, (datetime.now().date() - timedelta(days=datetime.now().weekday())).isoformat()),
         "strength_consistency": strength_consistency,
         "recent_strength_detail": recent_strength_detail,
@@ -1180,6 +1182,7 @@ def build_dashboard_data(
     list_goals_data_fn: Callable[[sqlite3.Connection, bool, int], list[dict]],
 ) -> dict:
     from .activities import reconcile_workout_template_rotation_state
+    from .relative_effort import build_relative_effort
     from .team_analysis import get_weekly_direction
 
     reconcile_guided_session_activities(conn)
@@ -1348,6 +1351,7 @@ def build_dashboard_data(
         "sick_mode": build_sick_mode(conn),
         "downshift": build_downshift(conn),
         "training_load": training_load,
+        "relative_effort": build_relative_effort(conn),
         "weekly_plan": serialized_latest_plan,
         "session_briefs": build_briefs_for_date(conn, serialized_latest_plan, datetime.now().date()),
         "execution_trend": execution_trend,

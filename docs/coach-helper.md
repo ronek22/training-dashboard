@@ -51,6 +51,49 @@ or disable this comma-separated fallback list with the
 final Codex message, and failed jobs return a concise error instead of raw CLI
 event logs.
 
+### Running on Claude instead of Codex
+
+Set `COACH_CLI=claude` in `.env` (or the environment) and restart the helper
+(`just coach-helper-stop && just coach-helper-start`). Every helper job —
+plans, revisions, activity analysis, coach chat, daily state, recovery, team
+and cycling reviews, Sunday review — then runs `claude -p` instead of
+`codex exec`, using the same prompts. `COACH_CLI=codex` (the default) switches
+back. The helper status response reports the active `coach_cli` and model.
+
+The Claude run is locked down: no built-in tools, no user settings or memory,
+only the `training_dashboard` MCP server at `http://localhost:8000/mcp`
+(override with `TRAINING_DASHBOARD_MCP_URL`). It uses `sonnet` and retries with
+`opus` on overload; override with `CLAUDE_MODEL` and `CLAUDE_FALLBACK_MODELS`.
+`CLAUDE_CLI_PATH` points at a non-standard install. Claude runs count against
+the Claude plan's usage limits.
+
+### Meal estimates (Food page)
+
+`POST /meal-estimate` takes `{text, image?: {media_type, data}}` (Polish or
+English text, a base64 photo, or both) and returns editable food items with
+grams, kcal and macros. It always runs Claude, whatever `COACH_CLI` says,
+because Claude reads the photo through `--input-format stream-json`. The run
+has no tools and no MCP server, and nothing is saved: the Food page shows the
+items, the athlete corrects them, and the page saves them through
+`/nutrition/food/entries`. Saved staples are passed in as reference values.
+Each estimate is one short Sonnet call (~5–10 s), logged as "Meal estimate".
+
+### Usage tracking
+
+Every CLI attempt appends one line to `.coach-usage.jsonl` (gitignored): job
+kind, CLI, model, success, duration, token counts and, for Claude, the
+API-equivalent cost and the plan's 5-hour and weekly utilization. Only counters
+are stored, never prompts or answers. The helper serves a summary at `/usage`,
+shown on the **Coach usage** page (System section). Plain `codex exec` runs log
+no token counts; Codex coach chat does.
+
+The plan utilization covers the whole Claude account. To estimate the coach's
+slice, the helper prices the interactive Claude Code sessions recorded under
+`~/.claude/projects` (or `$CLAUDE_CONFIG_DIR/projects`) at API list prices,
+skipping the coach's own temp-dir transcripts, and scales the window's
+utilization by the coach's share of that spend. claude.ai and Claude app chats
+are not visible locally, so the estimate reads high on days with chat use.
+
 Feedback revisions use a separate loopback job. They send the current week and
 the athlete's feedback to a new ephemeral Codex run, which verifies the current
 saved plan before applying the revision. The feedback text is job input only;
@@ -95,13 +138,13 @@ The normal `just` or `just up` startup starts the helper before Docker. `just
 down` stops both. These commands are also available for troubleshooting:
 
 ```text
-just codex-helper-status
-just codex-helper-start
-just codex-helper-stop
+just coach-helper-status
+just coach-helper-start
+just coach-helper-stop
 ```
 
 If the button says the helper is unavailable, restart the dashboard normally.
-The helper log is stored locally as `.codex-planning-helper.log` and is ignored
+The helper log is stored locally as `.coach-helper.log` and is ignored
 by Git.
 
 The Codex CLI must be installed or bundled with the ChatGPT/Codex macOS app, and

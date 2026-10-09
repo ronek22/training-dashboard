@@ -542,14 +542,14 @@ const sendChatMessage = async () => {
     startProgressClock()
     const linked = chatConversations.value.find(item => item.id === conversationId)
     const context = linked?.context_kind ? { kind: linked.context_kind, id: linked.context_id } : undefined
-    const { data: startedJob } = await api.startCodexCoachChat({ message, history, context })
+    const { data: startedJob } = await api.startCoachChat({ message, history, context })
     if (!componentActive) return
     let job = startedJob
     updateCoachJobSnapshot(job)
     while (componentActive && (job.status === 'queued' || job.status === 'running')) {
       const shouldPoll = await wait(1500)
       if (!shouldPoll || !componentActive) return
-      const response = await api.getCodexCoachChatJob(job.job_id)
+      const response = await api.getCoachChatJob(job.job_id)
       if (!componentActive) return
       job = response.data
       updateCoachJobSnapshot(job)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Loopback-only bridge between the dashboard and non-interactive Codex."""
+"""Loopback-only bridge between the dashboard and a non-interactive coach CLI (Codex or Claude)."""
 
 from __future__ import annotations
 
@@ -26,12 +26,14 @@ from urllib.parse import quote
 from urllib.request import urlopen
 
 try:
-    from scripts import codex_chat_diagnostics, recovery_helper, team_coaching_helper, cycling_power_helper
+    from scripts import coach_chat_diagnostics, coach_usage, recovery_helper, team_coaching_helper, cycling_power_helper, meal_helper
 except ModuleNotFoundError:
-    import codex_chat_diagnostics
+    import coach_chat_diagnostics
+    import coach_usage
     import recovery_helper
     import team_coaching_helper
     import cycling_power_helper
+    import meal_helper
 
 
 HOST = "127.0.0.1"
@@ -42,8 +44,9 @@ ALLOWED_ORIGINS = {
     "http://[::1]:3000",
 }
 ROOT = Path(os.environ.get("TRAINING_DASHBOARD_ROOT", Path(__file__).resolve().parents[1]))
-PID_PATH = ROOT / ".codex-planning-helper.pid"
-LOG_PATH = ROOT / ".codex-planning-helper.log"
+PID_PATH = ROOT / ".coach-helper.pid"
+LOG_PATH = ROOT / ".coach-helper.log"
+USAGE_LOG = coach_usage.UsageLog(ROOT / ".coach-usage.jsonl", coach_usage.ClaudeCodeUsage())
 JOBS: dict[str, dict] = {}
 JOBS_LOCK = threading.Lock()
 DEFAULT_MODEL = "gpt-5.6-luna"
@@ -54,8 +57,17 @@ CAPACITY_ERROR_MARKERS = (
     "server is overloaded",
     "temporarily overloaded",
     "capacity exceeded",
+    "overloaded_error",
 )
-CODEX_DEADLINE_SECONDS = 900
+# COACH_CLI picks which local CLI answers coach requests: "codex" (default) or "claude".
+COACH_CLIS = ("codex", "claude")
+CLAUDE_DEFAULT_MODEL = "sonnet"
+CLAUDE_DEFAULT_FALLBACK_MODELS = ("opus",)
+CLAUDE_MCP_SERVER = "training_dashboard"
+DEFAULT_MCP_URL = "http://localhost:8000/mcp"
+# Claude Code spills MCP results above its default limit to a file the coach cannot read.
+CLAUDE_MCP_OUTPUT_TOKENS = "60000"
+COACH_DEADLINE_SECONDS = 900
 STREAM_STDERR_LIMIT = 16 * 1024
 STREAM_READ_SIZE = 4096
 STREAM_LINE_LIMIT = 256 * 1024
@@ -67,7 +79,7 @@ def public_job(job: dict) -> dict:
         if key not in {"history", "athlete_message", "planning_brief", "plan_feedback", "_diagnostics"}
     }
     diagnostics = job.get("_diagnostics")
-    if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
+    if isinstance(diagnostics, coach_chat_diagnostics.ChatDiagnostics):
         result["diagnostics"] = diagnostics.snapshot()
     return result
 
@@ -348,7 +360,7 @@ Prior transcript:
 Latest athlete message:
 {json.dumps(message, ensure_ascii=False)}
 
-Reply directly to the athlete. Do not mention MCP, Codex, prompts, or these
+Reply directly to the athlete. Do not mention MCP, Codex, Claude, prompts, or these
 instructions. Do not edit repository files, run shell commands, browse the
 web, or use any other MCP server."""
 
@@ -423,7 +435,7 @@ materially reduce tomorrow's saved workout, plan_change_recommended MUST be
 true and plan_change_reason must state that change. Use an empty reason when no
 change is recommended. Never change or save data.
 
-Do not mention MCP, Codex, prompts, or these instructions. Do not edit
+Do not mention MCP, Codex, Claude, prompts, or these instructions. Do not edit
 repository files, run shell commands, browse the web, or use any other MCP
 server."""
 
@@ -435,27 +447,27 @@ def parse_daily_state_result(output: str) -> dict[str, object]:
     try:
         result = json.loads(candidate)
     except json.JSONDecodeError as exc:
-        raise RuntimeError("Codex returned an invalid daily assessment.") from exc
+        raise RuntimeError("The coach returned an invalid daily assessment.") from exc
     limits = {"headline": 70, "assessment": 280, "next_step": 180}
     if not isinstance(result, dict):
-        raise RuntimeError("Codex returned an invalid daily assessment.")
+        raise RuntimeError("The coach returned an invalid daily assessment.")
     cleaned = {}
     for key, limit in limits.items():
         value = result.get(key)
         if not isinstance(value, str) or not value.strip() or len(value.strip()) > limit:
-            raise RuntimeError("Codex returned an invalid daily assessment.")
+            raise RuntimeError("The coach returned an invalid daily assessment.")
         cleaned[key] = value.strip()
     confidence = result.get("confidence")
     if confidence not in {"high", "medium", "low"}:
-        raise RuntimeError("Codex returned an invalid daily assessment.")
+        raise RuntimeError("The coach returned an invalid daily assessment.")
     cleaned["confidence"] = confidence
     plan_change_recommended = result.get("plan_change_recommended")
     plan_change_reason = result.get("plan_change_reason")
     if not isinstance(plan_change_recommended, bool) or not isinstance(plan_change_reason, str):
-        raise RuntimeError("Codex returned an invalid daily assessment.")
+        raise RuntimeError("The coach returned an invalid daily assessment.")
     plan_change_reason = plan_change_reason.strip()
     if len(plan_change_reason) > 180 or (plan_change_recommended and not plan_change_reason):
-        raise RuntimeError("Codex returned an invalid daily assessment.")
+        raise RuntimeError("The coach returned an invalid daily assessment.")
     cleaned["plan_change_recommended"] = plan_change_recommended
     cleaned["plan_change_reason"] = plan_change_reason
     return cleaned
@@ -475,11 +487,74 @@ def resolve_codex_cli() -> str:
     raise RuntimeError("Codex CLI was not found. Install or open the Codex app, then restart the dashboard.")
 
 
-def fallback_models() -> tuple[str, ...]:
-    configured = os.environ.get("CODEX_FALLBACK_MODELS")
+def resolve_claude_cli() -> str:
+    configured = os.environ.get("CLAUDE_CLI_PATH")
+    candidates = [
+        configured,
+        shutil.which("claude"),
+        str(Path.home() / ".local/bin/claude"),
+        "/opt/homebrew/bin/claude",
+        "/usr/local/bin/claude",
+    ]
+    for candidate in candidates:
+        if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    raise RuntimeError("Claude Code CLI was not found. Install it or set CLAUDE_CLI_PATH, then restart the helper.")
+
+
+def _dotenv_value(key: str) -> str | None:
+    """Read one key from the repo .env, so a launchd-started helper sees it too."""
+
+    try:
+        lines = (ROOT / ".env").read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError):
+        return None
+    for line in lines:
+        name, sep, value = line.strip().partition("=")
+        if sep and name.strip() == key:
+            return value.strip().strip("\"'") or None
+    return None
+
+
+def coach_cli() -> str:
+    value = (os.environ.get("COACH_CLI") or _dotenv_value("COACH_CLI") or "codex").strip().lower()
+    if value not in COACH_CLIS:
+        raise RuntimeError(f"COACH_CLI must be one of {', '.join(COACH_CLIS)}; got {value!r}.")
+    return value
+
+
+def coach_cli_label(cli: str) -> str:
+    return "Claude" if cli == "claude" else "Codex"
+
+
+def default_model(cli: str = "codex") -> str:
+    if cli == "claude":
+        return os.environ.get("CLAUDE_MODEL") or CLAUDE_DEFAULT_MODEL
+    return DEFAULT_MODEL
+
+
+def fallback_models(cli: str = "codex") -> tuple[str, ...]:
+    configured = os.environ.get("CLAUDE_FALLBACK_MODELS" if cli == "claude" else "CODEX_FALLBACK_MODELS")
     if configured is None:
-        return DEFAULT_FALLBACK_MODELS
+        return CLAUDE_DEFAULT_FALLBACK_MODELS if cli == "claude" else DEFAULT_FALLBACK_MODELS
     return tuple(model.strip() for model in configured.split(",") if model.strip())
+
+
+def current_cli() -> str:
+    """The configured CLI for status display; an invalid COACH_CLI fails at run time instead."""
+
+    try:
+        return coach_cli()
+    except RuntimeError:
+        return "invalid"
+
+
+def current_model() -> str:
+    return default_model(current_cli())
+
+
+def model_attempts(cli: str) -> tuple[str, ...]:
+    return tuple(dict.fromkeys((default_model(cli), *fallback_models(cli))))
 
 
 def is_capacity_error(output: str) -> bool:
@@ -487,12 +562,12 @@ def is_capacity_error(output: str) -> bool:
     return any(marker in lowered for marker in CAPACITY_ERROR_MARKERS)
 
 
-def concise_codex_error(output: str) -> str:
+def concise_cli_error(output: str) -> str:
     lines = [line.strip() for line in output.splitlines() if line.strip()]
     error_lines = [line for line in lines if line.lower().startswith("error:")]
     if error_lines:
         return error_lines[-1][:600]
-    return (lines[-1] if lines else "Codex exited without a message")[:600]
+    return (lines[-1] if lines else "The CLI exited without a message")[:600]
 
 
 def _notify_progress(progress, event: dict[str, object]) -> None:
@@ -527,6 +602,84 @@ def _codex_command(workdir: str, last_message_path: Path, model: str, *, json_st
         command.extend(("--model", model))
     command.append("-")
     return command
+
+
+def _claude_command(model: str, *, json_stream: bool = False) -> list[str]:
+    mcp_url = os.environ.get("TRAINING_DASHBOARD_MCP_URL") or DEFAULT_MCP_URL
+    mcp_config = json.dumps({"mcpServers": {CLAUDE_MCP_SERVER: {"type": "http", "url": mcp_url}}})
+    command = [
+        resolve_claude_cli(),
+        "-p",
+        "--output-format",
+        "stream-json" if json_stream else "json",
+        # Verbose output includes the rate_limit_event with plan utilization.
+        "--verbose",
+    ]
+    command.extend((
+        "--no-session-persistence",
+        # No user hooks, memory, or CLAUDE.md: the prompt is the whole brief.
+        "--setting-sources",
+        "",
+        # No built-in tools (shell, files, web); only the dashboard MCP server.
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--mcp-config",
+        mcp_config,
+        "--allowedTools",
+        f"mcp__{CLAUDE_MCP_SERVER}",
+        "--permission-mode",
+        "dontAsk",
+    ))
+    if model:
+        command.extend(("--model", model))
+    return command
+
+
+def _cli_command(cli: str, workdir: str, last_message_path: Path, model: str, *, json_stream: bool = False) -> list[str]:
+    if cli == "claude":
+        return _claude_command(model, json_stream=json_stream)
+    return _codex_command(workdir, last_message_path, model, json_stream=json_stream)
+
+
+def _cli_process_kwargs(cli: str, workdir: str) -> dict[str, object]:
+    """Codex takes its workdir as a flag; Claude runs from it with a larger MCP output budget."""
+
+    if cli != "claude":
+        return {}
+    env = dict(os.environ)
+    env.setdefault("MAX_MCP_OUTPUT_TOKENS", CLAUDE_MCP_OUTPUT_TOKENS)
+    return {"cwd": workdir, "env": env}
+
+
+def parse_claude_result(stdout: str) -> tuple[str, str | None]:
+    """Return (answer, error) from `claude -p --output-format json` output."""
+
+    try:
+        payload = json.loads(stdout)
+    except (TypeError, ValueError):
+        return "", concise_cli_error(stdout or "Claude exited without a message")
+    if isinstance(payload, list):
+        payload = next((item for item in reversed(payload) if isinstance(item, dict) and item.get("type") == "result"), {})
+    if not isinstance(payload, dict):
+        return "", "Claude returned an unreadable result"
+    text = payload.get("result")
+    text = text.strip() if isinstance(text, str) else ""
+    if payload.get("is_error") or payload.get("subtype", "success") != "success":
+        return "", (text or str(payload.get("subtype") or "Claude returned an error"))[:600]
+    return text, None
+
+
+def _record_usage(cli: str, failure_label: str, model: str, ok: bool, started: float, metrics: dict[str, object]) -> None:
+    USAGE_LOG.record({
+        "at": datetime.now(timezone.utc).isoformat(),
+        "kind": coach_usage.run_kind(failure_label),
+        "cli": cli,
+        "model": model,
+        "ok": ok,
+        "duration_s": round(time.monotonic() - started, 1),
+        **metrics,
+    })
 
 
 def _close_process_streams(process: subprocess.Popen) -> None:
@@ -581,13 +734,14 @@ def _bounded_tail(value: str, limit: int = STREAM_STDERR_LIMIT) -> str:
     return value[-limit:]
 
 
-def _run_codex_stream_attempt(
+def _run_cli_stream_attempt(
     command: list[str],
     prompt: str,
     *,
     deadline: float,
     progress,
-) -> tuple[int, str, str | None, dict[str, int] | None]:
+    process_kwargs: dict[str, object] | None = None,
+) -> tuple[int, str, str | None, dict[str, object]]:
     """Run one JSONL attempt while reading both pipes without blocking."""
 
     process = None
@@ -595,28 +749,34 @@ def _run_codex_stream_attempt(
     stderr_tail = ""
     final_message: str | None = None
     usage: dict[str, int] | None = None
+    metrics: dict[str, object] = {}
     stdout_buffer = ""
     stdout_decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
     attempt_started = time.monotonic()
     writer = None
 
     def handle_stdout_line(line: str) -> None:
-        nonlocal final_message, usage
+        nonlocal final_message, usage, stderr_tail
         if len(line) > STREAM_LINE_LIMIT:
             line = line[-STREAM_LINE_LIMIT:]
         at_seconds = max(0.0, time.monotonic() - attempt_started)
-        event = codex_chat_diagnostics.parse_cli_event(line, at_seconds=at_seconds)
+        coach_usage.absorb_line(metrics, line)
+        event = coach_chat_diagnostics.parse_cli_event(line, at_seconds=at_seconds)
         if event is not None:
             _notify_progress(progress, event)
-        parsed_usage = codex_chat_diagnostics.parse_cli_usage(line)
+        parsed_usage = coach_chat_diagnostics.parse_cli_usage(line)
         if parsed_usage:
             usage = parsed_usage
             _notify_progress(progress, {"usage": parsed_usage})
-        parsed_message = codex_chat_diagnostics.extract_cli_message(line)
+        parsed_message = coach_chat_diagnostics.extract_cli_message(line)
         if parsed_message:
             # The final response is intentionally bounded in memory.  It is
             # returned to the chat path, never copied into diagnostics.
             final_message = parsed_message[-4000:]
+        parsed_error = coach_chat_diagnostics.extract_cli_error(line)
+        if parsed_error:
+            # Claude reports API failures in its result event, not on stderr.
+            stderr_tail = _bounded_tail(stderr_tail + "\n" + parsed_error)
 
     def handle_stdout_chunk(chunk: bytes, *, final: bool = False) -> None:
         nonlocal stdout_buffer
@@ -635,6 +795,7 @@ def _run_codex_stream_attempt(
             stderr=subprocess.PIPE,
             bufsize=0,
             start_new_session=True,
+            **(process_kwargs or {}),
         )
 
         def write_prompt() -> None:
@@ -645,7 +806,7 @@ def _run_codex_stream_attempt(
             except (BrokenPipeError, OSError, ValueError):
                 return
 
-        writer = threading.Thread(target=write_prompt, name="codex-chat-input", daemon=True)
+        writer = threading.Thread(target=write_prompt, name="coach-chat-input", daemon=True)
         writer.start()
 
         for stream_name in ("stdout", "stderr"):
@@ -664,7 +825,7 @@ def _run_codex_stream_attempt(
             if remaining <= 0:
                 _notify_progress(progress, {"phase": "timeout", "status": "failed"})
                 _terminate_process_group(process)
-                raise subprocess.TimeoutExpired(command, CODEX_DEADLINE_SECONDS)
+                raise subprocess.TimeoutExpired(command, COACH_DEADLINE_SECONDS)
 
             ready = selector.select(min(0.2, remaining))
             for key, _mask in ready:
@@ -720,7 +881,7 @@ def _run_codex_stream_attempt(
             if stdout_buffer:
                 handle_stdout_line(stdout_buffer.rstrip("\r"))
                 stdout_buffer = ""
-        return process.returncode or 0, stderr_tail, final_message, usage
+        return process.returncode or 0, stderr_tail, final_message, metrics
     except subprocess.TimeoutExpired:
         raise
     except BaseException:
@@ -738,35 +899,41 @@ def _run_codex_stream_attempt(
             _close_process_streams(process)
 
 
-def _run_codex_streaming(prompt: str, *, failure_label: str, fallback: str, progress=None) -> str:
-    with tempfile.TemporaryDirectory(prefix="training-dashboard-codex-") as workdir:
+def _run_coach_streaming(prompt: str, *, failure_label: str, fallback: str, progress=None) -> str:
+    cli = coach_cli()
+    label = coach_cli_label(cli)
+    with tempfile.TemporaryDirectory(prefix="training-dashboard-coach-") as workdir:
         last_message_path = Path(workdir) / "last-message.txt"
-        attempts = tuple(dict.fromkeys((DEFAULT_MODEL, *fallback_models())))
+        attempts = model_attempts(cli)
         last_output = ""
-        deadline = time.monotonic() + CODEX_DEADLINE_SECONDS
+        deadline = time.monotonic() + COACH_DEADLINE_SECONDS
         for attempt_number, model in enumerate(attempts, start=1):
             _notify_progress(
                 progress,
                 {
                     "phase": "model_selection",
-                    "model": codex_chat_diagnostics.sanitize_model_name(model),
+                    "model": coach_chat_diagnostics.sanitize_model_name(model),
                     "attempt": attempt_number,
                 },
             )
-            command = _codex_command(workdir, last_message_path, model, json_stream=True)
+            command = _cli_command(cli, workdir, last_message_path, model, json_stream=True)
             remaining = deadline - time.monotonic()
             if remaining < 1:
                 _notify_progress(progress, {"phase": "timeout", "status": "failed"})
-                raise subprocess.TimeoutExpired(command, CODEX_DEADLINE_SECONDS)
+                raise subprocess.TimeoutExpired(command, COACH_DEADLINE_SECONDS)
+            started = time.monotonic()
             try:
-                returncode, stderr_tail, stream_message, _usage = _run_codex_stream_attempt(
+                returncode, stderr_tail, stream_message, metrics = _run_cli_stream_attempt(
                     command,
                     prompt,
                     deadline=deadline,
                     progress=progress,
+                    process_kwargs=_cli_process_kwargs(cli, workdir),
                 )
             except subprocess.TimeoutExpired:
+                _record_usage(cli, failure_label, model, False, started, {})
                 raise
+            _record_usage(cli, failure_label, model, returncode == 0, started, metrics)
             last_output = stderr_tail
             if returncode == 0:
                 final_message = ""
@@ -784,7 +951,7 @@ def _run_codex_streaming(prompt: str, *, failure_label: str, fallback: str, prog
                     {
                         "phase": "retrying",
                         "status": "in_progress",
-                        "model": codex_chat_diagnostics.sanitize_model_name(model),
+                        "model": coach_chat_diagnostics.sanitize_model_name(model),
                         "attempt": attempt_number,
                     },
                 )
@@ -792,53 +959,74 @@ def _run_codex_streaming(prompt: str, *, failure_label: str, fallback: str, prog
             if is_capacity_error(last_output):
                 _notify_progress(progress, {"phase": "failed", "status": "failed"})
                 raise RuntimeError(
-                    "Codex models are temporarily at capacity. The automatic fallbacks were also busy; please try again in a few minutes."
+                    f"{label} models are temporarily at capacity. The automatic fallbacks were also busy; please try again in a few minutes."
                 )
             _notify_progress(progress, {"phase": "failed", "status": "failed"})
-            raise RuntimeError(f"Codex could not {failure_label}: {concise_codex_error(last_output)}")
+            raise RuntimeError(f"{label} could not {failure_label}: {concise_cli_error(last_output)}")
         _notify_progress(progress, {"phase": "failed", "status": "failed"})
-        raise RuntimeError(f"Codex could not {failure_label}: Codex exited without a message")
+        raise RuntimeError(f"{label} could not {failure_label}: {label} exited without a message")
 
 
-def run_codex(prompt: str, *, failure_label: str, fallback: str, progress=None) -> str:
-    """Run a normal non-chat Codex request using the existing subprocess path."""
+def run_coach(prompt: str, *, failure_label: str, fallback: str, progress=None) -> str:
+    """Run a normal non-chat coach request through the configured CLI."""
 
-    with tempfile.TemporaryDirectory(prefix="training-dashboard-codex-") as workdir:
+    cli = coach_cli()
+    label = coach_cli_label(cli)
+    with tempfile.TemporaryDirectory(prefix="training-dashboard-coach-") as workdir:
         last_message_path = Path(workdir) / "last-message.txt"
-        attempts = tuple(dict.fromkeys((DEFAULT_MODEL, *fallback_models())))
+        attempts = model_attempts(cli)
         last_output = ""
-        deadline = time.monotonic() + CODEX_DEADLINE_SECONDS
+        deadline = time.monotonic() + COACH_DEADLINE_SECONDS
         for attempt_number, model in enumerate(attempts, start=1):
             _notify_progress(
                 progress,
                 {
                     "phase": "model_selection",
-                    "model": codex_chat_diagnostics.sanitize_model_name(model),
+                    "model": coach_chat_diagnostics.sanitize_model_name(model),
                     "attempt": attempt_number,
                 },
             )
-            command = _codex_command(workdir, last_message_path, model)
+            command = _cli_command(cli, workdir, last_message_path, model)
             remaining_seconds = int(deadline - time.monotonic())
             if remaining_seconds < 1:
                 _notify_progress(progress, {"phase": "timeout", "status": "failed"})
-                raise subprocess.TimeoutExpired(command, CODEX_DEADLINE_SECONDS)
-            result = subprocess.run(
-                command,
-                input=prompt,
-                text=True,
-                capture_output=True,
-                timeout=remaining_seconds,
-                check=False,
-            )
-            last_output = "\n".join(part for part in (result.stdout, result.stderr) if part).strip()
-            if result.returncode == 0:
-                if last_message_path.exists():
-                    final_message = last_message_path.read_text(encoding="utf-8").strip()
-                    if final_message:
-                        _notify_progress(progress, {"phase": "completed", "status": "completed"})
-                        return final_message[-4000:]
-                _notify_progress(progress, {"phase": "completed", "status": "completed"})
-                return (result.stdout or fallback).strip()[-4000:]
+                raise subprocess.TimeoutExpired(command, COACH_DEADLINE_SECONDS)
+            started = time.monotonic()
+            try:
+                result = subprocess.run(
+                    command,
+                    input=prompt,
+                    text=True,
+                    capture_output=True,
+                    timeout=remaining_seconds,
+                    check=False,
+                    **_cli_process_kwargs(cli, workdir),
+                )
+            except subprocess.TimeoutExpired:
+                _record_usage(cli, failure_label, model, False, started, {})
+                raise
+            if cli == "claude":
+                answer, error = parse_claude_result(result.stdout)
+                _record_usage(
+                    cli, failure_label, model, result.returncode == 0 and error is None, started,
+                    coach_usage.metrics_from_output(result.stdout),
+                )
+                if result.returncode == 0 and error is None:
+                    _notify_progress(progress, {"phase": "completed", "status": "completed"})
+                    return (answer or fallback).strip()[-4000:]
+                last_output = "\n".join(part for part in (result.stderr, error) if part).strip()
+            else:
+                # Plain `codex exec` output carries no token counts.
+                _record_usage(cli, failure_label, model, result.returncode == 0, started, {})
+                last_output = "\n".join(part for part in (result.stdout, result.stderr) if part).strip()
+                if result.returncode == 0:
+                    if last_message_path.exists():
+                        final_message = last_message_path.read_text(encoding="utf-8").strip()
+                        if final_message:
+                            _notify_progress(progress, {"phase": "completed", "status": "completed"})
+                            return final_message[-4000:]
+                    _notify_progress(progress, {"phase": "completed", "status": "completed"})
+                    return (result.stdout or fallback).strip()[-4000:]
             if is_capacity_error(last_output) and attempt_number < len(attempts):
                 _notify_progress(progress, {"phase": "retrying", "status": "in_progress", "attempt": attempt_number})
                 continue
@@ -847,22 +1035,22 @@ def run_codex(prompt: str, *, failure_label: str, fallback: str, progress=None) 
         if is_capacity_error(last_output):
             _notify_progress(progress, {"phase": "failed", "status": "failed"})
             raise RuntimeError(
-                "Codex models are temporarily at capacity. The automatic fallbacks were also busy; please try again in a few minutes."
+                f"{label} models are temporarily at capacity. The automatic fallbacks were also busy; please try again in a few minutes."
             )
         _notify_progress(progress, {"phase": "failed", "status": "failed"})
-        raise RuntimeError(f"Codex could not {failure_label}: {concise_codex_error(last_output)}")
+        raise RuntimeError(f"{label} could not {failure_label}: {concise_cli_error(last_output)}")
 
 
-def run_codex_weekly_plan(week_start: str, planning_brief: str = "") -> str:
-    return run_codex(
+def run_coach_weekly_plan(week_start: str, planning_brief: str = "") -> str:
+    return run_coach(
         build_prompt(week_start, planning_brief),
         failure_label="create the plan",
         fallback="The weekly plan was saved.",
     )
 
 
-def run_codex_weekly_plan_revision(week_start: str, plan_feedback: str, target_date: str | None = None) -> str:
-    return run_codex(
+def run_coach_weekly_plan_revision(week_start: str, plan_feedback: str, target_date: str | None = None) -> str:
+    return run_coach(
         build_plan_revision_prompt(week_start, plan_feedback, target_date),
         failure_label="revise the plan",
         fallback="The weekly plan was revised.",
@@ -894,14 +1082,14 @@ def verify_targeted_plan_revision(
     target_date: str,
 ) -> None:
     if before.get(target_date) == after.get(target_date):
-        raise RuntimeError("Codex finished, but tomorrow's saved session did not change.")
+        raise RuntimeError("The coach finished, but tomorrow's saved session did not change.")
     changed_other_dates = sorted(
         day for day in set(before) | set(after)
         if day != target_date and before.get(day) != after.get(day)
     )
     if changed_other_dates:
         raise RuntimeError(
-            "Codex changed days outside the requested target: " + ", ".join(changed_other_dates)
+            "The coach changed days outside the requested target: " + ", ".join(changed_other_dates)
         )
 
 
@@ -915,11 +1103,11 @@ def verify_activity_analysis(activity_id: str) -> None:
         payload = json.load(response)
     status = payload.get("analysis", {}).get("status")
     if status not in {"ready", "stale"}:
-        raise RuntimeError("Codex finished, but no saved activity analysis was found.")
+        raise RuntimeError("The coach finished, but no saved activity analysis was found.")
 
 
-def run_codex_activity_analysis(activity_id: str) -> str:
-    summary = run_codex(
+def run_coach_activity_analysis(activity_id: str) -> str:
+    summary = run_coach(
         build_activity_analysis_prompt(activity_id),
         failure_label="analyze the activity",
         fallback="The activity analysis was saved.",
@@ -928,10 +1116,10 @@ def run_codex_activity_analysis(activity_id: str) -> str:
     return summary
 
 
-def run_codex_coach_chat(message: str, history: list[dict[str, str]], progress=None, context: dict[str, str] | None = None) -> str:
+def run_coach_chat(message: str, history: list[dict[str, str]], progress=None, context: dict[str, str] | None = None) -> str:
     """Run coach chat through the JSONL stream so progress can update live."""
 
-    return _run_codex_streaming(
+    return _run_coach_streaming(
         build_coach_chat_prompt(message, history, context),
         failure_label="answer the coach chat",
         fallback="I couldn't produce a coaching reply.",
@@ -939,8 +1127,8 @@ def run_codex_coach_chat(message: str, history: list[dict[str, str]], progress=N
     )
 
 
-def run_codex_daily_state() -> dict[str, object]:
-    output = run_codex(
+def run_coach_daily_state() -> dict[str, object]:
+    output = run_coach(
         build_daily_state_prompt(fetch_weekly_direction()),
         failure_label="assess today's training state",
         fallback='{"headline":"Training state reviewed","assessment":"Use the measured load and recovery signals shown in the dashboard.","next_step":"Stay with the current plan and reassess after training.","confidence":"low","plan_change_recommended":false,"plan_change_reason":""}',
@@ -952,7 +1140,7 @@ def _log_coach_diagnostic_event(job_id: str, event: object) -> None:
     """Write one safe structured event for local troubleshooting."""
 
     raw_at = event.get("at") if isinstance(event, dict) else None
-    safe = codex_chat_diagnostics.sanitize_progress_event(event, at_seconds=raw_at)
+    safe = coach_chat_diagnostics.sanitize_progress_event(event, at_seconds=raw_at)
     if safe is None or not isinstance(job_id, str):
         return
     if isinstance(event, dict) and isinstance(event.get("seq"), int) and event["seq"] > 0:
@@ -968,7 +1156,7 @@ def _log_coach_diagnostic_event(job_id: str, event: object) -> None:
 def _invoke_coach_chat(message: str, history: list[dict[str, str]], progress, context: dict[str, str] | None = None) -> str:
     """Keep lightweight test doubles compatible with the additive callback."""
 
-    runner = run_codex_coach_chat
+    runner = run_coach_chat
     try:
         parameters = inspect.signature(runner).parameters.values()
         accepts_progress = any(
@@ -988,14 +1176,14 @@ def execute_job(job_id: str) -> None:
     with JOBS_LOCK:
         job = JOBS[job_id]
         job["status"] = "running"
-        job["message"] = "Codex is reviewing your training context."
+        job["message"] = "The coach is reviewing your training context."
         job["started_at"] = now_iso()
         week_start = job["week_start"]
         planning_brief = job.get("planning_brief", "")
     try:
-        summary = run_codex_weekly_plan(week_start, planning_brief)
+        summary = run_coach_weekly_plan(week_start, planning_brief)
     except subprocess.TimeoutExpired:
-        status, message, summary = "failed", "Codex planning timed out after 15 minutes.", ""
+        status, message, summary = "failed", "Planning timed out after 15 minutes.", ""
     except Exception as exc:  # surfaced to the local user through job status
         status, message, summary = "failed", str(exc), ""
     else:
@@ -1009,19 +1197,19 @@ def execute_plan_revision_job(job_id: str) -> None:
     with JOBS_LOCK:
         job = JOBS[job_id]
         job["status"] = "running"
-        job["message"] = "Codex is reviewing your plan feedback."
+        job["message"] = "The coach is reviewing your plan feedback."
         job["started_at"] = now_iso()
         week_start = job["week_start"]
         plan_feedback = job["plan_feedback"]
         target_date = job.get("target_date")
     try:
         before = fetch_saved_plan_days(week_start) if target_date else None
-        summary = run_codex_weekly_plan_revision(week_start, plan_feedback, target_date)
+        summary = run_coach_weekly_plan_revision(week_start, plan_feedback, target_date)
         if target_date and before is not None:
             after = fetch_saved_plan_days(week_start)
             verify_targeted_plan_revision(before, after, target_date)
     except subprocess.TimeoutExpired:
-        status, message, summary = "failed", "Codex revision timed out after 15 minutes.", ""
+        status, message, summary = "failed", "Revision timed out after 15 minutes.", ""
     except Exception as exc:
         status, message, summary = "failed", str(exc), ""
     else:
@@ -1035,13 +1223,13 @@ def execute_activity_analysis_job(job_id: str) -> None:
     with JOBS_LOCK:
         job = JOBS[job_id]
         job["status"] = "running"
-        job["message"] = "Codex is reviewing the workout data."
+        job["message"] = "The coach is reviewing the workout data."
         job["started_at"] = now_iso()
         activity_id = job["activity_id"]
     try:
-        summary = run_codex_activity_analysis(activity_id)
+        summary = run_coach_activity_analysis(activity_id)
     except subprocess.TimeoutExpired:
-        status, message, summary = "failed", "Codex analysis timed out after 15 minutes.", ""
+        status, message, summary = "failed", "Analysis timed out after 15 minutes.", ""
     except Exception as exc:
         status, message, summary = "failed", str(exc), ""
     else:
@@ -1061,8 +1249,8 @@ def execute_coach_chat_job(job_id: str) -> None:
         history = job["history"]
         chat_context = job.get("chat_context")
         diagnostics = job.get("_diagnostics")
-    if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
-        diagnostics.start(model=DEFAULT_MODEL, attempt=1)
+    if isinstance(diagnostics, coach_chat_diagnostics.ChatDiagnostics):
+        diagnostics.start(model=current_model(), attempt=1)
         _log_coach_diagnostic_event(job_id, {"phase": "starting"})
 
         def progress(event: object) -> None:
@@ -1075,7 +1263,7 @@ def execute_coach_chat_job(job_id: str) -> None:
         summary = _invoke_coach_chat(athlete_message, history, progress, chat_context)
     except subprocess.TimeoutExpired:
         status, message, summary = "failed", "Coach chat timed out after 15 minutes.", ""
-        if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
+        if isinstance(diagnostics, coach_chat_diagnostics.ChatDiagnostics):
             terminal_event = diagnostics.mark_terminal("timeout", category="timeout")
             if terminal_event is not None:
                 _log_coach_diagnostic_event(job_id, terminal_event)
@@ -1087,14 +1275,14 @@ def execute_coach_chat_job(job_id: str) -> None:
             else "Coach reply unavailable. Please try again."
         )
         summary = ""
-        if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
+        if isinstance(diagnostics, coach_chat_diagnostics.ChatDiagnostics):
             category = "capacity" if is_capacity_error(str(exc)) else "process"
             terminal_event = diagnostics.mark_terminal("failed", category=category)
             if terminal_event is not None:
                 _log_coach_diagnostic_event(job_id, terminal_event)
     else:
         status, message = "succeeded", "Coach replied."
-        if isinstance(diagnostics, codex_chat_diagnostics.ChatDiagnostics):
+        if isinstance(diagnostics, coach_chat_diagnostics.ChatDiagnostics):
             terminal_event = diagnostics.mark_terminal("completed")
             if terminal_event is not None:
                 _log_coach_diagnostic_event(job_id, terminal_event)
@@ -1109,7 +1297,7 @@ def execute_recovery_job(job_id: str) -> None:
         job.update(status="running", message="Reviewing your recovery issue.", started_at=now_iso())
         issue_id, request_id = job["issue_id"], job["request_id"]
     try:
-        recovery_helper.run_request(issue_id, request_id, run_codex)
+        recovery_helper.run_request(issue_id, request_id, run_coach)
         status, message = "succeeded", "Recovery reply saved."
     except Exception:
         # Exceptions from the CLI can contain symptom text. Never expose or log them.
@@ -1126,10 +1314,10 @@ def execute_daily_state_job(job_id: str) -> None:
     with JOBS_LOCK:
         job = JOBS[job_id]
         job["status"] = "running"
-        job["message"] = "Codex is reading your current training context."
+        job["message"] = "The coach is reading your current training context."
         job["started_at"] = now_iso()
     try:
-        assessment = run_codex_daily_state()
+        assessment = run_coach_daily_state()
     except subprocess.TimeoutExpired:
         status, message, assessment = "failed", "Daily assessment timed out after 15 minutes.", None
     except Exception as exc:
@@ -1147,7 +1335,7 @@ def execute_team_review_job(job_id: str) -> None:
             JOBS[job_id].update(status='running', message=message)
     progress('Preparing your weekly coaching review…')
     try:
-        result = team_coaching_helper.run_review(run_codex, progress)
+        result = team_coaching_helper.run_review(run_coach, progress)
     except Exception as exc:
         with JOBS_LOCK:
             JOBS[job_id].update(status='failed', message=str(exc), finished_at=now_iso())
@@ -1163,7 +1351,7 @@ def execute_cycling_power_review_job(job_id: str) -> None:
             JOBS[job_id].update(status='running', message=message)
     progress('Preparing your cycling power review…')
     try:
-        result = cycling_power_helper.run_review(run_codex, progress)
+        result = cycling_power_helper.run_review(run_coach, progress)
     except Exception as exc:
         with JOBS_LOCK:
             JOBS[job_id].update(status='failed', message=str(exc), finished_at=now_iso())
@@ -1173,12 +1361,39 @@ def execute_cycling_power_review_job(job_id: str) -> None:
                                 review=result, finished_at=now_iso())
 
 
+def execute_meal_estimate_job(job_id: str, text: str, image: dict | None) -> None:
+    """Meal estimates always use Claude: it reads photos, and nothing is saved here."""
+
+    def progress(message):
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="running", message=message)
+
+    def record_usage(model, ok, started, metrics):
+        _record_usage("claude", meal_helper.FAILURE_LABEL, model, ok, started, metrics)
+
+    progress("Preparing the meal estimate…")
+    try:
+        result = meal_helper.run_estimate(
+            text, image, cli_path=resolve_claude_cli(), model=default_model("claude"),
+            record_usage=record_usage, progress=progress,
+        )
+    except Exception as exc:
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="failed", message=str(exc), finished_at=now_iso())
+    else:
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="succeeded", message="The meal estimate is ready.", estimate=result, finished_at=now_iso())
+
+
+MEAL_ESTIMATE_MAX_BYTES = 8 * 1024 * 1024
+
+
 class PlanningServer(ThreadingHTTPServer):
     daemon_threads = True
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "TrainingDashboardCodexHelper/1.0"
+    server_version = "TrainingDashboardCoachHelper/1.0"
 
     def log_message(self, fmt: str, *args: object) -> None:
         sys.stderr.write(f"[{self.log_date_time_string()}] {fmt % args}\n")
@@ -1206,6 +1421,36 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(403, {"detail": "Origin is not allowed"})
         return True
 
+    def start_meal_estimate(self) -> None:
+        if "application/json" not in (self.headers.get("Content-Type") or ""):
+            self.send_json(415, {"detail": "Content-Type must be application/json"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+        if length < 1 or length > MEAL_ESTIMATE_MAX_BYTES:
+            self.send_json(400, {"detail": "Invalid request size"})
+            return
+        try:
+            text, image = meal_helper.validate_request(json.loads(self.rfile.read(length)))
+        except (json.JSONDecodeError, ValueError) as exc:
+            self.send_json(400, {"detail": str(exc)})
+            return
+        job_id = uuid.uuid4().hex
+        job = {
+            "job_id": job_id,
+            "kind": "meal_estimate",
+            "status": "queued",
+            "message": "The meal estimate is queued.",
+            "created_at": now_iso(),
+            "finished_at": None,
+        }
+        with JOBS_LOCK:
+            JOBS[job_id] = job
+        threading.Thread(target=execute_meal_estimate_job, args=(job_id, text, image), daemon=True).start()
+        self.send_json(202, public_job(job))
+
     def do_OPTIONS(self) -> None:
         if self.reject_bad_origin():
             return
@@ -1225,12 +1470,25 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/health":
             self.send_json(200, {
                 "status": "ok",
-                "service": "training-dashboard-codex-helper",
+                "service": "training-dashboard-coach-helper",
                 "pid": os.getpid(),
-                "model": DEFAULT_MODEL,
-                "capabilities": ["recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context"],
+                "coach_cli": current_cli(),
+                "model": current_model(),
+                "capabilities": ["recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "usage", "meal_estimate"],
                 "sunday_review": {"enabled": True, "time": "23:59", "timezone": "Europe/Warsaw"},
             })
+            return
+        if self.path == "/usage":
+            self.send_json(200, {"coach_cli": current_cli(), "model": current_model(), **USAGE_LOG.summary()})
+            return
+        prefix = "/meal-estimate/"
+        if self.path.startswith(prefix):
+            with JOBS_LOCK:
+                job = dict(JOBS.get(self.path[len(prefix):], {}))
+            if not job or job.get("kind") != "meal_estimate":
+                self.send_json(404, {"detail": "Meal estimate job not found"})
+                return
+            self.send_json(200, public_job(job))
             return
         prefix = '/cycling-power-review/'
         if self.path.startswith(prefix):
@@ -1313,6 +1571,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         if self.reject_bad_origin():
+            return
+        if self.path == "/meal-estimate":
+            self.start_meal_estimate()
             return
         if self.path not in {"/weekly-plan", "/weekly-plan-revision", "/activity-analysis", "/coach-chat", "/daily-state", "/recovery-chat", "/team-review", "/cycling-power-review"}:
             self.send_json(404, {"detail": "Not found"})
@@ -1405,8 +1666,8 @@ class Handler(BaseHTTPRequestHandler):
             }
             if kind == "coach_chat":
                 job.update(athlete_message=athlete_message, history=history, chat_context=chat_context)
-                job["_diagnostics"] = codex_chat_diagnostics.ChatDiagnostics(
-                    model=DEFAULT_MODEL,
+                job["_diagnostics"] = coach_chat_diagnostics.ChatDiagnostics(
+                    model=current_model(),
                     attempt=1,
                 )
             else:
@@ -1437,7 +1698,7 @@ def health() -> dict | None:
     try:
         with urlopen(f"http://{HOST}:{PORT}/health", timeout=0.5) as response:
             payload = json.load(response)
-            if payload.get("service") != "training-dashboard-codex-helper":
+            if payload.get("service") != "training-dashboard-coach-helper":
                 return None
             return payload
     except (OSError, URLError, ValueError):
@@ -1447,10 +1708,10 @@ def health() -> dict | None:
 def start() -> int:
     existing = health()
     if existing:
-        if not {"recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context"}.issubset(existing.get("capabilities", [])):
-            print("The running helper is outdated. Run codex_planning_helper.py stop, then start, to enable the latest coaching features.", file=sys.stderr)
+        if not {"recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "meal_estimate"}.issubset(existing.get("capabilities", [])):
+            print("The running helper is outdated. Run coach_helper.py stop, then start, to enable the latest coaching features.", file=sys.stderr)
             return 1
-        print(f"Codex planning helper is already running (PID {existing['pid']}).")
+        print(f"Coach helper is already running (PID {existing['pid']}).")
         PID_PATH.write_text(str(existing["pid"]), encoding="utf-8")
         return 0
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -1465,13 +1726,13 @@ def start() -> int:
     PID_PATH.write_text(str(process.pid), encoding="utf-8")
     for _ in range(30):
         if health():
-            print(f"Codex planning helper started (PID {process.pid}).")
+            print(f"Coach helper started (PID {process.pid}).")
             return 0
         if process.poll() is not None:
             break
         time.sleep(0.1)
     process.terminate()
-    print(f"Codex planning helper did not start. See {LOG_PATH}.", file=sys.stderr)
+    print(f"Coach helper did not start. See {LOG_PATH}.", file=sys.stderr)
     return 1
 
 
@@ -1479,17 +1740,17 @@ def stop() -> int:
     current = health()
     if not current:
         PID_PATH.unlink(missing_ok=True)
-        print("Codex planning helper is not running.")
+        print("Coach helper is not running.")
         return 0
     pid = int(current["pid"])
     os.kill(pid, signal.SIGTERM)
     for _ in range(30):
         if not health():
             PID_PATH.unlink(missing_ok=True)
-            print("Codex planning helper stopped.")
+            print("Coach helper stopped.")
             return 0
         time.sleep(0.1)
-    print(f"Codex planning helper did not stop cleanly (PID {pid}).", file=sys.stderr)
+    print(f"Coach helper did not stop cleanly (PID {pid}).", file=sys.stderr)
     return 1
 
 
@@ -1497,13 +1758,13 @@ def serve() -> int:
     server = PlanningServer((HOST, PORT), Handler)
     from sunday_review import run_loop
     review_stop = threading.Event()
-    threading.Thread(target=run_loop, args=(run_codex, review_stop), daemon=True).start()
+    threading.Thread(target=run_loop, args=(run_coach, review_stop), daemon=True).start()
 
     def shutdown(_signum: int, _frame: object) -> None:
         threading.Thread(target=server.shutdown, daemon=True).start()
 
     signal.signal(signal.SIGTERM, shutdown)
-    print(f"Codex planning helper listening on http://{HOST}:{PORT}", flush=True)
+    print(f"Coach helper listening on http://{HOST}:{PORT}", flush=True)
     try:
         server.serve_forever()
     finally:

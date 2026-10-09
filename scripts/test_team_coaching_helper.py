@@ -6,7 +6,7 @@ from scripts import team_coaching_helper as helper
 
 class TeamHelperTests(unittest.TestCase):
     def test_job_exposes_completed_review_and_reports_failure(self):
-        from scripts import codex_planning_helper as bridge
+        from scripts import coach_helper as bridge
         with patch.dict(bridge.JOBS, {'test-team': {'status': 'queued'}}, clear=True):
             with patch.object(helper, 'run_review', return_value={'head_coach': {'headline': 'Done'}}):
                 bridge.execute_team_review_job('test-team')

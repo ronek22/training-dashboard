@@ -75,13 +75,13 @@ class CyclingAdviceTests(unittest.TestCase):
         latest = self.client.get('/metrics/cycling-power/advice').json()
         self.assertTrue(latest['stale']); self.assertEqual(latest['review'],saved.json())
 
-    def test_helper_reuses_saved_advice_without_codex(self):
+    def test_helper_reuses_saved_advice_without_the_coach(self):
         run = Mock()
         with patch.object(cycling_power_helper,'request',return_value={'review':{'headline':'Saved'},'stale':False}):
             self.assertEqual(cycling_power_helper.run_review(run,Mock()),{'headline':'Saved'})
         run.assert_not_called()
 
-    def test_helper_calls_codex_once_and_saves_same_snapshot(self):
+    def test_helper_calls_the_coach_once_and_saves_same_snapshot(self):
         result = {'context_key':'abc','headline':'Advice'}
         run = Mock(return_value=json.dumps(result))
         with patch.object(cycling_power_helper,'request',side_effect=[{'review':None},{'context_key':'abc','snapshot':{'status':'available','recording_gaps':[]}},result]) as request:

@@ -1,6 +1,6 @@
-"""Safe, bounded diagnostics for the coach-chat Codex stream.
+"""Safe, bounded diagnostics for the coach-chat CLI stream.
 
-The Codex ``exec --json`` stream contains model text, tool arguments, tool
+The Codex ``exec --json`` and Claude ``-p --output-format stream-json`` streams contain model text, tool arguments, tool
 results, and error details.  None of those values belong in the dashboard job
 state.  This module translates the small lifecycle subset that is useful to an
 athlete into a bounded, thread-safe timeline.
@@ -68,6 +68,10 @@ ITEM_TYPE_TOOL_NAMES = {
     "web_search": "web_search",
 }
 
+# Claude Code names MCP tools mcp__<server>__<tool>.
+CLAUDE_MCP_TOOL_PREFIX = "mcp__training_dashboard__"
+CLAUDE_EVENT_TYPES = frozenset({"system", "assistant", "user", "result"})
+
 _SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,79}$")
 
 _MESSAGE_BY_PHASE = {
@@ -86,7 +90,7 @@ _ERROR_MESSAGES = {
     "timeout": "Coach chat timed out. Try again.",
     "invalid_output": "The coach returned an invalid reply. Try again.",
     "stream": "The coach stream ended unexpectedly. Try again.",
-    "process": "Codex could not complete the coach reply. Try again.",
+    "process": "The coach could not complete the reply. Try again.",
 }
 
 
@@ -107,6 +111,8 @@ def sanitize_tool_name(value: object) -> str | None:
     if not isinstance(value, str):
         return None
     value = value.strip()
+    if value.startswith(CLAUDE_MCP_TOOL_PREFIX):
+        value = value[len(CLAUDE_MCP_TOOL_PREFIX):]
     if value in COACH_TOOL_ALLOWLIST:
         return value
     if value in ITEM_TYPE_TOOL_NAMES:
@@ -219,6 +225,78 @@ def sanitize_usage(value: object) -> dict[str, int] | None:
     return usage or None
 
 
+def _claude_usage(value: object) -> dict[str, int] | None:
+    """Map Claude usage onto the Codex counters, where input includes cached tokens."""
+
+    if not isinstance(value, Mapping):
+        return None
+    counts = {}
+    for key in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens"):
+        number = value.get(key)
+        counts[key] = number if isinstance(number, int) and not isinstance(number, bool) and number >= 0 else 0
+    return sanitize_usage({
+        "input_tokens": counts["input_tokens"] + counts["cache_creation_input_tokens"] + counts["cache_read_input_tokens"],
+        "cached_input_tokens": counts["cache_read_input_tokens"],
+        "output_tokens": counts["output_tokens"],
+    })
+
+
+def _message_content(payload: Mapping[str, object]) -> list[Mapping[str, object]]:
+    message = payload.get("message")
+    content = message.get("content") if isinstance(message, Mapping) else None
+    if not isinstance(content, list):
+        return []
+    return [block for block in content if isinstance(block, Mapping)]
+
+
+def _parse_claude_payload(payload: Mapping[str, object], at_seconds: float = 0.0) -> dict[str, object]:
+    """Translate one `claude -p --output-format stream-json` line."""
+
+    event_type = payload.get("type")
+    result: dict[str, object] = {"event": None, "usage": None, "final_message": None, "error_text": None}
+
+    if event_type == "system":
+        if payload.get("subtype") == "init":
+            result["event"] = sanitize_progress_event({"phase": "starting"}, at_seconds=at_seconds)
+        return result
+    if event_type == "assistant":
+        content = _message_content(payload)
+        tools = [block.get("name") for block in content if block.get("type") == "tool_use"]
+        texts = [
+            block["text"].strip() for block in content
+            if block.get("type") == "text" and isinstance(block.get("text"), str) and block["text"].strip()
+        ]
+        if tools:
+            result["event"] = sanitize_progress_event(
+                {"phase": "tool", "tool": tools[0], "status": "in_progress"}, at_seconds=at_seconds
+            )
+        elif texts:
+            result["final_message"] = "\n\n".join(texts)
+            result["event"] = sanitize_progress_event({"phase": "answer_composing"}, at_seconds=at_seconds)
+        return result
+    if event_type == "user":
+        outcomes = [block.get("is_error") for block in _message_content(payload) if block.get("type") == "tool_result"]
+        if outcomes:
+            result["event"] = sanitize_progress_event(
+                {"phase": "tool", "status": "failed" if any(outcomes) else "completed"}, at_seconds=at_seconds
+            )
+        return result
+    if event_type == "result":
+        result["usage"] = _claude_usage(payload.get("usage"))
+        text = payload.get("result")
+        text = text.strip() if isinstance(text, str) else ""
+        if payload.get("is_error") or payload.get("subtype", "success") != "success":
+            result["error_text"] = (text or str(payload.get("subtype") or "Claude returned an error"))[:600]
+            result["event"] = sanitize_progress_event({"phase": "failed", "status": "failed"}, at_seconds=at_seconds)
+        else:
+            result["final_message"] = text or None
+            result["event"] = sanitize_progress_event(
+                {"phase": "completed", "status": "completed"}, at_seconds=at_seconds
+            )
+        return result
+    return result
+
+
 def _item_payload(payload: Mapping[str, object]) -> Mapping[str, object] | None:
     item = payload.get("item")
     return item if isinstance(item, Mapping) else None
@@ -226,6 +304,8 @@ def _item_payload(payload: Mapping[str, object]) -> Mapping[str, object] | None:
 
 def _parse_payload(payload: Mapping[str, object], at_seconds: float = 0.0) -> dict[str, object]:
     event_type = payload.get("type")
+    if event_type in CLAUDE_EVENT_TYPES:
+        return _parse_claude_payload(payload, at_seconds)
     result: dict[str, object] = {"event": None, "usage": None, "final_message": None}
 
     if event_type == "thread.started":
@@ -296,7 +376,7 @@ def _parse_payload(payload: Mapping[str, object], at_seconds: float = 0.0) -> di
 
 
 def parse_cli_event(line: object, at_seconds: float = 0.0) -> dict[str, object] | None:
-    """Parse one documented Codex JSONL line into a safe timeline event.
+    """Parse one Codex JSONL or Claude stream-json line into a safe timeline event.
 
     Invalid lines, unknown event types, reasoning, and payload-only events are
     ignored.  The returned mapping contains only ``phase``, ``message``, and
@@ -327,6 +407,16 @@ def extract_cli_message(line: object) -> str | None:
     if payload is None:
         return None
     value = _parse_payload(payload).get("final_message")
+    return value if isinstance(value, str) else None
+
+
+def extract_cli_error(line: object) -> str | None:
+    """Return the error text a Claude result event reports, for capacity checks and failures."""
+
+    payload = _decode_payload(line)
+    if payload is None:
+        return None
+    value = _parse_payload(payload).get("error_text")
     return value if isinstance(value, str) else None
 
 

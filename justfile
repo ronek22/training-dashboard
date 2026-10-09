@@ -7,17 +7,17 @@ root := justfile_directory()
 default: up-detached
 
 # Start the dashboard in the foreground.
-up: codex-helper-start
+up: coach-helper-start
     docker compose up --build
 
 # Start the dashboard in the background.
-up-detached: codex-helper-start
+up-detached: coach-helper-start
     docker compose up -d --build
 
 # Stop the dashboard.
 down:
     docker compose down
-    python3 "{{root}}/scripts/codex_planning_helper.py" stop
+    python3 "{{root}}/scripts/coach_helper.py" stop
 
 # Restart the dashboard in the background.
 restart: down up-detached
@@ -26,28 +26,28 @@ restart: down up-detached
 logs:
     docker compose logs -f
 
-# Manage the loopback-only Codex weekly-planning helper.
+# Manage the loopback-only coach helper (runs Codex or Claude, see COACH_CLI).
 # Prefers the launchd service when installed, so launchd keeps supervising it.
-codex-helper-start:
-    if launchctl print "gui/$(id -u)/com.trainingdashboard.codex-helper" >/dev/null 2>&1; then \
-        launchctl kickstart "gui/$(id -u)/com.trainingdashboard.codex-helper"; \
-        python3 "{{root}}/scripts/codex_planning_helper.py" status; \
+coach-helper-start:
+    if launchctl print "gui/$(id -u)/com.trainingdashboard.coach-helper" >/dev/null 2>&1; then \
+        launchctl kickstart "gui/$(id -u)/com.trainingdashboard.coach-helper"; \
+        python3 "{{root}}/scripts/coach_helper.py" status; \
     else \
-        python3 "{{root}}/scripts/codex_planning_helper.py" start; \
+        python3 "{{root}}/scripts/coach_helper.py" start; \
     fi
 
-codex-helper-stop:
-    python3 "{{root}}/scripts/codex_planning_helper.py" stop
+coach-helper-stop:
+    python3 "{{root}}/scripts/coach_helper.py" stop
 
-codex-helper-status:
-    python3 "{{root}}/scripts/codex_planning_helper.py" status
+coach-helper-status:
+    python3 "{{root}}/scripts/coach_helper.py" status
 
 # Run the helper under launchd: starts at login, restarts if it dies.
-codex-helper-install:
-    "{{root}}/scripts/codex_helper_service.sh" install
+coach-helper-install:
+    "{{root}}/scripts/coach_helper_service.sh" install
 
-codex-helper-uninstall:
-    "{{root}}/scripts/codex_helper_service.sh" uninstall
+coach-helper-uninstall:
+    "{{root}}/scripts/coach_helper_service.sh" uninstall
 
 # Run the backend test suite.
 test-backend:
@@ -55,10 +55,10 @@ test-backend:
     if [ -x "{{root}}/backend/.venv/bin/python" ]; then py="{{root}}/backend/.venv/bin/python"; else py=python3; fi; \
     PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest discover -s backend/tests
 
-# Run the helper-script tests (Codex planning, recovery, Sunday review, team coaching).
+# Run the helper-script tests (coach helper, recovery, Sunday review, team coaching).
 test-scripts:
     if [ -x "{{root}}/backend/.venv/bin/python" ]; then py="{{root}}/backend/.venv/bin/python"; else py=python3; fi; \
-    cd "{{root}}" && PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest scripts.test_codex_planning_helper scripts.test_recovery_helper scripts.test_sunday_review scripts.test_team_coaching_helper
+    cd "{{root}}" && PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest scripts.test_coach_helper scripts.test_recovery_helper scripts.test_sunday_review scripts.test_team_coaching_helper scripts.test_meal_helper
 
 # Run the frontend behavior tests.
 test-frontend:

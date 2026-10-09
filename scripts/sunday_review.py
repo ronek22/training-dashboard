@@ -63,13 +63,13 @@ CONTEXT:
 ''' + json.dumps(context, ensure_ascii=False)
 
 
-def run_once(run_codex, now=None):
+def run_once(run_coach, now=None):
     week = due_week(now)
     reviews = request('/reviews/weekly')
     if any(row['week_start'] == week and row.get('generator') == 'codex-cli' for row in reviews):
         return False
     context = request('/reviews/weekly/context?week_start=' + week)
-    output = run_codex(build_prompt(context), failure_label='write the Sunday review', fallback='')
+    output = run_coach(build_prompt(context), failure_label='write the Sunday review', fallback='')
     # Only valid structured model output is persisted; the API validates content and timing.
     candidate = output.strip()
     if candidate.startswith('```json') and candidate.endswith('```'):
@@ -82,10 +82,10 @@ def run_once(run_codex, now=None):
     return True
 
 
-def run_loop(run_codex, stopped):
+def run_loop(run_coach, stopped):
     while not stopped.is_set():
         try:
-            run_once(run_codex)
+            run_once(run_coach)
             delay = 30  # Includes the last minute of Sunday; saved weeks are skipped.
         except Exception:
             logging.exception('Sunday AI review failed; retrying in 15 minutes')

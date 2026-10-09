@@ -34,7 +34,7 @@
     <div v-if="answerVisible" class="sr-answer" :class="{ 'is-pending': running }">
       <span class="sr-answer-q">{{ answerQuestion }}</span>
       <template v-if="running">
-        <p class="sr-answer-wait">Codex is looking at this session and your recent training…</p>
+        <p class="sr-answer-wait">The coach is looking at this session and your recent training…</p>
         <div class="sr-progress" aria-hidden="true"><span></span></div>
       </template>
       <template v-else>

@@ -59,40 +59,40 @@
       <section id="dashboard-coaching" class="coach-section" aria-labelledby="coach-heading">
         <header class="coach-head">
           <h2 id="coach-heading"><span aria-hidden="true">✦</span> Coach’s perspective</h2>
-          <button type="button" :disabled="codexStateLoading || !isLocalCodexHost" :title="isLocalCodexHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="refreshCodexState(true)">
-            {{ !isLocalCodexHost ? 'Mac only' : codexStateLoading ? 'Reviewing…' : codexState ? 'Refresh' : 'Try now' }}
+          <button type="button" :disabled="coachStateLoading || !isLocalCoachHost" :title="isLocalCoachHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="refreshCoachState(true)">
+            {{ !isLocalCoachHost ? 'Mac only' : coachStateLoading ? 'Reviewing…' : coachState ? 'Refresh' : 'Try now' }}
           </button>
         </header>
-        <div class="coach-panel" :class="{ 'is-loading': codexStateLoading, 'is-empty': !codexState }">
+        <div class="coach-panel" :class="{ 'is-loading': coachStateLoading, 'is-empty': !coachState }">
           <p v-if="weeklyDirection" class="coach-week-focus">
             <span>{{ weeklyDirection.scope === 'week_so_far' ? 'This week’s review' : 'Focus from last week’s review' }}</span>
             {{ weeklyDirection.next_week_change }}
             <router-link to="/weekly-review">Open review ↗</router-link>
           </p>
-          <template v-if="codexState">
+          <template v-if="coachState">
             <div class="coach-assessment">
-              <h3>{{ codexState.headline }}</h3>
-              <p>{{ codexState.assessment }}</p>
+              <h3>{{ coachState.headline }}</h3>
+              <p>{{ coachState.assessment }}</p>
             </div>
             <div class="coach-next">
               <span class="coach-label">Next step</span>
-              <p>{{ codexState.next_step }}</p>
-              <p v-if="codexStateStale && codexStateLoading" class="coach-updating">Updating for the latest training data…</p>
+              <p>{{ coachState.next_step }}</p>
+              <p v-if="coachStateStale && coachStateLoading" class="coach-updating">Updating for the latest training data…</p>
               <button
                 v-if="canAdaptTomorrow"
                 type="button"
                 class="coach-plan-action"
-                :disabled="codexPlanUpdate === 'running'"
+                :disabled="coachPlanUpdate === 'running'"
                 @click="adaptTomorrowPlan"
               >
-                <span>{{ codexPlanActionLabel }}</span><span aria-hidden="true">→</span>
+                <span>{{ coachPlanActionLabel }}</span><span aria-hidden="true">→</span>
               </button>
-              <p v-if="codexPlanUpdate === 'failed'" class="coach-plan-error">Tomorrow was not changed. You can retry safely.</p>
+              <p v-if="coachPlanUpdate === 'failed'" class="coach-plan-error">Tomorrow was not changed. You can retry safely.</p>
             </div>
           </template>
-          <p v-else-if="codexStateLoading" class="coach-placeholder">Reading your plan, recovery, goals and recent training…</p>
-          <p v-else-if="!isLocalCodexHost" class="coach-placeholder">Open TrainLog on your Mac to use the coach.</p>
-          <p v-else class="coach-placeholder">The measured state remains available. Start the local Codex helper for a whole-context interpretation.</p>
+          <p v-else-if="coachStateLoading" class="coach-placeholder">Reading your plan, recovery, goals and recent training…</p>
+          <p v-else-if="!isLocalCoachHost" class="coach-placeholder">Open TrainLog on your Mac to use the coach.</p>
+          <p v-else class="coach-placeholder">The measured state remains available. Start the local coach helper for a whole-context interpretation.</p>
         </div>
       </section>
 
@@ -105,6 +105,8 @@
         :progress-pct="weekProgressPct"
         @open="openWeekDay"
       />
+
+      <RelativeEffortCard v-if="dashboard.relative_effort" :effort="dashboard.relative_effort" />
 
       <YearProgress
         :ride-series="dashboard.ride_year_series || []"
@@ -150,6 +152,7 @@ import WeekStrip from '../components/WeekStrip.vue'
 import YearProgress from '../components/YearProgress.vue'
 import RecentRecords from '../components/RecentRecords.vue'
 import LoadFormTrend from '../components/LoadFormTrend.vue'
+import RelativeEffortCard from '../components/RelativeEffortCard.vue'
 import DailyCheckin from '../components/DailyCheckin.vue'
 import ProteinTick from '../components/ProteinTick.vue'
 import VolumeTrendAlert from '../components/VolumeTrendAlert.vue'
@@ -167,15 +170,15 @@ const cyclingLibrary = ref(null)
 const todayActivityDetails = ref({})
 const strengthTemplates = ref([])
 const loading = ref(true)
-const codexState = ref(null)
-const codexStateLoading = ref(false)
-const codexStateError = ref(null)
-const codexStateStale = ref(false)
-const codexPlanUpdate = ref('idle')
-const localCodexHostnames = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
-const isLocalCodexHost = computed(() => {
+const coachState = ref(null)
+const coachStateLoading = ref(false)
+const coachStateError = ref(null)
+const coachStateStale = ref(false)
+const coachPlanUpdate = ref('idle')
+const localCoachHostnames = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
+const isLocalCoachHost = computed(() => {
   if (typeof window === 'undefined') return false
-  return localCodexHostnames.has(window.location.hostname.toLowerCase())
+  return localCoachHostnames.has(window.location.hostname.toLowerCase())
 })
 const goalReviewCount = ref(0)
 const goalReviewLabel = computed(() => {
@@ -194,7 +197,7 @@ const loadDashboard = async () => {
     ])
     dashboard.value = dashboardResult.status === 'fulfilled' ? dashboardResult.value.data : null
     recentActivities.value = activitiesResult.status === 'fulfilled' ? activitiesResult.value.data : []
-    if (dashboard.value && isLocalCodexHost.value) void refreshCodexState(false)
+    if (dashboard.value && isLocalCoachHost.value) void refreshCoachState(false)
     if (todayPlan.value?.cycling_workout_id && !cyclingLibrary.value) void loadCyclingLibrary()
     void loadTodayActivityDetails()
     void loadGoalReviewCount()
@@ -288,28 +291,28 @@ const todayPlan = computed(() => weeklyPlan.value?.days?.find((day) => day.date 
 const tomorrowPlan = computed(() => weeklyPlan.value?.days?.find((day) => day.date === tomorrowKey.value) || null)
 const todayPlanCompleted = computed(() => completedPlanStatuses.has(todayPlan.value?.comparison?.status))
 const insightRecommendsPlanChange = computed(() => {
-  if (codexState.value?.plan_change_recommended) return true
-  const advice = `${codexState.value?.headline || ''} ${codexState.value?.next_step || ''}`
+  if (coachState.value?.plan_change_recommended) return true
+  const advice = `${coachState.value?.headline || ''} ${coachState.value?.next_step || ''}`
   return /\b(postpone|replace|skip|move|shorten|reduce|swap|rest instead)\b/i.test(advice)
 })
-const planChangeReason = computed(() => codexState.value?.plan_change_reason || codexState.value?.next_step || '')
+const planChangeReason = computed(() => coachState.value?.plan_change_reason || coachState.value?.next_step || '')
 const canAdaptTomorrow = computed(() => Boolean(
-  isLocalCodexHost.value
+  isLocalCoachHost.value
   &&
-  !codexStateStale.value
-  && !codexStateLoading.value
+  !coachStateStale.value
+  && !coachStateLoading.value
   && insightRecommendsPlanChange.value
   && planChangeReason.value
   && tomorrowPlan.value
   && !completedPlanStatuses.has(tomorrowPlan.value?.comparison?.status),
 ))
-const codexPlanActionLabel = computed(() => ({
+const coachPlanActionLabel = computed(() => ({
   running: 'Adapting tomorrow…',
   succeeded: 'Tomorrow updated',
   failed: 'Try adapting again',
-}[codexPlanUpdate.value] || 'Adapt tomorrow’s plan'))
+}[coachPlanUpdate.value] || 'Adapt tomorrow’s plan'))
 
-const codexContextKey = computed(() => {
+const coachContextKey = computed(() => {
   const current = trainingLoad.value?.current || {}
   const state = latestSubjectiveState.value || {}
   const todayActivities = recentActivities.value
@@ -334,43 +337,43 @@ const codexContextKey = computed(() => {
   ].join('|').replace(/[^A-Za-z0-9._:|,+-]/g, '_').slice(0, 512)
 })
 
-const codexCacheKey = 'training-dashboard:daily-state:v4'
+const coachCacheKey = 'training-dashboard:daily-state:v4'
 const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 
-const readCachedCodexState = () => {
+const readCachedCoachState = () => {
   try {
-    return JSON.parse(window.localStorage.getItem(codexCacheKey) || 'null')
+    return JSON.parse(window.localStorage.getItem(coachCacheKey) || 'null')
   } catch { return null }
 }
 
-async function refreshCodexState(force = false) {
-  if (!isLocalCodexHost.value || codexStateLoading.value) return
-  const contextKey = codexContextKey.value
-  const cached = readCachedCodexState()
+async function refreshCoachState(force = false) {
+  if (!isLocalCoachHost.value || coachStateLoading.value) return
+  const contextKey = coachContextKey.value
+  const cached = readCachedCoachState()
   if (!force) {
     if (cached?.contextKey === contextKey && cached.assessment) {
-      codexState.value = cached.assessment
-      codexStateStale.value = false
+      coachState.value = cached.assessment
+      coachStateStale.value = false
       return
     }
     if (cached?.assessment) {
-      codexState.value = cached.assessment
-      codexStateStale.value = true
+      coachState.value = cached.assessment
+      coachStateStale.value = true
     }
   }
-  codexStateLoading.value = true
-  codexStateError.value = null
+  coachStateLoading.value = true
+  coachStateError.value = null
   try {
-    const { data: started } = await api.startCodexDailyState({ context_key: contextKey })
+    const { data: started } = await api.startCoachDailyState({ context_key: contextKey })
     for (let attempt = 0; attempt < 450; attempt += 1) {
-      const { data: job } = await api.getCodexDailyStateJob(started.job_id)
+      const { data: job } = await api.getCoachDailyStateJob(started.job_id)
       if (job.status === 'failed') throw new Error(job.message)
       if (job.status === 'succeeded') {
-        if (contextKey === codexContextKey.value) {
-          codexState.value = job.assessment
-          codexStateStale.value = false
-          codexPlanUpdate.value = 'idle'
-          window.localStorage.setItem(codexCacheKey, JSON.stringify({ contextKey, assessment: job.assessment }))
+        if (contextKey === coachContextKey.value) {
+          coachState.value = job.assessment
+          coachStateStale.value = false
+          coachPlanUpdate.value = 'idle'
+          window.localStorage.setItem(coachCacheKey, JSON.stringify({ contextKey, assessment: job.assessment }))
         }
         return
       }
@@ -378,16 +381,16 @@ async function refreshCodexState(force = false) {
     }
     throw new Error('Daily assessment timed out.')
   } catch (error) {
-    codexStateError.value = error
-    codexStateStale.value = Boolean(codexState.value)
+    coachStateError.value = error
+    coachStateStale.value = Boolean(coachState.value)
   } finally {
-    codexStateLoading.value = false
+    coachStateLoading.value = false
   }
 }
 
 async function adaptTomorrowPlan() {
-  if (!isLocalCodexHost.value || !canAdaptTomorrow.value || codexPlanUpdate.value === 'running') return
-  codexPlanUpdate.value = 'running'
+  if (!isLocalCoachHost.value || !canAdaptTomorrow.value || coachPlanUpdate.value === 'running') return
+  coachPlanUpdate.value = 'running'
   const targetDate = tomorrowKey.value
   const weekStart = weeklyPlan.value?.week_start || format(
     startOfWeek(new Date(`${targetDate}T12:00:00`), { weekStartsOn: 1 }),
@@ -399,17 +402,17 @@ async function adaptTomorrowPlan() {
     'Choose a concrete safer replacement that supports recovery and remains consistent with active goals and restrictions.',
   ].join(' ')
   try {
-    const { data: started } = await api.startCodexWeeklyPlanRevision({
+    const { data: started } = await api.startCoachWeeklyPlanRevision({
       week_start: weekStart,
       target_date: targetDate,
       feedback,
     })
     for (let attempt = 0; attempt < 450; attempt += 1) {
-      const { data: job } = await api.getCodexWeeklyPlanRevisionJob(started.job_id)
+      const { data: job } = await api.getCoachWeeklyPlanRevisionJob(started.job_id)
       if (job.status === 'failed') throw new Error(job.message)
       if (job.status === 'succeeded') {
-        codexPlanUpdate.value = 'succeeded'
-        codexState.value = null
+        coachPlanUpdate.value = 'succeeded'
+        coachState.value = null
         await loadDashboard()
         return
       }
@@ -417,7 +420,7 @@ async function adaptTomorrowPlan() {
     }
     throw new Error('Tomorrow’s plan update timed out.')
   } catch {
-    codexPlanUpdate.value = 'failed'
+    coachPlanUpdate.value = 'failed'
   }
 }
 
@@ -597,7 +600,7 @@ const todayCard = computed(() => {
   const activities = todayActivities.value
   const completed = (!sick && todayPlanCompleted.value) || (!plan && activities.length > 0)
   const statusTone = { complete: 'done' }[primaryDecisionTone.value] || primaryDecisionTone.value
-  const coach = { showCoachLink: Boolean(codexState.value), statusLabel: primaryDecisionLabel.value, statusTone }
+  const coach = { showCoachLink: Boolean(coachState.value), statusLabel: primaryDecisionLabel.value, statusTone }
   if (completed) {
     const [first] = activities
     const plannedMin = Number(plan?.target_duration_min || 0)

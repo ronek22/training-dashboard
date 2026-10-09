@@ -19,10 +19,12 @@ const moreLinks = [
   { path: '/mountains', label: 'Mountains' },
   { path: '/strength', label: 'Strength' },
   { path: '/recovery', label: 'Recovery' },
+  { path: '/food', label: 'Food' },
   { path: '/goals', label: 'Goals' },
   { path: '/notes', label: 'Coach notes' },
   { path: '/weekly-review', label: 'Weekly review' },
   { path: '/sync', label: 'Data & Sync' },
+  { path: '/usage', label: 'Coach usage' },
   { path: '/roadmap', label: 'Roadmap' },
   { path: '/ideas', label: 'Ideas' },
 ]

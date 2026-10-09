@@ -48,7 +48,7 @@ const rows = computed(() => METRICS.filter((metric) => props.recovery[metric.key
       </div>
       <span class="spark" aria-hidden="true">
         <span v-if="row.baselineAt != null" class="baseline" :style="{ bottom: `${row.baselineAt}%` }"></span>
-        <span v-for="(bar, index) in row.bars" :key="index" class="bar" :class="{ empty: bar == null }" :style="{ height: `${bar ?? 4}%` }"></span>
+        <span v-for="(bar, index) in row.bars" :key="index" class="bar" :class="{ 'is-missing': bar == null }" :style="{ height: `${bar ?? 4}%` }"></span>
       </span>
     </li>
   </ul>
@@ -67,7 +67,7 @@ strong small { font-size: 11px; font-weight: 500; color: var(--muted); }
 .delta.is-warn { color: var(--warning-text); }
 .spark { position: relative; display: flex; align-items: flex-end; gap: 3px; height: 34px; width: 98px; flex: none; }
 .bar { flex: 1; border-radius: 2px; background: color-mix(in srgb, var(--accent) 60%, transparent); }
-.bar.empty { background: var(--surface2); }
+.bar.is-missing { background: var(--surface2); }
 .baseline { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--muted); opacity: .7; }
 .empty { font-size: 13px; color: var(--muted); }
 </style>

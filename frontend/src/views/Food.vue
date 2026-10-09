@@ -139,7 +139,7 @@
         </article>
 
         <div class="meal-grid">
-          <article v-for="group in mealGroups" :key="group.value" class="card meal-tile" :class="{ empty: !group.entries.length, current: !rows.length && meal === group.value }">
+          <article v-for="group in mealGroups" :key="group.value" class="card meal-tile" :class="{ 'is-empty': !group.entries.length, current: !rows.length && meal === group.value }">
             <header>
               <h3>{{ group.label }}</h3>
               <button type="button" class="add-button" :aria-label="`Add to ${group.label.toLowerCase()}`" :title="`Add to ${group.label.toLowerCase()}`" @click="startMeal(group.value)">+</button>
@@ -672,7 +672,7 @@ onUnmounted(() => {
 .meal-tile.current { box-shadow: var(--shadow-card), inset 0 0 0 1px var(--border-strong); }
 .meal-tile header { display: flex; align-items: center; gap: 10px; }
 .meal-tile h3 { margin: 0; font-size: 14px; font-weight: 650; }
-.meal-tile.empty h3 { color: var(--text-soft); }
+.meal-tile.is-empty h3 { color: var(--text-soft); }
 .add-button { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 7px; background: var(--surface2); color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
 .meal-tile .add-button { margin-left: auto; }
 .add-button:hover { background: var(--accent); color: var(--on-accent); }

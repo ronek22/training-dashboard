@@ -4,6 +4,7 @@ from statistics import mean
 from typing import Optional
 
 from .checkins import latest_daily_checkin
+from .illness_return import build_illness_return, illness_return_readiness_factor
 from .life_load import life_load_readiness_factor
 from .sick_mode import get_active_sick_period
 from .health_data import get_health_metric_history
@@ -220,6 +221,10 @@ def build_readiness_score(
             "sick", "Sick mode", "fever or chest symptoms" if below_neck else "head cold",
             "risk", 4 if below_neck else 2,
         ))
+    else:
+        illness_return = illness_return_readiness_factor(build_illness_return(conn, today))
+        if illness_return:
+            factors.insert(0, illness_return)
 
     ratio_status = ((training_load_summary or {}).get("ratio") or {}).get("status")
     form = float(((training_load_summary or {}).get("current") or {}).get("form") or 0)

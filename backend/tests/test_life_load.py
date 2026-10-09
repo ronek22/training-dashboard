@@ -9,6 +9,7 @@ from backend.app.services.life_load import (
     life_load_coaching_context,
     life_load_readiness_factor,
     missed_on_tagged_days,
+    mountain_dates,
     session_load_reason,
     set_life_load_day,
     tagged_days_between,
@@ -132,6 +133,21 @@ class LifeLoadTests(unittest.TestCase):
         context = life_load_coaching_context(self.conn, MONDAY)
         self.assertEqual(context["recent"], [{"date": day(-2), "tags": ["Family"]}])
         self.assertEqual(context["upcoming"], [{"date": day(3), "tags": ["Travel"], "note": "Berlin"}])
+
+
+    def test_hikes_on_mountain_days_are_not_conflicts_but_rides_still_are(self):
+        for offset in (1, 2):
+            set_life_load_day(self.conn, day(offset), ["travel", "mountains"])
+        days = [session(1, "hike", "long", 300, "Hike"), session(2, "ride", "long", 120, "Long ride")]
+        result = build_plan_life_load(self.conn, days, day(0), today=MONDAY)
+        self.assertEqual([item["date"] for item in result["conflicts"]], [day(2)])
+        self.assertEqual(mountain_dates(self.conn, day(0), day(6)), {day(1), day(2)})
+
+    def test_coaching_context_adds_mountain_guidance_only_ahead_of_a_trip(self):
+        set_life_load_day(self.conn, day(-2), ["mountains"])
+        self.assertNotIn("mountains_guidance", life_load_coaching_context(self.conn, MONDAY))
+        set_life_load_day(self.conn, day(3), ["mountains"])
+        self.assertIn("Travel kit", life_load_coaching_context(self.conn, MONDAY)["mountains_guidance"])
 
 
 if __name__ == "__main__":

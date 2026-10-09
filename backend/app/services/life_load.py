@@ -5,6 +5,10 @@ travel, deadline, family, poor sleep, late night. They are set ahead or afterwar
 the plan flags hard or long sessions on tagged days and suggests a calmer day to swap with;
 afterwards, the weekly review can see that missed sessions fell on tagged days, and a falling
 volume week with 3+ tagged days is labelled "life" instead of a motivation problem.
+
+"Mountains" is the one tag about the body as well: a trip where a hike is the day's session. The
+hike replaces rides and runs, counts as leg work, and lifts become short no-equipment travel
+sessions so the lift anchor and the streak hold on the road.
 """
 import json
 import sqlite3
@@ -17,6 +21,7 @@ TAGS = {
     "family": {"label": "Family", "icon": "⌂"},
     "poor_sleep": {"label": "Poor sleep", "icon": "☾"},
     "late_night": {"label": "Late night", "icon": "✦"},
+    "mountains": {"label": "Mountains", "icon": "▲"},
 }
 
 # Intensity and length that do not belong on a tagged day; lifts and easy sessions are fine.
@@ -81,6 +86,15 @@ def set_life_load_day(conn: sqlite3.Connection, day: str, tags: list[str], note:
     return get_life_load_days(conn, day, day).get(day)
 
 
+def mountain_dates(conn: sqlite3.Connection, start: str, end: str) -> set[str]:
+    """Days in [start, end] tagged as a mountain trip."""
+    return {key for key, item in get_life_load_days(conn, start, end).items() if "mountains" in item["tags"]}
+
+
+def _is_hike(day: dict) -> bool:
+    return str(day.get("session_type") or "").strip().lower() == "hike"
+
+
 def tagged_days_between(conn: sqlite3.Connection, start: date, end: date) -> int:
     return len(get_life_load_days(conn, start.isoformat(), end.isoformat()))
 
@@ -138,7 +152,9 @@ def build_plan_life_load(conn: Optional[sqlite3.Connection], days: list[dict], w
     conflicts = []
     for day in days:
         tags = tagged.get(day["date"])
-        reason = session_load_reason(day) if tags else None
+        # On a mountain trip the long hike is the point of the day, not a conflict.
+        hike_in_mountains = bool(tags) and "mountains" in tags["tags"] and _is_hike(day)
+        reason = session_load_reason(day) if tags and not hike_in_mountains else None
         if not reason or day["date"] < today_key or day["date"] in busy:
             continue
         conflicts.append({
@@ -206,7 +222,7 @@ def life_load_coaching_context(conn: sqlite3.Connection, today: Optional[date] =
     if not tagged:
         return None
     entries = [{"date": item["date"], "tags": item["labels"], **({"note": item["note"]} if item["note"] else {})} for item in tagged.values()]
-    return {
+    context = {
         "recent": [item for item in entries if item["date"] < day.isoformat()],
         "upcoming": [item for item in entries if item["date"] >= day.isoformat()],
         "guidance": (
@@ -215,3 +231,18 @@ def life_load_coaching_context(conn: sqlite3.Connection, today: Optional[date] =
             "stay. Missed sessions on tagged days are life, not a motivation problem."
         ),
     }
+    if any("mountains" in item["tags"] for key, item in tagged.items() if key >= day.isoformat()):
+        context["mountains_guidance"] = MOUNTAINS_GUIDANCE
+    return context
+
+
+MOUNTAINS_GUIDANCE = (
+    "Mountains days are a hiking trip: plan one hike per day as the day's session (session_type hike, "
+    "workout_intent easy or long); long hikes are fine there and are not a life-load conflict. No rides or runs "
+    "on those days, and do not count the missing ride km against the athlete. Hiking covers legs, so no "
+    "lower-body lifting. Keep the lift anchor with 'Travel kit' sessions instead of A/B/C/D: session_type "
+    "strength, workout_intent strength_upper, title starting 'Travel kit', 20-25 min, no equipment, after a "
+    "shorter hike, with no template_label so the rotation waits for home. The guided sessions are travel_upper "
+    "(push-ups, pike push-ups, backpack rows, chair dips) and travel_core. If a knee or heel recovery issue is "
+    "active, name it on hike days: poles, short steps on descents, and turn back if pain goes above 3/10."
+)

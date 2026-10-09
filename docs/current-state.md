@@ -171,6 +171,26 @@ Implemented foundations:
 - UI: a tag picker in the calendar day popup and in the Plan session dialog; tag icons on calendar cells with a legend entry; sand `--life` chips on plan cards, outlined when they clash.
 - Verified with 8 unit tests, 2 volume-trend tests and an API smoke test (423 backend, 26 helper and 27 frontend tests, plus the build). Checked in the browser against a copy of the database: tag picker, cell icons, clash banner and swap.
 
+### Mountain trip days
+
+2026-10-09: a `mountains` life-load tag (▲) for trips where a hike is the day's session. It is the one tag that is also about the body.
+
+- Plans: a hike on a Mountains day is never a life-load conflict, even when it is long; rides on those days still are.
+- Lift volume (`services/strength_volume.py`): no accessory sets on Mountains days, and with 2+ Mountains days in the week legs show "hiking" instead of a shortfall, so no leg sets are added.
+- Travel kit (`services/guided_sessions.py`, context `travel`): `travel_upper` (push-ups, pike push-ups, backpack rows, chair dips, backpack curls, about 23 min) and `travel_core`. The Apple Watch workout syncs as WeightTraining, so these count toward lifting 3× a week. They have no template, so the A/B/C/D rotation waits until you are home.
+- Briefs: hike days get a hike brief (fuel, water, a descent and knee bail rule, "counts as leg work"). Strength days titled "Travel kit" get a bodyweight brief, and Today's main button opens the guided session.
+- Coach: `life_load.mountains_guidance` in `get_recent_context` when a trip is ahead. The planning prompt tells the coach to plan one hike a day, no rides or runs, and Travel kit lifts.
+
+### Return from illness
+
+2026-10-09: `services/illness_return.py` covers the days after sick mode ends. The window lasts as long as the sickness did (3–7 days). It stretches to 3 days after the last feedback or check-in note that mentions symptoms (English or Polish), up to 14 days. The first half is "easy only" (RPE ≤5, lifts at 3+ reps in reserve). Any day with symptoms noted in the last 2 days is also easy only. The rest of the window is "moderate" (RPE ≤7, no intervals or max lifts). Sessions rated RPE 8+ inside the window are named.
+
+- Readiness: a "Back from illness" factor, 1 point, or 2 while symptoms are still in the notes.
+- Briefs: the cap overrides the session's effort target and reps in reserve, adds a headache or chest stop rule, and leads the notes.
+- Lift volume: no accessory sets on days in the window.
+- Today: a hint in the readiness panel. `illness_return` is in the dashboard payload and in `get_recent_context`, and the planning prompt keeps every session within `rpe_cap` until `window_ends_on`.
+- Verified with 8 illness-return, 2 life-load, 2 lift-volume and 3 brief tests (683 backend tests in total). Checked in the browser against a copy of the database: on day 3 of 6, Saturday's leg top-up was gone, and the travel kit guided page loaded.
+
 ### Return-to-run tracker
 
 2026-10-05: `services/return_to_run.py` runs a six-stage return to running, driven by symptom scores: run/walk 1:2 → 2:1 → 5:1 → continuous 20 min → continuous 30–40 min → back to normal. The athlete switches it on with a starting stage and the symptom to watch (default heel). It never edits the plan.

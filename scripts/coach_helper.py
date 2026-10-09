@@ -230,8 +230,12 @@ days only from the current stage's prescription and respect its next step
 same week. get_recent_context includes life_load: never put intervals,
 tempo, race-specific or 90+ minute sessions on upcoming tagged days (travel,
 deadline, family, poor sleep, late night); easy sessions and short lifts are
-fine there, and anchor goals stay. get_recent_context includes
-plan_follow_through (what happened to planned sessions over recent weeks):
+fine there, and anchor goals stay. When life_load has mountains_guidance,
+follow it on Mountains days: one hike per day, no rides or runs, and the lift
+anchor kept with no-equipment Travel kit sessions. When get_recent_context
+shows illness_return, keep every session before window_ends_on within its
+rpe_cap: no quality rides, intervals, max lifts or 90+ minute sessions yet.
+get_recent_context includes plan_follow_through (what happened to planned sessions over recent weeks):
 when quality_rides shows a weekly goal that recent plans rarely included,
 plan that session; put key sessions (quality rides, lower-body lifts) on
 reliable_weekdays and keep them off shaky_weekdays. This request explicitly

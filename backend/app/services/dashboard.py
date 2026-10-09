@@ -8,6 +8,7 @@ from .plans import format_workout_intent_label, normalize_workout_intent
 from .checkins import get_daily_checkin
 from .downshift import build_downshift, downshift_coaching_context
 from .guided_sessions import guided_completion_dates, reconcile_guided_session_activities
+from .illness_return import build_illness_return, illness_return_coaching_context
 from .sick_mode import build_sick_mode, sick_mode_coaching_context
 from .volume_trend import build_volume_trend
 from .plan_follow_through import plan_follow_through_coaching_context
@@ -1149,6 +1150,7 @@ def build_recent_context(
         "what_worked": build_what_worked_coaching_context(conn),
         "return_to_run": build_return_to_run_context(conn),
         "sick_mode": sick_mode_coaching_context(conn),
+        "illness_return": illness_return_coaching_context(conn),
         "downshift": downshift_coaching_context(conn),
         "life_load": life_load_coaching_context(conn),
         "nutrition": nutrition_coaching_context(conn),
@@ -1349,6 +1351,7 @@ def build_dashboard_data(
         "daily_checkin": get_daily_checkin(conn),
         "volume_trend": build_volume_trend(conn),
         "sick_mode": build_sick_mode(conn),
+        "illness_return": build_illness_return(conn),
         "downshift": build_downshift(conn),
         "training_load": training_load,
         "relative_effort": build_relative_effort(conn),

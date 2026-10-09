@@ -1,7 +1,7 @@
 import json
 import sqlite3
 import unittest
-from datetime import date
+from datetime import date, timedelta
 
 from backend.app.services.session_brief import (
     _plan_guardrails,
@@ -103,6 +103,28 @@ class SessionBriefTests(unittest.TestCase):
         self.assertEqual(len(build_briefs_for_date(self.conn, plan, TODAY)), 1)
         self.conn.execute("INSERT INTO sick_periods (start_date, end_date) VALUES ('2026-10-01', NULL)")
         self.assertEqual(build_briefs_for_date(self.conn, plan, TODAY), [])
+
+
+    def test_hike_brief_covers_fuel_descents_and_legs(self):
+        brief = build_session_brief(self.conn, {"session_type": "hike", "workout_intent": "long", "title": "Hike to Rysy"}, TODAY)
+        self.assertEqual(brief["sport"], "hike")
+        self.assertIn("Fuel", [item["label"] for item in brief["targets"]])
+        self.assertTrue(any("descent" in line for line in brief["bail"]))
+        self.assertTrue(any("leg work" in line for line in brief["notes"]))
+
+    def test_travel_kit_lift_links_its_guided_session(self):
+        upper = build_session_brief(self.conn, {"session_type": "strength", "title": "Travel kit · Upper body"}, TODAY)
+        core = build_session_brief(self.conn, {"session_type": "strength", "title": "Travel kit · Core"}, TODAY)
+        self.assertEqual((upper["kind"], upper["guided_session_key"]), ("travel_kit", "travel_upper"))
+        self.assertEqual(core["guided_session_key"], "travel_core")
+
+    def test_return_from_illness_caps_effort_and_reps_in_reserve(self):
+        self.conn.execute("INSERT INTO sick_periods (start_date, end_date) VALUES (?, ?)", ((TODAY - timedelta(days=6)).isoformat(), (TODAY - timedelta(days=1)).isoformat()))
+        brief = build_session_brief(self.conn, {"session_type": "strength", "workout_intent": "strength_upper"}, TODAY)
+        self.assertEqual(brief["feel"]["rpe"], "≤5")
+        self.assertIn({"label": "Reps in reserve", "value": "3+"}, brief["targets"])
+        self.assertTrue(brief["notes"][0].startswith("Day 1 of 6 back from illness"))
+        self.assertTrue(brief["bail"][0].startswith("Headache"))
 
 
 if __name__ == "__main__":

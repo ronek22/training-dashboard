@@ -31,6 +31,7 @@
             <strong>{{ group.total_sets }}</strong>
             <em v-if="group.added_sets">+{{ group.added_sets }}</em>
             <em v-if="group.shortfall" class="is-short">{{ group.shortfall }} short</em>
+            <em v-else-if="group.status === 'hiking'">hiking</em>
           </span>
         </li>
       </ul>

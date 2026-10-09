@@ -43,11 +43,15 @@ class LiftVolumeTests(unittest.TestCase):
                 )
         self.sessions = []
         self.sick = set()
+        self.returning = set()
+        self.mountains = set()
         self.patches = [
             patch.object(strength_volume, "_session_index", lambda conn: self.sessions),
             patch.object(strength_volume, "latest_next_steps", lambda conn: {}),
             patch.object(strength_volume, "_max_dumbbell_kg", lambda conn: None),
             patch.object(strength_volume, "sick_dates", lambda conn: self.sick),
+            patch.object(strength_volume, "illness_return_dates", lambda conn, today=None: self.returning),
+            patch.object(strength_volume, "mountain_dates", lambda conn, start, end: self.mountains),
         ]
         for item in self.patches:
             item.start()
@@ -120,6 +124,30 @@ class LiftVolumeTests(unittest.TestCase):
         minimum = self._build(days, minimum_week_active=True)
         self.assertEqual(minimum["added_sets"], 0)
         self.assertEqual(minimum["summary"], "Minimum week: no extra sets added.")
+
+    def test_return_from_illness_days_get_no_extra_sets(self):
+        self.returning = {"2026-10-08", "2026-10-09", "2026-10-10"}
+        days = [_day("2026-10-08", "Workout A"), _day("2026-10-09", "Workout B"), _day("2026-10-10", "Workout C")]
+        volume = self._build(days)
+
+        self.assertEqual(volume["added_sets"], 0)
+        self.assertEqual({row["state"] for row in volume["days"]}, {"light"})
+
+    def test_mountain_trip_lifts_stay_bare_and_hiking_covers_legs(self):
+        self.mountains = {"2026-10-08", "2026-10-09"}
+        days = [
+            _day("2026-10-08", None, "Travel kit · Upper body"),
+            _day("2026-10-09", None, "Travel kit · Upper body"),
+            _day("2026-10-10", "Workout C"),
+        ]
+        volume = self._build(days)
+
+        legs = self._group(volume, "legs")
+        self.assertEqual((legs["status"], legs["shortfall"], legs["added_sets"]), ("hiking", 0, 0))
+        self.assertTrue(volume["hiking_covers_legs"])
+        self.assertIn("Hiking covers legs", volume["summary"])
+        self.assertEqual(self._additions(volume, "2026-10-08"), [])
+        self.assertEqual(self._additions(volume, "2026-10-09"), [])
 
     def test_reports_shortfall_when_no_lift_days_remain(self):
         volume = build_lift_volume(self.conn, [_day("2026-10-06", "Workout A")], WEEK_START, today=TODAY)

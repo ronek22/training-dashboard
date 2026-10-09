@@ -16,6 +16,8 @@ from datetime import date, timedelta
 from typing import Any, Optional
 
 from .muscle_gain import MUSCLE_GROUPS, TARGET_SETS_MAX, TARGET_SETS_MIN, muscle_groups_for
+from .illness_return import illness_return_dates
+from .life_load import mountain_dates
 from .sick_mode import sick_dates
 from .strength_progression import _max_dumbbell_kg, _normalize, _session_index, _working_sets, latest_next_steps, plan_next_step
 
@@ -33,7 +35,9 @@ ACCESSORIES: dict[str, list[str]] = {
     "shoulders": ["Dumbbell Lateral Raise", "Dumbbell Rear Delt Raise"],
     "arms": ["Dumbbell Bicep Curl", "Dumbbell Skullcrusher"],
 }
-_LIGHT_DAY = re.compile(r"\b(?:light|easy|low energy|recovery|deload|mobility)\b", re.IGNORECASE)
+_LIGHT_DAY = re.compile(r"\b(?:light|easy|low energy|recovery|deload|mobility|travel kit)\b", re.IGNORECASE)
+# Two or more hiking days in the week cover legs: no leg sets are added on top.
+HIKING_DAYS_FOR_LEGS = 2
 
 
 def _is_lift_day(day: dict) -> bool:
@@ -133,7 +137,10 @@ def build_lift_volume(
 
     labels = {group["key"]: group["label"] for group in MUSCLE_GROUPS}
     templates = _templates_by_name(conn)
-    sick = sick_dates(conn)
+    # Sick days, the return-from-illness window and mountain-trip days (no gym) get no extra sets.
+    sick = sick_dates(conn) | illness_return_dates(conn, today)
+    mountains = mountain_dates(conn, week_start, week_end)
+    hiking_covers_legs = len(mountains) >= HIKING_DAYS_FOR_LEGS
 
     done = _empty_counts()
     logged_dates: set[str] = set()
@@ -161,7 +168,7 @@ def build_lift_volume(
             for exercise in exercises:
                 for group in muscle_groups_for(exercise["exercise_name"]):
                     planned[group] += exercise["set_count"]
-            light = bool(_LIGHT_DAY.search(str(day.get("title") or ""))) or day["date"] in sick
+            light = bool(_LIGHT_DAY.search(str(day.get("title") or ""))) or day["date"] in sick or day["date"] in mountains
             if light:
                 state = "light"
             elif not minimum_week_active:
@@ -172,7 +179,7 @@ def build_lift_volume(
     deficits = {
         group["key"]: TARGET_SETS_MIN - done[group["key"]] - planned[group["key"]]
         for group in MUSCLE_GROUPS
-        if group["targeted"]
+        if group["targeted"] and not (hiking_covers_legs and group["key"] == "legs")
     }
     added = _empty_counts()
     for group in sorted((key for key, gap in deficits.items() if gap > 0), key=lambda key: (-deficits[key], key)):
@@ -211,6 +218,8 @@ def build_lift_volume(
         total = done[key] + planned[key] + added[key]
         if not group["targeted"]:
             status = "tracked"
+        elif hiking_covers_legs and key == "legs" and total < TARGET_SETS_MIN:
+            status = "hiking"
         elif total < TARGET_SETS_MIN:
             status = "low"
         elif total > TARGET_SETS_MAX:
@@ -227,7 +236,7 @@ def build_lift_volume(
                 "added_sets": added[key],
                 "total_sets": total,
                 "status": status,
-                "shortfall": max(0, TARGET_SETS_MIN - total) if group["targeted"] else 0,
+                "shortfall": max(0, TARGET_SETS_MIN - total) if group["targeted"] and status != "hiking" else 0,
             }
         )
 
@@ -244,6 +253,8 @@ def build_lift_volume(
         summary = "No lift days left to add sets to."
     if short and not minimum_week_active:
         summary += f" Still short: {', '.join(short)}."
+    if hiking_covers_legs:
+        summary += " Hiking covers legs this week."
 
     return {
         "target_min": TARGET_SETS_MIN,
@@ -252,6 +263,7 @@ def build_lift_volume(
         "days": day_rows,
         "added_sets": added_total,
         "minimum_week_active": minimum_week_active,
+        "hiking_covers_legs": hiking_covers_legs,
         "summary": summary,
         "method": "Hard sets per primary muscle group: sets logged this week plus the saved-workout sets of lift days still ahead. Accessory sets go on remaining full lift days; sessions are never cut.",
     }

@@ -48,6 +48,8 @@ def _modality(session_type: Optional[str], title: Optional[str] = None) -> str:
         return "strength"
     if "yoga" in value or "mobility" in value:
         return "mobility"
+    if "hike" in value:
+        return "hike"
     return "other"
 
 
@@ -339,7 +341,46 @@ def _session_effort_notes(day: dict, conn: sqlite3.Connection) -> list[dict]:
         return []
 
 
+_TRAVEL_KIT_RE = re.compile(r"travel kit", re.IGNORECASE)
+
+
+def _travel_kit_brief(day: dict) -> dict[str, Any]:
+    core = re.search(r"\bcore\b", day.get("title") or "", re.IGNORECASE)
+    return {
+        "sport": "strength",
+        "kind": "travel_kit",
+        "purpose": "Keep the lift habit and the upper-body stimulus on the road, with no equipment.",
+        "feel": {"rpe": "7–8", "text": "Each set ends 1–3 reps short of failure. Slow the lowering phase if the reps get too easy."},
+        "targets": [{"label": "Reps in reserve", "value": "1–3"}],
+        "bail": ["Shoulder or elbow pain (not muscle burn): drop that exercise and add a round of the others."],
+        "notes": ["Counts toward lifting 3× a week; the A/B/C/D rotation waits until you are home."],
+        "guided_session_key": "travel_core" if core else "travel_upper",
+        "basis": {},
+    }
+
+
+def _hike_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, Any]:
+    return {
+        "sport": "hike",
+        "kind": day.get("workout_intent") or "easy",
+        "purpose": "Time on feet in the mountains: aerobic base and leg work without the bike.",
+        "feel": {"rpe": "3–5", "text": "Full sentences on the climbs. Slow down rather than stop; the descents are where legs and knees get tired."},
+        "targets": [
+            {"label": "Fuel", "value": "30–60 g carbs per hour after the first hour"},
+            {"label": "Water", "value": "about 0.5 L per hour"},
+        ],
+        "bail": [
+            "Knee pain above 3/10 on a descent: poles, short steps, and take the easier way down.",
+            "Weather turning or daylight short: turn back at the planned time, not at the summit.",
+        ],
+        "notes": ["Hiking counts as leg work today: no lower-body lifting on top."],
+        "basis": {},
+    }
+
+
 def _strength_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, Any]:
+    if _TRAVEL_KIT_RE.search(day.get("title") or ""):
+        return _travel_kit_brief(day)
     intent = day.get("workout_intent") or "strength_general"
     return {
         "sport": "strength",
@@ -385,7 +426,7 @@ def _plan_guardrails(details: Optional[str]) -> list[str]:
 def build_session_brief(conn: sqlite3.Connection, day: dict, today: Optional[date] = None) -> Optional[dict[str, Any]]:
     today = today or date.today()
     modality = _modality(day.get("session_type"), day.get("title"))
-    builder = {"ride": _ride_brief, "run": _run_brief, "strength": _strength_brief, "mobility": _mobility_brief}.get(modality)
+    builder = {"ride": _ride_brief, "run": _run_brief, "strength": _strength_brief, "mobility": _mobility_brief, "hike": _hike_brief}.get(modality)
     if builder is None or (day.get("session_type") or "").lower() in ("rest", ""):
         return None
     brief = builder(day, conn, today)
@@ -421,6 +462,22 @@ def build_session_brief(conn: sqlite3.Connection, day: dict, today: Optional[dat
             low.append("soreness")
         if low:
             brief["notes"].insert(0, f"Check-in shows low {' and '.join(low)} today. Hold the bottom of the targets, and use the bail rule early.")
+
+    # Back from illness: the cap overrides the session's own effort target.
+    try:
+        from .illness_return import build_illness_return
+
+        illness = build_illness_return(conn, today)
+    except sqlite3.OperationalError:
+        illness = None
+    if illness and brief["sport"] in ("ride", "run", "strength", "hike"):
+        brief["illness_return"] = {"headline": illness["headline"], "phase": illness["phase"], "rpe_cap": illness["rpe_cap"]}
+        brief["notes"].insert(0, f"{illness['headline']}. {illness['guidance']}")
+        brief["feel"] = {**brief["feel"], "rpe": f"≤{illness['rpe_cap']}"}
+        if brief["sport"] == "strength":
+            reserve = "3+" if illness["phase"] == "easy" else "2+"
+            brief["targets"] = [item for item in brief["targets"] if item["label"] != "Reps in reserve"] + [{"label": "Reps in reserve", "value": reserve}]
+        brief["bail"].insert(0, "Headache, chest tightness or a racing heart: stop, it is too soon.")
 
     family = {"ride": "ride_quality" if brief["kind"] in ("Tempo", "Sweet spot", "Threshold", "VO2 max") else "ride_easy",
               "run": "run", "strength": "strength"}.get(brief["sport"])

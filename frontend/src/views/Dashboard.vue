@@ -42,6 +42,7 @@
           <ul v-if="readinessScore?.drivers?.length" class="score-drivers" aria-label="What is pulling readiness down">
             <li v-for="driver in readinessScore.drivers" :key="driver">{{ driver }}</li>
           </ul>
+          <p v-if="illnessReturnHint" class="swap-hint" :class="`score-${illnessReturn.lingering_symptoms || illnessReturn.hard_sessions.length ? 'red' : 'amber'}`">{{ illnessReturnHint }}</p>
           <p v-if="swapHint" class="swap-hint" :class="`score-${readinessScore.level}`">{{ swapHint }} <router-link to="/plan">Open plan</router-link></p>
           <p v-if="sleepDebtHint" class="swap-hint" :class="`score-${readinessScore.sleep_debt.status === 'risk' ? 'red' : 'amber'}`">{{ sleepDebtHint }} <router-link to="/metrics?view=recovery">Sleep trend</router-link></p>
           <p v-if="rampWarning" class="ramp-warning" :class="`ramp-${ramp.status}`">{{ rampWarning }}</p>
@@ -246,6 +247,17 @@ const onCheckinSaved = () => loadDashboard()
 const volumeTrend = computed(() => dashboard.value?.volume_trend || null)
 const sickMode = computed(() => dashboard.value?.sick_mode || { active: false })
 const downshift = computed(() => dashboard.value?.downshift || { offer: false })
+// The days after sick mode ends: effort stays capped while the body catches up.
+const illnessReturn = computed(() => dashboard.value?.illness_return || null)
+const illnessReturnHint = computed(() => {
+  const state = illnessReturn.value
+  if (!state || sickMode.value.active) return ''
+  const until = new Date(`${state.ends_on}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+  const hard = state.hard_sessions.at(-1)
+  const hardText = hard ? ` ${new Date(`${hard.date}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} was RPE ${hard.rpe}: too hard this soon.` : ''
+  const symptoms = state.lingering_symptoms ? ' Symptoms are still in your notes.' : ''
+  return `${state.headline}: ${state.phase_label.toLowerCase()}, RPE ≤${state.rpe_cap} until ${until}.${symptoms}${hardText}`
+})
 const sickModeStarting = ref(false)
 const startSickMode = async () => {
   sickModeStarting.value = true
@@ -657,7 +669,9 @@ const todayCard = computed(() => {
     brief: todayBrief.value,
     reasons: decisionReasons.value,
     activities: todayActivityCards.value,
-    primaryAction: isStrength
+    primaryAction: todayBrief.value?.guided_session_key
+      ? { label: 'Start guided session', to: `/guided/${todayBrief.value.guided_session_key}` }
+      : isStrength
       ? { label: 'Start in Workout Studio', to: { path: '/strength/workouts', query: { planDate: plan.date } } }
       : { label: 'Open today’s plan', to: '/plan' },
     secondaryActions: isStrength ? [{ label: 'Open plan', to: '/plan' }] : [],

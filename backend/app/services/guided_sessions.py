@@ -1,8 +1,8 @@
 """Guided follow-along sessions: the catalog, time estimates, finished-session records and the
 link from a finished session to the watch workout that synced for it.
 
-Used by sick mode (gentle home movement while ill) and the downshift (breathing and mobility on
-high-stress days). Finished sessions live in sick_session_completions, a name kept from when
+Used by sick mode (gentle home movement while ill), the downshift (breathing and mobility on
+high-stress days) and travel (no-equipment lifts on a mountain trip). Finished sessions live in sick_session_completions, a name kept from when
 only sick mode used them.
 """
 import json
@@ -27,7 +27,9 @@ def _hold(name: str, seconds: int, cue: str, per_side: bool = False) -> dict:
 # Exercises drive the guided follow-along page; rest_seconds sits between rounds.
 # context: "sick" sessions are offered in sick mode (by severity) and name an Apple Watch workout
 # that is matched to the synced activity; "stress" sessions are the downshift, done without a
-# watch workout, and count toward the daily streak through their completion alone.
+# watch workout, and count toward the daily streak through their completion alone; "travel" sessions
+# are real lifts away from home: the watch workout syncs as WeightTraining, so they count toward
+# the lift goal, but they carry no template and never advance the A/B/C/D rotation.
 SESSIONS = {
     "mobility_flow": {
         "title": "Mobility flow",
@@ -132,9 +134,38 @@ SESSIONS = {
             _hold("Forward fold", 45, "Soft knees, let the head hang, slow exhales."),
         ],
     },
+    "travel_upper": {
+        "title": "Travel kit · Upper body",
+        "type": "WeightTraining",
+        "watch_workout": "Traditional Strength Training",
+        "context": "travel",
+        "rounds": 4,
+        "rest_seconds": 90,
+        "exercises": [
+            _reps("Push-ups", 12, "Feet raised on a bed or bench once 12 gets easy. Last rep should be hard, not ugly."),
+            _reps("Pike push-ups", 8, "Hips high, lower the head between the hands. Shoulders, not chest."),
+            _reps("Backpack rows", 12, "Fill the pack with water bottles, hinge forward, pull to the hip, pause.", per_side=True),
+            _reps("Chair dips", 10, "Hands on a sturdy chair, elbows straight back, shoulders down."),
+            _reps("Backpack curls", 12, "Hold the pack by the top handle or straps, slow on the way down."),
+        ],
+    },
+    "travel_core": {
+        "title": "Travel kit · Core",
+        "type": "WeightTraining",
+        "watch_workout": "Core Training",
+        "context": "travel",
+        "rounds": 3,
+        "rest_seconds": 45,
+        "exercises": [
+            _hold("Plank", 45, "Squeeze glutes, ribs down, breathe."),
+            _hold("Side plank", 30, "Hips high, top arm up.", per_side=True),
+            _reps("Reverse crunch", 12, "Curl the hips off the floor, lower slowly."),
+            _hold("Hollow hold", 30, "Lower back pressed down; bend the knees if it lifts."),
+        ],
+    },
 }
 
-CONTEXT_LABELS = {"sick": "Sick mode", "stress": "Downshift"}
+CONTEXT_LABELS = {"sick": "Sick mode", "stress": "Downshift", "travel": "Travel kit"}
 
 
 # Pace for the time estimate: an easy rep plus a short setup before each exercise.
@@ -161,7 +192,9 @@ def _step_label(exercise: dict) -> str:
 
 def session_steps(session: dict) -> list[str]:
     steps = [_step_label(exercise) for exercise in session["exercises"]]
-    return ([f"{session['rounds']} easy rounds"] if session["rounds"] > 1 else []) + steps
+    # Travel lifts are real work; only the sick and stress sessions are "easy".
+    pace = "" if session["context"] == "travel" else "easy "
+    return ([f"{session['rounds']} {pace}rounds"] if session["rounds"] > 1 else []) + steps
 
 
 def public_session(key: str) -> Optional[dict]:

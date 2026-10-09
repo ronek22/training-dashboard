@@ -435,7 +435,7 @@ MCP_TOOLS = [
     },
     {
         "name": "set_life_load_day",
-        "description": "Set the life-load tags for one day when the athlete mentions travel, a deadline, family commitments, poor sleep or a late night. Replaces that day's tags, so read get_life_load first to keep existing ones; an empty list clears the day. Works ahead of time or afterwards",
+        "description": "Set the life-load tags for one day when the athlete mentions travel, a deadline, family commitments, poor sleep, a late night, or a mountain trip where a hike is the day's session. Replaces that day's tags, so read get_life_load first to keep existing ones; an empty list clears the day. Works ahead of time or afterwards",
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False,
@@ -446,7 +446,7 @@ MCP_TOOLS = [
             "type": "object",
             "properties": {
                 "date": {"type": "string", "description": "Date YYYY-MM-DD"},
-                "tags": {"type": "array", "items": {"type": "string", "enum": ["travel", "deadline", "family", "poor_sleep", "late_night"]}, "description": "All tags for the day"},
+                "tags": {"type": "array", "items": {"type": "string", "enum": ["travel", "deadline", "family", "poor_sleep", "late_night", "mountains"]}, "description": "All tags for the day"},
                 "note": {"type": "string", "description": "Optional short note, e.g. where the travel is"},
             },
             "required": ["date", "tags"],

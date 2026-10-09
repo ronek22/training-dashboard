@@ -3,6 +3,8 @@ import math
 import sqlite3
 from typing import Optional
 
+from .ftp import ftp_on
+
 
 # Upper FTP fractions are inclusive; the final zone is open-ended.
 POWER_ZONE_LIMITS = (0.55, 0.75, 0.90, 1.05, 1.20, 1.50)
@@ -25,14 +27,7 @@ def build_activity_power_zone_summary(
         return unavailable("missing_time_stream")
     if len(watts) < 2:
         return unavailable("missing_power_stream")
-    ftp_row = conn.execute(
-        "SELECT value FROM metrics WHERE metric = 'ftp' AND date <= ? ORDER BY date DESC, id DESC LIMIT 1",
-        (activity.get("date"),),
-    ).fetchone()
-    try:
-        ftp = float(ftp_row["value"]) if ftp_row else 0
-    except (TypeError, ValueError):
-        ftp = 0
+    ftp = ftp_on(conn, activity.get("date")) or 0
     if not math.isfinite(ftp) or ftp <= 0:
         return unavailable("missing_ftp")
 

@@ -21,7 +21,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Iterable, Optional
 
 from .activity_times import start_times as _start_times, time_of_day as _time_of_day
-from .cycling_workouts import latest_ftp
+from .ftp import stored_ftp
 from .guided_sessions import guided_completion_dates
 from .power_trends import (
     POWER_EFFORT_LABELS,
@@ -460,7 +460,7 @@ def _power_section(
     ]
     return {
         "records": records,
-        "ftp_estimate": estimate_ftp(by_duration, latest_ftp(conn, today), today),
+        "ftp_estimate": estimate_ftp(by_duration, stored_ftp(conn, today), today),
         "coverage": profile.get("coverage"),
     }
 

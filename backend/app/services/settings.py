@@ -1,9 +1,13 @@
 import json
+import re
 import sqlite3
 from typing import Optional
 
+from datetime import date
+
 from ..db import get_db
 from ..repositories.settings import get_setting_value, set_setting_value
+from .ftp import ftp_on, normalize_ftp_choice, stored_ftp, working_ftp
 from .seasons import normalize_off_season_months, season_label
 
 MODALITY_RESTRICTIONS_KEY = "modality_restrictions"
@@ -16,6 +20,21 @@ MODALITY_LABELS = {
     "strength": "Strength",
 }
 RESTRICTION_STATUSES = {"allowed", "limited", "blocked"}
+# Protected body areas and the lifts that load them. The weekly lift top-up
+# never adds or extends these while an area is protected.
+BODY_AREAS = {
+    "knee": {"label": "Knee", "avoid": r"\bsquats?\b|\blunges?\b|\bstep ?ups?\b|\bleg (?:extension|press)\b|\bpistol\b|\bjumps?\b|\bbox\b"},
+    "heel": {"label": "Heel / Achilles", "avoid": r"\bcalf\b|\bcalves\b|\bjumps?\b|\bhops?\b|\bskip"},
+    "hip": {"label": "Hip", "avoid": r"\blunges?\b|\bsplit squats?\b|\bstep ?ups?\b|\bhip thrusts?\b|\b(?:ab|ad)duct"},
+    "lower_back": {"label": "Lower back", "avoid": r"\bdeadlifts?\b|\brdl\b|\bgood mornings?\b|\b(?:back|lumbar) extensions?\b|\bhyperextensions?\b|\bbent over rows?\b|\bkettlebell swings?\b"},
+    "shoulder": {"label": "Shoulder", "avoid": r"\b(?:overhead|military|arnold|push|shoulder) press\b|\blateral raises?\b|\bupright rows?\b|\bdips?\b|\bpull ?ups?\b|\bchin ?ups?\b"},
+    "elbow": {"label": "Elbow", "avoid": r"\bskull ?crushers?\b|\btriceps?\b|(?<!leg )(?<!hamstring )\bcurls?\b|\bclose grip\b|\bdips?\b"},
+    "wrist": {"label": "Wrist", "avoid": r"\bpush ?ups?\b|\bfront squats?\b|\bplank\b"},
+    "neck": {"label": "Neck", "avoid": r"\bshrugs?\b|\bupright rows?\b"},
+}
+BODY_SIDES = {"left": "Left", "right": "Right", "both": "Both"}
+NOTE_FIELDS = ("current_block", "weekly_availability_notes", "planning_notes")
+NOTE_STALE_AFTER_DAYS = 42
 ATHLETE_FOCUS_LABELS = {
     "endurance": "Endurance",
     "hybrid": "Hybrid",
@@ -111,6 +130,7 @@ def default_modality_restrictions() -> dict:
     return {
         "modalities": modalities,
         "active": [],
+        "body_areas": [],
         "summary": {
             "active_count": 0,
             "blocked_count": 0,
@@ -471,10 +491,18 @@ def normalize_performance_settings(raw_value: Optional[dict]) -> dict:
         "run": _normalize_zone(zones_raw.get("run"), modality="run"),
         "ride": _normalize_zone(zones_raw.get("ride"), modality="ride"),
     }
-    anchors_set = sum(1 for item in anchors.values() if item["is_set"])
-    return {
+    return _with_performance_summary({
         "anchors": anchors,
         "zones": zones,
+        "ftp": normalize_ftp_choice(raw.get("ftp")),
+    })
+
+
+def _with_performance_summary(settings: dict) -> dict:
+    anchors = settings["anchors"]
+    anchors_set = sum(1 for item in anchors.values() if item["is_set"])
+    return {
+        **settings,
         "summary": {
             "anchors_set": anchors_set,
             "run_ready": anchors["run_threshold_pace"]["is_set"],
@@ -506,10 +534,26 @@ def serialize_performance_settings_for_storage(settings: dict) -> dict:
             }
             for key, item in (settings.get("zones") or {}).items()
         },
+        "ftp": {
+            key: (settings.get("ftp") or {}).get(key)
+            for key in ("source", "manual_watts", "estimate_watts", "estimate_basis", "estimate_date", "effective_from")
+        },
     }
 
 
-def get_performance_settings_for_conn(conn: sqlite3.Connection) -> dict:
+def _with_derived_ride_anchor(conn: sqlite3.Connection, settings: dict) -> dict:
+    """The cycling anchor is the chosen FTP, not a second number to keep in sync."""
+    watts = ftp_on(conn)
+    anchor = {
+        **settings["anchors"]["ride_threshold_power"],
+        "value": round(watts, 1) if watts else None,
+        "is_set": bool(watts),
+        "derived_from": "ftp",
+    }
+    return _with_performance_summary({**settings, "anchors": {**settings["anchors"], "ride_threshold_power": anchor}})
+
+
+def _raw_performance_settings(conn: sqlite3.Connection) -> dict:
     raw_value = get_setting_value(conn, PERFORMANCE_SETTINGS_KEY)
     if not raw_value:
         return default_performance_settings()
@@ -520,30 +564,91 @@ def get_performance_settings_for_conn(conn: sqlite3.Connection) -> dict:
     return normalize_performance_settings(parsed)
 
 
+def get_performance_settings_for_conn(conn: sqlite3.Connection) -> dict:
+    return _with_derived_ride_anchor(conn, _raw_performance_settings(conn))
+
+
+def _current_ftp_estimate(conn: sqlite3.Connection, today: date) -> dict:
+    try:
+        from .personal_records import build_personal_records
+
+        return build_personal_records(conn, today)["cycling_power"]["ftp_estimate"] or {}
+    except (sqlite3.OperationalError, KeyError, TypeError):
+        return {}
+
+
+def _estimate_snapshot(estimate: dict, today: date) -> dict:
+    if not (estimate.get("available") and estimate.get("watts")):
+        return {"estimate_watts": None, "estimate_basis": None, "estimate_date": None}
+    return {"estimate_watts": estimate["watts"], "estimate_basis": estimate.get("basis"), "estimate_date": today.isoformat()}
+
+
+def _store_performance_settings(conn: sqlite3.Connection, settings: dict) -> None:
+    set_setting_value(conn, PERFORMANCE_SETTINGS_KEY, json.dumps(serialize_performance_settings_for_storage(settings)))
+
+
+def get_performance_settings_with_ftp(conn: sqlite3.Connection, today: Optional[date] = None) -> dict:
+    """Settings plus the three FTP candidates for the Athlete page.
+
+    When the athlete follows the training estimate, the stored snapshot moves
+    with it here, so readers that cannot afford the estimate stay current.
+    """
+    today = today or date.today()
+    settings = _raw_performance_settings(conn)
+    estimate = _current_ftp_estimate(conn, today)
+    choice = settings["ftp"]
+    if choice["source"] == "estimate":
+        snapshot = _estimate_snapshot(estimate, today)
+        if snapshot["estimate_watts"] and snapshot["estimate_watts"] != choice["estimate_watts"]:
+            settings = {**settings, "ftp": normalize_ftp_choice({**choice, **snapshot})}
+            _store_performance_settings(conn, settings)
+            conn.commit()
+    return {
+        **_with_derived_ride_anchor(conn, settings),
+        "ftp_options": {
+            "working": working_ftp(conn, today),
+            "stored": stored_ftp(conn, today),
+            "estimate": {key: estimate.get(key) for key in ("available", "watts", "basis", "note", "reason", "window_days")},
+        },
+    }
+
+
 def get_performance_settings_data() -> dict:
     conn = get_db()
     try:
-        return get_performance_settings_for_conn(conn)
+        return get_performance_settings_with_ftp(conn)
     finally:
         conn.close()
 
 
-def set_performance_settings_for_conn(conn: sqlite3.Connection, payload: dict) -> dict:
-    normalized = normalize_performance_settings(payload)
-    set_setting_value(
-        conn,
-        PERFORMANCE_SETTINGS_KEY,
-        json.dumps(serialize_performance_settings_for_storage(normalized)),
+def set_performance_settings_for_conn(conn: sqlite3.Connection, payload: dict, today: Optional[date] = None) -> dict:
+    today = today or date.today()
+    existing = _raw_performance_settings(conn)["ftp"]
+    requested = {key: value for key, value in ((payload or {}).get("ftp") or {}).items() if value is not None}
+    legacy_ride_anchor = ((((payload or {}).get("anchors") or {}).get("ride_threshold_power")) or {}).get("value")
+    if not requested and legacy_ride_anchor and legacy_ride_anchor != ftp_on(conn):
+        # Older callers set the cycling anchor directly: treat it as a typed working FTP.
+        requested = {"source": "manual", "manual_watts": legacy_ride_anchor}
+    incoming = normalize_ftp_choice({**existing, **requested})
+    changed = incoming["source"] != existing["source"] or (
+        incoming["source"] == "manual" and incoming["manual_watts"] != existing["manual_watts"]
     )
-    return normalized
+    if incoming["source"] == "estimate":
+        incoming = {**incoming, **_estimate_snapshot(_current_ftp_estimate(conn, today), today)}
+    if changed:
+        # A new source applies from today; earlier rides keep the FTP they were ridden with.
+        incoming["effective_from"] = today.isoformat()
+    normalized = normalize_performance_settings({**(payload or {}), "ftp": incoming})
+    _store_performance_settings(conn, normalized)
+    return _with_derived_ride_anchor(conn, normalized)
 
 
 def set_performance_settings_data(payload: dict) -> dict:
     conn = get_db()
     try:
-        normalized = set_performance_settings_for_conn(conn, payload)
+        set_performance_settings_for_conn(conn, payload)
         conn.commit()
-        return normalized
+        return get_performance_settings_with_ftp(conn)
     finally:
         conn.close()
 
@@ -658,8 +763,27 @@ def normalize_athlete_profile(raw_value: Optional[dict]) -> dict:
     profile["off_season_months"] = off_season_months
     profile["off_season"] = {"months": off_season_months, "label": season_label(off_season_months)}
     profile["max_dumbbell_kg"] = _positive_kg(raw.get("max_dumbbell_kg"))
+    reviewed_raw = raw.get("notes_reviewed_at") if isinstance(raw.get("notes_reviewed_at"), dict) else {}
+    profile["notes_reviewed_at"] = {field: _iso_day(reviewed_raw.get(field)) for field in NOTE_FIELDS}
+    profile["note_reviews"] = _note_reviews(profile)
     profile["athlete_brief"] = build_athlete_brief(profile)
     return profile
+
+
+def _note_reviews(profile: dict, today: Optional[date] = None) -> dict:
+    """How long since each free-text note was written or confirmed."""
+    today = today or date.today()
+    reviews = {}
+    for field in NOTE_FIELDS:
+        reviewed_at = profile["notes_reviewed_at"].get(field)
+        age_days = (today - date.fromisoformat(reviewed_at)).days if reviewed_at else None
+        has_text = bool(profile.get(field))
+        reviews[field] = {
+            "reviewed_at": reviewed_at,
+            "age_days": age_days,
+            "stale": has_text and (age_days is None or age_days > NOTE_STALE_AFTER_DAYS),
+        }
+    return reviews
 
 
 def serialize_athlete_profile_for_storage(profile: dict) -> dict:
@@ -674,6 +798,7 @@ def serialize_athlete_profile_for_storage(profile: dict) -> dict:
         "planning_notes": profile.get("planning_notes"),
         "off_season_months": profile.get("off_season_months"),
         "max_dumbbell_kg": profile.get("max_dumbbell_kg"),
+        "notes_reviewed_at": profile.get("notes_reviewed_at") or {},
     }
 
 
@@ -753,14 +878,75 @@ def normalize_modality_restrictions(raw_value: Optional[dict]) -> dict:
     else:
         headline = "All primary modalities are currently available."
 
+    body_areas = normalize_body_areas((raw_value or {}).get("body_areas") if isinstance(raw_value, dict) else None)
+    if body_areas:
+        protected = _format_list([item["summary_label"] for item in body_areas])
+        headline = f"Protecting {protected}." if headline.startswith("All primary") else f"{headline} Protecting {protected}."
+
     payload["active"] = active
+    payload["body_areas"] = body_areas
     payload["summary"] = {
         "active_count": len(active),
         "blocked_count": blocked_count,
         "limited_count": limited_count,
+        "protected_count": len(body_areas),
         "headline": headline,
     }
     return payload
+
+
+def _iso_day(value) -> Optional[str]:
+    try:
+        return date.fromisoformat(str(value)[:10]).isoformat() if value else None
+    except ValueError:
+        return None
+
+
+def normalize_body_areas(raw_items) -> list[dict]:
+    items = []
+    seen = set()
+    for raw in raw_items if isinstance(raw_items, list) else []:
+        if not isinstance(raw, dict):
+            continue
+        area = _clean_text(raw.get("area"))
+        area = area.lower().replace(" ", "_") if area else None
+        if area not in BODY_AREAS:
+            continue
+        side = _clean_text(raw.get("side"))
+        side = side.lower() if side and side.lower() in BODY_SIDES else None
+        if (area, side) in seen:
+            continue
+        seen.add((area, side))
+        label = BODY_AREAS[area]["label"]
+        summary_label = f"{BODY_SIDES[side].lower()} {label.lower()}" if side in {"left", "right"} else label.lower()
+        try:
+            issue_id = int(raw.get("recovery_issue_id")) if raw.get("recovery_issue_id") not in {None, ""} else None
+        except (TypeError, ValueError):
+            issue_id = None
+        items.append({
+            "area": area,
+            "label": label,
+            "side": side,
+            "summary_label": summary_label,
+            "note": _clean_text(raw.get("note")),
+            "since": _iso_day(raw.get("since")),
+            "recovery_issue_id": issue_id,
+        })
+    return items
+
+
+def _exercise_words(name: Optional[str]) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", "", re.sub(r"[-_–—]", " ", str(name or "").lower()))).strip()
+
+
+def protected_area_for_exercise(name: Optional[str], body_areas: list[dict]) -> Optional[dict]:
+    """The first protected area this exercise loads, if any."""
+    words = _exercise_words(name)
+    for item in body_areas or []:
+        pattern = (BODY_AREAS.get(item.get("area")) or {}).get("avoid")
+        if pattern and re.search(pattern, words):
+            return item
+    return None
 
 
 def get_modality_restrictions_for_conn(conn: sqlite3.Connection) -> dict:
@@ -812,10 +998,24 @@ def set_modality_restrictions_data(payload: dict) -> dict:
         conn.close()
 
 
-def set_athlete_profile_data(payload: dict) -> dict:
+def set_athlete_profile_data(payload: dict, today: Optional[date] = None) -> dict:
+    today_iso = (today or date.today()).isoformat()
     conn = get_db()
     try:
-        normalized = normalize_athlete_profile(payload)
+        existing = get_athlete_profile_for_conn(conn)
+        incoming = dict(payload or {})
+        claimed = incoming.get("notes_reviewed_at") if isinstance(incoming.get("notes_reviewed_at"), dict) else {}
+        reviewed = {}
+        for field in NOTE_FIELDS:
+            if _clean_text(incoming.get(field)) != existing.get(field):
+                # Rewriting a note counts as reviewing it.
+                reviewed[field] = today_iso
+            else:
+                # "Still accurate" sends today; otherwise keep the date already stored.
+                dates = [day for day in (_iso_day(claimed.get(field)), existing["notes_reviewed_at"].get(field)) if day]
+                reviewed[field] = min(max(dates), today_iso) if dates else None
+        incoming["notes_reviewed_at"] = reviewed
+        normalized = normalize_athlete_profile(incoming)
         set_setting_value(conn, ATHLETE_PROFILE_KEY, json.dumps(serialize_athlete_profile_for_storage(normalized)))
         conn.commit()
         return normalized

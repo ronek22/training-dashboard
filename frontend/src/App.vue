@@ -171,6 +171,7 @@ const navGroups = [
       { to: '/plan', label: 'Plan', icon: 'plan', match: exactPath('/plan') },
       { to: '/calendar', label: 'Calendar', icon: 'calendar', match: exactPath('/calendar') },
       { to: '/goals', label: 'Goals', icon: 'goals', match: exactPath('/goals') },
+      { to: '/athlete', label: 'Athlete', icon: 'athlete', match: exactPath('/athlete') },
       { to: '/strength', label: 'Strength', icon: 'strength', match: exactPath('/strength') },
       { to: '/recovery', label: 'Recovery', icon: 'recovery', match: exactPath('/recovery') },
       { to: '/food', label: 'Food', icon: 'food', match: exactPath('/food') },

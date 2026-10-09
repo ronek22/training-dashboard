@@ -6,6 +6,7 @@ from typing import Callable, Optional
 from .plans import build_multi_week_execution_trend, serialize_weekly_plan
 from .plans import format_workout_intent_label, normalize_workout_intent
 from .checkins import get_daily_checkin
+from .ftp import ftp_on
 from .downshift import build_downshift, downshift_coaching_context
 from .guided_sessions import guided_completion_dates, reconcile_guided_session_activities
 from .illness_return import build_illness_return, illness_return_coaching_context
@@ -545,7 +546,7 @@ def latest_metric_value(
 
 def estimate_thresholds(conn: sqlite3.Connection, as_of_date: Optional[str] = None) -> dict:
     resting_hr = latest_metric_value(conn, "resting_hr", as_of_date) or 58.0
-    ftp = latest_metric_value(conn, "ftp", as_of_date)
+    ftp = ftp_on(conn, as_of_date)
     date_clause = "AND date <= ?" if as_of_date else ""
     params = (as_of_date,) if as_of_date else ()
 

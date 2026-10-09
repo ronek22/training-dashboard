@@ -15,6 +15,7 @@ from bisect import bisect_left, bisect_right
 from typing import Any, Optional
 
 from .aerobic_decoupling import EXCLUSION_REASONS, _environment, analyse_ride
+from .ftp import ftp_on
 from .power_trends import (
     POWER_EFFORT_LABELS,
     _best_effort_from_runs,
@@ -32,18 +33,7 @@ RIDE_POWER_DURATIONS = (15, 60, 300, 1200, 3600)
 
 def _ftp_on(conn: sqlite3.Connection, day: Any) -> Optional[float]:
     """FTP in force on the ride date, matching the power-zone summary."""
-    try:
-        row = conn.execute(
-            "SELECT value FROM metrics WHERE metric = 'ftp' AND date <= ? ORDER BY date DESC, id DESC LIMIT 1",
-            (str(day or "")[:10],),
-        ).fetchone()
-    except sqlite3.Error:
-        return None
-    try:
-        ftp = float(row["value"]) if row else None
-    except (TypeError, ValueError):
-        return None
-    return ftp if ftp is not None and math.isfinite(ftp) and ftp > 0 else None
+    return ftp_on(conn, day)
 
 
 def _power_records(conn: sqlite3.Connection) -> dict[int, dict[str, Any]]:

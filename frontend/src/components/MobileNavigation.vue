@@ -21,6 +21,7 @@ const moreLinks = [
   { path: '/recovery', label: 'Recovery' },
   { path: '/food', label: 'Food' },
   { path: '/goals', label: 'Goals' },
+  { path: '/athlete', label: 'Athlete' },
   { path: '/notes', label: 'Coach notes' },
   { path: '/weekly-review', label: 'Weekly review' },
   { path: '/sync', label: 'Data & Sync' },

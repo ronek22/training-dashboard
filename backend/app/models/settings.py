@@ -9,8 +9,17 @@ class ModalityRestriction(BaseModel):
     expected_end_date: Optional[str] = None
 
 
+class BodyAreaRestriction(BaseModel):
+    area: str
+    side: Optional[str] = None
+    note: Optional[str] = None
+    since: Optional[str] = None
+    recovery_issue_id: Optional[int] = None
+
+
 class ModalityRestrictionsPayload(BaseModel):
     modalities: dict[str, ModalityRestriction] = Field(default_factory=dict)
+    body_areas: list[BodyAreaRestriction] = Field(default_factory=list)
 
 
 class AthleteProfilePayload(BaseModel):
@@ -24,6 +33,8 @@ class AthleteProfilePayload(BaseModel):
     off_season_months: Optional[list[int]] = None
     # Heaviest dumbbell available; progression switches to reps once it is reached.
     max_dumbbell_kg: Optional[float] = None
+    # Date each free-text note was last written or confirmed; sending today marks it reviewed.
+    notes_reviewed_at: Optional[dict[str, Optional[str]]] = None
 
 
 class WorkoutTemplateSettingsPayload(BaseModel):
@@ -40,6 +51,12 @@ class PerformanceZonesPayload(BaseModel):
     zone2_upper_pct: Optional[float] = None
 
 
+class FtpChoicePayload(BaseModel):
+    source: Optional[str] = None
+    manual_watts: Optional[float] = None
+
+
 class PerformanceSettingsPayload(BaseModel):
     anchors: dict[str, PerformanceAnchorPayload] = Field(default_factory=dict)
     zones: dict[str, PerformanceZonesPayload] = Field(default_factory=dict)
+    ftp: Optional[FtpChoicePayload] = None

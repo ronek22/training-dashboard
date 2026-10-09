@@ -212,20 +212,10 @@
         </Transition>
       </section>
 
-      <section class="card goal-settings-card">
-        <button class="goal-settings-toggle" :aria-expanded="contextExpanded" @click="contextExpanded = !contextExpanded">
-          <span><strong>Goal settings</strong><small>Profile, performance anchors, workout rotation, and restrictions</small></span>
-          <span aria-hidden="true">{{ contextExpanded ? '−' : '+' }}</span>
-        </button>
-        <Transition name="expand-fade">
-          <div v-if="contextExpanded" class="goal-settings-grid">
-            <button @click="openProfileDialog"><span>Athlete profile</span><strong>{{ athleteProfile?.focus?.label || 'General fitness' }}</strong><small>{{ profilePriorityLabel }}</small></button>
-            <button @click="openPerformanceDialog"><span>Performance anchors</span><strong>{{ runThresholdLabel }} · {{ rideThresholdLabel }}</strong><small>{{ zoneFoundationHeadline }}</small></button>
-            <button @click="openWorkoutTemplateDialog"><span>Workout rotation</span><strong>{{ strengthRotationNextLabel }}</strong><small>{{ strengthRotationSkipLabel }}</small></button>
-            <button @click="openRestrictionDialog"><span>Restrictions</span><strong>{{ activeRestrictions.length ? `${activeRestrictions.length} active` : 'None active' }}</strong><small>{{ activeRestrictions[0]?.summary || 'Training modalities are unrestricted' }}</small></button>
-          </div>
-        </Transition>
-      </section>
+      <router-link to="/athlete" class="card goal-athlete-link">
+        <span><strong>Athlete settings</strong><small>Focus, FTP, restrictions, strength rotation and notes for the coach now live on the Athlete page</small></span>
+        <span aria-hidden="true">→</span>
+      </router-link>
     </div>
 
     <Teleport to="body">
@@ -492,354 +482,22 @@
     </div>
     </Teleport>
 
-    <div v-if="restrictionDialogOpen" class="goal-dialog-backdrop" @click.self="closeRestrictionDialog">
-      <div class="goal-dialog card goal-restriction-modal">
-        <div class="goal-dialog-head">
-          <div>
-            <div class="card-title">Modality Availability</div>
-            <div class="goal-dialog-sub">Use open-ended restrictions when the timeline is unclear. Add a review date only if it helps.</div>
-          </div>
-          <button class="dialog-close" @click="closeRestrictionDialog">×</button>
-        </div>
-
-        <div class="goal-restriction-list-compact">
-          <article v-for="modality in modalityRestrictionCards" :key="modality.key" class="goal-restriction-row-card">
-            <div class="goal-restriction-card-top">
-              <div>
-                <strong>{{ modality.label }}</strong>
-                <div class="goal-restriction-inline-copy">{{ restrictionDescription(modality.key) }}</div>
-              </div>
-              <div class="goal-restriction-top-meta">
-                <span class="goal-status" :class="`status-${restrictionForm[modality.key]?.status || 'allowed'}`">
-                  {{ restrictionStatusLabel(restrictionForm[modality.key]?.status) }}
-                </span>
-              </div>
-            </div>
-
-            <div class="goal-restriction-grid-compact">
-              <div class="goal-restriction-field field-status">
-                <span>Status</span>
-                <div class="status-toggle">
-                  <button
-                    v-for="status in restrictionStatusOptions"
-                    :key="`${modality.key}-${status.value}`"
-                    type="button"
-                    class="status-toggle-option"
-                    :class="[
-                      `status-toggle-${status.value}`,
-                      restrictionForm[modality.key].status === status.value ? 'is-active' : '',
-                    ]"
-                    @click="setRestrictionStatus(modality.key, status.value)"
-                  >
-                    {{ status.label }}
-                  </button>
-                </div>
-              </div>
-
-              <label class="goal-restriction-field field-reason">
-                <span>What is limited</span>
-                <input
-                  v-model="restrictionForm[modality.key].reason"
-                  type="text"
-                  :placeholder="modality.reasonPlaceholder"
-                >
-              </label>
-
-              <label class="goal-restriction-field field-note">
-                <span>Extra note</span>
-                <input v-model="restrictionForm[modality.key].note" type="text" placeholder="Optional context">
-              </label>
-            </div>
-
-            <div v-if="restrictionForm[modality.key].status !== 'allowed'" class="goal-restriction-timeline">
-              <label class="goal-restriction-toggle">
-                <input
-                  :checked="!restrictionForm[modality.key].expected_end_date"
-                  type="checkbox"
-                  @change="toggleUnknownEndDate(modality.key, $event.target.checked)"
-                >
-                <span>Open-ended for now</span>
-              </label>
-
-              <label v-if="restrictionForm[modality.key].expected_end_date !== ''" class="goal-restriction-field field-date">
-                <span>Review around</span>
-                <input v-model="restrictionForm[modality.key].expected_end_date" type="date">
-              </label>
-            </div>
-          </article>
-        </div>
-
-        <p v-if="restrictionMessage" class="goal-message">{{ restrictionMessage }}</p>
-
-        <div class="goal-dialog-actions">
-          <button class="dialog-secondary" @click="closeRestrictionDialog">Cancel</button>
-          <button class="save-btn" :disabled="savingRestrictions" @click="saveRestrictions">
-            {{ savingRestrictions ? 'Saving...' : 'Save restrictions' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="profileDialogOpen" class="goal-dialog-backdrop" @click.self="closeProfileDialog">
-      <div class="goal-dialog card">
-        <div class="goal-dialog-head">
-          <div>
-            <div class="card-title">Athlete Profile</div>
-            <div class="goal-dialog-sub">This is durable context. Use it to describe focus, priorities, and constraints that last longer than one week.</div>
-          </div>
-          <button class="dialog-close" @click="closeProfileDialog">×</button>
-        </div>
-
-        <div class="goal-form athlete-profile-form">
-          <label>
-            <span>Primary focus</span>
-            <select v-model="profileForm.primary_focus">
-              <option value="general_fitness">General fitness</option>
-              <option value="endurance">Endurance</option>
-              <option value="hybrid">Hybrid</option>
-              <option value="strength">Strength</option>
-            </select>
-          </label>
-
-          <label>
-            <span>Current block</span>
-            <input v-model="profileForm.current_block" type="text" placeholder="Example: summer durability block">
-          </label>
-
-          <label>
-            <span>1st modality priority</span>
-            <select v-model="profileForm.modality_preferences[0]">
-              <option value="">Not set</option>
-              <option value="run">Running</option>
-              <option value="ride">Riding</option>
-              <option value="strength">Strength</option>
-            </select>
-          </label>
-
-          <label>
-            <span>2nd modality priority</span>
-            <select v-model="profileForm.modality_preferences[1]">
-              <option value="">Not set</option>
-              <option value="run">Running</option>
-              <option value="ride">Riding</option>
-              <option value="strength">Strength</option>
-            </select>
-          </label>
-
-          <label>
-            <span>3rd modality priority</span>
-            <select v-model="profileForm.modality_preferences[2]">
-              <option value="">Not set</option>
-              <option value="run">Running</option>
-              <option value="ride">Riding</option>
-              <option value="strength">Strength</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="athlete-profile-days">
-          <span>Preferred long-session days</span>
-          <div class="athlete-profile-day-grid">
-            <button
-              v-for="day in weekdayOptions"
-              :key="day.value"
-              type="button"
-              class="athlete-day-chip"
-              :class="{ 'is-active': profileForm.preferred_long_session_days.includes(day.value) }"
-              @click="toggleLongSessionDay(day.value)"
-            >
-              {{ day.label }}
-            </button>
-          </div>
-        </div>
-
-        <div class="athlete-profile-days athlete-profile-season">
-          <span>Off season (mostly indoor)</span>
-          <div class="athlete-season-row">
-            <select v-model="profileForm.off_season_start" class="goal-control goal-select" aria-label="Off season starts">
-              <option value="">No off season</option>
-              <option v-for="month in monthOptions" :key="`start-${month.value}`" :value="month.value">{{ month.label }}</option>
-            </select>
-            <span aria-hidden="true">to</span>
-            <select v-model="profileForm.off_season_end" class="goal-control goal-select" aria-label="Off season ends" :disabled="!profileForm.off_season_start">
-              <option v-for="month in monthOptions" :key="`end-${month.value}`" :value="month.value">{{ month.label }}</option>
-            </select>
-          </div>
-          <small>Goal reviews compare off-season weeks with past off-season weeks, so a summer of outdoor riding doesn't set winter targets.</small>
-        </div>
-
-        <div class="athlete-profile-days athlete-profile-season">
-          <span>Heaviest dumbbell</span>
-          <div class="athlete-season-row athlete-equipment-row">
-            <input v-model.number="profileForm.max_dumbbell_kg" type="number" min="0" max="500" step="0.5" placeholder="No limit" aria-label="Heaviest dumbbell in kg" />
-            <span aria-hidden="true">kg</span>
-          </div>
-          <small>Once a dumbbell lift reaches this load, progression adds reps instead of weight.</small>
-        </div>
-
-        <div class="athlete-profile-textareas">
-          <label class="goal-restriction-field">
-            <span>Weekly availability notes</span>
-            <textarea v-model="profileForm.weekly_availability_notes" rows="3" placeholder="Example: harder work fits best before Thursday"></textarea>
-          </label>
-
-          <label class="goal-restriction-field">
-            <span>Planning notes</span>
-            <textarea v-model="profileForm.planning_notes" rows="4" placeholder="Example: protect one long ride most weekends"></textarea>
-          </label>
-        </div>
-
-        <p v-if="profileMessage" class="goal-message">{{ profileMessage }}</p>
-
-        <div class="goal-dialog-actions">
-          <button class="dialog-secondary" @click="closeProfileDialog">Cancel</button>
-          <button class="save-btn" :disabled="savingProfile" @click="saveProfile">
-            {{ savingProfile ? 'Saving...' : 'Save profile' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="workoutTemplateDialogOpen" class="goal-dialog-backdrop" @click.self="closeWorkoutTemplateDialog">
-      <div class="goal-dialog card">
-        <div class="goal-dialog-head">
-          <div>
-            <div class="card-title">Strength Rotation</div>
-            <div class="goal-dialog-sub">Keep the first rule set explicit: name the templates, keep missed sessions postponed, and delay lower-body work when running is constrained.</div>
-          </div>
-          <button class="dialog-close" @click="closeWorkoutTemplateDialog">×</button>
-        </div>
-
-        <div class="goal-form athlete-profile-form">
-          <label class="goal-restriction-field">
-            <span>Next workout in rotation</span>
-            <select v-model="workoutTemplateForm.next_template_id">
-              <option v-for="template in workoutTemplateForm.templates" :key="template.id" :value="template.id">
-                {{ template.label }} · {{ template.title }}
-              </option>
-            </select>
-          </label>
-
-          <label class="goal-restriction-field">
-            <span>Missed-session behavior</span>
-            <select v-model="workoutTemplateForm.skip_behavior">
-              <option value="postpone">Postpone the missed workout</option>
-              <option value="skip">Skip ahead in the rotation</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="athlete-profile-textareas">
-          <label class="goal-restriction-field checkbox-field">
-            <span>
-              <input v-model="workoutTemplateForm.delay_lower_body_when_running_restricted" type="checkbox">
-              Delay lower-body strength while running is limited or blocked
-            </span>
-          </label>
-
-          <label class="goal-restriction-field checkbox-field">
-            <span>
-              <input v-model="workoutTemplateForm.prefer_ride_when_run_blocked" type="checkbox">
-              Prefer riding over running while running is blocked
-            </span>
-          </label>
-        </div>
-
-        <div class="goal-restriction-list-compact">
-          <article v-for="template in workoutTemplateForm.templates" :key="template.id" class="goal-restriction-row-card">
-            <div class="goal-restriction-card-top">
-              <div>
-                <strong>{{ template.label }} · {{ template.title }}</strong>
-                <div class="goal-restriction-inline-copy">{{ template.summary }}</div>
-              </div>
-              <span class="goal-family-chip">{{ template.focus_area === 'lower' ? 'Lower' : 'Upper' }}</span>
-            </div>
-          </article>
-        </div>
-
-        <p v-if="workoutTemplateMessage" class="goal-message">{{ workoutTemplateMessage }}</p>
-
-        <div class="goal-dialog-actions">
-          <button class="dialog-secondary" @click="closeWorkoutTemplateDialog">Cancel</button>
-          <button class="save-btn" :disabled="savingWorkoutTemplates" @click="saveWorkoutTemplates">
-            {{ savingWorkoutTemplates ? 'Saving...' : 'Save rotation' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="performanceDialogOpen" class="goal-dialog-backdrop" @click.self="closePerformanceDialog">
-      <div class="goal-dialog card">
-        <div class="goal-dialog-head">
-          <div>
-            <div class="card-title">Performance Anchors</div>
-            <div class="goal-dialog-sub">Set the manual anchors that zone-aware and benchmark reads can trust.</div>
-          </div>
-          <button class="dialog-close" @click="closePerformanceDialog">×</button>
-        </div>
-
-        <div class="goal-form athlete-profile-form">
-          <label>
-            <span>Running threshold pace</span>
-            <input v-model.number="performanceForm.anchors.run_threshold_pace.value" type="number" min="1" step="1" placeholder="Seconds per km">
-          </label>
-          <label>
-            <span>Cycling threshold power</span>
-            <input v-model.number="performanceForm.anchors.ride_threshold_power.value" type="number" min="1" step="1" placeholder="Watts">
-          </label>
-          <label>
-            <span>Run zone 2 lower bound</span>
-            <input v-model.number="performanceForm.zones.run.zone2_lower_pct" type="number" min="1" step="0.01">
-          </label>
-          <label>
-            <span>Run zone 2 upper bound</span>
-            <input v-model.number="performanceForm.zones.run.zone2_upper_pct" type="number" min="1" step="0.01">
-          </label>
-          <label>
-            <span>Ride zone 2 lower bound</span>
-            <input v-model.number="performanceForm.zones.ride.zone2_lower_pct" type="number" min="0.1" step="0.01">
-          </label>
-          <label>
-            <span>Ride zone 2 upper bound</span>
-            <input v-model.number="performanceForm.zones.ride.zone2_upper_pct" type="number" min="0.1" step="0.01">
-          </label>
-        </div>
-
-        <p v-if="performanceMessage" class="goal-message">{{ performanceMessage }}</p>
-
-        <div class="goal-dialog-actions">
-          <button class="dialog-secondary" @click="closePerformanceDialog">Cancel</button>
-          <button class="save-btn" :disabled="savingPerformance" @click="savePerformance">
-            {{ savingPerformance ? 'Saving...' : 'Save anchors' }}
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
 import GoalHistorySparkline from '../components/GoalHistorySparkline.vue'
 import NavIcon from '../components/NavIcon.vue'
 
 const api = useApi()
-const route = useRoute()
 const router = useRouter()
 const loading = ref(true)
 const saving = ref(false)
 const draftingGoal = ref(false)
-const savingRestrictions = ref(false)
-const savingProfile = ref(false)
-const savingWorkoutTemplates = ref(false)
-const savingPerformance = ref(false)
 const message = ref('')
-const restrictionMessage = ref('')
-const profileMessage = ref('')
-const workoutTemplateMessage = ref('')
-const performanceMessage = ref('')
 const allGoals = ref([])
 const goals = computed(() => allGoals.value.filter((goal) => goal.lifecycle_status === 'active'))
 const pastGoals = computed(() =>
@@ -862,45 +520,14 @@ const statusReasonInput = ref(null)
 const savingStatus = ref(false)
 const statusMessage = ref('')
 const dialogOpen = ref(false)
-const restrictionDialogOpen = ref(false)
-const profileDialogOpen = ref(false)
-const workoutTemplateDialogOpen = ref(false)
-const performanceDialogOpen = ref(false)
-const athleteProfile = ref(null)
-const workoutTemplateSettings = ref(null)
-const performanceSettings = ref(null)
-const performanceSummary = ref(null)
 const goalDraftText = ref('')
 const goalDraftPreview = ref(null)
 const goalDraftInput = ref(null)
-const contextExpanded = ref(false)
-
 const form = ref(defaultForm())
-const restrictionForm = ref(defaultRestrictionForm())
-const profileForm = ref(defaultProfileForm())
-const workoutTemplateForm = ref(defaultWorkoutTemplateForm())
-const performanceForm = ref(defaultPerformanceForm())
-
 const loadGoals = async () => {
   loading.value = true
   try {
-    const [goalsResult, restrictionResult, profileResult, workoutTemplateResult, performanceResult, performanceSummaryResult] = await Promise.all([
-      api.getGoals({ limit: 48, include_history: true, include_outcomes: true }),
-      api.getModalityRestrictions(),
-      api.getAthleteProfile(),
-      api.getWorkoutTemplateSettings(),
-      api.getPerformanceSettings(),
-      api.getPerformanceSummary(),
-    ])
-    allGoals.value = goalsResult.data
-    restrictionForm.value = restrictionFormFromPayload(restrictionResult.data)
-    athleteProfile.value = profileResult.data
-    profileForm.value = profileFormFromPayload(profileResult.data)
-    workoutTemplateSettings.value = workoutTemplateResult.data
-    workoutTemplateForm.value = workoutTemplateFormFromPayload(workoutTemplateResult.data)
-    performanceSettings.value = performanceResult.data
-    performanceForm.value = performanceFormFromPayload(performanceResult.data)
-    performanceSummary.value = performanceSummaryResult.data
+    allGoals.value = (await api.getGoals({ limit: 48, include_history: true, include_outcomes: true })).data
   } finally {
     loading.value = false
   }
@@ -938,7 +565,6 @@ const proteinLine = computed(() => {
 onMounted(async () => {
   await loadGoals()
   api.getProteinStatus().then(({ data }) => { proteinStatus.value = data }).catch(() => {})
-  if (route.query.section === 'restrictions') await openRestrictionDialog()
 })
 
 const groupedGoals = computed(() => {
@@ -955,12 +581,6 @@ const groupedGoals = computed(() => {
     }))
     .filter((group) => group.items.length)
 })
-const activeRestrictions = computed(() =>
-  goals.value
-    .filter((goal) => goal.constraint_summary)
-    .map((goal) => goal.constraint_summary)
-    .filter((item, index, all) => all.findIndex((candidate) => candidate.modality === item.modality) === index)
-)
 const attentionGoalCount = computed(() => goals.value.filter((goal) => ['behind_pace', 'constrained'].includes(goal.status)).length)
 const completedGoalCount = computed(() => goals.value.filter((goal) => goal.status === 'completed').length)
 const priorityGoal = computed(() =>
@@ -980,65 +600,6 @@ const goalOverviewCopy = computed(() => {
   const action = goal.goal_readiness?.what_matters_next?.summary || goal.planning_guidance?.summary || goal.weekly_requirement_summary
   return action ? `${goal.title}: ${action}` : `${goal.title} is the clearest priority right now.`
 })
-const restrictionStatusOptions = [
-  { value: 'allowed', label: 'Allowed' },
-  { value: 'limited', label: 'Limited' },
-  { value: 'blocked', label: 'Blocked' },
-]
-const modalityRestrictionCards = [
-  { key: 'run', label: 'Running', reasonPlaceholder: 'Example: calf strain' },
-  { key: 'ride', label: 'Riding', reasonPlaceholder: 'Example: no hard climbing' },
-  { key: 'strength', label: 'Strength', reasonPlaceholder: 'Example: no lower-body loading' },
-]
-const weekdayOptions = [
-  { value: 'mon', label: 'Mon' },
-  { value: 'tue', label: 'Tue' },
-  { value: 'wed', label: 'Wed' },
-  { value: 'thu', label: 'Thu' },
-  { value: 'fri', label: 'Fri' },
-  { value: 'sat', label: 'Sat' },
-  { value: 'sun', label: 'Sun' },
-]
-const profilePriorityLabel = computed(() => {
-  const labels = athleteProfile.value?.athlete_brief?.modality_priority_labels || []
-  return labels.length ? labels.join(' → ') : 'Not set'
-})
-const profileLongDaysLabel = computed(() => {
-  const labels = athleteProfile.value?.athlete_brief?.preferred_long_session_day_labels || []
-  return labels.length ? labels.join(', ') : 'Not set'
-})
-const strengthProgram = computed(() => workoutTemplateSettings.value?.programs?.strength || null)
-const strengthRotationNextLabel = computed(() => strengthProgram.value?.rotation_state?.next_template_label || 'Not set')
-const strengthRotationLastLabel = computed(() => strengthProgram.value?.rotation_state?.last_completed_template_label || 'Not completed yet')
-const strengthRotationSkipLabel = computed(() => strengthProgram.value?.summary?.skip_behavior || 'Postpone missed sessions')
-const strengthTemplateLabels = computed(() => {
-  const templates = strengthProgram.value?.templates || []
-  return templates.length ? templates.map((template) => template.label).join(' → ') : 'No templates configured'
-})
-const strengthRotationRuleSummary = computed(() => {
-  const highlights = strengthProgram.value?.summary?.rule_highlights || []
-  return highlights.length ? highlights.join(' · ') : 'No explicit rules set'
-})
-const performanceBenchmarks = computed(() => performanceSummary.value?.derived?.benchmarks || [])
-const run5kBenchmark = computed(() => performanceBenchmarks.value.find((item) => item.key === 'run_5_best'))
-const run10kBenchmark = computed(() => performanceBenchmarks.value.find((item) => item.key === 'run_10_best'))
-const ridePowerBenchmark = computed(() => performanceBenchmarks.value.find((item) => item.key === 'ride_best_10min_power'))
-const zoneFoundation = computed(() => performanceSummary.value?.derived?.zone2_foundation || null)
-const runThresholdLabel = computed(() => formatThresholdPace(performanceSettings.value?.anchors?.run_threshold_pace?.value))
-const rideThresholdLabel = computed(() => {
-  const value = performanceSettings.value?.anchors?.ride_threshold_power?.value
-  return value ? `${Math.round(value)} W` : 'Not set'
-})
-const zoneFoundationHeadline = computed(() => zoneFoundation.value?.available ? `${zoneFoundation.value.total_hours || 0} h tracked` : 'Missing anchor')
-const runBenchmarkSummary = computed(() => {
-  const parts = []
-  if (run5kBenchmark.value?.available) parts.push(`5k ${run5kBenchmark.value.value} min`)
-  if (run10kBenchmark.value?.available) parts.push(`10k ${run10kBenchmark.value.value} min`)
-  return parts.length ? parts.join(' · ') : 'No recent 5k/10k benchmark'
-})
-const rideBenchmarkSummary = computed(() => ridePowerBenchmark.value?.available ? `${ridePowerBenchmark.value.value} W` : 'No recent 10-minute power benchmark')
-const zoneBlockSummary = computed(() => zoneFoundation.value?.longest_recent_block_min ? `${zoneFoundation.value.longest_recent_block_min} min` : zoneFoundation.value?.available ? 'No qualifying block yet' : 'Missing threshold anchor')
-
 const canSave = computed(() =>
   canSaveGoal(form.value)
 )
@@ -1051,15 +612,6 @@ const openDialog = () => {
   goalDraftPreview.value = null
   dialogOpen.value = true
   nextTick(() => goalDraftInput.value?.focus())
-}
-
-const openRestrictionDialog = async () => {
-  restrictionMessage.value = ''
-  try {
-    const restrictionResult = await api.getModalityRestrictions()
-    restrictionForm.value = restrictionFormFromPayload(restrictionResult.data)
-  } catch {}
-  restrictionDialogOpen.value = true
 }
 
 const openEditDialog = (goal) => {
@@ -1319,56 +871,6 @@ const closeDialog = () => {
   goalDraftPreview.value = null
 }
 
-const closeRestrictionDialog = () => {
-  if (savingRestrictions.value) return
-  restrictionDialogOpen.value = false
-}
-
-const openProfileDialog = async () => {
-  profileMessage.value = ''
-  try {
-    const profileResult = await api.getAthleteProfile()
-    athleteProfile.value = profileResult.data
-    profileForm.value = profileFormFromPayload(profileResult.data)
-  } catch {}
-  profileDialogOpen.value = true
-}
-
-const closeProfileDialog = () => {
-  if (savingProfile.value) return
-  profileDialogOpen.value = false
-}
-
-const openWorkoutTemplateDialog = async () => {
-  workoutTemplateMessage.value = ''
-  try {
-    const result = await api.getWorkoutTemplateSettings()
-    workoutTemplateSettings.value = result.data
-    workoutTemplateForm.value = workoutTemplateFormFromPayload(result.data)
-  } catch {}
-  workoutTemplateDialogOpen.value = true
-}
-
-const openPerformanceDialog = async () => {
-  performanceMessage.value = ''
-  try {
-    const result = await api.getPerformanceSettings()
-    performanceSettings.value = result.data
-    performanceForm.value = performanceFormFromPayload(result.data)
-  } catch {}
-  performanceDialogOpen.value = true
-}
-
-const closeWorkoutTemplateDialog = () => {
-  if (savingWorkoutTemplates.value) return
-  workoutTemplateDialogOpen.value = false
-}
-
-const closePerformanceDialog = () => {
-  if (savingPerformance.value) return
-  performanceDialogOpen.value = false
-}
-
 const saveGoal = async () => {
   saving.value = true
   message.value = ''
@@ -1451,71 +953,6 @@ const applyGoalDraft = () => {
     : 'Partial draft applied. Finish the missing fields before saving.'
 }
 
-const saveRestrictions = async () => {
-  savingRestrictions.value = true
-  restrictionMessage.value = ''
-  try {
-    await api.updateModalityRestrictions({ modalities: restrictionForm.value })
-    await loadGoals()
-    restrictionMessage.value = 'Restrictions updated.'
-    restrictionDialogOpen.value = false
-  } catch (error) {
-    restrictionMessage.value = error?.response?.data?.detail || 'Failed to save restrictions.'
-  } finally {
-    savingRestrictions.value = false
-  }
-}
-
-const saveProfile = async () => {
-  savingProfile.value = true
-  profileMessage.value = ''
-  try {
-    const payload = profilePayloadFromForm(profileForm.value)
-    const result = await api.updateAthleteProfile(payload)
-    athleteProfile.value = result.data
-    profileForm.value = profileFormFromPayload(result.data)
-    profileMessage.value = 'Profile updated.'
-    profileDialogOpen.value = false
-  } catch (error) {
-    profileMessage.value = error?.response?.data?.detail || 'Failed to save profile.'
-  } finally {
-    savingProfile.value = false
-  }
-}
-
-const saveWorkoutTemplates = async () => {
-  savingWorkoutTemplates.value = true
-  workoutTemplateMessage.value = ''
-  try {
-    const payload = workoutTemplatePayloadFromForm(workoutTemplateForm.value)
-    const result = await api.updateWorkoutTemplateSettings(payload)
-    workoutTemplateSettings.value = result.data
-    workoutTemplateForm.value = workoutTemplateFormFromPayload(result.data)
-    workoutTemplateDialogOpen.value = false
-  } catch (error) {
-    workoutTemplateMessage.value = error?.response?.data?.detail || 'Failed to save workout rotation.'
-  } finally {
-    savingWorkoutTemplates.value = false
-  }
-}
-
-const savePerformance = async () => {
-  savingPerformance.value = true
-  performanceMessage.value = ''
-  try {
-    const result = await api.updatePerformanceSettings(performancePayloadFromForm(performanceForm.value))
-    performanceSettings.value = result.data
-    performanceForm.value = performanceFormFromPayload(result.data)
-    performanceSummary.value = (await api.getPerformanceSummary()).data
-    await loadGoals()
-    performanceDialogOpen.value = false
-  } catch (error) {
-    performanceMessage.value = error?.response?.data?.detail || 'Failed to save performance anchors.'
-  } finally {
-    savingPerformance.value = false
-  }
-}
-
 function defaultForm() {
   return {
     title: '',
@@ -1571,213 +1008,6 @@ function lifecyclePayloadFromForm(goal) {
 
 function usesSeasonEnd(goal) {
   return goal.period_type !== 'year' && goal.goal_family !== 'event_performance'
-}
-
-function defaultRestrictionForm() {
-  return {
-    run: { status: 'allowed', reason: '', note: '', expected_end_date: '' },
-    ride: { status: 'allowed', reason: '', note: '', expected_end_date: '' },
-    strength: { status: 'allowed', reason: '', note: '', expected_end_date: '' },
-  }
-}
-
-function defaultProfileForm() {
-  return {
-    primary_focus: 'general_fitness',
-    modality_preferences: ['', '', ''],
-    current_block: '',
-    preferred_long_session_days: [],
-    weekly_availability_notes: '',
-    planning_notes: '',
-    off_season_start: 10,
-    off_season_end: 3,
-    max_dumbbell_kg: '',
-  }
-}
-
-const monthOptions = Array.from({ length: 12 }, (_, index) => ({
-  value: index + 1,
-  label: new Date(2026, index, 1).toLocaleDateString(undefined, { month: 'long' }),
-}))
-
-// The profile stores a month list; the form edits it as a (possibly year-wrapping) range.
-function seasonRangeFromMonths(months) {
-  if (!months?.length) return { start: '', end: '' }
-  const set = new Set(months)
-  const previous = (month) => ((month + 10) % 12) + 1
-  const next = (month) => (month % 12) + 1
-  const start = months.find((month) => !set.has(previous(month))) ?? months[0]
-  let end = start
-  while (set.has(next(end)) && next(end) !== start) end = next(end)
-  return { start, end }
-}
-
-function monthsFromSeasonRange(start, end) {
-  if (!start) return []
-  const months = [Number(start)]
-  let month = Number(start)
-  while (month !== Number(end || start) && months.length < 12) {
-    month = (month % 12) + 1
-    months.push(month)
-  }
-  return months
-}
-
-function defaultWorkoutTemplateForm() {
-  return {
-    next_template_id: 'strength-a',
-    skip_behavior: 'postpone',
-    delay_lower_body_when_running_restricted: true,
-    prefer_ride_when_run_blocked: true,
-    templates: [],
-  }
-}
-
-function defaultPerformanceForm() {
-  return {
-    anchors: {
-      run_threshold_pace: { value: null, unit: 's/km' },
-      ride_threshold_power: { value: null, unit: 'W' },
-    },
-    zones: {
-      run: { zone2_lower_pct: 1.15, zone2_upper_pct: 1.3 },
-      ride: { zone2_lower_pct: 0.56, zone2_upper_pct: 0.75 },
-    },
-  }
-}
-
-function restrictionFormFromPayload(payload) {
-  const next = defaultRestrictionForm()
-  for (const modality of Object.keys(next)) {
-    const item = payload?.modalities?.[modality] || {}
-    next[modality] = {
-      status: item.status || 'allowed',
-      reason: item.reason || '',
-      note: item.note || '',
-      expected_end_date: item.expected_end_date || '',
-    }
-  }
-  return next
-}
-
-function profileFormFromPayload(payload) {
-  const next = defaultProfileForm()
-  const preferences = payload?.athlete_brief?.modality_priority || []
-  next.primary_focus = payload?.primary_focus || 'general_fitness'
-  next.modality_preferences = [
-    preferences[0] || '',
-    preferences[1] || '',
-    preferences[2] || '',
-  ]
-  next.current_block = payload?.current_block || ''
-  next.preferred_long_session_days = [...(payload?.athlete_brief?.preferred_long_session_days || [])]
-  next.weekly_availability_notes = payload?.weekly_availability_notes || ''
-  next.planning_notes = payload?.planning_notes || ''
-  const season = seasonRangeFromMonths(payload?.off_season_months)
-  next.off_season_start = season.start
-  next.off_season_end = season.end
-  next.max_dumbbell_kg = payload?.max_dumbbell_kg ?? ''
-  return next
-}
-
-function profilePayloadFromForm(formState) {
-  return {
-    primary_focus: formState.primary_focus || 'general_fitness',
-    modality_preferences: [...new Set((formState.modality_preferences || []).filter(Boolean))],
-    current_block: formState.current_block || null,
-    preferred_long_session_days: [...new Set(formState.preferred_long_session_days || [])],
-    weekly_availability_notes: formState.weekly_availability_notes || null,
-    planning_notes: formState.planning_notes || null,
-    off_season_months: monthsFromSeasonRange(formState.off_season_start, formState.off_season_end),
-    max_dumbbell_kg: Number(formState.max_dumbbell_kg) > 0 ? Number(formState.max_dumbbell_kg) : null,
-  }
-}
-
-function workoutTemplateFormFromPayload(payload) {
-  const next = defaultWorkoutTemplateForm()
-  const strength = payload?.programs?.strength || {}
-  next.next_template_id = strength?.rotation_state?.next_template_id || next.next_template_id
-  next.skip_behavior = strength?.rules?.skip_behavior || next.skip_behavior
-  next.delay_lower_body_when_running_restricted = strength?.rules?.delay_lower_body_when_running_restricted !== false
-  next.prefer_ride_when_run_blocked = strength?.rules?.prefer_ride_when_run_blocked !== false
-  next.templates = [...(strength?.templates || [])]
-  return next
-}
-
-function workoutTemplatePayloadFromForm(formState) {
-  return {
-    programs: {
-      strength: {
-        templates: (formState.templates || []).map((template) => ({
-          id: template.id,
-          code: template.code,
-          label: template.label,
-          title: template.title,
-          summary: template.summary,
-          session_type: template.session_type,
-          workout_intent: template.workout_intent,
-          focus_area: template.focus_area,
-        })),
-        rules: {
-          skip_behavior: formState.skip_behavior,
-          delay_lower_body_when_running_restricted: formState.delay_lower_body_when_running_restricted,
-          prefer_ride_when_run_blocked: formState.prefer_ride_when_run_blocked,
-        },
-        rotation_state: {
-          next_template_id: formState.next_template_id,
-          pending_template_id: formState.next_template_id,
-        },
-      },
-    },
-  }
-}
-
-function performanceFormFromPayload(payload) {
-  const next = defaultPerformanceForm()
-  next.anchors.run_threshold_pace.value = payload?.anchors?.run_threshold_pace?.value ?? null
-  next.anchors.ride_threshold_power.value = payload?.anchors?.ride_threshold_power?.value ?? null
-  next.zones.run.zone2_lower_pct = payload?.zones?.run?.zone2_lower_pct ?? next.zones.run.zone2_lower_pct
-  next.zones.run.zone2_upper_pct = payload?.zones?.run?.zone2_upper_pct ?? next.zones.run.zone2_upper_pct
-  next.zones.ride.zone2_lower_pct = payload?.zones?.ride?.zone2_lower_pct ?? next.zones.ride.zone2_lower_pct
-  next.zones.ride.zone2_upper_pct = payload?.zones?.ride?.zone2_upper_pct ?? next.zones.ride.zone2_upper_pct
-  return next
-}
-
-function performancePayloadFromForm(formState) {
-  return {
-    anchors: {
-      run_threshold_pace: {
-        value: formState.anchors.run_threshold_pace.value ? Number(formState.anchors.run_threshold_pace.value) : null,
-        unit: 's/km',
-      },
-      ride_threshold_power: {
-        value: formState.anchors.ride_threshold_power.value ? Number(formState.anchors.ride_threshold_power.value) : null,
-        unit: 'W',
-      },
-    },
-    zones: {
-      run: {
-        zone2_lower_pct: Number(formState.zones.run.zone2_lower_pct),
-        zone2_upper_pct: Number(formState.zones.run.zone2_upper_pct),
-      },
-      ride: {
-        zone2_lower_pct: Number(formState.zones.ride.zone2_lower_pct),
-        zone2_upper_pct: Number(formState.zones.ride.zone2_upper_pct),
-      },
-    },
-  }
-}
-
-const toggleLongSessionDay = (day) => {
-  const current = new Set(profileForm.value.preferred_long_session_days || [])
-  if (current.has(day)) {
-    current.delete(day)
-  } else {
-    current.add(day)
-  }
-  profileForm.value.preferred_long_session_days = weekdayOptions
-    .map((item) => item.value)
-    .filter((value) => current.has(value))
 }
 
 const periodHeading = (periodType) => {
@@ -1848,36 +1078,6 @@ const statusLabel = (status) => {
   return 'Behind'
 }
 
-const restrictionStatusLabel = (status) => {
-  if (status === 'blocked') return 'Blocked'
-  if (status === 'limited') return 'Limited'
-  return 'Allowed'
-}
-
-const setRestrictionStatus = (modalityKey, status) => {
-  restrictionForm.value[modalityKey].status = status
-  if (status === 'allowed') {
-    restrictionForm.value[modalityKey].expected_end_date = ''
-  }
-}
-
-const restrictionDescription = (modalityKey) => {
-  const item = restrictionForm.value[modalityKey]
-  if (!item) return ''
-  if (item.status === 'allowed') return 'Fully available.'
-  if (item.expected_end_date) return `Review around ${formatShortDate(item.expected_end_date)}.`
-  if (item.reason) return item.reason
-  return 'Open-ended restriction.'
-}
-
-const toggleUnknownEndDate = (modalityKey, isUnknown) => {
-  if (isUnknown) {
-    restrictionForm.value[modalityKey].expected_end_date = ''
-    return
-  }
-  restrictionForm.value[modalityKey].expected_end_date = todayIsoDate()
-}
-
 const todayIsoDate = () => new Date().toISOString().slice(0, 10)
 
 const formatShortDate = (value) => {
@@ -1887,14 +1087,6 @@ const formatShortDate = (value) => {
   } catch {
     return value
   }
-}
-
-const formatThresholdPace = (secondsValue) => {
-  const total = Number(secondsValue || 0)
-  if (!total) return 'Not set'
-  const minutes = Math.floor(total / 60)
-  const seconds = Math.round(total % 60)
-  return `${minutes}:${String(seconds).padStart(2, '0')} /km`
 }
 
 const paceLabel = (goal) => {
@@ -2784,184 +1976,6 @@ const showWeeklyRequirement = (goal) => {
 .pace-positive { color: var(--success-text); }
 .pace-negative { color: var(--danger-text); }
 .pace-neutral { color: var(--text); }
-.goal-restriction-summary {
-  padding: 18px;
-  display: grid;
-  gap: 12px;
-}
-.goal-restriction-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-}
-.goal-restriction-summary-empty {
-  padding: 18px;
-}
-.goal-restriction-summary-footer {
-  display: flex;
-  justify-content: flex-end;
-}
-.restriction-inline-action {
-  border: 0;
-  background: transparent;
-  color: var(--info-text);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  padding: 0;
-}
-.restriction-inline-action:hover {
-  color:var(--text);
-}
-.goal-restriction-modal {
-  width: min(1080px, 100%);
-}
-.goal-restriction-list {
-  display: grid;
-  gap: 8px;
-}
-.goal-restriction-item {
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(245,158,11,0.08);
-  border: 1px solid rgba(245,158,11,0.18);
-  color: var(--warning-text);
-  font-size: 12px;
-  line-height: 1.45;
-}
-.goal-restriction-list-compact {
-  display: grid;
-  gap: 12px;
-}
-.goal-restriction-row-card {
-  padding: 16px 18px;
-  border-radius: 18px;
-  border: 1px solid rgb(var(--ov-rgb) / 0.06);
-  background: rgb(var(--ov-rgb) / 0.03);
-  display: grid;
-  gap: 14px;
-}
-.goal-restriction-card-top,
-.goal-restriction-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-.goal-restriction-top-meta {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-}
-.goal-restriction-inline-copy {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.4;
-}
-.goal-restriction-grid-compact {
-  display: grid;
-  grid-template-columns: 292px minmax(0, 1.3fr) minmax(0, 1fr);
-  gap: 12px;
-  align-items: end;
-}
-.status-toggle {
-  display: grid;
-  width: 100%;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
-  border-radius: 12px;
-  background: rgb(var(--deep-rgb) / 0.68);
-  border: 1px solid rgb(var(--ov-rgb) / 0.06);
-  box-shadow: inset 0 1px 0 rgb(var(--ov-rgb) / 0.02);
-}
-.status-toggle-option {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  border: 1px solid transparent;
-  padding: 10px 14px;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
-}
-.status-toggle-option:hover {
-  color: var(--text);
-  background: rgb(var(--ov-rgb) / 0.04);
-}
-.status-toggle-option.is-active {
-  color:#fff;
-  border-color: rgb(var(--ov-rgb) / 0.04);
-}
-.status-toggle-allowed.is-active {
-  background: rgba(16,185,129,0.16);
-  color:oklch(from #7ef0b7 calc(l - var(--dim-l)) c h);
-  border-color: rgba(16,185,129,0.18);
-}
-.status-toggle-limited.is-active {
-  background: rgba(245,158,11,0.16);
-  color:oklch(from #ffd37c calc(l - var(--dim-l)) c h);
-  border-color: rgba(245,158,11,0.18);
-}
-.status-toggle-blocked.is-active {
-  background: rgba(239,68,68,0.16);
-  color:var(--text);
-  border-color: rgba(239,68,68,0.18);
-}
-.goal-restriction-field {
-  display: grid;
-  gap: 6px;
-  flex: 1;
-}
-.goal-restriction-field span {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-.goal-restriction-field input,
-.goal-restriction-field select {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-}
-.goal-restriction-timeline {
-  display: flex;
-  align-items: end;
-  gap: 16px;
-  padding-top: 2px;
-}
-.goal-restriction-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-}
-.goal-restriction-toggle input {
-  width: 16px;
-  height: 16px;
-}
-.field-date {
-  width: 220px;
-}
-.goal-restriction-actions {
-  align-items: center;
-}
 .empty { text-align: center; color: var(--muted); padding: 40px; }
 .goal-dialog-backdrop {
   position: fixed;
@@ -3019,65 +2033,8 @@ const showWeeklyRequirement = (goal) => {
   color: var(--text);
   cursor: pointer;
 }
-.athlete-profile-days > span {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.athlete-profile-form {
-  margin-bottom: 16px;
-}
-.athlete-profile-days {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-.athlete-profile-day-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
-}
-.athlete-day-chip {
-  border: 1px solid var(--border);
-  background: var(--surface2);
-  color: var(--muted);
-  border-radius: 10px;
-  padding: 10px 0;
-  font-weight: 700;
-  cursor: pointer;
-}
-.athlete-day-chip.is-active {
-  background: rgba(59,130,246,0.16);
-  border-color: rgba(59,130,246,0.28);
-  color:var(--text);
-}
-.athlete-season-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
-.athlete-season-row select { width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; }
-.athlete-season-row select:disabled { opacity: .5; }
-.athlete-equipment-row { grid-template-columns: minmax(0, 160px) auto; justify-content: start; }
-.athlete-equipment-row input { width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; }
-.athlete-profile-season small { color: var(--muted); font-size: 12px; line-height: 1.45; }
-.athlete-profile-season { margin-bottom: 16px; }
-.athlete-profile-textareas {
-  display: grid;
-  gap: 12px;
-}
-.athlete-profile-textareas textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  resize: vertical;
-}
 @media (max-width: 1100px) {
   .goal-grid { grid-template-columns: 1fr; }
-  .goal-restriction-grid-compact { grid-template-columns: 1fr; }
   .training-context-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
@@ -3086,14 +2043,6 @@ const showWeeklyRequirement = (goal) => {
   .training-context-top { flex-direction: column; }
   .training-context-section-top { grid-template-columns: 1fr; }
   .goal-dialog-backdrop { padding: 16px 16px 28px; }
-  .athlete-profile-day-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .goal-restriction-top,
-  .goal-restriction-summary-footer,
-  .goal-restriction-actions,
-  .goal-restriction-card-top,
-  .goal-restriction-timeline { flex-direction: column; align-items: flex-start; }
-  .field-date { width: 100%; }
-  .status-toggle { width: 100%; }
   .goal-forecast-grid { grid-template-columns: 1fr; }
 }
 
@@ -3128,17 +2077,15 @@ const showWeeklyRequirement = (goal) => {
 .goal-section-head span { color: var(--muted); font-size: 11px; }
 .goal-grid { align-items: start; }
 .goal-settings-card { padding: 0; overflow: hidden; }
+.goal-athlete-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 20px; color: var(--text); }
+.goal-athlete-link > span:first-child { display: grid; gap: 2px; }
+.goal-athlete-link small { color: var(--muted); font-size: 13px; }
+.goal-athlete-link:hover { border-color: var(--border-strong); }
 .goal-settings-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 20px; border: 0; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
 .goal-settings-toggle > span:first-child { display: grid; gap: 2px; }
 .goal-settings-toggle strong { font-family: var(--font-display); font-size: 14px; }
 .goal-settings-toggle small { color: var(--muted); font-size: 11px; }
 .goal-settings-toggle > span:last-child { font-size: 22px; color: var(--muted); }
-.goal-settings-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1px; padding: 1px; border-top: 1px solid var(--border); background: var(--border); }
-.goal-settings-grid button { display: grid; align-content: start; gap: 6px; min-height: 112px; padding: 14px; border: 0; background: var(--deep); color: var(--text); text-align: left; cursor: pointer; }
-.goal-settings-grid button:hover { background: var(--surface2); }
-.goal-settings-grid span { color:oklch(from #8ea7e5 calc(l - var(--dim-l)) c h); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
-.goal-settings-grid strong { font-size: 13px; line-height: 1.35; }
-.goal-settings-grid small { color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
 
 .goal-review { display: grid; gap: 10px; padding: 20px 22px; border: 1px solid rgba(240,189,110,.22); border-radius: 18px; background: rgb(var(--deep-rgb) / .35); }
 .goal-review-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
@@ -3218,7 +2165,6 @@ const showWeeklyRequirement = (goal) => {
   .goal-overview { grid-template-columns: 1fr; gap: 18px; }
   .goal-overview-stats { border-top: 1px solid var(--border); padding-top: 16px; }
   .goal-overview-stats div:first-child { border-left: 0; padding-left: 0; }
-  .goal-settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
   .goals-page-head { align-items: stretch; }
@@ -3232,7 +2178,6 @@ const showWeeklyRequirement = (goal) => {
   .goal-progress-head { align-items: flex-start; }
   .goal-numbers strong { font-size: 29px; }
   .goal-insight-grid { grid-template-columns: 1fr; }
-  .goal-settings-grid { grid-template-columns: 1fr; }
   .goal-section-head > span { display: none; }
   .goal-past-row { grid-template-columns: minmax(0,1fr) auto; padding: 11px 16px; }
   .goal-review { padding: 16px; }

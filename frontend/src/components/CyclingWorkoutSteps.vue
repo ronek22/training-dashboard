@@ -69,10 +69,11 @@ const describeStep = (step) => {
 
 const ftpNote = computed(() => {
   const ftp = props.ftp
-  if (!ftp?.available) return 'No FTP is stored, so targets are shown as % of FTP only.'
+  if (!ftp?.available) return 'No FTP is set, so targets are shown as % of FTP only. Choose one on the Athlete page.'
+  const source = (ftp.source_label || 'Logged FTP').toLowerCase()
   const age = ftp.age_days == null ? '' : `, ${ftp.age_days} days old`
   const stale = ftp.stale ? ' — may be outdated' : ''
-  return `Watts use your stored FTP of ${Math.round(ftp.watts)} W (${ftp.date}${age}${stale}).`
+  return `Watts use your ${source} of ${Math.round(ftp.watts)} W (${ftp.date}${age}${stale}).`
 })
 </script>
 

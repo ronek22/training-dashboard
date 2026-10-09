@@ -11,6 +11,7 @@ from ..repositories.goals import get_goal_row, insert_goal, list_goal_rows, set_
 from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
 from .metrics import get_zone2_foundation_for_window
 from .settings import modality_for_goal, get_modality_restrictions_for_conn, restriction_summary_text
+from .ftp import ftp_on
 
 GOAL_FAMILY_LABELS = {
     "accumulation": "Accumulation",
@@ -468,18 +469,7 @@ def _quality_intent(value: Any) -> Optional[str]:
 
 
 def _ftp_for_activity(conn: sqlite3.Connection, activity_date: str) -> Optional[float]:
-    try:
-        row = conn.execute(
-            "SELECT value FROM metrics WHERE metric = 'ftp' AND date <= ? ORDER BY date DESC, id DESC LIMIT 1",
-            (activity_date,),
-        ).fetchone()
-    except sqlite3.OperationalError:
-        return None
-    try:
-        ftp = float(row["value"]) if row else 0.0
-    except (KeyError, TypeError, ValueError):
-        return None
-    return ftp if math.isfinite(ftp) and ftp > 0 else None
+    return ftp_on(conn, activity_date)
 
 
 def _stream_quality_duration_seconds(

@@ -18,6 +18,7 @@ from typing import Any, Optional
 from .muscle_gain import MUSCLE_GROUPS, TARGET_SETS_MAX, TARGET_SETS_MIN, muscle_groups_for
 from .illness_return import illness_return_dates
 from .life_load import mountain_dates
+from .settings import get_modality_restrictions_for_conn, protected_area_for_exercise
 from .sick_mode import sick_dates
 from .strength_progression import _max_dumbbell_kg, _normalize, _session_index, _working_sets, latest_next_steps, plan_next_step
 
@@ -89,8 +90,13 @@ def _accessory_target(name: str, templates: dict[str, list[dict]], history: dict
     }
 
 
-def _place_sets(group: str, count: int, exercises: list[dict], additions: list[dict], day_index: int) -> None:
-    """Extra sets of a matching exercise already in the day first, then new accessories."""
+def _place_sets(
+    group: str, count: int, exercises: list[dict], additions: list[dict], day_index: int, body_areas: list[dict], skipped: set[str]
+) -> None:
+    """Extra sets of a matching exercise already in the day first, then new accessories.
+
+    Lifts that load a protected body area are never extended or added.
+    """
     planned = {_normalize(item["exercise_name"]): item["set_count"] for item in exercises}
     for addition in additions:
         if addition["mode"] == "add":
@@ -102,13 +108,23 @@ def _place_sets(group: str, count: int, exercises: list[dict], additions: list[d
             return
         if group not in muscle_groups_for(exercise["exercise_name"]):
             continue
+        if protected_area_for_exercise(exercise["exercise_name"], body_areas):
+            skipped.add(exercise["exercise_name"])
+            continue
         room = MAX_SETS_PER_EXERCISE - planned[_normalize(exercise["exercise_name"])]
         extra = min(room, count)
         if extra > 0:
             additions.append({"exercise_name": exercise["exercise_name"], "group": group, "sets": extra, "mode": "extend"})
             planned[_normalize(exercise["exercise_name"])] += extra
             count -= extra
-    options = ACCESSORIES[group]
+    options = []
+    for name in ACCESSORIES[group]:
+        if protected_area_for_exercise(name, body_areas):
+            skipped.add(name)
+        else:
+            options.append(name)
+    if not options:
+        return
     rotated = options[day_index % len(options):] + options[: day_index % len(options)]
     fresh = [name for name in rotated if _normalize(name) not in planned]
     if not fresh or count <= 0:
@@ -141,6 +157,11 @@ def build_lift_volume(
     sick = sick_dates(conn) | illness_return_dates(conn, today)
     mountains = mountain_dates(conn, week_start, week_end)
     hiking_covers_legs = len(mountains) >= HIKING_DAYS_FOR_LEGS
+    try:
+        body_areas = get_modality_restrictions_for_conn(conn).get("body_areas") or []
+    except sqlite3.OperationalError:
+        body_areas = []
+    skipped: set[str] = set()
 
     done = _empty_counts()
     logged_dates: set[str] = set()
@@ -198,7 +219,7 @@ def build_lift_volume(
             if share <= 0:
                 continue
             before = sum(item["sets"] for item in row["additions"])
-            _place_sets(group, share, exercises, row["additions"], open_days.index((day, exercises)))
+            _place_sets(group, share, exercises, row["additions"], open_days.index((day, exercises)), body_areas, skipped)
             placed = sum(item["sets"] for item in row["additions"]) - before
             added[group] += placed
             remaining -= placed
@@ -255,6 +276,9 @@ def build_lift_volume(
         summary += f" Still short: {', '.join(short)}."
     if hiking_covers_legs:
         summary += " Hiking covers legs this week."
+    protected_labels = [item["summary_label"] for item in body_areas]
+    if skipped and protected_labels:
+        summary += f" Left out lifts that load your {', '.join(protected_labels)}."
 
     return {
         "target_min": TARGET_SETS_MIN,
@@ -264,6 +288,8 @@ def build_lift_volume(
         "added_sets": added_total,
         "minimum_week_active": minimum_week_active,
         "hiking_covers_legs": hiking_covers_legs,
+        "protected_areas": protected_labels,
+        "skipped_for_protection": sorted(skipped),
         "summary": summary,
         "method": "Hard sets per primary muscle group: sets logged this week plus the saved-workout sets of lift days still ahead. Accessory sets go on remaining full lift days; sessions are never cut.",
     }

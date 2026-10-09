@@ -4,13 +4,13 @@ Steps are defined as FTP fractions. Exported .zwo files keep those fractions so
 Zwift scales every target to the FTP configured in Zwift itself; watt targets
 shown in the app use the latest stored FTP metric and say which one.
 """
-import math
 import sqlite3
-from datetime import date, datetime
+from datetime import date
 from typing import Optional
 from xml.sax.saxutils import escape, quoteattr
 
-FTP_STALE_AFTER_DAYS = 56
+from .ftp import FTP_STALE_AFTER_DAYS, working_ftp
+
 ZWO_AUTHOR = "Training Dashboard"
 
 
@@ -185,24 +185,8 @@ def render_cycling_workout(workout: dict, ftp: Optional[float] = None) -> dict:
 
 
 def latest_ftp(conn: sqlite3.Connection, today: Optional[date] = None) -> dict:
-    row = conn.execute(
-        "SELECT value, date FROM metrics WHERE metric = 'ftp' ORDER BY date DESC, id DESC LIMIT 1"
-    ).fetchone()
-    try:
-        watts = float(row["value"]) if row else None
-    except (TypeError, ValueError):
-        watts = None
-    if watts is None or not math.isfinite(watts) or watts <= 0:
-        return {"available": False, "watts": None, "date": None, "age_days": None, "stale": False}
-    today = today or date.today()
-    try:
-        age_days = (today - datetime.strptime(row["date"], "%Y-%m-%d").date()).days
-    except (TypeError, ValueError):
-        age_days = None
-    return {
-        "available": True, "watts": watts, "date": row["date"], "age_days": age_days,
-        "stale": age_days is not None and age_days > FTP_STALE_AFTER_DAYS,
-    }
+    """The FTP the athlete chose to train with (see services/ftp.py)."""
+    return working_ftp(conn, today)
 
 
 def build_cycling_workout_library(conn: sqlite3.Connection, today: Optional[date] = None) -> dict:

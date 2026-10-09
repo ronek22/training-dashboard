@@ -14,6 +14,7 @@ from bisect import bisect_right
 from datetime import date, timedelta
 from typing import Any, Optional
 
+from .ftp import working_ftp
 from .heart_rate_zones import HR_ZONE_DEFINITIONS
 from .power_trends import MAX_STREAM_GAP_SECONDS, _confirmed_power_meter, _decode_json, _finite_number, _stream_values
 
@@ -175,17 +176,9 @@ def classify_ride(ride: dict[str, Any], detail: Optional[sqlite3.Row], ftp: Opti
 
 
 def _reference_ftp(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
-    try:
-        from .personal_records import build_personal_records
-
-        estimate = build_personal_records(conn, today)["cycling_power"]["ftp_estimate"]
-    except (sqlite3.OperationalError, KeyError):
-        estimate = {}
-    if estimate.get("available") and estimate.get("watts"):
-        return {"watts": float(estimate["watts"]), "source": "estimate", "basis": estimate.get("basis")}
-    stored = estimate.get("stored") or {}
-    if stored.get("available") and stored.get("watts"):
-        return {"watts": float(stored["watts"]), "source": "stored", "basis": "stored FTP"}
+    ftp = working_ftp(conn, today)
+    if ftp.get("available") and ftp.get("watts"):
+        return {"watts": float(ftp["watts"]), "source": ftp["source"], "basis": ftp["source_label"]}
     return {"watts": None, "source": None, "basis": None}
 
 
@@ -264,9 +257,8 @@ def build_ride_balance(conn: sqlite3.Connection, today: Optional[date] = None, w
             summary += f" No {' or '.join(missing)} in {weeks} weeks."
 
     ftp_note = (
-        f"{round(reference['watts'])} W from {reference['basis']} in recent rides (no test)" if reference["source"] == "estimate"
-        else f"stored FTP {round(reference['watts'])} W (no recent 20 or 60 min effort)" if reference["source"] == "stored"
-        else "no FTP reference, so heart rate only"
+        f"{round(reference['watts'])} W ({reference['basis']}, chosen on the Athlete page)" if reference["watts"]
+        else "not set, so heart rate only"
     )
     sweet_low, vo2_low = _hr_bands()
     method = (

@@ -28,7 +28,13 @@ export default createRouter({
     { path: '/ideas', component: () => import('./views/Ideas.vue') },
     { path: '/usage', component: () => import('./views/CoachUsage.vue') },
     { path: '/calendar', component: Calendar },
-    { path: '/goals', component: Goals },
+    {
+      path: '/goals',
+      component: Goals,
+      // Settings moved to the Athlete page; keep old deep links working.
+      beforeEnter: (to) => (to.query.section === 'restrictions' ? '/athlete#restrictions' : true),
+    },
+    { path: '/athlete', component: () => import('./views/Athlete.vue') },
     { path: '/recovery', component: Recovery },
     { path: '/food', component: () => import('./views/Food.vue') },
     { path: '/guided/:sessionKey', component: () => import('./views/GuidedSession.vue') },

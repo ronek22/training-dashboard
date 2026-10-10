@@ -40,6 +40,23 @@ class MealHelperTests(unittest.TestCase):
         self.assertEqual(parsed["items"][1]["kcal"], 0.0)
         self.assertEqual(parsed["note"], "porcja sosu niepewna")
 
+    def test_parse_label_copies_values_and_checks_barcode(self):
+        label = meal_helper.parse_label('{"name":"Frankfurterki z jagnięciną","brand":"Pikok","barcode":"2012 3456",'
+                                        '"per_100g":{"kcal":"251","protein_g":14.2,"carbs_g":null,"fat_g":21},"serving_g":50,"package_g":"400"}')
+        self.assertEqual(label["per_100g"], {"kcal": 251.0, "protein_g": 14.2, "carbs_g": 0.0, "fat_g": 21.0})
+        self.assertEqual((label["barcode"], label["package_g"], label["source"]), ("20123456", 400.0, "label"))
+        self.assertIsNone(meal_helper.parse_label('{"name":"x","barcode":"123","per_100g":{"kcal":1}}')["barcode"])
+        with self.assertRaises(ValueError):
+            meal_helper.parse_label('{"name":"x","per_100g":{}}')
+        with self.assertRaisesRegex(ValueError, "blurry"):
+            meal_helper.parse_label('{"error":"The label is blurry"}')
+
+    def test_label_message_sends_image_first(self):
+        message = json.loads(meal_helper.build_label_message({"media_type": "image/png", "data": PNG}, "parówki"))
+        content = message["message"]["content"]
+        self.assertEqual([block["type"] for block in content], ["image", "text"])
+        self.assertIn("w 100 g", content[1]["text"])
+
     def test_parse_items_rejects_prose(self):
         with self.assertRaises(ValueError):
             meal_helper.parse_items("I cannot see any food.")

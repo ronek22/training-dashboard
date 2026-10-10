@@ -556,6 +556,52 @@ def init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS dinner_plans (
+            date TEXT PRIMARY KEY,
+            dish TEXT NOT NULL,
+            notes TEXT,
+            kcal REAL,
+            protein_g REAL,
+            recipe_id INTEGER,
+            servings REAL NOT NULL DEFAULT 1,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            brand TEXT,
+            barcode TEXT UNIQUE,
+            kcal REAL NOT NULL DEFAULT 0,
+            protein_g REAL NOT NULL DEFAULT 0,
+            carbs_g REAL NOT NULL DEFAULT 0,
+            fat_g REAL NOT NULL DEFAULT 0,
+            serving_g REAL,
+            package_g REAL,
+            source TEXT NOT NULL DEFAULT 'manual',
+            use_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS recipes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            servings REAL NOT NULL DEFAULT 2,
+            minutes INTEGER,
+            source TEXT NOT NULL DEFAULT 'manual',
+            source_url TEXT,
+            ingredients_json TEXT NOT NULL DEFAULT '[]',
+            steps_json TEXT NOT NULL DEFAULT '[]',
+            tags_json TEXT NOT NULL DEFAULT '[]',
+            notes TEXT,
+            kcal REAL NOT NULL DEFAULT 0,
+            protein_g REAL NOT NULL DEFAULT 0,
+            carbs_g REAL NOT NULL DEFAULT 0,
+            fat_g REAL NOT NULL DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS weekly_body_checkins (
             week_start TEXT PRIMARY KEY,
             protein_most_days INTEGER,
@@ -778,6 +824,11 @@ def init_db():
     chat_message_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(coach_chat_messages)").fetchall()
     }
+    dinner_plan_columns = {row["name"] for row in conn.execute("PRAGMA table_info(dinner_plans)").fetchall()}
+    if "recipe_id" not in dinner_plan_columns:
+        conn.execute("ALTER TABLE dinner_plans ADD COLUMN recipe_id INTEGER")
+    if "servings" not in dinner_plan_columns:
+        conn.execute("ALTER TABLE dinner_plans ADD COLUMN servings REAL NOT NULL DEFAULT 1")
     strength_session_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(strength_workout_sessions)").fetchall()
     }

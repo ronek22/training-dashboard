@@ -5,7 +5,13 @@
         <div class="page-eyebrow">{{ eyebrow }}</div>
         <h1 class="page-title">Food</h1>
       </div>
-      <nav class="day-nav" aria-label="Choose day">
+      <div class="view-tabs" role="tablist" aria-label="View">
+        <button type="button" role="tab" :aria-selected="view === 'log'" :class="{ active: view === 'log' }" @click="setView('log')">Log</button>
+        <button type="button" role="tab" :aria-selected="view === 'dinners'" :class="{ active: view === 'dinners' }" @click="setView('dinners')">Dinner plan</button>
+        <button type="button" role="tab" :aria-selected="view === 'recipes'" :class="{ active: view === 'recipes' }" @click="setView('recipes')">Recipes</button>
+        <button type="button" role="tab" :aria-selected="view === 'products'" :class="{ active: view === 'products' }" @click="setView('products')">Products</button>
+      </div>
+      <nav v-if="view === 'log'" class="day-nav" aria-label="Choose day">
         <button type="button" aria-label="Previous day" @click="shiftDay(-1)">‹</button>
         <button type="button" class="day-now" :disabled="isToday" @click="setDay(todayKey())">{{ isToday ? 'Today' : dayLabel }}</button>
         <button type="button" aria-label="Next day" :disabled="isToday" @click="shiftDay(1)">›</button>
@@ -14,6 +20,13 @@
 
     <div v-if="loadError" class="card load-error" role="alert">{{ loadError }}</div>
 
+    <ProductDialog :open="productOpen" title="Add a product" @close="productOpen = false" @pick="addProduct" />
+
+    <DinnerPlanner v-if="view === 'dinners'" :day="selectedDay" @log="logPlannedDinner" />
+    <RecipeLibrary v-else-if="view === 'recipes'" />
+    <ProductLibrary v-else-if="view === 'products'" />
+
+    <template v-else>
     <section v-if="day" class="card summary" aria-label="Day summary">
       <div class="intake">
         <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
@@ -91,6 +104,7 @@
                   </li>
                 </ul>
               </div>
+              <button type="button" class="link-button" @click="productOpen = true">＋ Product (real label)</button>
               <button type="button" class="link-button" @click="addRow()">Enter manually</button>
               <span class="hint">{{ estimating ? stage : '↵ to estimate · paste or drop a photo' }}</span>
             </div>
@@ -121,7 +135,7 @@
               </tbody>
               <tfoot>
                 <tr>
-                  <th class="left"><button type="button" class="link-button" @click="addRow()">+ Add item</button></th>
+                  <th class="left"><button type="button" class="link-button" @click="addRow()">+ Add item</button><button type="button" class="link-button" @click="productOpen = true">+ Product</button></th>
                   <td></td>
                   <td v-for="macro in MACROS" :key="macro">{{ Math.round(draftTotals[macro]) }}</td>
                   <td></td>
@@ -219,13 +233,21 @@
         </article>
       </aside>
     </section>
+    </template>
   </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { addDays, format, parseISO } from 'date-fns'
+import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
+import DinnerPlanner from '../components/DinnerPlanner.vue'
+import RecipeLibrary from '../components/RecipeLibrary.vue'
+import ProductLibrary from '../components/ProductLibrary.vue'
+import ProductDialog from '../components/ProductDialog.vue'
+import { defaultGrams, productLabel, scalePer100 } from '../food/products.mjs'
+import { readPhoto as downscalePhoto } from '../food/photo.mjs'
 import { MACROS, defaultMeal, draftRow, intakeTone, rowsToItems, setGrams, setMacro, sumRows } from '../food/draft.mjs'
 
 const api = useApi()
@@ -257,6 +279,11 @@ const saving = ref(false)
 const logError = ref('')
 const dragging = ref(false)
 const textBox = ref(null)
+const route = useRoute()
+const productOpen = ref(false)
+const router = useRouter()
+const view = computed(() => (['dinners', 'recipes', 'products'].includes(route.query.view) ? route.query.view : 'log'))
+const setView = (next) => router.replace({ query: { ...route.query, view: next === 'log' ? undefined : next } })
 const savedQuery = ref('')
 const savedOpen = ref(false)
 const profile = reactive({ sex: null, birth_year: null, height_cm: null, daily_life: 'mixed', goal: 'maintain' })
@@ -381,17 +408,9 @@ function setDay(key) {
 }
 const shiftDay = (delta) => setDay(format(addDays(parseISO(selectedDay.value), delta), 'yyyy-MM-dd'))
 
-// Photos are downscaled before upload: enough detail to judge portions, far smaller to send.
 async function readPhoto(file) {
-  if (!file?.type?.startsWith('image/')) return
-  const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height))
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.round(bitmap.width * scale)
-  canvas.height = Math.round(bitmap.height * scale)
-  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-  const url = canvas.toDataURL('image/jpeg', 0.85)
-  photo.value = { url, media_type: 'image/jpeg', data: url.split(',')[1] }
+  const result = await downscalePhoto(file)
+  if (result) photo.value = result
 }
 function onPaste(event) {
   const file = [...(event.clipboardData?.files || [])].find((item) => item.type.startsWith('image/'))
@@ -461,6 +480,16 @@ function addSaved(food) {
   savedOpen.value = false
   api.useSavedFood(food.id).catch(() => {})
 }
+// A product row starts at its label portion; changing grams rescales its real per-100 g values.
+function addProduct(product) {
+  productOpen.value = false
+  if (!rows.value.length && !editingId.value) {
+    source.value = 'saved'
+    rawText.value = text.value.trim()
+  }
+  const grams = defaultGrams(product)
+  rows.value.push(draftRow({ name: productLabel(product), grams, ...scalePer100(product.per_100g, grams), confidence: 'high' }))
+}
 const closeSavedSoon = () => setTimeout(() => { savedOpen.value = false }, 150)
 const removeRow = (row) => { rows.value = rows.value.filter((item) => item !== row) }
 
@@ -509,6 +538,30 @@ function editEntry(entry) {
   logError.value = ''
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
+// A planned dinner becomes a draft: a recipe brings its ingredients for the portions planned,
+// a dish with a kcal guess becomes one row, and a bare dish name goes to Claude to estimate.
+async function logPlannedDinner(plan) {
+  await setView('log')
+  if (rows.value.length) {
+    logError.value = 'Finish or cancel the current meal first.'
+    return
+  }
+  if (plan.date !== selectedDay.value) setDay(plan.date)
+  meal.value = 'dinner'
+  text.value = [plan.dish, plan.notes].filter(Boolean).join(', ')
+  try {
+    const { data } = await api.getDinnerLogItems(plan.date)
+    if (data.items.length) {
+      source.value = 'manual'
+      rawText.value = plan.dish
+      rows.value = data.items.map(draftRow)
+    }
+  } catch {
+    // Fall back to estimating the dish name.
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  nextTick(() => { autoGrow(); textBox.value?.focus() })
+}
 async function removeEntry(entry) {
   if (!entry) return
   if (!window.confirm(`Delete this ${entry.meal} (${fmt(entry.totals.kcal)} kcal)?`)) return
@@ -556,6 +609,10 @@ onUnmounted(() => {
 .day-nav button:disabled { color: var(--muted); cursor: default; }
 .day-nav .day-now { min-width: 96px; font-weight: 600; }
 .day-nav .day-now:disabled { color: var(--text); }
+.page-head .view-tabs { margin-left: auto; }
+.view-tabs { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--border); border-radius: 12px; }
+.view-tabs button { padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: 600 13px var(--font-display); cursor: pointer; }
+.view-tabs button.active { background: var(--surface2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
 .load-error { color: var(--danger); margin-bottom: 16px; }
 
 .tile-label { display: block; color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
@@ -657,6 +714,7 @@ onUnmounted(() => {
 .draft-table th, .draft-table td { padding: 3px 4px; text-align: right; }
 .draft-table .left { text-align: left; }
 .draft-table thead th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.draft-table tfoot th .link-button + .link-button { margin-left: 10px; }
 .draft-table tfoot td, .draft-table tfoot th { font-weight: 650; padding: 6px 10px 0 4px; }
 .draft-table input { width: 64px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font: inherit; font-size: 13px; padding: 5px 6px; text-align: right; }
 .draft-table input:focus { outline: none; border-color: var(--accent); }

@@ -26,7 +26,7 @@ from urllib.parse import quote
 from urllib.request import urlopen
 
 try:
-    from scripts import coach_chat_diagnostics, coach_usage, recovery_helper, team_coaching_helper, cycling_power_helper, meal_helper
+    from scripts import coach_chat_diagnostics, coach_usage, recovery_helper, team_coaching_helper, cycling_power_helper, meal_helper, recipe_helper
 except ModuleNotFoundError:
     import coach_chat_diagnostics
     import coach_usage
@@ -34,6 +34,7 @@ except ModuleNotFoundError:
     import team_coaching_helper
     import cycling_power_helper
     import meal_helper
+    import recipe_helper
 
 
 HOST = "127.0.0.1"
@@ -1392,6 +1393,54 @@ def execute_meal_estimate_job(job_id: str, text: str, image: dict | None) -> Non
 MEAL_ESTIMATE_MAX_BYTES = 8 * 1024 * 1024
 
 
+def execute_label_read_job(job_id: str, image: dict, note: str) -> None:
+    """Label photos always use Claude; the product is saved by the dashboard after review."""
+
+    def progress(message):
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="running", message=message)
+
+    def record_usage(model, ok, started, metrics):
+        _record_usage("claude", meal_helper.LABEL_FAILURE_LABEL, model, ok, started, metrics)
+
+    progress("Preparing the label…")
+    try:
+        result = meal_helper.run_label(
+            image, note, cli_path=resolve_claude_cli(), model=default_model("claude"),
+            record_usage=record_usage, progress=progress,
+        )
+    except Exception as exc:
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="failed", message=str(exc), finished_at=now_iso())
+    else:
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="succeeded", message="The label is read.", product=result, finished_at=now_iso())
+
+
+def execute_recipe_draft_job(job_id: str, request: dict) -> None:
+    """Recipe drafts always use Claude, like meal estimates; nothing is saved here."""
+
+    def progress(message):
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="running", message=message)
+
+    def record_usage(model, ok, started, metrics):
+        _record_usage("claude", recipe_helper.FAILURE_LABEL, model, ok, started, metrics)
+
+    progress("Preparing the recipe…")
+    try:
+        result = recipe_helper.run_draft(
+            request, cli_path=resolve_claude_cli(), model=default_model("claude"),
+            record_usage=record_usage, progress=progress,
+        )
+    except Exception as exc:
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="failed", message=str(exc), finished_at=now_iso())
+    else:
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="succeeded", message="The recipe is ready.", recipe=result, finished_at=now_iso())
+
+
 class PlanningServer(ThreadingHTTPServer):
     daemon_threads = True
 
@@ -1455,6 +1504,69 @@ class Handler(BaseHTTPRequestHandler):
         threading.Thread(target=execute_meal_estimate_job, args=(job_id, text, image), daemon=True).start()
         self.send_json(202, public_job(job))
 
+    def start_label_read(self) -> None:
+        if "application/json" not in (self.headers.get("Content-Type") or ""):
+            self.send_json(415, {"detail": "Content-Type must be application/json"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+        if length < 1 or length > MEAL_ESTIMATE_MAX_BYTES:
+            self.send_json(400, {"detail": "Invalid request size"})
+            return
+        try:
+            payload = json.loads(self.rfile.read(length))
+            note, image = meal_helper.validate_request(payload)
+            if image is None:
+                raise ValueError("Add a photo of the nutrition label")
+        except (json.JSONDecodeError, ValueError) as exc:
+            self.send_json(400, {"detail": str(exc)})
+            return
+        job_id = uuid.uuid4().hex
+        job = {
+            "job_id": job_id,
+            "kind": "label_read",
+            "status": "queued",
+            "message": "The label is queued.",
+            "created_at": now_iso(),
+            "finished_at": None,
+        }
+        with JOBS_LOCK:
+            JOBS[job_id] = job
+        threading.Thread(target=execute_label_read_job, args=(job_id, image, note), daemon=True).start()
+        self.send_json(202, public_job(job))
+
+    def start_recipe_draft(self) -> None:
+        if "application/json" not in (self.headers.get("Content-Type") or ""):
+            self.send_json(415, {"detail": "Content-Type must be application/json"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+        if length < 1 or length > 64 * 1024:
+            self.send_json(400, {"detail": "Invalid request size"})
+            return
+        try:
+            request = recipe_helper.validate_request(json.loads(self.rfile.read(length)))
+        except (json.JSONDecodeError, ValueError) as exc:
+            self.send_json(400, {"detail": str(exc)})
+            return
+        job_id = uuid.uuid4().hex
+        job = {
+            "job_id": job_id,
+            "kind": "recipe_draft",
+            "status": "queued",
+            "message": "The recipe is queued.",
+            "created_at": now_iso(),
+            "finished_at": None,
+        }
+        with JOBS_LOCK:
+            JOBS[job_id] = job
+        threading.Thread(target=execute_recipe_draft_job, args=(job_id, request), daemon=True).start()
+        self.send_json(202, public_job(job))
+
     def do_OPTIONS(self) -> None:
         if self.reject_bad_origin():
             return
@@ -1478,7 +1590,7 @@ class Handler(BaseHTTPRequestHandler):
                 "pid": os.getpid(),
                 "coach_cli": current_cli(),
                 "model": current_model(),
-                "capabilities": ["recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "usage", "meal_estimate"],
+                "capabilities": ["recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "usage", "meal_estimate", "recipe_draft", "label_read"],
                 "sunday_review": {"enabled": True, "time": "23:59", "timezone": "Europe/Warsaw"},
             })
             return
@@ -1491,6 +1603,24 @@ class Handler(BaseHTTPRequestHandler):
                 job = dict(JOBS.get(self.path[len(prefix):], {}))
             if not job or job.get("kind") != "meal_estimate":
                 self.send_json(404, {"detail": "Meal estimate job not found"})
+                return
+            self.send_json(200, public_job(job))
+            return
+        prefix = "/label-read/"
+        if self.path.startswith(prefix):
+            with JOBS_LOCK:
+                job = dict(JOBS.get(self.path[len(prefix):], {}))
+            if not job or job.get("kind") != "label_read":
+                self.send_json(404, {"detail": "Label job not found"})
+                return
+            self.send_json(200, public_job(job))
+            return
+        prefix = "/recipe-draft/"
+        if self.path.startswith(prefix):
+            with JOBS_LOCK:
+                job = dict(JOBS.get(self.path[len(prefix):], {}))
+            if not job or job.get("kind") != "recipe_draft":
+                self.send_json(404, {"detail": "Recipe job not found"})
                 return
             self.send_json(200, public_job(job))
             return
@@ -1578,6 +1708,12 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path == "/meal-estimate":
             self.start_meal_estimate()
+            return
+        if self.path == "/recipe-draft":
+            self.start_recipe_draft()
+            return
+        if self.path == "/label-read":
+            self.start_label_read()
             return
         if self.path not in {"/weekly-plan", "/weekly-plan-revision", "/activity-analysis", "/coach-chat", "/daily-state", "/recovery-chat", "/team-review", "/cycling-power-review"}:
             self.send_json(404, {"detail": "Not found"})
@@ -1712,7 +1848,7 @@ def health() -> dict | None:
 def start() -> int:
     existing = health()
     if existing:
-        if not {"recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "meal_estimate"}.issubset(existing.get("capabilities", [])):
+        if not {"recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "meal_estimate", "recipe_draft", "label_read"}.issubset(existing.get("capabilities", [])):
             print("The running helper is outdated. Run coach_helper.py stop, then start, to enable the latest coaching features.", file=sys.stderr)
             return 1
         print(f"Coach helper is already running (PID {existing['pid']}).")

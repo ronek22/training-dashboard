@@ -58,7 +58,7 @@ test-backend:
 # Run the helper-script tests (coach helper, recovery, Sunday review, team coaching).
 test-scripts:
     if [ -x "{{root}}/backend/.venv/bin/python" ]; then py="{{root}}/backend/.venv/bin/python"; else py=python3; fi; \
-    cd "{{root}}" && PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest scripts.test_coach_helper scripts.test_recovery_helper scripts.test_sunday_review scripts.test_team_coaching_helper scripts.test_meal_helper
+    cd "{{root}}" && PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest scripts.test_coach_helper scripts.test_recovery_helper scripts.test_sunday_review scripts.test_team_coaching_helper scripts.test_meal_helper scripts.test_recipe_helper
 
 # Run the frontend behavior tests.
 test-frontend:

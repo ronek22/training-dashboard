@@ -78,6 +78,27 @@ items, the athlete corrects them, and the page saves them through
 `/nutrition/food/entries`. Saved staples are passed in as reference values.
 Each estimate is one short Sonnet call (~5–10 s), logged as "Meal estimate".
 
+### Nutrition labels (Food → Products)
+
+`POST /label-read` takes `{image, text?}` (a photo of a pack's nutrition table)
+and returns the product's name, brand and per-100 g kcal, protein, carbs and fat,
+plus portion and pack weight when printed. Like meal estimates it always runs
+Claude with no tools and saves nothing; the Products dialog shows the values to
+check before saving them through `/nutrition/products`. Saved products are also
+passed to meal estimates as real label values.
+
+### Recipe drafts (Food → Dinner plan / Recipes)
+
+`POST /recipe-draft` takes `{text}` to write a recipe from a description, or
+`{url, text?}` to import one from a recipe page, or `{recipe, text}` to adjust a saved recipe to the changes described (poll `GET /recipe-draft/{id}`).
+For a URL the helper fetches the page itself, only from public http(s) hosts
+(private and loopback addresses are refused, also after redirects), and passes
+the page's schema.org Recipe data, or its visible text when there is none, to
+Claude. Like meal estimates it always runs Claude with no tools, and nothing is
+saved: the drawer shows an editable recipe that the page saves through
+`/nutrition/recipes`. `context` (the day's fuel hint) steers generated recipes.
+Each draft is one Sonnet call (~10–30 s).
+
 ### Usage tracking
 
 Every CLI attempt appends one line to `.coach-usage.jsonl` (gitignored): job

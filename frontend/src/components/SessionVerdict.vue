@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useApi } from '../stores/api'
+import { VERDICTS } from '../utils/feel-scale'
 
 // One-tap "how was it?" tag for the what-worked memory. Saves immediately.
 const props = defineProps({
@@ -16,11 +17,7 @@ const saving = ref(false)
 const error = ref('')
 watch(() => props.verdict, value => { current.value = value })
 
-const options = [
-  { value: 'loved', label: 'Loved it' },
-  { value: 'fine', label: 'Fine' },
-  { value: 'hated', label: 'Hated it' },
-]
+const options = VERDICTS
 
 const choose = async (value) => {
   const next = current.value === value ? null : value
@@ -54,8 +51,7 @@ const choose = async (value) => {
         :disabled="saving"
         @click="choose(option.value)"
       >
-        <svg v-if="option.value === 'loved'" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" fill="currentColor" /></svg>
-        <svg v-else-if="option.value === 'hated'" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M7 14V4h10l2 8h-6l1 6a2 2 0 0 1-2 2l-5-6Z" fill="currentColor" /></svg>
+        <span class="sv-glyph" aria-hidden="true">{{ option.glyph }}</span>
         {{ option.label }}
       </button>
     </div>
@@ -75,9 +71,11 @@ const choose = async (value) => {
 }
 .sv-options button:hover:not(:disabled) { color: var(--text); border-color: var(--border-strong); }
 .sv-options button:disabled { cursor: progress; }
-.sv-options .is-loved.on { color: #fff; background: #e0607e; border-color: #e0607e; }
-.sv-options .is-fine.on { color: var(--text); background: rgb(var(--ov-rgb) / 0.14); border-color: var(--border-strong); }
-.sv-options .is-hated.on { color: #fff; background: #6c7a92; border-color: #6c7a92; }
+.sv-options button { --tone: var(--muted); }
+.sv-options .is-loved { --tone: var(--success); }
+.sv-options .is-hated { --tone: var(--danger); }
+.sv-glyph { color: var(--tone); font-size: 9px; }
+.sv-options button.on { color: var(--text); background: color-mix(in srgb, var(--tone) 16%, transparent); border-color: var(--tone); }
 .sv-error { font-size: 12px; color: var(--danger); }
 .compact .sv-options button { padding: 4px 10px; }
 </style>

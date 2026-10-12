@@ -4,6 +4,8 @@ from fastapi import APIRouter, Response, status
 
 from ..db import get_db
 from ..models.strength_workouts import (
+    StallBlockFinishRequest,
+    StallBlockStartRequest,
     StrengthActivityLinkRequest,
     StrengthSessionExerciseAddRequest,
     StrengthSessionFinishRequest,
@@ -14,6 +16,8 @@ from ..models.strength_workouts import (
     StrengthTemplateInput,
     StrengthWarmupSetAddRequest,
 )
+from ..services.stall_blocks import annotate_plateaus, blocks_for_names, finish_block, list_blocks, start_block, undo_block
+from ..services.strength_plateaus import find_plateaus
 from ..services.strength_workouts import (
     abandon_session,
     add_session_exercise,
@@ -106,6 +110,36 @@ def sessions_create_one_time(payload: StrengthTemplateInput):
 @router.get("/sessions/{session_id}")
 def sessions_show(session_id: int):
     return _with_db(lambda conn: get_session(conn, session_id))
+
+
+@router.get("/sessions/{session_id}/plateaus")
+def sessions_plateaus(session_id: int):
+    """Stalled lifts in this session with the change to try, and any stall block touching it."""
+    def load(conn):
+        names = [exercise["exercise_name"] for exercise in get_session(conn, session_id)["exercises"]]
+        plateaus = annotate_plateaus(conn, find_plateaus(conn, exercise_names=names)) if names else []
+        return {"plateaus": plateaus, "blocks": blocks_for_names(conn, names, session_id)}
+    return _with_db(load)
+
+
+@router.get("/stall-blocks")
+def stall_blocks_index(status: Optional[str] = None):
+    return _with_db(lambda conn: list_blocks(conn, status=status))
+
+
+@router.post("/stall-blocks", status_code=status.HTTP_201_CREATED)
+def stall_blocks_start(payload: StallBlockStartRequest):
+    return _with_db(lambda conn: start_block(conn, payload.exercise_name, payload.session_id, payload.scope))
+
+
+@router.post("/stall-blocks/{block_id}/undo")
+def stall_blocks_undo(block_id: int):
+    return _with_db(lambda conn: undo_block(conn, block_id))
+
+
+@router.post("/stall-blocks/{block_id}/finish")
+def stall_blocks_finish(block_id: int, payload: StallBlockFinishRequest):
+    return _with_db(lambda conn: finish_block(conn, block_id, keep=payload.keep))
 
 
 @router.post("/sessions/{session_id}/exercises", status_code=status.HTTP_201_CREATED)

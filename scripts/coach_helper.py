@@ -1441,6 +1441,30 @@ def execute_recipe_draft_job(job_id: str, request: dict) -> None:
             JOBS[job_id].update(status="succeeded", message="The recipe is ready.", recipe=result, finished_at=now_iso())
 
 
+def execute_meal_ideas_job(job_id: str, request: dict) -> None:
+    """Meal ideas always use Claude, like meal estimates; nothing is saved here."""
+
+    def progress(message):
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="running", message=message)
+
+    def record_usage(model, ok, started, metrics):
+        _record_usage("claude", meal_helper.IDEAS_FAILURE_LABEL, model, ok, started, metrics)
+
+    progress("Preparing meal ideas…")
+    try:
+        result = meal_helper.run_ideas(
+            request, cli_path=resolve_claude_cli(), model=default_model("claude"),
+            record_usage=record_usage, progress=progress,
+        )
+    except Exception as exc:
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="failed", message=str(exc), finished_at=now_iso())
+    else:
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="succeeded", message="The meal ideas are ready.", ideas=result["ideas"], finished_at=now_iso())
+
+
 class PlanningServer(ThreadingHTTPServer):
     daemon_threads = True
 
@@ -1567,6 +1591,36 @@ class Handler(BaseHTTPRequestHandler):
         threading.Thread(target=execute_recipe_draft_job, args=(job_id, request), daemon=True).start()
         self.send_json(202, public_job(job))
 
+    def start_meal_ideas(self) -> None:
+        if "application/json" not in (self.headers.get("Content-Type") or ""):
+            self.send_json(415, {"detail": "Content-Type must be application/json"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+        if length < 1 or length > 64 * 1024:
+            self.send_json(400, {"detail": "Invalid request size"})
+            return
+        try:
+            request = meal_helper.validate_ideas_request(json.loads(self.rfile.read(length)))
+        except (json.JSONDecodeError, ValueError) as exc:
+            self.send_json(400, {"detail": str(exc)})
+            return
+        job_id = uuid.uuid4().hex
+        job = {
+            "job_id": job_id,
+            "kind": "meal_ideas",
+            "status": "queued",
+            "message": "The meal ideas are queued.",
+            "created_at": now_iso(),
+            "finished_at": None,
+        }
+        with JOBS_LOCK:
+            JOBS[job_id] = job
+        threading.Thread(target=execute_meal_ideas_job, args=(job_id, request), daemon=True).start()
+        self.send_json(202, public_job(job))
+
     def do_OPTIONS(self) -> None:
         if self.reject_bad_origin():
             return
@@ -1590,7 +1644,7 @@ class Handler(BaseHTTPRequestHandler):
                 "pid": os.getpid(),
                 "coach_cli": current_cli(),
                 "model": current_model(),
-                "capabilities": ["recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "usage", "meal_estimate", "recipe_draft", "label_read"],
+                "capabilities": ["recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "usage", "meal_estimate", "recipe_draft", "label_read", "meal_ideas"],
                 "sunday_review": {"enabled": True, "time": "23:59", "timezone": "Europe/Warsaw"},
             })
             return
@@ -1603,6 +1657,15 @@ class Handler(BaseHTTPRequestHandler):
                 job = dict(JOBS.get(self.path[len(prefix):], {}))
             if not job or job.get("kind") != "meal_estimate":
                 self.send_json(404, {"detail": "Meal estimate job not found"})
+                return
+            self.send_json(200, public_job(job))
+            return
+        prefix = "/meal-ideas/"
+        if self.path.startswith(prefix):
+            with JOBS_LOCK:
+                job = dict(JOBS.get(self.path[len(prefix):], {}))
+            if not job or job.get("kind") != "meal_ideas":
+                self.send_json(404, {"detail": "Meal ideas job not found"})
                 return
             self.send_json(200, public_job(job))
             return
@@ -1714,6 +1777,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path == "/label-read":
             self.start_label_read()
+            return
+        if self.path == "/meal-ideas":
+            self.start_meal_ideas()
             return
         if self.path not in {"/weekly-plan", "/weekly-plan-revision", "/activity-analysis", "/coach-chat", "/daily-state", "/recovery-chat", "/team-review", "/cycling-power-review"}:
             self.send_json(404, {"detail": "Not found"})
@@ -1848,7 +1914,7 @@ def health() -> dict | None:
 def start() -> int:
     existing = health()
     if existing:
-        if not {"recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "meal_estimate", "recipe_draft", "label_read"}.issubset(existing.get("capabilities", [])):
+        if not {"recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "meal_estimate", "recipe_draft", "label_read", "meal_ideas"}.issubset(existing.get("capabilities", [])):
             print("The running helper is outdated. Run coach_helper.py stop, then start, to enable the latest coaching features.", file=sys.stderr)
             return 1
         print(f"Coach helper is already running (PID {existing['pid']}).")

@@ -16,3 +16,4 @@ backend/.venv/
 .codex-planning-helper.log
 docs/project-ideas.lock
 .playwright-cli/
+.DS_Store

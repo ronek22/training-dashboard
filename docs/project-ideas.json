@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-07T14:00:00+02:00",
-  "summary": "Manual review after 2026-10-05 to 10-07 work: session read and session win card, Feeling flat / Short on time Today options, weekly three wins and one focus, coach moments with unread replies and linked chats, the Mountains page with trail coverage and route ideas, and the route planner with saved routes and GPX export. Checked every open catalog idea against the code: none of the remaining open proposals has been implemented since the last update (aerobic decoupling was already marked Done). Added four athlete-facing proposals that build on the new Mountains, strength and weekly-wins work. Source/documentation review only; no tests, syncs or model calls were run.",
+  "reviewed_at": "2026-10-12T19:55:08+02:00",
+  "summary": "Reviewed current-state documentation, active roadmap, Sprint 39, all 25 unchanged proposal scopes, recent commits and working-tree summaries. Inspected the new dinner planner, recipe quantity/product fields, portion scaling and synthetic test declarations; noted ongoing meal-ideas work to avoid duplicating it. Selected one distinct follow-up: a portion-aware shopping list derived from selected planned dinners. Source/documentation review only; no application tests, model calls, credentials, databases or private training records were accessed.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -577,6 +577,32 @@
         "A hike that adds new trail or a new summit shows it in the session win."
       ],
       "created_on": "2026-10-07"
+    },
+    {
+      "id": "dinner-plan-shopping-list",
+      "title": "Turn planned dinners into a shopping list",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "The new dinner planner connects recipes and portions to a week, but shopping still requires opening each recipe and manually combining ingredient quantities. Repeated ingredients and changed portions make that translation tedious.",
+      "proposal": "Add an explicit Shopping list action to the dinner planner for selected days. Scale recipe ingredients to planned portions, combine matching product IDs or conservatively normalized unlinked names, and retain links to contributing dinners. Let the athlete exclude items already at home and copy the remaining list. Show free-text dinners and ingredients without usable quantities in a separate needs-review section; never invent quantities or log food as eaten.",
+      "benefit": "Makes an existing dinner plan easier to carry out and reduces repeated ingredient arithmetic before shopping.",
+      "evidence": [
+        "frontend/src/components/DinnerPlanner.vue: the weekly board supports recipe selection, portion editing through RecipeDrawer, copying last week and logging as eaten, but has no shopping-list action.",
+        "backend/app/services/dinner_plan.py: build_dinner_week exposes recipe IDs and planned servings; dinner_log_items already resolves recipe ingredients for the planned portions.",
+        "backend/app/services/recipes.py: _clean_ingredients retains grams, free-text amount and optional product_id; serving_items demonstrates scaling by planned servings divided by recipe servings.",
+        "frontend/src/food/recipe.mjs: ingredientRow preserves product identity and quantity fields, supporting conservative grouping without guessing ingredient equivalence.",
+        "backend/tests/test_dinner_plan.py: synthetic tests already cover recipe portions and weekly dinner planning, providing fixtures for a derived-list contract."
+      ],
+      "acceptance_criteria": [
+        "Users can select dates within the displayed week and preview a list containing only dinners on those dates; an empty selection has a clear empty state.",
+        "A synthetic recipe containing 300 g of an ingredient for two servings contributes 150 g when one serving is planned; repeated compatible items sum correctly across selected dinners.",
+        "Product-linked items merge only by matching product ID; unlinked items merge only by conservative name normalization, and distinct product IDs or ambiguous units remain separate.",
+        "Ingredients without usable gram quantities and dinners without recipes remain visible with their original amount text and source dinner under needs review; no guessed conversion is presented as a measured quantity.",
+        "Users can mark items already available and copy the remaining list with quantities and selected dates; clipboard failures leave selectable text available.",
+        "Changing selected dinners or portions and refreshing the preview recomputes quantities; generating or copying a list never changes dinner plans, recipes or food logs."
+      ],
+      "created_on": "2026-10-12"
     }
   ]
 }

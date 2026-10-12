@@ -59,6 +59,30 @@
                 <span>Exercise {{ currentExercise.exercise_order }} of {{ session.exercises.length }}</span>
                 <h2>{{ currentExercise.exercise_name }}</h2>
                 <p v-if="currentExercise.notes">{{ currentExercise.notes }}</p>
+                <div v-if="currentBlock" class="stall-note trying">
+                  <p v-if="currentBlock.due"><em>Block done</em> {{ blockDoneCopy(currentBlock) }}</p>
+                  <p v-else><em>{{ currentBlock.scope === 'block' ? `Trying · week ${currentBlock.week} of ${currentBlock.weeks}` : 'Trying today' }}</em> {{ currentBlock.label }}: {{ currentBlock.text }}</p>
+                  <span class="stall-actions">
+                    <template v-if="currentBlock.due">
+                      <button type="button" :disabled="blockBusy" @click="finishBlock(currentBlock, false)">Switch back</button>
+                      <button type="button" class="quiet" :disabled="blockBusy" @click="finishBlock(currentBlock, true)">Keep it</button>
+                    </template>
+                    <button v-else-if="currentBlock.session_id === session.id && currentBlock.status === 'active'" type="button" class="quiet" :disabled="blockBusy" @click="undoBlock(currentBlock)">Undo</button>
+                  </span>
+                </div>
+                <div v-else-if="currentPlateau" class="stall-note">
+                  <p><em>Stalled {{ currentPlateau.weeks }} wk</em> {{ currentPlateau.suggestion.label }}: {{ currentPlateau.suggestion.text }}</p>
+                  <span class="stall-actions">
+                    <template v-if="currentPlateau.suggestion.plan?.weeks && !currentPlateau.queued_behind">
+                      <button type="button" :disabled="blockBusy" @click="startBlock('block')">Try it for {{ currentPlateau.suggestion.plan.weeks }} weeks</button>
+                      <button type="button" class="quiet" :disabled="blockBusy" @click="startBlock('today')">Today only</button>
+                    </template>
+                    <template v-else>
+                      <small v-if="currentPlateau.queued_behind">One lift at a time: {{ currentPlateau.queued_behind }} has a block running.</small>
+                      <button type="button" :class="{ quiet: currentPlateau.queued_behind }" :disabled="blockBusy" @click="startBlock('today')">Try it today</button>
+                    </template>
+                  </span>
+                </div>
               </div>
               <div class="set-ordinal" :class="{ warmup: currentSet.set_type === 'warmup' }">
                 <span>{{ currentSet.set_type === 'warmup' ? 'Warm-up' : 'Set' }}</span>
@@ -179,7 +203,7 @@
               <span class="queue-index">{{ exercise.completed_set_count === workingSetCount(exercise) ? '✓' : exercise.exercise_order }}</span>
               <div>
                 <strong>{{ exercise.exercise_name }}</strong>
-                <small>{{ exercisePrescription(exercise) }}</small>
+                <small>{{ exercisePrescription(exercise) }}<em v-if="blockFor(exercise)" class="queue-stalled trying" :title="`${blockFor(exercise).label}: ${blockFor(exercise).text}`">{{ blockFor(exercise).due ? 'block done' : blockFor(exercise).scope === 'block' ? `block wk ${blockFor(exercise).week}/${blockFor(exercise).weeks}` : 'trying' }}</em><em v-else-if="plateauFor(exercise)" class="queue-stalled" :title="`${plateauFor(exercise).suggestion.label}: ${plateauFor(exercise).suggestion.text}`">stalled</em></small>
               </div>
               <span class="queue-set-markers" aria-hidden="true"><i v-for="item in exercise.sets" :key="item.id" :class="{ recorded: item.status === 'completed', selected: isCurrent(exercise, item), warmup: item.set_type === 'warmup' }"></i></span>
             </button>
@@ -493,6 +517,47 @@ const loadExerciseHistory = async (name) => {
     // Missing history only hides the comparison.
   } finally { historyLoading.value = false }
 }
+// Stalled lifts (estimated 1RM flat for weeks) and the change to try, as on the Dashboard.
+// Taking the change starts a stall block: saved workouts use it for its weeks, then switch back.
+const plateaus = ref({})
+const blocks = ref([])
+const blockBusy = ref(false)
+const loadPlateaus = async () => {
+  try {
+    const { data } = await api.getStrengthSessionPlateaus(session.value.id)
+    plateaus.value = Object.fromEntries(data.plateaus.map((item) => [normalizeName(item.exercise_name), item]))
+    blocks.value = data.blocks
+  } catch {
+    // Missing plateaus only hide the stall note.
+  }
+}
+const plateauFor = (exercise) => plateaus.value[normalizeName(exercise?.exercise_name)] || null
+const currentPlateau = computed(() => plateauFor(currentExercise.value))
+const blockFor = (exercise) => {
+  const key = normalizeName(exercise?.exercise_name)
+  return blocks.value.find((block) => [block.exercise_name, block.applied_name].some((name) => normalizeName(name) === key)) || null
+}
+const currentBlock = computed(() => blockFor(currentExercise.value))
+const blockDoneCopy = (block) => block.applied_name === block.exercise_name
+  ? `${block.weeks} weeks of ${block.label.toLowerCase()} on ${block.exercise_name}. Go back to the usual sets?`
+  : `${block.weeks} weeks of ${block.applied_name}. Go back to ${block.exercise_name}?`
+const changeBlock = async (action) => {
+  if (blockBusy.value) return
+  blockBusy.value = true
+  error.value = ''
+  try {
+    await action()
+    const { data } = await api.getStrengthWorkoutSession(session.value.id)
+    session.value = data
+    syncInputs()
+    await loadPlateaus()
+  } catch (blockError) {
+    error.value = blockError?.response?.data?.detail || 'Could not change the lift.'
+  } finally { blockBusy.value = false }
+}
+const startBlock = (scope) => changeBlock(() => api.startStallBlock({ exercise_name: currentExercise.value.exercise_name, session_id: session.value.id, scope }))
+const undoBlock = (block) => changeBlock(() => api.undoStallBlock(block.id))
+const finishBlock = (block, keep) => changeBlock(() => api.finishStallBlock(block.id, keep))
 const historyFor = (exercise) => exerciseHistory.value[normalizeName(exercise?.exercise_name)] || null
 const lastSetMatch = (exercise, workoutSet) => {
   const history = historyFor(exercise)
@@ -598,6 +663,7 @@ const loadSession = async () => {
     syncInputs()
     if (currentExercise.value) loadExerciseHistory(currentExercise.value.exercise_name)
     migrateLocalEfforts()
+    if (data.status !== 'completed') loadPlateaus()
     if (data.status === 'completed' && !data.linked_activity) prepareActivityLink()
   } catch (loadError) {
     error.value = loadError?.response?.data?.detail || 'Could not load workout.'
@@ -1002,6 +1068,17 @@ onBeforeUnmount(() => {
 .set-heading-copy > span { color: var(--runner-accent); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .set-heading h2 { margin: 4px 0 0; font-family: var(--font-display); font-size: clamp(26px, 2.6vw, 38px); line-height: 1.08; letter-spacing: -.04em; overflow-wrap: anywhere; }
 .set-heading p { margin-top: 6px; color: var(--muted-soft); font-size: 12px; line-height: 1.5; }
+.stall-note { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 6px; }
+.set-heading .stall-note p { margin: 0; flex: 1 1 360px; }
+.stall-note em { margin-right: 6px; color: var(--warning-text); font-style: normal; font-weight: 600; }
+.stall-note.trying em, .queue-stalled.trying { color: var(--runner-accent); }
+.stall-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stall-actions small { color: var(--muted); font-size: 11px; }
+.stall-actions button { padding: 5px 12px; border: 1px solid color-mix(in srgb, var(--warning-text) 45%, transparent); border-radius: 8px; background: transparent; color: var(--warning-text); font-size: 12px; font-weight: 600; }
+.stall-actions button.quiet { border-color: var(--border); color: var(--muted-soft); font-weight: 500; }
+.stall-actions button:hover:not(:disabled) { background: color-mix(in srgb, var(--warning-text) 10%, transparent); }
+.stall-actions button:disabled { opacity: .5; }
+.queue-stalled { margin-left: 6px; color: var(--warning-text); font-style: normal; font-weight: 600; cursor: help; }
 .set-ordinal { flex: 0 0 auto; display: grid; justify-items: end; }
 .set-ordinal span { color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
 .set-ordinal strong { color: var(--runner-accent); font: 600 38px/1 var(--font-display); font-variant-numeric: tabular-nums; }

@@ -68,7 +68,7 @@
     <ol v-if="lifts.length" class="plan-lifts">
       <li v-for="(lift, index) in lifts" :key="`${lift.name}-${index}`">
         <span class="plan-lift-order">{{ String(index + 1).padStart(2, '0') }}</span>
-        <span class="plan-lift-name"><strong>{{ lift.name }}</strong><small>{{ lift.summary }}<em v-if="lift.change" class="plan-lift-change" :title="lift.hint">{{ lift.change }}</em><em v-if="lift.volume" class="plan-lift-volume" :title="lift.volumeReason">{{ lift.volume }}</em><em v-if="lift.stalled" class="plan-lift-stalled" :title="lift.stalled">stalled</em></small></span>
+        <span class="plan-lift-name"><strong>{{ lift.name }}</strong><small>{{ lift.summary }}<em v-if="lift.held" class="plan-lift-held" :title="lift.hint">hold</em><em v-else-if="lift.change" class="plan-lift-change" :title="lift.hint">{{ lift.change }}</em><em v-if="lift.volume" class="plan-lift-volume" :title="lift.volumeReason">{{ lift.volume }}</em><em v-if="lift.stalled" class="plan-lift-stalled" :title="lift.stalled">stalled</em></small></span>
         <span class="plan-lift-sets" aria-hidden="true"><i v-for="set in lift.sets" :key="set"></i></span>
         <span class="plan-lift-rest">{{ lift.rest }}</span>
       </li>
@@ -115,10 +115,14 @@ const FORM_ZONES = [
   { min: 25, max: 40, label: 'Very fresh', color: '#bcb0f6' },
 ]
 
-// "6–7" -> [6, 7]; "9" -> [9, 9]
+// "6–7" -> [6, 7]; "9" -> [9, 9]; "≤5" -> [1, 5]; "≥8" -> [8, 10]
 const rpeRange = computed(() => {
-  const numbers = String(props.brief?.feel?.rpe || '').split(/[–-]/).map(Number).filter(Number.isFinite)
-  return numbers.length ? [numbers[0], numbers.at(-1)] : [0, 0]
+  const text = String(props.brief?.feel?.rpe || '')
+  const numbers = (text.match(/\d+(\.\d+)?/g) || []).map(Number)
+  if (!numbers.length) return [0, 0]
+  if (/^\s*[≤<]/.test(text)) return [1, numbers[0]]
+  if (/^\s*[≥>]/.test(text)) return [numbers[0], 10]
+  return [numbers[0], numbers.at(-1)]
 })
 
 const isStrength = computed(() => /strength|weight/i.test(props.plan.session_type || ''))
@@ -148,6 +152,7 @@ const lifts = computed(() => props.exercises.filter((exercise) => exercise.exerc
   sets: Array.from({ length: Math.min(Number(exercise.set_count) || 0, 8) }, (_, index) => index),
   change: liftChange(exercise),
   hint: exercise.progress_hint || '',
+  held: Boolean(exercise.progress_held),
   volume: !exercise.volume_added_sets ? '' : exercise.volume_added_sets === Number(exercise.set_count) ? 'added' : `+${exercise.volume_added_sets} set${exercise.volume_added_sets === 1 ? '' : 's'}`,
   volumeReason: exercise.volume_reason || '',
   stalled: stalledByName.value.get(exercise.exercise_name.toLowerCase()) || '',
@@ -228,6 +233,7 @@ const tiles = computed(() => [durationTile.value, distanceTile.value, intensityT
 .plan-lift-name small { color: var(--dash-muted, var(--muted)); font-size: 11px; font-variant-numeric: tabular-nums; }
 .plan-lift-change { margin-left: 6px; color: var(--success-text); font-style: normal; font-weight: 600; }
 .plan-lift-volume { margin-left: 6px; color: var(--accent); font-style: normal; font-weight: 600; }
+.plan-lift-held { margin-left: 6px; color: var(--dash-muted, var(--muted)); font-style: normal; font-weight: 600; cursor: help; }
 .plan-lift-stalled { margin-left: 6px; color: var(--warning-text); font-style: normal; font-weight: 600; cursor: help; }
 .plan-lift-sets { display: flex; gap: 4px; }
 .plan-lift-sets i { width: 14px; height: 14px; border: 1.5px solid color-mix(in srgb, var(--accent) 70%, transparent); border-radius: 4px; }

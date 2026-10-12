@@ -44,17 +44,27 @@ def _session_or_404(conn: sqlite3.Connection, session_id: int) -> sqlite3.Row:
 
 def _next_steps(conn: sqlite3.Connection, exercises: list, history: Optional[dict] = None) -> list[Optional[dict]]:
     """Progressed target per template exercise, from the latest logged session of each lift."""
+    from .stall_blocks import block_starts
+
     history = latest_next_steps(conn) if history is None else history
     max_dumbbell_kg = _max_dumbbell_kg(conn)
-    return [
-        plan_next_step(
-            history.get(_normalize(exercise["exercise_name"])),
-            exercise["exercise_name"],
-            exercise["target_reps"],
-            max_dumbbell_kg,
-        )
-        for exercise in exercises
+    # A lift in a stall block starts from the block's targets, not the stalled sessions before it.
+    blocks = block_starts(conn)
+
+    def lift(name: str) -> Optional[dict]:
+        found = history.get(_normalize(name))
+        started = blocks.get(_normalize(name))
+        return None if found and started and found["date"] < started else found
+
+    from .progression_guard import guard_steps
+
+    names = [exercise["exercise_name"] for exercise in exercises]
+    lifts = [lift(name) for name in names]
+    steps = [
+        plan_next_step(found, exercise["exercise_name"], exercise["target_reps"], max_dumbbell_kg)
+        for found, exercise in zip(lifts, exercises)
     ]
+    return guard_steps(conn, names, lifts, steps)
 
 
 def _serialize_template(conn: sqlite3.Connection, row: sqlite3.Row, history: Optional[dict] = None) -> dict:
@@ -966,12 +976,18 @@ def finish_session(
             """,
             (now, linked_activity_id, now, session_id),
         )
+    from .stall_blocks import close_session_changes
+
+    close_session_changes(conn, session_id)
     return get_session(conn, session_id)
 
 
 def abandon_session(conn: sqlite3.Connection, session_id: int) -> None:
+    from .stall_blocks import close_session_changes
+
     session = _session_or_404(conn, session_id)
     _assert_active(session)
+    close_session_changes(conn, session_id, abandoned=True)
     delete_session(conn, session_id)
 
 

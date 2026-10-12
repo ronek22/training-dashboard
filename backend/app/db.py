@@ -796,6 +796,8 @@ def init_db():
             UNIQUE(session_exercise_id, set_order)
         );
     """)
+    from .services.stall_blocks import ensure_table as ensure_stall_blocks
+    ensure_stall_blocks(conn)
 
     feedback_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(activity_feedback)").fetchall()

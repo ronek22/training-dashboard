@@ -57,6 +57,28 @@ class MealHelperTests(unittest.TestCase):
         self.assertEqual([block["type"] for block in content], ["image", "text"])
         self.assertIn("w 100 g", content[1]["text"])
 
+    def test_ideas_request_is_bounded(self):
+        request = meal_helper.validate_ideas_request({"meal": "dinner", "kcal": 1172.4, "protein_g": 66, "hour": 18,
+                                                      "eaten": [" rosół ", ""], "note": " mam jajka "})
+        self.assertEqual((request["kcal"], request["eaten"], request["note"]), (1172, ["rosół"], "mam jajka"))
+        for bad in ({"meal": "brunch", "kcal": 500}, {"meal": "snack", "kcal": 10}, {"meal": "snack", "kcal": 300, "hour": 25}):
+            with self.assertRaises(ValueError):
+                meal_helper.validate_ideas_request(bad)
+
+    def test_ideas_message_carries_budget_and_note(self):
+        request = meal_helper.validate_ideas_request({"meal": "snack", "kcal": 400, "protein_g": 20, "note": "tylko lodówka"})
+        text = json.loads(meal_helper.build_ideas_message(request))["message"]["content"][0]["text"]
+        self.assertIn("400 kcal, 20 g protein", text)
+        self.assertIn("tylko lodówka", text)
+
+    def test_parse_ideas_keeps_ideas_with_items(self):
+        parsed = meal_helper.parse_ideas('{"ideas":[{"title":"Skyr z owocami","why":"szybko","items":[{"name":"skyr","grams":300,'
+                                         '"kcal":190,"protein_g":33,"carbs_g":12,"fat_g":0.6}]},{"title":"pusty","items":[]}]}')
+        self.assertEqual([idea["title"] for idea in parsed["ideas"]], ["Skyr z owocami"])
+        self.assertEqual(parsed["ideas"][0]["totals"]["protein_g"], 33.0)
+        with self.assertRaises(ValueError):
+            meal_helper.parse_ideas('{"ideas":[]}')
+
     def test_parse_items_rejects_prose(self):
         with self.assertRaises(ValueError):
             meal_helper.parse_items("I cannot see any food.")

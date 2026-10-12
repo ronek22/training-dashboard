@@ -1,97 +1,159 @@
 <template>
   <Teleport to="body">
     <Transition name="overlay-fade" appear>
-      <div v-if="open && activity" class="feedback-modal-shell" @click.self="$emit('close')">
+      <div v-if="open && activity" class="fb-shell" @click.self="$emit('close')">
         <Transition name="modal-pop" appear>
-          <div v-if="open && activity" class="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-dialog-title">
-          <div class="feedback-modal-head">
-            <div>
-              <div class="feedback-modal-kicker">Post-workout feedback</div>
-              <h2 id="feedback-dialog-title">{{ activity.name || activity.type }}</h2>
-              <p>{{ activity.dateLabel || activity.date }}</p>
-            </div>
-            <button class="feedback-modal-close" @click="$emit('close')" aria-label="Close feedback dialog">×</button>
-          </div>
-
-          <div class="feedback-tags">
-            <div class="feedback-tag-field" role="radiogroup" aria-label="How was the session?">
-              <span>How was it?</span>
-              <div class="feedback-fuel-options">
-                <button v-for="option in verdictOptions" :key="option.value" type="button" role="radio" :aria-checked="form.verdict === option.value" :class="{ on: form.verdict === option.value }" @click="form.verdict = form.verdict === option.value ? null : option.value">{{ option.label }}</button>
-              </div>
-            </div>
-            <div class="feedback-tag-field" role="radiogroup" aria-label="What did you eat before?">
-              <span>Before the session</span>
-              <div class="feedback-fuel-options">
-                <button v-for="option in preFuelOptions" :key="option.value" type="button" role="radio" :aria-checked="form.pre_fuel === option.value" :class="{ on: form.pre_fuel === option.value }" @click="form.pre_fuel = form.pre_fuel === option.value ? null : option.value">{{ option.label }}</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="feedback-modal-grid">
-            <section v-for="field in fields" :key="field.key" class="feedback-slider-card">
-              <div class="feedback-slider-top">
-                <div>
-                  <strong>{{ field.label }}</strong>
-                  <p>{{ field.help }}</p>
+          <div v-if="open && activity" class="fb" :style="{ '--sport': sportColor }" role="dialog" aria-modal="true" aria-labelledby="feedback-dialog-title">
+            <header class="fb-head">
+              <div class="fb-head-main">
+                <div class="fb-kicker"><span class="fb-sport-dot" />{{ sportLabel }} · {{ activity.dateLabel || activity.date }}</div>
+                <h2 id="feedback-dialog-title">{{ activity.name || activity.type }}</h2>
+                <div v-if="headStats.length" class="fb-head-stats">
+                  <span v-for="stat in headStats" :key="stat">{{ stat }}</span>
                 </div>
-                <span class="feedback-slider-value">{{ form[field.key] }}{{ field.suffix || '' }}</span>
               </div>
-              <input
-                v-model.number="form[field.key]"
-                class="feedback-slider"
-                type="range"
-                :min="field.min"
-                :max="field.max"
-                :step="1"
-              >
-              <div class="feedback-slider-scale">
-                <span>{{ field.minLabel }}</span>
-                <span>{{ field.maxLabel }}</span>
+              <button class="fb-close" @click="$emit('close')" aria-label="Close feedback dialog">×</button>
+            </header>
+
+            <div class="fb-body">
+              <section class="fb-block">
+                <div class="fb-label">How was it?</div>
+                <div class="fb-verdicts" role="radiogroup" aria-label="How was the session?">
+                  <button
+                    v-for="option in verdictOptions"
+                    :key="option.value"
+                    type="button"
+                    role="radio"
+                    class="fb-verdict"
+                    :class="[`is-${option.value}`, { on: form.verdict === option.value }]"
+                    :aria-checked="form.verdict === option.value"
+                    @click="form.verdict = form.verdict === option.value ? null : option.value"
+                  >
+                    <span class="fb-verdict-glyph" aria-hidden="true">{{ option.glyph }}</span>
+                    <span>{{ option.label }}</span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="fb-block">
+                <div class="fb-label-row">
+                  <div class="fb-label">Effort <span class="fb-label-hint">RPE</span></div>
+                  <div class="fb-readout" :style="{ color: rpeColor(form.rpe) }">
+                    <strong>{{ form.rpe }}</strong> {{ rpeWord }}
+                  </div>
+                </div>
+                <div class="fb-rpe" role="radiogroup" aria-label="Session RPE">
+                  <button
+                    v-for="n in 10"
+                    :key="n"
+                    type="button"
+                    role="radio"
+                    class="fb-rpe-step"
+                    :class="{ filled: n <= form.rpe, on: n === form.rpe }"
+                    :style="{ '--step': rpeColor(n) }"
+                    :aria-checked="n === form.rpe"
+                    :aria-label="`RPE ${n}`"
+                    @click="form.rpe = n"
+                  >{{ n }}</button>
+                </div>
+                <div class="fb-rpe-cue">{{ rpeCue }}</div>
+              </section>
+
+              <div class="fb-pair">
+                <section v-for="scale in wordScales" :key="scale.key" class="fb-block">
+                  <div class="fb-label">{{ scale.label }}</div>
+                  <div class="fb-seg" role="radiogroup" :aria-label="scale.label">
+                    <button
+                      v-for="(word, i) in scale.words"
+                      :key="word"
+                      type="button"
+                      role="radio"
+                      :class="{ on: form[scale.key] === i + 1 }"
+                      :aria-checked="form[scale.key] === i + 1"
+                      @click="form[scale.key] = i + 1"
+                    >{{ word }}</button>
+                  </div>
+                </section>
               </div>
-            </section>
-          </div>
 
-          <label v-if="intentOptions.length" class="feedback-intent-field">
-            <span>Workout intent</span>
-            <select v-model="form.workout_intent">
-              <option value="">None</option>
-              <option v-for="intent in intentOptions" :key="intent.value" :value="intent.value">
-                {{ intent.label }}
-              </option>
-            </select>
-          </label>
+              <section class="fb-block">
+                <div class="fb-label-row">
+                  <div class="fb-label">Pain or niggle?</div>
+                  <div v-if="form.pain_level > 0" class="fb-readout is-pain"><strong>{{ form.pain_level }}</strong>/10</div>
+                </div>
+                <div class="fb-pain">
+                  <div class="fb-chips" role="radiogroup" aria-label="Any pain?">
+                    <button type="button" role="radio" :aria-checked="form.pain_level === 0" :class="{ on: form.pain_level === 0, 'is-good': true }" @click="form.pain_level = 0">Pain-free</button>
+                    <button type="button" role="radio" :aria-checked="form.pain_level > 0" :class="{ on: form.pain_level > 0, 'is-pain': true }" @click="form.pain_level = form.pain_level || 2">Something hurts</button>
+                  </div>
+                  <div v-if="form.pain_level > 0" class="fb-pain-scale" role="radiogroup" aria-label="Pain level">
+                    <button
+                      v-for="n in 10"
+                      :key="n"
+                      type="button"
+                      role="radio"
+                      :class="{ filled: n <= form.pain_level }"
+                      :aria-checked="n === form.pain_level"
+                      :aria-label="`Pain ${n}`"
+                      @click="form.pain_level = n"
+                    >{{ n }}</button>
+                  </div>
+                </div>
+              </section>
 
-          <div v-if="asksFuelling" class="feedback-fuel-field" role="radiogroup" aria-label="How did fuelling go?">
-            <span>Fuelling</span>
-            <div class="feedback-fuel-options">
-              <button
-                v-for="option in fuellingOptions"
-                :key="option.value"
-                type="button"
-                role="radio"
-                :aria-checked="form.fuelling === option.value"
-                :class="{ on: form.fuelling === option.value }"
-                :title="option.hint"
-                @click="form.fuelling = form.fuelling === option.value ? null : option.value"
-              >{{ option.label }}</button>
+              <div class="fb-pair">
+                <section class="fb-block">
+                  <div class="fb-label">Before the session</div>
+                  <div class="fb-chips" role="radiogroup" aria-label="What did you eat before?">
+                    <button v-for="option in preFuelOptions" :key="option.value" type="button" role="radio" :aria-checked="form.pre_fuel === option.value" :class="{ on: form.pre_fuel === option.value }" @click="form.pre_fuel = form.pre_fuel === option.value ? null : option.value">{{ option.label }}</button>
+                  </div>
+                </section>
+                <section v-if="intentOptions.length" class="fb-block">
+                  <div class="fb-label">Session type</div>
+                  <div class="fb-chips" role="radiogroup" aria-label="Workout intent">
+                    <button v-for="intent in intentOptions" :key="intent.value" type="button" role="radio" :aria-checked="form.workout_intent === intent.value" :class="{ on: form.workout_intent === intent.value }" @click="form.workout_intent = form.workout_intent === intent.value ? '' : intent.value">{{ intent.label }}</button>
+                  </div>
+                </section>
+              </div>
+
+              <section v-if="asksFuelling" class="fb-block">
+                <div class="fb-label">Fuelling on the bike</div>
+                <div class="fb-chips" role="radiogroup" aria-label="How did fuelling go?">
+                  <button
+                    v-for="option in fuellingOptions"
+                    :key="option.value"
+                    type="button"
+                    role="radio"
+                    :aria-checked="form.fuelling === option.value"
+                    :class="{ on: form.fuelling === option.value }"
+                    :title="option.hint"
+                    @click="form.fuelling = form.fuelling === option.value ? null : option.value"
+                  >{{ option.label }}</button>
+                </div>
+              </section>
+
+              <section class="fb-block">
+                <textarea v-model="form.note" class="fb-note" rows="2" placeholder="Note (optional): sleep, stress, weather, what felt off…" aria-label="Optional note"></textarea>
+              </section>
             </div>
-          </div>
 
-          <label class="feedback-note-field">
-            <span>Optional note</span>
-            <textarea v-model="form.note" rows="3" placeholder="Anything that explains the numbers?"></textarea>
-          </label>
-
-          <div class="feedback-modal-actions">
-            <div v-if="message" class="feedback-modal-message">{{ message }}</div>
-            <div class="feedback-modal-buttons">
-              <button class="feedback-secondary-btn" @click="$emit('close')">Cancel</button>
-              <button class="feedback-primary-btn" :disabled="saving" @click="submit">
-                {{ saving ? 'Saving...' : 'Save feedback' }}
-              </button>
-            </div>
-          </div>
+            <footer class="fb-foot">
+              <div class="fb-summary">
+                <template v-if="message">{{ message }}</template>
+                <template v-else>
+                  <span>RPE {{ form.rpe }}</span>
+                  <span>Energy {{ wordScales[0].words[form.energy - 1] }}</span>
+                  <span>Soreness {{ wordScales[1].words[form.muscle_soreness - 1] }}</span>
+                  <span :class="{ 'is-pain': form.pain_level > 0 }">{{ form.pain_level > 0 ? `Pain ${form.pain_level}/10` : 'Pain-free' }}</span>
+                </template>
+              </div>
+              <div class="fb-buttons">
+                <button class="fb-btn" @click="$emit('close')">Cancel</button>
+                <button class="fb-btn primary" :disabled="saving" title="⌘ Enter" @click="submit">
+                  {{ saving ? 'Saving…' : 'Save feedback' }}
+                </button>
+              </div>
+            </footer>
           </div>
         </Transition>
       </div>
@@ -100,7 +162,8 @@
 </template>
 
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, watch } from 'vue'
+import { ENERGY_WORDS, FUELLING, PRE_FUEL, SORENESS_WORDS, VERDICTS, rpeColor, rpeCue as rpeCueFor, rpeWord as rpeWordFor } from '../utils/feel-scale'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -141,43 +204,31 @@ watch(() => props.initialFeedback, () => {
   if (props.open) syncForm()
 })
 
-const fields = [
-  {
-    key: 'rpe',
-    label: 'RPE',
-    help: 'Overall effort of the session from very easy to all-out.',
-    min: 1,
-    max: 10,
-    minLabel: 'Very easy',
-    maxLabel: 'Max effort',
-  },
-  {
-    key: 'energy',
-    label: 'Energy',
-    help: 'How ready or fresh you felt during the session.',
-    min: 1,
-    max: 5,
-    minLabel: 'Flat',
-    maxLabel: 'Fresh',
-  },
-  {
-    key: 'muscle_soreness',
-    label: 'Soreness',
-    help: 'How much muscular fatigue or residual soreness you noticed.',
-    min: 1,
-    max: 5,
-    minLabel: 'None',
-    maxLabel: 'High',
-  },
-  {
-    key: 'pain_level',
-    label: 'Pain / Niggle',
-    help: 'Any injury-related pain or hotspot. Use 0 if nothing stands out.',
-    min: 0,
-    max: 10,
-    minLabel: 'None',
-    maxLabel: 'High',
-  },
+// Header context: what sport, how long, how far.
+const sportMeta = (type = '') => {
+  if (/weight|strength|workout|crossfit/i.test(type)) return { label: 'Strength', color: 'var(--strength)' }
+  if (/ride|cycl|bike/i.test(type)) return { label: 'Ride', color: 'var(--ride)' }
+  if (/run/i.test(type)) return { label: 'Run', color: 'var(--run)' }
+  if (/walk|hike/i.test(type)) return { label: type, color: 'var(--tone-walk)' }
+  return { label: type || 'Session', color: 'var(--accent)' }
+}
+const sportLabel = computed(() => sportMeta(props.activity?.type).label)
+const sportColor = computed(() => sportMeta(props.activity?.type).color)
+const headStats = computed(() => {
+  const a = props.activity || {}
+  const stats = []
+  const mins = Math.round(Number(a.duration_min) || 0)
+  if (mins) stats.push(mins >= 60 ? `${Math.floor(mins / 60)} h ${String(mins % 60).padStart(2, '0')} min` : `${mins} min`)
+  if (Number(a.distance_km) > 0) stats.push(`${Number(a.distance_km).toFixed(1)} km`)
+  return stats
+})
+
+const rpeWord = computed(() => rpeWordFor(form.rpe))
+const rpeCue = computed(() => rpeCueFor(form.rpe))
+
+const wordScales = [
+  { key: 'energy', label: 'Energy', words: ENERGY_WORDS },
+  { key: 'muscle_soreness', label: 'Soreness', words: SORENESS_WORDS },
 ]
 
 const workoutIntentOptions = {
@@ -206,9 +257,9 @@ const workoutIntentOptions = {
     { value: 'race_specific', label: 'Race-specific' },
   ],
   WeightTraining: [
-    { value: 'strength_general', label: 'General strength' },
-    { value: 'strength_lower', label: 'Lower-body strength' },
-    { value: 'strength_upper', label: 'Upper-body strength' },
+    { value: 'strength_general', label: 'Full body' },
+    { value: 'strength_lower', label: 'Lower body' },
+    { value: 'strength_upper', label: 'Upper body' },
     { value: 'mobility', label: 'Mobility' },
   ],
   Walk: [
@@ -225,28 +276,16 @@ const workoutIntentOptions = {
 const intentOptions = computed(() => workoutIntentOptions[props.activity?.type] || [])
 
 // "What worked" tags: compared across conditions to find what suits the athlete.
-const verdictOptions = [
-  { value: 'loved', label: 'Loved it' },
-  { value: 'fine', label: 'Fine' },
-  { value: 'hated', label: 'Hated it' },
-]
-const preFuelOptions = [
-  { value: 'fasted', label: 'Fasted' },
-  { value: 'snack', label: 'Snack < 1 h' },
-  { value: 'meal_recent', label: 'Meal 1–3 h' },
-  { value: 'meal_earlier', label: 'Meal 3 h+' },
-]
+const verdictOptions = VERDICTS
+const preFuelOptions = PRE_FUEL
 
 // Long rides are where under-fuelling hides; shorter sessions skip the question.
 const FUELLING_MIN_MINUTES = 75
-const fuellingOptions = [
-  { value: 'bonked', label: 'Bonked', hint: 'Ran out of energy or faded hard late on' },
-  { value: 'fine', label: 'Fine', hint: 'Energy held up' },
-  { value: 'overate', label: 'Overate', hint: 'Too much: heavy or upset stomach' },
-]
+const fuellingOptions = FUELLING
 const asksFuelling = computed(() => /ride|cycl|bike/i.test(props.activity?.type || '') && Number(props.activity?.duration_min || 0) >= FUELLING_MIN_MINUTES)
 
 const submit = () => {
+  if (props.saving) return
   emit('save', {
     ...form,
     note: form.note?.trim() || '',
@@ -254,10 +293,19 @@ const submit = () => {
     workout_intent: form.workout_intent || null,
   })
 }
+
+const onKeydown = (event) => {
+  if (event.key === 'Escape') emit('close')
+  else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) submit()
+}
+watch(() => props.open, (isOpen) => {
+  window[isOpen ? 'addEventListener' : 'removeEventListener']('keydown', onKeydown)
+}, { immediate: true })
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <style scoped>
-.feedback-modal-shell {
+.fb-shell {
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -266,245 +314,348 @@ const submit = () => {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 24px 24px 40px;
+  padding: 32px 24px 40px;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.feedback-modal {
-  width: min(760px, 100%);
-  max-height: none;
-  overflow: visible;
+.fb {
+  width: min(720px, 100%);
   margin: 0 auto;
-  padding: 24px;
-  border-radius: 24px;
-  border: 1px solid rgb(var(--ov-rgb) / 0.08);
-  background:
-    rgb(var(--deep-rgb) / 0.98);
-  box-shadow: 0 30px 80px rgb(var(--shadow-rgb) / 0.45);
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--sport);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
 }
-.feedback-modal-head {
+
+/* Header */
+.fb-head {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
 }
-.feedback-modal-kicker {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--info-text);
-  margin-bottom: 8px;
-}
-.feedback-modal-head h2 {
-  font-family: var(--font-display);
-  font-size: 28px;
-  line-height: 1.1;
-  margin: 0 0 6px;
-}
-.feedback-modal-head p {
+.fb-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--muted);
+  margin-bottom: 6px;
 }
-.feedback-modal-close {
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  border: 1px solid rgb(var(--ov-rgb) / 0.08);
-  background: rgb(var(--ov-rgb) / 0.04);
-  color: var(--text);
-  cursor: pointer;
+.fb-sport-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sport);
+}
+.fb-head h2 {
+  font-family: var(--font-display);
   font-size: 24px;
-  line-height: 1;
+  line-height: 1.15;
+  margin: 0;
 }
-.feedback-modal-close:hover {
-  transform: rotate(90deg);
-}
-.feedback-modal-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 16px;
-}
-.feedback-slider-card {
-  padding: 16px;
-  border-radius: 18px;
-  background: rgb(var(--ov-rgb) / 0.04);
-  border: 1px solid rgb(var(--ov-rgb) / 0.06);
-}
-.feedback-slider-top {
+.fb-head-stats {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-  margin-bottom: 14px;
+  gap: 6px;
+  margin-top: 10px;
 }
-.feedback-slider-top strong {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 18px;
-  margin-bottom: 4px;
-}
-.feedback-slider-top p {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-.feedback-slider-value {
-  flex: 0 0 auto;
-  min-width: 42px;
-  text-align: center;
-  padding: 5px 9px;
+.fb-head-stats span {
+  padding: 3px 9px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.18);
-  color:var(--text);
-  font-weight: 700;
-}
-.feedback-slider {
-  width: 100%;
-  accent-color:oklch(from #60a5fa calc(l - var(--dim-l)) c h);
-}
-.feedback-slider-scale {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 11px;
-}
-.feedback-note-field {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-.feedback-intent-field {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.feedback-intent-field span,
-.feedback-note-field span {
-  color: var(--muted);
+  background: var(--surface2);
+  color: var(--text-soft);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
-.feedback-intent-field select,
-.feedback-note-field textarea {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgb(var(--ov-rgb) / 0.08);
-  background: rgb(var(--ov-rgb) / 0.04);
+.fb-close {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  transition: color var(--motion-duration-fast), background var(--motion-duration-fast);
+}
+.fb-close:hover {
   color: var(--text);
-  resize: vertical;
+  background: var(--surface2);
 }
-.feedback-tags {
+
+/* Body */
+.fb-body {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 16px 28px;
-  margin-bottom: 18px;
+  gap: 18px;
+  padding: 18px 24px 20px;
 }
-.feedback-tag-field {
+.fb-block {
   display: grid;
   gap: 8px;
   min-width: 0;
 }
-.feedback-tag-field > span {
-  color: var(--muted);
-  font-size: 12px;
-}
-@media (max-width: 640px) {
-  .feedback-tags { grid-template-columns: 1fr; }
-}
-.feedback-fuel-field {
+.fb-pair {
   display: grid;
-  gap: 8px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+  align-items: start;
 }
-.feedback-fuel-field > span {
+.fb-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.fb-label-hint {
+  margin-left: 4px;
+  font-weight: 500;
   color: var(--muted);
-  font-size: 12px;
 }
-.feedback-fuel-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.feedback-fuel-options button {
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid rgb(var(--ov-rgb) / 0.08);
-  background: rgb(var(--ov-rgb) / 0.04);
-  color: var(--text);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.feedback-fuel-options button.on {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-}
-.feedback-modal-actions {
+.fb-label-row {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  align-items: center;
+  align-items: baseline;
+  gap: 12px;
 }
-.feedback-modal-message {
-  color: var(--muted);
-  font-size: 12px;
+.fb-readout {
+  font-size: 13px;
+  font-weight: 600;
+  transition: color var(--motion-duration-base);
 }
-.feedback-modal-buttons {
-  display: flex;
-  gap: 10px;
-  margin-left: auto;
+.fb-readout strong {
+  font-family: var(--font-display);
+  font-size: 18px;
+  margin-right: 2px;
 }
-.feedback-secondary-btn,
-.feedback-primary-btn {
-  padding: 10px 16px;
-  border-radius: 12px;
+.fb-readout.is-pain { color: var(--danger-text); }
+
+/* Shared button reset */
+.fb button {
+  font: inherit;
   cursor: pointer;
-  font-weight: 700;
 }
-.feedback-secondary-btn {
-  border: 1px solid rgb(var(--ov-rgb) / 0.08);
-  background: rgb(var(--ov-rgb) / 0.04);
+
+/* Verdict tiles */
+.fb-verdicts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.fb-verdict {
+  --tone: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background var(--motion-duration-fast), border-color var(--motion-duration-fast);
+}
+.fb-verdict.is-loved { --tone: var(--success); }
+.fb-verdict.is-hated { --tone: var(--danger); }
+.fb-verdict-glyph {
+  color: var(--tone);
+  font-size: 11px;
+}
+.fb-verdict:hover { border-color: var(--border-strong); }
+.fb-verdict.on {
+  border-color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 16%, var(--surface2));
+}
+
+/* RPE scale */
+.fb-rpe {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 4px;
+}
+.fb-rpe-step {
+  height: 40px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: background var(--motion-duration-fast), color var(--motion-duration-fast), transform var(--motion-duration-fast);
+}
+.fb-rpe-step:first-child { border-radius: 12px 8px 8px 12px; }
+.fb-rpe-step:last-child { border-radius: 8px 12px 12px 8px; }
+.fb-rpe-step:hover { color: var(--text); background: var(--surface3); }
+.fb-rpe-step.filled {
+  background: color-mix(in srgb, var(--step) 42%, var(--surface2));
   color: var(--text);
 }
-.feedback-primary-btn {
-  border:1px solid #3b82f6;
-  background:color-mix(in srgb, #2563eb, #4f46e5);
-  color: white;
+.fb-rpe-step.on {
+  background: var(--step);
+  color: var(--on-accent);
+  transform: scaleY(1.08);
 }
-.feedback-secondary-btn:hover,
-.feedback-primary-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
+.fb-rpe-cue {
+  font-size: 12px;
+  color: var(--muted);
 }
-.feedback-primary-btn:disabled {
+
+/* Word segments (energy / soreness) */
+.fb-seg {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 3px;
+  gap: 2px;
+  border-radius: 12px;
+  background: var(--surface2);
+}
+.fb-seg button {
+  padding: 8px 2px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background var(--motion-duration-fast), color var(--motion-duration-fast);
+}
+.fb-seg button:hover { color: var(--text); }
+.fb-seg button.on {
+  background: var(--surface3);
+  color: var(--text);
+  box-shadow: var(--shadow-card);
+}
+
+/* Chips */
+.fb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+}
+.fb-chips button {
+  --tone: var(--accent);
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 500;
+  transition: background var(--motion-duration-fast), border-color var(--motion-duration-fast);
+}
+.fb-chips button:hover { border-color: var(--border-strong); color: var(--text); }
+.fb-chips button.on {
+  border-color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 16%, transparent);
+  color: var(--text);
+}
+.fb-chips button.is-good { --tone: var(--success); }
+.fb-chips button.is-pain { --tone: var(--danger); }
+
+/* Pain */
+.fb-pain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+.fb-pain-scale {
+  flex: 1 1 260px;
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 3px;
+}
+.fb-pain-scale button {
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.fb-pain-scale button.filled {
+  background: color-mix(in srgb, var(--danger) 55%, var(--surface2));
+  color: var(--text);
+}
+
+/* Note */
+.fb-note {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+.fb-note:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Footer */
+.fb-foot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 0 0 22px 22px;
+}
+.fb-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.fb-summary .is-pain { color: var(--danger-text); }
+.fb-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.fb-btn {
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+}
+.fb-btn:hover { background: var(--surface2); }
+.fb-btn.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.fb-btn.primary:hover:not(:disabled) { background: var(--accent-strong); }
+.fb-btn.primary:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
 
 @media (max-width: 720px) {
-  .feedback-modal-shell {
-    padding: 16px 16px 28px;
-  }
-  .feedback-modal {
-    padding: 18px;
-    border-radius: 20px;
-  }
-  .feedback-modal-grid {
-    grid-template-columns: 1fr;
-  }
-  .feedback-modal-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .feedback-modal-buttons {
-    margin-left: 0;
-    justify-content: stretch;
-  }
-  .feedback-secondary-btn,
-  .feedback-primary-btn {
-    flex: 1 1 0;
-  }
+  .fb-shell { padding: 16px 16px 28px; }
+  .fb-head, .fb-body, .fb-foot { padding-left: 16px; padding-right: 16px; }
+  .fb-pair { grid-template-columns: 1fr; }
+  .fb-foot { flex-direction: column; align-items: stretch; }
+  .fb-buttons { margin-left: 0; }
+  .fb-btn { flex: 1 1 0; }
 }
 </style>

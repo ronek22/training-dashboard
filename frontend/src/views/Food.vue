@@ -188,6 +188,9 @@
       </div>
 
       <aside class="side">
+        <MealIdeas v-if="isToday && day?.target" :date="selectedDay" :eaten-kcal="day.totals.kcal" :eaten="eatenNames"
+          :training="trainingLine" :meal="meal" @use="useIdea" />
+
         <article class="card week-card">
           <div class="card-title">Last 7 days</div>
           <div v-if="day" class="week-bars" role="list">
@@ -246,6 +249,7 @@ import DinnerPlanner from '../components/DinnerPlanner.vue'
 import RecipeLibrary from '../components/RecipeLibrary.vue'
 import ProductLibrary from '../components/ProductLibrary.vue'
 import ProductDialog from '../components/ProductDialog.vue'
+import MealIdeas from '../components/MealIdeas.vue'
 import { defaultGrams, productLabel, scalePer100 } from '../food/products.mjs'
 import { readPhoto as downscalePhoto } from '../food/photo.mjs'
 import { MACROS, defaultMeal, draftRow, intakeTone, rowsToItems, setGrams, setMacro, sumRows } from '../food/draft.mjs'
@@ -353,6 +357,9 @@ const profileSummary = computed(() => {
 })
 const trainingTitle = computed(() => (day.value?.exercise.activities || [])
   .map((activity) => `${activity.name || activity.type}: ${activity.kcal} kcal (${activity.basis})`).join('\n') || 'No training logged')
+
+const eatenNames = computed(() => (day.value?.entries || []).flatMap((entry) => entry.items.map((item) => item.name)))
+const trainingLine = computed(() => (day.value?.exercise.activities || []).map((activity) => `${activity.name || activity.type} (${activity.kcal} kcal)`).join(', '))
 
 const mealGroups = computed(() => meals.map((option) => {
   const entries = (day.value?.entries || []).filter((entry) => entry.meal === option.value)
@@ -561,6 +568,20 @@ async function logPlannedDinner(plan) {
   }
   window.scrollTo({ top: 0, behavior: 'smooth' })
   nextTick(() => { autoGrow(); textBox.value?.focus() })
+}
+// A suggested meal becomes a draft to adjust before logging.
+function useIdea(idea) {
+  if (rows.value.length) {
+    logError.value = 'Finish or cancel the current meal first.'
+    return
+  }
+  meal.value = idea.meal
+  source.value = 'manual'
+  rawText.value = idea.title
+  rows.value = idea.items.map(draftRow)
+  estimateNote.value = ''
+  logError.value = ''
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 async function removeEntry(entry) {
   if (!entry) return

@@ -13,6 +13,9 @@ are skipped. Exactly one change is suggested per lift, picked in this order:
 2. Heaviest dumbbell already in use: slow tempo, the only lever left.
 3. Stuck 6+ weeks, or the rep scheme already changed: a variation.
 4. Otherwise: a different rep scheme (higher reps for single-joint lifts).
+
+Each suggestion also carries ``plan``: the same change as numbers (sets, reps, load,
+an exercise to swap to, a cue) so it can be applied to a workout as a block.
 """
 
 from __future__ import annotations
@@ -72,6 +75,40 @@ VARIATIONS: dict[str, str] = {
 }
 
 
+# The exercise each variation swaps to, and the cue that makes it different.
+VARIATION_EXERCISES: dict[str, tuple[str, Optional[str]]] = {
+    "backsquat": ("Paused Back Squat", "2 s pause in the hole"),
+    "frontsquat": ("Paused Front Squat", "2 s pause in the hole"),
+    "barbellinclinebenchpress": ("Paused Incline Bench Press", "1 s pause on the chest"),
+    "barbellbenchpress": ("Close-Grip Bench Press", None),
+    "benchpress": ("Paused Bench Press", "1 s pause on the chest"),
+    "dumbbellbenchpress": ("Incline Dumbbell Press", None),
+    "inclinedumbbellpress": ("Dumbbell Bench Press", None),
+    "dumbbellinclinebenchpress": ("Dumbbell Bench Press", None),
+    "romaniandeadlift": ("Paused Romanian Deadlift", "1 s pause just below the knee"),
+    "deadlift": ("Paused Deadlift", "1 s pause just off the floor"),
+    "bentoverbarbellrow": ("Pendlay Row", "dead stop on the floor each rep"),
+    "barbellrow": ("Pendlay Row", "dead stop on the floor each rep"),
+    "dumbbellrow": ("Chest-Supported Dumbbell Row", None),
+    "barbellshoulderpress": ("Seated Dumbbell Shoulder Press", None),
+    "standingdumbbellshoulderpress": ("Arnold Press", None),
+    "seateddumbbellshoulderpress": ("Arnold Press", None),
+    "dumbbellbicepcurl": ("Incline Dumbbell Curl", None),
+    "inclinedumbbellcurl": ("Hammer Curl", None),
+    "hammercurls": ("Cross-Body Hammer Curl", None),
+    "dumbbellskullcrusher": ("Overhead Dumbbell Triceps Extension", None),
+    "dumbbellbulgariansplitsquat": ("Front-Foot-Elevated Split Squat", None),
+}
+TEMPO_CUE = "lower over 3 s, 1 s pause at the stretch"
+BLOCK_WEEKS = 3
+
+
+def _plan(weeks: int = BLOCK_WEEKS, **fields: Any) -> dict[str, Any]:
+    """The suggestion as numbers. ``None`` keeps what the workout already has."""
+    base = {"weeks": weeks, "sets": None, "reps": None, "reps_max": None, "load_kg": None, "swap_to": None, "cue": None}
+    return {**base, **fields}
+
+
 def _is_bodyweight(name: str) -> bool:
     normalized = _normalize(name)
     return any(token in normalized for token in BODYWEIGHT_TOKENS)
@@ -119,7 +156,7 @@ def _round_to(value: float, step: float) -> float:
     return round(value / step) * step
 
 
-def _suggest(name: str, points: list[dict], peak: dict, stalled_days: int, max_dumbbell_kg: Optional[float]) -> dict[str, str]:
+def _suggest(name: str, points: list[dict], peak: dict, stalled_days: int, max_dumbbell_kg: Optional[float]) -> dict[str, Any]:
     key = _normalize(name)
     last = points[-1]
     top, reps = last["top_load_kg"], last["reps"]
@@ -132,23 +169,33 @@ def _suggest(name: str, points: list[dict], peak: dict, stalled_days: int, max_d
             "kind": "micro_deload",
             "label": "Micro-deload",
             "text": f"{_fmt(load)} kg × {reps} for all sets today (about 90%), crisp reps only. Back to {_fmt(top)} kg next time.",
+            "plan": _plan(weeks=0, reps=reps, load_kg=load, cue="crisp reps only"),
         }
     if capped:
         return {
             "kind": "variation",
             "label": "Tempo",
             "text": f"Keep {_fmt(top)} kg but lower every rep over 3 s with a 1 s pause at the stretch, for 3 weeks.",
+            "plan": _plan(load_kg=top, cue=TEMPO_CUE),
         }
     reps_since_peak = [point["reps"] for point in points if point["date"] >= peak["date"]]
     rep_scheme_changed = max(reps_since_peak) - min(reps_since_peak) >= 3
     if stalled_days >= LONG_STALL_DAYS or rep_scheme_changed:
         variation = VARIATIONS.get(key)
         if variation:
-            return {"kind": "variation", "label": "Variation", "text": f"Swap to {variation} for 3 weeks, then come back to {name.lower()}."}
+            swap_to, cue = VARIATION_EXERCISES[key]
+            return {
+                "kind": "variation",
+                "label": "Variation",
+                "text": f"Swap to {variation} for 3 weeks, then come back to {name.lower()}.",
+                # Start a touch lighter on the new movement; the first session sets the bar.
+                "plan": _plan(swap_to=swap_to, load_kg=_round_to(top * DELOAD_SHARE, step), reps=reps, cue=cue),
+            }
         return {
             "kind": "variation",
             "label": "Tempo",
             "text": f"Lower every rep over 3 s with a 1 s pause at the stretch for 3 weeks; start {step:g} kg lighter.",
+            "plan": _plan(load_kg=max(top - step, step), cue=TEMPO_CUE),
         }
     if _is_isolation(name):
         if reps < 12:
@@ -156,11 +203,13 @@ def _suggest(name: str, points: list[dict], peak: dict, stalled_days: int, max_d
                 "kind": "rep_scheme",
                 "label": "Rep scheme",
                 "text": f"Switch to 3 × 12–15 at {_fmt(max(top - step, step))} kg for 3 weeks, last set close to failure.",
+                "plan": _plan(sets=3, reps=12, reps_max=15, load_kg=max(top - step, step), cue="last set close to failure"),
             }
         return {
             "kind": "rep_scheme",
             "label": "Rep scheme",
             "text": f"Keep {_fmt(top)} kg and finish the last set with a rest-pause: 15 s rest, then 3–5 more reps.",
+            "plan": _plan(load_kg=top, cue="last set: rest 15 s, then 3–5 more reps"),
         }
     if reps <= 7:
         load = _round_to(top * 0.85, step)
@@ -168,17 +217,20 @@ def _suggest(name: str, points: list[dict], peak: dict, stalled_days: int, max_d
             "kind": "rep_scheme",
             "label": "Rep scheme",
             "text": f"Switch to 3 × 8–10 at {_fmt(load)} kg for 3 weeks, adding reps before load, then return to heavy sets.",
+            "plan": _plan(sets=3, reps=8, reps_max=10, load_kg=load, cue="add reps before load"),
         }
     if max_dumbbell_kg and _is_dumbbell(name) and top + step > max_dumbbell_kg:
         return {
             "kind": "rep_scheme",
             "label": "Rep scheme",
             "text": f"Add a 4th set at {_fmt(top)} kg and take the last set to 1 rep in reserve.",
+            "plan": _plan(sets=4, load_kg=top, cue="last set 1 rep in reserve"),
         }
     return {
         "kind": "rep_scheme",
         "label": "Rep scheme",
         "text": f"Switch to 4 × 5–6 at {_fmt(top + 2 * step)} kg for 3 weeks, then return to {reps}s at a heavier load.",
+        "plan": _plan(sets=4, reps=5, reps_max=6, load_kg=top + 2 * step),
     }
 
 

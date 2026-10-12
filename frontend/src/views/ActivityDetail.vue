@@ -20,23 +20,10 @@
         <!-- Hikes lead with the mountain map; other sports keep the analysis below the feedback strip. -->
         <component :is="presentationComponent" v-if="presentation === 'hike'" :detail="detail" />
 
-        <section class="ad-feedback-strip" :class="`is-${feedbackRead.tone}`" aria-labelledby="feedback-strip-title">
-          <div class="ad-feedback-strip-intro">
-            <span>How it felt</span>
-            <strong id="feedback-strip-title">{{ detail.feedback ? feedbackRead.label : 'Add your post-workout read' }}</strong>
-            <small v-if="detail.feedback">{{ feedbackRead.summary }}</small>
-          </div>
-          <dl v-if="detail.feedback" class="ad-feedback-strip-metrics">
-            <div class="ad-feedback-stat is-effort" :style="{'--feedback-level': feedbackPercent(detail.feedback.rpe, 10)}"><dt><i aria-hidden="true">E</i>Effort</dt><dd>{{ value(detail.feedback.rpe) }}<small>/10</small></dd><span aria-hidden="true"><i></i></span></div>
-            <div class="ad-feedback-stat is-energy" :style="{'--feedback-level': feedbackPercent(detail.feedback.energy, 5)}"><dt><i aria-hidden="true">↗</i>Energy</dt><dd>{{ value(detail.feedback.energy) }}<small>/5</small></dd><span aria-hidden="true"><i></i></span></div>
-            <div class="ad-feedback-stat is-soreness" :style="{'--feedback-level': feedbackPercent(detail.feedback.muscle_soreness, 5)}"><dt><i aria-hidden="true">S</i>Soreness</dt><dd>{{ value(detail.feedback.muscle_soreness) }}<small>/5</small></dd><span aria-hidden="true"><i></i></span></div>
-            <div class="ad-feedback-stat is-pain" :style="{'--feedback-level': feedbackPercent(detail.feedback.pain_level, 5)}"><dt><i aria-hidden="true">!</i>Pain</dt><dd>{{ value(detail.feedback.pain_level) }}<small>/5</small></dd><span aria-hidden="true"><i></i></span></div>
-          </dl>
-          <p v-else class="ad-feedback-strip-empty">Capture effort, energy, soreness, and pain while the session is fresh.</p>
-          <p v-if="detail.feedback?.note" class="ad-feedback-strip-note">“{{ detail.feedback.note }}”</p>
-          <button class="ad-secondary-action" type="button" @click="feedbackOpen = true">{{ detail.feedback ? 'Edit' : 'Add feedback' }}</button>
-          <SessionVerdict v-if="isTaggable" class="ad-feedback-verdict" :activity-id="detail.activity.id" :verdict="detail.session_tags?.verdict" @saved="(tags) => { detail.session_tags = tags }" />
-        </section>
+        <FeelCard
+          :feedback="detail.feedback" :session-tags="detail.session_tags" :activity-id="detail.activity.id" :taggable="isTaggable"
+          @edit="feedbackOpen = true" @tags-saved="(tags) => { detail.session_tags = tags }"
+        />
 
         <SessionWinCard v-if="detail.win" :activity="detail.activity" :win="detail.win" />
 
@@ -79,7 +66,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import SessionVerdict from '../components/SessionVerdict.vue'
+import FeelCard from '../components/FeelCard.vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '../stores/api'
 import ActivityHeader from '../components/activity-detail/ActivityHeader.vue'
@@ -152,21 +139,7 @@ const status = computed(() => {
 })
 const qualityLabel = computed(() => ({ matched: 'Matched', partial: 'Partly matched', drifted: 'Changed', completed_without_evidence: 'Limited evidence', insufficient_evidence: 'Not enough evidence' }[detail.value?.execution_quality?.status] || 'Compared'))
 const activityNotes = computed(() => String(detail.value?.activity?.notes || '').trim())
-const feedbackRead = computed(() => {
-  const feedback = detail.value?.feedback
-  if (!feedback) return { tone: 'empty', label: 'Session feedback', summary: '' }
-  const energy = Number(feedback.energy)
-  const soreness = Number(feedback.muscle_soreness)
-  const pain = Number(feedback.pain_level)
-  const rpe = Number(feedback.rpe)
-  if (pain >= 3) return { tone: 'attention', label: 'Recovery needs attention', summary: 'Pain is the signal to review first.' }
-  if (soreness >= 4 || energy <= 2) return { tone: 'recovery', label: 'Recovery signal', summary: 'Low energy or soreness may shape what comes next.' }
-  if (energy >= 4 && soreness <= 2 && pain <= 1) return { tone: 'positive', label: 'Responded well', summary: rpe >= 8 ? 'Hard work, but the immediate response looks positive.' : 'Good energy with little soreness or pain.' }
-  return { tone: 'steady', label: 'Mixed but steady', summary: 'A balanced subjective read of the session.' }
-})
 const analysis = computed(() => detail.value?.analysis || {})
-const value = (input) => input === null || input === undefined ? '—' : input
-const feedbackPercent = (input, maximum) => `${Math.max(0, Math.min(100, (Number(input) / maximum) * 100 || 0))}%`
 const formatDateTime = (input) => { const date = new Date(input); return Number.isNaN(date.getTime()) ? input : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date) }
 const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 // The question is saved on the request first; Coach then reads it from the analysis context over MCP.
@@ -235,52 +208,6 @@ const saveFeedback = async (payload) => {
 .ad-shared-grid{align-items:start}
 .ad-shared-grid>.ad-shared-section{margin-top:0}
 
-.ad-feedback-verdict{grid-column:1 / -1;padding-top:10px;border-top:1px solid rgb(var(--tint-rgb) / .12)}
-.ad-feedback-strip{
-  --feedback-accent:oklch(from #6f91ff calc(l - var(--dim-l)) c h);
-  display:grid;
-  grid-template-columns:190px minmax(0,1fr) auto;
-  align-items:center;
-  gap:10px 22px;
-  margin-top:18px;
-  padding:15px 16px 15px 18px;
-  border:1px solid color-mix(in srgb,var(--feedback-accent) 25%,rgb(var(--tint-rgb) / .18));
-  border-left:3px solid var(--feedback-accent);
-  border-radius:14px;
-  background:rgb(var(--panel-rgb) / .9);
-  box-shadow:inset 0 1px 0 rgb(var(--ov-rgb) / .035),0 10px 30px rgb(var(--shadow-rgb) / .08);
-}
-.ad-feedback-strip.is-positive{--feedback-accent:oklch(from #43d17c calc(l - var(--dim-l)) c h)}.ad-feedback-strip.is-recovery{--feedback-accent:oklch(from #f5b742 calc(l - var(--dim-l)) c h)}.ad-feedback-strip.is-attention{--feedback-accent:oklch(from #ff6d72 calc(l - var(--dim-l)) c h)}.ad-feedback-strip.is-steady{--feedback-accent:oklch(from #6f91ff calc(l - var(--dim-l)) c h)}
-.ad-feedback-strip-intro{display:flex;flex-direction:column;gap:3px;min-width:0}
-.ad-feedback-strip-intro span{color:var(--ad-accent);font-size:.66rem;font-weight:850;letter-spacing:.1em;text-transform:uppercase}
-.ad-feedback-strip-intro>span{color:var(--feedback-accent)}
-.ad-feedback-strip-intro strong{font-size:.96rem;letter-spacing:-.01em}
-.ad-feedback-strip-intro small{color:var(--ad-muted);font-size:.68rem;line-height:1.35}
-.ad-feedback-strip-metrics{display:grid;grid-template-columns:repeat(4,minmax(72px,1fr));margin:0}
-.ad-feedback-strip-metrics>div{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 9px;padding:1px 14px;border-left:1px solid rgb(var(--tint-rgb) / .16)}
-.ad-feedback-strip-metrics>div:first-child{border-left:0}
-.ad-feedback-strip-metrics dt{display:flex;align-items:center;gap:5px;color:var(--ad-muted);font-size:.67rem}
-.ad-feedback-strip-metrics dt>i{display:grid;place-items:center;width:16px;height:16px;border-radius:5px;background:color-mix(in srgb,var(--stat-color) 15%,transparent);color:var(--stat-color);font-size:.58rem;font-style:normal;font-weight:900}
-.ad-feedback-strip-metrics dd{margin:0;color:var(--text);font-size:1.05rem;font-weight:850}
-.ad-feedback-strip-metrics small{margin-left:2px;color:var(--ad-muted);font-size:.62rem}
-.ad-feedback-stat{--stat-color:oklch(from #6f91ff calc(l - var(--dim-l)) c h)}.ad-feedback-stat.is-energy{--stat-color:oklch(from #43d17c calc(l - var(--dim-l)) c h)}.ad-feedback-stat.is-soreness{--stat-color:oklch(from #f5b742 calc(l - var(--dim-l)) c h)}.ad-feedback-stat.is-pain{--stat-color:oklch(from #ff6d72 calc(l - var(--dim-l)) c h)}
-.ad-feedback-stat>span{grid-column:1 / -1;height:3px;overflow:hidden;border-radius:99px;background:rgb(var(--tint-rgb) / .12)}
-.ad-feedback-stat>span>i{display:block;width:var(--feedback-level);height:100%;border-radius:inherit;background:var(--stat-color);box-shadow:0 0 8px color-mix(in srgb,var(--stat-color) 55%,transparent)}
-.ad-feedback-strip-empty{margin:0;color:var(--ad-muted);font-size:.8rem}
-.ad-feedback-strip-note{grid-column:2;margin:0;color:var(--ad-muted);font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-@media(max-width:850px){
-  .ad-feedback-strip{grid-template-columns:160px minmax(0,1fr) auto;gap:10px 14px}
-  .ad-feedback-strip-metrics>div{padding:2px 8px;gap:4px 6px}
-}
-@media(max-width:560px){
-  .ad-feedback-strip{grid-template-columns:1fr auto;gap:13px 10px;padding:15px}
-  .ad-feedback-strip-metrics{grid-column:1 / -1;grid-row:2;grid-template-columns:repeat(2,1fr);gap:14px 0;order:3;padding-top:2px}
-  .ad-feedback-strip-metrics>div{padding:0 10px}
-  .ad-feedback-strip-metrics>div:nth-child(odd){border-left:0;padding-left:0}
-  .ad-feedback-strip-note{grid-column:1 / -1;grid-row:3;white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
-  .ad-feedback-strip-empty{grid-column:1 / -1;grid-row:2}
-  .ad-feedback-strip>.ad-secondary-action{grid-column:2;grid-row:1}
-}
 .activity-detail-v2.is-strength .ad-header{padding-bottom:22px}.activity-detail-v2.is-strength .ad-header-row{margin-top:18px}.activity-detail-v2.is-strength .ad-header h1{font-size:clamp(1.8rem,2.6vw,2.6rem);line-height:1.08;letter-spacing:-.04em;max-width:none}.activity-detail-v2.is-strength .ad-header p{margin-top:8px}
 </style>

@@ -278,6 +278,10 @@ def _value_for(summary: dict, metric: str) -> Optional[float]:
 
 def latest_next_steps(conn: sqlite3.Connection) -> dict[str, dict[str, Any]]:
     """Per lift, the latest logged working sets and how they compared, for planning the next session."""
+    from .stall_blocks import one_off_dates
+
+    # A one-session change (e.g. 4 × 5 heavy, "today only") is not the lift's new baseline.
+    skip = one_off_dates(conn)
     latest: dict[str, dict[str, Any]] = {}
     for session in _session_index(conn):
         for exercise in session.get("exercises", []):
@@ -285,6 +289,8 @@ def latest_next_steps(conn: sqlite3.Connection) -> dict[str, dict[str, Any]]:
             if not sets:
                 continue
             key = _normalize(exercise["exercise_name"])
+            if (key, session["workout_date"][:10]) in skip:
+                continue
             summary = _summary(sets)
             previous = latest.get(key)
             compared = _compare(summary, previous["summary"]) if previous else None

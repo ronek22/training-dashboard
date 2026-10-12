@@ -323,7 +323,9 @@ def _session_plateaus(day: dict, conn: sqlite3.Connection, today: date) -> list[
     if not names:
         return []
     try:
-        return find_plateaus(conn, today, names)
+        from .stall_blocks import annotate_plateaus
+
+        return annotate_plateaus(conn, find_plateaus(conn, today, names), today)
     except sqlite3.OperationalError:
         return []
 

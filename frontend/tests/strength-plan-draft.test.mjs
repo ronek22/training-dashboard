@@ -56,3 +56,21 @@ test('weekly lift volume adds sets to a matching lift and appends new accessorie
   assert.match(draft.exercises[1].notes, /legs toward 8 hard sets/)
   assert.equal(template.exercises[0].set_count, 3)
 })
+test('feeling flat cuts every lift to 2 sets at last time\'s loads, no progression or added volume', () => {
+  const template = { name: 'Workout B', exercises: [
+    { exercise_name: 'Shoulder Press', set_count: 3, target_reps: 8, target_weight_kg: 20, rest_seconds: 120, next: { target_weight_kg: 22, hint: 'add' } },
+    { exercise_name: 'Lateral Raise', set_count: 5, target_reps: 20, target_weight_kg: 12, rest_seconds: 90 },
+  ] }
+  const day = { title: 'Workout B (light)', template_label: 'Workout B', details: "Feeling flat: same lifts, 2 working sets each at last time's weights, stop 2-3 reps short of failure. No new loads today.",
+    lift_volume_additions: [{ exercise_name: 'Curl', sets: 2, reason: 'arms' }] }
+  const draft = buildStrengthPlanDraft(day, [template])
+  assert.deepEqual(draft.exercises.map(e => [e.exercise_name, e.set_count, e.target_weight_kg]), [['Shoulder Press', 2, 20], ['Lateral Raise', 2, 12]])
+  assert.ok(draft.exercises.every(e => e.saved_weight_kg === undefined))
+  assert.equal(template.exercises[0].set_count, 3)
+})
+test('short on time keeps the first 3 lifts at 3 sets with rests capped at 90 s', () => {
+  const exercises = [1, 2, 3, 4].map(i => ({ exercise_name: `Lift ${i}`, set_count: 4, target_reps: 8, target_weight_kg: 20, rest_seconds: 150, next: { target_weight_kg: 22 } }))
+  const draft = buildStrengthPlanDraft({ title: 'W (express)', template_label: 'W', details: 'Short on time: main lifts only (first 2-3 exercises), 3 working sets, skip accessories and keep rests to 90 s.' }, [{ name: 'W', exercises }])
+  assert.equal(draft.exercises.length, 3)
+  assert.ok(draft.exercises.every(e => e.set_count === 3 && e.rest_seconds === 90 && e.target_weight_kg === 22))
+})

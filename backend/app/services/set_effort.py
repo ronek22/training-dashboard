@@ -72,3 +72,37 @@ def effort_carryover(conn: sqlite3.Connection, exercise_names: Iterable[str]) ->
             })
     order = {"form": 0, "grinding": 1, "easy": 2}
     return sorted(notes, key=lambda item: order[item["effort"]])
+
+
+def latest_ratings(conn: sqlite3.Connection) -> dict[str, dict]:
+    """Per lift, the effort taps from its latest completed TrainLog session.
+
+    ``finish_load`` is the load of the last rated working set: when the athlete
+    dropped the weight mid-exercise, that is the load they could actually finish with."""
+    try:
+        rows = conn.execute(
+            """
+            SELECT exercise.exercise_name, session.id AS session_id, session.started_at,
+                   workout_set.actual_weight_kg AS weight_kg, workout_set.effort
+            FROM strength_session_sets workout_set
+            JOIN strength_session_exercises exercise ON exercise.id = workout_set.session_exercise_id
+            JOIN strength_workout_sessions session ON session.id = exercise.session_id
+            WHERE workout_set.status = 'completed' AND workout_set.set_type != 'warmup'
+              AND session.status = 'completed'
+            ORDER BY session.started_at DESC, workout_set.set_order
+            """
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    latest: dict[str, int] = {}
+    result: dict[str, dict] = {}
+    for row in rows:
+        key = _normalize(row["exercise_name"])
+        latest.setdefault(key, row["session_id"])
+        if row["session_id"] != latest[key] or not row["effort"]:
+            continue
+        entry = result.setdefault(key, {"date": row["started_at"][:10], "counts": defaultdict(int), "total": 0, "finish_load": None})
+        entry["counts"][row["effort"]] += 1
+        entry["total"] += 1
+        entry["finish_load"] = row["weight_kg"]
+    return result

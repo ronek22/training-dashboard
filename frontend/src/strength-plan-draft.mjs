@@ -10,6 +10,8 @@ function progressedExercise(exercise) {
     saved_weight_kg: exercise.target_weight_kg,
     saved_reps: exercise.target_reps,
     progress_hint: next.hint,
+    // Why a load did not go up (effort taps, big jump, one change at a time, busy day).
+    progress_held: next.held || null,
   }
 }
 
@@ -41,12 +43,39 @@ function withVolumeAdditions(exercises, additions = []) {
   return result
 }
 
+// "Feeling flat", "Short on time" and the minimum week (backend today_options /
+// minimum_week) cut today's lift down in prose; read those recognized phrases so the
+// listed exercises match what the plan says instead of the full progressed session.
+export function trimmedLift(details = '') {
+  const sets = details.match(/(\d+) working sets/i)
+  if (!sets) return null
+  return {
+    sets: Number(sets[1]),
+    firstExercises: /first 2-3 exercises/i.test(details) ? 3 : null,
+    holdLoads: /no new loads|last time's weights/i.test(details),
+    maxRestSeconds: /rests? to 90 s/i.test(details) ? 90 : null,
+  }
+}
+
+function trimExercises(exercises, trim) {
+  const kept = trim.firstExercises ? exercises.slice(0, trim.firstExercises) : exercises
+  return kept.map(exercise => {
+    const base = trim.holdLoads ? { ...exercise } : progressedExercise(exercise)
+    return {
+      ...base,
+      set_count: Math.min(Number(exercise.set_count) || trim.sets, trim.sets),
+      rest_seconds: trim.maxRestSeconds && exercise.rest_seconds ? Math.min(exercise.rest_seconds, trim.maxRestSeconds) : exercise.rest_seconds,
+    }
+  })
+}
+
 // Keep the original prose. Convert only a recognized, explicit prescription;
 // unknown instructions require review rather than silently guessed reductions.
 export function buildStrengthPlanDraft(day, templates = []) {
   const details = day.details || ''
   const reducedLower = /2 easy work sets each of squat or leg press,\s*Romanian deadlift,\s*split squat or leg curl,\s*then calves and core/i.test(details)
   const match = templates.find(template => template.name === day.template_label || template.name === day.title)
+  const trim = reducedLower ? null : trimmedLift(details)
   const loadFactor = reducedLower && /70\s*% of (?:usual|normal) load/i.test(details) ? 0.7 : null
   const guidance = [day.target_duration_min ? `Planned duration: ${day.target_duration_min} min.` : '', details].filter(Boolean).join('\n\n')
   const groups = [
@@ -71,7 +100,9 @@ export function buildStrengthPlanDraft(day, templates = []) {
           notes: [group.notes, base ? `Reps/rest from saved workout.${loadFactor && base.target_weight_kg != null ? ` Load: 70% of saved ${base.target_weight_kg} kg, rounded down to 0.5 kg.` : ''}` : 'Suggested movement; review reps (8) and rest (90 sec).'].join(' '),
         }))
       })
-    : withVolumeAdditions((match?.exercises || []).map(progressedExercise), day.lift_volume_additions)
+    : trim
+      ? trimExercises(match?.exercises || [], trim)
+      : withVolumeAdditions((match?.exercises || []).map(progressedExercise), day.lift_volume_additions)
   return {
     id: null,
     oneTime: true,
@@ -80,6 +111,8 @@ export function buildStrengthPlanDraft(day, templates = []) {
     exercises,
     reviewNotice: reducedLower
       ? 'The first three movements use the prescribed 2 easy work sets. Matching exercises keep reps/rest from your saved workout; other movements use editable defaults of 8 reps and 90 sec rest. Calf/core sets (2) are also editable defaults. ' + (loadFactor ? 'Loads use 70% of saved workout targets where available, rounded down to 0.5 kg; adjust for your usual load and equipment.' : 'Enter loads using the original guidance below.')
+      : trim && match
+        ? `Cut to ${trim.sets} working sets${trim.firstExercises ? ` on the first ${trim.firstExercises} exercises` : ''}${trim.holdLoads ? ' at last time\'s loads' : ''}, as today's plan says.`
       : 'Review the recommendation below and adjust each exercise to match it. ' + (match ? 'Exercises were copied from your saved workout; reductions have not been guessed.' : 'Add the prescribed exercises, sets and reps to this one-time draft.'),
   }
 }

@@ -26,7 +26,7 @@ FLAT_SHARE = 0.6
 QUICK_MIN = {"lift": 25, "endurance": 30}
 EASY_INTENTS = {None, "", "easy", "recovery", "long"}
 
-FLAT_LIFT = ("Feeling flat: main lifts only, 2 working sets at last time's weights, stop 2-3 reps short of failure. "
+FLAT_LIFT = ("Feeling flat: same lifts, 2 working sets each at last time's weights, stop 2-3 reps short of failure. "
              "No new loads today. It still counts as a lift.")
 FLAT_ENDURANCE = ("Feeling flat: Zone 2 only, conversational the whole way. If you feel better after 15 min, "
                   "stay easy anyway; you'll bank the session without digging a hole.")

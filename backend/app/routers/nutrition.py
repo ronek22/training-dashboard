@@ -1,8 +1,10 @@
-from fastapi import APIRouter
+from typing import Optional
+
+from fastapi import APIRouter, Query
 
 from ..db import get_db
 from ..models.nutrition import DinnerPlanInput, FoodEntryInput, ProductInput, RecipeInput, FoodItemInput, NutritionProfileInput, ProteinTickInput, WeeklyBodyCheckinInput
-from ..services import dinner_plan, food_log, products, recipes
+from ..services import dinner_plan, food_log, meal_ideas, products, recipes
 from ..services.protein import build_protein_status, set_protein_tick
 from ..services.weekly_body_checkin import build_weekly_body_checkin, save_weekly_body_checkin
 
@@ -50,6 +52,15 @@ def get_food_day(date: str):
     conn = get_db()
     try:
         return food_log.build_food_day(conn, date)
+    finally:
+        conn.close()
+
+
+@router.get("/nutrition/food/ideas")
+def get_meal_ideas(date: str, hour: Optional[int] = Query(None, ge=0, le=23)):
+    conn = get_db()
+    try:
+        return meal_ideas.build_meal_ideas(conn, date, hour)
     finally:
         conn.close()
 

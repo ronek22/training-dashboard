@@ -70,3 +70,13 @@ class StrengthSessionFinishRequest(BaseModel):
 
 class StrengthActivityLinkRequest(BaseModel):
     activity_id: Optional[str] = None
+
+
+class StallBlockStartRequest(BaseModel):
+    exercise_name: str = Field(min_length=1, max_length=120)
+    session_id: Optional[int] = None
+    scope: Literal["block", "today"] = "block"
+
+
+class StallBlockFinishRequest(BaseModel):
+    keep: bool = False

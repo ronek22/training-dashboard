@@ -14,6 +14,7 @@ maximal test. Nothing here writes an FTP or changes the plan.
 
 from __future__ import annotations
 
+import copy
 import math
 import sqlite3
 from bisect import bisect_right
@@ -21,6 +22,7 @@ from datetime import date, timedelta
 from statistics import median
 from typing import Any, Optional
 
+from ..request_cache import blob_memo
 from .cycling_workouts import latest_ftp
 from .plans import normalize_workout_intent
 from .power_trends import _Segment, _build_segments, _confirmed_power_meter, _decode_json
@@ -133,6 +135,18 @@ def _normalized_power(runs: list[list[_Segment]], start: float, end: float) -> O
     if not fourth_powers:
         return None
     return (sum(fourth_powers) / len(fourth_powers)) ** 0.25
+
+
+def analyse_ride_streams(streams_json: Any, *, ftp_watts: Optional[float] = None) -> dict[str, Any]:
+    """``analyse_ride`` for a stored streams blob; the trend and each ride page reuse the result."""
+    if not isinstance(streams_json, str):
+        return analyse_ride(_decode_json(streams_json), ftp_watts=ftp_watts)
+    result = blob_memo(
+        f"decoupling:{ftp_watts}",
+        streams_json,
+        lambda: analyse_ride(_decode_json(streams_json), ftp_watts=ftp_watts),
+    )
+    return copy.deepcopy(result)
 
 
 def analyse_ride(
@@ -348,12 +362,10 @@ def build_aerobic_decoupling(
             result = {"qualifies": False, "reason": "hard_session"}
         elif not row["streams_json"]:
             result = {"qualifies": False, "reason": "no_streams"}
+        elif not _confirmed_power_meter(detail, activity_type=row["type"], source_status=row["source_status"], streams_json=row["streams_json"]):
+            result = {"qualifies": False, "reason": "no_measured_power"}
         else:
-            streams = _decode_json(row["streams_json"])
-            if not _confirmed_power_meter(detail, activity_type=row["type"], source_status=row["source_status"], streams_json=streams):
-                result = {"qualifies": False, "reason": "no_measured_power"}
-            else:
-                result = analyse_ride(streams, ftp_watts=ftp_watts)
+            result = analyse_ride_streams(row["streams_json"], ftp_watts=ftp_watts)
 
         reason = result.pop("reason")
         qualifies = result.pop("qualifies")

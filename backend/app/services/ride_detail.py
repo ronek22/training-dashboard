@@ -14,7 +14,8 @@ import sqlite3
 from bisect import bisect_left, bisect_right
 from typing import Any, Optional
 
-from .aerobic_decoupling import EXCLUSION_REASONS, _environment, analyse_ride
+from ..request_cache import blob_memo
+from .aerobic_decoupling import EXCLUSION_REASONS, _environment, analyse_ride_streams
 from .ftp import ftp_on
 from .power_trends import (
     POWER_EFFORT_LABELS,
@@ -65,16 +66,23 @@ def _route_segment(streams: Any, start_s: float, end_s: float) -> list[list[floa
     return segment
 
 
+def _best_efforts(runs: list, streams_json: Any) -> dict[int, Optional[dict[str, Any]]]:
+    build = lambda: {duration: _best_effort_from_runs(runs, duration) for duration in RIDE_POWER_DURATIONS}
+    # Scanning every window of every duration is the slow part of a ride page; it only
+    # depends on the streams, so a second visit reuses it.
+    return blob_memo("ride_best_efforts", streams_json, build) if isinstance(streams_json, str) else build()
+
+
 def _power_efforts(
     runs: list,
     streams: Any,
+    streams_json: Any,
     activity_id: str,
     ftp: Optional[float],
     records: dict[int, dict[str, Any]],
 ) -> list[dict[str, Any]]:
     efforts = []
-    for duration in RIDE_POWER_DURATIONS:
-        effort = _best_effort_from_runs(runs, duration)
+    for duration, effort in _best_efforts(runs, streams_json).items():
         if effort is None:
             continue
         watts = round(float(effort["watts"]), 1)
@@ -102,8 +110,8 @@ def _power_efforts(
     return efforts
 
 
-def _decoupling(streams: Any, ftp: Optional[float]) -> dict[str, Any]:
-    result = analyse_ride(streams, ftp_watts=ftp)
+def _decoupling(streams_json: Any, ftp: Optional[float]) -> dict[str, Any]:
+    result = analyse_ride_streams(streams_json, ftp_watts=ftp)
     if not result.get("qualifies"):
         reason = result.get("reason")
         return {"available": False, "reason": reason, "reason_label": EXCLUSION_REASONS.get(reason)}
@@ -158,7 +166,7 @@ def build_ride_detail(
         }
 
     streams = _decode_json(streams_json)
-    runs = _build_segments(streams)
+    runs = _build_segments(streams_json)
     normalized = stream_summary["normalized_power"] if stream_summary else None
     avg_watts = activity.get("avg_watts")
     tss = stream_summary["power_tss"] if stream_summary else None
@@ -179,6 +187,6 @@ def build_ride_detail(
         "power_source": "measured",
         "estimated_avg_watts": None,
         "power": power,
-        "power_efforts": _power_efforts(runs, streams, str(activity.get("id")), ftp, records),
-        "decoupling": _decoupling(streams, ftp),
+        "power_efforts": _power_efforts(runs, streams, streams_json, str(activity.get("id")), ftp, records),
+        "decoupling": _decoupling(streams_json, ftp),
     }

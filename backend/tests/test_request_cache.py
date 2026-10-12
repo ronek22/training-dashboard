@@ -1,3 +1,7 @@
+import os
+import sqlite3
+import tempfile
+import time
 import unittest
 
 from backend.app import request_cache
@@ -48,6 +52,50 @@ class BlobMemoTests(unittest.TestCase):
         self.assertEqual(request_cache.blob_memo("t", '{"a": 1}', build), 1)
         self.assertEqual(request_cache.blob_memo("t", '{"a": 2}', build), 2)
         self.assertEqual(request_cache.blob_memo("other", '{"a": 1}', build), 3)
+
+
+class DbMemoTests(unittest.TestCase):
+    def setUp(self):
+        handle, self.path = tempfile.mkstemp(suffix=".db")
+        os.close(handle)
+        self.conn = sqlite3.connect(self.path)
+        self.conn.execute("CREATE TABLE t (v INTEGER)")
+        self.conn.commit()
+        request_cache._db_cache.clear()
+
+    def tearDown(self):
+        self.conn.close()
+        os.unlink(self.path)
+
+    def _read(self, calls):
+        with request_cache.request_scope():
+            return request_cache.db_memo(self.conn, "sum", lambda: calls.append(1) or self.conn.execute("SELECT COALESCE(SUM(v), 0) FROM t").fetchone()[0])
+
+    def test_reuses_across_requests_until_the_database_changes(self):
+        calls = []
+        self.assertEqual(self._read(calls), 0)
+        self.assertEqual(self._read(calls), 0)
+        self.assertEqual(len(calls), 1)
+        time.sleep(0.01)
+        self.conn.execute("INSERT INTO t VALUES (5)")
+        self.conn.commit()
+        self.assertEqual(self._read(calls), 5)
+        self.assertEqual(len(calls), 2)
+
+    def test_outside_a_request_always_builds(self):
+        calls = []
+        for _ in range(2):
+            request_cache.db_memo(self.conn, "sum", lambda: calls.append(1))
+        self.assertEqual(len(calls), 2)
+
+    def test_in_memory_database_is_cached_per_request_only(self):
+        conn = sqlite3.connect(":memory:")
+        calls = []
+        for _ in range(2):
+            with request_cache.request_scope():
+                request_cache.db_memo(conn, "x", lambda: calls.append(1))
+                request_cache.db_memo(conn, "x", lambda: calls.append(1))
+        self.assertEqual(len(calls), 2)
 
 
 if __name__ == "__main__":

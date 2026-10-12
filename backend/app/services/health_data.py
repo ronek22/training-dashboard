@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import ijson
 from fastapi import HTTPException
 
+from ..request_cache import db_memo
 from .sleep_debt import BASELINE_NIGHTS, WINDOW_NIGHTS, build_sleep_debt
 
 
@@ -723,6 +724,12 @@ def get_sleep_history(conn: sqlite3.Connection, days: int = 90) -> list[dict]:
 
 
 def get_health_summary(conn: sqlite3.Connection, days: int = 90) -> dict:
+    # Changes only when an import lands; the windows use SQLite's (UTC) date('now').
+    day_key = (datetime.now(timezone.utc).date(), datetime.now().date())
+    return db_memo(conn, ("health_summary", days, day_key), lambda: _build_health_summary(conn, days))
+
+
+def _build_health_summary(conn: sqlite3.Connection, days: int) -> dict:
     metrics = {}
     for metric, label in TARGET_LABELS.items():
         history = get_health_metric_history(conn, metric, days)

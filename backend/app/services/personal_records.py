@@ -20,6 +20,7 @@ import sqlite3
 from datetime import date, datetime, timedelta
 from typing import Any, Iterable, Optional
 
+from ..request_cache import db_memo
 from .activity_times import start_times as _start_times, time_of_day as _time_of_day
 from .ftp import stored_ftp
 from .guided_sessions import guided_completion_dates
@@ -504,6 +505,10 @@ def epley_1rm(weight_kg: float, reps: int) -> float:
 
 
 def _lift_section(conn: sqlite3.Connection) -> dict[str, Any]:
+    return db_memo(conn, "lift_records", lambda: _build_lift_section(conn))
+
+
+def _build_lift_section(conn: sqlite3.Connection) -> dict[str, Any]:
     try:
         _, sessions = _filtered_sessions(conn, window_start=date(2000, 1, 1), body_part="all")
     except sqlite3.OperationalError:
@@ -620,6 +625,11 @@ def _streak_section(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
 
 
 def _endurance_sections(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
+    # Records, record ranks, the FTP estimate and the session brief all read these.
+    return db_memo(conn, ("endurance_records", today), lambda: _build_endurance_sections(conn, today))
+
+
+def _build_endurance_sections(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
     rows = _activity_rows(conn)
     efforts = _load_efforts(conn, rows)
     starts = _start_times(conn, rows)

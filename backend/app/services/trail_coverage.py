@@ -15,6 +15,7 @@ from typing import Callable, Optional
 import httpx
 
 from ..repositories import trails as repo
+from ..request_cache import db_memo
 from ..repositories.settings import get_setting_value, set_setting_value
 
 REGIONS = {
@@ -905,6 +906,11 @@ def list_regions(conn: sqlite3.Connection) -> dict:
 def region_map(conn: sqlite3.Connection, region_key: str, mapy_api_key: Optional[str] = None) -> dict:
     if region_key not in REGIONS:
         raise ValueError(f"Unknown region: {region_key}")
+    # Thousands of sections and tracks that change only on an import or a hike sync.
+    return db_memo(conn, ("trail_region_map", region_key, mapy_api_key), lambda: _build_region_map(conn, region_key, mapy_api_key))
+
+
+def _build_region_map(conn: sqlite3.Connection, region_key: str, mapy_api_key: Optional[str]) -> dict:
     region = REGIONS[region_key]
     bbox = region["bbox"]
     projection = Projection((bbox[0] + bbox[2]) / 2)

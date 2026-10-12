@@ -9,7 +9,9 @@ to mutate what they receive). Outside a request scope, and for writes, nothing i
 from __future__ import annotations
 
 import copy
+import os
 import pickle
+import sqlite3
 from collections import OrderedDict
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -63,4 +65,58 @@ def blob_memo(namespace: str, blob: str, build: Callable[[], Any]) -> Any:
         _blob_cache[key] = value
         while len(_blob_cache) > _BLOB_CACHE_SIZE:
             _blob_cache.popitem(last=False)
+    return value
+
+
+# Whole-history builders (personal records) change only when the database does. A commit
+# rewrites the database file, so its modification stamp works as a version: any write anywhere
+# invalidates every entry. Only reads use it (inside a request scope), so a write request never
+# sees a value from before its own uncommitted changes.
+_DB_CACHE_SIZE = 64
+_db_cache: "OrderedDict[tuple, Any]" = OrderedDict()
+
+
+def _db_version(conn: sqlite3.Connection) -> Optional[tuple]:
+    try:
+        path = next((row[2] for row in conn.execute("PRAGMA database_list") if row[1] == "main"), "")
+    except sqlite3.Error:
+        return None
+    if not path:
+        return None
+    try:
+        stamps = [(stat.st_mtime_ns, stat.st_size) for stat in (os.stat(path),)]
+        if os.path.exists(f"{path}-wal"):
+            wal = os.stat(f"{path}-wal")
+            stamps.append((wal.st_mtime_ns, wal.st_size))
+    except OSError:
+        return None
+    return (path, *stamps)
+
+
+def db_memo(conn: sqlite3.Connection, key: Hashable, build: Callable[[], Any]) -> Any:
+    """Like ``memo``, but kept across reads until the database changes."""
+    if _cache.get() is None:
+        return build()
+    version = _db_version(conn)
+    if version is None:
+        return memo(key, build)
+    full_key = (key, version)
+    with _blob_lock:
+        stored = _db_cache.get(full_key)
+        if stored is not None:
+            _db_cache.move_to_end(full_key)
+    if stored is not None:
+        return pickle.loads(stored)
+    value = build()
+    # The build may have written (record caches do); only keep it if nothing changed meanwhile.
+    if _db_version(conn) != version:
+        return value
+    try:
+        stored = pickle.dumps(value, pickle.HIGHEST_PROTOCOL)
+    except (pickle.PicklingError, TypeError, AttributeError):
+        return value
+    with _blob_lock:
+        _db_cache[full_key] = stored
+        while len(_db_cache) > _DB_CACHE_SIZE:
+            _db_cache.popitem(last=False)
     return value

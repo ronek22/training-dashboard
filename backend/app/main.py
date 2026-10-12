@@ -96,7 +96,8 @@ async def app_lifespan(app_instance: FastAPI):
 
 app = FastAPI(title="Training Dashboard API", lifespan=app_lifespan)
 
-app.add_middleware(GZipMiddleware, minimum_size=1024)  # trail maps are a few MB of coordinates
+# Trail maps are a few MB of coordinates. Level 5 is ~9x faster than the default 9 for ~1% more bytes.
+app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=5)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

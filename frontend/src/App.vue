@@ -93,7 +93,8 @@
     <main class="main-content">
       <WorkoutQuickAccess />
       <router-view v-slot="{ Component, route }">
-        <Transition :name="routeTransitionName">
+        <!-- The old page goes at once (see style.css); only the new one may animate in. -->
+        <Transition :name="routeTransitionName" @leave="(el, done) => done()">
           <component :is="Component" :key="route.path" />
         </Transition>
       </router-view>

@@ -91,7 +91,7 @@
         <strong :class="`is-${comparisonState.tone}`">{{ comparisonState.label }}</strong>
       </div>
       <div class="today-compare-track">
-        <i :style="{ width: `${comparisonState.actualPct}%` }"></i>
+        <i v-fill:width="{ value: comparisonState.actualPct, key: 'today:actual' }"></i>
         <b :style="{ left: `${comparisonState.plannedPct}%` }" aria-hidden="true"></b>
       </div>
       <div class="today-compare-scale">

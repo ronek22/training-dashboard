@@ -3,12 +3,12 @@
     <header class="week-head">
       <h2 id="week-heading">Your week</h2>
       <p class="week-totals">
-        <span><strong>{{ summary.distance }}</strong></span>
+        <span><strong><AnimatedNumber :value="summary.distance" cache-key="week:distance" /></strong></span>
         <span><strong>{{ summary.duration }}</strong></span>
-        <span><strong>{{ summary.sessions }}</strong> {{ summary.sessions === 1 ? 'session' : 'sessions' }}</span>
+        <span><strong><AnimatedNumber :value="summary.sessions" cache-key="week:sessions" /></strong> {{ summary.sessions === 1 ? 'session' : 'sessions' }}</span>
       </p>
       <div v-if="plannedMinutes" class="week-progress" role="img" :aria-label="`${progressPct}% of ${plannedLabel} planned`">
-        <span class="week-progress-track"><i :style="{ width: `${progressPct}%` }"></i></span>
+        <span class="week-progress-track"><i v-fill:width="{ value: progressPct, key: 'week:progress' }"></i></span>
         <small>{{ progressPct }}% of {{ plannedLabel }} planned</small>
       </div>
       <nav class="week-links">
@@ -38,7 +38,7 @@
           <strong class="week-cell-title">{{ day.displayTitle }}</strong>
           <small class="week-cell-sub">{{ day.subtitle }}</small>
         </span>
-        <span class="week-cell-bar" aria-hidden="true"><i :style="{ width: `${day.progressPct}%` }"></i></span>
+        <span class="week-cell-bar" aria-hidden="true"><i v-fill:width="{ value: day.progressPct, key: `week-day:${day.date}` }"></i></span>
         <span class="week-cell-foot">
           <span class="week-cell-minutes">{{ day.minutesLabel }}</span>
           <span class="week-cell-status">{{ day.statusLabel }}</span>
@@ -50,6 +50,7 @@
 
 <script setup>
 import ActivityIcon from './ActivityIcon.vue'
+import AnimatedNumber from './AnimatedNumber.vue'
 
 defineProps({
   days: { type: Array, required: true },

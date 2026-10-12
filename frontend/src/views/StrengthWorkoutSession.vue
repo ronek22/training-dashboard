@@ -12,12 +12,12 @@
         </div>
         <div class="session-vitals">
           <div><span>Elapsed</span><strong>{{ elapsedClock }}</strong></div>
-          <div><span>Sets</span><strong>{{ session.progress.completed_sets }}<small>/{{ session.progress.total_sets }}</small></strong></div>
+          <div><span>Sets</span><strong><AnimatedNumber :value="session.progress.completed_sets" /><small>/{{ session.progress.total_sets }}</small></strong></div>
           <div><span>Exercises</span><strong>{{ completedExerciseCount }}<small>/{{ session.exercises.length }}</small></strong></div>
-          <div><span>Volume</span><strong>{{ formatVolume(sessionVolume) }}<small> kg</small></strong></div>
+          <div><span>Volume</span><strong><AnimatedNumber :value="sessionVolume" :format="formatVolume" /><small> kg</small></strong></div>
         </div>
         <div class="runner-progress" role="progressbar" :aria-valuenow="session.progress.completed_sets" :aria-valuemax="session.progress.total_sets" aria-valuemin="0" :aria-label="`${session.progress.completed_sets} of ${session.progress.total_sets} sets completed`">
-          <span v-for="exercise in session.exercises" :key="exercise.id" :style="{ flexGrow: Math.max(1, exercise.sets.length) }" :class="{ active: exercise.exercise_order === session.current_exercise_order }"><i :style="{ width: `${exerciseFraction(exercise) * 100}%` }"></i></span>
+          <span v-for="exercise in session.exercises" :key="exercise.id" :style="{ flexGrow: Math.max(1, exercise.sets.length) }" :class="{ active: exercise.exercise_order === session.current_exercise_order }"><i v-fill:width="exerciseFraction(exercise) * 100"></i></span>
         </div>
       </section>
 
@@ -173,6 +173,7 @@
                     current: isCurrent(currentExercise, workoutSet),
                     completed: workoutSet.status === 'completed',
                     warmup: workoutSet.set_type === 'warmup',
+                    'just-done': workoutSet.id === justLoggedId,
                   }"
                   @click="goToSet(currentExercise, workoutSet)"
                 >
@@ -205,7 +206,7 @@
                 <strong>{{ exercise.exercise_name }}</strong>
                 <small>{{ exercisePrescription(exercise) }}<em v-if="blockFor(exercise)" class="queue-stalled trying" :title="`${blockFor(exercise).label}: ${blockFor(exercise).text}`">{{ blockFor(exercise).due ? 'block done' : blockFor(exercise).scope === 'block' ? `block wk ${blockFor(exercise).week}/${blockFor(exercise).weeks}` : 'trying' }}</em><em v-else-if="plateauFor(exercise)" class="queue-stalled" :title="`${plateauFor(exercise).suggestion.label}: ${plateauFor(exercise).suggestion.text}`">stalled</em></small>
               </div>
-              <span class="queue-set-markers" aria-hidden="true"><i v-for="item in exercise.sets" :key="item.id" :class="{ recorded: item.status === 'completed', selected: isCurrent(exercise, item), warmup: item.set_type === 'warmup' }"></i></span>
+              <span class="queue-set-markers" aria-hidden="true"><i v-for="item in exercise.sets" :key="item.id" :class="{ recorded: item.status === 'completed', selected: isCurrent(exercise, item), warmup: item.set_type === 'warmup', 'just-done': item.id === justLoggedId }"></i></span>
             </button>
 
             <form v-if="showAddExercise" class="live-exercise-form" @submit.prevent="addExerciseToSession">
@@ -343,6 +344,7 @@
 import RecoveryTimerPill from '../components/RecoveryTimerPill.vue'
 import ExerciseGuide from '../components/ExerciseGuide.vue'
 import SetCoach from '../components/SetCoach.vue'
+import AnimatedNumber from '../components/AnimatedNumber.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
@@ -725,17 +727,28 @@ const toggleSound = () => {
   }
 }
 
+// The set just logged gets a short check-off flash in the set table and the lineup.
+const justLoggedId = ref(null)
+let justLoggedTimer
+const flashLogged = (id) => {
+  clearTimeout(justLoggedTimer)
+  justLoggedId.value = id
+  justLoggedTimer = setTimeout(() => { justLoggedId.value = null }, 900)
+}
+
 const completeCurrentSet = async () => {
   if (!currentSet.value || savingSet.value) return
   ensureAudioContext()
   savingSet.value = true
   error.value = ''
+  const loggedId = currentSet.value.id
   try {
     const { data } = await api.completeStrengthWorkoutSet(session.value.id, currentSet.value.id, {
       actual_reps: Number(actualReps.value),
       actual_weight_kg: actualWeight.value === '' || actualWeight.value == null ? null : Number(actualWeight.value),
     })
     session.value = data
+    flashLogged(loggedId)
     syncInputs()
   } catch (setError) {
     error.value = setError?.response?.data?.detail || 'Could not save set.'
@@ -953,6 +966,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   window.clearInterval(ticker)
+  clearTimeout(justLoggedTimer)
   restStripObserver?.disconnect()
   window.clearTimeout(liveSuggestionTimer)
   window.clearTimeout(liveSuggestionCloseTimer)
@@ -1036,7 +1050,7 @@ onBeforeUnmount(() => {
 .runner-progress { grid-column: 1 / -1; display: flex; gap: 4px; }
 .runner-progress > span { flex: 1 1 0; height: 4px; overflow: hidden; border-radius: 4px; background: var(--surface2); }
 .runner-progress > span.active { background: color-mix(in srgb, var(--runner-accent) 22%, var(--surface2)); }
-.runner-progress i { display: block; height: 100%; border-radius: inherit; background: var(--runner-mint); transition: width .3s ease; }
+.runner-progress i { display: block; height: 100%; border-radius: inherit; background: var(--runner-mint); }
 .runner-progress > span.active i { background: var(--runner-accent); }
 .session-instructions { display: flex; gap: 12px; margin: 0; color: var(--muted-soft); font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
 .session-instructions span { flex-shrink: 0; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .1em; line-height: 1.8; text-transform: uppercase; }
@@ -1136,6 +1150,10 @@ onBeforeUnmount(() => {
 .set-actual { font-weight: 600; text-align: right; }
 .set-table > button.warmup .set-name { color: var(--muted); font-style: italic; }
 .set-table > button.completed .set-actual { color: var(--success-text); }
+.set-table > button.just-done { animation: set-logged 900ms var(--motion-ease-standard); }
+.set-table > button.just-done .set-actual { display: inline-block; animation: set-check 420ms var(--motion-ease-emphasized); }
+@keyframes set-logged { 0% { background: color-mix(in srgb, var(--runner-mint) 22%, transparent); } 100% { background: transparent; } }
+@keyframes set-check { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
 .set-table > button.current { background: #f6bd670d; box-shadow: inset 3px 0 0 var(--runner-accent); }
 .set-table > button.current .set-name, .set-table > button.current .set-actual { color: var(--runner-accent); }
 
@@ -1160,6 +1178,9 @@ onBeforeUnmount(() => {
 .queue-set-markers i { width: 6px; height: 6px; border-radius: 50%; background: var(--surface3); }
 .queue-set-markers i.warmup { width: 4px; height: 4px; align-self: center; }
 .queue-set-markers i.recorded { background: var(--runner-mint); }
+.queue-set-markers i { transition: background var(--motion-duration-base) var(--motion-ease-standard); }
+.queue-set-markers i.just-done { animation: marker-pop 500ms var(--motion-ease-emphasized); }
+@keyframes marker-pop { 0% { transform: scale(1); } 40% { transform: scale(1.9); } 100% { transform: scale(1); } }
 .queue-set-markers i.selected { background: var(--runner-accent); }
 .watch-status { display: flex; gap: 8px; margin: 10px 6px 0; padding-top: 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; line-height: 1.45; }
 .watch-status span { color: var(--text-soft); }
@@ -1176,7 +1197,9 @@ onBeforeUnmount(() => {
 .session-actions p { flex: 1; color: var(--muted); font-size: 11px; }
 .danger-button { background: transparent; font-size: 11px; }
 .finish-button { min-height: 44px; border: 1px solid #f6bd6740; border-radius: 12px; background: #f6bd6710; color: var(--runner-accent); padding: 10px 18px; font-weight: 700; font-size: 12px; }
-.all-done { display: flex; align-items: center; gap: 20px; border-color: #72ddba40; background: #72ddba08; }
+.all-done { display: flex; align-items: center; gap: 20px; border-color: #72ddba40; background: #72ddba08; animation: all-done-in 420ms var(--motion-ease-emphasized) both; }
+.all-done > span { display: inline-block; animation: set-check 520ms 120ms var(--motion-ease-emphasized) both; }
+@keyframes all-done-in { 0% { opacity: 0; transform: translateY(var(--motion-distance-sm)) scale(.98); } 100% { opacity: 1; transform: none; } }
 .all-done > span { font-size: 30px; color: var(--success-text); }
 .all-done h2 { font-family: var(--font-display); }
 .all-done p { color: var(--muted-soft); font-size: 12px; }

@@ -2,10 +2,10 @@
   <div class="tiles">
     <article v-for="tile in tiles" :key="tile.key" class="tile">
       <span class="tile-label">{{ tile.label }}</span>
-      <strong class="tile-value">{{ tile.value }}<small v-if="tile.unit">{{ tile.unit }}</small></strong>
+      <strong class="tile-value"><AnimatedNumber :value="tile.value" :cache-key="`tile:${tile.key}`" /><small v-if="tile.unit">{{ tile.unit }}</small></strong>
 
       <span v-if="tile.visual === 'plan'" class="tile-meter" aria-hidden="true">
-        <i :style="{ width: `${tile.fillPct}%` }"></i>
+        <i v-fill:width="{ value: tile.fillPct, key: `tile-fill:${tile.key}` }"></i>
         <b :style="{ left: `${tile.markerPct}%` }"></b>
       </span>
       <span v-else-if="tile.visual === 'zones'" class="tile-zones" aria-hidden="true">
@@ -23,6 +23,8 @@
 </template>
 
 <script setup>
+import AnimatedNumber from './AnimatedNumber.vue'
+
 defineProps({ tiles: { type: Array, required: true } })
 </script>
 

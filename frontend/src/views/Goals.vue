@@ -103,9 +103,9 @@
               <div class="gcard-ring" role="progressbar" :aria-label="`${goal.title} progress`" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="Math.round(goal.progress_pct)">
                 <svg viewBox="0 0 80 80" aria-hidden="true">
                   <circle class="ring-track" cx="40" cy="40" r="34" />
-                  <circle v-if="goal.progress_pct > 0" class="ring-fill" cx="40" cy="40" r="34" :stroke-dasharray="`${ringLength(goal)} ${RING_CIRCUMFERENCE}`" />
+                  <circle v-if="goal.progress_pct > 0" v-fill:ring="{ value: goal.progress_pct, length: RING_CIRCUMFERENCE, key: `goal:${goal.id}` }" class="ring-fill" cx="40" cy="40" r="34" />
                 </svg>
-                <strong><span>{{ Math.round(goal.progress_pct) }}<small>%</small></span></strong>
+                <strong><span><AnimatedNumber :value="Math.round(goal.progress_pct)" :cache-key="`goal-pct:${goal.id}`" /><small>%</small></span></strong>
               </div>
               <div class="gcard-figures">
                 <div class="gcard-value"><strong>{{ formatGoalValue(goal, goal.current_value) }}</strong><span>of {{ formatGoalValue(goal, goal.target_value) }} {{ goal.unit }}</span></div>
@@ -491,6 +491,7 @@ import { useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
 import GoalHistorySparkline from '../components/GoalHistorySparkline.vue'
 import NavIcon from '../components/NavIcon.vue'
+import AnimatedNumber from '../components/AnimatedNumber.vue'
 
 const api = useApi()
 const router = useRouter()
@@ -2227,7 +2228,7 @@ const showWeeklyRequirement = (goal) => {
 .gcard-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .gcard-ring circle { fill: none; stroke-width: 7; }
 .ring-track { stroke: rgb(var(--ov-rgb) / .08); }
-.ring-fill { stroke: var(--tone); stroke-linecap: round; transition: stroke-dasharray var(--motion-duration-slow) var(--motion-ease-standard); }
+.ring-fill { stroke: var(--tone); stroke-linecap: round; }
 .gcard-completed .ring-fill, .gcard-ahead_of_pace .ring-fill { stroke: var(--success); }
 .gcard-ring strong { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-display); font-size: 26px; line-height: 1; letter-spacing: -.04em; }
 .gcard-ring strong span { position: relative; }

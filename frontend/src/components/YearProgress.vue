@@ -13,7 +13,7 @@
         <div class="year-card-top">
           <span class="year-card-icon" aria-hidden="true"><ActivityIcon :type="card.type" :tone="card.tone" :size="18" /></span>
           <div class="year-card-name"><strong>{{ card.title }}</strong><small>Cumulative {{ card.unitLabel }}</small></div>
-          <div class="year-card-total"><strong>{{ format(card.total) }}</strong><span>{{ card.unit }}</span></div>
+          <div class="year-card-total"><strong><AnimatedNumber :value="card.total" :format="format" :cache-key="`year:${card.key}`" :duration="900" /></strong><span>{{ card.unit }}</span></div>
         </div>
 
         <svg class="year-chart" :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="card.ariaLabel">
@@ -65,6 +65,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import ActivityIcon from './ActivityIcon.vue'
+import AnimatedNumber from './AnimatedNumber.vue'
 
 const props = defineProps({
   rideSeries: { type: Array, default: () => [] },

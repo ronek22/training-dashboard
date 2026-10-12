@@ -6,7 +6,7 @@
       <li v-for="(lift, index) in exercises" :key="lift.id">
         <span class="strength-lift-order">{{ String(index + 1).padStart(2, '0') }}</span>
         <span class="strength-lift-name"><strong>{{ lift.name }}</strong><small>{{ lift.summary }}</small></span>
-        <span class="strength-lift-bar" aria-hidden="true"><i :style="{ width: `${lift.volumePct}%` }"></i></span>
+        <span class="strength-lift-bar" aria-hidden="true"><i v-fill:width="{ value: lift.volumePct, key: `lift:${lift.id}` }"></i></span>
         <span class="strength-lift-volume">{{ lift.volumeLabel }}</span>
       </li>
     </ol>

@@ -31,11 +31,11 @@
       <div class="intake">
         <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
           <circle cx="60" cy="60" r="52" class="ring-track" />
-          <circle v-if="day.target" cx="60" cy="60" r="52" class="ring-fill" :class="dayTone"
-            :stroke-dasharray="`${ringLength * intakeShare} ${ringLength}`" transform="rotate(-90 60 60)" />
+          <circle v-if="day.target" v-fill:ring="{ value: intakeShare * 100, length: ringLength, key: 'food:ring' }" cx="60" cy="60" r="52" class="ring-fill" :class="dayTone"
+            transform="rotate(-90 60 60)" />
         </svg>
         <div class="intake-copy">
-          <strong>{{ fmt(day.totals.kcal) }}</strong>
+          <strong><AnimatedNumber :value="day.totals.kcal" :format="fmt" cache-key="food:kcal" /></strong>
           <span>{{ day.target ? `of ${fmt(day.target.kcal)} kcal` : 'kcal eaten' }}</span>
           <p :class="['gap', dayTone]">{{ day.target ? gapLine : 'Set your body profile for a target' }}</p>
         </div>
@@ -44,8 +44,8 @@
       <div class="macros">
         <div v-for="macro in macroTiles" :key="macro.key" class="macro">
           <span class="tile-label">{{ macro.label }}</span>
-          <div class="tile-value"><strong>{{ macro.value }}</strong><small>{{ macro.unit }}</small></div>
-          <div class="mini-bar"><i :class="macro.tone" :style="{ width: `${macro.fill}%` }"></i></div>
+          <div class="tile-value"><strong><AnimatedNumber :value="macro.value" :cache-key="`food:${macro.key}`" /></strong><small>{{ macro.unit }}</small></div>
+          <div class="mini-bar"><i v-fill:width="{ value: macro.fill, key: `food-fill:${macro.key}` }" :class="macro.tone"></i></div>
           <small class="tile-hint">{{ macro.hint }}</small>
         </div>
       </div>
@@ -162,7 +162,7 @@
             <div v-else class="item col-head" aria-hidden="true">
               <span></span><span>kcal</span><span class="protein">P</span><span class="carbs">C</span><span class="fat">F</span><span></span>
             </div>
-            <div v-for="entry in group.entries" :key="entry.id" class="entry" :class="{ editing: editingId === entry.id }"
+            <div v-for="entry in group.entries" :key="entry.id" class="entry" :class="{ editing: editingId === entry.id, 'just-logged': justLoggedId === entry.id }"
               role="button" tabindex="0" :title="'Click to edit'" @click="editEntry(entry)" @keydown.enter="editEntry(entry)">
               <div v-for="item in entry.items" :key="item.id" class="item">
                 <span class="item-name" :title="item.grams ? `${item.name} · ${Math.round(item.grams)} g` : item.name">{{ item.name }}<small v-if="item.grams">{{ Math.round(item.grams) }} g</small></span>
@@ -170,7 +170,7 @@
                 <span class="num">{{ grams(item.protein_g) }}</span>
                 <span class="num">{{ grams(item.carbs_g) }}</span>
                 <span class="num">{{ grams(item.fat_g) }}</span>
-                <button type="button" class="star" :class="{ saved: isSaved(item) }" :title="isSaved(item) ? 'In saved foods' : 'Save as a staple'"
+                <button type="button" class="star" :class="{ saved: isSaved(item), 'just-saved': justStarred === item.name }" :title="isSaved(item) ? 'In saved foods' : 'Save as a staple'"
                   :aria-label="`Save ${item.name} as a staple`" :disabled="isSaved(item)" @click.stop="saveStaple(item)">{{ isSaved(item) ? '★' : '☆' }}</button>
               </div>
               <span v-if="entry.source === 'photo'" class="badge">photo</span>
@@ -199,7 +199,7 @@
               <span class="week-value">{{ item.logged ? kShort(item.eaten.kcal) : '—' }}</span>
               <div class="week-track">
                 <i v-if="item.target_kcal" class="target-line" :style="{ bottom: `${barHeight(item.target_kcal)}%` }"></i>
-                <i v-if="item.logged" class="eaten" :class="intakeTone(item.eaten.kcal, item.target_kcal, item.finished)" :style="{ height: `${barHeight(item.eaten.kcal)}%` }"></i>
+                <i v-if="item.logged" v-fill:height="{ value: barHeight(item.eaten.kcal), key: `food-week:${item.date}` }" class="eaten" :class="intakeTone(item.eaten.kcal, item.target_kcal, item.finished)"></i>
               </div>
               <span class="week-label">{{ weekday(item.date) }}</span>
               <small class="week-train" :class="{ none: !item.training_kcal }">{{ item.training_kcal ? `+${item.training_kcal}` : '·' }}</small>
@@ -250,6 +250,7 @@ import RecipeLibrary from '../components/RecipeLibrary.vue'
 import ProductLibrary from '../components/ProductLibrary.vue'
 import ProductDialog from '../components/ProductDialog.vue'
 import MealIdeas from '../components/MealIdeas.vue'
+import AnimatedNumber from '../components/AnimatedNumber.vue'
 import { defaultGrams, productLabel, scalePer100 } from '../food/products.mjs'
 import { readPhoto as downscalePhoto } from '../food/photo.mjs'
 import { MACROS, defaultMeal, draftRow, intakeTone, rowsToItems, setGrams, setMacro, sumRows } from '../food/draft.mjs'
@@ -521,14 +522,27 @@ function resetDraft() {
   meal.value = isToday.value ? defaultMeal() : meal.value
   nextTick(() => autoGrow())
 }
+// The meal just logged or edited gets a short highlight so it's easy to spot in its tile.
+const justLoggedId = ref(null)
+const justStarred = ref(null)
+let justLoggedTimer
+function flashEntry(id) {
+  if (!id) return
+  clearTimeout(justLoggedTimer)
+  justLoggedId.value = id
+  justLoggedTimer = setTimeout(() => { justLoggedId.value = null }, 1200)
+}
 async function saveEntry() {
   saving.value = true
   logError.value = ''
   const payload = { date: selectedDay.value, meal: meal.value, source: source.value, raw_text: rawText.value || null, items: rowsToItems(rows.value) }
+  const before = new Set((day.value?.entries || []).map((entry) => entry.id))
+  const editedId = editingId.value
   try {
     const { data } = editingId.value ? await api.updateFoodEntry(editingId.value, payload) : await api.createFoodEntry(payload)
     day.value = data
     resetDraft()
+    flashEntry(editedId || data.entries.find((entry) => !before.has(entry.id))?.id)
   } catch (error) {
     logError.value = error?.response?.data?.detail || 'The meal could not be saved.'
   } finally {
@@ -594,7 +608,11 @@ async function removeEntry(entry) {
   }
 }
 async function saveStaple(item) {
-  try { saved.value = (await api.saveFood(item)).data } catch { logError.value = 'Could not save that food.' }
+  try {
+    saved.value = (await api.saveFood(item)).data
+    justStarred.value = item.name
+    setTimeout(() => { if (justStarred.value === item.name) justStarred.value = null }, 600)
+  } catch { logError.value = 'Could not save that food.' }
 }
 async function saveProfile() {
   profileSaving.value = true
@@ -617,6 +635,7 @@ onMounted(() => {
 onUnmounted(() => {
   disposed = true
   clearTimeout(pollTimer)
+  clearTimeout(justLoggedTimer)
 })
 </script>
 
@@ -645,7 +664,7 @@ onUnmounted(() => {
 .ring { width: 104px; height: 104px; flex: 0 0 auto; }
 .ring circle { fill: none; stroke-width: 11; }
 .ring-track { stroke: var(--surface3); }
-.ring-fill { stroke: var(--accent); stroke-linecap: round; transition: stroke-dasharray .4s ease; }
+.ring-fill { stroke: var(--accent); stroke-linecap: round; transition: stroke var(--motion-duration-base) var(--motion-ease-standard); }
 .ring-fill.good { stroke: var(--success); }
 .ring-fill.close { stroke: var(--warning); }
 .ring-fill.under { stroke: var(--danger); }
@@ -761,6 +780,14 @@ onUnmounted(() => {
 .entry + .entry { margin-top: 2px; }
 .entry:hover, .entry:focus-visible { background: var(--surface2); outline: none; }
 .entry.editing { background: var(--surface2); box-shadow: inset 3px 0 0 var(--accent); }
+.entry.just-logged { animation: entry-logged 1200ms var(--motion-ease-standard); }
+@keyframes entry-logged {
+  0% { background: color-mix(in srgb, var(--accent) 18%, transparent); transform: translateX(var(--motion-distance-xs)); }
+  25% { transform: none; }
+  100% { background: transparent; }
+}
+.star.just-saved { animation: star-pop 500ms var(--motion-ease-emphasized); }
+@keyframes star-pop { 0% { transform: scale(1); } 40% { transform: scale(1.5) rotate(-12deg); } 100% { transform: scale(1); } }
 .item { display: grid; grid-template-columns: minmax(0, 1fr) 40px 34px 34px 34px 16px; align-items: baseline; gap: 6px; padding: 4px 0; font-size: 13px; }
 .col-head { padding: 2px 0 0; color: var(--muted); font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
 .col-head span { text-align: right; }

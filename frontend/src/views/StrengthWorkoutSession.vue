@@ -1044,7 +1044,7 @@ onBeforeUnmount(() => {
 .runner-head h1 { margin: 2px 0 0; font-family: var(--font-display); font-size: 24px; line-height: 1.2; letter-spacing: -.03em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .session-vitals { display: flex; align-items: center; gap: 26px; }
 .session-vitals div { display: grid; gap: 2px; }
-.session-vitals span { color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.session-vitals > div > span { color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
 .session-vitals strong { font-family: var(--font-display); font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .session-vitals strong small { color: var(--muted); font-size: 13px; font-weight: 500; }
 .runner-progress { grid-column: 1 / -1; display: flex; gap: 4px; }

@@ -181,7 +181,7 @@ const cards = computed(() => [
 .year-card-name small { color: var(--dash-muted, var(--muted)); font-size: 11px; }
 .year-card-total { display: flex; align-items: baseline; gap: 4px; }
 .year-card-total strong { font-size: 30px; font-weight: 650; letter-spacing: -0.8px; line-height: 1; font-variant-numeric: tabular-nums; }
-.year-card-total span { color: var(--dash-muted, var(--muted)); font-size: 12px; }
+.year-card-total > span { color: var(--dash-muted, var(--muted)); font-size: 12px; }
 
 .year-chart { display: block; width: 100%; height: auto; overflow: visible; }
 .year-grid-line { stroke: rgb(var(--tint-rgb) / 0.08); stroke-width: 1; }

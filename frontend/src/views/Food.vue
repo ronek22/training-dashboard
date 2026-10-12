@@ -669,7 +669,7 @@ onUnmounted(() => {
 .ring-fill.close { stroke: var(--warning); }
 .ring-fill.under { stroke: var(--danger); }
 .intake-copy strong { display: block; font-family: var(--font-display); font-size: 38px; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-.intake-copy span { color: var(--muted); font-size: 13px; }
+.intake-copy > span { color: var(--muted); font-size: 13px; }
 .gap { margin: 8px 0 0; font-size: 13px; color: var(--text-soft); }
 .gap.under { color: var(--danger); }
 .gap.good { color: var(--success); }

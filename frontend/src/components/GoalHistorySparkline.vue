@@ -6,6 +6,7 @@
 
     <svg
       v-if="history.kind === 'recurring'"
+      v-chart-intro="introKey"
       class="goal-history-chart"
       :viewBox="`0 0 ${WIDTH} ${HEIGHT}`"
       preserveAspectRatio="none"
@@ -15,7 +16,8 @@
     >
       <g v-for="(bar, index) in bars" :key="bar.entry.period_start">
         <rect
-          class="goal-history-bar"
+          :style="{ '--i': index * (16 / bars.length) }"
+          class="goal-history-bar chart-grow"
           :class="{ 'is-hit': bar.entry.hit, 'is-partial': bar.entry.partial, 'is-before': bar.entry.before_goal, 'is-hovered': hovered === index }"
           :x="bar.x"
           :y="bar.y"
@@ -37,6 +39,7 @@
 
     <svg
       v-else
+      v-chart-intro="introKey"
       class="goal-history-chart"
       :viewBox="`0 0 ${WIDTH} ${HEIGHT}`"
       preserveAspectRatio="none"
@@ -44,8 +47,8 @@
       :aria-label="summary"
       @mouseleave="hovered = null"
     >
-      <polyline class="goal-history-pace" :points="yearlyPoints('pro_rata_target')" />
-      <polyline class="goal-history-cumulative" :points="yearlyPoints('cumulative')" />
+      <polyline class="goal-history-pace chart-fade" :points="yearlyPoints('pro_rata_target')" />
+      <polyline class="goal-history-cumulative chart-draw" pathLength="1" :points="yearlyPoints('cumulative')" />
       <rect
         v-for="(slot, index) in yearlySlots"
         :key="slot.entry.period_start"
@@ -72,6 +75,8 @@ import { computed, ref } from 'vue'
 const props = defineProps({
   history: { type: Object, default: null },
   periodNoun: { type: String, default: 'week' },
+  // Lets the chart draw in only the first time it is seen in a session.
+  introKey: { type: String, default: '' },
 })
 
 const WIDTH = 240

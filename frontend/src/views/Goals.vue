@@ -121,7 +121,7 @@
             <p class="gcard-coach" :class="{ 'is-empty': !coachLine(goal) }">{{ coachLine(goal) }}</p>
 
             <div class="gcard-history">
-              <GoalHistorySparkline v-if="usesVolumeDisplay(goal)" :history="goal.history" :period-noun="goal.period_type === 'month' ? 'month' : 'week'" />
+              <GoalHistorySparkline v-if="usesVolumeDisplay(goal)" :intro-key="`goal-history:${goal.id}`" :history="goal.history" :period-noun="goal.period_type === 'month' ? 'month' : 'week'" />
             </div>
 
             <p v-if="goal.metric_type === 'strength_sessions' && proteinLine" class="gcard-note gcard-protein">{{ proteinLine }}</p>

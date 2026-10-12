@@ -11,19 +11,19 @@
     </header>
 
     <div v-if="points.length" class="chart-wrap" @mouseleave="hoveredDate = null">
-      <div class="chart-canvas">
+      <div v-chart-intro="`health:${title}`" class="chart-canvas">
         <svg viewBox="0 0 680 230" role="img" :aria-label="`${title} over ${points.length} recorded days. Hover or tap a day to inspect it.`" preserveAspectRatio="none">
           <line v-for="line in gridLines" :key="line.y" x1="46" :y1="line.y" x2="664" :y2="line.y" class="grid-line" />
           <rect v-if="targetBand" x="46" :y="targetBand.y" width="618" :height="targetBand.height" class="target-band"><title>{{ targetLabel }}</title></rect>
 
           <template v-if="chartType === 'bar'">
             <template v-for="point in points" :key="point.date">
-              <rect v-for="(stage, stageIndex) in point.stages" :key="`${point.date}-${stage.key}`" :x="point.barX" :y="stage.y" :width="point.barWidth" :height="Math.max(1, stage.height)" :rx="stageIndex === point.stages.length - 1 ? 3 : 0" class="signal-bar" :class="[{ active: isActive(point) }, `is-${point.averageState}`]" :style="{ fill: stage.color }" :fill-opacity="point.intensity" />
+              <rect v-for="(stage, stageIndex) in point.stages" :key="`${point.date}-${stage.key}`" :x="point.barX" :y="stage.y" :width="point.barWidth" :height="Math.max(1, stage.height)" :rx="stageIndex === point.stages.length - 1 ? 3 : 0" class="signal-bar chart-grow" :class="[{ active: isActive(point) }, `is-${point.averageState}`]" :style="{ fill: stage.color, '--i': point.index * (20 / points.length), transformBox: 'view-box', transformOrigin: `0 ${chartBottom}px` }" :fill-opacity="point.intensity" />
             </template>
           </template>
           <template v-else>
-            <polyline :points="areaPoints" class="signal-area" />
-            <polyline :points="linePoints" class="signal-line" />
+            <polyline :points="areaPoints" class="signal-area chart-fade" />
+            <polyline :points="linePoints" pathLength="1" class="signal-line chart-draw" />
           </template>
 
           <rect v-if="averageY !== null" x="46" :y="averageY - 4" width="618" height="8" class="average-band" />
@@ -55,7 +55,7 @@
           <i
             v-for="point in points"
             :key="`${point.date}-visual-dot`"
-            class="line-dot"
+            class="line-dot chart-fade"
             :class="{ active: isActive(point) }"
             :style="{ left: `${(point.x / 680) * 100}%`, top: `${(point.y / 230) * 100}%` }"
             aria-hidden="true"
@@ -141,7 +141,7 @@ const points = computed(() => {
     const averageState = Math.abs(averageDelta) <= 0.05 ? 'near' : averageDelta > 0 ? 'above' : 'below'
     const stages = props.showStages ? stageSegmentsFor(item) : [{ key: 'total', label: 'Total', color: props.accent, y: yFor(item.value), height: Math.max(2, chartBottom - yFor(item.value)) }]
     const stageText = props.showStages && item.stages ? stages.filter(stage => stage.key !== 'unspecified').map(stage => `${stage.label} ${formatStageDuration(stage.minutes)}`).join(', ') : ''
-    return { ...item, x, y: yFor(item.value), stages, barX: x - barWidth / 2, barWidth, hitX: chartLeft + slot * index, hitWidth: Math.max(slot, 5), intensity: 0.42 + Math.min(0.58, ratio * 0.72), averageState, tooltip: `${formatDate(item.date)}: ${formatValue(item.value)}${stageText ? `. ${stageText}` : ''}` }
+    return { ...item, index, x, y: yFor(item.value), stages, barX: x - barWidth / 2, barWidth, hitX: chartLeft + slot * index, hitWidth: Math.max(slot, 5), intensity: 0.42 + Math.min(0.58, ratio * 0.72), averageState, tooltip: `${formatDate(item.date)}: ${formatValue(item.value)}${stageText ? `. ${stageText}` : ''}` }
   })
 })
 const stageColors = { deep: '#8074fa', rem: '#d3adff', core: '#659eeb', unspecified: '#64748b' }

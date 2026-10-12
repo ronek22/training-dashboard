@@ -125,3 +125,27 @@ export const vFill = {
     unwatchVisibility(el)
   },
 }
+
+// v-chart-intro="'key'" on a chart's <svg>: the first time the chart is on screen in a
+// session, lines marked .chart-draw (with pathLength="1") draw left to right, bars marked
+// .chart-grow rise from the baseline (staggered by --i), and .chart-fade parts fade in.
+// Later visits and data refreshes render straight away.
+const introPlayed = new Set()
+
+export const vChartIntro = {
+  mounted(el, binding) {
+    const key = binding.value
+    if (reducedMotion() || (key && introPlayed.has(key))) return
+    el.classList.add('chart-intro')
+    watchVisibility(el)
+    whenVisible(el, () => {
+      if (key) introPlayed.add(key)
+      requestAnimationFrame(() => el.classList.add('is-playing'))
+      el._introTimer = setTimeout(() => el.classList.remove('chart-intro', 'is-playing'), 1800)
+    })
+  },
+  beforeUnmount(el) {
+    clearTimeout(el._introTimer)
+    unwatchVisibility(el)
+  },
+}

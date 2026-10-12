@@ -16,7 +16,7 @@
           <div class="year-card-total"><strong><AnimatedNumber :value="card.total" :format="format" :cache-key="`year:${card.key}`" :duration="900" /></strong><span>{{ card.unit }}</span></div>
         </div>
 
-        <svg class="year-chart" :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="card.ariaLabel">
+        <svg v-chart-intro="`year:${card.key}`" class="year-chart" :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="card.ariaLabel">
           <defs>
             <linearGradient :id="`year-area-${card.key}`" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" style="stop-color: var(--chart); stop-opacity: 0.16" />
@@ -28,15 +28,22 @@
             v-for="bar in card.bars"
             :key="`bar-${bar.month}`"
             :x="bar.x" :y="bar.y" :width="bar.width" :height="bar.height" rx="2"
-            class="year-bar" :class="{ 'is-peak': bar.isPeak, 'is-active': active?.key === card.key && active.index === bar.index }"
+            :style="{ '--i': bar.index }"
+            class="year-bar chart-grow" :class="{ 'is-peak': bar.isPeak, 'is-active': active?.key === card.key && active.index === bar.index }"
           />
-          <polygon :points="card.area" :fill="`url(#year-area-${card.key})`" />
-          <polyline :points="card.line" class="year-line-glow" />
-          <polyline :points="card.line" class="year-line" />
-          <line v-if="card.projection" :x1="card.last.x" :y1="card.last.y" :x2="card.projection.x" :y2="card.projection.y" class="year-projection" />
-          <circle v-if="card.projection" :cx="card.projection.x" :cy="card.projection.y" r="3" class="year-projection-dot" />
-          <circle :cx="card.last.x" :cy="card.last.y" r="7" class="year-last-halo" />
-          <circle :cx="card.last.x" :cy="card.last.y" r="3.5" class="year-last-dot" />
+          <polygon :points="card.area" :fill="`url(#year-area-${card.key})`" class="chart-fade" />
+          <polyline :points="card.line" pathLength="1" class="year-line-glow chart-draw" />
+          <polyline :points="card.line" pathLength="1" class="year-line chart-draw" />
+          <g class="chart-fade">
+            <line v-if="card.projection" :x1="card.last.x" :y1="card.last.y" :x2="card.projection.x" :y2="card.projection.y" class="year-projection" />
+            <circle v-if="card.projection" :cx="card.projection.x" :cy="card.projection.y" r="3" class="year-projection-dot" />
+            <circle :cx="card.last.x" :cy="card.last.y" r="7" class="year-last-halo" />
+            <circle :cx="card.last.x" :cy="card.last.y" r="3.5" class="year-last-dot" />
+          </g>
+          <g v-if="active?.key === card.key" class="year-guide" aria-hidden="true">
+            <line :x1="card.points[active.index].x" :x2="card.points[active.index].x" :y1="TOP" :y2="BOTTOM" />
+            <circle :cx="card.points[active.index].x" :cy="card.points[active.index].y" r="4.5" />
+          </g>
           <text v-for="(label, index) in monthLetters" :key="`m-${index}`" :x="xFor(index)" :y="H - 4" text-anchor="middle" class="year-month" :class="{ 'is-future': index > card.lastIndex }">{{ label }}</text>
           <rect
             v-for="bar in card.bars"
@@ -127,7 +134,7 @@ function buildCard({ key, title, type, tone, color, unit, unitLabel, series, mon
     }
   })
   return {
-    key, title, type, tone, color, unit, unitLabel, bars, total, lastIndex, projectedTotal,
+    key, title, type, tone, color, unit, unitLabel, bars, total, lastIndex, projectedTotal, points,
     line: points.map((point) => `${point.x},${point.y}`).join(' '),
     area: [`${points[0].x},${BOTTOM}`, ...points.map((point) => `${point.x},${point.y}`), `${points[lastIndex].x},${BOTTOM}`].join(' '),
     last: points[lastIndex],
@@ -190,6 +197,10 @@ const cards = computed(() => [
 .year-month { fill:#7d8da6; font-size: 9px; }
 .year-month.is-future { fill:#4b5a70; }
 .year-hit { fill: transparent; cursor: crosshair; outline: none; }
+.year-guide { pointer-events: none; }
+.year-guide line { stroke: color-mix(in srgb, var(--chart) 55%, transparent); stroke-width: 1; stroke-dasharray: 2 3; }
+.year-guide circle { fill: var(--chart); stroke: var(--deep); stroke-width: 2; animation: year-guide-in 160ms var(--motion-ease-emphasized); transform-box: fill-box; transform-origin: center; }
+@keyframes year-guide-in { from { transform: scale(0.4); opacity: 0; } }
 .year-hit:focus-visible { fill: color-mix(in srgb, var(--chart) 6%, transparent); }
 
 .year-foot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 40px; margin: 0; border-top: 1px solid rgb(var(--tint-rgb) / 0.1); padding-top: 12px; }

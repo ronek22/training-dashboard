@@ -214,8 +214,17 @@ textarea {
     border-color var(--motion-duration-fast) var(--motion-ease-standard),
     opacity var(--motion-duration-fast) var(--motion-ease-standard),
     transform var(--motion-duration-fast) var(--motion-ease-standard),
-    box-shadow var(--motion-duration-fast) var(--motion-ease-standard);
+    box-shadow var(--motion-duration-fast) var(--motion-ease-standard),
+    scale var(--motion-duration-fast) var(--motion-ease-standard),
+    translate var(--motion-duration-fast) var(--motion-ease-standard);
 }
+
+/* A short press on anything clickable. `scale` composes with any transform a button already has. */
+button:not(:disabled):active,
+a:active {
+  scale: 0.97;
+}
+[role='button']:active { scale: 0.99; }
 
 button:focus-visible,
 input:focus-visible,
@@ -235,6 +244,48 @@ a:focus-visible {
   transition: box-shadow var(--motion-duration-base) var(--motion-ease-standard);
 }
 .card:hover { box-shadow: var(--shadow-card-hover); }
+
+/* Cards you can click lift a little on hover and settle back when pressed.
+   Static cards only deepen their shadow, so lift always means "this opens something". */
+a.card,
+button.card,
+.card[role='button'],
+.lift-card {
+  transition:
+    box-shadow var(--motion-duration-base) var(--motion-ease-standard),
+    border-color var(--motion-duration-fast) var(--motion-ease-standard),
+    translate var(--motion-duration-base) var(--motion-ease-standard),
+    scale var(--motion-duration-fast) var(--motion-ease-standard);
+}
+a.card:hover,
+button.card:hover,
+.card[role='button']:hover,
+.lift-card:hover {
+  translate: 0 -2px;
+  box-shadow: var(--shadow-card-hover);
+}
+a.card:active,
+button.card:active,
+.card[role='button']:active,
+.lift-card:active {
+  translate: 0;
+  scale: 0.99;
+}
+
+/* Chart intros, driven by v-chart-intro (utils/motion.js). */
+.chart-grow { transform-box: fill-box; transform-origin: 50% 100%; }
+.chart-intro .chart-draw { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.chart-intro .chart-grow { transform: scaleY(0); }
+.chart-intro:not(.is-playing) .chart-fade { opacity: 0 !important; }
+.chart-intro.is-playing .chart-draw {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1000ms var(--motion-ease-standard) 120ms;
+}
+.chart-intro.is-playing .chart-grow {
+  transform: none;
+  transition: transform 560ms var(--motion-ease-emphasized) calc(var(--i, 0) * 28ms);
+}
+.chart-intro.is-playing .chart-fade { transition: opacity 500ms var(--motion-ease-standard) 600ms; }
 
 .card-title {
   font-family: var(--font-display);

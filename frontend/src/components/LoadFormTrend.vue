@@ -12,12 +12,25 @@
       <div class="form-gauge-scale" aria-hidden="true"><span>Overreaching</span><span>Productive</span><span>Fresh</span></div>
     </div>
 
-    <svg class="load-trend-chart" :viewBox="`0 0 ${width} ${height}`" preserveAspectRatio="none" role="img" :aria-label="chartLabel">
-      <line x1="0" :y1="height - 1" :x2="width" :y2="height - 1" class="load-trend-base" />
-      <rect v-for="bar in loadBars" :key="bar.date" :x="bar.x" :y="bar.y" :width="bar.width" :height="bar.height" class="load-trend-bar" />
-      <polyline :points="fitnessLine" class="load-trend-fitness" />
-      <polyline :points="fatigueLine" class="load-trend-fatigue" />
-    </svg>
+    <div class="load-trend-plot" @pointermove="onHover" @pointerleave="hovered = null">
+      <svg v-chart-intro="'load-form-trend'" class="load-trend-chart" :viewBox="`0 0 ${width} ${height}`" preserveAspectRatio="none" role="img" :aria-label="chartLabel">
+        <line x1="0" :y1="height - 1" :x2="width" :y2="height - 1" class="load-trend-base" />
+        <rect v-for="(bar, index) in loadBars" :key="bar.date" :x="bar.x" :y="bar.y" :width="bar.width" :height="bar.height" :style="{ '--i': index * (20 / loadBars.length) }" class="load-trend-bar chart-grow" :class="{ 'is-active': hovered === index }" />
+        <polyline :points="fitnessLine" pathLength="1" class="load-trend-fitness chart-draw" />
+        <polyline :points="fatigueLine" pathLength="1" class="load-trend-fatigue chart-draw" />
+        <line v-if="hoverPoint" :x1="hoverPoint.x" :x2="hoverPoint.x" y1="0" :y2="height - 1" class="load-trend-guide" />
+      </svg>
+      <template v-if="hoverPoint">
+        <i class="load-trend-dot is-fitness" :style="{ left: `${hoverPoint.leftPct}%`, top: `${hoverPoint.fitnessPct}%` }" aria-hidden="true" />
+        <i class="load-trend-dot is-fatigue" :style="{ left: `${hoverPoint.leftPct}%`, top: `${hoverPoint.fatiguePct}%` }" aria-hidden="true" />
+        <div class="load-trend-tip" :class="{ 'is-left': hoverPoint.leftPct > 60 }" :style="{ left: `${hoverPoint.leftPct}%` }" role="status">
+          <strong>{{ hoverPoint.dateLabel }}</strong>
+          <span class="is-fitness">Fitness {{ hoverPoint.fitness }}</span>
+          <span class="is-fatigue">Fatigue {{ hoverPoint.fatigue }}</span>
+          <span>Load {{ hoverPoint.load }}</span>
+        </div>
+      </template>
+    </div>
     <div class="load-trend-legend">
       <span class="is-fitness">Fitness</span><span class="is-fatigue">Fatigue</span><span class="is-load">Daily load</span>
       <small>{{ points.length }} days</small>
@@ -26,7 +39,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { format, parseISO } from 'date-fns'
 
 const props = defineProps({
   chart: { type: Array, default: () => [] },
@@ -62,6 +76,27 @@ const loadBars = computed(() => points.value.map((item, index) => {
   const barWidth = Math.max(stepX.value * 0.55, 1.5)
   return { date: item.date, x: index * stepX.value - barWidth / 2, y: height - 1 - barHeight, width: barWidth, height: barHeight }
 }))
+const hovered = ref(null)
+function onHover(event) {
+  const box = event.currentTarget.getBoundingClientRect()
+  const share = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width))
+  hovered.value = Math.round(share * (points.value.length - 1))
+}
+const hoverPoint = computed(() => {
+  const item = points.value[hovered.value]
+  if (!item) return null
+  const x = hovered.value * stepX.value
+  return {
+    x,
+    leftPct: (x / width) * 100,
+    fitnessPct: (yFor(item.ctl) / height) * 100,
+    fatiguePct: (yFor(item.atl) / height) * 100,
+    dateLabel: item.date ? format(parseISO(item.date), 'EEE d MMM') : '',
+    fitness: Math.round(item.ctl),
+    fatigue: Math.round(item.atl),
+    load: Math.round(Number(item.load || 0)),
+  }
+})
 const chartLabel = computed(() => {
   const first = points.value[0]
   const last = points.value.at(-1)
@@ -80,7 +115,19 @@ const chartLabel = computed(() => {
 .form-gauge-track span.is-active { opacity: 0.9; }
 .form-gauge-track i { position: absolute; top: -4px; width: 3px; height: 16px; margin-left: -1.5px; border-radius: 2px; background:oklch(from #eef3fb calc(l - var(--dim-l)) c h); box-shadow: 0 0 0 2px var(--deep); }
 .form-gauge-scale { display: flex; justify-content: space-between; color:var(--muted); font-size: 10px; }
+.load-trend-plot { position: relative; cursor: crosshair; }
 .load-trend-chart { display: block; width: 100%; height: 86px; overflow: visible; }
+.load-trend-bar.is-active { fill: rgb(var(--tint-rgb) / 0.5); }
+.load-trend-guide { stroke: rgb(var(--tint-rgb) / 0.4); stroke-width: 1; stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; }
+.load-trend-dot { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border: 2px solid var(--deep); border-radius: 50%; pointer-events: none; }
+.load-trend-dot.is-fitness { background:oklch(from #76a6ff calc(l - var(--dim-l)) c h); }
+.load-trend-dot.is-fatigue { background:oklch(from #efb35a calc(l - var(--dim-l)) c h); }
+.load-trend-tip { position: absolute; bottom: calc(100% + 8px); z-index: 2; display: grid; gap: 2px; min-width: 112px; margin-left: 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg-elevated); box-shadow: var(--shadow-card-hover); padding: 7px 9px; color: var(--dash-muted, var(--muted)); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; animation: load-tip-in 120ms var(--motion-ease-standard); }
+.load-trend-tip.is-left { margin-left: 0; translate: calc(-100% - 10px) 0; }
+.load-trend-tip strong { color: var(--text); font-size: 11px; font-weight: 600; }
+.load-trend-tip .is-fitness { color:oklch(from #76a6ff calc(l - var(--dim-l)) c h); }
+.load-trend-tip .is-fatigue { color:oklch(from #efb35a calc(l - var(--dim-l)) c h); }
+@keyframes load-tip-in { from { opacity: 0; transform: translateY(3px); } }
 .load-trend-base { stroke: rgb(var(--tint-rgb) / 0.14); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .load-trend-bar { fill: rgb(var(--tint-rgb) / 0.2); }
 .load-trend-fitness, .load-trend-fatigue { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }

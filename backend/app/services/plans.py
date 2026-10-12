@@ -9,6 +9,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from ..repositories.activity_details import get_activity_detail_row
+from ..request_cache import memo
 from .benchmarks import (
     attach_benchmark_from_lookup,
     build_benchmark_session_lookup,
@@ -1056,6 +1057,13 @@ def serialize_weekly_plan_revision_row(row: Optional[sqlite3.Row]) -> Optional[d
 
 
 def serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection] = None) -> dict:
+    if conn is None:
+        return _serialize_weekly_plan(row, None)
+    # The dashboard serializes the same weeks several times per request.
+    return memo(("weekly_plan", tuple(row)), lambda: _serialize_weekly_plan(row, conn))
+
+
+def _serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection]) -> dict:
     days = ensure_plan_day_ids(row["week_start"], json.loads(row["days_json"]))
     latest_revision = None
     revisions = []
@@ -1238,6 +1246,10 @@ def list_weekly_plans_data(conn: sqlite3.Connection, limit: int = 8) -> list[dic
 
 
 def build_multi_week_execution_trend(conn: sqlite3.Connection, weeks: int = 6) -> dict:
+    return memo(("execution_trend", weeks), lambda: _build_multi_week_execution_trend(conn, weeks))
+
+
+def _build_multi_week_execution_trend(conn: sqlite3.Connection, weeks: int) -> dict:
     safe_weeks = max(2, min(weeks, 12))
     plan_rows = list_weekly_plan_rows(conn, safe_weeks)
     plans = [serialize_weekly_plan(row, conn) for row in plan_rows]

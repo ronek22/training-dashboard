@@ -9,7 +9,9 @@ router = APIRouter(prefix="/recovery", tags=["recovery"])
 
 
 def connection():
-    conn = get_db()
+    # FastAPI opens a generator dependency and runs the endpoint on different worker threads;
+    # one request uses the connection at a time, so crossing threads is safe.
+    conn = get_db(check_same_thread=False)
     try:
         # Serialize mutations, including a reply landing while another tab writes.
         conn.execute("BEGIN IMMEDIATE")

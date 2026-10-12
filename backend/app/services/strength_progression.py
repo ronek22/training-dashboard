@@ -12,6 +12,7 @@ from datetime import date
 from typing import Any, Optional
 
 from .personal_records import E1RM_MAX_REPS, epley_1rm
+from ..request_cache import memo
 from .strength import _filtered_sessions
 
 
@@ -164,6 +165,11 @@ def _max_dumbbell_kg(conn: sqlite3.Connection) -> Optional[float]:
 
 
 def _session_index(conn: sqlite3.Connection) -> list[dict]:
+    # Volume, progression, plateaus and muscle gain all start from the full history.
+    return memo("strength_session_index", lambda: _build_full_session_index(conn))
+
+
+def _build_full_session_index(conn: sqlite3.Connection) -> list[dict]:
     try:
         _, sessions = _filtered_sessions(conn, window_start=date(2000, 1, 1), body_part="all")
     except sqlite3.OperationalError:

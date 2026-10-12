@@ -1,6 +1,9 @@
+import copy
 import json
 import sqlite3
 from typing import Optional
+
+from ..request_cache import blob_memo
 
 
 SUPPORTED_MODALITIES = {
@@ -62,12 +65,6 @@ def _summarize_zone2(zone2_pct: int, dominant_zone_key: Optional[str]) -> str:
     return "Limited zone 2 time"
 
 
-def _streams_from_detail_row(detail_row: Optional[sqlite3.Row]) -> Optional[dict]:
-    if not detail_row or not detail_row["streams_json"]:
-        return None
-    return json.loads(detail_row["streams_json"])
-
-
 def build_activity_heart_rate_zone_summary(
     conn: sqlite3.Connection,
     activity: dict,
@@ -84,7 +81,16 @@ def build_activity_heart_rate_zone_summary(
             "reason": "unsupported_activity_type",
         }
 
-    streams = _streams_from_detail_row(detail_row)
+    streams_json = detail_row["streams_json"] if detail_row else None
+    if not streams_json:
+        return _zone_summary(modality, None)
+    # Every plan view recounts the same streams second by second; the zones are constants.
+    return copy.deepcopy(
+        blob_memo(f"hr_zones:{modality}", streams_json, lambda: _zone_summary(modality, json.loads(streams_json)))
+    )
+
+
+def _zone_summary(modality: str, streams: Optional[dict]) -> dict:
     if not streams:
         return {
             "available": False,

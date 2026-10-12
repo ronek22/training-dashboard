@@ -10,6 +10,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 from .adapters.mcp import build_mcp_router_dependencies
 from .db import get_db, init_db
+from .request_cache import request_scope
 from .routers.activities import router as activities_router
 from .routers.activity_feedback import router as activity_feedback_router
 from .routers.checkins import router as checkins_router
@@ -102,6 +103,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class RequestCacheMiddleware:
+    """Give each GET its own memo scope (see request_cache); writes run uncached."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope["method"] != "GET":
+            return await self.app(scope, receive, send)
+        with request_scope():
+            return await self.app(scope, receive, send)
+
+
+app.add_middleware(RequestCacheMiddleware)
 app.include_router(plans_router)
 app.include_router(activities_router)
 app.include_router(activity_feedback_router)

@@ -1,5 +1,6 @@
 <template>
   <div class="layout" :class="{ 'is-collapsed': sidebarCollapsed }">
+    <div class="route-progress" :class="{ 'is-active': apiBusy }" aria-hidden="true"><span /></div>
     <aside class="sidebar">
       <div class="sidebar-logo">
         <span class="logo-icon">TL</span>
@@ -105,7 +106,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useApi } from './stores/api'
+import { apiBusy, useApi } from './stores/api'
 import NavIcon from './components/NavIcon.vue'
 import ThemeToggle from './components/ThemeToggle.vue'
 import CoachChatDrawer from './components/CoachChatDrawer.vue'
@@ -508,6 +509,38 @@ const routeTransitionName = computed(() => {
 .streak-copy { display: grid; gap: 2px; }
 .streak-copy small { color: var(--muted); font-size: 8px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
 .streak-copy strong { color:oklch(from #f6a45d calc(l - var(--dim-l)) c h); font-family: var(--font-display); font-size: 13px; }
+
+/* Thin bar while data loads, so a click answers at once even before the page fills in. */
+.route-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 1000;
+  height: 2px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-duration-base) var(--motion-ease-standard);
+}
+
+.route-progress.is-active {
+  opacity: 1;
+}
+
+.route-progress span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: var(--accent);
+}
+
+.route-progress.is-active span {
+  animation: route-progress-slide 1.1s var(--motion-ease-standard) infinite;
+}
+
+@keyframes route-progress-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
 
 .main-content {
   flex: 1;

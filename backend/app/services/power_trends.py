@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any, Optional
 
+from ..request_cache import blob_memo
+
 
 POWER_EFFORT_DURATIONS = (15, 30, 60, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600)
 POWER_EFFORT_LABELS = {
@@ -269,6 +271,14 @@ def _confirmed_power_meter(
 
 
 def _build_segments(streams_json: Any) -> list[list[_Segment]]:
+    if isinstance(streams_json, str) and streams_json:
+        # Goal history asks for the same rides once per window; segments are frozen.
+        runs = blob_memo("power_segments", streams_json, lambda: _segments_from_streams(streams_json))
+        return [list(run) for run in runs]
+    return _segments_from_streams(streams_json)
+
+
+def _segments_from_streams(streams_json: Any) -> list[list[_Segment]]:
     """Return contiguous valid stream runs.
 
     A run ends at a non-monotonic timestamp, an invalid power sample, or a

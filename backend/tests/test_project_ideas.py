@@ -94,8 +94,8 @@ class ProjectIdeasTests(unittest.TestCase):
     def test_api_persistence_validation_missing_and_unavailable(self):
         app = FastAPI()
         app.include_router(router.router)
-        def db():
-            return sqlite3.connect(self.db, check_same_thread=False)
+        def db(check_same_thread=True):
+            return sqlite3.connect(self.db, check_same_thread=check_same_thread)
         with patch.object(router, 'get_db', db), patch.object(service, '_find_docs_dir', lambda: Path(self.tmp.name)), TestClient(app) as client:
             response = client.get('/project-ideas')
             self.assertEqual(response.status_code, 200)

@@ -191,17 +191,19 @@ const completedPlanStatuses = new Set(['linked', 'matched', 'partially_matched',
 
 const loadDashboard = async () => {
   loading.value = true
+  // The goal count and today's activities don't need the dashboard payload, so they load
+  // alongside it instead of after it.
+  void loadGoalReviewCount()
+  const activitiesRequest = api.getActivities({ days: 8, limit: 100 }).then(
+    ({ data }) => { recentActivities.value = data },
+    () => { recentActivities.value = [] },
+  )
+  void activitiesRequest.then(loadTodayActivityDetails)
   try {
-    const [dashboardResult, activitiesResult] = await Promise.allSettled([
-      api.getDashboard(),
-      api.getActivities({ days: 8, limit: 100 }),
-    ])
+    const [dashboardResult] = await Promise.allSettled([api.getDashboard(), activitiesRequest])
     dashboard.value = dashboardResult.status === 'fulfilled' ? dashboardResult.value.data : null
-    recentActivities.value = activitiesResult.status === 'fulfilled' ? activitiesResult.value.data : []
     if (dashboard.value && isLocalCoachHost.value) void refreshCoachState(false)
     if (todayPlan.value?.cycling_workout_id && !cyclingLibrary.value) void loadCyclingLibrary()
-    void loadTodayActivityDetails()
-    void loadGoalReviewCount()
     if (activityTone(todayPlan.value?.session_type) === 'strength' && !strengthTemplates.value.length) void loadStrengthTemplates()
   } finally { loading.value = false }
 }

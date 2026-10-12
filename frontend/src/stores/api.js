@@ -1,6 +1,50 @@
 import axios from 'axios'
+import { ref } from 'vue'
 
 const api = axios.create({ baseURL: '/api' })
+
+// True once a backend request has been pending long enough to notice; drives the top loading
+// bar. Long jobs (imports, route planning, letters) have their own progress UI and don't count.
+export const apiBusy = ref(false)
+const BUSY_DELAY_MS = 150
+let pendingRequests = 0
+let busyTimer = null
+const settleRequest = (config) => {
+  if (!config?.countsAsBusy) return
+  pendingRequests -= 1
+  if (pendingRequests) return
+  clearTimeout(busyTimer)
+  busyTimer = null
+  apiBusy.value = false
+}
+api.interceptors.request.use((config) => {
+  if (config.timeout && config.timeout > 30000) return config
+  config.countsAsBusy = true
+  pendingRequests += 1
+  busyTimer ??= setTimeout(() => {
+    busyTimer = null
+    apiBusy.value = pendingRequests > 0
+  }, BUSY_DELAY_MS)
+  return config
+})
+api.interceptors.response.use(
+  (response) => { settleRequest(response.config); return response },
+  (error) => { settleRequest(error.config); return Promise.reject(error) },
+)
+
+// The shell and a page often ask for the same read at once (the sidebar streak and the
+// Dashboard both load /dashboard): share one request while it is in flight. Later callers
+// get their own copy of the data, so nobody edits someone else's response.
+const inFlightGets = new Map()
+const sendGet = api.get.bind(api)
+api.get = (url, config = {}) => {
+  const key = `${url}?${JSON.stringify(config.params || {})}`
+  const pending = inFlightGets.get(key)
+  if (pending) return pending.then((response) => ({ ...response, data: structuredClone(response.data) }))
+  const request = sendGet(url, config).finally(() => inFlightGets.delete(key))
+  inFlightGets.set(key, request)
+  return request
+}
 const coachHelper = axios.create({
   baseURL: import.meta.env.VITE_COACH_HELPER_URL || 'http://127.0.0.1:8765',
   timeout: 8000,

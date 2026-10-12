@@ -5,8 +5,8 @@ DEFAULT_DB_PATH = "/data/training.db"
 DB_PATH = os.getenv("TRAINING_DB_PATH", DEFAULT_DB_PATH)
 
 
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
+def get_db(check_same_thread: bool = True):
+    conn = sqlite3.connect(DB_PATH, check_same_thread=check_same_thread)
     conn.row_factory = sqlite3.Row
     return conn
 

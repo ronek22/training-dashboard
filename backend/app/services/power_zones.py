@@ -54,15 +54,14 @@ def build_activity_power_zone_summary(
         lower = limits[index - 1] if index else 0
         upper = limits[index] if index < 6 else None
         watt_range = (
-            f"0–{upper:g} W" if index == 0 else
-            f"> {lower:g} W" if upper is None else
-            f"> {lower:g}–{upper:g} W"
+            f"> {round(lower)} W" if upper is None else
+            f"{round(lower)}–{round(upper)} W"
         )
         zones.append({
             "key": f"zone{index + 1}", "label": f"Zone {index + 1}",
             "seconds": seconds, "minutes": round(seconds / 60, 1),
             "pct": round(seconds / total * 100), "highlight": index == 1,
-            "watt_range": watt_range,
+            "watt_range": watt_range, "lower_watts": lower, "upper_watts": upper,
         })
     return {
         "available": True, "state": "available", "reason": None,

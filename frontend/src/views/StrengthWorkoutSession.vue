@@ -121,6 +121,17 @@
               @extend-rest="adjustRest"
             />
 
+            <div v-if="currentDraft.state === 'conflict'" class="draft-note conflict" role="status">
+              <span><strong>Unlogged entry</strong> {{ currentDraft.draft.reps }} × {{ formatWeight(currentDraft.draft.weight === '' ? null : currentDraft.draft.weight, 'BW') }} from earlier — this set was {{ currentSet.status === 'completed' ? 'logged' : 'changed' }} since.</span>
+              <button type="button" @click="useDraft">Use my entry</button>
+              <button type="button" @click="discardDraft">Discard</button>
+            </div>
+            <div v-else-if="currentDraft.state === 'restored'" class="draft-note" role="status">
+              <span><strong>Not logged</strong> · kept on this device if you switch away</span>
+              <button type="button" @click="discardDraft">Discard</button>
+            </div>
+            <p v-else-if="!draftsAvailable" class="draft-note muted">Draft recovery is unavailable in this browser — log the set before switching away.</p>
+
             <form class="log-form" @submit.prevent="completeCurrentSet">
               <div class="actual-inputs">
                 <label class="performance-field">
@@ -174,13 +185,14 @@
                     completed: workoutSet.status === 'completed',
                     warmup: workoutSet.set_type === 'warmup',
                     'just-done': workoutSet.id === justLoggedId,
+                    drafted: hasDraft(workoutSet),
                   }"
                   @click="goToSet(currentExercise, workoutSet)"
                 >
                   <span class="set-name">{{ setKindLabel(currentExercise, workoutSet) }}</span>
                   <span class="set-target">{{ workoutSet.target_reps }} × {{ formatWeight(workoutSet.target_weight_kg, 'BW') }}</span>
                   <span class="set-last">{{ lastSetFor(currentExercise, workoutSet) || '—' }}</span>
-                  <strong class="set-actual">{{ workoutSet.status === 'completed' ? `✓ ${workoutSet.actual_reps} × ${formatWeight(workoutSet.actual_weight_kg, 'BW')}` : isCurrent(currentExercise, workoutSet) ? 'Up now' : '' }}</strong>
+                  <strong class="set-actual">{{ workoutSet.status === 'completed' ? `✓ ${workoutSet.actual_reps} × ${formatWeight(workoutSet.actual_weight_kg, 'BW')}` : isCurrent(currentExercise, workoutSet) ? 'Up now' : hasDraft(workoutSet) ? 'Not logged' : '' }}</strong>
                 </button>
               </div>
             </div>
@@ -349,6 +361,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
+import { clearDrafts, draftFor, pruneDrafts, readDrafts, recordDraft, removeDraft, sameValues, setBaseline, writeDrafts } from '../coach/set-drafts.mjs'
 
 const api = useApi()
 const route = useRoute()
@@ -661,6 +674,7 @@ const loadSession = async () => {
   error.value = ''
   try {
     const { data } = await api.getStrengthWorkoutSession(route.params.sessionId)
+    loadDrafts(data)
     session.value = data
     syncInputs()
     if (currentExercise.value) loadExerciseHistory(currentExercise.value.exercise_name)
@@ -674,10 +688,55 @@ const loadSession = async () => {
   }
 }
 
+// Unlogged reps/weight survive switching sets or reloading; a set changed elsewhere asks before reuse.
+const draftStorage = (() => { try { return window.localStorage } catch { return null } })()
+const draftsAvailable = ref(Boolean(draftStorage))
+const setDrafts = ref({})
+const persistDrafts = (next) => {
+  setDrafts.value = next
+  if (session.value && (!draftStorage || !writeDrafts(draftStorage, session.value.id, next))) draftsAvailable.value = false
+}
+const loadDrafts = (data) => {
+  if (!draftStorage) return
+  const { available, drafts } = readDrafts(draftStorage, data.id)
+  draftsAvailable.value = available
+  setDrafts.value = drafts
+}
+const currentDraft = computed(() => session.value?.status === 'active' ? draftFor(setDrafts.value, currentSet.value) : { state: 'none', draft: null })
+const hasDraft = (workoutSet) => session.value?.status === 'active' && workoutSet.status !== 'completed' && String(workoutSet.id) in setDrafts.value
+const discardDraft = () => {
+  if (!currentSet.value) return
+  persistDrafts(removeDraft(setDrafts.value, String(currentSet.value.id)))
+  syncInputs()
+}
+const useDraft = () => {
+  const draft = currentDraft.value.draft
+  if (!draft) return
+  // Re-recording against the current server state settles the conflict.
+  persistDrafts(removeDraft(setDrafts.value, String(currentSet.value.id)))
+  actualReps.value = draft.reps
+  actualWeight.value = draft.weight
+}
+watch(session, (value) => {
+  const pruned = pruneDrafts(setDrafts.value, value)
+  if (pruned !== setDrafts.value) persistDrafts(pruned)
+})
+watch([actualReps, actualWeight], ([reps, weight]) => {
+  const workoutSet = currentSet.value
+  if (!workoutSet || session.value?.status !== 'active') return
+  const values = { reps, weight }
+  // A conflicting draft stays until the athlete edits, uses, or discards it.
+  if (currentDraft.value.state === 'conflict' && sameValues(values, setBaseline(workoutSet))) return
+  const next = recordDraft(setDrafts.value, workoutSet, values)
+  if (workoutSet.id in next || workoutSet.id in setDrafts.value) persistDrafts(next)
+})
+
 const syncInputs = () => {
   if (!currentSet.value) return
-  actualReps.value = currentSet.value.actual_reps ?? currentSet.value.target_reps
-  actualWeight.value = currentSet.value.actual_weight_kg ?? currentSet.value.target_weight_kg ?? ''
+  const { state, draft } = currentDraft.value
+  const values = state === 'restored' ? draft : setBaseline(currentSet.value)
+  actualReps.value = values.reps
+  actualWeight.value = values.weight
 }
 watch(() => currentSet.value?.id, syncInputs)
 watch(restRemaining, (remaining, previous) => {
@@ -748,6 +807,7 @@ const completeCurrentSet = async () => {
       actual_weight_kg: actualWeight.value === '' || actualWeight.value == null ? null : Number(actualWeight.value),
     })
     session.value = data
+    persistDrafts(removeDraft(setDrafts.value, String(loggedId)))
     flashLogged(loggedId)
     syncInputs()
   } catch (setError) {
@@ -877,6 +937,7 @@ const abandonWorkout = async () => {
   if (!window.confirm('Discard this workout? The session and every recorded set will be permanently deleted.')) return
   try {
     await api.abandonStrengthWorkoutSession(session.value.id)
+    if (draftStorage) clearDrafts(draftStorage, session.value.id)
     router.push('/strength/workouts')
   } catch (abandonError) {
     error.value = abandonError?.response?.data?.detail || 'Could not discard workout.'
@@ -1113,6 +1174,13 @@ onBeforeUnmount(() => {
 .runner-page .reset-target:disabled { opacity: 1; color: var(--muted); }
 
 .log-form { display: grid; gap: 14px; }
+.draft-note { display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 12px; border: 1px dashed color-mix(in srgb, var(--runner-accent) 45%, transparent); border-radius: 10px; color: var(--text-soft); font-size: 12px; }
+.draft-note > span { flex: 1; }
+.draft-note strong { color: var(--runner-accent); font-weight: 800; }
+.draft-note.conflict { border-style: solid; background: #f6bd670a; }
+.draft-note.muted { border-color: var(--border); color: var(--muted); }
+.draft-note button { min-height: 30px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface2); color: var(--text-soft); font-size: 12px; font-weight: 700; }
+.set-table > button.drafted .set-actual { color: var(--runner-accent); font-style: italic; font-weight: 500; }
 .actual-inputs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .performance-field { display: grid; gap: 7px; min-width: 0; }
 .performance-field > span, .performance-field > label { color: var(--text-soft); font-size: 12px; font-weight: 600; }

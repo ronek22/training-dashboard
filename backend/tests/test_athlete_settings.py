@@ -10,6 +10,13 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from backend.app.services.ftp import ftp_on, stored_ftp, working_ftp
+from backend.app.services.heart_rate_zones import (
+    _classify_zone,
+    hr_zone_starts,
+    normalize_hr_zone_starts,
+    run_hr_cap,
+    zone_definitions_from_starts,
+)
 from backend.app.services.settings import (
     normalize_athlete_profile,
     normalize_body_areas,
@@ -71,6 +78,36 @@ class FtpSourceTests(unittest.TestCase):
         conn.row_factory = sqlite3.Row
         self.assertIsNone(ftp_on(conn, "2026-10-01"))
         self.assertFalse(working_ftp(conn, TODAY)["available"])
+
+
+class HeartRateZoneTests(unittest.TestCase):
+    def test_defaults_match_the_original_fixed_zones(self):
+        zones = zone_definitions_from_starts([150, 163, 173, 183])
+        self.assertEqual([(zone["lower_bpm"], zone["upper_bpm"]) for zone in zones][1:], [(150, 162), (163, 172), (173, 182), (183, None)])
+        self.assertEqual(zones[0]["upper_bpm"], 150)
+        self.assertTrue(zones[1]["highlight"])
+
+    def test_classification_has_no_gaps_between_zones(self):
+        starts = [150, 163, 173, 183]
+        self.assertEqual(_classify_zone(149, starts), "zone1")
+        self.assertEqual(_classify_zone(162.5, starts), "zone2")
+        self.assertEqual(_classify_zone(183, starts), "zone5")
+
+    def test_invalid_zones_fall_back_to_defaults(self):
+        self.assertEqual(normalize_hr_zone_starts([150, 140, 173, 183], "run"), [150, 163, 173, 183])
+        self.assertEqual(normalize_hr_zone_starts([150, 163], "run"), [150, 163, 173, 183])
+        self.assertEqual(normalize_hr_zone_starts(None, "ride"), [140, 153, 163, 173])
+
+    def test_saved_zones_drive_the_easy_run_cap(self):
+        conn = _memory_conn()
+        self.assertEqual(run_hr_cap(conn), 162)
+        conn.execute(
+            "INSERT INTO app_settings VALUES ('performance_settings', ?)",
+            (json.dumps({"heart_rate_zones": {"run": [145, 158, 170, 180]}}),),
+        )
+        self.assertEqual(hr_zone_starts(conn)["run"], [145, 158, 170, 180])
+        self.assertEqual(hr_zone_starts(conn)["ride"], [140, 153, 163, 173])
+        self.assertEqual(run_hr_cap(conn), 157)
 
 
 class BodyAreaTests(unittest.TestCase):
@@ -166,6 +203,25 @@ class AthleteSettingsApiTests(unittest.TestCase):
         library = self.client.get("/cycling-workouts").json()
         self.assertEqual(library["ftp"]["watts"], 230)
         self.client.put("/settings/performance", json={"ftp": {"source": "stored"}})
+
+    def test_heart_rate_zones_round_trip_and_survive_other_saves(self):
+        updated = self.client.put("/settings/performance", json={"heart_rate_zones": {"run": [145, 158, 170, 180]}})
+        self.assertEqual(updated.status_code, 200)
+        body = updated.json()
+        self.assertEqual(body["heart_rate_zones"]["run"]["starts_bpm"], [145, 158, 170, 180])
+        self.assertFalse(body["heart_rate_zones"]["run"]["is_default"])
+        self.assertTrue(body["heart_rate_zones"]["ride"]["is_default"])
+        self.assertIn("max_heart_rate_seen", body)
+
+        # A save that leaves zones out keeps them.
+        self.client.put("/settings/performance", json={"ftp": {"source": "stored"}})
+        saved = self.client.get("/settings/performance").json()
+        self.assertEqual(saved["heart_rate_zones"]["run"]["starts_bpm"], [145, 158, 170, 180])
+        self.assertEqual(self.client.get("/return-to-run").json()["hr_cap_bpm"], 157)
+
+        rejected = self.client.put("/settings/performance", json={"heart_rate_zones": {"ride": [150, 140, 160, 170]}})
+        self.assertEqual(rejected.status_code, 422)
+        self.client.put("/settings/performance", json={"heart_rate_zones": {"run": [150, 163, 173, 183]}})
 
     def test_body_areas_round_trip(self):
         response = self.client.put("/settings/modality-restrictions", json={

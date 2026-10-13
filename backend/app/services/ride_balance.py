@@ -15,7 +15,7 @@ from datetime import date, timedelta
 from typing import Any, Optional
 
 from .ftp import working_ftp
-from .heart_rate_zones import HR_ZONE_DEFINITIONS
+from .heart_rate_zones import DEFAULT_HR_ZONE_STARTS, hr_zone_definitions
 from .power_trends import MAX_STREAM_GAP_SECONDS, _confirmed_power_meter, _decode_json, _finite_number, _stream_values
 
 RIDE_TYPES = ("Ride", "VirtualRide")
@@ -60,8 +60,8 @@ INTENT_TYPES = {
 }
 
 
-def _hr_bands() -> tuple[float, float]:
-    zones = {zone["key"]: zone for zone in HR_ZONE_DEFINITIONS["ride"]}
+def _hr_bands(conn: sqlite3.Connection) -> tuple[float, float]:
+    zones = {zone["key"]: zone for zone in hr_zone_definitions(conn, "ride")}
     return float(zones["zone3"]["lower_bpm"]), float(zones["zone5"]["lower_bpm"])
 
 
@@ -124,8 +124,8 @@ def _from_power(streams: Any, ftp: float) -> dict[str, Any]:
     return {"vo2_seconds": vo2, "sweet_spot_seconds": sweet, "average": average, "vo2_needed": VO2_MIN_POWER_SECONDS}
 
 
-def _from_heart_rate(streams: Any) -> dict[str, Any]:
-    sweet_low, vo2_low = _hr_bands()
+def _from_heart_rate(streams: Any, hr_bands: tuple[float, float]) -> dict[str, Any]:
+    sweet_low, vo2_low = hr_bands
     runs = _runs(streams, "heartrate")
     vo2 = _band_seconds(runs, HR_WINDOW_SECONDS, vo2_low, None, VO2_BLOCK_SECONDS)
     sweet = _band_seconds(runs, HR_WINDOW_SECONDS, sweet_low, vo2_low, SWEET_SPOT_BLOCK_SECONDS)
@@ -137,7 +137,12 @@ def _intent(value: Any) -> Optional[str]:
     return INTENT_TYPES.get(key)
 
 
-def classify_ride(ride: dict[str, Any], detail: Optional[sqlite3.Row], ftp: Optional[float]) -> dict[str, Any]:
+def classify_ride(
+    ride: dict[str, Any],
+    detail: Optional[sqlite3.Row],
+    ftp: Optional[float],
+    hr_bands: Optional[tuple[float, float]] = None,
+) -> dict[str, Any]:
     """Return {type, basis, reason} for one ride. Hard work found in a stream wins over the label."""
     minutes = float(ride.get("duration_min") or 0)
     intent = _intent(ride.get("workout_intent"))
@@ -152,7 +157,9 @@ def classify_ride(ride: dict[str, Any], detail: Optional[sqlite3.Row], ftp: Opti
     if power_ok:
         evidence, basis = _from_power(streams, ftp), "power"
     elif streams and len(_stream_values(streams, "heartrate")) >= 2:
-        evidence, basis = _from_heart_rate(streams), "heart_rate"
+        # Sweet spot from zone 3, VO2 from zone 5 of the ride HR zones.
+        bands = hr_bands or (float(DEFAULT_HR_ZONE_STARTS["ride"][1]), float(DEFAULT_HR_ZONE_STARTS["ride"][3]))
+        evidence, basis = _from_heart_rate(streams, bands), "heart_rate"
 
     if evidence:
         if evidence["vo2_seconds"] >= evidence["vo2_needed"]:
@@ -209,6 +216,7 @@ def build_ride_balance(conn: sqlite3.Connection, today: Optional[date] = None, w
          "counts": {key: 0 for key, _ in TYPES}, "minutes": {key: 0 for key, _ in TYPES}, "rides": []}
         for i in range(weeks)
     ]
+    hr_bands = _hr_bands(conn)
     rides = []
     for row in rows:
         ride = dict(row)
@@ -216,7 +224,7 @@ def build_ride_balance(conn: sqlite3.Connection, today: Optional[date] = None, w
         if minutes < MIN_RIDE_MINUTES:
             continue
         has_detail = row["streams_json"] is not None or row["detail_json"] is not None
-        result = classify_ride(ride, row if has_detail else None, reference["watts"])
+        result = classify_ride(ride, row if has_detail else None, reference["watts"], hr_bands)
         ride_day = date.fromisoformat(str(ride["date"])[:10])
         week = week_rows[(_week_start(ride_day) - window_start).days // 7]
         week["counts"][result["type"]] += 1
@@ -260,7 +268,7 @@ def build_ride_balance(conn: sqlite3.Connection, today: Optional[date] = None, w
         f"{round(reference['watts'])} W ({reference['basis']}, chosen on the Athlete page)" if reference["watts"]
         else "not set, so heart rate only"
     )
-    sweet_low, vo2_low = _hr_bands()
+    sweet_low, vo2_low = hr_bands
     method = (
         f"Each ride of {MIN_RIDE_MINUTES}+ min gets one type from what you rode. With a power meter: 60 s power at "
         f"{round(VO2_FTP * 100)}%+ of FTP for {VO2_MIN_POWER_SECONDS // 60}+ min is VO2, and {round(SWEET_SPOT_FTP * 100)}%+ in "

@@ -24,7 +24,7 @@ from datetime import date, timedelta
 from typing import Any, Optional
 
 from ..repositories.settings import get_setting_value, set_setting_value
-from .heart_rate_zones import HR_ZONE_DEFINITIONS
+from .heart_rate_zones import DEFAULT_HR_ZONE_STARTS, run_hr_cap
 
 SETTINGS_KEY = "return_to_run"
 CLEAN_MAX = 2
@@ -34,7 +34,8 @@ CLEAN_RUNS_TO_ADVANCE = 2
 CLEAN_RUNS_TO_GRADUATE = 3  # at the final stage: symptoms look resolved
 LONG_GAP_DAYS = 21  # a break this long costs one stage when choosing where to start
 EARLY_STAGE_REST_DAYS = 2  # stages 1-3: at least one full day between runs
-RUN_HR_CAP = next(zone["upper_bpm"] for zone in HR_ZONE_DEFINITIONS["run"] if zone["key"] == "zone2")
+# Top of the default running zone 2; the live cap follows the Athlete page zones.
+RUN_HR_CAP = DEFAULT_HR_ZONE_STARTS["run"][1] - 1
 DISTANCE_INCREASE = 1.10  # +10% over the previous week counts as "more distance"
 DISTANCE_MIN_DELTA_MIN = 10
 FAST_INTENTS = ("tempo", "interval", "race_specific")
@@ -166,7 +167,8 @@ def _classify(during: Optional[int], morning: Optional[int]) -> str:
 def build_return_to_run(conn: sqlite3.Connection, today: Optional[date] = None) -> dict[str, Any]:
     today = today or date.today()
     program = get_program(conn)
-    base = {"program": program, "stages": list(STAGES), "hr_cap_bpm": RUN_HR_CAP}
+    hr_cap = run_hr_cap(conn)
+    base = {"program": program, "stages": list(STAGES), "hr_cap_bpm": hr_cap}
     if not program["active"] or not program["started_on"]:
         return {**base, "active": False, "suggested_start": suggest_start_stage(conn, today)}
 
@@ -209,7 +211,7 @@ def build_return_to_run(conn: sqlite3.Connection, today: Optional[date] = None) 
                 "distance_km": run["distance_km"],
                 "duration_min": run["duration_min"],
                 "avg_hr": run["avg_hr"],
-                "above_hr_cap": bool(run["avg_hr"] and run["avg_hr"] > RUN_HR_CAP),
+                "above_hr_cap": bool(run["avg_hr"] and run["avg_hr"] > hr_cap),
                 "longer_than_stage": bool(run["duration_min"] and run["duration_min"] > planned_minutes * 1.3),
                 "stage": stage_at_run,
                 "during": during,
@@ -245,7 +247,7 @@ def build_return_to_run(conn: sqlite3.Connection, today: Optional[date] = None) 
             f"Flare: ≥ {FLARE_DURING}/10 during or ≥ {FLARE_MORNING}/10 the next morning drops one stage.",
             f"A break of {LONG_GAP_DAYS}+ days between runs also drops one stage.",
             "Never raise distance and pace in the same week.",
-            f"Easy runs stay under {RUN_HR_CAP} bpm.",
+            f"Easy runs stay under {hr_cap} bpm.",
         ],
     }
 

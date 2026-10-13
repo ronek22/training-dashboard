@@ -12,22 +12,68 @@ SUPPORTED_MODALITIES = {
     "VirtualRide": "ride",
 }
 
-HR_ZONE_DEFINITIONS = {
-    "run": [
-        {"key": "zone1", "label": "Zone 1", "lower_bpm": None, "upper_bpm": 150, "highlight": False},
-        {"key": "zone2", "label": "Zone 2", "lower_bpm": 150, "upper_bpm": 162, "highlight": True},
-        {"key": "zone3", "label": "Zone 3", "lower_bpm": 163, "upper_bpm": 172, "highlight": False},
-        {"key": "zone4", "label": "Zone 4", "lower_bpm": 173, "upper_bpm": 182, "highlight": False},
-        {"key": "zone5", "label": "Zone 5", "lower_bpm": 183, "upper_bpm": None, "highlight": False},
-    ],
-    "ride": [
-        {"key": "zone1", "label": "Zone 1", "lower_bpm": None, "upper_bpm": 140, "highlight": False},
-        {"key": "zone2", "label": "Zone 2", "lower_bpm": 140, "upper_bpm": 152, "highlight": True},
-        {"key": "zone3", "label": "Zone 3", "lower_bpm": 153, "upper_bpm": 162, "highlight": False},
-        {"key": "zone4", "label": "Zone 4", "lower_bpm": 163, "upper_bpm": 172, "highlight": False},
-        {"key": "zone5", "label": "Zone 5", "lower_bpm": 173, "upper_bpm": None, "highlight": False},
-    ],
+# Where zones 2-5 start, in bpm. Zone 1 is everything below the first value.
+DEFAULT_HR_ZONE_STARTS = {
+    "run": [150, 163, 173, 183],
+    "ride": [140, 153, 163, 173],
 }
+HR_ZONE_KEYS = ("zone1", "zone2", "zone3", "zone4", "zone5")
+MIN_ZONE_BPM = 60
+MAX_ZONE_BPM = 230
+PERFORMANCE_SETTINGS_KEY = "performance_settings"
+
+
+def normalize_hr_zone_starts(raw, modality: str) -> list[int]:
+    """Four strictly rising whole bpm values, or the defaults when anything is off."""
+    try:
+        starts = [int(round(float(value))) for value in raw]
+    except (TypeError, ValueError):
+        return list(DEFAULT_HR_ZONE_STARTS[modality])
+    valid = (
+        len(starts) == 4
+        and all(MIN_ZONE_BPM <= value <= MAX_ZONE_BPM for value in starts)
+        and all(low < high for low, high in zip(starts, starts[1:]))
+    )
+    return starts if valid else list(DEFAULT_HR_ZONE_STARTS[modality])
+
+
+def zone_definitions_from_starts(starts: list[int]) -> list[dict]:
+    lowers = [None, *starts]
+    uppers = [*(value - 1 for value in starts), None]
+    return [
+        {
+            "key": key,
+            "label": f"Zone {index + 1}",
+            "lower_bpm": lowers[index],
+            "upper_bpm": uppers[index] if index > 0 else starts[0],
+            "highlight": key == "zone2",
+        }
+        for index, key in enumerate(HR_ZONE_KEYS)
+    ]
+
+
+def hr_zone_starts(conn: sqlite3.Connection) -> dict[str, list[int]]:
+    """The athlete's saved zones (Athlete page), falling back to the defaults."""
+    try:
+        row = conn.execute("SELECT value FROM app_settings WHERE key = ?", (PERFORMANCE_SETTINGS_KEY,)).fetchone()
+        saved = (json.loads(row[0]) or {}).get("heart_rate_zones") if row and row[0] else None
+    except (sqlite3.OperationalError, json.JSONDecodeError, AttributeError):
+        saved = None
+    saved = saved if isinstance(saved, dict) else {}
+    return {modality: normalize_hr_zone_starts(saved.get(modality), modality) for modality in DEFAULT_HR_ZONE_STARTS}
+
+
+def hr_zone_definitions(conn: sqlite3.Connection, modality: str) -> list[dict]:
+    return zone_definitions_from_starts(hr_zone_starts(conn)[modality])
+
+
+def hr_zone_top(conn: sqlite3.Connection, modality: str, key: str) -> Optional[int]:
+    return next((zone["upper_bpm"] for zone in hr_zone_definitions(conn, modality) if zone["key"] == key), None)
+
+
+def run_hr_cap(conn: sqlite3.Connection) -> int:
+    """Easy runs stay at or below the top of running zone 2."""
+    return hr_zone_top(conn, "run", "zone2")
 
 
 def _modality_for_activity(activity_type: Optional[str]) -> Optional[str]:
@@ -44,17 +90,8 @@ def _format_range(lower_bpm: Optional[int], upper_bpm: Optional[int]) -> str:
     return f"{lower_bpm}-{upper_bpm} bpm"
 
 
-def _classify_zone(hr_value: float, modality: str) -> str:
-    for zone in HR_ZONE_DEFINITIONS[modality]:
-        lower = zone["lower_bpm"]
-        upper = zone["upper_bpm"]
-        if lower is None and upper is not None and hr_value < upper:
-            return zone["key"]
-        if upper is None and lower is not None and hr_value >= lower:
-            return zone["key"]
-        if lower is not None and upper is not None and lower <= hr_value <= upper:
-            return zone["key"]
-    return "zone5"
+def _classify_zone(hr_value: float, starts: list[int]) -> str:
+    return HR_ZONE_KEYS[sum(1 for start in starts if hr_value >= start)]
 
 
 def _summarize_zone2(zone2_pct: int, dominant_zone_key: Optional[str]) -> str:
@@ -83,14 +120,15 @@ def build_activity_heart_rate_zone_summary(
 
     streams_json = detail_row["streams_json"] if detail_row else None
     if not streams_json:
-        return _zone_summary(modality, None)
-    # Every plan view recounts the same streams second by second; the zones are constants.
+        return _zone_summary(modality, [], None)
+    starts = hr_zone_starts(conn)[modality]
+    # Every plan view recounts the same streams second by second; the zones are part of the key.
     return copy.deepcopy(
-        blob_memo(f"hr_zones:{modality}", streams_json, lambda: _zone_summary(modality, json.loads(streams_json)))
+        blob_memo(f"hr_zones:{modality}:{starts}", streams_json, lambda: _zone_summary(modality, starts, json.loads(streams_json)))
     )
 
 
-def _zone_summary(modality: str, streams: Optional[dict]) -> dict:
+def _zone_summary(modality: str, starts: list[int], streams: Optional[dict]) -> dict:
     if not streams:
         return {
             "available": False,
@@ -116,7 +154,7 @@ def _zone_summary(modality: str, streams: Optional[dict]) -> dict:
             "reason": "missing_heartrate_stream",
         }
 
-    zone_definitions = HR_ZONE_DEFINITIONS[modality]
+    zone_definitions = zone_definitions_from_starts(starts)
     totals_by_zone = {zone["key"]: 0 for zone in zone_definitions}
     total_seconds = 0
 
@@ -131,7 +169,7 @@ def _zone_summary(modality: str, streams: Optional[dict]) -> dict:
             continue
         if hr <= 0:
             continue
-        zone_key = _classify_zone(hr, modality)
+        zone_key = _classify_zone(hr, starts)
         totals_by_zone[zone_key] += dt
         total_seconds += dt
 
@@ -162,6 +200,8 @@ def _zone_summary(modality: str, streams: Optional[dict]) -> dict:
                 "pct": round((seconds / total_seconds) * 100),
                 "highlight": zone["highlight"],
                 "bpm_range": _format_range(lower_bpm, upper_bpm),
+                "lower_bpm": lower_bpm,
+                "upper_bpm": upper_bpm,
             }
         )
 
@@ -172,6 +212,7 @@ def _zone_summary(modality: str, streams: Optional[dict]) -> dict:
         "summary": _summarize_zone2(zone2["pct"], dominant_zone_key),
         "reason": None,
         "modality": modality,
+        "zone_starts_bpm": list(starts),
         "lthr_bpm": None,
         "total_minutes": round(total_seconds / 60.0, 1),
         "zone2_minutes": zone2["minutes"],
@@ -219,7 +260,7 @@ def build_recent_heart_rate_zone_summary(
             "zone2_pct": 0,
         }
 
-    totals_by_zone = {zone["key"]: 0 for zone in HR_ZONE_DEFINITIONS["run"]}
+    totals_by_zone = {key: 0 for key in HR_ZONE_KEYS}
     total_seconds = 0
     usable_activities = 0
     unavailable_activities = 0
@@ -250,7 +291,8 @@ def build_recent_heart_rate_zone_summary(
         }
 
     zones = []
-    for zone in HR_ZONE_DEFINITIONS["run"]:
+    # Runs and rides each count against their own zones; the labels are shared.
+    for zone in zone_definitions_from_starts(DEFAULT_HR_ZONE_STARTS["run"]):
         seconds = totals_by_zone[zone["key"]]
         zones.append(
             {

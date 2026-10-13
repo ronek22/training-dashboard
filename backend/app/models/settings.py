@@ -60,3 +60,4 @@ class PerformanceSettingsPayload(BaseModel):
     anchors: dict[str, PerformanceAnchorPayload] = Field(default_factory=dict)
     zones: dict[str, PerformanceZonesPayload] = Field(default_factory=dict)
     ftp: Optional[FtpChoicePayload] = None
+    heart_rate_zones: Optional[dict[str, list[float]]] = None

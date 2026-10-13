@@ -111,7 +111,7 @@
               <h2 id="thresholds-title">Thresholds</h2>
               <p class="used-by">Used for power zones, training load, workout watts, ride balance and zone-2 hours</p>
             </div>
-            <span v-if="dirty.performance" class="dirty-chip">Edited</span>
+            <span v-if="dirty.thresholds" class="dirty-chip">Edited</span>
           </header>
 
           <div class="field">
@@ -175,6 +175,50 @@
             </div>
           </div>
           <p v-if="zoneError" class="field-error">{{ zoneError }}</p>
+        </section>
+
+        <!-- Heart-rate zones -->
+        <section id="hr-zones" class="card athlete-card athlete-card-wide" aria-labelledby="hr-zones-title">
+          <header class="athlete-card-head">
+            <div>
+              <h2 id="hr-zones-title">Heart-rate zones</h2>
+              <p class="used-by">Used for time in zone, zone-2 hours, HR caps in session briefs, the easy-run cap and ride balance without power</p>
+            </div>
+            <span v-if="dirty.hrZones" class="dirty-chip">Edited</span>
+          </header>
+
+          <div class="hr-zone-sports">
+            <div v-for="sport in hrZoneSports" :key="sport.key" class="hr-zone-sport">
+              <div class="hr-zone-sport-head">
+                <span class="sport-dot" :style="{ background: sport.color }" aria-hidden="true"></span>
+                <strong>{{ sport.label }}</strong>
+                <small v-if="maxHrSeen(sport.key)" class="hr-zone-max">Highest in a year: {{ maxHrSeen(sport.key).bpm }} bpm · {{ shortDate(maxHrSeen(sport.key).date) }}</small>
+                <button v-if="!hrZonesAreDefault(sport.key)" type="button" class="link-btn" @click="resetHrZones(sport.key)">Reset to default</button>
+              </div>
+              <div class="hr-zone-bar" aria-hidden="true">
+                <span
+                  v-for="segment in hrZoneSegments(sport.key)" :key="segment.key"
+                  :style="{ flexGrow: segment.weight, background: segment.color }"
+                  :class="{ 'is-z2': segment.key === 'zone2' }"
+                ></span>
+              </div>
+              <div class="hr-zone-cells">
+                <div v-for="(zone, index) in hrZoneRows(sport.key)" :key="zone.key" class="hr-zone-cell" :class="{ 'is-z2': zone.key === 'zone2' }">
+                  <span class="hr-zone-name"><i :style="{ background: zoneColors[index] }" aria-hidden="true"></i>Z{{ index + 1 }}</span>
+                  <span v-if="index === 0" class="hr-zone-below">below</span>
+                  <span v-else class="unit-input bpm-input">
+                    <input
+                      v-model.number="performanceForm[`hr_${sport.key}`][index - 1]" type="number" min="60" max="230" step="1"
+                      :aria-label="`${sport.label} zone ${index + 1} starts at, bpm`" :class="{ 'is-invalid': hrZoneInvalid(sport.key) }"
+                    ><em>bpm</em>
+                  </span>
+                  <small class="hr-zone-range">{{ zone.range }}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="hint">Enter where each zone starts; it ends one beat below the next. Saving re-scores past activities with the new zones too.</p>
+          <p v-if="hrZoneError" class="field-error">{{ hrZoneError }}</p>
         </section>
 
         <!-- Restrictions -->
@@ -336,6 +380,7 @@
 import { computed, defineComponent, h, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '../stores/api'
+import { ZONE_COLORS } from '../components/activityVisuals'
 
 const api = useApi()
 const route = useRoute()
@@ -392,6 +437,8 @@ const bodyAreaOptions = [
   { value: 'wrist', label: 'Wrist', keywords: /wrist|hand/ },
   { value: 'neck', label: 'Neck', keywords: /neck/ },
 ]
+// Where zones 2-5 start; mirrors the backend defaults.
+const DEFAULT_HR_ZONES = { run: [150, 163, 173, 183], ride: [140, 153, 163, 173] }
 const noteFields = [
   { key: 'weekly_availability_notes', label: 'Weekly availability', rows: 6, placeholder: 'Example: 60–90 min after work on weekdays, longer on weekends' },
   { key: 'planning_notes', label: 'Planning notes', rows: 6, placeholder: 'Example: protect one long ride most weekends' },
@@ -424,16 +471,22 @@ const resetBaseline = () => {
   baseline.restrictions = snapshot(restrictionForm.value)
   baseline.rotation = snapshot(rotationForm.value)
 }
+const hrZoneKeys = ['hr_ride', 'hr_run']
+const hrZonePart = (formState) => hrZoneKeys.map((key) => formState?.[key])
 const dirty = computed(() => ({
   profile: snapshot(profileForm.value) !== baseline.profile,
   performance: snapshot(performanceForm.value) !== baseline.performance,
+  // The performance form holds both cards; these split it for the chips and the save bar.
+  thresholds: snapshot({ ...performanceForm.value, hr_ride: null, hr_run: null }) !== snapshot({ ...JSON.parse(baseline.performance || '{}'), hr_ride: null, hr_run: null }),
+  hrZones: snapshot(hrZonePart(performanceForm.value)) !== snapshot(hrZonePart(JSON.parse(baseline.performance || '{}'))),
   restrictions: snapshot(restrictionForm.value) !== baseline.restrictions,
   rotation: snapshot(rotationForm.value) !== baseline.rotation,
 }))
 const anyDirty = computed(() => Object.values(dirty.value).some(Boolean))
 const dirtyLabels = computed(() => [
   dirty.value.profile && 'profile & notes',
-  dirty.value.performance && 'thresholds',
+  dirty.value.thresholds && 'thresholds',
+  dirty.value.hrZones && 'heart-rate zones',
   dirty.value.restrictions && 'restrictions',
   dirty.value.rotation && 'rotation',
 ].filter(Boolean))
@@ -544,6 +597,44 @@ const zoneError = computed(() => {
   return ''
 })
 
+// Heart-rate zones: the form holds where zones 2-5 start for each sport.
+const zoneColors = ZONE_COLORS
+const hrZoneSports = sports.filter((sport) => sport.key !== 'strength')
+const hrZoneDefaults = (key) => performance.value?.heart_rate_zones?.[key]?.default_starts_bpm || DEFAULT_HR_ZONES[key]
+const hrZonesAreDefault = (key) => snapshot(performanceForm.value[`hr_${key}`]) === snapshot(hrZoneDefaults(key))
+const resetHrZones = (key) => { performanceForm.value[`hr_${key}`] = [...hrZoneDefaults(key)] }
+const maxHrSeen = (key) => performance.value?.max_heart_rate_seen?.[key] || null
+const hrZoneInvalid = (key) => {
+  const starts = performanceForm.value[`hr_${key}`]
+  return !starts.every((value) => Number.isInteger(value) && value >= 60 && value <= 230)
+    || !starts.every((value, index) => index === 0 || value > starts[index - 1])
+}
+const hrZoneError = computed(() => {
+  const broken = hrZoneSports.filter((sport) => hrZoneInvalid(sport.key))
+  if (!broken.length) return ''
+  return `${broken.map((sport) => sport.label).join(' and ')} zones need whole numbers between 60 and 230 bpm, each higher than the one before.`
+})
+const hrZoneRows = (key) => {
+  const starts = performanceForm.value[`hr_${key}`]
+  return ['zone1', 'zone2', 'zone3', 'zone4', 'zone5'].map((zoneKey, index) => {
+    const low = starts[index - 1]
+    const next = starts[index]
+    let range = '—'
+    if (index === 0 && Number(next)) range = `< ${next}`
+    else if (index === 4 && Number(low)) range = `≥ ${low}`
+    else if (Number(low) && Number(next) && next > low) range = `${low}–${next - 1}`
+    return { key: zoneKey, range }
+  })
+}
+// Bar widths follow each zone's bpm span; the open-ended ends get a fixed share.
+const hrZoneSegments = (key) => {
+  const starts = performanceForm.value[`hr_${key}`].map(Number)
+  const valid = !hrZoneInvalid(key)
+  const middle = valid ? starts.slice(1).map((value, index) => value - starts[index]) : [1, 1, 1]
+  const edge = valid ? Math.max(...middle) * 1.2 : 1
+  return [edge, ...middle, edge * 0.8].map((weight, index) => ({ key: `zone${index + 1}`, weight, color: ZONE_COLORS[index] }))
+}
+
 // Restrictions
 const areaOption = (value) => bodyAreaOptions.find((option) => option.value === value)
 const areaLabel = (item) => {
@@ -628,7 +719,7 @@ const nudges = computed(() => {
 })
 
 // Save
-const canSave = computed(() => !zoneError.value && !runPaceInvalid.value)
+const canSave = computed(() => !zoneError.value && !runPaceInvalid.value && !hrZoneError.value)
 const discard = () => {
   applyProfile(profile.value)
   applyPerformance(performance.value)
@@ -708,6 +799,8 @@ function performanceFormFrom(data) {
     run_pace: data?.anchors?.run_threshold_pace?.value ? formatPace(data.anchors.run_threshold_pace.value) : '',
     run_low: pct(data?.zones?.run?.zone2_lower_pct, 1.15),
     run_high: pct(data?.zones?.run?.zone2_upper_pct, 1.3),
+    hr_ride: [...(data?.heart_rate_zones?.ride?.starts_bpm || DEFAULT_HR_ZONES.ride)],
+    hr_run: [...(data?.heart_rate_zones?.run?.starts_bpm || DEFAULT_HR_ZONES.run)],
   }
 }
 function performancePayload(formState) {
@@ -718,6 +811,7 @@ function performancePayload(formState) {
       ride: { zone2_lower_pct: formState.ride_low / 100, zone2_upper_pct: formState.ride_high / 100 },
       run: { zone2_lower_pct: formState.run_low / 100, zone2_upper_pct: formState.run_high / 100 },
     },
+    heart_rate_zones: { ride: formState.hr_ride.map(Number), run: formState.hr_run.map(Number) },
   }
 }
 function restrictionFormFrom(data) {
@@ -930,6 +1024,24 @@ select:disabled { opacity: 0.5; }
 .threshold-name { font-weight: 550; }
 .threshold-preview { color: var(--muted-soft); font-variant-numeric: tabular-nums; text-align: right; font-size: 12.5px; }
 
+.hr-zone-sports { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.hr-zone-sport { display: grid; gap: 10px; padding: 12px 14px; border-radius: 12px; background: rgb(var(--tint-rgb) / 0.07); }
+.hr-zone-sport-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.hr-zone-max { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.hr-zone-sport-head .link-btn { margin-left: auto; }
+.hr-zone-bar { display: flex; gap: 2px; height: 8px; border-radius: 999px; overflow: hidden; }
+.hr-zone-bar span { flex-basis: 0; min-width: 4px; opacity: 0.55; transition: flex-grow 0.25s ease; }
+.hr-zone-bar span.is-z2 { opacity: 1; }
+.hr-zone-cells { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.hr-zone-cell { display: grid; gap: 4px; align-content: start; padding: 6px; border-radius: 9px; border: 1px solid transparent; }
+.hr-zone-cell.is-z2 { border-color: color-mix(in srgb, #3b82f6 45%, transparent); background: color-mix(in srgb, #3b82f6 8%, transparent); }
+.hr-zone-name { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; color: var(--muted); }
+.hr-zone-name i { width: 8px; height: 8px; border-radius: 3px; }
+.hr-zone-below { display: flex; align-items: center; min-height: 34px; color: var(--muted-soft); font-size: 12.5px; }
+.bpm-input input { padding-right: 34px; font-variant-numeric: tabular-nums; }
+.bpm-input em { right: 8px; font-size: 11px; }
+.hr-zone-range { color: var(--muted-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
+
 .sport-restrictions { display: grid; gap: 6px; }
 .sport-restriction { padding: 8px 10px 8px 12px; border-radius: 10px; background: rgb(var(--tint-rgb) / 0.07); display: grid; gap: 8px; }
 .sport-restriction.is-limited { background: color-mix(in srgb, var(--warning) 9%, transparent); }
@@ -1019,9 +1131,12 @@ select:disabled { opacity: 0.5; }
 
 @media (max-width: 1100px) {
   .athlete-grid { grid-template-columns: minmax(0, 1fr); }
+  .hr-zone-sports { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
   .ftp-options, .notes-grid, .field-row { grid-template-columns: minmax(0, 1fr); }
+  .hr-zone-cells { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hr-zone-max { display: none; }
   .threshold-row { grid-template-columns: 9px minmax(0, 1fr) 76px 10px 76px; }
   .threshold-row .threshold-preview { grid-column: 2 / -1; text-align: left; }
   .area-row { grid-template-columns: minmax(0, 1fr) 28px; }

@@ -3,11 +3,20 @@ import re
 import sqlite3
 from typing import Optional
 
-from datetime import date
+from datetime import date, timedelta
+
+from fastapi import HTTPException
 
 from ..db import get_db
 from ..repositories.settings import get_setting_value, set_setting_value
 from .ftp import ftp_on, normalize_ftp_choice, stored_ftp, working_ftp
+from .heart_rate_zones import (
+    DEFAULT_HR_ZONE_STARTS,
+    MAX_ZONE_BPM,
+    MIN_ZONE_BPM,
+    normalize_hr_zone_starts,
+    zone_definitions_from_starts,
+)
 from .seasons import normalize_off_season_months, season_label
 
 MODALITY_RESTRICTIONS_KEY = "modality_restrictions"
@@ -469,6 +478,21 @@ def _normalize_zone(raw_zone: Optional[dict], *, modality: str) -> dict:
     }
 
 
+def _normalize_hr_zones(raw_value) -> dict:
+    raw = raw_value if isinstance(raw_value, dict) else {}
+    result = {}
+    for modality, defaults in DEFAULT_HR_ZONE_STARTS.items():
+        starts = normalize_hr_zone_starts(raw.get(modality), modality)
+        result[modality] = {
+            "modality": modality,
+            "starts_bpm": starts,
+            "default_starts_bpm": list(defaults),
+            "is_default": starts == defaults,
+            "zones": zone_definitions_from_starts(starts),
+        }
+    return result
+
+
 def normalize_performance_settings(raw_value: Optional[dict]) -> dict:
     raw = raw_value if isinstance(raw_value, dict) else {}
     anchors_raw = raw.get("anchors") if isinstance(raw.get("anchors"), dict) else {}
@@ -494,6 +518,7 @@ def normalize_performance_settings(raw_value: Optional[dict]) -> dict:
     return _with_performance_summary({
         "anchors": anchors,
         "zones": zones,
+        "heart_rate_zones": _normalize_hr_zones(raw.get("heart_rate_zones")),
         "ftp": normalize_ftp_choice(raw.get("ftp")),
     })
 
@@ -533,6 +558,10 @@ def serialize_performance_settings_for_storage(settings: dict) -> dict:
                 "zone2_upper_pct": item.get("zone2_upper_pct"),
             }
             for key, item in (settings.get("zones") or {}).items()
+        },
+        "heart_rate_zones": {
+            key: item.get("starts_bpm")
+            for key, item in (settings.get("heart_rate_zones") or {}).items()
         },
         "ftp": {
             key: (settings.get("ftp") or {}).get(key)
@@ -583,6 +612,25 @@ def _estimate_snapshot(estimate: dict, today: date) -> dict:
     return {"estimate_watts": estimate["watts"], "estimate_basis": estimate.get("basis"), "estimate_date": today.isoformat()}
 
 
+def _max_heart_rate_seen(conn: sqlite3.Connection, today: date) -> dict:
+    """Highest recorded HR per sport in the last year, as a sanity check for zone 5."""
+    seen = {}
+    for modality, types in (("run", ("Run",)), ("ride", ("Ride", "VirtualRide"))):
+        try:
+            row = conn.execute(
+                f"""
+                SELECT max_hr, date FROM activities
+                WHERE type IN ({",".join("?" for _ in types)}) AND max_hr > 0 AND date >= ?
+                ORDER BY max_hr DESC, date DESC LIMIT 1
+                """,
+                (*types, (today - timedelta(days=365)).isoformat()),
+            ).fetchone()
+        except sqlite3.OperationalError:
+            row = None
+        seen[modality] = {"bpm": int(row["max_hr"]), "date": str(row["date"])[:10]} if row else None
+    return seen
+
+
 def _store_performance_settings(conn: sqlite3.Connection, settings: dict) -> None:
     set_setting_value(conn, PERFORMANCE_SETTINGS_KEY, json.dumps(serialize_performance_settings_for_storage(settings)))
 
@@ -613,6 +661,7 @@ def get_performance_settings_with_ftp(conn: sqlite3.Connection, today: Optional[
             "estimate": {key: estimate.get(key) for key in ("available", "watts", "basis", "note", "reason", "window_days")},
             "workouts": build_ftp_workout_check(conn, today),
         },
+        "max_heart_rate_seen": _max_heart_rate_seen(conn, today),
     }
 
 
@@ -641,7 +690,20 @@ def set_performance_settings_for_conn(conn: sqlite3.Connection, payload: dict, t
     if changed:
         # A new source applies from today; earlier rides keep the FTP they were ridden with.
         incoming["effective_from"] = today.isoformat()
-    normalized = normalize_performance_settings({**(payload or {}), "ftp": incoming})
+    # Callers that leave heart-rate zones out keep the saved ones.
+    existing_hr = {key: item["starts_bpm"] for key, item in _raw_performance_settings(conn)["heart_rate_zones"].items()}
+    requested_hr = {
+        key: value for key, value in ((payload or {}).get("heart_rate_zones") or {}).items()
+        if value and key in DEFAULT_HR_ZONE_STARTS
+    }
+    for modality, starts in requested_hr.items():
+        if normalize_hr_zone_starts(starts, modality) != [int(round(float(value))) for value in starts]:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{MODALITY_LABELS[modality]} heart-rate zones need four rising values between {MIN_ZONE_BPM} and {MAX_ZONE_BPM} bpm.",
+            )
+    hr_zones = {**existing_hr, **requested_hr}
+    normalized = normalize_performance_settings({**(payload or {}), "ftp": incoming, "heart_rate_zones": hr_zones})
     _store_performance_settings(conn, normalized)
     return _with_derived_ride_anchor(conn, normalized)
 

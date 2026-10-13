@@ -18,7 +18,7 @@ from typing import Any, Optional
 
 from .checkins import get_daily_checkin
 from .cycling_workouts import get_cycling_workout, latest_ftp
-from .heart_rate_zones import HR_ZONE_DEFINITIONS
+from .heart_rate_zones import hr_zone_top
 from .power_trends import _finite_number, _stream_values
 
 DRIFT_BPM = 10
@@ -29,10 +29,6 @@ BASELINE_MIN_RIDES = 3
 POWER_BAND = 0.08
 WARMUP_SKIP_S = 600
 ROLLING_S = 30
-
-
-def _zone_top(modality: str, key: str) -> Optional[int]:
-    return next((zone["upper_bpm"] for zone in HR_ZONE_DEFINITIONS[modality] if zone["key"] == key), None)
 
 
 def _modality(session_type: Optional[str], title: Optional[str] = None) -> str:
@@ -206,7 +202,7 @@ def _ride_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, A
     template = RIDE_BRIEFS.get(category, RIDE_BRIEFS["Endurance"])
     ftp = latest_ftp(conn, today)
     ftp_w = ftp.get("watts") if ftp.get("available") else None
-    z1, z2, z3, z4 = (_zone_top("ride", key) for key in ("zone1", "zone2", "zone3", "zone4"))
+    z1, z2, z3, z4 = (hr_zone_top(conn, "ride", key) for key in ("zone1", "zone2", "zone3", "zone4"))
 
     targets: list[dict[str, str]] = []
     bail: list[str] = []
@@ -273,8 +269,8 @@ def _ride_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, A
 def _run_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, Any]:
     intent = day.get("workout_intent") or "easy"
     purpose, rpe, feel = RUN_BRIEFS.get(intent, RUN_BRIEFS["easy"])
-    z2 = _zone_top("run", "zone2")
-    z3 = _zone_top("run", "zone3")
+    z2 = hr_zone_top(conn, "run", "zone2")
+    z3 = hr_zone_top(conn, "run", "zone3")
     targets = []
     bail = []
     if intent in ("recovery", "easy", "long"):

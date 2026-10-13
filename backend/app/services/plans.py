@@ -22,7 +22,7 @@ from .fitbod_imports import get_fitbod_strength_detail_for_activity
 from ..repositories.goals import ACTIVE_GOAL_CONDITION
 from .goal_portfolio import build_portfolio_check, portfolio_conflict
 from .goals import build_requirement_summary, serialize_goal
-from .heart_rate_zones import build_activity_heart_rate_zone_summary
+from .heart_rate_zones import build_activity_heart_rate_zone_summary, run_hr_cap
 from .settings import (
     get_athlete_profile_for_conn,
     get_modality_restrictions_for_conn,
@@ -578,6 +578,7 @@ def build_execution_quality_for_completed_session(
         primary_activity,
         heart_rate_zones=heart_rate_zones,
         strength_detail=strength_detail,
+        hr_cap_bpm=run_hr_cap(conn),
     )
     result["planned_intent"] = normalize_workout_intent(day.get("workout_intent"), day.get("session_type"))
     result["planned_intent_label"] = format_workout_intent_label(result["planned_intent"])

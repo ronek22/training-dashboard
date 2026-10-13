@@ -222,15 +222,16 @@ def _evaluate_strength_session(
     return _build_result("drifted", "Strength work fell short of plan", reasons=["Too little exercise or set coverage was logged to read as the planned strength session."], evidence=evidence)
 
 
-def _apply_run_hr_cap(result: dict, activity: dict) -> dict:
+def _apply_run_hr_cap(result: dict, activity: dict, hr_cap_bpm: Optional[int] = None) -> dict:
     """Easy and long runs should stay under the zone 2 ceiling on average."""
     from .return_to_run import RUN_HR_CAP
 
+    cap = hr_cap_bpm or RUN_HR_CAP
     avg_hr = activity.get("avg_hr")
-    if activity.get("type") != "Run" or not avg_hr or float(avg_hr) <= RUN_HR_CAP:
+    if activity.get("type") != "Run" or not avg_hr or float(avg_hr) <= cap:
         return result
-    result["evidence"] = {**result.get("evidence", {}), "avg_hr": avg_hr, "hr_cap_bpm": RUN_HR_CAP}
-    result["reasons"] = [*result.get("reasons", []), f"Average HR {round(float(avg_hr))} bpm was above the easy-run cap of {RUN_HR_CAP} bpm."]
+    result["evidence"] = {**result.get("evidence", {}), "avg_hr": avg_hr, "hr_cap_bpm": cap}
+    result["reasons"] = [*result.get("reasons", []), f"Average HR {round(float(avg_hr))} bpm was above the easy-run cap of {cap} bpm."]
     if result["status"] in ("matched", "completed_without_evidence"):
         result["status"] = "partial"
         result["headline"] = "Above the easy-run HR cap"
@@ -243,6 +244,7 @@ def evaluate_execution_quality(
     *,
     heart_rate_zones: Optional[dict] = None,
     strength_detail: Optional[dict] = None,
+    hr_cap_bpm: Optional[int] = None,
 ) -> dict:
     planned_intent = planned_session.get("workout_intent")
     if not activity:
@@ -253,7 +255,7 @@ def evaluate_execution_quality(
         return _build_result("unavailable", "Workout quality is not supported for this intent yet", reasons=[f"Intent `{planned_intent}` is outside the first supported evaluation set."])
 
     if planned_intent in {"easy", "long"}:
-        return _apply_run_hr_cap(_evaluate_easy_or_long(planned_session, activity, heart_rate_zones=heart_rate_zones), activity)
+        return _apply_run_hr_cap(_evaluate_easy_or_long(planned_session, activity, heart_rate_zones=heart_rate_zones), activity, hr_cap_bpm)
     if planned_intent in {"tempo", "interval", "race_specific"}:
         return _evaluate_quality_session(planned_session, heart_rate_zones=heart_rate_zones)
     return _evaluate_strength_session(planned_session, strength_detail=strength_detail)

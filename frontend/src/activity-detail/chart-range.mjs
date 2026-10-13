@@ -22,9 +22,36 @@ export function chartRange(chart) {
   return { ...range, clipped: range.min > min || range.max < max }
 }
 
-/** SVG y for a value inside a 24..304 plot band, clamped to the range. */
-export function chartY(value, range) {
+/** SVG y for a value inside a top..bottom plot band (24..304 by default), clamped to the range. */
+export function chartY(value, range, top = 24, bottom = 304) {
   const span = Math.max(range.max - range.min, range.inverted ? 0.5 : 1)
   const ratio = (Math.min(Math.max(Number(value), range.min), range.max) - range.min) / span
-  return range.inverted ? 24 + ratio * 280 : 304 - ratio * 280
+  const height = bottom - top
+  return range.inverted ? top + ratio * height : bottom - ratio * height
+}
+
+const PACE_STEPS = [0.25, 0.5, 1, 2, 5]
+const niceStep = (span, target) => {
+  const raw = span / target
+  const power = 10 ** Math.floor(Math.log10(raw))
+  return [1, 2, 2.5, 5, 10].map((m) => m * power).find((step) => step >= raw) || raw
+}
+
+/** Round axis values inside the range: pace on 15 s / 30 s / 1 min steps, everything else on 1-2-5 steps. */
+export function axisTicks(range, key, target = 4) {
+  const span = range.max - range.min
+  if (!(span > 0)) return [range.min]
+  const step = key === 'pace' ? PACE_STEPS.find((s) => span / s <= target + 1.5) || 10 : niceStep(span, target)
+  const ticks = []
+  for (let v = Math.ceil(range.min / step - 1e-9) * step; v <= range.max + 1e-9; v += step) ticks.push(Number(v.toFixed(6)))
+  return ticks
+}
+
+/** Elapsed-minute marks along the time axis, every 1/2/5/10/15/20/30/60 min. */
+export function timeTicks(maxMinutes, target = 6) {
+  if (!(maxMinutes > 0)) return []
+  const step = [1, 2, 5, 10, 15, 20, 30, 60, 120].find((s) => maxMinutes / s <= target) || 240
+  const ticks = []
+  for (let m = step; m < maxMinutes - step * 0.35; m += step) ticks.push(m)
+  return ticks
 }

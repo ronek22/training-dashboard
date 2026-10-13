@@ -593,6 +593,8 @@ def get_performance_settings_with_ftp(conn: sqlite3.Connection, today: Optional[
     When the athlete follows the training estimate, the stored snapshot moves
     with it here, so readers that cannot afford the estimate stay current.
     """
+    from .workout_execution import build_ftp_workout_check  # plans imports this module
+
     today = today or date.today()
     settings = _raw_performance_settings(conn)
     estimate = _current_ftp_estimate(conn, today)
@@ -609,6 +611,7 @@ def get_performance_settings_with_ftp(conn: sqlite3.Connection, today: Optional[
             "working": working_ftp(conn, today),
             "stored": stored_ftp(conn, today),
             "estimate": {key: estimate.get(key) for key in ("available", "watts", "basis", "note", "reason", "window_days")},
+            "workouts": build_ftp_workout_check(conn, today),
         },
     }
 

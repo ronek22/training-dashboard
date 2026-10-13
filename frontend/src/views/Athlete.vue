@@ -134,6 +134,20 @@
               </div>
             </div>
             <p class="hint">{{ ftpFootnote }}</p>
+            <div v-if="workoutCheck" class="ftp-workout-check" :class="{ 'is-suggest': workoutCheck.suggestion }">
+              <div>
+                <span class="ftp-option-label">From your structured rides</span>
+                <p v-if="workoutCheck.suggestion"><strong>{{ workoutCheck.suggestion.title }}</strong> {{ workoutCheck.suggestion.detail }}</p>
+                <p v-else>{{ workoutCheck.note }}</p>
+                <ul v-if="workoutCheck.rides?.length" class="ftp-workout-rides">
+                  <li v-for="ride in workoutCheck.rides.slice(0, 4)" :key="ride.activity_id">
+                    <router-link :to="`/activities/${ride.activity_id}`">{{ shortDate(ride.date) }} · {{ ride.workout_name }}</router-link>
+                    <em :class="{ 'is-warn': ride.ratio < 0.95 }">{{ Math.round(ride.ratio * 100) }}%</em>
+                  </li>
+                </ul>
+              </div>
+              <button v-if="workoutCheck.suggestion" type="button" class="ftp-workout-use" @click="useWorkoutFtp">Use {{ workoutCheck.suggestion.watts }} W</button>
+            </div>
           </div>
 
           <div class="threshold-rows">
@@ -483,6 +497,12 @@ const confirmNote = (field) => {
 
 // Thresholds
 const ftpOptions = computed(() => performance.value?.ftp_options || {})
+const workoutCheck = computed(() => ftpOptions.value.workouts || null)
+// Fills the working FTP; nothing changes until the athlete saves.
+const useWorkoutFtp = () => {
+  performanceForm.value.ftp_source = 'manual'
+  performanceForm.value.manual_watts = workoutCheck.value.suggestion.watts
+}
 const storedFtpDetail = computed(() => {
   const stored = ftpOptions.value.stored
   if (!stored?.available) return 'Nothing logged'
@@ -576,6 +596,15 @@ const nudges = computed(() => {
   }
   const working = ftpOptions.value.working
   const estimate = ftpOptions.value.estimate
+  const suggestion = workoutCheck.value?.suggestion
+  if (suggestion && Math.round(working?.watts || 0) !== suggestion.watts) {
+    items.push({
+      key: 'ftp-workouts', tone: 'warn',
+      title: suggestion.title,
+      detail: suggestion.detail,
+      action: { label: `Use ${suggestion.watts} W`, run: () => { useWorkoutFtp(); document.querySelector('#thresholds')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) } },
+    })
+  }
   if (working?.source === 'stored' && working?.stale) {
     const gap = estimate?.available ? ` Recent rides suggest about ${Math.round(estimate.watts)} W.` : ''
     items.push({
@@ -879,6 +908,17 @@ select:disabled { opacity: 0.5; }
 .ftp-option strong { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
 .ftp-option small { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
 .ftp-option small.is-warn { color: var(--warning-text); }
+.ftp-workout-check { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; }
+.ftp-workout-check.is-suggest { border-color: color-mix(in srgb, var(--warning-text) 40%, transparent); }
+.ftp-workout-check p { margin: 4px 0 0; color: var(--text-soft); font-size: 13px; line-height: 1.5; }
+.ftp-workout-check p strong { color: var(--text); }
+.ftp-workout-rides { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; }
+.ftp-workout-rides a { color: var(--muted); text-decoration: none; }
+.ftp-workout-rides a:hover { color: var(--text); }
+.ftp-workout-rides em { margin-left: 6px; font-style: normal; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ftp-workout-rides em.is-warn { color: var(--warning-text); }
+.ftp-workout-use { flex: none; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--chip-bg); color: var(--text); padding: 7px 14px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ftp-workout-use:hover { background: var(--chip-bg-strong); }
 .ftp-manual-input input { font-family: var(--font-display); font-size: 17px; font-weight: 700; min-height: 34px; padding: 4px 34px 4px 8px; }
 
 .threshold-rows { display: grid; gap: 8px; }

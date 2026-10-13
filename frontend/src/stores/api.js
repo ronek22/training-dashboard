@@ -211,6 +211,8 @@ export const useApi = () => ({
   getCalendarMonth: (params) => api.get('/calendar/month', { params }),
   getWeeklyPlans: (params) => api.get('/plans/weekly', { params }),
   getCyclingWorkouts: () => api.get('/cycling-workouts'),
+  getZwiftWorkouts: () => api.get('/zwift/workouts'),
+  addWorkoutToZwift: (id) => api.post(`/cycling-workouts/${encodeURIComponent(id)}/zwift`),
   getWeeklyPlanTrends: (params) => api.get('/plans/weekly/trends', { params }),
   getPlanFollowThrough: (params) => api.get('/plans/follow-through', { params }),
   previewWeeklyPlanAdjustment: (payload) => api.post('/plans/weekly/adjust/preview', payload),

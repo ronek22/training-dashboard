@@ -51,6 +51,11 @@
       <CyclingWorkoutProfile :workout="workout" />
       <figcaption>
         <span>{{ workout.name }} · {{ workout.category }}</span>
+        <button v-if="zwift.enabled" type="button" class="plan-zwift" :class="{ 'is-done': zwift.added }" :disabled="zwift.saving" @click="addToZwift">
+          {{ zwift.saving ? 'Adding…' : zwift.added ? 'In Zwift · Custom Workouts' : 'Add to Zwift' }}
+        </button>
+        <a v-else-if="zwift.checked" class="plan-zwift" :href="`/api/cycling-workouts/${encodeURIComponent(workout.id)}/zwo`" :download="`${workout.id}.zwo`">Download .zwo</a>
+        <span v-if="zwift.error" class="plan-zwift-error">{{ zwift.error }}</span>
         <span class="plan-axis">0 – {{ workout.duration_min }} min</span>
       </figcaption>
     </figure>
@@ -84,7 +89,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, reactive, watch } from 'vue'
+import { useApi } from '../stores/api'
 import SummaryTiles from './SummaryTiles.vue'
 import CyclingWorkoutProfile from './CyclingWorkoutProfile.vue'
 import { ZONE_COLORS } from './activityVisuals'
@@ -98,6 +104,35 @@ const props = defineProps({
   form: { type: Number, default: null },
   checkIn: { type: Object, default: null },
 })
+
+const api = useApi()
+const zwift = reactive({ checked: false, enabled: false, added: false, saving: false, error: '' })
+
+watch(() => props.workout?.id, async (id) => {
+  if (!id) return
+  zwift.error = ''
+  try {
+    const { data } = await api.getZwiftWorkouts()
+    zwift.enabled = data.enabled
+    zwift.added = data.workout_ids.includes(id)
+  } catch {
+    zwift.enabled = false
+  }
+  zwift.checked = true
+}, { immediate: true })
+
+async function addToZwift() {
+  zwift.saving = true
+  zwift.error = ''
+  try {
+    await api.addWorkoutToZwift(props.workout.id)
+    zwift.added = true
+  } catch (error) {
+    zwift.error = error.response?.data?.detail || 'Could not write to the Zwift folder'
+  } finally {
+    zwift.saving = false
+  }
+}
 
 const INTENSITY = [
   { name: 'Recovery', hint: 'Very easy, keep it restorative' },
@@ -222,7 +257,14 @@ const tiles = computed(() => [durationTile.value, distanceTile.value, intensityT
 
 .plan-profile { display: grid; gap: 8px; margin: 0; --profile-height: 96px; }
 .plan-profile figcaption { display: flex; justify-content: space-between; gap: 12px; color: var(--dash-muted, var(--muted)); font-size: 11px; }
+.plan-profile figcaption { align-items: center; }
+.plan-profile figcaption > span:first-child { flex: 1; }
 .plan-axis { font-variant-numeric: tabular-nums; }
+.plan-zwift { border: 1px solid rgb(var(--tint-rgb) / 0.14); border-radius: 999px; background: var(--chip-bg); color: var(--text); padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600; text-decoration: none; cursor: pointer; }
+.plan-zwift:hover:not(:disabled) { background: var(--chip-bg-strong); }
+.plan-zwift:disabled { cursor: default; opacity: 0.7; }
+.plan-zwift.is-done { border-color: rgb(var(--tint-rgb) / 0.08); background: transparent; color: var(--accent-strong); }
+.plan-zwift-error { color: var(--warning-text); }
 
 .plan-lifts { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .plan-lifts li { display: grid; grid-template-columns: 28px minmax(0, 1.4fr) minmax(90px, 1fr) 72px; align-items: center; gap: 14px; border-radius: 10px; padding: 9px 12px; }

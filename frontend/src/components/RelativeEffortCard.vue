@@ -13,30 +13,47 @@
         <template v-if="effort.estimated_sessions"> {{ estimatedLabel }} had no heart rate and {{ effort.estimated_sessions === 1 ? 'was' : 'were' }} estimated from duration.</template>
       </p>
 
-      <div class="effort-stats">
-        <div class="effort-days" role="img" :aria-label="daysLabel">
+      <div class="effort-stats" aria-live="polite">
+        <div v-if="hoveredPast" class="effort-week">
+          <small>Week of {{ hoveredPast.label }}</small>
+          <strong :class="`is-${hoveredPast.status}`">{{ statusLabel(hoveredPast.status) }}</strong>
+        </div>
+        <div v-else class="effort-days" role="img" :aria-label="daysLabel">
           <div v-for="day in dayBars" :key="day.date" class="effort-day" :class="{ 'is-future': day.is_future }">
             <span class="effort-day-track"><i :style="{ height: `${day.pct}%` }" :class="{ 'is-rest': !day.effort }" /></span>
             <small>{{ day.label }}</small>
           </div>
         </div>
-        <div class="effort-stat"><span>Score</span><strong>{{ effort.score }}</strong></div>
-        <div class="effort-stat"><span>Range</span><strong>{{ rangeLabel }}</strong></div>
+        <div class="effort-stat"><span>Score</span><strong>{{ hoveredPast ? hoveredPast.score : effort.score }}</strong></div>
+        <div class="effort-stat"><span>Range</span><strong>{{ hoveredPast ? weekRangeLabel(hoveredPast) : rangeLabel }}</strong></div>
       </div>
     </div>
 
     <figure class="effort-chart">
-      <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="chartLabel">
+      <svg :viewBox="`0 0 ${W} ${H}`" role="group" :aria-label="chartLabel" @mouseleave="active = null">
         <rect :x="PAD_L" :y="PAD_T" :width="plotW" :height="plotH" class="effort-plot" rx="6" />
         <polygon v-if="bandPoints" :points="bandPoints" class="effort-band" />
-        <line v-for="point in points" :key="`g-${point.week_start}`" :x1="point.x" :x2="point.x" :y1="PAD_T" :y2="PAD_T + plotH" class="effort-grid" :class="{ 'is-current': point.is_current }" />
-        <g v-for="point in points" :key="point.week_start">
+        <line v-for="point in points" :key="`g-${point.week_start}`" :x1="point.x" :x2="point.x" :y1="PAD_T" :y2="PAD_T + plotH" class="effort-grid" :class="{ 'is-current': point.is_current, 'is-active': active === index }" />
+        <g v-for="(point, index) in points" :key="point.week_start" :class="{ 'is-active': active === index, 'is-dimmed': active !== null && active !== index }">
           <circle v-if="point.is_current" :cx="point.x" :cy="point.y" r="11" class="effort-halo" />
-          <circle :cx="point.x" :cy="point.y" :r="point.is_current ? 6 : 4.5" :class="point.is_current ? 'effort-dot-now' : 'effort-dot'">
-            <title>{{ point.title }}</title>
-          </circle>
+          <circle :cx="point.x" :cy="point.y" :r="(point.is_current ? 6 : 4.5) + (active === index ? 1.5 : 0)" :class="point.is_current ? 'effort-dot-now' : 'effort-dot'" />
+          <text v-if="active === index" :x="point.x" :y="Math.max(point.y - 12, PAD_T + 10)" text-anchor="middle" class="effort-value">{{ point.score }}</text>
           <text :x="point.x" :y="H - 6" text-anchor="middle" class="effort-axis">{{ point.label }}</text>
         </g>
+        <rect
+          v-for="(point, index) in points"
+          :key="`hit-${point.week_start}`"
+          :x="point.x - step / 2"
+          :y="PAD_T"
+          :width="step"
+          :height="H - PAD_T"
+          class="effort-hit"
+          tabindex="0"
+          :aria-label="point.title"
+          @mouseenter="active = index"
+          @focus="active = index"
+          @blur="active = null"
+        />
         <text :x="W - 4" :y="PAD_T + 10" text-anchor="end" class="effort-axis">{{ Math.round(maxY) }}</text>
         <text :x="W - 4" :y="PAD_T + plotH / 2 + 4" text-anchor="end" class="effort-axis">{{ Math.round(maxY / 2) }}</text>
       </svg>
@@ -53,9 +70,10 @@ const props = defineProps({
 })
 
 const showInfo = ref(false)
+const active = ref(null)
 
 const W = 460
-const H = 168
+const H = 250
 const PAD_L = 6
 const PAD_R = 42
 const PAD_T = 6
@@ -69,6 +87,7 @@ const maxY = computed(() => {
   return Math.max(...values, 1) * 1.1
 })
 const xFor = (index) => PAD_L + 22 + (index * (plotW - 44)) / Math.max(weeks.value.length - 1, 1)
+const step = computed(() => (plotW - 44) / Math.max(weeks.value.length - 1, 1))
 const yFor = (value) => PAD_T + plotH - (Number(value || 0) / maxY.value) * plotH
 
 const points = computed(() => weeks.value.map((week, index) => ({
@@ -78,6 +97,25 @@ const points = computed(() => weeks.value.map((week, index) => ({
   label: format(parseISO(week.week_start), 'MMM d'),
   title: `Week of ${format(parseISO(week.week_start), 'MMM d')}: ${week.score}${week.range ? ` (range ${week.range.low}–${week.range.high})` : ''}`,
 })))
+
+// Hovering a past week swaps the stats row to that week; the current week keeps the live readout.
+const hoveredPast = computed(() => {
+  const point = active.value === null ? null : points.value[active.value]
+  if (!point || point.is_current) return null
+  return { ...point, status: weekStatus(point) }
+})
+function weekStatus(week) {
+  if (!week.range) return 'unknown'
+  if (week.score < week.range.low) return 'below'
+  if (week.score > week.range.high) return 'above'
+  return 'in'
+}
+function statusLabel(status) {
+  return { below: 'Below range', in: 'In range', above: 'Above range' }[status] || 'No range yet'
+}
+function weekRangeLabel(week) {
+  return week.range ? `${week.range.low}–${week.range.high}` : '—'
+}
 
 // Band between each week's low and high; weeks without a range yet are skipped.
 const bandPoints = computed(() => {
@@ -125,7 +163,7 @@ const chartLabel = computed(() => weeks.value.map((week) => `${format(parseISO(w
 .effort-detail { margin: 0; color: var(--dash-soft, var(--text-soft)); font-size: 13px; line-height: 1.45; }
 .effort-explain { margin: 0; border-left: 2px solid rgb(var(--tint-rgb) / 0.16); padding-left: 10px; color: var(--dash-muted, var(--muted)); font-size: 12px; line-height: 1.45; }
 
-.effort-stats { display: flex; align-items: flex-end; gap: 28px; margin-top: 12px; }
+.effort-stats { display: flex; flex-wrap: nowrap; align-items: flex-end; gap: 18px; margin-top: 12px; white-space: nowrap; }
 .effort-days { display: flex; align-items: flex-end; gap: 5px; }
 .effort-day { display: grid; justify-items: center; gap: 5px; }
 .effort-day-track { display: flex; align-items: flex-end; width: 8px; height: 34px; }
@@ -135,18 +173,32 @@ const chartLabel = computed(() => weeks.value.map((week) => `${format(parseISO(w
 .effort-day small { color: var(--dash-muted, var(--muted)); font-size: 10px; }
 .effort-stat { display: grid; gap: 2px; }
 .effort-stat span { color: var(--dash-muted, var(--muted)); font-size: 12px; }
-.effort-stat strong { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.effort-stat strong { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 
 .effort-chart { margin: 0; min-width: 0; }
+.effort-week { display: grid; flex: 0 0 82px; gap: 4px; padding-bottom: 2px; }
+.effort-week small { color: var(--dash-muted, var(--muted)); font-size: 11px; }
+.effort-week strong { font-size: 13px; font-weight: 600; }
+.effort-week .is-below { color: oklch(from #a58ff2 calc(l - var(--dim-l)) c h); }
+.effort-week .is-in { color: oklch(from #52d7aa calc(l - var(--dim-l)) c h); }
+.effort-week .is-above { color: oklch(from #efb35a calc(l - var(--dim-l)) c h); }
+.effort-week .is-unknown { color: var(--dash-muted, var(--muted)); }
+.effort-hit { fill: transparent; cursor: default; outline: none; }
+.effort-grid.is-active { stroke: rgb(var(--tint-rgb) / 0.35); }
+.effort-grid.is-current.is-active { stroke: var(--effort-accent); }
+.effort-chart g { transition: opacity 0.15s ease; }
+.effort-chart g.is-dimmed { opacity: 0.45; }
+.effort-chart g.is-active .effort-axis { fill: var(--text); }
+.effort-value { fill: var(--text); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .effort-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-.effort-plot { fill: rgb(var(--tint-rgb) / 0.07); }
-.effort-band { fill: var(--dash-surface); opacity: 0.9; }
-.effort-grid { stroke: rgb(var(--tint-rgb) / 0.12); stroke-width: 1; }
+.effort-plot { fill: rgb(var(--tint-rgb) / 0.13); }
+.effort-band { fill: var(--dash-surface); }
+.effort-grid { stroke: rgb(var(--tint-rgb) / 0.1); stroke-width: 1; }
 .effort-grid.is-current { stroke: var(--effort-accent); stroke-width: 1.5; }
-.effort-dot { fill: var(--dash-surface); stroke: var(--text); stroke-width: 1.6; }
+.effort-dot { fill: var(--dash-surface); stroke: var(--text); stroke-width: 1.8; }
 .effort-dot-now { fill: var(--effort-accent); }
 .effort-halo { fill: var(--effort-accent); opacity: 0.25; }
-.effort-axis { fill: var(--dash-muted, var(--muted)); font-size: 10px; font-variant-numeric: tabular-nums; }
+.effort-axis { fill: var(--dash-soft, var(--text-soft)); font-size: 10px; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 860px) {
   .effort { grid-template-columns: 1fr; gap: 18px; padding: 18px; }

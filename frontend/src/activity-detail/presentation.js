@@ -74,3 +74,52 @@ export function formatStat(stat) {
   if (['moving_time_min', 'elapsed_time_min', 'duration_min'].includes(stat.key)) return formatDurationMinutes(stat.value)
   return `${stat.value}${stat.unit ? ` ${stat.unit}` : ''}`
 }
+
+const OVERVIEW_TONES = { distance_km: 'distance', moving_time_min: 'time', elapsed_time_min: 'time', avg_pace: 'speed', avg_speed_kmh: 'speed', avg_hr: 'heart' }
+
+const statOf = (stats, key) => stats.find((stat) => stat?.key === key && stat.value !== null && stat.value !== undefined && stat.value !== '')
+
+/**
+ * Overview strip for runs, walks, swims and other non-ride sessions: four headline numbers, each
+ * with a second line that adds a fact (climb, elapsed time, speed, max HR) rather than restating
+ * the label, and the leftover stats as a short list. Stats used in a second line are not repeated.
+ */
+export function overviewStats(stats = [], type) {
+  const family = sportFamily(type)
+  const get = (key) => statOf(stats, key)
+  const usesPace = family === 'running' || family === 'swimming'
+  const hero = []
+  const used = new Set()
+  const add = (stat, { value, unit, hint } = {}) => {
+    if (!stat) return
+    used.add(stat.key)
+    hero.push({ key: stat.key, label: stat.label, value: value ?? String(stat.value), unit: unit ?? stat.unit ?? '', hint: hint || '', tone: OVERVIEW_TONES[stat.key] || 'default' })
+  }
+  const lean = (key) => { used.add(key); return get(key) }
+
+  const elevation = get('elevation_m')
+  add(get('distance_km'), { hint: Number(elevation?.value) > 0 ? `+${lean('elevation_m').value} m climb` : '' })
+
+  const moving = get('moving_time_min') || get('elapsed_time_min')
+  const elapsed = get('elapsed_time_min')
+  const stopped = moving?.key === 'moving_time_min' && elapsed && Number(elapsed.value) - Number(moving.value) >= 0.5
+  if (moving?.key === 'moving_time_min' && elapsed && !stopped) used.add('elapsed_time_min')
+  add(moving, { value: formatDurationMinutes(moving?.value), unit: '', hint: stopped ? `elapsed ${formatDurationMinutes(lean('elapsed_time_min').value)}` : '' })
+
+  if (usesPace && get('avg_pace')) {
+    const speed = get('avg_speed_kmh')
+    add(get('avg_pace'), { unit: family === 'running' ? '/km' : '', hint: speed ? `${lean('avg_speed_kmh').value} km/h` : '' })
+  } else {
+    const max = get('max_speed_kmh')
+    add(get('avg_speed_kmh'), { hint: max ? `max ${lean('max_speed_kmh').value} km/h` : '' })
+  }
+
+  const maxHr = get('max_hr')
+  add(get('avg_hr'), { hint: maxHr ? `max ${lean('max_hr').value} bpm` : '' })
+
+  const extra = orderedStats(stats, type)
+    .filter((stat) => !used.has(stat.key))
+    .slice(0, 6)
+    .map((stat) => ({ key: stat.key, label: stat.label, display: formatStat(stat) }))
+  return { hero, extra }
+}

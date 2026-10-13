@@ -38,6 +38,7 @@ from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lo
 from .heart_rate_zones import build_activity_heart_rate_zone_summary
 from .power_zones import build_activity_power_zone_summary
 from .ride_detail import build_ride_detail
+from .workout_execution import build_workout_execution
 from .plans import (
     build_execution_quality_for_completed_session,
     ensure_plan_day_ids,
@@ -868,6 +869,12 @@ def _build_activity_detail_payload(
         "linked_planned_session": linked_planned_session,
         "planned_session_match": planned_session_match,
         "execution_quality": execution_quality,
+        "workout_execution": build_workout_execution(
+            conn, activity,
+            detail_row["detail_json"] if detail_row else None,
+            detail_row["streams_json"] if detail_row else None,
+            detail_row["source_status"] if detail_row and "source_status" in detail_row.keys() else None,
+        ),
     }
 
 

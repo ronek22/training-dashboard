@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { chartRange, chartY } from '../src/activity-detail/chart-range.mjs'
+import { axisTicks, chartRange, chartY, timeTicks } from '../src/activity-detail/chart-range.mjs'
 
 const pace = (values) => ({ key: 'pace', points: values.map((y, x) => ({ x, y })) })
 
@@ -22,4 +22,17 @@ test('other traces keep their full range, bottom-up', () => {
   assert.deepEqual(range, { min: 100, max: 180, inverted: false, clipped: false })
   assert.equal(chartY(180, range), 24)
   assert.equal(chartY(100, range), 304)
+})
+
+test('chartY maps into a custom plot band', () => {
+  const range = { min: 100, max: 200, inverted: false }
+  assert.equal(chartY(200, range, 10, 110), 10)
+  assert.equal(chartY(150, range, 10, 110), 60)
+})
+
+test('axis ticks land on round values inside the range', () => {
+  assert.deepEqual(axisTicks({ min: 5.1, max: 6.4 }, 'pace'), [5.25, 5.5, 5.75, 6, 6.25])
+  assert.deepEqual(axisTicks({ min: 118, max: 183 }, 'heartrate'), [120, 140, 160, 180])
+  assert.deepEqual(timeTicks(28.5), [5, 10, 15, 20, 25])
+  assert.deepEqual(timeTicks(0), [])
 })

@@ -33,6 +33,8 @@
 
         <component :is="presentationComponent" v-if="presentation !== 'hike'" :detail="detail" />
 
+        <WorkoutExecutionCard v-if="detail.workout_execution" :execution="detail.workout_execution" />
+
         <SessionReadPanel
           class="ad-shared-section"
           :read="analysis.session_read" :analysis="analysis"
@@ -77,6 +79,7 @@ import HikeAnalysis from '../components/activity-detail/HikeAnalysis.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
 import SessionReadPanel from '../components/activity-detail/SessionReadPanel.vue'
 import SessionWinCard from '../components/activity-detail/SessionWinCard.vue'
+import WorkoutExecutionCard from '../components/activity-detail/WorkoutExecutionCard.vue'
 import { coachChatAvailable, openCoachChat } from '../coach/chat-bus'
 import { sessionChatRequest } from '../coach/session-chat.mjs'
 import { activityPresentation, sportLabel } from '../activity-detail/presentation'

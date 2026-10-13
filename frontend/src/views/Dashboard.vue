@@ -107,7 +107,10 @@
         @open="openWeekDay"
       />
 
-      <RelativeEffortCard v-if="dashboard.relative_effort" :effort="dashboard.relative_effort" />
+      <div class="effort-month-row" :class="{ 'is-solo': !dashboard.relative_effort }">
+        <RelativeEffortCard v-if="dashboard.relative_effort" :effort="dashboard.relative_effort" />
+        <MonthActivity :activities="recentActivities" />
+      </div>
 
       <YearProgress
         :ride-series="dashboard.ride_year_series || []"
@@ -154,6 +157,7 @@ import YearProgress from '../components/YearProgress.vue'
 import RecentRecords from '../components/RecentRecords.vue'
 import LoadFormTrend from '../components/LoadFormTrend.vue'
 import RelativeEffortCard from '../components/RelativeEffortCard.vue'
+import MonthActivity from '../components/MonthActivity.vue'
 import DailyCheckin from '../components/DailyCheckin.vue'
 import ProteinTick from '../components/ProteinTick.vue'
 import VolumeTrendAlert from '../components/VolumeTrendAlert.vue'
@@ -189,12 +193,19 @@ const goalReviewLabel = computed(() => {
 })
 const completedPlanStatuses = new Set(['linked', 'matched', 'partially_matched', 'moved', 'replaced', 'rest_day_changed'])
 
+// Covers the past week plus this month and all of last month, for the month dots' comparison.
+function monthActivityWindowDays() {
+  const today = new Date()
+  const daysInLastMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate()
+  return Math.max(8, today.getDate() + daysInLastMonth + 1)
+}
+
 const loadDashboard = async () => {
   loading.value = true
   // The goal count and today's activities don't need the dashboard payload, so they load
   // alongside it instead of after it.
   void loadGoalReviewCount()
-  const activitiesRequest = api.getActivities({ days: 8, limit: 100 }).then(
+  const activitiesRequest = api.getActivities({ days: monthActivityWindowDays(), limit: 200 }).then(
     ({ data }) => { recentActivities.value = data },
     () => { recentActivities.value = [] },
   )
@@ -1077,6 +1088,9 @@ button { color: inherit; }
 .explore-grid button:hover{background:rgb(var(--ov-rgb) / 0.016)}
 .explore-grid strong{font-size:13px;font-weight:500}.explore-grid small{font-size:11px}
 .dashboard-shell button:focus-visible,.dashboard-shell summary:focus-visible{outline:2px solid var(--accent-strong);outline-offset:4px}
+.effort-month-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(440px, 0.46fr); gap: 22px; align-items: stretch; }
+.effort-month-row.is-solo { grid-template-columns: minmax(0, 460px); }
+@media (max-width: 1100px) { .effort-month-row { grid-template-columns: minmax(0, 1fr); } }
 @media(max-width:1100px) {.decision-layout{grid-template-columns:minmax(0,1.2fr) minmax(300px,1fr);gap:24px}}
 @media(max-width:800px) {.decision-layout{grid-template-columns:1fr;gap:26px}.signal-card{padding:0}.explore-grid{grid-template-columns:1fr;gap:4px}.dashboard-shell{gap:28px}}
 @media(max-width:520px) {.dashboard-header{align-items:center;gap:16px}.dashboard-header h1{font-size:28px}.dashboard-date{font-size:11px}.header-plan-link{font-size:11px}.signal-heading h2,.section-heading h2{font-size:20px}.explore-section{border-radius:0}.section-heading{align-items:center}.checkin-summary{flex-wrap:wrap}.checkin-summary div{justify-content:flex-start}}

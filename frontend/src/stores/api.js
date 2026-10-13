@@ -237,7 +237,7 @@ export const useApi = () => ({
   startCoachDailyState: (payload) => coachHelper.post('/daily-state', payload),
   getCoachDailyStateJob: (jobId) => coachHelper.get(`/daily-state/${encodeURIComponent(jobId)}`),
   getStravaStatus: () => api.get('/integrations/strava/status'),
-  importStravaActivities: (payload) => api.post('/integrations/strava/import', payload),
+  importStravaActivities: (payload) => api.post('/integrations/strava/import', payload, { timeout: 600000 }),
   backfillStravaStreams: (payload) => api.post('/integrations/strava/streams/backfill', payload),
   previewHealthFitImport: () => api.get('/integrations/healthfit/preview'),
   importHealthFitFiles: () => api.post('/integrations/healthfit/import'),

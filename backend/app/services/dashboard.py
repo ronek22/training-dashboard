@@ -1,6 +1,6 @@
 import math
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Callable, Optional
 
 from .plans import build_multi_week_execution_trend, serialize_weekly_plan
@@ -544,29 +544,35 @@ def latest_metric_value(
     return float(row["value"])
 
 
+MAX_HR_LOOKBACK_DAYS = 730
+
+
 def estimate_thresholds(conn: sqlite3.Connection, as_of_date: Optional[str] = None) -> dict:
     resting_hr = latest_metric_value(conn, "resting_hr", as_of_date) or 58.0
     ftp = ftp_on(conn, as_of_date)
     date_clause = "AND date <= ?" if as_of_date else ""
     params = (as_of_date,) if as_of_date else ()
 
+    # Max HR falls with age, so a reading from years of imported history must
+    # not lift today's zones: only the last two years count.
+    max_hr_since = ((date.fromisoformat(as_of_date[:10]) if as_of_date else date.today()) - timedelta(days=MAX_HR_LOOKBACK_DAYS)).isoformat()
     run_max_hr_row = conn.execute(
         f"""
         SELECT MAX(max_hr) AS max_hr
         FROM activities
-        WHERE type = 'Run' AND max_hr IS NOT NULL
+        WHERE type = 'Run' AND max_hr IS NOT NULL AND date >= ?
           {date_clause}
         """,
-        params,
+        (max_hr_since, *params),
     ).fetchone()
     ride_max_hr_row = conn.execute(
         f"""
         SELECT MAX(max_hr) AS max_hr
         FROM activities
-        WHERE type IN ('Ride', 'VirtualRide') AND max_hr IS NOT NULL
+        WHERE type IN ('Ride', 'VirtualRide') AND max_hr IS NOT NULL AND date >= ?
           {date_clause}
         """,
-        params,
+        (max_hr_since, *params),
     ).fetchone()
     recent_run_hr_row = conn.execute(
         f"""
@@ -740,6 +746,9 @@ def ewma(values: list[float], time_constant_days: float) -> list[float]:
     return output
 
 
+TRAINING_LOAD_WARMUP_DAYS = 365
+
+
 def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_days: int = 28) -> dict:
     safe_days = max(14, min(days, 120))
     safe_focus_days = max(7, min(focus_days, safe_days))
@@ -751,17 +760,22 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
     # all training before it. Starting the EWMA at the edge of the moving chart
     # window makes every overlapping historical point drift when that edge moves.
     # Warm the model from the athlete's first activity, then return only the
-    # requested display window.
+    # requested display window. A year of warm-up is enough: with the 42-day CTL
+    # constant, older training weighs under 0.02% and would round away, while
+    # years of imported history would cost thousands of threshold lookups.
     first_activity_row = conn.execute(
         "SELECT MIN(date) AS first_date FROM activities WHERE date <= ?",
         (today.isoformat(),),
     ).fetchone()
     first_activity_date = first_activity_row["first_date"] if first_activity_row else None
     calculation_start_day = (
-        min(start_day, datetime.strptime(first_activity_date, "%Y-%m-%d").date())
+        min(start_day, datetime.strptime(first_activity_date[:10], "%Y-%m-%d").date())
         if first_activity_date
         else start_day
     )
+    # The model is seeded with its first day, so start on the cap date itself
+    # (not the first activity after it) and let that seed fade over the year.
+    calculation_start_day = max(calculation_start_day, start_day - timedelta(days=TRAINING_LOAD_WARMUP_DAYS))
 
     activity_rows = conn.execute(
         """

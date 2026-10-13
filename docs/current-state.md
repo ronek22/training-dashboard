@@ -24,6 +24,15 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Ready for full Strava history
+
+2026-10-13: preparing to import Strava history back to 2013 (about 2,300 runs and rides against 468 activities today). A simulated import of 2,657 older activities on a copy of the database took the Dashboard from 0.2 s to 5.3 s and the coaching context from 0.45 s to 2 s. Both are back to about 0.5 s.
+
+- `build_training_load_summary` warmed its CTL/ATL model from the first activity ever, re-estimating thresholds for every day without stream data. It now warms up from at most `TRAINING_LOAD_WARMUP_DAYS` (365) before the chart. It starts on that cap date, so the first-day seed fades too. With the 42-day constant, older training weighs under 0.02%: on the real data the chart is identical, and on the simulated history it differs by at most a 0.1 rounding step.
+- `estimate_thresholds` took the all-time max HR, so a reading from years ago would have lifted today's zones and load scores. Max HR now counts only the last `MAX_HR_LOOKBACK_DAYS` (730) before the day being scored.
+- The Sync page's Strava import request now allows 10 minutes instead of the default 8 seconds, so a multi-year date range is not reported as failed while it is still running.
+- Tests: `backend/tests/test_training_load_history.py`.
+
 ### Season in review
 
 2026-10-13: implements the `season-in-review` idea. `/season/:year` pulls one calendar year onto one page. It adds no tracking and, like the monthly letter, calls no LLM.

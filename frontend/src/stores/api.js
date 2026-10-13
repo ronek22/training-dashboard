@@ -260,7 +260,7 @@ export const useApi = () => ({
   getPersonalRecords: () => api.get('/records'),
   getSeasonReviewYears: (day) => api.get('/season-review', { params: { day } }),
   getSeasonReview: (year, day) => api.get(`/season-review/${year}`, { params: { day } }),
-  writeSeasonReviewCoach: (year, day) => api.post(`/season-review/${year}/coach`, null, { params: { day }, timeout: 60000 }),
+  writeSeasonReviewCoach: (year, day, rewrite = false) => api.post(`/season-review/${year}/coach`, null, { params: { day, rewrite }, timeout: 60000 }),
   saveSessionTags: (activityId, payload) => api.put(`/activities/${encodeURIComponent(activityId)}/tags`, payload),
   getWhatWorked: () => api.get('/what-worked'),
   getReturnToRun: () => api.get('/return-to-run'),

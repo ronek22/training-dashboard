@@ -89,11 +89,12 @@ def season_review_status(conn: sqlite3.Connection, today: Optional[date] = None)
 # ---------------------------------------------------------------------------
 
 
-def _sport_totals(conn: sqlite3.Connection, year: int) -> dict[str, dict[str, Any]]:
+def _sport_totals(conn: sqlite3.Connection, year: int, until: str = "12-31") -> dict[str, dict[str, Any]]:
+    """Totals by sport from 1 January to ``until`` ("MM-DD") of the year."""
     rows = conn.execute(
         "SELECT type, COUNT(*) AS sessions, COALESCE(SUM(duration_min), 0) AS minutes, "
-        "COALESCE(SUM(distance_km), 0) AS km FROM activities WHERE substr(date, 1, 4) = ? GROUP BY type",
-        (str(year),),
+        "COALESCE(SUM(distance_km), 0) AS km FROM activities WHERE substr(date, 1, 4) = ? AND substr(date, 6, 5) <= ? GROUP BY type",
+        (str(year), until),
     ).fetchall()
     totals = {}
     for key, label, types, with_km in SPORTS:
@@ -143,8 +144,11 @@ def _calendar(conn: sqlite3.Connection, year: int) -> tuple[list[dict], list[dic
     return months, calendar
 
 
-def _active_days(conn: sqlite3.Connection, year: int) -> int:
-    row = conn.execute("SELECT COUNT(DISTINCT substr(date, 1, 10)) FROM activities WHERE substr(date, 1, 4) = ?", (str(year),)).fetchone()
+def _active_days(conn: sqlite3.Connection, year: int, until: str = "12-31") -> int:
+    row = conn.execute(
+        "SELECT COUNT(DISTINCT substr(date, 1, 10)) FROM activities WHERE substr(date, 1, 4) = ? AND substr(date, 6, 5) <= ?",
+        (str(year), until),
+    ).fetchone()
     return int(row[0] or 0)
 
 
@@ -154,9 +158,34 @@ def _change(now: Optional[float], before: Optional[float]) -> Optional[float]:
     return round((now - before) / before * 100)
 
 
+def _hours_until(conn: sqlite3.Connection, year: int, until: str) -> float:
+    row = conn.execute(
+        "SELECT COALESCE(SUM(duration_min), 0) FROM activities WHERE substr(date, 1, 4) = ? AND substr(date, 6, 5) <= ?",
+        (str(year), until),
+    ).fetchone()
+    return _hours(float(row[0] or 0))
+
+
+def _pace(conn: sqlite3.Connection, year: int, until: str, hours_now: float) -> Optional[dict[str, Any]]:
+    """The running year against the best other year at the same date."""
+    row = conn.execute(
+        "SELECT substr(date, 1, 4) AS year, SUM(duration_min) AS minutes FROM activities "
+        "WHERE substr(date, 1, 4) != ? AND substr(date, 1, 4) GLOB '[0-9][0-9][0-9][0-9]' GROUP BY 1 ORDER BY minutes DESC LIMIT 1",
+        (str(year),),
+    ).fetchone()
+    if not row or not row["minutes"]:
+        return None
+    best = int(row["year"])
+    then = _hours_until(conn, best, until)
+    return {"year": best, "hours": then, "full_hours": _hours(float(row["minutes"])), "delta": round(hours_now - then, 1)}
+
+
 def _totals(conn: sqlite3.Connection, year: int, today: date) -> dict[str, Any]:
+    # While the year runs, it is compared with the same dates last year, not with a full year.
+    to_date = year == today.year
+    until = today.strftime("%m-%d") if to_date else "12-31"
     current = _sport_totals(conn, year)
-    previous = _sport_totals(conn, year - 1)
+    previous = _sport_totals(conn, year - 1, until)
     compare = bool(previous)  # Last year is compared only when it has any data.
     sports = []
     for key, item in current.items():
@@ -175,7 +204,7 @@ def _totals(conn: sqlite3.Connection, year: int, today: date) -> dict[str, Any]:
         before_total = {
             "sessions": sum(item["sessions"] for item in previous.values()),
             "hours": round(sum(item["hours"] for item in previous.values()), 1),
-            "active_days": _active_days(conn, year - 1),
+            "active_days": _active_days(conn, year - 1, until),
         }
         total["previous"] = before_total
         total["change"] = {k: _change(total[k], before_total[k]) for k in ("sessions", "hours", "active_days")}
@@ -183,8 +212,9 @@ def _totals(conn: sqlite3.Connection, year: int, today: date) -> dict[str, Any]:
         "sports": sports,
         "total": total,
         "previous_year": year - 1 if compare else None,
-        # The current year in December is compared while it is still running.
-        "to_date": year == today.year,
+        "to_date": to_date,
+        "compared_until": until if to_date else None,
+        "pace": _pace(conn, year, until, total["hours"]) if to_date else None,
     }
 
 
@@ -256,6 +286,55 @@ def _records(records: dict[str, Any], year: int) -> tuple[list[dict], list[dict]
     # Loaded lifts first: a jump in bodyweight reps is not the same kind of progress.
     lifts.sort(key=lambda item: (item["unit"] != "kg", -(item["gain_percent"] or 0), item["label"]))
     return endurance, lifts[:TOP_LIFTS]
+
+
+SEASON_BEST_CATEGORIES = ("Run", "Bike distance", "Bike power")  # Lifts have their own section; indoor distance is simulated.
+SEASON_BEST_MIN_GAP = 2
+SEASON_BEST_MIN_SEASONS = 3  # "Best since 2013" means little when only two seasons have the effort.
+
+
+def _season_bests(records: dict[str, Any], year: int, already: set[tuple[str, str]]) -> list[dict[str, Any]]:
+    """The year's best in each record, framed against every other season.
+
+    Records already listed as new all-time bests are left out; what remains
+    says how a season compares when it did not beat the all-time record:
+    best since an earlier year, or its place among all seasons.
+    """
+    key = str(year)
+    found = []
+    for category, label, ranked in _iter_ranked(records):
+        if category not in SEASON_BEST_CATEGORIES or (category, label) in already:
+            continue
+        yearly = ranked.get("yearly") or {}
+        best = yearly.get(key)
+        if not best:
+            continue
+        higher = ranked.get("higher_is_better", True)
+        better = lambda other: other["value"] > best["value"] if higher else other["value"] < best["value"]
+        beaten_by = sorted(int(other_year) for other_year, other in yearly.items() if other_year != key and better(other))
+        seasons = len(yearly)
+        earlier = [other for other in beaten_by if other < year]
+        later = [other for other in beaten_by if other > year]
+        item = {"category": category, "label": label, "display": best["display"], "detail": best.get("detail"),
+                "date": best["date"][:10], "activity_id": best.get("activity_id"), "seasons": seasons, "rank": len(beaten_by) + 1}
+        if seasons == 1:
+            continue  # Only one season has this record: nothing to compare.
+        if not beaten_by:
+            item.update(kind="best_ever", headline="Best of any season", score=4)
+        elif seasons < SEASON_BEST_MIN_SEASONS:
+            continue
+        elif not earlier:
+            item.update(kind="best_then", headline=f"Best season yet, until {later[0]}", score=3)
+        elif year - earlier[-1] >= SEASON_BEST_MIN_GAP:
+            item.update(kind="since", headline=f"Best since {earlier[-1]}", score=2 + (year - earlier[-1]) / 100)
+        elif item["rank"] <= 3:
+            item.update(kind="rank", headline=f"#{item['rank']} of {seasons} seasons", score=1)
+        else:
+            continue
+        found.append(item)
+    order = {name: index for index, name in enumerate(SEASON_BEST_CATEGORIES)}
+    found.sort(key=lambda item: (-item["score"], order[item["category"]], item["date"]))
+    return [{k: v for k, v in item.items() if k != "score"} for item in found]
 
 
 def _mountains(conn: sqlite3.Connection, year: int) -> list[dict[str, Any]]:
@@ -507,7 +586,9 @@ def build_season_review(conn: sqlite3.Connection, year: int, today: Optional[dat
     if year not in available_years(conn, today):
         raise ValueError(f"No activities recorded in {year}")
     as_of = min(date(year, 12, 31), today)
-    records, lifts = _records(build_personal_records(conn, today=as_of), year)
+    record_data = build_personal_records(conn, today=as_of, include_yearly=True)
+    records, lifts = _records(record_data, year)
+    season_bests = _season_bests(record_data, year, {(item["category"], item["label"]) for item in records})
     letters = _letters(conn, year)
     months, days = _calendar(conn, year)
     return {
@@ -521,6 +602,7 @@ def build_season_review(conn: sqlite3.Connection, year: int, today: Optional[dat
         "days": days,
         "streak": _longest_streak(conn, year),
         "records": records,
+        "season_bests": season_bests,
         "lifts": lifts,
         "mountains": _mountains(conn, year),
         "best_month": _best_month(conn, year),
@@ -550,6 +632,56 @@ def _record_phrase(review: dict[str, Any]) -> Optional[str]:
     return "; ".join(parts) if parts else None
 
 
+COMEBACK_LOOKBACK_YEARS = 6
+COMEBACK_FACTOR = 4  # This year needs four times the low year's sessions to call it a comeback.
+MILESTONE_ORDER = ("ride_km", "run_km", "activities", "hours")
+
+
+def _season_best_phrase(item: dict[str, Any]) -> str:
+    """'Your longest ride (126.0 km)', 'Your fastest 10K run (45:02)', 'Your best 20 min power (230 W)'."""
+    label = item["label"]
+    if label.startswith(("Longest", "Biggest")):
+        return f"Your {label[0].lower()}{label[1:]} ({item['display']})"
+    if item["category"] == "Bike power":
+        return f"Your best {label} power ({item['display']})"
+    sport = "run" if item["category"] == "Run" else "ride"
+    return f"Your fastest {label} {sport} ({item['display']})"
+
+
+def _career_sentences(review: dict[str, Any]) -> list[str]:
+    """The year in the context of every year: records, a comeback, the biggest milestone, a season best."""
+    career = review.get("career") or {}
+    year = review["year"]
+    years = [item for item in career.get("years", []) if item["sessions"]]
+    sentences = []
+    hours_badge = next((badge for badge in career.get("badges", []) if badge["metric"] == "hours"), None)
+    if hours_badge and hours_badge["kind"] == "record" and years:
+        others = [item for item in years if item["year"] != year]
+        best = max(others, key=lambda item: item["hours"]) if others else None
+        tail = f", past {best['year']}'s {round(best['hours']):g} h" if best else ""
+        sentences.append(f"Your biggest year since you started in {years[0]['year']}{tail}.")
+    elif hours_badge and hours_badge["kind"] == "since":
+        sentences.append(f"{hours_badge['headline']}.")
+    now = next((item for item in years if item["year"] == year), None)
+    window = [item for item in career.get("years", []) if year - COMEBACK_LOOKBACK_YEARS <= item["year"] < year]
+    if now and window and any(item["year"] < window[0]["year"] for item in years):
+        low = min(window, key=lambda item: (item["sessions"], -item["year"]))  # The latest low point.
+        if low["sessions"] * COMEBACK_FACTOR <= now["sessions"]:
+            count = _plural(low["sessions"], "session") if low["sessions"] else "nothing logged"
+            sentences.append(f"A full comeback from {count} in {low['year']}.")
+    other_record = next((badge for badge in career.get("badges", []) if badge["kind"] == "record" and badge["metric"] in ("ride_km", "run_km")), None)
+    if other_record:
+        sentences.append(f"{other_record['headline']}: {other_record['detail'].split(' · ')[0].replace(' so far', '')}.")
+    milestones = sorted(career.get("milestones", []), key=lambda item: (MILESTONE_ORDER.index(item["kind"]), -item["value"]))
+    if milestones:
+        top = milestones[0]
+        sentences.append(f"You passed {top['value']:,} {top['unit']} on {date.fromisoformat(top['date']).strftime('%-d %b')}.")
+    since = next((item for item in review.get("season_bests", []) if item["kind"] == "since"), None)
+    if since:
+        sentences.append(f"{_season_best_phrase(since)} was the best since {since['headline'].rsplit(' ', 1)[-1]}.")
+    return sentences
+
+
 def write_coach_paragraph_text(review: dict[str, Any], letters: list[dict[str, Any]]) -> dict[str, Any]:
     year = review["year"]
     total = review["totals"]["total"]
@@ -558,8 +690,9 @@ def write_coach_paragraph_text(review: dict[str, Any], letters: list[dict[str, A
     if change is not None and abs(change) >= 5:
         sentences[-1] += f", {abs(change):g}% {'more' if change > 0 else 'less'} time than {year - 1}"
     sentences[-1] += "."
+    sentences += _career_sentences(review)
     if review["streak"]:
-        sentences.append(f"The longest run was {review['streak']['days']} days in a row.")
+        sentences.append(f"The longest streak was {review['streak']['days']} days in a row.")
     best = _record_phrase(review)
     if best:
         sentences.append(f"The biggest steps: {best}.")
@@ -594,16 +727,26 @@ def saved_coach_paragraph(conn: sqlite3.Connection, year: int) -> Optional[dict[
     return {**json.loads(row["coach_json"]), "created_at": row["created_at"]} if row else None
 
 
-def write_coach_paragraph(conn: sqlite3.Connection, year: int, today: Optional[date] = None) -> tuple[dict[str, Any], bool]:
-    """Write and save the year's coach paragraph. A saved paragraph is returned unchanged, never rewritten."""
+def write_coach_paragraph(conn: sqlite3.Connection, year: int, today: Optional[date] = None, *, rewrite: bool = False) -> tuple[dict[str, Any], bool]:
+    """Write and save the year's coach paragraph.
+
+    A saved paragraph is returned unchanged unless ``rewrite`` is asked for
+    explicitly; a rewrite keeps the text it replaced as ``previous``.
+    """
     existing = saved_coach_paragraph(conn, year)
-    if existing:
+    if existing and not rewrite:
         return existing, False
     opens = coach_opens_on(year, today or date.today())
     if opens:
         raise CoachNotOpen(f"The {year} coach paragraph can be written from 1 December, once most of the year is in")
     review = build_season_review(conn, year, today=today)
     paragraph = write_coach_paragraph_text(review, _letters(conn, year))
+    if existing:
+        paragraph["previous"] = {"text": existing["text"], "created_at": existing["created_at"]}
     with conn:
-        conn.execute("INSERT OR IGNORE INTO season_reviews (year, coach_json) VALUES (?, ?)", (year, json.dumps(paragraph)))
+        conn.execute(
+            "INSERT INTO season_reviews (year, coach_json) VALUES (?, ?) "
+            "ON CONFLICT(year) DO UPDATE SET coach_json = excluded.coach_json, created_at = CURRENT_TIMESTAMP",
+            (year, json.dumps(paragraph)),
+        )
     return saved_coach_paragraph(conn, year), True

@@ -50,11 +50,11 @@ def season_review(year: int, day: Optional[date] = None):
 
 
 @router.post("/season-review/{year}/coach")
-def season_review_coach(year: int, day: Optional[date] = None):
-    """Write the year's coach paragraph on request. A saved paragraph is returned as it was, never rewritten."""
+def season_review_coach(year: int, day: Optional[date] = None, rewrite: bool = False):
+    """Write the year's coach paragraph on request. A saved one is returned as it was unless ``rewrite`` is asked for."""
     conn = get_db()
     try:
-        coach, created = write_coach_paragraph(conn, year, today=day)
+        coach, created = write_coach_paragraph(conn, year, today=day, rewrite=rewrite)
         return {"coach": coach, "created": created}
     except CoachNotOpen as error:
         raise HTTPException(409, str(error))

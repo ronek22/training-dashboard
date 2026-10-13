@@ -1,3 +1,4 @@
+import json
 import os
 import sqlite3
 import tempfile
@@ -268,6 +269,85 @@ class SeasonReviewTests(unittest.TestCase):
         self.assertEqual(running, [{"kind": "run_km", "value": 1000, "unit": "km of running", "date": "2030-02-03",
                                     "activity_id": "crossing", "activity_name": "Run crossing"}])
         self.assertEqual(self.review(2029)["career"]["milestones"], [])  # 990 km, 10 h and 1 activity cross nothing.
+
+    def test_running_year_is_compared_on_the_same_dates_with_pace_against_the_best_year(self):
+        self.add("best-early", "2027-03-01", "Ride", 600, 100.0)
+        self.add("best-late", "2027-11-01", "Ride", 1200, 200.0)
+        self.add("last-early", "2029-02-01", "Ride", 120, 40.0)
+        self.add("last-late", "2029-11-20", "Ride", 600, 150.0)
+        self.add("now", "2030-04-01", "Ride", 900, 120.0)
+
+        totals = self.review(today=date(2030, 6, 15))["totals"]
+
+        self.assertEqual(totals["compared_until"], "06-15")
+        self.assertEqual(totals["total"]["previous"]["hours"], 2.0)  # Only last year's February ride by 15 June.
+        ride = next(item for item in totals["sports"] if item["key"] == "ride")
+        self.assertEqual(ride["previous"]["km"], 40.0)
+        self.assertEqual(totals["pace"], {"year": 2027, "hours": 10.0, "full_hours": 30.0, "delta": 5.0})
+        finished = self.review(2029, today=date(2030, 6, 15))["totals"]
+        self.assertIsNone(finished["pace"])
+        self.assertIsNone(finished["compared_until"])
+
+    def test_season_bests_frame_the_year_against_other_seasons(self):
+        for activity_id, day, km in (("a", "2026-05-01", 60.0), ("b", "2027-05-01", 40.0), ("c", "2028-05-01", 50.0), ("d", "2030-05-01", 55.0)):
+            self.add(activity_id, day, "Ride", 180, km)
+
+        def longest(year):
+            return next((item for item in self.review(year, today=date(2031, 1, 10))["season_bests"] if item["label"] == "Longest ride"), None)
+
+        self.assertEqual(longest(2030)["headline"], "Best since 2026")
+        self.assertEqual(longest(2030)["activity_id"], "d")
+        self.assertEqual(longest(2028)["headline"], "Best since 2026")  # It beat 2027; only 2026, two years back, was better.
+        self.assertEqual(longest(2026)["headline"], "Best of any season")  # The first season: nothing beaten, so not in records.
+        self.add("e", "2031-05-01", "Ride", 240, 75.0)
+        review_2031 = self.review(2031, today=date(2032, 1, 10))
+        self.assertIn("Longest ride", [item["label"] for item in review_2031["records"]])
+        self.assertNotIn("Longest ride", [item["label"] for item in review_2031["season_bests"]])  # Not listed twice.
+        self.assertEqual(self.review(2027, today=date(2031, 1, 10))["season_bests"], [])  # Last of four, a year after the best.
+
+    def test_season_bests_need_three_seasons_to_frame_against(self):
+        def ranked(years):
+            return {"yearly": {str(year): {"value": value, "display": f"{value} s", "date": f"{year}-05-01", "activity_id": str(year)}
+                               for year, value in years.items()}, "higher_is_better": False}
+
+        def sections(effort):
+            return {"cycling_power": {"records": []}, "cycling_distance": {"outdoor": {"records": [{"label": "40K", **effort}]}, "indoor": {"records": []}},
+                    "running": {"records": []}, "lifts": {"records": []}}
+
+        two = season_review._season_bests(sections(ranked({2013: 5000, 2026: 5800})), 2026, set())
+        three = season_review._season_bests(sections(ranked({2013: 5000, 2020: 6000, 2026: 5800})), 2026, set())
+
+        self.assertEqual(two, [])
+        self.assertEqual([(item["label"], item["headline"]) for item in three], [("40K", "Best since 2013")])
+
+    def test_records_api_does_not_carry_the_per_year_bests(self):
+        from backend.app.services.personal_records import build_personal_records
+
+        self.add("a", "2029-05-01", "Ride", 180, 60.0)
+        self.add("b", "2030-05-01", "Ride", 180, 70.0)
+        self.assertNotIn('"yearly"', json.dumps(build_personal_records(self.conn, today=date(2030, 6, 1))))
+        full = build_personal_records(self.conn, today=date(2030, 6, 1), include_yearly=True)
+        self.assertEqual(set(full["cycling_distance"]["outdoor"]["longest"]["yearly"]), {"2029", "2030"})
+
+    def test_coach_paragraph_tells_a_comeback_and_can_be_rewritten_on_request(self):
+        for index in range(30):
+            self.add(f"peak-{index}", f"2023-0{index % 9 + 1}-{index % 27 + 1:02d}", "Run", 60, 10.0)
+        self.add("low", "2026-05-01", "Run", 30, 5.0)
+        for index in range(20):
+            self.add(f"now-{index}", f"2030-0{index % 9 + 1}-{index % 27 + 1:02d}", "Run", 60, 10.0)
+
+        first, created = season_review.write_coach_paragraph(self.conn, 2030, today=DECEMBER)
+        self.assertTrue(created)
+        self.assertIn("A full comeback from nothing logged in 2029.", first["text"])
+
+        again, created = season_review.write_coach_paragraph(self.conn, 2030, today=DECEMBER)
+        self.assertFalse(created)
+        self.assertNotIn("previous", again)
+        self.add("late", "2030-12-03", "Run", 600, 40.0)
+        rewritten, created = season_review.write_coach_paragraph(self.conn, 2030, today=DECEMBER, rewrite=True)
+        self.assertTrue(created)
+        self.assertEqual(rewritten["previous"]["text"], first["text"])
+        self.assertNotEqual(rewritten["text"], first["text"])
 
     def test_routes_return_404_for_a_closed_year_and_keep_the_saved_paragraph(self):
         from backend.app.routers import records

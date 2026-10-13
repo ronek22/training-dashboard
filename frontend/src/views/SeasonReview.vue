@@ -30,6 +30,7 @@ async function load() {
     if (!year) { review.value = null; return }
     review.value = (await api.getSeasonReview(year, todayIso())).data
     showAllRecords.value = false
+    showAllSeasonBests.value = false
   } catch (problem) {
     review.value = null
     error.value = problem?.response?.data?.detail || 'The season review could not be loaded.'
@@ -40,12 +41,15 @@ async function load() {
 watch(() => route.params.year, load, { immediate: true })
 
 // Writing is always explicit: nothing is generated until this button is pressed.
-async function writeCoach() {
+async function writeCoach(rewriteRequested = false) {
+  const rewrite = rewriteRequested === true  // Never a click event passed through by mistake.
   if (!review.value || writing.value) return
+  // A rewrite replaces the saved paragraph, so it is always confirmed first.
+  if (rewrite && !window.confirm(`Replace the saved ${review.value.year} paragraph with a new one from today's numbers? The current text is kept as the previous version.`)) return
   writing.value = true
   coachError.value = ''
   try {
-    const { data } = await api.writeSeasonReviewCoach(review.value.year, todayIso())
+    const { data } = await api.writeSeasonReviewCoach(review.value.year, todayIso(), rewrite)
     review.value = { ...review.value, coach: data.coach }
   } catch (problem) {
     coachError.value = problem?.response?.data?.detail || 'The paragraph could not be written. Try again.'
@@ -235,6 +239,13 @@ const monthBars = computed(() => {
 
 // ---- records & lifts ------------------------------------------------------
 const records = computed(() => review.value?.records ?? [])
+const SEASON_BEST_PREVIEW = 6
+const showAllSeasonBests = ref(false)
+const seasonBests = computed(() => review.value?.season_bests ?? [])
+const visibleSeasonBests = computed(() => showAllSeasonBests.value ? seasonBests.value : seasonBests.value.slice(0, SEASON_BEST_PREVIEW))
+// While the year runs it is compared with the same dates of other years.
+const comparedUntil = computed(() => totals.value?.compared_until ? format(parseISO(`2001-${totals.value.compared_until}`), 'd MMM') : '')
+const pace = computed(() => totals.value?.pace ?? null)
 const trophies = computed(() => [...records.value].sort((a, b) => (b.improvement_percent || 0) - (a.improvement_percent || 0)).slice(0, 6))
 const restRecords = computed(() => records.value.filter((item) => !trophies.value.includes(item)))
 const recordCategory = (item) => ({ 'Bike power': 'Power', 'Bike distance': 'Bike', 'Indoor bike distance': 'Indoor bike' }[item.category] || item.category)
@@ -336,7 +347,11 @@ const RING = 2 * Math.PI * 34
             <span v-for="key in ['sessions', 'hours', 'active_days']" :key="key" class="pill" :class="tone(totals.total.change[key])">
               {{ change(totals.total.change[key]) }} {{ key === 'active_days' ? 'active days' : key }}
             </span>
-            <span class="muted">vs {{ previousYear }}{{ totals.to_date ? ' (full year)' : '' }}</span>
+            <span class="muted">vs {{ previousYear }}<template v-if="comparedUntil"> by {{ comparedUntil }}</template></span>
+          </p>
+          <p v-if="pace" class="pace" :class="pace.delta >= 0 ? 'ahead' : 'behind'">
+            <strong><AnimatedNumber :value="Math.abs(pace.delta)" :format="whole" :cache-key="`season:${review.year}:pace`" :duration="1500" /> h {{ pace.delta >= 0 ? 'ahead of' : 'behind' }} {{ pace.year }}'s pace</strong>
+            <span>{{ pace.year }}, your biggest year before this one, had {{ whole(pace.hours) }} h by {{ comparedUntil }} and finished on {{ whole(pace.full_hours) }} h.</span>
           </p>
         </div>
 
@@ -508,6 +523,30 @@ const RING = 2 * Math.PI * 34
         </template>
       </section>
 
+      <!-- Season bests ----------------------------------------------------- -->
+      <section v-if="seasonBests.length" v-reveal class="block" aria-labelledby="season-bests-title">
+        <div class="block-head">
+          <h2 id="season-bests-title">Season bests</h2>
+          <span class="muted head-note">This year's best against every other season</span>
+        </div>
+        <div class="trophies">
+          <component :is="item.activity_id ? 'RouterLink' : 'article'" v-for="(item, index) in visibleSeasonBests" :key="`${item.category}-${item.label}`"
+                     :to="item.activity_id ? `/activities/${item.activity_id}` : undefined" class="trophy season-best" :class="`is-${item.kind}`"
+                     :style="{ '--sport': SPORTS[recordSport(item)].color, '--i': index }">
+            <div class="trophy-top">
+              <span class="trophy-cat">{{ recordCategory(item) }}</span>
+              <span class="best-tag">{{ item.headline }}</span>
+            </div>
+            <span class="trophy-label">{{ item.label }}</span>
+            <strong class="trophy-value">{{ item.display }}</strong>
+            <span class="trophy-from">{{ day(item.date) }}<template v-if="item.rank > 1"> · #{{ item.rank }} of {{ item.seasons }} seasons</template></span>
+          </component>
+        </div>
+        <button v-if="seasonBests.length > SEASON_BEST_PREVIEW" type="button" class="ghost" :aria-expanded="showAllSeasonBests" @click="showAllSeasonBests = !showAllSeasonBests">
+          {{ showAllSeasonBests ? 'Show fewer' : `And ${seasonBests.length - SEASON_BEST_PREVIEW} more` }}
+        </button>
+      </section>
+
       <!-- Lifts ------------------------------------------------------------ -->
       <section v-if="lifts.length" v-reveal class="block" aria-labelledby="lifts-title">
         <div class="block-head">
@@ -616,15 +655,22 @@ const RING = 2 * Math.PI * 34
               From {{ review.coach.letters_used.length }} monthly letter{{ review.coach.letters_used.length === 1 ? '' : 's' }}:
               <RouterLink v-for="month in review.coach.letters_used" :key="month" class="more-link" to="/weekly-review">{{ monthShort(month) }}</RouterLink>
             </span>
-            <span class="muted">Written {{ written(review.coach.created_at) }} · saved as it was</span>
+            <span class="coach-meta">
+              <span class="muted">Written {{ written(review.coach.created_at) }}{{ review.coach.previous ? ' · rewritten' : ' · saved as it was' }}</span>
+              <button v-if="!review.coach_opens_on" type="button" class="ghost small" :disabled="writing" @click="writeCoach(true)">{{ writing ? 'Rewriting…' : 'Rewrite' }}</button>
+            </span>
           </footer>
+          <details v-if="review.coach.previous" class="coach-previous">
+            <summary>Previous version, written {{ written(review.coach.previous.created_at) }}</summary>
+            <p>{{ review.coach.previous.text }}</p>
+          </details>
         </template>
         <div v-else-if="review.coach_opens_on" class="coach-empty">
           <p>Your {{ review.year }} paragraph can be written from {{ format(parseISO(review.coach_opens_on), 'd MMMM') }}, once most of the year is in. It's saved once and never rewritten, so it waits until then.</p>
         </div>
         <div v-else class="coach-empty">
           <p>One paragraph to close the year, from these numbers<template v-if="review.letters.length"> and {{ review.letters.length }} monthly letter{{ review.letters.length === 1 ? '' : 's' }}</template>. Written once when you ask, then kept.</p>
-          <button type="button" class="primary" :disabled="writing" @click="writeCoach">{{ writing ? 'Writing…' : `Write my ${review.year} paragraph` }}</button>
+          <button type="button" class="primary" :disabled="writing" @click="writeCoach(false)">{{ writing ? 'Writing…' : `Write my ${review.year} paragraph` }}</button>
         </div>
       </section>
     </template>
@@ -699,6 +745,17 @@ const RING = 2 * Math.PI * 34
 .hero-line { display: flex; flex-wrap: wrap; gap: 6px 32px; padding-bottom: 4px; font-size: 15px; color: var(--text-soft); }
 .hero-stat strong { display: block; margin-bottom: 4px; font-family: var(--font-display); font-size: 56px; font-weight: 650; line-height: 1; letter-spacing: -1.5px; color: var(--text); }
 .hero-versus { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; font-size: 12px; }
+.pace { --pace: var(--success); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; width: 100%; padding: 10px 14px; border-radius: 12px; border-left: 3px solid var(--pace); background: color-mix(in srgb, var(--pace) 8%, transparent); font-size: 13px; color: var(--text-soft); }
+.pace.behind { --pace: var(--warning); }
+.pace strong { font-family: var(--font-display); font-size: 18px; font-weight: 650; color: var(--text); }
+.best-tag { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--text-soft); background: color-mix(in srgb, var(--tone-neutral) 16%, transparent); white-space: nowrap; }
+.season-best.is-best_ever .best-tag { color: var(--warning-text); background: color-mix(in srgb, var(--warning) 16%, transparent); }
+.season-best.is-since .best-tag { color: var(--success-text); background: color-mix(in srgb, var(--success) 14%, transparent); }
+.coach-meta { display: inline-flex; align-items: center; gap: 12px; }
+.ghost.small { margin-top: 0; padding: 4px 11px; font-size: 11px; }
+.coach-previous { margin-top: 14px; font-size: 13px; color: var(--muted); }
+.coach-previous summary { cursor: pointer; font-size: 12px; font-weight: 600; }
+.coach-previous p { margin-top: 8px; line-height: 1.55; max-width: 80ch; }
 @keyframes year-in { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
 
 .year-grid-wrap { margin: 28px 0 0; padding: 20px 22px 16px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-card); overflow-x: auto; }

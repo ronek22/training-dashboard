@@ -320,11 +320,17 @@ def _rank(entries: list[dict[str, Any]], *, higher_is_better: bool) -> dict[str,
             delta = record["value"] - previous["value"]
             record["improvement"] = round(abs(delta), 1)
             record["improvement_percent"] = round(abs(delta) / previous["value"] * 100, 1) if previous["value"] else None
+    # Each year's best, for season bests. Internal: build_personal_records strips it from the API.
+    yearly: dict[str, dict[str, Any]] = {}
+    for item in ordered:
+        yearly.setdefault(item["date"][:4], _compact(item))
     return {
         "record": record,
         "top": [_compact(item) for item in top],
         "progression": [{"date": item["date"], "value": item["value"], "display": item["display"], "activity_id": item["activity_id"]} for item in progression],
         "attempts": len(entries),
+        "higher_is_better": higher_is_better,
+        "yearly": yearly,
     }
 
 
@@ -700,17 +706,27 @@ def _recent(sections: dict[str, Any], today: date) -> list[dict[str, Any]]:
     return items
 
 
-def build_personal_records(conn: sqlite3.Connection, today: Optional[date] = None) -> dict[str, Any]:
+def _without_yearly(value: Any) -> Any:
+    """Copy of the sections without the per-year bests, which only the season review reads."""
+    if isinstance(value, dict):
+        return {key: _without_yearly(item) for key, item in value.items() if key != "yearly"}
+    if isinstance(value, list):
+        return [_without_yearly(item) for item in value]
+    return value
+
+
+def build_personal_records(conn: sqlite3.Connection, today: Optional[date] = None, *, include_yearly: bool = False) -> dict[str, Any]:
     today = today or date.today()
-    sections = _endurance_sections(conn, today)
+    sections = dict(_endurance_sections(conn, today))
     sections["lifts"] = _lift_section(conn)
     sections["streaks"] = _streak_section(conn, today)
-    return {
+    result = {
         "as_of": today.isoformat(),
         **sections,
         "recent": _recent(sections, today),
         "recent_days": RECENT_DAYS,
     }
+    return result if include_yearly else _without_yearly(result)
 
 
 def build_activity_record_ranks(conn: sqlite3.Connection, today: Optional[date] = None) -> dict[str, list[dict[str, Any]]]:

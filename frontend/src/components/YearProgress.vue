@@ -5,7 +5,10 @@
         <h2 id="year-heading">The work adds up.</h2>
         <p>Your {{ year }} in motion: monthly work as bars, the running total as a line.</p>
       </div>
-      <span class="year-head-meta">{{ year }} · day {{ dayOfYear }} of {{ daysInYear }}</span>
+      <span class="year-head-meta">
+        <RouterLink v-if="seasonOpen" :to="`/season/${year}`" class="year-season-link">Your {{ year }} in review ↗</RouterLink>
+        {{ year }} · day {{ dayOfYear }} of {{ daysInYear }}
+      </span>
     </header>
 
     <div class="year-grid">
@@ -97,6 +100,8 @@ const year = now.getFullYear()
 const startOfYear = new Date(year, 0, 1)
 const daysInYear = Math.round((new Date(year + 1, 0, 1) - startOfYear) / 86400000)
 const dayOfYear = Math.floor((now - startOfYear) / 86400000) + 1
+// The season review for the running year opens on 1 December.
+const seasonOpen = now.getMonth() === 11
 
 const format = (value) => {
   const numeric = Number(value || 0)
@@ -160,6 +165,8 @@ const cards = computed(() => [
 .year-head h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.4px; }
 .year-head p { margin: 4px 0 0; color: var(--dash-muted, var(--muted)); font-size: 12px; }
 .year-head-meta { color: var(--dash-muted, var(--muted)); font-size: 12px; font-variant-numeric: tabular-nums; }
+.year-season-link { margin-right: 10px; color: var(--accent-strong, var(--accent)); font-weight: 650; text-decoration: none; }
+.year-season-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 .year-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .year-card {

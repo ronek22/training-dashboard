@@ -168,6 +168,7 @@ const ringOffset = computed(() => {
             <span><strong>{{ totalRecords }}</strong> records held</span>
             <span><strong>{{ prs.length }}</strong> new PRs in {{ data.recent_days }} days</span>
             <span v-if="podiums"><strong>{{ podiums }}</strong> podium efforts</span>
+            <RouterLink to="/season" class="season-link">Season in review ↗</RouterLink>
           </div>
         </div>
         <div v-if="streaks" class="streak-ring" :title="streaks.note">
@@ -378,6 +379,8 @@ const ringOffset = computed(() => {
 .hero-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
 .hero-stats span { padding: 6px 12px; border-radius: 999px; font-size: 13px; color: var(--text-soft); background: rgb(var(--ov-rgb) / 0.07); border: 1px solid var(--border); }
 .hero-stats strong { font-family: var(--font-display); font-size: 15px; color: var(--text); margin-right: 3px; }
+.hero-stats .season-link { align-self: center; padding: 6px 4px; font-size: 13px; font-weight: 650; color: var(--accent-strong, var(--accent)); text-decoration: none; }
+.hero-stats .season-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 .streak-ring { position: relative; flex: none; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .streak-ring svg { width: 150px; height: 150px; transform: rotate(-90deg); }

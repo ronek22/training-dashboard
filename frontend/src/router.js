@@ -48,6 +48,7 @@ export default createRouter({
     { path: '/notes', component: Notes },
     { path: '/metrics', component: Metrics },
     { path: '/records', component: () => import('./views/Records.vue') },
+    { path: '/season/:year?', component: () => import('./views/SeasonReview.vue') },
     { path: '/mountains/:region?', component: () => import('./views/Mountains.vue') },
   ]
 })

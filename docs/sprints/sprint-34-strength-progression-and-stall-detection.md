@@ -4,8 +4,11 @@
 
 Current status:
 
-- proposed
-- follows proposed Sprint 33 closed-loop weekly adaptation
+- complete (closed 2026-10-13) — delivered outside the sprint flow:
+  - `strength_progression.py`, `strength_plateaus.py`: per-lift progression and stall reads
+  - pre-session brief flags stalled lifts with one suggested change (2026-10-08)
+  - `stall_blocks.py` and `progression_guard.py`: applied 3-week stall blocks and capped load jumps (2026-10-12)
+- follows Sprint 33 closed-loop weekly adaptation
 
 Starting point:
 

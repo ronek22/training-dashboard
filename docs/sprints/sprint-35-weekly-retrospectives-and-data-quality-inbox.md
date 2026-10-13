@@ -4,8 +4,10 @@
 
 Current status:
 
-- partially implemented: Sunday review and retained review history (2026-09-05)
-- follows proposed Sprint 34 strength progression and stall detection
+- partially implemented (closed 2026-10-13)
+  - built: Sunday review and retained review history (2026-09-05), three wins / one focus (2026-10-07), monthly coach letter (2026-10-07)
+  - not built: the data-quality inbox; it stays an open thread in `docs/roadmap.md`
+- follows Sprint 34 strength progression and stall detection
 
 Starting point:
 

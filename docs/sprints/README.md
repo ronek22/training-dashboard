@@ -4,6 +4,8 @@ This directory contains concrete implementation plans for near-term work.
 
 ## Current Status
 
+Numbered sprints ended with Sprint 39 (2026-09-29). Since then, work is picked from the Ideas board (`docs/project-ideas.json`) and recorded under "Recently Completed" in `docs/current-state.md`. This list is the archive.
+
 The sprint filenames here are not the execution order by themselves.
 
 The intended reading order is:
@@ -40,13 +42,12 @@ The intended reading order is:
 30. [sprint-30-readiness-and-fatigue-foundation.md](sprint-30-readiness-and-fatigue-foundation.md) — readiness and fatigue foundation sprint, complete
 31. [sprint-31-goal-readiness-and-what-matters-next.md](sprint-31-goal-readiness-and-what-matters-next.md) — goal readiness and `what matters next` sprint, complete
 32. [sprint-32-planned-vs-actual-workout-quality.md](sprint-32-planned-vs-actual-workout-quality.md) — planned-vs-actual workout quality sprint, complete
-33. [sprint-33-closed-loop-weekly-adaptation.md](sprint-33-closed-loop-weekly-adaptation.md) — closed-loop weekly adaptation sprint, proposed
-34. [sprint-34-strength-progression-and-stall-detection.md](sprint-34-strength-progression-and-stall-detection.md) — strength progression and stall detection sprint, proposed
-35. [sprint-35-weekly-retrospectives-and-data-quality-inbox.md](sprint-35-weekly-retrospectives-and-data-quality-inbox.md) — weekly retrospectives and data-quality inbox sprint, proposed
-36. [sprint-36-first-party-strength-workout-tracking.md](sprint-36-first-party-strength-workout-tracking.md) — first-party strength workout tracking sprint
+33. [sprint-33-closed-loop-weekly-adaptation.md](sprint-33-closed-loop-weekly-adaptation.md) — closed-loop weekly adaptation sprint, superseded
+34. [sprint-34-strength-progression-and-stall-detection.md](sprint-34-strength-progression-and-stall-detection.md) — strength progression and stall detection sprint, complete
+35. [sprint-35-weekly-retrospectives-and-data-quality-inbox.md](sprint-35-weekly-retrospectives-and-data-quality-inbox.md) — weekly retrospectives and data-quality inbox sprint, partially implemented
+36. [sprint-36-first-party-strength-workout-tracking.md](sprint-36-first-party-strength-workout-tracking.md) — first-party strength workout tracking sprint, complete
 37. [sprint-37-context-aware-daily-training-state.md](sprint-37-context-aware-daily-training-state.md) — context-aware daily training state sprint, complete
-
-38. [sprint-38-ai-assisted-recovery.md](sprint-38-ai-assisted-recovery.md) — AI-assisted recovery foundation with exercise release pending clinical review, partially implemented
+38. [sprint-38-ai-assisted-recovery.md](sprint-38-ai-assisted-recovery.md) — AI-assisted recovery foundation, replaced on 2026-09-28 by the chat-first injury tracker, superseded
 39. [sprint-39-goal-intelligence.md](sprint-39-goal-intelligence.md) — goal lifecycle, anchor goals, worth-it verdicts, calibrated suggestions, portfolio time budget and monthly review, complete
 
 ## Sprint Plans

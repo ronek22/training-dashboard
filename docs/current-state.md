@@ -24,6 +24,16 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Roadmap page shows open threads and what shipped
+
+2026-10-13: the Roadmap page still pointed at Sprint 33 from July, while the work since then came from the Ideas board. Roadmap V3 is closed and archived, and the page now reads what is actually current.
+
+- `docs/roadmap.md` says `Active roadmap: none` and lists the open threads. `planning_status.py` returns `open_threads`, `archived` roadmaps, and `shipped`: dated entries from this section, newest first, each with its first useful sentence.
+- Phase status is read from a `Status: complete` line under a phase heading. The old hardcoded text matching on this file is gone.
+- Sprint statuses fixed: 33 and 38 superseded, 34 complete, 35 partially implemented (the data-quality inbox is still open), 36 complete (it was missing from the page).
+- UI: open threads and a "Where planning lives" card linking to Ideas, a "Recently shipped" list grouped by month (12 shown, then "Show all"), and an archive with the roadmaps and a collapsed sprint list.
+- Verified with the updated planning smoke test, `just check`, and in the browser at 1512 px and 375 px (dark).
+
 ### Polish meal names: Dinner = obiad, Supper = kolacja
 
 2026-10-13: the Food page follows the Polish day. The stored meal keys are unchanged (`breakfast`, `lunch`, `dinner`, `snack`), so no data moved. `lunch` is now labelled **Dinner** (obiad, the main cooked meal) and `dinner` is labelled **Supper** (kolacja).
@@ -605,11 +615,7 @@ Completed slices:
 
 ## Recommended Next Step
 
-Sprint 32 is complete. The next roadmap slice is ready for execution.
-
-Current recommendation:
-
-- Sprint 33 closed-loop weekly adaptation should use readiness, goal gaps, and execution-quality evidence to improve reviewable plan-adjustment guidance
+There is no active roadmap. Pick the next piece of work from the Ideas board or from the open threads in `docs/roadmap.md`, and record it under "Recently Completed" above when it ships.
 
 ## Areas That Are Still Intentionally Lightweight
 
@@ -621,7 +627,7 @@ Current recommendation:
 
 ## Good Starting Points For Future Work
 
-If continuing into the next roadmap:
+Where to start in the code:
 
 - plan comparison and serialization: `backend/app/services/plans.py`
 - activity persistence and linking: `backend/app/services/activities.py`
@@ -630,16 +636,14 @@ If continuing into the next roadmap:
 - coaching inspection and handoff UI: `frontend/src/views/Dashboard.vue` and `frontend/src/views/Plan.vue`
 - goal schema and progress logic: `backend/app/models/goals.py`, `backend/app/repositories/goals.py`, and `backend/app/services/goals.py`
 - settings-backed athlete context: `backend/app/services/settings.py` and `backend/app/repositories/settings.py`
-- athlete-facing goal and profile UI: `frontend/src/views/Goals.vue`
+- athlete-facing goal and profile UI: `frontend/src/views/Goals.vue` and `frontend/src/views/Athlete.vue`
 - calendar aggregation and month view: `backend/app/services/activities.py` and `frontend/src/views/Calendar.vue`
-- docs-backed planning visibility: `docs/roadmap.md`, `docs/roadmaps/`, `docs/current-state.md`, and `docs/sprints/`
-- sprint planning direction: Phase 8 should now focus on context packaging and explanation quality before Phase 9 deepens performance data foundations
+- docs-backed planning visibility: `docs/roadmap.md` (open threads), `docs/current-state.md` (shipped log), `docs/sprints/` (archive), and `backend/app/services/planning_status.py`
 
 ## Working Assumption
 
-Unless the roadmap changes, the default implementation direction should be:
+Unless the athlete decides otherwise, new work should:
 
-1. make athlete profile explicit before deeper goal automation
-2. add richer goal families before trying to make coaching more autonomous
-3. keep logic deterministic and inspectable
-4. prefer structured templates over vague free-form modeling
+1. keep logic deterministic and inspectable
+2. prefer structured templates over vague free-form modeling
+3. keep plan changes approval-based

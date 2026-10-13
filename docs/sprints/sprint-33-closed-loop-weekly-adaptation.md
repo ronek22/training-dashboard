@@ -4,8 +4,11 @@
 
 Current status:
 
-- proposed
-- follows proposed Sprint 32 planned-vs-actual workout quality
+- superseded (closed 2026-10-13) — never built as one sprint; its goals were covered piece by piece:
+  - readiness score and morning check-in feed coaching and planning
+  - "Feeling flat" / "Short on time" options on Today, minimum viable week, life-load tags, recovery days and return from illness adjust the plan, all approval-based
+  - plan follow-through on Weekly Review shows which sessions get dropped or replaced
+- follows Sprint 32 planned-vs-actual workout quality
 
 Starting point:
 

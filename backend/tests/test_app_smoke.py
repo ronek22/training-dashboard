@@ -4225,12 +4225,15 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertEqual(planning_status.status_code, 200)
         planning_body = planning_status.json()
         self.assertEqual(planning_body["roadmap"]["title"], "Training Dashboard Roadmap")
-        self.assertTrue(planning_body["roadmap"]["phases"])
-        self.assertTrue(planning_body["sprints"]["items"])
-        self.assertEqual(planning_body["roadmap"]["completed_phases"], 0)
-        self.assertEqual(planning_body["roadmap"]["total_phases"], 3)
-        self.assertEqual(planning_body["roadmap"]["current_phase"]["number"], 10)
-        self.assertEqual(planning_body["sprints"]["next_recommended"]["label"], "Sprint 33")
+        self.assertIsNone(planning_body["roadmap"]["active_path"])
+        self.assertEqual(planning_body["roadmap"]["phases"], [])
+        self.assertTrue(planning_body["roadmap"]["open_threads"])
+        self.assertIn("docs/roadmaps/roadmap-v3.md", [item["path"] for item in planning_body["roadmap"]["archived"]])
+        sprint_numbers = [item["order"] for item in planning_body["sprints"]["items"]]
+        self.assertEqual(sprint_numbers, list(range(1, 40)))
+        shipped_dates = [item["date"] for item in planning_body["shipped"]]
+        self.assertTrue(shipped_dates)
+        self.assertEqual(shipped_dates, sorted(shipped_dates, reverse=True))
 
     def test_today_session_is_not_skipped_before_day_is_over(self):
         today = datetime.now().date()

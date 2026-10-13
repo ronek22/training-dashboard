@@ -2,6 +2,8 @@
 
 ## Status
 
+Superseded on 2026-09-28: the intake/screening workflow and fixed exercise library below were replaced by the chat-first injury tracker (see "Recovery (simplified 2026-09-28)" in `docs/current-state.md`). The text below is historical.
+
 Foundation implemented on 2026-09-07. The Recovery page, persistent issues, optional AI intake conversations, structured symptom checks, care guidance, check-ins, and opt-in coaching summaries are available. Routine generation/save/versioning is implemented behind the clinical-review release gate. Exercise recommendations remain unavailable until a qualified review of screening and library entries is recorded; the full exercise-release acceptance criteria are therefore not complete.
 
 ## Implemented Behavior

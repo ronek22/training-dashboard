@@ -1,5 +1,7 @@
 # Training Dashboard Roadmap V3
 
+Closed on 2026-10-13. Sprints 30–32 and 34 are complete, 33 was superseded by smaller features, and 35 is partially implemented (the data-quality inbox is an open thread in `docs/roadmap.md`). After Sprint 39, work moved to the Ideas board. This file is historical.
+
 ## Purpose
 
 This roadmap is the active product and engineering plan for the next stage of the dashboard.

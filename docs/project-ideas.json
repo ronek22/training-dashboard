@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-13T11:16:59+02:00",
-  "summary": "Reviewed recent commits and working-tree summary, current-state documentation, active roadmap and Sprint 39; confirmed all 26 proposal scopes unchanged from the prior review. Inspected strength set-draft persistence and its synthetic test declarations, athlete-defined heart-rate zone resolution and related test declarations, and ongoing Ideas board work including status changes and build-brief copying. Unlogged strength drafts are now implemented, while shopping-list and broader review-loop opportunities already have proposals or roadmap scope. No sufficiently distinct new proposal was selected. Source/documentation review only; no application tests, model calls, credentials, databases or private training records were accessed.",
+  "reviewed_at": "2026-10-13T13:07:00+02:00",
+  "summary": "On-demand review requested in chat. Read the 26 existing proposals, the roadmap's open threads, current-state notes on mountain trip days and return from illness, life-load, lift volume, the workout runner's warm-up sets, weather, and the Docker data mount. Four new proposals: a re-entry week after the Oct 19–25 mountain trip (mountain days are handled, the days after are not), automatic SQLite backups (data/training.db has no backup), a season-in-review recap for the end of the year, and a plate-loading helper in the workout runner. Open threads (lift/ride clash, legs every week, winter arc, data-quality inbox) were left as they are. Source and documentation review only; no tests were run and no training records were read.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -603,6 +603,107 @@
         "Changing selected dinners or portions and refreshing the preview recomputes quantities; generating or copying a list never changes dinner plans, recipes or food logs."
       ],
       "created_on": "2026-10-12"
+    },
+    {
+      "id": "post-mountain-trip-reentry",
+      "title": "Come back from the mountains without a crash",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "Mountain days are well handled: a daily hike, Travel kit lifts and no rides. The days after the trip are not. A week of daily hikes leaves legs and sleep in debt, yet the next week is planned like any other. The first home lift is whatever comes next in the A–D rotation, at loads from before the trip.",
+      "proposal": "When a run of 3 or more Mountains days ends, open a short re-entry window, like return from illness. It lasts about half the trip length (2–4 days). The first 1–2 days are easy rides only, with no intervals. The first lower-body lift is held at pre-trip loads with 2+ reps in reserve, and upper-body lifts resume as normal. Lifts are never dropped, per the lift anchor. Show a 'Back from the mountains' hint in the readiness panel. Add the window to the dashboard payload and get_recent_context, so the planner keeps intensity out until it ends.",
+      "benefit": "Bank the fitness from a big hiking week instead of losing the next week to heavy legs or an early hard session.",
+      "evidence": [
+        "backend/app/services/life_load.py: mountains tag and mountain-day helpers",
+        "backend/app/services/illness_return.py: window and RPE-cap pattern to reuse",
+        "backend/app/services/strength_volume.py: Mountains-day handling",
+        "backend/app/services/session_brief.py",
+        "docs/current-state.md: Mountain trip days"
+      ],
+      "acceptance_criteria": [
+        "A run of 3+ consecutive Mountains days starts a re-entry window the day after the last one; shorter runs do not.",
+        "Window length scales with trip length and is capped at 4 days.",
+        "Briefs inside the window cap ride effort and hold lower-body loads; no lift session is removed or shortened.",
+        "The lift volume top-up adds no leg accessory sets inside the window.",
+        "The window appears in the dashboard payload, get_recent_context and the planning prompt.",
+        "Backend tests cover trip lengths, a trip ending on a Sunday, and overlap with an illness-return window (the stricter cap wins)."
+      ],
+      "created_on": "2026-10-13"
+    },
+    {
+      "id": "automatic-database-backups",
+      "title": "Never lose your training history",
+      "category": "Reliability",
+      "effort": "Small",
+      "priority": "High",
+      "problem": "All decisions, food logs, strength sessions, coach notes and stall blocks live in one SQLite file, data/training.db, mounted into the backend container. Nothing backs it up, so a bad migration, an accidental delete or a disk problem would lose data that cannot be re-imported from Strava.",
+      "proposal": "Take a consistent daily snapshot with SQLite's online backup API (safe while the app runs) into data/backups/. Keep 7 daily and 4 weekly copies, and run PRAGMA integrity_check on each. Also snapshot before schema migrations run at startup. Show the last backup time and status on Data & Sync. Add just backup and just restore <file> recipes, where restore stops the stack and keeps the replaced file aside.",
+      "benefit": "Experiment with new features and migrations knowing that yesterday's data is always one command away.",
+      "evidence": [
+        "docker-compose.yml: ./data:/data volume",
+        "data/training.db",
+        "backend/app/db.py: schema initialisation and migrations",
+        "justfile: no backup or restore recipe",
+        "frontend/src/views/Sync.vue"
+      ],
+      "acceptance_criteria": [
+        "A backup is created at least once a day while the app runs, and before migrations at startup.",
+        "Backups are taken with the SQLite backup API, not a file copy of a live database.",
+        "Retention keeps 7 daily and 4 weekly copies and deletes only older backup files.",
+        "Each backup passes an integrity check, and a failure is shown on Data & Sync.",
+        "just restore puts a chosen backup in place and keeps the replaced database file.",
+        "A backend test backs up and restores a temporary database and compares row counts."
+      ],
+      "created_on": "2026-10-13"
+    },
+    {
+      "id": "season-in-review",
+      "title": "Your 2026 season on one page",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "The Dashboard has cumulative year charts and the coach writes a monthly letter, but nothing pulls the whole year together. Records, the streak, summits, lifts that progressed and the comeback from illness and the heel are spread across separate pages.",
+      "proposal": "Add a Season in review page, offered from 1 December and kept for past years. It shows totals by sport against last year, the longest streak, records set (power curve, lifts, runs), summits and trail coverage gained, lifts that progressed most, the best month, and goals completed. Close with a short coach paragraph that uses the monthly letters as input. Reuse existing services and add no new tracking.",
+      "benefit": "See a full year of work in one place, which helps motivation going into the winter block.",
+      "evidence": [
+        "backend/app/services/monthly_letters.py",
+        "backend/app/services/personal_records.py",
+        "backend/app/services/trail_coverage.py",
+        "backend/app/services/strength_progression.py",
+        "backend/app/services/goal_history.py",
+        "backend/app/services/dashboard.py: year charts"
+      ],
+      "acceptance_criteria": [
+        "The page is reachable for the current year from 1 December and for any past year with data.",
+        "Totals by sport compare with the previous year when it has data, and omit the comparison when it does not.",
+        "Every number links to, or matches, the page it came from (records, Mountains, Strength).",
+        "The coach paragraph is generated on request and saved, not regenerated on every visit.",
+        "Empty sections are hidden instead of showing zeros."
+      ],
+      "created_on": "2026-10-13"
+    },
+    {
+      "id": "plate-loading-helper",
+      "title": "See which plates to load for each set",
+      "category": "Experience",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The workout runner shows a target weight per set, and warm-up sets can be added by hand. For barbell lifts you still work out the plates per side yourself, and warm-ups are guessed set by set.",
+      "proposal": "For barbell exercises, show plates per side under the target (for example '20 + 5 + 1.25'). Bar weight and available plates come from a small setting on the Athlete page. When a target cannot be made exactly, show the nearest weight you can load and leave the target unchanged. Add an optional 'Suggest warm-ups' button that adds 2–3 warm-up sets ramping to the first working set, using the existing warm-up set type.",
+      "benefit": "Spend rest periods resting instead of doing plate maths, with sensible warm-ups for heavy sets.",
+      "evidence": [
+        "frontend/src/views/StrengthWorkoutSession.vue: set display and + Warm-up",
+        "backend/app/services/strength_workouts.py: warm-up set type",
+        "frontend/src/views/Athlete.vue"
+      ],
+      "acceptance_criteria": [
+        "Barbell sets show plates per side; dumbbell, machine and bodyweight sets do not.",
+        "Bar weight and the plate inventory can be edited and persist.",
+        "An unloadable target shows the nearest loadable weight and never changes the stored target or progression.",
+        "Suggested warm-ups are ordinary warm-up sets that can be removed, and are never counted as working sets.",
+        "A frontend test covers the plate breakdown, including targets below the bar weight."
+      ],
+      "created_on": "2026-10-13"
     }
   ]
 }

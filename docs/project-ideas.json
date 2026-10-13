@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-12T19:55:08+02:00",
-  "summary": "Reviewed current-state documentation, active roadmap, Sprint 39, all 25 unchanged proposal scopes, recent commits and working-tree summaries. Inspected the new dinner planner, recipe quantity/product fields, portion scaling and synthetic test declarations; noted ongoing meal-ideas work to avoid duplicating it. Selected one distinct follow-up: a portion-aware shopping list derived from selected planned dinners. Source/documentation review only; no application tests, model calls, credentials, databases or private training records were accessed.",
+  "reviewed_at": "2026-10-13T11:16:59+02:00",
+  "summary": "Reviewed recent commits and working-tree summary, current-state documentation, active roadmap and Sprint 39; confirmed all 26 proposal scopes unchanged from the prior review. Inspected strength set-draft persistence and its synthetic test declarations, athlete-defined heart-rate zone resolution and related test declarations, and ongoing Ideas board work including status changes and build-brief copying. Unlogged strength drafts are now implemented, while shopping-list and broader review-loop opportunities already have proposals or roadmap scope. No sufficiently distinct new proposal was selected. Source/documentation review only; no application tests, model calls, credentials, databases or private training records were accessed.",
   "ideas": [
     {
       "id": "dependable-project-checks",

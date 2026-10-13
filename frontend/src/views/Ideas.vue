@@ -1,57 +1,112 @@
 <template>
   <div class="ideas-page">
-    <header class="ideas-head">
-      <div><p class="eyebrow">A little better, every day</p><h1>Ideas</h1><p class="intro">Fresh possibilities for your training dashboard. You choose what comes next.</p></div>
-      <button class="quiet-button" type="button" :disabled="loading || saving.size > 0" @click="load">{{ loading ? 'Refreshing…' : 'Refresh ideas' }}</button>
-    </header>
-    <nav class="planning-tabs" aria-label="Product development"><router-link to="/roadmap">Roadmap</router-link><router-link to="/ideas" aria-current="page">Ideas</router-link></nav>
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Ideas</h1>
+        <p class="page-sub">Proposals for the dashboard from the daily project review. You choose what comes next.</p>
+        <nav class="planning-tabs" aria-label="Product development"><router-link to="/roadmap">Roadmap</router-link><router-link to="/ideas" aria-current="page">Ideas</router-link></nav>
+      </div>
+      <button class="quiet-button" type="button" :disabled="loading || saving.size > 0" @click="load">{{ loading ? 'Refreshing…' : 'Refresh' }}</button>
+    </div>
 
     <p v-if="error" class="notice error" role="alert">{{ error }} <button type="button" class="quiet-button" @click="load">Try again</button></p>
     <p v-if="loading && !board" role="status" class="notice">Loading your idea board…</p>
     <template v-if="board">
-      <section class="review-card" aria-labelledby="review-title">
-        <div class="review-mark" aria-hidden="true">✦</div>
-        <div class="review-copy"><p class="eyebrow">Daily project review</p><h2 id="review-title">Small ideas. Meaningful progress.</h2><p>{{ board.summary }}</p>
-          <div class="review-meta"><span>Reviewed {{ formatDate(board.reviewed_at) }}</span><span>Daily · 09:00 Warsaw</span><span v-if="reviewIsOld" class="stale">Awaiting a fresh review</span></div>
+      <section class="review-strip" aria-label="Daily project review">
+        <div class="review-line">
+          <span class="review-mark" aria-hidden="true">✦</span>
+          <strong>Daily review</strong>
+          <span>Reviewed {{ formatDate(board.reviewed_at) }}</span>
+          <span class="sep" aria-hidden="true">·</span>
+          <span>Runs daily 09:00 Warsaw</span>
+          <span v-if="reviewIsOld" class="stale">Awaiting a fresh review</span>
+          <button class="link-button" type="button" :aria-expanded="showSummary" aria-controls="review-summary" @click="showSummary = !showSummary">{{ showSummary ? 'Hide notes' : 'Review notes' }}</button>
+        </div>
+        <div v-if="showSummary" id="review-summary" class="review-summary">
+          <p>{{ board.summary }}</p>
           <p class="schedule-note">Reviews run through your coding agent on this Mac. New proposals appear here after each completed review.</p>
         </div>
-        <div class="review-count"><strong>{{ counts.shortlisted }}</strong><span>on your shortlist</span></div>
       </section>
 
-      <div class="board-heading"><div><h2>Your next improvements</h2><p>Drag ideas between columns, or use a card’s status menu. Explore a proposal when you’re ready to build.</p></div><span class="total-count">{{ board.ideas.length }} ideas</span></div>
-      <nav class="filters" aria-label="Filter ideas">
-        <button v-for="item in filters" :key="item.value" type="button" :aria-pressed="filter === item.value" :class="{ selected: filter === item.value }" @click="setFilter(item.value)">{{ item.label }} <span>{{ counts[item.value] }}</span></button>
-      </nav>
+      <div class="toolbar">
+        <label class="search"><span class="sr-only">Search ideas</span><input v-model="query" type="search" placeholder="Search ideas…" /></label>
+        <div class="category-filter" role="group" aria-label="Filter by category">
+          <button v-for="item in categories" :key="item" type="button" :aria-pressed="category === item" :class="{ selected: category === item }" @click="category = item">{{ item }}</button>
+        </div>
+        <span class="total-count">{{ visibleCount }} of {{ board.ideas.length }} ideas</span>
+      </div>
       <p class="sr-only" role="status">{{ message }}</p>
-      <div class="kanban-board" :class="{ 'filtered-grid': filter !== 'all' }" role="region" :aria-label="filter === 'all' ? 'Ideas kanban board' : 'Filtered ideas'" tabindex="0">
-        <section v-for="column in columns" :key="column.value" class="kanban-column" :class="{ 'drop-target': draggedId && dropTarget === column.value }" :aria-labelledby="filter === 'all' ? `column-${column.value}` : undefined" @dragover="dragOver($event, column.value)" @dragleave="leaveColumn($event)" @drop="dropIdea($event, column.value)">
-          <header v-if="filter === 'all'" class="column-heading"><h3 :id="`column-${column.value}`"><span class="status-dot" :class="column.value" aria-hidden="true"></span>{{ column.label }}</h3><span class="column-count">{{ column.ideas.length }}</span></header>
-          <p v-if="!column.ideas.length" class="column-empty">{{ draggedId ? 'Drop an idea here' : `No ${column.label.toLowerCase()} ideas yet` }}</p>
-          <article v-for="idea in column.ideas" :key="idea.id" class="idea-card" :class="{ expanded: expanded === idea.id, saving: saving.has(idea.id), dragging: draggedId === idea.id }" :aria-busy="saving.has(idea.id)">
-          <div class="idea-top" :draggable="filter === 'all' && !saving.has(idea.id) && !loading" :title="filter === 'all' ? `Drag ${idea.title} to another column` : undefined" @dragstart="startDrag($event, idea)" @dragend="endDrag"><span v-if="filter === 'all'" class="drag-grip" aria-hidden="true">⠿</span><span class="category">{{ idea.category }}</span><span class="priority" :class="idea.priority.toLowerCase()">{{ idea.priority }} priority</span></div>
-          <h3>{{ idea.title }}</h3><p class="benefit">{{ idea.benefit }}</p>
-          <div class="idea-meta"><span>{{ idea.effort }} effort</span><span>Added {{ formatDate(idea.created_on, false) }}</span></div>
-          <div class="card-actions"><button class="explore-button" type="button" :aria-expanded="expanded === idea.id" :aria-controls="`details-${idea.id}`" @click="expanded = expanded === idea.id ? null : idea.id">{{ expanded === idea.id ? 'Close details' : 'Explore idea' }} <span aria-hidden="true">{{ expanded === idea.id ? '−' : '↗' }}</span></button>
-            <label class="status-label"><span class="sr-only">Status for {{ idea.title }}</span><select :value="idea.status" :disabled="saving.has(idea.id)" @change="selectStatus(idea, $event)"><option v-for="item in statuses" :key="item.value" :value="item.value">{{ item.label }}</option></select></label>
-          </div>
-          <div v-if="expanded === idea.id" :id="`details-${idea.id}`" class="idea-details">
-            <h4>The opportunity</h4><p>{{ idea.problem }}</p><h4>What to build</h4><p>{{ idea.proposal }}</p>
-            <h4>Done looks like</h4><ul><li v-for="criterion in idea.acceptance_criteria" :key="criterion">{{ criterion }}</li></ul>
-            <details class="evidence"><summary>Based on the project</summary><ul><li v-for="source in idea.evidence" :key="source">{{ source }}</li></ul></details>
-            <div class="brief-head"><h4>Ready-to-build brief</h4><button class="copy-button" type="button" @click="copyBrief(idea)">{{ copied === idea.id ? 'Copied ✓' : 'Copy build brief' }}</button></div>
-            <p class="brief-hint">Paste this into your coding agent for this project. Mark the idea as building when you start.</p>
-            <textarea :id="`brief-${idea.id}`" :value="idea.build_brief" :aria-label="`Build brief for ${idea.title}`" readonly rows="7" @focus="$event.target.select()"></textarea>
-            <p v-if="copyFallback === idea.id" class="notice" role="status">Clipboard access is unavailable. Select the brief above and copy it manually.</p>
-          </div>
+
+      <div class="kanban-board" role="region" aria-label="Ideas kanban board">
+        <section v-for="column in activeColumns" :key="column.value" class="kanban-column" :class="{ 'drop-target': draggedId && dropTarget === column.value }" :aria-labelledby="`column-${column.value}`" @dragover="dragOver($event, column.value)" @dragleave="leaveColumn($event)" @drop="dropIdea($event, column.value)">
+          <header class="column-heading">
+            <h2 :id="`column-${column.value}`"><span class="status-dot" :class="column.value" aria-hidden="true"></span>{{ column.label }}</h2>
+            <span class="column-count">{{ column.ideas.length }}</span>
+          </header>
+          <p class="column-hint">{{ column.hint }}</p>
+          <p v-if="!column.ideas.length" class="column-empty">{{ draggedId ? 'Drop an idea here' : column.empty }}</p>
+          <article v-for="idea in column.ideas" :key="idea.id" class="idea-card" :class="{ saving: saving.has(idea.id), dragging: draggedId === idea.id, open: openId === idea.id }" :aria-busy="saving.has(idea.id)" :draggable="!saving.has(idea.id) && !loading" @dragstart="startDrag($event, idea)" @dragend="endDrag">
+            <div class="idea-top"><span class="category">{{ idea.category }}</span><span class="priority" :class="idea.priority.toLowerCase()">{{ idea.priority }}</span></div>
+            <h3><button class="title-button" type="button" @click="openIdea(idea.id)">{{ idea.title }}</button></h3>
+            <p class="benefit">{{ idea.benefit }}</p>
+            <div class="idea-foot">
+              <span class="idea-meta">{{ idea.effort }} effort · {{ formatDate(idea.created_on, false) }}</span>
+              <button v-if="nextStep[idea.status]" class="step-button" type="button" :disabled="saving.has(idea.id)" @click="changeStatus(idea, nextStep[idea.status]!.to)">{{ nextStep[idea.status]!.label }} →</button>
+            </div>
           </article>
         </section>
       </div>
+
+      <section class="archive" aria-label="Finished and dismissed ideas">
+        <div v-for="column in archiveColumns" :key="column.value" class="archive-column" :class="{ 'drop-target': draggedId && dropTarget === column.value }" @dragover="dragOver($event, column.value)" @dragleave="leaveColumn($event)" @drop="dropIdea($event, column.value)">
+          <header class="column-heading">
+            <h2><span class="status-dot" :class="column.value" aria-hidden="true"></span>{{ column.label }}</h2>
+            <span class="column-count">{{ column.ideas.length }}</span>
+          </header>
+          <p v-if="draggedId" class="column-empty">Drop to mark {{ column.label.toLowerCase() }}</p>
+          <p v-else-if="!column.ideas.length" class="archive-empty">{{ column.empty }}</p>
+          <ul v-else class="archive-list">
+            <li v-for="idea in shownArchive(column)" :key="idea.id" :class="{ saving: saving.has(idea.id) }" :draggable="!saving.has(idea.id) && !loading" @dragstart="startDrag($event, idea)" @dragend="endDrag">
+              <button type="button" class="archive-row" @click="openIdea(idea.id)"><span class="archive-title">{{ idea.title }}</span><span class="archive-cat">{{ idea.category }}</span></button>
+            </li>
+          </ul>
+          <button v-if="!draggedId && column.ideas.length > ARCHIVE_PREVIEW" class="link-button more" type="button" @click="toggleArchive(column.value)">{{ archiveOpen.has(column.value) ? 'Show fewer' : `Show all ${column.ideas.length}` }}</button>
+        </div>
+      </section>
     </template>
+
+    <Teleport to="body">
+      <Transition name="drawer">
+        <div v-if="openIdeaData" class="drawer-layer" @click.self="closeIdea">
+          <aside ref="drawerEl" class="idea-drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" tabindex="-1" @keydown.esc="closeIdea">
+            <header class="drawer-head">
+              <div class="idea-top"><span class="category">{{ openIdeaData.category }}</span><span class="priority" :class="openIdeaData.priority.toLowerCase()">{{ openIdeaData.priority }} priority</span><span class="idea-meta">{{ openIdeaData.effort }} effort · Added {{ formatDate(openIdeaData.created_on, false) }}</span></div>
+              <button class="close-button" type="button" aria-label="Close idea" @click="closeIdea">×</button>
+            </header>
+            <h2 id="drawer-title">{{ openIdeaData.title }}</h2>
+            <p class="drawer-benefit">{{ openIdeaData.benefit }}</p>
+            <div class="status-switch" role="group" aria-label="Idea status">
+              <button v-for="item in statuses" :key="item.value" type="button" :aria-pressed="openIdeaData.status === item.value" :class="{ selected: openIdeaData.status === item.value }" :disabled="saving.has(openIdeaData.id)" @click="changeStatus(openIdeaData, item.value)"><span class="status-dot" :class="item.value" aria-hidden="true"></span>{{ item.label }}</button>
+            </div>
+            <div class="drawer-body">
+              <h3>The opportunity</h3><p>{{ openIdeaData.problem }}</p>
+              <h3>What to build</h3><p>{{ openIdeaData.proposal }}</p>
+              <h3>Done looks like</h3><ul><li v-for="criterion in openIdeaData.acceptance_criteria" :key="criterion">{{ criterion }}</li></ul>
+              <details class="evidence"><summary>Based on the project</summary><ul><li v-for="source in openIdeaData.evidence" :key="source">{{ source }}</li></ul></details>
+              <div class="brief-head"><h3>Ready-to-build brief</h3><button class="copy-button" type="button" @click="copyBrief(openIdeaData)">{{ copied === openIdeaData.id ? 'Copied ✓' : 'Copy build brief' }}</button></div>
+              <p class="brief-hint">Paste this into your coding agent for this project. Mark the idea as building when you start.</p>
+              <textarea :value="openIdeaData.build_brief" :aria-label="`Build brief for ${openIdeaData.title}`" readonly rows="9" @focus="($event.target as HTMLTextAreaElement).select()"></textarea>
+              <p v-if="copyFallback === openIdeaData.id" class="notice" role="status">Clipboard access is unavailable. Select the brief above and copy it manually.</p>
+            </div>
+          </aside>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
 
@@ -62,24 +117,65 @@ interface Idea {
   acceptance_criteria: string[]; evidence: string[]; build_brief: string
 }
 interface Board { summary: string; reviewed_at: string; ideas: Idea[] }
+interface Column { value: Status; label: string; hint: string; empty: string; ideas: Idea[] }
+const ARCHIVE_PREVIEW = 5
+const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
 const api = useApi(), route = useRoute(), router = useRouter()
 const board = ref<Board | null>(null), loading = ref(false), error = ref(''), message = ref('')
-const expanded = ref<string | null>(null), saving = ref(new Set<string>()), copied = ref<string | null>(null), copyFallback = ref<string | null>(null)
+const saving = ref(new Set<string>()), copied = ref<string | null>(null), copyFallback = ref<string | null>(null)
 const draggedId = ref<string | null>(null), dropTarget = ref<Status | null>(null)
-const statuses: { value: Status; label: string }[] = [{ value: 'new', label: 'New' }, { value: 'shortlisted', label: 'Shortlisted' }, { value: 'building', label: 'Building' }, { value: 'done', label: 'Done' }, { value: 'dismissed', label: 'Dismissed' }]
-const filters = [{ value: 'all', label: 'All ideas' }, ...statuses]
-const filter = computed(() => filters.some(item => item.value === route.query.status) ? route.query.status : 'all')
-const counts = computed(() => {
-  const result: Record<string, number> = { all: 0, new: 0, shortlisted: 0, building: 0, done: 0, dismissed: 0 }
-  for (const idea of board.value?.ideas || []) { result[idea.status]++; result.all++ }
-  return result
-})
-const columns = computed(() => statuses.filter(column => filter.value === 'all' || column.value === filter.value).map(column => ({ ...column, ideas: (board.value?.ideas || []).filter(idea => idea.status === column.value) })))
+const showSummary = ref(false), query = ref(''), category = ref('All'), archiveOpen = ref(new Set<Status>())
+const drawerEl = ref<HTMLElement | null>(null)
+let returnFocus: HTMLElement | null = null
+const statuses: { value: Status; label: string; hint: string; empty: string }[] = [
+  { value: 'new', label: 'New', hint: 'Fresh from the review', empty: 'No new ideas — the next review adds more.' },
+  { value: 'shortlisted', label: 'Shortlisted', hint: 'Worth building soon', empty: 'Shortlist ideas you want to build.' },
+  { value: 'building', label: 'Building', hint: 'In progress now', empty: 'Nothing in progress. Start one from your shortlist.' },
+  { value: 'done', label: 'Done', hint: '', empty: 'Nothing finished yet.' },
+  { value: 'dismissed', label: 'Dismissed', hint: '', empty: 'Nothing dismissed.' },
+]
+const nextStep: Partial<Record<Status, { to: Status; label: string }>> = {
+  new: { to: 'shortlisted', label: 'Shortlist' },
+  shortlisted: { to: 'building', label: 'Start' },
+  building: { to: 'done', label: 'Done' },
+}
+const categories = computed(() => ['All', ...new Set((board.value?.ideas || []).map(idea => idea.category))])
+const matches = (idea: Idea) => {
+  const q = query.value.trim().toLowerCase()
+  return (category.value === 'All' || idea.category === category.value)
+    && (!q || `${idea.title} ${idea.benefit} ${idea.category}`.toLowerCase().includes(q))
+}
+const visible = computed(() => (board.value?.ideas || []).filter(matches))
+const visibleCount = computed(() => visible.value.length)
+const columns = computed<Column[]>(() => statuses.map(column => ({
+  ...column,
+  ideas: visible.value.filter(idea => idea.status === column.value)
+    .sort((a, b) => (PRIORITY_RANK[a.priority.toLowerCase()] ?? 3) - (PRIORITY_RANK[b.priority.toLowerCase()] ?? 3) || b.created_on.localeCompare(a.created_on)),
+})))
+const activeColumns = computed(() => columns.value.slice(0, 3))
+const archiveColumns = computed(() => columns.value.slice(3))
+const openId = computed(() => typeof route.query.idea === 'string' ? route.query.idea : null)
+const openIdeaData = computed(() => board.value?.ideas.find(idea => idea.id === openId.value) || null)
 const reviewIsOld = computed(() => Date.now() - new Date(board.value?.reviewed_at || '').getTime() > 36 * 60 * 60 * 1000)
 function formatDate(value: string, withTime = true) {
   return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', ...(withTime ? { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Warsaw' } : {}) }).format(new Date(withTime ? value : `${value}T12:00:00`))
 }
-function setFilter(value: string) { endDrag(); router.replace({ query: { ...route.query, status: value === 'all' ? undefined : value } }) }
+function shownArchive(column: Column) { return archiveOpen.value.has(column.value) ? column.ideas : column.ideas.slice(0, ARCHIVE_PREVIEW) }
+function toggleArchive(status: Status) {
+  const next = new Set(archiveOpen.value)
+  next.has(status) ? next.delete(status) : next.add(status)
+  archiveOpen.value = next
+}
+function openIdea(id: string) {
+  returnFocus = document.activeElement as HTMLElement | null
+  copied.value = null; copyFallback.value = null
+  router.replace({ query: { ...route.query, idea: id } })
+}
+function closeIdea() {
+  router.replace({ query: { ...route.query, idea: undefined } })
+  nextTick(() => returnFocus?.focus())
+}
+watch(openIdeaData, (idea, previous) => { if (idea && !previous) nextTick(() => drawerEl.value?.focus()) })
 async function load() {
   if (loading.value || saving.value.size) return
   loading.value = true; error.value = ''
@@ -93,11 +189,6 @@ async function changeStatus(idea: Idea, status: Status) {
   try { await api.updateProjectIdea(idea.id, status); idea.status = status; message.value = `${idea.title} moved to ${statuses.find(item => item.value === status)?.label}.` }
   catch { error.value = `Could not move “${idea.title}”. Please try again.` }
   finally { saving.value.delete(idea.id) }
-}
-async function selectStatus(idea: Idea, event: Event) {
-  const select = event.target as HTMLSelectElement
-  await changeStatus(idea, select.value as Status)
-  select.value = idea.status
 }
 function startDrag(event: DragEvent, idea: Idea) {
   if (!event.dataTransfer || saving.value.has(idea.id) || loading.value) { event.preventDefault(); return }
@@ -131,9 +222,134 @@ onMounted(load)
 </script>
 
 <style scoped>
-.ideas-page{max-width:1200px;margin:auto;padding-bottom:64px}.ideas-head{display:flex;justify-content:space-between;align-items:center;gap:20px}.eyebrow{text-transform:uppercase;letter-spacing:.15em;font-size:10px;font-weight:700;color:var(--text-soft);margin-bottom:10px}.ideas-head h1{font:700 36px var(--font-display);letter-spacing:-.04em;margin-bottom:10px}.intro,.board-heading p{font-size:13px;color:var(--muted);line-height:1.7}.planning-tabs{display:flex;gap:26px;border-bottom:1px solid var(--border);margin:26px 0}.planning-tabs a{text-decoration:none;color:var(--muted);padding-bottom:13px;font-size:13px}.planning-tabs [aria-current]{color:var(--text);border-bottom:2px solid oklch(from #9aaeff calc(l - var(--dim-l)) c h)}.quiet-button,.filters button,.explore-button,.copy-button,select{font:inherit;cursor:pointer}.quiet-button{border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text);padding:9px 13px;font-size:12px}.quiet-button:disabled,select:disabled{opacity:.5;cursor:wait}.review-card{display:flex;align-items:flex-start;gap:22px;border:1px solid var(--border-strong);border-radius:18px;padding:30px;background:var(--surface);margin-bottom:34px}.review-mark{color:var(--text);font-size:32px;line-height:1.1}.review-copy{flex:1;min-width:0}.review-copy h2{font:600 23px var(--font-display);letter-spacing:-.025em;margin-bottom:12px}.review-copy>p:not(.eyebrow){font-size:13px;line-height:1.75;color:var(--text-soft);max-width:740px}.review-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--text-soft);margin-top:17px}.review-meta .stale{color:oklch(from #e8c185 calc(l - var(--dim-l)) c h)}.review-copy .schedule-note{font-size:11px!important;margin-top:8px;color:var(--muted)!important}.review-count{display:flex;flex-direction:column;text-align:right;min-width:105px}.review-count strong{font-size:36px;font-weight:500;color:var(--text)}.review-count span{font-size:11px;color:var(--muted)}.board-heading{display:flex;justify-content:space-between;align-items:center;gap:18px}.board-heading h2{font:600 20px var(--font-display);margin-bottom:7px}.total-count{color:var(--muted);font-size:12px;white-space:nowrap}.filters{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}.filters button{border:1px solid transparent;color:var(--muted);background:transparent;padding:8px 12px;border-radius:9px;font-size:12px}.filters button.selected{color:var(--text);background:var(--deep);border-color:var(--border-strong)}.filters span{margin-left:7px;font-variant-numeric:tabular-nums;opacity:.7}.idea-card{padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:16px;min-width:0}.idea-card.expanded{border-color:#697aa8}.idea-top{cursor:grab;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;font-size:10px;margin-bottom:20px}.category{color:var(--text-soft);text-transform:uppercase;letter-spacing:.09em}.priority{color:var(--muted)}.priority.high{color:var(--text)}.idea-card h3{font:600 18px var(--font-display);line-height:1.3;letter-spacing:-.02em;margin-bottom:12px}.benefit{color:var(--muted);font-size:13px;line-height:1.7;min-height:44px}.idea-meta{display:flex;flex-wrap:wrap;gap:15px;color:var(--muted);font-size:11px;margin:21px 0}.card-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--border);padding-top:16px}.explore-button{display:flex;gap:16px;background:none;border:0;color:var(--text);font-size:12px;padding:6px 0}.status-label select{max-width:140px;border:1px solid var(--border);border-radius:8px;padding:7px;background:var(--surface);color:var(--text);font-size:11px;color-scheme:dark}.idea-details{border-top:1px solid var(--border);margin-top:20px;padding-top:5px}.idea-details h4{font-size:12px;font-weight:600;margin:20px 0 8px}.idea-details p,.idea-details li{font-size:12px;line-height:1.8;color:var(--text-soft)}.idea-details ul{padding-left:18px}.evidence{margin-top:18px;font-size:11px;overflow-wrap:anywhere;color:var(--muted)}.evidence summary{cursor:pointer}.brief-head{flex-wrap:wrap;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:23px}.brief-head h4{margin:0}.copy-button{padding:9px 12px;border-radius:9px;background:oklch(from #b8c6ff calc(l - var(--dim-l)) c h);color:var(--on-accent);border:0;font-size:11px;font-weight:700}.brief-hint{margin:10px 0}textarea{width:100%;box-sizing:border-box;background:var(--deep);color:var(--text-soft);border:1px solid var(--border-strong);border-radius:10px;padding:13px;font:11px/1.7 ui-monospace,monospace;resize:vertical}.notice,.empty-state{padding:22px;border:1px solid var(--border);border-radius:12px;font-size:13px;line-height:1.7;color:var(--muted);margin:20px 0}.error{color:var(--text)}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}button:hover{filter:brightness(1.15)}a:focus-visible,button:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid oklch(from #a9bdff calc(l - var(--dim-l)) c h);outline-offset:4px}@media(max-width:760px){.review-card{padding:22px;gap:12px}.review-mark{display:none}.review-count{display:none}.ideas-head{align-items:flex-start}.ideas-head h1{font-size:30px}.ideas-head .quiet-button{max-width:110px}.idea-card{padding:20px}.review-copy h2{font-size:21px}.brief-head{align-items:flex-start;flex-direction:column}}
+.ideas-page { padding-bottom: 64px; }
+.page-head { align-items: flex-start; margin-bottom: 18px; }
+.planning-tabs { display: flex; gap: 22px; margin-top: 16px; }
+.planning-tabs a { text-decoration: none; color: var(--muted); padding-bottom: 6px; font-size: 13px; border-bottom: 2px solid transparent; }
+.planning-tabs [aria-current] { color: var(--text); border-bottom-color: var(--accent-strong); }
 
-.kanban-board{position:relative;display:flex;gap:16px;overflow-x:auto;align-items:stretch;padding:4px 4px 20px;scroll-snap-type:x proximity;min-height:320px}.kanban-column{flex:1 0 280px;min-width:0;background:var(--deep);border:1px solid var(--border);border-radius:14px;padding:12px;scroll-snap-align:start;transition:border-color .15s,background .15s}.kanban-column.drop-target{border-color:#9aaeff;background:var(--surface)}.column-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 4px 18px}.column-heading h3{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin:0}.column-count{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}.status-dot{width:8px;height:8px;border-radius:50%;background:#9aaeff}.status-dot.shortlisted{background:#e8c185}.status-dot.building{background:#c3a6ef}.status-dot.done{background:#83c6aa}.status-dot.dismissed{background:var(--muted)}.column-empty{padding:28px 12px;border:1px dashed var(--border-strong);border-radius:10px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}.kanban-column .idea-card+.idea-card{margin-top:12px}.drag-grip{font-size:18px;line-height:1;color:var(--muted)}.idea-card.dragging{opacity:.45}.idea-card.saving{opacity:.65}.kanban-board:focus-visible{outline:2px solid #a9bdff;outline-offset:4px}.idea-details{overflow-wrap:anywhere}@media(max-width:760px){.kanban-column{flex-basis:280px}.kanban-board{margin-right:-8px}.card-actions{flex-wrap:wrap}}
+button { font: inherit; cursor: pointer; }
+button:disabled { opacity: .5; cursor: wait; }
+.quiet-button { border: 1px solid var(--border-strong); border-radius: 10px; background: transparent; color: var(--text); padding: 8px 14px; font-size: 12px; }
+.quiet-button:hover:not(:disabled) { background: rgb(var(--ov-rgb) / .05); }
+.link-button { background: none; border: 0; padding: 0; color: var(--info-text); font-size: 12px; }
+.link-button:hover { text-decoration: underline; }
 
-.kanban-board.filtered-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;overflow:visible;min-height:0;padding:0;scroll-snap-type:none}.filtered-grid .kanban-column{display:contents}.filtered-grid .idea-card{padding:24px}.filtered-grid .idea-card+.idea-card{margin-top:0}.filtered-grid .idea-card h3{font-size:20px}.filtered-grid .idea-top{cursor:default}.filtered-grid .column-empty{grid-column:1/-1;padding:22px;text-align:left;border-style:solid}.filtered-grid .brief-head{flex-wrap:nowrap}@media(max-width:760px){.kanban-board.filtered-grid{grid-template-columns:1fr;margin-right:0}.filtered-grid .idea-card{padding:20px}.filtered-grid .brief-head{flex-wrap:wrap}}
+/* Review: one quiet line, notes on demand */
+.review-strip { border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); box-shadow: var(--shadow-card); padding: 11px 16px; margin-bottom: 18px; }
+.review-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12px; color: var(--muted); }
+.review-line strong { color: var(--text); font-weight: 600; }
+.review-mark { color: var(--accent-strong); }
+.review-line .link-button { margin-left: auto; }
+.stale { color: var(--warning-text); background: rgb(var(--tint-rgb) / .12); border-radius: 999px; padding: 2px 9px; font-size: 11px; }
+.review-summary { border-top: 1px solid var(--border); margin-top: 11px; padding-top: 11px; }
+.review-summary p { font-size: 12.5px; line-height: 1.7; color: var(--text-soft); max-width: 90ch; }
+.review-summary .schedule-note { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+/* Toolbar */
+.toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.search input { width: 220px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--text); padding: 7px 11px; font: inherit; font-size: 12px; }
+.search input::placeholder { color: var(--muted); }
+.category-filter { display: flex; flex-wrap: wrap; gap: 4px; }
+.category-filter button { border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 8px; padding: 6px 10px; font-size: 12px; }
+.category-filter button:hover { color: var(--text); }
+.category-filter button.selected { color: var(--text); background: var(--surface); border-color: var(--border-strong); }
+.total-count { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* Board: three active columns fit the width, no sideways scroll */
+.kanban-board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.kanban-column, .archive-column { background: rgb(var(--tint-rgb) / .06); border: 1px solid var(--border); border-radius: var(--radius-panel); padding: 12px; transition: border-color var(--motion-duration-fast), background var(--motion-duration-fast); }
+.kanban-column { min-height: 240px; }
+.drop-target { border-color: var(--accent-strong) !important; background: rgb(var(--tint-rgb) / .12) !important; }
+.column-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 4px; }
+.column-heading h2 { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin: 0; }
+.column-count { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; background: rgb(var(--tint-rgb) / .14); border-radius: 999px; padding: 1px 8px; }
+.column-hint { font-size: 11px; color: var(--muted); padding: 2px 4px 12px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--tone-run); }
+.status-dot.shortlisted { background: var(--tone-strength); }
+.status-dot.building { background: var(--tone-recovery); }
+.status-dot.done { background: var(--tone-ride); }
+.status-dot.dismissed { background: var(--muted); }
+.column-empty { padding: 22px 12px; border: 1px dashed var(--border-strong); border-radius: 10px; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+.idea-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; box-shadow: var(--shadow-card); cursor: grab; transition: box-shadow var(--motion-duration-base) var(--motion-ease-standard), translate var(--motion-duration-base) var(--motion-ease-standard), border-color var(--motion-duration-fast); }
+.idea-card + .idea-card { margin-top: 10px; }
+.idea-card:hover { translate: 0 -1px; box-shadow: var(--shadow-card-hover); }
+.idea-card.open { border-color: var(--accent-strong); }
+.idea-card.dragging { opacity: .4; }
+.idea-card.saving, .archive-list li.saving { opacity: .6; }
+.idea-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 10px; margin-bottom: 8px; }
+.category { color: var(--muted); text-transform: uppercase; letter-spacing: .09em; font-weight: 600; }
+.priority { margin-left: auto; border-radius: 999px; padding: 2px 8px; color: var(--muted); background: rgb(var(--tint-rgb) / .12); }
+.priority.high { color: var(--danger-text); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.priority.medium { color: var(--warning-text); background: color-mix(in srgb, var(--warning) 12%, transparent); }
+.idea-card h3 { font: 600 14.5px/1.35 var(--font-display); letter-spacing: -.01em; margin-bottom: 6px; }
+.title-button { all: unset; cursor: pointer; }
+.title-button::after { content: ''; position: absolute; inset: 0; }
+.idea-card { position: relative; }
+.title-button:focus-visible { outline: none; }
+.idea-card:has(.title-button:focus-visible) { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+.benefit { color: var(--muted-soft); font-size: 12px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.idea-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 11px; }
+.idea-meta { color: var(--muted); font-size: 11px; }
+.step-button { position: relative; z-index: 1; border: 1px solid var(--border-strong); background: transparent; color: var(--text-soft); border-radius: 8px; padding: 4px 10px; font-size: 11px; white-space: nowrap; }
+.step-button:hover:not(:disabled) { color: var(--text); border-color: var(--accent-strong); }
+
+/* Archive: done and dismissed as compact lists */
+.archive { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+.archive-column .column-heading { padding-bottom: 8px; }
+.archive-empty { font-size: 12px; color: var(--muted); padding: 4px; }
+.archive-list { list-style: none; margin: 0; padding: 0; }
+.archive-row { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 7px 6px; border-radius: 8px; font-size: 12.5px; color: var(--text-soft); }
+.archive-row:hover { background: rgb(var(--ov-rgb) / .04); color: var(--text); }
+.archive-row:focus-visible { outline: 2px solid var(--accent-strong); }
+.archive-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.archive-cat { flex: none; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.more { margin: 6px 6px 0; }
+
+.notice { padding: 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 13px; line-height: 1.6; color: var(--muted); margin: 16px 0; }
+.error { color: var(--text); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* Drawer */
+.drawer-layer { position: fixed; inset: 0; z-index: 200; background: rgb(var(--shadow-rgb) / .45); display: flex; justify-content: flex-end; }
+.idea-drawer { width: min(560px, 100%); height: 100%; overflow-y: auto; background: var(--bg-elevated); border-left: 1px solid var(--border-strong); box-shadow: var(--shadow-lg); padding: 22px 26px 40px; box-sizing: border-box; outline: none; color: var(--text); }
+.drawer-head { display: flex; align-items: flex-start; gap: 12px; }
+.drawer-head .idea-top { flex: 1; margin: 6px 0 0; }
+.drawer-head .priority { margin-left: 0; }
+.close-button { border: 0; background: transparent; color: var(--muted); font-size: 24px; line-height: 1; padding: 0 4px; }
+.close-button:hover { color: var(--text); }
+.idea-drawer h2 { font: 600 22px/1.25 var(--font-display); letter-spacing: -.02em; margin: 14px 0 8px; }
+.drawer-benefit { color: var(--text-soft); font-size: 13px; line-height: 1.65; }
+.status-switch { display: flex; flex-wrap: wrap; gap: 4px; margin: 18px 0 6px; padding: 4px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); }
+.status-switch button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: transparent; color: var(--muted); border-radius: 8px; padding: 7px 8px; font-size: 12px; }
+.status-switch button:hover:not(:disabled) { color: var(--text); }
+.status-switch button.selected { background: rgb(var(--tint-rgb) / .16); color: var(--text); font-weight: 600; }
+.drawer-body { overflow-wrap: anywhere; }
+.drawer-body h3 { font-size: 12px; font-weight: 600; margin: 20px 0 6px; color: var(--text); }
+.drawer-body p, .drawer-body li { font-size: 12.5px; line-height: 1.75; color: var(--text-soft); }
+.drawer-body ul { padding-left: 18px; }
+.evidence { margin-top: 16px; font-size: 11px; color: var(--muted); }
+.evidence summary { cursor: pointer; }
+.evidence li { font-size: 11px; color: var(--muted); }
+.brief-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 24px; }
+.brief-head h3 { margin: 0; }
+.copy-button { padding: 8px 12px; border-radius: 9px; background: var(--accent-strong); color: var(--on-accent); border: 0; font-size: 11px; font-weight: 700; }
+.copy-button:hover { filter: brightness(1.08); }
+.brief-hint { margin: 8px 0; font-size: 11.5px !important; color: var(--muted) !important; }
+textarea { width: 100%; box-sizing: border-box; background: var(--surface); color: var(--text-soft); border: 1px solid var(--border-strong); border-radius: 10px; padding: 12px; font: 11px/1.7 ui-monospace, monospace; resize: vertical; }
+.drawer-enter-active, .drawer-leave-active { transition: background var(--motion-duration-base) var(--motion-ease-standard); }
+.drawer-enter-active .idea-drawer { transition: translate var(--motion-duration-slow) var(--motion-ease-emphasized); }
+.drawer-leave-active .idea-drawer { transition: translate var(--motion-duration-fast) var(--motion-ease-exit); }
+.drawer-enter-from, .drawer-leave-to { background: transparent; }
+.drawer-enter-from .idea-drawer, .drawer-leave-to .idea-drawer { translate: 100% 0; }
+@media (prefers-reduced-motion: reduce) { .drawer-enter-active .idea-drawer, .drawer-leave-active .idea-drawer { transition: none; } }
+
+@media (max-width: 980px) {
+  .kanban-board { grid-template-columns: 1fr; }
+  .archive { grid-template-columns: 1fr; }
+  .search input { width: 100%; }
+  .search { flex: 1 1 100%; }
+  .total-count { margin-left: 0; }
+}
 </style>

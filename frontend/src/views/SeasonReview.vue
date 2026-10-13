@@ -54,7 +54,7 @@ async function writeCoach() {
   }
 }
 
-const chooseYear = (year) => router.push(`/season/${year}`)
+const chooseYear = (year) => { if (year !== review.value?.year) router.push(`/season/${year}`) }
 
 // Sections slide in as they scroll into view.
 const vReveal = {
@@ -128,6 +128,31 @@ const yearGrid = computed(() => {
   }
   return { cells, months, weeks: Math.max(...cells.map((cell) => cell.week)) + 1 }
 })
+// ---- career ---------------------------------------------------------------
+// Every year since the first activity as a stacked bar of hours by sport: the whole story at a glance.
+const SPORT_ORDER = ['ride', 'run', 'strength', 'hike', 'walk', 'other']
+const story = computed(() => {
+  const years = review.value?.career?.years ?? []
+  const max = Math.max(...years.map((item) => item.hours), 0.0001)
+  return years.map((item, index) => ({
+    ...item,
+    i: index,
+    height: item.hours ? Math.max(4, (item.hours / max) * 100) : 0,
+    segments: SPORT_ORDER.filter((key) => item.sports[key]).map((key) => ({ key, color: SPORTS[key].color, share: (item.sports[key] / item.hours) * 100 })),
+    title: item.available
+      ? `${item.year}: ${whole(item.hours)} h, ${item.sessions} sessions, ${item.active_days} active days`
+      : item.sessions ? `${item.year}: ${whole(item.hours)} h so far. The review opens on 1 December.` : `${item.year}: nothing logged`,
+  }))
+})
+const badges = computed(() => review.value?.career?.badges ?? [])
+const MILESTONE_LOOK = {
+  run_km: { color: 'var(--season-run)', icon: 'Run', tone: 'run' },
+  ride_km: { color: 'var(--season-ride)', icon: 'Ride', tone: 'ride' },
+  activities: { color: 'var(--accent)', icon: 'Workout', tone: 'neutral' },
+  hours: { color: 'var(--warning)', icon: 'Workout', tone: 'neutral' },
+}
+const milestones = computed(() => (review.value?.career?.milestones ?? []).map((item) => ({ ...item, ...MILESTONE_LOOK[item.kind] })))
+
 const legend = computed(() => (totals.value?.sports ?? []).map((sport) => ({ key: sport.key, label: sport.label, color: SPORTS[sport.key].color })))
 
 // ---- sports ---------------------------------------------------------------
@@ -254,9 +279,17 @@ const RING = 2 * Math.PI * 34
       <header class="hero">
         <div class="hero-top">
           <span class="eyebrow">Season in review · {{ subtitle }}</span>
-          <nav v-if="years.length > 1" class="year-chips" aria-label="Season">
-            <button v-for="year in years" :key="year" type="button" :class="{ active: year === review.year }"
-                    :aria-pressed="year === review.year" @click="chooseYear(year)">{{ year }}</button>
+          <nav v-if="story.length > 1" class="story" aria-label="Your seasons, hours by year">
+            <button v-for="item in story" :key="item.year" type="button" class="story-year"
+                    :class="{ active: item.year === review.year, closed: !item.available }" :disabled="!item.available"
+                    :aria-pressed="item.year === review.year" :aria-label="item.title" :title="item.title" @click="chooseYear(item.year)">
+              <span class="story-track">
+                <span class="story-bar" :style="{ height: `${item.height}%`, '--i': item.i }">
+                  <span v-for="segment in item.segments" :key="segment.key" :style="{ flexBasis: `${segment.share}%`, background: segment.color }" />
+                </span>
+              </span>
+              <span class="story-label">{{ item.year }}</span>
+            </button>
           </nav>
         </div>
         <div class="hero-main">
@@ -273,6 +306,19 @@ const RING = 2 * Math.PI * 34
             <span class="muted">vs {{ previousYear }}{{ totals.to_date ? ' (full year)' : '' }}</span>
           </p>
         </div>
+
+        <ul v-if="badges.length" class="badges" aria-label="How this year ranks">
+          <li v-for="(badge, index) in badges" :key="badge.metric" class="badge" :class="`is-${badge.kind}`" :style="{ '--i': index }">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="badge-icon">
+              <path v-if="badge.kind === 'record' || badge.kind === 'record_then'" d="M7 4h10v3a5 5 0 0 1-10 0V4Zm-3 1h3v2a3 3 0 0 1-3-2Zm16 0h-3v2a3 3 0 0 0 3-2ZM10 14h4v3h2v3H8v-3h2v-3Z" />
+              <path v-else d="M4 18 10 11l4 4 6-8v4h2V5h-6v2h4l-4.6 6.1L10 9l-7.4 8.6L4 18Z" />
+            </svg>
+            <div>
+              <strong>{{ badge.headline }}</strong>
+              <span>{{ badge.detail }}</span>
+            </div>
+          </li>
+        </ul>
 
         <figure class="year-grid-wrap" aria-label="Every day of the year">
           <div class="year-grid" :style="{ '--weeks': yearGrid.weeks }">
@@ -317,6 +363,23 @@ const RING = 2 * Math.PI * 34
             </svg>
             <div class="tile-months" aria-hidden="true"><span v-for="bar in tile.bars" :key="bar.month">{{ monthLetter(bar.month) }}</span></div>
           </article>
+        </div>
+      </section>
+
+      <!-- Milestones ------------------------------------------------------- -->
+      <section v-if="milestones.length" v-reveal class="block" aria-labelledby="milestones-title">
+        <div class="block-head">
+          <h2 id="milestones-title">Lifetime milestones</h2>
+          <span class="muted head-note">Round numbers your whole history passed in {{ review.year }}</span>
+        </div>
+        <div class="milestones">
+          <component :is="item.activity_id ? 'RouterLink' : 'article'" v-for="(item, index) in milestones" :key="`${item.kind}-${item.value}`"
+                     :to="item.activity_id ? `/activities/${item.activity_id}` : undefined" class="milestone" :style="{ '--tone': item.color, '--i': index }">
+            <span class="milestone-icon"><ActivityIcon :type="item.icon" :tone="item.tone" :size="18" /></span>
+            <strong class="milestone-value"><AnimatedNumber :value="item.value" :format="whole" :cache-key="`season:${review.year}:milestone:${item.kind}:${item.value}`" :duration="1600" /></strong>
+            <span class="milestone-unit">{{ item.unit }}</span>
+            <span class="milestone-when">{{ day(item.date) }}<template v-if="item.activity_name"> · {{ item.activity_name }}</template></span>
+          </component>
         </div>
       </section>
 
@@ -537,10 +600,41 @@ const RING = 2 * Math.PI * 34
 .hero { margin-bottom: 36px; }
 /* The giant year's glyphs overhang its compact line box; keep the year chips above them and clickable. */
 .hero-top { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.year-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.year-chips button { border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--muted); padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; font-variant-numeric: tabular-nums; }
-.year-chips button:hover { color: var(--text); border-color: var(--border-strong); }
-.year-chips button.active { border-color: transparent; background: var(--accent); color: var(--on-accent, #fff); }
+.hero-top { flex-direction: column; align-items: stretch; min-width: 0; }
+/* On narrow screens the strip scrolls inside itself instead of widening the page. */
+.story { min-width: 0; max-width: 100%; display: grid; grid-auto-columns: minmax(44px, 1fr); grid-auto-flow: column; gap: 6px; overflow-x: auto; padding-top: 6px; }
+.story-year { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 6px 6px 4px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--muted); font: inherit; cursor: pointer; transition: background var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard); }
+.story-year:hover:not(:disabled) { background: color-mix(in srgb, var(--tone-neutral) 8%, transparent); }
+.story-year.active { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--text); }
+.story-year.closed { cursor: default; }
+.story-track { position: relative; display: flex; align-items: flex-end; justify-content: center; height: 64px; }
+.story-bar { display: flex; flex-direction: column-reverse; width: min(30px, 70%); border-radius: 5px 5px 2px 2px; overflow: hidden; opacity: .5; transform-origin: 50% 100%; animation: story-grow 700ms var(--motion-ease-emphasized) both; animation-delay: calc(var(--i) * 45ms); transition: opacity var(--motion-duration-fast) var(--motion-ease-standard); }
+.story-bar > span { display: block; min-height: 1px; }
+.story-year:hover .story-bar, .story-year.active .story-bar { opacity: 1; }
+.story-year.closed .story-bar { opacity: .25; }
+.story-label { font-size: 11px; font-weight: 650; text-align: center; font-variant-numeric: tabular-nums; }
+.story-year.active .story-label { color: var(--accent-strong, var(--accent)); }
+@keyframes story-grow { from { transform: scaleY(0); } to { transform: none; } }
+
+.badges { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-top: 24px; }
+.badge { --badge: var(--accent); display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--badge) 30%, transparent); background: color-mix(in srgb, var(--badge) 8%, var(--surface)); animation: badge-in 600ms var(--motion-ease-emphasized) both; animation-delay: calc(400ms + var(--i) * 120ms); }
+.badge.is-record { --badge: var(--warning); }
+.badge.is-record_then { --badge: var(--tone-neutral); }
+.badge-icon { flex: none; width: 34px; height: 34px; padding: 7px; border-radius: 10px; fill: var(--badge); background: color-mix(in srgb, var(--badge) 16%, transparent); }
+.badge strong { display: block; font-size: 14px; }
+.badge span { font-size: 12px; color: var(--muted); }
+@keyframes badge-in { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
+
+.head-note { font-size: 12px; }
+.milestones { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.milestone { display: flex; flex-direction: column; gap: 2px; padding: 16px 18px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--tone) 28%, transparent); background: color-mix(in srgb, var(--tone) 7%, var(--surface)); color: var(--text); text-decoration: none; transition: transform var(--motion-duration-base) var(--motion-ease-standard), box-shadow var(--motion-duration-base) var(--motion-ease-standard); }
+.milestone:hover { transform: translateY(-3px); box-shadow: var(--shadow-card-hover); }
+.reveal .milestone { opacity: 0; transform: translateY(14px); }
+.reveal.is-in .milestone { opacity: 1; transform: none; transition: opacity 500ms var(--motion-ease-standard) calc(var(--i) * 100ms), transform 600ms var(--motion-ease-emphasized) calc(var(--i) * 100ms); }
+.milestone-icon { display: grid; place-items: center; width: 32px; height: 32px; margin-bottom: 8px; border-radius: 10px; background: color-mix(in srgb, var(--tone) 18%, transparent); }
+.milestone-value { font-family: var(--font-display); font-size: 42px; font-weight: 700; line-height: 1; letter-spacing: -1.2px; color: var(--tone); }
+.milestone-unit { font-size: 14px; font-weight: 600; color: var(--text-soft); }
+.milestone-when { margin-top: 8px; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hero-main { display: flex; align-items: flex-end; gap: 12px 44px; flex-wrap: wrap; margin-top: 34px; }
 .hero-year { user-select: none; font-family: var(--font-display); font-size: 148px; font-weight: 700; line-height: .82; letter-spacing: -6px; animation: year-in 900ms var(--motion-ease-emphasized) both; }
 .hero-line { display: flex; flex-wrap: wrap; gap: 6px 32px; padding-bottom: 4px; font-size: 15px; color: var(--text-soft); }
@@ -696,7 +790,7 @@ const RING = 2 * Math.PI * 34
 button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-year, .day, .is-in .goal-check { animation: none; }
+  .hero-year, .day, .is-in .goal-check, .story-bar, .badge { animation: none; }
 }
 @media (max-width: 1100px) {
   .trophies { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -203,6 +203,60 @@ class SeasonReviewTests(unittest.TestCase):
         self.assertEqual(again["text"], coach["text"])
         self.assertEqual(self.review()["coach"]["text"], coach["text"])
 
+    def test_career_strip_covers_every_year_and_marks_which_open(self):
+        self.add("a", "2027-03-01", "Run", 60, 10.0)
+        self.add("b", "2029-03-01", "Ride", 120, 50.0)
+        self.add("c", "2030-03-01", "Ride", 30, 10.0)
+
+        career = self.review(2029, today=date(2030, 6, 1))["career"]["years"]
+
+        self.assertEqual([item["year"] for item in career], [2027, 2028, 2029, 2030])
+        self.assertEqual([item["available"] for item in career], [True, False, True, False])
+        self.assertEqual(career[1]["hours"], 0)
+        self.assertEqual(career[2]["sports"], {"ride": 2.0})
+
+    def test_badges_name_records_records_at_the_time_and_best_since(self):
+        hours = {2021: 150, 2022: 300, 2023: 100, 2024: 80, 2025: 90, 2026: 200, 2027: 400}
+        for year, minutes_total in hours.items():
+            for index in range(4):
+                self.add(f"{year}-{index}", f"{year}-0{index + 1}-10", "Run", minutes_total * 15, 5.0)
+
+        def headlines(year):
+            return [badge["headline"] for badge in self.review(year, today=date(2028, 1, 10))["career"]["badges"]]
+
+        self.assertIn("Most hours of any year", headlines(2027))
+        self.assertIn("Most hours up to then", headlines(2022))
+        self.assertIn("Most hours since 2022", headlines(2026))
+        # 2025 beat 2024 but not 2023, which is too close to call "since".
+        self.assertFalse([item for item in headlines(2025) if item.startswith("Most hours")])
+        record = next(badge for badge in self.review(2027, today=date(2028, 1, 10))["career"]["badges"] if badge["metric"] == "hours")
+        self.assertEqual(record["detail"], "400 h · previous best 300 h in 2022")
+
+    def test_best_since_needs_a_real_share_of_the_best_year(self):
+        for index in range(40):
+            self.add(f"old-{index}", f"2024-02-{(index % 28) + 1:02d}", "WeightTraining", 45)
+        self.add("mid", "2025-02-01", "WeightTraining", 45)
+        self.add("mid2", "2025-02-02", "WeightTraining", 45)
+        self.add("now", "2029-02-01", "WeightTraining", 45)
+        self.add("now2", "2029-02-02", "WeightTraining", 45)
+        self.add("now3", "2029-02-03", "WeightTraining", 45)
+
+        badges = self.review(2029, today=date(2030, 1, 10))["career"]["badges"]
+
+        self.assertFalse([badge for badge in badges if badge["metric"] == "strength"])
+
+    def test_milestones_name_the_activity_that_crossed_them(self):
+        self.add("first", "2029-05-01", "Run", 600, 990.0)
+        self.add("crossing", "2030-02-03", "Run", 60, 12.0)
+        self.add("after", "2030-03-03", "Run", 60, 12.0)
+
+        milestones = self.review()["career"]["milestones"]
+
+        running = [item for item in milestones if item["kind"] == "run_km"]
+        self.assertEqual(running, [{"kind": "run_km", "value": 1000, "unit": "km of running", "date": "2030-02-03",
+                                    "activity_id": "crossing", "activity_name": "Run crossing"}])
+        self.assertEqual(self.review(2029)["career"]["milestones"], [])  # 990 km, 10 h and 1 activity cross nothing.
+
     def test_routes_return_404_for_a_closed_year_and_keep_the_saved_paragraph(self):
         from backend.app.routers import records
 

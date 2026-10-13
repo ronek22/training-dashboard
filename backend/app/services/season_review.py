@@ -350,6 +350,144 @@ def _letters(conn: sqlite3.Connection, year: int) -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
+# Career: the year against every other year
+# ---------------------------------------------------------------------------
+
+RANKED = (
+    # key, label, unit
+    ("hours", "Most hours", "h"),
+    ("active_days", "Most active days", ""),
+    ("sessions", "Most sessions", ""),
+    ("ride_km", "Most riding", "km"),
+    ("run_km", "Most running", "km"),
+    ("strength", "Most strength sessions", ""),
+)
+MILESTONES = (
+    # key, unit label, thresholds
+    ("run_km", "km of running", (1000, 2500, 5000, 7500, 10000, 15000, 20000, 25000, 30000, 40000, 50000)),
+    ("ride_km", "km of riding", (1000, 2500, 5000, 7500, 10000, 15000, 20000, 25000, 30000, 40000, 50000)),
+    ("activities", "activities", (100, 250, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000)),
+    ("hours", "hours of training", (100, 250, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000)),
+)
+MAX_BADGES = 4
+SINCE_MIN_GAP = 3  # "Most since 2024" a year later says little.
+SINCE_MIN_SHARE = 0.25  # Nor do "since" or "#2" badges for 2 sessions against a best of 148.
+
+
+def _career_rows(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT id, substr(date, 1, 10) AS day, type, name, COALESCE(duration_min, 0) AS minutes, "
+        "COALESCE(distance_km, 0) AS km FROM activities "
+        "WHERE substr(date, 1, 4) GLOB '[0-9][0-9][0-9][0-9]' ORDER BY date, created_at, id"
+    ).fetchall()
+
+
+def _career_years(rows: list[sqlite3.Row], available: list[int]) -> list[dict[str, Any]]:
+    """Every year from the first activity to the last, gaps included, with hours by sport."""
+    if not rows:
+        return []
+    years: dict[int, dict[str, Any]] = {}
+    days: dict[int, set] = {}
+    for row in rows:
+        year = int(row["day"][:4])
+        item = years.setdefault(year, {"hours": 0.0, "sessions": 0, "ride_km": 0.0, "run_km": 0.0, "strength": 0, "sports": {}})
+        sport = _sport_of(row["type"])
+        item["hours"] += row["minutes"] / 60.0
+        item["sessions"] += 1
+        item["sports"][sport] = item["sports"].get(sport, 0.0) + row["minutes"] / 60.0
+        if sport == "ride":
+            item["ride_km"] += row["km"]
+        elif sport == "run":
+            item["run_km"] += row["km"]
+        elif sport == "strength":
+            item["strength"] += 1
+        days.setdefault(year, set()).add(row["day"])
+    first, last = min(years), max(years)
+    result = []
+    for year in range(first, last + 1):
+        item = years.get(year, {"hours": 0.0, "sessions": 0, "ride_km": 0.0, "run_km": 0.0, "strength": 0, "sports": {}})
+        result.append({
+            "year": year, "available": year in available,
+            "hours": round(item["hours"], 1), "sessions": item["sessions"], "active_days": len(days.get(year, ())),
+            "ride_km": round(item["ride_km"], 1), "run_km": round(item["run_km"], 1), "strength": item["strength"],
+            "sports": {key: round(value, 1) for key, value in item["sports"].items()},
+        })
+    return result
+
+
+def _format(value: float, unit: str) -> str:
+    text = f"{round(value):,}" if value >= 100 or float(value).is_integer() else f"{value:,.1f}"
+    return f"{text} {unit}".strip()
+
+
+def _badges(career: list[dict[str, Any]], year: int, to_date: bool) -> list[dict[str, Any]]:
+    """Where the year stands among all years: records, records at the time, best since, top three."""
+    found = []
+    others = [item for item in career if item["sessions"]]
+    current = next((item for item in others if item["year"] == year), None)
+    if not current or len(others) < 2:
+        return []
+    for key, label, unit in RANKED:
+        value = current[key]
+        if not value:
+            continue
+        values = {item["year"]: item[key] for item in others}
+        rank = 1 + sum(1 for other in values.values() if other > value)
+        earlier = {y: v for y, v in values.items() if y < year}
+        later_beat = sorted(y for y, v in values.items() if y > year and v > value)
+        so_far = " so far" if to_date else ""
+        if rank == 1:
+            best_other_year, best_other = max(((y, v) for y, v in values.items() if y != year), key=lambda pair: pair[1])
+            detail = f"{_format(value, unit)}{so_far}" + (f" · previous best {_format(best_other, unit)} in {best_other_year}" if best_other else "")
+            found.append({"kind": "record", "metric": key, "headline": f"{label} of any year", "detail": detail, "score": 4})
+        elif earlier and value > max(earlier.values()):
+            detail = f"{_format(value, unit)} · a record until {later_beat[0]}"
+            found.append({"kind": "record_then", "metric": key, "headline": f"{label} up to then", "detail": detail, "score": 3})
+        else:
+            since = max((y for y, v in earlier.items() if v > value), default=None)
+            if since is not None and year - since >= SINCE_MIN_GAP and value >= SINCE_MIN_SHARE * max(values.values()):
+                found.append({"kind": "since", "metric": key, "headline": f"{label} since {since}",
+                              "detail": f"{_format(value, unit)}{so_far} · #{rank} of {len(values)} years", "score": 2})
+            elif rank <= 3 and value >= SINCE_MIN_SHARE * max(values.values()):
+                found.append({"kind": "rank", "metric": key, "headline": f"#{rank} of {len(values)} years for {label[5:].lower()}",
+                              "detail": f"{_format(value, unit)}{so_far}", "score": 1})
+    found.sort(key=lambda item: -item["score"])
+    return [{k: v for k, v in item.items() if k != "score"} for item in found[:MAX_BADGES]]
+
+
+def _milestones(rows: list[sqlite3.Row], year: int) -> list[dict[str, Any]]:
+    """Lifetime totals that crossed a round number during the year, with the activity that did it."""
+    totals = {"run_km": 0.0, "ride_km": 0.0, "activities": 0, "hours": 0.0}
+    found = []
+    for row in rows:
+        row_year = int(row["day"][:4])
+        if row_year > year:
+            break
+        before = dict(totals)
+        sport = _sport_of(row["type"])
+        totals["activities"] += 1
+        totals["hours"] += row["minutes"] / 60.0
+        if sport == "run":
+            totals["run_km"] += row["km"]
+        elif sport == "ride":
+            totals["ride_km"] += row["km"]
+        if row_year != year:
+            continue
+        for key, unit, thresholds in MILESTONES:
+            for threshold in thresholds:
+                if before[key] < threshold <= totals[key]:
+                    found.append({"kind": key, "value": threshold, "unit": unit, "date": row["day"],
+                                  "activity_id": row["id"], "activity_name": row["name"]})
+    return found
+
+
+def _career(conn: sqlite3.Connection, year: int, today: date) -> dict[str, Any]:
+    rows = _career_rows(conn)
+    years = _career_years(rows, available_years(conn, today))
+    return {"years": years, "badges": _badges(years, year, year == today.year), "milestones": _milestones(rows, year)}
+
+
+# ---------------------------------------------------------------------------
 # Review
 # ---------------------------------------------------------------------------
 
@@ -370,6 +508,7 @@ def build_season_review(conn: sqlite3.Connection, year: int, today: Optional[dat
         "complete": year < today.year,
         "years": available_years(conn, today),
         "totals": _totals(conn, year, today),
+        "career": _career(conn, year, today),
         "months": months,
         "days": days,
         "streak": _longest_streak(conn, year),

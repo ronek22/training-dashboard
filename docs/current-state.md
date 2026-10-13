@@ -24,6 +24,20 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Detailed streams for the whole Strava history
+
+2026-10-13: after importing Strava history back to 2013, 2,109 older runs and rides had only summary numbers, so their fastest-distance records, season bests, charts and maps were missing. The existing "Fetch next 12" backfill skips runs without heart rate, which is most of them before 2022.
+
+- `services/strava_history_backfill.py` fetches full streams in the background: runs first, newest first, in batches of up to 60 about every 16 minutes. It stops a batch while 35% of Strava's 15-minute or daily limit is still free, so syncing and activity pages keep working; at the default 1,000 requests a day that is about 3 days for the whole history.
+- Each activity is tried once and recorded in `strava_history_backfill` (fetched, no_streams for manual entries, or failed with up to 3 attempts). A rate-limit error or a network problem pauses the batch without marking anything. Progress is committed after every activity.
+- Streams are cached like detail-page fetches (`activity_details.streams_json`). A training-load stream summary is stored only when the streams carry heart rate or power; without either it would count the whole session as easy aerobic time.
+- Switched on and off from Data & Sync ("Detailed history" card with progress and what happens next: "Fetching a batch of up to 60 now", "Next batch of up to 60 about 15:41", or the pause reason; between batches the count holds still on purpose), or `POST /integrations/strava/history-backfill {"enabled": true}`; `GET` gives the status. It switches itself off when nothing is left. The loop runs in the backend (`STRAVA_HISTORY_BACKFILL=false` disables it).
+- Full streams take about 150 KB per run and 300 KB per ride: the database grows from about 226 MB to about 600 MB.
+- Faster path from a Strava bulk export: `services/strava_export_import.py` reads the export's original files (FIT, TCX, GPX, gzipped or not) through `activities.csv` (Activity ID to file) and converts them to Strava-shaped streams: equal-length `time`, `distance` (the device's, or measured along the track for GPX), `latlng` (last fix carried through dropouts), `altitude`, `heartrate`, `watts`, `cadence`, `velocity_smooth`. It fills only runs and rides that have no streams, marks them done for the API backfill, and stores a training-load summary only with heart rate or power. XML with a DOCTYPE or entity declarations is refused, and only files inside the export folder are read. `POST /integrations/strava/export-import {"dry_run": true|false}` reads `STRAVA_EXPORT_DIR` (default `/data/strava-export`, i.e. `data/strava-export` on the host), so the import runs inside the backend container that owns the database.
+- Checked against 40 activities the API had already fetched (all four formats): total distance differs by a median 0.0% (max 0.26%), fastest-window times by at most 0.7 s. On 2026-10-13 the export filled 1,182 activities in 58 s (0 unreadable); the API had fetched 834 before that, and the remaining 55 activities without an export file are left to the API backfill.
+- With streams for the whole history the first Records read computes efforts once (about 9 s); after that Records takes about 0.4 s. The database grew from 226 MB to 481 MB.
+- Tests: `backend/tests/test_strava_history_backfill.py`, `backend/tests/test_strava_export_import.py`.
+
 ### Ready for full Strava history
 
 2026-10-13: preparing to import Strava history back to 2013 (about 2,300 runs and rides against 468 activities today). A simulated import of 2,657 older activities on a copy of the database took the Dashboard from 0.2 s to 5.3 s and the coaching context from 0.45 s to 2 s. Both are back to about 0.5 s.

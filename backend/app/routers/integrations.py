@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from ..db import get_db
 from ..models.integrations import (
@@ -16,6 +16,11 @@ from ..services.strava import (
     build_strava_status_data,
     import_strava_activities_data,
 )
+import os
+from pathlib import Path
+
+from ..services import strava_history_backfill
+from ..services.strava_export_import import import_export_streams
 from ..services.healthfit import apply_healthfit_import, preview_healthfit_import
 from ..services.health_data import apply_health_data_import, preview_health_data_import
 
@@ -118,3 +123,36 @@ def backfill_strava_streams(payload: StravaStreamBackfillRequest):
         streams_fetched=result["streams_fetched"],
         remaining_candidates=result["remaining_candidates"],
     )
+
+
+@router.get("/integrations/strava/history-backfill")
+def strava_history_backfill_status():
+    """Progress of the slow background fetch of detailed streams for the whole history."""
+    conn = get_db()
+    try:
+        return strava_history_backfill.status(conn)
+    finally:
+        conn.close()
+
+
+@router.post("/integrations/strava/history-backfill")
+def strava_history_backfill_toggle(payload: dict):
+    """Start or pause the background fetch. Starting runs the first batch within a minute."""
+    conn = get_db()
+    try:
+        return strava_history_backfill.set_enabled(conn, bool(payload.get("enabled")))
+    finally:
+        conn.close()
+
+
+@router.post("/integrations/strava/export-import")
+def strava_export_import(payload: dict):
+    """Fill missing streams from a Strava bulk export copied to STRAVA_EXPORT_DIR (default /data/strava-export)."""
+    directory = Path(os.getenv("STRAVA_EXPORT_DIR", "/data/strava-export"))
+    conn = get_db()
+    try:
+        return import_export_streams(conn, directory, dry_run=bool(payload.get("dry_run")))
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    finally:
+        conn.close()

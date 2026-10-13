@@ -187,6 +187,14 @@ def init_db():
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS strava_history_backfill (
+            activity_id TEXT PRIMARY KEY,
+            status TEXT NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            error TEXT,
+            attempted_at TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS season_reviews (
             year INTEGER PRIMARY KEY,
             coach_json TEXT NOT NULL,

@@ -40,6 +40,8 @@ from .routers.return_to_run import router as return_to_run_router
 from .routers.life_load import router as life_load_router
 from .routers.trails import router as trails_router
 from .services.health_data import apply_health_data_import
+from .services.settings import get_setting, set_setting
+from .services.strava_history_backfill import run_batch as run_history_backfill
 from .services.widget_brief import write_widget_brief
 
 mcp_app = build_mcp_app(**build_mcp_router_dependencies())
@@ -77,6 +79,23 @@ async def _background_sync_loop(import_health: bool, widget_dir: str) -> None:
         await asyncio.sleep(interval)
 
 
+def _strava_history_backfill_once() -> None:
+    conn = get_db()
+    try:
+        run_history_backfill(conn, get_setting_fn=get_setting, set_setting_fn=set_setting)
+    except Exception:
+        logger.exception("Strava history backfill batch failed")
+    finally:
+        conn.close()
+
+
+async def _strava_history_backfill_loop() -> None:
+    # Checks every minute; a batch runs only when the backfill is on and due (about every 16 minutes).
+    while True:
+        await asyncio.to_thread(_strava_history_backfill_once)
+        await asyncio.sleep(60)
+
+
 @asynccontextmanager
 async def app_lifespan(app_instance: FastAPI):
     async with mcp_app.router.lifespan_context(app_instance):
@@ -85,13 +104,15 @@ async def app_lifespan(app_instance: FastAPI):
         widget_dir = os.getenv("WIDGET_EXPORT_DIR", "").strip()
         if import_health or widget_dir:
             task = asyncio.create_task(_background_sync_loop(import_health, widget_dir))
+        backfill_task = asyncio.create_task(_strava_history_backfill_loop()) if os.getenv("STRAVA_HISTORY_BACKFILL", "true").lower() not in {"0", "false", "no", "off"} else None
         try:
             yield
         finally:
-            if task:
-                task.cancel()
-                with suppress(asyncio.CancelledError):
-                    await task
+            for running in (task, backfill_task):
+                if running:
+                    running.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await running
 
 
 app = FastAPI(title="Training Dashboard API", lifespan=app_lifespan)

@@ -535,13 +535,14 @@ const RING = 2 * Math.PI * 34
 
 /* Hero */
 .hero { margin-bottom: 36px; }
-.hero-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+/* The giant year's glyphs overhang its compact line box; keep the year chips above them and clickable. */
+.hero-top { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .year-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .year-chips button { border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--muted); padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; font-variant-numeric: tabular-nums; }
 .year-chips button:hover { color: var(--text); border-color: var(--border-strong); }
 .year-chips button.active { border-color: transparent; background: var(--accent); color: var(--on-accent, #fff); }
-.hero-main { display: flex; align-items: flex-end; gap: 12px 44px; flex-wrap: wrap; margin-top: 14px; }
-.hero-year { font-family: var(--font-display); font-size: 148px; font-weight: 700; line-height: .82; letter-spacing: -6px; animation: year-in 900ms var(--motion-ease-emphasized) both; }
+.hero-main { display: flex; align-items: flex-end; gap: 12px 44px; flex-wrap: wrap; margin-top: 34px; }
+.hero-year { user-select: none; font-family: var(--font-display); font-size: 148px; font-weight: 700; line-height: .82; letter-spacing: -6px; animation: year-in 900ms var(--motion-ease-emphasized) both; }
 .hero-line { display: flex; flex-wrap: wrap; gap: 6px 32px; padding-bottom: 4px; font-size: 15px; color: var(--text-soft); }
 .hero-stat strong { display: block; margin-bottom: 4px; font-family: var(--font-display); font-size: 56px; font-weight: 650; line-height: 1; letter-spacing: -1.5px; color: var(--text); }
 .hero-versus { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; font-size: 12px; }

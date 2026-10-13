@@ -6,7 +6,7 @@
         <p>Your {{ year }} in motion: monthly work as bars, the running total as a line.</p>
       </div>
       <span class="year-head-meta">
-        <RouterLink v-if="seasonOpen" :to="`/season/${year}`" class="year-season-link">Your {{ year }} in review ↗</RouterLink>
+        <RouterLink :to="`/season/${year}`" class="year-season-link">Your {{ year }} {{ yearEnding ? 'in review' : 'so far' }} ↗</RouterLink>
         {{ year }} · day {{ dayOfYear }} of {{ daysInYear }}
       </span>
     </header>
@@ -100,8 +100,8 @@ const year = now.getFullYear()
 const startOfYear = new Date(year, 0, 1)
 const daysInYear = Math.round((new Date(year + 1, 0, 1) - startOfYear) / 86400000)
 const dayOfYear = Math.floor((now - startOfYear) / 86400000) + 1
-// The season review for the running year opens on 1 December.
-const seasonOpen = now.getMonth() === 11
+// The running year's season review is open all year; in December it reads as the year in review.
+const yearEnding = now.getMonth() === 11
 
 const format = (value) => {
   const numeric = Number(value || 0)

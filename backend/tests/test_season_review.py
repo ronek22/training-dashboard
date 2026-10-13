@@ -35,18 +35,30 @@ class SeasonReviewTests(unittest.TestCase):
     def review(self, year=2030, today=DECEMBER):
         return season_review.build_season_review(self.conn, year, today=today)
 
-    def test_current_year_opens_on_1_december_and_past_years_need_data(self):
+    def test_running_year_is_open_all_year_and_past_years_need_data(self):
         self.add("old", "2028-06-01", "Hike", 300, 12.0)
         self.add("now", "2030-03-01")
 
-        autumn = season_review.season_review_status(self.conn, today=date(2030, 11, 30))
-        self.assertEqual(autumn["years"], [2028])
-        self.assertFalse(autumn["current_offered"])
-        self.assertEqual(season_review.season_review_status(self.conn, today=date(2030, 12, 1))["years"], [2030, 2028])
-        with self.assertRaisesRegex(ValueError, "opens on 1 December"):
-            self.review(today=date(2030, 11, 30))
+        spring = season_review.season_review_status(self.conn, today=date(2030, 4, 1))
+        self.assertEqual(spring["years"], [2030, 2028])
+        self.assertEqual(spring["coach_opens_on"], "2030-12-01")
+        self.assertIsNone(season_review.season_review_status(self.conn, today=date(2030, 12, 1))["coach_opens_on"])
+        running = self.review(today=date(2030, 4, 1))
+        self.assertFalse(running["complete"])
+        self.assertEqual(running["as_of"], "2030-04-01")
+        self.assertEqual(running["coach_opens_on"], "2030-12-01")
+        self.assertIsNone(self.review(2028, today=date(2030, 4, 1))["coach_opens_on"])
         with self.assertRaisesRegex(ValueError, "No activities recorded in 2029"):
             self.review(2029)
+
+    def test_running_year_coach_paragraph_waits_for_december(self):
+        self.add("now", "2030-03-01")
+
+        with self.assertRaises(season_review.CoachNotOpen):
+            season_review.write_coach_paragraph(self.conn, 2030, today=date(2030, 10, 13))
+        self.assertIsNone(season_review.saved_coach_paragraph(self.conn, 2030))
+        _, created = season_review.write_coach_paragraph(self.conn, 2030, today=date(2030, 12, 1))
+        self.assertTrue(created)
 
     def test_totals_compare_with_last_year_only_when_it_has_data(self):
         self.add("r1", "2030-02-01", "Ride", 120, 50.0)
@@ -203,7 +215,7 @@ class SeasonReviewTests(unittest.TestCase):
         self.assertEqual(again["text"], coach["text"])
         self.assertEqual(self.review()["coach"]["text"], coach["text"])
 
-    def test_career_strip_covers_every_year_and_marks_which_open(self):
+    def test_career_strip_covers_every_year_including_gaps(self):
         self.add("a", "2027-03-01", "Run", 60, 10.0)
         self.add("b", "2029-03-01", "Ride", 120, 50.0)
         self.add("c", "2030-03-01", "Ride", 30, 10.0)
@@ -211,7 +223,7 @@ class SeasonReviewTests(unittest.TestCase):
         career = self.review(2029, today=date(2030, 6, 1))["career"]["years"]
 
         self.assertEqual([item["year"] for item in career], [2027, 2028, 2029, 2030])
-        self.assertEqual([item["available"] for item in career], [True, False, True, False])
+        self.assertEqual([item["available"] for item in career], [True, False, True, True])  # The gap year has no review.
         self.assertEqual(career[1]["hours"], 0)
         self.assertEqual(career[2]["sports"], {"ride": 2.0})
 
@@ -269,6 +281,11 @@ class SeasonReviewTests(unittest.TestCase):
         self.assertEqual(closed.exception.status_code, 404)
         self.assertTrue(records.season_review_coach(2029, day=june)["created"])
         self.assertFalse(records.season_review_coach(2029, day=june)["created"])
+        self.add("r2", "2030-02-01", "Ride", 60, 20.0)
+        self.assertEqual(records.season_review(2030, day=june)["coach_opens_on"], "2030-12-01")
+        with self.assertRaises(HTTPException) as early:
+            records.season_review_coach(2030, day=june)
+        self.assertEqual(early.exception.status_code, 409)
 
 if __name__ == "__main__":
     unittest.main()

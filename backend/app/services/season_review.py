@@ -7,8 +7,8 @@ Records wall's progressions, mountains the Mountains page's coverage, goals the
 Goals page's weekly windows. A section with nothing to show is left out rather
 than filled with zeros.
 
-The current year is offered from 1 December; past years with any activity are
-always available. The closing coach paragraph, like the monthly letters, does
+Every year with activity is available, the running year shown "so far". The
+closing coach paragraph, like the monthly letters, does
 not call an LLM: it is written from the year's facts and the saved monthly
 letters only when asked for, then saved and never rewritten.
 """
@@ -27,7 +27,7 @@ from .guided_sessions import guided_completion_dates
 from .personal_records import _iter_ranked, build_personal_records
 from .trail_coverage import REGIONS
 
-OFFER_MONTH = 12  # The current year is offered from 1 December.
+COACH_OPENS_MONTH = 12  # The running year's coach paragraph is saved once, so it waits for December.
 MIN_STREAK_DAYS = 3
 TOP_LIFTS = 5
 SPORTS = (
@@ -62,16 +62,26 @@ def _years_with_data(conn: sqlite3.Connection) -> list[int]:
 
 
 def available_years(conn: sqlite3.Connection, today: Optional[date] = None) -> list[int]:
-    """Past years with any activity, plus the current year from 1 December."""
+    """Every year with any activity, the running year included (shown "so far")."""
     today = today or date.today()
-    return [year for year in _years_with_data(conn)
-            if year < today.year or (year == today.year and today.month >= OFFER_MONTH)]
+    return [year for year in _years_with_data(conn) if year <= today.year]
+
+
+class CoachNotOpen(ValueError):
+    """The running year's paragraph is asked for before December."""
+
+
+def coach_opens_on(year: int, today: date) -> Optional[str]:
+    """When the year's coach paragraph can be written; None once it can."""
+    if year < today.year or today.month >= COACH_OPENS_MONTH:
+        return None
+    return date(year, COACH_OPENS_MONTH, 1).isoformat()
 
 
 def season_review_status(conn: sqlite3.Connection, today: Optional[date] = None) -> dict[str, Any]:
     today = today or date.today()
     years = available_years(conn, today)
-    return {"years": years, "current_offered": today.year in years, "offer_from": date(today.year, OFFER_MONTH, 1).isoformat()}
+    return {"years": years, "current_included": today.year in years, "coach_opens_on": coach_opens_on(today.year, today)}
 
 
 # ---------------------------------------------------------------------------
@@ -495,8 +505,6 @@ def _career(conn: sqlite3.Connection, year: int, today: date) -> dict[str, Any]:
 def build_season_review(conn: sqlite3.Connection, year: int, today: Optional[date] = None) -> dict[str, Any]:
     today = today or date.today()
     if year not in available_years(conn, today):
-        if year == today.year:
-            raise ValueError(f"The {year} season review opens on 1 December")
         raise ValueError(f"No activities recorded in {year}")
     as_of = min(date(year, 12, 31), today)
     records, lifts = _records(build_personal_records(conn, today=as_of), year)
@@ -519,6 +527,7 @@ def build_season_review(conn: sqlite3.Connection, year: int, today: Optional[dat
         "goals": _goals(conn, year, today),
         "letters": [{"month": item["month"], "label": item.get("label")} for item in letters],
         "coach": saved_coach_paragraph(conn, year),
+        "coach_opens_on": coach_opens_on(year, today),
     }
 
 
@@ -590,6 +599,9 @@ def write_coach_paragraph(conn: sqlite3.Connection, year: int, today: Optional[d
     existing = saved_coach_paragraph(conn, year)
     if existing:
         return existing, False
+    opens = coach_opens_on(year, today or date.today())
+    if opens:
+        raise CoachNotOpen(f"The {year} coach paragraph can be written from 1 December, once most of the year is in")
     review = build_season_review(conn, year, today=today)
     paragraph = write_coach_paragraph_text(review, _letters(conn, year))
     with conn:

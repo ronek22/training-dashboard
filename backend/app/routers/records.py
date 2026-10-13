@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..db import get_db
 from ..services.personal_records import build_activity_record_ranks, build_personal_records
-from ..services.season_review import build_season_review, season_review_status, write_coach_paragraph
+from ..services.season_review import CoachNotOpen, build_season_review, season_review_status, write_coach_paragraph
 
 router = APIRouter()
 
@@ -56,6 +56,8 @@ def season_review_coach(year: int, day: Optional[date] = None):
     try:
         coach, created = write_coach_paragraph(conn, year, today=day)
         return {"coach": coach, "created": created}
+    except CoachNotOpen as error:
+        raise HTTPException(409, str(error))
     except ValueError as error:
         raise HTTPException(404, str(error))
     finally:

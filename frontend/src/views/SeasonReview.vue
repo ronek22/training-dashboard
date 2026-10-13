@@ -10,7 +10,7 @@ import { reducedMotion } from '../utils/motion'
 const api = useApi()
 const route = useRoute()
 const router = useRouter()
-// The browser's date decides "today": the current year opens on 1 December.
+// The browser's date decides "today": the running year shows "so far", and its coach paragraph waits for December.
 const todayIso = () => format(new Date(), 'yyyy-MM-dd')
 
 const years = ref([])
@@ -141,7 +141,7 @@ const story = computed(() => {
     segments: SPORT_ORDER.filter((key) => item.sports[key]).map((key) => ({ key, color: SPORTS[key].color, share: (item.sports[key] / item.hours) * 100 })),
     title: item.available
       ? `${item.year}: ${whole(item.hours)} h, ${item.sessions} sessions, ${item.active_days} active days`
-      : item.sessions ? `${item.year}: ${whole(item.hours)} h so far. The review opens on 1 December.` : `${item.year}: nothing logged`,
+      : `${item.year}: nothing logged`,
   }))
 })
 const badges = computed(() => review.value?.career?.badges ?? [])
@@ -619,6 +619,9 @@ const RING = 2 * Math.PI * 34
             <span class="muted">Written {{ written(review.coach.created_at) }} · saved as it was</span>
           </footer>
         </template>
+        <div v-else-if="review.coach_opens_on" class="coach-empty">
+          <p>Your {{ review.year }} paragraph can be written from {{ format(parseISO(review.coach_opens_on), 'd MMMM') }}, once most of the year is in. It's saved once and never rewritten, so it waits until then.</p>
+        </div>
         <div v-else class="coach-empty">
           <p>One paragraph to close the year, from these numbers<template v-if="review.letters.length"> and {{ review.letters.length }} monthly letter{{ review.letters.length === 1 ? '' : 's' }}</template>. Written once when you ask, then kept.</p>
           <button type="button" class="primary" :disabled="writing" @click="writeCoach">{{ writing ? 'Writing…' : `Write my ${review.year} paragraph` }}</button>

@@ -4,6 +4,7 @@ from typing import Optional
 
 from .plans import normalize_workout_intent
 from .readiness_score import build_ramp_rate, build_readiness_score
+from .recovery_day import recovery_dates
 
 HARD_INTENTS = {
     "tempo",
@@ -95,6 +96,9 @@ def build_readiness_summary(
     sessions_3d = 0
     hard_sessions_7d = 0
     active_days_7d: set[str] = set()
+    # Days that stayed under the recovery cap keep the streak but count as rest here.
+    light_days = recovery_dates(conn, activities)
+    recovery_days_7d: set[str] = set()
     modality_counts: dict[str, int] = {}
     seven_day_cutoff = today - timedelta(days=6)
     three_day_cutoff = today - timedelta(days=2)
@@ -103,7 +107,10 @@ def build_readiness_summary(
         modality_counts[row["type"]] = modality_counts.get(row["type"], 0) + 1
         if row_date >= seven_day_cutoff:
             sessions_7d += 1
-            active_days_7d.add(row["date"])
+            if row["date"] in light_days:
+                recovery_days_7d.add(row["date"])
+            else:
+                active_days_7d.add(row["date"])
             if _is_hard_session(row):
                 hard_sessions_7d += 1
         if row_date >= three_day_cutoff:
@@ -275,7 +282,8 @@ def build_readiness_summary(
     supporting_factors = [
         _readiness_factor("sessions_7d", "Sessions in 7d", sessions_7d, "neutral"),
         _readiness_factor("hard_sessions_7d", "Hard sessions in 7d", hard_sessions_7d, "risk" if hard_sessions_7d >= 3 else "steady" if hard_sessions_7d <= 1 else "caution"),
-        _readiness_factor("active_days_7d", "Active days in 7d", len(active_days_7d), "risk" if len(active_days_7d) >= 6 else "steady"),
+        _readiness_factor("active_days_7d", "Training days in 7d", len(active_days_7d), "risk" if len(active_days_7d) >= 6 else "steady"),
+        _readiness_factor("recovery_days_7d", "Recovery days in 7d", len(recovery_days_7d), "steady" if recovery_days_7d else "neutral"),
         _readiness_factor("feedback_count_14d", "Feedback entries in 14d", feedback_count_14d, "steady" if feedback_count_14d else "quiet"),
         _readiness_factor("form", "Training form", round(form), "risk" if form <= -18 else "caution" if form <= -12 else "steady"),
         _readiness_factor("load_ratio", "Load ratio", ratio_status, "risk" if ratio_status == "high" else "steady"),
@@ -309,6 +317,7 @@ def build_readiness_summary(
             "sessions_7d": sessions_7d,
             "sessions_3d": sessions_3d,
             "active_days_7d": len(active_days_7d),
+            "recovery_days_7d": len(recovery_days_7d),
             "hard_sessions_7d": hard_sessions_7d,
             "feedback_count_14d": feedback_count_14d,
             "high_rpe_count_14d": high_rpe_count,

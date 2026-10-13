@@ -23,6 +23,7 @@ from ..repositories.goals import ACTIVE_GOAL_CONDITION
 from .goal_portfolio import build_portfolio_check, portfolio_conflict
 from .goals import build_requirement_summary, serialize_goal
 from .heart_rate_zones import build_activity_heart_rate_zone_summary, run_hr_cap
+from .recovery_day import check_recovery_day, recovery_cap, spin_hr_limit
 from .settings import (
     get_athlete_profile_for_conn,
     get_modality_restrictions_for_conn,
@@ -969,12 +970,19 @@ def build_plan_day_comparison(
     total_duration = sum((item["duration_min"] or 0) for item in completed)
     target_duration = day.get("target_duration_min")
 
+    recovery_check = None
+    if planned_type in {"Recovery", "Rest"}:
+        recovery_check = check_recovery_day(eligible_activities, spin_hr_limit(conn))
+    over_cap = " · over cap" if recovery_check and not recovery_check["within_cap"] else ""
+
     if planned_type == "Recovery":
-        recovery_match = bool(completed) and all(is_recovery_activity(activity) for activity in completed)
+        recovery_match = bool(completed) and (
+            recovery_check["within_cap"] or all(is_recovery_activity(activity) for activity in completed)
+        )
         if recovery_match:
             return {
                 "status": "matched",
-                "label": "Matched",
+                "label": f"Matched{over_cap}",
                 "planned_type": planned_type,
                 "completed_activities": completed,
                 "matching_strategy": "inferred",
@@ -982,11 +990,12 @@ def build_plan_day_comparison(
                 "planned_intent_label": format_workout_intent_label(planned_intent),
                 "intent_alignment": "aligned",
                 "execution_quality": None,
+                "recovery_check": recovery_check,
             }
-        label = "Recovery changed"
+        label = f"Recovery changed{over_cap}"
         status = "rest_day_changed"
     elif planned_type == "Rest":
-        label = "Rest day changed"
+        label = "Light day · under cap" if recovery_check["within_cap"] else f"Rest day changed{over_cap}"
         status = "rest_day_changed"
     else:
         label = None
@@ -1003,6 +1012,7 @@ def build_plan_day_comparison(
             "planned_intent_label": format_workout_intent_label(planned_intent),
             "intent_alignment": infer_intent_alignment(planned_intent, completed),
             "execution_quality": None,
+            "recovery_check": recovery_check,
         }
 
     if planned_type in completed_types:
@@ -1109,6 +1119,7 @@ def _serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection])
                     activity.duration_min,
                     activity.avg_pace,
                     activity.avg_watts,
+                    activity.avg_hr,
                     activity.linked_planned_session_id
                 FROM activities activity
                 WHERE (
@@ -1126,6 +1137,7 @@ def _serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection])
                     by_linked_session_id.setdefault(activity["linked_planned_session_id"], []).append(activity)
 
         enriched_days = []
+        cap = recovery_cap(conn)
         for day in days:
             comparison = build_plan_day_comparison(
                 conn,
@@ -1144,6 +1156,7 @@ def _serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection])
             enriched_day["modality"] = day_modality
             enriched_day["modality_restriction"] = restrictions.get("modalities", {}).get(day_modality) if day_modality else None
             enriched_day["comparison"] = comparison
+            enriched_day["recovery_cap"] = cap if normalize_plan_session_type(day.get("session_type")) in {"Recovery", "Rest"} else None
             enriched_day["fuel_plan"] = build_fuel_plan(enriched_day)
             enriched_day["link_candidates"] = build_link_candidates(day, activity_rows, benchmark_lookup)
             enriched_day["goal_links"] = []

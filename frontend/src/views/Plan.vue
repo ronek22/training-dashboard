@@ -495,6 +495,7 @@
                 <div class="day-notes">
                   <p v-if="day.details" class="plan-day-details">{{ day.details }}</p>
                   <p v-if="day.planning_rule_reason" class="plan-status-detail">{{ day.planning_rule_reason }}</p>
+                  <p v-if="day.recovery_cap" class="plan-status-detail recovery-cap" :class="{ 'is-over': day.comparison?.recovery_check?.within_cap === false }">Recovery cap: {{ day.recovery_cap.summary }}</p>
                   <p v-if="statusDetail(day.comparison)" class="plan-status-detail">{{ statusDetail(day.comparison) }}</p>
                   <button
                     v-if="day.details || day.cycling_workout_name"
@@ -1554,7 +1555,7 @@ const selectedWeekMetrics = computed(() => {
   const distance = days.reduce((sum, day) => sum + Number(day.target_distance_km || 0), 0)
   const restDays = days.filter((day) => ['Rest', 'Recovery'].includes(day.session_type)).length
   const completed = days.filter((day) => day.comparison?.completed_activities?.length).length
-  const changed = days.filter((day) => ['different', 'rest_day_changed', 'replaced', 'skipped', 'moved'].includes(day.comparison?.status)).length
+  const changed = days.filter((day) => !isLightDay(day.comparison) && ['different', 'rest_day_changed', 'replaced', 'skipped', 'moved'].includes(day.comparison?.status)).length
   return [
     { label: 'Planned load', value: duration ? `${Math.floor(duration / 60)}h ${duration % 60}m` : '—', detail: `${days.length - restDays} training days` },
     { label: 'Volume', value: distance ? `${Math.round(distance * 10) / 10} km` : '—', detail: distance ? 'distance targets' : 'no distance targets' },
@@ -1853,6 +1854,12 @@ const displayPlanNotes = (plan) => {
     .join('\n')
 }
 
+// A planned rest day that stayed under the recovery cap: it kept the streak and still counts as rest.
+const isLightDay = (comparison) => comparison?.status === 'rest_day_changed' && comparison.recovery_check?.within_cap === true
+const overCapDetail = (comparison) => comparison?.recovery_check?.within_cap === false
+  ? ` Over the recovery cap (${comparison.recovery_check.over.join('; ')}); the streak still counts, but readiness sees a training day.`
+  : ''
+
 const sessionMatch = (day) => {
   const status = day.comparison?.status
   // On a sick day the plan was paused on purpose; a light session isn't "different from plan".
@@ -1862,7 +1869,9 @@ const sessionMatch = (day) => {
       : { label: 'Sick day · plan paused', tone: 'sick', icon: '♡' }
   }
   if (status === 'linked') return { label: 'Linked to activity', tone: 'done', icon: '✓' }
+  if (status === 'matched' && day.comparison?.recovery_check?.within_cap === false) return { label: 'Matched · over cap', tone: 'partial', icon: '◐' }
   if (status === 'matched') return { label: 'Matched automatically', tone: 'done', icon: '✓' }
+  if (isLightDay(day.comparison)) return { label: 'Light day · counts as rest', tone: 'done', icon: '✓' }
   if (status === 'partially_matched') return { label: 'Partially matched', tone: 'partial', icon: '◐' }
   if (status === 'moved') return { label: day.comparison?.moved_to_date ? `Matched · ${formatDay(day.comparison.moved_to_date)}` : 'Session moved', tone: 'partial', icon: '↗' }
   if (['different', 'replaced', 'rest_day_changed'].includes(status)) return { label: 'Different from plan', tone: 'changed', icon: '≠' }
@@ -1903,8 +1912,14 @@ const statusDetail = (comparison) => {
   if (comparison.status === 'replaced' && comparison.completed_activities?.length) {
     return `Another session happened on this day instead of the planned ${comparison.planned_type?.toLowerCase() || 'workout'}.`
   }
+  if (isLightDay(comparison)) {
+    return 'Light activity under the recovery cap: it keeps the streak and still counts as rest.'
+  }
   if (comparison.status === 'rest_day_changed') {
-    return 'Activity was logged on a planned rest or recovery day.'
+    return `Activity was logged on a planned rest or recovery day.${overCapDetail(comparison)}`
+  }
+  if (comparison.status === 'matched' && overCapDetail(comparison)) {
+    return overCapDetail(comparison).trim()
   }
   if (comparison.intent_alignment === 'different' && comparison.planned_intent_label) {
     return `Type matched, but the completed activity did not look like the planned ${comparison.planned_intent_label.toLowerCase()} session.`
@@ -1942,6 +1957,7 @@ const planSummary = (plan) => {
     if (status === 'linked') summary.linked += 1
     else if (status === 'matched') summary.matched += 1
     else if (status === 'partially_matched') summary.partial += 1
+    else if (isLightDay(day.comparison)) summary.matched += 1
     else if (['different', 'rest_day_changed', 'replaced', 'skipped', 'moved'].includes(status)) summary.changed += 1
     else if (status === 'not_completed_yet') summary.upcoming += 1
   }
@@ -5021,6 +5037,7 @@ const savePlanLink = async (day) => {
 .day-stats dt { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .day-stats dd { margin: 2px 0 0; font-size: 15px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+.recovery-cap.is-over { color: var(--warning-text, var(--text-soft)); }
 .day-tags { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
 .day-tag {
   display: inline-flex; align-items: center; max-width: 100%; padding: 3px 9px; border-radius: 999px;

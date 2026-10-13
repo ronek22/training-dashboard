@@ -2,8 +2,8 @@
   <article class="downshift-card" aria-labelledby="downshift-title">
     <div class="ds-text">
       <p class="ds-kicker">Downshift<span v-if="state.reasons.length"> · {{ state.reasons.join(' · ') }}</span></p>
-      <h2 id="downshift-title">{{ done ? 'Downshift done. Streak safe.' : 'Heavy day. Two minutes counts.' }}</h2>
-      <p class="ds-hint">{{ done ? `${state.completed_today.map((item) => item.title).join(', ')} today. Train as planned if you have it in you, or call it a day.` : 'Guided breathing or a short mobility block, no watch needed. It keeps today’s streak even if training doesn’t happen.' }}</p>
+      <h2 id="downshift-title">{{ title }}</h2>
+      <p class="ds-hint">{{ hint }}</p>
     </div>
     <ul class="ds-sessions">
       <li v-for="session in state.sessions" :key="session.key">
@@ -21,6 +21,21 @@ import { computed } from 'vue'
 
 const props = defineProps({ state: { type: Object, required: true } })
 const done = computed(() => props.state.completed_today?.length > 0)
+// Only a planned rest day, no stress signal: the card is about keeping the streak while resting.
+const restOnly = computed(() => props.state.rest_day && props.state.reasons?.length === 1)
+const title = computed(() => {
+  if (done.value) return 'Downshift done. Streak safe.'
+  return restOnly.value ? 'Rest day. Two minutes keeps the streak.' : 'Heavy day. Two minutes counts.'
+})
+const hint = computed(() => {
+  if (done.value) {
+    const titles = props.state.completed_today.map((item) => item.title).join(', ')
+    return restOnly.value ? `${titles} today. The rest day stays a rest day.` : `${titles} today. Train as planned if you have it in you, or call it a day.`
+  }
+  return restOnly.value
+    ? 'Guided breathing or a short mobility block, no watch needed. It keeps the streak and still counts as rest.'
+    : 'Guided breathing or a short mobility block, no watch needed. It keeps today’s streak even if training doesn’t happen.'
+})
 </script>
 
 <style scoped>

@@ -164,6 +164,18 @@ Implemented foundations:
 - API: `GET /guided-sessions/{key}` and `POST /guided-sessions/complete` replace the old `/sick-mode/sessions/…` and `/sick-mode/complete`; `GET /downshift`; `downshift` in the dashboard payload and in `get_recent_context`.
 - UI: a compact Downshift card under the Today card when offered, showing the reasons, both sessions and its done state. The follow-along page is now `GuidedSession.vue` at `/guided/:key` (old `/sick-mode/:key` links redirect). It takes its label from the context, skips the watch step when a session has no watch workout, and offers the manual log only for sick sessions.
 - Verified with 8 unit tests and an API smoke test (441 backend, 26 helper and 27 frontend tests, plus the build). In the browser on a database copy with sick mode ended and a stress-5 check-in: the card appeared, the two-minute session ran without a watch step and saved, and the streak went from 275 to 276 days with no new activity.
+- 2026-10-13: also offered on a planned Rest or Recovery day while nothing is recorded yet (reason "planned rest day" / "planned recovery day", `rest_day: true`), so resting never costs the streak. The card and coach guidance then say it keeps the streak and still counts as rest.
+
+### Recovery days
+
+2026-10-13: `services/recovery_day.py` defines a deterministic cap for a light day that keeps the daily streak and still counts as rest.
+
+- Cap: every activity that day is a walk ≤60 min, a mobility block ≤30 min (Yoga, Pilates, Stretching, PhysicalTherapy, Mobility, Recovery, or any session tagged `mobility`), or an easy spin (Ride/VirtualRide) ≤45 min with average HR below the start of riding zone 2 from the Athlete page (140 bpm default; without HR only a ride tagged `recovery` fits); together ≤60 min; no hard or strength intent. Unknown types do not qualify.
+- Streak: unchanged. Any activity keeps it, so going over the cap never breaks it.
+- Readiness: days under the cap are left out of "Training days in 7d" (`active_days_7d`, risk at 6+) and counted in a new `recovery_days_7d` factor and metric.
+- Plan: planned Rest and Recovery days carry `recovery_cap` (limits plus a one-line summary shown on the Plan day card). Their comparison carries `recovery_check` (`within_cap`, `total_min`, `over` reasons). A walk or mobility block under the cap now matches a planned Recovery day; a Recovery match over the cap is labelled "Matched · over cap"; a Rest day with only light activity reads "Light day · counts as rest" and is not counted as changed in the week summary; otherwise the over-cap reasons are shown in the day's status detail.
+- Not done: the planner does not propose recovery days by itself; "Feeling flat" on the Today card covers that.
+- Verified with 10 unit tests (`backend/tests/test_recovery_day.py`), the full backend suite (763 tests) and the frontend build.
 
 ### Minimum viable week
 

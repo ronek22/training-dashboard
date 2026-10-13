@@ -156,25 +156,58 @@ const milestones = computed(() => (review.value?.career?.milestones ?? []).map((
 const legend = computed(() => (totals.value?.sports ?? []).map((sport) => ({ key: sport.key, label: sport.label, color: SPORTS[sport.key].color })))
 
 // ---- sports ---------------------------------------------------------------
-const sportTiles = computed(() => (totals.value?.sports ?? []).map((sport) => {
-  const distance = sport.km != null && sport.km > 0
-  const values = (review.value.months || []).map((month) => {
-    const entry = month.sports[sport.key]
-    return entry ? (distance ? entry.km : entry.hours) : 0
-  })
-  const max = Math.max(...values, 0.0001)
-  const changeKey = distance ? 'km' : 'hours'
+// Biggest sport first; "Other" always last.
+const sportTiles = computed(() => {
+  const total = totals.value?.total?.hours || 0
+  return (totals.value?.sports ?? []).map((sport) => {
+    const distance = sport.km != null && sport.km > 0
+    const changeKey = distance ? 'km' : 'hours'
+    return {
+      ...sport,
+      ...SPORTS[sport.key],
+      distance,
+      hero: distance ? sport.km : sport.hours,
+      unit: distance ? 'km' : 'h',
+      share: total ? (sport.hours / total) * 100 : 0,
+      versus: sport.change ? sport.change[changeKey] : null,
+      hasPrevious: 'previous' in sport,
+    }
+  }).sort((a, b) => (a.key === 'other') - (b.key === 'other') || b.hours - a.hours)
+})
+// Hovering a sport (list row or split segment) picks it out in the month chart.
+const activeSport = ref(null)
+
+// Hours per month stacked by sport, biggest sport at the bottom.
+const MONTH_W = 620
+const MONTH_H = 250
+const MONTH_LEFT = 36
+const MONTH_BOTTOM = 24
+const monthStack = computed(() => {
+  const months = review.value?.months ?? []
+  const order = sportTiles.value.map((tile) => tile.key)
+  const max = Math.max(...months.map((month) => month.hours), 1)
+  const step = [1, 2, 5, 10, 20, 25, 50, 100].find((size) => max / size <= 5) || 200
+  const top = Math.ceil(max / step) * step
+  const plot = MONTH_H - MONTH_BOTTOM - 10
+  const column = (MONTH_W - MONTH_LEFT) / 12
+  const width = column * 0.6
+  const scale = (hours) => (hours / top) * plot
   return {
-    ...sport,
-    ...SPORTS[sport.key],
-    distance,
-    hero: distance ? sport.km : sport.hours,
-    unit: distance ? 'km' : 'hours',
-    bars: values.map((value, index) => ({ value, height: Math.max(value ? 4 : 0, (value / max) * 56), month: review.value.months[index].month })),
-    versus: sport.change ? sport.change[changeKey] : null,
-    hasPrevious: 'previous' in sport,
+    ticks: Array.from({ length: Math.round(top / step) + 1 }, (_, index) => ({ value: index * step, y: MONTH_H - MONTH_BOTTOM - scale(index * step) })),
+    columns: months.map((month, index) => {
+      let base = MONTH_H - MONTH_BOTTOM
+      const x = MONTH_LEFT + column * index + (column - width) / 2
+      const segments = order.filter((key) => month.sports[key]?.hours).map((key) => {
+        const height = scale(month.sports[key].hours)
+        base -= height
+        return { key, color: SPORTS[key].color, x, y: base, width, height, hours: month.sports[key].hours }
+      })
+      const parts = segments.map((segment) => `${sportTiles.value.find((tile) => tile.key === segment.key)?.label}: ${number(segment.hours)} h`).join(', ')
+      return { month: month.month, i: index, x, center: x + width / 2, segments, total: month.hours, top: base,
+               title: month.hours ? `${monthShort(month.month)}: ${number(month.hours)} h (${parts})` : `${monthShort(month.month)}: nothing logged` }
+    }),
   }
-}))
+})
 
 // ---- streak & best month --------------------------------------------------
 const yearDays = computed(() => {
@@ -341,28 +374,51 @@ const RING = 2 * Math.PI * 34
           <h2 id="sports-title">The year in sport</h2>
           <RouterLink class="more-link" :to="totalsLink.to">{{ totalsLink.label }} ↗</RouterLink>
         </div>
-        <div class="sport-grid">
-          <article v-for="(tile, index) in sportTiles" :key="tile.key" class="sport-tile" :style="{ '--sport': tile.color, '--i': index }">
-            <div class="tile-top">
-              <span class="tile-icon"><ActivityIcon :type="tile.icon" :tone="tile.tone" :size="18" /></span>
-              <strong>{{ tile.label }}</strong>
-              <span v-if="tile.versus != null" class="pill" :class="tone(tile.versus)">{{ change(tile.versus) }}</span>
-              <span v-else-if="tile.hasPrevious" class="pill new">New</span>
-            </div>
-            <div class="tile-number">
-              <AnimatedNumber :value="tile.hero" :format="oneDecimal" :cache-key="`season:${review.year}:${tile.key}`" :duration="1500" />
-              <small>{{ tile.unit }}</small>
-            </div>
-            <p class="tile-sub">
-              {{ number(tile.sessions) }} sessions<template v-if="tile.distance"> · {{ number(tile.hours) }} h</template>
-              <template v-if="tile.key === 'other'"> · {{ tile.types.join(', ') }}</template>
-            </p>
-            <svg v-chart-intro="`season:${review.year}:bars:${tile.key}`" class="tile-bars" viewBox="0 0 240 60" preserveAspectRatio="none" aria-hidden="true">
-              <rect v-for="(bar, b) in tile.bars" :key="bar.month" class="chart-grow" :style="{ '--i': b }"
-                    :x="b * 20 + 3" :y="60 - bar.height" width="14" :height="bar.height" rx="2"><title>{{ monthShort(bar.month) }}: {{ number(bar.value) }} {{ tile.distance ? 'km' : 'h' }}</title></rect>
+        <div class="split" role="img" :aria-label="sportTiles.map((tile) => `${tile.label} ${Math.round(tile.share)}%`).join(', ')">
+          <span v-for="(tile, index) in sportTiles" :key="tile.key" class="split-seg" :class="{ dim: activeSport && activeSport !== tile.key }"
+                :style="{ '--w': `${tile.share}%`, '--sport': tile.color, '--i': index }" :title="`${tile.label}: ${number(tile.hours)} h, ${Math.round(tile.share)}% of the year`"
+                @mouseenter="activeSport = tile.key" @mouseleave="activeSport = null">
+            <em v-if="tile.share >= 9">{{ tile.label }} <b>{{ Math.round(tile.share) }}%</b></em>
+          </span>
+        </div>
+
+        <div class="sport-layout">
+          <ul class="sport-list">
+            <li v-for="(tile, index) in sportTiles" :key="tile.key" class="sport-row" :class="{ dim: activeSport && activeSport !== tile.key }"
+                :style="{ '--sport': tile.color, '--i': index, '--share': `${tile.share}%` }"
+                tabindex="0" @mouseenter="activeSport = tile.key" @mouseleave="activeSport = null" @focus="activeSport = tile.key" @blur="activeSport = null">
+              <span class="row-icon"><ActivityIcon :type="tile.icon" :tone="tile.tone" :size="18" /></span>
+              <span class="row-name">
+                <strong>{{ tile.label }}</strong>
+                <small>{{ number(tile.sessions) }} sessions<template v-if="tile.distance"> · {{ number(tile.hours) }} h</template><template v-if="tile.key === 'other'"> · {{ tile.types.join(', ') }}</template></small>
+              </span>
+              <span class="row-number"><AnimatedNumber :value="tile.hero" :format="oneDecimal" :cache-key="`season:${review.year}:${tile.key}`" :duration="1500" /><small>{{ tile.unit }}</small></span>
+              <span class="row-pill">
+                <span v-if="tile.versus != null" class="pill" :class="tone(tile.versus)">{{ change(tile.versus) }}</span>
+                <span v-else-if="tile.hasPrevious" class="pill new">New</span>
+              </span>
+              <span class="row-share" aria-hidden="true" />
+            </li>
+          </ul>
+
+          <figure class="month-stack">
+            <figcaption>Hours by month</figcaption>
+            <svg v-chart-intro="`season:${review.year}:month-stack`" :viewBox="`0 0 ${MONTH_W} ${MONTH_H}`" role="img" aria-label="Training hours by month, stacked by sport">
+              <g v-for="tick in monthStack.ticks" :key="tick.value">
+                <line :x1="MONTH_LEFT" :x2="MONTH_W" :y1="tick.y" :y2="tick.y" class="stack-grid" />
+                <text :x="MONTH_LEFT - 8" :y="tick.y + 4" class="stack-tick">{{ tick.value }}</text>
+              </g>
+              <g v-for="column in monthStack.columns" :key="column.month" class="stack-col">
+                <title>{{ column.title }}</title>
+                <g class="chart-grow" :style="{ '--i': column.i }">
+                  <rect v-for="segment in column.segments" :key="segment.key" :x="segment.x" :y="segment.y" :width="segment.width" :height="Math.max(segment.height, 0.5)"
+                        :fill="segment.color" :class="{ dim: activeSport && activeSport !== segment.key }" />
+                </g>
+                <text v-if="column.total" :x="column.center" :y="column.top - 6" class="stack-total chart-fade">{{ whole(column.total) }}</text>
+                <text :x="column.center" :y="MONTH_H - 6" class="stack-month">{{ monthShort(column.month) }}</text>
+              </g>
             </svg>
-            <div class="tile-months" aria-hidden="true"><span v-for="bar in tile.bars" :key="bar.month">{{ monthLetter(bar.month) }}</span></div>
-          </article>
+          </figure>
         </div>
       </section>
 
@@ -616,7 +672,7 @@ const RING = 2 * Math.PI * 34
 .story-year.active .story-label { color: var(--accent-strong, var(--accent)); }
 @keyframes story-grow { from { transform: scaleY(0); } to { transform: none; } }
 
-.badges { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-top: 24px; }
+.badges { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 24px; }
 .badge { --badge: var(--accent); display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--badge) 30%, transparent); background: color-mix(in srgb, var(--badge) 8%, var(--surface)); animation: badge-in 600ms var(--motion-ease-emphasized) both; animation-delay: calc(400ms + var(--i) * 120ms); }
 .badge.is-record { --badge: var(--warning); }
 .badge.is-record_then { --badge: var(--tone-neutral); }
@@ -626,7 +682,7 @@ const RING = 2 * Math.PI * 34
 @keyframes badge-in { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
 
 .head-note { font-size: 12px; }
-.milestones { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.milestones { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
 .milestone { display: flex; flex-direction: column; gap: 2px; padding: 16px 18px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--tone) 28%, transparent); background: color-mix(in srgb, var(--tone) 7%, var(--surface)); color: var(--text); text-decoration: none; transition: transform var(--motion-duration-base) var(--motion-ease-standard), box-shadow var(--motion-duration-base) var(--motion-ease-standard); }
 .milestone:hover { transform: translateY(-3px); box-shadow: var(--shadow-card-hover); }
 .reveal .milestone { opacity: 0; transform: translateY(14px); }
@@ -664,21 +720,42 @@ const RING = 2 * Math.PI * 34
 .reveal.is-in { opacity: 1; transform: none; transition: opacity 600ms var(--motion-ease-standard), transform 700ms var(--motion-ease-emphasized); }
 
 /* Sports */
-.sport-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
-.sport-tile { position: relative; padding: 16px 18px 12px; border-radius: 14px; background: color-mix(in srgb, var(--sport) 7%, var(--surface)); border: 1px solid color-mix(in srgb, var(--sport) 22%, transparent); overflow: hidden; transition: transform var(--motion-duration-base) var(--motion-ease-standard), box-shadow var(--motion-duration-base) var(--motion-ease-standard); }
-.sport-tile:hover { transform: translateY(-3px); box-shadow: var(--shadow-card-hover); }
-.reveal .sport-tile { opacity: 0; transform: translateY(14px); }
-.reveal.is-in .sport-tile { opacity: 1; transform: none; transition: opacity 500ms var(--motion-ease-standard) calc(var(--i) * 90ms), transform 600ms var(--motion-ease-emphasized) calc(var(--i) * 90ms); }
-.tile-top { display: flex; align-items: center; gap: 9px; font-size: 14px; }
-.tile-top .pill { margin-left: auto; }
-.tile-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: color-mix(in srgb, var(--sport) 18%, transparent); }
-.tile-number { display: flex; align-items: baseline; gap: 8px; margin-top: 14px; font-family: var(--font-display); font-size: 46px; font-weight: 650; line-height: 1; letter-spacing: -1.5px; color: var(--sport); }
-.tile-number small { font-family: var(--font-body, inherit); font-size: 14px; font-weight: 600; letter-spacing: 0; color: var(--text-soft); }
-.tile-sub { margin-top: 6px; font-size: 12px; color: var(--muted); min-height: 16px; }
-.tile-bars { display: block; width: 100%; height: 56px; margin-top: 12px; }
-.tile-bars rect { fill: var(--sport); opacity: .85; }
-.tile-bars rect:hover { opacity: 1; }
-.tile-months { display: grid; grid-template-columns: repeat(12, 1fr); margin-top: 3px; font-size: 9px; font-weight: 600; text-align: center; color: var(--muted); }
+.split { display: flex; height: 40px; border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--tone-neutral) 9%, transparent); }
+.split-seg { position: relative; display: flex; align-items: center; width: 0; min-width: 0; background: var(--sport); box-shadow: inset -2px 0 0 var(--surface); cursor: default; transition: opacity var(--motion-duration-fast) var(--motion-ease-standard); }
+.is-in .split-seg { width: var(--w); transition: width 1100ms var(--motion-ease-emphasized) calc(var(--i) * 90ms), opacity var(--motion-duration-fast) var(--motion-ease-standard); }
+.split-seg em { padding-left: 12px; font-style: normal; font-size: 12px; font-weight: 650; color: #0d1117; white-space: nowrap; overflow: hidden; }
+.split-seg em b { font-weight: 800; }
+.split-seg.dim, .sport-row.dim { opacity: .35; }
+
+.sport-layout { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 32px; margin-top: 22px; align-items: start; }
+.sport-list { list-style: none; display: grid; }
+.sport-row { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto 70px; gap: 14px; align-items: center; padding: 14px 6px 16px; border-bottom: 1px solid var(--border); outline: none; transition: opacity var(--motion-duration-fast) var(--motion-ease-standard); }
+.sport-row:last-child { border-bottom: 0; }
+.sport-row:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 10px; }
+.reveal .sport-row { opacity: 0; transform: translateX(-12px); }
+.reveal.is-in .sport-row { opacity: 1; transform: none; transition: opacity 500ms var(--motion-ease-standard) calc(var(--i) * 80ms), transform 600ms var(--motion-ease-emphasized) calc(var(--i) * 80ms); }
+.reveal.is-in .sport-row.dim { opacity: .35; transition: opacity var(--motion-duration-fast) var(--motion-ease-standard); }
+.row-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: color-mix(in srgb, var(--sport) 16%, transparent); }
+.row-name { display: flex; flex-direction: column; min-width: 0; }
+.row-name strong { font-size: 15px; }
+.row-name small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-number { display: flex; align-items: baseline; gap: 5px; font-family: var(--font-display); font-size: 34px; font-weight: 650; line-height: 1; letter-spacing: -1px; color: var(--sport); }
+.row-number small { font-family: var(--font-body, inherit); font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--text-soft); }
+.row-pill { display: flex; justify-content: flex-end; }
+.row-share { position: absolute; left: 56px; right: 6px; bottom: 6px; height: 3px; border-radius: 3px; background: color-mix(in srgb, var(--tone-neutral) 10%, transparent); }
+.row-share::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 3px; background: var(--sport); }
+.is-in .row-share::after { width: var(--share); transition: width 1000ms var(--motion-ease-emphasized) calc(300ms + var(--i) * 90ms); }
+
+.month-stack { margin: 0; }
+.month-stack figcaption { margin-bottom: 6px; font-size: 12px; font-weight: 650; color: var(--muted); }
+.month-stack svg { display: block; width: 100%; height: auto; overflow: visible; }
+.stack-grid { stroke: var(--border); }
+.stack-tick { font-size: 11px; text-anchor: end; fill: var(--muted); }
+.stack-col rect { transition: opacity var(--motion-duration-fast) var(--motion-ease-standard); }
+.stack-col rect.dim { opacity: .18; }
+.stack-col:hover rect:not(.dim) { filter: brightness(1.12); }
+.stack-total { font-size: 11px; font-weight: 700; text-anchor: middle; fill: var(--text-soft); }
+.stack-month { font-size: 11px; font-weight: 600; text-anchor: middle; fill: var(--muted); }
 
 /* Streak & best month */
 .duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 22px; margin-bottom: 22px; }
@@ -767,7 +844,7 @@ const RING = 2 * Math.PI * 34
 .skyline-base { stroke: var(--border-strong); }
 
 /* Goals */
-.goal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.goal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
 .goal { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-strong); font-size: 14px; }
 .goal.done { border-color: color-mix(in srgb, var(--success) 35%, transparent); background: color-mix(in srgb, var(--success) 7%, var(--surface)); }
 .goal-check { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--success); color: #062016; font-size: 26px; font-weight: 800; }
@@ -793,6 +870,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   .hero-year, .day, .is-in .goal-check, .story-bar, .badge { animation: none; }
 }
 @media (max-width: 1100px) {
+  .sport-layout { grid-template-columns: minmax(0, 1fr); }
   .trophies { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .record-list { grid-template-columns: minmax(0, 1fr); }
   .mountain-body { grid-template-columns: minmax(0, 1fr); }
@@ -802,6 +880,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   .hero-year { font-size: 92px; letter-spacing: -3px; }
   .hero-stat strong { font-size: 38px; }
   .duo { grid-template-columns: minmax(0, 1fr); }
+  .sport-row { grid-template-columns: 32px minmax(0, 1fr) auto; }
+  .row-pill { display: none; }
+  .row-number { font-size: 26px; }
   .block { padding: 18px 16px; }
   .trophies { grid-template-columns: minmax(0, 1fr); }
   .lifts li { grid-template-columns: minmax(0, 1fr); gap: 6px; }

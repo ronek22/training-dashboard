@@ -258,8 +258,9 @@ import { MACROS, defaultMeal, draftRow, intakeTone, rowsToItems, setGrams, setMa
 const api = useApi()
 const meals = [
   { value: 'breakfast', label: 'Breakfast' },
-  { value: 'lunch', label: 'Lunch' },
-  { value: 'dinner', label: 'Dinner' },
+  // Polish meals: obiad (the main cooked meal, stored as lunch) and kolacja (stored as dinner).
+  { value: 'lunch', label: 'Dinner' },
+  { value: 'dinner', label: 'Supper' },
   { value: 'snack', label: 'Snack' },
 ]
 const macroLabels = { kcal: 'Calories', protein_g: 'Protein grams', carbs_g: 'Carb grams', fat_g: 'Fat grams' }
@@ -568,7 +569,7 @@ async function logPlannedDinner(plan) {
     return
   }
   if (plan.date !== selectedDay.value) setDay(plan.date)
-  meal.value = 'dinner'
+  meal.value = 'lunch'
   text.value = [plan.dish, plan.notes].filter(Boolean).join(', ')
   try {
     const { data } = await api.getDinnerLogItems(plan.date)

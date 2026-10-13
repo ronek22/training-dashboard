@@ -147,6 +147,15 @@ def put_dinner(day: str, payload: DinnerPlanInput):
         conn.close()
 
 
+@router.get("/nutrition/dinners/shopping-list")
+def get_dinner_shopping_list(dates: str = ""):
+    conn = get_db()
+    try:
+        return dinner_plan.shopping_list(conn, [value.strip() for value in dates.split(",")])
+    finally:
+        conn.close()
+
+
 @router.get("/nutrition/dinners/{day}/log-items")
 def get_dinner_log_items(day: str):
     conn = get_db()

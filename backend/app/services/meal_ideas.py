@@ -1,6 +1,6 @@
 """What to eat to close the day's gap: the athlete's own foods first, then a few Polish staples.
 
-The gap is what the day burns minus what was eaten, less tonight's planned dinner when it
+The gap is what the day burns minus what was eaten, less today's planned dinner (obiad) when it
 is not logged yet. It is split across the meals still ahead (by the clock, for today) in
 typical proportions, and each meal gets ideas sized to its share: closing as much of that
 share as possible without overshooting, with extra weight on protein while the protein
@@ -10,6 +10,7 @@ import sqlite3
 from typing import Optional
 
 from . import food_log, products as product_book, recipes as recipe_book
+from .dinner_plan import PLANNED_MEAL
 
 MACROS = food_log.MACROS
 # Below this the day is close enough; no ideas, just a nudge.
@@ -123,7 +124,7 @@ def _repeats(idea: dict, eaten_words: set[str]) -> bool:
 
 
 def _planned_dinner(conn: sqlite3.Connection, day: str, entries: list[dict]) -> Optional[dict]:
-    if any(entry["meal"] == "dinner" for entry in entries):
+    if any(entry["meal"] == PLANNED_MEAL for entry in entries):
         return None
     try:
         row = conn.execute("SELECT dish, kcal, protein_g FROM dinner_plans WHERE date = ?", (day,)).fetchone()
@@ -163,7 +164,7 @@ def build_meal_ideas(conn: sqlite3.Connection, day: str, hour: Optional[int] = N
     if kcal_left < CLOSE_ENOUGH_KCAL:
         return result
 
-    logged = {entry["meal"] for entry in food_day["entries"]} | ({"dinner"} if dinner else set())
+    logged = {entry["meal"] for entry in food_day["entries"]} | ({PLANNED_MEAL} if dinner else set())
     ahead = meals_ahead(logged, hour)
     weight = sum(MEAL_WEIGHTS[meal] for meal in ahead)
     candidates = _candidates(conn)

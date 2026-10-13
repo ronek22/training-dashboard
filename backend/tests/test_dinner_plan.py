@@ -54,8 +54,8 @@ class DinnerPlanTests(unittest.TestCase):
             dinner_plan.set_dinner(self.conn, "06-10-2026", {"dish": "Pizza"})
 
     def test_logged_dinner_and_training_context(self):
-        self.conn.execute("INSERT INTO food_entries (date, meal, source) VALUES ('2026-10-05', 'dinner', 'text')")
-        self.conn.execute("INSERT INTO food_entries (date, meal, source) VALUES ('2026-10-06', 'lunch', 'text')")
+        self.conn.execute("INSERT INTO food_entries (date, meal, source) VALUES ('2026-10-05', 'lunch', 'text')")
+        self.conn.execute("INSERT INTO food_entries (date, meal, source) VALUES ('2026-10-06', 'dinner', 'text')")
         self._plan(MONDAY, [
             {"date": "2026-10-07", "session_type": "ride", "workout_intent": "easy", "title": "Easy spin", "target_duration_min": 45},
             {"date": "2026-10-08", "session_type": "ride", "workout_intent": "tempo", "title": "Tempo ride", "target_duration_min": 60},
@@ -130,6 +130,74 @@ class DinnerPlanTests(unittest.TestCase):
         self.assertEqual(dinner_plan.dinner_log_items(self.conn, "2026-10-06")["items"][0]["kcal"], 900)
         dinner_plan.set_dinner(self.conn, "2026-10-07", {"dish": "Zupa"})
         self.assertEqual(dinner_plan.dinner_log_items(self.conn, "2026-10-07")["items"], [])
+
+
+    def _shopping_recipe(self, title, ingredients, servings=2):
+        return recipes.create_recipe(self.conn, {"title": title, "servings": servings, "ingredients": ingredients})
+
+    def test_shopping_list_scales_portions_and_sums_matching_items(self):
+        curry = self._shopping_recipe("Curry", [
+            {"name": "Pierś z kurczaka", "amount": "300 g", "grams": 300},
+            {"name": "ryż", "grams": 200, "product_id": 7, "per_100g": {"kcal": 350}},
+        ])
+        bowl = self._shopping_recipe("Bowl", [
+            {"name": "  pierś  z kurczaka.", "grams": 100},
+            {"name": "ryż", "grams": 100, "product_id": 7, "per_100g": {"kcal": 350}},
+        ], servings=1)
+        dinner_plan.set_dinner(self.conn, "2026-10-05", {"recipe_id": curry["id"], "servings": 1})
+        dinner_plan.set_dinner(self.conn, "2026-10-06", {"recipe_id": bowl["id"], "servings": 2})
+        dinner_plan.set_dinner(self.conn, "2026-10-07", {"recipe_id": curry["id"], "servings": 2})
+        only_monday = dinner_plan.shopping_list(self.conn, ["2026-10-05"])
+        self.assertEqual([(item["name"], item["grams"]) for item in only_monday["items"]], [("Pierś z kurczaka", 150.0), ("ryż", 100.0)])
+        result = dinner_plan.shopping_list(self.conn, ["2026-10-06", "2026-10-05"])
+        self.assertEqual(result["dates"], ["2026-10-05", "2026-10-06"])
+        self.assertEqual([(item["key"], item["grams"]) for item in result["items"]],
+                         [("name:pierś z kurczaka", 350.0), ("product:7", 300.0)])
+        self.assertEqual([source["date"] for source in result["items"][0]["sources"]], ["2026-10-05", "2026-10-06"])
+        self.assertEqual(result["review"], [])
+
+    def test_shopping_list_keeps_distinct_products_and_unlinked_names_apart(self):
+        recipe = self._shopping_recipe("Owsianka", [
+            {"name": "jogurt", "grams": 150, "product_id": 1, "per_100g": {"kcal": 60}},
+            {"name": "jogurt", "grams": 150, "product_id": 2, "per_100g": {"kcal": 90}},
+            {"name": "jogurt", "grams": 50},
+            {"name": "jogurty", "grams": 50},
+        ], servings=1)
+        dinner_plan.set_dinner(self.conn, "2026-10-05", {"recipe_id": recipe["id"]})
+        keys = [item["key"] for item in dinner_plan.shopping_list(self.conn, ["2026-10-05"])["items"]]
+        self.assertEqual(sorted(keys), ["name:jogurt", "name:jogurty", "product:1", "product:2"])
+
+    def test_shopping_list_sends_unmeasured_items_and_plain_dinners_to_review(self):
+        recipe = self._shopping_recipe("Zupa", [
+            {"name": "marchew", "amount": "2 szt."},
+            {"name": "sól", "amount": "do smaku", "grams": 0},
+            {"name": "bulion", "grams": 500},
+        ])
+        dinner_plan.set_dinner(self.conn, "2026-10-05", {"recipe_id": recipe["id"]})
+        dinner_plan.set_dinner(self.conn, "2026-10-06", {"dish": "Kebab", "kcal": 900})
+        result = dinner_plan.shopping_list(self.conn, ["2026-10-05", "2026-10-06", "2026-10-07"])
+        self.assertEqual([(item["name"], item["grams"]) for item in result["items"]], [("bulion", 250.0)])
+        self.assertEqual([(item["dish"], item["name"], item["amount"], item["reason"]) for item in result["review"]], [
+            ("Zupa", "marchew", "2 szt.", "no_grams"),
+            ("Zupa", "sól", "do smaku", "no_grams"),
+            ("Kebab", None, None, "no_recipe"),
+        ])
+        self.assertEqual([dinner["date"] for dinner in result["dinners"]], ["2026-10-05", "2026-10-06"])
+
+    def test_shopping_list_is_read_only_and_follows_portion_changes(self):
+        recipe = self._recipe()
+        dinner_plan.set_dinner(self.conn, "2026-10-06", {"recipe_id": recipe["id"], "servings": 1})
+        snapshot = lambda: [list(map(tuple, self.conn.execute(f"SELECT * FROM {table}").fetchall()))
+                            for table in ("dinner_plans", "recipes", "food_entries")]
+        before = snapshot()
+        first = dinner_plan.shopping_list(self.conn, ["2026-10-06"])
+        self.assertEqual(snapshot(), before)
+        self.assertEqual(first["items"][0]["grams"], 150.0)
+        dinner_plan.set_dinner(self.conn, "2026-10-06", {"recipe_id": recipe["id"], "servings": 3})
+        self.assertEqual(dinner_plan.shopping_list(self.conn, ["2026-10-06"])["items"][0]["grams"], 450.0)
+        self.assertEqual(dinner_plan.shopping_list(self.conn, [])["items"], [])
+        with self.assertRaises(HTTPException):
+            dinner_plan.shopping_list(self.conn, ["2026-13-01"])
 
 
 if __name__ == "__main__":

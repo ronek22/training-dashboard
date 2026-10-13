@@ -9,6 +9,7 @@
       <strong class="week-range">{{ weekLabel }}</strong>
       <span class="planner-sub">{{ subtitle }}</span>
       <button v-if="week && week.planned < 7" type="button" class="ghost-button push-right" :disabled="busy" @click="copyPrevious">Copy last week</button>
+      <button v-if="week" type="button" class="ghost-button" :class="{ 'push-right': week.planned >= 7 }" :aria-pressed="shoppingOpen" @click="toggleShopping">Shopping list</button>
     </div>
 
     <div v-if="error" class="error" role="alert">{{ error }}</div>
@@ -74,6 +75,57 @@
       </table>
     </div>
 
+    <section v-if="week && shoppingOpen" class="card shopping-card" aria-label="Shopping list">
+      <header class="shopping-head">
+        <h3>Shopping list</h3>
+        <div class="day-picks" role="group" aria-label="Days to shop for">
+          <button v-for="day in week.days" :key="day.date" type="button" class="day-pick"
+            :class="{ empty: !day.dish }" :aria-pressed="shoppingDates.includes(day.date)" :title="day.dish || 'No dinner planned'"
+            @click="toggleShoppingDate(day.date)">{{ format(parseISO(day.date), 'EEE d') }}</button>
+        </div>
+        <button type="button" class="link-button" @click="selectPlanned">All planned</button>
+        <button type="button" class="link-button" :disabled="!shoppingDates.length" @click="shoppingDates = []">Clear</button>
+        <button v-if="shopping?.dinners.length" type="button" class="ghost-button push-right" @click="copyShopping">Copy list</button>
+      </header>
+      <p v-if="copyStatus" class="copy-status" role="status">{{ copyStatus }}</p>
+      <textarea v-if="copyFallback" class="copy-fallback" readonly rows="8" :value="shoppingCopy" @focus="$event.target.select()"></textarea>
+
+      <p v-if="!shoppingDates.length" class="shopping-empty">Pick the days you are shopping for.</p>
+      <p v-else-if="shoppingError" class="error" role="alert">{{ shoppingError }}</p>
+      <p v-else-if="shopping && !shopping.dinners.length" class="shopping-empty">No dinners planned on these days.</p>
+      <template v-else-if="shopping">
+        <div class="shopping-cols">
+          <div>
+            <h4>To buy <span class="muted">{{ toBuyCount }} of {{ shopping.items.length }}</span></h4>
+            <p v-if="!shopping.items.length" class="shopping-empty">No measured ingredients.</p>
+            <ul class="shop-items">
+              <li v-for="item in shopping.items" :key="item.key" :class="{ have: have.has(item.key) }">
+                <label>
+                  <input type="checkbox" :checked="have.has(item.key)" @change="toggleHave(item.key)" />
+                  <span class="shop-name">{{ item.name }}</span>
+                  <strong class="shop-qty">{{ formatGrams(item.grams) }}</strong>
+                </label>
+                <small class="shop-src">{{ item.sources.map((src) => `${format(parseISO(src.date), 'EEE')} · ${src.dish} ${formatGrams(src.grams)}`).join(' · ') }}</small>
+              </li>
+            </ul>
+          </div>
+          <div v-if="shopping.review.length">
+            <h4>Needs review <span class="muted">no measured amount</span></h4>
+            <ul class="shop-items">
+              <li v-for="item in shopping.review" :key="item.key" :class="{ have: have.has(item.key) }">
+                <label>
+                  <input type="checkbox" :checked="have.has(item.key)" @change="toggleHave(item.key)" />
+                  <span class="shop-name">{{ reviewLabel(item) }}</span>
+                </label>
+                <small class="shop-src">{{ format(parseISO(item.date), 'EEE d MMM') }}{{ item.name ? ` · ${item.dish}` : '' }}</small>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <p class="shopping-foot muted">Tick what's already at home. Nothing here changes the plan or your food log.</p>
+      </template>
+    </section>
+
     <RecipeDrawer :open="Boolean(openDate)" :day="openDayData" @close="openDate = null" @changed="onChanged" />
   </section>
 </template>
@@ -83,6 +135,7 @@ import { computed, ref, watch } from 'vue'
 import { addDays, format, parseISO, startOfWeek } from 'date-fns'
 import { useApi } from '../stores/api'
 import RecipeDrawer from './RecipeDrawer.vue'
+import { formatGrams, reviewLabel, shoppingText } from '../food/shopping.mjs'
 
 const props = defineProps({ day: { type: String, required: true } })
 const emit = defineEmits(['log'])
@@ -152,6 +205,73 @@ async function copyPrevious() {
   }
 }
 
+// Shopping list: a read-only preview for chosen days, refetched whenever the days or the week change.
+const shoppingOpen = ref(false)
+const shoppingDates = ref([])
+const shopping = ref(null)
+const shoppingError = ref('')
+const have = ref(new Set())
+const copyStatus = ref('')
+const copyFallback = ref(false)
+let shoppingRequest = 0
+
+const toBuyCount = computed(() => (shopping.value?.items || []).filter((item) => !have.value.has(item.key)).length)
+const shoppingCopy = computed(() => (shopping.value ? shoppingText(shopping.value, have.value) : ''))
+
+function selectPlanned() {
+  const days = (week.value?.days || []).filter((day) => day.dish)
+  const upcoming = days.filter((day) => day.date >= todayKey())
+  shoppingDates.value = (upcoming.length ? upcoming : days).map((day) => day.date)
+}
+function toggleShopping() {
+  shoppingOpen.value = !shoppingOpen.value
+  if (shoppingOpen.value && !shoppingDates.value.length) selectPlanned()
+}
+function toggleShoppingDate(key) {
+  shoppingDates.value = shoppingDates.value.includes(key)
+    ? shoppingDates.value.filter((date) => date !== key)
+    : [...shoppingDates.value, key].sort()
+}
+function toggleHave(key) {
+  const next = new Set(have.value)
+  next.has(key) ? next.delete(key) : next.add(key)
+  have.value = next
+}
+async function loadShopping() {
+  const request = ++shoppingRequest
+  copyStatus.value = ''
+  copyFallback.value = false
+  if (!shoppingOpen.value || !shoppingDates.value.length) {
+    shopping.value = null
+    return
+  }
+  try {
+    const data = (await api.getDinnerShoppingList(shoppingDates.value)).data
+    if (request === shoppingRequest) { shopping.value = data; shoppingError.value = '' }
+  } catch (err) {
+    if (request === shoppingRequest) shoppingError.value = err?.response?.data?.detail || 'Shopping list could not load.'
+  }
+}
+async function copyShopping() {
+  try {
+    await navigator.clipboard.writeText(shoppingCopy.value)
+    copyStatus.value = 'Copied.'
+    copyFallback.value = false
+  } catch {
+    copyStatus.value = 'Clipboard is unavailable. Select the text below and copy it manually.'
+    copyFallback.value = true
+  }
+}
+// A new week starts from its own planned days rather than dates from the last one.
+let shoppingWeek = null
+watch(week, (data) => {
+  if (!data || data.week_start === shoppingWeek) return
+  shoppingWeek = data.week_start
+  shoppingDates.value = []
+  if (shoppingOpen.value) selectPlanned()
+})
+watch([shoppingOpen, shoppingDates, week], loadShopping)
+
 watch(() => props.day, (key) => {
   if (mondayOf(key) !== weekStart.value) setWeek(key)
 })
@@ -216,7 +336,31 @@ load()
 
 .logged { color: var(--success); font-weight: 600; }
 
+.shopping-card { margin-top: 16px; padding: 16px 18px; }
+.shopping-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.shopping-head h3 { margin: 0; font-family: var(--font-display); font-size: 16px; }
+.day-picks { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.day-pick { border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font: inherit; font-size: 12px; font-weight: 600; padding: 4px 11px; cursor: pointer; }
+.day-pick.empty { color: var(--muted); border-style: dashed; }
+.day-pick[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.link-button:disabled { opacity: .45; cursor: default; }
+.shopping-empty { color: var(--muted); font-size: 13px; margin: 14px 0 2px; }
+.shopping-cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 28px; margin-top: 14px; }
+.shopping-cols h4 { margin: 0 0 6px; font-size: 11px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.shopping-cols h4 .muted { margin-left: 6px; text-transform: none; letter-spacing: 0; }
+.shop-items { list-style: none; margin: 0; padding: 0; }
+.shop-items li { padding: 7px 0; border-bottom: 1px solid var(--border); }
+.shop-items label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; }
+.shop-name { flex: 1; min-width: 0; }
+.shop-qty { font-variant-numeric: tabular-nums; }
+.shop-src { display: block; margin: 2px 0 0 26px; color: var(--muted); font-size: 12px; }
+.shop-items li.have .shop-name, .shop-items li.have .shop-qty { color: var(--muted); text-decoration: line-through; }
+.shopping-foot { margin: 12px 0 0; }
+.copy-status { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.copy-fallback { width: 100%; margin-top: 8px; font: 13px/1.5 var(--font-mono, monospace); color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; box-sizing: border-box; }
+
 @media (max-width: 700px) {
+  .shopping-cols { grid-template-columns: 1fr; }
   .planner-bar { flex-wrap: wrap; }
   .table-card { overflow-x: auto; }
   .training, .time { display: none; }

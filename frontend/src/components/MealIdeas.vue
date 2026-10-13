@@ -7,7 +7,7 @@
         <template v-else>Day covered</template>
       </span>
     </header>
-    <p v-if="ideas.planned_dinner" class="fine planned">After tonight's planned {{ ideas.planned_dinner.dish }} ({{ fmt(ideas.planned_dinner.kcal) }} kcal).</p>
+    <p v-if="ideas.planned_dinner" class="fine planned">After today's planned {{ ideas.planned_dinner.dish }} ({{ fmt(ideas.planned_dinner.kcal) }} kcal).</p>
 
     <template v-if="slot">
       <div v-if="ideas.meals.length > 1" class="slots" role="tablist" aria-label="Meal">
@@ -60,7 +60,7 @@ const props = defineProps({
 const emit = defineEmits(['use'])
 const api = useApi()
 
-const labels = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' }
+const labels = { breakfast: 'Breakfast', lunch: 'Dinner', dinner: 'Supper', snack: 'Snack' }
 const sourceLabel = { saved: 'saved', product: 'product', recipe: 'recipe', staple: 'staple', claude: 'Claude' }
 const mealLabel = (value) => labels[value] || value
 const fmt = (value) => Math.round(Number(value) || 0).toLocaleString('en-US')

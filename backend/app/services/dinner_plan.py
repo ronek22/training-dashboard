@@ -6,6 +6,7 @@ a logged dinner only when the athlete confirms it on the Food page.
 """
 import json
 import sqlite3
+import unicodedata
 from datetime import date, datetime, timedelta
 from typing import Optional
 
@@ -17,6 +18,9 @@ from . import recipes as recipe_book
 HARD_INTENTS = {"long", "tempo", "threshold", "sweet_spot", "vo2", "vo2max", "intervals", "race"}
 LONG_MINUTES = 90
 SUGGESTION_LIMIT = 12
+# The planner plans obiad, the main cooked meal. It is stored as the "lunch" meal, which the
+# Food page labels Dinner; the evening "dinner" meal is labelled Supper (kolacja).
+PLANNED_MEAL = "lunch"
 
 
 def _parse_day(value: str) -> date:
@@ -86,8 +90,8 @@ def build_dinner_week(conn: sqlite3.Connection, week_start: str) -> dict:
     }
     logged = {
         row["date"] for row in conn.execute(
-            "SELECT DISTINCT date FROM food_entries WHERE meal = 'dinner' AND date BETWEEN ? AND ?",
-            (monday.isoformat(), sunday.isoformat()),
+            "SELECT DISTINCT date FROM food_entries WHERE meal = ? AND date BETWEEN ? AND ?",
+            (PLANNED_MEAL, monday.isoformat(), sunday.isoformat()),
         )
     }
     # One day past Sunday so Sunday's dinner knows about Monday's session.
@@ -194,3 +198,69 @@ def copy_previous_week(conn: sqlite3.Connection, week_start: str) -> dict:
     )
     conn.commit()
     return build_dinner_week(conn, monday.isoformat())
+
+
+SHOPPING_MAX_DAYS = 14
+
+
+def _shopping_key(item: dict) -> str:
+    """Merge key for one ingredient: the linked product, else its name with case and spacing evened out.
+
+    Deliberately literal: no plural stripping, synonyms or diacritic folding, so two
+    ingredients only merge when they are plainly the same thing.
+    """
+    if item.get("product_id"):
+        return f"product:{int(item['product_id'])}"
+    return "name:" + " ".join(str(item.get("name") or "").lower().split()).strip(" .,;:")
+
+
+def shopping_list(conn: sqlite3.Connection, dates: list[str]) -> dict:
+    """A shopping list for the planned dinners on the chosen dates, read-only.
+
+    Recipe ingredients are scaled to the planned portions and summed in grams. Anything
+    without grams, and dinners without a recipe, go to `review` with their original
+    amount text; nothing is guessed or converted, and nothing is written.
+    """
+    keys = sorted({_parse_day(value).isoformat() for value in dates if value})
+    if len(keys) > SHOPPING_MAX_DAYS:
+        raise HTTPException(status_code=422, detail=f"Pick at most {SHOPPING_MAX_DAYS} days.")
+    rows = conn.execute(
+        f"SELECT date, dish, recipe_id, servings FROM dinner_plans WHERE date IN ({', '.join('?' * len(keys))}) ORDER BY date",
+        keys,
+    ).fetchall() if keys else []
+    recipes_by_id: dict[int, Optional[dict]] = {}
+    groups: dict[str, dict] = {}
+    review: list[dict] = []
+    dinners = []
+    for row in rows:
+        servings = row["servings"] or 1
+        recipe = None
+        if row["recipe_id"]:
+            if row["recipe_id"] not in recipes_by_id:
+                try:
+                    recipes_by_id[row["recipe_id"]] = recipe_book.get_recipe(conn, row["recipe_id"])
+                except HTTPException:
+                    recipes_by_id[row["recipe_id"]] = None
+            recipe = recipes_by_id[row["recipe_id"]]
+        dinners.append({"date": row["date"], "dish": row["dish"], "servings": servings, "recipe_id": recipe["id"] if recipe else None})
+        if not recipe or not recipe["ingredients"]:
+            review.append({"key": f"dinner:{row['date']}", "date": row["date"], "dish": row["dish"], "name": None, "amount": None,
+                           "reason": "no_recipe" if not recipe else "no_ingredients"})
+            continue
+        share = servings / (recipe["servings"] or 1)
+        for index, item in enumerate(recipe["ingredients"]):
+            if not item.get("grams"):
+                review.append({"key": f"ingredient:{row['date']}:{index}", "date": row["date"], "dish": row["dish"],
+                               "name": item["name"], "amount": item.get("amount"), "reason": "no_grams"})
+                continue
+            grams = item["grams"] * share
+            group = groups.setdefault(_shopping_key(item), {
+                "key": _shopping_key(item), "name": item["name"], "product_id": item.get("product_id"), "grams": 0.0, "sources": [],
+            })
+            group["grams"] += grams
+            group["sources"].append({"date": row["date"], "dish": row["dish"], "grams": round(grams, 1)})
+    # Alphabetical with Polish letters in place: "ćwiartka" sorts with "c", not after "z".
+    items = sorted(groups.values(), key=lambda group: unicodedata.normalize("NFKD", group["name"].lower()))
+    for group in items:
+        group["grams"] = round(group["grams"], 1)
+    return {"dates": keys, "dinners": dinners, "items": items, "review": review}

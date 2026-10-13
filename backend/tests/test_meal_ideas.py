@@ -72,13 +72,15 @@ class MealIdeasTests(unittest.TestCase):
         self.assertEqual(ideas["meals"][0]["kcal"], ideas["left"]["kcal"])
 
     def test_planned_dinner_counts_before_it_is_logged(self):
-        self._log("lunch", 900, 40)
+        self._log("breakfast", 900, 40)
         before = meal_ideas.build_meal_ideas(self.conn, DAY, hour=14)["left"]["kcal"]
         self.conn.execute("INSERT INTO dinner_plans (date, dish, kcal, protein_g) VALUES (?, 'gulasz', 700, 45)", (DAY,))
         ideas = meal_ideas.build_meal_ideas(self.conn, DAY, hour=14)
         self.assertEqual(ideas["planned_dinner"]["dish"], "gulasz")
         self.assertEqual(ideas["left"]["kcal"], before - 700)
-        self.assertNotIn("dinner", [meal["meal"] for meal in ideas["meals"]])
+        self.assertNotIn("lunch", [meal["meal"] for meal in ideas["meals"]])
+        self._log("lunch", 700, 45)
+        self.assertIsNone(meal_ideas.build_meal_ideas(self.conn, DAY, hour=14)["planned_dinner"])
 
     def test_close_enough_day_has_no_ideas(self):
         target = food_log.build_food_day(self.conn, DAY)["target"]["kcal"]

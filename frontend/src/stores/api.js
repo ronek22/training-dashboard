@@ -182,6 +182,7 @@ export const useApi = () => ({
   startLabelRead: (payload) => coachHelper.post('/label-read', payload, { timeout: 30000 }),
   getLabelReadJob: (id) => coachHelper.get(`/label-read/${encodeURIComponent(id)}`),
   getDinnerLogItems: (date) => api.get(`/nutrition/dinners/${date}/log-items`),
+  getDinnerShoppingList: (dates) => api.get('/nutrition/dinners/shopping-list', { params: { dates: dates.join(',') } }),
   getRecipes: (q = '') => api.get('/nutrition/recipes', { params: { q } }),
   getRecipe: (id) => api.get(`/nutrition/recipes/${id}`),
   createRecipe: (payload) => api.post('/nutrition/recipes', payload),

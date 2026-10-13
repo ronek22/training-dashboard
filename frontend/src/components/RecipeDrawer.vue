@@ -111,7 +111,7 @@
               </div>
 
               <div v-if="plannedHere" class="portion">
-                <span>Portions tonight</span>
+                <span>Portions</span>
                 <div class="stepper">
                   <button type="button" aria-label="Fewer portions" :disabled="portions <= 0.5" @click="setPortions(portions - 0.5)">−</button>
                   <b>{{ portions }}</b>

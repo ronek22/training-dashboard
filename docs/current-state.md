@@ -24,6 +24,24 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Polish meal names: Dinner = obiad, Supper = kolacja
+
+2026-10-13: the Food page follows the Polish day. The stored meal keys are unchanged (`breakfast`, `lunch`, `dinner`, `snack`), so no data moved. `lunch` is now labelled **Dinner** (obiad, the main cooked meal) and `dinner` is labelled **Supper** (kolacja).
+
+- The dinner planner plans obiad: `dinner_plan.PLANNED_MEAL = "lunch"`. "Log as eaten" prefills that meal, the planner's ✓ Logged mark checks it, and meal ideas stop subtracting the planned dish once it is logged.
+- Copy says "today's planned" instead of "tonight's"; meal-time windows (`defaultMeal`, `MEAL_ENDS`) are unchanged.
+
+### Shopping list from planned dinners
+
+2026-10-13: implements the `dinner-plan-shopping-list` idea. Food → Dinner plan has a **Shopping list** button that opens a panel under the week table.
+
+- Day chips pick the dates within the displayed week (opening it selects the planned days from today on, or every planned day for a past week). No days selected shows "Pick the days you are shopping for"; days without dinners say so.
+- `GET /nutrition/dinners/shopping-list?dates=YYYY-MM-DD,...` (`dinner_plan.shopping_list`, at most 14 days) scales each recipe ingredient's grams by planned servings ÷ recipe servings and sums them. Items merge only on the same `product_id`, otherwise only on the same name after lower-casing and collapsing spaces and edge punctuation (no plural, synonym or diacritic matching). Every item keeps its contributing dinners and grams.
+- Ingredients without grams, recipes without ingredients and free-text dinners are listed under **Needs review** with their original amount text and source dinner; no amount is guessed or converted.
+- Items can be ticked as already at home; **Copy list** copies the remaining items with quantities, the selected dates and the review items. If the clipboard is unavailable, the text appears in a selectable box.
+- The preview refetches when the selected days, the week or a dinner (portions, recipe) change. It is read-only: it never writes dinner plans, recipes or food logs. "At home" ticks live only in the open page.
+- Verified with 4 backend tests (300 g for two servings gives 150 g for one, sums across dinners, distinct products and unlinked names kept apart, review items, read-only and portion changes), 3 frontend tests for the copied text and gram formatting, the full backend (753) and frontend (133) suites, and the frontend build. Checked in the browser at 1512 px against a throwaway backend on a copy of the database (live data unchanged).
+
 ### Compact coaching context for MCP
 
 2026-10-08: MCP `get_recent_context` returned about 200k characters, which coach sessions could not read in one go. It now returns a compact view by default (about 42k characters, minified). `services/recent_context_view.py` builds it from the unchanged `build_recent_context` bundle.

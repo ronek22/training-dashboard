@@ -31,6 +31,7 @@
             <strong>{{ lift.exercise_name }}</strong>
             <small :title="`Best estimated 1RM ${lift.e1rm} kg on ${lift.since}, not beaten in ${lift.sessions - 1} sessions since`">e1RM {{ lift.e1rm }} kg, flat {{ lift.weeks }} wk</small>
             <p><em>{{ lift.suggestion.label }}</em> {{ lift.suggestion.text }}</p>
+            <p v-if="lift.suggestion.history" class="brief-plateau-history">{{ lift.suggestion.history.text }}</p>
           </li>
         </ul>
         <p v-if="morePlateaus" class="brief-plateaus-more">+{{ morePlateaus }} more {{ morePlateaus === 1 ? 'lift' : 'lifts' }} marked stalled below; hover for the suggestion. Change one lift at a time.</p>
@@ -178,7 +179,7 @@ const shownPlateaus = computed(() => plateaus.value.slice(0, SHOWN_PLATEAUS))
 const morePlateaus = computed(() => Math.max(plateaus.value.length - SHOWN_PLATEAUS, 0))
 const stalledByName = computed(() => new Map(plateaus.value.map((item) => [
   item.exercise_name.toLowerCase(),
-  `Estimated 1RM flat for ${item.weeks} weeks. ${item.suggestion.label}: ${item.suggestion.text}`,
+  `Estimated 1RM flat for ${item.weeks} weeks. ${item.suggestion.label}: ${item.suggestion.text}${item.suggestion.history ? ` ${item.suggestion.history.text}` : ''}`,
 ])))
 
 const lifts = computed(() => props.exercises.filter((exercise) => exercise.exercise_name?.trim()).map((exercise) => ({
@@ -312,6 +313,7 @@ const tiles = computed(() => [durationTile.value, distanceTile.value, intensityT
 .brief-plateaus em { margin-right: 6px; color: var(--accent); font-style: normal; font-weight: 600; }
 .brief-efforts em.form, .brief-efforts em.grinding { color: var(--warning-text); }
 .brief-efforts em.easy { color: var(--success-text); }
+.brief-plateaus .brief-plateau-history { color: var(--muted); font-size: 12px; }
 .brief-plateaus .brief-plateaus-more { margin-top: 8px; color: var(--muted); font-size: 12px; }
 .brief-note { grid-column: 1 / -1; margin: 0 !important; padding: 0 4px; color: var(--muted) !important; font-size: 12px !important; }
 @media (max-width: 900px) { .brief { grid-template-columns: 1fr; } }

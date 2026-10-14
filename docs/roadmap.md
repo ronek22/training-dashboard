@@ -18,7 +18,6 @@ Known gaps that are not on the Ideas board yet. Remove a line when it ships or i
 
 - **Legs every week** — The A–D lift rotation over three days a week often leaves legs with no planned sets.
 - **Winter base-to-build arc** — A multi-week shape for the winter cycling block instead of week-by-week planning.
-- **Stall blocks beyond Strength** — Show the running block in the Dashboard brief and use block outcomes in later suggestions.
 - **Strength sets on Strava** — Waiting for a Strava endpoint that can add sets to an existing activity.
 
 Working rule:

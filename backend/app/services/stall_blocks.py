@@ -95,6 +95,64 @@ def active_blocks(conn: sqlite3.Connection, today: Optional[date] = None) -> lis
     return [block for block in list_blocks(conn, today, "active") if block["scope"] == "block"]
 
 
+def block_headline(block: dict) -> str:
+    """'Dumbbell Upright Row stall block, week 2 of 3' (or that it is due to finish)."""
+    name = block["exercise_name"]
+    if block["due"]:
+        return f"{name} stall block: {block['weeks']} weeks done, finish it at the next session"
+    return f"{name} stall block, week {block['week']} of {block['weeks']}"
+
+
+def current_block(conn: sqlite3.Connection, today: Optional[date] = None) -> Optional[dict]:
+    """The running multi-week block (at most one), with a one-line headline for briefs."""
+    running = active_blocks(conn, today)
+    if not running:
+        return None
+    block = running[0]
+    return {key: block[key] for key in ("id", "exercise_name", "applied_name", "kind", "label", "text", "started_on",
+                                        "ends_on", "week", "weeks", "due")} | {"headline": block_headline(block)}
+
+
+def block_results(conn: sqlite3.Connection, today: Optional[date] = None) -> dict[str, list[dict]]:
+    """Finished blocks per stalled lift (normalized name), newest first, with what the lift did after.
+
+    ``gain_kg`` compares the original lift's best estimated 1RM from the block's start until the
+    next block for that lift (or today) with the stall the block answered. It is ``None`` when the
+    original lift has not been trained since, e.g. a variation that was kept."""
+    today = today or date.today()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM strength_stall_blocks WHERE scope = 'block' AND status != 'undone' ORDER BY started_on, id"
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    if not rows:
+        return {}
+    history = _lift_history(conn, date.fromisoformat(rows[0]["started_on"]), today + timedelta(days=1))
+    results: dict[str, list[dict]] = {}
+    for index, row in enumerate(rows):
+        if row["status"] not in ("kept", "reverted"):
+            continue
+        key = _normalize(row["exercise_name"])
+        started = date.fromisoformat(row["started_on"])
+        later = [date.fromisoformat(other["started_on"]) for other in rows[index + 1:] if _normalize(other["exercise_name"]) == key]
+        until = later[0] if later else today + timedelta(days=1)
+        points = [point for point in (history.get(key) or {}).get("points", []) if started <= point["date"] < until]
+        before = json.loads(row["stall_json"]).get("e1rm")
+        after = max((point["e1rm"] for point in points), default=None)
+        results.setdefault(key, []).insert(0, {
+            "block_id": int(row["id"]),
+            "kind": row["kind"],
+            "label": row["label"],
+            "started_on": row["started_on"],
+            "ended_on": row["ended_on"],
+            "e1rm_before": before,
+            "e1rm_after": after,
+            "gain_kg": round(after - before, 1) if after is not None and before is not None else None,
+        })
+    return results
+
+
 def block_starts(conn: sqlite3.Connection) -> dict[str, str]:
     """Lift name (normalized, as trained during the block) → block start, for running blocks.
 

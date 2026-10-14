@@ -326,6 +326,19 @@ def _session_plateaus(day: dict, conn: sqlite3.Connection, today: date) -> list[
         return []
 
 
+def _session_block_notes(day: dict, conn: sqlite3.Connection, today: date) -> list[str]:
+    """A running stall block on one of today's lifts: which week, and what the block changes."""
+    from .stall_blocks import block_headline, blocks_for_names
+    from .strength_volume import _day_exercises, _templates_by_name
+
+    names = [item["exercise_name"] for item in _day_exercises(day, _templates_by_name(conn))]
+    try:
+        blocks = blocks_for_names(conn, names, today=today) if names else []
+    except sqlite3.OperationalError:
+        return []
+    return [f"{block_headline(block)}. {block['label']}: {block['text']}" for block in blocks]
+
+
 def _session_effort_notes(day: dict, conn: sqlite3.Connection) -> list[dict]:
     """How today's lifts felt last time, from the between-set effort taps."""
     from .set_effort import effort_carryover
@@ -402,7 +415,7 @@ def _strength_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[st
             "If the first working set of the main lift feels like RPE 9 at last week's load, drop 5–10% and keep the reps.",
             "Joint pain (not muscle burn) on a lift: swap the exercise rather than push through.",
         ],
-        "notes": [],
+        "notes": _session_block_notes(day, conn, today),
         "plateaus": _session_plateaus(day, conn, today),
         "effort_notes": _session_effort_notes(day, conn),
         "basis": {},

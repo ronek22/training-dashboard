@@ -24,6 +24,15 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Stall blocks shape later suggestions
+
+2026-10-14: A running stall block now shows outside Strength, and finished blocks steer the next stall suggestion for the same lift.
+
+- Dashboard: the Load & recovery card shows "Dumbbell Upright Row stall block, week 2 of 3" (or that the weeks are done and the block should be finished), linking to Strength. The payload is `stall_block` from `stall_blocks.current_block`; the coach's recent context gets the same key.
+- Pre-session brief: a strength day whose saved workout includes the block's lift gets a note with the week and the block's change (`session_brief._session_block_notes`).
+- Suggestions: `stall_blocks.block_results` scores each finished multi-week block (kept or reverted) by the original lift's best estimated 1RM from the block's start until the next block for that lift (or today), against the stall it answered. `find_plateaus` then chooses between a rep scheme and a variation/tempo: it repeats a kind that added 1 kg or more, and when the default kind last added less and the other kind is untried, it tries the other one. A micro-deload (lift sliding back) is never overridden. The reason is in `suggestion.history.text` ("Last rep scheme block (12 Oct) added 2.6 kg to the estimated 1RM."), shown in the brief's stalled lifts, their hover text and the workout's stall note. Starting a block applies the reranked suggestion.
+- Lifts with no finished block get exactly the old suggestion and no `history`. Only the same lift's own blocks count; similar lifts are not pooled yet.
+
 ### Data-quality inbox
 
 2026-10-14: Data & Sync opens with a small inbox of gaps from the last 30 days, and the Data & Sync nav item shows a count badge (9+ above nine) only while items are open. `services/data_inbox.py` detects four kinds:

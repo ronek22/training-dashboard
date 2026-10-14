@@ -71,7 +71,7 @@
                   </span>
                 </div>
                 <div v-else-if="currentPlateau" class="stall-note">
-                  <p><em>Stalled {{ currentPlateau.weeks }} wk</em> {{ currentPlateau.suggestion.label }}: {{ currentPlateau.suggestion.text }}</p>
+                  <p><em>Stalled {{ currentPlateau.weeks }} wk</em> {{ currentPlateau.suggestion.label }}: {{ currentPlateau.suggestion.text }}<template v-if="currentPlateau.suggestion.history"> {{ currentPlateau.suggestion.history.text }}</template></p>
                   <span class="stall-actions">
                     <template v-if="currentPlateau.suggestion.plan?.weeks && !currentPlateau.queued_behind">
                       <button type="button" :disabled="blockBusy" @click="startBlock('block')">Try it for {{ currentPlateau.suggestion.plan.weeks }} weeks</button>

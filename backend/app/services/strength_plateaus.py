@@ -14,6 +14,10 @@ are skipped. Exactly one change is suggested per lift, picked in this order:
 3. Stuck 6+ weeks, or the rep scheme already changed: a variation.
 4. Otherwise: a different rep scheme (higher reps for single-joint lifts).
 
+When the lift has had a stall block before, its result reranks the choice between a
+rep scheme and a variation/tempo: repeat what moved the estimated 1RM, drop what did
+not, and say why (``suggestion["history"]``). A micro-deload is never overridden.
+
 Each suggestion also carries ``plan``: the same change as numbers (sets, reps, load,
 an exercise to swap to, a cue) so it can be applied to a workout as a block.
 """
@@ -165,7 +169,9 @@ def _suggest(
     stalled_days: int,
     max_dumbbell_kg: Optional[float],
     dumbbell_step_kg: Optional[float] = None,
+    force: Optional[str] = None,
 ) -> dict[str, Any]:
+    """One change for the lift. ``force`` ('rep_scheme' or 'variation') skips the order above."""
     key = _normalize(name)
     last = points[-1]
     top, reps = last["top_load_kg"], last["reps"]
@@ -177,7 +183,7 @@ def _suggest(
     heavier = setting + 2 * step if fixed else top + 2 * step
     capped = bool(max_dumbbell_kg and _is_dumbbell(name) and top >= max_dumbbell_kg)
 
-    if last["e1rm"] < peak["e1rm"] * DECLINE_SHARE:
+    if force is None and last["e1rm"] < peak["e1rm"] * DECLINE_SHARE:
         load = _round_to(top * DELOAD_SHARE, step)
         return {
             "kind": "micro_deload",
@@ -185,7 +191,7 @@ def _suggest(
             "text": f"{_fmt(load)} kg × {reps} for all sets today (about 90%), crisp reps only. Back to {_fmt(top)} kg next time.",
             "plan": _plan(weeks=0, reps=reps, load_kg=load, cue="crisp reps only"),
         }
-    if capped:
+    if capped and force != "rep_scheme":
         return {
             "kind": "variation",
             "label": "Tempo",
@@ -194,7 +200,7 @@ def _suggest(
         }
     reps_since_peak = [point["reps"] for point in points if point["date"] >= peak["date"]]
     rep_scheme_changed = max(reps_since_peak) - min(reps_since_peak) >= 3
-    if stalled_days >= LONG_STALL_DAYS or rep_scheme_changed:
+    if force == "variation" or (force is None and (stalled_days >= LONG_STALL_DAYS or rep_scheme_changed)):
         variation = VARIATIONS.get(key)
         if variation:
             swap_to, cue = VARIATION_EXERCISES[key]
@@ -248,6 +254,61 @@ def _suggest(
     }
 
 
+# A past block "worked" when the lift's estimated 1RM ended up at least this far above its stall.
+WORKED_KG = 1.0
+
+
+def _history_text(result: dict) -> str:
+    started = date.fromisoformat(result["started_on"])
+    block = f"Last {result['label'].lower()} block ({started.day} {started.strftime('%b')})"
+    gain = result["gain_kg"]
+    if gain is None:
+        return f"{block}: the lift has not been trained since, so no result yet."
+    if gain >= WORKED_KG:
+        return f"{block} added {_fmt(gain)} kg to the estimated 1RM."
+    if gain > 0:
+        return f"{block} added only {_fmt(gain)} kg to the estimated 1RM."
+    return f"{block} did not move the estimated 1RM."
+
+
+def _rank_by_history(suggestion: dict, past: list[dict], alternative) -> dict:
+    """Pick between a rep scheme and a variation by what earlier blocks did for this lift.
+
+    ``past`` is newest first; ``alternative(kind)`` builds the other kind of suggestion."""
+    kind = suggestion["kind"]
+    latest = {}
+    for result in past:
+        latest.setdefault(result["kind"], result)
+    worked = lambda result: bool(result and result["gain_kg"] is not None and result["gain_kg"] >= WORKED_KG)
+    failed = lambda result: bool(result and result["gain_kg"] is not None and result["gain_kg"] < WORKED_KG)
+    if kind not in ("rep_scheme", "variation"):
+        cited, chosen = past[0], suggestion
+    else:
+        other = "variation" if kind == "rep_scheme" else "rep_scheme"
+        mine, theirs = latest.get(kind), latest.get(other)
+        if worked(theirs) and (not worked(mine) or theirs["gain_kg"] > mine["gain_kg"]):
+            cited, chosen = theirs, alternative(other)
+        elif failed(mine) and theirs is None:
+            cited, chosen = mine, alternative(other)
+        else:
+            cited, chosen = mine or past[0], suggestion
+    text = _history_text(cited)
+    if chosen is not suggestion:
+        text += " Repeating what worked." if worked(cited) else f" Trying {chosen['label'].lower()} instead."
+    return {**chosen, "history": {**cited, "text": text, "reranked": chosen is not suggestion}}
+
+
+def _block_results(conn: Optional[sqlite3.Connection], today: date) -> dict[str, list[dict]]:
+    from .stall_blocks import block_results
+
+    if conn is None:
+        return {}
+    try:
+        return block_results(conn, today)
+    except sqlite3.OperationalError:
+        return {}
+
+
 def find_plateaus(
     conn: sqlite3.Connection,
     today: Optional[date] = None,
@@ -258,6 +319,7 @@ def find_plateaus(
     wanted = {_normalize(name) for name in exercise_names} if exercise_names is not None else None
     max_dumbbell_kg = _max_dumbbell_kg(conn)
     dumbbell_step_kg = _dumbbell_step_kg(conn)
+    past_blocks = _block_results(conn, today)
     plateaus = []
     for key, lift in _lift_history(conn, today - timedelta(days=LOOKBACK_DAYS), today).items():
         if wanted is not None and key not in wanted:
@@ -271,6 +333,11 @@ def find_plateaus(
             continue
         if (today - points[-1]["date"]).days > ACTIVE_DAYS:
             continue
+        suggest = lambda force=None: _suggest(lift["exercise_name"], points, peak, stalled_days, max_dumbbell_kg,
+                                              dumbbell_step_kg, force)
+        suggestion = suggest()
+        if past_blocks.get(key):
+            suggestion = _rank_by_history(suggestion, past_blocks[key], suggest)
         plateaus.append(
             {
                 "exercise_name": lift["exercise_name"],
@@ -280,7 +347,7 @@ def find_plateaus(
                 "sessions": len(after) + 1,
                 "last": {"date": points[-1]["date"].isoformat(), "e1rm": points[-1]["e1rm"],
                          "top_load_kg": points[-1]["top_load_kg"], "reps": points[-1]["reps"]},
-                "suggestion": _suggest(lift["exercise_name"], points, peak, stalled_days, max_dumbbell_kg, dumbbell_step_kg),
+                "suggestion": suggestion,
             }
         )
     plateaus.sort(key=lambda item: item["since"])

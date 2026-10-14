@@ -44,6 +44,7 @@
           </ul>
           <p v-if="illnessReturnHint" class="swap-hint" :class="`score-${illnessReturn.lingering_symptoms || illnessReturn.hard_sessions.length ? 'red' : 'amber'}`">{{ illnessReturnHint }}</p>
           <p v-if="mountainReentryHint" class="swap-hint score-amber">{{ mountainReentryHint }}</p>
+          <p v-if="stallBlock" class="swap-hint score-block" :title="`${stallBlock.label}: ${stallBlock.text}`">{{ stallBlock.headline }}. <router-link to="/strength">Strength</router-link></p>
           <p v-if="swapHint" class="swap-hint" :class="`score-${readinessScore.level}`">{{ swapHint }} <router-link to="/plan">Open plan</router-link></p>
           <p v-if="sleepDebtHint" class="swap-hint" :class="`score-${readinessScore.sleep_debt.status === 'risk' ? 'red' : 'amber'}`">{{ sleepDebtHint }} <router-link to="/metrics?view=recovery">Sleep trend</router-link></p>
           <p v-if="rampWarning" class="ramp-warning" :class="`ramp-${ramp.status}`">{{ rampWarning }}</p>
@@ -274,6 +275,8 @@ const illnessReturnHint = computed(() => {
 })
 // The days after a mountain trip: easy rides first, leg lifts at pre-trip loads.
 const mountainReentry = computed(() => dashboard.value?.mountain_reentry || null)
+// A running stall block (one lift at a time), so the change stays in view between lift days.
+const stallBlock = computed(() => dashboard.value?.stall_block || null)
 const mountainReentryHint = computed(() => {
   const state = mountainReentry.value
   if (!state || sickMode.value.active) return ''
@@ -976,6 +979,7 @@ button { color: inherit; }
 .swap-hint, .ramp-warning { margin: 12px 0 0; border-radius: 9px; padding: 8px 10px; font-size: 11px; line-height: 1.5; }
 .swap-hint.score-amber, .ramp-warning.ramp-caution { background: rgba(243, 180, 77, 0.1); color: var(--warning-text); }
 .swap-hint.score-red, .ramp-warning.ramp-high { background: rgba(239, 123, 110, 0.1); color:oklch(from #f09a90 calc(l - var(--dim-l)) c h); }
+.swap-hint.score-block { background: rgb(var(--tint-rgb) / 0.1); color: var(--text-soft); }
 .swap-hint a { color: inherit; font-weight: 650; text-underline-offset: 2px; }
 .readiness-watch, .readiness-insufficient_data { background: rgba(95, 140, 255, 0.12); color:oklch(from #91b1ff calc(l - var(--dim-l)) c h); }
 

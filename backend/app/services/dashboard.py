@@ -16,6 +16,7 @@ from .volume_trend import build_volume_trend
 from .plan_follow_through import plan_follow_through_coaching_context
 from .personal_records import build_recent_records_context
 from .session_brief import build_briefs_for_date
+from .stall_blocks import current_block as current_stall_block
 from .what_worked import build_what_worked_coaching_context
 from .return_to_run import build_return_to_run_context
 from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
@@ -1174,6 +1175,7 @@ def build_recent_context(
         "minimum_week": minimum_week_state(conn, (datetime.now().date() - timedelta(days=datetime.now().weekday())).isoformat()),
         "strength_consistency": strength_consistency,
         "recent_strength_detail": recent_strength_detail,
+        "stall_block": current_stall_block(conn),
         "cycling_power": build_cycling_power_coaching_context(conn, include_thresholds=False),
         "aerobic_fitness": aerobic_decoupling_coaching_context(conn),
         "athlete_profile": athlete_profile,
@@ -1374,6 +1376,7 @@ def build_dashboard_data(
         "training_load": training_load,
         "relative_effort": build_relative_effort(conn),
         "weekly_plan": serialized_latest_plan,
+        "stall_block": current_stall_block(conn),
         "session_briefs": build_briefs_for_date(conn, serialized_latest_plan, datetime.now().date()),
         "execution_trend": execution_trend,
         "computed_streak": computed_streak,

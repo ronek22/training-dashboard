@@ -20,6 +20,9 @@ def request(path, payload=None):
             detail = json.load(exc).get('detail')
         except (ValueError, AttributeError):
             detail = None
+        if isinstance(detail, list) and detail and isinstance(detail[0], dict):
+            field = '.'.join(str(part) for part in detail[0].get('loc', [])[1:])
+            detail = f"The generated review could not be validated ({field or 'response'}: {detail[0].get('msg', 'invalid')}). Please retry."
         raise ValueError(detail if isinstance(detail, str) else 'The generated review could not be validated. Please retry.') from exc
 
 

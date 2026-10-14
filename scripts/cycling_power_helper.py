@@ -6,6 +6,24 @@ except ModuleNotFoundError:
     from team_coaching_helper import request, parse
 
 
+LIMITS = {'headline': 120, 'assessment': 900, 'uncertainty': 500}
+FOCUS_LIMITS = {'title': 100, 'reason': 500, 'action': 500, 'success_check': 300}
+
+
+def _clip(value, limit):
+    text = ' '.join(str(value or '').split())
+    return text if len(text) <= limit else text[:limit - 1].rstrip() + '…'
+
+
+def normalize(result, context_key):
+    """Fit the coach reply to the save schema so minor overruns don't discard a review."""
+    focus = [item for item in result.get('focus') or [] if isinstance(item, dict)][:3]
+    return {'context_key': context_key,
+            **{key: _clip(result.get(key), limit) for key, limit in LIMITS.items()},
+            'focus': [{key: _clip(item.get(key), limit) for key, limit in FOCUS_LIMITS.items()} for item in focus],
+            'evidence_ids': [str(i) for i in result.get('evidence_ids') or [] if i not in (None, '')][:12]}
+
+
 def run_review(run_coach, progress):
     saved = request('/metrics/cycling-power/advice')
     if saved.get('review') and not saved.get('stale'):
@@ -35,7 +53,7 @@ Schema: ''' + json.dumps(schema) + '\nSnapshot: ' + json.dumps(context['snapshot
     result = parse(output)
     if result.get('context_key') != context['context_key']:
         raise ValueError('The cycling review returned a different snapshot key. Please retry.')
-    saved = request('/metrics/cycling-power/advice', result)
+    saved = request('/metrics/cycling-power/advice', normalize(result, context['context_key']))
     if saved.get('context_key') != context['context_key']:
         raise ValueError('The cycling advice could not be verified.')
     return saved

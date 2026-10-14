@@ -24,12 +24,21 @@
         @keydown.esc="closeDrawer"
       >
         <header class="coach-header">
-          <div>
-            <span>Interactive coach</span>
-            <h2 id="global-coach-title">Ask about your training</h2>
+          <span class="coach-avatar" aria-hidden="true">✦</span>
+          <div class="coach-header-title">
+            <span>{{ headerTitle.meta || 'Coach' }}</span>
+            <h2 id="global-coach-title">{{ headerTitle.title }}</h2>
           </div>
+          <router-link
+            v-if="contextLink"
+            class="coach-context-link"
+            :to="contextLink.to"
+            @click="closeDrawer"
+          >{{ contextLink.label }} →</router-link>
           <div class="coach-header-actions">
-            <button type="button" :disabled="chatSending" @click="createConversation">+ New</button>
+            <button class="coach-new" type="button" :disabled="chatSending" @click="createConversation">
+              <span aria-hidden="true">＋</span> New chat
+            </button>
             <button class="coach-close" type="button" aria-label="Close coach" @click="closeDrawer">×</button>
           </div>
         </header>
@@ -48,6 +57,7 @@
               >
                 <small>{{ moment.label }}</small>
                 <strong>{{ moment.headline }}</strong>
+                <span>Open check-in →</span>
               </button>
             </template>
             <div v-if="!chatConversations.length" class="conversation-empty">No saved chats</div>
@@ -65,8 +75,12 @@
                   :disabled="chatSending"
                   @click="selectConversation(conversation.id)"
                 >
-                  <strong><i v-if="conversation.unread_count > 0" class="unread-dot" aria-label="Unread reply"></i>{{ conversation.title }}</strong>
-                  <span>{{ conversation.message_count }} {{ conversation.message_count === 1 ? 'message' : 'messages' }}</span>
+                  <span class="conversation-meta">
+                    <i v-if="conversation.unread_count > 0" class="unread-dot" aria-label="Unread reply"></i>
+                    <span>{{ splitConversationTitle(conversation.title).meta || `${conversation.message_count} ${conversation.message_count === 1 ? 'message' : 'messages'}` }}</span>
+                    <time :datetime="conversation.updated_at">{{ conversationTime(conversation.updated_at) }}</time>
+                  </span>
+                  <strong>{{ splitConversationTitle(conversation.title).title }}</strong>
                 </button>
                 <button
                   class="conversation-delete"
@@ -82,24 +96,6 @@
 
           <div class="coach-main">
             <div ref="chatThread" class="coach-thread" aria-live="polite">
-              <router-link
-                v-if="activeConversation?.context_kind === 'activity'"
-                class="coach-context-link"
-                :to="`/activities/${encodeURIComponent(activeConversation.context_id)}`"
-                @click="closeDrawer"
-              >About this session · open it →</router-link>
-              <router-link
-                v-else-if="activeConversation?.context_kind === 'day'"
-                class="coach-context-link"
-                to="/"
-                @click="closeDrawer"
-              >About this day · open Today →</router-link>
-              <router-link
-                v-else-if="activeConversation?.context_kind === 'week'"
-                class="coach-context-link"
-                to="/weekly-review"
-                @click="closeDrawer"
-              >About this week · open the weekly review →</router-link>
               <div v-if="chatLoading" class="coach-welcome">Loading conversations…</div>
               <div v-else-if="!chatMessages.length" class="coach-welcome">
                 <span class="welcome-mark" aria-hidden="true">✦</span>
@@ -110,17 +106,33 @@
                 </div>
               </div>
               <article
-                v-for="message in chatMessages"
+                v-for="message in renderedMessages"
                 :key="message.id"
                 class="coach-message"
                 :class="`is-${message.role}`"
               >
-                <span>{{ message.role === 'assistant' ? 'Coach' : 'You' }}</span>
-                <p>{{ message.content }}</p>
+                <span v-if="message.role === 'assistant'" class="coach-avatar is-small" aria-hidden="true">✦</span>
+                <div class="coach-message-body">
+                  <span class="coach-message-author">{{ message.role === 'assistant' ? 'Coach' : 'You' }}</span>
+                  <template v-for="(block, blockIndex) in message.blocks" :key="blockIndex">
+                    <h4 v-if="block.type === 'heading'"><ChatSpans :spans="block.spans" /></h4>
+                    <component
+                      :is="block.ordered ? 'ol' : 'ul'"
+                      v-else-if="block.type === 'list'"
+                      :start="block.ordered ? block.start : undefined"
+                    >
+                      <li v-for="(item, itemIndex) in block.items" :key="itemIndex"><ChatSpans :spans="item" /></li>
+                    </component>
+                    <p v-else><ChatSpans :spans="block.spans" /></p>
+                  </template>
+                </div>
               </article>
               <article v-if="chatSending" class="coach-message is-assistant is-thinking">
-                <span>Coach</span>
-                <p><i></i><i></i><i></i> {{ chatStage }} · {{ formatCoachSeconds(displayElapsedSeconds) }}</p>
+                <span class="coach-avatar is-small" aria-hidden="true">✦</span>
+                <div class="coach-message-body">
+                  <span class="coach-message-author">Coach</span>
+                  <p><i></i><i></i><i></i> {{ chatStage }} · {{ formatCoachSeconds(displayElapsedSeconds) }}</p>
+                </div>
               </article>
               <button
                 v-if="showCoachProgress"
@@ -210,23 +222,26 @@
               </section>
             </div>
 
-            <form class="coach-composer" @submit.prevent="sendChatMessage">
-              <textarea
-                ref="chatInputElement"
-                v-model="chatInput"
-                rows="2"
-                maxlength="4000"
-                :disabled="chatSending"
-                placeholder="Ask your coach…"
-                aria-label="Message your coach"
-                @keydown.enter.exact.prevent="sendChatMessage"
-              ></textarea>
-              <button type="submit" :disabled="chatSending || !chatInput.trim()">
-                {{ chatSending ? 'Thinking…' : 'Send' }}
-              </button>
-            </form>
-            <p v-if="chatError" class="coach-error" role="alert">{{ chatError }}</p>
-            <p class="coach-disclaimer">Uses your live dashboard context. This is not medical guidance.</p>
+            <div class="coach-composer-wrap">
+              <p v-if="chatError" class="coach-error" role="alert">{{ chatError }}</p>
+              <form class="coach-composer" @submit.prevent="sendChatMessage">
+                <textarea
+                  ref="chatInputElement"
+                  v-model="chatInput"
+                  rows="1"
+                  maxlength="4000"
+                  :disabled="chatSending"
+                  :placeholder="chatSending ? 'Coach is replying…' : 'Ask your coach…'"
+                  aria-label="Message your coach"
+                  @input="resizeComposer"
+                  @keydown.enter.exact.prevent="sendChatMessage"
+                ></textarea>
+                <button type="submit" :disabled="chatSending || !chatInput.trim()" aria-label="Send message">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 15.5V4.5M5 9.5l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </form>
+              <p class="coach-disclaimer"><kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line · Uses your live dashboard context, not medical guidance.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -235,12 +250,13 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, h, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { format } from 'date-fns'
 import { useApi } from '../stores/api'
 import { coachChatAvailable, coachChatChanged, coachChatRequest } from '../coach/chat-bus'
 import { groupConversations, momentRequest, pageSuggestions } from '../coach/session-chat.mjs'
+import { conversationTime, parseChatMarkdown, splitConversationTitle } from '../coach/chat-markdown.mjs'
 import {
   coachDiagnosticsPayload,
   coachDiagnosticsWarning,
@@ -308,6 +324,44 @@ const sendSuggestion = async (text) => {
 }
 
 const activeConversation = computed(() => chatConversations.value.find(item => item.id === activeConversationId.value) || null)
+
+// Inline spans of a parsed message, rendered without v-html.
+const ChatSpans = (props) => props.spans.map((span) => {
+  if (span.bold) return h('strong', span.text)
+  if (span.italic) return h('em', span.text)
+  if (span.code) return h('code', span.text)
+  return span.text
+})
+ChatSpans.props = ['spans']
+
+const renderedMessages = computed(() => chatMessages.value.map((message) => ({
+  ...message,
+  blocks: message.role === 'assistant'
+    ? parseChatMarkdown(message.content)
+    : [{ type: 'paragraph', spans: [{ text: String(message.content) }] }],
+})))
+
+const headerTitle = computed(() => (activeConversation.value
+  ? splitConversationTitle(activeConversation.value.title)
+  : { meta: '', title: 'New conversation' }))
+
+const CONTEXT_LINKS = {
+  activity: (id) => ({ to: `/activities/${encodeURIComponent(id)}`, label: 'Open session' }),
+  day: () => ({ to: '/', label: 'Open Today' }),
+  week: () => ({ to: '/weekly-review', label: 'Weekly review' }),
+}
+const contextLink = computed(() => {
+  const conversation = activeConversation.value
+  return CONTEXT_LINKS[conversation?.context_kind]?.(conversation.context_id) || null
+})
+
+const resizeComposer = () => {
+  const element = chatInputElement.value
+  if (!element) return
+  element.style.height = 'auto'
+  element.style.height = `${Math.min(element.scrollHeight, 180)}px`
+}
+watch(chatInput, (value) => { if (!value) nextTick(resizeComposer) })
 
 const showCoachProgress = computed(() => chatSending.value || Boolean(chatDiagnostics.value) || Boolean(chatJobId.value))
 
@@ -658,70 +712,11 @@ onUnmounted(() => {
 }
 .coach-layer { position: fixed; inset: 0; z-index: 50; }
 .coach-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgb(var(--shadow-rgb) / .6); backdrop-filter: blur(3px); }
-.coach-drawer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(760px, calc(100vw - 88px));
-  display: flex;
-  flex-direction: column;
-  background: var(--deep);
-  border-left: 1px solid rgba(123, 163, 255, .2);
-  box-shadow: -24px 0 70px rgb(var(--deep-rgb) / .52);
-}
-.coach-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 19px 20px; border-bottom: 1px solid var(--border); }
-.coach-header span { color: var(--accent-strong); font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
-.coach-header h2 { margin: 3px 0 0; font-family: var(--font-display); font-size: 19px; }
-.coach-header-actions { display: flex; align-items: center; gap: 7px; }
-.coach-header-actions button { padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 9px; background: rgba(95, 140, 255, .1); color: var(--text-soft); font-size: 11px; font-weight: 700; cursor: pointer; }
-.coach-header-actions .coach-close { width: 34px; height: 34px; padding: 0; background: transparent; font-size: 22px; color: var(--muted); }
-.coach-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(0, 1fr); }
-.coach-conversations { padding: 14px 9px; overflow-y: auto; border-right: 1px solid var(--border); background: rgb(var(--deep-rgb) / .52); }
-.conversation-label { display: block; padding: 0 7px 9px; color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
-.conversation-empty { padding: 10px 7px; color: var(--muted); font-size: 11px; }
-.conversation-row { display: grid; grid-template-columns: minmax(0, 1fr) 27px; gap: 2px; align-items: center; margin-bottom: 4px; border: 1px solid transparent; border-radius: 9px; }
-.conversation-row.active { border-color: rgba(95, 140, 255, .24); background: rgba(95, 140, 255, .12); }
 .conversation-select, .conversation-delete { border: 0; background: transparent; color: inherit; cursor: pointer; }
-.conversation-select { min-width: 0; padding: 9px 6px; text-align: left; }
-.conversation-select strong, .conversation-select span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.conversation-select strong { color: var(--text-soft); font-size: 10px; font-weight: 650; }
-.conversation-select span { margin-top: 2px; color: var(--muted); font-size: 9px; }
 .coach-launcher-dot { position: absolute; top: 6px; right: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 0 2px var(--accent); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
-.conversation-label.is-news { color: var(--accent-strong); }
-.conversation-label:not(:first-child) { margin-top: 10px; }
-.moment-row { display: grid; gap: 2px; width: 100%; margin-bottom: 4px; padding: 9px 8px; border: 1px solid rgba(95, 140, 255, .28); border-radius: 9px; background: rgba(95, 140, 255, .1); color: inherit; text-align: left; cursor: pointer; }
-.moment-row:hover { background: rgba(95, 140, 255, .18); }
-.moment-row small { color: var(--accent-strong); font-size: 8px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
-.moment-row strong { overflow: hidden; color: var(--text); font-size: 10px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.unread-dot { display: inline-block; width: 6px; height: 6px; margin: 0 5px 1px 0; border-radius: 50%; background: var(--accent-strong); vertical-align: middle; }
-.conversation-row.unread .conversation-select strong { color: var(--text); font-weight: 750; }
-.coach-suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
-.coach-suggestions button { padding: 7px 11px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text-soft); font: inherit; font-size: 11px; cursor: pointer; }
-.coach-suggestions button:hover { border-color: rgba(95, 140, 255, .5); color: var(--text); }
-.coach-details-toggle { align-self: flex-start; margin-top: -8px; padding: 0 3px; border: 0; background: transparent; color: var(--muted); font-size: 10px; cursor: pointer; }
-.coach-details-toggle:hover { color: var(--text-soft); }
 .conversation-tag { display: inline-block; margin-right: 5px; padding: 0 5px; border-radius: 5px; background: rgba(95, 140, 255, .14); color: var(--accent-strong); font-size: 8px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
-.coach-context-link { align-self: flex-start; padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted-soft); font-size: 10px; font-weight: 650; text-decoration: none; }
-.coach-context-link:hover { border-color: var(--border-strong); color: var(--text); }
-.conversation-delete { width: 25px; height: 25px; border-radius: 7px; color: var(--muted); font-size: 17px; opacity: 0; }
-.conversation-row:hover .conversation-delete, .conversation-row.active .conversation-delete, .conversation-delete:focus-visible { opacity: 1; }
-.conversation-delete:hover { background: rgba(239, 94, 94, .12); color:var(--text); }
 .coach-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.coach-thread { flex: 1; min-height: 0; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-.coach-welcome { margin: auto; max-width: 410px; display: flex; flex-direction: column; gap: 7px; align-items: center; text-align: center; color: var(--muted); }
-.coach-welcome strong { color: var(--text); font-family: var(--font-display); font-size: 17px; }
-.welcome-mark { display: grid; place-items: center; width: 38px; height: 38px; margin-bottom: 4px; border-radius: 50%; background: rgba(95, 140, 255, .12); color: var(--accent-strong); }
-.coach-message { max-width: 84%; }
-.coach-message > span { display: block; margin: 0 0 5px 3px; color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
-.coach-message p { margin: 0; padding: 11px 14px; border: 1px solid var(--border); border-radius: 4px 14px 14px 14px; background: rgb(var(--deep-rgb) / .82); color: var(--text-soft); line-height: 1.62; white-space: pre-wrap; }
-.coach-message.is-user { align-self: flex-end; }
-.coach-message.is-user > span { text-align: right; }
-.coach-message.is-user p { border-color: rgba(95, 140, 255, .3); border-radius: 14px 4px 14px 14px; background: rgba(70, 105, 190, .28); color: var(--text); }
-.coach-message.is-thinking i { display: inline-block; width: 5px; height: 5px; margin-right: 3px; border-radius: 50%; background: var(--accent-strong); animation: coach-pulse 1.2s ease-in-out infinite; }
-.coach-message.is-thinking i:nth-child(2) { animation-delay: .15s; }
-.coach-message.is-thinking i:nth-child(3) { animation-delay: .3s; }
 .coach-progress { align-self: stretch; min-width: 0; padding: 13px 14px; border: 1px solid rgba(123, 163, 255, .22); border-radius: 13px; background: rgba(29, 42, 69, .48); }
 .coach-progress-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .coach-progress-heading > div { min-width: 0; }
@@ -758,12 +753,107 @@ onUnmounted(() => {
 .coach-debug-actions button { padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; background: rgba(95, 140, 255, .12); color: var(--text-soft); font-size: 10px; font-weight: 700; cursor: pointer; }
 .coach-debug-actions button:disabled { cursor: not-allowed; opacity: .45; }
 .coach-debug-actions > span { color:var(--text); font-size: 10px; }
-.coach-composer { display: grid; grid-template-columns: 1fr auto; gap: 9px; padding: 14px 16px; border-top: 1px solid var(--border); background: rgb(var(--deep-rgb) / .66); }
-.coach-composer textarea { width: 100%; min-height: 52px; max-height: 140px; resize: vertical; padding: 11px 13px; border: 1px solid var(--border-strong); border-radius: 11px; background: rgb(var(--deep-rgb) / .9); color: var(--text); line-height: 1.45; }
-.coach-composer button { min-width: 78px; border: 0; border-radius: 11px; background: var(--accent); color: white; font-weight: 750; cursor: pointer; }
-.coach-composer button:disabled { opacity: .45; cursor: not-allowed; }
-.coach-error { margin: 0; padding: 0 16px 9px; color:var(--text); font-size: 11px; }
-.coach-disclaimer { margin: 0; padding: 0 16px 12px; color: var(--muted); font-size: 9px; }
+.coach-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(1040px, calc(100vw - 88px));
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  box-shadow: -24px 0 70px rgb(var(--shadow-rgb) / .45);
+}
+.coach-avatar { flex: 0 0 auto; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(95, 140, 255, .14); color: var(--accent-strong); font-size: 15px; }
+.coach-avatar.is-small { width: 28px; height: 28px; font-size: 12px; }
+.coach-header { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 16px 12px 20px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); }
+.coach-header-title { flex: 1; min-width: 0; }
+.coach-header-title span { display: block; color: var(--muted); font-size: 11px; font-weight: 650; }
+.coach-header-title h2 { margin: 1px 0 0; overflow: hidden; color: var(--text); font-family: var(--font-display); font-size: 16px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.coach-context-link { flex: 0 0 auto; padding: 6px 11px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text-soft); font-size: 12px; font-weight: 650; text-decoration: none; }
+.coach-context-link:hover { border-color: rgba(95, 140, 255, .5); color: var(--text); }
+.coach-header-actions { display: flex; align-items: center; gap: 6px; }
+.coach-header-actions button { border: 0; border-radius: 9px; background: transparent; color: var(--text-soft); cursor: pointer; }
+.coach-new { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba(95, 140, 255, .14) !important; color: var(--text) !important; font-size: 12px; font-weight: 700; }
+.coach-new:hover { background: rgba(95, 140, 255, .24) !important; }
+.coach-new span { color: var(--accent-strong); }
+.coach-header-actions .coach-close { width: 34px; height: 34px; padding: 0; color: var(--muted); font-size: 22px; }
+.coach-header-actions .coach-close:hover { background: rgb(var(--ov-rgb) / .06); color: var(--text); }
+.coach-header-actions button:disabled { opacity: .45; cursor: not-allowed; }
+
+.coach-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 272px minmax(0, 1fr); }
+.coach-conversations { padding: 14px 10px 20px; overflow-y: auto; border-right: 1px solid var(--border); background: var(--bg-elevated); }
+.conversation-label { display: block; padding: 0 10px 6px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.conversation-label:not(:first-child) { margin-top: 16px; }
+.conversation-label.is-news { color: var(--accent-strong); }
+.conversation-empty { padding: 10px; color: var(--muted); font-size: 12px; }
+.conversation-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); margin-bottom: 2px; border-radius: 10px; }
+.conversation-row:hover { background: rgb(var(--ov-rgb) / .04); }
+.conversation-row.active { background: rgba(95, 140, 255, .14); }
+.conversation-row.active::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--accent); }
+.conversation-select, .conversation-delete { border: 0; background: transparent; color: inherit; cursor: pointer; }
+.conversation-select { display: grid; gap: 3px; min-width: 0; padding: 9px 30px 10px 12px; text-align: left; }
+.conversation-meta { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted); font-size: 11px; }
+.conversation-meta > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conversation-meta time { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.conversation-select strong { display: -webkit-box; overflow: hidden; color: var(--text-soft); font-size: 13px; font-weight: 600; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.conversation-row.active .conversation-select strong, .conversation-row.unread .conversation-select strong { color: var(--text); }
+.conversation-row.unread .conversation-select strong { font-weight: 750; }
+.unread-dot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--accent-strong); }
+.conversation-delete { position: absolute; top: 6px; right: 4px; width: 24px; height: 24px; border-radius: 7px; color: var(--muted); font-size: 16px; opacity: 0; }
+.conversation-row:hover .conversation-delete, .conversation-delete:focus-visible { opacity: 1; }
+.conversation-row:hover time { visibility: hidden; }
+.conversation-delete:hover { background: rgba(239, 94, 94, .14); color: var(--danger-text); }
+.moment-row { display: grid; gap: 3px; width: 100%; margin-bottom: 6px; padding: 10px 12px; border: 1px solid rgba(95, 140, 255, .3); border-radius: 10px; background: rgba(95, 140, 255, .1); color: inherit; text-align: left; cursor: pointer; }
+.moment-row:hover { background: rgba(95, 140, 255, .18); }
+.moment-row small { color: var(--accent-strong); font-size: 11px; font-weight: 700; }
+.moment-row strong { display: -webkit-box; overflow: hidden; color: var(--text); font-size: 13px; font-weight: 650; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.moment-row > span { color: var(--muted-soft); font-size: 11px; }
+
+.coach-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.coach-thread { flex: 1; min-height: 0; overflow-y: auto; padding: 28px max(24px, calc((100% - 720px) / 2)) 24px; display: flex; flex-direction: column; gap: 26px; }
+.coach-welcome { margin: auto; max-width: 440px; display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center; color: var(--muted); font-size: 14px; }
+.coach-welcome strong { color: var(--text); font-family: var(--font-display); font-size: 20px; }
+.welcome-mark { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 6px; border-radius: 50%; background: rgba(95, 140, 255, .14); color: var(--accent-strong); font-size: 18px; }
+.coach-suggestions { display: grid; gap: 8px; width: 100%; margin-top: 14px; }
+.coach-suggestions button { padding: 11px 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); color: var(--text-soft); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.coach-suggestions button:hover { border-color: rgba(95, 140, 255, .5); color: var(--text); }
+.coach-details-toggle { align-self: flex-start; margin: -16px 0 0 40px; padding: 0 3px; border: 0; background: transparent; color: var(--muted); font-size: 11px; cursor: pointer; }
+.coach-details-toggle:hover { color: var(--text-soft); }
+
+.coach-message { display: flex; gap: 12px; min-width: 0; }
+.coach-message-body { min-width: 0; flex: 1; color: var(--text-soft); font-size: 14.5px; line-height: 1.65; }
+.coach-message-author { display: block; margin-bottom: 4px; color: var(--text); font-size: 13px; font-weight: 700; }
+.coach-message-body p { margin: 0 0 10px; white-space: pre-line; }
+.coach-message-body > :last-child { margin-bottom: 0; }
+.coach-message-body h4 { margin: 18px 0 6px; color: var(--text); font-size: 14.5px; font-weight: 700; }
+.coach-message-body h4:first-of-type { margin-top: 4px; }
+.coach-message-body ul, .coach-message-body ol { margin: 0 0 12px; padding-left: 20px; }
+.coach-message-body li { margin: 0 0 7px; padding-left: 4px; }
+.coach-message-body li::marker { color: var(--accent-strong); }
+.coach-message-body strong { color: var(--text); font-weight: 700; }
+.coach-message-body code { padding: 1px 5px; border-radius: 5px; background: rgb(var(--ov-rgb) / .07); font: 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.coach-message.is-user { justify-content: flex-end; }
+.coach-message.is-user .coach-message-body { flex: 0 1 auto; max-width: 78%; padding: 10px 15px; border-radius: 16px 16px 4px 16px; background: rgba(95, 140, 255, .2); color: var(--text); }
+.coach-message.is-user .coach-message-author { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+.coach-message.is-user p { white-space: pre-wrap; }
+.coach-message.is-thinking p { color: var(--muted); font-size: 13px; }
+.coach-message.is-thinking i { display: inline-block; width: 5px; height: 5px; margin-right: 3px; border-radius: 50%; background: var(--accent-strong); animation: coach-pulse 1.2s ease-in-out infinite; }
+.coach-message.is-thinking i:nth-child(2) { animation-delay: .15s; }
+.coach-message.is-thinking i:nth-child(3) { animation-delay: .3s; }
+
+.coach-composer-wrap { padding: 10px max(24px, calc((100% - 720px) / 2)) 14px; }
+.coach-composer { display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 16px; border: 1px solid var(--border-strong); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-card); transition: border-color .15s ease; }
+.coach-composer:focus-within { border-color: rgba(95, 140, 255, .55); }
+.coach-composer textarea { flex: 1; min-height: 24px; max-height: 180px; padding: 7px 0; border: 0; outline: none; resize: none; background: transparent; color: var(--text); font: inherit; font-size: 14.5px; line-height: 1.5; }
+.coach-composer textarea::placeholder { color: var(--muted); }
+.coach-composer button { flex: 0 0 auto; display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 11px; background: var(--accent); color: white; cursor: pointer; }
+.coach-composer button svg { width: 18px; height: 18px; }
+.coach-composer button:disabled { background: rgb(var(--ov-rgb) / .08); color: var(--muted); cursor: not-allowed; }
+.coach-error { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; background: rgba(239, 94, 94, .12); color: var(--danger-text); font-size: 12px; }
+.coach-disclaimer { margin: 8px 0 0; color: var(--muted); font-size: 11px; text-align: center; }
+.coach-disclaimer kbd { padding: 0 4px; border: 1px solid var(--border-strong); border-radius: 4px; font: inherit; font-size: 10px; }
 .coach-drawer-enter-active, .coach-drawer-leave-active { transition: opacity .2s ease; }
 .coach-drawer-enter-active .coach-drawer, .coach-drawer-leave-active .coach-drawer { transition: transform .24s cubic-bezier(.22, 1, .36, 1); }
 .coach-drawer-enter-from, .coach-drawer-leave-to { opacity: 0; }
@@ -773,14 +863,15 @@ onUnmounted(() => {
   .coach-launcher { right: 14px; bottom: 14px; }
   .coach-drawer { width: 100vw; }
   .coach-workspace { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
-  .coach-conversations { display: flex; gap: 5px; align-items: center; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); }
-  .conversation-label { flex: 0 0 auto; padding: 0 5px; }
-  .conversation-row { flex: 0 0 160px; margin: 0; }
+  .coach-conversations { display: flex; gap: 6px; align-items: center; padding: 10px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+  .conversation-label { flex: 0 0 auto; margin: 0 !important; padding: 0 4px; }
+  .conversation-row, .moment-row { flex: 0 0 200px; margin: 0; }
   .conversation-delete { opacity: 1; }
-  .coach-message { max-width: 92%; }
-  .coach-header { padding: 15px; }
-  .coach-header h2 { font-size: 17px; }
-  .coach-thread { padding: 15px; }
+  .coach-context-link { display: none; }
+  .coach-header { padding: 10px 12px; }
+  .coach-thread { padding: 18px 16px; }
+  .coach-composer-wrap { padding: 8px 12px 12px; }
+  .coach-message.is-user .coach-message-body { max-width: 88%; }
   .coach-progress { padding: 12px; }
   .coach-progress-heading { gap: 8px; }
   .coach-progress-state { font-size: 8px; }

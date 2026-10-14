@@ -213,6 +213,22 @@ def compare_ride_to_workout(streams: Any, workout: dict, ftp_watts: float) -> di
         if signal else None
     )
     verdict = _verdict(ratio)
+    # Every planned block on the ride's elapsed clock, so the trace can show the workout behind it.
+    ride_end = segments[-1].end
+    timeline = [
+        {
+            "kind": block["kind"],
+            "label": block["label"],
+            "start_s": round(origin + block["start"], 1),
+            "end_s": round(min(origin + block["end"], ride_end), 1),
+            "low_fraction": block["low"],
+            "high_fraction": block["high"],
+            "low_watts": round(block["low"] * ftp_watts),
+            "high_watts": round(block["high"] * ftp_watts),
+        }
+        for block in blocks
+        if origin + block["start"] < ride_end
+    ]
     return {
         "status": "available",
         "verdict": verdict,
@@ -224,6 +240,7 @@ def compare_ride_to_workout(streams: Any, workout: dict, ftp_watts: float) -> di
         "start_offset_min": round(offset / 60, 1),
         "alignment": round(alignment, 2),
         "blocks": graded,
+        "timeline": timeline,
     }
 
 

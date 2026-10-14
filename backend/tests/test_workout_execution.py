@@ -51,6 +51,23 @@ class CompareRideTests(unittest.TestCase):
         self.assertAlmostEqual(result["ratio"], 0.85, delta=0.02)
         self.assertAlmostEqual(result["start_offset_min"], 3.0, delta=0.1)
 
+    def test_timeline_places_every_planned_block_on_the_ride_clock(self):
+        streams = _ride_streams("sweet-spot-3x10", lead_in_s=180)
+        result = compare_ride_to_workout(streams, self.workout, FTP)
+        timeline = result["timeline"]
+        self.assertEqual(len(timeline), len(_timeline(self.workout["steps"])))
+        self.assertAlmostEqual(timeline[0]["start_s"], 180, delta=10)
+        work = [block for block in timeline if block["kind"] == "work"]
+        self.assertEqual(len(work), 3)
+        self.assertEqual(work[0]["low_watts"], 215)
+        self.assertAlmostEqual(work[0]["end_s"] - work[0]["start_s"], 600, delta=1)
+
+    def test_timeline_stops_where_the_ride_stops(self):
+        streams = _ride_streams("sweet-spot-3x10", stop_after_s=(12 + 10 + 5 + 2) * 60)
+        result = compare_ride_to_workout(streams, self.workout, FTP)
+        last = result["timeline"][-1]
+        self.assertLessEqual(last["end_s"], (12 + 10 + 5 + 2) * 60)
+
     def test_stopping_early_marks_blocks_not_ridden(self):
         # Warm-up (12 min) + first block + recovery, then stop.
         streams = _ride_streams("sweet-spot-3x10", stop_after_s=(12 + 10 + 5 + 2) * 60)

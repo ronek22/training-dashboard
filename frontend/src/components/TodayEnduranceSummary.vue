@@ -13,12 +13,18 @@
             <stop v-for="(stop, index) in profile.hrStops" :key="index" :offset="stop.offset" :style="{ stopColor: stop.color }" />
           </linearGradient>
         </defs>
+        <g v-for="block in profile.plan" :key="block.start" class="ride-plan-block" :class="`is-${block.kind}`">
+          <rect :x="block.x" y="0" :width="block.width" :height="PH" class="ride-plan-band" :style="{ fill: block.color }" />
+          <rect :x="block.x" :y="PH - 4" :width="Math.max(block.width - 2, 1)" height="4" :style="{ fill: block.color }" />
+          <title>{{ block.title }}</title>
+        </g>
         <path v-if="profile.elevation" :d="profile.elevation" fill="url(#ride-elevation)" />
         <polyline :points="profile.hr" class="ride-hr-line" />
       </svg>
       <figcaption>
         <span class="ride-legend"><i class="is-hr"></i>Heart rate, coloured by zone</span>
         <span v-if="profile.elevation" class="ride-legend"><i class="is-elevation"></i>Elevation</span>
+        <span v-if="profile.plan.length" class="ride-legend"><i class="is-plan"></i>Planned blocks · {{ detail.workout_execution.workout_name }}</span>
         <span class="ride-axis">{{ profile.startLabel }} – {{ profile.endLabel }}</span>
       </figcaption>
     </figure>
@@ -46,6 +52,8 @@ const POWER_ZONES = [
   { max: 1.2, name: 'VO2max' },
   { max: 1.5, name: 'Anaerobic' },
 ]
+
+const PLAN_KIND = { warmup: 'Warm-up', cooldown: 'Cool-down', recovery: 'Recovery', steady: 'Steady' }
 
 const activity = computed(() => props.detail.activity || {})
 const summary = computed(() => props.detail.analysis?.context?.summary_stats || {})
@@ -151,7 +159,33 @@ const profile = computed(() => {
     const points = altitude.points.map((point) => `${((point.x / aEnd) * PW).toFixed(1)},${(PH - ((point.y - aLow) / aRange) * PH * 0.55).toFixed(1)}`)
     elevation = `M0,${PH} L${points.join(' L')} L${PW},${PH} Z`
   }
+  // Planned workout blocks come on the elapsed clock; the trace runs on moving time.
+  const execution = props.detail.workout_execution
+  const timeline = execution?.status === 'available' ? execution.timeline || [] : []
+  const movingX = (elapsedS) => {
+    const minute = elapsedS / 60
+    const point = heart.points.reduce((best, item) => (Math.abs((item.t ?? item.x) - minute) < Math.abs((best.t ?? best.x) - minute) ? item : best), heart.points[0])
+    return (point.x / endX) * PW
+  }
+  const workTotal = timeline.filter((block) => block.kind === 'work').length
+  let workIndex = 0
+  const plan = timeline.map((block) => {
+    const x = movingX(block.start_s)
+    const fraction = (block.low_fraction + block.high_fraction) / 2
+    const zone = POWER_ZONES.findIndex((item) => fraction <= item.max)
+    const watts = block.low_watts === block.high_watts ? `${block.low_watts} W` : `${block.low_watts}–${block.high_watts} W`
+    const name = block.kind === 'work' ? `${block.label || 'Interval'} ${++workIndex}/${workTotal}` : (block.label || PLAN_KIND[block.kind] || 'Block')
+    return {
+      kind: block.kind,
+      start: block.start_s,
+      x,
+      width: Math.max(movingX(block.end_s) - x, 1),
+      color: ZONE_COLORS[zone === -1 ? ZONE_COLORS.length - 1 : zone],
+      title: `${name} · ${watts} · ${Math.round((block.end_s - block.start_s) / 60)} min`,
+    }
+  })
   return {
+    plan,
     hr: heart.points.map((point) => `${((point.x / endX) * PW).toFixed(1)},${hrY(point.y).toFixed(1)}`).join(' '),
     hrStops,
     elevation,
@@ -172,5 +206,8 @@ const profile = computed(() => {
 .ride-legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
 .ride-legend .is-hr { background:linear-gradient(90deg, #8b9bb4, #3b82f6, oklch(from #22c55e calc(l - var(--dim-l)) c h), oklch(from #eab308 calc(l - var(--dim-l)) c h), #ef4444); }
 .ride-legend .is-elevation { height: 8px; background: color-mix(in srgb, var(--accent) 30%, transparent); }
+.ride-plan-band { opacity: 0.06; }
+.ride-plan-block.is-work .ride-plan-band { opacity: 0.13; }
+.ride-legend .is-plan { height: 8px; opacity: 0.7; background: linear-gradient(90deg, #3b82f6 0 33%, #22c55e 33% 66%, #f97316 66%); }
 .ride-axis { margin-left: auto; font-variant-numeric: tabular-nums; }
 </style>

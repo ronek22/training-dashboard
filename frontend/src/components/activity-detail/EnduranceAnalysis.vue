@@ -45,9 +45,10 @@
             <strong class="chart-readout" :class="{'is-idle':!cockpitHoverState}">{{ chartReadout }}</strong>
           </header>
           <div class="chart-controls">
-            <div v-if="compareOptions.length || elevationChart" class="compare-chips" role="group" aria-label="Compare with">
+            <div v-if="compareOptions.length || elevationChart || planBlocks.length" class="compare-chips" role="group" aria-label="Compare with">
               <span>Compare</span>
               <button v-for="chart in compareOptions" :key="chart.key" type="button" :class="[`is-${chart.key}`,{'is-active':compareChart?.key===chart.key}]" :aria-pressed="compareChart?.key===chart.key" @click="toggleCompare(chart.key)"><i></i>{{ chart.label }}</button>
+              <button v-if="planBlocks.length" type="button" class="is-plan" :class="{'is-active':showPlan}" :aria-pressed="showPlan" :title="`Planned blocks from ${detail.workout_execution.workout_name}`" @click="togglePlan"><i></i>Plan</button>
               <button v-if="elevationChart" type="button" class="is-elevation" :class="{'is-active':showElevation}" :aria-pressed="showElevation" title="Elevation profile behind the trace" @click="toggleElevation"><i></i>Elevation</button>
             </div>
             <p class="chart-note"><span v-if="compareChart" class="chart-legend" :title="`${activeChart.label} on the left axis, ${compareChart.label} on the right`"><b :class="`is-${activeChart.key}`">{{ activeChart.unit }}</b> left · <b :class="`is-${compareChart.key}`">{{ compareChart.unit }}</b> right</span><span v-else :title="chartNoteDetail(activeChart)">{{ chartNote(activeChart) }}</span></p>
@@ -61,6 +62,10 @@
                 <text v-for="tick in activeChart.xTicks" :key="`x-${tick.minute}`" :x="tick.x" :y="plot.bottom + 17" text-anchor="middle">{{ tick.label }}</text>
                 <text :x="plot.right" :y="plot.bottom + 17" text-anchor="end" class="axis-caption">{{ activeChart.axis === 'moving' ? 'moving time' : 'time' }}</text>
               </g>
+              <g v-if="planLayer" class="plan-layer">
+                <g v-for="band in planLayer.bands" :key="`plan-${band.start_s}`" :class="[`zone-tone-${band.zone}`,`is-${band.kind}`,{'is-current':band===hoverBlock}]"><rect :x="band.x1" :y="plot.top" :width="band.width" :height="plot.bottom - plot.top" class="plan-band"/><rect :x="band.x1" :y="plot.bottom - 4" :width="Math.max(band.width - 1, 1)" height="4" class="plan-strip"/></g>
+                <polyline v-if="planLayer.target" :points="planLayer.target" fill="none" class="plan-target"/>
+              </g>
               <g v-if="effortRange(activeChart)"><rect :x="effortRange(activeChart).x1" :y="plot.top" :width="effortRange(activeChart).width" :height="plot.bottom - plot.top" class="effort-band"/><line :x1="effortRange(activeChart).x1" :y1="plot.top" :x2="effortRange(activeChart).x1" :y2="plot.bottom" class="effort-edge"/><line :x1="effortRange(activeChart).x2" :y1="plot.top" :x2="effortRange(activeChart).x2" :y2="plot.bottom" class="effort-edge"/><text v-if="effortBandLabel" :x="effortBandLabel.x" :y="plot.top + 14" :text-anchor="effortBandLabel.anchor" class="effort-band-label">{{ effortBandLabel.text }}</text></g>
               <g v-for="pause in pauseMarks(activeChart)" :key="`pause-${pause.x}`" class="pause-mark"><line :x1="pause.px" :y1="plot.top" :x2="pause.px" :y2="plot.bottom"/><title>Paused {{ seconds(pause.duration_s) }} at {{ elapsed(pause.elapsed_min) }} elapsed — removed from the trace</title></g>
               <polygon v-if="elevationBackdrop" :points="elevationBackdrop.areaPoints" class="elevation-backdrop" />
@@ -71,7 +76,7 @@
               <g v-if="activeChart.avgLine" class="ref-line is-avg"><line :x1="plot.left" :y1="activeChart.avgLine.y" :x2="plot.right" :y2="activeChart.avgLine.y"/><rect :x="plot.left - 50" :y="activeChart.avgLine.y - 9" width="46" height="18" rx="5"/><text :x="plot.left - 27" :y="activeChart.avgLine.y + 4" text-anchor="middle">{{ activeChart.avgLine.short }}</text><title>Session average {{ activeChart.avgLine.label }}</title></g>
               <g v-if="cockpitHoverState"><line :x1="cockpitHoverState.x" :y1="plot.top" :x2="cockpitHoverState.x" :y2="plot.bottom" class="hover-guide"/><circle v-if="overlayHoverState" :cx="overlayHoverState.x" :cy="overlayHoverState.y" r="4.5" class="hover-dot is-overlay" :class="`is-${compareChart.key}`"/><circle :cx="cockpitHoverState.x" :cy="cockpitHoverState.y" r="5" class="hover-dot"/></g>
             </svg>
-            <div v-if="cockpitHoverState" class="chart-tooltip" :style="tooltipStyle(cockpitHoverState)"><span>{{ elapsed(cockpitHoverState.minute) }}</span><strong>{{ formatChart(cockpitHoverState.rawValue, activeChart) }}</strong><strong v-if="overlayHoverState" class="is-overlay" :class="`is-${compareChart.key}`">{{ formatChart(overlayHoverState.rawY, compareChart) }}</strong><em v-if="elevationHoverState">{{ formatChart(elevationHoverState.rawY, elevationChart) }} elev</em></div>
+            <div v-if="cockpitHoverState" class="chart-tooltip" :style="tooltipStyle(cockpitHoverState)"><span>{{ elapsed(cockpitHoverState.minute) }}</span><strong>{{ formatChart(cockpitHoverState.rawValue, activeChart) }}</strong><strong v-if="overlayHoverState" class="is-overlay" :class="`is-${compareChart.key}`">{{ formatChart(overlayHoverState.rawY, compareChart) }}</strong><em v-if="hoverBlock" class="plan-tip">{{ hoverBlock.title }}</em><em v-if="elevationHoverState">{{ formatChart(elevationHoverState.rawY, elevationChart) }} elev</em></div>
           </div>
           <p class="sr-only">{{ chartSummary(activeChart) }}</p>
         </article>
@@ -263,6 +268,40 @@ const elevationBackdrop = computed(() => {
   const range = chartRange(chart), last = maxMinute(chart), { top, bottom } = plot.value, floor = top + (bottom - top) * 0.35
   const line = chart.points.map(p => `${plotX(p.x, last)},${chartY(p.y, range, floor, bottom)}`)
   return { areaPoints: `${plotX(chart.points[0].x, last)},${bottom} ${line.join(' ')} ${plotX(chart.points[chart.points.length - 1].x, last)},${bottom}` }
+})
+// Planned workout blocks, lined up with the ride on the backend, drawn behind the trace.
+const showPlan = ref(readPref('activity-chart-plan', '1') === '1')
+const togglePlan = () => { showPlan.value = !showPlan.value; writePref('activity-chart-plan', showPlan.value ? '1' : '0') }
+const planZone = fraction => fraction < 0.56 ? 'zone1' : fraction < 0.76 ? 'zone2' : fraction < 0.91 ? 'zone3' : fraction < 1.06 ? 'zone4' : 'zone5'
+const PLAN_KIND = { warmup: 'Warm-up', cooldown: 'Cool-down', recovery: 'Recovery', steady: 'Steady', work: 'Interval' }
+const planBlocks = computed(() => {
+  const execution = props.detail.workout_execution
+  if (execution?.status !== 'available' || !execution.timeline?.length) return []
+  const workTotal = execution.timeline.filter(block => block.kind === 'work').length
+  let workIndex = 0
+  return execution.timeline.map(block => {
+    const watts = block.low_watts === block.high_watts ? `${block.low_watts} W` : `${block.low_watts}–${block.high_watts} W`
+    const name = block.kind === 'work' ? `${block.label || PLAN_KIND.work} ${++workIndex}/${workTotal}` : (block.label || PLAN_KIND[block.kind] || 'Block')
+    return { ...block, zone: planZone((block.low_fraction + block.high_fraction) / 2), title: `${name} · ${watts} · ${seconds(block.end_s - block.start_s)}` }
+  })
+})
+const planLayer = computed(() => {
+  const chart = activeChart.value
+  if (!showPlan.value || !chart || !planBlocks.value.length) return null
+  const range = chart.key === 'watts' ? chartRange(chart) : null
+  const yFor = watts => plotY(Math.min(Math.max(watts, range.min), range.max), range)
+  const target = []
+  const bands = planBlocks.value.map(block => {
+    const x1 = closestElapsed(chart, block.start_s / 60).x, x2 = closestElapsed(chart, block.end_s / 60).x
+    if (range) target.push(`${x1},${yFor(block.low_watts)}`, `${x2},${yFor(block.high_watts)}`)
+    return { ...block, x1, width: Math.max(x2 - x1, 1) }
+  })
+  return { bands, target: target.join(' ') }
+})
+const hoverBlock = computed(() => {
+  const elapsedMin = cockpitHoverState.value?.rawElapsed
+  if (!planLayer.value || elapsedMin == null) return null
+  return planLayer.value.bands.find(band => band.start_s <= elapsedMin * 60 && elapsedMin * 60 < band.end_s) || null
 })
 const toggleCompare = key => { compareKey.value = compareKey.value === key ? '' : key; writePref('activity-chart-compare', compareKey.value) }
 const toggleElevation = () => { showElevation.value = !showElevation.value; writePref('activity-chart-elevation', showElevation.value ? '1' : '0') }
@@ -499,6 +538,10 @@ onBeforeUnmount(() => { window.removeEventListener('themechange', syncMapTheme);
 .compare-chips button:hover{color:var(--text);border-color:rgb(var(--ov-rgb) / .28)}
 .compare-chips button.is-active{border-style:solid;border-color:color-mix(in srgb,var(--series) 55%,transparent);background:color-mix(in srgb,var(--series) 12%,transparent);color:var(--text)}
 .compare-chips button.is-active i{opacity:1}
+.compare-chips .is-plan{--series:oklch(from #ff8b3d calc(l - var(--dim-l)) c h)}.compare-chips .is-plan i{height:8px;border-radius:2px}
+.plan-layer{pointer-events:none}.plan-band{fill:var(--zone-color);opacity:.05}.is-work .plan-band{opacity:.11}.is-current .plan-band{opacity:.18}.plan-strip{fill:var(--zone-color);opacity:.85}
+.plan-target{stroke:rgb(var(--ov-rgb) / .55);stroke-width:1.25;stroke-dasharray:5 4}
+.chart-tooltip .plan-tip{color:var(--text-soft);font-style:normal}
 .compare-chips .is-elevation{--series:rgb(var(--ov-rgb) / .5)}.compare-chips .is-elevation i{height:8px;border-radius:2px 2px 0 0}
 .chart-legend{white-space:nowrap}.chart-legend b{color:var(--series);font-weight:700}
 .cockpit-chart-panel .is-pace,.compare-chips .is-pace,.chart-legend .is-pace{--series:oklch(from #34d399 calc(l - var(--dim-l)) c h)}

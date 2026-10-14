@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-13T13:07:00+02:00",
-  "summary": "On-demand review requested in chat. Read the 26 existing proposals, the roadmap's open threads, current-state notes on mountain trip days and return from illness, life-load, lift volume, the workout runner's warm-up sets, weather, and the Docker data mount. Four new proposals: a re-entry week after the Oct 19–25 mountain trip (mountain days are handled, the days after are not), automatic SQLite backups (data/training.db has no backup), a season-in-review recap for the end of the year, and a plate-loading helper in the workout runner. Open threads (lift/ride clash, legs every week, winter arc, data-quality inbox) were left as they are. Source and documentation review only; no tests were run and no training records were read.",
+  "reviewed_at": "2026-10-14T14:38:16+02:00",
+  "summary": "Reviewed recent commits and working-tree summaries, current-state documentation, roadmap index and its open threads, archived V3 scope and Sprint 39. Reviewed the four newly added proposals and verified the prior 26 are unchanged. Inspected season-history aggregation, same-date comparison helpers and synthetic test declarations, plus history-backfill status and retry code. The roadmap now has no active version; the Ideas board and explicit open threads guide new work. Season comparison is already implemented, while backups, mountain re-entry, plate loading and shopping lists already have proposals. No sufficiently distinct new proposal was selected. Source/documentation review only; no application tests or model calls were run, and no credentials, databases or private training records were opened.",
   "ideas": [
     {
       "id": "dependable-project-checks",

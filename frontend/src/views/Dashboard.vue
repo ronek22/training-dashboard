@@ -43,6 +43,7 @@
             <li v-for="driver in readinessScore.drivers" :key="driver">{{ driver }}</li>
           </ul>
           <p v-if="illnessReturnHint" class="swap-hint" :class="`score-${illnessReturn.lingering_symptoms || illnessReturn.hard_sessions.length ? 'red' : 'amber'}`">{{ illnessReturnHint }}</p>
+          <p v-if="mountainReentryHint" class="swap-hint score-amber">{{ mountainReentryHint }}</p>
           <p v-if="swapHint" class="swap-hint" :class="`score-${readinessScore.level}`">{{ swapHint }} <router-link to="/plan">Open plan</router-link></p>
           <p v-if="sleepDebtHint" class="swap-hint" :class="`score-${readinessScore.sleep_debt.status === 'risk' ? 'red' : 'amber'}`">{{ sleepDebtHint }} <router-link to="/metrics?view=recovery">Sleep trend</router-link></p>
           <p v-if="rampWarning" class="ramp-warning" :class="`ramp-${ramp.status}`">{{ rampWarning }}</p>
@@ -270,6 +271,15 @@ const illnessReturnHint = computed(() => {
   const hardText = hard ? ` ${new Date(`${hard.date}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} was RPE ${hard.rpe}: too hard this soon.` : ''
   const symptoms = state.lingering_symptoms ? ' Symptoms are still in your notes.' : ''
   return `${state.headline}: ${state.phase_label.toLowerCase()}, RPE ≤${state.rpe_cap} until ${until}.${symptoms}${hardText}`
+})
+// The days after a mountain trip: easy rides first, leg lifts at pre-trip loads.
+const mountainReentry = computed(() => dashboard.value?.mountain_reentry || null)
+const mountainReentryHint = computed(() => {
+  const state = mountainReentry.value
+  if (!state || sickMode.value.active) return ''
+  const until = new Date(`${state.ends_on}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+  const rides = state.phase === 'easy' ? 'easy rides only' : 'moderate rides, no intervals'
+  return `${state.headline}: ${rides}, RPE ≤${state.rpe_cap} until ${until}. Leg lifts at pre-trip loads; upper body as normal.`
 })
 const sickModeStarting = ref(false)
 const startSickMode = async () => {

@@ -236,6 +236,11 @@ follow it on Mountains days: one hike per day, no rides or runs, and the lift
 anchor kept with no-equipment Travel kit sessions. When get_recent_context
 shows illness_return, keep every session before window_ends_on within its
 rpe_cap: no quality rides, intervals, max lifts or 90+ minute sessions yet.
+When get_recent_context shows mountain_reentry, the athlete is just back from
+a hiking trip: keep sessions before window_ends_on within its rpe_cap, with
+no intervals, tempo or quality rides, and if both windows are open the lower
+rpe_cap wins. Lifts stay (anchor goal): no extra leg sets, and the first
+lower-body lift repeats pre-trip loads with 2+ reps in reserve.
 get_recent_context includes plan_follow_through (what happened to planned sessions over recent weeks):
 when quality_rides shows a weekly goal that recent plans rarely included,
 plan that session; put key sessions (quality rides, lower-body lifts) on

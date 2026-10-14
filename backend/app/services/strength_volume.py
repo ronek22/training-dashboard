@@ -18,6 +18,7 @@ from typing import Any, Optional
 from .muscle_gain import MUSCLE_GROUPS, TARGET_SETS_MAX, TARGET_SETS_MIN, muscle_groups_for
 from .illness_return import illness_return_dates
 from .life_load import mountain_dates
+from .mountain_reentry import mountain_reentry_dates
 from .settings import get_modality_restrictions_for_conn, protected_area_for_exercise
 from .sick_mode import sick_dates
 from .strength_progression import _max_dumbbell_kg, _normalize, _session_index, _working_sets, latest_next_steps, plan_next_step
@@ -157,6 +158,8 @@ def build_lift_volume(
     sick = sick_dates(conn) | illness_return_dates(conn, today)
     mountains = mountain_dates(conn, week_start, week_end)
     hiking_covers_legs = len(mountains) >= HIKING_DAYS_FOR_LEGS
+    # Back from a mountain trip: legs are still tired, so no leg sets are added in the window.
+    reentry = mountain_reentry_dates(conn, today)
     try:
         body_areas = get_modality_restrictions_for_conn(conn).get("body_areas") or []
     except sqlite3.OperationalError:
@@ -207,7 +210,7 @@ def build_lift_volume(
         remaining = deficits[group]
         # Days that already train the group take the extra sets first, as more sets of a familiar lift.
         ordered = sorted(
-            open_days,
+            [item for item in open_days if not (group == "legs" and item[0]["date"] in reentry)],
             key=lambda item: (not any(group in muscle_groups_for(exercise["exercise_name"]) for exercise in item[1]), item[0]["date"]),
         )
         for index, (day, exercises) in enumerate(ordered):

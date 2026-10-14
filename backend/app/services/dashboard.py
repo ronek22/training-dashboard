@@ -10,6 +10,7 @@ from .ftp import ftp_on
 from .downshift import build_downshift, downshift_coaching_context
 from .guided_sessions import guided_completion_dates, reconcile_guided_session_activities
 from .illness_return import build_illness_return, illness_return_coaching_context
+from .mountain_reentry import build_mountain_reentry, mountain_reentry_coaching_context
 from .sick_mode import build_sick_mode, sick_mode_coaching_context
 from .volume_trend import build_volume_trend
 from .plan_follow_through import plan_follow_through_coaching_context
@@ -1166,6 +1167,7 @@ def build_recent_context(
         "return_to_run": build_return_to_run_context(conn),
         "sick_mode": sick_mode_coaching_context(conn),
         "illness_return": illness_return_coaching_context(conn),
+        "mountain_reentry": mountain_reentry_coaching_context(conn),
         "downshift": downshift_coaching_context(conn),
         "life_load": life_load_coaching_context(conn),
         "nutrition": nutrition_coaching_context(conn),
@@ -1367,6 +1369,7 @@ def build_dashboard_data(
         "volume_trend": build_volume_trend(conn),
         "sick_mode": build_sick_mode(conn),
         "illness_return": build_illness_return(conn),
+        "mountain_reentry": build_mountain_reentry(conn),
         "downshift": build_downshift(conn),
         "training_load": training_load,
         "relative_effort": build_relative_effort(conn),

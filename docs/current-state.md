@@ -262,6 +262,17 @@ Implemented foundations:
 - Briefs: hike days get a hike brief (fuel, water, a descent and knee bail rule, "counts as leg work"). Strength days titled "Travel kit" get a bodyweight brief, and Today's main button opens the guided session.
 - Coach: `life_load.mountains_guidance` in `get_recent_context` when a trip is ahead. The planning prompt tells the coach to plan one hike a day, no rides or runs, and Travel kit lifts.
 
+### Back from the mountains
+
+2026-10-14: `services/mountain_reentry.py` opens a re-entry window when a run of 3+ consecutive Mountains days ends. The window starts the day after the last one and lasts about half the trip: 3–4 days → 2, 5–6 → 3, 7+ → 4 (cap). Shorter runs open none. The first day (or the first 2 in a 3–4 day window) is "easy only" (RPE ≤4, easy rides). The rest is "moderate" (RPE ≤6), still with no intervals.
+
+- Briefs: rides, runs and hikes are capped at the window's RPE; quality rides get "ride it as endurance" as the first bail rule. Lower-body lifts (intent `strength_lower`, or legs in the saved workout) get 2+ reps in reserve and a "pre-trip loads" note. Upper-body and Travel kit lifts are untouched. With an illness-return window open too, the lower RPE cap wins.
+- Loads (`services/progression_guard.py`, rule 5): inside the window, a leg lift last logged before the trip ends stays at that load. Once it has been done after the trip, it progresses as usual.
+- Lift volume: no leg accessory sets on window days. Other groups still get their top-up, and no lift session is removed or shortened.
+- Readiness: a "Back from the mountains" factor (caution, 1 point) and a hint in the readiness panel.
+- Coach: `mountain_reentry` is in the dashboard payload and `get_recent_context`. The planning prompt keeps sessions within `rpe_cap` until `window_ends_on`, with no extra leg sets and the first leg lift at pre-trip loads.
+- Verified with 9 re-entry tests (trip lengths, a trip ending on a Sunday, overlap with return from illness), plus 1 progression-guard and 1 lift-volume test. `just check`: 814 backend, 59 helper and 145 frontend tests, plus the build. Not checked against live data.
+
 ### Return from illness
 
 2026-10-09: `services/illness_return.py` covers the days after sick mode ends. The window lasts as long as the sickness did (3–7 days). It stretches to 3 days after the last feedback or check-in note that mentions symptoms (English or Polish), up to 14 days. The first half is "easy only" (RPE ≤5, lifts at 3+ reps in reserve). Any day with symptoms noted in the last 2 days is also easy only. The rest of the window is "moderate" (RPE ≤7, no intervals or max lifts). Sessions rated RPE 8+ inside the window are named.

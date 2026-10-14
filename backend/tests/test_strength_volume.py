@@ -45,6 +45,7 @@ class LiftVolumeTests(unittest.TestCase):
         self.sick = set()
         self.returning = set()
         self.mountains = set()
+        self.reentry = set()
         self.patches = [
             patch.object(strength_volume, "_session_index", lambda conn: self.sessions),
             patch.object(strength_volume, "latest_next_steps", lambda conn: {}),
@@ -52,6 +53,7 @@ class LiftVolumeTests(unittest.TestCase):
             patch.object(strength_volume, "sick_dates", lambda conn: self.sick),
             patch.object(strength_volume, "illness_return_dates", lambda conn, today=None: self.returning),
             patch.object(strength_volume, "mountain_dates", lambda conn, start, end: self.mountains),
+            patch.object(strength_volume, "mountain_reentry_dates", lambda conn, today=None: self.reentry),
         ]
         for item in self.patches:
             item.start()
@@ -161,6 +163,17 @@ class LiftVolumeTests(unittest.TestCase):
         self.assertIn("Hiking covers legs", volume["summary"])
         self.assertEqual(self._additions(volume, "2026-10-08"), [])
         self.assertEqual(self._additions(volume, "2026-10-09"), [])
+
+    def test_back_from_the_mountains_adds_no_leg_sets_inside_the_window(self):
+        self.reentry = {"2026-10-08", "2026-10-09"}
+        days = [_day("2026-10-08", "Workout A"), _day("2026-10-09", "Workout B"), _day("2026-10-10", "Workout C")]
+        volume = self._build(days)
+
+        for inside in ("2026-10-08", "2026-10-09"):
+            self.assertNotIn("legs", {item["group"] for item in self._additions(volume, inside)})
+        self.assertTrue(self._additions(volume, "2026-10-08"), "other groups still get their top-up")
+        self.assertIn("legs", {item["group"] for item in self._additions(volume, "2026-10-10")})
+        self.assertEqual(len(volume["days"]), 3)
 
     def test_reports_shortfall_when_no_lift_days_remain(self):
         volume = build_lift_volume(self.conn, [_day("2026-10-06", "Workout A")], WEEK_START, today=TODAY)

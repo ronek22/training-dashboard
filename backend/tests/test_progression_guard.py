@@ -21,9 +21,10 @@ def _rating(day, finish=None, **counts):
 
 
 class ProgressionGuardTests(unittest.TestCase):
-    def guard(self, names, lifts, steps, ratings=None, tagged=None):
+    def guard(self, names, lifts, steps, ratings=None, tagged=None, reentry=None):
         with mock.patch.object(progression_guard, "latest_ratings", return_value=ratings or {}), \
-                mock.patch.object(progression_guard, "get_life_load_days", return_value=tagged or {}):
+                mock.patch.object(progression_guard, "get_life_load_days", return_value=tagged or {}), \
+                mock.patch.object(progression_guard, "build_mountain_reentry", return_value=reentry):
             return progression_guard.guard_steps(None, names, lifts, steps, TODAY)
 
     def test_grinding_or_broken_form_holds_or_goes_back_to_the_finishing_load(self):
@@ -60,6 +61,18 @@ class ProgressionGuardTests(unittest.TestCase):
         result = self.guard(["A"], [_lift("2026-10-12", 60, 8)], [_step(62.5, 8)], tagged=tagged)
         self.assertEqual((result[0]["target_weight_kg"], result[0]["held"]), (60, "life_load"))
         self.assertIn("Deadline today", result[0]["hint"])
+
+    def test_back_from_the_mountains_holds_leg_lifts_last_done_before_the_trip(self):
+        reentry = {"trip": {"end_date": "2026-10-12"}}
+        names = ["Back Squat", "Romanian Deadlift", "Dumbbell Bench Press"]
+        lifts = [_lift("2026-10-05", 75, 6), _lift("2026-10-13", 75, 8), _lift("2026-10-05", 24)]
+        steps = [_step(77.5, 6), _step(77.5, 8), _step(26)]
+        result = self.guard(names, lifts, steps, reentry=reentry)
+
+        self.assertEqual((result[0]["target_weight_kg"], result[0]["held"]), (75, "mountain_reentry"))
+        self.assertIn("Back from the mountains", result[0]["hint"])
+        self.assertEqual(result[1]["target_weight_kg"], 77.5, "a leg lift already done after the trip progresses")
+        self.assertEqual(result[2]["target_weight_kg"], 26, "upper body goes on as normal")
 
 
 if __name__ == "__main__":

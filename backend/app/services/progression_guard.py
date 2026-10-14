@@ -11,6 +11,7 @@ workout's progressed targets and holds load when:
 3. More than ``MAX_LOAD_STEPS`` lifts would go up in one session: the rest hold, lifts rated
    easy go first. One or two changes at a time keep a hard day from turning into a slog.
 4. The day is tagged in life load (deadline, poor sleep, travel, ...): no lift goes up.
+5. Back from a mountain trip: leg lifts last done before the trip stay at their pre-trip loads.
 """
 from __future__ import annotations
 
@@ -19,6 +20,8 @@ from datetime import date
 from typing import Optional
 
 from .life_load import get_life_load_days
+from .mountain_reentry import build_mountain_reentry
+from .muscle_gain import muscle_groups_for
 from .set_effort import latest_ratings
 from .strength_progression import _fmt, _normalize
 
@@ -67,6 +70,14 @@ def guard_steps(conn: sqlite3.Connection, names: list[str], lifts: list[Optional
         if step and top and rating and lift and rating["date"] == lift["date"]:
             step = _by_feel(name, step, top, rating)
         result.append(step)
+
+    reentry = build_mountain_reentry(conn, today)
+    if reentry:
+        trip_end = reentry["trip"]["end_date"]
+        for index, (name, lift, step) in enumerate(zip(names, lifts, result)):
+            if "legs" in muscle_groups_for(name) and lift and lift["date"] <= trip_end and _rises(step, _top(lift)):
+                top = _top(lift)
+                result[index] = _held(step, top, f"Back from the mountains: {_fmt(top)} kg like before the trip, 2+ reps in reserve.", "mountain_reentry")
 
     tagged = get_life_load_days(conn, today.isoformat(), today.isoformat()).get(today.isoformat())
     busy = tagged and [label for tag, label in zip(tagged["tags"], tagged["labels"]) if tag != "mountains"]

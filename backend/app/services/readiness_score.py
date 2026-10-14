@@ -5,6 +5,7 @@ from typing import Optional
 
 from .checkins import latest_daily_checkin
 from .illness_return import build_illness_return, illness_return_readiness_factor
+from .mountain_reentry import build_mountain_reentry, mountain_reentry_readiness_factor
 from .life_load import life_load_readiness_factor
 from .sick_mode import get_active_sick_period
 from .health_data import get_health_metric_history
@@ -225,6 +226,9 @@ def build_readiness_score(
         illness_return = illness_return_readiness_factor(build_illness_return(conn, today))
         if illness_return:
             factors.insert(0, illness_return)
+    mountain_reentry = mountain_reentry_readiness_factor(build_mountain_reentry(conn, today))
+    if mountain_reentry:
+        factors.append(mountain_reentry)
 
     ratio_status = ((training_load_summary or {}).get("ratio") or {}).get("status")
     form = float(((training_load_summary or {}).get("current") or {}).get("form") or 0)

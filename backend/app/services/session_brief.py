@@ -339,6 +339,18 @@ def _session_effort_notes(day: dict, conn: sqlite3.Connection) -> list[dict]:
         return []
 
 
+def _trains_legs(day: dict, conn: sqlite3.Connection) -> bool:
+    """A lower-body or whole-body lift: by intent, or by legs in its saved workout."""
+    if day.get("workout_intent") == "strength_lower":
+        return True
+    if day.get("workout_intent") == "strength_upper":
+        return False
+    from .muscle_gain import muscle_groups_for
+    from .strength_volume import _day_exercises, _templates_by_name
+
+    return any("legs" in muscle_groups_for(item["exercise_name"]) for item in _day_exercises(day, _templates_by_name(conn)))
+
+
 _TRAVEL_KIT_RE = re.compile(r"travel kit", re.IGNORECASE)
 
 
@@ -476,6 +488,28 @@ def build_session_brief(conn: sqlite3.Connection, day: dict, today: Optional[dat
             reserve = "3+" if illness["phase"] == "easy" else "2+"
             brief["targets"] = [item for item in brief["targets"] if item["label"] != "Reps in reserve"] + [{"label": "Reps in reserve", "value": reserve}]
         brief["bail"].insert(0, "Headache, chest tightness or a racing heart: stop, it is too soon.")
+
+    # Back from the mountains: rides and runs capped, leg lifts held. The stricter cap wins.
+    try:
+        from .mountain_reentry import build_mountain_reentry
+
+        reentry = build_mountain_reentry(conn, today)
+    except sqlite3.OperationalError:
+        reentry = None
+    if reentry:
+        lower = brief["sport"] == "strength" and brief["kind"] != "travel_kit" and _trains_legs(day, conn)
+        if brief["sport"] in ("ride", "run", "hike"):
+            brief["mountain_reentry"] = {"headline": reentry["headline"], "phase": reentry["phase"], "rpe_cap": reentry["rpe_cap"]}
+            if not illness or reentry["rpe_cap"] < illness["rpe_cap"]:
+                brief["feel"] = {**brief["feel"], "rpe": f"≤{reentry['rpe_cap']}"}
+            brief["notes"].insert(0, f"{reentry['headline']}. Keep it at RPE ≤{brief['feel']['rpe'].lstrip('≤')}, no intervals: legs are still paying for the hikes.")
+            if brief["sport"] == "ride" and brief["kind"] not in ("Recovery", "Endurance"):
+                brief["bail"].insert(0, "Ride it as endurance today: skip the work blocks until the window ends.")
+        elif lower:
+            brief["mountain_reentry"] = {"headline": reentry["headline"], "phase": reentry["phase"], "rpe_cap": reentry["rpe_cap"]}
+            brief["notes"].insert(0, f"{reentry['headline']}. Leg lifts at pre-trip loads with 2+ reps in reserve; every set still counts.")
+            if not illness:
+                brief["targets"] = [item for item in brief["targets"] if item["label"] != "Reps in reserve"] + [{"label": "Reps in reserve", "value": "2+"}]
 
     family = {"ride": "ride_quality" if brief["kind"] in ("Tempo", "Sweet spot", "Threshold", "VO2 max") else "ride_easy",
               "run": "run", "strength": "strength"}.get(brief["sport"])

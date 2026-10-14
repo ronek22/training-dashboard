@@ -43,7 +43,7 @@
             <li v-for="driver in readinessScore.drivers" :key="driver">{{ driver }}</li>
           </ul>
           <p v-if="illnessReturnHint" class="swap-hint" :class="`score-${illnessReturn.lingering_symptoms || illnessReturn.hard_sessions.length ? 'red' : 'amber'}`">{{ illnessReturnHint }}</p>
-          <p v-if="mountainReentryHint" class="swap-hint score-amber">{{ mountainReentryHint }}</p>
+          <p v-if="mountainReentryHint" class="swap-hint score-amber">{{ mountainReentryHint }} <router-link :to="`/mountains/trips/${mountainReentry.trip.start_date}`">Trip recap</router-link></p>
           <p v-if="stallBlock" class="swap-hint score-block" :title="`${stallBlock.label}: ${stallBlock.text}`">{{ stallBlock.headline }}. <router-link to="/strength">Strength</router-link></p>
           <p v-if="swapHint" class="swap-hint" :class="`score-${readinessScore.level}`">{{ swapHint }} <router-link to="/plan">Open plan</router-link></p>
           <p v-if="sleepDebtHint" class="swap-hint" :class="`score-${readinessScore.sleep_debt.status === 'risk' ? 'red' : 'amber'}`">{{ sleepDebtHint }} <router-link to="/metrics?view=recovery">Sleep trend</router-link></p>

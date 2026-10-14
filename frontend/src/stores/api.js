@@ -81,6 +81,8 @@ export const useApi = () => ({
   getDashboard: () => api.get('/dashboard'),
   getTrailRegions: () => api.get('/trails'),
   getTrailRegion: (region) => api.get(`/trails/${encodeURIComponent(region)}`),
+  getMountainTrips: () => api.get('/trails/trips'),
+  getMountainTrip: (startDate) => api.get(`/trails/trips/${encodeURIComponent(startDate)}`),
   getHikeContext: (activityId) => api.get(`/trails/activity/${encodeURIComponent(activityId)}`),
   getSavedRoutes: (region) => api.get(`/trails/${encodeURIComponent(region)}/saved-routes`),
   createSavedRoute: (region, body) => api.post(`/trails/${encodeURIComponent(region)}/saved-routes`, body),

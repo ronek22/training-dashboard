@@ -620,6 +620,22 @@ const RING = 2 * Math.PI * 34
         </div>
       </section>
 
+      <!-- Mountain trips --------------------------------------------------- -->
+      <section v-if="review.mountain_trips?.length" v-reveal class="block" aria-labelledby="trips-title">
+        <div class="block-head">
+          <h2 id="trips-title">Mountain trips</h2>
+          <span class="muted head-note">Runs of Mountains days, each with its own recap</span>
+        </div>
+        <div class="milestones">
+          <RouterLink v-for="(trip, index) in review.mountain_trips" :key="trip.start_date" :to="trip.url" class="milestone" :style="{ '--tone': 'var(--season-hike)', '--i': index }">
+            <span class="milestone-icon"><ActivityIcon type="Walk" tone="walk" :size="18" /></span>
+            <strong class="milestone-value"><AnimatedNumber :value="trip.ascent_m" :format="whole" :cache-key="`season:${review.year}:trip:${trip.start_date}`" :duration="1600" /></strong>
+            <span class="milestone-unit">m climbed · {{ oneDecimal(trip.distance_km) }} km</span>
+            <span class="milestone-when">{{ day(trip.start_date) }} – {{ day(trip.end_date) }} · {{ trip.hike_days }} hiking day{{ trip.hike_days === 1 ? '' : 's' }}</span>
+          </RouterLink>
+        </div>
+      </section>
+
       <!-- Goals ------------------------------------------------------------ -->
       <section v-if="goals" v-reveal class="block" aria-labelledby="goals-title">
         <div class="block-head">

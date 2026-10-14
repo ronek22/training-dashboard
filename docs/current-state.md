@@ -335,6 +335,16 @@ Every item can be marked as fine (`POST /data-inbox/dismiss {key}`, stored in `d
 - Coach: `mountain_reentry` is in the dashboard payload and `get_recent_context`. The planning prompt keeps sessions within `rpe_cap` until `window_ends_on`, with no extra leg sets and the first leg lift at pre-trip loads.
 - Verified with 9 re-entry tests (trip lengths, a trip ending on a Sunday, overlap with return from illness), plus 1 progression-guard and 1 lift-volume test. `just check`: 814 backend, 59 helper and 145 frontend tests, plus the build. Not checked against live data.
 
+### Mountain trip recap
+
+2026-10-14: `services/mountain_trips.py` turns each run of consecutive Mountains-tagged days into a trip. A run counts once it has a Hike, Walk or TrailRun on one of its days. Each trip has a recap at `/mountains/trips/<first day>` (`GET /trails/trips/{date}`; any day of the trip finds it). `GET /trails/trips` lists past trips newest first, plus tagged runs still ahead with no hikes yet.
+
+- Recap (`views/TripRecap.vue`): count-up totals for distance, ascent (activity elevation) and hours. New trail km, summits and the highest point show when the data exists. New trail and first summits come from the trail coverage, as on the hike page: a section or place counts as new when a trip activity was the first to walk or reach it. A bar shows the trip's share of the calendar year's ascent across all sports.
+- Map: every GPS track of the trip on one relief map, one colour per day. Tracks come from the trail sync (`mountain_tracks`), or from the activity's streams for hikes outside a mapped range. Hovering a day card or a legend chip highlights that day's routes.
+- Day cards: one per trip day, rest days included. Each shows the day's highlight (highest summit, else highest pass or hut, else the longest outing's name, with a "first time" tag), an elevation profile chaining the day's outings (`trails/trip.mjs`), stats and links to the activities.
+- Links: a Trips card on Mountains (coverage view), "Trip recap" on the Dashboard re-entry hint, and a Mountain trips block in Season in review (`mountain_trips` in the review payload).
+- Verified with 5 backend tests (trip detection, upcoming runs, coverage and season share, streams fallback, API and season review) and 2 frontend helper tests. 850 backend and 160 frontend tests pass, and the build passes. Checked in the browser at 1512 px against a scratch copy of the database, with the March Karkonosze hikes tagged as a trip. Live data has no past tagged trip yet; the 19–25 Oct trip is listed as upcoming.
+
 ### Return from illness
 
 2026-10-09: `services/illness_return.py` covers the days after sick mode ends. The window lasts as long as the sickness did (3–7 days). It stretches to 3 days after the last feedback or check-in note that mentions symptoms (English or Polish), up to 14 days. The first half is "easy only" (RPE ≤5, lifts at 3+ reps in reserve). Any day with symptoms noted in the last 2 days is also easy only. The rest of the window is "moderate" (RPE ≤7, no intervals or max lifts). Sessions rated RPE 8+ inside the window are named.

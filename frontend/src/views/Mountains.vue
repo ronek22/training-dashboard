@@ -244,6 +244,21 @@
           </label>
         </section>
 
+        <section v-if="trips.trips.length || trips.upcoming.length" class="card trips-card">
+          <h2 class="card-title">Trips <small>{{ trips.trips.length || '' }}</small></h2>
+          <div class="list trips">
+            <p v-for="t in trips.upcoming" :key="t.start_date" class="trip-row upcoming">
+              <span class="date num">{{ tripRange(t.start_date, t.end_date) }}</span>
+              <span class="grow">Ahead · recap fills in as you hike</span>
+            </p>
+            <router-link v-for="t in trips.trips" :key="t.start_date" :to="t.url" class="trip-row">
+              <span class="date num">{{ tripRange(t.start_date, t.end_date) }}</span>
+              <span class="grow">{{ t.hike_days }} hiking day{{ t.hike_days === 1 ? '' : 's' }}<template v-if="t.ongoing"> · on now</template></span>
+              <span class="num">{{ formatKm(t.distance_km * 1000) }} km · ↑ {{ t.ascent_m }} m</span>
+            </router-link>
+          </div>
+        </section>
+
         <section v-if="placeKinds.length" class="card places-card">
           <h2 class="card-title">Summits &amp; places</h2>
           <div class="kind-tabs" role="tablist" aria-label="Kind of place">
@@ -334,6 +349,7 @@ import { MountainLabels } from '../trails/labelLayer.js'
 import { displayName } from '../trails/labels.mjs'
 import { LENGTHS, formatHours, gpxFileName, newShare, routeGpx, routeHighlights, routeSegments } from '../trails/routes.mjs'
 import { placesOnProfile, profileFromTrack, profileStats } from '../trails/hike.mjs'
+import { tripRange } from '../trails/trip.mjs'
 import ElevationProfile from '../components/trails/ElevationProfile.vue'
 import { groupSavedRoutes, isLoop, legAt, planGpx, planTitle, samePoints } from '../trails/planner.mjs'
 import SavedRouteForm from '../components/trails/SavedRouteForm.vue'
@@ -362,6 +378,11 @@ const OffsetPolyline = L.Polyline.extend({
 })
 
 const api = useApi()
+// Runs of Mountains-tagged days with hikes, each with its own recap page.
+const trips = ref({ trips: [], upcoming: [] })
+async function loadTrips() {
+  try { trips.value = (await api.getMountainTrips()).data } catch { /* the card stays hidden */ }
+}
 const route = useRoute()
 const router = useRouter()
 
@@ -1222,6 +1243,7 @@ onMounted(() => {
   loadPlanDraft()
   loadRegions()
   loadRegion()
+  loadTrips()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('themechange', onThemeChange)
@@ -1387,6 +1409,13 @@ onBeforeUnmount(() => {
 .link { border: 0; padding: 0; background: none; color: var(--accent-strong); font: inherit; cursor: pointer; text-decoration: underline; }
 
 .places-card .card-title { margin-bottom: 12px; }
+.trips { display: grid; gap: 2px; }
+.trip-row { display: flex; align-items: baseline; gap: 10px; min-width: 0; margin: 0; padding: 7px 8px; border-radius: 8px; color: var(--text); text-decoration: none; font-size: 13px; }
+a.trip-row:hover { background: rgb(var(--ov-rgb) / .06); }
+.trip-row .date { color: var(--muted-soft); white-space: nowrap; }
+.trip-row .grow { flex: 1; min-width: 0; }
+.trip-row .num:last-child { color: var(--muted); white-space: nowrap; }
+.trip-row.upcoming { color: var(--muted); }
 .kind-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 10px; background: rgb(var(--ov-rgb) / .05); margin-bottom: 12px; }
 .kind-tabs button { display: grid; gap: 1px; min-width: 0; border: 0; background: transparent; color: var(--muted-soft); padding: 5px 2px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .kind-tabs button small { color: var(--muted); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }

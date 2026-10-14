@@ -24,6 +24,7 @@ from typing import Any, Optional
 from ..repositories import trails as trail_repo
 from .goals import goal_value_for_window
 from .guided_sessions import guided_completion_dates
+from .mountain_trips import list_trips
 from .personal_records import _iter_ranked, build_personal_records
 from .trail_coverage import REGIONS
 
@@ -605,6 +606,7 @@ def build_season_review(conn: sqlite3.Connection, year: int, today: Optional[dat
         "season_bests": season_bests,
         "lifts": lifts,
         "mountains": _mountains(conn, year),
+        "mountain_trips": [trip for trip in list_trips(conn, today)["trips"] if trip["start_date"].startswith(str(year))],
         "best_month": _best_month(conn, year),
         "goals": _goals(conn, year, today),
         "letters": [{"month": item["month"], "label": item.get("label")} for item in letters],

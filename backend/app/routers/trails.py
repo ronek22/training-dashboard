@@ -9,6 +9,7 @@ from ..db import get_db
 from ..services.settings import get_setting, set_setting
 from ..services.strava import get_strava_access_token
 from ..services.hike_detail import hike_context
+from ..services.mountain_trips import build_trip_recap, list_trips
 from ..services.route_ideas import HOUR_PRESETS, route_ideas
 from ..services.route_planner import delete_route, list_saved_routes, plan_route, save_route, update_route
 from ..services.trail_coverage import (
@@ -39,6 +40,30 @@ def trail_hike_context(activity_id: str):
         return hike_context(conn, activity_id) or {"region": None}
     finally:
         conn.close()
+
+
+@router.get("/trails/trips")
+def mountain_trips():
+    """Past trips (runs of Mountains-tagged days with hikes), newest first, and tagged runs still ahead."""
+    conn = get_db()
+    try:
+        return list_trips(conn)
+    finally:
+        conn.close()
+
+
+@router.get("/trails/trips/{start_date}")
+def mountain_trip_recap(start_date: str):
+    conn = get_db()
+    try:
+        recap = build_trip_recap(conn, start_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="start_date must be YYYY-MM-DD")
+    finally:
+        conn.close()
+    if not recap:
+        raise HTTPException(status_code=404, detail="No mountain trip with hikes on that date")
+    return JSONResponse(recap)
 
 
 @router.get("/trails/{region}")

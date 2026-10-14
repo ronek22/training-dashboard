@@ -50,6 +50,7 @@ export default createRouter({
     { path: '/records', component: () => import('./views/Records.vue') },
     { path: '/years/:sport?', component: () => import('./views/SeasonYears.vue') },
     { path: '/season/:year?', component: () => import('./views/SeasonReview.vue') },
+    { path: '/mountains/trips/:startDate', component: () => import('./views/TripRecap.vue') },
     { path: '/mountains/:region?', component: () => import('./views/Mountains.vue') },
   ]
 })

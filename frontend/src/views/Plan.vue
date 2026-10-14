@@ -617,6 +617,14 @@
           </div>
         </div>
 
+        <div v-if="!isHistoricalPlan(plan) && plan.lift_ride_clashes?.length" class="lift-ride-clashes" role="status">
+          <div v-for="clash in plan.lift_ride_clashes" :key="`${clash.lift_date}-${clash.ride_date}`" class="lift-ride-clash">
+            <span>{{ clashText(clash) }}</span>
+            <button v-if="clash.suggested_swap" type="button" class="ghost-button" :disabled="movingClash === clash.lift_date" @click="swapOffClash(clash)">{{ movingClash === clash.lift_date ? 'Moving…' : swapLabel(clash) }}</button>
+            <span v-else class="life-load-clash-none">No clean day left this week</span>
+          </div>
+        </div>
+
         <div v-if="!isHistoricalPlan(plan) && plan.run_guardrail" class="run-guardrail" role="status">
           <strong>{{ plan.run_guardrail.label }}</strong>
           <span>{{ plan.run_guardrail.summary }}</span>
@@ -974,6 +982,7 @@ import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
 import LifeLoadPicker from '../components/LifeLoadPicker.vue'
 import { useLifeLoad } from '../composables/useLifeLoad'
 import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail'
+import { clashText, swapLabel } from '../plan/lift-ride-clash.mjs'
 
 const sessionTypeOptions = ['Run', 'Ride', 'WeightTraining', 'Recovery', 'Rest', 'Walk', 'Hike']
 // Mirrors normalize_plan_session_type in backend/app/services/plans.py.
@@ -1406,6 +1415,20 @@ const moveOffLifeLoadDay = async (clash) => {
   }
 }
 onMounted(() => lifeLoad.load())
+
+// Clash rule: a leg lift next to a hard ride is flagged with one swap that clears it.
+const movingClash = ref(null)
+const swapOffClash = async (clash) => {
+  movingClash.value = clash.lift_date
+  try {
+    await api.swapWeeklyPlanDays(clash.suggested_swap)
+    await refreshPlans()
+  } catch (error) {
+    flashMessage.value = { type: 'error', title: 'Could not swap the sessions', detail: error?.response?.data?.detail || 'The swap request failed.' }
+  } finally {
+    movingClash.value = null
+  }
+}
 
 // Minimum viable week: preview the shrunk rest of the week, apply it, or restore the full week.
 const minimumWeek = ref(null)
@@ -2532,6 +2555,9 @@ const savePlanLink = async (day) => {
 .life-load-clash { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; color: var(--text-soft); }
 .life-load-clash strong { color: var(--text); }
 .life-load-clash .ghost-button { padding: 3px 10px; font-size: 12px; }
+.lift-ride-clashes { display: grid; gap: 6px; margin: 12px 0; padding: 10px 14px; border-radius: 12px; border: 1px solid rgb(var(--ov-rgb) / .12); border-left: 3px solid var(--warning); background: rgb(var(--ov-rgb) / .04); font-size: 13px; }
+.lift-ride-clash { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; color: var(--text-soft); }
+.lift-ride-clash .ghost-button { padding: 3px 10px; font-size: 12px; }
 .life-load-clash-none { color: var(--muted-soft); font-size: 12px; }
 .plan-day-life { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .plan-day-life > span { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px; background: rgb(var(--life-rgb) / .14); color: var(--life); font-size: 11px; font-weight: 650; }

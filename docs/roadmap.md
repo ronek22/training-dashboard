@@ -17,7 +17,6 @@ Archived roadmaps:
 Known gaps that are not on the Ideas board yet. Remove a line when it ships or is dropped. Start each description with a capital letter; the page shows it as written.
 
 - **Data-quality inbox** — One place for missing workout feedback, unmatched planned sessions, missing heart-rate streams and stale benchmarks. The unbuilt half of Sprint 35.
-- **Lift and hard-ride clash rule** — Keep a lower-body lift and a hard ride from landing back to back.
 - **Legs every week** — The A–D lift rotation over three days a week often leaves legs with no planned sets.
 - **Winter base-to-build arc** — A multi-week shape for the winter cycling block instead of week-by-week planning.
 - **Stall blocks beyond Strength** — Show the running block in the Dashboard brief and use block outcomes in later suggestions.

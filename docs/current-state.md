@@ -24,6 +24,16 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Lift and hard-ride clash rule
+
+2026-10-14: A leg lift no longer lands the day before or after a hard ride without a word. `services/lift_ride_clash.py` defines the rule: a hard ride is a ride with tempo, interval or race-specific intent, or a Tempo / Sweet spot / Threshold / VO2 max library workout; a leg lift is a lift that trains legs (`strength_lower`, or a whole-body saved workout with leg exercises, via `session_brief._trains_legs`). Upper-body lifts, mobility and easy, long, Z2 or recovery rides never clash. Plans hold one session per day, so the same-day case does not arise.
+
+- Generation: `upsert_weekly_plan_data` (coach `set_weekly_plan` and the plan API) swaps days until no clash is left or no swap helps (up to 3 swaps; past days and days with a recorded activity never move). The lift moves first, then the ride; a moved lift carries a `planning_rule_reason`, and the response lists `clash_swaps`.
+- Manual moves are never blocked. `POST /plans/weekly/swap` returns `clashes` for the moved days, each with a `suggested_swap` that leaves the session the athlete just placed where it is. Calendar shows it in the move toast ("Legs (Tue) is the day before Sweet spot (Wed)…") with a "Swap … instead" button next to Undo.
+- Plan page: every serialized plan carries `lift_ride_clashes`; open clashes show as a one-line banner with the swap button, or "No clean day left this week".
+- Coach adjustments (`adjust_weekly_plan_data`) are not reshuffled automatically; a clash they create shows in the banner.
+- Verified with `test_lift_ride_clash.py` (11 tests: detection, exemptions, swap choice with locked and pinned days, resolve, generation and a warned move with its swap) and `lift-ride-clash.test.mjs`; backend 835 and frontend 155 tests plus the build pass. The last three real plans serialize with no clash; live training data was not changed.
+
 ### Automatic database backups
 
 2026-10-14: `data/training.db` is no longer a single point of failure. `services/backups.py` takes snapshots with SQLite's online backup API into `data/backups/` and verifies each with `PRAGMA integrity_check` (a failed copy is discarded and the failure recorded in `backup-status.json`).

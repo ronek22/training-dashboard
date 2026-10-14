@@ -22,6 +22,7 @@ from .fitbod_imports import get_fitbod_strength_detail_for_activity
 from ..repositories.goals import ACTIVE_GOAL_CONDITION
 from .goal_portfolio import build_portfolio_check, portfolio_conflict
 from .goals import build_requirement_summary, serialize_goal
+from .lift_ride_clash import legs_check, locked_dates, plan_clashes, resolve_clashes
 from .heart_rate_zones import build_activity_heart_rate_zone_summary, run_hr_cap
 from .recovery_day import check_recovery_day, recovery_cap, spin_hr_limit
 from .settings import (
@@ -1215,10 +1216,18 @@ def _serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection])
         "goal_context": goal_context,
         "run_guardrail": _run_guardrail(conn, days, row["week_start"]),
         "life_load": build_plan_life_load(conn, days, row["week_start"]),
+        "lift_ride_clashes": build_lift_ride_clashes(conn, days),
         "minimum_week": minimum_week,
         "lift_volume": lift_volume,
         "workout_template_programs": workout_template_programs,
     }
+
+
+def build_lift_ride_clashes(conn: Optional[sqlite3.Connection], days: list[dict], pinned: tuple[str, ...] = ()) -> list[dict]:
+    """Leg lifts sitting next to a hard ride, each with a swap that clears it."""
+    if not days:
+        return []
+    return plan_clashes(days, legs_check(conn), locked_dates(conn, days), pinned)
 
 
 def _minimum_week_state(conn: Optional[sqlite3.Connection], week_start: str) -> Optional[dict]:
@@ -1477,9 +1486,18 @@ def upsert_weekly_plan_data(conn: sqlite3.Connection, plan: WeeklyPlan) -> dict:
     template_settings = get_workout_template_settings_for_conn(conn)
     restrictions = get_modality_restrictions_for_conn(conn)
     prepared_plan = prepare_weekly_plan_for_storage(plan, template_settings=template_settings, restrictions=restrictions)
+    # Clash rule: swap days so a leg lift does not sit next to a hard ride.
+    days = [day.model_dump() for day in prepared_plan.days]
+    resolved_days, clash_swaps = resolve_clashes(days, legs_check(conn), locked_dates(conn, days))
+    if clash_swaps:
+        prepared_plan = prepare_weekly_plan_for_storage(
+            prepared_plan.model_copy(update={"days": [WeeklyPlanDay(**day) for day in resolved_days]}),
+            template_settings=template_settings,
+            restrictions=restrictions,
+        )
     upsert_weekly_plan_row(conn, prepared_plan)
     conn.commit()
-    return {"status": "ok", "week_start": prepared_plan.week_start}
+    return {"status": "ok", "week_start": prepared_plan.week_start, "clash_swaps": clash_swaps}
 
 
 def preview_weekly_plan_adjustment_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdjustment) -> dict:
@@ -1763,5 +1781,9 @@ def swap_weekly_plan_days_data(
         "week_start": week_start,
         "changed_dates": changed_dates,
         "swapped": target is not None,
+        "clashes": [
+            clash for clash in build_lift_ride_clashes(conn, [day.model_dump() for day in updated_plan.days], pinned=(swap.to_date,))
+            if {clash["lift_date"], clash["ride_date"]} & {swap.from_date, swap.to_date}
+        ],
         "plan": serialize_weekly_plan(updated_row, conn) if updated_row else None,
     }

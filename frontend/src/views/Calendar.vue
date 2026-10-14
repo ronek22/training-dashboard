@@ -179,6 +179,7 @@
     <Transition name="pop">
       <div v-if="moveNotice" class="move-toast" :class="{ 'is-error': moveNotice.error }" role="status">
         <span>{{ moveNotice.text }}</span>
+        <button v-if="moveNotice.swap" type="button" @click="swapInstead">{{ moveNotice.swapLabel }}</button>
         <button v-if="moveNotice.undo" type="button" @click="undoMove">Undo</button>
         <button type="button" class="toast-close" aria-label="Dismiss" @click="moveNotice = null">×</button>
       </div>
@@ -199,6 +200,7 @@ import { useLifeLoad } from '../composables/useLifeLoad'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
 import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
 import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail'
+import { clashText, swapLabel } from '../plan/lift-ride-clash.mjs'
 
 const api = useApi()
 const MODE_KEY = 'training-dashboard:calendar-mode'
@@ -483,10 +485,10 @@ const dropStateFor = (date) => {
   return weekKeyOf(date) === weekKeyOf(dragFrom.value) && isMovable(date) ? 'valid' : 'invalid'
 }
 const dragProps = (date) => ({ draggablePlan: canDragFrom(date), dragging: dragFrom.value === date, dropState: dropStateFor(date) })
-const showNotice = (text, { error = false, undo = null } = {}) => {
+const showNotice = (text, { error = false, undo = null, swap = null, swapLabel = null } = {}) => {
   window.clearTimeout(noticeTimer)
-  moveNotice.value = { text, error, undo }
-  noticeTimer = window.setTimeout(() => { moveNotice.value = null }, error ? 6000 : 8000)
+  moveNotice.value = { text, error, undo, swap, swapLabel }
+  noticeTimer = window.setTimeout(() => { moveNotice.value = null }, error ? 6000 : swap ? 14000 : 8000)
 }
 const onDragStart = (date) => { popupOpen.value = false; dragFrom.value = date }
 const onDragEnd = () => { dragFrom.value = null }
@@ -497,7 +499,12 @@ const runMove = async (fromDate, toDate, { undoable = true } = {}) => {
     await Promise.all([fetchPlans(), loadWeek(), loadMonth()])
     selectedDate.value = toDate
     const label = (date) => format(safeDate(date), 'EEE d MMM')
-    showNotice(data.swapped ? `Swapped ${label(fromDate)} and ${label(toDate)}` : `Moved to ${label(toDate)}`, { undo: undoable ? { fromDate: toDate, toDate: fromDate } : null })
+    const moved = data.swapped ? `Swapped ${label(fromDate)} and ${label(toDate)}` : `Moved to ${label(toDate)}`
+    const undo = undoable ? { fromDate: toDate, toDate: fromDate } : null
+    // Clash rule: warn (never block) when a leg lift now sits next to a hard ride.
+    const clash = data.clashes?.[0]
+    if (clash) showNotice(`${moved}. ${clashText(clash)}.`, { undo, swap: clash.suggested_swap, swapLabel: swapLabel(clash) })
+    else showNotice(moved, { undo })
   } catch (err) {
     showNotice(err?.response?.data?.detail || 'Could not move the session.', { error: true })
   } finally { moveBusy.value = false }
@@ -506,6 +513,11 @@ const onDrop = (date) => {
   const fromDate = dragFrom.value
   dragFrom.value = null
   if (fromDate && fromDate !== date) runMove(fromDate, date)
+}
+const swapInstead = () => {
+  const swap = moveNotice.value?.swap
+  moveNotice.value = null
+  if (swap) runMove(swap.from_date, swap.to_date)
 }
 const undoMove = () => {
   const undo = moveNotice.value?.undo

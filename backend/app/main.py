@@ -40,6 +40,7 @@ from .routers.return_to_run import router as return_to_run_router
 from .routers.life_load import router as life_load_router
 from .routers.trails import router as trails_router
 from .routers.backups import router as backups_router
+from .routers.data_inbox import router as data_inbox_router
 from . import db as db_module
 from .services import backups
 from .services.health_data import apply_health_data_import
@@ -188,6 +189,7 @@ app.include_router(return_to_run_router)
 app.include_router(life_load_router)
 app.include_router(trails_router)
 app.include_router(backups_router)
+app.include_router(data_inbox_router)
 
 init_db()
 app.mount("/mcp", mcp_app)

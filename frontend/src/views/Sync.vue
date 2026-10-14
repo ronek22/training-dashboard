@@ -19,6 +19,7 @@
         </button>
       </nav>
     </section>
+    <DataInbox />
     <p v-if="pageError" class="sync-error" role="alert">{{ pageError }} <button type="button" class="feedback-btn" :disabled="pageLoading" @click="loadPage">Retry</button></p>
     <div class="source-workspace" :style="{ '--source-color': sources.find(source => source.key === activeSource)?.color }">
     <section v-show="activeSource === 'strava'" id="source-strava" class="card import-card" aria-labelledby="strava-heading">
@@ -334,6 +335,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { format } from 'date-fns'
 import { useApi } from '../stores/api'
+import DataInbox from '../components/DataInbox.vue'
 
 const api = useApi()
 const activeSource = ref('strava')

@@ -34,6 +34,7 @@
             :aria-label="item.label"
           >
             <NavIcon :name="item.icon" class="nav-icon" /><span class="nav-label">{{ item.label }}</span>
+            <span v-if="item.badge && badgeText(item.badge.value)" class="nav-badge" :aria-label="`${item.badge.value} open data gaps`">{{ badgeText(item.badge.value) }}</span>
           </router-link>
         </template>
       </nav>
@@ -113,6 +114,7 @@ import ThemeToggle from './components/ThemeToggle.vue'
 import CoachChatDrawer from './components/CoachChatDrawer.vue'
 import MobileNavigation from './components/MobileNavigation.vue'
 import WorkoutQuickAccess from './components/WorkoutQuickAccess.vue'
+import { DATA_INBOX_CHANGED, badgeText } from './sync/data-inbox.mjs'
 
 const isMacLocal = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
 
@@ -121,6 +123,7 @@ const api = useApi()
 const previousPath = ref('')
 const streakValue = ref(null)
 const sickModeActive = ref(false)
+const dataInboxCount = ref(0)
 const weather = ref(null)
 const weatherLoading = ref(false)
 const weatherError = ref(false)
@@ -192,7 +195,7 @@ const navGroups = [
   {
     label: 'System',
     items: [
-      { to: '/sync', label: 'Data & Sync', icon: 'sync', match: exactPath('/sync') },
+      { to: '/sync', label: 'Data & Sync', icon: 'sync', match: exactPath('/sync'), badge: dataInboxCount },
       { to: '/usage', label: 'Coach usage', icon: 'usage', match: exactPath('/usage') },
       { to: '/roadmap', label: 'Roadmap', icon: 'roadmap', match: exactPath('/roadmap') },
       { to: '/ideas', label: 'Ideas', icon: 'ideas', match: exactPath('/ideas') },
@@ -307,8 +310,18 @@ const loadStreak = async () => {
   } catch {}
 }
 
+// Open items in the Data & Sync inbox; the inbox announces changes as it resolves them.
+let dataInboxLoadedAt = 0
+const loadDataInboxCount = async () => {
+  dataInboxLoadedAt = Date.now()
+  try { dataInboxCount.value = (await api.getDataInbox()).data.count || 0 } catch {}
+}
+const onDataInboxChanged = (event) => { dataInboxLoadedAt = Date.now(); dataInboxCount.value = event.detail?.count || 0 }
+
 onMounted(() => {
   loadStreak()
+  loadDataInboxCount()
+  window.addEventListener(DATA_INBOX_CHANGED, onDataInboxChanged)
   window.addEventListener('trainlog:streak-changed', loadStreak)
   initializeWeather()
   narrowViewportQuery.addEventListener('change', onNarrowViewportChange)
@@ -316,6 +329,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener(DATA_INBOX_CHANGED, onDataInboxChanged)
   narrowViewportQuery.removeEventListener('change', onNarrowViewportChange)
   window.removeEventListener('keydown', onSidebarShortcut)
 })
@@ -324,6 +338,8 @@ watch(
   () => route.fullPath,
   (_, oldPath) => {
     previousPath.value = oldPath || ''
+    // Feedback saved on another page can close an item; recount at most once a minute.
+    if (Date.now() - dataInboxLoadedAt > 60000) loadDataInboxCount()
   },
 )
 
@@ -417,6 +433,7 @@ const routeTransitionName = computed(() => {
 }
 
 .nav-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -439,6 +456,19 @@ const routeTransitionName = computed(() => {
   box-shadow: inset 0 1px 0 rgb(var(--ov-rgb) / 0.04);
 }
 .nav-icon { flex: 0 0 auto; color: var(--muted); }
+.nav-badge {
+  margin-left: auto;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: oklch(from #e8bc77 calc(l - var(--dim-l)) c h);
+  color: #1d1a14;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 .nav-item.active .nav-icon { color: var(--accent-strong); }
 
 .sidebar-footer {
@@ -594,6 +624,15 @@ const routeTransitionName = computed(() => {
 
 .is-collapsed .logo-text,
 .is-collapsed .logo-tagline,
+.is-collapsed .nav-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 15px;
+  padding: 0 4px;
+  font-size: 9px;
+  line-height: 14px;
+}
 .is-collapsed .nav-label,
 .is-collapsed .nav-group-label,
 .is-collapsed .streak-copy {

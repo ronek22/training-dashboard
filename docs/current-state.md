@@ -24,6 +24,19 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Data-quality inbox
+
+2026-10-14: Data & Sync opens with a small inbox of gaps from the last 30 days, and the Data & Sync nav item shows a count badge (9+ above nine) only while items are open. `services/data_inbox.py` detects four kinds:
+
+- Missing feedback: activities without `activity_feedback`. Walks are skipped, and so are lifts recorded in Workout Studio (a completed `strength_workout_sessions` row already holds per-set effort taps). Fix: "Add feedback" opens the usual feedback dialog.
+- Unmatched planned session: past plan days whose plan-vs-actual status is `skipped` (rest days never count). Fix: link one of the plan's own `link_candidates` (±2 days) through `POST /activities/{id}/link-plan`. Activities linked elsewhere, or already fulfilling another planned session, are not offered, so a link never unmatches another day; one done on a rest day stays on offer. "Skipped, that's right" dismisses it.
+- Missing heart-rate stream: Strava runs and rides with no cached streams, or whose streams lack the heart rate Strava reported (`avg_hr` set, `has_heartrate` 0). Manual entries the history backfill marked `no_streams` are skipped. Fix: "Re-fetch streams" (`POST /data-inbox/streams/{id}/refetch`) fetches that one activity and stores streams plus the stream summary; if Strava has no heart rate the item stays and says so.
+- Stale benchmark: the working FTP once `working_ftp` calls it stale (a logged or typed FTP older than 56 days; the training estimate never goes stale). Not limited to 30 days. Fix: "Update FTP" goes to the Athlete page; "Still holds" dismisses it. The key carries the FTP's date, so a newer FTP that later goes stale shows again.
+
+Every item can be marked as fine (`POST /data-inbox/dismiss {key}`, stored in `data_inbox_dismissals`); only keys currently open are accepted, and dismissed keys never come back. Resolved items disappear by themselves because detection reads the data. `GET /data-inbox` returns `count`, per-kind `counts` and the items. The nav badge loads on start, follows the inbox as it changes, and recounts on navigation at most once a minute.
+
+- Verified with `test_data_inbox.py` (6 tests: detection for each kind, the 30-day window, candidate filtering, dismissals and self-resolving items) and `data-inbox.test.mjs`; backend 841 and frontend 158 tests plus the build pass. On a scratch copy of the database at 1512 px: dismiss, add feedback and link each removed their item after reload and the badge followed; the real data has 6 open items, all missing feedback. Live training data was not changed.
+
 ### Lift and hard-ride clash rule
 
 2026-10-14: A leg lift no longer lands the day before or after a hard ride without a word. `services/lift_ride_clash.py` defines the rule: a hard ride is a ride with tempo, interval or race-specific intent, or a Tempo / Sweet spot / Threshold / VO2 max library workout; a leg lift is a lift that trains legs (`strength_lower`, or a whole-body saved workout with leg exercises, via `session_brief._trains_legs`). Upper-body lifts, mobility and easy, long, Z2 or recovery rides never clash. Plans hold one session per day, so the same-day case does not arise.

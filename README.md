@@ -319,6 +319,10 @@ Once the MCP server is connected, Claude can:
 | Z4 threshold | 173–182 | 163–172 |
 | Z5 max | 183+ | 173+ |
 
+### Data inbox
+
+**Data & Sync** opens with an inbox of gaps from the last 30 days: workouts without feedback, planned sessions no activity matched, Strava runs and rides missing heart-rate streams, and a stale FTP. Each item has a one-click fix (add feedback, link an activity, re-fetch streams, update FTP) or can be marked as fine, which is remembered. The Data & Sync nav item shows a count while anything is open (`GET /data-inbox`).
+
 ## Data Storage
 
 SQLite database stored in `./data/training.db` — persists across container restarts.

@@ -267,6 +267,7 @@ def _records(records: dict[str, Any], year: int) -> tuple[list[dict], list[dict]
             "category": category, "label": label, "display": best["display"], "date": best["date"][:10],
             "activity_id": best.get("activity_id"), "from": baseline["display"], "from_date": baseline["date"][:10],
             "new_this_year": baseline["date"][:10] >= start, "times": count,
+            "value": best["value"], "from_value": baseline["value"], "higher_is_better": ranked.get("higher_is_better", True),
             # Times get smaller and watts bigger, so the size of the step is the absolute change.
             "improvement_percent": round(abs(best["value"] - baseline["value"]) / baseline["value"] * 100, 1) if baseline["value"] else None,
         }
@@ -317,7 +318,11 @@ def _season_bests(records: dict[str, Any], year: int, already: set[tuple[str, st
         earlier = [other for other in beaten_by if other < year]
         later = [other for other in beaten_by if other > year]
         item = {"category": category, "label": label, "display": best["display"], "detail": best.get("detail"),
-                "date": best["date"][:10], "activity_id": best.get("activity_id"), "seasons": seasons, "rank": len(beaten_by) + 1}
+                "date": best["date"][:10], "activity_id": best.get("activity_id"), "seasons": seasons, "rank": len(beaten_by) + 1,
+                "higher_is_better": higher,
+                # Every season's best, oldest first, so the year can be drawn among the others.
+                "history": [{"year": int(other_year), "value": other["value"], "display": other["display"]}
+                            for other_year, other in sorted(yearly.items())]}
         if seasons == 1:
             continue  # Only one season has this record: nothing to compare.
         if not beaten_by:

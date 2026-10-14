@@ -19,7 +19,6 @@ const loading = ref(true)
 const error = ref('')
 const writing = ref(false)
 const coachError = ref('')
-const showAllRecords = ref(false)
 
 async function load() {
   loading.value = true
@@ -29,7 +28,7 @@ async function load() {
     const year = Number(route.params.year) || years.value[0]
     if (!year) { review.value = null; return }
     review.value = (await api.getSeasonReview(year, todayIso())).data
-    showAllRecords.value = false
+    powerFocus.value = null
     showAllSeasonBests.value = false
   } catch (problem) {
     review.value = null
@@ -239,15 +238,68 @@ const monthBars = computed(() => {
 
 // ---- records & lifts ------------------------------------------------------
 const records = computed(() => review.value?.records ?? [])
-const SEASON_BEST_PREVIEW = 6
+// How good a result is, as a share of another: watts and distance grow, times shrink.
+const performanceShare = (value, of, higher = true) => !value || !of ? 0 : higher ? value / of : of / value
+const durationSeconds = (label) => {
+  const match = /([\d.]+)\s*(sec|min|h)/.exec(label || '')
+  return match ? Number(match[1]) * ({ sec: 1, min: 60, h: 3600 }[match[2]]) : Infinity
+}
+
+// Power bests read as one curve: last year's ceiling against this year's, duration by duration.
+const POWER_W = 760
+const POWER_H = 250
+const POWER_PAD = { left: 44, right: 18, top: 18, bottom: 30 }
+const powerRecords = computed(() => records.value.filter((item) => item.category === 'Bike power' && item.value)
+  .sort((a, b) => durationSeconds(a.label) - durationSeconds(b.label)))
+const powerCurve = computed(() => {
+  const points = powerRecords.value
+  if (points.length < 3) return null
+  const top = Math.max(...points.map((item) => Math.max(item.value, item.from_value)))
+  const step = top > 600 ? 200 : 100
+  const ceiling = Math.ceil(top / step) * step
+  const plotW = POWER_W - POWER_PAD.left - POWER_PAD.right
+  const plotH = POWER_H - POWER_PAD.top - POWER_PAD.bottom
+  const x = (index) => POWER_PAD.left + (plotW * index) / (points.length - 1)
+  const y = (value) => POWER_PAD.top + plotH - (value / ceiling) * plotH
+  const placed = points.map((item, index) => ({ ...item, x: x(index), y: y(item.value), fromY: y(item.from_value), short: item.label.replace(' sec', 's').replace(' min', 'm') }))
+  const line = (key) => placed.map((point, index) => `${index ? 'L' : 'M'}${point.x.toFixed(1)},${point[key].toFixed(1)}`).join(' ')
+  const now = line('y')
+  const before = line('fromY')
+  const back = [...placed].reverse().map((point) => `L${point.x.toFixed(1)},${point.fromY.toFixed(1)}`).join(' ')
+  return {
+    points: placed, now, before, gain: `${now} ${back} Z`,
+    columnW: plotW / (points.length - 1),
+    ticks: Array.from({ length: ceiling / step + 1 }, (_, index) => ({ value: index * step, y: y(index * step) })),
+  }
+})
+const powerFocus = ref(null)
+const biggestPowerJump = computed(() => [...powerRecords.value].sort((a, b) => (b.improvement_percent || 0) - (a.improvement_percent || 0))[0])
+const powerReadout = computed(() => powerFocus.value || biggestPowerJump.value)
+
+// Everything else is a before → after bar, with the old best as a share of the new one.
+const stepRecords = computed(() => {
+  const rest = powerCurve.value ? records.value.filter((item) => !powerRecords.value.includes(item)) : records.value
+  const order = { 'Bike power': 0, 'Bike distance': 1, 'Indoor bike distance': 2, Run: 3 }
+  return [...rest].sort((a, b) => (order[a.category] ?? 9) - (order[b.category] ?? 9) || durationSeconds(a.label) - durationSeconds(b.label))
+    .map((item) => ({ ...item, fromPct: Math.max(4, Math.min(100, performanceShare(item.from_value, item.value, item.higher_is_better) * 100)) }))
+})
+
+const SEASON_BEST_PREVIEW = 8
 const showAllSeasonBests = ref(false)
-const seasonBests = computed(() => review.value?.season_bests ?? [])
+// Each season sits in a strip: this one lit, the seasons it beat tinted, the better ones grey.
+const seasonBests = computed(() => (review.value?.season_bests ?? []).map((item) => {
+  const mine = item.history?.find((season) => season.year === review.value.year)
+  const strip = (item.history ?? []).map((season) => {
+    const current = season.year === review.value.year
+    const beaten = !current && mine && performanceShare(mine.value, season.value, item.higher_is_better) > 1
+    return { ...season, state: current ? 'now' : beaten ? 'beaten' : 'better' }
+  })
+  return { ...item, strip, beaten: strip.filter((season) => season.state === 'beaten').length }
+}))
 const visibleSeasonBests = computed(() => showAllSeasonBests.value ? seasonBests.value : seasonBests.value.slice(0, SEASON_BEST_PREVIEW))
 // While the year runs it is compared with the same dates of other years.
 const comparedUntil = computed(() => totals.value?.compared_until ? format(parseISO(`2001-${totals.value.compared_until}`), 'd MMM') : '')
 const pace = computed(() => totals.value?.pace ?? null)
-const trophies = computed(() => [...records.value].sort((a, b) => (b.improvement_percent || 0) - (a.improvement_percent || 0)).slice(0, 6))
-const restRecords = computed(() => records.value.filter((item) => !trophies.value.includes(item)))
 const recordCategory = (item) => ({ 'Bike power': 'Power', 'Bike distance': 'Bike', 'Indoor bike distance': 'Indoor bike' }[item.category] || item.category)
 const recordSport = (item) => item.category === 'Run' ? 'run' : 'ride'
 const lifts = computed(() => (review.value?.lifts ?? []).map((lift) => {
@@ -495,32 +547,52 @@ const RING = 2 * Math.PI * 34
           <h2 id="records-title"><AnimatedNumber :value="records.length" :format="whole" :cache-key="`season:${review.year}:records`" :duration="1000" /> new bests</h2>
           <RouterLink class="more-link" to="/records">Records wall ↗</RouterLink>
         </div>
-        <div class="trophies">
-          <component :is="item.activity_id ? 'RouterLink' : 'article'" v-for="(item, index) in trophies" :key="`${item.category}-${item.label}`"
-                     :to="item.activity_id ? `/activities/${item.activity_id}` : undefined" class="trophy" :style="{ '--sport': SPORTS[recordSport(item)].color, '--i': index }">
-            <div class="trophy-top">
-              <span class="trophy-cat">{{ recordCategory(item) }}</span>
-              <span v-if="item.improvement_percent" class="pill up">+{{ number(item.improvement_percent) }}%</span>
-            </div>
-            <span class="trophy-label">{{ item.label }}</span>
-            <strong class="trophy-value">{{ item.display }}</strong>
-            <span class="trophy-from">from {{ item.from }} · {{ day(item.date) }}</span>
+        <div v-if="powerCurve" class="power">
+          <figure class="power-chart" @mouseleave="powerFocus = null">
+            <figcaption>
+              <span class="power-title">Power curve</span>
+              <span class="legend"><i class="key before" />Best before {{ review.year }}<i class="key now" />{{ review.year }}</span>
+            </figcaption>
+            <svg v-chart-intro="`season:${review.year}:power-curve`" :viewBox="`0 0 ${POWER_W} ${POWER_H}`" role="img" :aria-label="`Best power by duration, before ${review.year} and in ${review.year}`">
+              <g v-for="tick in powerCurve.ticks" :key="tick.value">
+                <line class="stack-grid" :x1="POWER_PAD.left" :x2="POWER_W - POWER_PAD.right" :y1="tick.y" :y2="tick.y" />
+                <text class="stack-tick" :x="POWER_PAD.left - 8" :y="tick.y + 4">{{ tick.value }}</text>
+              </g>
+              <path class="power-gain chart-fade" :d="powerCurve.gain" />
+              <path class="power-line before chart-fade" :d="powerCurve.before" pathLength="1" />
+              <path class="power-line now chart-draw" :d="powerCurve.now" pathLength="1" />
+              <g v-for="(point, index) in powerCurve.points" :key="point.label" class="power-point" :class="{ on: powerReadout === point }">
+                <line class="power-guide" :x1="point.x" :x2="point.x" :y1="POWER_PAD.top" :y2="POWER_H - POWER_PAD.bottom" />
+                <circle class="dot before" :cx="point.x" :cy="point.fromY" r="3.5" />
+                <circle class="dot now chart-fade" :style="{ '--i': index }" :cx="point.x" :cy="point.y" r="4.5" />
+                <text class="stack-month" :x="point.x" :y="POWER_H - 10">{{ point.short }}</text>
+                <rect class="power-hit" :x="point.x - powerCurve.columnW / 2" :y="0" :width="powerCurve.columnW" :height="POWER_H"
+                      @mouseenter="powerFocus = point" @focus="powerFocus = point" tabindex="0" :aria-label="`${point.label}: ${point.from} to ${point.display}`" />
+              </g>
+            </svg>
+          </figure>
+          <component :is="powerReadout.activity_id ? 'RouterLink' : 'div'" class="power-readout" :to="powerReadout.activity_id ? `/activities/${powerReadout.activity_id}` : undefined">
+            <span class="eyebrow">{{ powerFocus ? 'Power' : 'Biggest jump' }} · {{ powerReadout.label }}</span>
+            <strong class="readout-value"><template v-if="powerFocus">{{ powerReadout.display }}</template><AnimatedNumber v-else :value="powerReadout.display" :cache-key="`season:${review.year}:power-readout`" :duration="1400" /></strong>
+            <span class="readout-from">from <s>{{ powerReadout.from }}</s></span>
+            <span class="readout-gain">+<template v-if="powerFocus">{{ number(powerReadout.improvement_percent) }}</template><AnimatedNumber v-else :value="powerReadout.improvement_percent" :format="number" :duration="1400" />%</span>
+            <span class="muted readout-when">{{ day(powerReadout.date) }}<template v-if="powerReadout.activity_id"> · open ride ↗</template></span>
+            <span class="muted readout-hint">{{ powerRecords.length }} power bests · hover the curve</span>
           </component>
         </div>
-        <template v-if="restRecords.length">
-          <button type="button" class="ghost" :aria-expanded="showAllRecords" @click="showAllRecords = !showAllRecords">
-            {{ showAllRecords ? 'Hide the rest' : `And ${restRecords.length} more` }}
-          </button>
-          <ul v-if="showAllRecords" class="record-list">
-            <li v-for="item in restRecords" :key="`${item.category}-${item.label}`">
-              <span class="muted">{{ recordCategory(item) }}</span>
-              <span>{{ item.label }}</span>
-              <span><span class="muted">{{ item.from }} →</span> <strong>{{ item.display }}</strong></span>
-              <RouterLink v-if="item.activity_id" :to="`/activities/${item.activity_id}`" class="more-link">{{ day(item.date) }} ↗</RouterLink>
-              <span v-else class="muted">{{ day(item.date) }}</span>
-            </li>
-          </ul>
-        </template>
+        <ul v-if="stepRecords.length" class="steps">
+          <li v-for="(item, index) in stepRecords" :key="`${item.category}-${item.label}`" :style="{ '--from': `${item.fromPct}%`, '--i': index, '--sport': SPORTS[recordSport(item)].color }">
+            <div class="step-name"><strong>{{ item.label }}</strong><small>{{ recordCategory(item) }}</small></div>
+            <div class="step-track" :aria-label="`${item.from} to ${item.display}`">
+              <span class="step-new" />
+              <span class="step-old"><em>{{ item.from }}</em></span>
+            </div>
+            <component :is="item.activity_id ? 'RouterLink' : 'span'" class="step-to" :to="item.activity_id ? `/activities/${item.activity_id}` : undefined">
+              <strong>{{ item.display }}</strong><small>{{ day(item.date) }}</small>
+            </component>
+            <span v-if="item.improvement_percent" class="pill up">+{{ number(item.improvement_percent) }}%</span>
+          </li>
+        </ul>
       </section>
 
       <!-- Season bests ----------------------------------------------------- -->
@@ -529,17 +601,18 @@ const RING = 2 * Math.PI * 34
           <h2 id="season-bests-title">Season bests</h2>
           <span class="muted head-note">This year's best against every other season</span>
         </div>
-        <div class="trophies">
+        <div class="season-bests">
           <component :is="item.activity_id ? 'RouterLink' : 'article'" v-for="(item, index) in visibleSeasonBests" :key="`${item.category}-${item.label}`"
-                     :to="item.activity_id ? `/activities/${item.activity_id}` : undefined" class="trophy season-best" :class="`is-${item.kind}`"
+                     :to="item.activity_id ? `/activities/${item.activity_id}` : undefined" class="season-best" :class="`is-${item.kind}`"
                      :style="{ '--sport': SPORTS[recordSport(item)].color, '--i': index }">
-            <div class="trophy-top">
-              <span class="trophy-cat">{{ recordCategory(item) }}</span>
-              <span class="best-tag">{{ item.headline }}</span>
+            <span class="best-tag">{{ item.headline }}</span>
+            <span class="best-label">{{ item.label }} <small>{{ recordCategory(item) }}</small></span>
+            <strong class="best-value"><AnimatedNumber :value="item.display" :cache-key="`season:${review.year}:best:${item.category}:${item.label}`" :duration="1200" /></strong>
+            <div class="seasons" :style="{ '--count': item.strip.length }" aria-hidden="true">
+              <span v-for="(season, at) in item.strip" :key="season.year" class="season" :class="season.state" :style="{ '--j': at }" :title="`${season.year}: ${season.display}`" />
             </div>
-            <span class="trophy-label">{{ item.label }}</span>
-            <strong class="trophy-value">{{ item.display }}</strong>
-            <span class="trophy-from">{{ day(item.date) }}<template v-if="item.rank > 1"> · #{{ item.rank }} of {{ item.seasons }} seasons</template></span>
+            <div class="season-ends" aria-hidden="true"><span>{{ item.strip[0]?.year }}</span><span>{{ item.strip.at(-1)?.year }}</span></div>
+            <span class="best-from">{{ day(item.date) }} · beat {{ item.beaten }} of {{ item.seasons - 1 }} other seasons</span>
           </component>
         </div>
         <button v-if="seasonBests.length > SEASON_BEST_PREVIEW" type="button" class="ghost" :aria-expanded="showAllSeasonBests" @click="showAllSeasonBests = !showAllSeasonBests">
@@ -858,21 +931,70 @@ const RING = 2 * Math.PI * 34
 .month-value { font-size: 13px; font-weight: 700; text-anchor: middle; fill: var(--text); }
 
 /* Records */
-.trophies { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.trophy { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--border); border-top: 3px solid var(--sport); background: var(--surface-strong); color: var(--text); text-decoration: none; transition: transform var(--motion-duration-base) var(--motion-ease-standard), box-shadow var(--motion-duration-base) var(--motion-ease-standard); }
-.trophy:hover { transform: translateY(-3px); box-shadow: var(--shadow-card-hover); }
-.reveal .trophy { opacity: 0; transform: translateY(14px) scale(.98); }
-.reveal.is-in .trophy { opacity: 1; transform: none; transition: opacity 500ms var(--motion-ease-standard) calc(var(--i) * 80ms), transform 600ms var(--motion-ease-emphasized) calc(var(--i) * 80ms); }
-.trophy-top { display: flex; justify-content: space-between; align-items: center; }
-.trophy-cat { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--sport); }
-.trophy-label { margin-top: 6px; font-size: 13px; color: var(--text-soft); }
-.trophy-value { font-family: var(--font-display); font-size: 36px; font-weight: 650; line-height: 1.05; letter-spacing: -1px; }
-.trophy-from { font-size: 12px; color: var(--muted); }
+/* Records: power curve + before/after steps */
+.power { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 22px; align-items: stretch; margin-bottom: 22px; }
+.power-chart { margin: 0; }
+.power-chart figcaption { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.power-title { font-size: 12px; font-weight: 650; color: var(--muted); }
+.legend { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-soft); }
+.legend .key { display: inline-block; width: 16px; height: 0; border-top: 2px solid var(--season-ride); margin-left: 10px; }
+.legend .key.before { border-top: 2px dashed var(--muted); margin-left: 0; }
+.power-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.power-gain { fill: color-mix(in srgb, var(--season-ride) 16%, transparent); }
+.power-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.power-line.before { stroke: var(--muted); stroke-dasharray: .012 .012; }
+.power-line.now { stroke: var(--season-ride); stroke-width: 2.5; }
+.dot.before { fill: var(--surface); stroke: var(--muted); stroke-width: 1.5; }
+.dot.now { fill: var(--season-ride); stroke: var(--surface); stroke-width: 2; }
+.power-guide { stroke: var(--border-strong); stroke-dasharray: 3 3; opacity: 0; }
+.power-point.on .power-guide { opacity: 1; }
+.power-point.on .dot.now { r: 6.5; }
+.power-point.on .stack-month { fill: var(--text); font-weight: 750; }
+.power-hit { fill: transparent; cursor: pointer; outline: none; }
+.power-readout { display: flex; flex-direction: column; gap: 2px; padding: 20px 22px; border-radius: 14px; background: color-mix(in srgb, var(--season-ride) 9%, var(--surface-strong)); color: var(--text); text-decoration: none; }
+.readout-value { margin-top: 10px; font-family: var(--font-display); font-size: 56px; font-weight: 700; line-height: 1; letter-spacing: -2px; }
+.readout-from { font-size: 14px; color: var(--text-soft); }
+.readout-from s { text-decoration-color: var(--muted); }
+.readout-gain { margin-top: 14px; font-family: var(--font-display); font-size: 30px; font-weight: 700; letter-spacing: -.8px; color: var(--success-text); }
+.readout-when { font-size: 12px; }
+.readout-hint { margin-top: auto; padding-top: 14px; font-size: 11px; }
+
+.steps { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 36px; }
+.steps li { display: grid; grid-template-columns: 96px minmax(0, 1fr) 84px 64px; gap: 14px; align-items: center; }
+.step-name { display: flex; flex-direction: column; }
+.step-name strong { font-size: 14px; }
+.step-name small { font-size: 11px; color: var(--muted); }
+.step-track { position: relative; height: 28px; border-radius: 7px; background: color-mix(in srgb, var(--tone-neutral) 9%, transparent); overflow: hidden; }
+.step-new { position: absolute; inset: 0 auto 0 0; width: var(--from); background: var(--sport); }
+.is-in .step-new { width: 100%; transition: width 1100ms var(--motion-ease-emphasized) calc(250ms + var(--i) * 70ms); }
+.step-old { position: absolute; inset: 0 auto 0 0; width: var(--from); border-right: 2px solid var(--surface); background: color-mix(in srgb, var(--surface) 34%, transparent); }
+.step-old em { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-style: normal; font-size: 11px; font-weight: 650; color: #0d1f18; white-space: nowrap; }
+.step-to { display: flex; flex-direction: column; color: var(--text); text-decoration: none; font-variant-numeric: tabular-nums; }
+.step-to strong { font-family: var(--font-display); font-size: 17px; font-weight: 650; }
+.step-to small { font-size: 11px; color: var(--muted); }
+a.step-to:hover strong { color: var(--season-ride); }
+.steps .pill { justify-self: end; }
 .ghost { margin-top: 14px; border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--text-soft); padding: 7px 14px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
 .ghost:hover { color: var(--text); border-color: var(--border-strong); }
-.record-list { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; margin-top: 12px; }
-.record-list li { display: grid; grid-template-columns: 90px minmax(0, 1fr) auto 64px; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; font-variant-numeric: tabular-nums; }
-.record-list li > :last-child { text-align: right; }
+
+/* Season bests: each season as a strip */
+.season-bests { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.season-best { display: flex; flex-direction: column; gap: 2px; padding: 16px 18px 14px; border-radius: 14px; background: var(--surface-strong); color: var(--text); text-decoration: none; transition: transform var(--motion-duration-base) var(--motion-ease-standard), box-shadow var(--motion-duration-base) var(--motion-ease-standard); }
+.season-best:hover { transform: translateY(-2px); box-shadow: var(--shadow-card-hover); }
+.reveal .season-best { opacity: 0; transform: translateY(12px); }
+.reveal.is-in .season-best { opacity: 1; transform: none; transition: opacity 500ms var(--motion-ease-standard) calc(var(--i) * 70ms), transform 600ms var(--motion-ease-emphasized) calc(var(--i) * 70ms); }
+.season-best .best-tag { align-self: flex-start; margin-bottom: 10px; }
+.best-label { font-size: 13px; font-weight: 650; color: var(--text-soft); }
+.best-label small { margin-left: 4px; font-size: 11px; font-weight: 600; color: var(--muted); }
+.best-value { font-family: var(--font-display); font-size: 34px; font-weight: 700; line-height: 1.1; letter-spacing: -1px; }
+.seasons { display: grid; grid-template-columns: repeat(var(--count), minmax(0, 1fr)); gap: 3px; height: 22px; margin-top: 12px; }
+.season { border-radius: 4px; background: color-mix(in srgb, var(--tone-neutral) 14%, transparent); }
+.season.beaten { background: color-mix(in srgb, var(--sport) 38%, transparent); }
+.season.now { background: var(--sport); box-shadow: 0 0 0 2px color-mix(in srgb, var(--sport) 30%, transparent); }
+.reveal .season { transform: scaleY(0); }
+.reveal.is-in .season { transform: none; transition: transform 420ms var(--motion-ease-emphasized) calc(300ms + var(--i) * 70ms + var(--j) * 35ms); }
+.season-ends { display: flex; justify-content: space-between; margin-top: 4px; font-size: 10px; font-weight: 600; color: var(--muted); }
+.best-from { margin-top: 8px; font-size: 12px; color: var(--muted); }
 
 /* Lifts */
 .lifts { list-style: none; display: grid; gap: 14px; }
@@ -949,7 +1071,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 }
 @media (max-width: 1100px) {
   .sport-layout { grid-template-columns: minmax(0, 1fr); }
-  .trophies { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .season-bests { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .power { grid-template-columns: minmax(0, 1fr); }
+  .steps { grid-template-columns: minmax(0, 1fr); }
   .record-list { grid-template-columns: minmax(0, 1fr); }
   .mountain-body { grid-template-columns: minmax(0, 1fr); }
 }
@@ -962,7 +1086,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   .row-pill { display: none; }
   .row-number { font-size: 26px; }
   .block { padding: 18px 16px; }
-  .trophies { grid-template-columns: minmax(0, 1fr); }
+  .season-bests { grid-template-columns: minmax(0, 1fr); }
   .lifts li { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .lift-gain { flex-direction: row; align-items: baseline; gap: 8px; }
   .record-list li { grid-template-columns: minmax(0, 1fr) auto auto; }

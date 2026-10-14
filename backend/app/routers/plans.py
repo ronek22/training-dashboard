@@ -17,6 +17,7 @@ from ..services.plan_follow_through import build_plan_follow_through
 from ..services.minimum_week import apply_minimum_week, preview_minimum_week, restore_full_week
 from ..services.today_options import apply_today_option, build_today_options, undo_today_option
 from ..models.plans import TodayOptionApply, TodayOptionUndo, WinterArc
+from ..services.week_preview import build_week_preview
 from ..services.winter_arc import build_winter_arc, clear_winter_arc, save_winter_arc
 
 router = APIRouter()
@@ -108,6 +109,15 @@ def restore_minimum_viable_week(week_start: date):
     conn = get_db()
     try:
         return restore_full_week(conn, week_start.isoformat())
+    finally:
+        conn.close()
+
+
+@router.get("/plans/week-preview")
+def get_week_preview(day: Optional[date] = None):
+    conn = get_db()
+    try:
+        return build_week_preview(conn, day)
     finally:
         conn.close()
 

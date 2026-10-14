@@ -39,8 +39,8 @@ def _today(today: Optional[date]) -> date:
     return today or datetime.now().date()
 
 
-def _anchor_targets(conn: sqlite3.Connection, week_start: str, week_end: str) -> tuple[int, int, list[str]]:
-    """Weekly session-count anchors: lifts and rides to keep. Anchors outlast their end date."""
+def anchor_session_counts(conn: sqlite3.Connection, week_start: str, week_end: str) -> tuple[int, int, list[str]]:
+    """Weekly session-count anchors as set: lifts and rides (0 when none). Anchors outlast their end date."""
     rows = conn.execute(
         f"""
         SELECT title, metric_type, target_value, activity_type FROM goals
@@ -57,6 +57,12 @@ def _anchor_targets(conn: sqlite3.Connection, week_start: str, week_end: str) ->
             lifts, titles = max(lifts, count), titles + [row["title"]]
         elif row["metric_type"] == "activities_count" and row["activity_type"] in RIDE_TYPES:
             rides, titles = max(rides, count), titles + [row["title"]]
+    return lifts, rides, titles
+
+
+def _anchor_targets(conn: sqlite3.Connection, week_start: str, week_end: str) -> tuple[int, int, list[str]]:
+    """Lifts and rides the minimum week keeps: the anchors, with a floor when none are set."""
+    lifts, rides, titles = anchor_session_counts(conn, week_start, week_end)
     return lifts or DEFAULT_LIFTS, max(rides, EASY_RIDES), titles
 
 

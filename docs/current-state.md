@@ -24,6 +24,17 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Next four weeks on Plan
+
+2026-10-15: implements the `four-week-plan-preview` idea. Under the current week, Plan shows "Where the next weeks are heading": one compact row for each of the next 4 weeks, built by code (`services/week_preview.py`, `GET /plans/week-preview`), never by the coach and never saved. Only the current week keeps day-by-day detail; a preview week becomes a real plan when it arrives ("Plan saved" shows if one already exists).
+
+- A row says only what is different about that week. Without a winter arc a normal week is just "Normal week"; the weekly goals are not repeated on every row (first version did that and was reworked the same day as noise).
+- Mountains trip: a full trip week reads "Hikes instead of rides · 3 short travel lifts" (no ride or quality target); a partial trip shrinks the arc hours or goal km to the days off the trip ("~55 km rides", "Hikes Fri–Sun") and lifts get a travel version on trip days.
+- Re-entry after a trip (same `window_length`/`easy_days` as `mountain_reentry`, also for trips still ahead): "Easy only Mon–Tue · no intervals until Fri", lifts "legs at pre-trip loads", and the quality ride is placed on the days after the window ("1× quality ride, Fri–Sun"). An open illness return window caps effort the same way; "Sick mode on" shows on next week.
+- Life-load tags show as pills by weekday with their note; no quality ride goes on them, and 3+ tagged days add "Busy week". Z2 rides are never restricted. Goal end and review dates show as pills.
+- With a winter arc every row also shows the block and week number, ride hours and key rides from `winter_arc.arc_week` (matching `week_target`), "Lighter week" and "New block". The card hides when nothing is known (no arc, no events, only weekly goals). Shown only while viewing the current week; it reloads when the arc is edited. `minimum_week.anchor_session_counts` was split out of the minimum week's anchor read for the lift count.
+- Verified with `test_week_preview.py` (6 tests: rows match `arc_week` incl. a lighter week and a new block; partial trip, re-entry, busy and deadline weeks with key rides placed on open days; illness window into next week; full trip and re-entry without an arc while normal weeks stay empty; partial trip shrinks goal km; hidden with only weekly goals, plus the API). Frontend 160 tests and the build pass; the backend suite passes except one `test_cycling_power_advice` failure from separate uncommitted work in `scripts/cycling_power_helper.py`. On a scratch copy of the database at 1512 px and 375 px (no horizontal overflow): Oct 19–25 trip, Oct 26–29 re-entry with the quality ride Fri–Sun, and two normal weeks. Live training data was not changed.
+
 ### Eat enough before the sessions that matter
 
 2026-10-15: implements the `fuel-before-hard-sessions` idea. Food, the pre-session brief and Weekly Review now share one under-fuelled rule: a finished day with food logged below 85% of its target (`food_log.UNDER_SHARE`). `food_log.fuel_status_by_day` returns only judged days, so an unlogged or still-running day is unknown and never under-fuelled.

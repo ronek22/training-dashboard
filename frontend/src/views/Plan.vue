@@ -24,7 +24,7 @@
       <div v-if="flashMessage.detail" class="flash-detail">{{ flashMessage.detail }}</div>
     </div>
 
-    <WinterArcStrip @changed="load" />
+    <WinterArcStrip @changed="onArcChanged" />
 
     <div v-if="loading" class="skeleton-shell plan-loading-state">
       <div class="card skeleton-card plan-loading-trend">
@@ -728,6 +728,7 @@
         </template>
       </section>
       </div>
+      <WeekPreview v-if="plans.length && isViewingCurrentWeek" ref="weekPreview" />
       <details v-if="strengthRotationSummary || (planTrends && planTrends.weeks?.length)" class="plan-insights-disclosure">
         <summary>Coaching context and recent execution</summary>
       <div v-if="strengthRotationSummary" class="card plan-trend-card">
@@ -983,6 +984,7 @@ import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
 import LifeLoadPicker from '../components/LifeLoadPicker.vue'
+import WeekPreview from '../components/WeekPreview.vue'
 import WinterArcStrip from '../components/WinterArcStrip.vue'
 import { useLifeLoad } from '../composables/useLifeLoad'
 import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail'
@@ -1333,6 +1335,12 @@ const arcWeekTitle = (arc) => {
   ]
   if (arc.missing.length) lines.push(`Missing: ${arc.missing.map(item => `${item.count} ${arcRideLabel(item)}`).join(', ')}`)
   return lines.join('\n')
+}
+
+const weekPreview = ref(null)
+const onArcChanged = () => {
+  load()
+  weekPreview.value?.load()
 }
 
 const load = async () => {

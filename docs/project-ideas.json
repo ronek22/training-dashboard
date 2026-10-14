@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-14T14:38:16+02:00",
-  "summary": "Reviewed recent commits and working-tree summaries, current-state documentation, roadmap index and its open threads, archived V3 scope and Sprint 39. Reviewed the four newly added proposals and verified the prior 26 are unchanged. Inspected season-history aggregation, same-date comparison helpers and synthetic test declarations, plus history-backfill status and retry code. The roadmap now has no active version; the Ideas board and explicit open threads guide new work. Season comparison is already implemented, while backups, mountain re-entry, plate loading and shopping lists already have proposals. No sufficiently distinct new proposal was selected. Source/documentation review only; no application tests or model calls were run, and no credentials, databases or private training records were opened.",
+  "reviewed_at": "2026-10-14T18:52:00+02:00",
+  "summary": "On-request refill of a nearly empty board: 29 of 30 ideas were done or dismissed, and only kit mileage was still open. Promoted the roadmap open threads that had never become cards: legs every week, the lift and hard-ride clash rule, the winter base-to-build arc, the data-quality inbox and stall blocks beyond Strength. Added new ideas tied to what is coming up: a celebratory recap of the October 19–25 mountain trip, an opt-in FTP test that updates FTP from the result, fuelling before hard sessions, and a backup restore drill. Source and documentation review only. No tests or model calls were run.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -704,6 +704,215 @@
         "A frontend test covers the plate breakdown, including targets below the bar weight."
       ],
       "created_on": "2026-10-13"
+    },
+    {
+      "id": "legs-every-week-rotation",
+      "title": "Legs get trained every week",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "The A–D lift rotation runs over three lift days a week, so some weeks plan no lower-body work at all. The volume top-up then patches legs with accessory sets instead of a real leg day. Plan follow-through also shows lower-body lifts are the ones most often replaced by rides (3 of 8 done).",
+      "proposal": "When strength templates are assigned to a week, guarantee at least one lower-body-dominant session. If the next rotation slot would leave legs out, swap in the leg template for one day and push the skipped template to next week, so the rotation stays fair over a fortnight. Put the leg day on the most reliable weekday (Mon–Wed, according to follow-through), away from hard rides. Mark the swap on Plan with a small 'legs this week' tag.",
+      "benefit": "Every week gets a real leg stimulus, which serves the muscle-gain anchor goal, without adding lift sessions.",
+      "evidence": [
+        "backend/app/services/plans.py (_next_template_id, _apply_strength_templates_to_days)",
+        "backend/app/services/activities.py (reconcile_workout_template_rotation_state)",
+        "backend/app/services/strength_volume.py (weekly hard-set top-up)",
+        "backend/app/services/plan_follow_through.py",
+        "docs/roadmap.md open thread: Legs every week"
+      ],
+      "acceptance_criteria": [
+        "A generated week with three lift days always contains at least one session whose template trains legs, unless legs are a protected body area",
+        "The rotation over any two consecutive weeks still uses every template at least once",
+        "The leg session prefers Mon–Wed and is never placed the day before or after a planned hard ride when another slot is available",
+        "Plan shows a tag on the day that was swapped in, and a test covers the swap and the deferral"
+      ],
+      "created_on": "2026-10-14"
+    },
+    {
+      "id": "lift-hard-ride-clash-guard",
+      "title": "Keep leg lifts and hard rides apart",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "High",
+      "problem": "Nothing stops the planner or a manual move from putting a lower-body lift the day before a sweet-spot or VO2 ride, or right after one. Both sessions then come out worse. With quality rides coming back into the plan, this clash will happen more often.",
+      "proposal": "Add a clash rule to plan generation and plan adjustments: a lower-body lift and a hard ride (sweet spot, threshold, VO2) should not land on consecutive days, or on the same day unless the athlete chose that. The planner tries to swap days first. When the athlete moves a session into a clash, show a one-line warning with a 'swap instead' option rather than blocking the move. Upper-body lifts are exempt.",
+      "benefit": "Quality rides and leg sessions both land on fresh legs, so each one does more good.",
+      "evidence": [
+        "backend/app/services/plans.py (build_day_change_details, plan adjustment diff)",
+        "backend/app/services/session_brief.py (_trains_legs)",
+        "backend/app/services/ride_balance.py (ride type classification)",
+        "docs/roadmap.md open thread: Lift and hard-ride clash rule"
+      ],
+      "acceptance_criteria": [
+        "Generated plans contain no lower-body lift on the day before or after a hard ride when a non-clashing arrangement exists",
+        "Moving a session into a clash shows a warning that names both sessions and offers a swap",
+        "Upper-body lift days and easy or Z2 rides never trigger the warning",
+        "Unit tests cover the clash detection and the swap"
+      ],
+      "created_on": "2026-10-14"
+    },
+    {
+      "id": "mountain-trip-recap",
+      "title": "A recap page for each mountain trip",
+      "category": "Experience",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "The October 19–25 trip will be a week of daily hikes. Mountains shows trail coverage and single hikes, but nothing celebrates the trip as a whole. A week like that disappears into the weekly totals.",
+      "proposal": "Build a trip recap page for any run of consecutive days tagged mountains. Show big count-up numbers for distance, ascent, hours on foot and new trail kilometres. Add a map of every route from the trip on one canvas, a day-by-day strip with each day's peak or highlight and elevation profile, and the trip's share of the season's ascent. Link the page from Mountains, from the re-entry card, and from the Season in review page.",
+      "benefit": "The trip becomes a lasting, motivating memory in the app, in the same style as the season review.",
+      "evidence": [
+        "backend/app/services/hike_detail.py",
+        "backend/app/services/trail_coverage.py",
+        "backend/app/services/mountain_reentry.py (trip detection from life-load tags)",
+        "frontend/src/views/Mountains.vue",
+        "frontend/src/views/SeasonReview.vue (count-up recap style)"
+      ],
+      "acceptance_criteria": [
+        "Consecutive mountains-tagged days with hikes form one trip, and each trip has its own recap URL",
+        "The recap shows animated totals for distance, ascent and time, plus new trail kilometres when coverage data exists",
+        "All the trip's GPS tracks are drawn on one map, and each day has a card with its elevation profile",
+        "Mountains lists past trips, and the re-entry card links to the recap"
+      ],
+      "created_on": "2026-10-14"
+    },
+    {
+      "id": "winter-base-to-build-arc",
+      "title": "A winter cycling arc instead of week-by-week plans",
+      "category": "Product",
+      "effort": "Large",
+      "priority": "Medium",
+      "problem": "Each week is planned on its own. Ride-type balance shows sweet spot and VO2 have both disappeared, and plan follow-through shows quality rides were planned only twice in 12 weeks. With nothing describing where winter is heading, weeks drift toward Z2 by default.",
+      "proposal": "Add a winter arc: a few blocks running from November to February (for example base, then sweet-spot build, then a VO2 touch, with a lighter week every 3–4 weeks). The arc sets a target ride-type mix and weekly hours for each block, and the weekly planner reads the current block as a constraint. Show the arc as one horizontal strip on Plan's header or on Goals, with 'you are here'. Keep three lift days and minimum weeks intact. The arc only shapes rides.",
+      "benefit": "Quality rides come back on purpose, and the winter has a visible direction.",
+      "evidence": [
+        "backend/app/services/ride_balance.py",
+        "backend/app/services/plan_follow_through.py (quality rides planned 2 of 12 weeks)",
+        "backend/app/services/cycling_workouts.py (structured workout library)",
+        "backend/app/services/minimum_week.py",
+        "docs/roadmap.md open thread: Winter base-to-build arc"
+      ],
+      "acceptance_criteria": [
+        "The athlete can create, edit and clear an arc made of dated blocks, each with a focus and a target ride mix",
+        "The weekly planner context includes the current block, and generated weeks include the block's key ride types",
+        "Lighter weeks in the arc lower planned ride hours without removing lift days",
+        "The arc strip shows the current block and the weeks left in it"
+      ],
+      "created_on": "2026-10-14"
+    },
+    {
+      "id": "fuel-before-hard-sessions",
+      "title": "Eat enough before the sessions that matter",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "Food tracks under-fuelled days, and session briefs explain the workout, but the two are never connected. An under-fuelled day before a hard ride or a leg day goes unnoticed, and a flat session later gets blamed on fitness.",
+      "proposal": "When tomorrow's plan has a hard ride or a lower-body lift, make the 'What to eat next' card on Food say so ('Leg day tomorrow, aim for the full target today'), with a higher carb share. Add one line to the pre-session brief when the previous day was logged as under-fuelled. On Weekly Review, show how sessions felt after fuelled days compared with under-fuelled ones, once enough days are logged.",
+      "benefit": "The under-eating habit is caught where it costs the most: right before key sessions.",
+      "evidence": [
+        "backend/app/services/food_log.py (under-fuelled threshold)",
+        "backend/app/services/meal_ideas.py ('What to eat next')",
+        "backend/app/services/session_brief.py",
+        "backend/app/services/fuelling.py"
+      ],
+      "acceptance_criteria": [
+        "The day before a planned hard ride or lower-body lift, the Food card names the session and adjusts the suggested split",
+        "The pre-session brief mentions an under-fuelled previous day only when food was actually logged that day",
+        "Weekly Review shows the fuelled versus under-fuelled comparison only when there are at least 4 logged days on each side",
+        "Unlogged days are treated as unknown, never as under-fuelled"
+      ],
+      "created_on": "2026-10-14"
+    },
+    {
+      "id": "data-quality-inbox",
+      "title": "One inbox for missing and messy training data",
+      "category": "Experience",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "Gaps in the data are scattered: workouts without feedback, planned sessions that never matched an activity, rides missing heart-rate streams, and benchmarks that went stale. Each one quietly weakens readiness, analysis and plan follow-through, and the athlete only notices by chance.",
+      "proposal": "Add a small inbox to Data & Sync, plus a badge in the nav when it isn't empty. List each item with a one-click fix: add feedback, link the session to an activity, re-fetch streams, or mark it as fine. Items the athlete dismisses stay dismissed. Cap the list to the last 30 days so it never turns into a backlog.",
+      "benefit": "The data the coaching relies on stays complete, with only a couple of clicks a week.",
+      "evidence": [
+        "backend/app/services/activity_feedback.py",
+        "backend/app/services/plans.py (build_link_candidates)",
+        "backend/app/services/strava_history_backfill.py",
+        "backend/app/services/benchmarks.py",
+        "docs/roadmap.md open thread: Data-quality inbox (unbuilt half of Sprint 35)"
+      ],
+      "acceptance_criteria": [
+        "The inbox lists four kinds of items from the last 30 days: missing feedback, unmatched planned sessions, missing HR streams and stale benchmarks",
+        "Each item has an inline action that resolves it, and resolved or dismissed items disappear after reload",
+        "The nav shows a count badge only when open items exist",
+        "Backend tests cover detection for each item kind"
+      ],
+      "created_on": "2026-10-14"
+    },
+    {
+      "id": "ftp-test-when-ready",
+      "title": "An FTP test for when you decide you're ready",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Low",
+      "problem": "The app keeps the logged 242 W FTP until a new test, but it gives no help with doing one. It has no test workout, no way to pick a good day, and no step that turns the result into the new FTP. Meanwhile every power zone depends on a number that is over half a year old.",
+      "proposal": "Add an opt-in 'Plan an FTP test' action on the Athlete page. It is never suggested by the planner on its own. It offers a ramp test and a 20-minute test as .zwo workouts, and picks the next day with good readiness and no hard session the day before. After the ride, the app reads the result (best 20 min × 0.95 or 75% of the last ramp minute) and asks the athlete to confirm it as the new logged FTP.",
+      "benefit": "When the athlete chooses to test, it takes one ride and one click to get honest zones again.",
+      "evidence": [
+        "backend/app/services/ftp.py (ftp_choice, stored_ftp, working_ftp)",
+        "backend/app/services/cycling_workouts.py (.zwo export)",
+        "backend/app/services/readiness_score.py",
+        "frontend/src/views/Athlete.vue"
+      ],
+      "acceptance_criteria": [
+        "Nothing about an FTP test appears in plans or suggestions unless the athlete starts it from the Athlete page",
+        "Both test protocols are available as .zwo downloads and as plan entries",
+        "After a matching ride, the app shows the computed FTP and requires confirmation before it updates the logged FTP",
+        "Tests cover the result calculation for both protocols"
+      ],
+      "created_on": "2026-10-14"
+    },
+    {
+      "id": "backup-restore-drill",
+      "title": "Prove the backups actually restore",
+      "category": "Reliability",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "Daily and pre-migration backups pass SQLite's integrity check, but no one has restored one and opened the app on it. A backup that passes the integrity check can still fail to migrate or be missing tables, and that would only show up on the day it's needed.",
+      "proposal": "Add a restore drill command (and a weekly automatic run). It copies the newest backup to a temporary file, runs the app's migrations against it, runs a few smoke queries (activity count, latest activity date, plan weeks), and records the result. Data & Sync shows 'Last restore drill: OK, 2 days ago', next to the backup status. Document the real restore steps in docs.",
+      "benefit": "Confidence that the training history can actually be brought back, checked before it is ever needed.",
+      "evidence": [
+        "backend/app/services/backups.py (create_backup, integrity_check, get_status)",
+        "backend/app/db.py (migrations)",
+        "frontend/src/views/Sync.vue"
+      ],
+      "acceptance_criteria": [
+        "The drill never touches the live database and deletes its temporary copy",
+        "A drill that fails migrations or smoke queries is recorded as failed, with the reason",
+        "Data & Sync shows the last drill result and its age",
+        "A test runs the drill against a fixture backup"
+      ],
+      "created_on": "2026-10-14"
+    },
+    {
+      "id": "stall-blocks-everywhere",
+      "title": "Let stall-block results shape the next suggestions",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Low",
+      "problem": "Stall blocks are recorded with a snapshot, plan and outcome e1RM, but they only show on Strength. The Dashboard brief never mentions a running block. Later stall suggestions also ignore what worked the last time for the same lift.",
+      "proposal": "Show the active block on the Dashboard brief ('Bench stall block, week 2 of 3') and in the pre-session brief for that lift. When a lift stalls again, rank the block types by their past outcome for that lift, or similar lifts, and say why ('Last rep-range block added 4 kg').",
+      "benefit": "Stall fixes get smarter over time instead of starting from scratch each time.",
+      "evidence": [
+        "backend/app/services/stall_blocks.py (strength_stall_blocks outcomes)",
+        "backend/app/services/strength_plateaus.py",
+        "backend/app/services/dashboard.py",
+        "docs/roadmap.md open thread: Stall blocks beyond Strength"
+      ],
+      "acceptance_criteria": [
+        "The Dashboard brief shows the active block with its week number when one is running",
+        "Stall suggestions for a lift with a finished block reference that block's outcome",
+        "With no block history, suggestions behave exactly as they do today"
+      ],
+      "created_on": "2026-10-14"
     }
   ]
 }

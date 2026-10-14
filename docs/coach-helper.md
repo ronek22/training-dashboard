@@ -39,7 +39,9 @@ update the weekly plan or write other dashboard data.
    configured `training_dashboard` MCP server.
 3. Codex reads the athlete, readiness, goals, recent training, existing plan,
    strength context, and week-specific athlete input, then writes the plan
-   through MCP. Recovery evidence and modality restrictions remain safety
+   through MCP. When a winter arc is set, the current block's ride mix and
+   hours shape the rides; saving a new week adds any missing key ride and trims
+   rides in a lighter week (lifts are never changed). Recovery evidence and modality restrictions remain safety
    boundaries when they conflict with the brief.
 4. The page polls the job and refreshes the saved plan automatically.
 

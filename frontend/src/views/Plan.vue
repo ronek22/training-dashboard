@@ -24,6 +24,8 @@
       <div v-if="flashMessage.detail" class="flash-detail">{{ flashMessage.detail }}</div>
     </div>
 
+    <WinterArcStrip @changed="load" />
+
     <div v-if="loading" class="skeleton-shell plan-loading-state">
       <div class="card skeleton-card plan-loading-trend">
         <div class="skeleton-line skeleton-line-sm plan-loading-kicker"></div>
@@ -100,6 +102,7 @@
             <div class="week-meta-row">
               <span class="week-emphasis-pill" :class="weekEmphasisClass(plan)">{{ weekEmphasisLabel(plan) }}</span>
               <span v-if="plan.minimum_week?.active && !isHistoricalPlan(plan)" class="minimum-week-pill" :title="plan.minimum_week.summary || undefined">Minimum viable week</span>
+              <span v-if="plan.winter_arc" class="arc-week-pill" :class="{ 'arc-week-pill-short': plan.winter_arc.missing.length && !isHistoricalPlan(plan) }" :title="arcWeekTitle(plan.winter_arc)">{{ plan.winter_arc.label }} · wk {{ plan.winter_arc.week_number }}/{{ plan.winter_arc.weeks_in_block }}<template v-if="plan.winter_arc.lighter"> · lighter</template><template v-if="plan.winter_arc.missing.length && !isHistoricalPlan(plan)"> · {{ arcMissingText(plan.winter_arc) }}</template></span>
 
             </div>
           </div>
@@ -980,6 +983,7 @@ import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
 import LifeLoadPicker from '../components/LifeLoadPicker.vue'
+import WinterArcStrip from '../components/WinterArcStrip.vue'
 import { useLifeLoad } from '../composables/useLifeLoad'
 import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail'
 import { clashText, swapLabel } from '../plan/lift-ride-clash.mjs'
@@ -1316,6 +1320,19 @@ const reviseCurrentPlanWithCoach = async () => {
     planningWithCoach.value = false
     coachPlanningStage.value = ''
   }
+}
+
+const arcMixText = mix => [['z2', 'Z2'], ['sweet_spot', 'sweet spot'], ['vo2', 'VO2']].filter(([key]) => mix[key]).map(([key, label]) => `${mix[key]} ${label}`).join(', ')
+const arcRideLabel = item => (item.type === 'z2' ? 'Z2' : item.label.toLowerCase())
+const arcMissingText = arc => `${arc.missing.map(item => `${item.count} ${arcRideLabel(item)}`).join(' + ')} short`
+const arcWeekTitle = (arc) => {
+  const lines = [
+    `Winter arc: ${arc.label}, week ${arc.week_number} of ${arc.weeks_in_block}${arc.lighter ? ' (lighter week)' : ''}`,
+    `Target: ${arcMixText(arc.ride_mix)} · about ${arc.ride_hours} h`,
+    `Planned: ${arcMixText(arc.planned_mix) || 'no rides'} · ${arc.planned_ride_hours} h`,
+  ]
+  if (arc.missing.length) lines.push(`Missing: ${arc.missing.map(item => `${item.count} ${arcRideLabel(item)}`).join(', ')}`)
+  return lines.join('\n')
 }
 
 const load = async () => {
@@ -2538,6 +2555,8 @@ const savePlanLink = async (day) => {
 </script>
 
 <style scoped>
+.arc-week-pill { padding: 2px 9px; border-radius: 999px; background: rgb(var(--ov-rgb) / .06); color: var(--text-soft); font-size: 12px; font-weight: 650; }
+.arc-week-pill-short { background: rgba(245, 158, 11, .14); color: var(--warning-text); }
 .minimum-week-pill { padding: 2px 9px; border-radius: 999px; background: rgb(var(--life-rgb) / .16); color: var(--life); font-size: 12px; font-weight: 650; }
 .minimum-week-button { align-self: center; white-space: nowrap; }
 .minimum-week-modal { max-width: 560px; }

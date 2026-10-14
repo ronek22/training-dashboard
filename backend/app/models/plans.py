@@ -81,3 +81,24 @@ class TodayOptionApply(BaseModel):
 class TodayOptionUndo(BaseModel):
     undo: dict
     day: Optional[Date] = None
+
+
+class WinterArcRideMix(BaseModel):
+    """Rides per week of each type the block aims for."""
+    z2: int = Field(default=2, ge=0, le=7)
+    sweet_spot: int = Field(default=0, ge=0, le=3)
+    vo2: int = Field(default=0, ge=0, le=3)
+
+
+class WinterArcBlock(BaseModel):
+    start_date: Date
+    end_date: Date
+    focus: str
+    label: Optional[str] = Field(default=None, max_length=60)
+    weekly_hours: float = Field(gt=0, le=25)
+    ride_mix: WinterArcRideMix = Field(default_factory=WinterArcRideMix)
+    lighter_every: int = Field(default=0, ge=0, le=8)  # every Nth week of the block is lighter; 0 = none
+
+
+class WinterArc(BaseModel):
+    blocks: list[WinterArcBlock] = Field(min_length=1, max_length=12)

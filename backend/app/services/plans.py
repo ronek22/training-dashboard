@@ -1217,6 +1217,7 @@ def _serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection])
         "run_guardrail": _run_guardrail(conn, days, row["week_start"]),
         "life_load": build_plan_life_load(conn, days, row["week_start"]),
         "lift_ride_clashes": build_lift_ride_clashes(conn, days),
+        "winter_arc": _winter_arc_status(conn, days, row["week_start"]),
         "minimum_week": minimum_week,
         "lift_volume": lift_volume,
         "workout_template_programs": workout_template_programs,
@@ -1228,6 +1229,12 @@ def build_lift_ride_clashes(conn: Optional[sqlite3.Connection], days: list[dict]
     if not days:
         return []
     return plan_clashes(days, legs_check(conn), locked_dates(conn, days), pinned)
+
+
+def _winter_arc_status(conn: Optional[sqlite3.Connection], days: list[dict], week_start: str) -> Optional[dict]:
+    from .winter_arc import arc_week_status
+
+    return arc_week_status(conn, days, week_start)
 
 
 def _minimum_week_state(conn: Optional[sqlite3.Connection], week_start: str) -> Optional[dict]:
@@ -1486,10 +1493,13 @@ def upsert_weekly_plan_data(conn: sqlite3.Connection, plan: WeeklyPlan) -> dict:
     template_settings = get_workout_template_settings_for_conn(conn)
     restrictions = get_modality_restrictions_for_conn(conn)
     prepared_plan = prepare_weekly_plan_for_storage(plan, template_settings=template_settings, restrictions=restrictions)
+    # Winter arc: carry the block's key rides and trim rides in a lighter week (rides only).
+    from .winter_arc import fit_week_to_arc
+
+    days, arc_changes = fit_week_to_arc(conn, [day.model_dump() for day in prepared_plan.days], prepared_plan.week_start)
     # Clash rule: swap days so a leg lift does not sit next to a hard ride.
-    days = [day.model_dump() for day in prepared_plan.days]
     resolved_days, clash_swaps = resolve_clashes(days, legs_check(conn), locked_dates(conn, days))
-    if clash_swaps:
+    if clash_swaps or arc_changes:
         prepared_plan = prepare_weekly_plan_for_storage(
             prepared_plan.model_copy(update={"days": [WeeklyPlanDay(**day) for day in resolved_days]}),
             template_settings=template_settings,
@@ -1497,7 +1507,7 @@ def upsert_weekly_plan_data(conn: sqlite3.Connection, plan: WeeklyPlan) -> dict:
         )
     upsert_weekly_plan_row(conn, prepared_plan)
     conn.commit()
-    return {"status": "ok", "week_start": prepared_plan.week_start, "clash_swaps": clash_swaps}
+    return {"status": "ok", "week_start": prepared_plan.week_start, "clash_swaps": clash_swaps, "arc_changes": arc_changes}
 
 
 def preview_weekly_plan_adjustment_data(conn: sqlite3.Connection, adjustment: WeeklyPlanAdjustment) -> dict:

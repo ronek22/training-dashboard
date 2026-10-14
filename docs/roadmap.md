@@ -17,7 +17,6 @@ Archived roadmaps:
 Known gaps that are not on the Ideas board yet. Remove a line when it ships or is dropped. Start each description with a capital letter; the page shows it as written.
 
 - **Legs every week** — The A–D lift rotation over three days a week often leaves legs with no planned sets.
-- **Winter base-to-build arc** — A multi-week shape for the winter cycling block instead of week-by-week planning.
 - **Strength sets on Strava** — Waiting for a Strava endpoint that can add sets to an existing activity.
 
 Working rule:

@@ -24,6 +24,16 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Winter arc for cycling
+
+2026-10-15: Plan opens with a Winter arc strip: a few dated blocks (Base, Sweet-spot build, VO2 touch, Maintain), each with weekly ride hours, a target ride mix (Z2, sweet spot and VO2 rides per week) and an optional lighter week every 3–5 weeks. The arc only shapes rides; lifts, anchors and minimum weeks are never changed.
+
+- Storage and API: `winter_arc_blocks` (`services/winter_arc.py`). `GET /plans/winter-arc` returns the blocks, the current week's target, status (none, upcoming, active, gap, finished) and recent weekly ride hours; `PUT` replaces the whole arc (blocks run Monday to Sunday and cannot overlap); `DELETE` clears it. Saved weekly plans are not touched by editing or clearing.
+- Strip: one horizontal bar per block, sized by weeks, with lighter weeks dimmed, "You are here" and the current block, week number and weeks left. "Edit arc" opens a back-to-back block editor; an empty arc offers a November–February template (base, sweet-spot build, VO2 touch) sized from recent ride hours. Each week card shows a pill such as "Sweet-spot build · wk 2/6 · lighter", which turns amber with "1 sweet spot short" when the saved week misses a key ride.
+- Planner: the coach's recent context has `winter_arc` with `this_week` and `next_week` (block, week number, lighter flag, `ride_hours`, `ride_mix`, `key_types`), and the weekly-plan prompt tells the coach to plan rides to that block. When a new week is saved (`upsert_weekly_plan_data`), `fit_week_to_arc` converts open easy rides into any missing key ride (Sweet spot 3 × 10 or VO2 5 × 3 from the workout library, weekdays and away from other quality rides first, never the long ride) and, in a lighter week, trims easy rides to about 60% of the block's hours (30 minutes minimum). Days that are past, done, sick, in an illness or mountain re-entry window or tagged in life load never get a quality ride. The lift/ride clash rule runs afterwards. Adjustments and minimum weeks are not refitted; the week's `winter_arc` status reports any shortfall instead.
+- A lighter week keeps one of each key ride and one fewer Z2 ride.
+- Verified with `test_winter_arc.py` (8 tests: create/edit/clear, validation, strip position, coaching context, key rides added, tagged days skipped, lighter-week trim with lifts kept, weeks outside the arc untouched); backend 858, scripts 59 and frontend 160 tests plus the build pass. On a scratch copy of the database at 1512 px and 375 px: created, edited (strip rescaled), cleared, and saved the template. Live training data was not changed and no arc was created there.
+
 ### Stall blocks shape later suggestions
 
 2026-10-14: A running stall block now shows outside Strength, and finished blocks steer the next stall suggestion for the same lift.

@@ -17,6 +17,7 @@ from .plan_follow_through import plan_follow_through_coaching_context
 from .personal_records import build_recent_records_context
 from .session_brief import build_briefs_for_date
 from .stall_blocks import current_block as current_stall_block
+from .winter_arc import winter_arc_coaching_context
 from .what_worked import build_what_worked_coaching_context
 from .return_to_run import build_return_to_run_context
 from .activity_feedback import attach_feedback_by_activity_id, list_recent_feedback_data
@@ -1176,6 +1177,7 @@ def build_recent_context(
         "strength_consistency": strength_consistency,
         "recent_strength_detail": recent_strength_detail,
         "stall_block": current_stall_block(conn),
+        "winter_arc": winter_arc_coaching_context(conn),
         "cycling_power": build_cycling_power_coaching_context(conn, include_thresholds=False),
         "aerobic_fitness": aerobic_decoupling_coaching_context(conn),
         "athlete_profile": athlete_profile,

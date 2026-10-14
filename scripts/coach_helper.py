@@ -244,7 +244,12 @@ lower-body lift repeats pre-trip loads with 2+ reps in reserve.
 get_recent_context includes plan_follow_through (what happened to planned sessions over recent weeks):
 when quality_rides shows a weekly goal that recent plans rarely included,
 plan that session; put key sessions (quality rides, lower-body lifts) on
-reliable_weekdays and keep them off shaky_weekdays. This request explicitly
+reliable_weekdays and keep them off shaky_weekdays. When get_recent_context
+shows winter_arc, plan rides to the block for the week you are planning
+(this_week or next_week): include its key_types as structured rides, match
+ride_mix where the schedule allows, keep ride time near ride_hours, and in a
+lighter week shorten rides instead of dropping lifts. The arc never removes
+lift days or overrides minimum_week, return windows or life_load. This request explicitly
 authorizes creating or updating the current weekly plan, so do not ask for
 confirmation. After writing, verify the saved result with get_weekly_plans and
 provide a concise summary.

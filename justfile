@@ -49,6 +49,34 @@ coach-helper-install:
 coach-helper-uninstall:
     "{{root}}/scripts/coach_helper_service.sh" uninstall
 
+# Snapshot the database now with SQLite's backup API (inside the running backend, or locally).
+backup:
+    if docker compose ps --status running --services 2>/dev/null | grep -qx backend; then \
+        docker compose exec -T backend python -m app.services.backups; \
+    else \
+        cd "{{root}}/backend" && TRAINING_DB_PATH="{{root}}/data/training.db" python3 -m app.services.backups; \
+    fi
+
+# Put a backup in place (path or file name in data/backups/); the replaced database is kept aside.
+restore file:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    src="{{file}}"
+    [ -f "$src" ] || src="{{root}}/data/backups/{{file}}"
+    [ -f "$src" ] || { echo "No backup found at {{file}}" >&2; exit 1; }
+    python3 -c 'import sqlite3, sys; c = sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True); r = c.execute("PRAGMA integrity_check").fetchone()[0]; sys.exit(0 if r == "ok" else f"Integrity check failed: {r}")' "$src"
+    db="{{root}}/data/training.db"
+    was_running=$(docker compose ps --status running --services 2>/dev/null || true)
+    [ -n "$was_running" ] && docker compose stop
+    aside="$db.replaced-$(date +%Y%m%d-%H%M%S)"
+    for ext in "" -wal -shm; do
+        [ -e "$db$ext" ] && mv "$db$ext" "$aside$ext"
+    done
+    cp "$src" "$db.restoring" && mv "$db.restoring" "$db"
+    echo "Restored $(basename "$src"); the previous database is at $aside"
+    [ -n "$was_running" ] && docker compose start
+    true
+
 # Run the backend test suite.
 test-backend:
     # Prefer the backend virtualenv (pip install -r backend/requirements.txt); fall back to .tmp_test_deps.

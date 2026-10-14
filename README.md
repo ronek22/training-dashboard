@@ -84,6 +84,7 @@ just restart
 just logs
 just down
 just check
+just backup
 ```
 
 ## Checks Before Shipping
@@ -321,6 +322,17 @@ Once the MCP server is connected, Claude can:
 ## Data Storage
 
 SQLite database stored in `./data/training.db` — persists across container restarts.
+
+### Backups
+
+While the backend runs it snapshots the database once a day with SQLite's online backup API (safe during writes), plus a copy before the startup migrations (at most one an hour, because `--reload` restarts on every code edit). Each copy passes `PRAGMA integrity_check` before it is kept in `data/backups/` as `training-YYYYMMDD-HHMMSS-<daily|startup|manual>.db`. Retention keeps the newest copy of each of the last 7 days, of the 4 weeks before that, and the last 2 startup copies; files with other names (hand-made copies, `*.replaced-*`) are never deleted. At about 0.5 GB per copy this is roughly 6–7 GB. **Data & Sync → Database backups** shows the last good backup, a failure if the last attempt failed, and a "Back up now" button (`GET`/`POST /backups`).
+
+```bash
+just backup
+just restore training-20261014-184341-daily.db
+```
+
+`just restore` checks the backup's integrity, stops the stack, moves the current `training.db` (and any `-wal`/`-shm`) aside as `training.db.replaced-<time>`, puts the backup in place and starts the stack again if it was running. Set `TRAINING_BACKUPS=false` to switch off the daily loop or `TRAINING_BACKUP_DIR` to store copies elsewhere.
 
 ## Consistency And Legacy Streak Logic
 

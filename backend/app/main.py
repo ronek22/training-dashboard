@@ -39,6 +39,9 @@ from .routers.what_worked import router as what_worked_router
 from .routers.return_to_run import router as return_to_run_router
 from .routers.life_load import router as life_load_router
 from .routers.trails import router as trails_router
+from .routers.backups import router as backups_router
+from . import db as db_module
+from .services import backups
 from .services.health_data import apply_health_data_import
 from .services.settings import get_setting, set_setting
 from .services.strava_history_backfill import run_batch as run_history_backfill
@@ -96,6 +99,21 @@ async def _strava_history_backfill_loop() -> None:
         await asyncio.sleep(60)
 
 
+def _daily_backup_once() -> None:
+    try:
+        if backups.daily_backup_due(db_module.DB_PATH):
+            backups.create_backup(db_module.DB_PATH, "daily")
+    except Exception:
+        logger.exception("Daily database backup failed")
+
+
+async def _daily_backup_loop() -> None:
+    # Hourly check; the first one runs at startup, so a day without a copy gets one within the hour.
+    while True:
+        await asyncio.to_thread(_daily_backup_once)
+        await asyncio.sleep(3600)
+
+
 @asynccontextmanager
 async def app_lifespan(app_instance: FastAPI):
     async with mcp_app.router.lifespan_context(app_instance):
@@ -105,10 +123,11 @@ async def app_lifespan(app_instance: FastAPI):
         if import_health or widget_dir:
             task = asyncio.create_task(_background_sync_loop(import_health, widget_dir))
         backfill_task = asyncio.create_task(_strava_history_backfill_loop()) if os.getenv("STRAVA_HISTORY_BACKFILL", "true").lower() not in {"0", "false", "no", "off"} else None
+        backup_task = asyncio.create_task(_daily_backup_loop()) if os.getenv("TRAINING_BACKUPS", "true").lower() not in {"0", "false", "no", "off"} else None
         try:
             yield
         finally:
-            for running in (task, backfill_task):
+            for running in (task, backfill_task, backup_task):
                 if running:
                     running.cancel()
                     with suppress(asyncio.CancelledError):
@@ -168,6 +187,7 @@ app.include_router(what_worked_router)
 app.include_router(return_to_run_router)
 app.include_router(life_load_router)
 app.include_router(trails_router)
+app.include_router(backups_router)
 
 init_db()
 app.mount("/mcp", mcp_app)

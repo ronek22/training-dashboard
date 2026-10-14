@@ -239,6 +239,8 @@ export const useApi = () => ({
   getStravaStatus: () => api.get('/integrations/strava/status'),
   importStravaActivities: (payload) => api.post('/integrations/strava/import', payload, { timeout: 600000 }),
   backfillStravaStreams: (payload) => api.post('/integrations/strava/streams/backfill', payload),
+  getBackupStatus: () => api.get('/backups'),
+  runBackup: () => api.post('/backups', null, { timeout: 300000 }),
   getStravaHistoryBackfill: () => api.get('/integrations/strava/history-backfill'),
   setStravaHistoryBackfill: (enabled) => api.post('/integrations/strava/history-backfill', { enabled }),
   previewHealthFitImport: () => api.get('/integrations/healthfit/preview'),

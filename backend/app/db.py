@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 
@@ -168,6 +169,11 @@ def init_db():
     db_dir = os.path.dirname(DB_PATH)
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)
+    from .services.backups import snapshot_before_migrations
+    try:
+        snapshot_before_migrations(DB_PATH)
+    except Exception:
+        logging.getLogger(__name__).exception("Pre-migration backup failed")
     conn = get_db()
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS weekly_reviews (

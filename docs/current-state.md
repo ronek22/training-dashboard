@@ -24,6 +24,16 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Automatic database backups
+
+2026-10-14: `data/training.db` is no longer a single point of failure. `services/backups.py` takes snapshots with SQLite's online backup API into `data/backups/` and verifies each with `PRAGMA integrity_check` (a failed copy is discarded and the failure recorded in `backup-status.json`).
+
+- When: an hourly check in the backend lifespan takes one copy a day; `init_db` takes one before migrations at startup (skipped for new/empty databases and when a copy is under an hour old; the first copy of a day counts as the daily one). `just backup` or Data & Sync → "Back up now" takes a manual copy.
+- Retention: newest copy of each of the last 7 days and the 4 weeks before them, plus the last 2 startup copies. Only `training-YYYYMMDD-HHMMSS-<kind>.db` files are pruned.
+- Data & Sync → Database backups: last good backup, Up to date / Overdue (no good copy for 36 h) / Failed with the message, and the saved copies.
+- `just restore <file>`: integrity-checks the backup, stops the stack, keeps the replaced database as `training.db.replaced-<time>`, puts the backup in place and restarts what was running.
+- Verified with `test_backups.py` (backup of a live WAL database and restore with matching row counts, integrity failure status, retention, startup rules, `init_db` hook, CLI); backend 824 and frontend tests plus the build pass. The running app took its first copies (482 MB each, integrity ok) and the panel was checked at 1512 px. `just restore` was dry-run only; no restore was performed on live data.
+
 ### Fixed-step adjustable dumbbells
 
 2026-10-14: Home gym → Dumbbells has "Adjusts in" (Auto / 1 / 2 / 2.5 kg), stored as `dumbbell_step_kg` in the athlete profile. Auto (null) keeps the old rule: +1 kg under 10 kg, then +2 kg. With a step set, every dumbbell load suggested lands on a setting the dumbbells can make (e.g. 2–24 kg in 2 kg steps):

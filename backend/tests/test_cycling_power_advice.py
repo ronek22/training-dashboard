@@ -86,5 +86,7 @@ class CyclingAdviceTests(unittest.TestCase):
         run = Mock(return_value=json.dumps(result))
         with patch.object(cycling_power_helper,'request',side_effect=[{'review':None},{'context_key':'abc','snapshot':{'status':'available','recording_gaps':[]}},result]) as request:
             self.assertEqual(cycling_power_helper.run_review(run,Mock()),result)
-            self.assertEqual(request.call_args.args,('/metrics/cycling-power/advice',result))
+            self.assertEqual(request.call_args.args,('/metrics/cycling-power/advice',cycling_power_helper.normalize(result,'abc')))
+            saved = request.call_args.args[1]
+            self.assertEqual((saved['headline'],saved['assessment'],saved['focus'],saved['evidence_ids']),('Advice','',[],[]))
         self.assertEqual(run.call_count,1)

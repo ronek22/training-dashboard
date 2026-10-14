@@ -788,6 +788,28 @@ def _positive_kg(value) -> Optional[float]:
     return kg if 0 < kg <= 500 else None
 
 
+DEFAULT_BAR_WEIGHT_KG = 20.0
+# Plates owned (total, not pairs); a pair is needed to load a size on both sides.
+DEFAULT_PLATES = [{"kg": kg, "count": 2} for kg in (25.0, 20.0, 15.0, 10.0, 5.0, 2.5, 1.25)]
+
+
+def normalize_plates(raw) -> list[dict]:
+    """Plate inventory heaviest first, one row per size; missing keeps the standard set."""
+    if not isinstance(raw, list):
+        return [dict(item) for item in DEFAULT_PLATES]
+    counts: dict[float, int] = {}
+    for item in raw:
+        kg = _positive_kg(item.get("kg")) if isinstance(item, dict) else None
+        if not kg or kg > 50:
+            continue
+        try:
+            count = int(item.get("count") or 0)
+        except (TypeError, ValueError):
+            count = 0
+        counts[kg] = min(40, counts.get(kg, 0) + max(0, count))
+    return [{"kg": kg, "count": counts[kg]} for kg in sorted(counts, reverse=True)]
+
+
 def normalize_athlete_profile(raw_value: Optional[dict]) -> dict:
     raw = raw_value if isinstance(raw_value, dict) else {}
     focus = _clean_text(raw.get("primary_focus")) or "general_fitness"
@@ -828,6 +850,8 @@ def normalize_athlete_profile(raw_value: Optional[dict]) -> dict:
     profile["off_season_months"] = off_season_months
     profile["off_season"] = {"months": off_season_months, "label": season_label(off_season_months)}
     profile["max_dumbbell_kg"] = _positive_kg(raw.get("max_dumbbell_kg"))
+    profile["bar_weight_kg"] = _positive_kg(raw.get("bar_weight_kg")) or DEFAULT_BAR_WEIGHT_KG
+    profile["plates"] = normalize_plates(raw.get("plates"))
     reviewed_raw = raw.get("notes_reviewed_at") if isinstance(raw.get("notes_reviewed_at"), dict) else {}
     profile["notes_reviewed_at"] = {field: _iso_day(reviewed_raw.get(field)) for field in NOTE_FIELDS}
     profile["note_reviews"] = _note_reviews(profile)
@@ -863,6 +887,8 @@ def serialize_athlete_profile_for_storage(profile: dict) -> dict:
         "planning_notes": profile.get("planning_notes"),
         "off_season_months": profile.get("off_season_months"),
         "max_dumbbell_kg": profile.get("max_dumbbell_kg"),
+        "bar_weight_kg": profile.get("bar_weight_kg"),
+        "plates": profile.get("plates"),
         "notes_reviewed_at": profile.get("notes_reviewed_at") or {},
     }
 

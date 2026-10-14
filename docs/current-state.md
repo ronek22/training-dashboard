@@ -24,6 +24,16 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Plates per side and suggested warm-ups
+
+2026-10-14: the workout runner does the barbell plate maths. `frontend/src/coach/plates.mjs` holds the logic and `components/PlateStack.vue` draws the plates.
+
+- Barbell lifts (named "Barbell …" or classic bar lifts such as Back Squat and Romanian Deadlift; not dumbbell, machine, cable, Smith, trap-bar or bodyweight) show the plates per side under the target, as a small coloured stack plus text, e.g. "25 + 1.25 per side". A target at or below the bar shows "Empty bar". When a target cannot be loaded exactly, it adds "nearest 62.5 kg"; ties go to the lighter load. The stored target and progression are never changed.
+- Breakdown: the nearest loadable weight with the fewest plates, using only the plates owned. Each side needs one, so a size loads in pairs (3 × 20 kg gives one per side and a spare). Not greedy, so a 15 kg bar with 15/10 plates loads 55 kg as 10 + 10.
+- Athlete page → **Home gym** card: a barbell preview loaded with everything you own, heaviest load and smallest jump, a bar picker (20/15/10 or any weight), and a plate rack with a count per size, add/remove sizes. Adjustable dumbbells ("up to 24 kg each", the existing `max_dumbbell_kg`) moved here from Profile; plates are for the bar only. Stored in the athlete profile as `bar_weight_kg` and `plates` (`[{kg, count}]`, total plates owned). Defaults: a 20 kg bar and 2 each of 25/20/15/10/5/2.5/1.25.
+- "Suggest warm-ups" (barbell lifts with no warm-ups yet): adds up to 3 ordinary warm-up sets at about 50% × 8, 70% × 5 and 85% × 3 of the first working set, each rounded to a loadable weight and kept below it. They use the existing warm-up endpoint, can be removed, and never count as working sets.
+- Verified with 7 frontend plate tests (incl. targets below the bar, unloadable targets, limited plate counts), 2 profile normalization tests and the profile persistence smoke test. Backend 816 tests, frontend 152 tests and the build pass. The Home gym card was checked in the local app at 1512 px (counts update the preview; the test edit was discarded). The runner was not opened on a live session, so no workout data was created.
+
 ### Detailed streams for the whole Strava history
 
 2026-10-13: after importing Strava history back to 2013, 2,109 older runs and rides had only summary numbers, so their fastest-distance records, season bests, charts and maps were missing. The existing "Fetch next 12" backfill skips runs without heart rate, which is most of them before 2022.

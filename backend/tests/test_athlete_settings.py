@@ -144,6 +144,22 @@ class BodyAreaTests(unittest.TestCase):
         self.assertIsNone(protected_area_for_exercise("Lying Leg Curl", elbow))
 
 
+class BarbellPlateTests(unittest.TestCase):
+    def test_defaults_to_a_20_kg_bar_and_a_pair_of_each_standard_plate(self):
+        profile = normalize_athlete_profile({})
+        self.assertEqual(profile["bar_weight_kg"], 20.0)
+        self.assertEqual([item["kg"] for item in profile["plates"]], [25.0, 20.0, 15.0, 10.0, 5.0, 2.5, 1.25])
+        self.assertTrue(all(item["count"] == 2 for item in profile["plates"]))
+
+    def test_inventory_merges_sizes_sorts_and_drops_bad_rows(self):
+        profile = normalize_athlete_profile({"bar_weight_kg": 15, "plates": [
+            {"kg": 5, "count": 4}, {"kg": 20, "count": 2}, {"kg": "x", "count": 2},
+            {"kg": 5, "count": 2}, {"kg": 1.25, "count": 0}, "junk",
+        ]})
+        self.assertEqual(profile["bar_weight_kg"], 15.0)
+        self.assertEqual(profile["plates"], [{"kg": 20.0, "count": 2}, {"kg": 5.0, "count": 6}, {"kg": 1.25, "count": 0}])
+
+
 class NoteReviewTests(unittest.TestCase):
     def test_notes_without_a_review_date_are_stale(self):
         profile = normalize_athlete_profile({"planning_notes": "Protect long rides", "current_block": None})

@@ -22,6 +22,11 @@ class ModalityRestrictionsPayload(BaseModel):
     body_areas: list[BodyAreaRestriction] = Field(default_factory=list)
 
 
+class PlateCount(BaseModel):
+    kg: float = Field(gt=0, le=50)
+    count: int = Field(ge=0, le=40)
+
+
 class AthleteProfilePayload(BaseModel):
     primary_focus: Optional[str] = None
     modality_preferences: list[str] = Field(default_factory=list)
@@ -33,6 +38,9 @@ class AthleteProfilePayload(BaseModel):
     off_season_months: Optional[list[int]] = None
     # Heaviest dumbbell available; progression switches to reps once it is reached.
     max_dumbbell_kg: Optional[float] = None
+    # Barbell plate maths in the workout runner; None keeps 20 kg and the standard plate set.
+    bar_weight_kg: Optional[float] = None
+    plates: Optional[list[PlateCount]] = None
     # Date each free-text note was last written or confirmed; sending today marks it reviewed.
     notes_reviewed_at: Optional[dict[str, Optional[str]]] = None
 

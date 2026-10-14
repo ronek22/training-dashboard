@@ -32,7 +32,7 @@
               <h2 id="profile-title">Profile</h2>
               <p class="used-by">Used by the planner, goal suggestions and the coach</p>
             </div>
-            <span v-if="dirty.profile" class="dirty-chip">Edited</span>
+            <span v-if="dirty.profileOnly" class="dirty-chip">Edited</span>
           </header>
 
           <div class="field">
@@ -82,26 +82,20 @@
             </div>
           </div>
 
-          <div class="field-row">
-            <div class="field">
-              <span class="field-label">Off season <small>Mostly indoor</small></span>
-              <div class="inline-inputs">
-                <select v-model="profileForm.off_season_start" aria-label="Off season starts">
-                  <option value="">None</option>
-                  <option v-for="month in monthOptions" :key="`start-${month.value}`" :value="month.value">{{ month.label }}</option>
-                </select>
-                <span aria-hidden="true">to</span>
-                <select v-model="profileForm.off_season_end" aria-label="Off season ends" :disabled="!profileForm.off_season_start">
-                  <option v-for="month in monthOptions" :key="`end-${month.value}`" :value="month.value">{{ month.label }}</option>
-                </select>
-              </div>
+          <div class="field">
+            <span class="field-label">Off season <small>Mostly indoor</small></span>
+            <div class="inline-inputs">
+              <select v-model="profileForm.off_season_start" aria-label="Off season starts">
+                <option value="">None</option>
+                <option v-for="month in monthOptions" :key="`start-${month.value}`" :value="month.value">{{ month.label }}</option>
+              </select>
+              <span aria-hidden="true">to</span>
+              <select v-model="profileForm.off_season_end" aria-label="Off season ends" :disabled="!profileForm.off_season_start">
+                <option v-for="month in monthOptions" :key="`end-${month.value}`" :value="month.value">{{ month.label }}</option>
+              </select>
             </div>
-            <label class="field field-narrow">
-              <span class="field-label">Heaviest dumbbell</span>
-              <span class="unit-input"><input v-model.number="profileForm.max_dumbbell_kg" type="number" min="0" max="500" step="0.5" placeholder="No limit"><em>kg</em></span>
-            </label>
           </div>
-          <p class="hint">Off-season weeks are compared with past off-season weeks. At the dumbbell limit, progression adds reps instead of weight.</p>
+          <p class="hint">Off-season weeks are compared with past off-season weeks.</p>
         </section>
 
         <!-- Thresholds -->
@@ -344,6 +338,71 @@
           </div>
         </section>
 
+        <!-- Home gym -->
+        <section id="equipment" class="card athlete-card athlete-card-wide" aria-labelledby="equipment-title">
+          <header class="athlete-card-head">
+            <div>
+              <h2 id="equipment-title">Home gym</h2>
+              <p class="used-by">Used by the workout runner for plates per side and warm-ups, and by lift progression</p>
+            </div>
+            <span v-if="dirty.equipment" class="dirty-chip">Edited</span>
+          </header>
+
+          <div class="gym-grid">
+            <div class="gym-block gym-barbell">
+              <div class="gym-preview">
+                <PlateStack :plates="barbell.perSide" :size="74" mirror>
+                  <span class="bar-tag">{{ formatKg(profileForm.bar_weight_kg || 20) }} kg bar</span>
+                </PlateStack>
+              </div>
+              <dl class="gym-stats">
+                <div><dt>Heaviest load</dt><dd><AnimatedNumber :value="barbell.maxKg" :format="formatKg" /> <small>kg</small></dd></div>
+                <div><dt>Smallest jump</dt><dd>{{ barbell.stepKg == null ? '—' : formatKg(barbell.stepKg) }} <small v-if="barbell.stepKg != null">kg</small></dd></div>
+              </dl>
+              <div class="field">
+                <span class="field-label">Bar</span>
+                <div class="bar-picker">
+                  <div class="segmented segmented-sm" role="radiogroup" aria-label="Bar weight">
+                    <button v-for="kg in [20, 15, 10]" :key="kg" type="button" role="radio" :aria-checked="Number(profileForm.bar_weight_kg) === kg" :class="{ 'is-active': Number(profileForm.bar_weight_kg) === kg }" @click="profileForm.bar_weight_kg = kg">{{ kg }} kg</button>
+                  </div>
+                  <span class="unit-input bar-input"><input v-model.number="profileForm.bar_weight_kg" type="number" min="1" max="50" step="0.5" aria-label="Bar weight in kilograms"><em>kg</em></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="gym-block">
+              <span class="field-label">Plates <small>How many you own of each. Each side needs one, so plates load in pairs.</small></span>
+              <ul class="plate-rack">
+                <li v-for="(plate, index) in profileForm.plates" :key="plate.kg" :class="{ 'is-unused': plate.count < 2 }">
+                  <button type="button" class="plate-remove" :aria-label="`Remove ${plate.kg} kg plates`" @click="profileForm.plates.splice(index, 1)">×</button>
+                  <span class="plate-disc" :style="discStyle(plate.kg)" aria-hidden="true"><i></i></span>
+                  <strong class="plate-kg">{{ formatKg(plate.kg) }}<small>kg</small></strong>
+                  <span class="plate-count">
+                    <button type="button" :aria-label="`One fewer ${plate.kg} kg plate`" :disabled="plate.count <= 0" @click="plate.count -= 1">−</button>
+                    <output :aria-label="`${plate.count} plates of ${plate.kg} kg`">{{ plate.count }}</output>
+                    <button type="button" :aria-label="`One more ${plate.kg} kg plate`" :disabled="plate.count >= 40" @click="plate.count += 1">+</button>
+                  </span>
+                  <small class="plate-pairs">{{ pairsLabel(plate.count) }}</small>
+                </li>
+                <li class="plate-add">
+                  <span class="unit-input"><input v-model.number="newPlateKg" type="number" min="0.25" max="50" step="0.25" placeholder="0.5" aria-label="New plate size in kilograms" @keydown.enter.prevent="addPlateSize"><em>kg</em></span>
+                  <button type="button" class="ghost-btn" :disabled="!canAddPlate" @click="addPlateSize">Add size</button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="gym-block gym-dumbbells">
+              <span class="field-label">Dumbbells <small>Adjustable</small></span>
+              <label class="dumbbell-line">
+                <span>Up to</span>
+                <span class="unit-input"><input v-model.number="profileForm.max_dumbbell_kg" type="number" min="0" max="500" step="0.5" placeholder="No limit" aria-label="Heaviest dumbbell in kilograms"><em>kg</em></span>
+                <span>each</span>
+              </label>
+              <p class="hint">At this weight, progression adds reps instead of load. Plates are for the bar only.</p>
+            </div>
+          </div>
+        </section>
+
         <!-- Notes for the coach -->
         <section id="notes" class="card athlete-card athlete-card-wide" aria-labelledby="notes-title">
           <header class="athlete-card-head">
@@ -382,6 +441,9 @@ import { computed, defineComponent, h, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '../stores/api'
 import { ZONE_COLORS } from '../components/activityVisuals'
+import PlateStack from '../components/PlateStack.vue'
+import AnimatedNumber from '../components/AnimatedNumber.vue'
+import { DEFAULT_PLATES, barbellRange, plateColor } from '../coach/plates.mjs'
 
 const api = useApi()
 const route = useRoute()
@@ -479,8 +541,14 @@ const hrZonePart = (formState) => hrZoneKeys.map((key) => formState?.[key])
 // The FTP source saves itself, so it never counts as an unsaved edit.
 const withoutFtp = (formState) => ({ ...formState, ftp_source: null, manual_watts: null })
 const savedPerformanceForm = () => JSON.parse(baseline.performance || '{}')
+const equipmentKeys = ['bar_weight_kg', 'plates', 'max_dumbbell_kg']
+const equipmentPart = (formState) => equipmentKeys.map((key) => formState?.[key])
+const withoutEquipment = (formState) => ({ ...formState, bar_weight_kg: null, plates: null, max_dumbbell_kg: null })
 const dirty = computed(() => ({
   profile: snapshot(profileForm.value) !== baseline.profile,
+  // The profile form holds both cards; these split it for the chips and the save bar.
+  profileOnly: snapshot(withoutEquipment(profileForm.value)) !== snapshot(withoutEquipment(JSON.parse(baseline.profile || '{}'))),
+  equipment: snapshot(equipmentPart(profileForm.value)) !== snapshot(equipmentPart(JSON.parse(baseline.profile || '{}'))),
   performance: snapshot(withoutFtp(performanceForm.value)) !== snapshot(withoutFtp(savedPerformanceForm())),
   // The performance form holds both cards; these split it for the chips and the save bar.
   thresholds: snapshot({ ...withoutFtp(performanceForm.value), hr_ride: null, hr_run: null }) !== snapshot({ ...withoutFtp(savedPerformanceForm()), hr_ride: null, hr_run: null }),
@@ -490,7 +558,8 @@ const dirty = computed(() => ({
 }))
 const anyDirty = computed(() => Object.values(dirty.value).some(Boolean))
 const dirtyLabels = computed(() => [
-  dirty.value.profile && 'profile & notes',
+  dirty.value.profileOnly && 'profile & notes',
+  dirty.value.equipment && 'home gym',
   dirty.value.thresholds && 'thresholds',
   dirty.value.hrZones && 'heart-rate zones',
   dirty.value.restrictions && 'restrictions',
@@ -815,6 +884,29 @@ async function save() {
   showNotice('Saved. The next plan uses these settings.')
 }
 
+// Home gym
+const barbell = computed(() => barbellRange({ barKg: profileForm.value.bar_weight_kg, plates: profileForm.value.plates }))
+const formatKg = (kg) => String(Math.round(Number(kg) * 100) / 100)
+const pairsLabel = (count) => {
+  const pairs = Math.floor(count / 2)
+  if (!count) return 'None'
+  return `${pairs ? `${pairs} per side` : 'Need a pair'}${count % 2 && pairs ? ' · 1 spare' : ''}`
+}
+const discStyle = (kg) => {
+  const diameter = kg >= 10 ? 58 : kg >= 5 ? 46 : kg >= 2.5 ? 38 : kg >= 1.25 ? 31 : 26
+  return { width: `${diameter}px`, height: `${diameter}px`, '--plate': plateColor(kg) }
+}
+const newPlateKg = ref('')
+const canAddPlate = computed(() => {
+  const kg = Number(newPlateKg.value)
+  return kg > 0 && kg <= 50 && !profileForm.value.plates.some((item) => item.kg === kg)
+})
+function addPlateSize() {
+  if (!canAddPlate.value) return
+  profileForm.value.plates = [...profileForm.value.plates, { kg: Number(newPlateKg.value), count: 2 }].sort((a, b) => b.kg - a.kg)
+  newPlateKg.value = ''
+}
+
 // Form <-> payload
 function profileFormFrom(data) {
   const preferences = [...(data?.athlete_brief?.modality_priority || [])]
@@ -830,6 +922,8 @@ function profileFormFrom(data) {
     off_season_start: season.start,
     off_season_end: season.end,
     max_dumbbell_kg: data?.max_dumbbell_kg ?? '',
+    bar_weight_kg: data?.bar_weight_kg ?? 20,
+    plates: (data?.plates || DEFAULT_PLATES).map((item) => ({ kg: item.kg, count: item.count })),
     notes_reviewed_at: { ...(data?.notes_reviewed_at || {}) },
   }
 }
@@ -843,6 +937,8 @@ function profilePayload(formState) {
     planning_notes: formState.planning_notes || null,
     off_season_months: monthsFromSeasonRange(formState.off_season_start, formState.off_season_end),
     max_dumbbell_kg: Number(formState.max_dumbbell_kg) > 0 ? Number(formState.max_dumbbell_kg) : null,
+    bar_weight_kg: Number(formState.bar_weight_kg) > 0 ? Number(formState.bar_weight_kg) : null,
+    plates: formState.plates.map((item) => ({ kg: item.kg, count: item.count })),
     notes_reviewed_at: formState.notes_reviewed_at,
   }
 }
@@ -974,6 +1070,45 @@ function monthsFromSeasonRange(start, end) {
   align-items: start;
 }
 .athlete-card { display: grid; gap: 18px; }
+
+.gym-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 16px 28px; }
+.gym-block { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.gym-barbell { grid-row: span 2; }
+.gym-preview { display: flex; align-items: center; justify-content: center; padding: 22px 14px; border-radius: 14px; background: rgb(var(--tint-rgb) / 0.07); }
+.gym-preview .plate-stack { width: 100%; }
+.bar-tag { position: absolute; top: calc(100% + 10px); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.gym-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
+.gym-stats div { padding: 10px 12px; border-radius: 11px; border: 1px solid var(--border); }
+.gym-stats dt { font-size: 11px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.gym-stats dd { margin: 2px 0 0; font-family: var(--font-display); font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.gym-stats dd small { font-size: 13px; font-weight: 500; color: var(--muted); }
+.bar-picker { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.bar-input { width: 96px; }
+
+.plate-rack { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
+.plate-rack li { position: relative; display: grid; justify-items: center; align-content: end; gap: 6px; padding: 12px 4px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
+.plate-rack li.is-unused .plate-disc { opacity: .3; }
+.plate-rack li.is-unused .plate-kg { color: var(--muted); }
+.plate-disc { position: relative; display: grid; place-items: center; border-radius: 50%; background: var(--plate); box-shadow: inset 0 0 0 3px rgb(var(--shadow-rgb) / .16); transition: opacity .15s ease; }
+.plate-disc i { width: 26%; height: 26%; border-radius: 50%; background: var(--surface); box-shadow: 0 0 0 2px rgb(var(--shadow-rgb) / .14); }
+.plate-kg { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.plate-kg small { margin-left: 2px; font-size: 11px; font-weight: 500; color: var(--muted); }
+.plate-count { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border-radius: 9px; background: rgb(var(--tint-rgb) / 0.1); }
+.plate-count button { width: 24px; height: 24px; border: 0; border-radius: 7px; background: transparent; color: var(--text-soft); cursor: pointer; font-size: 15px; line-height: 1; }
+.plate-count button:hover:not(:disabled) { background: var(--surface3); color: var(--text); }
+.plate-count button:disabled { opacity: .3; cursor: default; }
+.plate-count output { min-width: 20px; text-align: center; font-weight: 650; font-variant-numeric: tabular-nums; }
+.plate-pairs { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.plate-remove { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .12s ease; }
+.plate-rack li:hover .plate-remove, .plate-remove:focus-visible { opacity: 1; }
+.plate-remove:hover { background: rgb(var(--tint-rgb) / 0.14); color: var(--text); }
+.plate-rack .plate-add { border-style: dashed; background: transparent; align-content: center; gap: 8px; padding: 10px 8px; }
+.plate-add .unit-input { width: 100%; }
+.plate-add .ghost-btn { width: 100%; }
+
+.dumbbell-line { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text-soft); }
+.dumbbell-line .unit-input { width: 110px; }
+.gym-dumbbells .hint { margin: 0; }
 .athlete-card-wide { grid-column: 1 / -1; }
 .athlete-skeleton { display: grid; gap: 12px; min-height: 260px; }
 .athlete-skeleton .skeleton-block { height: 140px; }
@@ -1189,6 +1324,8 @@ select:disabled { opacity: 0.5; }
 
 @media (max-width: 1100px) {
   .athlete-grid { grid-template-columns: minmax(0, 1fr); }
+  .gym-grid { grid-template-columns: minmax(0, 1fr); }
+  .gym-barbell { grid-row: auto; }
   .hr-zone-sports { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {

@@ -94,6 +94,14 @@
               <div class="reference">
                 <span>Target</span>
                 <strong>{{ currentSet.target_reps }} × {{ formatWeight(currentSet.target_weight_kg, 'BW') }}</strong>
+                <small v-if="currentPlates" class="plates" :title="`Plates per side on a ${formatKg(barbellSetup.barKg)} kg bar`">
+                  <PlateStack :plates="currentPlates.perSide" :size="22" />
+                  <span>
+                    <template v-if="currentPlates.perSide.length">{{ formatPlates(currentPlates.perSide) }} per side</template>
+                    <template v-else>Empty bar</template>
+                    <template v-if="!currentPlates.exact"> · nearest {{ formatKg(currentPlates.loadedKg) }} kg</template>
+                  </span>
+                </small>
                 <small>{{ formatRest(currentSet.rest_seconds) }} rest</small>
               </div>
               <div class="reference">
@@ -170,6 +178,7 @@
                 <div class="set-tools">
                   <button type="button" :disabled="mutationBusy || workingSetCount(currentExercise) >= 20" @click="addWorkingSet">+ Set</button>
                   <button type="button" :disabled="mutationBusy" @click="addWarmupSet">{{ addingWarmup ? 'Adding…' : '+ Warm-up' }}</button>
+                  <button v-if="suggestedWarmups.length" type="button" :disabled="mutationBusy" :title="suggestedWarmups.map((item) => `${item.target_reps} × ${formatKg(item.target_weight_kg)} kg`).join(', ')" @click="addSuggestedWarmups">Suggest warm-ups</button>
                   <button type="button" class="danger" :disabled="mutationBusy || (currentSet.set_type !== 'warmup' && workingSetCount(currentExercise) <= 1)" @click="removeCurrentSet">Remove {{ setKindLabel(currentExercise, currentSet).toLowerCase() }}</button>
                   <button type="button" class="danger" :disabled="mutationBusy || session.exercises.length <= 1" @click="removeCurrentExercise">Remove exercise</button>
                 </div>
@@ -356,11 +365,13 @@
 import RecoveryTimerPill from '../components/RecoveryTimerPill.vue'
 import ExerciseGuide from '../components/ExerciseGuide.vue'
 import SetCoach from '../components/SetCoach.vue'
+import PlateStack from '../components/PlateStack.vue'
 import AnimatedNumber from '../components/AnimatedNumber.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
+import { formatPlates, isBarbellExercise, plateBreakdown, suggestWarmups } from '../coach/plates.mjs'
 import { clearDrafts, draftFor, pruneDrafts, readDrafts, recordDraft, removeDraft, sameValues, setBaseline, writeDrafts } from '../coach/set-drafts.mjs'
 
 const api = useApi()
@@ -898,6 +909,45 @@ const addExerciseToSession = async () => {
   }
 }
 
+// Plate maths only; the stored target and progression are never touched.
+const barbellSetup = ref({ barKg: 20, plates: undefined })
+const loadBarbellSetup = async () => {
+  try {
+    const { data } = await api.getAthleteProfile()
+    barbellSetup.value = { barKg: data?.bar_weight_kg || 20, plates: Array.isArray(data?.plates) ? data.plates : undefined }
+  } catch { /* keep the standard 20 kg bar and plates */ }
+}
+const formatKg = (kg) => String(Math.round(Number(kg) * 100) / 100)
+const currentPlates = computed(() => isBarbellExercise(currentExercise.value?.exercise_name)
+  ? plateBreakdown(currentSet.value?.target_weight_kg, barbellSetup.value)
+  : null)
+// Offered for barbell lifts that have no warm-ups yet, ramping to the first working set.
+const suggestedWarmups = computed(() => {
+  const exercise = currentExercise.value
+  if (!exercise || !isBarbellExercise(exercise.exercise_name) || exercise.warmup_set_count) return []
+  const firstWorking = exercise.sets.find((item) => item.set_type !== 'warmup')
+  return suggestWarmups(firstWorking?.target_weight_kg, barbellSetup.value)
+})
+const addSuggestedWarmups = async () => {
+  if (!currentExercise.value || addingWarmup.value) return
+  const sets = suggestedWarmups.value
+  const exerciseId = currentExercise.value.id
+  addingWarmup.value = true
+  error.value = ''
+  try {
+    // Each warm-up is inserted first, so add the heaviest first to end up lightest → heaviest.
+    for (const item of [...sets].reverse()) {
+      const { data } = await api.addStrengthWarmupSet(session.value.id, exerciseId, { ...item, rest_seconds: 60, switch_to: true })
+      session.value = data
+    }
+    syncInputs()
+  } catch (warmupError) {
+    error.value = warmupError?.response?.data?.detail || 'Could not add warm-up sets.'
+  } finally {
+    addingWarmup.value = false
+  }
+}
+
 const addWarmupSet = async () => {
   if (!currentExercise.value || addingWarmup.value) return
   addingWarmup.value = true
@@ -1023,6 +1073,7 @@ const formatHistoricalTarget = (suggestion) => {
 
 onMounted(() => {
   loadSession()
+  loadBarbellSetup()
   ticker = window.setInterval(() => { now.value = Date.now() }, 1000)
 })
 onBeforeUnmount(() => {
@@ -1167,6 +1218,7 @@ onBeforeUnmount(() => {
 .reference strong { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .reference strong.muted { color: var(--muted); font-weight: 500; font-size: 14px; }
 .reference small { color: var(--muted-soft); font-size: 11px; }
+.reference small.plates { display: flex; align-items: center; gap: 8px; margin: 3px 0 1px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
 .reference small.up { color: var(--success-text); }
 .reference small.down { color: var(--warning-text); }
 .reset-target { padding: 0 16px; border: 0; background: var(--deep); color: var(--runner-accent); font-size: 12px; font-weight: 600; }

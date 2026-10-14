@@ -1894,6 +1894,8 @@ bad-date,Squat,5,100,60,,,,false,,1
                 "preferred_long_session_days": ["sat", "sun"],
                 "weekly_availability_notes": "Weekdays are short.",
                 "planning_notes": "Avoid stacking run progression and hard strength on the same day.",
+                "bar_weight_kg": 15,
+                "plates": [{"kg": 20, "count": 4}, {"kg": 10, "count": 2}, {"kg": 2.5, "count": 3}],
             },
         )
         self.assertEqual(initial.status_code, 200)
@@ -1902,6 +1904,8 @@ bad-date,Squat,5,100,60,,,,false,,1
         self.assertEqual(reread.status_code, 200)
         body = reread.json()
         self.assertEqual(body["primary_focus"], "hybrid")
+        self.assertEqual(body["bar_weight_kg"], 15)
+        self.assertEqual(body["plates"], [{"kg": 20, "count": 4}, {"kg": 10, "count": 2}, {"kg": 2.5, "count": 3}])
         self.assertEqual(body["athlete_brief"]["modality_priority"], ["ride", "strength", "run"])
         self.assertEqual(body["athlete_brief"]["preferred_long_session_days"], ["sat", "sun"])
 

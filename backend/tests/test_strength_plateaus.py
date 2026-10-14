@@ -21,9 +21,10 @@ def _session(day, exercises):
 
 
 class StrengthPlateauTests(unittest.TestCase):
-    def find(self, sessions, max_dumbbell_kg=None, names=None):
+    def find(self, sessions, max_dumbbell_kg=None, names=None, dumbbell_step_kg=None):
         with mock.patch.object(strength_plateaus, "_session_index", return_value=sessions), \
-                mock.patch.object(strength_plateaus, "_max_dumbbell_kg", return_value=max_dumbbell_kg):
+                mock.patch.object(strength_plateaus, "_max_dumbbell_kg", return_value=max_dumbbell_kg), \
+                mock.patch.object(strength_plateaus, "_dumbbell_step_kg", return_value=dumbbell_step_kg):
             return find_plateaus(None, TODAY, names)
 
     def test_flat_compound_gets_heavier_rep_scheme(self):
@@ -60,6 +61,15 @@ class StrengthPlateauTests(unittest.TestCase):
         plateaus = {item["exercise_name"]: item["suggestion"] for item in self.find(sessions, max_dumbbell_kg=24)}
         self.assertIn("lower every rep over 3 s", plateaus["Dumbbell Bench Press"]["text"])
         self.assertIn("3 × 12–15 at 8 kg", plateaus["Dumbbell Lateral Raise"]["text"])
+
+    def test_fixed_step_dumbbells_get_loads_they_can_make(self):
+        sessions = [
+            _session(day, {"Dumbbell Lateral Raise": [(10, 9)]})
+            for day in ("2026-09-10", "2026-09-20", "2026-10-01")
+        ]
+        [plateau] = self.find(sessions, max_dumbbell_kg=24, dumbbell_step_kg=2)
+        self.assertIn("3 × 12–15 at 8 kg", plateau["suggestion"]["text"])
+        self.assertEqual(plateau["suggestion"]["plan"]["load_kg"] % 2, 0)
 
     def test_long_stall_suggests_variation_and_extra_reps_count_as_movement(self):
         sessions = [_session(day, {"Back Squat": [(8, 80)]}) for day in ("2026-08-20", "2026-09-10", "2026-10-01")]

@@ -124,6 +124,7 @@
               :last-time="lastTimeSet ? { reps: lastTimeSet.reps, weight: lastTimeSet.weight_kg } : null"
               :rest-remaining="restRemaining"
               :rate-only="Boolean(coachPrevious.rateOnly)"
+              :dumbbell-step-kg="barbellSetup.dumbbellStepKg"
               @rate="rateSet(coachPrevious.id, $event)"
               @apply="applyCoach"
               @extend-rest="adjustRest"
@@ -153,9 +154,9 @@
                 <div class="performance-field">
                   <label for="actual-weight">Load <small>kg</small></label>
                   <div class="stepper">
-                    <button type="button" aria-label="Decrease weight" @click="adjustWeight(-2.5)">−</button>
+                    <button type="button" aria-label="Decrease weight" @click="adjustWeight(-loadStep)">−</button>
                     <input id="actual-weight" v-model.number="actualWeight" aria-label="Weight used in kilograms" type="number" min="0" max="1000" step="0.5" inputmode="decimal" placeholder="BW" />
-                    <button type="button" aria-label="Increase weight" @click="adjustWeight(2.5)">+</button>
+                    <button type="button" aria-label="Increase weight" @click="adjustWeight(loadStep)">+</button>
                   </div>
                   <div class="weight-shortcuts" aria-label="Adjust weight quickly">
                     <button type="button" @click="adjustWeight(-5)">−5</button>
@@ -371,6 +372,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
+import { isDumbbell } from '../coach/set-coach.mjs'
 import { formatPlates, isBarbellExercise, plateBreakdown, suggestWarmups } from '../coach/plates.mjs'
 import { clearDrafts, draftFor, pruneDrafts, readDrafts, recordDraft, removeDraft, sameValues, setBaseline, writeDrafts } from '../coach/set-drafts.mjs'
 
@@ -910,13 +912,15 @@ const addExerciseToSession = async () => {
 }
 
 // Plate maths only; the stored target and progression are never touched.
-const barbellSetup = ref({ barKg: 20, plates: undefined })
+const barbellSetup = ref({ barKg: 20, plates: undefined, dumbbellStepKg: null })
 const loadBarbellSetup = async () => {
   try {
     const { data } = await api.getAthleteProfile()
-    barbellSetup.value = { barKg: data?.bar_weight_kg || 20, plates: Array.isArray(data?.plates) ? data.plates : undefined }
+    barbellSetup.value = { barKg: data?.bar_weight_kg || 20, plates: Array.isArray(data?.plates) ? data.plates : undefined, dumbbellStepKg: data?.dumbbell_step_kg || null }
   } catch { /* keep the standard 20 kg bar and plates */ }
 }
+// Fixed-step adjustable dumbbells move by their own step; everything else by 2.5 kg.
+const loadStep = computed(() => (barbellSetup.value.dumbbellStepKg && isDumbbell(currentExercise.value?.exercise_name) ? barbellSetup.value.dumbbellStepKg : 2.5))
 const formatKg = (kg) => String(Math.round(Number(kg) * 100) / 100)
 const currentPlates = computed(() => isBarbellExercise(currentExercise.value?.exercise_name)
   ? plateBreakdown(currentSet.value?.target_weight_kg, barbellSetup.value)

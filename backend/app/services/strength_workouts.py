@@ -11,7 +11,7 @@ from ..models.strength_workouts import (
     StrengthTemplateInput,
     StrengthWarmupSetAddRequest,
 )
-from .strength_progression import _max_dumbbell_kg, _normalize, latest_next_steps, plan_next_step
+from .strength_progression import _dumbbell_step_kg, _max_dumbbell_kg, _normalize, latest_next_steps, plan_next_step
 
 
 def _now() -> datetime:
@@ -48,6 +48,7 @@ def _next_steps(conn: sqlite3.Connection, exercises: list, history: Optional[dic
 
     history = latest_next_steps(conn) if history is None else history
     max_dumbbell_kg = _max_dumbbell_kg(conn)
+    dumbbell_step_kg = _dumbbell_step_kg(conn)
     # A lift in a stall block starts from the block's targets, not the stalled sessions before it.
     blocks = block_starts(conn)
 
@@ -61,7 +62,7 @@ def _next_steps(conn: sqlite3.Connection, exercises: list, history: Optional[dic
     names = [exercise["exercise_name"] for exercise in exercises]
     lifts = [lift(name) for name in names]
     steps = [
-        plan_next_step(found, exercise["exercise_name"], exercise["target_reps"], max_dumbbell_kg)
+        plan_next_step(found, exercise["exercise_name"], exercise["target_reps"], max_dumbbell_kg, dumbbell_step_kg)
         for found, exercise in zip(lifts, exercises)
     ]
     return guard_steps(conn, names, lifts, steps)

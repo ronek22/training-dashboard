@@ -7,6 +7,7 @@ suggest a simple double-progression next step.
 
 from __future__ import annotations
 
+import math
 import sqlite3
 from datetime import date
 from typing import Any, Optional
@@ -59,10 +60,20 @@ def _is_dumbbell(name: str) -> bool:
     return any(hint in normalized for hint in _DUMBBELL_HINTS)
 
 
-def _increment(name: str, load: float) -> float:
+def _increment(name: str, load: float, dumbbell_step_kg: Optional[float] = None) -> float:
+    if dumbbell_step_kg and _is_dumbbell(name):
+        return float(dumbbell_step_kg)
     if _is_dumbbell(name) or "kettlebell" in _normalize(name):
         return 1.0 if load < 10 else 2.0
     return 2.5
+
+
+def _heavier(name: str, top: float, dumbbell_step_kg: Optional[float] = None) -> float:
+    """Next load up; fixed-step dumbbells land on the next setting they can actually make."""
+    step = _increment(name, top, dumbbell_step_kg)
+    if dumbbell_step_kg and _is_dumbbell(name):
+        return round((math.floor(top / step + 1e-9) + 1) * step, 2)
+    return top + step
 
 
 def _fmt(value: float) -> str:
@@ -85,6 +96,7 @@ def next_step(
     sets: list[dict],
     previous: Optional[dict],
     max_load: Optional[float] = None,
+    dumbbell_step_kg: Optional[float] = None,
 ) -> Optional[dict[str, Any]]:
     """Double-progression step after ``sets``: the next target load/reps plus a one-line hint."""
     if not sets:
@@ -106,7 +118,7 @@ def next_step(
         return {"weight_kg": top, "reps": max(top_reps), "hint": f"Stay at {_fmt(top)} kg and match {max(top_reps)} reps on every set."}
     if len(top_sets) < len(weighted):
         return {"weight_kg": top, "reps": max(top_reps), "hint": f"Do every working set at {_fmt(top)} kg next time."}
-    heavier = top + _increment(name, top)
+    heavier = _heavier(name, top, dumbbell_step_kg)
     if max_load is not None and heavier > max_load:
         if top_reps[0] < CAPPED_REP_CEILING:
             return {
@@ -126,8 +138,14 @@ def next_step(
     }
 
 
-def _next_hint(name: str, sets: list[dict], previous: Optional[dict], max_load: Optional[float] = None) -> Optional[str]:
-    step = next_step(name, sets, previous, max_load)
+def _next_hint(
+    name: str,
+    sets: list[dict],
+    previous: Optional[dict],
+    max_load: Optional[float] = None,
+    dumbbell_step_kg: Optional[float] = None,
+) -> Optional[str]:
+    step = next_step(name, sets, previous, max_load, dumbbell_step_kg)
     return step["hint"] if step else None
 
 
@@ -153,15 +171,23 @@ def _compare(summary: dict, last_summary: dict) -> dict[str, Any]:
     return {"metric": metric, "value": value, "last_value": last_value, "delta": delta, "direction": direction}
 
 
-def _max_dumbbell_kg(conn: sqlite3.Connection) -> Optional[float]:
+def _profile_value(conn: sqlite3.Connection, key: str) -> Optional[float]:
     from .settings import get_athlete_profile_for_conn
 
     if conn is None:
         return None
     try:
-        return get_athlete_profile_for_conn(conn).get("max_dumbbell_kg")
+        return get_athlete_profile_for_conn(conn).get(key)
     except sqlite3.OperationalError:
         return None
+
+
+def _max_dumbbell_kg(conn: sqlite3.Connection) -> Optional[float]:
+    return _profile_value(conn, "max_dumbbell_kg")
+
+
+def _dumbbell_step_kg(conn: sqlite3.Connection) -> Optional[float]:
+    return _profile_value(conn, "dumbbell_step_kg")
 
 
 def _session_index(conn: sqlite3.Connection) -> list[dict]:
@@ -205,6 +231,7 @@ def build_strength_progression(
                 history.setdefault(_normalize(exercise["exercise_name"]), []).append((session, sets))
 
     max_dumbbell_kg = _max_dumbbell_kg(conn)
+    dumbbell_step_kg = _dumbbell_step_kg(conn)
     exercises: dict[str, Any] = {}
     for exercise in current.get("exercises", []):
         sets = _working_sets(exercise)
@@ -262,6 +289,7 @@ def build_strength_progression(
             hinted_sets,
             {"metric_value": entry["metric_value"], "direction": entry["direction"]} if entry["previous"] else None,
             max_load_for(exercise["exercise_name"], max_dumbbell_kg),
+            dumbbell_step_kg,
         )
         exercises[key] = entry
 
@@ -315,12 +343,13 @@ def plan_next_step(
     name: str,
     target_reps: Optional[int],
     max_dumbbell_kg: Optional[float],
+    dumbbell_step_kg: Optional[float] = None,
 ) -> Optional[dict[str, Any]]:
     """Next target for a planned lift, respecting the saved rep target and equipment limits."""
     if not lift:
         return None
     sets = [{**item, "target_reps": target_reps} for item in lift["sets"]]
-    step = next_step(name, sets, lift["previous"], max_load_for(name, max_dumbbell_kg))
+    step = next_step(name, sets, lift["previous"], max_load_for(name, max_dumbbell_kg), dumbbell_step_kg)
     if not step:
         return None
     return {

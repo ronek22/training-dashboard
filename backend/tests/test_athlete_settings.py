@@ -150,6 +150,9 @@ class BarbellPlateTests(unittest.TestCase):
         self.assertEqual(profile["bar_weight_kg"], 20.0)
         self.assertEqual([item["kg"] for item in profile["plates"]], [25.0, 20.0, 15.0, 10.0, 5.0, 2.5, 1.25])
         self.assertTrue(all(item["count"] == 2 for item in profile["plates"]))
+        self.assertIsNone(profile["dumbbell_step_kg"])
+        self.assertEqual(normalize_athlete_profile({"dumbbell_step_kg": 2})["dumbbell_step_kg"], 2.0)
+        self.assertIsNone(normalize_athlete_profile({"dumbbell_step_kg": 30})["dumbbell_step_kg"])
 
     def test_inventory_merges_sizes_sorts_and_drops_bad_rows(self):
         profile = normalize_athlete_profile({"bar_weight_kg": 15, "plates": [

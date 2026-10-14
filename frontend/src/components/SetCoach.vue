@@ -42,6 +42,7 @@ const props = defineProps({
   lastTime: { type: Object, default: null },
   restRemaining: { type: Number, default: 0 },
   rateOnly: { type: Boolean, default: false }, // rating a set from another exercise: no next-set advice
+  dumbbellStepKg: { type: Number, default: null }, // adjustable dumbbells that only move in fixed steps
 })
 const emit = defineEmits(['rate', 'apply', 'extend-rest'])
 
@@ -53,6 +54,7 @@ const tip = computed(() => suggestNextSet({
   target: props.target,
   setsLeft: props.setsLeft,
   lastTime: props.lastTime,
+  dumbbellStepKg: props.dumbbellStepKg,
 }))
 const sameLoad = (a, b) => (a === '' || a == null ? null : Number(a)) === (b == null ? null : Number(b))
 const applied = computed(() => tip.value && Number(props.current.reps) === tip.value.reps && sameLoad(props.current.weight, tip.value.weight))

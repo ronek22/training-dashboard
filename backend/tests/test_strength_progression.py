@@ -108,6 +108,19 @@ class NextStepTests(unittest.TestCase):
         sets = [{"reps": 40, "weight_kg": 40.0}] + [{"reps": 8, "weight_kg": 80.0}] * 3
         self.assertEqual(next_step("Bent Over Barbell Row", sets, None)["weight_kg"], 82.5)
 
+    def test_fixed_step_dumbbells_only_suggest_loads_they_can_make(self):
+        # Default: +1 kg under 10 kg, which a 2 kg-step adjustable dumbbell cannot set.
+        self.assertEqual(next_step("Dumbbell Lateral Raise", [{"reps": 12, "weight_kg": 6.0}] * 3, None)["weight_kg"], 7.0)
+        self.assertEqual(next_step("Dumbbell Lateral Raise", [{"reps": 12, "weight_kg": 6.0}] * 3, None, None, 2)["weight_kg"], 8.0)
+        # An odd load from older history moves to the next even setting.
+        self.assertEqual(next_step("Dumbbell Lateral Raise", [{"reps": 12, "weight_kg": 7.0}] * 3, None, None, 2)["weight_kg"], 8.0)
+        # The cap still wins, and barbell lifts ignore the dumbbell step.
+        capped = next_step("Dumbbell Row", [{"reps": 10, "weight_kg": 24.0}] * 3, None, 24.0, 2)
+        self.assertEqual((capped["weight_kg"], capped["reps"]), (24.0, 11))
+        self.assertEqual(next_step("Back Squat", [{"reps": 8, "weight_kg": 80.0}] * 3, None, None, 2)["weight_kg"], 82.5)
+        lift = {"sets": [{"reps": 12, "weight_kg": 6.0}] * 3, "previous": None, "date": "2026-09-17"}
+        self.assertEqual(plan_next_step(lift, "Dumbbell Lateral Raise", 12, 24, 2)["target_weight_kg"], 8.0)
+
     def test_plan_step_respects_saved_rep_target(self):
         lift = {"sets": [{"reps": 8, "weight_kg": 80.0}] * 3, "previous": None, "date": "2026-09-17"}
         step = plan_next_step(lift, "Bent Over Barbell Row", 10, None)

@@ -38,6 +38,8 @@ class AthleteProfilePayload(BaseModel):
     off_season_months: Optional[list[int]] = None
     # Heaviest dumbbell available; progression switches to reps once it is reached.
     max_dumbbell_kg: Optional[float] = None
+    # Smallest dumbbell jump the athlete's dumbbells allow; None keeps 1 kg under 10 kg, then 2 kg.
+    dumbbell_step_kg: Optional[float] = None
     # Barbell plate maths in the workout runner; None keeps 20 kg and the standard plate set.
     bar_weight_kg: Optional[float] = None
     plates: Optional[list[PlateCount]] = None

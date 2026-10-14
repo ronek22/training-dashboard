@@ -850,6 +850,9 @@ def normalize_athlete_profile(raw_value: Optional[dict]) -> dict:
     profile["off_season_months"] = off_season_months
     profile["off_season"] = {"months": off_season_months, "label": season_label(off_season_months)}
     profile["max_dumbbell_kg"] = _positive_kg(raw.get("max_dumbbell_kg"))
+    # Adjustable dumbbells that only go up in fixed steps (e.g. 2 kg); None keeps 1 kg under 10 kg, then 2 kg.
+    step = _positive_kg(raw.get("dumbbell_step_kg"))
+    profile["dumbbell_step_kg"] = step if step and step <= 10 else None
     profile["bar_weight_kg"] = _positive_kg(raw.get("bar_weight_kg")) or DEFAULT_BAR_WEIGHT_KG
     profile["plates"] = normalize_plates(raw.get("plates"))
     reviewed_raw = raw.get("notes_reviewed_at") if isinstance(raw.get("notes_reviewed_at"), dict) else {}
@@ -887,6 +890,7 @@ def serialize_athlete_profile_for_storage(profile: dict) -> dict:
         "planning_notes": profile.get("planning_notes"),
         "off_season_months": profile.get("off_season_months"),
         "max_dumbbell_kg": profile.get("max_dumbbell_kg"),
+        "dumbbell_step_kg": profile.get("dumbbell_step_kg"),
         "bar_weight_kg": profile.get("bar_weight_kg"),
         "plates": profile.get("plates"),
         "notes_reviewed_at": profile.get("notes_reviewed_at") or {},

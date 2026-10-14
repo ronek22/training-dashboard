@@ -13,8 +13,13 @@ const roundDown = (value, step) => Math.floor(value / step + 1e-9) * step
 const roundTo = (value, step) => Math.round(value / step) * step
 const clean = (value) => Math.round(value * 10) / 10
 
-export const weightStep = (exerciseName, weight) => {
-  if (/dumbbell|\bdb\b|kettlebell/i.test(exerciseName || '')) return weight != null && weight < 10 ? 1 : 2
+// Same name hints as the backend progression: some dumbbell lifts never say "dumbbell".
+export const isDumbbell = (exerciseName) => /dumbbell|\bdb\b|hammer curl|concentration curl|lateral raise|rear delt raise|goblet squat/i.test(exerciseName || '')
+
+// `dumbbellStepKg`: adjustable dumbbells that only go up in fixed steps (e.g. 2 kg).
+export const weightStep = (exerciseName, weight, dumbbellStepKg = null) => {
+  if (dumbbellStepKg > 0 && isDumbbell(exerciseName)) return Number(dumbbellStepKg)
+  if (isDumbbell(exerciseName) || /kettlebell/i.test(exerciseName || '')) return weight != null && weight < 10 ? 1 : 2
   if (/cable|machine|pulldown|press machine/i.test(exerciseName || '')) return 2.5
   return 2.5
 }
@@ -38,13 +43,16 @@ const loadFor = (weight, reps, rir, targetReps) => {
  * @param {{reps:number|null, weight:number|null}|null} input.lastTime  matching set from the previous session
  * @returns {null | {tone:string, headline:string, detail:string, reps:number, weight:number|null, extraRest:number}}
  */
-export const suggestNextSet = ({ exerciseName, previous, effort, target, setsLeft = 1, lastTime = null }) => {
+export const suggestNextSet = ({ exerciseName, previous, effort, target, setsLeft = 1, lastTime = null, dumbbellStepKg = null }) => {
   if (!previous || !target) return null
   const targetReps = Number(target.reps) || Number(previous.reps) || 0
   const prevReps = Number(previous.reps) || 0
   const prevWeight = previous.weight == null || previous.weight === '' ? null : Number(previous.weight)
   const bodyweight = prevWeight == null || prevWeight === 0
-  const step = weightStep(exerciseName, prevWeight)
+  const step = weightStep(exerciseName, prevWeight, dumbbellStepKg)
+  // Fixed-step dumbbells: every suggested load must be a setting they can make.
+  const fixed = dumbbellStepKg > 0 && isDumbbell(exerciseName)
+  const setting = (weight) => (fixed ? roundDown(weight, step) : weight)
   const shortfall = targetReps - prevReps
   const floor = repFloor(targetReps)
 
@@ -74,10 +82,10 @@ export const suggestNextSet = ({ exerciseName, previous, effort, target, setsLef
         detail: 'Plenty left in the tank. Add reps or slow the lowering phase.',
       }
     }
-    const up = clean(prevWeight + step)
+    const up = clean(setting(prevWeight) + step)
     return {
       tone: 'up', reps: targetReps, weight: up, extraRest: 0,
-      headline: `Add ${step} kg → ${targetReps} × ${up} kg`,
+      headline: `Add ${clean(up - prevWeight)} kg → ${targetReps} × ${up} kg`,
       detail: setsLeft > 1
         ? '3+ reps in reserve is too light for growth. Bump it and keep the reps.'
         : 'Last set: earn it. Next session can start here.',
@@ -111,7 +119,7 @@ export const suggestNextSet = ({ exerciseName, previous, effort, target, setsLef
       }
     }
     const drop = Math.min(prevWeight - step, roundDown(loadFor(prevWeight, prevReps, 0, targetReps), step))
-    const weight = clean(Math.max(step, drop))
+    const weight = clean(Math.max(step, setting(drop)))
     return {
       tone: 'down', reps: targetReps, weight, extraRest: 30,
       headline: `Drop to ${weight} kg for ${targetReps}`,
@@ -129,7 +137,7 @@ export const suggestNextSet = ({ exerciseName, previous, effort, target, setsLef
     }
   }
   const estimated = roundTo(loadFor(prevWeight, Math.max(1, prevReps - 2), 0, targetReps), step)
-  const weight = clean(Math.max(step, Math.min(prevWeight - step, estimated)))
+  const weight = clean(Math.max(step, setting(Math.min(prevWeight - step, estimated))))
   return {
     tone: 'down', reps: targetReps, weight, extraRest: 30,
     headline: `Drop to ${weight} kg`,

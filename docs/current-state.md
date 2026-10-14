@@ -24,6 +24,16 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Fixed-step adjustable dumbbells
+
+2026-10-14: Home gym → Dumbbells has "Adjusts in" (Auto / 1 / 2 / 2.5 kg), stored as `dumbbell_step_kg` in the athlete profile. Auto (null) keeps the old rule: +1 kg under 10 kg, then +2 kg. With a step set, every dumbbell load suggested lands on a setting the dumbbells can make (e.g. 2–24 kg in 2 kg steps):
+
+- Progression (`strength_progression._heavier`): the next setting above the top load, so 6 → 8 kg and an older odd 7 kg → 8 kg. The heaviest-dumbbell cap still switches to reps.
+- Plateau suggestions: lighter and heavier loads use the setting below / two settings above.
+- Set coach in the runner: "add" goes to the next setting, drops round down to one. The runner's −/+ load buttons move by the step on dumbbell lifts.
+- Dumbbell detection in the frontend now uses the same name hints as the backend (Hammer Curls, lateral and rear-delt raises, goblet squats), so those lifts get dumbbell steps in the set coach too.
+- Verified with progression, plateau, profile and set-coach tests; backend 818 and frontend 153 tests plus the build pass. Barbell lifts are unchanged.
+
 ### Plates per side and suggested warm-ups
 
 2026-10-14: the workout runner does the barbell plate maths. `frontend/src/coach/plates.mjs` holds the logic and `components/PlateStack.vue` draws the plates.

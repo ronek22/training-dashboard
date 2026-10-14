@@ -20,6 +20,7 @@ an exercise to swap to, a cue) so it can be applied to a workout as a block.
 
 from __future__ import annotations
 
+import math
 import sqlite3
 from datetime import date, timedelta
 from typing import Any, Iterable, Optional
@@ -28,6 +29,7 @@ from .personal_records import BODYWEIGHT_TOKENS, epley_1rm
 from .strength_progression import (
     RAMP_UP_SHARE,
     _fmt,
+    _dumbbell_step_kg,
     _increment,
     _is_dumbbell,
     _max_dumbbell_kg,
@@ -156,11 +158,23 @@ def _round_to(value: float, step: float) -> float:
     return round(value / step) * step
 
 
-def _suggest(name: str, points: list[dict], peak: dict, stalled_days: int, max_dumbbell_kg: Optional[float]) -> dict[str, Any]:
+def _suggest(
+    name: str,
+    points: list[dict],
+    peak: dict,
+    stalled_days: int,
+    max_dumbbell_kg: Optional[float],
+    dumbbell_step_kg: Optional[float] = None,
+) -> dict[str, Any]:
     key = _normalize(name)
     last = points[-1]
     top, reps = last["top_load_kg"], last["reps"]
-    step = _increment(name, top)
+    step = _increment(name, top, dumbbell_step_kg)
+    # Fixed-step dumbbells can only make multiples of the step.
+    fixed = bool(dumbbell_step_kg and _is_dumbbell(name))
+    setting = math.floor(top / step + 1e-9) * step  # highest setting at or below top
+    lighter = max(step, setting - step if setting == top else setting) if fixed else max(top - step, step)
+    heavier = setting + 2 * step if fixed else top + 2 * step
     capped = bool(max_dumbbell_kg and _is_dumbbell(name) and top >= max_dumbbell_kg)
 
     if last["e1rm"] < peak["e1rm"] * DECLINE_SHARE:
@@ -194,16 +208,16 @@ def _suggest(name: str, points: list[dict], peak: dict, stalled_days: int, max_d
         return {
             "kind": "variation",
             "label": "Tempo",
-            "text": f"Lower every rep over 3 s with a 1 s pause at the stretch for 3 weeks; start {step:g} kg lighter.",
-            "plan": _plan(load_kg=max(top - step, step), cue=TEMPO_CUE),
+            "text": f"Lower every rep over 3 s with a 1 s pause at the stretch for 3 weeks; start at {_fmt(lighter)} kg.",
+            "plan": _plan(load_kg=lighter, cue=TEMPO_CUE),
         }
     if _is_isolation(name):
         if reps < 12:
             return {
                 "kind": "rep_scheme",
                 "label": "Rep scheme",
-                "text": f"Switch to 3 × 12–15 at {_fmt(max(top - step, step))} kg for 3 weeks, last set close to failure.",
-                "plan": _plan(sets=3, reps=12, reps_max=15, load_kg=max(top - step, step), cue="last set close to failure"),
+                "text": f"Switch to 3 × 12–15 at {_fmt(lighter)} kg for 3 weeks, last set close to failure.",
+                "plan": _plan(sets=3, reps=12, reps_max=15, load_kg=lighter, cue="last set close to failure"),
             }
         return {
             "kind": "rep_scheme",
@@ -229,8 +243,8 @@ def _suggest(name: str, points: list[dict], peak: dict, stalled_days: int, max_d
     return {
         "kind": "rep_scheme",
         "label": "Rep scheme",
-        "text": f"Switch to 4 × 5–6 at {_fmt(top + 2 * step)} kg for 3 weeks, then return to {reps}s at a heavier load.",
-        "plan": _plan(sets=4, reps=5, reps_max=6, load_kg=top + 2 * step),
+        "text": f"Switch to 4 × 5–6 at {_fmt(heavier)} kg for 3 weeks, then return to {reps}s at a heavier load.",
+        "plan": _plan(sets=4, reps=5, reps_max=6, load_kg=heavier),
     }
 
 
@@ -243,6 +257,7 @@ def find_plateaus(
     today = today or date.today()
     wanted = {_normalize(name) for name in exercise_names} if exercise_names is not None else None
     max_dumbbell_kg = _max_dumbbell_kg(conn)
+    dumbbell_step_kg = _dumbbell_step_kg(conn)
     plateaus = []
     for key, lift in _lift_history(conn, today - timedelta(days=LOOKBACK_DAYS), today).items():
         if wanted is not None and key not in wanted:
@@ -265,7 +280,7 @@ def find_plateaus(
                 "sessions": len(after) + 1,
                 "last": {"date": points[-1]["date"].isoformat(), "e1rm": points[-1]["e1rm"],
                          "top_load_kg": points[-1]["top_load_kg"], "reps": points[-1]["reps"]},
-                "suggestion": _suggest(lift["exercise_name"], points, peak, stalled_days, max_dumbbell_kg),
+                "suggestion": _suggest(lift["exercise_name"], points, peak, stalled_days, max_dumbbell_kg, dumbbell_step_kg),
             }
         )
     plateaus.sort(key=lambda item: item["since"])

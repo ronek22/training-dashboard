@@ -21,7 +21,7 @@ from .life_load import mountain_dates
 from .mountain_reentry import mountain_reentry_dates
 from .settings import get_modality_restrictions_for_conn, protected_area_for_exercise
 from .sick_mode import sick_dates
-from .strength_progression import _max_dumbbell_kg, _normalize, _session_index, _working_sets, latest_next_steps, plan_next_step
+from .strength_progression import _dumbbell_step_kg, _max_dumbbell_kg, _normalize, _session_index, _working_sets, latest_next_steps, plan_next_step
 
 MAX_ADDED_SETS_PER_DAY = 8
 MAX_SETS_PER_EXERCISE = 5
@@ -77,13 +77,19 @@ def _empty_counts() -> dict[str, int]:
     return {group["key"]: 0 for group in MUSCLE_GROUPS}
 
 
-def _accessory_target(name: str, templates: dict[str, list[dict]], history: dict, max_dumbbell_kg: Optional[float]) -> dict:
+def _accessory_target(
+    name: str,
+    templates: dict[str, list[dict]],
+    history: dict,
+    max_dumbbell_kg: Optional[float],
+    dumbbell_step_kg: Optional[float] = None,
+) -> dict:
     saved = next(
         (exercise for exercises in templates.values() for exercise in exercises if _normalize(exercise["exercise_name"]) == _normalize(name)),
         None,
     )
     reps = saved["target_reps"] if saved else DEFAULT_REPS
-    step = plan_next_step(history.get(_normalize(name)), name, reps, max_dumbbell_kg)
+    step = plan_next_step(history.get(_normalize(name)), name, reps, max_dumbbell_kg, dumbbell_step_kg)
     return {
         "target_reps": step["target_reps"] if step else reps,
         "target_weight_kg": step["target_weight_kg"] if step else (saved["target_weight_kg"] if saved else None),
@@ -230,10 +236,11 @@ def build_lift_volume(
     if any(row["additions"] for row in day_rows):
         history = latest_next_steps(conn)
         max_dumbbell_kg = _max_dumbbell_kg(conn)
+        dumbbell_step_kg = _dumbbell_step_kg(conn)
         for row in day_rows:
             for addition in row["additions"]:
                 if addition["mode"] == "add":
-                    addition.update(_accessory_target(addition["exercise_name"], templates, history, max_dumbbell_kg))
+                    addition.update(_accessory_target(addition["exercise_name"], templates, history, max_dumbbell_kg, dumbbell_step_kg))
                 addition["reason"] = f"Brings {labels[addition['group']].lower()} toward {TARGET_SETS_MIN} hard sets this week"
 
     groups = []

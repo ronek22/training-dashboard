@@ -398,7 +398,13 @@
                 <span class="unit-input"><input v-model.number="profileForm.max_dumbbell_kg" type="number" min="0" max="500" step="0.5" placeholder="No limit" aria-label="Heaviest dumbbell in kilograms"><em>kg</em></span>
                 <span>each</span>
               </label>
-              <p class="hint">At this weight, progression adds reps instead of load. Plates are for the bar only.</p>
+              <div class="dumbbell-line">
+                <span>Adjusts in</span>
+                <div class="segmented segmented-sm" role="radiogroup" aria-label="Dumbbell step">
+                  <button v-for="option in dumbbellStepOptions" :key="option.label" type="button" role="radio" :aria-checked="profileForm.dumbbell_step_kg === option.value" :class="{ 'is-active': profileForm.dumbbell_step_kg === option.value }" @click="profileForm.dumbbell_step_kg = option.value">{{ option.label }}</button>
+                </div>
+              </div>
+              <p class="hint">Progression and the set coach only suggest weights your dumbbells can be set to; at the top weight they add reps instead. Plates are for the bar only.</p>
             </div>
           </div>
         </section>
@@ -541,9 +547,9 @@ const hrZonePart = (formState) => hrZoneKeys.map((key) => formState?.[key])
 // The FTP source saves itself, so it never counts as an unsaved edit.
 const withoutFtp = (formState) => ({ ...formState, ftp_source: null, manual_watts: null })
 const savedPerformanceForm = () => JSON.parse(baseline.performance || '{}')
-const equipmentKeys = ['bar_weight_kg', 'plates', 'max_dumbbell_kg']
+const equipmentKeys = ['bar_weight_kg', 'plates', 'max_dumbbell_kg', 'dumbbell_step_kg']
 const equipmentPart = (formState) => equipmentKeys.map((key) => formState?.[key])
-const withoutEquipment = (formState) => ({ ...formState, bar_weight_kg: null, plates: null, max_dumbbell_kg: null })
+const withoutEquipment = (formState) => ({ ...formState, bar_weight_kg: null, plates: null, max_dumbbell_kg: null, dumbbell_step_kg: null })
 const dirty = computed(() => ({
   profile: snapshot(profileForm.value) !== baseline.profile,
   // The profile form holds both cards; these split it for the chips and the save bar.
@@ -896,6 +902,8 @@ const discStyle = (kg) => {
   const diameter = kg >= 10 ? 58 : kg >= 5 ? 46 : kg >= 2.5 ? 38 : kg >= 1.25 ? 31 : 26
   return { width: `${diameter}px`, height: `${diameter}px`, '--plate': plateColor(kg) }
 }
+// "Auto" keeps the old rule: 1 kg jumps under 10 kg, then 2 kg.
+const dumbbellStepOptions = [{ value: null, label: 'Auto' }, { value: 1, label: '1 kg' }, { value: 2, label: '2 kg' }, { value: 2.5, label: '2.5 kg' }]
 const newPlateKg = ref('')
 const canAddPlate = computed(() => {
   const kg = Number(newPlateKg.value)
@@ -922,6 +930,7 @@ function profileFormFrom(data) {
     off_season_start: season.start,
     off_season_end: season.end,
     max_dumbbell_kg: data?.max_dumbbell_kg ?? '',
+    dumbbell_step_kg: data?.dumbbell_step_kg ?? null,
     bar_weight_kg: data?.bar_weight_kg ?? 20,
     plates: (data?.plates || DEFAULT_PLATES).map((item) => ({ kg: item.kg, count: item.count })),
     notes_reviewed_at: { ...(data?.notes_reviewed_at || {}) },
@@ -937,6 +946,7 @@ function profilePayload(formState) {
     planning_notes: formState.planning_notes || null,
     off_season_months: monthsFromSeasonRange(formState.off_season_start, formState.off_season_end),
     max_dumbbell_kg: Number(formState.max_dumbbell_kg) > 0 ? Number(formState.max_dumbbell_kg) : null,
+    dumbbell_step_kg: formState.dumbbell_step_kg,
     bar_weight_kg: Number(formState.bar_weight_kg) > 0 ? Number(formState.bar_weight_kg) : null,
     plates: formState.plates.map((item) => ({ kg: item.kg, count: item.count })),
     notes_reviewed_at: formState.notes_reviewed_at,

@@ -123,5 +123,85 @@ class BackupTests(unittest.TestCase):
         self.assertIn("OK: training-", result.stdout)
 
 
+
+class RestoreDrillTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        env = patch.dict(os.environ, {"TRAINING_BACKUP_DIR": ""})
+        env.start()
+        self.addCleanup(env.stop)
+        self.root = Path(self.tmp.name)
+        self.db = self.root / "training.db"
+        self.dir = self.root / "backups"
+        self.dir.mkdir()
+        # Fixture backup: a database built by the real migrations, with a little history in it.
+        from backend.app import db
+        fixture = self.root / "fixture.db"
+        with patch.object(db, "DB_PATH", str(fixture)):
+            db.init_db(snapshot=False)
+        conn = sqlite3.connect(fixture)
+        conn.executemany("INSERT INTO activities (id, date, type) VALUES (?, ?, 'Run')",
+                         [("a1", "2026-10-01"), ("a2", "2026-10-12")])
+        conn.execute("INSERT INTO weekly_plans (week_start, days_json) VALUES ('2026-10-12', '[]')")
+        conn.commit()
+        conn.close()
+        self.backup = self.dir / "training-20261014-090000-daily.db"
+        shutil.move(fixture, self.backup)
+        self.db.write_bytes(b"live database, must stay untouched")
+
+    def test_drill_restores_migrates_and_queries_newest_backup(self):
+        # Leftover from a drill that was killed mid-copy.
+        (self.dir / "restore-drill-killed").mkdir()
+        (self.dir / "restore-drill-killed" / "training.db").write_bytes(b"partial")
+        backup_bytes = self.backup.read_bytes()
+        status = backups.restore_drill(str(self.db), datetime(2026, 10, 15, 9, 0))
+        self.assertTrue(status["ok"], status["message"])
+        self.assertEqual((status["file"], status["activities"], status["latest_activity"], status["plan_weeks"]),
+                         (self.backup.name, 2, "2026-10-12", 1))
+        # Neither the live database nor the backup changed, no extra copy was taken, scratch copies are gone.
+        self.assertEqual(self.db.read_bytes(), b"live database, must stay untouched")
+        self.assertEqual(self.backup.read_bytes(), backup_bytes)
+        self.assertEqual([item["file"] for item in backups.list_backups(self.dir)], [self.backup.name])
+        self.assertEqual(sorted(path.name for path in self.dir.iterdir()), sorted([self.backup.name, backups.DRILL_FILE]))
+        reported = backups.get_status(str(self.db))["restore_drill"]
+        self.assertEqual((reported["ok"], reported["ran_at"]), (True, "2026-10-15T09:00:00"))
+        self.assertFalse(backups.restore_drill_due(str(self.db), datetime(2026, 10, 21, 9, 0)))
+        self.assertTrue(backups.restore_drill_due(str(self.db), datetime(2026, 10, 22, 9, 0)))
+
+    def test_drill_records_migration_failure_with_reason(self):
+        conn = sqlite3.connect(self.backup)
+        # A view where a table should be: the migrations cannot add columns or indexes to it.
+        conn.execute("DROP TABLE activities")
+        conn.execute("CREATE VIEW activities AS SELECT 1 AS id")
+        conn.commit()
+        conn.close()
+        status = backups.restore_drill(str(self.db))
+        self.assertFalse(status["ok"])
+        self.assertTrue(status["message"].startswith("Migrations failed:"), status["message"])
+        self.assertFalse(backups.get_status(str(self.db))["restore_drill"]["ok"])
+
+    def test_drill_records_smoke_query_failure(self):
+        conn = sqlite3.connect(self.backup)
+        conn.execute("DELETE FROM activities")
+        conn.commit()
+        conn.close()
+        status = backups.restore_drill(str(self.db))
+        self.assertFalse(status["ok"])
+        self.assertIn("no activities", status["message"])
+
+    def test_drill_without_backups_fails(self):
+        self.backup.unlink()
+        status = backups.restore_drill(str(self.db))
+        self.assertEqual((status["ok"], status["message"]), (False, "No backup to restore"))
+
+    def test_drill_command_line(self):
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run([sys.executable, "-m", "app.services.backups", "drill"], cwd=root, capture_output=True,
+                                text=True, env={**os.environ, "TRAINING_DB_PATH": str(self.db)})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("OK: training-20261014-090000-daily.db: 2 activities", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

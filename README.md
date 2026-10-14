@@ -333,10 +333,20 @@ While the backend runs it snapshots the database once a day with SQLite's online
 
 ```bash
 just backup
+just restore-drill
 just restore training-20261014-184341-daily.db
 ```
 
-`just restore` checks the backup's integrity, stops the stack, moves the current `training.db` (and any `-wal`/`-shm`) aside as `training.db.replaced-<time>`, puts the backup in place and starts the stack again if it was running. Set `TRAINING_BACKUPS=false` to switch off the daily loop or `TRAINING_BACKUP_DIR` to store copies elsewhere.
+**Restore drill.** Once a week (same hourly loop) and on `just restore-drill` or "Test restore" (`POST /backups/drill`), the newest copy is copied to a temporary file, the app's migrations (`init_db`) run against that copy in a child process, and smoke queries read the activity count, the latest activity date and the plan weeks. A copy that fails to migrate, fails the integrity check afterwards or has no activities is recorded as failed with the reason in `data/backups/restore-drill.json`; the temporary copy is always deleted and the live database is never opened. Data & Sync shows "Last restore drill: OK, 2 days ago" under the backup status.
+
+**Restoring for real.**
+
+1. Pick a copy: Data & Sync → Saved copies, or `ls data/backups/`. Prefer one whose date is at or before the last OK restore drill, or run `just restore-drill` first (it tests the newest copy).
+2. `just restore <file>` checks the backup's integrity, stops the stack, moves the current `training.db` (and any `-wal`/`-shm`) aside as `training.db.replaced-<time>`, puts the backup in place and starts the stack again if it was running.
+3. The backend migrates the restored file on start. Open Data & Sync and the Dashboard to check the latest activity, then re-sync Strava/Health to pull in anything newer than the copy.
+4. If something is wrong, `just restore training.db.replaced-<time>` (full path under `data/`) puts the previous database back.
+
+Set `TRAINING_BACKUPS=false` to switch off the daily loop and weekly drill, or `TRAINING_BACKUP_DIR` to store copies elsewhere.
 
 ## Consistency And Legacy Streak Logic
 

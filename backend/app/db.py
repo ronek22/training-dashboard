@@ -165,13 +165,15 @@ def _cleanup_existing_fitbod_non_strength_sessions(conn: sqlite3.Connection) -> 
         _recompute_fitbod_batch_counters(conn, batch_id)
 
 
-def init_db():
+def init_db(snapshot: bool = True):
     db_dir = os.path.dirname(DB_PATH)
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)
     from .services.backups import snapshot_before_migrations
     try:
-        snapshot_before_migrations(DB_PATH)
+        # The restore drill migrates a throwaway copy; snapshotting that copy would only waste space.
+        if snapshot:
+            snapshot_before_migrations(DB_PATH)
     except Exception:
         logging.getLogger(__name__).exception("Pre-migration backup failed")
     conn = get_db()

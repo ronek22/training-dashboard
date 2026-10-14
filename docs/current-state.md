@@ -76,6 +76,15 @@ Every item can be marked as fine (`POST /data-inbox/dismiss {key}`, stored in `d
 - `just restore <file>`: integrity-checks the backup, stops the stack, keeps the replaced database as `training.db.replaced-<time>`, puts the backup in place and restarts what was running.
 - Verified with `test_backups.py` (backup of a live WAL database and restore with matching row counts, integrity failure status, retention, startup rules, `init_db` hook, CLI); backend 824 and frontend tests plus the build pass. The running app took its first copies (482 MB each, integrity ok) and the panel was checked at 1512 px. `just restore` was dry-run only; no restore was performed on live data.
 
+### Backup restore drill
+
+2026-10-15: backups are now proven to restore, not just to pass `PRAGMA integrity_check`. `backups.restore_drill` copies the newest backup into a temporary `restore-drill-*` directory beside the backups (cleared at the start of the next drill if a restart killed one mid-copy), runs `init_db(snapshot=False)` on that copy in a child process (`TRAINING_DB_PATH` points at the copy, so the running app's `db.DB_PATH` is never swapped and no extra snapshot is taken), integrity-checks the migrated copy and runs smoke queries (activity count, latest activity date, `weekly_plans` count; zero activities fails). The result (OK or the reason, e.g. `Migrations failed: …`) is saved in `data/backups/restore-drill.json` and returned as `restore_drill` by `GET /backups`.
+
+- When: weekly from the backup loop (`restore_drill_due`, 7 days since the last drill), `just restore-drill`, or Data & Sync → "Test restore" (`POST /backups/drill`).
+- Data & Sync → Database backups: "Last restore drill: OK, 2 days ago — <file> migrated with N activities (latest …) and N plan weeks", or the failure and its reason.
+- Real restore steps are in the README (Backups → Restoring for real).
+- Verified with `RestoreDrillTests` in `test_backups.py` (fixture backup built by the real migrations; live file and backup unchanged, scratch copy and a stale killed-drill copy removed, no extra backup; migration failure, smoke failure, no backup, CLI). Backend 863 and frontend 160 tests plus the build pass. No drill was run against the live data/backups in this change.
+
 ### Fixed-step adjustable dumbbells
 
 2026-10-14: Home gym → Dumbbells has "Adjusts in" (Auto / 1 / 2 / 2.5 kg), stored as `dumbbell_step_kg` in the athlete profile. Auto (null) keeps the old rule: +1 kg under 10 kg, then +2 kg. With a step set, every dumbbell load suggested lands on a setting the dumbbells can make (e.g. 2–24 kg in 2 kg steps):

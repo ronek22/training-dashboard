@@ -106,10 +106,16 @@ def _daily_backup_once() -> None:
             backups.create_backup(db_module.DB_PATH, "daily")
     except Exception:
         logger.exception("Daily database backup failed")
+    try:
+        if backups.restore_drill_due(db_module.DB_PATH):
+            backups.restore_drill(db_module.DB_PATH)
+    except Exception:
+        logger.exception("Weekly restore drill failed")
 
 
 async def _daily_backup_loop() -> None:
     # Hourly check; the first one runs at startup, so a day without a copy gets one within the hour.
+    # The same check runs the restore drill once a week.
     while True:
         await asyncio.to_thread(_daily_backup_once)
         await asyncio.sleep(3600)

@@ -316,11 +316,13 @@
           <template v-else>
             <p v-if="backupStatus.ok === false" class="sync-error backup-failed" role="alert">Last backup failed {{ formatDateTime(backupStatus.last_attempt_at) }}: {{ backupStatus.message }}</p>
             <p>{{ backupStatus.last_success_at ? `Last good backup ${formatDateTime(backupStatus.last_success_at)}, integrity checked.` : 'No backup yet. One is taken daily while the app runs.' }} Keeps {{ backupStatus.retention }} copies in <code>data/backups/</code>. Restore with <code>just restore &lt;file&gt;</code>.</p>
+            <p class="backup-drill" :class="{ 'sync-error': drill && !drill.ok }">{{ drillSummary }}</p>
           </template>
           <p v-if="backupError && backupStatus" class="import-hint" role="alert">{{ backupError }}</p>
         </div>
         <span v-if="backupStatus" class="status-pill" :class="backupStatus.ok !== false && !backupStatus.stale ? 'status-ok' : 'status-missing'">{{ backupStatus.ok === false ? 'Failed' : backupStatus.stale ? 'Overdue' : 'Up to date' }}</span>
         <button class="import-btn import-btn-secondary" :disabled="backingUp || !backupStatus" @click="runBackup">{{ backingUp ? 'Backing up…' : 'Back up now' }}</button>
+        <button class="import-btn import-btn-secondary" :disabled="drilling || backingUp || !backupStatus?.backups.length" @click="runDrill">{{ drilling ? 'Restoring copy…' : 'Test restore' }}</button>
       </div>
       <details v-if="backupStatus?.backups.length" class="sync-details"><summary>Saved copies <span>{{ backupStatus.backups.length }}</span></summary><div class="health-data-files">
         <article v-for="item in backupStatus.backups" :key="item.file">
@@ -333,7 +335,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { format } from 'date-fns'
+import { format, formatDistanceToNow } from 'date-fns'
 import { useApi } from '../stores/api'
 import DataInbox from '../components/DataInbox.vue'
 
@@ -475,6 +477,28 @@ const runBackup = async () => {
     backupError.value = 'The backup could not run. Try again.'
   } finally {
     backingUp.value = false
+  }
+}
+// Restore drill: weekly proof that the newest copy migrates and answers smoke queries.
+const drilling = ref(false)
+const drill = computed(() => backupStatus.value?.restore_drill)
+const drillSummary = computed(() => {
+  const d = drill.value
+  if (!d) return 'Last restore drill: not run yet. It runs weekly, or test it now.'
+  const age = formatDistanceToNow(new Date(d.ran_at), { addSuffix: true })
+  return d.ok
+    ? `Last restore drill: OK, ${age} — ${d.file} migrated with ${d.activities.toLocaleString()} activities (latest ${d.latest_activity}) and ${d.plan_weeks} plan weeks.`
+    : `Last restore drill: failed ${age}${d.file ? ` on ${d.file}` : ''}: ${d.message}`
+})
+const runDrill = async () => {
+  drilling.value = true
+  backupError.value = ''
+  try {
+    backupStatus.value = (await api.runRestoreDrill()).data
+  } catch {
+    backupError.value = 'The restore drill could not run. Try again.'
+  } finally {
+    drilling.value = false
   }
 }
 onMounted(loadBackupStatus)
@@ -912,7 +936,7 @@ const formatSeconds = (value) => {
 .fitbod-summary-grid{margin:24px 0 20px;gap:0;border-block:1px solid var(--border)}.fitbod-summary-card{padding:19px 22px;border:0;border-right:1px solid var(--border);border-radius:0;background:none;gap:7px;align-content:start}.fitbod-summary-card:first-child{padding-left:0}.fitbod-summary-card:last-child{border:0}.fitbod-summary-card span{font-size:11px}.fitbod-summary-card strong{font-family:var(--font-display);font-size:23px;font-weight:600;letter-spacing:-.5px;overflow-wrap:anywhere}.fitbod-summary-card small{font-size:11px;line-height:1.5}
 .health-data-files{max-height:300px;overflow-y:auto;scrollbar-width:thin}.health-data-files article{border:0;border-bottom:1px solid var(--border);border-radius:0;background:none;padding:12px 0}.review-heading{margin-top:30px}.review-heading h3{font-size:17px;font-weight:600}.review-heading p{font-size:12px;color:var(--muted);margin-top:5px}.fitbod-filter-row{flex-wrap:wrap;gap:6px}.filter-btn{padding:8px 13px;font-size:12px;border-radius:8px;background:transparent;border-color:transparent}.filter-btn.active{background:color-mix(in srgb,var(--source-color) 13%,transparent);border-color:color-mix(in srgb,var(--source-color) 24%,transparent);color:var(--source-color)}.review-empty{padding:35px 20px;text-align:center;color:var(--muted);font-size:13px;border:1px dashed var(--border);border-radius:12px;margin-top:18px}.fitbod-session-list{gap:12px}.fitbod-session-card{background:rgb(var(--deep-rgb) / .4);border-color:var(--border);border-radius:14px;padding:20px}.fitbod-session-head h3{font-size:15px}.fitbod-session-head p,.fitbod-session-metrics,.fitbod-session-link{font-size:12px;line-height:1.6}.fitbod-session-status{flex-shrink:0}.fitbod-linker{flex-wrap:wrap}.reject-fitbod-btn{background:none;color:var(--text-soft);border-color:transparent}.fitbod-exercise-chip{border:0;border-radius:8px;padding:10px 12px}.feedback-btn:disabled{opacity:.5;cursor:not-allowed}.sync-page button:focus-visible,.sync-page summary:focus-visible,.sync-page a:focus-visible{outline:2px solid var(--source-color,oklch(from #8faeff calc(l - var(--dim-l)) c h));outline-offset:4px}
 @media(max-width:1050px){.source-switcher{grid-template-columns:repeat(2,minmax(0,1fr))}.source-top{margin-bottom:14px}.source-foot{margin-top:18px}}
-.backup-card{margin-top:22px;--source-color:#8fb4ff}.backup-row{padding:0;border:0}.backup-row h2{font-size:19px;font-weight:600;margin:6px 0 8px}.backup-failed{margin:0 0 10px}.history-row{display:flex;justify-content:space-between;gap:22px;align-items:center;padding:20px 0;border-bottom:1px solid var(--border)}.history-copy{flex:1;min-width:0}.history-row strong{font-size:14px;font-weight:600}.history-row p{color:var(--muted);font-size:12px;line-height:1.6;margin-top:5px}.history-progress{height:8px;margin-top:12px;border-radius:999px;background:color-mix(in srgb,var(--tone-neutral) 14%,transparent);overflow:hidden}.history-progress span{display:block;height:100%;border-radius:999px;background:var(--source-color);transition:width 600ms var(--motion-ease-standard)}.history-meta{font-variant-numeric:tabular-nums}
+.backup-card{margin-top:22px;--source-color:#8fb4ff}.backup-row{padding:0;border:0}.backup-row h2{font-size:19px;font-weight:600;margin:6px 0 8px}.backup-failed{margin:0 0 10px}.history-row p.backup-drill{margin-top:8px}.history-row{display:flex;justify-content:space-between;gap:22px;align-items:center;padding:20px 0;border-bottom:1px solid var(--border)}.history-copy{flex:1;min-width:0}.history-row strong{font-size:14px;font-weight:600}.history-row p{color:var(--muted);font-size:12px;line-height:1.6;margin-top:5px}.history-progress{height:8px;margin-top:12px;border-radius:999px;background:color-mix(in srgb,var(--tone-neutral) 14%,transparent);overflow:hidden}.history-progress span{display:block;height:100%;border-radius:999px;background:var(--source-color);transition:width 600ms var(--motion-ease-standard)}.history-meta{font-variant-numeric:tabular-nums}
 @media(max-width:700px){.history-row{align-items:stretch;flex-direction:column}.page-header,.sources-heading,.sync-action-row,.stream-row{align-items:stretch;flex-direction:column}.page-header{margin-bottom:28px}.back-link{align-self:flex-start}.sources-heading p{max-width:none}.source-switcher{gap:8px}.source-switcher button{padding:14px;border-radius:12px}.source-symbol{width:29px;height:29px;font-size:18px}.source-status{font-size:9px}.source-switcher button>strong{font-size:16px}.source-purpose,.source-foot{font-size:10px}.import-card{padding:20px}.import-header{flex-direction:column;gap:12px}.import-header>.status-pill{align-self:flex-start}.import-header h2{font-size:21px}.fitbod-summary-grid{grid-template-columns:1fr}.fitbod-summary-card,.fitbod-summary-card:first-child{padding:14px 0;border:0;border-bottom:1px solid var(--border)}.fitbod-session-head{flex-direction:column}.fitbod-linker{align-items:stretch}.import-form>label{width:100%}.import-form input{min-width:0}.page-title{font-size:30px}}
 
 .stream-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}

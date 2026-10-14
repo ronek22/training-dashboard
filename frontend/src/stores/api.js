@@ -249,6 +249,7 @@ export const useApi = () => ({
   dismissDataInboxItem: (key) => api.post('/data-inbox/dismiss', { key }),
   refetchActivityStreams: (activityId) => api.post(`/data-inbox/streams/${encodeURIComponent(activityId)}/refetch`),
   runBackup: () => api.post('/backups', null, { timeout: 300000 }),
+  runRestoreDrill: () => api.post('/backups/drill', null, { timeout: 900000 }),
   getStravaHistoryBackfill: () => api.get('/integrations/strava/history-backfill'),
   setStravaHistoryBackfill: (enabled) => api.post('/integrations/strava/history-backfill', { enabled }),
   previewHealthFitImport: () => api.get('/integrations/healthfit/preview'),

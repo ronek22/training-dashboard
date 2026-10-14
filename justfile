@@ -57,6 +57,14 @@ backup:
         cd "{{root}}/backend" && TRAINING_DB_PATH="{{root}}/data/training.db" python3 -m app.services.backups; \
     fi
 
+# Prove the newest backup restores: migrate a temporary copy, run smoke queries, record the result.
+restore-drill:
+    if docker compose ps --status running --services 2>/dev/null | grep -qx backend; then \
+        docker compose exec -T backend python -m app.services.backups drill; \
+    else \
+        cd "{{root}}/backend" && TRAINING_DB_PATH="{{root}}/data/training.db" python3 -m app.services.backups drill; \
+    fi
+
 # Put a backup in place (path or file name in data/backups/); the replaced database is kept aside.
 restore file:
     #!/usr/bin/env bash

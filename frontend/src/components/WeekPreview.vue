@@ -9,7 +9,7 @@
     </div>
 
     <ol class="preview-rows" :class="{ 'no-arc': !hasArc }">
-      <li v-for="week in weeks" :key="week.week_start" class="preview-row" :class="{ 'is-lighter': week.lighter }">
+      <li v-for="week in weeks" :id="`preview-${week.week_start}`" :key="week.week_start" class="preview-row" :class="{ 'is-lighter': week.lighter, 'is-flash': flashed === week.week_start }">
         <div class="preview-when">
           <strong>{{ weekRange(week) }}</strong>
           <span>{{ week.plan_saved ? 'Plan saved' : week.index === 1 ? 'Next week' : `In ${week.index} weeks` }}</span>
@@ -43,7 +43,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useApi } from '../stores/api'
 
 const api = useApi()
@@ -58,16 +58,34 @@ const weekRange = (week) => {
   return `${short(week.week_start)}–${short(week.week_end, !sameMonth)}`
 }
 
+const count = ref(4)
+const flashed = ref(null)
+
 const load = async () => {
   try {
-    preview.value = (await api.getWeekPreview()).data
+    preview.value = (await api.getWeekPreview(undefined, count.value)).data
   } catch {
     preview.value = null
   }
 }
 
+// Scroll to one future week, asking for more weeks when it lies past the default four.
+const reveal = async (weekStart) => {
+  if (!weeks.value.some(week => week.week_start === weekStart)) {
+    const today = preview.value?.today ? new Date(`${preview.value.today}T00:00:00`) : new Date()
+    const thisMonday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7))
+    const ahead = Math.round((new Date(`${weekStart}T00:00:00`) - thisMonday) / 604800000)
+    count.value = Math.min(26, Math.max(count.value, ahead))
+    await load()
+  }
+  await nextTick()
+  document.getElementById(`preview-${weekStart}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  flashed.value = weekStart
+  setTimeout(() => { if (flashed.value === weekStart) flashed.value = null }, 1800)
+}
+
 onMounted(load)
-defineExpose({ load })
+defineExpose({ load, reveal })
 </script>
 
 <style scoped>
@@ -84,6 +102,7 @@ defineExpose({ load })
 
 .preview-rows { display: grid; margin: 0; padding: 0; list-style: none; }
 .preview-row { display: grid; grid-template-columns: 112px 200px minmax(0, 1fr) minmax(0, max-content); align-items: center; gap: 16px; padding: 9px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.preview-row.is-flash { background: color-mix(in srgb, var(--accent) 10%, transparent); transition: background 0.3s; }
 .no-arc .preview-row { grid-template-columns: 112px minmax(0, 1fr) minmax(0, max-content); }
 
 .preview-when { display: grid; gap: 1px; }

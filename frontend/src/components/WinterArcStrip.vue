@@ -11,7 +11,7 @@
       </div>
     </div>
 
-    <div v-if="arc.blocks.length && !editing" class="arc-strip" role="img" :aria-label="stripAria">
+    <div v-if="showStrip && arc.blocks.length && !editing" class="arc-strip" role="img" :aria-label="stripAria">
       <div
         v-for="block in arc.blocks"
         :key="block.id"
@@ -74,6 +74,8 @@ import { computed, onMounted, ref } from 'vue'
 import { addDays, differenceInCalendarDays, format, nextMonday, parseISO, startOfWeek } from 'date-fns'
 import { useApi } from '../stores/api'
 
+// The Plan page hides the strip while the season timeline already draws the blocks.
+defineProps({ showStrip: { type: Boolean, default: true } })
 const emit = defineEmits(['changed'])
 const api = useApi()
 const arc = ref(null)

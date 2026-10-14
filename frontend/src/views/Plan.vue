@@ -24,7 +24,8 @@
       <div v-if="flashMessage.detail" class="flash-detail">{{ flashMessage.detail }}</div>
     </div>
 
-    <WinterArcStrip @changed="onArcChanged" />
+    <WinterArcStrip :show-strip="!timelineShowsArc" @changed="onArcChanged" />
+    <SeasonTimeline ref="seasonTimeline" @loaded="data => (timelineShowsArc = Boolean(data?.has_content && data.blocks.length))" @open-week="openTimelineWeek" />
 
     <div v-if="loading" class="skeleton-shell plan-loading-state">
       <div class="card skeleton-card plan-loading-trend">
@@ -986,6 +987,7 @@ import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
 import LifeLoadPicker from '../components/LifeLoadPicker.vue'
 import WeekPreview from '../components/WeekPreview.vue'
 import WinterArcStrip from '../components/WinterArcStrip.vue'
+import SeasonTimeline from '../components/SeasonTimeline.vue'
 import { useLifeLoad } from '../composables/useLifeLoad'
 import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail'
 import { clashText, swapLabel } from '../plan/lift-ride-clash.mjs'
@@ -1338,9 +1340,28 @@ const arcWeekTitle = (arc) => {
 }
 
 const weekPreview = ref(null)
+const seasonTimeline = ref(null)
+const timelineShowsArc = ref(false)
 const onArcChanged = () => {
   load()
   weekPreview.value?.load()
+  seasonTimeline.value?.load()
+}
+
+// Season timeline click: a saved week opens its plan; a future week without one opens its preview row.
+const openTimelineWeek = async (week) => {
+  const index = plans.value.findIndex((plan) => plan.week_start === week.week_start)
+  if (index >= 0) {
+    selectWeekAt(index)
+    await nextTick()
+    document.getElementById('plan-command-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+  if (week.current) return goToCurrentWeek()
+  if (week.link !== 'preview') return
+  goToCurrentWeek()
+  await nextTick()
+  await weekPreview.value?.reveal(week.week_start)
 }
 
 const load = async () => {

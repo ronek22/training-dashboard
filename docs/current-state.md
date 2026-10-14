@@ -24,6 +24,15 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Season timeline on Plan
+
+2026-10-15: implements the `season-map-timeline` idea. Plan shows a read-only "Season" strip under the Winter arc card: about 20 weeks (2 back, at least 20 in all, stretched to the arc's end up to 26; an arc that started up to 6 weeks back sets the start) built by `services/season_timeline.py` (`GET /plans/season-timeline`) from data other pages already keep.
+
+- Arc blocks are flat coloured bands with lighter weeks dimmed in the week row; Mountains trips (life-load runs, linking to the recap once a hike is logged) are bars, non-weekly goal target dates and goal review dates are pins (linking to Goals), the running stall block is a thin amber bar (linking to Strength), and "You are here" marks today with the current week outlined. Pins stack into up to 3 lanes so labels do not collide. Dates past the window are listed as "Later: …".
+- Any subset works: with no arc the weeks are neutral and a line points to the arc planner; with nothing at all the card hides. When the timeline draws the arc, the Winter arc card hides its own strip (header and editor stay); arc edits reload the timeline.
+- Clicking a week: a week with a saved plan (and the current week) opens that plan; a future week opens its row in the week preview, which now asks for more weeks when needed (`GET /plans/week-preview?weeks=` 1–26, default still 4) and highlights the row. Past weeks without a plan are not clickable. FTP retests are not shown: the app has no retest date to read yet.
+- Verified with `test_season_timeline.py` (4 tests: empty season window and links, arc window/bands/lighter weeks capped at 26 weeks, trips/goal dates/stall block/later and plan vs preview links, the API and the longer preview) and `season-timeline.test.mjs` (positions, month ticks, pin lanes). Backend 888 and frontend 163 tests plus the build pass. In the browser at 1512 px and 375 px with no horizontal overflow: the live database read-only (no arc, Oct 19–25 trip, Nov 4 goal review, Jan 7 goal date, Upright Row stall block), and a scratch database with a three-block arc where clicking the week of Dec 7 expanded the preview to 8 weeks and the current week opened its plan. Live training data was not changed.
+
 ### Next four weeks on Plan
 
 2026-10-15: implements the `four-week-plan-preview` idea. Under the current week, Plan shows "Where the next weeks are heading": one compact row for each of the next 4 weeks, built by code (`services/week_preview.py`, `GET /plans/week-preview`), never by the coach and never saved. Only the current week keeps day-by-day detail; a preview week becomes a real plan when it arrives ("Plan saved" shows if one already exists).

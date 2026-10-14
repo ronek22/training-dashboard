@@ -5,11 +5,16 @@ is not logged yet. It is split across the meals still ahead (by the clock, for t
 typical proportions, and each meal gets ideas sized to its share: closing as much of that
 share as possible without overshooting, with extra weight on protein while the protein
 target is still open. Picking an idea only prefills the log draft; nothing is saved here.
+
+When the next day holds a hard ride or a lower-body lift, the card names it and the ideas lean
+on carbs: half or more of what is left should come from carbohydrate.
 """
 import sqlite3
+from datetime import date, timedelta
 from typing import Optional
 
 from . import food_log, products as product_book, recipes as recipe_book
+from .fuelling import planned_key_session
 from .dinner_plan import PLANNED_MEAL
 
 MACROS = food_log.MACROS
@@ -24,6 +29,8 @@ MEAL_WEIGHTS = {"breakfast": 0.25, "lunch": 0.35, "dinner": 0.3, "snack": 0.1}
 MEAL_ENDS = {"breakfast": 11, "lunch": 16, "dinner": 22, "snack": 24}
 # Taken off an idea's score when its main food was already eaten today.
 REPEAT_PENALTY = 0.2
+# Share of the remaining kcal to come from carbs the day before a key session.
+PRE_SESSION_CARB_SHARE = 0.55
 
 # Typical portions with per-portion values, and the meals they suit.
 STAPLES = [
@@ -93,23 +100,29 @@ def _candidates(conn: sqlite3.Connection) -> list[dict]:
     return found
 
 
-def _score(totals: dict, kcal_budget: float, protein_budget: float) -> Optional[float]:
+def _score(totals: dict, kcal_budget: float, protein_budget: float, carbs_budget: float = 0) -> Optional[float]:
     kcal = totals["kcal"]
     if kcal < MIN_IDEA_KCAL or kcal > kcal_budget * OVERSHOOT:
         return None
     fill = min(kcal, kcal_budget) / kcal_budget
-    if protein_budget <= 5:
+    protein = min(totals["protein_g"], protein_budget) / protein_budget if protein_budget > 5 else None
+    if carbs_budget > 5:
+        carbs = min(totals["carbs_g"], carbs_budget) / carbs_budget
+        if protein is None:
+            return 0.6 * fill + 0.4 * carbs
+        return 0.45 * fill + 0.25 * protein + 0.3 * carbs
+    if protein is None:
         return fill
-    return 0.55 * fill + 0.45 * min(totals["protein_g"], protein_budget) / protein_budget
+    return 0.55 * fill + 0.45 * protein
 
 
-def _best_portion(candidate: dict, kcal_budget: float, protein_budget: float) -> Optional[dict]:
+def _best_portion(candidate: dict, kcal_budget: float, protein_budget: float, carbs_budget: float = 0) -> Optional[dict]:
     """The portion size that closes most of the meal's share without overshooting it."""
     best = None
     for factor in candidate["factors"]:
         items = _scaled(candidate["items"], factor)
         totals = _totals(items)
-        score = _score(totals, kcal_budget, protein_budget)
+        score = _score(totals, kcal_budget, protein_budget, carbs_budget)
         if score is not None and (best is None or score > best["score"]):
             best = {"key": candidate["key"], "title": candidate["title"], "source": candidate["source"],
                     "items": items, "totals": totals, "portions": factor, "score": score}
@@ -134,6 +147,20 @@ def _planned_dinner(conn: sqlite3.Connection, day: str, entries: list[dict]) -> 
     return {"dish": row["dish"], "kcal": round(row["kcal"]), "protein_g": round(row["protein_g"] or 0)}
 
 
+def _pre_session(conn: sqlite3.Connection, day: str, kcal_left: float) -> Optional[dict]:
+    """Tomorrow's hard ride or leg day, with the carbs the rest of today should bring."""
+    session = planned_key_session(conn, date.fromisoformat(day) + timedelta(days=1))
+    if not session:
+        return None
+    label = "Leg day" if session["kind"] == "leg_day" else "Hard ride"
+    return {
+        **session,
+        "headline": f"{label} tomorrow, aim for the full target today",
+        "carb_share": PRE_SESSION_CARB_SHARE,
+        "carbs_g": max(0, round(kcal_left * PRE_SESSION_CARB_SHARE / 4)),
+    }
+
+
 def meals_ahead(logged: set[str], hour: Optional[int]) -> list[str]:
     """Meals not logged yet that can still happen. Past days (hour None) keep every unlogged meal.
 
@@ -153,10 +180,13 @@ def build_meal_ideas(conn: sqlite3.Connection, day: str, hour: Optional[int] = N
     protein_target = food_day["protein_target_g"] or 0
     kcal_left = target["kcal"] - eaten["kcal"] - (dinner["kcal"] if dinner else 0)
     protein_left = max(0.0, protein_target - eaten["protein_g"] - (dinner["protein_g"] if dinner else 0))
+    pre_session = _pre_session(conn, day, kcal_left)
+    carbs_left = pre_session["carbs_g"] if pre_session else 0
     result = {
         "date": day,
         "ready": True,
         "planned_dinner": dinner,
+        "pre_session": pre_session,
         "left": {"kcal": round(kcal_left), "protein_g": round(protein_left)},
         "meals": [],
     }
@@ -172,9 +202,10 @@ def build_meal_ideas(conn: sqlite3.Connection, day: str, hour: Optional[int] = N
     }
     for meal in ahead:
         share = MEAL_WEIGHTS[meal] / weight
-        kcal_budget, protein_budget = kcal_left * share, protein_left * share
+        kcal_budget, protein_budget, carbs_budget = kcal_left * share, protein_left * share, carbs_left * share
         ranked = [
-            idea for idea in (_best_portion(c, kcal_budget, protein_budget) for c in candidates if meal in c["meals"]) if idea
+            idea for idea in (_best_portion(c, kcal_budget, protein_budget, carbs_budget) for c in candidates if meal in c["meals"])
+            if idea
         ]
         # Own foods win near-ties: they are what is actually in the kitchen. Today's repeats sink.
         for idea in ranked:
@@ -187,6 +218,7 @@ def build_meal_ideas(conn: sqlite3.Connection, day: str, hour: Optional[int] = N
             "meal": meal,
             "kcal": round(kcal_budget),
             "protein_g": round(protein_budget),
+            **({"carbs_g": round(carbs_budget)} if pre_session else {}),
             "ideas": ranked[:IDEAS_PER_MEAL],
         })
     return result

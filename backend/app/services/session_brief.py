@@ -437,6 +437,18 @@ def _mobility_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[st
 
 # A plan sentence is a guardrail when it tells the athlete to stop or scale back,
 # not merely when it mentions a symptom inside a prescription.
+def _under_fuelled_yesterday(conn: sqlite3.Connection, session_day: date) -> Optional[dict]:
+    from .food_log import fuel_status_by_day
+
+    previous = (session_day - timedelta(days=1)).isoformat()
+    # Judge against the real clock too, so a brief for tomorrow never reads today's half-logged day.
+    try:
+        status = fuel_status_by_day(conn, previous, previous, today=min(session_day, date.today())).get(previous)
+    except sqlite3.OperationalError:
+        return None
+    return {"date": previous, **status} if status and status["under"] else None
+
+
 _GUARDRAIL_RE = re.compile(r"\b(stop|skip|abort|shorten|cut (it|the)|end the|bail|back off|ease off|switch to)\b", re.IGNORECASE)
 GUARDRAIL_MAX_CHARS = 180
 
@@ -485,6 +497,16 @@ def build_session_brief(conn: sqlite3.Connection, day: dict, today: Optional[dat
             low.append("soreness")
         if low:
             brief["notes"].insert(0, f"Check-in shows low {' and '.join(low)} today. Hold the bottom of the targets, and use the bail rule early.")
+
+    # Yesterday logged short of food: only a logged day counts, an empty one is unknown.
+    if brief["sport"] in ("ride", "run", "strength", "hike"):
+        under = _under_fuelled_yesterday(conn, date.fromisoformat(day["date"]) if day.get("date") else today)
+        if under:
+            brief["under_fuelled_yesterday"] = under
+            brief["notes"].append(
+                f"Yesterday was logged under-fuelled ({under['eaten_kcal']:,} of {under['target_kcal']:,} kcal). "
+                "Eat a proper carb-based meal 2–3 h before, and don't read a flat session as lost fitness."
+            )
 
     # Back from illness: the cap overrides the session's own effort target.
     try:

@@ -24,6 +24,15 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Eat enough before the sessions that matter
+
+2026-10-15: implements the `fuel-before-hard-sessions` idea. Food, the pre-session brief and Weekly Review now share one under-fuelled rule: a finished day with food logged below 85% of its target (`food_log.UNDER_SHARE`). `food_log.fuel_status_by_day` returns only judged days, so an unlogged or still-running day is unknown and never under-fuelled.
+
+- Food → What to eat next: when tomorrow's saved plan has a hard ride or a lower-body lift (`fuelling.planned_key_session`, using the lift/ride clash rule's `is_hard_ride` and `is_lower_lift`), the card says "Leg day tomorrow, aim for the full target today" (or "Hard ride tomorrow…") with the session title. About 55% of what is left should come from carbs (`PRE_SESSION_CARB_SHARE`): each meal shows its carb grams, idea ranking adds a carb term, and "Ask Claude" passes tomorrow's session and the carb goal. The kcal target itself is unchanged.
+- Pre-session brief: rides, runs, lifts and hikes get one note, "Yesterday was logged under-fuelled (X of Y kcal)…", only when the previous day had food logged and fell short. The brief also carries `under_fuelled_yesterday`.
+- Weekly Review: `GET /reviews/weekly/report` has `fuelling` (`fuelling.fuel_session_comparison`): average post-session energy (1–5) and RPE for sessions after fuelled versus under-fuelled days over the last 12 weeks, walks excluded. A card "Sessions after fuelled vs under-fuelled days" appears only when each side has at least 4 logged days behind a rated session.
+- Verified with `test_fuel_before_sessions.py` (7 tests: leg day and hard ride named, easy ride and upper lift ignored, carb-leaning ideas, brief note only after a logged short day, unlogged days unknown, comparison hidden at 4 vs 3 days and shown at 4 vs 4); backend 876 and frontend 160 tests plus the build pass. Not checked in the browser; live training data was not changed.
+
 ### Winter arc for cycling
 
 2026-10-15: Plan opens with a Winter arc strip: a few dated blocks (Base, Sweet-spot build, VO2 touch, Maintain), each with weekly ride hours, a target ride mix (Z2, sweet spot and VO2 rides per week) and an optional lighter week every 3–5 weeks. The arc only shapes rides; lifts, anchors and minimum weeks are never changed.

@@ -95,6 +95,11 @@ const kpis = computed(() => {
   return items
 })
 
+const fuelSides = computed(() => report.value?.fuelling?.ready ? [
+  { key: 'fuelled', label: 'After a fuelled day', data: report.value.fuelling.fuelled },
+  { key: 'under', label: 'After an under-fuelled day', data: report.value.fuelling.under },
+] : [])
+
 const goalValue = (goal, value) => goal.metric === 'ride_km' ? `${Math.round(value)} km` : `${value % 1 ? value.toFixed(1) : value}`
 const goalHint = (goal) => {
   const r = report.value
@@ -206,6 +211,18 @@ const talk = () => wins.value && openCoachChat(weekChatRequest(wins.value))
         </section>
       </div>
 
+      <section v-if="report.fuelling?.ready" class="card full fuel" :class="{ stale: loading }" aria-labelledby="fuel-title">
+        <div class="card-head"><h2 id="fuel-title">Sessions after fuelled vs under-fuelled days</h2><span class="muted small">Last {{ report.fuelling.window_days / 7 }} weeks · logged days only</span></div>
+        <div class="fuel-grid">
+          <div v-for="side in fuelSides" :key="side.key" class="fuel-side" :class="`is-${side.key}`">
+            <span class="kpi-label">{{ side.label }}</span>
+            <strong class="kpi-value">{{ side.data.energy.toFixed(1) }}<em>/5 energy</em></strong>
+            <span class="kpi-note">RPE {{ side.data.rpe.toFixed(1) }} · {{ side.data.sessions }} {{ side.data.sessions === 1 ? 'session' : 'sessions' }} after {{ side.data.days }} days</span>
+          </div>
+          <p class="fuel-summary">{{ report.fuelling.summary }} <RouterLink to="/food">Food ↗</RouterLink></p>
+        </div>
+      </section>
+
       <section class="coach" aria-labelledby="coach-title">
         <h2 id="coach-title" class="section-title">Coach’s take</h2>
         <TeamCoaching v-if="isCurrent" hide-visual />
@@ -288,6 +305,12 @@ h1 { font-size: 28px; letter-spacing: -.4px; }
 .mark { display: grid; flex: none; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success-text); font-size: 11px; }
 .mark.is-record { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning-text); }
 
+.fuel-grid { display: grid; grid-template-columns: 220px 220px minmax(0, 1fr); gap: 18px; align-items: center; }
+.fuel-side { display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 3px solid var(--success); }
+.fuel-side.is-under { border-left-color: var(--warning); }
+.fuel-summary { font-size: 13px; line-height: 1.5; }
+.fuel-summary a { margin-left: 6px; font-size: 12px; color: var(--muted); text-decoration: none; }
+
 .coach { margin-top: 30px; }
 .section-title { font-size: 18px; font-weight: 650; }
 .coach :deep(.team-review) { margin-top: 12px; box-shadow: var(--shadow-card); }
@@ -302,6 +325,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   .wr { padding: 20px 16px 40px; }
   .kpi + .kpi { border-left: 0; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fuel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fuel-summary { grid-column: 1 / -1; }
   .stepper { width: 100%; justify-content: space-between; }
 }
 </style>

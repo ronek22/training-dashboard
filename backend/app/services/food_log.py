@@ -144,6 +144,59 @@ def logged_protein_by_day(conn: sqlite3.Connection, start: str, end: str) -> dic
     return {row["date"]: float(row["protein"] or 0) for row in rows}
 
 
+def _day_target(profile: dict, bmr: Optional[float], training: int) -> Optional[dict]:
+    if bmr is None:
+        return None
+    baseline = bmr * LIFE_FACTORS[profile["daily_life"]]
+    surplus = GAIN_SURPLUS_KCAL if profile["goal"] == "gain" else 0
+    return {
+        "resting": round(bmr),
+        "daily_life": round(baseline - bmr),
+        "training": training,
+        "surplus": surplus,
+        "kcal": round(baseline + training + surplus),
+    }
+
+
+def fuel_status_by_day(conn: sqlite3.Connection, start: str, end: str, today: Optional[date] = None) -> dict[str, dict]:
+    """Judged days between start and end: logged, finished and with a target.
+
+    A day missing from the result is unknown (nothing logged, still running, or no profile),
+    never under-fuelled.
+    """
+    today = today or datetime.now().date()
+    end = min(end, (today - timedelta(days=1)).isoformat())
+    if end < start:
+        return {}
+    try:
+        totals = conn.execute(
+            """
+            SELECT e.date, COALESCE(SUM(i.kcal), 0) AS kcal FROM food_entries e LEFT JOIN food_items i ON i.entry_id = e.id
+            WHERE e.date BETWEEN ? AND ? GROUP BY e.date
+            """,
+            (start, end),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    if not totals:
+        return {}
+    profile = get_nutrition_profile(conn)
+    weight = latest_body_weight(conn)
+    weight_kg = weight["kg"] if weight else None
+    exercise = None
+    days = {}
+    for row in totals:
+        bmr = resting_kcal(profile, weight_kg, date.fromisoformat(row["date"]))
+        if bmr is None:
+            continue
+        if exercise is None:
+            exercise = exercise_by_day(conn, start, end, weight_kg or 75, bmr)
+        target = _day_target(profile, bmr, exercise.get(row["date"], {}).get("kcal", 0))
+        eaten = round(float(row["kcal"]))
+        days[row["date"]] = {"eaten_kcal": eaten, "target_kcal": target["kcal"], "under": eaten < target["kcal"] * UNDER_SHARE}
+    return days
+
+
 def build_food_day(conn: sqlite3.Connection, day: str, today: Optional[date] = None) -> dict:
     today = today or datetime.now().date()
     selected = _parse_day(day)
@@ -157,18 +210,7 @@ def build_food_day(conn: sqlite3.Connection, day: str, today: Optional[date] = N
     exercise = exercise_by_day(conn, week_start.isoformat(), selected.isoformat(), weight_kg or 75, bmr or 1700)
 
     def target_for(key: str) -> Optional[dict]:
-        if bmr is None:
-            return None
-        baseline = bmr * LIFE_FACTORS[profile["daily_life"]]
-        training = exercise.get(key, {}).get("kcal", 0)
-        surplus = GAIN_SURPLUS_KCAL if profile["goal"] == "gain" else 0
-        return {
-            "resting": round(bmr),
-            "daily_life": round(baseline - bmr),
-            "training": training,
-            "surplus": surplus,
-            "kcal": round(baseline + training + surplus),
-        }
+        return _day_target(profile, bmr, exercise.get(key, {}).get("kcal", 0))
 
     week = []
     for offset in range(7):

@@ -7,16 +7,20 @@
         <template v-else>Day covered</template>
       </span>
     </header>
+    <p v-if="ideas.pre_session" class="pre-session">
+      <strong>{{ ideas.pre_session.headline }}</strong>
+      <span>{{ ideas.pre_session.title }} · ideas lean on carbs<template v-if="ideas.meals.length">, about {{ fmt(ideas.pre_session.carbs_g) }} g still to eat</template>.</span>
+    </p>
     <p v-if="ideas.planned_dinner" class="fine planned">After today's planned {{ ideas.planned_dinner.dish }} ({{ fmt(ideas.planned_dinner.kcal) }} kcal).</p>
 
     <template v-if="slot">
       <div v-if="ideas.meals.length > 1" class="slots" role="tablist" aria-label="Meal">
         <button v-for="item in ideas.meals" :key="item.meal" type="button" role="tab" :aria-selected="item.meal === slot.meal"
           :class="{ active: item.meal === slot.meal }" @click="pick(item.meal)">
-          {{ mealLabel(item.meal) }} <small>~{{ fmt(item.kcal) }}</small>
+          {{ mealLabel(item.meal) }} <small>~{{ fmt(item.kcal) }}<template v-if="item.carbs_g"> · {{ item.carbs_g }} g C</template></small>
         </button>
       </div>
-      <p v-else class="fine budget">{{ mealLabel(slot.meal) }}: about {{ fmt(slot.kcal) }} kcal<template v-if="slot.protein_g">, {{ slot.protein_g }} g protein</template>.</p>
+      <p v-else class="fine budget">{{ mealLabel(slot.meal) }}: about {{ fmt(slot.kcal) }} kcal<template v-if="slot.protein_g">, {{ slot.protein_g }} g protein</template><template v-if="slot.carbs_g">, {{ slot.carbs_g }} g carbs</template>.</p>
 
       <ul class="idea-list">
         <li v-for="idea in shown" :key="idea.key">
@@ -85,6 +89,11 @@ const itemLine = (idea) => idea.items.map((item) => (
   item.portions ? `${item.name} ×${String(item.portions).replace('.', ',')}` : item.grams ? `${item.name} ${Math.round(item.grams)} g` : item.name
 )).join(', ')
 const pick = (value) => { chosen.value = value }
+// Claude sizes its ideas to the same carb-leaning split as the card.
+const preSessionLine = () => {
+  const pre = ideas.value?.pre_session
+  return pre ? `Tomorrow: ${pre.title} (${pre.kind === 'leg_day' ? 'leg day' : 'hard ride'}); favour carbs, about ${slot.value?.carbs_g || 0} g for this meal` : ''
+}
 
 async function load() {
   // Today's meals that have already passed by the clock don't get a share of the gap.
@@ -115,7 +124,8 @@ async function ask() {
   try {
     const { data: job } = await api.startMealIdeas({
       meal, kcal: slot.value.kcal, protein_g: slot.value.protein_g, hour: new Date().getHours(),
-      eaten: props.eaten, note: note.value.trim(), training: props.training,
+      eaten: props.eaten, note: note.value.trim(),
+      training: [props.training, preSessionLine()].filter(Boolean).join('; '),
     })
     await poll(job.job_id, meal)
   } catch (error) {
@@ -167,6 +177,9 @@ onUnmounted(() => {
 .fine { color: var(--muted); font-size: 12px; margin: 0; line-height: 1.45; }
 .fine.error { color: var(--danger); }
 .planned { margin-top: -6px; }
+.pre-session { display: grid; gap: 2px; margin: -4px 0 0; padding: 8px 11px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: 12px; line-height: 1.45; }
+.pre-session strong { font-size: 12.5px; font-weight: 650; }
+.pre-session span { color: var(--muted); }
 
 .slots { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--border); border-radius: 10px; }
 .slots button { flex: 1; padding: 6px 8px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 600 12px var(--font-display); cursor: pointer; }

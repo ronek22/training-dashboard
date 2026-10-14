@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 from .dashboard import build_training_load_summary
+from .fuelling import fuel_session_comparison
 from .goals import goal_value_for_window
 from .health_data import get_health_metric_history, get_sleep_history
 from .life_load import get_life_load_days
@@ -368,6 +369,7 @@ def build_week_report(conn: sqlite3.Connection, week_start: Optional[date] = Non
         "days": days,
         "history": history,
         "sport_labels": SPORT_LABELS,
+        "fuelling": fuel_session_comparison(conn, through, today),
     }
     report["insights"] = _insights(report, len(week_sick), finished)
     return report

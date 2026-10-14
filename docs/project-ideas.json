@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-14T18:52:00+02:00",
-  "summary": "On-request refill of a nearly empty board: 29 of 30 ideas were done or dismissed, and only kit mileage was still open. Promoted the roadmap open threads that had never become cards: legs every week, the lift and hard-ride clash rule, the winter base-to-build arc, the data-quality inbox and stall blocks beyond Strength. Added new ideas tied to what is coming up: a celebratory recap of the October 19–25 mountain trip, an opt-in FTP test that updates FTP from the result, fuelling before hard sessions, and a backup restore drill. Source and documentation review only. No tests or model calls were run.",
+  "reviewed_at": "2026-10-15T12:00:00+02:00",
+  "summary": "Planning-horizon review, asked for by you: the weekly plan stays the detailed unit, but the app needs a visible longer view above it. Added a 4-week preview, weeks that build on the previous one, gentle strength phases, a season map, block-end reviews, an arc that adapts when life interrupts, a training-load forecast, a Sunday planning flow and food targets that follow the block. Source review only. No tests or model calls were run.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -913,6 +913,205 @@
         "With no block history, suggestions behave exactly as they do today"
       ],
       "created_on": "2026-10-14"
+    },
+    {
+      "id": "four-week-plan-preview",
+      "title": "See the next four weeks, not just this one",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "The Plan page only shows the current week, so training feels like it is planned one week at a time with no direction. The winter arc already knows where the next weeks are heading, but you can only see that in the arc strip, not as upcoming weeks.",
+      "proposal": "Under the current week, show a light preview of the next 3–4 weeks, built by code (not the AI) from the winter arc blocks, active goals, mountain trips, illness/re-entry windows and tagged life-load days. Each week is one compact row: block and week number, ride hours, key rides (e.g. 1× sweet spot), lift days, a lighter-week badge, and anything known that bends it (trip, busy week). Only the current week has full day-by-day detail; preview weeks become real plans when they arrive.",
+      "benefit": "You can see where training is going and why this week looks the way it does, without the AI having to write detailed plans that would be wrong by the time they arrive.",
+      "evidence": [
+        "backend/app/services/winter_arc.py: week_target, arc_week, build_winter_arc",
+        "frontend/src/views/Plan.vue and frontend/src/components/WinterArcStrip.vue",
+        "backend/app/services/mountain_reentry.py, illness_return.py, life_load.py",
+        "backend/app/services/minimum_week.py"
+      ],
+      "acceptance_criteria": [
+        "The Plan page shows the current week in full and the next 3–4 weeks as compact preview rows.",
+        "Preview rows come from deterministic code and match the arc's week_target (hours, key rides, lighter weeks).",
+        "Known trips, illness or re-entry windows and life-load days appear on the week they affect.",
+        "With no winter arc, the preview still shows lift days, goals and known events, or hides cleanly.",
+        "The layout stays compact at ~1512px desktop width."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "week-builds-on-last-week",
+      "title": "Each new week builds on how the last one went",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "The weekly planner gets the block target for this week and next, but not how the previous week went against that target. A key ride that was missed, or a week that ran long, is not carried into the next plan, so each week can feel like it starts from scratch.",
+      "proposal": "When a week is generated, add a short 'where you are in the block' note to the planner context: block and week number, last week's arc status (key rides hit or missed, ride hours versus target), follow-through on the previous plan, and whether next week is lighter. Add one carry-over rule: a missed key ride may move into the new week once, unless the new week is lighter or guarded. Show the same one-line note at the top of the generated week.",
+      "benefit": "Weeks connect into a real progression, and you can see the reason behind each week in one line.",
+      "evidence": [
+        "backend/app/services/winter_arc.py: winter_arc_coaching_context, arc_week_status",
+        "backend/app/services/plan_follow_through.py: plan_follow_through_coaching_context",
+        "backend/app/services/plans.py: _winter_arc_status and fit_week_to_arc call"
+      ],
+      "acceptance_criteria": [
+        "Planner context includes last week's arc status and follow-through in a compact form.",
+        "A generated week shows a one-line block note such as 'Week 3 of 4 in sweet-spot build, last week's SS ride moved here, lighter week next'.",
+        "A missed key ride carries over at most once and never into a lighter, sick, re-entry or life-load-guarded day.",
+        "Tests cover carry-over, the lighter-week block and a week with no arc."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "gentle-strength-phases",
+      "title": "Gentle strength phases alongside the winter arc",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "The winter arc only shapes rides. Lifts progress session by session with occasional stall blocks, so there is no longer rhythm such as a planned lighter week, and heavy leg weeks can line up with the hardest ride weeks.",
+      "proposal": "Add an optional, simple strength phase label with dates (e.g. 'Volume', 'Hold', 'Deload week') that can line up with arc blocks. Phases only nudge existing rules: a deload week trims sets on the same lifts, and a hold phase pauses load jumps. They never add new progression rules, never touch the lift 3x anchor goal, and stay off by default.",
+      "benefit": "Lifting gets a light longer structure and planned recovery without adding the complexity that felt overwhelming before.",
+      "evidence": [
+        "backend/app/services/strength_progression.py and progression_guard.py",
+        "backend/app/services/stall_blocks.py",
+        "backend/app/services/winter_arc.py: lighter_every",
+        "backend/app/services/lift_ride_clash.py"
+      ],
+      "acceptance_criteria": [
+        "Strength phases are optional and off by default.",
+        "A deload week reduces sets without changing exercises or the weekly lift count toward the 3x anchor.",
+        "Phases can be suggested to line up with arc lighter weeks, and you confirm them.",
+        "Existing progression and stall-block behaviour is unchanged when no phase is active."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "season-map-timeline",
+      "title": "Your whole winter on one timeline",
+      "category": "Experience",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "Blocks, mountain trips, goals with target dates, lighter weeks, stall blocks and FTP retests are each shown on their own page. There is no single view of the coming months.",
+      "proposal": "Add a horizontal season timeline (e.g. on the Plan or Goals page): arc blocks as coloured bands, lighter weeks marked, trips and events as pins, goal target dates, the active stall block, and a 'you are here' marker. Clicking a week opens its plan or preview. Flat design, compact, read-only first.",
+      "benefit": "The big picture is always one glance away, which makes week-to-week training feel purposeful.",
+      "evidence": [
+        "frontend/src/components/WinterArcStrip.vue",
+        "backend/app/services/winter_arc.py, mountain_trips.py, goals.py, stall_blocks.py"
+      ],
+      "acceptance_criteria": [
+        "One timeline shows arc blocks, lighter weeks, trips, goal dates and the active stall block.",
+        "The current week is clearly marked and links to the plan; future weeks link to the preview.",
+        "It works with any subset of data present (e.g. no arc).",
+        "It fits on a 1512px desktop screen without horizontal page scroll."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "block-end-review",
+      "title": "A review at the end of every training block",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "When an arc block ends, nothing looks back at it. You do not see whether the block delivered, and the next block is not adjusted from what actually happened.",
+      "proposal": "When a block ends, create a celebratory block recap: key rides done versus planned, total ride hours, power-curve and aerobic-decoupling change over the block, consistency streak, and one or two plain suggestions for the next block (e.g. 'hours were 20% under, keep the next block at the same hours'). Suggestions are applied only after you confirm.",
+      "benefit": "Each block teaches the next one, and you get a motivating moment every few weeks instead of only at season end.",
+      "evidence": [
+        "backend/app/services/winter_arc.py: arc_week_status",
+        "backend/app/services/aerobic_decoupling.py, power_trends.py",
+        "frontend/src/views/SeasonReview.vue and TripRecap.vue (recap style)"
+      ],
+      "acceptance_criteria": [
+        "A recap is available for every finished block, with big count-up numbers and visuals rather than tables.",
+        "It compares planned and completed key rides and hours for the block.",
+        "Next-block suggestions are never applied without confirmation.",
+        "Blocks with too little data show an honest 'not enough data' state."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "arc-adapts-to-interruptions",
+      "title": "The winter arc adapts when life gets in the way",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "The arc has fixed dates. After an illness, a mountain trip or a busy fortnight, the planner either crams missed key rides or the block quietly ends without having done its job.",
+      "proposal": "Detect when a block lost 1+ weeks (sick days, re-entry windows, life-load tags, low arc status) and suggest a fix: extend the block by a week and shift later blocks, or accept it and move on. Show the suggestion as a card with a before/after view of the dates. Never cram missed sessions into the remaining weeks.",
+      "benefit": "The long-term plan stays realistic instead of falling apart after the first disruption.",
+      "evidence": [
+        "backend/app/services/winter_arc.py: save_winter_arc, _guarded_dates",
+        "backend/app/services/sick_mode.py, illness_return.py, mountain_reentry.py, life_load.py"
+      ],
+      "acceptance_criteria": [
+        "A block that lost a week or more shows a suggestion card with extend or accept.",
+        "Extending shifts later blocks by the same amount and keeps lighter-week spacing.",
+        "Nothing changes until you confirm, and a change can be undone.",
+        "Tests cover illness, trip and life-load interruptions."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "training-load-forecast",
+      "title": "See where fitness and fatigue are heading",
+      "category": "Product",
+      "effort": "Large",
+      "priority": "Medium",
+      "problem": "The app shows past training but cannot say whether the planned weeks ramp load too fast or too slowly, which is exactly the question a longer plan raises.",
+      "proposal": "Estimate a fitness/fatigue trend (CTL/ATL-style, using relative effort or power-based load) from history, then project it through the current plan and the 4-week preview. Flag ramps that are too steep or too flat versus the block's purpose. Keep it to one small chart plus a single plain-language line.",
+      "benefit": "You can check that the coming weeks build fitness at a safe rate before you ride them.",
+      "evidence": [
+        "backend/app/services/relative_effort.py",
+        "backend/app/services/power_zones.py and ftp.py (dated FTP history)",
+        "backend/app/services/winter_arc.py: week_target"
+      ],
+      "acceptance_criteria": [
+        "Past load is computed from logged activities using the FTP valid on each date.",
+        "Planned and preview weeks are projected forward with clearly marked estimated values.",
+        "A warning shows when the planned weekly ramp exceeds a documented threshold.",
+        "Tests cover the load calculation and projection."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "sunday-planning-flow",
+      "title": "One Sunday flow from review to next week's plan",
+      "category": "Experience",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "Wrapping up a week and planning the next takes several pages: weekly review, body check-in, life load, then plan generation. Steps get skipped, so the plan is made with less context.",
+      "proposal": "Add a guided Sunday flow: (1) the week's wins and review, (2) a quick body check-in, (3) tag busy days next week, (4) the block note and preview for next week, (5) generate and accept the plan. Each step can be skipped, and the flow remembers where you stopped.",
+      "benefit": "Planning becomes a 5-minute ritual, and every plan gets the full context it needs.",
+      "evidence": [
+        "frontend/src/views/WeeklyReview.vue, Plan.vue",
+        "frontend/src/components/WeeklyBodyCheckin.vue, WeekWinsCard.vue",
+        "backend/app/services/life_load.py"
+      ],
+      "acceptance_criteria": [
+        "One entry point walks through review, check-in, life load, preview and plan generation.",
+        "Each step reuses existing components and can be skipped.",
+        "Leaving and returning resumes at the same step.",
+        "The plan is generated only on your explicit action."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "food-targets-follow-the-block",
+      "title": "Food targets that follow the training week",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "Fuelling advice reacts to single hard sessions, but daily intake targets do not change with block volume. In a big week, eating too little is the main risk.",
+      "proposal": "Scale the daily energy and carb guidance on the Food page from the planned week: higher on long or key-ride days and in high-hour blocks, steady in lighter weeks. Show a small 'this week needs more food' hint when planned hours rise compared with recent weeks.",
+      "benefit": "Eating keeps up with training, supporting both the under-eating focus and muscle gain.",
+      "evidence": [
+        "backend/app/services/fuelling.py",
+        "backend/app/services/food_log.py and protein.py",
+        "backend/app/services/winter_arc.py: week_target ride_hours"
+      ],
+      "acceptance_criteria": [
+        "Daily targets differ for key-ride, long-ride, lift and rest days in the planned week.",
+        "A higher-volume week shows a clear eat-more hint.",
+        "Targets never drop below the current baseline because of a lighter week.",
+        "Tests cover target scaling."
+      ],
+      "created_on": "2026-10-15"
     }
   ]
 }

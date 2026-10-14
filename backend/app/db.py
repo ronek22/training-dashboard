@@ -555,6 +555,7 @@ def init_db():
             carbs_g REAL NOT NULL DEFAULT 0,
             fat_g REAL NOT NULL DEFAULT 0,
             confidence TEXT,
+            portions REAL,
             FOREIGN KEY(entry_id) REFERENCES food_entries(id) ON DELETE CASCADE
         );
 
@@ -845,6 +846,9 @@ def init_db():
         conn.execute("ALTER TABLE dinner_plans ADD COLUMN recipe_id INTEGER")
     if "servings" not in dinner_plan_columns:
         conn.execute("ALTER TABLE dinner_plans ADD COLUMN servings REAL NOT NULL DEFAULT 1")
+    food_item_columns = {row["name"] for row in conn.execute("PRAGMA table_info(food_items)").fetchall()}
+    if food_item_columns and "portions" not in food_item_columns:
+        conn.execute("ALTER TABLE food_items ADD COLUMN portions REAL")
     strength_session_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(strength_workout_sessions)").fetchall()
     }

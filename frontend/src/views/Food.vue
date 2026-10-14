@@ -119,14 +119,21 @@
               </label>
             </div>
             <table class="draft-table">
-              <thead><tr><th class="left">Item</th><th>g</th><th>kcal</th><th>P</th><th>C</th><th>F</th><th></th></tr></thead>
+              <thead><tr><th class="left">Item</th><th>{{ rows.some((row) => row.portions) ? "Amount" : "g" }}</th><th>kcal</th><th>P</th><th>C</th><th>F</th><th></th></tr></thead>
               <tbody>
                 <tr v-for="row in rows" :key="row.key">
                   <td class="left">
                     <span class="confidence" :class="row.confidence" :title="row.confidence ? `${row.confidence} confidence` : 'entered by you'"></span>
                     <input v-model="row.name" aria-label="Item name" />
                   </td>
-                  <td><input type="number" min="0" step="5" :value="row.grams" aria-label="Grams" @input="setGrams(row, $event.target.value)" /></td>
+                  <td v-if="row.portions" class="portions-cell">
+                    <div class="portion-stepper" :title="portionLabel(row.portions)">
+                      <button type="button" aria-label="Fewer portions" :disabled="row.portions <= PORTION_STEP" @click="setPortions(row, row.portions - PORTION_STEP)">−</button>
+                      <b>×{{ String(row.portions).replace('.', ',') }}</b>
+                      <button type="button" aria-label="More portions" @click="setPortions(row, row.portions + PORTION_STEP)">+</button>
+                    </div>
+                  </td>
+                  <td v-else><input type="number" min="0" step="5" :value="row.grams" aria-label="Grams" @input="setGrams(row, $event.target.value)" /></td>
                   <td v-for="macro in MACROS" :key="macro">
                     <input type="number" min="0" step="1" :value="row[macro]" :aria-label="macroLabels[macro]" @input="setMacro(row, macro, $event.target.value)" />
                   </td>
@@ -165,7 +172,7 @@
             <div v-for="entry in group.entries" :key="entry.id" class="entry" :class="{ editing: editingId === entry.id, 'just-logged': justLoggedId === entry.id }"
               role="button" tabindex="0" :title="'Click to edit'" @click="editEntry(entry)" @keydown.enter="editEntry(entry)">
               <div v-for="item in entry.items" :key="item.id" class="item">
-                <span class="item-name" :title="item.grams ? `${item.name} · ${Math.round(item.grams)} g` : item.name">{{ item.name }}<small v-if="item.grams">{{ Math.round(item.grams) }} g</small></span>
+                <span class="item-name" :title="itemAmount(item) ? `${item.name} · ${itemAmount(item)}` : item.name">{{ item.name }}<small v-if="itemAmount(item)">{{ itemAmount(item) }}</small></span>
                 <span class="num">{{ Math.round(item.kcal) }}</span>
                 <span class="num">{{ grams(item.protein_g) }}</span>
                 <span class="num">{{ grams(item.carbs_g) }}</span>
@@ -253,7 +260,7 @@ import MealIdeas from '../components/MealIdeas.vue'
 import AnimatedNumber from '../components/AnimatedNumber.vue'
 import { defaultGrams, productLabel, scalePer100 } from '../food/products.mjs'
 import { readPhoto as downscalePhoto } from '../food/photo.mjs'
-import { MACROS, defaultMeal, draftRow, intakeTone, rowsToItems, setGrams, setMacro, sumRows } from '../food/draft.mjs'
+import { MACROS, PORTION_STEP, defaultMeal, draftRow, intakeTone, portionLabel, rowsToItems, setGrams, setMacro, setPortions, sumRows } from '../food/draft.mjs'
 
 const api = useApi()
 const meals = [
@@ -303,6 +310,7 @@ const isToday = computed(() => selectedDay.value === todayKey())
 const dayLabel = computed(() => (isToday.value ? 'Today' : format(parseISO(selectedDay.value), 'EEE d MMM')))
 const eyebrow = computed(() => format(parseISO(selectedDay.value), 'EEEE, d MMMM'))
 const mealName = (value) => meals.find((option) => option.value === value)?.label || 'meal'
+const itemAmount = (item) => (item.portions ? portionLabel(item.portions) : item.grams ? `${Math.round(item.grams)} g` : '')
 // Whole grams, but keep one decimal under 10 g so small amounts don't read as zero.
 const grams = (value) => {
   const n = Number(value) || 0
@@ -757,6 +765,12 @@ onUnmounted(() => {
 .draft-table thead th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
 .draft-table tfoot th .link-button + .link-button { margin-left: 10px; }
 .draft-table tfoot td, .draft-table tfoot th { font-weight: 650; padding: 6px 10px 0 4px; }
+.draft-table .portions-cell { text-align: center; }
+.portion-stepper { display: inline-flex; align-items: center; gap: 2px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; }
+.portion-stepper button { width: 22px; height: 26px; border: 0; background: none; color: var(--text); font: inherit; cursor: pointer; }
+.portion-stepper button:disabled { opacity: .35; cursor: default; }
+.portion-stepper button:not(:disabled):hover { color: var(--accent); }
+.portion-stepper b { min-width: 30px; text-align: center; font-weight: 600; }
 .draft-table input { width: 64px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font: inherit; font-size: 13px; padding: 5px 6px; text-align: right; }
 .draft-table input:focus { outline: none; border-color: var(--accent); }
 .draft-table td.left { display: flex; align-items: center; gap: 8px; }

@@ -16,6 +16,8 @@ class FoodItemInput(BaseModel):
     carbs_g: float = 0
     fat_g: float = 0
     confidence: Optional[str] = None
+    # Set for a recipe dish: macros are for this many portions, and grams usually stay empty.
+    portions: Optional[float] = None
 
 
 class FoodEntryInput(BaseModel):

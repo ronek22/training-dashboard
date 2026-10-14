@@ -117,7 +117,7 @@ def _entries(conn: sqlite3.Connection, start: str, end: str) -> list[dict]:
     if by_id:
         marks = ",".join("?" * len(by_id))
         for item in conn.execute(
-            f"SELECT id, entry_id, name, grams, kcal, protein_g, carbs_g, fat_g, confidence FROM food_items WHERE entry_id IN ({marks}) ORDER BY id",
+            f"SELECT id, entry_id, name, grams, kcal, protein_g, carbs_g, fat_g, confidence, portions FROM food_items WHERE entry_id IN ({marks}) ORDER BY id",
             tuple(by_id),
         ):
             by_id[item["entry_id"]]["items"].append({k: item[k] for k in item.keys() if k != "entry_id"})
@@ -223,6 +223,7 @@ def _clean_items(items: list) -> list[dict]:
             "grams": max(0.0, float(item.get("grams") or 0)) or None,
             **{key: max(0.0, round(float(item.get(key) or 0), 1)) for key in MACROS},
             "confidence": item.get("confidence") if item.get("confidence") in ("high", "medium", "low") else None,
+            "portions": min(50.0, max(0.0, round(float(item.get("portions") or 0), 2))) or None,
         })
     if not cleaned:
         raise HTTPException(status_code=422, detail="Add at least one food item.")
@@ -250,8 +251,8 @@ def _write_entry(conn: sqlite3.Connection, entry_id: Optional[int], payload: dic
             raise HTTPException(status_code=404, detail="Food entry not found")
         conn.execute("DELETE FROM food_items WHERE entry_id = ?", (entry_id,))
     conn.executemany(
-        "INSERT INTO food_items (entry_id, name, grams, kcal, protein_g, carbs_g, fat_g, confidence) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [(entry_id, i["name"], i["grams"], i["kcal"], i["protein_g"], i["carbs_g"], i["fat_g"], i["confidence"]) for i in items],
+        "INSERT INTO food_items (entry_id, name, grams, kcal, protein_g, carbs_g, fat_g, confidence, portions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [(entry_id, i["name"], i["grams"], i["kcal"], i["protein_g"], i["carbs_g"], i["fat_g"], i["confidence"], i["portions"]) for i in items],
     )
     conn.commit()
     return entry_id

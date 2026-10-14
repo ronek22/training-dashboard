@@ -173,7 +173,7 @@ def set_dinner(conn: sqlite3.Connection, day: str, payload: dict) -> dict:
 
 
 def dinner_log_items(conn: sqlite3.Connection, day: str) -> dict:
-    """What "log as eaten" should prefill: recipe ingredients for the portions planned, or just the dish."""
+    """What "log as eaten" should prefill: the dish as one row for the portions planned."""
     key = _parse_day(day).isoformat()
     row = conn.execute("SELECT dish, kcal, protein_g, recipe_id, servings FROM dinner_plans WHERE date = ?", (key,)).fetchone()
     if not row:

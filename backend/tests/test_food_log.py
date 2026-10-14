@@ -29,7 +29,7 @@ class FoodLogTests(unittest.TestCase):
                 source TEXT NOT NULL, raw_text TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
             CREATE TABLE food_items (id INTEGER PRIMARY KEY AUTOINCREMENT, entry_id INTEGER NOT NULL, name TEXT NOT NULL,
                 grams REAL, kcal REAL NOT NULL DEFAULT 0, protein_g REAL NOT NULL DEFAULT 0, carbs_g REAL NOT NULL DEFAULT 0,
-                fat_g REAL NOT NULL DEFAULT 0, confidence TEXT);
+                fat_g REAL NOT NULL DEFAULT 0, confidence TEXT, portions REAL);
             CREATE TABLE saved_foods (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, grams REAL,
                 kcal REAL NOT NULL DEFAULT 0, protein_g REAL NOT NULL DEFAULT 0, carbs_g REAL NOT NULL DEFAULT 0,
                 fat_g REAL NOT NULL DEFAULT 0, use_count INTEGER NOT NULL DEFAULT 0, created_at TEXT);
@@ -117,6 +117,14 @@ class FoodLogTests(unittest.TestCase):
         self.assertEqual(day["totals"]["kcal"], 1040)
         food_log.delete_food_entry(self.conn, entry_id)
         self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM food_items").fetchone()[0], 0)
+
+    def test_recipe_dish_keeps_its_portions(self):
+        food_log._write_entry(self.conn, None, {
+            "date": TODAY.isoformat(), "meal": "dinner", "source": "manual",
+            "items": [{"name": "Pomidorówka", "portions": 1.5, "kcal": 708}, {"name": "chleb", "grams": 40, "kcal": 100}],
+        })
+        items = food_log.build_food_day(self.conn, TODAY.isoformat(), TODAY)["entries"][0]["items"]
+        self.assertEqual([(item["portions"], item["grams"]) for item in items], [(1.5, None), (None, 40.0)])
 
     def test_entry_needs_a_named_item(self):
         with self.assertRaises(HTTPException):

@@ -157,14 +157,16 @@ def delete_recipe(conn: sqlite3.Connection, recipe_id: int) -> dict:
 
 
 def serving_items(recipe: dict, servings: float = 1) -> list[dict]:
-    """Food-log items for the portions eaten: every ingredient scaled to the share of the recipe."""
-    share = (servings or 1) / (recipe["servings"] or 1)
-    return [
-        {
-            "name": item["name"],
-            "grams": round(item["grams"] * share, 1) if item.get("grams") else None,
-            **{key: round(item[key] * share, 1) for key in MACROS},
-            "confidence": "medium",
-        }
-        for item in recipe["ingredients"]
-    ]
+    """Food-log items for the portions eaten: the dish as one row counted in portions.
+
+    No grams: a recipe's raw weight (water that boils off, bones, strained vegetables)
+    says nothing about what lands in the bowl, so portions are the honest unit.
+    """
+    servings = servings or 1
+    return [{
+        "name": recipe["title"],
+        "grams": None,
+        "portions": servings,
+        **{key: round(recipe["per_serving"][key] * servings, 1) for key in MACROS},
+        "confidence": "medium",
+    }]

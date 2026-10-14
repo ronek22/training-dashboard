@@ -1,4 +1,5 @@
 // Editable meal draft: rows keep their per-gram rates so changing grams rescales macros.
+// A recipe dish is counted in portions instead; its per-portion values rescale the same way.
 export const MACROS = ['kcal', 'protein_g', 'carbs_g', 'fat_g']
 
 const round1 = (value) => Math.round((Number(value) || 0) * 10) / 10
@@ -9,7 +10,25 @@ export function draftRow(item = {}) {
   const row = { key: nextKey++, name: item.name || '', grams: grams || null, confidence: item.confidence || null }
   for (const macro of MACROS) row[macro] = round1(item[macro])
   row.rates = grams ? Object.fromEntries(MACROS.map((macro) => [macro, (Number(item[macro]) || 0) / grams])) : null
+  const portions = Number(item.portions) || 0
+  row.portions = portions || null
+  row.perPortion = portions ? Object.fromEntries(MACROS.map((macro) => [macro, (Number(item[macro]) || 0) / portions])) : null
   return row
+}
+
+export const PORTION_STEP = 0.5
+
+export function setPortions(row, portions) {
+  const value = Math.max(PORTION_STEP, Math.round((Number(portions) || 0) / PORTION_STEP) * PORTION_STEP)
+  if (!row.perPortion) return row
+  for (const macro of MACROS) row[macro] = round1(row.perPortion[macro] * value)
+  row.portions = value
+  return row
+}
+
+export function portionLabel(portions) {
+  const value = Number(portions) || 0
+  return `${String(value).replace('.', ',')} ${value === 1 ? 'portion' : 'portions'}`
 }
 
 // New grams rescale every macro; an edited macro value resets the rate for that macro.
@@ -25,6 +44,7 @@ export function setGrams(row, grams) {
 
 export function setMacro(row, macro, amount) {
   row[macro] = round1(amount)
+  if (row.perPortion) row.perPortion[macro] = row[macro] / row.portions
   if (row.grams) {
     row.rates = row.rates || Object.fromEntries(MACROS.map((key) => [key, 0]))
     row.rates[macro] = row[macro] / row.grams
@@ -44,6 +64,7 @@ export function rowsToItems(rows) {
       grams: row.grams || null,
       ...Object.fromEntries(MACROS.map((macro) => [macro, round1(row[macro])])),
       confidence: row.confidence,
+      portions: row.portions || null,
     }))
 }
 

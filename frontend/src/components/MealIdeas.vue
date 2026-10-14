@@ -81,7 +81,9 @@ const slot = computed(() => {
 })
 const shown = computed(() => [...(claudeIdeas.value[slot.value?.meal] || []), ...(slot.value?.ideas || [])])
 const coverage = (idea) => Math.min(100, Math.round((idea.totals.kcal / (slot.value?.kcal || 1)) * 100))
-const itemLine = (idea) => idea.items.map((item) => (item.grams ? `${item.name} ${Math.round(item.grams)} g` : item.name)).join(', ')
+const itemLine = (idea) => idea.items.map((item) => (
+  item.portions ? `${item.name} ×${String(item.portions).replace('.', ',')}` : item.grams ? `${item.name} ${Math.round(item.grams)} g` : item.name
+)).join(', ')
 const pick = (value) => { chosen.value = value }
 
 async function load() {

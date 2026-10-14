@@ -112,7 +112,7 @@ class DinnerPlanTests(unittest.TestCase):
         self.assertEqual(tuesday["recipe"]["ingredients"], ["ryż", "pierś z kurczaka"])
         self.assertEqual(tuesday["recipe"]["carbs_g"], 117.0)
         items = dinner_plan.dinner_log_items(self.conn, "2026-10-06")["items"]
-        self.assertEqual([(item["grams"], item["kcal"]) for item in items], [(225.0, 270.0), (150.0, 525.0)])
+        self.assertEqual([(item["name"], item["portions"], item["grams"], item["kcal"]) for item in items], [("Kurczak z ryżem", 1.5, None, 795.0)])
         self.assertEqual(recipes.list_recipes(self.conn)[0]["planned_count"], 1)
 
     def test_editing_a_recipe_updates_planned_dinners_and_delete_keeps_the_dish(self):

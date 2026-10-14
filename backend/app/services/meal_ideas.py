@@ -57,6 +57,7 @@ def _scaled(items: list[dict], factor: float) -> list[dict]:
         return items
     return [
         {**item, "grams": round(item["grams"] * factor) if item.get("grams") else None,
+         **({"portions": round(item["portions"] * factor, 2)} if item.get("portions") else {}),
          **{key: round(float(item.get(key) or 0) * factor, 1) for key in MACROS}}
         for item in items
     ]
@@ -81,9 +82,7 @@ def _candidates(conn: sqlite3.Connection) -> list[dict]:
         for recipe in recipe_book.list_recipes(conn):
             if not recipe["per_serving"]["kcal"]:
                 continue
-            items = recipe_book.serving_items(recipe, 1) if recipe["ingredients"] else [
-                _item(recipe["title"], None, *(recipe["per_serving"][key] for key in MACROS))
-            ]
+            items = recipe_book.serving_items(recipe, 1)
             found.append({"key": f"recipe-{recipe['id']}", "title": recipe["title"], "source": "recipe",
                           "meals": ("lunch", "dinner"), "factors": (1, 1.5, 2), "items": items})
     except sqlite3.OperationalError:

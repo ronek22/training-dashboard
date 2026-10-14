@@ -10,6 +10,11 @@ a 215 W block ridden at 85% bias shows up as about 183 W. When the same gap
 shows on several structured rides, FTP is probably set too high, and the
 check suggests a working FTP scaled by that gap. One ride never moves it.
 
+Easy workouts (endurance, recovery) have no blocks above tempo. Their steady
+blocks get a lighter check instead: average power against target, time in the
+target zone and heart-rate drift. Easy power says little about FTP, so these
+rides never feed the FTP check.
+
 Targets assume the FTP set in Zwift matches the FTP the app trained with that
 day. Nothing here writes an FTP.
 """
@@ -30,6 +35,7 @@ from .cycling_workouts import get_cycling_workout
 from .ftp import ftp_on
 from .plans import ensure_plan_day_ids, find_planned_session_by_id
 from .power_trends import _build_segments, _confirmed_power_meter, _decode_json
+from .power_zones import POWER_ZONE_LIMITS
 
 BUCKET_SECONDS = 5
 MAX_EARLY_START_SECONDS = 180
@@ -57,6 +63,17 @@ VERDICTS = {
     "slightly_under": "A little under",
     "under": "Well under",
     "over": "Above target",
+}
+
+# Easy rides: riding under target is fine, over it adds fatigue the plan didn't ask for.
+STEADY_EASY_RATIO = 0.90
+STEADY_HARD_RATIO = 1.08
+MIN_HALF_HR_COVERAGE = 0.9
+COUPLED_DRIFT_PCT = 5.0
+STEADY_VERDICTS = {
+    "on_target": "On target",
+    "easy": "Easier than planned",
+    "hard": "Harder than planned",
 }
 
 
@@ -170,6 +187,9 @@ def compare_ride_to_workout(streams: Any, workout: dict, ftp_watts: float) -> di
     blocks = _timeline(workout["steps"])
     work = [block for block in blocks if block["kind"] == "work" and block["end"] - block["start"] >= MIN_WORK_SECONDS]
     if not work:
+        steady = [block for block in blocks if block["kind"] == "steady" and block["end"] - block["start"] >= MIN_WORK_SECONDS]
+        if steady:
+            return _compare_steady(blocks, steady, segments, ftp_watts)
         return {"status": "unavailable", "reason": "This workout has no work blocks to compare."}
 
     offset, alignment = _align(blocks, segments)
@@ -213,9 +233,25 @@ def compare_ride_to_workout(streams: Any, workout: dict, ftp_watts: float) -> di
         if signal else None
     )
     verdict = _verdict(ratio)
-    # Every planned block on the ride's elapsed clock, so the trace can show the workout behind it.
-    ride_end = segments[-1].end
-    timeline = [
+    return {
+        "status": "available",
+        "mode": "blocks",
+        "verdict": verdict,
+        "verdict_label": VERDICTS[verdict],
+        "ratio": round(ratio, 3),
+        "ftp_signal_ratio": round(signal_ratio, 3) if signal_ratio is not None else None,
+        "blocks_planned": len(graded),
+        "blocks_ridden": len(ridden),
+        "start_offset_min": round(offset / 60, 1),
+        "alignment": round(alignment, 2),
+        "blocks": graded,
+        "timeline": _ride_timeline(blocks, origin, segments[-1].end, ftp_watts),
+    }
+
+
+def _ride_timeline(blocks: list[dict], origin: float, ride_end: float, ftp_watts: float) -> list[dict]:
+    """Every planned block on the ride's elapsed clock, so the trace can show the workout behind it."""
+    return [
         {
             "kind": block["kind"],
             "label": block["label"],
@@ -229,19 +265,176 @@ def compare_ride_to_workout(streams: Any, workout: dict, ftp_watts: float) -> di
         for block in blocks
         if origin + block["start"] < ride_end
     ]
+
+
+def _zone_bounds(fraction: float) -> tuple[int, float, Optional[float]]:
+    """Power zone (1-based) holding ``fraction`` of FTP, with its lower and upper fractions."""
+    lower = 0.0
+    for index, upper in enumerate(POWER_ZONE_LIMITS, start=1):
+        if fraction <= upper:
+            return index, lower, upper
+        lower = upper
+    return len(POWER_ZONE_LIMITS) + 1, lower, None
+
+
+def _zone_seconds(segments: list, start: float, end: float, low: float, high: Optional[float]) -> tuple[float, float, float]:
+    """Seconds below, inside and above a watt band between ``start`` and ``end``; zero watts count as below."""
+    below = inside = above = 0.0
+    for segment in segments:
+        seconds = min(segment.end, end) - max(segment.start, start)
+        if seconds <= 0:
+            continue
+        if segment.watts <= 0 or segment.watts <= low:
+            below += seconds
+        elif high is not None and segment.watts > high:
+            above += seconds
+        else:
+            inside += seconds
+    return below, inside, above
+
+
+def _drift(segments: list, windows: list[tuple[float, float]]) -> Optional[dict]:
+    """Power-to-heart-rate drift from the first half of the steady time to the second, or None without heart rate."""
+    total = sum(end - start for start, end in windows)
+    halves: list[list[tuple[float, float]]] = [[], []]
+    cursor = 0.0
+    for start, end in windows:
+        middle = start + max(0.0, min(end - start, total / 2 - cursor))
+        if middle > start:
+            halves[0].append((start, middle))
+        if end > middle:
+            halves[1].append((middle, end))
+        cursor += end - start
+    stats = []
+    for half in halves:
+        parts = [_window_stats(segments, start, end) for start, end in half]
+        power_seconds = sum(part["power_seconds"] for part in parts)
+        hr_seconds = sum(part["hr_seconds"] for part in parts)
+        if not power_seconds or hr_seconds < MIN_HALF_HR_COVERAGE * power_seconds:
+            return None
+        watts = sum(part["avg_watts"] * part["power_seconds"] for part in parts) / power_seconds
+        hr = sum(part["avg_hr"] * part["hr_seconds"] for part in parts) / hr_seconds
+        if not watts or not hr:
+            return None
+        stats.append((watts, hr))
+    (first_w, first_hr), (second_w, second_hr) = stats
+    first_ef, second_ef = first_w / first_hr, second_w / second_hr
+    return {
+        "first_hr": round(first_hr),
+        "second_hr": round(second_hr),
+        "first_watts": round(first_w),
+        "second_watts": round(second_w),
+        "decoupling_pct": round((first_ef - second_ef) / first_ef * 100, 1),
+    }
+
+
+def _steady_verdict(ratio: float) -> str:
+    if ratio > STEADY_HARD_RATIO:
+        return "hard"
+    if ratio < STEADY_EASY_RATIO:
+        return "easy"
+    return "on_target"
+
+
+def _compare_steady(blocks: list[dict], steady: list[dict], segments: list, ftp_watts: float) -> dict:
+    """Easy workouts: power against target, time in zone and heart-rate drift over the steady blocks."""
+    # A flat plan lines up loosely; when it doesn't, assume the workout started with the ride.
+    offset, alignment = _align(blocks, segments)
+    if offset is None or alignment < MIN_ALIGNMENT:
+        offset = 0.0
+    origin = segments[0].start + offset
+    ride_end = segments[-1].end
+
+    graded, windows = [], []
+    for index, block in enumerate(steady, start=1):
+        planned = block["end"] - block["start"]
+        start, end = origin + block["start"], min(origin + block["end"], ride_end)
+        stats = _window_stats(segments, start, end) if end > start else None
+        ridden = bool(stats) and stats["power_seconds"] >= MIN_BLOCK_COVERAGE * planned
+        zone, low, high = _zone_bounds(block["low"])
+        target = block["low"] * ftp_watts
+        entry = {
+            "index": index,
+            "label": block["label"],
+            "duration_min": round(planned / 60, 1),
+            "ridden_min": round(stats["power_seconds"] / 60, 1) if stats else 0.0,
+            "target_fraction": block["low"],
+            "target_watts": round(target),
+            "zone": zone,
+            "zone_low_watts": round(low * ftp_watts),
+            "zone_high_watts": round(high * ftp_watts) if high is not None else None,
+            "ridden": ridden,
+            "avg_watts": None, "ratio": None, "avg_hr": None,
+            "in_zone_pct": None, "below_zone_pct": None, "above_zone_pct": None,
+        }
+        if ridden:
+            below, inside, above = _zone_seconds(segments, start, end, low * ftp_watts, high * ftp_watts if high is not None else None)
+            seconds = below + inside + above
+            entry.update({
+                "avg_watts": round(stats["avg_watts"]),
+                "ratio": round(stats["avg_watts"] / target, 3),
+                "avg_hr": round(stats["avg_hr"]) if stats["hr_seconds"] else None,
+                "in_zone_pct": round(inside / seconds * 100),
+                "below_zone_pct": round(below / seconds * 100),
+                "above_zone_pct": round(above / seconds * 100),
+            })
+            windows.append((start, end))
+        graded.append(entry)
+
+    ridden = [block for block in graded if block["ridden"]]
+    if not ridden:
+        return {"status": "not_matched", "reason": "The steady part of the workout wasn't ridden.", "alignment": round(alignment, 2) if alignment is not None else None}
+    minutes = sum(block["ridden_min"] for block in ridden)
+    ratio = sum(block["ratio"] * block["ridden_min"] for block in ridden) / minutes
+    in_zone = sum(block["in_zone_pct"] * block["ridden_min"] for block in ridden) / minutes
+    verdict = _steady_verdict(ratio)
     return {
         "status": "available",
+        "mode": "steady",
         "verdict": verdict,
-        "verdict_label": VERDICTS[verdict],
+        "verdict_label": STEADY_VERDICTS[verdict],
         "ratio": round(ratio, 3),
-        "ftp_signal_ratio": round(signal_ratio, 3) if signal_ratio is not None else None,
+        "in_zone_pct": round(in_zone),
+        "drift": _drift(segments, windows),
+        # Easy power says little about FTP; the FTP check skips these rides.
+        "ftp_signal_ratio": None,
         "blocks_planned": len(graded),
         "blocks_ridden": len(ridden),
         "start_offset_min": round(offset / 60, 1),
-        "alignment": round(alignment, 2),
+        "alignment": round(alignment, 2) if alignment is not None else None,
         "blocks": graded,
-        "timeline": timeline,
+        "timeline": _ride_timeline(blocks, origin, ride_end, ftp_watts),
     }
+
+
+def _steady_headline(result: dict) -> str:
+    blocks = [block for block in result["blocks"] if block["ridden"]]
+    minutes = sum(block["ridden_min"] for block in blocks)
+    target = round(sum(block["target_watts"] * block["ridden_min"] for block in blocks) / minutes)
+    ridden = round(sum(block["avg_watts"] * block["ridden_min"] for block in blocks) / minutes)
+    zone = blocks[0]["zone"]
+    return f"Z{zone} at {round(result['ratio'] * 100)}% of target ({ridden} W vs {target} W), {result['in_zone_pct']}% in zone"
+
+
+def _steady_explanation(result: dict) -> str:
+    if result["verdict"] == "hard":
+        pace = "This was meant to be easy and ran above target, which adds fatigue without much extra base."
+    elif result["verdict"] == "easy":
+        pace = "Under target is fine on an easy day; the aerobic work still counts."
+    else:
+        pace = "Power sat where the plan wanted it."
+    drift = result.get("drift")
+    if not drift:
+        return f"{pace} No heart rate on this ride, so drift can't be checked."
+    pct = drift["decoupling_pct"]
+    if pct < COUPLED_DRIFT_PCT:
+        tail = f"Heart rate held steady ({drift['first_hr']} → {drift['second_hr']} bpm, {pct:+.1f}% drift), so this power is comfortably aerobic."
+    else:
+        tail = (
+            f"Heart rate drifted {pct:.1f}% at this power ({drift['first_hr']} → {drift['second_hr']} bpm). "
+            "Heat, fatigue or poor fueling can do it; if it repeats on cool, rested days, ease the target a little."
+        )
+    return f"{pace} {tail}"
 
 
 def _headline(result: dict) -> str:
@@ -328,9 +521,12 @@ def build_workout_execution(
     result = _compare_cached(streams_json, workout, ftp_watts)
     payload = {**base, "ftp_watts": round(ftp_watts), **result}
     if result["status"] == "available":
-        payload["headline"] = _headline(result)
-        payload["explanation"] = _explanation(result)
+        steady = result["mode"] == "steady"
+        payload["headline"] = _steady_headline(result) if steady else _headline(result)
+        payload["explanation"] = _steady_explanation(result) if steady else _explanation(result)
         payload["assumption"] = f"Targets use the {round(ftp_watts)} W FTP the app had that day; Zwift uses the FTP in your Zwift profile."
+        if steady:
+            payload["assumption"] += " Easy rides don't count toward the FTP check."
     return payload
 
 
@@ -353,7 +549,7 @@ def build_ftp_workout_check(conn: sqlite3.Connection, today: Optional[date] = No
     rides = []
     for row in rows:
         result = build_workout_execution(conn, dict(row), row["detail_json"], row["streams_json"], row["source_status"])
-        if not result or result["status"] != "available" or result.get("ftp_signal_ratio") is None:
+        if not result or result["status"] != "available" or result["mode"] != "blocks" or result.get("ftp_signal_ratio") is None:
             continue
         rides.append({
             "activity_id": result["activity_id"],

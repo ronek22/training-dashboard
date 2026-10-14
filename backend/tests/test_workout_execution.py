@@ -14,7 +14,7 @@ from backend.app.services.workout_execution import (
 FTP = 242.0
 
 
-def _ride_streams(workout_id, *, bias=1.0, lead_in_s=0, stop_after_s=None, hr=140):
+def _ride_streams(workout_id, *, bias=1.0, lead_in_s=0, stop_after_s=None, hr=140, hr_drift=0):
     """1 Hz streams that follow a planned workout at ``bias`` after ``lead_in_s`` of free riding."""
     blocks = _timeline(get_cycling_workout(workout_id)["steps"])
     watts = [110.0] * lead_in_s
@@ -27,7 +27,7 @@ def _ride_streams(workout_id, *, bias=1.0, lead_in_s=0, stop_after_s=None, hr=14
     return {
         "time": {"data": list(range(len(watts)))},
         "watts": {"data": [round(value) for value in watts]},
-        "heartrate": {"data": [hr] * len(watts)},
+        "heartrate": {"data": [round(hr + hr_drift * i / max(len(watts) - 1, 1)) for i in range(len(watts))]},
     }
 
 
@@ -82,6 +82,42 @@ class CompareRideTests(unittest.TestCase):
         self.assertEqual(result["status"], "not_matched")
 
 
+class SteadyCompareTests(unittest.TestCase):
+    def setUp(self):
+        self.workout = get_cycling_workout("endurance-60")
+
+    def test_endurance_ride_gets_a_steady_comparison(self):
+        result = compare_ride_to_workout(_ride_streams("endurance-60"), self.workout, FTP)
+        self.assertEqual(result["status"], "available")
+        self.assertEqual(result["mode"], "steady")
+        self.assertEqual(result["verdict"], "on_target")
+        self.assertIsNone(result["ftp_signal_ratio"])
+        block = result["blocks"][0]
+        self.assertEqual(block["zone"], 2)
+        self.assertEqual(block["target_watts"], 165)
+        self.assertAlmostEqual(block["ratio"], 1.0, delta=0.02)
+        self.assertGreaterEqual(result["in_zone_pct"], 98)
+        self.assertLess(abs(result["drift"]["decoupling_pct"]), 1)
+        self.assertTrue(any(item["kind"] == "steady" for item in result["timeline"]))
+
+    def test_riding_hard_on_an_easy_day(self):
+        result = compare_ride_to_workout(_ride_streams("endurance-60", bias=1.2), self.workout, FTP)
+        self.assertEqual(result["verdict"], "hard")
+        self.assertGreater(result["blocks"][0]["above_zone_pct"], 90)
+
+    def test_heart_rate_drift_is_measured(self):
+        result = compare_ride_to_workout(_ride_streams("endurance-60", hr=130, hr_drift=25), self.workout, FTP)
+        self.assertGreater(result["drift"]["decoupling_pct"], 5)
+        self.assertGreater(result["drift"]["second_hr"], result["drift"]["first_hr"])
+
+    def test_no_heart_rate_skips_drift(self):
+        streams = _ride_streams("endurance-60")
+        del streams["heartrate"]
+        result = compare_ride_to_workout(streams, self.workout, FTP)
+        self.assertEqual(result["status"], "available")
+        self.assertIsNone(result["drift"])
+
+
 class FtpCheckTests(unittest.TestCase):
     def setUp(self):
         self.conn = sqlite3.connect(":memory:")
@@ -118,6 +154,24 @@ class FtpCheckTests(unittest.TestCase):
         result = build_workout_execution(self.conn, dict(row), row["detail_json"], row["streams_json"], row["source_status"])
         self.assertEqual(result["status"], "available")
         self.assertIn("85%", result["headline"])
+
+    def test_endurance_ride_payload(self):
+        self._plan("2026-10-12", "2026-10-13", "endurance-60")
+        self._ride("1", "2026-10-13", _ride_streams("endurance-60"))
+        row = self.conn.execute("SELECT * FROM activities a JOIN activity_details d ON d.activity_id = a.id").fetchone()
+        result = build_workout_execution(self.conn, dict(row), row["detail_json"], row["streams_json"], row["source_status"])
+        self.assertEqual(result["mode"], "steady")
+        self.assertIn("Z2", result["headline"])
+        self.assertIn("FTP check", result["assumption"])
+
+    def test_easy_rides_stay_out_of_the_ftp_check(self):
+        self._plan("2026-10-05", "2026-10-07", "endurance-60")
+        self._ride("1", "2026-10-07", _ride_streams("endurance-60", bias=0.8))
+        self._plan("2026-10-12", "2026-10-13", "recovery-spin-40")
+        self._ride("2", "2026-10-13", _ride_streams("recovery-spin-40", bias=0.8))
+        check = build_ftp_workout_check(self.conn, today=date(2026, 10, 14))
+        self.assertEqual(check["rides"], [])
+        self.assertEqual(check["status"], "not_enough")
 
     def test_ride_on_a_day_without_a_structured_workout_is_skipped(self):
         self._ride("1", "2026-10-13", _ride_streams("sweet-spot-3x10"))

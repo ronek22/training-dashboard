@@ -115,25 +115,26 @@
           </header>
 
           <div class="field">
-            <span class="field-label">FTP the app trains with</span>
+            <span class="field-label">FTP the app trains with <em v-if="ftpSaving" class="ftp-status">Saving…</em></span>
             <div class="ftp-options" role="radiogroup" aria-label="FTP source">
-              <button type="button" role="radio" class="ftp-option" :class="{ 'is-active': performanceForm.ftp_source === 'stored' }" :aria-checked="performanceForm.ftp_source === 'stored'" :disabled="!ftpOptions.stored?.available" @click="performanceForm.ftp_source = 'stored'">
+              <button type="button" role="radio" class="ftp-option" :class="{ 'is-active': performanceForm.ftp_source === 'stored' }" :aria-checked="performanceForm.ftp_source === 'stored'" :disabled="ftpSaving || !ftpOptions.stored?.available" @click="pickFtpSource('stored')">
                 <span class="ftp-option-label">Logged FTP</span>
                 <strong>{{ ftpOptions.stored?.available ? `${Math.round(ftpOptions.stored.watts)} W` : '—' }}</strong>
                 <small :class="{ 'is-warn': ftpOptions.stored?.stale }">{{ storedFtpDetail }}</small>
               </button>
-              <button type="button" role="radio" class="ftp-option" :class="{ 'is-active': performanceForm.ftp_source === 'estimate' }" :aria-checked="performanceForm.ftp_source === 'estimate'" :disabled="!ftpOptions.estimate?.available" @click="performanceForm.ftp_source = 'estimate'">
+              <button type="button" role="radio" class="ftp-option" :class="{ 'is-active': performanceForm.ftp_source === 'estimate' }" :aria-checked="performanceForm.ftp_source === 'estimate'" :disabled="ftpSaving || !ftpOptions.estimate?.available" @click="pickFtpSource('estimate')">
                 <span class="ftp-option-label">Training estimate</span>
                 <strong>{{ ftpOptions.estimate?.available ? `${Math.round(ftpOptions.estimate.watts)} W` : '—' }}</strong>
                 <small>{{ ftpOptions.estimate?.available ? `${ftpOptions.estimate.basis}, no test · a floor` : ftpOptions.estimate?.reason || 'No recent long effort' }}</small>
               </button>
-              <div class="ftp-option" :class="{ 'is-active': performanceForm.ftp_source === 'manual' }" role="radio" :aria-checked="performanceForm.ftp_source === 'manual'" tabindex="-1" @click="performanceForm.ftp_source = 'manual'">
+              <div class="ftp-option" :class="{ 'is-active': performanceForm.ftp_source === 'manual' }" role="radio" :aria-checked="performanceForm.ftp_source === 'manual'" tabindex="-1" @click="pickFtpSource('manual')">
                 <span class="ftp-option-label">Working FTP</span>
-                <span class="unit-input ftp-manual-input"><input v-model.number="performanceForm.manual_watts" type="number" min="50" max="1000" step="1" placeholder="e.g. 230" aria-label="Working FTP in watts" @focus="performanceForm.ftp_source = 'manual'"><em>W</em></span>
+                <span class="unit-input ftp-manual-input"><input v-model.number="performanceForm.manual_watts" type="number" min="50" max="1000" step="1" placeholder="e.g. 230" aria-label="Working FTP in watts" :class="{ 'is-invalid': manualFtpInvalid }" @focus="performanceForm.ftp_source = 'manual'" @change="saveManualFtp" @keydown.enter.prevent="$event.target.blur()"><em>W</em></span>
                 <small>Your own number, no test needed</small>
               </div>
             </div>
-            <p class="hint">{{ ftpFootnote }}</p>
+            <p v-if="ftpError || manualFtpInvalid" class="field-error">{{ ftpError || 'Enter a working FTP between 50 and 1000 W, or pick another source.' }}</p>
+            <p v-else class="hint">{{ ftpFootnote }}</p>
             <div v-if="workoutCheck" class="ftp-workout-check" :class="{ 'is-suggest': workoutCheck.suggestion }">
               <div>
                 <span class="ftp-option-label">From your structured rides</span>
@@ -146,7 +147,7 @@
                   </li>
                 </ul>
               </div>
-              <button v-if="workoutCheck.suggestion" type="button" class="ftp-workout-use" @click="useWorkoutFtp">Use {{ workoutCheck.suggestion.watts }} W</button>
+              <button v-if="workoutCheck.suggestion" type="button" class="ftp-workout-use" :disabled="ftpSaving" @click="useWorkoutFtp">Use {{ workoutCheck.suggestion.watts }} W</button>
             </div>
           </div>
 
@@ -449,6 +450,8 @@ const loadError = ref('')
 const saving = ref(false)
 const saveMessage = ref('')
 const savedNotice = ref('')
+const ftpSaving = ref(false)
+const ftpError = ref('')
 
 const profile = ref(null)
 const performance = ref(null)
@@ -473,11 +476,14 @@ const resetBaseline = () => {
 }
 const hrZoneKeys = ['hr_ride', 'hr_run']
 const hrZonePart = (formState) => hrZoneKeys.map((key) => formState?.[key])
+// The FTP source saves itself, so it never counts as an unsaved edit.
+const withoutFtp = (formState) => ({ ...formState, ftp_source: null, manual_watts: null })
+const savedPerformanceForm = () => JSON.parse(baseline.performance || '{}')
 const dirty = computed(() => ({
   profile: snapshot(profileForm.value) !== baseline.profile,
-  performance: snapshot(performanceForm.value) !== baseline.performance,
+  performance: snapshot(withoutFtp(performanceForm.value)) !== snapshot(withoutFtp(savedPerformanceForm())),
   // The performance form holds both cards; these split it for the chips and the save bar.
-  thresholds: snapshot({ ...performanceForm.value, hr_ride: null, hr_run: null }) !== snapshot({ ...JSON.parse(baseline.performance || '{}'), hr_ride: null, hr_run: null }),
+  thresholds: snapshot({ ...withoutFtp(performanceForm.value), hr_ride: null, hr_run: null }) !== snapshot({ ...withoutFtp(savedPerformanceForm()), hr_ride: null, hr_run: null }),
   hrZones: snapshot(hrZonePart(performanceForm.value)) !== snapshot(hrZonePart(JSON.parse(baseline.performance || '{}'))),
   restrictions: snapshot(restrictionForm.value) !== baseline.restrictions,
   rotation: snapshot(rotationForm.value) !== baseline.rotation,
@@ -551,10 +557,62 @@ const confirmNote = (field) => {
 // Thresholds
 const ftpOptions = computed(() => performance.value?.ftp_options || {})
 const workoutCheck = computed(() => ftpOptions.value.workouts || null)
-// Fills the working FTP; nothing changes until the athlete saves.
+const validManualWatts = (value) => Number(value) >= 50 && Number(value) <= 1000
+const manualFtpInvalid = computed(() => {
+  const { ftp_source: source, manual_watts: watts } = performanceForm.value
+  return source === 'manual' && watts !== '' && watts != null && !validManualWatts(watts)
+})
+const ftpFormFields = () => {
+  const saved = performanceFormFrom(performance.value)
+  return { ftp_source: saved.ftp_source, manual_watts: saved.manual_watts }
+}
+const showNotice = (text) => {
+  savedNotice.value = text
+  setTimeout(() => { savedNotice.value = '' }, 3200)
+}
+// Saves only the FTP choice, on top of the last saved settings, so other unsaved edits stay unsaved.
+async function saveFtp(source, manualWatts) {
+  ftpSaving.value = true
+  ftpError.value = ''
+  const saved = performance.value?.ftp || {}
+  const ftp = { source, manual_watts: source === 'manual' ? Number(manualWatts) : saved.manual_watts ?? null }
+  try {
+    const { data } = await api.updatePerformanceSettings({ ...performancePayload(savedPerformanceForm()), ftp })
+    performance.value = data
+    const fresh = performanceFormFrom(data)
+    const ftpFields = { ftp_source: fresh.ftp_source, manual_watts: fresh.manual_watts }
+    performanceForm.value = { ...performanceForm.value, ...ftpFields }
+    baseline.performance = snapshot({ ...savedPerformanceForm(), ...ftpFields })
+    const watts = data.ftp_options?.working?.watts
+    showNotice(`FTP set to ${watts ? `${Math.round(watts)} W` : 'the new source'}. Applies from today.`)
+  } catch (error) {
+    ftpError.value = error?.response?.data?.detail || 'The FTP could not be saved. Try again.'
+    performanceForm.value.ftp_source = saved.source || 'stored'
+  } finally {
+    ftpSaving.value = false
+  }
+}
+const pickFtpSource = (source) => {
+  if (ftpSaving.value) return
+  if (source === 'manual') {
+    // A typed FTP saves once there is a valid number in the box.
+    performanceForm.value.ftp_source = 'manual'
+    if (validManualWatts(performanceForm.value.manual_watts) && performance.value?.ftp?.source !== 'manual') saveFtp('manual', performanceForm.value.manual_watts)
+    return
+  }
+  performanceForm.value.ftp_source = source
+  if (performance.value?.ftp?.source !== source) saveFtp(source)
+}
+const saveManualFtp = () => {
+  const watts = performanceForm.value.manual_watts
+  const saved = performance.value?.ftp || {}
+  if (!validManualWatts(watts) || (saved.source === 'manual' && Number(saved.manual_watts) === Number(watts))) return
+  saveFtp('manual', watts)
+}
 const useWorkoutFtp = () => {
-  performanceForm.value.ftp_source = 'manual'
   performanceForm.value.manual_watts = workoutCheck.value.suggestion.watts
+  performanceForm.value.ftp_source = 'manual'
+  saveFtp('manual', workoutCheck.value.suggestion.watts)
 }
 const storedFtpDetail = computed(() => {
   const stored = ftpOptions.value.stored
@@ -570,8 +628,8 @@ const chosenFtp = computed(() => {
 })
 const ftpFootnote = computed(() => {
   const choice = performance.value?.ftp || {}
-  const switching = performanceForm.value.ftp_source !== choice.source
-  if (switching) return 'Applies from today. Rides before today keep the FTP they were ridden with.'
+  // Only a typed FTP can be picked without being saved yet.
+  if (performanceForm.value.ftp_source !== choice.source) return 'Type your FTP and press Enter. It applies from today; earlier rides keep the FTP they were ridden with.'
   if (choice.source !== 'stored' && choice.effective_from) return `In use since ${shortDate(choice.effective_from)}. Earlier rides keep the logged FTP.`
   return 'Logging a new FTP on Trends updates this automatically.'
 })
@@ -591,7 +649,6 @@ const runZonePreview = computed(() => {
 })
 const zoneError = computed(() => {
   const formState = performanceForm.value
-  if (formState.ftp_source === 'manual' && !(Number(formState.manual_watts) >= 50 && Number(formState.manual_watts) <= 1000)) return 'Enter a working FTP between 50 and 1000 W, or pick another source.'
   if (Number(formState.ride_low) >= Number(formState.ride_high)) return 'Ride zone 2 lower bound must be below the upper bound.'
   if (Number(formState.run_low) >= Number(formState.run_high)) return 'Run zone 2 fast end must be below the slow end.'
   return ''
@@ -732,7 +789,8 @@ async function save() {
   saveMessage.value = ''
   const sections = {
     profile: { form: profileForm, send: () => api.updateAthleteProfile(profilePayload(profileForm.value)), apply: applyProfile },
-    performance: { form: performanceForm, send: () => api.updatePerformanceSettings(performancePayload(performanceForm.value)), apply: applyPerformance },
+    // The FTP saves on its own; this sends the saved choice, not one still being typed.
+    performance: { form: performanceForm, send: () => api.updatePerformanceSettings(performancePayload({ ...performanceForm.value, ...ftpFormFields() })), apply: applyPerformance },
     restrictions: { form: restrictionForm, send: () => api.updateModalityRestrictions(restrictionPayload(restrictionForm.value)), apply: applyRestrictions },
     rotation: { form: rotationForm, send: () => api.updateWorkoutTemplateSettings(rotationPayload(rotationForm.value)), apply: applyRotation },
   }
@@ -754,8 +812,7 @@ async function save() {
     saveMessage.value = failed[0].reason?.response?.data?.detail || 'Some changes could not be saved.'
     return
   }
-  savedNotice.value = 'Saved. The next plan uses these settings.'
-  setTimeout(() => { savedNotice.value = '' }, 3200)
+  showNotice('Saved. The next plan uses these settings.')
 }
 
 // Form <-> payload
@@ -1013,6 +1070,7 @@ select:disabled { opacity: 0.5; }
 .ftp-workout-rides em.is-warn { color: var(--warning-text); }
 .ftp-workout-use { flex: none; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--chip-bg); color: var(--text); padding: 7px 14px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .ftp-workout-use:hover { background: var(--chip-bg-strong); }
+.ftp-status { margin-left: 6px; font-style: normal; font-weight: 500; color: var(--muted); }
 .ftp-manual-input input { font-family: var(--font-display); font-size: 17px; font-weight: 700; min-height: 34px; padding: 4px 34px 4px 8px; }
 
 .threshold-rows { display: grid; gap: 8px; }

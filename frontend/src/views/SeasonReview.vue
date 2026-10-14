@@ -322,7 +322,7 @@ const RING = 2 * Math.PI * 34
       <!-- Hero ------------------------------------------------------------- -->
       <header class="hero">
         <div class="hero-top">
-          <span class="eyebrow">Season in review · {{ subtitle }}</span>
+          <span class="eyebrow">Season in review · {{ subtitle }} · <RouterLink to="/years" class="eyebrow-link">All years ↗</RouterLink></span>
           <nav v-if="story.length > 1" class="story" aria-label="Your seasons, hours by year">
             <button v-for="item in story" :key="item.year" type="button" class="story-year"
                     :class="{ active: item.year === review.year, closed: !item.available }" :disabled="!item.available"
@@ -692,6 +692,8 @@ const RING = 2 * Math.PI * 34
 .season-state { padding: 80px 0; text-align: center; color: var(--muted); }
 .season-error { color: var(--warning-text, var(--warning)); font-size: 13px; }
 .muted { color: var(--muted); }
+.eyebrow-link { color: var(--muted); text-decoration: none; }
+.eyebrow-link:hover { color: var(--text); }
 .eyebrow { font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-strong, var(--accent)); }
 .links { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: 12px; color: var(--muted); }
 .more-link { font-size: 12px; font-weight: 650; color: var(--muted); text-decoration: none; }

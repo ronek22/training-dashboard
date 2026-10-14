@@ -169,6 +169,7 @@ const ringOffset = computed(() => {
             <span><strong>{{ prs.length }}</strong> new PRs in {{ data.recent_days }} days</span>
             <span v-if="podiums"><strong>{{ podiums }}</strong> podium efforts</span>
             <RouterLink to="/season" class="season-link">Season in review ↗</RouterLink>
+            <RouterLink to="/years" class="season-link">All years ↗</RouterLink>
           </div>
         </div>
         <div v-if="streaks" class="streak-ring" :title="streaks.note">

@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..db import get_db
 from ..services.personal_records import build_activity_record_ranks, build_personal_records
+from ..services.season_history import build_season_history
 from ..services.season_review import CoachNotOpen, build_season_review, season_review_status, write_coach_paragraph
 
 router = APIRouter()
@@ -34,6 +35,18 @@ def season_review_years(day: Optional[date] = None):
     conn = get_db()
     try:
         return season_review_status(conn, today=day)
+    finally:
+        conn.close()
+
+
+@router.get("/season-review/history")
+def season_history(sport: str = "ride", day: Optional[date] = None):
+    """Every year of one sport side by side, for the All years view."""
+    conn = get_db()
+    try:
+        return build_season_history(conn, sport, today=day)
+    except ValueError as error:
+        raise HTTPException(404, str(error))
     finally:
         conn.close()
 

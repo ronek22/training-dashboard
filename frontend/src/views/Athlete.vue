@@ -24,7 +24,19 @@
         </article>
       </section>
 
-      <div class="athlete-grid motion-section">
+      <nav class="athlete-tabs motion-section" role="tablist" aria-label="Athlete settings">
+        <button
+          v-for="item in tabs" :key="item.key" type="button" role="tab" class="athlete-tab"
+          :class="{ 'is-active': tab === item.key }" :aria-selected="tab === item.key" :aria-controls="`panel-${item.key}`"
+          @click="setTab(item.key)"
+        >
+          <span class="athlete-tab-label">{{ item.label }}<i v-if="item.dirty" class="tab-dirty" title="Unsaved changes"></i></span>
+          <strong>{{ item.value }}</strong>
+          <small>{{ item.detail }}</small>
+        </button>
+      </nav>
+
+      <div v-show="tab === 'profile'" id="panel-profile" class="athlete-panel" role="tabpanel">
         <!-- Profile -->
         <section id="profile" class="card athlete-card" aria-labelledby="profile-title">
           <header class="athlete-card-head">
@@ -97,6 +109,26 @@
           </div>
           <p class="hint">Off-season weeks are compared with past off-season weeks.</p>
         </section>
+
+        <!-- Notes for the coach -->
+        <section id="notes" class="card athlete-card" aria-labelledby="notes-title">
+          <header class="athlete-card-head">
+            <div>
+              <h2 id="notes-title">Notes for the coach</h2>
+              <p class="used-by">Read word for word by the planner and coach. Confirm them now and then so old advice doesn't linger.</p>
+            </div>
+          </header>
+          <label v-for="note in noteFields" :key="note.key" class="field note-field" :class="{ 'is-stale': noteReview(note.key)?.stale && profileForm[note.key] }">
+            <span class="field-label">
+              {{ note.label }}
+              <NoteAge :review="noteReview(note.key)" :text="profileForm[note.key]" @confirm="confirmNote(note.key)" />
+            </span>
+            <textarea v-model="profileForm[note.key]" :rows="note.rows" :placeholder="note.placeholder"></textarea>
+          </label>
+        </section>
+      </div>
+
+      <div v-show="tab === 'zones'" id="panel-zones" class="athlete-panel" role="tabpanel">
 
         <!-- Thresholds -->
         <section id="thresholds" class="card athlete-card" aria-labelledby="thresholds-title">
@@ -173,7 +205,7 @@
         </section>
 
         <!-- Heart-rate zones -->
-        <section id="hr-zones" class="card athlete-card athlete-card-wide" aria-labelledby="hr-zones-title">
+        <section id="hr-zones" class="card athlete-card" aria-labelledby="hr-zones-title">
           <header class="athlete-card-head">
             <div>
               <h2 id="hr-zones-title">Heart-rate zones</h2>
@@ -215,46 +247,53 @@
           <p class="hint">Enter where each zone starts; it ends one beat below the next. Saving re-scores past activities with the new zones too.</p>
           <p v-if="hrZoneError" class="field-error">{{ hrZoneError }}</p>
         </section>
+      </div>
 
+      <div v-show="tab === 'limits'" id="panel-limits" class="athlete-panel" role="tabpanel">
         <!-- Restrictions -->
         <section id="restrictions" class="card athlete-card" aria-labelledby="restrictions-title">
           <header class="athlete-card-head">
             <div>
-              <h2 id="restrictions-title">Restrictions</h2>
+              <h2 id="restrictions-title">Sports</h2>
               <p class="used-by">Used by the planner, the lift top-up and goal pacing</p>
             </div>
             <span v-if="dirty.restrictions" class="dirty-chip">Edited</span>
           </header>
 
-          <div class="field">
-            <span class="field-label">Sports</span>
-            <div class="sport-restrictions">
-              <div v-for="sport in sports" :key="sport.key" class="sport-restriction" :class="`is-${restrictionForm.modalities[sport.key].status}`">
-                <div class="sport-restriction-top">
-                  <span class="sport-dot" :style="{ background: sport.color }" aria-hidden="true"></span>
-                  <strong>{{ sport.label }}</strong>
-                  <div class="segmented segmented-sm" role="radiogroup" :aria-label="`${sport.label} availability`">
-                    <button
-                      v-for="status in statusOptions" :key="status.value" type="button" role="radio"
-                      :aria-checked="restrictionForm.modalities[sport.key].status === status.value"
-                      :class="[{ 'is-active': restrictionForm.modalities[sport.key].status === status.value }, `status-${status.value}`]"
-                      @click="restrictionForm.modalities[sport.key].status = status.value"
-                    >{{ status.label }}</button>
-                  </div>
+          <div class="sport-restrictions">
+            <div v-for="sport in sports" :key="sport.key" class="sport-restriction" :class="`is-${restrictionForm.modalities[sport.key].status}`">
+              <div class="sport-restriction-top">
+                <span class="sport-dot" :style="{ background: sport.color }" aria-hidden="true"></span>
+                <strong>{{ sport.label }}</strong>
+                <div class="segmented segmented-sm" role="radiogroup" :aria-label="`${sport.label} availability`">
+                  <button
+                    v-for="status in statusOptions" :key="status.value" type="button" role="radio"
+                    :aria-checked="restrictionForm.modalities[sport.key].status === status.value"
+                    :class="[{ 'is-active': restrictionForm.modalities[sport.key].status === status.value }, `status-${status.value}`]"
+                    @click="restrictionForm.modalities[sport.key].status = status.value"
+                  >{{ status.label }}</button>
                 </div>
-                <div v-if="restrictionForm.modalities[sport.key].status !== 'allowed'" class="sport-restriction-detail">
-                  <input v-model="restrictionForm.modalities[sport.key].reason" type="text" :placeholder="sport.reasonPlaceholder" :aria-label="`What is limited for ${sport.label}`">
-                  <label class="review-date">
-                    <span>Review around</span>
-                    <input v-model="restrictionForm.modalities[sport.key].expected_end_date" type="date" :aria-label="`${sport.label} review date`">
-                  </label>
-                </div>
+              </div>
+              <div v-if="restrictionForm.modalities[sport.key].status !== 'allowed'" class="sport-restriction-detail">
+                <input v-model="restrictionForm.modalities[sport.key].reason" type="text" :placeholder="sport.reasonPlaceholder" :aria-label="`What is limited for ${sport.label}`">
+                <label class="review-date">
+                  <span>Review around</span>
+                  <input v-model="restrictionForm.modalities[sport.key].expected_end_date" type="date" :aria-label="`${sport.label} review date`">
+                </label>
               </div>
             </div>
           </div>
+        </section>
+
+        <section id="body-areas" class="card athlete-card" aria-labelledby="body-areas-title">
+          <header class="athlete-card-head">
+            <div>
+              <h2 id="body-areas-title">Protected body areas</h2>
+              <p class="used-by">The lift top-up never adds or extends lifts that load them</p>
+            </div>
+          </header>
 
           <div class="field">
-            <span class="field-label">Protected body areas <small>The lift top-up never adds or extends lifts that load them</small></span>
             <ul v-if="restrictionForm.body_areas.length" class="area-list">
               <li v-for="(item, index) in restrictionForm.body_areas" :key="`${item.area}-${item.side}`" class="area-row">
                 <span class="area-name">{{ areaLabel(item) }}</span>
@@ -291,9 +330,11 @@
             </ul>
           </div>
         </section>
+      </div>
 
+      <div v-show="tab === 'strength'" id="panel-strength" class="athlete-panel" role="tabpanel">
         <!-- Strength rotation -->
-        <section id="rotation" class="card athlete-card" aria-labelledby="rotation-title">
+        <section id="rotation" class="card athlete-card athlete-card-wide" aria-labelledby="rotation-title">
           <header class="athlete-card-head">
             <div>
               <h2 id="rotation-title">Strength rotation</h2>
@@ -324,6 +365,7 @@
           </ol>
           <p class="hint">Click a workout to make it next. Exercises live in <router-link to="/strength/workouts">Workout Studio</router-link>.</p>
 
+          <div class="rotation-rules">
           <div class="field">
             <span class="field-label">When a lift day is missed</span>
             <div class="segmented" role="radiogroup" aria-label="Missed workout">
@@ -335,6 +377,7 @@
             <label class="toggle"><input v-model="rotationForm.continue_across_weeks" type="checkbox"><span>Carry the rotation across weeks instead of restarting at A</span></label>
             <label class="toggle"><input v-model="rotationForm.delay_lower_body_when_running_restricted" type="checkbox"><span>Hold lower-body workouts while running is limited or blocked</span></label>
             <label class="toggle"><input v-model="rotationForm.prefer_ride_when_run_blocked" type="checkbox"><span>Swap runs for rides while running is blocked</span></label>
+          </div>
           </div>
         </section>
 
@@ -409,29 +452,11 @@
           </div>
         </section>
 
-        <!-- Notes for the coach -->
-        <section id="notes" class="card athlete-card athlete-card-wide" aria-labelledby="notes-title">
-          <header class="athlete-card-head">
-            <div>
-              <h2 id="notes-title">Notes for the coach</h2>
-              <p class="used-by">Read word for word by the planner and coach. Confirm them now and then so old advice doesn't linger.</p>
-            </div>
-          </header>
-          <div class="notes-grid">
-            <label v-for="note in noteFields" :key="note.key" class="field note-field" :class="{ 'is-stale': noteReview(note.key)?.stale && profileForm[note.key] }">
-              <span class="field-label">
-                {{ note.label }}
-                <NoteAge :review="noteReview(note.key)" :text="profileForm[note.key]" @confirm="confirmNote(note.key)" />
-              </span>
-              <textarea v-model="profileForm[note.key]" :rows="note.rows" :placeholder="note.placeholder"></textarea>
-            </label>
-          </div>
-        </section>
       </div>
     </template>
 
     <Transition name="expand-fade">
-      <div v-if="anyDirty" class="save-bar" role="region" aria-label="Unsaved changes">
+      <div v-if="anyDirty && !loading" class="save-bar" role="region" aria-label="Unsaved changes">
         <span>Unsaved: {{ dirtyLabels.join(', ') }}</span>
         <span v-if="saveMessage" class="save-error">{{ saveMessage }}</span>
         <button type="button" class="ghost-btn" :disabled="saving" @click="discard">Discard</button>
@@ -443,8 +468,8 @@
 </template>
 
 <script setup>
-import { computed, defineComponent, h, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, defineComponent, h, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
 import { ZONE_COLORS } from '../components/activityVisuals'
 import PlateStack from '../components/PlateStack.vue'
@@ -453,6 +478,7 @@ import { DEFAULT_PLATES, barbellRange, plateColor } from '../coach/plates.mjs'
 
 const api = useApi()
 const route = useRoute()
+const router = useRouter()
 
 // Small inline badge: how long since a note was written or confirmed, with a one-click confirm.
 const NoteAge = defineComponent({
@@ -512,6 +538,28 @@ const noteFields = [
   { key: 'weekly_availability_notes', label: 'Weekly availability', rows: 6, placeholder: 'Example: 60–90 min after work on weekdays, longer on weekends' },
   { key: 'planning_notes', label: 'Planning notes', rows: 6, placeholder: 'Example: protect one long ride most weekends' },
 ]
+
+// Each section lives on one tab; old #section links still land on it.
+const sectionTabs = { profile: 'profile', notes: 'profile', thresholds: 'zones', 'hr-zones': 'zones', restrictions: 'limits', 'body-areas': 'limits', rotation: 'strength', equipment: 'strength' }
+const tabKeys = ['profile', 'zones', 'limits', 'strength']
+const tabFromHash = (hash) => {
+  const key = hash.slice(1)
+  return tabKeys.includes(key) ? key : sectionTabs[key] || null
+}
+const tab = ref(tabFromHash(route.hash) || 'profile')
+const setTab = (key) => {
+  tab.value = key
+  router.replace({ hash: `#${key}` })
+}
+const goToSection = (id) => {
+  tab.value = sectionTabs[id] || tab.value
+  requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+}
+watch(() => route.hash, (hash) => {
+  const key = hash.slice(1)
+  if (tabKeys.includes(key)) tab.value = key
+  else if (sectionTabs[key] && !loading.value) goToSection(key)
+})
 
 const loading = ref(true)
 const loadError = ref('')
@@ -595,7 +643,7 @@ async function load() {
   // Secondary context: the page works without it.
   api.getRecoveryIssues().then(({ data }) => { recoveryIssues.value = Array.isArray(data) ? data : [] }).catch(() => {})
   api.getStrengthWorkoutTemplates().then(({ data }) => { savedWorkouts.value = Array.isArray(data) ? data : [] }).catch(() => {})
-  if (route.hash) requestAnimationFrame(() => document.querySelector(route.hash)?.scrollIntoView({ block: 'start' }))
+  if (sectionTabs[route.hash.slice(1)]) goToSection(route.hash.slice(1))
 }
 
 function applyProfile(data) { profile.value = data; profileForm.value = profileFormFrom(data) }
@@ -814,7 +862,7 @@ const nudges = computed(() => {
       key: 'notes', tone: 'warn',
       title: `${stale.length === 1 ? 'A coach note needs' : `${stale.length} coach notes need`} a look.`,
       detail: `${stale.map((note) => note.label).join(', ')} ${stale.length === 1 ? 'hasn\'t' : 'haven\'t'} been confirmed in over 6 weeks. The coach still reads ${stale.length === 1 ? 'it' : 'them'} word for word.`,
-      action: { label: 'Review', run: () => document.querySelector('#notes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+      action: { label: 'Review', run: () => goToSection('notes') },
     })
   }
   const working = ftpOptions.value.working
@@ -825,7 +873,7 @@ const nudges = computed(() => {
       key: 'ftp-workouts', tone: 'warn',
       title: suggestion.title,
       detail: suggestion.detail,
-      action: { label: `Use ${suggestion.watts} W`, run: () => { useWorkoutFtp(); document.querySelector('#thresholds')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) } },
+      action: { label: `Use ${suggestion.watts} W`, run: () => { useWorkoutFtp(); goToSection('thresholds') } },
     })
   }
   if (working?.source === 'stored' && working?.stale) {
@@ -834,7 +882,7 @@ const nudges = computed(() => {
       key: 'ftp', tone: 'warn',
       title: `FTP ${Math.round(working.watts)} W is ${working.age_days} days old.`,
       detail: `Zones, load and workout watts all use it.${gap}`,
-      action: { label: 'Choose FTP', run: () => document.querySelector('#thresholds')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+      action: { label: 'Choose FTP', run: () => goToSection('thresholds') },
     })
   }
   for (const issue of activeIssues.value) {
@@ -848,6 +896,39 @@ const nudges = computed(() => {
     })
   }
   return items
+})
+
+// Tab tiles: each shows what the planner currently believes.
+const ftpSourceLabel = { stored: 'Logged', estimate: 'Training estimate', manual: 'Working FTP' }
+const tabs = computed(() => {
+  const formState = profileForm.value
+  const modalities = restrictionForm.value.modalities
+  const restricted = sports.filter((sport) => modalities[sport.key]?.status !== 'allowed')
+  const areas = restrictionForm.value.body_areas
+  const next = rotationForm.value.templates.find((template) => template.id === rotationForm.value.next_template_id)
+  const focus = focusOptions.find((option) => option.value === formState.primary_focus)?.label || 'General fitness'
+  return [
+    {
+      key: 'profile', label: 'Profile', dirty: dirty.value.profileOnly,
+      value: focus,
+      detail: formState.current_block || 'No current block set',
+    },
+    {
+      key: 'zones', label: 'Zones', dirty: dirty.value.thresholds || dirty.value.hrZones,
+      value: chosenFtp.value ? `FTP ${Math.round(chosenFtp.value)} W` : 'No FTP',
+      detail: `${ftpSourceLabel[performanceForm.value.ftp_source] || 'Logged'} · Z2 ${rideZonePreview.value}`,
+    },
+    {
+      key: 'limits', label: 'Limits', dirty: dirty.value.restrictions,
+      value: restricted.length ? restricted.map((sport) => `${sport.label} ${modalities[sport.key].status}`).join(', ') : 'All sports allowed',
+      detail: areas.length ? `Protecting ${areas.map(areaLabel).join(', ').toLowerCase()}` : 'No body areas protected',
+    },
+    {
+      key: 'strength', label: 'Strength', dirty: dirty.value.rotation || dirty.value.equipment,
+      value: next ? `Next: ${next.code} · ${next.title}` : 'No rotation',
+      detail: `${rotationForm.value.templates.length} workouts · bar up to ${formatKg(barbell.value.maxKg)} kg`,
+    },
+  ]
 })
 
 // Save
@@ -1079,7 +1160,26 @@ function monthsFromSeasonRange(start, end) {
   gap: 18px;
   align-items: start;
 }
-.athlete-card { display: grid; gap: 18px; }
+.athlete-card { display: grid; gap: 18px; align-content: start; }
+
+.athlete-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+.athlete-tab {
+  display: grid; gap: 3px; align-content: start; min-width: 0; text-align: left; cursor: pointer;
+  padding: 13px 16px 14px; border-radius: 14px; border: 1px solid var(--border);
+  background: rgb(var(--panel-rgb) / 0.94); color: var(--text);
+  transition: border-color .15s ease, background .15s ease;
+}
+.athlete-tab:hover { border-color: var(--border-strong); }
+.athlete-tab.is-active { border-color: color-mix(in srgb, var(--accent) 65%, transparent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+.athlete-tab-label { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.athlete-tab.is-active .athlete-tab-label { color: var(--accent-strong); }
+.tab-dirty { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); }
+.athlete-tab strong { font-family: var(--font-display); font-size: 17px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.athlete-tab small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.athlete-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.athlete-panel > .card { scroll-margin-top: 16px; }
+.rotation-rules { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 40px; align-items: start; border-top: 1px solid var(--border); padding-top: 18px; }
 
 .gym-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 16px 28px; }
 .gym-block { display: grid; gap: 12px; align-content: start; min-width: 0; }
@@ -1227,7 +1327,7 @@ select:disabled { opacity: 0.5; }
 .threshold-name { font-weight: 550; }
 .threshold-preview { color: var(--muted-soft); font-variant-numeric: tabular-nums; text-align: right; font-size: 12.5px; }
 
-.hr-zone-sports { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.hr-zone-sports { display: grid; gap: 12px; }
 .hr-zone-sport { display: grid; gap: 10px; padding: 12px 14px; border-radius: 12px; background: rgb(var(--tint-rgb) / 0.07); }
 .hr-zone-sport-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
 .hr-zone-max { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -1289,7 +1389,9 @@ select:disabled { opacity: 0.5; }
 .toggle { display: flex; gap: 10px; align-items: center; padding: 6px 2px; font-size: 13.5px; color: var(--text-soft); cursor: pointer; }
 .toggle input { width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
 
-.notes-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+#notes { grid-template-rows: auto repeat(2, minmax(0, 1fr)); }
+.note-field { grid-template-rows: auto minmax(0, 1fr); }
+.note-field textarea { height: 100%; }
 .note-field.is-stale textarea { border-color: color-mix(in srgb, var(--warning) 55%, transparent); }
 
 :deep(.note-age) { font-weight: 400; font-size: 11.5px; color: var(--muted); display: inline-flex; gap: 8px; align-items: baseline; }
@@ -1333,13 +1435,15 @@ select:disabled { opacity: 0.5; }
 }
 
 @media (max-width: 1100px) {
-  .athlete-grid { grid-template-columns: minmax(0, 1fr); }
+  .athlete-grid, .athlete-panel { grid-template-columns: minmax(0, 1fr); }
+  .athlete-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rotation-rules { grid-template-columns: minmax(0, 1fr); }
   .gym-grid { grid-template-columns: minmax(0, 1fr); }
   .gym-barbell { grid-row: auto; }
   .hr-zone-sports { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
-  .ftp-options, .notes-grid, .field-row { grid-template-columns: minmax(0, 1fr); }
+  .ftp-options, .field-row { grid-template-columns: minmax(0, 1fr); }
   .hr-zone-cells { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hr-zone-max { display: none; }
   .threshold-row { grid-template-columns: 9px minmax(0, 1fr) 76px 10px 76px; }

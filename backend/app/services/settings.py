@@ -9,7 +9,7 @@ from fastapi import HTTPException
 
 from ..db import get_db
 from ..repositories.settings import get_setting_value, set_setting_value
-from .ftp import ftp_on, normalize_ftp_choice, stored_ftp, working_ftp
+from .ftp import ftp_on, normalize_ftp_choice, record_ftp_choice, stored_ftp, working_ftp
 from .heart_rate_zones import (
     DEFAULT_HR_ZONE_STARTS,
     MAX_ZONE_BPM,
@@ -565,7 +565,7 @@ def serialize_performance_settings_for_storage(settings: dict) -> dict:
         },
         "ftp": {
             key: (settings.get("ftp") or {}).get(key)
-            for key in ("source", "manual_watts", "estimate_watts", "estimate_basis", "estimate_date", "effective_from")
+            for key in ("source", "manual_watts", "estimate_watts", "estimate_basis", "estimate_date", "effective_from", "history")
         },
     }
 
@@ -650,7 +650,9 @@ def get_performance_settings_with_ftp(conn: sqlite3.Connection, today: Optional[
     if choice["source"] == "estimate":
         snapshot = _estimate_snapshot(estimate, today)
         if snapshot["estimate_watts"] and snapshot["estimate_watts"] != choice["estimate_watts"]:
-            settings = {**settings, "ftp": normalize_ftp_choice({**choice, **snapshot})}
+            # A refreshed estimate applies from today; rides before it keep the old number.
+            refreshed = record_ftp_choice(normalize_ftp_choice({**choice, **snapshot}), today.isoformat())
+            settings = {**settings, "ftp": refreshed}
             _store_performance_settings(conn, settings)
             conn.commit()
     return {
@@ -690,6 +692,7 @@ def set_performance_settings_for_conn(conn: sqlite3.Connection, payload: dict, t
     if changed:
         # A new source applies from today; earlier rides keep the FTP they were ridden with.
         incoming["effective_from"] = today.isoformat()
+    incoming = record_ftp_choice(incoming, today.isoformat())
     # Callers that leave heart-rate zones out keep the saved ones.
     existing_hr = {key: item["starts_bpm"] for key, item in _raw_performance_settings(conn)["heart_rate_zones"].items()}
     requested_hr = {

@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from backend.app.services.ftp import ftp_on, stored_ftp, working_ftp
+from backend.app.services.ftp import ftp_choice, ftp_on, stored_ftp, working_ftp
 from backend.app.services.heart_rate_zones import (
     _classify_zone,
     hr_zone_starts,
@@ -22,6 +22,7 @@ from backend.app.services.settings import (
     normalize_body_areas,
     normalize_modality_restrictions,
     protected_area_for_exercise,
+    set_performance_settings_for_conn,
 )
 
 TODAY = date(2026, 10, 9)
@@ -72,6 +73,29 @@ class FtpSourceTests(unittest.TestCase):
         conn = _memory_conn({"source": "estimate", "estimate_watts": None, "effective_from": "2026-10-01"})
         self.assertEqual(ftp_on(conn, "2026-10-05"), 242)
         self.assertEqual(working_ftp(conn, TODAY)["source"], "stored")
+
+    def test_switching_back_keeps_earlier_rides_on_their_ftp(self):
+        conn = _memory_conn()
+        conn.execute("CREATE TABLE activities (id INTEGER PRIMARY KEY, type TEXT, max_hr REAL, date TEXT)")
+        estimate = {"available": True, "watts": 192, "basis": "95% of best 20 min"}
+        with patch("backend.app.services.settings._current_ftp_estimate", return_value=estimate):
+            set_performance_settings_for_conn(conn, {"ftp": {"source": "estimate"}}, date(2026, 10, 14))
+            set_performance_settings_for_conn(conn, {"ftp": {"source": "manual", "manual_watts": 215}}, date(2026, 10, 15))
+            set_performance_settings_for_conn(conn, {"ftp": {"source": "estimate"}}, date(2026, 10, 15))
+        self.assertEqual(ftp_on(conn, "2026-10-13"), 242)
+        self.assertEqual(ftp_on(conn, "2026-10-14"), 192)
+        self.assertEqual(ftp_on(conn, "2026-10-15"), 192)
+        # The same-day detour through 215 W leaves no trace.
+        self.assertEqual([item["from"] for item in ftp_choice(conn)["history"]], ["2026-10-14"])
+
+        with patch("backend.app.services.settings._current_ftp_estimate", return_value=estimate):
+            set_performance_settings_for_conn(conn, {"ftp": {"source": "stored"}}, date(2026, 10, 20))
+        self.assertEqual(ftp_on(conn, "2026-10-16"), 192)
+        self.assertEqual(ftp_on(conn, "2026-10-20"), 242)
+
+    def test_settings_without_history_keep_the_current_choice(self):
+        conn = _memory_conn({"source": "manual", "manual_watts": 230, "effective_from": "2026-10-01"})
+        self.assertEqual(ftp_choice(conn)["history"], [{"from": "2026-10-01", "source": "manual", "watts": 230}])
 
     def test_missing_tables_mean_no_ftp(self):
         conn = sqlite3.connect(":memory:")

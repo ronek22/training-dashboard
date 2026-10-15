@@ -125,9 +125,9 @@ defineExpose({ load })
 <style scoped>
 .season-card { display: grid; gap: 14px; padding: 18px 24px 16px; margin-bottom: 18px; }
 .focus-base { --focus: var(--z2); }
-.focus-sweet_spot { --focus: #eab308; }
-.focus-vo2 { --focus: #ef4444; }
-.focus-maintain { --focus: #8b9bb4; }
+.focus-sweet_spot { --focus: var(--warning); }
+.focus-vo2 { --focus: var(--danger); }
+.focus-maintain { --focus: var(--muted-soft); }
 
 .season-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .season-eyebrow { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; }
@@ -182,4 +182,9 @@ a.season-pin:hover span { color: var(--text); text-decoration: underline; }
   .season-head { display: grid; }
   .season-pin span { display: none; }
 }
+
+/* ── Multi-sport redesign layer ── */
+.season-card { padding: 24px 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; }
+.season-eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.season-title { margin-top: 8px; font-family: var(--font-display); font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: .005em; text-transform: uppercase; }
 </style>

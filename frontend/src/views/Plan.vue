@@ -700,7 +700,12 @@
           </div>
         </details>
 
-        <div v-if="displayPlanNotes(plan)" class="plan-notes">{{ displayPlanNotes(plan) }}</div>
+        <section v-if="displayPlanNotes(plan)" class="plan-notes plan-reasoning" aria-label="Coach's reasoning">
+          <span class="plan-reasoning-kicker">Coach’s reasoning</span>
+          <ul>
+            <li v-for="(point, index) in notePoints(displayPlanNotes(plan))" :key="index">{{ point }}</li>
+          </ul>
+        </section>
 
         <details v-if="plan.revisions?.length" class="revision-timeline"><summary>Plan changes <span>{{ plan.revisions.length }}</span></summary>
           <div class="revision-timeline-list revision-timeline-horizontal">
@@ -1621,6 +1626,17 @@ const selectPlanDay = (day) => {
   selectedDayDate.value = day.date
 }
 
+// Coach notes read as a handful of short points: sentences grouped up to ~200 characters.
+const notePoints = (text) => {
+  const sentences = String(text || '').split(/(?<=[.!?])\s+(?=[A-Z])/).map((part) => part.trim()).filter(Boolean)
+  const points = []
+  for (const sentence of sentences) {
+    const last = points.at(-1)
+    if (last && last.length + sentence.length < 200 && !/^(Adjusted|Rotation)/.test(sentence)) points[points.length - 1] = `${last} ${sentence}`
+    else points.push(sentence)
+  }
+  return points
+}
 const planAccent = (type) => ({ run: 'var(--tone-run)', ride: 'var(--tone-ride)', strength: 'var(--tone-strength)', recovery: 'var(--tone-recovery)', walk: 'var(--tone-walk)', neutral: 'var(--tone-neutral)' }[activityTone(type)])
 
 const selectedWeekMetrics = computed(() => {
@@ -5155,4 +5171,65 @@ const savePlanLink = async (day) => {
 .plan-page .actual-block .link-toggle-button { min-height: 32px; padding: 0; font-size: 12px; }
 .plan-page .actual-empty { padding: 4px 0 0; font-size: 12px; font-style: normal; color: var(--muted); }
 .plan-page .planner-hint a{color:var(--accent);white-space:nowrap}
+
+/* ── Multi-sport redesign layer: last in the file so it wins over earlier passes. ── */
+.plan-page .page-head { align-items: flex-end; }
+.plan-page .planner-button { min-height: 48px; border-radius: 999px; font-size: 15px; font-weight: 700; }
+
+/* Week header card */
+.plan-page .plan-command.card { padding: 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; }
+.plan-page .plan-command .page-eyebrow { color: var(--volt); }
+.plan-page .plan-command .plan-command-title { font-family: var(--font-display); font-size: clamp(40px, 4.5vw, 56px); font-style: italic; font-weight: 800; line-height: .95; letter-spacing: .005em; text-transform: uppercase; }
+.plan-page .plan-command-focus { margin-top: 8px; color: var(--text-soft); font-size: 16px; line-height: 1.5; }
+.plan-page .period-button, .plan-page .period-today { min-width: 44px; min-height: 44px; border-radius: 999px; }
+.plan-page .workload-summary { gap: 12px; }
+.plan-page .workload-summary .workload-metric { padding: 16px 18px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface2); }
+.plan-page .workload-summary .workload-metric span { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.plan-page .workload-summary .workload-metric strong { font-family: var(--font-display); font-size: 36px; font-weight: 700; line-height: 1; letter-spacing: .01em; }
+
+/* Day cards */
+.plan-page .week-emphasis-pill, .plan-page .minimum-week-pill, .plan-page .arc-week-pill { border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.plan-page .plan-grid > .plan-day {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: radial-gradient(120% 40% at 100% 0%, color-mix(in srgb, var(--day-accent) 22%, transparent) 0%, transparent 70%), var(--surface);
+  box-shadow: none;
+}
+.plan-page .plan-grid > .plan-day.is-future { border-style: dashed; border-color: var(--border-strong); background: radial-gradient(120% 40% at 100% 0%, color-mix(in srgb, var(--day-accent) 12%, transparent) 0%, transparent 70%), transparent; }
+.plan-page .plan-grid > .plan-day.is-today { border: 1px solid var(--volt); box-shadow: inset 0 0 0 1px var(--volt); }
+.plan-page .plan-day .plan-day-label { color: var(--muted-soft); font-size: 12px; font-weight: 700; letter-spacing: .12em; }
+.plan-page .plan-day .plan-day-date { font-family: var(--font-display); font-size: 32px; font-weight: 800; line-height: 1; letter-spacing: .005em; }
+.plan-page .plan-day .session-match-status { font-weight: 700; letter-spacing: .04em; }
+.plan-page .day-sport { font-weight: 700; letter-spacing: .12em; }
+.plan-page .day-session .plan-day-title { font-family: var(--font-body); font-size: 18px; font-weight: 700; line-height: 1.25; letter-spacing: 0; }
+.plan-page .day-stats { border: 0; background: transparent; gap: 18px; grid-template-columns: auto auto; justify-content: start; }
+.plan-page .day-stats > div { padding: 0; }
+.plan-page .day-stats > div + div { border-left: 0; }
+.plan-page .day-stats dt { letter-spacing: .14em; }
+.plan-page .day-stats dd { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: .01em; }
+.plan-page .day-tag-intent { border-color: transparent; background: color-mix(in srgb, var(--day-accent) 16%, transparent); }
+.plan-page .day-tag-workout { border: 1px dashed color-mix(in srgb, var(--ride) 60%, transparent); background: transparent; color: var(--tone-ride); }
+.plan-page .day-tag-workout:hover { background: color-mix(in srgb, var(--ride) 10%, transparent); }
+.plan-page .day-tag-fuel { border: 1px dashed color-mix(in srgb, var(--z2) 60%, transparent); background: transparent; color: var(--z2); }
+.plan-page .day-tag-benchmark { border-color: color-mix(in srgb, var(--warning) 35%, transparent); background: color-mix(in srgb, var(--warning) 10%, transparent); }
+.plan-page .day-notes .plan-day-details { color: var(--muted-soft); font-size: 13px; line-height: 1.5; }
+.plan-page .day-notes .plan-details-button { color: var(--volt); }
+.plan-page .plan-day > .actual-block { padding: 12px; border: 1px solid color-mix(in srgb, var(--day-accent) 30%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--day-accent) 9%, transparent); }
+.plan-page .plan-day.is-future > .actual-block { border: 1px dashed var(--border-strong); background: transparent; }
+.plan-page .actual-block .plan-block-label { color: var(--success-text); font-weight: 700; letter-spacing: .14em; }
+.plan-page .plan-day.is-future .actual-block .plan-block-label { color: var(--muted); }
+.plan-page .actual-name { font-weight: 600; }
+.plan-page .actual-meta { color: var(--text); font-family: var(--font-display); font-size: 17px; font-weight: 700; }
+.plan-page .intent-pill { border-radius: 999px; }
+.plan-page .workload-summary .workload-metric { display: grid; gap: 8px; align-content: start; }
+.plan-page .actual-block .link-toggle-button { color: var(--muted-soft); }
+.plan-page .plan-reasoning { display: grid; gap: 14px; padding: 24px 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); color: var(--text-soft); white-space: normal; }
+.plan-reasoning-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.plan-reasoning ul { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.plan-reasoning li { position: relative; padding: 12px 0 12px 22px; border-top: 1px solid var(--border); font-size: 14px; line-height: 1.55; }
+.plan-reasoning li:first-child { border-top: 0; padding-top: 2px; }
+.plan-reasoning li::before { content: ''; position: absolute; left: 4px; top: 20px; width: 7px; height: 7px; border-radius: 50%; background: var(--volt); }
+.plan-reasoning li:first-child::before { top: 10px; }
+.plan-page .week-purpose > summary, .plan-page .revision-timeline > summary, .plan-page .goal-context-summary { font-weight: 600; }
+.plan-page .goal-summary-pill { border-radius: 999px; }
 </style>

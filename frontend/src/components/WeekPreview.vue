@@ -91,9 +91,9 @@ defineExpose({ load, reveal })
 <style scoped>
 .preview-card { display: grid; gap: 12px; padding: 18px 24px; margin-top: 18px; }
 .focus-base { --focus: var(--z2); }
-.focus-sweet_spot { --focus: #eab308; }
-.focus-vo2 { --focus: #ef4444; }
-.focus-maintain { --focus: #8b9bb4; }
+.focus-sweet_spot { --focus: var(--warning); }
+.focus-vo2 { --focus: var(--danger); }
+.focus-maintain { --focus: var(--muted-soft); }
 
 .preview-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .preview-eyebrow { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; }
@@ -124,7 +124,7 @@ defineExpose({ load, reveal })
 .preview-pills { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; min-width: 0; }
 .preview-badge { padding: 2px 9px; border-radius: 999px; background: rgb(var(--ov-rgb) / .06); color: var(--text-soft); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .badge-lighter { background: color-mix(in srgb, var(--z2) 16%, transparent); color: var(--text); }
-.badge-trip { background: color-mix(in srgb, #22c55e 16%, transparent); color: var(--text); }
+.badge-trip { background: color-mix(in srgb, var(--tone-recovery) 18%, transparent); color: var(--tone-recovery); }
 .badge-reentry, .badge-illness, .badge-sick, .badge-busy { background: rgba(245, 158, 11, .14); color: var(--warning-text); }
 .badge-goal { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--text); }
 
@@ -135,4 +135,12 @@ defineExpose({ load, reveal })
   .preview-row, .no-arc .preview-row { grid-template-columns: 1fr; gap: 6px; }
   .preview-pills { justify-content: flex-start; }
 }
+
+/* ── Multi-sport redesign layer ── */
+.preview-card { padding: 24px 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; }
+.preview-eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.preview-title { margin-top: 8px; font-family: var(--font-display); font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: .005em; text-transform: uppercase; }
+
+.preview-summary { font-size: 14px; font-weight: 600; }
+.preview-when { font-size: 14px; }
 </style>

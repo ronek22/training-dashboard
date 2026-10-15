@@ -156,4 +156,17 @@ defineExpose({ load })
   .forecast-head { display: grid; }
   .forecast-line { max-width: none; text-align: left; }
 }
+
+/* ── Multi-sport redesign layer ── */
+.forecast-card { padding: 24px 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; }
+.forecast-eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.forecast-title { margin-top: 8px; font-family: var(--font-display); font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: .005em; text-transform: uppercase; }
+
+.forecast-fitness { stroke: var(--text); stroke-width: 2.5; }
+.forecast-fatigue { stroke: var(--warning); stroke-width: 2; stroke-dasharray: 5 4; opacity: 1; }
+.forecast-tip .is-fitness { color: var(--text); }
+.forecast-tip .is-fatigue { color: var(--warning); }
+.forecast-legend .is-fitness::before { background: var(--text); }
+.forecast-legend .is-fatigue::before { background: var(--warning); }
+.forecast-flag { border-radius: 14px; }
 </style>

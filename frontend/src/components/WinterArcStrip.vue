@@ -297,9 +297,9 @@ defineExpose({ load })
 <style scoped>
 .arc-card { display: grid; gap: 18px; padding: 22px 24px; margin-bottom: 18px; }
 .focus-base { --focus: var(--z2); }
-.focus-sweet_spot { --focus: #eab308; }
-.focus-vo2 { --focus: #ef4444; }
-.focus-maintain { --focus: #8b9bb4; }
+.focus-sweet_spot { --focus: var(--warning); }
+.focus-vo2 { --focus: var(--danger); }
+.focus-maintain { --focus: var(--muted-soft); }
 
 .arc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .arc-eyebrow { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; }
@@ -367,4 +367,12 @@ defineExpose({ load })
   .arc-block-label span { display: none; }
   .arc-adjust { grid-template-columns: 1fr; padding: 14px; }
 }
+
+/* ── Multi-sport redesign layer ── */
+.arc-card { padding: 24px 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; }
+.arc-eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.arc-title { margin-top: 8px; font-family: var(--font-display); font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: .005em; text-transform: uppercase; }
+
+.arc-sub { color: var(--muted-soft); font-size: 14px; }
+.arc-button { min-height: 44px; border-radius: 999px; }
 </style>

@@ -198,6 +198,21 @@
         <MealIdeas v-if="isToday && day?.target" :date="selectedDay" :eaten-kcal="day.totals.kcal" :eaten="eatenNames"
           :training="trainingLine" :meal="meal" @use="useIdea" />
 
+        <article v-if="day?.planned_week" class="card plan-card" aria-label="This week's targets">
+          <div class="card-title">This week's targets</div>
+          <p v-if="day.planned_week.hint" class="eat-more" role="status"><strong>Eat more this week.</strong> {{ day.planned_week.hint.replace(/^This week needs more food: /, '') }}</p>
+          <ul class="plan-days">
+            <li v-for="item in day.planned_week.days" :key="item.date" :class="{ selected: item.date === selectedDay, past: item.date < todayKey() }"
+              :title="item.sessions.join(', ') || 'No session planned'">
+              <span class="plan-day">{{ weekday(item.date) }}</span>
+              <span class="plan-kind" :class="item.kind">{{ item.label }}</span>
+              <span class="plan-kcal">{{ item.target_kcal ? fmt(item.target_kcal) : '—' }}<small> kcal</small></span>
+              <span class="plan-carbs">{{ item.carbs_g ?? '—' }}<small> g carbs</small></span>
+            </li>
+          </ul>
+          <p class="fine">{{ planNote }}</p>
+        </article>
+
         <article class="card week-card">
           <div class="card-title">Last 7 days</div>
           <div v-if="day" class="week-bars" role="list">
@@ -337,6 +352,7 @@ const macroTiles = computed(() => {
   const totals = day.value?.totals
   if (!totals) return []
   const proteinTarget = day.value.protein_target_g
+  const carbsTarget = day.value.target?.carbs_g
   const share = (grams, perGram) => (totals.kcal ? Math.round((grams * perGram / totals.kcal) * 100) : 0)
   return [
     {
@@ -345,7 +361,13 @@ const macroTiles = computed(() => {
       tone: proteinTarget && totals.protein_g >= proteinTarget ? 'good' : 'protein',
       hint: proteinTarget ? (totals.protein_g >= proteinTarget ? 'Target reached' : `${Math.round(proteinTarget - totals.protein_g)} g to go`) : 'Log a weigh-in for a target',
     },
-    { key: 'carbs', label: 'Carbs', value: Math.round(totals.carbs_g), unit: ' g', fill: share(totals.carbs_g, 4), tone: 'carbs', hint: `${share(totals.carbs_g, 4)}% of calories` },
+    carbsTarget
+      ? {
+          key: 'carbs', label: 'Carbs', value: Math.round(totals.carbs_g), unit: ` / ${carbsTarget} g`,
+          fill: Math.min(100, (totals.carbs_g / carbsTarget) * 100), tone: totals.carbs_g >= carbsTarget ? 'good' : 'carbs',
+          hint: `${dayKindLabel.value} target · ${share(totals.carbs_g, 4)}% of calories`,
+        }
+      : { key: 'carbs', label: 'Carbs', value: Math.round(totals.carbs_g), unit: ' g', fill: share(totals.carbs_g, 4), tone: 'carbs', hint: `${share(totals.carbs_g, 4)}% of calories` },
     { key: 'fat', label: 'Fat', value: Math.round(totals.fat_g), unit: ' g', fill: share(totals.fat_g, 9), tone: 'fat', hint: `${share(totals.fat_g, 9)}% of calories` },
   ]
 })
@@ -365,8 +387,20 @@ const profileSummary = computed(() => {
   const life = { desk: 'desk', mixed: 'mixed', on_feet: 'on feet' }[value.daily_life]
   return `${value.height_cm} cm · ${new Date().getFullYear() - value.birth_year} y · ${life} · ${value.goal === 'gain' ? 'gain' : 'maintain'}`
 })
-const trainingTitle = computed(() => (day.value?.exercise.activities || [])
-  .map((activity) => `${activity.name || activity.type}: ${activity.kcal} kcal (${activity.basis})`).join('\n') || 'No training logged')
+const trainingTitle = computed(() => {
+  if (day.value?.target?.training_planned) return `Planned session estimate: ${fmt(day.value.target.training)} kcal`
+  return (day.value?.exercise.activities || [])
+    .map((activity) => `${activity.name || activity.type}: ${activity.kcal} kcal (${activity.basis})`).join('\n') || 'No training logged'
+})
+const dayKindLabel = computed(() => day.value?.planned_week?.days.find((item) => item.date === selectedDay.value)?.label || 'Day')
+const planNote = computed(() => {
+  const week = day.value?.planned_week
+  if (!week) return ''
+  const hours = week.planned_ride_hours != null ? `${week.planned_ride_hours} h riding planned` : 'No rides planned'
+  const recent = week.recent_ride_hours != null ? ` · ${week.recent_ride_hours} h/week lately` : ''
+  const base = week.lighter ? ' Lighter week: targets stay at your baseline or above.' : ''
+  return `${hours}${recent}. Targets add planned training to your baseline; carbs by day kind.${base}`
+})
 
 const eatenNames = computed(() => (day.value?.entries || []).flatMap((entry) => entry.items.map((item) => item.name)))
 const trainingLine = computed(() => (day.value?.exercise.activities || []).map((activity) => `${activity.name || activity.type} (${activity.kcal} kcal)`).join(', '))
@@ -822,6 +856,18 @@ onUnmounted(() => {
 .badge { display: inline-block; margin-top: 2px; padding: 0 7px; border-radius: 999px; background: var(--surface3); color: var(--muted); font-size: 10px; line-height: 16px; }
 
 /* Week */
+.plan-days { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
+.plan-days li { display: grid; grid-template-columns: 26px 1fr auto auto; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 8px; font-size: 12px; }
+.plan-days li.selected { background: var(--surface2); box-shadow: inset 0 0 0 1px var(--border-strong); }
+.plan-days li.past { opacity: .55; }
+.plan-day { font-weight: 600; }
+.plan-kind { justify-self: start; padding: 1px 8px; border-radius: 999px; background: var(--surface3); color: var(--text-soft); font-size: 11px; }
+.plan-kind.key_ride, .plan-kind.long_ride { color: var(--ride); box-shadow: inset 0 0 0 1px currentColor; background: none; }
+.plan-kind.lift { color: var(--text); }
+.plan-kcal, .plan-carbs { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+.plan-days small { color: var(--muted); font-weight: 400; font-size: 10px; }
+.eat-more { margin: 6px 0 8px; padding: 8px 10px; border-radius: 8px; background: var(--surface2); box-shadow: inset 3px 0 0 var(--warning); font-size: 12px; line-height: 1.45; color: var(--text-soft); }
+.eat-more strong { color: var(--text); }
 .week-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 4px; }
 .week-day { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; color: var(--text-soft); font: inherit; cursor: pointer; padding: 6px 0; border-radius: 8px; }
 .week-day:hover { background: var(--surface2); }

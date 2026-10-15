@@ -24,6 +24,17 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Food targets follow the planned week
+
+2026-10-15: implements the `food-targets-follow-the-block` idea. `services/food_targets.py` reads the saved plan for the Monday–Sunday week around the selected Food day; `GET /nutrition/food` (`food_log.build_food_day`) now carries `planned_week`, and `target` gains `training_planned`, `day_kind` and `carbs_g`.
+
+- Day kinds: key ride (hard ride by the lift/ride clash rule), long ride (intent `long` or 120+ min), lift (not mobility), easy ride (also recovery rides, runs and other work) and rest; a day takes its biggest session.
+- Energy: baseline (resting × daily life, plus the gain surplus) + training. Finished days use logged training only, as before. Today and later days use the larger of logged and planned training; planned = net METs by kind (key 9.5, long 6.5, easy 6, recovery 4, lift 3.5, run 8.8) × weight × planned minutes. A plan can only raise a target, so a light or lighter-arc week never drops below the baseline.
+- Carbs: 3 g/kg rest, 4 lift, 5 easy ride, 6 key ride, 7 long ride, rounded to 10 g; +1 g/kg on ride days in a big week. Without a weigh-in carbs are empty.
+- Eat-more hint: planned ride hours (saved plan, else the winter-arc target) at least 1 h and 15% above the last 4 full weeks' average ride hours. Shown as "Eat more this week" on the new **This week's targets** card (Food side column: kind, kcal and carbs per day), and in the coach's `get_nutrition` context as `planned_week`.
+- The Carbs tile shows the day's carb target ("Key ride target"); the burn bar's training tooltip says when training is a planned estimate.
+- Verified with `test_food_targets.py` (7 tests: kinds and carbs differ for rest/lift/easy/key/long, today counts the planned session, finished days ignore the plan, logged beats a smaller plan, big-week hint and carb step, steady week without hint, lighter week never below baseline); backend 924 and frontend 168 tests plus the build pass. Checked read-only against a copy of the live database (this week: 4.3 h planned vs 3.5 h lately, no hint). Not checked in the browser; live training data was not changed.
+
 ### Block recap at the end of every arc block
 
 2026-10-15: implements the `block-end-review` idea. Every finished winter-arc block has a celebratory recap at `/plan/blocks/<start date>`, built in `services/block_recap.py` (`GET /plans/winter-arc/blocks/{start}/recap`). It opens the day after the block's last Sunday (before that: 409 "still running; opens on …").

@@ -11,6 +11,7 @@ from typing import Optional
 
 from fastapi import HTTPException
 
+from .food_targets import planned_week
 from .protein import latest_body_weight, protein_target_g
 
 PROFILE_KEY = "nutrition_profile"
@@ -144,15 +145,19 @@ def logged_protein_by_day(conn: sqlite3.Connection, start: str, end: str) -> dic
     return {row["date"]: float(row["protein"] or 0) for row in rows}
 
 
-def _day_target(profile: dict, bmr: Optional[float], training: int) -> Optional[dict]:
+def _day_target(profile: dict, bmr: Optional[float], training: int, planned: int = 0) -> Optional[dict]:
+    """Baseline plus training; a planned session can only raise the logged training, never lower it."""
     if bmr is None:
         return None
     baseline = bmr * LIFE_FACTORS[profile["daily_life"]]
     surplus = GAIN_SURPLUS_KCAL if profile["goal"] == "gain" else 0
+    training_planned = planned > training
+    training = max(training, planned)
     return {
         "resting": round(bmr),
         "daily_life": round(baseline - bmr),
         "training": training,
+        "training_planned": training_planned,
         "surplus": surplus,
         "kcal": round(baseline + training + surplus),
     }
@@ -206,11 +211,32 @@ def build_food_day(conn: sqlite3.Connection, day: str, today: Optional[date] = N
     weight_kg = weight["kg"] if weight else None
     bmr = resting_kcal(profile, weight_kg, selected)
 
+    plan = planned_week(conn, selected, weight_kg)
+    plan_end = (date.fromisoformat(plan["week_start"]) + timedelta(days=6)).isoformat()
+    planned_kcal = {item["date"]: item["planned_training_kcal"] for item in plan["days"]}
+
     entries = _entries(conn, week_start.isoformat(), selected.isoformat())
-    exercise = exercise_by_day(conn, week_start.isoformat(), selected.isoformat(), weight_kg or 75, bmr or 1700)
+    exercise = exercise_by_day(
+        conn, min(week_start.isoformat(), plan["week_start"]), max(selected.isoformat(), plan_end), weight_kg or 75, bmr or 1700,
+    )
 
     def target_for(key: str) -> Optional[dict]:
-        return _day_target(profile, bmr, exercise.get(key, {}).get("kcal", 0))
+        # Finished days are judged on what was done; today and later also count what is planned.
+        planned = planned_kcal.get(key, 0) if key >= today.isoformat() else 0
+        return _day_target(profile, bmr, exercise.get(key, {}).get("kcal", 0), planned)
+
+    plan_days = []
+    for item in plan["days"]:
+        target = target_for(item["date"])
+        plan_days.append({
+            **item,
+            "training_kcal": target["training"] if target else None,
+            "target_kcal": target["kcal"] if target else None,
+        })
+    selected_plan = next((item for item in plan_days if item["date"] == day), None)
+    selected_target = target_for(day)
+    if selected_target and selected_plan:
+        selected_target |= {"day_kind": selected_plan["kind"], "carbs_g": selected_plan["carbs_g"]}
 
     week = []
     for offset in range(7):
@@ -240,9 +266,10 @@ def build_food_day(conn: sqlite3.Connection, day: str, today: Optional[date] = N
         "weight": weight,
         "entries": selected_entries,
         "totals": _sum([item for entry in selected_entries for item in entry["items"]]),
-        "target": target_for(day),
+        "target": selected_target,
         "protein_target_g": protein_target_g(weight_kg) if weight_kg else None,
         "exercise": exercise.get(day, {"kcal": 0, "activities": []}),
+        "planned_week": {**plan, "days": plan_days},
         "week": week,
         "week_summary": {
             "logged_days": len(judged),
@@ -367,6 +394,10 @@ def build_nutrition_context(conn: sqlite3.Connection, today: Optional[date] = No
             for item in day["week"] if item["logged"]
         ],
         "summary": day["week_summary"],
+        "planned_week": {
+            **{k: day["planned_week"][k] for k in ("week_start", "planned_ride_hours", "recent_ride_hours", "big_week", "hint")},
+            "days": [{k: item[k] for k in ("date", "kind", "target_kcal", "carbs_g")} for item in day["planned_week"]["days"]],
+        },
         "note": "Estimates from text/photo logging (±20–30%). Unlogged days are unknown, not zero. The athlete tends to under-eat.",
     }
 

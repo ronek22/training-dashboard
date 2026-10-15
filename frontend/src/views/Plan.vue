@@ -70,10 +70,13 @@
             <p v-if="selectedPlan.title" class="plan-command-headline">{{ selectedPlan.title }}</p>
             <p class="plan-command-focus">{{ selectedPlan.focus || 'Weekly training plan' }}</p>
           </div>
+          <div class="plan-command-controls">
           <div class="period-navigation" aria-label="Plan period navigation">
             <button type="button" class="period-button" :disabled="!canGoNewer" aria-label="View newer week" @click="goToNewerWeek">‹</button>
             <button type="button" class="period-today" :disabled="isViewingCurrentWeek" @click="goToCurrentWeek">This week</button>
             <button type="button" class="period-button" :disabled="!canGoOlder" aria-label="View older week" @click="goToOlderWeek">›</button>
+          </div>
+          <div id="plan-week-controls" class="plan-week-controls"></div>
           </div>
         </div>
 
@@ -112,10 +115,11 @@
             </div>
             <p v-if="plan.winter_arc?.note && !isHistoricalPlan(plan)" class="arc-week-note">{{ plan.winter_arc.note }}</p>
           </div>
-          <template v-if="isCurrentPlan(plan) && adjustableDays(plan).length">
-            <button v-if="plan.minimum_week?.active" type="button" class="ghost-button minimum-week-button" :disabled="minimumWeekBusy" @click="restoreFullWeek(plan)">{{ minimumWeekBusy ? 'Restoring…' : 'Restore full week' }}</button>
-            <button v-else type="button" class="ghost-button minimum-week-button" title="Shrink the rest of this week to the smallest version that keeps your anchors" :disabled="minimumWeekBusy" @click="openMinimumWeek(plan)">Minimum week</button>
-          </template>
+          <Teleport defer to="#plan-week-controls" :disabled="plan.week_start !== selectedPlan?.week_start">
+          <div v-if="isCurrentPlan(plan) && adjustableDays(plan).length" class="week-mode-toggle" role="group" aria-label="Week version">
+            <button type="button" :class="{ on: !plan.minimum_week?.active }" :aria-pressed="!plan.minimum_week?.active" :disabled="minimumWeekBusy" @click="plan.minimum_week?.active && restoreFullWeek(plan)">{{ minimumWeekBusy && plan.minimum_week?.active ? 'Restoring…' : 'Full week' }}</button>
+            <button type="button" :class="{ on: plan.minimum_week?.active }" :aria-pressed="Boolean(plan.minimum_week?.active)" title="Shrink the rest of this week to the smallest version that keeps your anchors" :disabled="minimumWeekBusy" @click="!plan.minimum_week?.active && openMinimumWeek(plan)">Minimum week</button>
+          </div>
           <details class="week-actions plan-actions-menu"><summary>Manage week <span aria-hidden="true">⌄</span></summary><div class="plan-actions-menu-items">
             <button v-if="isLocalCoachHost && isCurrentPlan(plan) && adjustableDays(plan).length" type="button" class="ghost-button planner-refine-button" :disabled="planningWithCoach" @click="openCoachPlanFeedback">Refine with the coach</button>
             <button
@@ -136,6 +140,7 @@
             </button>
             <div v-else-if="isPlanExpanded(plan)" class="adjust-hint">No adjustable days in this week.</div>
           </div></details>
+          </Teleport>
         </div>
 
         <div v-if="!isPlanExpanded(plan)" class="historical-week-preview">
@@ -564,7 +569,7 @@
                       <span class="actual-name">{{ activity.name || activity.type }}</span>
                     </div>
                     <div class="actual-meta">
-                      <span v-if="activity.distance_km">{{ activity.distance_km }} km</span>
+                      <span v-if="activity.distance_km">{{ Number(activity.distance_km).toFixed(1) }} km</span>
                       <span v-if="activity.duration_min">{{ Math.round(activity.duration_min) }} min</span>
                       <span v-if="activity.avg_pace">{{ activity.avg_pace }}</span>
                       <span v-else-if="activity.avg_watts">{{ Math.round(activity.avg_watts) }} W</span>
@@ -643,14 +648,40 @@
           <span>{{ plan.run_guardrail.summary }}</span>
         </div>
 
-        <details v-if="plan.overview" class="week-purpose"><summary>Week focus and coaching notes</summary><p>{{ plan.overview }}</p></details>
 
         <div class="plan-insights">
-        <section v-if="displayPlanNotes(plan)" class="plan-notes plan-reasoning" aria-label="Coach's reasoning">
+        <section v-if="displayPlanNotes(plan) || plan.overview || plan.revisions?.length" class="plan-notes plan-reasoning" aria-label="Coach's reasoning">
           <span class="plan-reasoning-kicker">Coach’s reasoning</span>
-          <ul>
+          <ul v-if="displayPlanNotes(plan)">
             <li v-for="(point, index) in notePoints(displayPlanNotes(plan))" :key="index"><span class="reason-icon" :class="`tone-${pointIcon(point).tone}`" aria-hidden="true">{{ pointIcon(point).sym }}</span><span>{{ point }}</span></li>
           </ul>
+          <div v-if="plan.overview" class="reasoning-shape"><span>Week shape</span><p>{{ plan.overview }}</p></div>
+          <details v-if="plan.revisions?.length" class="revision-timeline"><summary>Plan changes · {{ plan.revisions.length }}</summary>
+          <div class="revision-timeline-list revision-timeline-horizontal">
+            <article v-for="revision in plan.revisions" :key="revision.id" class="revision-entry revision-entry-horizontal">
+              <div class="revision-entry-rail" aria-hidden="true">
+                <div class="revision-entry-marker"></div>
+                <div class="revision-entry-line"></div>
+              </div>
+              <div class="revision-entry-body">
+                <div class="revision-entry-top">
+                  <div class="revision-entry-title-row">
+                    <strong>{{ formatTimestamp(revision.created_at) }}</strong>
+                    <span class="revision-source-pill" :class="`source-${revision.source}`">{{ revisionSourceLabel(revision.source) }}</span>
+                  </div>
+                  <div class="revision-entry-effective">Effective from {{ formatDay(revision.effective_from) }}</div>
+                </div>
+                <div v-if="revision.adaptation_reason" class="revision-entry-reason">{{ revision.adaptation_reason }}</div>
+                <div class="revision-entry-meta">
+                  <span v-if="revision.changed_dates?.length">Changed {{ formatDateList(revision.changed_dates) }}</span>
+                  <span v-else>No editable dates changed</span>
+                  <span v-if="revision.preserved_dates?.length">Preserved {{ formatDateList(revision.preserved_dates) }}</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </details>
+
         </section>
         <details v-if="!isHistoricalPlan(plan) && plan.goal_context?.active_goals?.length" class="goal-context-panel">
           <summary class="goal-context-summary">
@@ -718,31 +749,7 @@
 
 
 
-        <details v-if="plan.revisions?.length" class="revision-timeline"><summary>Plan changes <span>{{ plan.revisions.length }}</span></summary>
-          <div class="revision-timeline-list revision-timeline-horizontal">
-            <article v-for="revision in plan.revisions" :key="revision.id" class="revision-entry revision-entry-horizontal">
-              <div class="revision-entry-rail" aria-hidden="true">
-                <div class="revision-entry-marker"></div>
-                <div class="revision-entry-line"></div>
-              </div>
-              <div class="revision-entry-body">
-                <div class="revision-entry-top">
-                  <div class="revision-entry-title-row">
-                    <strong>{{ formatTimestamp(revision.created_at) }}</strong>
-                    <span class="revision-source-pill" :class="`source-${revision.source}`">{{ revisionSourceLabel(revision.source) }}</span>
-                  </div>
-                  <div class="revision-entry-effective">Effective from {{ formatDay(revision.effective_from) }}</div>
-                </div>
-                <div v-if="revision.adaptation_reason" class="revision-entry-reason">{{ revision.adaptation_reason }}</div>
-                <div class="revision-entry-meta">
-                  <span v-if="revision.changed_dates?.length">Changed {{ formatDateList(revision.changed_dates) }}</span>
-                  <span v-else>No editable dates changed</span>
-                  <span v-if="revision.preserved_dates?.length">Preserved {{ formatDateList(revision.preserved_dates) }}</span>
-                </div>
-              </div>
-            </article>
-          </div>
-        </details>
+
         </template>
       </section>
       </div>
@@ -1655,11 +1662,11 @@ const pointIcon = (point) => {
   return { sym: '•', tone: 'neutral' }
 }
 const notePoints = (text) => {
-  const sentences = String(text || '').split(/(?<=[.!?])\s+(?=[A-Z])/).map((part) => part.trim()).filter(Boolean)
+  const sentences = String(text || '').replace(/^Tradeoffs:\s*/i, '').replace(/^(\w)/, (c) => c.toUpperCase()).split(/(?<=[.!?])\s+(?=[A-Z])/).map((part) => part.trim()).filter(Boolean)
   const points = []
   for (const sentence of sentences) {
     const last = points.at(-1)
-    if (last && last.length + sentence.length < 200 && !/^(Adjusted|Rotation)/.test(sentence)) points[points.length - 1] = `${last} ${sentence}`
+    if (last && last.length + sentence.length < 260 && !/^(Adjusted)/.test(sentence)) points[points.length - 1] = `${last} ${sentence}`
     else points.push(sentence)
   }
   return points
@@ -5349,4 +5356,73 @@ const savePlanLink = async (day) => {
 .plan-page .plan-insights .goal-summary-supported b { color: var(--volt); }
 .plan-page .plan-insights .goal-summary-attention b { color: var(--warning-text); }
 .plan-page .plan-insights .goal-context-panel[open] .goal-context-summary { margin-bottom: 16px; }
+
+/* ── Round 2: artboard details ── */
+/* Header controls on the right */
+.plan-page .plan-command-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; }
+.plan-command-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.plan-page .period-navigation { gap: 8px; }
+.plan-page .period-today { display: none; }
+.plan-page .period-button { width: 44px; height: 44px; border: 1px solid var(--border-strong); background: transparent; color: var(--text); font-size: 18px; }
+.plan-week-controls { display: flex; align-items: center; gap: 10px; }
+.week-mode-toggle { display: flex; padding: 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+.week-mode-toggle button { min-height: 38px; padding: 0 16px; border: 0; border-radius: 999px; background: transparent; color: var(--muted-soft); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.week-mode-toggle button.on { background: var(--surface3); color: var(--text); font-weight: 700; cursor: default; }
+.week-mode-toggle button:not(.on):hover { color: var(--text); }
+.plan-week-controls .plan-actions-menu > summary { display: inline-flex; align-items: center; gap: 6px; min-height: 46px; padding: 0 18px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font-size: 14px; font-weight: 600; }
+.plan-page .week-card-current .week-emphasis-pill { display: none; }
+.plan-page .week-card-current .week-header { min-height: 0; margin: 0; padding: 0; }
+
+/* Tags: one intent pill in the sport colour, everything else quiet */
+.plan-page .day-tags { gap: 6px; }
+.plan-page .day-tag { min-height: 26px; padding: 0 10px; border: 1px dashed var(--border-strong); background: transparent; color: var(--muted-soft); font-size: 12px; font-weight: 600; }
+.plan-page .day-tag-intent { border: 0; background: color-mix(in srgb, var(--day-accent) 16%, transparent); color: var(--day-accent); }
+.plan-page .day-tag-workout, .plan-page .day-tag-fuel { border: 1px dashed var(--border-strong); color: var(--muted-soft); background: transparent; }
+.plan-page .day-tag-workout:hover { border-color: var(--muted); color: var(--text); background: transparent; }
+.plan-page .day-tag { max-width: 180px; }
+
+/* Completed: compact box, one line of stats, progress */
+.plan-page .plan-day > .actual-block { padding: 14px; border: 1px solid color-mix(in srgb, var(--day-accent) 26%, transparent); background: color-mix(in srgb, var(--day-accent) 7%, var(--surface)); }
+.plan-page .actual-block-head { min-height: 0; }
+.plan-page .actual-block .plan-block-label::before { content: '✓ '; }
+.plan-page .plan-day.is-future .actual-block .plan-block-label::before, .plan-page .plan-day.is-today .actual-block .plan-block-label::before { content: ''; }
+.plan-page .actual-block .link-toggle-button { min-height: 0; color: var(--muted-soft); font-size: 13px; font-weight: 500; }
+.plan-page .actual-list { display: grid; gap: 4px; margin-top: 8px; padding: 0; border: 0; background: transparent; }
+.plan-page .actual-item, .plan-page .actual-list > * { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.plan-page .execution-quality-chip { display: block; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.plan-page .execution-quality-chip span { display: none; }
+.plan-page .actual-main { margin-top: 2px; }
+.plan-page .actual-name { overflow: hidden; color: var(--text); font-size: 15px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.plan-page .actual-meta { flex-wrap: nowrap; gap: 12px; margin-top: 4px; overflow: hidden; font-size: 19px; white-space: nowrap; }
+.plan-page .actual-progress { margin-top: 12px; }
+.plan-page .actual-progress small { font-size: 12px; }
+
+/* Reasoning + goals */
+.plan-insights { align-items: stretch; margin-top: 4px; }
+.plan-reasoning { gap: 16px; }
+.plan-reasoning li { padding: 14px 0; }
+.reasoning-shape { display: grid; gap: 4px; padding-top: 14px; border-top: 1px solid var(--border); }
+.reasoning-shape span { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.reasoning-shape p { margin: 0; color: var(--muted-soft); font-size: 13px; line-height: 1.55; }
+.plan-reasoning .revision-timeline { margin: 0; border: 0; padding: 0; }
+.plan-reasoning .revision-timeline > summary { color: var(--volt); font-size: 14px; font-weight: 600; cursor: pointer; list-style: none; }
+.plan-reasoning .revision-timeline > summary::-webkit-details-marker { display: none; }
+.plan-reasoning .revision-timeline[open] > summary { margin-bottom: 12px; }
+.plan-page .plan-insights .goal-context-panel { position: relative; display: flex; flex-direction: column; }
+.plan-page .plan-insights .goal-context-summary::after { position: absolute; top: 20px; right: 20px; display: grid; place-items: center; width: 40px; height: 40px; margin: 0; border: 1px solid var(--border-strong); border-radius: 50%; color: var(--text); font-size: 18px; }
+.plan-page .plan-insights .goal-context-summary-metrics { gap: 40px; margin-top: 8px; }
+.plan-page .plan-command-top { flex-direction: row; }
+.plan-page .plan-command-top > div:first-child { flex: 1 1 520px; min-width: 0; }
+.plan-page .plan-command-controls { flex: 0 0 auto; margin-bottom: 4px; }
+.plan-page .actual-block-head { flex-wrap: nowrap; }
+.plan-page .actual-block .link-toggle-button { white-space: nowrap; }
+.plan-page .plan-block-label { white-space: nowrap; }
+.plan-page .plan-day > .actual-block { min-width: 0; max-width: 100%; box-sizing: border-box; overflow: hidden; }
+.plan-page .actual-list, .plan-page .actual-item, .plan-page .actual-main { min-width: 0; }
+.plan-page .actual-meta { font-size: 17px; gap: 10px; text-overflow: ellipsis; }
+.week-mode-toggle button { white-space: nowrap; }
+@media (max-width: 640px) {
+  .week-mode-toggle button { padding: 0 12px; font-size: 13px; }
+  .plan-page .workload-metric.is-execution { grid-column: 1 / -1; }
+}
 </style>

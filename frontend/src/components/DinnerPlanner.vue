@@ -1,16 +1,19 @@
 <template>
   <section class="dinner-planner" aria-label="Dinner plan">
-    <div class="planner-bar">
-      <nav class="week-nav" aria-label="Choose week">
+    <Teleport defer to="#food-nav">
+      <nav class="stepper" aria-label="Choose week">
         <button type="button" aria-label="Previous week" @click="shiftWeek(-7)">‹</button>
-        <button type="button" class="week-now" :disabled="isThisWeek" @click="setWeek(todayKey())">{{ isThisWeek ? 'This week' : 'Back to this week' }}</button>
+        <button type="button" class="stepper-now week-now" :disabled="isThisWeek" @click="setWeek(todayKey())">{{ isThisWeek ? 'This week' : 'Back to this week' }}</button>
         <button type="button" aria-label="Next week" @click="shiftWeek(7)">›</button>
       </nav>
-      <strong class="week-range">{{ weekLabel }}</strong>
-      <span class="planner-sub">{{ subtitle }}</span>
+    </Teleport>
+    <div class="food-toolbar">
+      <strong class="toolbar-title">{{ weekLabel }}</strong>
+      <span class="toolbar-sub">{{ subtitle }}</span>
       <button v-if="week && week.planned < 7" type="button" class="ghost-button push-right" :disabled="busy" @click="copyPrevious">Copy last week</button>
       <button v-if="week" type="button" class="ghost-button" :class="{ 'push-right': week.planned >= 7 }" :aria-pressed="shoppingOpen" @click="toggleShopping">Shopping list</button>
     </div>
+    <p v-if="targets?.hint" class="eat-more" role="status"><strong>Eat more this week.</strong> {{ targets.hint.replace(/^This week needs more food: /, '') }}</p>
 
     <div v-if="error" class="error" role="alert">{{ error }}</div>
 
@@ -26,6 +29,7 @@
             <th class="f">F</th>
             <th class="time">Time</th>
             <th class="left training">Training</th>
+            <th class="target" title="What the day burns, and its carb target">Day target</th>
             <th></th>
           </tr>
         </thead>
@@ -55,6 +59,13 @@
               <span><i :class="day.training[0]?.session_type || 'rest'"></i>{{ day.training.map((s) => s.title).join(' + ') || 'Rest' }}</span>
               <small v-if="day.fuel_hint" class="fuel">{{ fuelShort(day.fuel_hint) }}</small>
             </td>
+            <td class="target">
+              <template v-if="targetFor(day.date)?.target_kcal">
+                <strong>{{ fmt(targetFor(day.date).target_kcal) }}</strong><small> kcal</small>
+                <span class="target-carbs"><span class="kind" :class="targetFor(day.date).kind">{{ targetFor(day.date).label }}</span> {{ targetFor(day.date).carbs_g }} g C</span>
+              </template>
+              <span v-else class="none">—</span>
+            </td>
             <td class="action" @click.stop>
               <span v-if="day.logged" class="logged">✓ Logged</span>
               <button v-else-if="day.dish && day.date <= todayKey()" type="button" class="link-button" @click="emit('log', day)">Log as eaten</button>
@@ -69,10 +80,11 @@
             <td class="num p">{{ averages.protein_g }}</td>
             <td class="num c">{{ averages.carbs_g ?? '—' }}</td>
             <td class="num f">{{ averages.fat_g ?? '—' }}</td>
-            <td colspan="3"></td>
+            <td colspan="4"></td>
           </tr>
         </tfoot>
       </table>
+      <p v-if="planNote" class="plan-note">{{ planNote }}</p>
     </div>
 
     <section v-if="week && shoppingOpen" class="card shopping-card" aria-label="Shopping list">
@@ -145,6 +157,8 @@ const todayKey = () => format(new Date(), 'yyyy-MM-dd')
 const mondayOf = (key) => format(startOfWeek(parseISO(key), { weekStartsOn: 1 }), 'yyyy-MM-dd')
 const weekStart = ref(mondayOf(props.day))
 const week = ref(null)
+// Daily kcal and carb targets for the same Monday–Sunday, from the food log.
+const targets = ref(null)
 const busy = ref(false)
 const error = ref('')
 const openDate = ref(null)
@@ -174,11 +188,25 @@ const description = (day) => (day.recipe?.ingredients.length ? day.recipe.ingred
 const trainingTitle = (day) => day.training.map((s) => `${s.title}${s.duration_min ? ` · ${s.duration_min} min` : ''}`).join('\n') || 'Rest day'
 // The drawer always gets the latest copy of the day, so portions and plans stay in sync.
 const openDayData = computed(() => week.value?.days.find((day) => day.date === openDate.value) || null)
+const fmt = (value) => Math.round(Number(value) || 0).toLocaleString('en-US')
+const targetFor = (key) => targets.value?.days.find((item) => item.date === key)
+const planNote = computed(() => {
+  const plan = targets.value
+  if (!plan) return ''
+  const hours = plan.planned_ride_hours != null ? `${plan.planned_ride_hours} h riding planned` : 'No rides planned'
+  const recent = plan.recent_ride_hours != null ? ` · ${plan.recent_ride_hours} h/week lately` : ''
+  const base = plan.lighter ? ' Lighter week: targets stay at your baseline or above.' : ''
+  return `${hours}${recent}. Day targets add planned training to your baseline; carbs follow the day kind.${base}`
+})
 const fuelShort = (hint) => (hint.startsWith('Carb up') ? 'Carb up — big session tomorrow' : 'Refuel after today')
 
 async function load() {
+  const start = weekStart.value
+  api.getFoodDay(start)
+    .then(({ data }) => { if (start === weekStart.value) targets.value = data.planned_week })
+    .catch(() => { if (start === weekStart.value) targets.value = null })
   try {
-    week.value = (await api.getDinnerWeek(weekStart.value)).data
+    week.value = (await api.getDinnerWeek(start)).data
     error.value = ''
   } catch (err) {
     error.value = err?.response?.data?.detail || 'Dinner plan could not load.'
@@ -279,19 +307,18 @@ load()
 </script>
 
 <style scoped>
-.planner-bar { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
-.week-range { font-family: var(--font-display); font-size: 17px; }
-.planner-sub { color: var(--muted); font-size: 13px; }
-.push-right { margin-left: auto; }
-.week-nav { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; }
-.week-nav button { border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; padding: 7px 12px; cursor: pointer; }
-.week-nav button + button { border-left: 1px solid var(--border); }
-.week-nav .week-now { min-width: 130px; font-weight: 600; }
-.week-nav .week-now:disabled { color: var(--text); cursor: default; }
-.ghost-button { border: 1px solid var(--border-strong); background: transparent; color: var(--text); border-radius: 8px; padding: 0 14px; min-height: 34px; font: inherit; font-size: 13px; cursor: pointer; }
-.ghost-button:disabled { opacity: .45; cursor: default; }
-.link-button { border: 0; background: none; color: var(--accent-strong); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; }
-.error { color: var(--danger); font-size: 13px; margin: 0 0 10px; }
+.error { margin: 0 0 10px; }
+.week-now { min-width: 130px; }
+.link-button { font-weight: 600; padding: 0; }
+.eat-more { margin: -4px 0 14px; padding: 8px 12px; border-radius: 8px; background: var(--surface2); box-shadow: inset 3px 0 0 var(--warning); font-size: 12.5px; line-height: 1.45; color: var(--text-soft); }
+.eat-more strong { color: var(--text); }
+.plan-note { margin: 0; padding: 10px 12px 8px; color: var(--muted); font-size: 12px; }
+.target { width: 150px; white-space: nowrap; }
+.target strong { font-weight: 650; }
+.target small { color: var(--muted); font-size: 11px; }
+.target-carbs { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+.kind { padding: 0 6px; border-radius: 999px; background: var(--surface3); color: var(--text-soft); font-size: 10.5px; }
+.kind.key_ride, .kind.long_ride { color: var(--ride); background: none; box-shadow: inset 0 0 0 1px currentColor; }
 
 .table-card { padding: 4px 8px; }
 .week-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
@@ -343,7 +370,6 @@ load()
 .day-pick { border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font: inherit; font-size: 12px; font-weight: 600; padding: 4px 11px; cursor: pointer; }
 .day-pick.empty { color: var(--muted); border-style: dashed; }
 .day-pick[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.link-button:disabled { opacity: .45; cursor: default; }
 .shopping-empty { color: var(--muted); font-size: 13px; margin: 14px 0 2px; }
 .shopping-cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 28px; margin-top: 14px; }
 .shopping-cols h4 { margin: 0 0 6px; font-size: 11px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
@@ -361,8 +387,8 @@ load()
 
 @media (max-width: 700px) {
   .shopping-cols { grid-template-columns: 1fr; }
-  .planner-bar { flex-wrap: wrap; }
+  .food-toolbar { flex-wrap: wrap; }
   .table-card { overflow-x: auto; }
-  .training, .time { display: none; }
+  .training, .time, .target { display: none; }
 }
 </style>

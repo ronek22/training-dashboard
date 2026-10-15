@@ -1,263 +1,149 @@
 <template>
   <div class="food-page" @paste="onPaste">
-    <header class="page-head">
-      <div>
+    <header class="food-head">
+      <div class="title-block">
         <div class="page-eyebrow">{{ eyebrow }}</div>
         <h1 class="page-title">Food</h1>
       </div>
-      <div class="view-tabs" role="tablist" aria-label="View">
-        <button type="button" role="tab" :aria-selected="view === 'log'" :class="{ active: view === 'log' }" @click="setView('log')">Log</button>
-        <button type="button" role="tab" :aria-selected="view === 'dinners'" :class="{ active: view === 'dinners' }" @click="setView('dinners')">Dinner plan</button>
-        <button type="button" role="tab" :aria-selected="view === 'recipes'" :class="{ active: view === 'recipes' }" @click="setView('recipes')">Recipes</button>
-        <button type="button" role="tab" :aria-selected="view === 'products'" :class="{ active: view === 'products' }" @click="setView('products')">Products</button>
-      </div>
-      <nav v-if="view === 'log'" class="day-nav" aria-label="Choose day">
-        <button type="button" aria-label="Previous day" @click="shiftDay(-1)">‹</button>
-        <button type="button" class="day-now" :disabled="isToday" @click="setDay(todayKey())">{{ isToday ? 'Today' : dayLabel }}</button>
-        <button type="button" aria-label="Next day" :disabled="isToday" @click="shiftDay(1)">›</button>
+      <nav class="food-seg page-tabs" role="tablist" aria-label="View">
+        <button v-for="tab in tabs" :key="tab.value" type="button" role="tab" :aria-selected="view === tab.value" :class="{ active: view === tab.value }" @click="setView(tab.value)">{{ tab.label }}</button>
       </nav>
+      <!-- The Week view puts its week stepper here, so every tab steers time from the same spot. -->
+      <div id="food-nav" class="head-tools">
+        <template v-if="view === 'log'">
+          <nav class="stepper" aria-label="Choose day">
+            <button type="button" aria-label="Previous day" @click="shiftDay(-1)">‹</button>
+            <button type="button" class="stepper-now" :disabled="isToday" @click="setDay(todayKey())">{{ isToday ? 'Today' : dayLabel }}</button>
+            <button type="button" aria-label="Next day" :disabled="isToday" @click="shiftDay(1)">›</button>
+          </nav>
+          <button type="button" class="ghost-button profile-button" :title="profileSummary" @click="profileOpen = true">Body profile</button>
+        </template>
+        <div v-else-if="view === 'library'" class="food-seg" role="tablist" aria-label="Library">
+          <button type="button" role="tab" :aria-selected="libraryKind === 'recipes'" :class="{ active: libraryKind === 'recipes' }" @click="setKind('recipes')">Recipes</button>
+          <button type="button" role="tab" :aria-selected="libraryKind === 'products'" :class="{ active: libraryKind === 'products' }" @click="setKind('products')">Products</button>
+        </div>
+      </div>
     </header>
 
     <div v-if="loadError" class="card load-error" role="alert">{{ loadError }}</div>
 
     <ProductDialog :open="productOpen" title="Add a product" @close="productOpen = false" @pick="addProduct" />
+    <NutritionProfileDialog :open="profileOpen" :profile="profile" :weight="day?.weight" :saving="profileSaving" :error="profileError"
+      @close="profileOpen = false" @save="saveProfile" />
 
-    <DinnerPlanner v-if="view === 'dinners'" :day="selectedDay" @log="logPlannedDinner" />
-    <RecipeLibrary v-else-if="view === 'recipes'" />
-    <ProductLibrary v-else-if="view === 'products'" />
+    <DinnerPlanner v-if="view === 'week'" :day="selectedDay" @log="logPlannedDinner" />
+    <template v-else-if="view === 'library'">
+      <ProductLibrary v-if="libraryKind === 'products'" />
+      <RecipeLibrary v-else />
+    </template>
 
     <template v-else>
-    <section v-if="day" class="card summary" aria-label="Day summary">
-      <div class="intake">
-        <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
-          <circle cx="60" cy="60" r="52" class="ring-track" />
-          <circle v-if="day.target" v-fill:ring="{ value: intakeShare * 100, length: ringLength, key: 'food:ring' }" cx="60" cy="60" r="52" class="ring-fill" :class="dayTone"
-            transform="rotate(-90 60 60)" />
-        </svg>
-        <div class="intake-copy">
-          <strong><AnimatedNumber :value="day.totals.kcal" :format="fmt" cache-key="food:kcal" /></strong>
-          <span>{{ day.target ? `of ${fmt(day.target.kcal)} kcal` : 'kcal eaten' }}</span>
-          <p :class="['gap', dayTone]">{{ day.target ? gapLine : 'Set your body profile for a target' }}</p>
-        </div>
-      </div>
+      <FoodDaySummary v-if="day" :day="day" :is-today="isToday" :kind-label="dayKindLabel" @profile="profileOpen = true" />
 
-      <div class="macros">
-        <div v-for="macro in macroTiles" :key="macro.key" class="macro">
-          <span class="tile-label">{{ macro.label }}</span>
-          <div class="tile-value"><strong><AnimatedNumber :value="macro.value" :cache-key="`food:${macro.key}`" /></strong><small>{{ macro.unit }}</small></div>
-          <div class="mini-bar"><i v-fill:width="{ value: macro.fill, key: `food-fill:${macro.key}` }" :class="macro.tone"></i></div>
-          <small class="tile-hint">{{ macro.hint }}</small>
-        </div>
-      </div>
-
-      <div class="burn">
-        <span class="tile-label">What the day burns</span>
-        <template v-if="day.target">
-          <div class="burn-total"><strong>{{ fmt(day.target.kcal) }}</strong><small>kcal</small></div>
-          <div class="burn-bar" role="img" :aria-label="burnSegments.map((s) => `${s.label} ${s.kcal}`).join(', ')">
-            <i v-for="segment in burnSegments" :key="segment.key" :class="segment.key" :style="{ flexGrow: segment.kcal }" :title="segment.title || `${segment.label}: ${fmt(segment.kcal)} kcal`"></i>
-          </div>
-          <ul class="burn-legend">
-            <li v-for="segment in burnSegments" :key="segment.key" :title="segment.title"><i :class="segment.key"></i>{{ segment.label }} <b>{{ fmt(segment.kcal) }}</b></li>
-          </ul>
-        </template>
-        <button v-else type="button" class="link-button" @click="profileOpen = true">Set body profile →</button>
-      </div>
-    </section>
-
-    <section class="food-grid">
-      <div class="main-col">
-        <article class="card logger" :class="{ dragging, drafting: rows.length }" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop">
-          <template v-if="!rows.length">
-            <div class="logbar">
-              <label class="meal-select">
-                <span class="sr-only">Meal</span>
-                <select v-model="meal">
-                  <option v-for="option in meals" :key="option.value" :value="option.value">{{ option.label }}</option>
-                </select>
-              </label>
-              <div v-if="photo" class="photo-chip">
-                <img :src="photo.url" alt="Meal photo to estimate" />
-                <button type="button" aria-label="Remove photo" @click="photo = null">✕</button>
+      <section class="food-grid" :class="{ solo: !showIdeas }">
+        <div class="main-col">
+          <article class="card logger" :class="{ dragging, drafting: rows.length }" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop">
+            <template v-if="!rows.length">
+              <div class="logbar">
+                <label class="meal-select">
+                  <span class="sr-only">Meal</span>
+                  <select v-model="meal">
+                    <option v-for="option in meals" :key="option.value" :value="option.value">{{ option.label }}</option>
+                  </select>
+                </label>
+                <div v-if="photo" class="photo-chip">
+                  <img :src="photo.url" alt="Meal photo to estimate" />
+                  <button type="button" aria-label="Remove photo" @click="photo = null">✕</button>
+                </div>
+                <textarea ref="textBox" v-model="text" rows="1" maxlength="1500" aria-label="What did you eat"
+                  :placeholder="photo ? 'Opcjonalnie: co jest na zdjęciu, np. duży kebab bez sosu' : 'Co zjadłeś? np. 2 jajka, kromka żytniego, 150 g skyru'"
+                  @input="autoGrow" @keydown.enter.exact.prevent="estimate" @keydown.meta.enter.prevent="estimate"></textarea>
+                <label class="icon-action" title="Add a photo">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4V8Zm8 9a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /></svg>
+                  <span class="sr-only">Add a photo</span>
+                  <input type="file" accept="image/*" @change="onFile" />
+                </label>
+                <button type="button" class="primary-button" :disabled="estimating || (!text.trim() && !photo)" @click="estimate">
+                  {{ estimating ? 'Estimating…' : 'Estimate' }}
+                </button>
               </div>
-              <textarea ref="textBox" v-model="text" rows="1" maxlength="1500" aria-label="What did you eat"
-                :placeholder="photo ? 'Opcjonalnie: co jest na zdjęciu, np. duży kebab bez sosu' : 'Co zjadłeś? np. 2 jajka, kromka żytniego, 150 g skyru'"
-                @input="autoGrow" @keydown.enter.exact.prevent="estimate" @keydown.meta.enter.prevent="estimate"></textarea>
-              <label class="icon-action" title="Add a photo">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4V8Zm8 9a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /></svg>
-                <span class="sr-only">Add a photo</span>
-                <input type="file" accept="image/*" @change="onFile" />
-              </label>
-              <button type="button" class="primary-button" :disabled="estimating || (!text.trim() && !photo)" @click="estimate">
-                {{ estimating ? 'Estimating…' : 'Estimate' }}
-              </button>
-            </div>
-            <div class="logbar-sub">
-              <div class="saved-picker">
-                <input v-model="savedQuery" type="search" placeholder="★ Saved foods" aria-label="Search saved foods" @focus="savedOpen = true" @blur="closeSavedSoon" />
-                <ul v-if="savedOpen" class="saved-list">
-                  <li v-if="!savedMatches.length" class="saved-empty">Star an item in your meals to save it here.</li>
-                  <li v-for="food in savedMatches" :key="food.id">
-                    <button type="button" @mousedown.prevent="addSaved(food)">
-                      <span>{{ food.name }}</span><small>{{ food.grams ? `${food.grams} g · ` : '' }}{{ Math.round(food.kcal) }} kcal · {{ food.protein_g }} g P</small>
-                    </button>
-                  </li>
-                </ul>
+              <div class="logbar-sub">
+                <div class="saved-picker">
+                  <input v-model="savedQuery" type="search" placeholder="★ Saved foods" aria-label="Search saved foods" @focus="savedOpen = true" @blur="closeSavedSoon" />
+                  <ul v-if="savedOpen" class="saved-list">
+                    <li v-if="!savedMatches.length" class="saved-empty">Star an item in your meals to save it here.</li>
+                    <li v-for="food in savedMatches" :key="food.id">
+                      <button type="button" @mousedown.prevent="addSaved(food)">
+                        <span>{{ food.name }}</span><small>{{ food.grams ? `${food.grams} g · ` : '' }}{{ Math.round(food.kcal) }} kcal · {{ food.protein_g }} g P</small>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+                <button type="button" class="link-button" @click="productOpen = true">＋ Product</button>
+                <button type="button" class="link-button" @click="addRow()">Enter manually</button>
+                <span class="hint">{{ estimating ? stage : '↵ to estimate · paste or drop a photo' }}</span>
               </div>
-              <button type="button" class="link-button" @click="productOpen = true">＋ Product (real label)</button>
-              <button type="button" class="link-button" @click="addRow()">Enter manually</button>
-              <span class="hint">{{ estimating ? stage : '↵ to estimate · paste or drop a photo' }}</span>
-            </div>
-          </template>
+            </template>
 
-          <template v-else>
-            <div class="draft-head">
-              <span class="card-title">{{ editingId ? 'Edit' : 'New' }}</span>
-              <label class="meal-select small">
-                <span class="sr-only">Meal</span>
-                <select v-model="meal"><option v-for="option in meals" :key="option.value" :value="option.value">{{ option.label }}</option></select>
-              </label>
-            </div>
-            <table class="draft-table">
-              <thead><tr><th class="left">Item</th><th>{{ rows.some((row) => row.portions) ? "Amount" : "g" }}</th><th>kcal</th><th>P</th><th>C</th><th>F</th><th></th></tr></thead>
-              <tbody>
-                <tr v-for="row in rows" :key="row.key">
-                  <td class="left">
-                    <span class="confidence" :class="row.confidence" :title="row.confidence ? `${row.confidence} confidence` : 'entered by you'"></span>
-                    <input v-model="row.name" aria-label="Item name" />
-                  </td>
-                  <td v-if="row.portions" class="portions-cell">
-                    <div class="portion-stepper" :title="portionLabel(row.portions)">
-                      <button type="button" aria-label="Fewer portions" :disabled="row.portions <= PORTION_STEP" @click="setPortions(row, row.portions - PORTION_STEP)">−</button>
-                      <b>×{{ String(row.portions).replace('.', ',') }}</b>
-                      <button type="button" aria-label="More portions" @click="setPortions(row, row.portions + PORTION_STEP)">+</button>
-                    </div>
-                  </td>
-                  <td v-else><input type="number" min="0" step="5" :value="row.grams" aria-label="Grams" @input="setGrams(row, $event.target.value)" /></td>
-                  <td v-for="macro in MACROS" :key="macro">
-                    <input type="number" min="0" step="1" :value="row[macro]" :aria-label="macroLabels[macro]" @input="setMacro(row, macro, $event.target.value)" />
-                  </td>
-                  <td><button type="button" class="icon-button" aria-label="Remove item" @click="removeRow(row)">✕</button></td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th class="left"><button type="button" class="link-button" @click="addRow()">+ Add item</button><button type="button" class="link-button" @click="productOpen = true">+ Product</button></th>
-                  <td></td>
-                  <td v-for="macro in MACROS" :key="macro">{{ Math.round(draftTotals[macro]) }}</td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-            <p v-if="estimateNote" class="estimate-note">{{ estimateNote }}</p>
-            <div class="draft-actions">
-              <button type="button" class="primary-button" :disabled="saving || !hasNamedRow" @click="saveEntry">{{ saving ? 'Saving…' : editingId ? 'Save changes' : `Log ${mealName(meal).toLowerCase()}` }}</button>
-              <button type="button" class="ghost-button" @click="resetDraft">Cancel</button>
-              <button v-if="editingId" type="button" class="link-button danger push-right" @click="removeEntry(editingEntry)">Delete meal</button>
-            </div>
-          </template>
-          <p v-if="logError" class="error" role="alert">{{ logError }}</p>
-        </article>
-
-        <div class="meal-grid">
-          <article v-for="group in mealGroups" :key="group.value" class="card meal-tile" :class="{ 'is-empty': !group.entries.length, current: !rows.length && meal === group.value }">
-            <header>
-              <h3>{{ group.label }}</h3>
-              <button type="button" class="add-button" :aria-label="`Add to ${group.label.toLowerCase()}`" :title="`Add to ${group.label.toLowerCase()}`" @click="startMeal(group.value)">+</button>
-            </header>
-            <button v-if="!group.entries.length" type="button" class="empty-slot" @click="startMeal(group.value)">Nothing logged</button>
-            <div v-else class="item col-head" aria-hidden="true">
-              <span></span><span>kcal</span><span class="protein">P</span><span class="carbs">C</span><span class="fat">F</span><span></span>
-            </div>
-            <div v-for="entry in group.entries" :key="entry.id" class="entry" :class="{ editing: editingId === entry.id, 'just-logged': justLoggedId === entry.id }"
-              role="button" tabindex="0" :title="'Click to edit'" @click="editEntry(entry)" @keydown.enter="editEntry(entry)">
-              <div v-for="item in entry.items" :key="item.id" class="item">
-                <span class="item-name" :title="itemAmount(item) ? `${item.name} · ${itemAmount(item)}` : item.name">{{ item.name }}<small v-if="itemAmount(item)">{{ itemAmount(item) }}</small></span>
-                <span class="num">{{ Math.round(item.kcal) }}</span>
-                <span class="num">{{ grams(item.protein_g) }}</span>
-                <span class="num">{{ grams(item.carbs_g) }}</span>
-                <span class="num">{{ grams(item.fat_g) }}</span>
-                <button type="button" class="star" :class="{ saved: isSaved(item), 'just-saved': justStarred === item.name }" :title="isSaved(item) ? 'In saved foods' : 'Save as a staple'"
-                  :aria-label="`Save ${item.name} as a staple`" :disabled="isSaved(item)" @click.stop="saveStaple(item)">{{ isSaved(item) ? '★' : '☆' }}</button>
+            <template v-else>
+              <div class="draft-head">
+                <span class="card-title">{{ editingId ? 'Edit' : 'New' }}</span>
+                <label class="meal-select small">
+                  <span class="sr-only">Meal</span>
+                  <select v-model="meal"><option v-for="option in meals" :key="option.value" :value="option.value">{{ option.label }}</option></select>
+                </label>
               </div>
-              <span v-if="entry.source === 'photo'" class="badge">photo</span>
-            </div>
-            <div v-if="group.entries.length" class="item total-row">
-              <span>Total</span>
-              <span class="num">{{ fmt(group.kcal) }}</span>
-              <span class="num protein">{{ grams(group.protein) }}</span>
-              <span class="num carbs">{{ grams(group.carbs) }}</span>
-              <span class="num fat">{{ grams(group.fat) }}</span>
-              <span></span>
-            </div>
+              <table class="draft-table">
+                <thead><tr><th class="left">Item</th><th>{{ rows.some((row) => row.portions) ? "Amount" : "g" }}</th><th>kcal</th><th>P</th><th>C</th><th>F</th><th></th></tr></thead>
+                <tbody>
+                  <tr v-for="row in rows" :key="row.key">
+                    <td class="left">
+                      <span class="confidence" :class="row.confidence" :title="row.confidence ? `${row.confidence} confidence` : 'entered by you'"></span>
+                      <input v-model="row.name" aria-label="Item name" />
+                    </td>
+                    <td v-if="row.portions" class="portions-cell">
+                      <div class="portion-stepper" :title="portionLabel(row.portions)">
+                        <button type="button" aria-label="Fewer portions" :disabled="row.portions <= PORTION_STEP" @click="setPortions(row, row.portions - PORTION_STEP)">−</button>
+                        <b>×{{ String(row.portions).replace('.', ',') }}</b>
+                        <button type="button" aria-label="More portions" @click="setPortions(row, row.portions + PORTION_STEP)">+</button>
+                      </div>
+                    </td>
+                    <td v-else><input type="number" min="0" step="5" :value="row.grams" aria-label="Grams" @input="setGrams(row, $event.target.value)" /></td>
+                    <td v-for="macro in MACROS" :key="macro">
+                      <input type="number" min="0" step="1" :value="row[macro]" :aria-label="macroLabels[macro]" @input="setMacro(row, macro, $event.target.value)" />
+                    </td>
+                    <td><button type="button" class="icon-button" aria-label="Remove item" @click="removeRow(row)">✕</button></td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th class="left"><button type="button" class="link-button" @click="addRow()">+ Add item</button><button type="button" class="link-button" @click="productOpen = true">+ Product</button></th>
+                    <td></td>
+                    <td v-for="macro in MACROS" :key="macro">{{ Math.round(draftTotals[macro]) }}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+              <p v-if="estimateNote" class="estimate-note">{{ estimateNote }}</p>
+              <div class="draft-actions">
+                <button type="button" class="primary-button" :disabled="saving || !hasNamedRow" @click="saveEntry">{{ saving ? 'Saving…' : editingId ? 'Save changes' : `Log ${mealName(meal).toLowerCase()}` }}</button>
+                <button type="button" class="ghost-button" @click="resetDraft">Cancel</button>
+                <button v-if="editingId" type="button" class="link-button danger push-right" @click="removeEntry(editingEntry)">Delete meal</button>
+              </div>
+            </template>
+            <p v-if="logError" class="error" role="alert">{{ logError }}</p>
           </article>
+
+          <FoodMealList :groups="mealGroups" :current="rows.length ? '' : meal" :editing-id="editingId" :just-logged-id="justLoggedId"
+            :just-starred="justStarred" :is-saved="isSaved" @start="startMeal" @edit="editEntry" @star="saveStaple" />
+          <FoodWeekCard v-if="day" :week="day.week" :summary="day.week_summary" :selected="selectedDay" @pick="setDay" />
         </div>
-      </div>
 
-      <aside class="side">
-        <MealIdeas v-if="isToday && day?.target" :date="selectedDay" :eaten-kcal="day.totals.kcal" :eaten="eatenNames"
-          :training="trainingLine" :meal="meal" @use="useIdea" />
-
-        <article v-if="day?.planned_week" class="card plan-card" aria-label="This week's targets">
-          <div class="card-title">This week's targets</div>
-          <p v-if="day.planned_week.hint" class="eat-more" role="status"><strong>Eat more this week.</strong> {{ day.planned_week.hint.replace(/^This week needs more food: /, '') }}</p>
-          <ul class="plan-days">
-            <li v-for="item in day.planned_week.days" :key="item.date" :class="{ selected: item.date === selectedDay, past: item.date < todayKey() }"
-              :title="item.sessions.join(', ') || 'No session planned'">
-              <span class="plan-day">{{ weekday(item.date) }}</span>
-              <span class="plan-kind" :class="item.kind">{{ item.label }}</span>
-              <span class="plan-kcal">{{ item.target_kcal ? fmt(item.target_kcal) : '—' }}<small> kcal</small></span>
-              <span class="plan-carbs">{{ item.carbs_g ?? '—' }}<small> g carbs</small></span>
-            </li>
-          </ul>
-          <p class="fine">{{ planNote }}</p>
-        </article>
-
-        <article class="card week-card">
-          <div class="card-title">Last 7 days</div>
-          <div v-if="day" class="week-bars" role="list">
-            <button v-for="item in day.week" :key="item.date" type="button" role="listitem" class="week-day"
-              :class="{ selected: item.date === selectedDay, unlogged: !item.logged }" :title="weekTitle(item)" @click="setDay(item.date)">
-              <span class="week-value">{{ item.logged ? kShort(item.eaten.kcal) : '—' }}</span>
-              <div class="week-track">
-                <i v-if="item.target_kcal" class="target-line" :style="{ bottom: `${barHeight(item.target_kcal)}%` }"></i>
-                <i v-if="item.logged" v-fill:height="{ value: barHeight(item.eaten.kcal), key: `food-week:${item.date}` }" class="eaten" :class="intakeTone(item.eaten.kcal, item.target_kcal, item.finished)"></i>
-              </div>
-              <span class="week-label">{{ weekday(item.date) }}</span>
-              <small class="week-train" :class="{ none: !item.training_kcal }">{{ item.training_kcal ? `+${item.training_kcal}` : '·' }}</small>
-            </button>
-          </div>
-          <ul class="week-legend">
-            <li><i class="sw eaten"></i>Eaten</li>
-            <li><i class="sw line"></i>Day's burn</li>
-            <li><b>+N</b> training kcal</li>
-          </ul>
-          <div v-if="day?.week_summary.logged_days" class="week-stats">
-            <div><span class="tile-label">Under-fuelled</span><strong>{{ day.week_summary.under_days }}<small>/{{ day.week_summary.logged_days }} days</small></strong></div>
-            <div><span class="tile-label">Avg gap</span><strong :class="{ under: day.week_summary.avg_gap_kcal < 0 }">{{ signed(day.week_summary.avg_gap_kcal) }}<small> kcal</small></strong></div>
-            <div><span class="tile-label">Avg protein</span><strong>{{ day.week_summary.avg_protein_g }}<small> g</small></strong></div>
-          </div>
-          <p v-else class="fine">Log a few full days to see your pattern. Unlogged days are left out, not counted as zero.</p>
-        </article>
-
-        <article class="card profile-card">
-          <button type="button" class="profile-toggle" :aria-expanded="profileOpen" @click="profileOpen = !profileOpen">
-            <span class="card-title">Body profile</span>
-            <span class="profile-summary">{{ profileSummary }}</span>
-            <span aria-hidden="true">{{ profileOpen ? '▴' : '▾' }}</span>
-          </button>
-          <form v-if="profileOpen" class="profile-form" @submit.prevent="saveProfile">
-            <label>Sex<select v-model="profile.sex"><option :value="null" disabled>—</option><option value="male">Male</option><option value="female">Female</option></select></label>
-            <label>Born<input v-model.number="profile.birth_year" type="number" min="1920" max="2015" placeholder="1995" /></label>
-            <label>Height<input v-model.number="profile.height_cm" type="number" min="120" max="230" placeholder="cm" /></label>
-            <label>Daily life<select v-model="profile.daily_life"><option value="desk">Desk</option><option value="mixed">Mixed</option><option value="on_feet">On feet</option></select></label>
-            <label>Goal<select v-model="profile.goal"><option value="maintain">Maintain</option><option value="gain">Gain (+300)</option></select></label>
-            <button type="submit" class="ghost-button" :disabled="profileSaving">{{ profileSaving ? 'Saving…' : 'Save' }}</button>
-            <p class="fine">Weight from your latest weigh-in{{ day?.weight ? ` (${day.weight.kg} kg)` : '' }}. Training burn uses recorded calories, then power, then a duration estimate.</p>
-          </form>
-        </article>
-      </aside>
-    </section>
+        <aside v-if="showIdeas" class="side">
+          <MealIdeas v-if="showIdeas" :date="selectedDay" :eaten-kcal="day.totals.kcal" :eaten="eatenNames"
+            :training="trainingLine" :meal="meal" @use="useIdea" />
+        </aside>
+      </section>
     </template>
   </div>
 </template>
@@ -272,10 +158,14 @@ import RecipeLibrary from '../components/RecipeLibrary.vue'
 import ProductLibrary from '../components/ProductLibrary.vue'
 import ProductDialog from '../components/ProductDialog.vue'
 import MealIdeas from '../components/MealIdeas.vue'
-import AnimatedNumber from '../components/AnimatedNumber.vue'
+import FoodDaySummary from '../components/FoodDaySummary.vue'
+import FoodMealList from '../components/FoodMealList.vue'
+import FoodWeekCard from '../components/FoodWeekCard.vue'
+import NutritionProfileDialog from '../components/NutritionProfileDialog.vue'
 import { defaultGrams, productLabel, scalePer100 } from '../food/products.mjs'
 import { readPhoto as downscalePhoto } from '../food/photo.mjs'
-import { MACROS, PORTION_STEP, defaultMeal, draftRow, intakeTone, portionLabel, rowsToItems, setGrams, setMacro, setPortions, sumRows } from '../food/draft.mjs'
+import { MACROS, PORTION_STEP, defaultMeal, draftRow, portionLabel, rowsToItems, setGrams, setMacro, setPortions, sumRows } from '../food/draft.mjs'
+import '../food/food.css'
 
 const api = useApi()
 const meals = [
@@ -286,6 +176,12 @@ const meals = [
   { value: 'snack', label: 'Snack' },
 ]
 const macroLabels = { kcal: 'Calories', protein_g: 'Protein grams', carbs_g: 'Carb grams', fat_g: 'Fat grams' }
+// Three places: the day you log, the week you plan, and the things you reuse.
+const tabs = [
+  { value: 'log', label: 'Log' },
+  { value: 'week', label: 'Week' },
+  { value: 'library', label: 'Library' },
+]
 
 const todayKey = () => format(new Date(), 'yyyy-MM-dd')
 const selectedDay = ref(todayKey())
@@ -310,98 +206,47 @@ const textBox = ref(null)
 const route = useRoute()
 const productOpen = ref(false)
 const router = useRouter()
-const view = computed(() => (['dinners', 'recipes', 'products'].includes(route.query.view) ? route.query.view : 'log'))
-const setView = (next) => router.replace({ query: { ...route.query, view: next === 'log' ? undefined : next } })
+// Old links (?view=dinners|recipes|products) still land in the right place.
+const legacyViews = { dinners: 'week', recipes: 'library', products: 'library' }
+const view = computed(() => {
+  const value = legacyViews[route.query.view] || route.query.view
+  return ['week', 'library'].includes(value) ? value : 'log'
+})
+const libraryKind = computed(() => (route.query.kind === 'products' || route.query.view === 'products' ? 'products' : 'recipes'))
+const setView = (next) => router.replace({ query: { ...route.query, view: next === 'log' ? undefined : next, kind: undefined } })
+const setKind = (kind) => router.replace({ query: { ...route.query, view: 'library', kind: kind === 'products' ? kind : undefined } })
 const savedQuery = ref('')
 const savedOpen = ref(false)
 const profile = reactive({ sex: null, birth_year: null, height_cm: null, daily_life: 'mixed', goal: 'maintain' })
 const profileSaving = ref(false)
 const profileOpen = ref(false)
-const ringLength = 2 * Math.PI * 52
+const profileError = ref('')
 let pollTimer
 let disposed = false
 
 const isToday = computed(() => selectedDay.value === todayKey())
 const dayLabel = computed(() => (isToday.value ? 'Today' : format(parseISO(selectedDay.value), 'EEE d MMM')))
-const eyebrow = computed(() => format(parseISO(selectedDay.value), 'EEEE, d MMMM'))
+const eyebrow = computed(() => {
+  if (view.value === 'week') return 'Dinners and daily targets'
+  if (view.value === 'library') return 'Recipes and products'
+  return format(parseISO(selectedDay.value), 'EEEE, d MMMM')
+})
 const mealName = (value) => meals.find((option) => option.value === value)?.label || 'meal'
-const itemAmount = (item) => (item.portions ? portionLabel(item.portions) : item.grams ? `${Math.round(item.grams)} g` : '')
-// Whole grams, but keep one decimal under 10 g so small amounts don't read as zero.
-const grams = (value) => {
-  const n = Number(value) || 0
-  return n > 0 && n < 10 ? String(Math.round(n * 10) / 10) : String(Math.round(n))
-}
-const kShort = (kcal) => (kcal >= 1000 ? `${(kcal / 1000).toFixed(1)}k` : String(Math.round(kcal)))
-const signed = (value) => (value == null ? '—' : `${value > 0 ? '+' : value < 0 ? '−' : ''}${fmt(Math.abs(value))}`)
 const draftTotals = computed(() => sumRows(rows.value))
 const hasNamedRow = computed(() => rows.value.some((row) => row.name.trim()))
 const fmt = (value) => Math.round(Number(value) || 0).toLocaleString('en-US')
-const weekday = (key) => format(parseISO(key), 'EEEEEE')
 
-const dayTone = computed(() => intakeTone(day.value?.totals.kcal || 0, day.value?.target?.kcal, !isToday.value))
-const gapLine = computed(() => {
-  const target = day.value?.target?.kcal
-  if (!target) return ''
-  const left = Math.round(target - day.value.totals.kcal)
-  if (left <= 0) return `Covered the day's burn${left < 0 ? ` (+${fmt(-left)} kcal)` : ''}.`
-  return isToday.value ? `${fmt(left)} kcal still to eat today.` : `${fmt(left)} kcal under what the day burned.`
-})
 const editingEntry = computed(() => day.value?.entries.find((entry) => entry.id === editingId.value))
-const intakeShare = computed(() => (day.value?.target ? Math.min(1, day.value.totals.kcal / day.value.target.kcal) : 0))
-const macroTiles = computed(() => {
-  const totals = day.value?.totals
-  if (!totals) return []
-  const proteinTarget = day.value.protein_target_g
-  const carbsTarget = day.value.target?.carbs_g
-  const share = (grams, perGram) => (totals.kcal ? Math.round((grams * perGram / totals.kcal) * 100) : 0)
-  return [
-    {
-      key: 'protein', label: 'Protein', value: Math.round(totals.protein_g), unit: proteinTarget ? ` / ${proteinTarget} g` : ' g',
-      fill: proteinTarget ? Math.min(100, (totals.protein_g / proteinTarget) * 100) : 0,
-      tone: proteinTarget && totals.protein_g >= proteinTarget ? 'good' : 'protein',
-      hint: proteinTarget ? (totals.protein_g >= proteinTarget ? 'Target reached' : `${Math.round(proteinTarget - totals.protein_g)} g to go`) : 'Log a weigh-in for a target',
-    },
-    carbsTarget
-      ? {
-          key: 'carbs', label: 'Carbs', value: Math.round(totals.carbs_g), unit: ` / ${carbsTarget} g`,
-          fill: Math.min(100, (totals.carbs_g / carbsTarget) * 100), tone: totals.carbs_g >= carbsTarget ? 'good' : 'carbs',
-          hint: `${dayKindLabel.value} target · ${share(totals.carbs_g, 4)}% of calories`,
-        }
-      : { key: 'carbs', label: 'Carbs', value: Math.round(totals.carbs_g), unit: ' g', fill: share(totals.carbs_g, 4), tone: 'carbs', hint: `${share(totals.carbs_g, 4)}% of calories` },
-    { key: 'fat', label: 'Fat', value: Math.round(totals.fat_g), unit: ' g', fill: share(totals.fat_g, 9), tone: 'fat', hint: `${share(totals.fat_g, 9)}% of calories` },
-  ]
-})
-const burnSegments = computed(() => {
-  const target = day.value?.target
-  if (!target) return []
-  return [
-    { key: 'resting', label: 'Resting', kcal: target.resting },
-    { key: 'life', label: 'Daily life', kcal: target.daily_life },
-    { key: 'training', label: 'Training', kcal: target.training, title: trainingTitle.value },
-    { key: 'surplus', label: 'Gain', kcal: target.surplus },
-  ].filter((segment) => segment.kcal > 0)
-})
 const profileSummary = computed(() => {
   const value = day.value?.profile
   if (!day.value?.profile_ready || !value) return 'Needed for a calorie target'
   const life = { desk: 'desk', mixed: 'mixed', on_feet: 'on feet' }[value.daily_life]
   return `${value.height_cm} cm · ${new Date().getFullYear() - value.birth_year} y · ${life} · ${value.goal === 'gain' ? 'gain' : 'maintain'}`
 })
-const trainingTitle = computed(() => {
-  if (day.value?.target?.training_planned) return `Planned session estimate: ${fmt(day.value.target.training)} kcal`
-  return (day.value?.exercise.activities || [])
-    .map((activity) => `${activity.name || activity.type}: ${activity.kcal} kcal (${activity.basis})`).join('\n') || 'No training logged'
-})
 const dayKindLabel = computed(() => day.value?.planned_week?.days.find((item) => item.date === selectedDay.value)?.label || 'Day')
-const planNote = computed(() => {
-  const week = day.value?.planned_week
-  if (!week) return ''
-  const hours = week.planned_ride_hours != null ? `${week.planned_ride_hours} h riding planned` : 'No rides planned'
-  const recent = week.recent_ride_hours != null ? ` · ${week.recent_ride_hours} h/week lately` : ''
-  const base = week.lighter ? ' Lighter week: targets stay at your baseline or above.' : ''
-  return `${hours}${recent}. Targets add planned training to your baseline; carbs by day kind.${base}`
-})
 
+// Ideas only make sense for today with a target; other days get the full width.
+const showIdeas = computed(() => isToday.value && Boolean(day.value?.target))
 const eatenNames = computed(() => (day.value?.entries || []).flatMap((entry) => entry.items.map((item) => item.name)))
 const trainingLine = computed(() => (day.value?.exercise.activities || []).map((activity) => `${activity.name || activity.type} (${activity.kcal} kcal)`).join(', '))
 
@@ -417,21 +262,6 @@ const mealGroups = computed(() => meals.map((option) => {
   }
 }))
 
-const weekMax = computed(() => 1.08 * Math.max(1, ...(day.value?.week || []).flatMap((item) => [item.eaten.kcal, item.target_kcal || 0])))
-const barHeight = (kcal) => Math.min(100, ((kcal || 0) / weekMax.value) * 100)
-const weekTitle = (item) => item.logged
-  ? `${item.date}: ate ${fmt(item.eaten.kcal)} kcal${item.target_kcal ? ` of ${fmt(item.target_kcal)}` : ''}, ${Math.round(item.eaten.protein_g)} g protein`
-  : `${item.date}: not logged`
-const weekSummary = computed(() => {
-  const summary = day.value?.week_summary
-  if (!summary?.logged_days) return 'Log a few full days to see your pattern.'
-  const parts = [`Under-fuelled on ${summary.under_days} of ${summary.logged_days} logged ${summary.logged_days === 1 ? 'day' : 'days'}`]
-  if (summary.training_under_days) parts.push(`${summary.training_under_days} of them training days`)
-  const gap = summary.avg_gap_kcal
-  const gapText = gap == null ? '' : ` Average ${gap < 0 ? `${fmt(-gap)} kcal short` : `${fmt(gap)} kcal over`}, ${summary.avg_protein_g} g protein.`
-  return `${parts.join(', ')}.${gapText}`
-})
-
 const savedMatches = computed(() => {
   const query = savedQuery.value.trim().toLowerCase()
   return saved.value.filter((food) => !query || food.name.toLowerCase().includes(query)).slice(0, 8)
@@ -444,7 +274,6 @@ async function loadDay() {
     if (disposed) return
     day.value = data
     Object.assign(profile, data.profile)
-    if (!data.profile_ready) profileOpen.value = true
     loadError.value = ''
   } catch (error) {
     loadError.value = error?.response?.data?.detail || 'Food log could not load.'
@@ -659,12 +488,13 @@ async function saveStaple(item) {
 }
 async function saveProfile() {
   profileSaving.value = true
+  profileError.value = ''
   try {
     await api.updateNutritionProfile({ ...profile })
     await loadDay()
     if (day.value?.profile_ready) profileOpen.value = false
   } catch (error) {
-    logError.value = error?.response?.data?.detail?.[0]?.msg || error?.response?.data?.detail || 'Profile could not be saved.'
+    profileError.value = error?.response?.data?.detail?.[0]?.msg || error?.response?.data?.detail || 'Profile could not be saved.'
   } finally {
     profileSaving.value = false
   }
@@ -683,74 +513,21 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.food-page { --protein: var(--accent-strong); --carbs: var(--z2); --fat: var(--strength); }
-.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-.page-head .page-title { margin-bottom: 0; }
-.day-nav { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; }
-.day-nav button { border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; padding: 7px 12px; cursor: pointer; }
-.day-nav button + button { border-left: 1px solid var(--border); }
-.day-nav button:disabled { color: var(--muted); cursor: default; }
-.day-nav .day-now { min-width: 96px; font-weight: 600; }
-.day-nav .day-now:disabled { color: var(--text); }
-.page-head .view-tabs { margin-left: auto; }
-.view-tabs { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--border); border-radius: 12px; }
-.view-tabs button { padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: 600 13px var(--font-display); cursor: pointer; }
-.view-tabs button.active { background: var(--surface2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+.food-head { display: flex; align-items: flex-end; gap: 20px; margin-bottom: 18px; }
+.food-head .page-title { margin-bottom: 0; }
+.page-tabs { margin-left: 12px; margin-bottom: 2px; }
+.head-tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .load-error { color: var(--danger); margin-bottom: 16px; }
 
-.tile-label { display: block; color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
-.fine { color: var(--muted); font-size: 12px; margin: 10px 0 0; line-height: 1.45; }
-
-/* Summary strip */
-.summary { display: grid; grid-template-columns: auto 1.5fr 1fr; gap: 32px; align-items: center; margin-bottom: 16px; padding: 20px 26px; }
-.intake { display: flex; align-items: center; gap: 18px; }
-.ring { width: 104px; height: 104px; flex: 0 0 auto; }
-.ring circle { fill: none; stroke-width: 11; }
-.ring-track { stroke: var(--surface3); }
-.ring-fill { stroke: var(--accent); stroke-linecap: round; transition: stroke var(--motion-duration-base) var(--motion-ease-standard); }
-.ring-fill.good { stroke: var(--success); }
-.ring-fill.close { stroke: var(--warning); }
-.ring-fill.under { stroke: var(--danger); }
-.intake-copy strong { display: block; font-family: var(--font-display); font-size: 38px; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-.intake-copy > span { color: var(--muted); font-size: 13px; }
-.gap { margin: 8px 0 0; font-size: 13px; color: var(--text-soft); }
-.gap.under { color: var(--danger); }
-.gap.good { color: var(--success); }
-
-.macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.macro { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
-.tile-value { margin: 6px 0 8px; }
-.tile-value strong { font-family: var(--font-display); font-size: 24px; font-variant-numeric: tabular-nums; }
-.tile-value small { color: var(--muted); font-size: 13px; }
-.mini-bar { height: 4px; border-radius: 999px; background: var(--surface3); overflow: hidden; }
-.mini-bar i { display: block; height: 100%; border-radius: inherit; }
-.mini-bar .protein { background: var(--protein); }
-.mini-bar .good { background: var(--success); }
-.mini-bar .carbs { background: var(--carbs); }
-.mini-bar .fat { background: var(--fat); }
-.tile-hint { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
-
-.burn-total { margin: 6px 0 10px; }
-.burn-total strong { font-family: var(--font-display); font-size: 24px; font-variant-numeric: tabular-nums; }
-.burn-total small { color: var(--muted); font-size: 13px; margin-left: 4px; }
-.burn-bar { display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden; }
-.burn-bar i { display: block; min-width: 4px; }
-.resting { background: var(--muted); opacity: .55; }
-.life { background: var(--carbs); opacity: .75; }
-.training { background: var(--ride); }
-.surplus { background: var(--fat); }
-.burn-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; list-style: none; margin: 10px 0 0; padding: 0; font-size: 12px; color: var(--muted); }
-.burn-legend li { display: flex; align-items: center; gap: 5px; }
-.burn-legend i { width: 8px; height: 8px; border-radius: 2px; }
-.burn-legend b { color: var(--text-soft); font-weight: 600; font-variant-numeric: tabular-nums; }
-
-/* Main grid */
-.food-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+.food-page :deep(.summary) { margin-bottom: 16px; }
+.food-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; }
+.food-grid.solo { grid-template-columns: minmax(0, 1fr); }
 .main-col, .side { display: grid; gap: 16px; }
+.main-col { align-content: start; }
 
-.logger { padding: 14px; overflow: visible; }
+.logger { padding: 12px; overflow: visible; }
 .logger.dragging { outline: 2px dashed var(--accent); outline-offset: -6px; }
-.logger.drafting { padding: 18px 20px; }
+.logger.drafting { padding: 16px 18px; }
 .logbar { display: flex; align-items: flex-start; gap: 8px; padding: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; transition: border-color .15s; }
 .logbar:focus-within { border-color: var(--accent); }
 .meal-select { position: relative; flex: 0 0 auto; }
@@ -767,17 +544,8 @@ onUnmounted(() => {
 .icon-action:hover { background: var(--surface3); color: var(--text); }
 .icon-action svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
 .icon-action input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.logbar .primary-button { height: 34px; }
 .logbar-sub { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 0 4px; }
 .hint { margin-left: auto; color: var(--muted); font-size: 12px; }
-.primary-button { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 8px; padding: 0 16px; min-height: 32px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
-.primary-button:disabled { opacity: .45; cursor: default; }
-.ghost-button { border: 1px solid var(--border-strong); background: transparent; color: var(--text); border-radius: 8px; padding: 0 12px; min-height: 32px; font: inherit; font-size: 13px; cursor: pointer; }
-.ghost-button:disabled { opacity: .45; cursor: default; }
-.link-button { border: 0; background: none; color: var(--accent-strong); font: inherit; font-size: 13px; cursor: pointer; padding: 2px 4px; }
-.link-button.danger { color: var(--danger); }
-.push-right { margin-left: auto; }
-.icon-button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 6px; }
 .saved-picker { position: relative; }
 .saved-picker input { width: 170px; height: 28px; background: transparent; border: 1px solid var(--border); border-radius: 7px; color: var(--text); font: inherit; font-size: 12px; padding: 0 10px; }
 .saved-picker input:focus { outline: none; border-color: var(--accent); }
@@ -786,7 +554,7 @@ onUnmounted(() => {
 .saved-list button:hover { background: var(--surface3); }
 .saved-list small, .saved-empty { color: var(--muted); font-size: 11px; }
 .saved-empty { padding: 8px; }
-.error { color: var(--danger); font-size: 13px; margin: 8px 4px 0; }
+.logger .error { margin: 8px 4px 0; }
 .estimate-note { margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--surface2); color: var(--text-soft); font-size: 12px; }
 
 .draft-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -814,108 +582,14 @@ onUnmounted(() => {
 .confidence.medium { background: var(--warning); }
 .confidence.low { background: var(--danger); }
 
-.meal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.meal-tile { padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
-.meal-tile.current { box-shadow: var(--shadow-card), inset 0 0 0 1px var(--border-strong); }
-.meal-tile header { display: flex; align-items: center; gap: 10px; }
-.meal-tile h3 { margin: 0; font-size: 14px; font-weight: 650; }
-.meal-tile.is-empty h3 { color: var(--text-soft); }
-.add-button { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 7px; background: var(--surface2); color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
-.meal-tile .add-button { margin-left: auto; }
-.add-button:hover { background: var(--accent); color: var(--on-accent); }
-.empty-slot { border: 1px dashed var(--border-strong); background: none; border-radius: 10px; color: var(--muted); font: inherit; font-size: 12px; padding: 12px; cursor: pointer; text-align: center; }
-.empty-slot:hover { color: var(--text-soft); border-color: var(--muted); }
-.entry { position: relative; margin: 0 -8px; padding: 4px 8px; border-radius: 10px; cursor: pointer; transition: background .12s; }
-.entry + .entry { margin-top: 2px; }
-.entry:hover, .entry:focus-visible { background: var(--surface2); outline: none; }
-.entry.editing { background: var(--surface2); box-shadow: inset 3px 0 0 var(--accent); }
-.entry.just-logged { animation: entry-logged 1200ms var(--motion-ease-standard); }
-@keyframes entry-logged {
-  0% { background: color-mix(in srgb, var(--accent) 18%, transparent); transform: translateX(var(--motion-distance-xs)); }
-  25% { transform: none; }
-  100% { background: transparent; }
-}
-.star.just-saved { animation: star-pop 500ms var(--motion-ease-emphasized); }
-@keyframes star-pop { 0% { transform: scale(1); } 40% { transform: scale(1.5) rotate(-12deg); } 100% { transform: scale(1); } }
-.item { display: grid; grid-template-columns: minmax(0, 1fr) 40px 34px 34px 34px 16px; align-items: baseline; gap: 6px; padding: 4px 0; font-size: 13px; }
-.col-head { padding: 2px 0 0; color: var(--muted); font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
-.col-head span { text-align: right; }
-.protein { color: var(--protein); }
-.carbs { color: var(--carbs); }
-.fat { color: var(--fat); }
-.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-soft); }
-.total-row { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); font-weight: 650; }
-.total-row > span:first-child { color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
-.total-row .num:not(.protein):not(.carbs):not(.fat) { color: var(--text); }
-.item-name { line-height: 1.35; overflow-wrap: anywhere; }
-.item-name small { white-space: nowrap; }
-.item-name small { margin-left: 6px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-.star { border: 0; background: none; padding: 0; color: var(--muted); font-size: 12px; cursor: pointer; opacity: 0; transition: opacity .12s; }
-.star.saved { opacity: 1; color: var(--warning); cursor: default; }
-.entry:hover .star, .entry:focus-within .star { opacity: 1; }
-.badge { display: inline-block; margin-top: 2px; padding: 0 7px; border-radius: 999px; background: var(--surface3); color: var(--muted); font-size: 10px; line-height: 16px; }
-
-/* Week */
-.plan-days { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
-.plan-days li { display: grid; grid-template-columns: 26px 1fr auto auto; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 8px; font-size: 12px; }
-.plan-days li.selected { background: var(--surface2); box-shadow: inset 0 0 0 1px var(--border-strong); }
-.plan-days li.past { opacity: .55; }
-.plan-day { font-weight: 600; }
-.plan-kind { justify-self: start; padding: 1px 8px; border-radius: 999px; background: var(--surface3); color: var(--text-soft); font-size: 11px; }
-.plan-kind.key_ride, .plan-kind.long_ride { color: var(--ride); box-shadow: inset 0 0 0 1px currentColor; background: none; }
-.plan-kind.lift { color: var(--text); }
-.plan-kcal, .plan-carbs { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
-.plan-days small { color: var(--muted); font-weight: 400; font-size: 10px; }
-.eat-more { margin: 6px 0 8px; padding: 8px 10px; border-radius: 8px; background: var(--surface2); box-shadow: inset 3px 0 0 var(--warning); font-size: 12px; line-height: 1.45; color: var(--text-soft); }
-.eat-more strong { color: var(--text); }
-.week-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 4px; }
-.week-day { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; color: var(--text-soft); font: inherit; cursor: pointer; padding: 6px 0; border-radius: 8px; }
-.week-day:hover { background: var(--surface2); }
-.week-day.selected { background: var(--surface2); box-shadow: inset 0 0 0 1px var(--border-strong); }
-.week-value { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.week-day.unlogged .week-value { color: var(--muted); font-weight: 400; }
-.week-track { position: relative; width: 20px; height: 120px; background: var(--surface3); border-radius: 6px; overflow: hidden; }
-.week-day.unlogged .week-track { opacity: .45; }
-.week-track .eaten { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 6px 6px 0 0; background: var(--accent); }
-.week-track .eaten.good { background: var(--success); }
-.week-track .eaten.close { background: var(--warning); }
-.week-track .eaten.under { background: var(--danger); }
-.week-track .target-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--text); opacity: .85; z-index: 1; }
-.week-label { font-size: 12px; font-weight: 600; }
-.week-train { font-size: 10px; color: var(--ride); font-variant-numeric: tabular-nums; }
-.week-train.none { color: var(--muted); opacity: .5; }
-.week-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; list-style: none; margin: 10px 0 0; padding: 0; color: var(--muted); font-size: 11px; }
-.week-legend li { display: flex; align-items: center; gap: 5px; }
-.week-legend b { color: var(--ride); font-weight: 600; }
-.sw { display: inline-block; width: 10px; }
-.sw.eaten { height: 8px; border-radius: 2px; background: var(--accent); }
-.sw.line { height: 2px; background: var(--text); }
-.week-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
-.week-stats strong { display: block; margin-top: 4px; font-family: var(--font-display); font-size: 19px; font-variant-numeric: tabular-nums; }
-.week-stats strong.under { color: var(--danger); }
-.week-stats small { color: var(--muted); font-size: 11px; font-weight: 400; }
-
-.profile-card { padding: 14px 20px; }
-.profile-toggle { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; color: var(--muted); font: inherit; padding: 0; cursor: pointer; text-align: left; }
-.profile-toggle .card-title { margin: 0; }
-.profile-summary { flex: 1; font-size: 12px; color: var(--text-soft); }
-.profile-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; align-items: end; }
-.profile-form label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 11px; }
-.profile-form input, .profile-form select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font: inherit; font-size: 13px; padding: 6px 8px; }
-.profile-form .fine { grid-column: 1 / -1; margin: 0; }
-
 @media (max-width: 1180px) {
-  .summary { grid-template-columns: auto 1fr; }
-  .burn { grid-column: 1 / -1; }
   .food-grid { grid-template-columns: 1fr; }
+  .food-head { flex-wrap: wrap; }
+  .page-tabs { margin-left: 0; }
 }
 @media (max-width: 700px) {
-  .summary { grid-template-columns: 1fr; gap: 18px; padding: 18px; }
-  .macros { gap: 6px; }
-  .macro { padding: 10px; }
   .hint { display: none; }
-  .meal-grid { grid-template-columns: 1fr; }
-  .star { opacity: 1; }
+  .head-tools { margin-left: 0; width: 100%; }
   .draft-table td.left input { min-width: 110px; }
   .draft-table input { width: 50px; }
   .saved-picker input { width: 150px; }

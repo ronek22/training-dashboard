@@ -1,11 +1,10 @@
 <template>
   <section class="product-library" aria-label="Products">
-    <div class="library-bar">
-      <input v-model="query" type="search" class="search" placeholder="Filter my products" aria-label="Filter products" />
-      <span class="count">{{ shown.length }} {{ shown.length === 1 ? 'product' : 'products' }}</span>
+    <div class="food-toolbar">
+      <input v-model="query" type="search" class="food-search" placeholder="Filter my products" aria-label="Filter products" />
+      <span class="toolbar-sub">{{ shown.length }} {{ shown.length === 1 ? 'product' : 'products' }}</span>
       <button type="button" class="primary-button push-right" @click="adding = true">+ Add product</button>
     </div>
-    <p class="intro">Packaged foods with real label values. Meal estimates, the food log and recipe ingredients use these numbers instead of guesses.</p>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
 
     <div v-if="loaded && !products.length" class="card empty-state">
@@ -38,7 +37,7 @@
           </tr>
         </tbody>
       </table>
-      <p class="fine">Values per 100 g.</p>
+      <p class="fine">Values per 100 g, from the label. Meal estimates, the food log and recipe ingredients use these instead of guesses.</p>
     </div>
 
     <ProductDialog :open="adding" submit-label="Save product" @close="adding = false" @pick="onAdded" />
@@ -110,16 +109,6 @@ load()
 </script>
 
 <style scoped>
-.library-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.search { width: 300px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font: inherit; font-size: 14px; padding: 8px 12px; }
-.search:focus { outline: none; border-color: var(--accent); }
-.count { color: var(--muted); font-size: 13px; }
-.push-right { margin-left: auto; }
-.intro { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
-.primary-button { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 9px; padding: 0 16px; min-height: 36px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
-.link-button { border: 0; background: none; color: var(--accent-strong); font: inherit; font-size: 13px; cursor: pointer; padding: 0; }
-.link-button.danger { color: var(--danger); }
-.error { color: var(--danger); font-size: 13px; }
 .empty-state { max-width: 560px; padding: 28px; }
 .empty-state strong { font: 650 18px var(--font-display); }
 .empty-state p { color: var(--text-soft); font-size: 14px; line-height: 1.55; margin: 8px 0 18px; }

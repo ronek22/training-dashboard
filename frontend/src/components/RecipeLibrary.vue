@@ -1,8 +1,8 @@
 <template>
   <section class="recipe-library" aria-label="Recipes">
-    <div class="library-bar">
-      <input v-model="query" type="search" class="search" placeholder="Search recipes" aria-label="Search recipes" @input="load" />
-      <span class="count">{{ recipes.length }} {{ recipes.length === 1 ? 'recipe' : 'recipes' }}</span>
+    <div class="food-toolbar">
+      <input v-model="query" type="search" class="food-search" placeholder="Search recipes" aria-label="Search recipes" @input="load" />
+      <span class="toolbar-sub">{{ recipes.length }} {{ recipes.length === 1 ? 'recipe' : 'recipes' }}</span>
       <button type="button" class="ghost-button push-right" @click="openNew('link')">Import from link</button>
       <button type="button" class="primary-button" @click="openNew('describe')">+ New recipe</button>
     </div>
@@ -74,14 +74,6 @@ load()
 </script>
 
 <style scoped>
-.library-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
-.search { width: 300px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font: inherit; font-size: 14px; padding: 8px 12px; }
-.search:focus { outline: none; border-color: var(--accent); }
-.count { color: var(--muted); font-size: 13px; }
-.push-right { margin-left: auto; }
-.primary-button { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 9px; padding: 0 16px; min-height: 36px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
-.ghost-button { border: 1px solid var(--border-strong); background: transparent; color: var(--text); border-radius: 9px; padding: 0 14px; min-height: 36px; font: inherit; font-size: 13px; cursor: pointer; }
-.error { color: var(--danger); font-size: 13px; }
 
 .empty-state { max-width: 560px; padding: 28px; }
 .empty-state strong { font: 650 18px var(--font-display); }
@@ -100,7 +92,7 @@ load()
 .planned { margin-top: auto; padding-top: 6px; color: var(--muted); font-size: 12px; }
 
 @media (max-width: 700px) {
-  .library-bar { flex-wrap: wrap; }
-  .search { width: 100%; }
+  .food-toolbar { flex-wrap: wrap; }
+  .food-search { width: 100%; }
 }
 </style>

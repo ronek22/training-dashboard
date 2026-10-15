@@ -1,0 +1,44 @@
+/* Shared pieces for every Food view: buttons, toolbars and segmented switches look the same on each tab. */
+.food-page {
+  --protein: var(--accent-strong);
+  --carbs: var(--z2);
+  --fat: var(--strength);
+}
+
+.food-page .primary-button { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 8px; padding: 0 16px; min-height: 34px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.food-page .ghost-button { border: 1px solid var(--border-strong); background: transparent; color: var(--text); border-radius: 8px; padding: 0 14px; min-height: 34px; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.food-page .ghost-button[aria-pressed='true'] { background: var(--surface2); border-color: var(--muted); }
+.food-page .primary-button:disabled, .food-page .ghost-button:disabled, .food-page .link-button:disabled { opacity: .45; cursor: default; }
+.food-page .link-button { border: 0; background: none; color: var(--accent-strong); font: inherit; font-size: 13px; cursor: pointer; padding: 2px 4px; }
+.food-page .link-button.danger { color: var(--danger); }
+.food-page .icon-button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 6px; }
+.food-page .push-right { margin-left: auto; }
+.food-page .error { color: var(--danger); font-size: 13px; margin: 8px 0 0; }
+.food-page .fine { color: var(--muted); font-size: 12px; margin: 10px 0 0; line-height: 1.45; }
+.food-page .tile-label { display: block; color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+
+/* The row under the page header: context on the left, actions on the right. */
+.food-page .food-toolbar { display: flex; align-items: center; gap: 12px; min-height: 36px; margin-bottom: 14px; }
+.food-page .food-toolbar .toolbar-title { font: 650 17px var(--font-display); }
+.food-page .food-toolbar .toolbar-sub { color: var(--muted); font-size: 13px; }
+.food-page .food-search { width: 280px; height: 34px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font: inherit; font-size: 13px; padding: 0 12px; }
+.food-page .food-search:focus { outline: none; border-color: var(--accent); }
+
+/* Pill switch used for the page tabs and smaller choices. */
+.food-page .food-seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: rgb(var(--panel-rgb) / .6); }
+.food-page .food-seg button { padding: 6px 14px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 600 13px var(--font-display); cursor: pointer; white-space: nowrap; }
+.food-page .food-seg button:hover { color: var(--text-soft); }
+.food-page .food-seg button.active { background: var(--surface2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+
+/* Prev / label / next stepper for days and weeks. */
+.food-page .stepper { display: inline-flex; height: 34px; border: 1px solid var(--border-strong); border-radius: 9px; overflow: hidden; }
+.food-page .stepper button { border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; padding: 0 11px; cursor: pointer; }
+.food-page .stepper button + button { border-left: 1px solid var(--border); }
+.food-page .stepper button:hover:not(:disabled) { background: var(--surface2); }
+.food-page .stepper button:disabled { color: var(--muted); cursor: default; }
+.food-page .stepper .stepper-now { min-width: 104px; font-weight: 600; }
+.food-page .stepper .stepper-now:disabled { color: var(--text); }
+
+.food-dialog-shell { position: fixed; inset: 0; z-index: 70; display: grid; place-items: start center; padding: 10vh 16px 16px; background: rgb(0 0 0 / .32); }
+.food-dialog { width: min(560px, 100%); padding: 22px 24px; border-radius: 16px; background: var(--surface-strong, var(--surface)); border: 1px solid var(--border); box-shadow: 0 24px 60px rgb(0 0 0 / .22); }
+.food-dialog h3 { margin: 0 0 4px; font: 650 19px var(--font-display); }

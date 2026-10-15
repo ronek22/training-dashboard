@@ -38,6 +38,9 @@
         </li>
         <li v-if="!shown.length" class="fine">Nothing in your foods fits this size. Ask Claude below.</li>
       </ul>
+      <button v-if="allIdeas.length > IDEA_LIMIT" type="button" class="more" @click="expanded = !expanded">
+        {{ expanded ? 'Show fewer' : `Show ${allIdeas.length - IDEA_LIMIT} more` }}
+      </button>
 
       <form class="ask" @submit.prevent="ask">
         <input v-model="note" maxlength="500" placeholder="Co masz pod ręką? (opcjonalnie)" aria-label="What food do you have at hand" />
@@ -83,7 +86,11 @@ const slot = computed(() => {
   const meals = ideas.value?.meals || []
   return meals.find((item) => item.meal === chosen.value) || meals.find((item) => item.meal === props.meal) || meals[0] || null
 })
-const shown = computed(() => [...(claudeIdeas.value[slot.value?.meal] || []), ...(slot.value?.ideas || [])])
+// Four ideas fill the card beside the meals; the rest are a click away.
+const IDEA_LIMIT = 4
+const expanded = ref(false)
+const allIdeas = computed(() => [...(claudeIdeas.value[slot.value?.meal] || []), ...(slot.value?.ideas || [])])
+const shown = computed(() => (expanded.value ? allIdeas.value : allIdeas.value.slice(0, IDEA_LIMIT)))
 const coverage = (idea) => Math.min(100, Math.round((idea.totals.kcal / (slot.value?.kcal || 1)) * 100))
 const itemLine = (idea) => idea.items.map((item) => (
   item.portions ? `${item.name} ×${String(item.portions).replace('.', ',')}` : item.grams ? `${item.name} ${Math.round(item.grams)} g` : item.name
@@ -169,7 +176,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.ideas-card { display: grid; gap: 12px; }
+.ideas-card { display: flex; flex-direction: column; gap: 12px; }
 .ideas-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .ideas-head .card-title { margin: 0; }
 .left { color: var(--muted); font-size: 12px; white-space: nowrap; }
@@ -201,7 +208,8 @@ onUnmounted(() => {
 .tag { font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .tag.claude { color: var(--accent-strong); }
 
-.ask { display: flex; gap: 6px; }
+.more { align-self: flex-start; margin-top: -4px; border: 0; background: none; color: var(--accent-strong); font: inherit; font-size: 12px; padding: 0; cursor: pointer; }
+.ask { display: flex; gap: 6px; margin-top: auto; }
 .ask input { flex: 1; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); color: var(--text); font: inherit; font-size: 12.5px; }
 .ask-button { border: 1px solid var(--border-strong); background: transparent; color: var(--text); border-radius: 8px; padding: 0 12px; min-height: 32px; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .ask-button:disabled { opacity: .5; cursor: default; }

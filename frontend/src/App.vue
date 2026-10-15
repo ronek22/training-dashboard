@@ -101,6 +101,7 @@
       </router-view>
     </main>
     <MobileNavigation />
+    <MilestoneCelebration />
     <CoachChatDrawer v-if="isMacLocal" />
   </div>
 </template>
@@ -114,6 +115,7 @@ import ThemeToggle from './components/ThemeToggle.vue'
 import CoachChatDrawer from './components/CoachChatDrawer.vue'
 import MobileNavigation from './components/MobileNavigation.vue'
 import WorkoutQuickAccess from './components/WorkoutQuickAccess.vue'
+import MilestoneCelebration from './components/MilestoneCelebration.vue'
 import { DATA_INBOX_CHANGED, badgeText } from './sync/data-inbox.mjs'
 
 const isMacLocal = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)

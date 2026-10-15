@@ -34,6 +34,7 @@ from .routers.weekly_reviews import router as weekly_reviews_router
 from .routers.weather import router as weather_router
 from .routers.nutrition import router as nutrition_router
 from .routers.records import router as records_router
+from .routers.milestones import router as milestones_router
 from .routers.session_brief import router as session_brief_router
 from .routers.what_worked import router as what_worked_router
 from .routers.return_to_run import router as return_to_run_router
@@ -189,6 +190,7 @@ app.include_router(weather_router)
 app.include_router(weekly_reviews_router)
 app.include_router(nutrition_router)
 app.include_router(records_router)
+app.include_router(milestones_router)
 app.include_router(session_brief_router)
 app.include_router(what_worked_router)
 app.include_router(return_to_run_router)

@@ -74,7 +74,7 @@ RECENT_DAYS = 30
 TOP_N = 3
 LIFT_MIN_SESSIONS = 3
 E1RM_MAX_REPS = 12
-STREAK_MILESTONES = (7, 14, 30, 50, 100, 200, 365)
+STREAK_MILESTONES = (7, 14, 30, 50, 100, 200, 300, 365)
 # Bodyweight movements: load is added weight, so a 1RM estimate is meaningless.
 BODYWEIGHT_TOKENS = ("pullup", "chinup", "dip", "pushup", "muscleup")
 
@@ -591,16 +591,21 @@ def _build_lift_section(conn: sqlite3.Connection) -> dict[str, Any]:
     }
 
 
-def _streak_section(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
+def active_day_runs(conn: sqlite3.Connection) -> list[tuple[date, date]]:
+    """Runs of consecutive active days, oldest first, as (first day, last day)."""
     # A finished guided session (sick mode or downshift) keeps the streak like an activity.
     keys = {row[0][:10] for row in conn.execute("SELECT DISTINCT date FROM activities")} | guided_completion_dates(conn)
-    dates = sorted(date.fromisoformat(key) for key in keys)
     runs: list[tuple[date, date]] = []
-    for day in dates:
+    for day in sorted(date.fromisoformat(key) for key in keys):
         if runs and day == runs[-1][1] + timedelta(days=1):
             runs[-1] = (runs[-1][0], day)
         else:
             runs.append((day, day))
+    return runs
+
+
+def _streak_section(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
+    runs = active_day_runs(conn)
 
     def describe(run: tuple[date, date]) -> dict[str, Any]:
         return {"days": (run[1] - run[0]).days + 1, "start": run[0].isoformat(), "end": run[1].isoformat()}

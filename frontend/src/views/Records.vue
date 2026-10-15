@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import RecordDetail from '../components/RecordDetail.vue'
+import { openMilestone } from '../stores/milestones'
 
 const api = useApi()
 const data = ref(null)
@@ -10,6 +11,14 @@ const loading = ref(true)
 const error = ref('')
 const selected = ref({})
 const showAllLifts = ref(false)
+const milestones = ref(null)
+const showAllMilestones = ref(false)
+const MILESTONE_SHELF = 6
+const MILESTONE_KIND = { streak: 'Streak', lift: 'Lift 3×', year_km: 'Year km' }
+const shelf = computed(() => {
+  const items = milestones.value?.milestones || []
+  return showAllMilestones.value ? items : items.slice(0, MILESTONE_SHELF)
+})
 
 const VENUE_KEY = 'records.bikeVenue'
 const readVenue = () => { try { return localStorage.getItem(VENUE_KEY) === 'indoor' ? 'indoor' : 'outdoor' } catch { return 'outdoor' } }
@@ -20,6 +29,8 @@ watch(venue, value => {
 })
 
 onMounted(async () => {
+  const day = new Date().toLocaleDateString('en-CA')
+  api.getMilestones(day).then(({ data: result }) => { milestones.value = result }).catch(() => { /* The shelf stays hidden. */ })
   try {
     data.value = (await api.getPersonalRecords()).data
   } catch {
@@ -322,6 +333,32 @@ const ringOffset = computed(() => {
         <button v-if="lifts.length > 10" type="button" class="more-button" @click="showAllLifts = !showAllLifts">{{ showAllLifts ? 'Show fewer' : `Show all ${lifts.length} lifts` }}</button>
       </section>
 
+      <!-- Milestone shelf: every celebration, reopenable -->
+      <section v-if="milestones?.milestones.length" class="sport-card sport-milestone motion-section" aria-labelledby="milestone-title">
+        <div class="sport-head">
+          <span class="sport-icon flame" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 2.5l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16l-5.4 3 1.2-6-4.5-4.2 6.1-.7L12 2.5Z" fill="currentColor" /></svg>
+          </span>
+          <div><h2 id="milestone-title">Milestones</h2><p>Each one celebrated once; open any of them again.</p></div>
+        </div>
+        <ul v-if="milestones.next.length" class="next-up" aria-label="Next milestones">
+          <li v-for="item in milestones.next" :key="item.kind + item.target">
+            <strong>{{ item.to_go.toLocaleString('en-US') }} {{ item.unit }}</strong> to {{ item.label }}<template v-if="item.on"> · {{ shortDate(item.on) }}</template>
+          </li>
+        </ul>
+        <ol class="shelf">
+          <li v-for="item in shelf" :key="item.id">
+            <button type="button" class="shelf-card" :class="`shelf-${item.kind}`" @click="openMilestone(item.id)">
+              <span class="shelf-kind">{{ MILESTONE_KIND[item.kind] }}</span>
+              <strong>{{ item.value.toLocaleString('en-US') }}<small>{{ item.unit }}</small></strong>
+              <span class="shelf-title">{{ item.title }}</span>
+              <span class="shelf-date">{{ formatDate(item.reached_on) }}</span>
+            </button>
+          </li>
+        </ol>
+        <button v-if="milestones.milestones.length > MILESTONE_SHELF" type="button" class="more-button" @click="showAllMilestones = !showAllMilestones">{{ showAllMilestones ? 'Show fewer' : `Show all ${milestones.milestones.length} milestones` }}</button>
+      </section>
+
       <!-- Streak badges -->
       <section v-if="streaks" class="sport-card sport-streak motion-section" aria-labelledby="streak-title">
         <div class="sport-head">
@@ -515,8 +552,24 @@ button.stop-card:hover { transform: translateY(-2px); border-color: var(--sport)
 a.lift-date:hover { color: var(--text); }
 .more-button { margin-top: 12px; padding: 8px 16px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--sport) 40%, transparent); background: color-mix(in srgb, var(--sport) 10%, transparent); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 
+/* ---- Milestone shelf ---- */
+.sport-milestone { --sport: var(--warning); }
+.next-up { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.next-up li { padding: 5px 12px; border-radius: 999px; background: color-mix(in srgb, var(--sport) 12%, transparent); font-size: 12px; color: var(--text-soft); }
+.next-up strong { color: var(--text); }
+.shelf { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.shelf-card { --tone: var(--warning); width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 14px 16px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--tone) 24%, var(--border)); background: color-mix(in srgb, var(--tone) 8%, var(--surface)); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: transform var(--motion-duration-fast, 150ms) ease, box-shadow var(--motion-duration-fast, 150ms) ease; }
+.shelf-card:hover, .shelf-card:focus-visible { transform: translateY(-2px); box-shadow: var(--shadow-card-hover); }
+.shelf-lift { --tone: var(--strength); }
+.shelf-year_km { --tone: var(--ride); }
+.shelf-kind { font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--tone); }
+.shelf-card strong { font-family: var(--font-display); font-size: 30px; font-weight: 700; line-height: 1.1; color: var(--tone); font-variant-numeric: tabular-nums; }
+.shelf-card strong small { margin-left: 4px; font-size: 13px; color: var(--text-soft); }
+.shelf-title { font-size: 13px; font-weight: 600; color: var(--text-soft); }
+.shelf-date { font-size: 12px; color: var(--muted-soft); }
+
 /* ---- Streak badges ---- */
-.badges { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; }
+.badges { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px; }
 .badges li { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .badge-medal { width: 84px; height: 84px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed rgb(var(--ov-rgb) / 0.18); color: var(--muted); }
 .badge-medal strong { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1; }

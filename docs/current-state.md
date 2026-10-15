@@ -24,6 +24,17 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Milestone celebrations
+
+2026-10-15: implements the `streak-milestones` idea. `services/milestones.py` detects milestones from existing data and the app shows each new one once as a full-screen celebration.
+
+- Kinds: daily streak at 100, 200, 300, 365, 500 and 1,000 days (each run of days counts separately; days counted exactly like the Records wall via `personal_records.active_day_runs`, so short recovery days and finished guided sessions keep counting); lift 3× (3+ `WeightTraining` sessions in a Monday–Sunday week, the anchor goal) for 4, 8, 12, 26 and 52 weeks in a row, reached on the third session of the last week; year km for riding (Ride + VirtualRide: 1,000 / 2,500 / 5,000 / 7,500 / 10,000 / 15,000) and running (100 / 250 / 500 / 1,000 / 1,500 / 2,000), reset each 1 January, with the activity that crossed it.
+- Celebrate once: a milestone reached in the last 14 days and not yet seen is `pending`; closing the celebration stores it in `app_settings` key `milestones_seen` (id → first seen date). Older ones never pop up and stay on the shelf. One celebration per app load, skipped on guided and strength-workout session pages.
+- API: `GET /milestones?day=` (all milestones newest first, `pending`, and `next`: days/weeks/km to the next streak, lift and year-km milestone), `GET /milestones/{id}` (adds the stretch's day grid and highlights), `POST /milestones/{id}/seen`.
+- UI: `components/MilestoneCelebration.vue`, mounted in `App.vue`: a count-up hero number, a day grid of the stretch (weeks as columns, coloured by each day's main sport; strength wins on lift milestones, light days under 30 min outlined), highlight tiles with count-up numbers (sessions, hours, km ridden and run, strength sessions, metres climbed, light days, longest ride) and flat confetti. Reduced motion gets static content. Records has a "Milestones" shelf (next-up pills, the newest six cards, "Show all") that reopens any celebration. The Records streak badges gained 300 days, so the post-session streak line now counts down to 300 before 365.
+- Not done: "first sweet-spot ride in a month" from the proposal. No activities carry the `sweet_spot` intent yet, so it would never fire.
+- Verified with `test_milestones.py` (8 tests: 100/300-day streaks with walks and a guided day, broken streak, the 300-day date (Oct 29 from 286 on Oct 15), lift weeks and a two-session week, year km reset across years, celebrate once and old milestones staying quiet). Backend 940 and frontend 168 tests plus the build pass. Checked in the browser at 1512 px against a scratch copy of the database: 5,000 km riding (11 Oct) and lift 3× for 4 weeks (10 Oct) celebrated one after the other, then stayed quiet, and the 200-day streak reopened from the Records shelf. Live training data was not changed and nothing was deployed.
+
 ### Gentle strength phases
 
 2026-10-15: implements the `gentle-strength-phases` idea. An optional dated strength phase (`services/strength_phases.py`, table `strength_phases`) gives lifting a light longer rhythm. With no phase saved (the default) nothing changes.

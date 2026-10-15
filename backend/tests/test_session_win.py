@@ -87,7 +87,7 @@ class SessionWinTests(unittest.TestCase):
         payload = {"activity": {"id": "b", "date": "2026-10-06", "type": "Walk", "duration_min": 30}}
         for start, headline, detail in (
             ("2025-10-07", "365 days in a row", "A streak milestone. Every single day counted to get here."),
-            ("2026-01-03", "Day 277 of your streak", "88 days to 365 in a row."),
+            ("2026-01-03", "Day 277 of your streak", "23 days to 300 in a row."),
         ):
             current = {"current": {"days": 1, "start": start, "end": "2026-10-06"}}
             with mock.patch.object(session_win, "_streak_section", return_value=current):

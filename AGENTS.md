@@ -6,3 +6,7 @@ Prefer specialized subagents for bounded exploration, implementation, testing, r
 Do not delegate trivial work merely for parallelism.
 Do not let multiple implementation agents edit the same files without explicit ownership boundaries.
 User instructions always take precedence over this orchestration policy.
+
+## UI redesign
+
+For any frontend/UI work, follow `docs/design/REDESIGN.md` and match the page's artboard screenshot in `docs/design/screens/`. Work on branch `redesign-multisport`.

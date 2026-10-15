@@ -171,10 +171,10 @@ const navGroups = [
   {
     label: 'Train',
     items: [
-      { to: '/', label: 'Today', icon: 'dashboard', match: exactPath('/') },
+      { to: '/', label: 'Today', icon: 'today', match: exactPath('/') },
       { to: '/plan', label: 'Plan', icon: 'plan', match: exactPath('/plan') },
       { to: '/calendar', label: 'Calendar', icon: 'calendar', match: exactPath('/calendar') },
-      { to: '/strength/workouts', label: 'Workout Studio', icon: 'strength', match: pathPrefix('/strength/workouts'), class: 'studio-nav-item' },
+      { to: '/strength/workouts', label: 'Workout Studio', icon: 'studio', match: pathPrefix('/strength/workouts'), class: 'studio-nav-item' },
     ],
   },
   {

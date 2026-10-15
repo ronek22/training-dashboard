@@ -8,11 +8,12 @@
 
         </div>
         <div class="header-actions">
+          <span v-if="dashboard.computed_streak?.value" class="header-streak"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-9z" /></svg>{{ dashboard.computed_streak.value }}-day streak</span>
           <button v-if="!sickMode.active" class="header-sick-link" type="button" :disabled="sickModeStarting" @click="startSickMode">
             <svg class="sick-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M11.5 3.5a2 2 0 0 0-4 0v7.8a3.6 3.6 0 1 0 4 0z" /><path d="M9.5 8.5v5" /></svg><span>{{ sickModeStarting ? 'Starting…' : 'Feeling sick?' }}</span>
           </button>
           <button class="header-plan-link" type="button" @click="router.push('/plan')">
-            <span>Open weekly plan</span><span aria-hidden="true">→</span>
+            <span>Weekly plan</span><span aria-hidden="true">→</span>
           </button>
         </div>
       </header>
@@ -50,7 +51,7 @@
             <li v-for="driver in readinessScore.drivers" :key="driver">{{ driver }}</li>
           </ul>
           <LoadFormTrend v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :form="Number(trainingLoad.current?.form || 0)" :show-chart="false" />
-          <p v-if="rampWarning" class="ramp-warning" :class="`ramp-${ramp.status}`">{{ rampWarning }}</p>
+          <p v-if="rampWarning" class="ramp-warning ramp-box" :class="`ramp-${ramp.status}`"><template v-for="(part, index) in rampWarning.split(/(\d+%)/)" :key="index"><strong v-if="/\d+%/.test(part)">{{ part }}</strong><template v-else>{{ part }}</template></template></p>
           <p v-if="sleepDebtHint" class="swap-hint" :class="`score-${readinessScore.sleep_debt.status === 'risk' ? 'red' : 'amber'}`">{{ sleepDebtHint }} <router-link to="/metrics?view=recovery">Sleep trend</router-link></p>
           <p v-if="illnessReturnHint" class="swap-hint" :class="`score-${illnessReturn.lingering_symptoms || illnessReturn.hard_sessions.length ? 'red' : 'amber'}`">{{ illnessReturnHint }}</p>
           <p v-if="mountainReentryHint" class="swap-hint score-amber">{{ mountainReentryHint }} <router-link :to="`/mountains/trips/${mountainReentry.trip.start_date}`">Trip recap</router-link></p>
@@ -1361,4 +1362,12 @@ button { color: inherit; }
 
 .decision-layout { align-items: start; }
 .checkin-card { padding: 0; }
+
+.header-streak { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 999px; background: color-mix(in srgb, var(--volt) 10%, transparent); color: var(--volt); font-size: 14px; font-weight: 700; white-space: nowrap; }
+.header-streak svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.signal-card .ramp-box { margin-top: 18px; border: 0; border-radius: 14px; background: var(--surface2); padding: 14px 16px; color: var(--text); font-size: 14px; }
+.signal-card .ramp-box::before { display: none; }
+.signal-card .ramp-box strong { color: var(--warning-text); font-weight: 700; }
+.signal-card .ramp-box + .swap-hint { margin-top: 12px; border-top: 0; }
+@media (max-width: 900px) { .header-streak { display: none; } }
 </style>

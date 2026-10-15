@@ -3,7 +3,7 @@
     <div class="form-gauge" role="img" :aria-label="`Form ${formLabel}: ${activeZone.label}`">
       <div class="form-gauge-head">
         <span>Form</span>
-        <strong :style="{ color: activeZone.color }">{{ formLabel }} · {{ activeZone.label }}</strong>
+        <strong><b :style="{ color: activeZone.color }">{{ formLabel }}</b><em> · {{ activeZone.label }}</em></strong>
       </div>
       <div class="form-gauge-track">
         <span v-for="zone in zones" :key="zone.label" :style="{ flexGrow: zone.max - zone.min, background: zone.color }" :class="{ 'is-active': zone === activeZone }" />
@@ -56,7 +56,7 @@ const zones = [
   { min: -30, max: -10, label: 'Productive', color: 'var(--accent)' },
   { min: -10, max: 5, label: 'Neutral', color: 'var(--muted-soft)' },
   { min: 5, max: 25, label: 'Fresh', color: 'var(--z2)' },
-  { min: 25, max: 40, label: 'Very fresh', color: 'var(--ride)' },
+  { min: 25, max: 40, label: 'Very fresh', color: 'var(--z2)' },
 ]
 
 const points = computed(() => props.chart.filter((item) => item && item.ctl != null && item.atl != null))
@@ -147,4 +147,8 @@ const chartLabel = computed(() => {
 .form-gauge-track span { opacity: 0 !important; }
 .form-gauge-track i { top: -5px; width: 4px; height: 20px; margin-left: -2px; background: var(--text); box-shadow: 0 0 0 3px var(--surface); }
 .form-gauge-scale { font-size: 12px; }
+
+.form-gauge-head strong { font-family: var(--font-body); font-size: 14px; font-weight: 500; }
+.form-gauge-head strong b { font-family: var(--font-display); font-size: 28px; font-weight: 700; }
+.form-gauge-head strong em { color: var(--muted-soft); font-style: normal; }
 </style>

@@ -13,7 +13,7 @@
 
     <header class="today-head" :class="{ 'has-art': route || muscles }">
       <div class="today-topline">
-        <p class="today-kicker">{{ kicker }}</p>
+        <p class="today-kicker">{{ kickerLabel }}</p>
         <span class="today-status" :class="`is-${statusTone}`"><i aria-hidden="true"></i>{{ statusLabel }}</span>
       </div>
       <div class="today-title-row">
@@ -136,6 +136,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+
 import SessionVerdict from './SessionVerdict.vue'
 import ActivityIcon from './ActivityIcon.vue'
 import CyclingWorkoutProfile from './CyclingWorkoutProfile.vue'
@@ -218,6 +219,7 @@ const comparisonState = computed(() => {
     plannedPct: (plannedMin / scale) * 100,
   }
 })
+const kickerLabel = computed(() => String(props.kicker || '').split('·').pop().trim())
 </script>
 
 <style scoped>
@@ -383,4 +385,11 @@ const comparisonState = computed(() => {
 .today-primary { background: var(--volt); color: var(--on-accent); font-weight: 700; }
 .today-primary:hover { background: var(--volt-strong); }
 .today-coach-link { font-size: 13px; }
+
+.today-kicker { display: inline-flex; align-items: center; padding: 6px 11px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .1em; }
+.today-icon { display: none; }
+.today-title-row { gap: 0; }
+.today-head { gap: 18px; }
+.today-primary { border: 1px solid var(--border-strong); background: transparent; color: var(--text); font-weight: 600; }
+.today-primary:hover { border-color: var(--muted); background: var(--surface2); }
 </style>

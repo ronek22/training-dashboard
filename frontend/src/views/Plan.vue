@@ -651,11 +651,17 @@
 
         <div class="plan-insights">
         <section v-if="displayPlanNotes(plan) || plan.overview || plan.revisions?.length" class="plan-notes plan-reasoning" aria-label="Coach's reasoning">
-          <span class="plan-reasoning-kicker">Coach’s reasoning</span>
+          <span class="insight-kicker">Coach’s reasoning</span>
           <ul v-if="displayPlanNotes(plan)">
-            <li v-for="(point, index) in notePoints(displayPlanNotes(plan))" :key="index"><span class="reason-icon" :class="`tone-${pointIcon(point).tone}`" aria-hidden="true">{{ pointIcon(point).sym }}</span><span>{{ point }}</span></li>
+            <li v-for="(point, index) in notePoints(displayPlanNotes(plan))" :key="index"><span class="reason-icon" :class="`tone-${pointIcon(point).tone}`" aria-hidden="true">{{ pointIcon(point).sym }}</span><p><strong>{{ splitLead(point)[0] }}</strong> <span v-if="splitLead(point)[1]">{{ splitLead(point)[1] }}</span></p></li>
           </ul>
-          <div v-if="plan.overview" class="reasoning-shape"><span>Week shape</span><p>{{ plan.overview }}</p></div>
+          <div v-if="plan.overview" class="reasoning-shape">
+            <span class="insight-kicker">Week shape</span>
+            <ol v-if="weekShape(plan.overview).days.length" class="shape-days">
+              <li v-for="day in weekShape(plan.overview).days" :key="day.day" :style="{ '--shape': planAccent(day.type) }"><small>{{ day.day }}</small><b>{{ day.text }}</b></li>
+            </ol>
+            <p v-if="weekShape(plan.overview).rest">{{ weekShape(plan.overview).rest }}</p>
+          </div>
           <details v-if="plan.revisions?.length" class="revision-timeline"><summary>Plan changes · {{ plan.revisions.length }}</summary>
           <div class="revision-timeline-list revision-timeline-horizontal">
             <article v-for="revision in plan.revisions" :key="revision.id" class="revision-entry revision-entry-horizontal">
@@ -683,68 +689,27 @@
         </details>
 
         </section>
-        <details v-if="!isHistoricalPlan(plan) && plan.goal_context?.active_goals?.length" class="goal-context-panel">
-          <summary class="goal-context-summary">
-            <span class="goal-context-summary-main">
-              <strong>Goal alignment</strong>
-              <small>How this week supports active goals</small>
-            </span>
-            <span class="goal-context-summary-metrics">
-              <span class="goal-summary-pill goal-summary-supported"><b>{{ goalAlignmentSummary(plan).supported }}</b>supported this week</span>
-              <span v-if="goalAlignmentSummary(plan).attention" class="goal-summary-pill goal-summary-attention">
-                <b>{{ goalAlignmentSummary(plan).attention }}</b>need attention
-              </span>
-              <span v-if="goalAlignmentSummary(plan).completed" class="goal-summary-pill goal-summary-completed">
-                <b>{{ goalAlignmentSummary(plan).completed }}</b>achieved
-              </span>
-            </span>
-          </summary>
-          <div class="goal-context-body">
-          <div v-if="actionableGoalConflicts(plan).length" class="goal-conflict-list">
-            <div v-for="conflict in actionableGoalConflicts(plan)" :key="`${plan.week_start}-${conflict.type}`" class="goal-conflict-pill">
-              <strong>{{ conflict.label }}</strong>
-              <span>{{ conflict.summary }}</span>
-            </div>
+        <section v-if="!isHistoricalPlan(plan) && plan.goal_context?.active_goals?.length" class="goal-card" aria-label="Goal alignment">
+          <div class="goal-card-head">
+            <span class="insight-kicker">Goal alignment</span>
+            <RouterLink to="/goals" class="insight-link">Goals →</RouterLink>
           </div>
-          <div class="goal-context-grid">
-            <article v-for="goal in plan.goal_context.active_goals" :key="goal.id" class="goal-context-card">
-              <div class="goal-context-top">
+          <div class="goal-card-numbers">
+            <div class="is-supported"><b>{{ goalAlignmentSummary(plan).supported }}</b><span>supported this week</span></div>
+            <div v-if="goalAlignmentSummary(plan).attention" class="is-attention"><b>{{ goalAlignmentSummary(plan).attention }}</b><span>need attention</span></div>
+            <div v-if="goalAlignmentSummary(plan).completed"><b>{{ goalAlignmentSummary(plan).completed }}</b><span>achieved</span></div>
+          </div>
+          <ul class="goal-card-list">
+            <li v-for="goal in plan.goal_context.active_goals" :key="goal.id">
+              <div class="goal-card-main">
                 <strong>{{ goal.title }}</strong>
-                <span class="goal-context-status" :class="`risk-${goal.risk_summary?.status || 'on_track'}`">
-                  {{ goal.risk_summary?.label || goalStatusLabel(goal.status) }}
-                </span>
+                <small>{{ goal.display_mode === 'performance' ? goal.target_summary : `${goal.current_value} / ${goal.target_value} ${goal.unit}` }} · {{ goal.supported_sessions }} session{{ goal.supported_sessions === 1 ? '' : 's' }}</small>
               </div>
-              <div class="goal-context-progress">
-                {{ goal.display_mode === 'performance' ? goal.target_summary : `${goal.current_value} / ${goal.target_value} ${goal.unit}` }}
-              </div>
-              <div class="goal-context-meta">
-                <span>{{ goal.family_label }} · {{ goal.period_label }}</span>
-                <span>{{ goal.supported_sessions }} supporting session{{ goal.supported_sessions === 1 ? '' : 's' }}</span>
-              </div>
-              <div class="goal-context-copy">
-                {{ goalSupportStateCopy(goal) }}
-              </div>
-              <div v-if="goal.weekly_requirement_summary" class="goal-context-copy">{{ goal.weekly_requirement_summary }}</div>
-              <div v-if="goal.requirement_statuses?.length" class="goal-context-requirements">
-                <span
-                  v-for="requirement in goal.requirement_statuses"
-                  :key="`${goal.id}-${requirement.type}`"
-                  class="goal-requirement-pill"
-                  :class="`support-${requirement.status}`"
-                >
-                  {{ requirement.label }} · {{ requirementSupportLabel(requirement.status) }}
-                </span>
-              </div>
-              <div v-if="goal.constraint_summary?.summary" class="goal-context-copy goal-context-copy-warn">{{ goal.constraint_summary.summary }}</div>
-              <div v-if="goal.requirement_support_status === 'unsupported' && goal.unsupported_requirements?.length" class="goal-context-copy goal-context-copy-warn">
-                Missing: {{ goal.unsupported_requirements[0].label }}
-              </div>
-              <div v-if="showGoalContextRiskSummary(goal)" class="goal-context-copy">{{ goal.risk_summary.summary }}</div>
-            </article>
-          </div>
-          <RouterLink to="/goals" class="goal-context-link">Open full goal details →</RouterLink>
-          </div>
-        </details>
+              <span class="goal-card-status" :class="`risk-${goal.risk_summary?.status || goal.status || 'on_track'}`">{{ goal.risk_summary?.label || goalStatusLabel(goal.status) }}</span>
+            </li>
+          </ul>
+          <p v-for="conflict in actionableGoalConflicts(plan)" :key="`${plan.week_start}-${conflict.type}`" class="goal-card-conflict"><strong>{{ conflict.label }}.</strong> {{ conflict.summary }}</p>
+        </section>
         </div>
 
 
@@ -1654,6 +1619,32 @@ const selectPlanDay = (day) => {
 }
 
 // Coach notes read as a handful of short points: sentences grouped up to ~200 characters.
+// Lead sentence of a coaching point in bold, the rest quieter.
+const splitLead = (point) => {
+  const text = String(point)
+  const match = text.match(/^(.+?[.:;])\s+(.*)$/)
+  if (match && match[1].length <= 90) return [match[1], match[2]]
+  // Long first sentence: lead with its first clause.
+  const comma = text.indexOf(', ', 30)
+  if (comma > 0 && comma < 90) return [text.slice(0, comma + 1), text.slice(comma + 2)]
+  return match ? [match[1], match[2]] : [text, '']
+}
+// "Mon C upper, Tue quality ride, ..." becomes seven day chips; anything after stays as text.
+const weekShape = (overview) => {
+  const text = String(overview || '')
+  const days = []
+  const re = /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+([^,.]+)/g
+  let match
+  let end = 0
+  while ((match = re.exec(text))) {
+    const label = match[2].trim()
+    const type = /lift|upper|lower|strength|^[A-D]\b/i.test(label) ? 'strength' : /run/i.test(label) ? 'run' : /walk|hike|rest/i.test(label) ? 'walk' : /spin|recovery/i.test(label) ? 'recovery' : 'ride'
+    days.push({ day: match[1], text: label.replace(/^([A-D]) (upper|lower)$/i, '$1 · $2'), type })
+    end = re.lastIndex
+  }
+  const rest = days.length >= 5 ? text.slice(end).replace(/^[.,\s]+/, '').trim() : text
+  return { days: days.length >= 5 ? days : [], rest }
+}
 const pointIcon = (point) => {
   if (/readiness|illness|sick|sleep|fatigue|strain|watch/i.test(point)) return { sym: '!', tone: 'warning' }
   if (/FTP|watt|\bride|zone 2|HR\b|endurance/i.test(point)) return { sym: 'W', tone: 'ride' }
@@ -5425,4 +5416,49 @@ const savePlanLink = async (day) => {
   .week-mode-toggle button { padding: 0 12px; font-size: 13px; }
   .plan-page .workload-metric.is-execution { grid-column: 1 / -1; }
 }
+
+/* ── Insights row, rebuilt ── */
+.plan-insights { align-items: start; gap: 20px; }
+.insight-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.insight-link { color: var(--volt); font-size: 14px; font-weight: 600; text-decoration: none; }
+.plan-page .plan-reasoning { position: relative; gap: 18px; padding: 26px 28px; }
+.plan-reasoning ul { gap: 0; }
+.plan-reasoning li { grid-template-columns: 30px minmax(0, 1fr); gap: 14px; padding: 14px 0; border-top: 1px solid var(--border); }
+.plan-reasoning li:first-child { padding-top: 0; border-top: 0; }
+.plan-reasoning li p { margin: 0; color: var(--muted-soft); font-size: 14px; line-height: 1.55; }
+.plan-reasoning li p strong { display: block; margin-bottom: 2px; color: var(--text); font-size: 15px; font-weight: 600; line-height: 1.45; }
+.reason-icon { width: 30px; height: 30px; border-radius: 9px; }
+.reasoning-shape { gap: 12px; padding-top: 18px; }
+.shape-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.shape-days li { display: grid; gap: 6px; min-width: 0; padding: 10px 12px; border-radius: 12px; background: var(--surface2); box-shadow: inset 0 3px 0 var(--shape); }
+.shape-days small { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.shape-days b { color: var(--text); font-size: 13px; font-weight: 600; line-height: 1.3; }
+.reasoning-shape p { color: var(--muted-soft); font-size: 13px; }
+.plan-reasoning .revision-timeline > summary { position: absolute; top: 22px; right: 28px; }
+.plan-reasoning .revision-timeline[open] { padding-top: 4px; }
+.plan-reasoning .revision-timeline[open] > summary { margin: 0; }
+
+.goal-card { display: grid; gap: 18px; padding: 26px 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.goal-card-head { display: flex; align-items: center; justify-content: space-between; }
+.goal-card-numbers { display: flex; flex-wrap: wrap; gap: 32px; }
+.goal-card-numbers div { display: grid; gap: 4px; }
+.goal-card-numbers b { font-family: var(--font-display); font-size: 52px; font-weight: 800; line-height: .9; }
+.goal-card-numbers span { color: var(--muted-soft); font-size: 13px; }
+.goal-card-numbers .is-supported b { color: var(--volt); }
+.goal-card-numbers .is-attention b { color: var(--warning-text); }
+.goal-card-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.goal-card-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+.goal-card-main { display: grid; gap: 2px; min-width: 0; }
+.goal-card-main strong { overflow: hidden; color: var(--text); font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.goal-card-main small { color: var(--muted); font-size: 12px; }
+.goal-card-status { flex: none; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--success-text) 12%, transparent); color: var(--success-text); font-size: 11px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+.goal-card-status.risk-watch, .goal-card-status.risk-under_pressure { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning-text); }
+.goal-card-status.risk-at_risk, .goal-card-status.risk-constrained { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger-text); }
+.goal-card-status.risk-completed { background: var(--surface2); color: var(--text-soft); }
+.goal-card-conflict { margin: 0; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--warning) 8%, transparent); color: var(--text-soft); font-size: 13px; line-height: 1.5; }
+.goal-card-conflict strong { color: var(--warning-text); }
+@media (max-width: 1100px) { .shape-days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .shape-days { grid-template-columns: repeat(2, minmax(0, 1fr)); } .plan-reasoning .revision-timeline > summary { position: static; } }
+.plan-reasoning .shape-days li { display: grid; grid-template-columns: none; align-content: start; gap: 6px; padding: 10px 12px; border-top: 0; }
+.plan-reasoning .shape-days li:first-child { padding-top: 10px; }
 </style>

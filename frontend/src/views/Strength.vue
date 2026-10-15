@@ -128,7 +128,8 @@
           <article class="card trend-stage">
             <div class="section-head">
               <div>
-                <div class="card-title">Your weekly workload</div>
+                <div class="card-title">Weekly workload · {{ selectedWeeks }} weeks</div>
+                <h2 class="detail-panel-title">Make every week count</h2>
                 <div class="section-copy">Follow consistency first, then explore sets and recorded volume.</div>
               </div>
             </div>
@@ -141,6 +142,7 @@
             <div class="section-head">
               <div>
                 <div class="card-title">Movement distribution</div>
+                <h2 class="detail-panel-title">Where the work goes</h2>
                 <div class="section-copy">Where your recorded strength work has been concentrated.</div>
               </div>
             </div>
@@ -151,6 +153,7 @@
                 :key="option.value"
                 class="bucket-row"
                 :class="{ active: selectedBodyPart === option.value }"
+                :aria-pressed="selectedBodyPart === option.value"
                 @click="selectedBodyPart = option.value"
               >
                 <div class="bucket-main">
@@ -170,7 +173,8 @@
         <section v-if="strengthView === 'analysis' && overview.important_prs?.length" class="card pr-stage motion-section">
           <div class="section-head">
             <div>
-              <div class="card-title">Best recorded loads</div>
+              <div class="card-title">Personal benchmarks</div>
+              <h2 class="detail-panel-title">Best recorded loads</h2>
               <div class="section-copy">Best tracked top loads for the big recurring lifts present in this window.</div>
             </div>
           </div>
@@ -189,6 +193,7 @@
             <div class="section-head">
               <div>
                 <div class="card-title">Exercise progression</div>
+                <h2 class="detail-panel-title">Find your lift</h2>
                 <div class="section-copy">Choose a recurring exercise to review its measured load and volume history.</div>
               </div>
               <span v-if="loading" class="inline-loading-chip">Updating…</span>
@@ -197,7 +202,7 @@
             <label class="strength-search"><span class="sr-only">Find an exercise</span><input v-model="liftSearch" type="search" placeholder="Find a lift…" /></label>
             <div class="lift-table">
               <button
-                v-for="(exercise, index) in filteredLifts"
+                v-for="exercise in filteredLifts"
                 :key="exercise.exercise_name"
                 class="lift-row"
                 :class="{ active: overview.selected_exercise?.exercise_name === exercise.exercise_name }" :aria-pressed="overview.selected_exercise?.exercise_name === exercise.exercise_name"
@@ -270,12 +275,14 @@
         <section v-if="strengthView === 'history'" class="card sessions-stage">
           <div class="section-head">
             <div>
-              <div class="card-title">Recent Strength Sessions</div>
+              <div class="card-title">Workout log · {{ selectedWeeks }} weeks</div>
+              <h2 class="detail-panel-title">Recent strength sessions</h2>
               <div class="section-copy">Expand a session to review exercises, sets and loads.</div>
             </div>
           </div>
 
           <label class="strength-search history-search"><span class="sr-only">Search workout history</span><input v-model="historySearch" type="search" placeholder="Find a workout or exercise…" /></label><p v-if="!filteredSessions.length" class="analysis-note">No sessions match your search.</p>
+          <div class="session-list-heading" aria-hidden="true"><span>Day</span><span>Session</span><span>Time / volume</span><span></span></div>
           <div class="session-list">
             <details v-for="session in filteredSessions" :key="session.id" class="session-card">
               <summary>
@@ -294,7 +301,7 @@
                     </span>
                   </div>
                 </article>
-                <router-link :to="`/activities/${session.matched_activity.id}`" class="detail-link session-detail-link">Open full activity <span aria-hidden="true">→</span></router-link>
+                <router-link v-if="session.matched_activity?.id" :to="`/activities/${session.matched_activity.id}`" class="detail-link session-detail-link">Open full activity <span aria-hidden="true">→</span></router-link>
               </div>
             </details>
           </div>
@@ -1464,5 +1471,125 @@ const round = (value) => Math.round(value * 10) / 10
 @media(max-width:520px) { .strength-page .page-title { font-size: 56px; } .strength-page .page-sub { font-size: 13px; } .strength-page .strength-launch h2 { font-size: 48px; } .strength-page .launch-main, .strength-page .launch-notes { padding: 22px; } .strength-page .launch-metrics { gap: 18px; } .strength-page .launch-metrics strong { font-size: 28px; } .strength-page .strength-nav { width: 100%; } .strength-page .strength-nav button { padding: 14px 10px; font-size: 12px; } .strength-page .strength-toolbar { padding-bottom: 10px; max-width: 100%; } .strength-page .strength-toolbar .toolbar-select { min-width: 0; width: 100%; } .strength-page .strength-rhythm, .strength-page .latest-session, .strength-page .strength-anchor { padding: 20px; } .strength-page .strength-rhythm .section-head { flex-wrap: wrap; gap: 8px; } .strength-page .strength-rhythm .section-head { margin: 0; }
 .strength-page .strength-rhythm .card-title { margin: 0; }
 .strength-page .strength-rhythm h2 { font-size: 36px; } .strength-page .strength-rhythm-bars { gap: 5px; } .strength-page .strength-rhythm-week > span, .strength-rhythm-week > small { font-size: 8px; } .strength-page .latest-session .section-head { flex-wrap: wrap; } .strength-page .latest-session-metrics { gap: 8px; } .strength-page .latest-session-metrics strong { font-size: 28px; } .strength-page .launch-actions .strength-action { padding-inline: 18px; font-size: 14px; } }
+
+
+/* Multi-sport redesign layer — detail tabs. Strength cards + Activities log. */
+.strength-page:not(.view-overview) .strength-view-controls { align-items: start; gap: 0; }
+.strength-page:not(.view-overview) .strength-toolbar { display: flex; width: 100%; align-items: end; padding: 16px 0; gap: 16px; }
+.strength-page:not(.view-overview) .toolbar-label { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.strength-page:not(.view-overview) .toolbar-select { flex: 1; min-width: 160px; max-width: 300px; }
+.strength-page:not(.view-overview) .toolbar-select select { width: 100%; min-height: 42px; padding: 10px 32px 10px 14px; border: 1px solid var(--border-strong); border-radius: 999px; background-color: var(--surface); color: var(--text); font-size: 13px; text-overflow: ellipsis; }
+.strength-page .detail-panel-title { margin: 10px 0 8px; font: italic 800 34px/1.05 var(--font-display); text-transform: uppercase; letter-spacing: 0; overflow-wrap: anywhere; }
+.strength-page .strength-search input { min-height: 44px; padding: 12px 16px; border-radius: 999px; border-color: var(--border-strong); background: rgb(var(--deep-rgb) / .5); font-size: 13px; }
+.strength-page input:focus-visible, .strength-page select:focus-visible, .strength-page summary:focus-visible { outline: 2px solid var(--strength); outline-offset: 3px; }
+.strength-page.view-progression .analysis-grid-bottom { grid-template-columns: minmax(260px,.7fr) minmax(0,1.6fr); gap: 20px; }
+.strength-page.view-progression .lifts-stage,
+.strength-page.view-progression .spotlight-stage,
+.strength-page.view-history .sessions-stage,
+.strength-page.view-analysis .trend-stage,
+.strength-page.view-analysis .buckets-stage,
+.strength-page.view-analysis .pr-stage { padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; min-width: 0; }
+.strength-page.view-progression .lifts-stage .section-copy { display: block; font-size: 13px; }
+.strength-page.view-progression .lift-table { display: grid; max-height: 700px; gap: 6px; overflow: auto; }
+.strength-page.view-progression .lift-row { min-width: 0; width: 100%; padding: 16px; gap: 8px; border: 1px solid transparent; border-radius: 14px; background: rgb(var(--deep-rgb) / .4); cursor: pointer; }
+.strength-page.view-progression .lift-row:hover { border-color: var(--border-strong); background: var(--surface2); }
+.strength-page.view-progression .lift-row.active { border-color: color-mix(in srgb,var(--strength) 50%,transparent); background: color-mix(in srgb,var(--strength) 10%,var(--surface)); }
+.strength-page .lift-name strong { font-size: 14px; line-height: 1.4; }
+.strength-page .lift-meta, .strength-page .lift-trend small { font-size: 12px; }
+.strength-page .lift-trend .exercise-badge { color: var(--muted-soft); font-size: 11px; }
+.strength-page .spotlight-kicker, .strength-page .lift-log-heading, .strength-page .session-list-heading { font: 600 10px/1.5 var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.strength-page .spotlight-title { font: italic 800 44px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0; overflow-wrap: anywhere; }
+.strength-page .spotlight-copy { font-size: 13px; }
+.strength-page .trend-tone { border-radius: 999px; padding: 6px 10px; font-size: 11px; font-weight: 600; }
+.strength-page .trend-tone-up { color: var(--success-text); background: color-mix(in srgb,var(--volt) 12%,transparent); }
+.strength-page .trend-tone-steady, .strength-page .trend-tone-flat { color: var(--text-soft); background: var(--surface3); }
+.strength-page .spotlight-stats { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; padding: 20px 0; margin: 0; }
+.strength-page .spotlight-stat { min-width: 0; padding: 16px; border: 0; border-radius: 14px; background: var(--surface2); }
+.strength-page .spotlight-stat > span { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+.strength-page .spotlight-stat > strong { font: 700 30px/1.1 var(--font-display); overflow-wrap: anywhere; }
+.strength-page .spotlight-stat:nth-child(2) > strong { color: var(--tone-strength); }
+.strength-page .lift-chart-header h3 { font-size: 14px; }
+.strength-page .analysis-mode { display: flex; flex-wrap: wrap; width: fit-content; padding: 4px; gap: 3px; border: 1px solid var(--border); border-radius: 999px; background: rgb(var(--deep-rgb) / .5); }
+.strength-page .analysis-mode button { min-height: 34px; padding: 8px 12px; border-radius: 999px; font-size: 12px; }
+.strength-page .analysis-mode button.active { background: var(--surface3); color: var(--text); font-weight: 600; }
+.strength-page .lift-line-chart { padding: 12px 0 0; border-radius: 14px; background: rgb(var(--deep-rgb) / .4); }
+.strength-page .lift-progress-point { fill: var(--surface); }
+.strength-page .analysis-note, .strength-page .heuristic-note { color: var(--muted-soft); font-size: 12px; line-height: 1.6; }
+.strength-page.view-progression .history-row { font-size: 13px; padding: 14px 0; }
+.strength-page.view-progression .history-row strong { font: 600 18px/1.2 var(--font-display); }
+.strength-page.view-history .sessions-stage { padding-bottom: 0; overflow: hidden; }
+.strength-page .history-search { max-width: 440px; margin: 20px 0 24px; }
+.strength-page .session-list-heading { display: grid; grid-template-columns: 52px minmax(0,1fr) 150px 18px; gap: 20px; padding: 14px 0; border-top: 1px solid var(--border); }
+.strength-page .session-list-heading > span:nth-child(3) { text-align: right; }
+.strength-page.view-history .session-list { gap: 0; }
+.strength-page.view-history .session-card { display: block; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; }
+.strength-page.view-history .session-card > summary { grid-template-columns: 52px minmax(0,1fr) 150px 18px; padding: 20px 0; gap: 20px; }
+.strength-page.view-history .session-card > summary:hover { background: var(--surface2); }
+.strength-page .session-log-date { border-radius: 12px; padding: 8px 4px; background: color-mix(in srgb,var(--strength) 12%,transparent); }
+.strength-page .session-log-date strong { font: 700 28px/1 var(--font-display); color: var(--tone-strength); letter-spacing: 0; }
+.strength-page .session-log-date span { font-size: 10px; text-transform: uppercase; margin-top: 4px; }
+.strength-page .session-log-title strong { font-size: 15px; line-height: 1.4; }
+.strength-page .session-log-title span, .strength-page .session-log-duration span { font-size: 12px; line-height: 1.5; }
+.strength-page .session-log-duration strong { font: 700 24px/1.1 var(--font-display); }
+.strength-page.view-history .session-card[open] { background: rgb(var(--deep-rgb) / .35); }
+.strength-page.view-history .session-exercises { margin: 0; padding: 20px 0 24px 72px; gap: 18px; }
+.strength-page.view-history .session-exercise { padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.strength-page.view-history .exercise-head { flex-wrap: wrap; gap: 8px; }
+.strength-page.view-history .exercise-head strong { font-size: 14px; }
+.strength-page.view-history .set-pill { border-radius: 12px; background: var(--surface2); border-color: var(--border); padding: 8px 10px; }
+.strength-page.view-history .set-pill strong { font: 600 16px/1.2 var(--font-display); }
+.strength-page.view-history .set-pill.warmup { opacity: 1; border-style: dashed; color: var(--muted-soft); background: transparent; }
+.strength-page .session-detail-link { justify-self: start; }
+.strength-page.view-analysis .analysis-grid-top { grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); gap: 20px; }
+.strength-page.view-analysis .trend-stage .card-title, .strength-page.view-analysis .buckets-stage .card-title { font-size: 11px; }
+.strength-page .analysis-bars { gap: 10px; margin-top: 28px; }
+.strength-page .analysis-week > strong { font: 600 18px/1 var(--font-display); }
+.strength-page .analysis-week > div { height: 220px; border-radius: 8px; margin: 12px 0; }
+.strength-page .analysis-week i { border-radius: 6px 6px 2px 2px; background: color-mix(in srgb,var(--strength) 70%,var(--surface)); }
+.strength-page .analysis-week:last-child i { background: var(--strength); }
+.strength-page.view-analysis .bucket-stack { gap: 8px; }
+.strength-page.view-analysis .bucket-row { padding: 16px; border: 1px solid transparent; border-radius: 14px; background: rgb(var(--deep-rgb) / .4); cursor: pointer; }
+.strength-page.view-analysis .bucket-row:hover { border-color: var(--border-strong); }
+.strength-page.view-analysis .bucket-row.active { border-color: color-mix(in srgb,var(--strength) 45%,transparent); background: color-mix(in srgb,var(--strength) 9%,var(--surface)); }
+.strength-page .bucket-main > div:first-child { flex-wrap: wrap; gap: 4px 12px; }
+.strength-page .bucket-main strong { font-size: 14px; }
+.strength-page.view-analysis .bucket-meter { height: 6px; background: var(--surface3); }
+.strength-page .bucket-meter span { background: var(--strength); }
+.strength-page .bucket-side strong { font: 700 22px/1 var(--font-display); }
+.strength-page.view-analysis .pr-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 12px; margin-top: 20px; }
+.strength-page.view-analysis .pr-card { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: 20px; background: rgb(var(--deep-rgb) / .5); }
+.strength-page .pr-label { font-size: 11px; font-weight: 600; color: var(--muted-soft); }
+.strength-page.view-analysis .pr-value { display: block; margin: 12px 0 8px; color: var(--tone-strength); font: italic 800 40px/1 var(--font-display); }
+.strength-page .pr-date { color: var(--muted); font-size: 12px; }
+@media (max-width: 1000px) {
+  .strength-page.view-progression .analysis-grid-bottom, .strength-page.view-analysis .analysis-grid-top { grid-template-columns: minmax(0,1fr); }
+  .strength-page.view-progression .lift-table { display: flex; max-height: none; overflow-x: auto; }
+  .strength-page.view-progression .lift-row { flex: 0 0 220px; }
+}
+@media (max-width: 520px) {
+  .strength-page:not(.view-overview) .strength-toolbar { gap: 12px; }
+  .strength-page:not(.view-overview) .toolbar-select { max-width: none; min-width: 0; flex-basis: 100%; }
+  .strength-page.view-progression .lifts-stage, .strength-page.view-progression .spotlight-stage, .strength-page.view-history .sessions-stage, .strength-page.view-analysis .trend-stage, .strength-page.view-analysis .buckets-stage, .strength-page.view-analysis .pr-stage { padding: 20px; }
+  .strength-page .detail-panel-title { font-size: 30px; }
+  .strength-page .spotlight-title { font-size: 36px; }
+  .strength-page .spotlight-stat { padding: 12px; }
+  .strength-page .spotlight-stat > strong { font-size: 26px; }
+  .strength-page .lift-log-heading { font-size: 8px; letter-spacing: .06em; }
+  .strength-page.view-progression .history-row { font-size: 11px; }
+  .strength-page.view-progression .history-row strong { font-size: 16px; }
+  .strength-page .session-list-heading { display: none; }
+  .strength-page.view-history .session-card > summary { grid-template-columns: 42px minmax(0,1fr) 14px; gap: 10px; padding: 16px 0; }
+  .strength-page .session-log-duration { grid-column: 2; grid-row: 2; display: flex; justify-content: space-between; align-items: baseline; }
+  .strength-page .session-log-duration strong { font-size: 20px; }
+  .strength-page .session-log-duration span { font-size: 10px; }
+  .strength-page.view-history .session-exercises { padding: 16px 0; }
+  .strength-page .analysis-bars { gap: 5px; }
+  .strength-page .analysis-week > strong { font-size: 13px; }
+  .strength-page .analysis-week > div { height: 170px; }
+  .strength-page.view-analysis .bucket-row { padding: 12px; }
+  .strength-page.view-analysis .pr-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .strength-page.view-analysis .pr-card { padding: 14px; }
+  .strength-page.view-analysis .pr-value { font-size: 32px; }
+}
 
 </style>

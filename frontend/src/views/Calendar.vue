@@ -21,7 +21,7 @@
       </div>
     </header>
 
-    <section v-if="summary" class="summary-strip motion-section" :class="{ 'is-stale': loading }" aria-label="Period training summary">
+    <section v-if="summary" class="summary-strip motion-section" :class="{ 'is-stale': loading, 'many-sports': disciplineSummary.length > 3 }" aria-label="Period training summary">
       <div class="summary-stats">
         <div class="stat"><span>Sessions</span><strong>{{ summary.total_sessions }}</strong></div>
         <div class="stat"><span>Training time</span><strong>{{ formatHours(summary.total_duration_min) }}</strong></div>
@@ -76,21 +76,25 @@
           </div>
           <ul v-if="weekGoals.length" class="brief-goals" aria-label="Goals this week">
             <li v-for="goal in weekGoals" :key="goal.id" :class="[`tone-${activityTone(goal.activity_type)}`, { 'is-behind': goal.status === 'behind_pace' }]">
-              <strong>{{ goal.title }}</strong>
+              <div class="goal-main">
+                <strong>{{ goal.title }}</strong>
+                <i><b :style="{ width: `${Math.min(100, Math.round(goal.progress_pct || 0))}%` }"></b></i>
+              </div>
               <span class="goal-value">{{ formatGoalValue(goal.current_value) }}<small> / {{ formatGoalValue(goal.target_value) }} {{ goal.unit }}</small></span>
-              <span class="goal-state">{{ goal.status === 'behind_pace' ? 'Behind pace' : goal.status === 'ahead_of_pace' ? 'Ahead of pace' : goal.status === 'completed' ? 'Done' : 'On track' }}</span>
-              <i><b :style="{ width: `${Math.min(100, Math.round(goal.progress_pct || 0))}%` }"></b></i>
+              <span class="goal-state" :class="`state-${goal.status || 'on_track'}`">{{ goal.status === 'behind_pace' ? 'Behind pace' : goal.status === 'ahead_of_pace' ? 'Ahead' : goal.status === 'completed' ? 'Done' : 'On track' }}</span>
             </li>
           </ul>
         </section>
 
-        <div class="legend legend-foot" aria-label="Workout status legend">
-          <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" class="lg-done"><path d="M3.5 8.5l3 3 6-6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>Done as planned</span>
-          <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" class="lg-planned"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.6" /><path d="M8 5v3.2l2 1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>Planned</span>
-          <span><svg viewBox="0 0 16 16" width="12" height="12" class="lg-changed"><circle cx="8" cy="8" r="3.5" fill="currentColor" /></svg>Changed</span>
-          <span v-if="sickDates.size"><i class="lg-sick" aria-hidden="true"></i>Sick day</span>
-          <span v-if="lifeLoad.days.value.size" class="lg-life"><i aria-hidden="true">⚑&#xFE0E;</i>Life load</span>
-          <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" class="lg-missed"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>Missed</span>
+        <div class="legend legend-foot" aria-label="Calendar legend">
+          <span><i class="lg-sw" style="background: var(--ride)"></i>Ride</span>
+          <span><i class="lg-sw" style="background: var(--run)"></i>Run</span>
+          <span><i class="lg-sw" style="background: var(--strength)"></i>Strength</span>
+          <span><i class="lg-sw" style="background: var(--z2)"></i>Walk · mobility · recovery</span>
+          <span><i class="lg-sw is-planned"></i>Planned</span>
+          <span><i class="lg-sw is-missed"></i>Missed</span>
+          <span v-if="sickDates.size"><i class="lg-sw is-sick"></i>Sick day</span>
+          <span v-if="lifeLoad.days.value.size"><i class="lg-sw is-trip"></i>Travel · hikes</span>
         </div>
 
         <p v-if="!displayDays.some((day) => day.activities?.length || planFor(day.date))" class="empty-overlay">Nothing planned or recorded in this period.</p>
@@ -778,4 +782,48 @@ a.pop-title:hover { text-decoration: underline; }
   .month-grid { gap: 6px; }
 }
 @media (max-width: 760px) { .month-grid :deep(.calendar-day) { min-height: 0; } }
+
+/* ── Round 2: summary, week view, brief, legend ── */
+.summary-strip { align-items: stretch; }
+.summary-strip.many-sports { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.summary-strip.many-sports .summary-sports { grid-column: 1 / -1; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 16px; padding: 16px 20px; }
+.summary-strip.many-sports .summary-sports li + li { padding-left: 16px; border-left: 1px solid var(--border); }
+.summary-strip.many-sports .summary-sports strong { font-size: 30px; }
+.summary-sports strong { white-space: nowrap; }
+
+.week-grid { gap: 8px; }
+.week-grid :deep(.calendar-day) { min-height: 200px; }
+.weekday-row.is-week-view { gap: 8px; }
+
+.week-brief { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 32px; align-items: start; margin-top: 16px; padding: 24px 26px; border: 1px solid var(--border); border-radius: 20px; background: rgb(var(--deep-rgb) / .6); }
+.brief-plan > span { color: var(--volt); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.brief-plan h2 { margin: 10px 0 10px; font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; text-transform: uppercase; }
+.brief-plan p { color: var(--text-soft); font-size: 14px; line-height: 1.55; }
+.brief-goals { display: grid; grid-template-columns: 1fr; gap: 0; }
+.brief-goals li { display: grid; grid-template-columns: minmax(0, 1fr) auto 96px; align-items: center; gap: 18px; padding: 12px 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; }
+.brief-goals li:first-child { border-top: 0; padding-top: 0; }
+.brief-goals .goal-main { display: grid; gap: 8px; min-width: 0; }
+.brief-goals strong { overflow: hidden; color: var(--text); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.brief-goals i { height: 4px; margin: 0; background: var(--surface3); }
+.brief-goals .tone-neutral b { background: var(--volt); }
+.brief-goals .goal-value { font-size: 22px; white-space: nowrap; }
+.brief-goals .goal-state { justify-self: end; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--success-text) 12%, transparent); color: var(--success-text); font-size: 11px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+.brief-goals .goal-state.state-behind_pace { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning-text); }
+.brief-goals .goal-state.state-completed { background: var(--surface2); color: var(--text-soft); }
+
+.legend { flex-wrap: wrap; justify-content: flex-start; gap: 18px; padding: 18px 4px 0; color: var(--text-soft); font-size: 13px; }
+.legend span { gap: 8px; }
+.lg-sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.lg-sw.is-planned { border: 1.5px dashed var(--muted); }
+.lg-sw.is-missed { background: color-mix(in srgb, var(--danger) 45%, transparent); }
+.lg-sw.is-sick { background: color-mix(in srgb, var(--warning) 30%, transparent); }
+.lg-sw.is-trip { background: color-mix(in srgb, var(--tone-recovery) 35%, transparent); }
+@media (max-width: 1100px) { .week-brief { grid-template-columns: 1fr; gap: 20px; } }
+@media (max-width: 760px) {
+  .summary-strip.many-sports .summary-sports { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .summary-strip.many-sports .summary-sports li + li { padding-left: 0; border-left: 0; }
+  .week-grid :deep(.calendar-day) { min-height: auto; }
+  .brief-goals li { grid-template-columns: minmax(0, 1fr) auto; }
+  .brief-goals .goal-state { grid-column: 1 / -1; justify-self: start; }
+}
 </style>

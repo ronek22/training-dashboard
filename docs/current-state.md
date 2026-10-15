@@ -24,6 +24,16 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Sunday planning flow
+
+2026-10-15: implements the `sunday-planning-flow` idea. `/sunday` (`views/SundayPlanning.vue`) walks through five steps, each reusing an existing component: the week's wins (`WeekWinsCard`, with a link to the full weekly review), the body check-in (`WeeklyBodyCheckin`), busy days next week (`LifeLoadPicker` for each of the 7 days), next week's block and note (`WeekPreview`), and generating the plan with the coach. Entry points: "Plan next week →" on Weekly Review, a link under the coach button on Plan, and Sunday planning in the mobile More menu.
+
+- Weeks (`frontend/src/plan/sunday-flow.mjs`): it reviews this week and plans the next one; on Monday it still reviews the week just ended and plans the week that started that day.
+- Every step has Skip and Next, and the step pills jump anywhere. Progress (step, skipped steps, a running coach job) is kept in browser storage under `sunday-flow`, keyed by the week being planned, so leaving and coming back resumes at the same step and a reload keeps waiting for a running job. A new week starts fresh.
+- The plan is only generated from the "Generate next week's plan" button, with an optional brief. It uses the same local coach helper job as Plan (`POST /weekly-plan` with next week's Monday), so it needs TrainLog on the Mac. When done, the step lists the saved days with "Accept the plan" (closes the flow for that week) or "Adjust on Plan". If next week already has a plan, it says that generating again keeps past and completed days.
+- Body check-in now opens on Sunday for the week ending that day (`reviewed_week_start`), and stays open Monday to Wednesday as before. Answered on Sunday, it no longer asks on Monday. It also shows on Today on Sunday.
+- Verified with `sunday-flow.test.mjs` (week choice, resume and reset, skip marks) and a Sunday check-in test. Backend 906 and frontend 168 tests plus the build pass. Viewed at 1512 px against the running app: all five steps render, and a reload resumed on the same step. No tags, check-ins or plans were saved, and Generate was not pressed. Live training data was not changed.
+
 ### Each week builds on the last one
 
 2026-10-15: implements the `week-builds-on-last-week` idea. Inside a winter arc, the planner and Plan now see how the previous week went against its block target. Built in `services/winter_arc.py` (`last_week_review`, `block_progress`); nothing new is stored.

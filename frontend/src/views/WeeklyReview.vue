@@ -132,6 +132,7 @@ const talk = () => wins.value && openCoachChat(weekChatRequest(wins.value))
         <span class="stepper-label"><small>Week {{ format(parseISO(week), 'I') }}</small>{{ title }}</span>
         <button type="button" :disabled="!report?.next_week" aria-label="Next week" @click="goTo(report.next_week)">›</button>
         <button v-if="!isCurrent" type="button" class="today" @click="goTo(thisMonday())">This week</button>
+        <RouterLink to="/sunday" class="sunday-link">Plan next week →</RouterLink>
       </nav>
     </header>
 
@@ -244,6 +245,7 @@ h1 { font-size: 28px; letter-spacing: -.4px; }
 .stepper button { min-width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; font-size: 18px; cursor: pointer; }
 .stepper button:disabled { opacity: .35; cursor: default; }
 .stepper button.today { font-size: 12px; font-weight: 600; padding: 0 12px; }
+.sunday-link { display: inline-flex; align-items: center; height: 36px; padding: 0 12px; border: 1px solid var(--accent); border-radius: 10px; color: var(--text); font-size: 12px; font-weight: 650; text-decoration: none; white-space: nowrap; }
 .stepper-label { min-width: 170px; text-align: center; font-size: 14px; font-weight: 600; }
 .stepper-label small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); }
 .notice { margin: 20px 0; padding: 14px; border-radius: 10px; background: var(--surface2); font-size: 13px; color: var(--muted); }

@@ -42,6 +42,7 @@ import { computed, onMounted, ref } from 'vue'
 import { format, parseISO } from 'date-fns'
 import { useApi } from '../stores/api'
 
+const emit = defineEmits(['loaded'])
 const api = useApi()
 const state = ref(null)
 const weight = ref('')
@@ -68,6 +69,7 @@ async function load() {
   } catch {
     state.value = null
   }
+  emit('loaded', state.value)
 }
 
 async function save(skipped) {

@@ -40,6 +40,14 @@ class WeeklyBodyCheckinTests(unittest.TestCase):
         self.assertTrue(build_weekly_body_checkin(self.conn, date(2026, 10, 14))["due"])
         self.assertFalse(build_weekly_body_checkin(self.conn, date(2026, 10, 15))["due"])
 
+    def test_sunday_reviews_the_week_it_ends_and_monday_stays_answered(self):
+        sunday = date(2026, 10, 11)
+        state = build_weekly_body_checkin(self.conn, sunday)
+        self.assertEqual((state["week_start"], state["week_end"], state["due"]), (LAST_MONDAY, "2026-10-11", True))
+        save_weekly_body_checkin(self.conn, True, 79.4, False, sunday)
+        self.assertFalse(build_weekly_body_checkin(self.conn, MONDAY)["due"])
+        self.assertTrue(build_weekly_body_checkin(self.conn, date(2026, 10, 18))["due"])
+
     def test_answer_closes_prompt_and_logs_weight_once(self):
         state = save_weekly_body_checkin(self.conn, True, 79.4, False, MONDAY)
         self.assertFalse(state["due"])

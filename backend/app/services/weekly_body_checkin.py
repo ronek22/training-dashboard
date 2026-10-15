@@ -1,9 +1,10 @@
-"""Weekly body check-in: one Monday prompt for a weigh-in and last week's protein.
+"""Weekly body check-in: one prompt a week for a weigh-in and the week's protein.
 
 Daily protein ticks and weigh-ins are easy to skip, which leaves the muscle-gain
 check without a protein share or a body-weight trend. This asks once a week
-instead. The check-in reviews the previous Monday–Sunday week and stays open
-Monday to Wednesday until answered or skipped.
+instead. The check-in reviews a Monday–Sunday week and opens on its Sunday
+(the Sunday planning flow asks it there), staying open Monday to Wednesday
+until answered or skipped.
 
 The weigh-in is stored as a normal manual ``weight`` metric on the check-in
 day, so the protein target and the weight trend pick it up unchanged. The
@@ -27,6 +28,9 @@ WEIGHT_NOTE = "Weekly check-in"
 
 
 def reviewed_week_start(today: date) -> date:
+    # Sunday already reviews the week it ends; other days review last week.
+    if today.weekday() == 6:
+        return today - timedelta(days=6)
     return today - timedelta(days=today.weekday() + 7)
 
 
@@ -54,7 +58,7 @@ def build_weekly_body_checkin(conn: sqlite3.Connection, today: Optional[date] = 
     return {
         "week_start": week_start.isoformat(),
         "week_end": (week_start + timedelta(days=6)).isoformat(),
-        "due": not answered and today.weekday() < OPEN_WEEKDAYS,
+        "due": not answered and (today.weekday() < OPEN_WEEKDAYS or today.weekday() == 6),
         "answered": answered,
         "skipped": bool(row["skipped"]) if row else False,
         "protein_most_days": None if not row or row["protein_most_days"] is None else bool(row["protein_most_days"]),

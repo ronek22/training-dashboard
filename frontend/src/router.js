@@ -24,6 +24,7 @@ export default createRouter({
     { path: '/', component: Dashboard },
     { path: '/weekly-review', component: () => import('./views/WeeklyReview.vue') },
     { path: '/plan', component: Plan },
+    { path: '/sunday', component: () => import('./views/SundayPlanning.vue') },
     { path: '/roadmap', component: Roadmap },
     { path: '/ideas', component: () => import('./views/Ideas.vue') },
     { path: '/usage', component: () => import('./views/CoachUsage.vue') },

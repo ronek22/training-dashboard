@@ -15,7 +15,7 @@
           </svg>
           <span>{{ planningWithCoach ? 'The coach is planning…' : isLocalCoachHost ? 'Plan this week with the coach' : 'Plan with the coach on Mac' }}</span>
         </button>
-        <span class="planner-hint">{{ coachPlanningStage || (isLocalCoachHost ? 'Creates and saves the plan automatically' : 'Open TrainLog on your Mac to use the coach') }}</span>
+        <span class="planner-hint">{{ coachPlanningStage || (isLocalCoachHost ? 'Creates and saves the plan automatically' : 'Open TrainLog on your Mac to use the coach') }} · <RouterLink to="/sunday">Sunday planning for next week →</RouterLink></span>
       </div>
     </div>
 
@@ -5154,4 +5154,5 @@ const savePlanLink = async (day) => {
 .plan-page .actual-block .plan-block-label { margin: 0; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .plan-page .actual-block .link-toggle-button { min-height: 32px; padding: 0; font-size: 12px; }
 .plan-page .actual-empty { padding: 4px 0 0; font-size: 12px; font-style: normal; color: var(--muted); }
+.plan-page .planner-hint a{color:var(--accent);white-space:nowrap}
 </style>

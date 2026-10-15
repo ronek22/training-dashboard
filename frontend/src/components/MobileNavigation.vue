@@ -24,6 +24,7 @@ const moreLinks = [
   { path: '/athlete', label: 'Athlete' },
   { path: '/notes', label: 'Coach notes' },
   { path: '/weekly-review', label: 'Weekly review' },
+  { path: '/sunday', label: 'Sunday planning' },
   { path: '/sync', label: 'Data & Sync' },
   { path: '/usage', label: 'Coach usage' },
   { path: '/roadmap', label: 'Roadmap' },

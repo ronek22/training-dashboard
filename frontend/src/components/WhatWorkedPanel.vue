@@ -36,10 +36,11 @@ const shortDate = (value) => new Date(`${value}T12:00:00`).toLocaleDateString('e
       <span class="ww-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="15" height="15"><path d="M9 18h6m-5 3h4M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 3H9c0-1 0-2-1-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </span>
-      <strong id="what-worked-title">What works for you</strong>
-      <span class="ww-headline">{{ headline }}</span>
-      <span class="ww-counts">{{ data.tagged_sessions }} tagged<template v-if="confirmed.length"> · {{ confirmed.length }} confirmed</template><template v-if="emerging.length"> · {{ emerging.length }} emerging</template></span>
-      <span class="ww-chevron" aria-hidden="true">{{ open ? '−' : '+' }}</span>
+      <span class="ww-copy">
+        <strong id="what-worked-title">What works for you</strong>
+        <span class="ww-description"><span class="ww-headline">{{ headline }}</span> · <span class="ww-counts">{{ data.tagged_sessions }} tagged<template v-if="confirmed.length"> · {{ confirmed.length }} confirmed</template><template v-if="emerging.length"> · {{ emerging.length }} emerging</template></span>
+        </span></span>
+      <span class="ww-chevron">{{ open ? 'Close' : 'Tag sessions →' }}</span>
     </button>
 
     <div v-if="open" id="what-worked-body" class="ww-body">
@@ -113,5 +114,24 @@ ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 @media (max-width: 760px) {
   .ww-columns { grid-template-columns: 1fr; }
   .ww-counts { display: none; }
+}
+
+/* Multi-sport redesign layer */
+.what-worked { margin-bottom: 24px; border-radius: 18px; background: var(--surface); }
+.what-worked .ww-bar { min-height: 66px; padding: 14px 18px; gap: 12px; }
+.what-worked .ww-icon { flex: none; width: 36px; height: 36px; border-radius: 12px; color: var(--muted-soft); background: var(--surface2); }
+.what-worked .ww-copy { display: grid; flex: 1; min-width: 0; }
+.what-worked .ww-copy strong { font-size: 14px; line-height: 1.4; }
+.what-worked .ww-description { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.what-worked .ww-headline { color: inherit; white-space: normal; }
+.what-worked .ww-counts { font-size: inherit; }
+.what-worked :deep(.sv-options .is-loved) { --tone: var(--z2); }
+.what-worked .ww-chevron { width: auto; padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; }
+@media (max-width: 640px) {
+  .what-worked .ww-bar { flex-wrap: wrap; padding: 16px; }
+  .what-worked .ww-copy { flex-basis: calc(100% - 48px); }
+  .what-worked .ww-chevron { margin-left: 48px; }
+  .what-worked .ww-counts { display: inline; }
+  .what-worked .ww-tagging li { flex-wrap: wrap; }
 }
 </style>

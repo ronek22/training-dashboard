@@ -4,6 +4,7 @@
     :class="{
       'is-today': isToday,
       'is-sick': sick,
+      'is-mountains': !sick && lifeLoad.some((tag) => tag.key === 'mountains'),
       'is-selected': selected,
       'is-outside': outside,
       'is-past': timeState === 'past',
@@ -25,6 +26,7 @@
         <span v-if="lifeLoad.length" class="day-life" :title="lifeLoad.map((tag) => tag.label).join(', ')" aria-hidden="true"><span v-for="tag in lifeLoad" :key="tag.key">{{ tag.icon }}&#xFE0E;</span></span>
       </span>
       <span v-if="sick" class="day-sick" title="Sick day">{{ compact ? 'Sick' : 'Sick day' }}</span>
+      <span v-else-if="lifeLoad.some((tag) => tag.key === 'mountains')" class="day-trip">Mountains</span>
       <span v-else-if="loadTone === 'hard'" class="day-hard">Hard</span>
     </button>
 
@@ -285,4 +287,32 @@ const planStatusLabel = (item) => {
 }
 .more-events { width: 100%; min-height: 24px; padding: 2px 7px; border: 0; border-radius: 6px; background: transparent; color: var(--muted-soft); cursor: pointer; font-size: 11px; font-weight: 650; text-align: left; }
 .more-events:hover { background: rgb(var(--ov-rgb) / .06); color: var(--text); }
+
+/* ── Multi-sport redesign layer ── */
+.calendar-day { --cell: rgb(var(--deep-rgb) / .9); min-height: 116px; padding: 10px; border-radius: 14px; }
+.calendar-day:hover { background: var(--surface2); }
+.calendar-day.is-today { background: var(--cell); box-shadow: inset 0 0 0 2px var(--volt); }
+.calendar-day.is-sick { --cell: color-mix(in srgb, var(--warning) 9%, rgb(var(--deep-rgb))); }
+.calendar-day.is-selected { box-shadow: inset 0 0 0 1.5px var(--border-strong); }
+.calendar-day.is-today.is-selected { box-shadow: inset 0 0 0 2px var(--volt); }
+.day-number { min-width: 0; height: auto; padding: 0 2px; border-radius: 6px; color: var(--text); font-size: 19px; font-weight: 700; place-items: start; }
+.is-today .day-number { padding: 1px 7px; background: var(--volt); color: var(--on-accent); }
+.is-outside .day-number { color: var(--muted); }
+.day-sick { padding: 2px 7px; background: transparent; color: var(--warning-text); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.day-hard { padding: 2px 7px; background: transparent; color: var(--run); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.tone-walk { --tone: var(--z2); }
+.calendar-event { border-radius: 8px; background: color-mix(in srgb, var(--tone) 16%, transparent); box-shadow: inset 3px 0 0 var(--tone); }
+.calendar-event:hover { background: color-mix(in srgb, var(--tone) 26%, transparent); }
+.is-compact .calendar-event { min-height: 28px; padding: 4px 8px 4px 10px; }
+.is-compact .event-icon { display: none; }
+.event-copy strong { font-weight: 600; }
+.is-compact .event-inline { margin-left: auto; color: var(--text); font-family: var(--font-display); font-size: 14px; font-weight: 700; }
+.is-compact .event-copy { gap: 6px; }
+.calendar-event.status-planned { border: 1px dashed color-mix(in srgb, var(--tone) 70%, transparent); background: transparent; box-shadow: none; }
+.calendar-event.status-planned:hover { background: color-mix(in srgb, var(--tone) 10%, transparent); }
+.calendar-event.status-missed { background: color-mix(in srgb, var(--danger) 12%, transparent); box-shadow: inset 3px 0 0 var(--danger); }
+.event-status { color: var(--success-text); }
+.calendar-day.is-mountains { --cell: color-mix(in srgb, var(--tone-recovery) 12%, rgb(var(--deep-rgb))); }
+.day-trip { padding: 2px 7px; color: var(--tone-recovery); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+@container (max-width: 120px) { .day-trip { display: none; } }
 </style>

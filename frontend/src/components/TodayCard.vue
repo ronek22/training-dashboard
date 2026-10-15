@@ -379,4 +379,8 @@ const comparisonState = computed(() => {
 .today-win strong { color: var(--success-text); }
 .today-primary, .today-secondary { min-height: 44px; border-radius: 999px; font-size: 14px; }
 .today-guide article, .today-activities a { border-radius: 14px; background: rgb(var(--deep-rgb) / .55); }
+
+.today-primary { background: var(--volt); color: var(--on-accent); font-weight: 700; }
+.today-primary:hover { background: var(--volt-strong); }
+.today-coach-link { font-size: 13px; }
 </style>

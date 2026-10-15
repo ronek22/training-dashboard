@@ -13,12 +13,13 @@
     </div>
 
     <div v-else-if="!editing" class="checkin-summary-block">
-      <div class="checkin-line">
-        <span id="daily-checkin-title">Morning check-in</span>
-      </div>
       <div class="checkin-empty">
-        <p>Not logged yet. Two taps keep readiness honest.</p>
-        <button type="button" class="checkin-cta" @click="editing = true">How do you feel?</button>
+        <span class="checkin-empty-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" /><path d="M10 6v4l2.5 2" /></svg></span>
+        <div class="checkin-empty-text">
+          <span id="daily-checkin-title">Morning check-in</span>
+          <p>Not logged yet today</p>
+        </div>
+        <button type="button" class="checkin-cta" @click="editing = true">Log</button>
       </div>
     </div>
 
@@ -260,4 +261,15 @@ async function save() {
 .checkin-empty p { margin: 0; color: var(--muted-soft); font-size: 14px; }
 .checkin-cta { min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); padding: 0 20px; color: var(--on-accent); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 .checkin-cta:hover { background: var(--accent-strong); }
+
+.daily-checkin { padding: 18px 22px; }
+.checkin-summary-block { gap: 10px; }
+.checkin-empty { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; }
+.checkin-empty-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--surface2); color: var(--muted-soft); }
+.checkin-empty-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.checkin-empty-text { display: grid; gap: 2px; min-width: 0; }
+.checkin-empty-text span { color: var(--text); font-size: 15px; font-weight: 600; }
+.checkin-empty-text p { margin: 0; color: var(--muted); font-size: 13px; }
+.checkin-cta { min-height: 38px; border: 1px solid color-mix(in srgb, var(--volt) 55%, transparent); background: transparent; padding: 0 18px; color: var(--volt); font-size: 14px; font-weight: 700; }
+.checkin-cta:hover { background: color-mix(in srgb, var(--volt) 12%, transparent); }
 </style>

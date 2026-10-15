@@ -1316,7 +1316,6 @@ button { color: inherit; }
 .ramp-warning.ramp-high { background: var(--surface2); color: var(--text-soft); }
 .ramp-warning.ramp-high::first-letter { color: inherit; }
 .checkin-card { display: grid; gap: 4px; padding: 20px 24px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
-.checkin-card :deep(> *:first-child) { margin-top: 0; border-top: 0; padding-top: 0; }
 @media (max-width: 640px) {
   .signal-tiles { gap: 8px; }
   .signal-tile { padding: 12px 10px; }
@@ -1359,4 +1358,7 @@ button { color: inherit; }
 .signal-card .swap-hint.score-block::before { background: var(--strength); }
 .signal-card .swap-hint a { color: var(--text); }
 .checkin-card { gap: 0; padding: 0; overflow: hidden; }
+
+.decision-layout { align-items: start; }
+.checkin-card { padding: 0; }
 </style>

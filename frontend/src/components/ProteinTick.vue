@@ -101,4 +101,11 @@ onMounted(load)
 .protein-choice button.on.miss { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning-text); }
 .protein-week { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 12px; }
 .protein-link { color: var(--accent); font-size: 13px; }
+
+.protein-tick { padding: 14px 22px; }
+.protein-line { justify-content: space-between; }
+.protein-line > span:first-child { color: var(--text); font-size: 15px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.protein-week { flex-basis: auto; margin-left: auto; color: var(--muted-soft); font-size: 13px; }
+.protein-question { flex: 1 1 100%; order: 3; color: var(--muted-soft); font-size: 13px; }
+.protein-choice { order: 4; }
 </style>

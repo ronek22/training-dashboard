@@ -31,6 +31,8 @@
   --card-bg: #12151c;
   --sidebar-bg: #0a0c11;
   --on-accent: #0a0c11;
+  --volt: #d4ff3a;
+  --volt-strong: #e3ff7a;
   --dim: 0%;
   /* Light theme darkens bright dark-theme colours by lightness only, so hues stay vivid instead of going muddy. */
   --dim-l: 0;
@@ -129,6 +131,8 @@
   --panel-rgb: 255 255 255;
   --card-bg: #ffffff;
   --sidebar-bg: #ffffff;
+  --volt: #4f6b00;
+  --volt-strong: #3d5400;
   --on-accent: #ffffff;
   --dim: 42%;
   --dim-l: 0.2;

@@ -412,7 +412,7 @@ tr:hover td { background: var(--surface2); }
 
 .page-title {
   font-family: var(--font-display);
-  font-size: clamp(40px, 5vw, 64px);
+  font-size: clamp(44px, 5.4vw, 72px);
   font-weight: 800;
   font-style: italic;
   line-height: 0.95;

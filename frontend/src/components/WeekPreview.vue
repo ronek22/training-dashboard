@@ -31,6 +31,13 @@
           <div v-if="week.notes.length" class="preview-note">{{ week.notes.join(' · ') }}</div>
         </div>
 
+        <div class="preview-load">
+          <template v-if="loadFor(week)">
+            <strong>{{ loadFor(week).load.toLocaleString('en-US') }}<small>load</small></strong>
+            <span :class="loadFor(week).flag ? 'is-steep' : loadFor(week).ramp < 0 ? 'is-down' : 'is-up'">{{ loadFor(week).ramp < 0 ? '▼' : '▲' }} {{ loadFor(week).ramp > 0 ? '+' : '−' }}{{ Math.abs(loadFor(week).ramp).toFixed(1) }} fitness{{ loadFor(week).flag ? ` · ${loadFor(week).flag}` : '' }}</span>
+          </template>
+        </div>
+
         <div class="preview-pills">
           <span v-if="week.new_block" class="preview-badge badge-goal">New block</span>
           <span v-if="week.lighter" class="preview-badge badge-lighter" title="About 60% of the block's ride hours, one of each key ride">Lighter week</span>
@@ -49,6 +56,12 @@ import { useApi } from '../stores/api'
 const api = useApi()
 
 const preview = ref(null)
+const forecast = ref(null)
+// Planned load and the fitness change it implies, from the load forecast.
+const loadFor = (week) => {
+  const row = forecast.value?.weeks?.find((item) => item.week_start === week.week_start)
+  return row ? { load: Math.round(row.load), ramp: Number(row.ramp || 0), flag: row.flag } : null
+}
 const weeks = computed(() => preview.value?.weeks || [])
 const hasArc = computed(() => Boolean(preview.value && preview.value.arc_status !== 'none'))
 
@@ -63,7 +76,9 @@ const flashed = ref(null)
 
 const load = async () => {
   try {
-    preview.value = (await api.getWeekPreview(undefined, count.value)).data
+    const [weekPreview, loadForecast] = await Promise.all([api.getWeekPreview(undefined, count.value), api.getLoadForecast().catch(() => null)])
+    preview.value = weekPreview.data
+    forecast.value = loadForecast?.data || null
   } catch {
     preview.value = null
   }
@@ -143,4 +158,23 @@ defineExpose({ load, reveal })
 
 .preview-summary { font-size: 14px; font-weight: 600; }
 .preview-when { font-size: 14px; }
+
+.preview-rows .preview-row, .preview-rows.no-arc .preview-row { grid-template-columns: 140px minmax(0, 1fr) 170px minmax(0, auto); align-items: center; }
+.preview-rows:not(.no-arc) .preview-row { grid-template-columns: 140px 160px minmax(0, 1fr) 170px minmax(0, auto); }
+.preview-when strong { font-size: 16px; }
+.preview-load { display: grid; gap: 2px; }
+.preview-load strong { display: flex; align-items: baseline; gap: 6px; font-family: var(--font-display); font-size: 28px; font-weight: 700; line-height: 1; }
+.preview-load strong small { color: var(--muted-soft); font-family: var(--font-body); font-size: 13px; font-weight: 500; }
+.preview-load span { color: var(--muted-soft); font-size: 12px; font-weight: 600; }
+.preview-load .is-steep { color: var(--warning-text); }
+.preview-pills { justify-content: flex-end; }
+.preview-badge { border-radius: 999px; font-size: 12px; font-weight: 600; }
+@media (max-width: 800px) {
+  .preview-rows .preview-row, .preview-rows.no-arc .preview-row, .preview-rows:not(.no-arc) .preview-row { grid-template-columns: 1fr; }
+  .preview-pills { justify-content: flex-start; }
+}
+.preview-rows .preview-row, .preview-rows.no-arc .preview-row { grid-template-columns: 140px minmax(0, 1fr) 170px 280px; }
+.preview-rows:not(.no-arc) .preview-row { grid-template-columns: 140px 160px minmax(0, 1fr) 170px 280px; }
+@media (max-width: 1100px) { .preview-rows .preview-row, .preview-rows.no-arc .preview-row, .preview-rows:not(.no-arc) .preview-row { grid-template-columns: 120px minmax(0, 1fr) 150px; } .preview-pills { grid-column: 2 / -1; justify-content: flex-start; } }
+@media (max-width: 800px) { .preview-rows .preview-row, .preview-rows.no-arc .preview-row, .preview-rows:not(.no-arc) .preview-row { grid-template-columns: 1fr; } .preview-pills { grid-column: auto; } }
 </style>

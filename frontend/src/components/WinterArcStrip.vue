@@ -1,8 +1,8 @@
 <template>
-  <section v-if="arc" class="card arc-card" aria-labelledby="winter-arc-title">
+  <section v-if="arc" class="arc-card" :class="embedded ? 'arc-embedded' : 'card'" aria-labelledby="winter-arc-title">
     <div class="arc-head">
       <div>
-        <div class="arc-eyebrow">WINTER ARC</div>
+        <div v-if="!embedded" class="arc-eyebrow">WINTER ARC</div>
         <h2 id="winter-arc-title" class="arc-title">{{ headline }}</h2>
         <p class="arc-sub">{{ subline }}</p>
       </div>
@@ -114,7 +114,7 @@ import { addDays, differenceInCalendarDays, format, nextMonday, parseISO, startO
 import { useApi } from '../stores/api'
 
 // The Plan page hides the strip while the season timeline already draws the blocks.
-defineProps({ showStrip: { type: Boolean, default: true } })
+defineProps({ showStrip: { type: Boolean, default: true }, embedded: { type: Boolean, default: false } })
 const emit = defineEmits(['changed'])
 const api = useApi()
 const arc = ref(null)
@@ -375,4 +375,9 @@ defineExpose({ load })
 
 .arc-sub { color: var(--muted-soft); font-size: 14px; }
 .arc-button { min-height: 44px; border-radius: 999px; }
+
+.arc-card.arc-embedded { margin: 0; padding: 20px 24px; border: 1px dashed var(--border-strong); border-radius: 18px; background: transparent; }
+.arc-embedded .arc-title { margin-top: 0; font-family: var(--font-body); font-size: 17px; font-style: normal; font-weight: 700; text-transform: none; }
+.arc-embedded .arc-head { align-items: center; }
+.arc-embedded .arc-button { min-height: 44px; padding: 0 20px; border: 1px solid color-mix(in srgb, var(--ride) 50%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--ride) 12%, transparent); color: var(--tone-ride); font-weight: 700; }
 </style>

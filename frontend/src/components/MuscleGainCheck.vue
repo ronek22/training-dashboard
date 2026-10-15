@@ -1,23 +1,23 @@
 <template>
   <section class="muscle-gain" aria-labelledby="muscle-gain-title">
     <header class="mg-head">
-      <div>
+      <div class="mg-heading">
         <span class="mg-kicker">{{ state ? `Last 4 weeks · ${day(state.window.start_date)} – ${day(state.window.end_date)}` : 'Last 4 weeks' }}</span>
-        <h2 id="muscle-gain-title">Is Lift 3× building muscle?</h2>
+        <h2 id="muscle-gain-title">Is lifting building muscle?</h2>
+        <span v-if="state" class="mg-verdict" :class="`is-${state.verdict.status}`">
+          {{ state.verdict.label }}<small v-if="state.verdict.known"> · {{ state.verdict.good }} of {{ state.verdict.known }} signals good</small>
+        </span>
       </div>
-      <span v-if="state" class="mg-verdict" :class="`is-${state.verdict.status}`">
-        {{ state.verdict.label }}<small v-if="state.verdict.known"> · {{ state.verdict.good }} of {{ state.verdict.known }} signals good</small>
-      </span>
+      <div v-if="state" class="mg-suggestion">
+        <span class="mg-suggestion-label">One thing to change</span>
+        <strong>{{ state.suggestion.headline }}</strong>
+        <p>{{ state.suggestion.detail }}</p>
+      </div>
     </header>
 
     <p v-if="loading && !state" class="mg-muted" role="status">Reading the last four weeks…</p>
     <p v-else-if="error" class="mg-muted" role="alert">{{ error }} <button type="button" class="mg-link" @click="load">Try again</button></p>
     <template v-else-if="state">
-      <div class="mg-suggestion">
-        <span class="mg-suggestion-label">One thing to change</span>
-        <strong>{{ state.suggestion.headline }}</strong>
-        <p>{{ state.suggestion.detail }}</p>
-      </div>
 
       <div class="mg-grid">
         <article class="mg-sets">
@@ -87,7 +87,7 @@
             </div>
           </details>
 
-          <details class="mg-signal" :class="{ 'is-good': (state.protein.share ?? 0) >= 0.7 }">
+          <details class="mg-signal" :class="{ 'is-good': (state.protein.share ?? 0) >= 0.7, 'is-attention': state.protein.answered && (state.protein.share ?? 0) < 0.7 }">
             <summary>
               <span>Protein on lift days</span>
               <strong v-if="state.protein.answered">{{ state.protein.hits }} of {{ state.protein.lift_days }}<small> · {{ state.protein.lift_days - state.protein.answered }} unanswered</small></strong>
@@ -104,7 +104,7 @@
             </div>
           </details>
 
-          <details class="mg-signal" :class="{ 'is-good': state.weight.status === 'gentle_gain' }">
+          <details class="mg-signal" :class="{ 'is-good': state.weight.status === 'gentle_gain', 'is-neutral': !state.weight.available }">
             <summary>
               <span>Body weight trend</span>
               <strong v-if="state.weight.available">{{ signed(state.weight.kg_per_week) }} kg<small> / week · {{ WEIGHT_LABELS[state.weight.status] }}</small></strong>
@@ -236,4 +236,372 @@ details[open] > summary { color: var(--text); }
 summary:focus-visible { outline: 2px solid var(--strength-accent, var(--accent)); outline-offset: 2px; }
 @media (max-width: 900px) { .mg-grid { grid-template-columns: 1fr; gap: 18px; } }
 @media (max-width: 520px) { .mg-group > summary { grid-template-columns: 64px minmax(0, 1fr) 34px; } .mg-status { display: none; } }
+
+/* Multi-sport redesign layer */
+.muscle-gain {
+  gap: 28px;
+  min-width: 0;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.muscle-gain .mg-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, .95fr);
+  align-items: stretch;
+  gap: 20px 32px;
+}
+
+.muscle-gain .mg-heading,
+.muscle-gain .mg-suggestion,
+.muscle-gain .mg-grid,
+.muscle-gain .mg-muted {
+  min-width: 0;
+}
+
+.muscle-gain .mg-kicker,
+.muscle-gain .mg-block-head h3,
+.muscle-gain .mg-signal > summary > span,
+.muscle-gain .mg-suggestion-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.muscle-gain .mg-kicker {
+  color: var(--muted);
+}
+
+.muscle-gain .mg-head h2 {
+  margin-top: 10px;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: -.025em;
+  line-height: .98;
+  text-transform: uppercase;
+}
+
+.muscle-gain .mg-verdict {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  margin-top: 12px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.muscle-gain .mg-verdict small {
+  color: var(--muted-soft);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.muscle-gain .mg-suggestion {
+  align-self: stretch;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  padding: 18px 20px;
+  border: 1px solid color-mix(in srgb, var(--strength) 30%, var(--border));
+  border-left: 2px solid var(--strength);
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--strength) 7%, var(--surface2));
+}
+
+.muscle-gain .mg-suggestion-label {
+  color: var(--tone-strength);
+}
+
+.muscle-gain .mg-suggestion strong {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.muscle-gain .mg-suggestion p {
+  color: var(--muted-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.muscle-gain .mg-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, .95fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.muscle-gain .mg-sets,
+.muscle-gain .mg-signals {
+  min-width: 0;
+}
+
+.muscle-gain .mg-block-head {
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.muscle-gain .mg-block-head h3 {
+  color: var(--muted);
+}
+
+.muscle-gain .mg-block-head span {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.muscle-gain .mg-group {
+  border-bottom-color: var(--border);
+}
+
+.muscle-gain .mg-group > summary {
+  grid-template-columns: 82px minmax(0, 1fr) 42px 70px;
+  gap: 14px;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 0;
+}
+
+.muscle-gain .mg-group-label {
+  min-width: 0;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.muscle-gain .mg-bar {
+  height: 22px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+}
+
+.muscle-gain .mg-band {
+  top: 0;
+  bottom: 0;
+  border-right: 1px dashed color-mix(in srgb, var(--success) 48%, transparent);
+  border-left: 1px dashed color-mix(in srgb, var(--success) 48%, transparent);
+  background: color-mix(in srgb, var(--success) 9%, transparent);
+}
+
+.muscle-gain .mg-group .mg-bar b {
+  top: 4px;
+  bottom: 4px;
+  border-radius: 4px;
+  background: var(--strength);
+}
+
+.muscle-gain .mg-group.is-tracked .mg-bar b {
+  background: var(--surface3);
+}
+
+.muscle-gain .mg-group > summary strong {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.muscle-gain .mg-status {
+  color: var(--muted-soft);
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: right;
+}
+
+.muscle-gain .mg-group.is-low .mg-status {
+  color: var(--warning-text);
+}
+
+.muscle-gain .mg-group.is-in_range .mg-status,
+.muscle-gain .mg-group.is-high .mg-status {
+  color: var(--success-text);
+}
+
+.muscle-gain .mg-evidence {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.muscle-gain .mg-note {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.muscle-gain .mg-signals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 12px;
+}
+
+.muscle-gain .mg-signal {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  padding: 16px;
+  border: 0;
+  border-radius: var(--radius-panel);
+  background: var(--surface2);
+}
+
+.muscle-gain .mg-signal > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: start;
+  min-width: 0;
+  gap: 0;
+  padding: 0;
+  color: var(--muted);
+}
+
+.muscle-gain .mg-signal > summary > span {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.muscle-gain .mg-signal > summary::before {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  width: 10px;
+  height: 10px;
+  margin: 0;
+  background: var(--warning);
+}
+
+.muscle-gain .mg-signal.is-good > summary::before {
+  background: var(--success);
+}
+
+.muscle-gain .mg-signal.is-attention > summary::before {
+  background: var(--danger);
+}
+
+.muscle-gain .mg-signal.is-neutral > summary::before {
+  background: var(--muted);
+}
+
+.muscle-gain .mg-signal > summary strong {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin-top: 10px;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: .95;
+  white-space: normal;
+}
+
+.muscle-gain .mg-signal > summary strong.mg-unavailable {
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.muscle-gain .mg-signal > summary small {
+  color: var(--muted-soft);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.muscle-gain .mg-signal[open] > summary {
+  margin-bottom: 12px;
+}
+
+.muscle-gain .mg-signal .mg-evidence {
+  grid-column: 1 / -1;
+  margin-top: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 900px) {
+  .muscle-gain .mg-head,
+  .muscle-gain .mg-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .muscle-gain .mg-suggestion {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .muscle-gain {
+    gap: 22px;
+    padding: 20px;
+  }
+
+  .muscle-gain .mg-head h2 {
+    font-size: 32px;
+  }
+
+  .muscle-gain .mg-grid {
+    gap: 22px;
+  }
+
+  .muscle-gain .mg-block-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .muscle-gain .mg-block-head span {
+    white-space: normal;
+  }
+
+  .muscle-gain .mg-group > summary {
+    grid-template-columns: 62px minmax(0, 1fr) 36px;
+    gap: 8px;
+  }
+
+  .muscle-gain .mg-status {
+    display: none;
+  }
+
+  .muscle-gain .mg-signals {
+    gap: 8px;
+  }
+
+  .muscle-gain .mg-signal {
+    padding: 14px;
+  }
+
+  .muscle-gain .mg-signal > summary strong {
+    font-size: 28px;
+  }
+}
 </style>

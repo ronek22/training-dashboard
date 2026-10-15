@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-15T12:00:00+02:00",
-  "summary": "Planning-horizon review, asked for by you: the weekly plan stays the detailed unit, but the app needs a visible longer view above it. Added a 4-week preview, weeks that build on the previous one, gentle strength phases, a season map, block-end reviews, an arc that adapts when life interrupts, a training-load forecast, a Sunday planning flow and food targets that follow the block. Source review only. No tests or model calls were run.",
+  "reviewed_at": "2026-10-15T23:30:00+02:00",
+  "summary": "Fresh round after the board ran low (32 done, 14 dismissed). Grounded in this week's data: lower-back tightness from stress, red readiness with sleep debt, a 7-day mountain trip, a 286-day streak, only 6 logged food days and HR-only outdoor rides. Added ache follow-up, mountain-day fuelling, streak milestones, one-tap unlogged food days, stress-week sleep protection, outdoor power estimates, indoor/outdoor from the forecast and ask-the-coach on cards.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -1110,6 +1110,184 @@
         "A higher-volume week shows a clear eat-more hint.",
         "Targets never drop below the current baseline because of a lighter week.",
         "Tests cover target scaling."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "follow-up-on-mentioned-aches",
+      "title": "Follow up on aches you mention in session notes",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "High",
+      "problem": "Session feedback like 'tightness in lower back, probably stress' (Oct 15, pain 2/10) stays a note. Recovery issues and protected body areas only kick in when an issue is opened by hand, and coaching only flags pain at 4/10 or higher.",
+      "proposal": "When feedback or a check-in names a body area with pain 1-3, ask the next morning in the check-in: 'Lower back - better, same or worse?'. 'Same' twice opens a light recovery issue (one tap, editable) and offers to protect that area in the lift top-up for a few days. 'Better' closes the thread quietly. Suggest one short mobility routine from the recovery library for that area.",
+      "benefit": "Small niggles get caught before they turn into a lost week, without you having to remember to open a recovery issue.",
+      "evidence": [
+        "backend/app/services/recovery.py: area_tokens, create_issue",
+        "backend/app/services/activity_feedback.py and checkins.py: pain_level, note",
+        "backend/app/services/coaching.py: pain only flagged at >= 4",
+        "Athlete page body_areas protection (modality restrictions)"
+      ],
+      "acceptance_criteria": [
+        "A note naming a body area with pain 1-3 creates a follow-up question in the next morning check-in.",
+        "Two 'same' or one 'worse' answer offers a prefilled recovery issue; nothing is created without a tap.",
+        "Protecting the area is an explicit choice and expires after a set number of days.",
+        "Tests cover area detection from Polish and English notes."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "fuel-the-mountain-days",
+      "title": "Eat enough on mountain hiking days",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "High",
+      "problem": "The Oct 19-25 trip is seven hiking days in a row, but food targets follow the planned training week and mountain days are kept out of planning. Long hikes burn far more than a normal day, and under-eating is the known risk.",
+      "proposal": "On days tagged Mountains, raise the Food target from the hike estimate (planned hours and elevation if a saved route exists, else a typical TPN day). Show a short trip fuelling card before the trip: daily kcal and carbs, snacks per hour on the trail, and a packing list of easy foods from your saved products. After each day, fill in the burn from the synced hike.",
+      "benefit": "You come back from the trip without a week-long energy hole, which also protects muscle gain and the re-entry week.",
+      "evidence": [
+        "backend/app/services/food_targets.py: planned_week, day kinds",
+        "backend/app/services/life_load.py: Mountains tag",
+        "backend/app/services/hike_detail.py and route_planner.py: duration and elevation",
+        "Upcoming life-load: Mountains on 2026-10-19..25"
+      ],
+      "acceptance_criteria": [
+        "Mountains-tagged days get a higher target than rest days, sized from route or default hike estimate.",
+        "Mountain days stay out of the training plan and load model.",
+        "A pre-trip card lists daily targets and trail snack amounts.",
+        "Targets update from the synced hike after each day."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "streak-milestones",
+      "title": "Celebrate the 300-day streak and other milestones",
+      "category": "Experience",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The daily streak is at 286 days and will pass 300 on Oct 29, just after the mountain trip. Today it is a single number on the Dashboard; big moments go by unnoticed.",
+      "proposal": "Detect milestones (streak 100/200/300/365 days, lift-3x weeks in a row, year km thresholds, first sweet-spot ride in a month) and show a one-time full-screen celebration with a count-up number, a day grid of the streak and a few highlights from that stretch. Keep a small milestone shelf on Records.",
+      "benefit": "Long consistency gets the moment it deserves, which is a strong motivation driver for you.",
+      "evidence": [
+        "backend/app/services/dashboard.py: compute_activity_streak (286 days on 2026-10-15)",
+        "frontend AnimatedNumber and v-chart-intro",
+        "views/Records.vue"
+      ],
+      "acceptance_criteria": [
+        "Each milestone celebrates once and can be reopened from Records.",
+        "Celebration uses big animated numbers and visuals, not tables.",
+        "Light recovery days keep counting toward the streak as they do now.",
+        "Tests cover milestone detection."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "one-tap-unlogged-food-days",
+      "title": "Mark unlogged food days with one tap",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "Only 6 of the recent days have food logged. Unlogged days are treated as unknown, so the under-eating trend rests on a few days and misses busy days, which are the most likely to be short.",
+      "proposal": "On the next morning, if yesterday has no or very little food logged, ask one question on the Food page and check-in: 'Yesterday was: ate less than usual / about normal / ate more / skip'. Store a rough estimate flagged as a guess, keep it out of logged totals, and use it only in the weekly under-eating read.",
+      "benefit": "The weekly food picture gets honest without making logging tedious.",
+      "evidence": [
+        "backend/app/services/food_log.py",
+        "get_recent_context nutrition: logged_days 6, avg gap -434 kcal",
+        "backend/app/services/checkins.py"
+      ],
+      "acceptance_criteria": [
+        "A day with no log gets one prompt at most, and 'skip' is respected.",
+        "Rough days are visibly marked as guesses and never mixed into logged totals.",
+        "The weekly under-eating summary counts them separately.",
+        "Tests cover the prompt rule."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "stress-week-sleep-protection",
+      "title": "Protect sleep when stress and sleep debt stack up",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "Readiness is red today: sleep debt 6.1 h over 7 nights, stress 4/5, resting HR +3. The app tells you to swap today's session, but nothing helps you pay the debt back or keeps late sessions from making it worse.",
+      "proposal": "When sleep debt is 'risk' and stress is high for 2+ days, show a short payback plan: target bedtime for the next 3 nights from your median sleep, prefer morning or early-evening slots for remaining sessions, and keep sessions under 60 min until debt is back to 'ok'. Show how the debt falls each day.",
+      "benefit": "Recovery comes from the cause instead of only skipping sessions, so the lift-3x anchor and key rides survive busy weeks.",
+      "evidence": [
+        "backend/app/services/sleep_debt.py: build_sleep_debt status",
+        "backend/app/services/readiness_score.py: factors",
+        "backend/app/services/downshift.py"
+      ],
+      "acceptance_criteria": [
+        "The plan appears only when sleep debt is at risk and stress is high on 2+ days.",
+        "It never removes lift sessions, only shortens or moves them.",
+        "Progress shows the debt shrinking night by night.",
+        "Tests cover the trigger."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "outdoor-ride-power-estimate",
+      "title": "Estimate power for outdoor rides without a power meter",
+      "category": "Engineering",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "Outdoor rides have no power meter, so ride balance falls back to HR zones and load mixes power-based and HR-based numbers. Winter outdoor rides will look easier or harder than they were.",
+      "proposal": "Estimate average and normalized power for outdoor rides from speed, elevation, weight, bike type and a simple drag model, using the detailed streams already stored. Mark the values as estimated, use them for load and ride type only, never for records or FTP.",
+      "benefit": "Indoor and outdoor rides count on the same scale, so the winter arc and fitness forecast stay honest.",
+      "evidence": [
+        "backend/app/services/ride_balance.py: HR fallback for outdoor rides",
+        "backend/app/services/load_forecast.py",
+        "Strava streams backfill (velocity, altitude)"
+      ],
+      "acceptance_criteria": [
+        "Outdoor rides without power get an estimate flagged as estimated.",
+        "Estimates never enter personal records, power curve or FTP.",
+        "Calibration check on rides that have both is within a stated error band.",
+        "Tests cover the physics model."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "indoor-or-outdoor-from-forecast",
+      "title": "Pick indoor or outdoor for each ride from the forecast",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Low",
+      "problem": "Winter weather decides whether a planned ride goes outside or onto Zwift, but the plan does not say which, and weather is only shown as current conditions.",
+      "proposal": "For each planned ride in the next 7 days, use the existing 16-day forecast to tag it 'good for outside' or 'Zwift day' (temperature, rain, wind, daylight). Key rides default to Zwift so the structure holds; long easy rides prefer the best-weather day.",
+      "benefit": "Less daily deciding, and outdoor rides land on the days that suit them.",
+      "evidence": [
+        "backend/app/services/weather.py: FORECAST_DAYS = 16",
+        "backend/app/services/plans.py",
+        "Zwift .zwo export"
+      ],
+      "acceptance_criteria": [
+        "Planned rides show an indoor or outdoor tag with the reason.",
+        "Key interval rides stay indoor by default.",
+        "Missing forecast falls back silently.",
+        "Tests cover the rule."
+      ],
+      "created_on": "2026-10-15"
+    },
+    {
+      "id": "ask-coach-about-a-card",
+      "title": "Ask the coach about any card or chart",
+      "category": "Experience",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "The in-app coach chat is best when it knows what you are looking at, but it is opened from the drawer, so questions about a chart ('why is relative effort below range?') need retyping the context.",
+      "proposal": "Add a small 'Ask coach' action on key cards (relative effort, readiness, ride balance, muscle-gain check, food week, fitness forecast). It opens a chat thread linked to that card with the card's data attached, and the thread shows up again next to the card.",
+      "benefit": "The coach chat becomes part of reading the dashboard, without switching apps.",
+      "evidence": [
+        "frontend CoachChatDrawer",
+        "backend/app/services/coach_moments.py: context-linked threads",
+        "Dashboard relative effort, readiness, Metrics ride balance"
+      ],
+      "acceptance_criteria": [
+        "At least five cards offer 'Ask coach' with their data attached.",
+        "Threads are linked to the card and can be reopened from it.",
+        "Existing drawer chat keeps working.",
+        "Tests cover the context payload."
       ],
       "created_on": "2026-10-15"
     }

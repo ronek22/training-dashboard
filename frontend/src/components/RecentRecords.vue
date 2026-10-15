@@ -47,30 +47,30 @@ const gain = (item) => {
 
 <template>
   <section v-if="data" class="recent-records" aria-labelledby="recent-records-heading">
-    <h2 id="recent-records-heading">
-      <svg class="trophy" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M8 21h8m-4-4v4M7 4h10v5a5 5 0 0 1-10 0V4Zm0 2H4a3 3 0 0 0 3 4m10-4h3a3 3 0 0 1-3 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-      {{ prs.length ? `${prs.length} new ${prs.length === 1 ? 'record' : 'records'}` : 'No new records' }}
-      <small>· {{ data.recent_days }} days</small>
-    </h2>
+    <header class="rr-head">
+      <h2 id="recent-records-heading">
+        <span class="rr-count">{{ prs.length ? `${prs.length} new ${prs.length === 1 ? 'record' : 'records'}` : 'No new records' }}</span>
+        <small>· last {{ data.recent_days }} days</small>
+      </h2>
+      <div class="rr-side">
+        <span v-if="streak?.current" class="streak" :title="streak.note">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 2c1 3.5-1.5 5-1.5 7.5 0 1.4 1 2.5 2.3 2.5 1.5 0 2.2-1.2 2.2-2.6 2 1.6 3 3.9 3 6.1A6 6 0 0 1 6 15.5c0-3.4 2.3-5.4 3.6-7.6C10.8 6 11.6 4.2 12 2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /></svg>
+          <strong>{{ streak.current.days }}</strong>-day streak
+        </span>
+        <router-link to="/records" class="all-link">All records{{ extra ? ` (+${extra})` : '' }} →</router-link>
+      </div>
+    </header>
 
-    <ul v-if="shown.length" class="chips">
+    <ul v-if="shown.length" class="rr-tiles">
       <li v-for="item in shown" :key="`${item.category}-${item.label}-${item.date}`" :class="`sport-${sportOf(item.category)}`">
         <router-link :to="item.activity_id ? `/activities/${item.activity_id}` : '/records'" :title="`${item.category} ${item.label}: ${item.display}${item.previous ? ` (was ${item.previous.display})` : ''}`">
-          <i aria-hidden="true"></i>
           <span class="label">{{ chipLabel(item) }}</span>
-          <strong>{{ item.display }}</strong>
-          <span v-if="gain(item)" class="gain">{{ gain(item) }}</span>
+          <strong>{{ splitDisplay(item.display)[0] }}<small v-if="splitDisplay(item.display)[1]">{{ splitDisplay(item.display)[1] }}</small></strong>
+          <span v-if="gain(item)" class="gain">▲ {{ gain(item).replace(/^\+/, '') }}</span>
         </router-link>
       </li>
-      <li v-if="extra" class="extra"><router-link to="/records">+{{ extra }}</router-link></li>
     </ul>
-    <span v-else class="empty">Your bests are waiting.</span>
-
-    <span v-if="streak?.current" class="streak" :title="streak.note">
-      <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M12 2c1 3.5-1.5 5-1.5 7.5 0 1.4 1 2.5 2.3 2.5 1.5 0 2.2-1.2 2.2-2.6 2 1.6 3 3.9 3 6.1A6 6 0 0 1 6 15.5c0-3.4 2.3-5.4 3.6-7.6C10.8 6 11.6 4.2 12 2Z" fill="currentColor" /></svg>
-      <strong>{{ streak.current.days }}</strong> days
-    </span>
-    <router-link to="/records" class="all-link">Records →</router-link>
+    <p v-else class="empty">Your bests are waiting.</p>
   </section>
 </template>
 
@@ -114,4 +114,26 @@ h2 small { font-size: 12px; font-weight: 400; color: var(--muted); }
   .chips { order: 3; flex-basis: 100%; overflow-x: auto; scrollbar-width: none; }
   .streak { margin-left: auto; }
 }
+
+/* ── Redesign: records card with tiles. ── */
+.recent-records { display: grid; gap: 18px; padding: 28px; border-radius: var(--radius-card); background: var(--surface); align-items: stretch; }
+.rr-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px 20px; }
+.recent-records h2 { display: flex; align-items: baseline; gap: 10px; color: var(--text); }
+.rr-count { color: var(--accent); font-family: var(--font-display); font-size: 34px; font-style: italic; font-weight: 800; line-height: 1; text-transform: uppercase; }
+.recent-records h2 small { color: var(--muted-soft); font-size: 14px; }
+.rr-side { display: flex; align-items: center; gap: 20px; }
+.streak { font-size: 14px; }
+.streak svg { color: var(--accent); }
+.streak strong { color: var(--text); font-family: var(--font-display); font-size: 20px; }
+.all-link { color: var(--accent); font-size: 14px; }
+.rr-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.rr-tiles a { display: grid; gap: 8px; height: 100%; box-sizing: border-box; padding: 18px; border: 1px solid transparent; border-radius: 16px; background: var(--surface2); color: inherit; text-decoration: none; }
+.rr-tiles a:hover { border-color: color-mix(in srgb, var(--sport) 45%, transparent); }
+.rr-tiles .label { overflow: hidden; color: color-mix(in srgb, var(--sport) 80%, var(--text)); font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.rr-tiles strong { color: var(--text); font-family: var(--font-display); font-size: 40px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.rr-tiles strong small { margin-left: 4px; color: var(--muted-soft); font-family: var(--font-body); font-size: 15px; font-weight: 500; }
+.rr-tiles .gain { color: var(--success-text); font-size: 13px; font-weight: 600; }
+.sport-streak { --sport: var(--accent); }
+@media (max-width: 1000px) { .rr-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .recent-records { padding: 20px; } .rr-count { font-size: 28px; } }
 </style>

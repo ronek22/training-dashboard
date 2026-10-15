@@ -1,16 +1,25 @@
 <template>
   <section class="daily-checkin" aria-labelledby="daily-checkin-title">
-    <div v-if="!editing && checkin" class="checkin-line">
-      <span id="daily-checkin-title">Morning check-in</span>
-      <div class="checkin-chips">
-        <strong v-for="chip in chips" :key="chip.label" :class="chip.tone">{{ chip.label }} {{ chip.value }}</strong>
+    <div v-if="!editing && checkin" class="checkin-summary-block">
+      <div class="checkin-line">
+        <span id="daily-checkin-title">Morning check-in</span>
+        <button type="button" class="checkin-link" @click="startEditing">Edit</button>
       </div>
-      <button type="button" class="checkin-link" @click="startEditing">Edit</button>
+      <div v-for="bar in bars" :key="bar.label" class="checkin-bar" :class="`is-${bar.tone}`">
+        <span>{{ bar.label }}</span>
+        <i aria-hidden="true"><b v-for="n in bar.max" :key="n" :class="{ on: n <= bar.value }" /></i>
+        <strong>{{ bar.value }}/{{ bar.max }}</strong>
+      </div>
     </div>
 
-    <div v-else-if="!editing" class="checkin-line">
-      <span id="daily-checkin-title">Morning check-in</span>
-      <button type="button" class="checkin-link" @click="editing = true">How do you feel? Log →</button>
+    <div v-else-if="!editing" class="checkin-summary-block">
+      <div class="checkin-line">
+        <span id="daily-checkin-title">Morning check-in</span>
+      </div>
+      <div class="checkin-empty">
+        <p>Not logged yet. Two taps keep readiness honest.</p>
+        <button type="button" class="checkin-cta" @click="editing = true">How do you feel?</button>
+      </div>
     </div>
 
     <!-- Until today's check-in is logged it opens on every dashboard load; "Later" only dismisses it for this visit. -->
@@ -109,6 +118,22 @@ const error = ref('')
 
 const answered = computed(() => rows.filter((row) => form[row.key] > 0).length)
 
+const bars = computed(() => {
+  const c = props.checkin
+  if (!c) return []
+  const rows = [
+    { label: 'Energy', value: c.energy, good: 'high' },
+    { label: 'Sleep', value: c.sleep_quality, good: 'high' },
+    { label: 'Stress', value: c.stress, good: 'low' },
+    { label: 'Soreness', value: c.muscle_soreness, good: 'low' },
+  ]
+  return rows.filter((row) => row.value != null).map((row) => {
+    const value = Number(row.value)
+    const bad = row.good === 'high' ? value <= 2 : value >= 4
+    const good = row.good === 'high' ? value >= 4 : value <= 2
+    return { label: row.label, value, max: 5, tone: bad ? 'risk' : good ? 'positive' : 'neutral' }
+  })
+})
 const chips = computed(() => {
   const c = props.checkin
   if (!c) return []
@@ -217,4 +242,22 @@ async function save() {
   .cm-seg button { padding: 11px 1px; font-size: 11px; }
   .cm-foot { flex-wrap: wrap; }
 }
+
+/* Redesign: check-in card. */
+.daily-checkin { margin: 0; border: 0; padding: 20px 24px; }
+.checkin-summary-block { display: grid; gap: 12px; }
+.checkin-line > span { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.checkin-link { color: var(--accent); font-size: 13px; font-weight: 600; }
+.checkin-bar { display: grid; grid-template-columns: 72px minmax(0, 1fr) 36px; align-items: center; gap: 12px; }
+.checkin-bar > span { color: var(--muted-soft); font-size: 14px; }
+.checkin-bar i { display: flex; gap: 4px; }
+.checkin-bar b { flex: 1; height: 8px; border-radius: 4px; background: var(--surface3); }
+.checkin-bar.is-positive b.on { background: var(--z2); }
+.checkin-bar.is-neutral b.on { background: var(--muted-soft); }
+.checkin-bar.is-risk b.on { background: var(--warning); }
+.checkin-bar strong { font-family: var(--font-display); font-size: 20px; font-weight: 700; text-align: right; }
+.checkin-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.checkin-empty p { margin: 0; color: var(--muted-soft); font-size: 14px; }
+.checkin-cta { min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); padding: 0 20px; color: var(--on-accent); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.checkin-cta:hover { background: var(--accent-strong); }
 </style>

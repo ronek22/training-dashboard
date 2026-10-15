@@ -1341,4 +1341,22 @@ button { color: inherit; }
   .header-sick-link span { display: none; }
   .header-sick-link::after { content: 'Sick?'; }
 }
+
+.coach-label { color: var(--muted); }
+.coach-plan-action { border: 1px solid var(--border-strong); background: transparent; color: var(--text); font-weight: 600; }
+.coach-plan-action:hover:not(:disabled) { border: 1px solid var(--muted); background: var(--surface2); }
+.coach-head h2 span { color: var(--muted-soft); }
+.signal-card .swap-hint, .signal-card .ramp-warning {
+  position: relative; margin: 0; border-radius: 0; border-top: 1px solid var(--border);
+  background: transparent; padding: 12px 0 12px 18px; color: var(--text-soft); font-size: 13px; line-height: 1.5;
+}
+.signal-card :deep(.load-trend) + .ramp-warning, .signal-card :deep(.load-trend) + .swap-hint { margin-top: 18px; }
+.signal-card .swap-hint::before, .signal-card .ramp-warning::before {
+  content: ''; position: absolute; left: 2px; top: 19px; width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
+}
+.signal-card .ramp-warning.ramp-high::before, .signal-card .swap-hint.score-red::before { background: var(--danger); }
+.signal-card .ramp-warning.ramp-caution::before, .signal-card .swap-hint.score-amber::before { background: var(--warning); }
+.signal-card .swap-hint.score-block::before { background: var(--strength); }
+.signal-card .swap-hint a { color: var(--text); }
+.checkin-card { gap: 0; padding: 0; overflow: hidden; }
 </style>

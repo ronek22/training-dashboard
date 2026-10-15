@@ -113,3 +113,10 @@ class WinterArcAdjustment(BaseModel):
 
 class WinterArcAdjustmentUndo(BaseModel):
     id: int
+
+
+class BlockRecapDecision(BaseModel):
+    """Apply or dismiss one of a block recap's next-block suggestions; ``to`` must match it."""
+    suggestion: str
+    action: str
+    to: Optional[float] = None

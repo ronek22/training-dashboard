@@ -16,7 +16,8 @@ from ..services.plans import (
 from ..services.plan_follow_through import build_plan_follow_through
 from ..services.minimum_week import apply_minimum_week, preview_minimum_week, restore_full_week
 from ..services.today_options import apply_today_option, build_today_options, undo_today_option
-from ..models.plans import TodayOptionApply, TodayOptionUndo, WinterArc, WinterArcAdjustment, WinterArcAdjustmentUndo
+from ..models.plans import BlockRecapDecision, TodayOptionApply, TodayOptionUndo, WinterArc, WinterArcAdjustment, WinterArcAdjustmentUndo
+from ..services.block_recap import build_block_recap, decide_block_suggestion
 from ..services.arc_adjust import apply_arc_adjustment, undo_arc_adjustment, winter_arc_payload
 from ..services.season_timeline import PREVIEW_MAX_WEEKS, build_season_timeline
 from ..services.week_preview import PREVIEW_WEEKS, build_week_preview
@@ -186,6 +187,24 @@ def post_winter_arc_adjustment_undo(undo: WinterArcAdjustmentUndo, day: Optional
     conn = get_db()
     try:
         return undo_arc_adjustment(conn, undo.id, day)
+    finally:
+        conn.close()
+
+
+@router.get("/plans/winter-arc/blocks/{block_start}/recap")
+def get_block_recap(block_start: date, day: Optional[date] = None):
+    conn = get_db()
+    try:
+        return build_block_recap(conn, block_start.isoformat(), day)
+    finally:
+        conn.close()
+
+
+@router.post("/plans/winter-arc/blocks/{block_start}/recap/decision")
+def post_block_recap_decision(block_start: date, decision: BlockRecapDecision, day: Optional[date] = None):
+    conn = get_db()
+    try:
+        return decide_block_suggestion(conn, block_start.isoformat(), decision.suggestion, decision.action, decision.to, day)
     finally:
         conn.close()
 

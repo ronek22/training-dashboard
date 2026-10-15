@@ -41,6 +41,15 @@
       <span v-if="adjustError" class="arc-error" role="alert">{{ adjustError }}</span>
     </div>
 
+    <div v-if="finishedBlocks.length && !editing" class="arc-recaps">
+      <RouterLink v-if="freshRecap" :to="`/plan/blocks/${freshRecap.start_date}`" class="arc-recap-fresh" :class="`focus-${freshRecap.focus}`">
+        <strong>{{ freshRecap.label }} is done.</strong> See how the block went →
+      </RouterLink>
+      <span class="arc-recap-list">Block recaps:
+        <RouterLink v-for="block in finishedBlocks" :key="block.start_date" :to="`/plan/blocks/${block.start_date}`">{{ block.label }}</RouterLink>
+      </span>
+    </div>
+
     <div v-if="showStrip && arc.blocks.length && !editing" class="arc-strip" role="img" :aria-label="stripAria">
       <div
         v-for="block in arc.blocks"
@@ -152,6 +161,14 @@ const subline = computed(() => {
   if (!current) return `${value.blocks.length} block${value.blocks.length === 1 ? '' : 's'}, ${format(parseISO(value.start_date), 'd MMM')} – ${format(parseISO(value.end_date), 'd MMM yyyy')}.`
   const left = current.weeks_left === 0 ? 'last week of the block' : `${current.weeks_left} week${current.weeks_left === 1 ? '' : 's'} left after this`
   return `${left} · this week ${current.lighter ? 'is lighter: ' : ''}${mixText(current.ride_mix)}, about ${current.ride_hours} h on the bike.`
+})
+
+// Finished blocks each get a recap; the latest one is called out for three weeks after it ends.
+const RECAP_FRESH_DAYS = 21
+const finishedBlocks = computed(() => (arc.value?.blocks || []).filter(block => block.end_date < arc.value.today))
+const freshRecap = computed(() => {
+  const last = finishedBlocks.value[finishedBlocks.value.length - 1]
+  return last && differenceInCalendarDays(parseISO(arc.value.today), parseISO(last.end_date)) <= RECAP_FRESH_DAYS ? last : null
 })
 
 const stripAria = computed(() => (arc.value?.blocks || []).map(block => `${block.label}, ${shortRange(block)}, ${block.weekly_hours} hours, ${mixText(block.ride_mix)}`).join('; ') + (arc.value?.current ? `. You are in ${arc.value.current.label}.` : ''))
@@ -321,6 +338,12 @@ defineExpose({ load })
 .arc-compare .is-changed { color: var(--warning-text); font-weight: 650; }
 .arc-adjust-actions { display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1; }
 .arc-adjust .arc-error { grid-column: 1 / -1; }
+.arc-recaps { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; color: var(--text-soft); }
+.arc-recap-fresh { padding: 8px 12px; border-radius: 10px; border-left: 3px solid var(--focus); background: color-mix(in srgb, var(--focus) 10%, transparent); color: var(--text); text-decoration: none; }
+.arc-recap-fresh:hover { background: color-mix(in srgb, var(--focus) 16%, transparent); }
+.arc-recap-list { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; }
+.arc-recap-list a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.arc-recap-list a:hover { text-decoration: underline; }
 .arc-adjust-done { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--text-soft); font-size: 13px; }
 .arc-link { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
 .arc-link:disabled { opacity: 0.55; cursor: default; }

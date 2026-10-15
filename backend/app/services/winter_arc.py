@@ -211,10 +211,12 @@ def save_winter_arc(conn: sqlite3.Connection, arc: WinterArc, today: Optional[da
 
 def clear_winter_arc(conn: sqlite3.Connection, today: Optional[date] = None) -> dict:
     from .arc_adjust import clear_adjustments
+    from .block_recap import clear_decisions
 
     ensure_table(conn)
     conn.execute("DELETE FROM winter_arc_blocks")
     clear_adjustments(conn)
+    clear_decisions(conn)
     conn.commit()
     return build_winter_arc(conn, today)
 

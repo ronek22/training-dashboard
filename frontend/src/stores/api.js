@@ -235,6 +235,8 @@ export const useApi = () => ({
   clearWinterArc: () => api.delete('/plans/winter-arc'),
   adjustWinterArc: (payload) => api.post('/plans/winter-arc/adjustment', payload),
   undoWinterArcAdjustment: (id) => api.post('/plans/winter-arc/adjustment/undo', { id }),
+  getBlockRecap: (blockStart) => api.get(`/plans/winter-arc/blocks/${encodeURIComponent(blockStart)}/recap`),
+  decideBlockRecap: (blockStart, payload) => api.post(`/plans/winter-arc/blocks/${encodeURIComponent(blockStart)}/recap/decision`, payload),
   getWeekPreview: (day, weeks) => api.get('/plans/week-preview', { params: { day, weeks } }),
   getLoadForecast: () => api.get('/plans/load-forecast'),
   getSeasonTimeline: () => api.get('/plans/season-timeline'),

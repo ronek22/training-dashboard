@@ -24,6 +24,18 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Block recap at the end of every arc block
+
+2026-10-15: implements the `block-end-review` idea. Every finished winter-arc block has a celebratory recap at `/plan/blocks/<start date>`, built in `services/block_recap.py` (`GET /plans/winter-arc/blocks/{start}/recap`). It opens the day after the block's last Sunday (before that: 409 "still running; opens on …").
+
+- Hero: a headline that says what went right or short ("Build had the hours, not the key rides."), then count-up numbers: hours ridden of target, key rides done of planned, longest run of on-target weeks, days on the bike.
+- Visuals, no tables: a week-by-week column chart (dashed outline = target hours, fill = ridden, green = on target, "lost" flag from `arc_adjust.week_disruption`) with key-ride dots per week; key rides per type as filled/hollow dots; best 1/5/20-minute power in the block against the 6 weeks before (from the power-trends efforts); and a drift sparkline over the block's steady rides with the 5% line (`build_aerobic_decoupling` on the block's window, indoor or outdoor, whichever had more).
+- Planned vs done: planned = what the block asked each week (`week_target`, lighter weeks scaled); done key rides = rides classified from what was ridden (`ride_balance.classify_ride`: power, then heart rate, then intent), at most what each week asked. A week is on target at 80%+ of its hours with every key ride.
+- Suggestions for the next block (at most two, never an increase; lost weeks are left out): hours under 80% and the next block asks for more → hold it at this block's hours; under 65% → trim it to the usual ridden week (rounded to 0.5 h); under 60% of key rides and the next block asks for 2+ quality rides a week → one fewer of its most common quality ride. Nothing changes until "Apply to …" is pressed (`POST …/recap/decision`, which must still match the recomputed suggestion, else 409); "Keep as planned" dismisses. Decisions are stored in `block_recap_decisions` and shown as "Applied / Kept as planned on …"; clearing the arc clears them. The last block of the arc gets no suggestions.
+- Not enough data: fewer than 3 rides of 20+ min in the block shows "Not enough data" with the count, still draws the honest zeros, and skips power, drift and suggestions. Power and drift each have their own "Not enough data" line when the block lacks power-meter or steady rides.
+- Plan: the Winter arc card links every finished block's recap ("Block recaps: Base · Build") and calls out the latest one for 21 days ("Build is done. See how the block went →").
+- Verified with `test_block_recap.py` (hours hold applied only on confirm, stale value 409, no second apply; missed key rides then dismiss leaves the arc; thin block; running and unknown blocks; routes; a decision survives an arc re-save). Backend 917 and frontend 168 tests plus the build pass. On a scratch copy of the database with a past three-block test arc over real Aug–Sep rides, both recaps rendered at 1512 px (Build: 30.8 of 24 h, 1 of 4 sweet-spot rides, +44 W at 20 min, drift 7.8% median), Apply changed only the copy's next block, and an empty 2012 block showed the not-enough-data state. Live training data was not changed and no arc exists there.
+
 ### Winter arc adapts to lost weeks
 
 2026-10-15: implements the `arc-adapts-to-interruptions` idea. When a block loses a week or more to illness, a mountain trip or busy days, the Winter arc card on Plan suggests extending the block or accepting the loss. Built in `services/arc_adjust.py`.

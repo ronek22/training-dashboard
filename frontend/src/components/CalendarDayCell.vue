@@ -50,9 +50,11 @@
           <span class="event-kicker">{{ sportLabel(activity.type) }}</span>
           <strong>{{ displayName(activity.name, activity.type) }}</strong>
           <span class="event-big">{{ durationLabel(activity.duration_min) || '–' }}</span>
-          <small v-if="activityDetail(activity)" class="event-meta">{{ activityDetail(activity) }}</small>
-          <small v-if="activityPlanChange(activity)" class="event-note">{{ activityPlanChange(activity) }}</small>
-          <small v-else-if="activity.workout_intent_label" class="event-tag">{{ activity.workout_intent_label }}</small>
+          <small class="event-meta">{{ activityDetail(activity, true) || '\u00a0' }}</small>
+          <span class="event-tag-slot">
+            <small v-if="activityPlanChange(activity)" class="event-note">{{ activityPlanChange(activity) }}</small>
+            <small v-else-if="activity.workout_intent_label" class="event-tag">{{ activity.workout_intent_label }}</small>
+          </span>
         </span>
         <span v-if="isPlanMatch(activity)" class="event-status" :class="activityPlanChange(activity) ? 'is-changed' : 'is-done'" aria-hidden="true">
           <svg v-if="activityPlanChange(activity)" viewBox="0 0 16 16" width="12" height="12"><circle cx="8" cy="8" r="3" fill="currentColor" /></svg>
@@ -81,8 +83,8 @@
           <span class="event-kicker">{{ planStatusLabel(visiblePlan) }}</span>
           <strong>{{ displayName(visiblePlan.title, visiblePlan.session_type) }}</strong>
           <span class="event-big">{{ planInline(visiblePlan) || '–' }}</span>
-          <small v-if="planKm(visiblePlan)" class="event-meta">{{ formatDistance(planKm(visiblePlan)) }}</small>
-          <small v-if="visiblePlan.workout_intent_label" class="event-tag">{{ visiblePlan.workout_intent_label }}</small>
+          <small class="event-meta">{{ planKm(visiblePlan) ? formatDistance(planKm(visiblePlan)) : '\u00a0' }}</small>
+          <span class="event-tag-slot"><small v-if="visiblePlan.workout_intent_label" class="event-tag">{{ visiblePlan.workout_intent_label }}</small></span>
         </span>
         <span class="event-status" :class="`is-${planStatusTone(visiblePlan)}`" aria-hidden="true">
           <svg v-if="planStatusTone(visiblePlan) === 'missed'" viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
@@ -206,7 +208,7 @@ const shortName = (name, type) => {
   return GENERIC[value.toLowerCase()] || value
 }
 const sportLabel = (type) => ({ ride: 'Ride', run: 'Run', strength: 'Strength', walk: 'Walk' })[activityTone(type)] || String(type || 'Session')
-const activityDetail = (item) => [item.distance_km ? formatDistance(item.distance_km) : '', effortMetric(item)].filter(Boolean).join(' · ')
+const activityDetail = (item, short) => [item.distance_km ? formatDistance(item.distance_km) : '', short && averageSpeedKmh(item) ? `${Math.round(averageSpeedKmh(item))} km/h` : effortMetric(item)].filter(Boolean).join(' · ')
 const formatDistance = (distance) => `${Number(distance).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`
 const averageSpeedKmh = (item) => {
   if (!/ride|cycl/i.test(String(item.type || '')) || !item.distance_km || !item.duration_min) return null
@@ -371,4 +373,12 @@ const planStatusLabel = (item) => {
 .status-planned .event-tag { background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 45%, transparent); }
 .calendar-day.is-mountains:not(.is-compact) .day-life, .is-compact.is-mountains .day-life { display: none; }
 @container (max-width: 120px) { .calendar-day.is-mountains .day-life { display: inline-flex; } }
+/* Week cards share one skeleton so every card in the row has the same height. */
+.calendar-day:not(.is-compact) .event-copy { grid-template-rows: auto calc(2 * 1.25em) auto auto 24px; }
+.calendar-day:not(.is-compact) .event-copy strong { align-self: start; }
+.calendar-day:not(.is-compact) .event-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event-tag-slot { display: flex; align-items: end; min-width: 0; }
+.event-tag-slot .event-tag, .event-tag-slot .event-note { margin-top: 0; }
+.calendar-day:not(.is-compact) .event-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-day:not(.is-compact) .calendar-event:not(.status-planned) { border: 1px solid transparent; }
 </style>

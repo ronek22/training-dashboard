@@ -3,8 +3,8 @@
     <div class="route-progress" :class="{ 'is-active': apiBusy }" aria-hidden="true"><span /></div>
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <span class="logo-icon">TL</span>
-        <span class="logo-lockup"><span class="logo-text">TrainLog</span><span class="logo-tagline">Performance</span></span>
+        <span class="logo-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M2 11h4l2-6 4 10 2-4h4" /></svg></span>
+        <span class="logo-lockup"><span class="logo-text">TrainLog</span></span>
         <button
           v-if="!isNarrowViewport"
           type="button"
@@ -40,7 +40,10 @@
       </nav>
       <div class="sidebar-footer">
         <div v-if="streakValue !== null" class="streak-badge" aria-label="Current daily activity streak">
-          <span class="streak-flame" aria-hidden="true">{{ sickModeActive ? '🤒' : '🔥' }}</span>
+          <span class="streak-flame" aria-hidden="true">
+            <svg v-if="sickModeActive" viewBox="0 0 20 20"><path d="M11 3a2 2 0 0 0-4 0v8.3a3.5 3.5 0 1 0 4 0z" /><path d="M9 9v5" /></svg>
+            <svg v-else viewBox="0 0 20 20"><path d="M10 2c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-9z" /></svg>
+          </span>
           <span class="streak-copy">
             <small>{{ sickModeActive ? 'Sick-mode streak' : 'Daily streak' }}</small>
             <strong>{{ streakLabel }}</strong>
@@ -166,19 +169,17 @@ const exactPath = (path) => (current) => current === path
 const pathPrefix = (path) => (current) => current.startsWith(path)
 const navGroups = [
   {
-    label: 'Today',
+    label: 'Train',
     items: [
-      { to: '/', label: 'Dashboard', icon: 'dashboard', match: exactPath('/') },
+      { to: '/', label: 'Today', icon: 'dashboard', match: exactPath('/') },
+      { to: '/plan', label: 'Plan', icon: 'plan', match: exactPath('/plan') },
+      { to: '/calendar', label: 'Calendar', icon: 'calendar', match: exactPath('/calendar') },
       { to: '/strength/workouts', label: 'Workout Studio', icon: 'strength', match: pathPrefix('/strength/workouts'), class: 'studio-nav-item' },
     ],
   },
   {
-    label: 'Training',
+    label: 'Body',
     items: [
-      { to: '/plan', label: 'Plan', icon: 'plan', match: exactPath('/plan') },
-      { to: '/calendar', label: 'Calendar', icon: 'calendar', match: exactPath('/calendar') },
-      { to: '/goals', label: 'Goals', icon: 'goals', match: exactPath('/goals') },
-      { to: '/athlete', label: 'Athlete', icon: 'athlete', match: exactPath('/athlete') },
       { to: '/strength', label: 'Strength', icon: 'strength', match: exactPath('/strength') },
       { to: '/recovery', label: 'Recovery', icon: 'recovery', match: exactPath('/recovery') },
       { to: '/food', label: 'Food', icon: 'food', match: exactPath('/food') },
@@ -190,6 +191,7 @@ const navGroups = [
       { to: '/activities', label: 'Activities', icon: 'activities', match: pathPrefix('/activities') },
       { to: '/metrics', label: 'Trends', icon: 'metrics', match: exactPath('/metrics') },
       { to: '/records', label: 'Records', icon: 'records', match: exactPath('/records') },
+      { to: '/goals', label: 'Goals', icon: 'goals', match: exactPath('/goals') },
       { to: '/mountains', label: 'Mountains', icon: 'mountains', match: pathPrefix('/mountains') },
       { to: '/notes', label: 'Coach Notes', icon: 'notes', match: exactPath('/notes') },
     ],
@@ -197,6 +199,7 @@ const navGroups = [
   {
     label: 'System',
     items: [
+      { to: '/athlete', label: 'Athlete', icon: 'athlete', match: exactPath('/athlete') },
       { to: '/sync', label: 'Data & Sync', icon: 'sync', match: exactPath('/sync'), badge: dataInboxCount },
       { to: '/usage', label: 'Coach usage', icon: 'usage', match: exactPath('/usage') },
       { to: '/roadmap', label: 'Roadmap', icon: 'roadmap', match: exactPath('/roadmap') },
@@ -403,18 +406,19 @@ const routeTransitionName = computed(() => {
   align-items: center;
   justify-content: center;
   background: var(--accent);
-  border: 1px solid rgba(123, 163, 255, 0.16);
   color: var(--on-accent);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  flex: 0 0 auto;
 }
+.logo-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .logo-lockup { display: grid; gap: 1px; }
 .logo-text {
   font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 26px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 .logo-tagline { color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 
@@ -426,10 +430,10 @@ const routeTransitionName = computed(() => {
   padding: 0 12px;
 }
 .nav-group-label {
-  padding: 12px 12px 5px;
+  padding: 16px 12px 6px;
   color: var(--muted);
-  font-size: 9px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
   letter-spacing: .14em;
   text-transform: uppercase;
 }
@@ -439,23 +443,21 @@ const routeTransitionName = computed(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 11px 12px;
-  border-radius: 9px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--muted-soft);
+  font-size: 14px;
+  font-weight: 500;
   border: 1px solid transparent;
 }
 .nav-item:hover {
-  background: rgb(var(--ov-rgb) / 0.04);
+  background: var(--surface2);
   color: var(--text);
-  border-color: rgb(var(--tint-rgb) / 0.12);
 }
 .nav-item.active {
-  background: rgba(95, 140, 255, 0.14);
+  background: var(--surface2);
   color: var(--text);
-  border-color: rgba(123, 163, 255, 0.22);
-  box-shadow: inset 0 1px 0 rgb(var(--ov-rgb) / 0.04);
+  font-weight: 600;
 }
 .nav-icon { flex: 0 0 auto; color: var(--muted); }
 .nav-badge {
@@ -471,7 +473,7 @@ const routeTransitionName = computed(() => {
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
-.nav-item.active .nav-icon { color: var(--accent-strong); }
+.nav-item.active .nav-icon { color: var(--accent); }
 
 .sidebar-footer {
   margin-top: 14px;
@@ -534,14 +536,15 @@ const routeTransitionName = computed(() => {
   align-items: center;
   gap: 10px;
   padding: 11px 12px;
-  border: 1px solid rgba(249, 115, 22, .2);
-  border-radius: 12px;
-  background: rgba(249, 115, 22, .06);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
-.streak-flame { font-size: 18px; filter: saturate(.9); }
+.streak-flame { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.streak-flame svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .streak-copy { display: grid; gap: 2px; }
-.streak-copy small { color: var(--muted); font-size: 8px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
-.streak-copy strong { color:oklch(from #f6a45d calc(l - var(--dim-l)) c h); font-family: var(--font-display); font-size: 13px; }
+.streak-copy small { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.streak-copy strong { color: var(--accent); font-family: var(--font-display); font-size: 22px; font-style: italic; font-weight: 800; line-height: 1; text-transform: uppercase; }
 
 /* Thin bar while data loads, so a click answers at once even before the page fills in. */
 .route-progress {

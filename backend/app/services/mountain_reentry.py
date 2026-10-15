@@ -124,3 +124,24 @@ def mountain_reentry_coaching_context(conn: sqlite3.Connection, today: Optional[
             "repeats pre-trip loads."
         ),
     }
+
+
+def past_reentry_dates(conn: sqlite3.Connection, start: date, end: date) -> set[str]:
+    """ISO dates in [start, end] inside the re-entry window after any trip of 3+ Mountains days (look-backs)."""
+    try:
+        tagged = mountain_dates(conn, (start - timedelta(days=LOOKBACK_DAYS)).isoformat(), end.isoformat())
+    except sqlite3.OperationalError:
+        return set()
+    dates = set()
+    for value in tagged:
+        last = date.fromisoformat(value)
+        if (last + timedelta(days=1)).isoformat() in tagged:
+            continue  # Not the last day of its trip.
+        first = last
+        while (first - timedelta(days=1)).isoformat() in tagged:
+            first -= timedelta(days=1)
+        for offset in range(1, window_length((last - first).days + 1) + 1):
+            day = last + timedelta(days=offset)
+            if start <= day <= end:
+                dates.add(day.isoformat())
+    return dates

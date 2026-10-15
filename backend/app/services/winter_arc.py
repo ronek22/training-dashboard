@@ -13,7 +13,8 @@ or mountain re-entry window, or tagged in life load never get a quality ride.
 Weeks also build on each other: ``block_progress`` reads how the previous week went against its
 target (key rides hit or missed, ride hours, plan follow-through) for the planner and a one-line
 block note. A missed key ride may carry into the next week once, never into a lighter week or a
-guarded day.
+guarded day, and never out of a week lost to illness, a trip or busy days (``arc_adjust``): the
+block is extended or the loss accepted instead of cramming.
 """
 from __future__ import annotations
 
@@ -209,8 +210,11 @@ def save_winter_arc(conn: sqlite3.Connection, arc: WinterArc, today: Optional[da
 
 
 def clear_winter_arc(conn: sqlite3.Connection, today: Optional[date] = None) -> dict:
+    from .arc_adjust import clear_adjustments
+
     ensure_table(conn)
     conn.execute("DELETE FROM winter_arc_blocks")
+    clear_adjustments(conn)
     conn.commit()
     return build_winter_arc(conn, today)
 
@@ -321,7 +325,12 @@ def last_week_review(conn: sqlite3.Connection, week_start: str) -> dict:
         "ride_hours_done": _done_ride_hours(conn, previous),
         "key_rides": None,
         "follow_through": None,
+        "lost": None,
     }
+    if target:
+        from .arc_adjust import week_disruption
+
+        review["lost"] = week_disruption(conn, previous, review["ride_hours_target"], review["ride_hours_done"])
     row = get_weekly_plan_row(conn, previous)
     if not row:
         return review
@@ -352,6 +361,8 @@ def _carry_candidate(target: dict, last: dict) -> tuple[Optional[dict], Optional
     fresh = [ride for ride in in_block if not ride["carried"]]
     if target["lighter"]:
         return None, "lighter week"
+    if last.get("lost"):
+        return None, "that week was lost"
     if not in_block:
         return None, "not this block's ride"
     if not fresh:

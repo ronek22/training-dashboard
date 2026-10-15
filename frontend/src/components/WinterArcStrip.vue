@@ -11,6 +11,36 @@
       </div>
     </div>
 
+    <div v-if="suggestion && !editing" class="arc-adjust" role="region" aria-labelledby="arc-adjust-title">
+      <div class="arc-adjust-text">
+        <strong id="arc-adjust-title">Lost time in {{ suggestion.block.label }}</strong>
+        <p>{{ suggestion.message }}</p>
+        <ul class="arc-adjust-weeks">
+          <li v-for="week in suggestion.lost_weeks" :key="week.week_start">
+            Week {{ week.week_number }} ({{ weekRange(week.week_start) }}): {{ week.reasons.join(', ') }}<template v-if="week.low_ride_hours">, {{ week.ride_hours_done ?? 0 }} of {{ week.ride_hours_target }} h ridden</template>
+          </li>
+        </ul>
+      </div>
+      <div class="arc-compare" role="table" aria-label="Block dates now and if extended">
+        <div class="arc-compare-row arc-compare-head" role="row"><span role="columnheader">Block</span><span role="columnheader">Now</span><span role="columnheader">If extended</span></div>
+        <div v-for="(block, index) in suggestion.before" :key="block.start_date" class="arc-compare-row" role="row">
+          <span role="cell">{{ block.label }}</span>
+          <span role="cell">{{ compareText(block) }}</span>
+          <span role="cell" :class="{ 'is-changed': compareText(block) !== compareText(suggestion.after[index]) }">{{ compareText(suggestion.after[index]) }}</span>
+        </div>
+      </div>
+      <div class="arc-adjust-actions">
+        <button type="button" class="arc-button arc-primary" :disabled="busy" @click="adjust('extend')">Extend by {{ suggestion.extend_weeks }} week{{ suggestion.extend_weeks > 1 ? 's' : '' }}</button>
+        <button type="button" class="arc-button" :disabled="busy" @click="adjust('accept')">Accept and move on</button>
+      </div>
+      <p v-if="adjustError" class="arc-error" role="alert">{{ adjustError }}</p>
+    </div>
+    <div v-else-if="lastDecision && !editing" class="arc-adjust-done">
+      <span>{{ lastDecision.summary }}</span>
+      <button v-if="lastDecision.can_undo" type="button" class="arc-link" :disabled="busy" @click="undo">Undo</button>
+      <span v-if="adjustError" class="arc-error" role="alert">{{ adjustError }}</span>
+    </div>
+
     <div v-if="showStrip && arc.blocks.length && !editing" class="arc-strip" role="img" :aria-label="stripAria">
       <div
         v-for="block in arc.blocks"
@@ -125,6 +155,31 @@ const subline = computed(() => {
 })
 
 const stripAria = computed(() => (arc.value?.blocks || []).map(block => `${block.label}, ${shortRange(block)}, ${block.weekly_hours} hours, ${mixText(block.ride_mix)}`).join('; ') + (arc.value?.current ? `. You are in ${arc.value.current.label}.` : ''))
+
+// Extend-or-accept when a block lost a week or more to illness, a trip or busy days.
+const suggestion = computed(() => arc.value?.adjustment?.suggestion || null)
+const lastDecision = computed(() => arc.value?.adjustment?.last || null)
+const adjustError = ref('')
+const weekRange = start => `${format(parseISO(start), 'd MMM')} – ${format(addDays(parseISO(start), 6), 'd MMM')}`
+const compareText = block => `${shortRange(block)} · ${block.weeks} wk${block.lighter_weeks.length ? ` · lighter ${block.lighter_weeks.map(week => format(parseISO(week), 'd MMM')).join(', ')}` : ''}`
+
+const runAdjustment = async (request, moves) => {
+  busy.value = true
+  adjustError.value = ''
+  try {
+    arc.value = (await request()).data
+    if (moves) emit('changed')
+  } catch (err) {
+    adjustError.value = err?.response?.data?.detail || 'Could not change the arc.'
+    await load()
+  } finally {
+    busy.value = false
+  }
+}
+const adjust = action => runAdjustment(() => api.adjustWinterArc({
+  action, block_start: suggestion.value.block.start_date, weeks: action === 'extend' ? suggestion.value.extend_weeks : 0,
+}), action === 'extend')
+const undo = () => runAdjustment(() => api.undoWinterArcAdjustment(lastDecision.value.id), lastDecision.value.action === 'extend')
 
 const load = async () => {
   try {
@@ -254,6 +309,22 @@ defineExpose({ load })
 .arc-primary:hover:not(:disabled) { background: var(--accent-strong); color: var(--on-accent); }
 .arc-danger { color: var(--danger); }
 
+.arc-adjust { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 14px 24px; padding: 16px 18px; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 12px; background: rgba(245, 158, 11, 0.07); }
+.arc-adjust-text { display: grid; gap: 6px; align-content: start; }
+.arc-adjust-text strong { color: var(--text); font-size: 14px; font-weight: 650; }
+.arc-adjust-text p { margin: 0; color: var(--text-soft); font-size: 13px; line-height: 1.5; }
+.arc-adjust-weeks { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.arc-compare { display: grid; gap: 4px; align-content: start; font-size: 12px; }
+.arc-compare-row { display: grid; grid-template-columns: minmax(70px, 0.7fr) 1fr 1fr; gap: 10px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.arc-compare-row span:first-child { overflow: hidden; color: var(--text); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.arc-compare-head, .arc-compare-head span:first-child { color: var(--muted); font-size: 11px; font-weight: 600; }
+.arc-compare .is-changed { color: var(--warning-text); font-weight: 650; }
+.arc-adjust-actions { display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1; }
+.arc-adjust .arc-error { grid-column: 1 / -1; }
+.arc-adjust-done { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--text-soft); font-size: 13px; }
+.arc-link { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
+.arc-link:disabled { opacity: 0.55; cursor: default; }
+
 .arc-editor { display: grid; gap: 14px; }
 .arc-editor-hint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .arc-field { display: inline-grid; gap: 4px; width: fit-content; color: var(--muted); font-size: 12px; }
@@ -271,5 +342,6 @@ defineExpose({ load })
 @media (max-width: 700px) {
   .arc-card { padding: 18px 16px; }
   .arc-block-label span { display: none; }
+  .arc-adjust { grid-template-columns: 1fr; padding: 14px; }
 }
 </style>

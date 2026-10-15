@@ -104,6 +104,19 @@ def _short_date(value: str) -> str:
     return date.fromisoformat(value).strftime("%b %-d")
 
 
+def _window(conn: sqlite3.Connection, period: dict, until: date) -> tuple[int, Optional[str]]:
+    """Return-window length in days after ``period`` ended, with symptom notes read up to ``until``."""
+    ended = date.fromisoformat(period["end_date"])
+    sick_days = (ended - date.fromisoformat(period["start_date"])).days + 1
+    length = min(MAX_DAYS, max(MIN_DAYS, sick_days))
+    symptom_dates = sorted({note_date for note_date, note in _notes_since(conn, period["end_date"], until.isoformat()) if mentions_symptoms(note)})
+    last_symptom = symptom_dates[-1] if symptom_dates else None
+    if last_symptom:
+        stretched = (date.fromisoformat(last_symptom) - ended).days + SYMPTOM_TAIL_DAYS
+        length = min(MAX_STRETCH_DAYS, max(length, stretched))
+    return length, last_symptom
+
+
 def build_illness_return(conn: sqlite3.Connection, today: Optional[date] = None) -> Optional[dict]:
     """The return window that is open today, or None (still sick, never sick, or long recovered)."""
     day = _today(today)
@@ -118,13 +131,7 @@ def build_illness_return(conn: sqlite3.Connection, today: Optional[date] = None)
         return None
 
     sick_days = (ended - date.fromisoformat(period["start_date"])).days + 1
-    base_days = min(MAX_DAYS, max(MIN_DAYS, sick_days))
-    symptom_dates = sorted({note_date for note_date, note in _notes_since(conn, period["end_date"], day.isoformat()) if mentions_symptoms(note)})
-    last_symptom = symptom_dates[-1] if symptom_dates else None
-    length = base_days
-    if last_symptom:
-        stretched = (date.fromisoformat(last_symptom) - ended).days + SYMPTOM_TAIL_DAYS
-        length = min(MAX_STRETCH_DAYS, max(base_days, stretched))
+    length, last_symptom = _window(conn, period, day)
     if day_number > length:
         return None
 
@@ -195,3 +202,24 @@ def illness_return_coaching_context(conn: sqlite3.Connection, today: Optional[da
             "as lighter sessions. If hard_sessions_in_window is not empty, say so plainly and keep the next days easy."
         ),
     }
+
+
+def past_return_dates(conn: sqlite3.Connection, start: date, end: date) -> set[str]:
+    """ISO dates in [start, end] that fell in any ended sick period's return window (for look-backs)."""
+    try:
+        rows = conn.execute(
+            "SELECT start_date, end_date FROM sick_periods WHERE end_date IS NOT NULL AND end_date >= ? AND end_date <= ?",
+            ((start - timedelta(days=MAX_STRETCH_DAYS)).isoformat(), end.isoformat()),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return set()
+    dates = set()
+    for row in rows:
+        period = dict(row)
+        ended = date.fromisoformat(period["end_date"])
+        length, _ = _window(conn, period, ended + timedelta(days=MAX_STRETCH_DAYS))
+        for offset in range(1, length + 1):
+            day = ended + timedelta(days=offset)
+            if start <= day <= end:
+                dates.add(day.isoformat())
+    return dates

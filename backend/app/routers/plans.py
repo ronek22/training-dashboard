@@ -16,11 +16,12 @@ from ..services.plans import (
 from ..services.plan_follow_through import build_plan_follow_through
 from ..services.minimum_week import apply_minimum_week, preview_minimum_week, restore_full_week
 from ..services.today_options import apply_today_option, build_today_options, undo_today_option
-from ..models.plans import TodayOptionApply, TodayOptionUndo, WinterArc
+from ..models.plans import TodayOptionApply, TodayOptionUndo, WinterArc, WinterArcAdjustment, WinterArcAdjustmentUndo
+from ..services.arc_adjust import apply_arc_adjustment, undo_arc_adjustment, winter_arc_payload
 from ..services.season_timeline import PREVIEW_MAX_WEEKS, build_season_timeline
 from ..services.week_preview import PREVIEW_WEEKS, build_week_preview
 from ..services.load_forecast import build_load_forecast
-from ..services.winter_arc import build_winter_arc, clear_winter_arc, save_winter_arc
+from ..services.winter_arc import clear_winter_arc, save_winter_arc
 
 router = APIRouter()
 
@@ -146,7 +147,7 @@ def get_season_timeline(day: Optional[date] = None):
 def get_winter_arc(day: Optional[date] = None):
     conn = get_db()
     try:
-        return build_winter_arc(conn, day)
+        return winter_arc_payload(conn, day)
     finally:
         conn.close()
 
@@ -155,7 +156,8 @@ def get_winter_arc(day: Optional[date] = None):
 def put_winter_arc(arc: WinterArc, day: Optional[date] = None):
     conn = get_db()
     try:
-        return save_winter_arc(conn, arc, day)
+        save_winter_arc(conn, arc, day)
+        return winter_arc_payload(conn, day)
     finally:
         conn.close()
 
@@ -164,7 +166,26 @@ def put_winter_arc(arc: WinterArc, day: Optional[date] = None):
 def delete_winter_arc(day: Optional[date] = None):
     conn = get_db()
     try:
-        return clear_winter_arc(conn, day)
+        clear_winter_arc(conn, day)
+        return winter_arc_payload(conn, day)
+    finally:
+        conn.close()
+
+
+@router.post("/plans/winter-arc/adjustment")
+def post_winter_arc_adjustment(adjustment: WinterArcAdjustment, day: Optional[date] = None):
+    conn = get_db()
+    try:
+        return apply_arc_adjustment(conn, adjustment.action, adjustment.block_start.isoformat(), adjustment.weeks, day)
+    finally:
+        conn.close()
+
+
+@router.post("/plans/winter-arc/adjustment/undo")
+def post_winter_arc_adjustment_undo(undo: WinterArcAdjustmentUndo, day: Optional[date] = None):
+    conn = get_db()
+    try:
+        return undo_arc_adjustment(conn, undo.id, day)
     finally:
         conn.close()
 

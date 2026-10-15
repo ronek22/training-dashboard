@@ -102,3 +102,14 @@ class WinterArcBlock(BaseModel):
 
 class WinterArc(BaseModel):
     blocks: list[WinterArcBlock] = Field(min_length=1, max_length=12)
+
+
+class WinterArcAdjustment(BaseModel):
+    """Confirm the arc's extend-or-accept suggestion; block_start and weeks must match it."""
+    action: str
+    block_start: Date
+    weeks: int = Field(default=0, ge=0, le=4)
+
+
+class WinterArcAdjustmentUndo(BaseModel):
+    id: int

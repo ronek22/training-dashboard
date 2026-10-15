@@ -24,6 +24,16 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Winter arc adapts to lost weeks
+
+2026-10-15: implements the `arc-adapts-to-interruptions` idea. When a block loses a week or more to illness, a mountain trip or busy days, the Winter arc card on Plan suggests extending the block or accepting the loss. Built in `services/arc_adjust.py`.
+
+- Lost week: each finished week of the block that holds last week is checked for disrupted days: sick days, illness return windows (`illness_return.past_return_dates`), Mountains days, mountain re-entry windows (`mountain_reentry.past_reentry_dates`) and any other life-load tag. A week is lost with 4+ disrupted days, or with 2+ when less than half its ride hours were ridden. Two busy days with riding on track do not count.
+- Suggestion card (amber, above the strip): which weeks were lost and why ("2 sick days, 5 illness return days"), and a before/after table of every block's dates, length and lighter weeks with the changed cells highlighted. "Extend by N weeks" (N = lost weeks, at most 2) lengthens the block and moves every later block back by the same amount; lighter weeks stay at the same week number inside each block, and gaps between blocks are kept. "Accept and move on" keeps the dates.
+- Nothing changes until a button is pressed. `GET/PUT/DELETE /plans/winter-arc` now also return `adjustment` (`suggestion`, `last`); `POST /plans/winter-arc/adjustment` confirms (it must still match the current suggestion, else 409) and `POST /plans/winter-arc/adjustment/undo` undoes. Each decision is stored in `winter_arc_adjustments` with the arc before and after. The last one stays on the card for 14 days with Undo; an extension can only be undone while the arc is still as it left it. Undo brings the suggestion back. Decided weeks are not asked about again; a newly lost week brings a new card. Clearing the arc clears the decisions.
+- No cramming: a missed key ride from a lost week no longer carries into the next week (`carry_blocked` "that week was lost", shown in the week note). Saved weekly plans are not refitted when an extension moves blocks; their arc pill follows the new dates.
+- Verified with `test_arc_adjust.py` (illness, mountain trip with re-entry, busy fortnight extending by 2, light disruption not lost, accept then a newly lost week, lost week not carried, stale confirm 409, undo after a hand edit refused, routes). Backend 912 and frontend 168 tests plus the build pass. On a scratch copy of the database with a three-block test arc, the real 1–6 Oct sick period produced "Base lost 2 weeks (28 Sep, 5 Oct) to illness"; Extend moved the blocks (season timeline and week pill followed) and Undo restored them, at 1512 px and 375 px. Live training data was not changed and no arc exists there.
+
 ### Sunday planning flow
 
 2026-10-15: implements the `sunday-planning-flow` idea. `/sunday` (`views/SundayPlanning.vue`) walks through five steps, each reusing an existing component: the week's wins (`WeekWinsCard`, with a link to the full weekly review), the body check-in (`WeeklyBodyCheckin`), busy days next week (`LifeLoadPicker` for each of the 7 days), next week's block and note (`WeekPreview`), and generating the plan with the coach. Entry points: "Plan next week →" on Weekly Review, a link under the coach button on Plan, and Sunday planning in the mobile More menu.

@@ -823,6 +823,8 @@ def init_db(snapshot: bool = True):
     ensure_stall_blocks(conn)
     from .services.winter_arc import ensure_table as ensure_winter_arc
     ensure_winter_arc(conn)
+    from .services.arc_adjust import ensure_table as ensure_arc_adjust
+    ensure_arc_adjust(conn)
 
     feedback_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(activity_feedback)").fetchall()

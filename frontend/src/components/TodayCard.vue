@@ -13,7 +13,11 @@
 
     <header class="today-head" :class="{ 'has-art': route || muscles }">
       <div class="today-topline">
-        <p class="today-kicker">{{ kickerLabel }}</p>
+        <p class="today-kicker">
+          <ActivityIcon v-if="selected" :type="selected.type" :tone="selected.tone" :size="15" class="today-kicker-icon" />
+          <ActivityIcon v-else-if="iconType" :type="iconType" :tone="tone" :size="15" class="today-kicker-icon" />
+          {{ kickerLabel }}
+        </p>
         <span class="today-status" :class="`is-${statusTone}`"><i aria-hidden="true"></i>{{ statusLabel }}</span>
       </div>
       <div class="today-title-row">
@@ -392,4 +396,8 @@ const kickerLabel = computed(() => String(props.kicker || '').split('·').pop().
 .today-head { gap: 18px; }
 .today-primary { border: 1px solid var(--border-strong); background: transparent; color: var(--text); font-weight: 600; }
 .today-primary:hover { border-color: var(--muted); background: var(--surface2); }
+
+.today-kicker { gap: 7px; }
+.today-kicker-icon { color: currentColor; }
+.today-kicker :deep(.activity-icon-shell) { width: auto; height: auto; padding: 0; background: none; color: currentColor; }
 </style>

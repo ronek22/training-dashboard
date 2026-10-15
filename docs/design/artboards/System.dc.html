@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrainLog · Multi-sport system</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&amp;family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0C11}
+.num{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;line-height:1}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600}
+</style>
+</helmet>
+<div style="width: 1440px; height: 860px; box-sizing: border-box; padding: 56px 64px; background: #0A0C11; color: #F3F5F9; font-family: 'Archivo', system-ui, sans-serif; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; justify-content: space-between; align-items: flex-end">
+<div><div class="lbl">TrainLog · design system</div><h1 class="num" style="margin: 8px 0 0; font-size: 64px; font-style: italic; font-weight: 800; text-transform: uppercase">Multi-sport</h1></div>
+<div style="max-width: 460px; color: #A3ABBC; font-size: 15px; line-height: 1.5">One color per sport, used everywhere a session appears. Volt is kept for actions, wins and "today". Numbers are big, condensed and always the loudest thing in a card.</div>
+</div>
+
+<div style="display: flex; gap: 40px">
+<div style="flex: 1.2 1 0; display: flex; flex-direction: column; gap: 16px">
+<div class="lbl">Sport colors</div>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px">
+<div><div style="height: 96px; border-radius: 16px; background: #3B8CFF"></div><div style="font-weight: 600; margin-top: 10px">Ride</div><div style="font-size: 12px; color: #8A93A6">#3B8CFF</div></div>
+<div><div style="height: 96px; border-radius: 16px; background: #FF8A2A"></div><div style="font-weight: 600; margin-top: 10px">Run</div><div style="font-size: 12px; color: #8A93A6">#FF8A2A</div></div>
+<div><div style="height: 96px; border-radius: 16px; background: #FF4D9A"></div><div style="font-weight: 600; margin-top: 10px">Strength</div><div style="font-size: 12px; color: #8A93A6">#FF4D9A</div></div>
+<div><div style="height: 96px; border-radius: 16px; background: #2ED3B0"></div><div style="font-weight: 600; margin-top: 10px">Walk · recovery</div><div style="font-size: 12px; color: #8A93A6">#2ED3B0</div></div>
+<div><div style="height: 96px; border-radius: 16px; background: #9B7BFF"></div><div style="font-weight: 600; margin-top: 10px">Other · travel</div><div style="font-size: 12px; color: #8A93A6">#9B7BFF</div></div>
+</div>
+<div class="lbl" style="margin-top: 12px">Action, status and surfaces</div>
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px">
+<div><div style="height: 56px; border-radius: 12px; background: #D4FF3A"></div><div style="font-size: 12px; margin-top: 8px">Volt · action</div></div>
+<div><div style="height: 56px; border-radius: 12px; background: #FFB547"></div><div style="font-size: 12px; margin-top: 8px">Caution</div></div>
+<div><div style="height: 56px; border-radius: 12px; background: #FF7A7A"></div><div style="font-size: 12px; margin-top: 8px">Recover</div></div>
+<div><div style="height: 56px; border-radius: 12px; background: #0A0C11; border: 1px solid #252B37"></div><div style="font-size: 12px; margin-top: 8px">Ground</div></div>
+<div><div style="height: 56px; border-radius: 12px; background: #12151C; border: 1px solid #252B37"></div><div style="font-size: 12px; margin-top: 8px">Card</div></div>
+<div><div style="height: 56px; border-radius: 12px; background: #191D27"></div><div style="font-size: 12px; margin-top: 8px">Inset</div></div>
+<div><div style="height: 56px; border-radius: 12px; background: #252B37"></div><div style="font-size: 12px; margin-top: 8px">Line · track</div></div>
+</div>
+</div>
+
+<div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 16px">
+<div class="lbl">Type</div>
+<div style="background: #12151C; border: 1px solid #1C212B; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: baseline; gap: 16px"><span class="num" style="font-size: 72px; font-style: italic; font-weight: 800">5,295</span><span style="font-size: 13px; color: #8A93A6">Barlow Condensed 700–800 · numbers, headings</span></div>
+<div style="font-weight: 700; font-size: 20px">Evening Weight Training <span style="font-weight: 400; font-size: 13px; color: #8A93A6">Archivo 700 · titles</span></div>
+<div style="font-size: 15px; color: #A3ABBC">Swap today's hard session for recovery or rest. <span style="font-size: 13px; color: #8A93A6">Archivo 400 · body</span></div>
+<div class="lbl">Label · Archivo 600, tracked caps</div>
+</div>
+<div class="lbl" style="margin-top: 4px">Components</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<span style="height: 44px; padding: 0 20px; border-radius: 999px; background: #D4FF3A; color: #0A0C11; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center">Primary</span>
+<span style="height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid #252B37; font-size: 14px; display: inline-flex; align-items: center">Secondary</span>
+<span style="padding: 5px 10px; border-radius: 999px; background: rgba(255,77,154,.16); color: #FF6FAE; font-size: 12px; font-weight: 700; letter-spacing: .08em">STRENGTH</span>
+<span style="padding: 5px 10px; border-radius: 999px; background: rgba(59,140,255,.16); color: #6EA9FF; font-size: 12px; font-weight: 700; letter-spacing: .08em">RIDE</span>
+<span style="padding: 5px 10px; border-radius: 999px; background: rgba(212,255,58,.12); color: #D4FF3A; font-size: 12px; font-weight: 700; letter-spacing: .08em">✓ DONE</span>
+<span style="padding: 2px 8px; border-radius: 999px; background: rgba(212,255,58,.14); color: #D4FF3A; font-size: 11px; font-weight: 700">2 PRs</span>
+</div>
+<div style="display: flex; gap: 10px">
+<div style="flex: 1; background: #191D27; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px"><span style="font-size: 12px; color: #A3ABBC; font-weight: 600">Done</span><div style="display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(59,140,255,.16); font-size: 12px; font-weight: 600"><span style="width: 4px; height: 14px; border-radius: 2px; background: #3B8CFF"></span>Sweet spot<span class="num" style="margin-left: auto; font-size: 15px">1h10</span></div></div>
+<div style="flex: 1; border: 1px dashed #2E3543; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px"><span style="font-size: 12px; color: #A3ABBC; font-weight: 600">Planned</span><div style="display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; border: 1px dashed #FF4D9A; font-size: 12px; font-weight: 600"><span style="width: 4px; height: 14px; border-radius: 2px; background: #FF4D9A"></span>Workout A<span class="num" style="margin-left: auto; font-size: 15px">45m</span></div></div>
+<div style="flex: 1; background: #191D27; border-radius: 14px; padding: 14px; box-shadow: inset 0 0 0 2px #D4FF3A; display: flex; flex-direction: column; gap: 8px"><span style="font-size: 12px; color: #D4FF3A; font-weight: 600">Today</span><div class="num" style="font-size: 28px">40m</div></div>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":860}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

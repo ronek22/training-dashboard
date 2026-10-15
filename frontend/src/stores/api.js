@@ -234,6 +234,7 @@ export const useApi = () => ({
   saveWinterArc: (payload) => api.put('/plans/winter-arc', payload),
   clearWinterArc: () => api.delete('/plans/winter-arc'),
   getWeekPreview: (day, weeks) => api.get('/plans/week-preview', { params: { day, weeks } }),
+  getLoadForecast: () => api.get('/plans/load-forecast'),
   getSeasonTimeline: () => api.get('/plans/season-timeline'),
   startCoachWeeklyPlan: (payload) => coachHelper.post('/weekly-plan', payload),
   getCoachWeeklyPlanJob: (jobId) => coachHelper.get(`/weekly-plan/${encodeURIComponent(jobId)}`),

@@ -19,6 +19,7 @@ from ..services.today_options import apply_today_option, build_today_options, un
 from ..models.plans import TodayOptionApply, TodayOptionUndo, WinterArc
 from ..services.season_timeline import PREVIEW_MAX_WEEKS, build_season_timeline
 from ..services.week_preview import PREVIEW_WEEKS, build_week_preview
+from ..services.load_forecast import build_load_forecast
 from ..services.winter_arc import build_winter_arc, clear_winter_arc, save_winter_arc
 
 router = APIRouter()
@@ -119,6 +120,15 @@ def get_week_preview(day: Optional[date] = None, weeks: int = Query(PREVIEW_WEEK
     conn = get_db()
     try:
         return build_week_preview(conn, day, weeks)
+    finally:
+        conn.close()
+
+
+@router.get("/plans/load-forecast")
+def get_load_forecast(day: Optional[date] = None, weeks: int = Query(PREVIEW_WEEKS, ge=1, le=PREVIEW_MAX_WEEKS)):
+    conn = get_db()
+    try:
+        return build_load_forecast(conn, day, weeks)
     finally:
         conn.close()
 

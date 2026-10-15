@@ -730,6 +730,7 @@
       </section>
       </div>
       <WeekPreview v-if="plans.length && isViewingCurrentWeek" ref="weekPreview" />
+      <LoadForecast v-if="plans.length && isViewingCurrentWeek" ref="loadForecast" :plans="plans" />
       <details v-if="strengthRotationSummary || (planTrends && planTrends.weeks?.length)" class="plan-insights-disclosure">
         <summary>Coaching context and recent execution</summary>
       <div v-if="strengthRotationSummary" class="card plan-trend-card">
@@ -986,6 +987,7 @@ import ActivityIcon from '../components/ActivityIcon.vue'
 import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
 import LifeLoadPicker from '../components/LifeLoadPicker.vue'
 import WeekPreview from '../components/WeekPreview.vue'
+import LoadForecast from '../components/LoadForecast.vue'
 import WinterArcStrip from '../components/WinterArcStrip.vue'
 import SeasonTimeline from '../components/SeasonTimeline.vue'
 import { useLifeLoad } from '../composables/useLifeLoad'
@@ -1340,12 +1342,14 @@ const arcWeekTitle = (arc) => {
 }
 
 const weekPreview = ref(null)
+const loadForecast = ref(null)
 const seasonTimeline = ref(null)
 const timelineShowsArc = ref(false)
 const onArcChanged = () => {
   load()
   weekPreview.value?.load()
   seasonTimeline.value?.load()
+  loadForecast.value?.load()
 }
 
 // Season timeline click: a saved week opens its plan; a future week without one opens its preview row.

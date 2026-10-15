@@ -752,10 +752,30 @@ def ewma(values: list[float], time_constant_days: float) -> list[float]:
 TRAINING_LOAD_WARMUP_DAYS = 365
 
 
-def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_days: int = 28) -> dict:
+def _ftp_on_cached(conn: sqlite3.Connection, cache: dict, day: str) -> Optional[float]:
+    if day not in cache:
+        cache[day] = ftp_on(conn, day)
+    return cache[day]
+
+
+def stream_power_tss_on_day(power_tss: float, normalized_power: Optional[float], fetch_ftp: Optional[float], day_ftp: Optional[float]) -> float:
+    """Re-score a stored stream TSS with the FTP in force on the ride's day.
+
+    Stream summaries are scored with the FTP of the day they were fetched, so a ride
+    backfilled after an FTP change would carry the wrong FTP. With the stored normalized
+    power the TSS rescales exactly (same duration, intensity factor capped at 1.5).
+    """
+    if not normalized_power or not fetch_ftp or not day_ftp or fetch_ftp == day_ftp:
+        return float(power_tss)
+    before = min(normalized_power / fetch_ftp, 1.5)
+    after = min(normalized_power / day_ftp, 1.5)
+    return float(power_tss) * (after / before) ** 2 if before else float(power_tss)
+
+
+def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_days: int = 28, today: Optional[date] = None) -> dict:
     safe_days = max(14, min(days, 120))
     safe_focus_days = max(7, min(focus_days, safe_days))
-    today = datetime.now().date()
+    today = today or datetime.now().date()
     start_day = today - timedelta(days=safe_days - 1)
     thresholds = estimate_thresholds(conn)
 
@@ -793,6 +813,8 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
             s.source AS stream_source,
             s.hr_trimp AS stream_hr_trimp,
             s.power_tss AS stream_power_tss,
+            s.normalized_power AS stream_normalized_power,
+            s.fetched_at AS stream_fetched_at,
             s.low_aerobic_seconds AS stream_low_aerobic_seconds,
             s.high_aerobic_seconds AS stream_high_aerobic_seconds,
             s.anaerobic_seconds AS stream_anaerobic_seconds
@@ -823,6 +845,7 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
     focus_cutoff = today - timedelta(days=safe_focus_days - 1)
     load_sources = {"power_tss": 0, "hr_trimp": 0, "duration": 0}
     historical_thresholds: dict[str, dict] = {}
+    ftp_by_day: dict[str, Optional[float]] = {}
 
     for row in activity_rows:
         day = row["date"]
@@ -831,6 +854,15 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
 
         if row["stream_power_tss"] is not None or row["stream_hr_trimp"] is not None:
             activity_thresholds = thresholds
+            if row["stream_power_tss"] is not None:
+                # Score the ride with the FTP valid on its day, not on the day it was fetched.
+                row = dict(row)
+                row["stream_power_tss"] = stream_power_tss_on_day(
+                    row["stream_power_tss"],
+                    row["stream_normalized_power"],
+                    _ftp_on_cached(conn, ftp_by_day, (row["stream_fetched_at"] or day)[:10]),
+                    _ftp_on_cached(conn, ftp_by_day, day[:10]),
+                )
         else:
             activity_thresholds = historical_thresholds.get(day)
             if activity_thresholds is None:

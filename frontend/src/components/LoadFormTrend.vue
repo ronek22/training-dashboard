@@ -12,7 +12,7 @@
       <div class="form-gauge-scale" aria-hidden="true"><span>Overreaching</span><span>Productive</span><span>Fresh</span></div>
     </div>
 
-    <div class="load-trend-plot" @pointermove="onHover" @pointerleave="hovered = null">
+    <div v-if="showChart" class="load-trend-plot" @pointermove="onHover" @pointerleave="hovered = null">
       <svg v-chart-intro="'load-form-trend'" class="load-trend-chart" :viewBox="`0 0 ${width} ${height}`" preserveAspectRatio="none" role="img" :aria-label="chartLabel">
         <line x1="0" :y1="height - 1" :x2="width" :y2="height - 1" class="load-trend-base" />
         <rect v-for="(bar, index) in loadBars" :key="bar.date" :x="bar.x" :y="bar.y" :width="bar.width" :height="bar.height" :style="{ '--i': index * (20 / loadBars.length) }" class="load-trend-bar chart-grow" :class="{ 'is-active': hovered === index }" />
@@ -31,7 +31,7 @@
         </div>
       </template>
     </div>
-    <div class="load-trend-legend">
+    <div v-if="showChart" class="load-trend-legend">
       <span class="is-fitness">Fitness</span><span class="is-fatigue">Fatigue</span><span class="is-load">Daily load</span>
       <small>{{ points.length }} days</small>
     </div>
@@ -45,17 +45,18 @@ import { format, parseISO } from 'date-fns'
 const props = defineProps({
   chart: { type: Array, default: () => [] },
   form: { type: Number, default: 0 },
+  showChart: { type: Boolean, default: true },
 })
 
 const width = 300
 const height = 86
 // Common TSB bands; the gauge is clamped to ±40 for display.
 const zones = [
-  { min: -40, max: -30, label: 'Overreaching', color: '#ef7b6e' },
-  { min: -30, max: -10, label: 'Productive', color: '#52d7aa' },
-  { min: -10, max: 5, label: 'Neutral', color: '#8fa1bf' },
-  { min: 5, max: 25, label: 'Fresh', color: '#76a6ff' },
-  { min: 25, max: 40, label: 'Very fresh', color: '#bcb0f6' },
+  { min: -40, max: -30, label: 'Overreaching', color: 'var(--danger)' },
+  { min: -30, max: -10, label: 'Productive', color: 'var(--accent)' },
+  { min: -10, max: 5, label: 'Neutral', color: 'var(--muted-soft)' },
+  { min: 5, max: 25, label: 'Fresh', color: 'var(--z2)' },
+  { min: 25, max: 40, label: 'Very fresh', color: 'var(--ride)' },
 ]
 
 const points = computed(() => props.chart.filter((item) => item && item.ctl != null && item.atl != null))
@@ -109,9 +110,9 @@ const chartLabel = computed(() => {
 .form-gauge { display: grid; gap: 8px; }
 .form-gauge-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .form-gauge-head span { color: var(--dash-muted, var(--muted)); font-size: 11px; }
-.form-gauge-head strong { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.form-gauge-track { position: relative; display: flex; gap: 2px; height: 8px; }
-.form-gauge-track span { flex-basis: 0; border-radius: 2px; opacity: 0.28; }
+.form-gauge-head strong { font-family: var(--font-display); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.form-gauge-track { position: relative; display: flex; gap: 3px; height: 10px; }
+.form-gauge-track span { flex-basis: 0; border-radius: 3px; opacity: 0.3; }
 .form-gauge-track span.is-active { opacity: 0.9; }
 .form-gauge-track i { position: absolute; top: -4px; width: 3px; height: 16px; margin-left: -1.5px; border-radius: 2px; background:oklch(from #eef3fb calc(l - var(--dim-l)) c h); box-shadow: 0 0 0 2px var(--deep); }
 .form-gauge-scale { display: flex; justify-content: space-between; color:var(--muted); font-size: 10px; }

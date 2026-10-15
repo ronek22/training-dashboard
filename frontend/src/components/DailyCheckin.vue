@@ -204,7 +204,7 @@ async function save() {
 .cm-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .cm-later { border: 0; border-radius: 10px; background: none; padding: 9px 12px; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .cm-later:hover { background: var(--surface2); color: var(--text); }
-.cm-save { border: 0; border-radius: 10px; background: #5f8cff; padding: 9px 18px; color: #fff; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; transition: opacity var(--motion-duration-fast); }
+.cm-save { min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); padding: 0 20px; color: var(--on-accent); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; transition: opacity var(--motion-duration-fast); }
 .cm-save:disabled { opacity: 0.35; cursor: not-allowed; }
 .checkin-modal button:focus-visible, .checkin-link:focus-visible { outline: 2px solid oklch(from #91b1ff calc(l - var(--dim-l)) c h); outline-offset: 2px; }
 

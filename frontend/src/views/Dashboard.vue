@@ -50,15 +50,14 @@
           <p v-if="sleepDebtHint" class="swap-hint" :class="`score-${readinessScore.sleep_debt.status === 'risk' ? 'red' : 'amber'}`">{{ sleepDebtHint }} <router-link to="/metrics?view=recovery">Sleep trend</router-link></p>
           <p v-if="rampWarning" class="ramp-warning" :class="`ramp-${ramp.status}`">{{ rampWarning }}</p>
           <VolumeTrendAlert :trend="volumeTrend" @labeled="onVolumeTrendLabeled" />
-          <LoadFormTrend v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :form="Number(trainingLoad.current?.form || 0)" />
-          <div v-if="loadMetrics.length" class="load-metrics" aria-label="Current training load">
-            <div v-for="metric in loadMetrics" :key="metric.label" :class="metric.tone"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.hint }}</small></div>
-          </div>
+          <LoadFormTrend v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :form="Number(trainingLoad.current?.form || 0)" :show-chart="false" />
           <DailyCheckin :checkin="dailyCheckin" @saved="onCheckinSaved" />
           <ProteinTick />
 
         </aside>
       </section>
+
+      <TodayLoadChart v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :current="trainingLoad.current" :ratio="trainingLoad.ratio" />
 
       <section id="dashboard-coaching" class="coach-section" aria-labelledby="coach-heading">
         <header class="coach-head">
@@ -159,6 +158,7 @@ import WeekStrip from '../components/WeekStrip.vue'
 import YearProgress from '../components/YearProgress.vue'
 import RecentRecords from '../components/RecentRecords.vue'
 import LoadFormTrend from '../components/LoadFormTrend.vue'
+import TodayLoadChart from '../components/TodayLoadChart.vue'
 import RelativeEffortCard from '../components/RelativeEffortCard.vue'
 import MonthActivity from '../components/MonthActivity.vue'
 import DailyCheckin from '../components/DailyCheckin.vue'
@@ -1234,4 +1234,48 @@ button { color: inherit; }
 .coach-next .coach-plan-error { color:oklch(from #ef9a90 calc(l - var(--dim-l)) c h); font-size: 12px; }
 .coach-placeholder { margin: 0; color: var(--dash-muted); font-size: 13px; }
 #dashboard-coaching { scroll-margin-top: 24px; }
+
+/* ── Multi-sport redesign layer: last in the file so it wins over the earlier passes. ── */
+.dashboard-shell { gap: 28px; }
+.dashboard-header { align-items: flex-end; }
+.dashboard-date { color: var(--muted-soft); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.dashboard-header h1 { margin-top: 6px; font-family: var(--font-display); font-size: clamp(44px, 7vw, 72px); font-style: italic; font-weight: 800; line-height: .95; letter-spacing: .005em; text-transform: uppercase; }
+.header-actions { gap: 10px; }
+.header-sick-link { min-height: 44px; padding: 0 18px; border-color: var(--border-strong); color: var(--text); font-size: 14px; }
+.dashboard-shell .header-plan-link { min-height: 44px; gap: 10px; padding: 0 20px; border: 0; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 700; }
+.dashboard-shell .header-plan-link:hover { background: var(--accent-strong); transform: none; }
+.decision-layout { grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr); gap: 20px; align-items: stretch; }
+.signal-card { padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.signal-heading .section-kicker { display: block; }
+.signal-heading h2 { margin-top: 2px; font-family: var(--font-display); font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: .005em; text-transform: uppercase; }
+.readiness-chip { padding: 5px 10px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.score-chip.score-green { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--success-text); }
+.score-chip.score-amber { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning-text); }
+.score-chip.score-red { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger-text); }
+.signal-summary strong { font-size: 18px; font-weight: 700; }
+.signal-summary p, .signal-card .signal-summary p { color: var(--muted-soft); font-size: 14px; line-height: 1.55; }
+.score-drivers { color: var(--text-soft); font-size: 13px; }
+.swap-hint, .ramp-warning { border-radius: 12px; padding: 10px 12px; font-size: 13px; }
+.swap-hint.score-amber, .ramp-warning.ramp-caution { background: color-mix(in srgb, var(--warning) 10%, transparent); }
+.swap-hint.score-red, .ramp-warning.ramp-high { background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger-text); }
+.swap-hint.score-block { background: var(--surface2); }
+.section-heading h2, .coach-head h2 { font-family: var(--font-display); font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: .005em; text-transform: uppercase; }
+.coach-head h2 span { color: var(--accent); }
+.coach-head button { min-height: 40px; border-radius: 999px; padding: 0 16px; }
+.coach-panel { border-radius: var(--radius-card); background: var(--surface); padding: 24px; }
+.explore-grid button { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 14px 16px; }
+.explore-grid button:hover { background: var(--surface2); }
+.explore-mark-load { background: color-mix(in srgb, var(--ride) 14%, transparent); color: var(--tone-ride); }
+.explore-mark-strength { background: color-mix(in srgb, var(--strength) 14%, transparent); color: var(--tone-strength); }
+.explore-mark-goals { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.explore-grid strong { font-size: 15px; font-weight: 600; }
+.explore-grid small { font-size: 12px; }
+@media (max-width: 900px) {
+  .decision-layout { grid-template-columns: 1fr; }
+  .signal-card { padding: 20px; }
+}
+@media (max-width: 640px) {
+  .dashboard-header h1 { font-size: 44px; }
+  .section-heading h2, .coach-head h2, .signal-heading h2 { font-size: 24px; }
+}
 </style>

@@ -355,4 +355,28 @@ const comparisonState = computed(() => {
   .today-primary, .today-secondary { justify-content: space-between; }
   .today-coach-link { margin-left: 0; min-height: 44px; display: inline-flex; align-items: center; }
 }
+
+/* ── Multi-sport redesign layer ── */
+.today-card {
+  border-radius: var(--radius-card);
+  background:
+    radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--accent) 20%, transparent) 0%, transparent 55%),
+    var(--surface);
+  box-shadow: none;
+}
+.today-kicker { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.today-title-row h2 { font-family: var(--font-display); font-size: clamp(32px, 3.6vw, 46px); font-weight: 800; line-height: .95; letter-spacing: .005em; text-transform: uppercase; }
+.today-subtitle { color: var(--muted-soft); font-size: 15px; }
+.today-status { padding: 6px 11px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.today-status.is-done, .today-status.is-go { background: color-mix(in srgb, var(--success-text) 12%, transparent); color: var(--success-text); }
+.today-status.is-caution { background: color-mix(in srgb, var(--warning) 14%, transparent); }
+.today-status.is-recover { background: color-mix(in srgb, var(--ride) 14%, transparent); }
+.today-stats dt { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.today-stats dd { font-family: var(--font-display); font-size: clamp(34px, 3.4vw, 44px); font-weight: 700; letter-spacing: .01em; }
+.today-art { border-color: var(--border); background: rgb(var(--deep-rgb) / .55); }
+.today-win { border: 1px solid color-mix(in srgb, var(--success-text) 25%, transparent); border-radius: 16px; background: color-mix(in srgb, var(--success-text) 8%, transparent); padding: 14px 16px; }
+.today-win > span { background: color-mix(in srgb, var(--success-text) 16%, transparent); }
+.today-win strong { color: var(--success-text); }
+.today-primary, .today-secondary { min-height: 44px; border-radius: 999px; font-size: 14px; }
+.today-guide article, .today-activities a { border-radius: 14px; background: rgb(var(--deep-rgb) / .55); }
 </style>

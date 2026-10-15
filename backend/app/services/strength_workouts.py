@@ -11,6 +11,7 @@ from ..models.strength_workouts import (
     StrengthTemplateInput,
     StrengthWarmupSetAddRequest,
 )
+from .strength_phases import session_set_count
 from .strength_progression import _dumbbell_step_kg, _max_dumbbell_kg, _normalize, latest_next_steps, plan_next_step
 
 
@@ -549,7 +550,8 @@ def start_session(
                 (session_id, exercise["exercise_order"], exercise["exercise_name"], exercise["notes"]),
             )
             session_exercise_id = int(exercise_cursor.lastrowid)
-            for set_order in range(1, int(exercise["set_count"]) + 1):
+            # A deload week trims sets on the same lifts; no phase leaves the count as saved.
+            for set_order in range(1, session_set_count(conn, exercise["set_count"]) + 1):
                 conn.execute(
                     """
                     INSERT INTO strength_session_sets

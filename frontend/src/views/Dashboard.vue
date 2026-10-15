@@ -44,6 +44,7 @@
           </ul>
           <p v-if="illnessReturnHint" class="swap-hint" :class="`score-${illnessReturn.lingering_symptoms || illnessReturn.hard_sessions.length ? 'red' : 'amber'}`">{{ illnessReturnHint }}</p>
           <p v-if="mountainReentryHint" class="swap-hint score-amber">{{ mountainReentryHint }} <router-link :to="`/mountains/trips/${mountainReentry.trip.start_date}`">Trip recap</router-link></p>
+          <p v-if="strengthPhase" class="swap-hint score-block">{{ strengthPhase.headline }}. <router-link to="/strength/workouts">Workout studio</router-link></p>
           <p v-if="stallBlock" class="swap-hint score-block" :title="`${stallBlock.label}: ${stallBlock.text}`">{{ stallBlock.headline }}. <router-link to="/strength">Strength</router-link></p>
           <p v-if="swapHint" class="swap-hint" :class="`score-${readinessScore.level}`">{{ swapHint }} <router-link to="/plan">Open plan</router-link></p>
           <p v-if="sleepDebtHint" class="swap-hint" :class="`score-${readinessScore.sleep_debt.status === 'risk' ? 'red' : 'amber'}`">{{ sleepDebtHint }} <router-link to="/metrics?view=recovery">Sleep trend</router-link></p>
@@ -277,6 +278,7 @@ const illnessReturnHint = computed(() => {
 const mountainReentry = computed(() => dashboard.value?.mountain_reentry || null)
 // A running stall block (one lift at a time), so the change stays in view between lift days.
 const stallBlock = computed(() => dashboard.value?.stall_block || null)
+const strengthPhase = computed(() => dashboard.value?.strength_phase || null)
 const mountainReentryHint = computed(() => {
   const state = mountainReentry.value
   if (!state || sickMode.value.active) return ''

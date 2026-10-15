@@ -821,6 +821,8 @@ def init_db(snapshot: bool = True):
     """)
     from .services.stall_blocks import ensure_table as ensure_stall_blocks
     ensure_stall_blocks(conn)
+    from .services.strength_phases import ensure_table as ensure_strength_phases
+    ensure_strength_phases(conn)
     from .services.winter_arc import ensure_table as ensure_winter_arc
     ensure_winter_arc(conn)
     from .services.arc_adjust import ensure_table as ensure_arc_adjust

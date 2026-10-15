@@ -211,6 +211,7 @@
       </section>
 
       <aside class="history-panel card">
+        <StrengthPhaseCard @changed="load" />
         <div class="history-head">
           <div>
             <div class="section-kicker">Recent training</div>
@@ -268,6 +269,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
 import ExerciseHistory from '../components/ExerciseHistory.vue'
 import StrengthExerciseExplorer from '../components/StrengthExerciseExplorer.vue'
+import StrengthPhaseCard from '../components/StrengthPhaseCard.vue'
 import StrengthMuscleMap from '../components/activity-detail/StrengthMuscleMap.vue'
 import { buildStrengthPlanDraft } from '../strength-plan-draft.mjs'
 import { exerciseKey } from '../activity-detail/exercise-library.mjs'

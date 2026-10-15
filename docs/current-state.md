@@ -24,6 +24,18 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Gentle strength phases
+
+2026-10-15: implements the `gentle-strength-phases` idea. An optional dated strength phase (`services/strength_phases.py`, table `strength_phases`) gives lifting a light longer rhythm. With no phase saved (the default) nothing changes.
+
+- Kinds: `volume` is a label only; `hold` pauses load jumps; `deload` (a week, two at most) trims working sets to about 60% (`deload_sets`: 3 → 2, 4 → 2, 5 → 3, never under 1) and pauses load jumps. Phases cannot overlap.
+- They only nudge existing rules. Load holds are rule 6 in `progression_guard.guard_steps` (held reason `phase`, applied after the effort, big-jump and mountain re-entry rules). Set trimming happens only when a session starts (`strength_workouts.start_session` via `session_set_count`). Saved workouts, exercises and stall-block rewrites are untouched, and plans are not changed, so the weekly lift count toward the 3x anchor stays the same.
+- Suggestions: each winter-arc lighter week from this week on that no phase covers is offered as a deload week (`suggestions`, computed and never stored). You confirm it on the card (saved with `source` `arc_lighter_week`).
+- API: `GET/POST /strength/workouts/phases`, `DELETE /strength/workouts/phases/{id}`. The dashboard payload and coach context carry `strength_phase` (the current phase with a headline).
+- UI: a compact "Strength phase" card at the top of the Workout studio side panel (current phase or "Off", planned phases with Remove, suggested deload weeks with Confirm, an Add form). The Dashboard's Load & recovery card shows the current phase's headline.
+- Not done: a deload week's sessions count toward stall detection like any other session, so a long hold could bring a plateau suggestion earlier. The lift/hard-ride clash rule is unchanged.
+- Verified with `test_strength_phases.py` (8 tests: no phase, deload sets and holds, hold, volume, out-of-range phase, set rounding, arc suggestions until confirmed, overlap and length checks). Backend 932 and frontend 168 tests plus the build pass. Checked in the browser at 1512 px against a scratch copy of the database with a test arc added: suggestions, Confirm, the planned list, held template targets and the dashboard headline all worked. Live training data was not changed and nothing was deployed.
+
 ### Food targets follow the planned week
 
 2026-10-15: implements the `food-targets-follow-the-block` idea. `services/food_targets.py` reads the saved plan for the Monday–Sunday week around the selected Food day; `GET /nutrition/food` (`food_log.build_food_day`) now carries `planned_week`, and `target` gains `training_planned`, `day_kind` and `carbs_g`.

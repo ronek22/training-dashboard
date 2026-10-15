@@ -7,6 +7,7 @@ from ..models.strength_workouts import (
     StallBlockFinishRequest,
     StallBlockStartRequest,
     StrengthActivityLinkRequest,
+    StrengthPhaseInput,
     StrengthSessionExerciseAddRequest,
     StrengthSessionFinishRequest,
     StrengthSessionPositionRequest,
@@ -17,6 +18,7 @@ from ..models.strength_workouts import (
     StrengthWarmupSetAddRequest,
 )
 from ..services.stall_blocks import annotate_plateaus, blocks_for_names, finish_block, list_blocks, start_block, undo_block
+from ..services.strength_phases import build_strength_phases, delete_phase, save_phase
 from ..services.strength_plateaus import find_plateaus
 from ..services.strength_workouts import (
     abandon_session,
@@ -140,6 +142,23 @@ def stall_blocks_undo(block_id: int):
 @router.post("/stall-blocks/{block_id}/finish")
 def stall_blocks_finish(block_id: int, payload: StallBlockFinishRequest):
     return _with_db(lambda conn: finish_block(conn, block_id, keep=payload.keep))
+
+
+@router.get("/phases")
+def phases_index():
+    """Saved strength phases from today on, the current one, and deload weeks to line up with the arc."""
+    return _with_db(build_strength_phases)
+
+
+@router.post("/phases", status_code=status.HTTP_201_CREATED)
+def phases_create(payload: StrengthPhaseInput):
+    return _with_db(lambda conn: save_phase(conn, payload.kind, payload.start_date, payload.end_date, payload.label, payload.source))
+
+
+@router.delete("/phases/{phase_id}", status_code=status.HTTP_204_NO_CONTENT)
+def phases_delete(phase_id: int):
+    _with_db(lambda conn: delete_phase(conn, phase_id))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/sessions/{session_id}/exercises", status_code=status.HTTP_201_CREATED)

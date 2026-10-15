@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -76,6 +77,14 @@ class StallBlockStartRequest(BaseModel):
     exercise_name: str = Field(min_length=1, max_length=120)
     session_id: Optional[int] = None
     scope: Literal["block", "today"] = "block"
+
+
+class StrengthPhaseInput(BaseModel):
+    kind: Literal["volume", "hold", "deload"]
+    start_date: date
+    end_date: date
+    label: Optional[str] = Field(default=None, max_length=60)
+    source: Literal["manual", "arc_lighter_week"] = "manual"
 
 
 class StallBlockFinishRequest(BaseModel):

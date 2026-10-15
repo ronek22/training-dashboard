@@ -12,6 +12,8 @@ workout's progressed targets and holds load when:
    easy go first. One or two changes at a time keep a hard day from turning into a slog.
 4. The day is tagged in life load (deadline, poor sleep, travel, ...): no lift goes up.
 5. Back from a mountain trip: leg lifts last done before the trip stay at their pre-trip loads.
+6. A confirmed hold phase or deload week (``strength_phases``) is on: no lift goes up. With no
+   phase saved this rule never fires.
 """
 from __future__ import annotations
 
@@ -23,6 +25,7 @@ from .life_load import get_life_load_days
 from .mountain_reentry import build_mountain_reentry
 from .muscle_gain import muscle_groups_for
 from .set_effort import latest_ratings
+from .strength_phases import HOLDING, current_phase
 from .strength_progression import _fmt, _normalize
 
 BIG_JUMP_SHARE = 0.10
@@ -81,13 +84,19 @@ def guard_steps(conn: sqlite3.Connection, names: list[str], lifts: list[Optional
 
     tagged = get_life_load_days(conn, today.isoformat(), today.isoformat()).get(today.isoformat())
     busy = tagged and [label for tag, label in zip(tagged["tags"], tagged["labels"]) if tag != "mountains"]
-    limit = 0 if busy else MAX_LOAD_STEPS
+    phase = current_phase(conn, today)
+    holding = phase if phase and phase["kind"] in HOLDING else None
+    limit = 0 if busy or holding else MAX_LOAD_STEPS
     rising = [index for index, (lift, step) in enumerate(zip(lifts, result)) if _rises(step, _top(lift))]
     # Lifts that felt easy go up first, then workout order.
     easy = lambda index: -(ratings.get(_normalize(names[index])) or {"counts": {}})["counts"].get("easy", 0)
     for index in sorted(rising, key=lambda index: (easy(index), index))[limit:]:
         top = _top(lifts[index])
-        hint = (f"{busy[0]} today: holding {_fmt(top)} kg on every lift. Match last time." if busy else
-                f"Holding {_fmt(top)} kg today: {MAX_LOAD_STEPS} other lifts already go up. One or two jumps per session.")
-        result[index] = _held(result[index], top, hint, "life_load" if busy else "one_change")
+        if busy:
+            hint, reason = f"{busy[0]} today: holding {_fmt(top)} kg on every lift. Match last time.", "life_load"
+        elif holding:
+            hint, reason = f"{holding['label']} until {date.fromisoformat(holding['end_date']).strftime('%-d %b')}: stay at {_fmt(top)} kg, no load jumps.", "phase"
+        else:
+            hint, reason = f"Holding {_fmt(top)} kg today: {MAX_LOAD_STEPS} other lifts already go up. One or two jumps per session.", "one_change"
+        result[index] = _held(result[index], top, hint, reason)
     return result

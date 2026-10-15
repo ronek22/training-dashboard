@@ -248,7 +248,11 @@ reliable_weekdays and keep them off shaky_weekdays. When get_recent_context
 shows winter_arc, plan rides to the block for the week you are planning
 (this_week or next_week): include its key_types as structured rides, match
 ride_mix where the schedule allows, keep ride time near ride_hours, and in a
-lighter week shorten rides instead of dropping lifts. The arc never removes
+lighter week shorten rides instead of dropping lifts. That week's note and
+last_week say how the previous week went; build on it rather than starting
+fresh. If carry_over names a missed key ride, it may move into the week once:
+the dashboard places it on save, so do not plan it twice, and never in a
+lighter week. Start the plan overview with that week's note. The arc never removes
 lift days or overrides minimum_week, return windows or life_load. This request explicitly
 authorizes creating or updating the current weekly plan, so do not ask for
 confirmation. After writing, verify the saved result with get_weekly_plans and

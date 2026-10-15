@@ -9,6 +9,11 @@ The weekly planner reads the current block from the coaching context. When a gen
 saved, ``fit_week_to_arc`` converts easy rides into any key ride the block asks for but the week
 is missing, and trims ride time in a lighter week. Days that are past, done, sick, in an illness
 or mountain re-entry window, or tagged in life load never get a quality ride.
+
+Weeks also build on each other: ``block_progress`` reads how the previous week went against its
+target (key rides hit or missed, ride hours, plan follow-through) for the planner and a one-line
+block note. A missed key ride may carry into the next week once, never into a lighter week or a
+guarded day.
 """
 from __future__ import annotations
 
@@ -54,6 +59,8 @@ KEY_RIDES = {
     "vo2": {"workout_id": "vo2-5x3", "intent": "interval"},
 }
 REASON = "Winter arc"
+CARRY_REASON = f"{REASON}: carried over"
+MISSED_STATUSES = {"skipped", "replaced", "rest_day_changed"}
 
 
 def ensure_table(conn: sqlite3.Connection) -> None:
@@ -252,19 +259,145 @@ def _missing(target: dict, mix: dict) -> list[dict]:
     ]
 
 
-def arc_week_status(conn: Optional[sqlite3.Connection], days: list[dict], week_start: str) -> Optional[dict]:
-    """How a saved week lines up with its arc block (None outside the arc)."""
+def arc_week_status(
+    conn: Optional[sqlite3.Connection], days: list[dict], week_start: str, with_progress: bool = False,
+) -> Optional[dict]:
+    """How a saved week lines up with its arc block (None outside the arc).
+
+    ``with_progress`` adds how last week went and the one-line block note (current and upcoming weeks).
+    """
     if conn is None:
         return None
     target = arc_week(conn, week_start)
     if not target:
         return None
     mix = planned_mix(days)
-    return {
+    status = {
         **target,
         "planned_mix": mix,
         "planned_ride_hours": _planned_ride_hours(days),
         "missing": _missing(target, mix),
+    }
+    if with_progress:
+        progress = block_progress(conn, week_start, days)
+        status["last_week"] = progress["last_week"]
+        status["note"] = progress["note"]
+    return status
+
+
+# --- How last week went, and what carries into this one ---------------------------------------
+
+def _is_carried(day: dict) -> bool:
+    return str(day.get("planning_rule_reason") or "").startswith(CARRY_REASON)
+
+
+def _done_ride_hours(conn: sqlite3.Connection, week_start: str) -> Optional[float]:
+    end = (date.fromisoformat(week_start) + timedelta(weeks=1)).isoformat()
+    try:
+        row = conn.execute(
+            "SELECT SUM(duration_min) FROM activities WHERE type IN ('Ride', 'VirtualRide') AND date >= ? AND date < ?",
+            (week_start, end),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        return None
+    return round(float(row[0] or 0) / 60, 1)
+
+
+def last_week_review(conn: sqlite3.Connection, week_start: str) -> dict:
+    """The week before ``week_start`` against its arc target: key rides, ride hours, follow-through."""
+    # Lazy: plans and plan_follow_through import this module.
+    from ..repositories.plans import get_weekly_plan_row
+    from .plan_follow_through import OUTCOMES, classify_planned_day
+    from .plans import serialize_weekly_plan
+
+    previous = (date.fromisoformat(week_start) - timedelta(weeks=1)).isoformat()
+    target = arc_week(conn, previous)
+    review = {
+        "week_start": previous,
+        "label": target["label"] if target else None,
+        "week_number": target["week_number"] if target else None,
+        "lighter": target["lighter"] if target else False,
+        "ride_hours_target": target["ride_hours"] if target else None,
+        "ride_hours_done": _done_ride_hours(conn, previous),
+        "key_rides": None,
+        "follow_through": None,
+    }
+    row = get_weekly_plan_row(conn, previous)
+    if not row:
+        return review
+    days = serialize_weekly_plan(row, conn)["days"]
+    counts = {"planned": 0, "done": 0, "changed": 0, "missed": 0}
+    hit, missed = [], []
+    for day in days:
+        status = (day.get("comparison") or {}).get("status")
+        outcome = OUTCOMES.get(status)
+        if outcome and classify_planned_day(day):
+            counts["planned"] += 1
+            counts["done" if outcome == "done" else "changed" if outcome == "changed" else "missed"] += 1
+        kind = ride_type(day)
+        if kind in QUALITY_TYPES and outcome:
+            entry = {"date": day["date"], "type": kind, "label": MIX_LABELS[kind], "carried": _is_carried(day)}
+            (missed if status in MISSED_STATUSES else hit).append(entry)
+    review["key_rides"] = {"planned": len(hit) + len(missed), "hit": len(hit), "missed": missed}
+    review["follow_through"] = counts if counts["planned"] else None
+    return review
+
+
+def _carry_candidate(target: dict, last: dict) -> tuple[Optional[dict], Optional[str]]:
+    """The one missed key ride that may move into this week, or why none can."""
+    missed = (last.get("key_rides") or {}).get("missed") or []
+    if not missed:
+        return None, None
+    in_block = [ride for ride in missed if ride["type"] in target["key_types"]]
+    fresh = [ride for ride in in_block if not ride["carried"]]
+    if target["lighter"]:
+        return None, "lighter week"
+    if not in_block:
+        return None, "not this block's ride"
+    if not fresh:
+        return None, "already moved once"
+    return fresh[0], None
+
+
+def _ride_name(kind: str) -> str:
+    return "SS" if kind == "sweet_spot" else MIX_LABELS[kind]
+
+
+def block_progress(conn: sqlite3.Connection, week_start: str, days: Optional[list[dict]] = None) -> Optional[dict]:
+    """Where a week sits in its block and how last week went. ``days``: the saved week, if any."""
+    target = arc_week(conn, week_start)
+    if not target:
+        return None
+    last = last_week_review(conn, week_start)
+    carry, blocked = _carry_candidate(target, last)
+    next_start = (date.fromisoformat(week_start) + timedelta(weeks=1)).isoformat()
+    following = arc_week(conn, next_start)
+
+    parts = [f"Week {target['week_number']} of {target['weeks_in_block']} in {target['label']}" + (" (lighter)" if target["lighter"] else "")]
+    carried = [day for day in days or [] if _is_carried(day)]
+    missed = (last.get("key_rides") or {}).get("missed") or []
+    if carried:
+        parts.append(f"last week's {_ride_name(ride_type(carried[0]) or 'sweet_spot')} ride moved here")
+    elif carry:
+        parts.append(f"last week's {_ride_name(carry['type'])} ride missed" + (", no safe day to move it" if days is not None else ", may move here once"))
+    elif missed:
+        parts.append(f"last week's {_ride_name(missed[0]['type'])} ride missed, not carried ({blocked})")
+    if last["ride_hours_target"] is not None and last["ride_hours_done"] is not None:
+        parts.append(f"last week {last['ride_hours_done']:g} of {last['ride_hours_target']:g} h riding")
+    if following and following["block_id"] != target["block_id"]:
+        parts.append(f"{following['label']} starts next")
+    elif following and following["lighter"]:
+        parts.append("lighter week next")
+    elif not following:
+        parts.append("last week of the arc" if target["weeks_left"] == 0 else "block ends next")
+
+    return {
+        "week_start": week_start,
+        "last_week": last,
+        "carry_over": carry,
+        "carry_blocked": blocked,
+        "next_week_lighter": bool(following and following["lighter"]),
+        "note": ", ".join(parts),
     }
 
 
@@ -342,6 +475,8 @@ def fit_week_to_arc(
             days[index] = _key_ride(pick, kind, target)
             changes.append({"date": pick["date"], "kind": "key_ride", "type": kind, "from": pick.get("title"), "to": days[index]["title"]})
 
+    changes += _carry_over(conn, days, target, guarded)
+
     if target["lighter"]:
         cap = target["ride_hours"] * 60
         open_easy = [day for day in days if day["date"] not in guarded and ride_type(day) in ("z2", "recovery") and _ride_minutes(day)]
@@ -362,6 +497,33 @@ def fit_week_to_arc(
     return days, changes
 
 
+def _carry_over(conn: sqlite3.Connection, days: list[dict], target: dict, guarded: set[str]) -> list[dict]:
+    """Move last week's missed key ride into this week once, on a free easy weekday. Edits ``days``."""
+    carry, _ = _carry_candidate(target, last_week_review(conn, target["week_start"]))
+    if not carry or any(_is_carried(day) for day in days):
+        return []
+    kind = carry["type"]
+    reason = f"{CARRY_REASON} last week's missed {MIX_LABELS[kind].lower()} ride (moves once)"
+    open_days = [day for day in days if day["date"] not in guarded]
+    if planned_mix(days)[kind] > target["ride_mix"][kind]:
+        # The planner already added it: mark it so it cannot carry again.
+        extra = [day for day in open_days if ride_type(day) == kind and not day.get("planning_rule_reason")]
+        if extra:
+            days[days.index(extra[-1])] = {**extra[-1], "planning_rule_reason": reason}
+            return [{"date": extra[-1]["date"], "kind": "carry_over", "type": kind, "from": carry["date"], "to": extra[-1].get("title")}]
+        return []
+    candidates = [
+        day for day in open_days
+        if ride_type(day) == "z2" and day.get("workout_intent") != "long" and not _adjacent_to_hard(days, day["date"])
+    ]
+    if not candidates:
+        return []
+    pick = min(candidates, key=lambda day: (date.fromisoformat(day["date"]).weekday() >= 5, day["date"]))
+    index = days.index(pick)
+    days[index] = {**_key_ride(pick, kind, target), "planning_rule_reason": reason}
+    return [{"date": pick["date"], "kind": "carry_over", "type": kind, "from": carry["date"], "to": days[index]["title"]}]
+
+
 def winter_arc_coaching_context(conn: sqlite3.Connection, today: Optional[date] = None) -> Optional[dict]:
     """Compact note for coaching prompts and the weekly planner."""
     arc = build_winter_arc(conn, today)
@@ -373,7 +535,19 @@ def winter_arc_coaching_context(conn: sqlite3.Connection, today: Optional[date] 
     def brief(target: Optional[dict]) -> Optional[dict]:
         if not target:
             return None
-        return {key: target[key] for key in ("week_start", "label", "focus", "week_number", "weeks_in_block", "weeks_left", "lighter", "ride_hours", "ride_mix", "key_types")}
+        progress = block_progress(conn, target["week_start"])
+        last = progress["last_week"]
+        return {
+            **{key: target[key] for key in ("week_start", "label", "focus", "week_number", "weeks_in_block", "weeks_left", "lighter", "ride_hours", "ride_mix", "key_types")},
+            "note": progress["note"],
+            "last_week": {
+                "ride_hours": [last["ride_hours_done"], last["ride_hours_target"]],
+                "key_rides": last["key_rides"] and {**last["key_rides"], "missed": [ride["type"] for ride in last["key_rides"]["missed"]]},
+                "follow_through": last["follow_through"],
+            },
+            "carry_over": progress["carry_over"] and progress["carry_over"]["type"],
+            "next_week_lighter": progress["next_week_lighter"],
+        }
 
     return {
         "arc": f"{arc['start_date']} to {arc['end_date']}",
@@ -383,7 +557,9 @@ def winter_arc_coaching_context(conn: sqlite3.Connection, today: Optional[date] 
         "guidance": (
             "Plan rides to the block for the week you are planning: include its key ride types (ride_mix counts are rides "
             "per week; use get_cycling_workout_library), keep total ride time near ride_hours, and in a lighter week "
-            "shorten rides rather than dropping lifts. The arc only shapes rides: lift days, anchor goals, minimum weeks, "
+            "shorten rides rather than dropping lifts. Each week's note and last_week say how the previous week went "
+            "(ride_hours is [done, target]); carry_over names a missed key ride that may move into that week once, which "
+            "the dashboard places on save on a free easy weekday, never in a lighter week. The arc only shapes rides: lift days, anchor goals, minimum weeks, "
             "illness or mountain re-entry windows and life-load days still win."
         ),
     }

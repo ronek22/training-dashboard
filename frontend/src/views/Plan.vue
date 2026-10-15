@@ -106,6 +106,7 @@
               <span v-if="plan.winter_arc" class="arc-week-pill" :class="{ 'arc-week-pill-short': plan.winter_arc.missing.length && !isHistoricalPlan(plan) }" :title="arcWeekTitle(plan.winter_arc)">{{ plan.winter_arc.label }} · wk {{ plan.winter_arc.week_number }}/{{ plan.winter_arc.weeks_in_block }}<template v-if="plan.winter_arc.lighter"> · lighter</template><template v-if="plan.winter_arc.missing.length && !isHistoricalPlan(plan)"> · {{ arcMissingText(plan.winter_arc) }}</template></span>
 
             </div>
+            <p v-if="plan.winter_arc?.note && !isHistoricalPlan(plan)" class="arc-week-note">{{ plan.winter_arc.note }}</p>
           </div>
           <template v-if="isCurrentPlan(plan) && adjustableDays(plan).length">
             <button v-if="plan.minimum_week?.active" type="button" class="ghost-button minimum-week-button" :disabled="minimumWeekBusy" @click="restoreFullWeek(plan)">{{ minimumWeekBusy ? 'Restoring…' : 'Restore full week' }}</button>
@@ -2589,6 +2590,7 @@ const savePlanLink = async (day) => {
 
 <style scoped>
 .arc-week-pill { padding: 2px 9px; border-radius: 999px; background: rgb(var(--ov-rgb) / .06); color: var(--text-soft); font-size: 12px; font-weight: 650; }
+.arc-week-note { margin: 6px 0 0; color: var(--text-soft); font-size: 13px; }
 .arc-week-pill-short { background: rgba(245, 158, 11, .14); color: var(--warning-text); }
 .minimum-week-pill { padding: 2px 9px; border-radius: 999px; background: rgb(var(--life-rgb) / .16); color: var(--life); font-size: 12px; font-weight: 650; }
 .minimum-week-button { align-self: center; white-space: nowrap; }

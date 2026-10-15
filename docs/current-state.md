@@ -24,6 +24,16 @@ Implemented foundations:
 
 ## Recently Completed
 
+### Each week builds on the last one
+
+2026-10-15: implements the `week-builds-on-last-week` idea. Inside a winter arc, the planner and Plan now see how the previous week went against its block target. Built in `services/winter_arc.py` (`last_week_review`, `block_progress`); nothing new is stored.
+
+- Last week's review: ride hours done vs target, key (sweet-spot/VO2) rides planned / hit / missed (skipped or replaced in the plan comparison), and follow-through counts for real sessions (rest days excluded, same classifier as plan follow-through).
+- Planner context: `winter_arc.this_week` and `next_week` in `get_recent_context` each carry `note`, a compact `last_week` (`ride_hours` as [done, target], key rides, follow-through), `carry_over` and `next_week_lighter`. The weekly-plan prompt in `scripts/coach_helper.py` tells the planner to build on it, not to plan the carried ride twice, and to start the overview with the note.
+- Carry-over rule (`fit_week_to_arc`, on save): one missed key ride of the block's type moves into the new week once, on top of the block's own key rides, onto the earliest free easy weekday ride that is not next to another hard ride. Never in a lighter week, never on a done, past, sick, illness or mountain re-entry, or life-load day, and never a ride that was itself carried (marked by its `planning_rule_reason` "Winter arc: carried over…"). Re-saving the week does not add it again; if the planner already added the extra ride, it is only marked.
+- Plan shows the one-line note under the arc pill of the current and upcoming weeks (`winter_arc.note`), e.g. "Week 2 of 4 in Sweet-spot build, last week's SS ride moved here, last week 0 of 6 h riding, lighter week next". Missed rides that cannot move say why ("not carried (lighter week)", "already moved once", "no safe day to move it"). Past weeks skip the review to keep the plan list cheap.
+- Verified with `test_winter_arc_progress.py` (carry-over and its note, no second carry, lighter-week block, guarded life-load day, planner context, a week with no arc). Backend 905, coach-helper 23 and frontend 163 tests plus the build pass. Live training data was not changed; the live database has no active arc, so the note was not viewed against real weeks.
+
 ### Fitness and fatigue ahead on Plan
 
 2026-10-15: implements the `training-load-forecast` idea. Under the week preview, Plan shows "Where fitness and fatigue are heading": one small chart (42 logged days, then the rest of this week and the 4 preview weeks) and one plain-language line. Built by code in `services/load_forecast.py` (`GET /plans/load-forecast`, `weeks` 1–26, default 4); nothing is saved.

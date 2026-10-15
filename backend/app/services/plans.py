@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import HTTPException
@@ -1234,7 +1234,9 @@ def build_lift_ride_clashes(conn: Optional[sqlite3.Connection], days: list[dict]
 def _winter_arc_status(conn: Optional[sqlite3.Connection], days: list[dict], week_start: str) -> Optional[dict]:
     from .winter_arc import arc_week_status
 
-    return arc_week_status(conn, days, week_start)
+    # Only current and upcoming weeks carry the "how last week went" note; past weeks stay cheap.
+    this_monday = datetime.now().date() - timedelta(days=datetime.now().weekday())
+    return arc_week_status(conn, days, week_start, with_progress=week_start >= this_monday.isoformat())
 
 
 def _minimum_week_state(conn: Optional[sqlite3.Connection], week_start: str) -> Optional[dict]:

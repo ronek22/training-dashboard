@@ -9,7 +9,7 @@
         </div>
         <div class="header-actions">
           <button v-if="!sickMode.active" class="header-sick-link" type="button" :disabled="sickModeStarting" @click="startSickMode">
-            <span aria-hidden="true">🤒</span><span>{{ sickModeStarting ? 'Starting…' : 'Feeling sick?' }}</span>
+            <svg class="sick-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M11.5 3.5a2 2 0 0 0-4 0v7.8a3.6 3.6 0 1 0 4 0z" /><path d="M9.5 8.5v5" /></svg><span>{{ sickModeStarting ? 'Starting…' : 'Feeling sick?' }}</span>
           </button>
           <button class="header-plan-link" type="button" @click="router.push('/plan')">
             <span>Open weekly plan</span><span aria-hidden="true">→</span>
@@ -28,33 +28,41 @@
         </div>
         <TodayCard v-else v-bind="todayCard" @plan-changed="loadDashboard" />
 
+        <div class="signal-stack">
         <aside class="signal-card" aria-labelledby="signals-heading">
           <div class="signal-heading">
-            <div><span class="section-kicker">Training state</span><h2 id="signals-heading">Load &amp; recovery</h2></div>
+            <span class="section-kicker">Readiness</span>
             <span v-if="readinessScore && readinessScore.level !== 'unknown'" class="readiness-chip score-chip" :class="`score-${readinessScore.level}`" :title="readinessScore.advice">
-              <i aria-hidden="true"></i>{{ readinessScore.label }}
+              <i aria-hidden="true"></i>{{ readinessChipLabel }}
             </span>
             <span v-else-if="readiness" class="readiness-chip" :class="`readiness-${readiness.state}`">{{ readiness.label }}</span>
           </div>
-          <div v-if="readiness" class="signal-summary">
-            <strong>{{ loadRecoveryTitle }}</strong><p>{{ loadRecoverySummary }}</p>
+          <h2 id="signals-heading" class="signal-title">{{ loadRecoveryTitle.replace(/\.$/, '') }}</h2>
+          <p v-if="readiness" class="signal-advice">{{ loadRecoverySummary }}</p>
+          <div v-if="signalTiles.length" class="signal-tiles">
+            <div v-for="tile in signalTiles" :key="tile.key" class="signal-tile">
+              <span>{{ tile.label }}</span>
+              <strong>{{ tile.value }}<small v-if="tile.unit"> {{ tile.unit }}</small></strong>
+              <em :class="`tone-${tile.tone}`">{{ tile.note }}</em>
+            </div>
           </div>
-          <ul v-if="readinessScore?.drivers?.length" class="score-drivers" aria-label="What is pulling readiness down">
+          <ul v-else-if="readinessScore?.drivers?.length" class="score-drivers" aria-label="What is pulling readiness down">
             <li v-for="driver in readinessScore.drivers" :key="driver">{{ driver }}</li>
           </ul>
+          <LoadFormTrend v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :form="Number(trainingLoad.current?.form || 0)" :show-chart="false" />
+          <p v-if="rampWarning" class="ramp-warning" :class="`ramp-${ramp.status}`">{{ rampWarning }}</p>
+          <p v-if="sleepDebtHint" class="swap-hint" :class="`score-${readinessScore.sleep_debt.status === 'risk' ? 'red' : 'amber'}`">{{ sleepDebtHint }} <router-link to="/metrics?view=recovery">Sleep trend</router-link></p>
           <p v-if="illnessReturnHint" class="swap-hint" :class="`score-${illnessReturn.lingering_symptoms || illnessReturn.hard_sessions.length ? 'red' : 'amber'}`">{{ illnessReturnHint }}</p>
           <p v-if="mountainReentryHint" class="swap-hint score-amber">{{ mountainReentryHint }} <router-link :to="`/mountains/trips/${mountainReentry.trip.start_date}`">Trip recap</router-link></p>
           <p v-if="strengthPhase" class="swap-hint score-block">{{ strengthPhase.headline }}. <router-link to="/strength/workouts">Workout studio</router-link></p>
           <p v-if="stallBlock" class="swap-hint score-block" :title="`${stallBlock.label}: ${stallBlock.text}`">{{ stallBlock.headline }}. <router-link to="/strength">Strength</router-link></p>
-          <p v-if="swapHint" class="swap-hint" :class="`score-${readinessScore.level}`">{{ swapHint }} <router-link to="/plan">Open plan</router-link></p>
-          <p v-if="sleepDebtHint" class="swap-hint" :class="`score-${readinessScore.sleep_debt.status === 'risk' ? 'red' : 'amber'}`">{{ sleepDebtHint }} <router-link to="/metrics?view=recovery">Sleep trend</router-link></p>
-          <p v-if="rampWarning" class="ramp-warning" :class="`ramp-${ramp.status}`">{{ rampWarning }}</p>
           <VolumeTrendAlert :trend="volumeTrend" @labeled="onVolumeTrendLabeled" />
-          <LoadFormTrend v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :form="Number(trainingLoad.current?.form || 0)" :show-chart="false" />
+        </aside>
+        <section class="checkin-card" aria-label="Check-in and protein">
           <DailyCheckin :checkin="dailyCheckin" @saved="onCheckinSaved" />
           <ProteinTick />
-
-        </aside>
+        </section>
+        </div>
       </section>
 
       <TodayLoadChart v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :current="trainingLoad.current" :ratio="trainingLoad.ratio" />
@@ -486,6 +494,16 @@ const decisionReasons = computed(() => {
   const reasons = [...(dailyRecommendation.value?.reasons || [])]
   if (readiness.value?.state === 'strained' && readiness.value?.reasons?.[0]) reasons.push(readiness.value.reasons[0])
   return [...new Set(reasons)].slice(0, 2)
+})
+const readinessChipLabel = computed(() => ({ red: 'Recover', amber: 'Go easy', green: 'Ready' }[readinessScore.value?.level] || readinessScore.value?.label))
+// Physiology first: the three measured signals that best explain today's readiness.
+const SIGNAL_KEYS = ['resting_hr', 'sleep', 'hrv', 'sleep_debt']
+const signalTiles = computed(() => {
+  const factors = readinessScore.value?.factors || []
+  return SIGNAL_KEYS.map((key) => factors.find((factor) => factor.key === key)).filter(Boolean).slice(0, 3).map((factor) => {
+    const match = String(factor.detail || '').match(/^([+-]?[\d.]+)\s*([a-z%]+)?\s*,?\s*(.*)$/i)
+    return { key: factor.key, label: factor.label, value: match ? match[1] : factor.detail, unit: match?.[2] || '', note: match ? match[3] : '', tone: factor.tone || 'steady' }
+  })
 })
 const loadRecoveryTitle = computed(() => ({ red: 'Recovery signals are off.', amber: 'Some recovery signals are off.' }[readinessScore.value?.level]) || ({
   ready: 'Load is being absorbed.',
@@ -1277,5 +1295,50 @@ button { color: inherit; }
 @media (max-width: 640px) {
   .dashboard-header h1 { font-size: 44px; }
   .section-heading h2, .coach-head h2, .signal-heading h2 { font-size: 24px; }
+}
+
+/* Readiness card, artboard version. */
+.signal-stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.signal-card { justify-content: flex-start; gap: 0; }
+.signal-heading { min-height: 0; }
+.signal-title { margin: 14px 0 0; font-family: var(--font-display); font-size: 34px; font-weight: 800; line-height: .95; letter-spacing: .005em; text-transform: uppercase; }
+.signal-advice { margin: 8px 0 0; color: var(--muted-soft); font-size: 14px; line-height: 1.55; }
+.signal-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+.signal-tile { display: grid; align-content: start; gap: 6px; min-width: 0; border-radius: 14px; background: var(--surface2); padding: 14px; }
+.signal-tile span { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.signal-tile strong { font-family: var(--font-display); font-size: 32px; font-weight: 700; line-height: 1; }
+.signal-tile strong small { margin-left: 3px; color: var(--muted-soft); font-family: var(--font-body); font-size: 12px; font-weight: 500; }
+.signal-tile em { display: -webkit-box; overflow: hidden; color: var(--muted); font-size: 12px; font-style: normal; line-height: 1.35; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.signal-tile em.tone-caution { color: var(--warning-text); }
+.signal-tile em.tone-risk { color: var(--danger-text); }
+.signal-card :deep(.load-trend) { margin-top: 22px; }
+.signal-card .ramp-warning, .signal-card .swap-hint { margin-top: 12px; }
+.ramp-warning.ramp-high { background: var(--surface2); color: var(--text-soft); }
+.ramp-warning.ramp-high::first-letter { color: inherit; }
+.checkin-card { display: grid; gap: 4px; padding: 20px 24px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.checkin-card :deep(> *:first-child) { margin-top: 0; border-top: 0; padding-top: 0; }
+@media (max-width: 640px) {
+  .signal-tiles { gap: 8px; }
+  .signal-tile { padding: 12px 10px; }
+  .signal-tile strong { font-size: 26px; }
+}
+
+.header-sick-link { gap: 8px; background: transparent; color: var(--text-soft); font-weight: 600; }
+.header-sick-link:hover:not(:disabled) { border-color: var(--muted); background: var(--surface2); color: var(--text); }
+.sick-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.coach-label { color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.coach-assessment h3 { font-size: 19px; font-weight: 700; }
+.coach-assessment p { color: var(--muted-soft); font-size: 14px; }
+.coach-next p { font-size: 14px; }
+.coach-next { border-left-color: var(--border); }
+.coach-plan-action { min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); padding: 0 20px; color: var(--on-accent); font-weight: 700; }
+.coach-plan-action:hover:not(:disabled) { border: 0; background: var(--accent-strong); }
+.coach-week-focus { background: var(--surface2); }
+
+.header-sick-link, .dashboard-shell .header-plan-link { white-space: nowrap; }
+@media (max-width: 520px) {
+  .header-sick-link { padding: 0 14px; }
+  .header-sick-link span { display: none; }
+  .header-sick-link::after { content: 'Sick?'; }
 }
 </style>

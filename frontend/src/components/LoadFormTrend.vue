@@ -140,4 +140,11 @@ const chartLabel = computed(() => {
 .load-trend-legend .is-fatigue::before { background:oklch(from #efb35a calc(l - var(--dim-l)) c h); }
 .load-trend-legend .is-load::before { height: 7px; width: 5px; background: rgb(var(--tint-rgb) / 0.35); }
 .load-trend-legend small { margin-left: auto; color:var(--muted); font-size: 10px; }
+
+/* Redesign: one continuous gradient, the marker carries the reading. */
+.form-gauge-head span { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.form-gauge-track { gap: 0; height: 10px; border-radius: 5px; background: linear-gradient(90deg, var(--danger) 0%, var(--warning) 14%, var(--accent) 30%, var(--muted-soft) 50%, var(--z2) 72%, var(--ride) 100%); }
+.form-gauge-track span { opacity: 0 !important; }
+.form-gauge-track i { top: -5px; width: 4px; height: 20px; margin-left: -2px; background: var(--text); box-shadow: 0 0 0 3px var(--surface); }
+.form-gauge-scale { font-size: 12px; }
 </style>

@@ -65,4 +65,10 @@ defineProps({ tiles: { type: Array, required: true } })
 .tile-value { font-family: var(--font-display); font-size: 44px; font-weight: 700; letter-spacing: .01em; }
 .tile-value small { font-family: var(--font-body); font-size: 14px; }
 .tile-caption { font-size: 12px; }
+
+/* One row on desktop: every tile shares the card width. */
+.tiles { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+@media (max-width: 760px) {
+  .tiles { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-columns: auto; }
+}
 </style>

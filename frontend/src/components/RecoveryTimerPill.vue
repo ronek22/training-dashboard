@@ -42,25 +42,25 @@ defineEmits<{ toggleSound: [] }>()
   align-items: center;
   gap: 12px;
   padding: 10px 12px 10px 16px;
-  border:1px solid #72ddba60;
+  border:1px solid color-mix(in srgb, var(--z2) 38%, transparent);
   border-radius: 999px;
   background: var(--deep);
-  color: var(--success-text);
-  box-shadow:0 8px 32px rgb(var(--shadow-rgb) / 0.40), 0 0 0 4px #72ddba08;
+  color: var(--z2);
+  box-shadow:0 8px 32px rgb(var(--shadow-rgb) / 0.40), 0 0 0 4px color-mix(in srgb, var(--z2) 4%, transparent);
 }
 .recovery-pill-dial {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
   border-radius: 50%;
-  background:radial-gradient(circle, var(--deep) 56%, transparent 60%), conic-gradient(oklch(from #72ddba calc(l - var(--dim-l)) c h) var(--rest-progress), #72ddba20 0);
+  background:radial-gradient(circle, var(--deep) 56%, transparent 60%), conic-gradient(var(--z2) var(--rest-progress), color-mix(in srgb, var(--z2) 13%, transparent) 0);
 }
 .recovery-pill-copy { display: grid; gap: 1px; min-width: 78px; }
 .recovery-pill-copy > span { font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .recovery-pill-copy > strong { font-family: var(--font-display); font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.recovery-pill button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border:1px solid #72ddba30; border-radius: 50%; background:#72ddba0a; color: var(--success-text); font-size: 21px; cursor: pointer; }
+.recovery-pill button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border:1px solid color-mix(in srgb, var(--z2) 20%, transparent); border-radius: 50%; background:color-mix(in srgb, var(--z2) 4%, transparent); color: var(--z2); font-size: 21px; cursor: pointer; }
 .recovery-pill button[aria-pressed='false'] { color: var(--muted-soft); }
-.recovery-pill button:focus-visible { outline:2px solid oklch(from #8ae4c3 calc(l - var(--dim-l)) c h); outline-offset: 3px; }
+.recovery-pill button:focus-visible { outline:2px solid var(--z2); outline-offset: 3px; }
 .recovery-pill button:disabled { opacity: .5; cursor: default; }
 @media (max-width: 640px) {
   .recovery-pill { right: max(14px, env(safe-area-inset-right)); bottom: calc(146px + env(safe-area-inset-bottom)); }

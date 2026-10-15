@@ -5,9 +5,9 @@
 
     <template v-else-if="session">
       <section class="runner-head motion-section">
-        <router-link to="/strength/workouts" class="back-link">← Studio</router-link>
+        <router-link to="/strength/workouts" class="back-link">← Workout studio</router-link>
         <div class="runner-title">
-          <div class="runner-kicker" :class="{ live: session.status === 'active' }">{{ session.status === 'active' ? 'Live workout' : 'Workout review' }}<span> · {{ formatDate(session.started_at) }}</span></div>
+          <div class="runner-kicker" :class="{ live: session.status === 'active' }">{{ session.status === 'active' ? 'Body · Strength · Live' : 'Body · Strength · Review' }}<span> · {{ formatDate(session.started_at) }}</span></div>
           <h1>{{ session.template_name }}</h1>
         </div>
         <div class="session-vitals">
@@ -176,13 +176,16 @@
             <div class="current-exercise-sets">
               <div class="current-sets-head">
                 <span>This exercise</span>
-                <div class="set-tools">
-                  <button type="button" :disabled="mutationBusy || workingSetCount(currentExercise) >= 20" @click="addWorkingSet">+ Set</button>
-                  <button type="button" :disabled="mutationBusy" @click="addWarmupSet">{{ addingWarmup ? 'Adding…' : '+ Warm-up' }}</button>
-                  <button v-if="suggestedWarmups.length" type="button" :disabled="mutationBusy" :title="suggestedWarmups.map((item) => `${item.target_reps} × ${formatKg(item.target_weight_kg)} kg`).join(', ')" @click="addSuggestedWarmups">Suggest warm-ups</button>
-                  <button type="button" class="danger" :disabled="mutationBusy || (currentSet.set_type !== 'warmup' && workingSetCount(currentExercise) <= 1)" @click="removeCurrentSet">Remove {{ setKindLabel(currentExercise, currentSet).toLowerCase() }}</button>
-                  <button type="button" class="danger" :disabled="mutationBusy || session.exercises.length <= 1" @click="removeCurrentExercise">Remove exercise</button>
-                </div>
+                <details class="set-management">
+                  <summary>Manage sets &amp; exercise</summary>
+                  <div class="set-tools">
+                    <button type="button" :disabled="mutationBusy || workingSetCount(currentExercise) >= 20" @click="addWorkingSet">+ Set</button>
+                    <button type="button" :disabled="mutationBusy" @click="addWarmupSet">{{ addingWarmup ? 'Adding…' : '+ Warm-up' }}</button>
+                    <button v-if="suggestedWarmups.length" type="button" :disabled="mutationBusy" :title="suggestedWarmups.map((item) => `${item.target_reps} × ${formatKg(item.target_weight_kg)} kg`).join(', ')" @click="addSuggestedWarmups">Suggest warm-ups</button>
+                    <button type="button" class="danger" :disabled="mutationBusy || (currentSet.set_type !== 'warmup' && workingSetCount(currentExercise) <= 1)" @click="removeCurrentSet">Remove {{ setKindLabel(currentExercise, currentSet).toLowerCase() }}</button>
+                    <button type="button" class="danger" :disabled="mutationBusy || session.exercises.length <= 1" @click="removeCurrentExercise">Remove exercise</button>
+                  </div>
+                </details>
               </div>
               <div class="set-table" role="list">
                 <button
@@ -223,7 +226,7 @@
               :class="{ active: exercise.exercise_order === session.current_exercise_order, done: exercise.completed_set_count === workingSetCount(exercise) }"
               @click="switchExercise(exercise)"
             >
-              <span class="queue-index">{{ exercise.completed_set_count === workingSetCount(exercise) ? '✓' : exercise.exercise_order }}</span>
+              <span class="queue-index">{{ exercise.completed_set_count === workingSetCount(exercise) ? '✓' : String(exercise.exercise_order).padStart(2, '0') }}</span>
               <div>
                 <strong>{{ exercise.exercise_name }}</strong>
                 <small>{{ exercisePrescription(exercise) }}<em v-if="blockFor(exercise)" class="queue-stalled trying" :title="`${blockFor(exercise).label}: ${blockFor(exercise).text}`">{{ blockFor(exercise).due ? 'block done' : blockFor(exercise).scope === 'block' ? `block wk ${blockFor(exercise).week}/${blockFor(exercise).weeks}` : 'trying' }}</em><em v-else-if="plateauFor(exercise)" class="queue-stalled" :title="`${plateauFor(exercise).suggestion.label}: ${plateauFor(exercise).suggestion.text}`">stalled</em></small>
@@ -1144,7 +1147,7 @@ onBeforeUnmount(() => {
 
 
 .session-busy { opacity: .65; }
-/* A focused training surface: amber for actions, mint for recorded work. */
+/* Base runner layout; the multi-sport layer below applies the shared system. */
 .runner-page { --runner-accent:oklch(from #f6bd67 calc(l - var(--dim-l)) c h); --runner-mint:oklch(from #72ddba calc(l - var(--dim-l)) c h); display: grid; gap: 16px; max-width: 1360px; margin: 0 auto; }
 .runner-page button { cursor: pointer; }
 .runner-page button:disabled { cursor: default; opacity: .45; }
@@ -1190,8 +1193,8 @@ onBeforeUnmount(() => {
 .rest-actions { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0; }
 .rest-actions button { min-height: 36px; padding: 0 11px; border: 1px solid var(--border); border-radius: 9px; background: transparent; color: var(--text-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
 .rest-actions button:hover { border-color: var(--border-strong); color: var(--text); }
-.sound-toggle { color: var(--muted-soft) !important; }
-.sound-toggle[aria-pressed='true'] { color: var(--success-text) !important; }
+.sound-toggle { color: var(--muted-soft); }
+.sound-toggle[aria-pressed='true'] { color: var(--success-text); }
 
 .set-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
 .set-heading-copy { flex: 1; min-width: 0; }
@@ -1368,5 +1371,161 @@ onBeforeUnmount(() => {
   .all-done .finish-button { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .runner-progress i { transition: none; } }
+
+
+/* Multi-sport redesign layer — Strength artboard patterns for the live runner. */
+.runner-page {
+  --runner-accent: var(--tone-strength);
+  --runner-mint: var(--strength);
+  gap: 24px;
+  max-width: 1280px;
+  font-family: var(--font-body);
+}
+.runner-page .card { border-radius: var(--radius-card); box-shadow: none; }
+.runner-page .runner-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  padding: 0;
+  border: 0;
+}
+.runner-page .runner-title { grid-column: 1; grid-row: 1; }
+.runner-page .runner-kicker { flex-wrap: wrap; font-size: 11px; font-weight: 700; line-height: 1.6; }
+.runner-page .runner-kicker.live::before { background: var(--strength); box-shadow: 0 0 0 4px color-mix(in srgb, var(--strength) 12%, transparent); }
+.runner-page .runner-head h1 {
+  margin-top: 8px;
+  font-size: clamp(40px, 4.2vw, 64px);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.02em;
+  text-transform: uppercase;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.runner-page .back-link { grid-column: 2; grid-row: 1; border-color: var(--border-strong); border-radius: 999px; padding: 0 18px; min-height: 44px; }
+.runner-page .session-vitals { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.runner-page .session-vitals > div { padding: 16px 20px; gap: 6px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); }
+.runner-page .session-vitals > div > span { font-size: 11px; font-weight: 600; letter-spacing: .14em; }
+.runner-page .session-vitals strong { font-size: 34px; font-weight: 800; line-height: 1; }
+.runner-page .session-vitals small { font-size: 18px; }
+.runner-page .runner-progress { margin-top: -12px; gap: 6px; }
+.runner-page .runner-progress > span { height: 5px; }
+.runner-page .runner-progress > span.active { background: color-mix(in srgb, var(--strength) 20%, var(--surface2)); }
+.runner-page .runner-progress i, .runner-page .runner-progress > span.active i { background: var(--strength); }
+.runner-page .session-instructions { padding: 14px 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.runner-page .runner-console { grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; }
+.runner-page .current-set-card {
+  min-width: 0;
+  padding: 0 28px 28px;
+  gap: 24px;
+  border-color: color-mix(in srgb, var(--strength) 30%, var(--border));
+  background: radial-gradient(ellipse at top left, color-mix(in srgb, var(--strength) 15%, transparent), transparent 65%), var(--surface);
+}
+.runner-page .rest-strip { margin: 0 -28px; padding: 14px 28px; background: rgb(var(--deep-rgb) / .45); }
+.runner-page .rest-strip.recovering { background: color-mix(in srgb, var(--z2) 8%, var(--surface)); border-color: color-mix(in srgb, var(--z2) 25%, var(--border)); }
+.runner-page .recovering .rest-dial { background: radial-gradient(circle, var(--surface) 58%, transparent 61%), conic-gradient(var(--z2) var(--rest-progress), color-mix(in srgb, var(--z2) 15%, transparent) 0); }
+.runner-page .recovering .rest-copy > span, .runner-page .rest-copy .rest-clock { color: var(--z2); }
+.runner-page .rest-actions button { border-radius: 999px; border-color: var(--border-strong); }
+.runner-page .sound-toggle { color: var(--muted-soft); }
+.runner-page .sound-toggle[aria-pressed='true'] { color: var(--z2); }
+.runner-page .set-heading { align-items: flex-start; gap: 16px; }
+.runner-page .set-heading-copy > span { font-size: 11px; letter-spacing: .14em; }
+.runner-page .set-heading h2 { font-size: clamp(32px, 3vw, 46px); font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: -.01em; }
+.runner-page .set-ordinal { flex-shrink: 0; padding: 10px 16px; border: 1px solid var(--border); border-radius: 14px; background: rgb(var(--deep-rgb) / .6); }
+.runner-page .set-ordinal strong { color: var(--tone-strength); font-size: 42px; font-weight: 800; }
+.runner-page .set-ordinal.warmup strong { color: var(--muted-soft); }
+.runner-page .reference-row { border-color: var(--border); border-radius: 14px; background: rgb(var(--deep-rgb)); }
+.runner-page .reference { padding: 14px 16px; background: transparent; gap: 5px; }
+.runner-page .reference > span { font-size: 10px; font-weight: 600; letter-spacing: .12em; }
+.runner-page .reference strong { font: 700 26px/1.1 var(--font-display); }
+.runner-page .reset-target { background: transparent; color: var(--text-soft); }
+.runner-page .reset-target:hover:not(:disabled) { background: var(--surface2); }
+.runner-page .performance-field > span, .runner-page .performance-field > label { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted-soft); }
+.runner-page .stepper { background: rgb(var(--deep-rgb)); border-color: var(--border-strong); border-radius: 20px; }
+.runner-page .stepper input { font-weight: 800; font-size: 52px; }
+.runner-page .stepper button { border: 1px solid var(--border); border-radius: 999px; background: var(--surface2); }
+.runner-page .stepper button:hover { background: var(--surface3); color: var(--tone-strength); }
+.runner-page .weight-shortcuts button { border-color: var(--border-strong); border-radius: 999px; }
+.runner-page .complete-button { min-height: 56px; border-radius: 999px; background: var(--volt); color: var(--on-accent); box-shadow: none; }
+.runner-page .complete-button:hover:not(:disabled) { background: var(--volt-strong); }
+.runner-page .complete-button kbd { border-color: currentColor; }
+.runner-page .current-exercise-sets { gap: 14px; }
+.runner-page .current-sets-head > span { font-size: 11px; font-weight: 600; letter-spacing: .14em; }
+.runner-page .set-management { max-width: 100%; font-size: 12px; color: var(--muted-soft); }
+.runner-page .set-management summary { cursor: pointer; min-height: 40px; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: 999px; }
+.runner-page .set-tools { padding-top: 10px; gap: 6px; }
+.runner-page .set-tools button { min-height: 40px; border: 1px solid var(--border-strong); border-radius: 999px; }
+.runner-page .set-table { background: rgb(var(--deep-rgb) / .5); }
+.runner-page .set-table > button { min-height: 46px; }
+.runner-page .set-table > button.current { background: color-mix(in srgb, var(--strength) 8%, transparent); box-shadow: inset 3px 0 0 var(--strength); }
+.runner-page .set-table > button.completed .set-actual { color: var(--success-text); }
+.runner-page .exercise-switcher { min-width: 0; padding: 24px 16px; border-radius: var(--radius-card); background: var(--surface); }
+.runner-page .queue-head { padding: 0 8px 18px; }
+.runner-page .queue-head span { font-size: 11px; font-weight: 600; letter-spacing: .14em; }
+.runner-page .queue-head strong { font: 700 26px var(--font-display); }
+.runner-page .add-compact { border-radius: 999px; border-color: var(--border-strong); width: 44px; height: 44px; }
+.runner-page .queue-item { min-height: 68px; border-radius: 14px; }
+.runner-page .queue-item + .queue-item { border-top-color: var(--border); }
+.runner-page .queue-item.active { border-color: color-mix(in srgb, var(--strength) 30%, transparent); background: color-mix(in srgb, var(--strength) 8%, transparent); }
+.runner-page .queue-index { font-size: 20px; color: var(--tone-strength); }
+.runner-page .queue-item strong { white-space: normal; line-height: 1.45; }
+.runner-page .queue-set-markers { max-width: 44px; flex-wrap: wrap; justify-content: flex-end; }
+.runner-page .queue-set-markers i.recorded { background: var(--strength); }
+.runner-page .queue-set-markers i.selected { background: var(--tone-strength); }
+.runner-page .watch-status { margin: 18px 8px 0; padding-top: 18px; }
+.runner-page .live-exercise-form { border-color: var(--border-strong); background: rgb(var(--deep-rgb)); }
+.runner-page .live-suggestions b { color: var(--tone-strength); }
+.runner-page .live-suggestions button:hover { background: var(--surface2); }
+.runner-page .append-exercise-button, .runner-page .candidate button { border-color: var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); }
+.runner-page .workout-detail { padding: 24px 28px; background: var(--surface); }
+.runner-page .card-title { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.runner-page .section-copy { margin-top: 6px; line-height: 1.5; }
+.runner-page :is(.log-toggle, .finish-button, .danger-button, .quiet-button, .refresh-button, .unlink-button, .strava-button) { border-radius: 999px; border-color: var(--border-strong); background: transparent; color: var(--text-soft); }
+.runner-page .danger-button { color: var(--danger-text); }
+.runner-page .draft-note.conflict { background: color-mix(in srgb, var(--warning) 6%, transparent); border-color: color-mix(in srgb, var(--warning) 35%, var(--border)); }
+.runner-page .set-log button.current { outline-color: var(--strength); }
+.runner-page .set-log button.completed { border-color: color-mix(in srgb, var(--strength) 25%, var(--border)); background: color-mix(in srgb, var(--strength) 5%, transparent); }
+.runner-page .all-done { border-color: color-mix(in srgb, var(--volt) 30%, var(--border)); background: color-mix(in srgb, var(--volt) 6%, var(--surface)); }
+.runner-page .all-done h2 { font-size: 32px; font-weight: 800; font-style: italic; text-transform: uppercase; }
+.runner-page .all-done .finish-button { border-color: var(--volt); background: var(--volt); color: var(--on-accent); }
+.runner-page .error-card { border-color: var(--danger); }
+.runner-page .watch-link { border-color: var(--border); }
+.runner-page .linked-activity { border-color: var(--border); background: rgb(var(--deep-rgb)); }
+@media (max-width: 1180px) {
+  .runner-page .runner-console { grid-template-columns: minmax(0, 1fr) 290px; gap: 20px; }
+}
+@media (max-width: 960px) {
+  .runner-page .runner-console { grid-template-columns: minmax(0, 1fr); }
+  .runner-page .exercise-switcher { position: static; }
+}
+@media (max-width: 560px) {
+  .runner-page { gap: 20px; }
+  .runner-page .runner-head { gap: 18px; grid-template-columns: minmax(0, 1fr); }
+  .runner-page .back-link { grid-column: 1; grid-row: 2; justify-self: start; }
+  .runner-page .runner-kicker { gap: 6px; font-size: 10px; }
+  .runner-page .runner-head h1 { font-size: 40px; }
+  .runner-page .session-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .runner-page .session-vitals > div { padding: 14px 16px; border-radius: 20px; }
+  .runner-page .session-vitals strong { font-size: 32px; }
+  .runner-page .session-vitals > div > span { font-size: 10px; }
+  .runner-page .current-set-card { padding: 0 18px 20px; gap: 20px; }
+  .runner-page .rest-strip { margin: 0 -18px; padding: 14px 18px; }
+  .runner-page .set-heading h2 { font-size: 32px; }
+  .runner-page .set-ordinal { padding: 8px 10px; }
+  .runner-page .set-ordinal strong { font-size: 34px; }
+  .runner-page .reference { padding: 12px; }
+  .runner-page .reference strong { font-size: 24px; }
+  .runner-page .reference-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .runner-page .actual-inputs { grid-template-columns: minmax(0, 1fr); }
+  .runner-page .complete-button { flex-direction: column; gap: 4px; padding: 14px; }
+  .runner-page .complete-button > span { font-size: 16px; }
+  .runner-page .set-table > button { padding: 10px; gap: 6px; grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1fr); font-size: 11px; }
+  .runner-page .workout-detail { padding: 20px 18px; }
+  .runner-page .section-head { flex-wrap: wrap; }
+  .runner-page .session-instructions { flex-direction: column; gap: 4px; }
+  .runner-page .session-actions { align-items: stretch; }
+  .runner-page .session-actions .finish-button { flex-basis: 100%; }
+  .runner-page .log-title { flex-wrap: wrap; gap: 4px; }
+}
 
 </style>

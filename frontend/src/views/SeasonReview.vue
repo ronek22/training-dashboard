@@ -151,7 +151,7 @@ const badges = computed(() => review.value?.career?.badges ?? [])
 const MILESTONE_LOOK = {
   run_km: { color: 'var(--season-run)', icon: 'Run', tone: 'run' },
   ride_km: { color: 'var(--season-ride)', icon: 'Ride', tone: 'ride' },
-  activities: { color: 'var(--accent)', icon: 'Workout', tone: 'neutral' },
+  activities: { color: 'var(--volt)', icon: 'Workout', tone: 'neutral' },
   hours: { color: 'var(--warning)', icon: 'Workout', tone: 'neutral' },
 }
 const milestones = computed(() => (review.value?.career?.milestones ?? []).map((item) => ({ ...item, ...MILESTONE_LOOK[item.kind] })))
@@ -371,10 +371,17 @@ const RING = 2 * Math.PI * 34
     </div>
 
     <template v-else>
+      <header class="page-heading">
+        <div>
+          <span class="page-kicker">Training history</span>
+          <h1 class="page-title">Season in review</h1>
+        </div>
+        <RouterLink to="/years" class="heading-action">All years <span aria-hidden="true">↗</span></RouterLink>
+      </header>
       <!-- Hero ------------------------------------------------------------- -->
       <header class="hero">
         <div class="hero-top">
-          <span class="eyebrow">Season in review · {{ subtitle }} · <RouterLink to="/years" class="eyebrow-link">All years ↗</RouterLink></span>
+          <span class="eyebrow">{{ subtitle }}</span>
           <nav v-if="story.length > 1" class="story" aria-label="Your seasons, hours by year">
             <button v-for="item in story" :key="item.year" type="button" class="story-year"
                     :class="{ active: item.year === review.year, closed: !item.available }" :disabled="!item.available"
@@ -389,7 +396,7 @@ const RING = 2 * Math.PI * 34
           </nav>
         </div>
         <div class="hero-main">
-          <h1 :key="review.year" class="hero-year">{{ review.year }}</h1>
+          <h2 :key="review.year" class="hero-year">{{ review.year }}</h2>
           <p class="hero-line">
             <span class="hero-stat"><strong><AnimatedNumber :value="totals.total.sessions" :format="whole" :cache-key="`season:${review.year}:sessions`" :duration="1400" /></strong> sessions</span>
             <span class="hero-stat"><strong><AnimatedNumber :value="totals.total.hours" :format="whole" :cache-key="`season:${review.year}:hours`" :duration="1600" /></strong> hours</span>
@@ -771,7 +778,7 @@ const RING = 2 * Math.PI * 34
   --season-ride: var(--ride);
   --season-run: var(--run);
   --season-strength: var(--strength);
-  --season-hike: #e0778f;
+  --season-hike: var(--tone-recovery);
   --season-walk: var(--tone-walk);
   --season-other: var(--tone-recovery);
   padding: 28px 32px 64px;
@@ -783,7 +790,7 @@ const RING = 2 * Math.PI * 34
 .muted { color: var(--muted); }
 .eyebrow-link { color: var(--muted); text-decoration: none; }
 .eyebrow-link:hover { color: var(--text); }
-.eyebrow { font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-strong, var(--accent)); }
+.eyebrow { font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--volt-strong, var(--volt)); }
 .links { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: 12px; color: var(--muted); }
 .more-link { font-size: 12px; font-weight: 650; color: var(--muted); text-decoration: none; }
 .more-link:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
@@ -801,7 +808,7 @@ const RING = 2 * Math.PI * 34
 .story { min-width: 0; max-width: 100%; display: grid; grid-auto-columns: minmax(44px, 1fr); grid-auto-flow: column; gap: 6px; overflow-x: auto; padding-top: 6px; }
 .story-year { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 6px 6px 4px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--muted); font: inherit; cursor: pointer; transition: background var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard); }
 .story-year:hover:not(:disabled) { background: color-mix(in srgb, var(--tone-neutral) 8%, transparent); }
-.story-year.active { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--text); }
+.story-year.active { border-color: color-mix(in srgb, var(--volt) 45%, transparent); background: color-mix(in srgb, var(--volt) 10%, transparent); color: var(--text); }
 .story-year.closed { cursor: default; }
 .story-track { position: relative; display: flex; align-items: flex-end; justify-content: center; height: 64px; }
 .story-bar { display: flex; flex-direction: column-reverse; width: min(30px, 70%); border-radius: 5px 5px 2px 2px; overflow: hidden; opacity: .5; transform-origin: 50% 100%; animation: story-grow 700ms var(--motion-ease-emphasized) both; animation-delay: calc(var(--i) * 45ms); transition: opacity var(--motion-duration-fast) var(--motion-ease-standard); }
@@ -809,11 +816,11 @@ const RING = 2 * Math.PI * 34
 .story-year:hover .story-bar, .story-year.active .story-bar { opacity: 1; }
 .story-year.closed .story-bar { opacity: .25; }
 .story-label { font-size: 11px; font-weight: 650; text-align: center; font-variant-numeric: tabular-nums; }
-.story-year.active .story-label { color: var(--accent-strong, var(--accent)); }
+.story-year.active .story-label { color: var(--volt-strong, var(--volt)); }
 @keyframes story-grow { from { transform: scaleY(0); } to { transform: none; } }
 
 .badges { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 24px; }
-.badge { --badge: var(--accent); display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--badge) 30%, transparent); background: color-mix(in srgb, var(--badge) 8%, var(--surface)); animation: badge-in 600ms var(--motion-ease-emphasized) both; animation-delay: calc(400ms + var(--i) * 120ms); }
+.badge { --badge: var(--volt); display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--badge) 30%, transparent); background: color-mix(in srgb, var(--badge) 8%, var(--surface)); animation: badge-in 600ms var(--motion-ease-emphasized) both; animation-delay: calc(400ms + var(--i) * 120ms); }
 .badge.is-record { --badge: var(--warning); }
 .badge.is-record_then { --badge: var(--tone-neutral); }
 .badge-icon { flex: none; width: 34px; height: 34px; padding: 7px; border-radius: 10px; fill: var(--badge); background: color-mix(in srgb, var(--badge) 16%, transparent); }
@@ -874,7 +881,7 @@ const RING = 2 * Math.PI * 34
 .split { display: flex; height: 40px; border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--tone-neutral) 9%, transparent); }
 .split-seg { position: relative; display: flex; align-items: center; width: 0; min-width: 0; background: var(--sport); box-shadow: inset -2px 0 0 var(--surface); cursor: default; transition: opacity var(--motion-duration-fast) var(--motion-ease-standard); }
 .is-in .split-seg { width: var(--w); transition: width 1100ms var(--motion-ease-emphasized) calc(var(--i) * 90ms), opacity var(--motion-duration-fast) var(--motion-ease-standard); }
-.split-seg em { padding-left: 12px; font-style: normal; font-size: 12px; font-weight: 650; color: #0d1117; white-space: nowrap; overflow: hidden; }
+.split-seg em { padding-left: 12px; font-style: normal; font-size: 12px; font-weight: 650; color: var(--on-accent); white-space: nowrap; overflow: hidden; }
 .split-seg em b { font-weight: 800; }
 .split-seg.dim, .sport-row.dim { opacity: .35; }
 
@@ -882,7 +889,7 @@ const RING = 2 * Math.PI * 34
 .sport-list { list-style: none; display: grid; }
 .sport-row { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto 70px; gap: 14px; align-items: center; padding: 14px 6px 16px; border-bottom: 1px solid var(--border); outline: none; transition: opacity var(--motion-duration-fast) var(--motion-ease-standard); }
 .sport-row:last-child { border-bottom: 0; }
-.sport-row:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 10px; }
+.sport-row:focus-visible { box-shadow: inset 0 0 0 2px var(--volt); border-radius: 10px; }
 .reveal .sport-row { opacity: 0; transform: translateX(-12px); }
 .reveal.is-in .sport-row { opacity: 1; transform: none; transition: opacity 500ms var(--motion-ease-standard) calc(var(--i) * 80ms), transform 600ms var(--motion-ease-emphasized) calc(var(--i) * 80ms); }
 .reveal.is-in .sport-row.dim { opacity: .35; transition: opacity var(--motion-duration-fast) var(--motion-ease-standard); }
@@ -924,8 +931,8 @@ const RING = 2 * Math.PI * 34
 .is-in .timeline-bar { width: var(--width); transition: width 1600ms var(--motion-ease-emphasized) 200ms; }
 .timeline-months { display: grid; grid-template-columns: repeat(12, 1fr); margin-top: 6px; font-size: 10px; font-weight: 600; color: var(--muted); }
 .month-chart { width: 100%; height: auto; margin: 12px 0 6px; overflow: visible; }
-.month-chart rect { fill: color-mix(in srgb, var(--accent) 32%, transparent); }
-.month-chart rect.best { fill: var(--accent); }
+.month-chart rect { fill: color-mix(in srgb, var(--volt) 32%, transparent); }
+.month-chart rect.best { fill: var(--volt); }
 .month-label { font-size: 11px; font-weight: 600; text-anchor: middle; fill: var(--muted); }
 .month-label.best { fill: var(--text); }
 .month-value { font-size: 13px; font-weight: 700; text-anchor: middle; fill: var(--text); }
@@ -968,7 +975,7 @@ const RING = 2 * Math.PI * 34
 .step-new { position: absolute; inset: 0 auto 0 0; width: var(--from); background: var(--sport); }
 .is-in .step-new { width: 100%; transition: width 1100ms var(--motion-ease-emphasized) calc(250ms + var(--i) * 70ms); }
 .step-old { position: absolute; inset: 0 auto 0 0; width: var(--from); border-right: 2px solid var(--surface); background: color-mix(in srgb, var(--surface) 34%, transparent); }
-.step-old em { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-style: normal; font-size: 11px; font-weight: 650; color: #0d1f18; white-space: nowrap; }
+.step-old em { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-style: normal; font-size: 11px; font-weight: 650; color: var(--on-accent); white-space: nowrap; }
 .step-to { display: flex; flex-direction: column; color: var(--text); text-decoration: none; font-variant-numeric: tabular-nums; }
 .step-to strong { font-family: var(--font-display); font-size: 17px; font-weight: 650; }
 .step-to small { font-size: 11px; color: var(--muted); }
@@ -1006,8 +1013,8 @@ a.step-to:hover strong { color: var(--season-ride); }
 .lift-new { position: absolute; inset: 0 auto 0 0; width: var(--from); background: var(--season-strength); }
 .is-in .lift-new { width: 100%; transition: width 1200ms var(--motion-ease-emphasized) calc(300ms + var(--i) * 120ms); }
 .lift-old { position: absolute; inset: 0 auto 0 0; width: var(--from); border-right: 2px solid var(--surface); background: color-mix(in srgb, var(--surface) 28%, transparent); }
-.lift-old em { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-style: normal; font-size: 12px; font-weight: 650; color: #1b1406; white-space: nowrap; }
-.lift-to { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 800; color: #1b1406; opacity: 0; }
+.lift-old em { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-style: normal; font-size: 12px; font-weight: 650; color: var(--on-accent); white-space: nowrap; }
+.lift-to { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 800; color: var(--on-accent); opacity: 0; }
 .is-in .lift-to { opacity: 1; transition: opacity 400ms var(--motion-ease-standard) calc(1300ms + var(--i) * 120ms); }
 .lift-gain { display: flex; flex-direction: column; font-family: var(--font-display); font-size: 20px; font-weight: 650; color: var(--success-text); }
 .lift-gain small { font-family: var(--font-body, inherit); font-size: 12px; color: var(--muted); }
@@ -1047,24 +1054,67 @@ a.step-to:hover strong { color: var(--season-ride); }
 .goal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
 .goal { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-strong); font-size: 14px; }
 .goal.done { border-color: color-mix(in srgb, var(--success) 35%, transparent); background: color-mix(in srgb, var(--success) 7%, var(--surface)); }
-.goal-check { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--success); color: #062016; font-size: 26px; font-weight: 800; }
+.goal-check { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--success); color: var(--on-accent); font-size: 26px; font-weight: 800; }
 .is-in .goal-check { animation: check-pop 700ms var(--motion-ease-emphasized) 300ms both; }
 @keyframes check-pop { 0% { transform: scale(0); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
 .goal-ring { width: 56px; height: 56px; }
-.goal-ring .ring-fill { stroke: var(--accent); }
+.goal-ring .ring-fill { stroke: var(--volt); }
 .goal-ring text { font-size: 17px; font-weight: 700; text-anchor: middle; fill: var(--text); }
-.anchor { margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-strong, var(--accent)); font-size: 10px; font-weight: 700; vertical-align: middle; }
+.anchor { margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--volt) 14%, transparent); color: var(--volt-strong, var(--volt)); font-size: 10px; font-weight: 700; vertical-align: middle; }
 
 /* Coach */
-.coach { padding: 28px 32px; border-left: 4px solid var(--accent); }
+.coach { padding: 28px 32px; border-left: 4px solid var(--volt); }
 .coach-text { margin: 12px 0 0; font-family: var(--font-display); font-size: 22px; font-weight: 500; line-height: 1.5; letter-spacing: -.2px; max-width: 70ch; }
 .coach footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 16px; font-size: 12px; }
 .coach-empty { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-top: 10px; }
 .coach-empty p { font-size: 15px; color: var(--text-soft); max-width: 60ch; }
-.primary { border: 0; border-radius: 12px; background: var(--accent); color: var(--on-accent, #fff); padding: 11px 18px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: transform var(--motion-duration-fast) var(--motion-ease-standard); }
+.primary { border: 0; border-radius: 12px; background: var(--volt); color: var(--on-accent); padding: 11px 18px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: transform var(--motion-duration-fast) var(--motion-ease-standard); }
 .primary:hover:not(:disabled) { transform: translateY(-1px); }
 .primary:disabled { opacity: .6; cursor: default; }
-button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--volt); outline-offset: 3px; }
+
+/* Multi-sport redesign layer */
+.season-page { max-width: 1280px; padding: 28px 32px 64px; }
+.season-page .page-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:22px; }
+.season-page .page-kicker { display:block; margin-bottom:8px; color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+.season-page .page-title { margin:0; font:italic 800 64px/.92 var(--font-display); letter-spacing:-.02em; text-transform:uppercase; }
+.season-page .heading-action { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 18px; border:1px solid var(--border-strong); border-radius:999px; color:var(--text); font-size:13px; font-weight:650; text-decoration:none; }
+.season-page .heading-action:hover { border-color:var(--text-soft); background:var(--surface); }
+.season-page .hero { margin-bottom:24px; padding:24px; border:1px solid var(--border); border-radius:var(--radius-card); background:var(--surface); box-shadow:var(--shadow-card); }
+.season-page .hero-top { flex-direction:row; align-items:center; }
+.season-page .eyebrow { color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.14em; }
+.season-page .story { grid-auto-columns:minmax(40px, 1fr); max-width:min(680px, 70%); }
+.season-page .story-year { border-color:transparent; border-radius:var(--radius-panel); }
+.season-page .story-year.active { border-color:var(--border-strong); background:var(--surface2); }
+.season-page .story-year.active .story-label { color:var(--text); }
+.season-page .hero-main { margin-top:24px; }
+.season-page .hero-year { font-size:clamp(96px, 11vw, 148px); font-style:italic; font-weight:800; letter-spacing:-.045em; }
+.season-page .hero-stat strong { font-style:italic; font-weight:800; }
+.season-page .hero-versus { align-items:center; }
+.season-page .pill { border:1px solid var(--border); background:var(--surface2); }
+.season-page .pill.up { color:var(--success-text); background:color-mix(in srgb, var(--success) 12%, var(--surface)); }
+.season-page .pill.down { color:var(--warning-text); background:color-mix(in srgb, var(--warning) 12%, var(--surface)); }
+.season-page .year-grid-wrap { margin-top:22px; padding:18px; border-radius:var(--radius-panel); background:var(--deep); box-shadow:none; }
+.season-page .block { margin-bottom:20px; padding:22px 24px; border-radius:var(--radius-card); box-shadow:none; }
+.season-page .block-head h2 { font-size:30px; font-style:italic; font-weight:800; letter-spacing:0; text-transform:uppercase; }
+.season-page .more-link { color:var(--text-soft); }
+.season-page .milestone, .season-page .season-best, .season-page .badge { border-radius:var(--radius-panel); }
+.season-page .season-best { border:1px solid var(--border); background:var(--deep); }
+.season-page .coach { border-left:3px solid var(--volt); }
+.season-page .primary { border-radius:999px; background:var(--volt); color:var(--on-accent); }
+.season-page button:focus-visible, .season-page a:focus-visible { outline-color:var(--volt); }
+@media (max-width:760px) {
+  .season-page { padding:18px 16px 48px; }
+  .season-page .page-heading { align-items:flex-start; }
+  .season-page .page-title { font-size:48px; }
+  .season-page .heading-action { min-height:38px; padding:0 12px; }
+  .season-page .hero { padding:16px; }
+  .season-page .hero-top { align-items:flex-start; flex-direction:column; }
+  .season-page .story { max-width:100%; width:100%; }
+  .season-page .hero-year { font-size:82px; }
+  .season-page .hero-stat strong { font-size:32px; }
+  .season-page .block { padding:18px 16px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .hero-year, .day, .is-in .goal-check, .story-bar, .badge { animation: none; }

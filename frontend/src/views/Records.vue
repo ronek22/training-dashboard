@@ -169,12 +169,12 @@ const ringOffset = computed(() => {
     <div v-else-if="error" class="records-state records-error" role="alert">{{ error }}</div>
 
     <template v-else-if="data">
-      <!-- Hero -->
+      <!-- Page header -->
       <header class="hero motion-section">
         <div class="hero-copy">
-          <span class="hero-eyebrow">Hall of fame</span>
-          <h1>Your records</h1>
-          <p>Every best you've earned on the bike, on foot and under the bar.</p>
+          <span class="hero-eyebrow">Review · Personal bests</span>
+          <h1>Records</h1>
+          <p>Every best you’ve earned on the bike, on foot and under the bar.</p>
           <div class="hero-stats">
             <span><strong>{{ totalRecords }}</strong> records held</span>
             <span><strong>{{ prs.length }}</strong> new PRs in {{ data.recent_days }} days</span>
@@ -187,8 +187,8 @@ const ringOffset = computed(() => {
           <svg viewBox="0 0 120 120" aria-hidden="true">
             <defs>
               <linearGradient id="streak-grad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffb347" />
-                <stop offset="100%" stop-color="#ff5e62" />
+                <stop offset="0%" stop-color="var(--warning)" />
+                <stop offset="100%" stop-color="var(--danger)" />
               </linearGradient>
             </defs>
             <circle cx="60" cy="60" r="52" class="ring-track" />
@@ -380,9 +380,9 @@ const ringOffset = computed(() => {
 
 <style scoped>
 .records-page {
-  --hot: #ff6b3d;
-  --flame-a: #ffb347;
-  --flame-b: #ff5e62;
+  --hot: var(--warning);
+  --flame-a: var(--warning);
+  --flame-b: var(--danger);
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -436,23 +436,23 @@ const ringOffset = computed(() => {
   gap: 24px;
   padding: 26px 30px;
   border-radius: 24px;
-  color: #fff;
+  color: var(--text);
   background:
-    radial-gradient(circle at 90% 10%, rgba(255, 255, 255, 0.18), transparent 40%),
-    linear-gradient(125deg, color-mix(in srgb, var(--sport) 92%, #000) 0%, color-mix(in srgb, var(--sport) 70%, #3b1d8f) 100%);
+    radial-gradient(circle at 90% 10%, color-mix(in srgb, var(--text) 8%, transparent), transparent 40%),
+    linear-gradient(125deg, color-mix(in srgb, var(--sport) 14%, var(--surface)) 0%, var(--surface) 100%);
   box-shadow: 0 18px 40px color-mix(in srgb, var(--sport) 28%, transparent);
 }
 .spot-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.spot-ribbon { align-self: flex-start; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; background: rgba(255, 255, 255, 0.95); color: color-mix(in srgb, var(--sport) 80%, #000); }
+.spot-ribbon { align-self: flex-start; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; background: color-mix(in srgb, var(--sport) 16%, var(--surface)); color: var(--sport); }
 .spot-what { margin-top: 10px; font-size: 14px; font-weight: 600; opacity: 0.9; }
 .spot-value { font-family: var(--font-display); font-size: clamp(48px, 6vw, 72px); font-weight: 700; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
 .spot-value small { font-size: 0.4em; margin-left: 6px; opacity: 0.85; letter-spacing: 0; }
 .spot-was { font-size: 13px; opacity: 0.85; }
-.spot-link { margin-top: 8px; font-size: 13px; font-weight: 600; color: #fff; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spot-link { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--text); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spot-link:hover { text-decoration: underline; }
 .spot-more { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-content: center; }
-.spot-more a { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.13); border: 1px solid rgba(255, 255, 255, 0.18); color: #fff; text-decoration: none; transition: background 0.15s, transform 0.15s; }
-.spot-more a:hover { background: rgba(255, 255, 255, 0.22); transform: translateY(-1px); }
+.spot-more a { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--sport) 8%, var(--surface)); border: 1px solid var(--border); color: var(--text); text-decoration: none; transition: background 0.15s, transform 0.15s; }
+.spot-more a:hover { background: color-mix(in srgb, var(--sport) 14%, var(--surface)); transform: translateY(-1px); }
 .spot-more span { font-size: 12px; font-weight: 600; opacity: 0.92; }
 .spot-more em { font-style: normal; opacity: 0.72; font-weight: 400; }
 .spot-more strong { font-family: var(--font-display); font-size: 20px; font-variant-numeric: tabular-nums; }
@@ -474,15 +474,15 @@ const ringOffset = computed(() => {
 .sport-head h2 { margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
 .sport-head p { margin: 2px 0 0; font-size: 13px; color: var(--muted-soft); }
 .sport-icon { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; color: var(--sport); background: color-mix(in srgb, var(--sport) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sport) 35%, transparent); }
-.sport-icon.flame { color: #fff; background: linear-gradient(135deg, var(--flame-a), var(--flame-b)); box-shadow: 0 6px 16px rgba(255, 94, 98, 0.35); }
+.sport-icon.flame { color: var(--text); background: linear-gradient(135deg, var(--flame-a), var(--flame-b)); box-shadow: 0 6px 16px color-mix(in srgb, var(--danger) 25%, transparent); }
 .mini-label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 .hint { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
 .top-hint { margin: -8px 0 14px; }
-.new-pill { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 9px; font-weight: 800; font-style: normal; letter-spacing: 0.06em; color: #fff; background: var(--hot); vertical-align: 1px; }
+.new-pill { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 9px; font-weight: 800; font-style: normal; letter-spacing: 0.06em; color: var(--text); background: var(--hot); vertical-align: 1px; }
 
 .venue-switch { display: inline-flex; padding: 3px; border-radius: 999px; background: rgb(var(--ov-rgb) / 0.06); border: 1px solid var(--border); }
 .venue-switch button { border: 0; background: transparent; color: var(--muted-soft); padding: 6px 14px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-.venue-switch button[aria-pressed='true'] { background: var(--sport); color: #fff; box-shadow: 0 4px 12px color-mix(in srgb, var(--sport) 35%, transparent); }
+.venue-switch button[aria-pressed='true'] { background: var(--sport); color: var(--bg); box-shadow: 0 4px 12px color-mix(in srgb, var(--sport) 35%, transparent); }
 
 /* ---- Power ladder ---- */
 .power-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 20px; align-items: stretch; }
@@ -494,7 +494,7 @@ const ringOffset = computed(() => {
 .rung:hover .rung-bar { filter: brightness(1.15) saturate(1.2); }
 .rung.selected .rung-bar { box-shadow: 0 0 0 2px var(--text), 0 0 18px color-mix(in srgb, var(--sport) 60%, transparent); }
 .rung.fresh .rung-bar { background: linear-gradient(180deg, var(--flame-a) 0%, color-mix(in srgb, var(--flame-b) 55%, transparent) 100%); }
-.rung-new { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); font-size: 8px; font-weight: 800; font-style: normal; letter-spacing: 0.06em; color: #fff; }
+.rung-new { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); font-size: 8px; font-weight: 800; font-style: normal; letter-spacing: 0.06em; color: var(--bg); }
 .rung-label { font-size: 12px; font-weight: 600; color: var(--muted-soft); }
 @keyframes rise { from { transform: scaleY(0.05); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
 
@@ -574,10 +574,119 @@ a.lift-date:hover { color: var(--text); }
 .badge-medal { width: 84px; height: 84px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed rgb(var(--ov-rgb) / 0.18); color: var(--muted); }
 .badge-medal strong { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1; }
 .badge-medal small { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
-.badges li.earned .badge-medal { border: 0; color: #fff; background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.35), transparent 45%), linear-gradient(135deg, var(--flame-a), var(--flame-b)); box-shadow: 0 8px 20px rgba(255, 94, 98, 0.3), inset 0 0 0 4px rgba(255, 255, 255, 0.18); }
+.badges li.earned .badge-medal { border: 0; color: var(--text); background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--text) 15%, transparent), transparent 45%), linear-gradient(135deg, var(--flame-a), var(--flame-b)); box-shadow: 0 8px 20px color-mix(in srgb, var(--danger) 20%, transparent), inset 0 0 0 4px color-mix(in srgb, var(--text) 10%, transparent); }
 .badges li.next .badge-medal { border-color: var(--hot); color: var(--hot); }
 .badge-when { font-size: 12px; color: var(--muted-soft); }
 .badges li.next .badge-when { color: var(--hot); font-weight: 600; }
+
+/* ---- Multi-sport redesign layer ---- */
+.records-page {
+  --sport: var(--ride);
+  gap: 22px;
+}
+.records-page .hero {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+  align-items: flex-end;
+}
+.records-page .hero-copy { min-width: 0; }
+.records-page .hero-eyebrow {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .14em;
+}
+.records-page .hero h1 {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(48px, 5vw, 68px);
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: -.035em;
+  line-height: .98;
+  text-transform: uppercase;
+}
+.records-page .hero p { margin-top: 8px; color: var(--muted); font-size: 13px; }
+.records-page .hero-stats { gap: 8px; margin-top: 16px; }
+.records-page .hero-stats span {
+  padding: 5px 10px;
+  color: var(--text-soft);
+  background: var(--surface);
+  border-color: var(--border);
+  font-size: 12px;
+}
+.records-page .hero-stats strong { color: var(--text); font-size: 15px; }
+.records-page .hero-stats .season-link { color: var(--text-soft); font-size: 12px; }
+.records-page .streak-ring { width: 112px; }
+.records-page .streak-ring svg { width: 112px; height: 112px; }
+.records-page .ring-center { width: 112px; height: 112px; }
+.records-page .ring-center strong { color: var(--warning); background: none; -webkit-text-fill-color: currentColor; font-style: italic; font-weight: 800; }
+.records-page .spotlight {
+  padding: 22px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: none;
+}
+.records-page .spot-value { font-style: italic; font-weight: 800; }
+.records-page .sport-card {
+  padding: 22px 24px;
+  border-color: var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.records-page .sport-head { margin-bottom: 20px; }
+.records-page .sport-head h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  text-transform: uppercase;
+}
+.records-page .sport-head p { color: var(--muted); font-size: 12px; }
+.records-page .sport-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--sport) 12%, var(--deep));
+}
+.records-page .ftp-card,
+.records-page .stop-card,
+.records-page .trophy,
+.records-page .lift-card,
+.records-page .shelf-card {
+  border-color: var(--border);
+  background: var(--deep);
+}
+.records-page .ftp-card strong,
+.records-page .trophy strong,
+.records-page .lift-value,
+.records-page .shelf-card strong { font-style: italic; font-weight: 800; }
+.records-page .rung-track { background: var(--deep); }
+.records-page .stop-card { border-radius: 12px; }
+.records-page .stop-card.ghost { background: transparent; border-color: var(--border-strong); }
+.records-page .venue-switch { background: var(--deep); border-color: var(--border); }
+.records-page .venue-switch button[aria-pressed='true'] { color: var(--bg); box-shadow: none; }
+.records-page .more-button {
+  border-color: var(--border-strong);
+  background: transparent;
+  color: var(--text-soft);
+}
+.records-page .more-button:hover { border-color: var(--sport); color: var(--text); }
+.records-page .shelf-card { border-radius: 14px; }
+.records-page .badges li.earned .badge-medal { color: var(--bg); }
+@media (max-width: 760px) {
+  .records-page .hero { align-items: flex-start; }
+  .records-page .hero h1 { font-size: 54px; }
+  .records-page .streak-ring { display: none; }
+  .records-page .spotlight { padding: 18px; }
+  .records-page .sport-card { padding: 18px 16px; }
+}
 
 /* ---- Responsive ---- */
 @media (max-width: 1100px) {

@@ -1,16 +1,26 @@
 <template>
   <section class="daily-checkin" aria-labelledby="daily-checkin-title">
-    <div v-if="!editing && checkin" class="checkin-line">
-      <span id="daily-checkin-title">Morning check-in</span>
-      <div class="checkin-chips">
-        <strong v-for="chip in chips" :key="chip.label" :class="chip.tone">{{ chip.label }} {{ chip.value }}</strong>
+    <div v-if="!editing && checkin" class="checkin-summary-block">
+      <div class="checkin-line">
+        <span id="daily-checkin-title">Morning check-in</span>
+        <button type="button" class="checkin-link" @click="startEditing">Edit</button>
       </div>
-      <button type="button" class="checkin-link" @click="startEditing">Edit</button>
+      <div v-for="bar in bars" :key="bar.label" class="checkin-bar" :class="`is-${bar.tone}`">
+        <span>{{ bar.label }}</span>
+        <i aria-hidden="true"><b v-for="n in bar.max" :key="n" :class="{ on: n <= bar.value }" /></i>
+        <strong>{{ bar.value }}/{{ bar.max }}</strong>
+      </div>
     </div>
 
-    <div v-else-if="!editing" class="checkin-line">
-      <span id="daily-checkin-title">Morning check-in</span>
-      <button type="button" class="checkin-link" @click="editing = true">How do you feel? Log →</button>
+    <div v-else-if="!editing" class="checkin-summary-block">
+      <div class="checkin-empty">
+        <span class="checkin-empty-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" /><path d="M10 6v4l2.5 2" /></svg></span>
+        <div class="checkin-empty-text">
+          <span id="daily-checkin-title">Morning check-in</span>
+          <p>Not logged yet today</p>
+        </div>
+        <button type="button" class="checkin-cta" @click="editing = true">Log</button>
+      </div>
     </div>
 
     <!-- Until today's check-in is logged it opens on every dashboard load; "Later" only dismisses it for this visit. -->
@@ -22,14 +32,14 @@
               <p class="cm-kicker">{{ todayLabel }} · Morning check-in</p>
               <h2 id="daily-checkin-dialog-title">How do you feel?</h2>
             </div>
-            <button type="button" class="cm-close" aria-label="Close check-in" @click="closeForm">×</button>
+            <button type="button" class="cm-close" aria-label="Close check-in" @click="closeForm"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15" /></svg></button>
           </header>
 
           <div class="cm-body">
             <section v-for="row in rows" :key="row.key" class="cm-row">
               <div class="cm-row-head">
-                <span :id="`checkin-${row.key}`" class="cm-label"><span class="cm-icon" aria-hidden="true">{{ row.icon }}</span>{{ row.label }}</span>
-                <span class="cm-readout" :style="{ color: form[row.key] ? toneColor(row, form[row.key]) : undefined }">{{ form[row.key] ? row.words[form[row.key] - 1] : row.question }}</span>
+                <span :id="`checkin-${row.key}`" class="cm-label"><span class="cm-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path :d="row.icon" /></svg></span>{{ row.label }}</span>
+                <span class="cm-readout" :class="{ 'is-set': form[row.key] }" :style="{ color: form[row.key] ? toneColor(row, form[row.key]) : undefined }">{{ form[row.key] ? row.words[form[row.key] - 1] : row.question }}</span>
               </div>
               <div class="cm-seg" role="radiogroup" :aria-labelledby="`checkin-${row.key}`">
                 <button
@@ -47,7 +57,7 @@
 
             <section class="cm-row">
               <div class="cm-row-head">
-                <span id="checkin-pain" class="cm-label"><span class="cm-icon" aria-hidden="true">🩹</span>Pain or niggle</span>
+                <span id="checkin-pain" class="cm-label"><span class="cm-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 4v12M4 10h12" /></svg></span>Pain or niggle</span>
               </div>
               <div class="cm-seg cm-seg-3" role="radiogroup" aria-labelledby="checkin-pain">
                 <button
@@ -91,12 +101,12 @@ const api = useApi()
 
 // `inverted` rows read best at 1 (no soreness, calm), so their colours run the other way.
 const rows = [
-  { key: 'energy', label: 'Energy', icon: '⚡', question: 'How charged up?', words: ['Drained', 'Low', 'OK', 'Good', 'Fresh'] },
-  { key: 'sleep_quality', label: 'Sleep', icon: '🌙', question: 'How did you sleep?', words: ['Poor', 'Restless', 'OK', 'Good', 'Great'] },
-  { key: 'muscle_soreness', label: 'Soreness', icon: '💪', question: 'Any leftover soreness?', words: ['None', 'Slight', 'Moderate', 'Sore', 'Very sore'], inverted: true },
-  { key: 'stress', label: 'Stress', icon: '🧠', question: 'Life stress right now?', words: ['Calm', 'Light', 'Moderate', 'High', 'Overloaded'], inverted: true },
+  { key: 'energy', label: 'Energy', icon: 'M11 2 4 12h6l-1 8 7-10h-6l1-8Z', question: 'How charged up?', words: ['Drained', 'Low', 'OK', 'Good', 'Fresh'] },
+  { key: 'sleep_quality', label: 'Sleep', icon: 'M17 13.5A7 7 0 0 1 8.5 3 7 7 0 1 0 17 13.5Z', question: 'How did you sleep?', words: ['Poor', 'Restless', 'OK', 'Good', 'Great'] },
+  { key: 'muscle_soreness', label: 'Soreness', icon: 'M4 14c2-1 3-4 3-7l3-2 2 2-2 2c1 2 3 3 6 3 2 0 3 2 2 4-2 2-9 2-14-2Z', question: 'Any leftover soreness?', words: ['None', 'Slight', 'Moderate', 'Sore', 'Very sore'], inverted: true },
+  { key: 'stress', label: 'Stress', icon: 'M2 10h3l2-5 3 10 2-6 2 3h4', question: 'Life stress right now?', words: ['Calm', 'Light', 'Moderate', 'High', 'Overloaded'], inverted: true },
 ]
-const tones = ['#ef7b6e', '#f0a35e', '#8fa9d8', '#6fcf9a', '#52d7aa']
+const tones = ['#ff5c5c', '#ffb547', '#a3abbc', '#2ed3b0', '#d4ff3a']
 const toneColor = (row, n) => tones[(row.inverted ? 6 - n : n) - 1]
 const painOptions = [{ label: 'None', value: 0, tone: tones[4] }, { label: 'Mild', value: 2, tone: tones[1] }, { label: 'Painful', value: 5, tone: tones[0] }]
 const todayLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
@@ -109,6 +119,22 @@ const error = ref('')
 
 const answered = computed(() => rows.filter((row) => form[row.key] > 0).length)
 
+const bars = computed(() => {
+  const c = props.checkin
+  if (!c) return []
+  const rows = [
+    { label: 'Energy', value: c.energy, good: 'high' },
+    { label: 'Sleep', value: c.sleep_quality, good: 'high' },
+    { label: 'Stress', value: c.stress, good: 'low' },
+    { label: 'Soreness', value: c.muscle_soreness, good: 'low' },
+  ]
+  return rows.filter((row) => row.value != null).map((row) => {
+    const value = Number(row.value)
+    const bad = row.good === 'high' ? value <= 2 : value >= 4
+    const good = row.good === 'high' ? value >= 4 : value <= 2
+    return { label: row.label, value, max: 5, tone: bad ? 'risk' : good ? 'positive' : 'neutral' }
+  })
+})
 const chips = computed(() => {
   const c = props.checkin
   if (!c) return []
@@ -204,7 +230,7 @@ async function save() {
 .cm-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .cm-later { border: 0; border-radius: 10px; background: none; padding: 9px 12px; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .cm-later:hover { background: var(--surface2); color: var(--text); }
-.cm-save { border: 0; border-radius: 10px; background: #5f8cff; padding: 9px 18px; color: #fff; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; transition: opacity var(--motion-duration-fast); }
+.cm-save { min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); padding: 0 20px; color: var(--on-accent); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; transition: opacity var(--motion-duration-fast); }
 .cm-save:disabled { opacity: 0.35; cursor: not-allowed; }
 .checkin-modal button:focus-visible, .checkin-link:focus-visible { outline: 2px solid oklch(from #91b1ff calc(l - var(--dim-l)) c h); outline-offset: 2px; }
 
@@ -217,4 +243,70 @@ async function save() {
   .cm-seg button { padding: 11px 1px; font-size: 11px; }
   .cm-foot { flex-wrap: wrap; }
 }
+
+/* Redesign: check-in card. */
+.daily-checkin { margin: 0; border: 0; padding: 20px 24px; }
+.checkin-summary-block { display: grid; gap: 12px; }
+.checkin-line > span { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.checkin-link { color: var(--accent); font-size: 13px; font-weight: 600; }
+.checkin-bar { display: grid; grid-template-columns: 72px minmax(0, 1fr) 36px; align-items: center; gap: 12px; }
+.checkin-bar > span { color: var(--muted-soft); font-size: 14px; }
+.checkin-bar i { display: flex; gap: 4px; }
+.checkin-bar b { flex: 1; height: 8px; border-radius: 4px; background: var(--surface3); }
+.checkin-bar.is-positive b.on { background: var(--z2); }
+.checkin-bar.is-neutral b.on { background: var(--muted-soft); }
+.checkin-bar.is-risk b.on { background: var(--warning); }
+.checkin-bar strong { font-family: var(--font-display); font-size: 20px; font-weight: 700; text-align: right; }
+.checkin-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.checkin-empty p { margin: 0; color: var(--muted-soft); font-size: 14px; }
+.checkin-cta { min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); padding: 0 20px; color: var(--on-accent); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.checkin-cta:hover { background: var(--accent-strong); }
+
+.daily-checkin { padding: 18px 22px; }
+.checkin-summary-block { gap: 10px; }
+.checkin-empty { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; }
+.checkin-empty-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--surface2); color: var(--muted-soft); }
+.checkin-empty-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.checkin-empty-text { display: grid; gap: 2px; min-width: 0; }
+.checkin-empty-text span { color: var(--text); font-size: 15px; font-weight: 600; }
+.checkin-empty-text p { margin: 0; color: var(--muted); font-size: 13px; }
+.checkin-cta { min-height: 38px; border: 1px solid color-mix(in srgb, var(--volt) 55%, transparent); background: transparent; padding: 0 18px; color: var(--volt); font-size: 14px; font-weight: 700; }
+.checkin-cta:hover { background: color-mix(in srgb, var(--volt) 12%, transparent); }
+
+/* ── Redesign: check-in dialog ── */
+.checkin-shell { background: rgb(5 6 9 / .78); }
+.checkin-modal { width: min(580px, 100%); border-color: var(--border-strong); border-radius: 28px; background: radial-gradient(120% 60% at 100% 0%, color-mix(in srgb, var(--z2) 10%, transparent) 0%, transparent 60%), var(--surface); }
+.cm-head { padding: 28px 28px 8px; }
+.cm-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.cm-head h2 { margin-top: 6px; font-size: 44px; font-style: italic; font-weight: 800; line-height: .95; letter-spacing: .005em; text-transform: uppercase; }
+.cm-close { display: grid; place-items: center; width: 44px; height: 44px; border-color: var(--border-strong); }
+.cm-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.cm-body { gap: 20px; padding: 18px 28px 24px; }
+.cm-row { gap: 10px; }
+.cm-row-head { align-items: center; }
+.cm-label { gap: 10px; font-size: 15px; font-weight: 600; }
+.cm-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--surface2); color: var(--muted-soft); }
+.cm-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cm-readout { font-family: var(--font-display); font-size: 18px; font-weight: 700; letter-spacing: .01em; text-transform: uppercase; }
+.cm-seg { gap: 6px; padding: 0; background: transparent; }
+.cm-seg button { min-height: 48px; padding: 0 2px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface2); color: var(--muted-soft); font-size: 13px; font-weight: 600; }
+.cm-seg button:hover { border-color: color-mix(in srgb, var(--tone) 45%, transparent); background: color-mix(in srgb, var(--tone) 8%, var(--surface2)); color: var(--text); }
+.cm-seg button.on { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 18%, var(--surface)); color: var(--text); box-shadow: inset 0 -3px 0 var(--tone); }
+.cm-foot { padding: 18px 28px 24px; }
+.cm-progress span { width: 22px; height: 5px; }
+.cm-progress span.done { background: var(--volt); }
+.cm-progress small { font-family: var(--font-display); font-size: 15px; font-weight: 700; }
+.cm-later { min-height: 44px; border-radius: 999px; padding: 0 18px; font-size: 14px; }
+.cm-save { min-height: 48px; background: var(--volt); padding: 0 24px; font-size: 15px; font-weight: 700; }
+.cm-save:disabled { background: var(--surface3); color: var(--muted); opacity: 1; }
+.checkin-modal button:focus-visible { outline-color: var(--volt); }
+@media (max-width: 520px) {
+  .cm-head, .cm-body, .cm-foot { padding-left: 18px; padding-right: 18px; }
+  .cm-head h2 { font-size: 34px; }
+  .cm-seg { gap: 4px; }
+  .cm-seg button { min-height: 44px; font-size: 11px; }
+}
+
+.cm-readout { font-family: var(--font-body); font-size: 13px; font-weight: 500; text-transform: none; color: var(--muted); }
+.cm-readout.is-set { font-family: var(--font-display); font-size: 20px; font-weight: 700; text-transform: uppercase; }
 </style>

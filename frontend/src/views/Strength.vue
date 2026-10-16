@@ -6,7 +6,7 @@
           <span></span><i></i><b></b><i></i><span></span>
         </div>
         <div>
-          <div class="page-eyebrow">Your lifting companion</div>
+          <div class="page-eyebrow">Body · Strength</div>
           <h1 class="page-title">Strength</h1>
           <p class="page-sub">Your next session. The lifts that matter. Room for the rest of your training.</p>
         </div>
@@ -18,9 +18,22 @@
     </section>
 
     <section v-if="strengthView === 'overview' && (activeWorkout || nextStrengthDay || !workoutContextLoading)" class="strength-launch" aria-labelledby="strength-launch-title">
-      <div class="launch-main"><div class="launch-label"><ActivityIcon type="WeightTraining" tone="strength" :size="22" /><span>{{ activeWorkout ? 'Workout in progress' : nextStrengthDay ? `Next in your plan · ${formatDate(nextStrengthDay.date)}` : 'Ready when you are' }}</span></div><h2 id="strength-launch-title">{{ activeWorkout?.template_name || nextStrengthDay?.title || 'Make your next session count.' }}</h2><p v-if="activeWorkout">{{ activeWorkout.progress?.completed_sets || 0 }} of {{ activeWorkout.progress?.total_sets || 0 }} sets recorded. Pick up where you left off.</p><p v-else-if="nextStrengthDay">{{ nextStrengthDay.workout_intent_label || 'Planned strength' }}<template v-if="nextStrengthDay.target_duration_min"> · {{ nextStrengthDay.target_duration_min }} min</template></p><p v-else>{{ workoutContextError ? 'Your next planned session could not be loaded. Your workout library is still available.' : 'Choose a saved workout and keep your sets, loads and rest in one place.' }}</p><router-link :to="activeWorkout ? `/strength/workouts/${activeWorkout.id}` : '/strength/workouts'" class="strength-action strength-action-primary">{{ activeWorkout ? 'Resume workout' : 'Choose workout' }} <span aria-hidden="true">→</span></router-link><router-link v-if="nextStrengthDay && !activeWorkout" to="/plan" class="launch-plan-link">Review plan</router-link></div>
-      <div v-if="nextStrengthDay?.details && !activeWorkout" class="launch-notes"><span>Before you lift</span><ul v-if="launchNotes.items.length" class="launch-list"><li v-for="item in launchNotes.items" :key="item">{{ item }}</li></ul><p v-for="note in launchNotes.items.length ? launchNotes.notes : [launchNotes.plain]" :key="note">{{ note }}</p></div><div v-else class="launch-notes"><span>Built for your training week</span><p>Use the saved plan to coordinate lifting with your rides and runs. Review your last sets before deciding what to load today.</p></div>
+      <div class="launch-main">
+        <div class="launch-label"><span>{{ activeWorkout ? 'Workout in progress' : nextStrengthDay ? 'Next in your plan' : 'Ready when you are' }}</span><time v-if="nextStrengthDay && !activeWorkout">{{ formatDate(nextStrengthDay.date) }}</time></div>
+        <h2 id="strength-launch-title"><template v-for="(line, index) in (activeWorkout?.template_name || nextStrengthDay?.title || 'Make your next session count.').split(' · ')" :key="index"><br v-if="index" />{{ line }}</template></h2>
+        <p v-if="activeWorkout">{{ activeWorkout.progress?.completed_sets || 0 }} of {{ activeWorkout.progress?.total_sets || 0 }} sets recorded. Pick up where you left off.</p>
+        <div v-else-if="nextStrengthDay" class="launch-metrics">
+          <div v-if="nextStrengthDay.target_duration_min"><span>Time</span><strong>{{ nextStrengthDay.details?.match(/(\d+[–-]\d+) min/)?.[1] || nextStrengthDay.target_duration_min }}<small> min</small></strong></div>
+          <div v-if="nextStrengthDay.details?.match(/(\d+) reps in reserve/i)"><span>Effort</span><strong>{{ nextStrengthDay.details.match(/(\d+) reps in reserve/i)[1] }}<small> RIR</small></strong></div>
+          <div><span>Focus</span><strong>{{ nextStrengthDay.title?.split(' · ').slice(1).join(' · ') || nextStrengthDay.workout_intent_label || 'Planned strength' }}</strong></div>
+        </div>
+        <p v-else>{{ workoutContextError ? 'Your next planned session could not be loaded. Your workout library is still available.' : 'Choose a saved workout and keep your sets, loads and rest in one place.' }}</p>
+        <div class="launch-actions"><router-link :to="activeWorkout ? `/strength/workouts/${activeWorkout.id}` : '/strength/workouts'" class="strength-action strength-action-primary">{{ activeWorkout ? 'Resume workout' : 'Start workout' }} <span aria-hidden="true">→</span></router-link><router-link to="/strength/workouts" class="strength-action">Choose another</router-link><router-link v-if="nextStrengthDay && !activeWorkout" to="/plan" class="launch-plan-link">Review plan</router-link></div>
+      </div>
+      <div v-if="nextStrengthDay?.details && !activeWorkout" class="launch-notes"><span>Before you lift</span><ol v-if="launchNotes.items.length" class="launch-list"><li v-for="item in launchNotes.items" :key="item">{{ item }}</li></ol><div class="launch-note-box"><p v-for="note in launchNotes.items.length ? launchNotes.notes.filter(note => !/reps in reserve|^\d+[–-]\d+ min/i.test(note)) : [launchNotes.plain]" :key="note">{{ note }}</p></div></div>
+      <div v-else class="launch-notes"><span>Built for your training week</span><p>Use the saved plan to coordinate lifting with your rides and runs. Review your last sets before deciding what to load today.</p></div>
     </section>
+    <div class="strength-view-controls">
     <nav class="strength-nav" aria-label="Strength views"><button v-for="tab in strengthTabs" :key="tab.key" type="button" :class="{ active: strengthView === tab.key }" :aria-current="strengthView === tab.key ? 'page' : undefined" @click="strengthView = tab.key">{{ tab.label }}</button></nav>
     <section class="strength-toolbar motion-section" aria-label="Strength filters">
       <div class="toolbar-intro">
@@ -37,7 +50,7 @@
             :class="{ active: selectedWeeks === option.value }" :aria-pressed="selectedWeeks === option.value"
             @click="selectedWeeks = option.value"
           >
-            {{ option.label }}
+            {{ option.value < 26 ? `${option.value}W` : option.value === 26 ? '6M' : '1Y' }}
           </button>
         </div>
       </div>
@@ -61,6 +74,7 @@
         </select>
       </label>
     </section>
+    </div>
 
     <div v-if="loading && !overview" class="card empty-state motion-section">Loading strength history…</div>
     <div v-else-if="error && !overview" class="card empty-state motion-section" role="alert"><p>{{ error }}</p><button type="button" class="strength-action" @click="fetchStrengthOverview">Try again</button></div>
@@ -74,7 +88,16 @@
 
       <template v-else>
         <section v-if="strengthView === 'overview'" class="overview-grid motion-section">
-        <article class="strength-rhythm"><div class="section-head"><div><h2>Your lifting rhythm</h2><p class="section-copy">Completed sessions · last {{ selectedWeeks }} weeks</p></div><strong class="rhythm-total">{{ overview.summary.session_count }} <small>sessions</small></strong></div><div class="strength-rhythm-bars" :class="{ 'extended-range': selectedWeeks > 12 }"><div v-for="week in overview.weekly" :key="week.week_start" class="strength-rhythm-week" :class="{ 'rhythm-idle': !Number(week.session_count) }"><strong>{{ week.session_count }}</strong><div><i :style="{ height: `${Number(week.session_count || 0) / maxWeeklySessions * 100}%` }"></i></div><span>{{ formatDate(week.week_start) }}</span></div></div><p class="rhythm-caption">{{ activeWeeks }} active weeks · {{ trimNumber(overview.summary.session_count / selectedWeeks) }} sessions per week on average</p></article>
+        <article class="strength-rhythm">
+          <div class="section-head"><span class="card-title">Lift consistency · {{ selectedWeeks }} weeks</span><span class="rhythm-target">Weekly target · 2</span></div>
+          <h2>{{ activeWeeks }} active weeks</h2><p class="section-copy">{{ overview.summary.session_count }} sessions · {{ trimNumber(overview.summary.session_count / selectedWeeks) }} sessions per week on average</p>
+          <div class="strength-rhythm-bars" :class="{ 'extended-range': selectedWeeks > 12 }" :style="{ '--session-rows': Math.max(4, maxWeeklySessions), '--target-position': `${2 / Math.max(4, maxWeeklySessions) * 100}%` }">
+            <div v-for="(week, index) in overview.weekly" :key="week.week_start" class="strength-rhythm-week" :class="{ 'rhythm-idle': !Number(week.session_count), 'rhythm-current': index === overview.weekly.length - 1 }">
+              <div class="rhythm-blocks" :aria-label="`${formatDate(week.week_start)}: ${week.session_count} sessions`"><i v-for="slot in Math.max(4, maxWeeklySessions)" :key="slot" :class="{ filled: slot <= Number(week.session_count) }"></i></div>
+              <strong class="rhythm-check">{{ Number(week.session_count) >= 2 ? '✓' : '–' }}</strong><span>{{ formatDate(week.week_start) }}</span><small>{{ week.session_count }} sessions</small>
+            </div>
+          </div>
+        </article>
         <article v-if="latestSession" class="card latest-session">
           <div class="latest-session-main">
             <div class="section-head">
@@ -86,17 +109,17 @@
               <span class="status-badge status-complete"><span aria-hidden="true">✓</span> Logged</span>
             </div>
             <div class="latest-session-metrics">
-              <div><span>Duration</span><strong>{{ formatDuration(latestSession) }}</strong></div>
+              <div><span>minutes</span><strong>{{ formatDuration(latestSession).replace(' min', '') }}</strong></div>
               <div><span>Exercises</span><strong>{{ latestSession.exercise_count }}</strong></div>
               <div><span>Working sets</span><strong>{{ latestWorkSets }}</strong></div>
 
             </div>
-            <p class="latest-session-focus">{{ latestSession.major_exercises.join(' · ') }}</p>
-            <router-link v-if="latestSession.matched_activity?.id" :to="`/activities/${latestSession.matched_activity.id}`" class="detail-link">Review last session <span aria-hidden="true">↗</span></router-link>
+
+            <router-link v-if="latestSession.matched_activity?.id" :to="`/activities/${latestSession.matched_activity.id}`" class="detail-link">Review session <span aria-hidden="true">↗</span></router-link>
           </div>
         </article>
 
-        <article v-if="overview.selected_exercise" class="strength-anchor"><div><span class="card-title">A lift to follow</span><h2>{{ overview.selected_exercise.exercise_name }}</h2><p>{{ overview.selected_exercise.progression.detail }}</p></div><div class="anchor-result"><strong>{{ overview.selected_exercise.recent_best_load_kg != null ? `${trimNumber(overview.selected_exercise.recent_best_load_kg)} kg` : '—' }}</strong><span>Best top load in this window</span><button type="button" class="detail-link" @click="strengthView = 'progression'">Explore progression →</button></div></article>
+        <article v-if="overview.selected_exercise" class="strength-anchor"><div><span class="card-title">A lift to follow</span><h2>{{ overview.selected_exercise.exercise_name }}</h2></div><div class="anchor-result"><strong>{{ overview.selected_exercise.recent_best_load_kg != null ? trimNumber(overview.selected_exercise.recent_best_load_kg) : '—' }}</strong><span>kg top load</span><button type="button" class="detail-link" @click="strengthView = 'progression'">Explore progression →</button></div></article>
         <MuscleGainCheck />
         <LiftVolumePanel v-if="weekLiftVolume" class="strength-lift-volume" :volume="weekLiftVolume" open />
         </section>
@@ -105,7 +128,8 @@
           <article class="card trend-stage">
             <div class="section-head">
               <div>
-                <div class="card-title">Your weekly workload</div>
+                <div class="card-title">Weekly workload · {{ selectedWeeks }} weeks</div>
+                <h2 class="detail-panel-title">Make every week count</h2>
                 <div class="section-copy">Follow consistency first, then explore sets and recorded volume.</div>
               </div>
             </div>
@@ -118,6 +142,7 @@
             <div class="section-head">
               <div>
                 <div class="card-title">Movement distribution</div>
+                <h2 class="detail-panel-title">Where the work goes</h2>
                 <div class="section-copy">Where your recorded strength work has been concentrated.</div>
               </div>
             </div>
@@ -128,6 +153,7 @@
                 :key="option.value"
                 class="bucket-row"
                 :class="{ active: selectedBodyPart === option.value }"
+                :aria-pressed="selectedBodyPart === option.value"
                 @click="selectedBodyPart = option.value"
               >
                 <div class="bucket-main">
@@ -147,7 +173,8 @@
         <section v-if="strengthView === 'analysis' && overview.important_prs?.length" class="card pr-stage motion-section">
           <div class="section-head">
             <div>
-              <div class="card-title">Best recorded loads</div>
+              <div class="card-title">Personal benchmarks</div>
+              <h2 class="detail-panel-title">Best recorded loads</h2>
               <div class="section-copy">Best tracked top loads for the big recurring lifts present in this window.</div>
             </div>
           </div>
@@ -166,6 +193,7 @@
             <div class="section-head">
               <div>
                 <div class="card-title">Exercise progression</div>
+                <h2 class="detail-panel-title">Find your lift</h2>
                 <div class="section-copy">Choose a recurring exercise to review its measured load and volume history.</div>
               </div>
               <span v-if="loading" class="inline-loading-chip">Updating…</span>
@@ -174,7 +202,7 @@
             <label class="strength-search"><span class="sr-only">Find an exercise</span><input v-model="liftSearch" type="search" placeholder="Find a lift…" /></label>
             <div class="lift-table">
               <button
-                v-for="(exercise, index) in filteredLifts"
+                v-for="exercise in filteredLifts"
                 :key="exercise.exercise_name"
                 class="lift-row"
                 :class="{ active: overview.selected_exercise?.exercise_name === exercise.exercise_name }" :aria-pressed="overview.selected_exercise?.exercise_name === exercise.exercise_name"
@@ -247,12 +275,14 @@
         <section v-if="strengthView === 'history'" class="card sessions-stage">
           <div class="section-head">
             <div>
-              <div class="card-title">Recent Strength Sessions</div>
+              <div class="card-title">Workout log · {{ selectedWeeks }} weeks</div>
+              <h2 class="detail-panel-title">Recent strength sessions</h2>
               <div class="section-copy">Expand a session to review exercises, sets and loads.</div>
             </div>
           </div>
 
           <label class="strength-search history-search"><span class="sr-only">Search workout history</span><input v-model="historySearch" type="search" placeholder="Find a workout or exercise…" /></label><p v-if="!filteredSessions.length" class="analysis-note">No sessions match your search.</p>
+          <div class="session-list-heading" aria-hidden="true"><span>Day</span><span>Session</span><span>Time / volume</span><span></span></div>
           <div class="session-list">
             <details v-for="session in filteredSessions" :key="session.id" class="session-card">
               <summary>
@@ -271,7 +301,7 @@
                     </span>
                   </div>
                 </article>
-                <router-link :to="`/activities/${session.matched_activity.id}`" class="detail-link session-detail-link">Open full activity <span aria-hidden="true">→</span></router-link>
+                <router-link v-if="session.matched_activity?.id" :to="`/activities/${session.matched_activity.id}`" class="detail-link session-detail-link">Open full activity <span aria-hidden="true">→</span></router-link>
               </div>
             </details>
           </div>
@@ -1351,4 +1381,215 @@ const round = (value) => Math.round(value * 10) / 10
 .extended-range { overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; padding-bottom: 10px; }
 .extended-range .strength-rhythm-week { flex: 0 0 38px; }
 .extended-range .analysis-week { flex: 0 0 48px; }
+
+/* Multi-sport redesign layer */
+.strength-page .analysis-grid > *, .strength-page .strength-hero-copy, .strength-page .strength-hero-copy > div { min-width: 0; }
+.strength-page { --strength-accent: var(--strength); grid-template-columns: minmax(0,1fr); gap: 24px; max-width: 1180px; margin-inline: auto; min-width: 0; }
+.strength-page .strength-hero { align-items: end; gap: 20px; }
+.strength-page .page-eyebrow { margin: 0; display: block; color: var(--tone-strength); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.strength-page .page-title { font-family: var(--font-display); font-size: 72px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: 0; line-height: 1; margin: 6px 0 0; }
+.strength-page .page-sub { font-size: 15px; line-height: 1.5; color: var(--muted-soft); margin-top: 6px; }
+.strength-page .strength-action, .strength-page .strength-actions .strength-action-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font-size: 14px; font-weight: 500; }
+.strength-page .strength-actions { gap: 10px; flex-shrink: 0; }
+.strength-page .strength-launch { grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 0; padding: 0; border: 1px solid color-mix(in srgb,var(--strength) 35%,transparent); border-radius: 28px; background: radial-gradient(ellipse at top left,color-mix(in srgb,var(--strength) 28%,transparent),transparent 58%),radial-gradient(ellipse at bottom right,color-mix(in srgb,var(--tone-recovery) 14%,transparent),transparent 55%),var(--surface); overflow: hidden; }
+.strength-page .launch-main { padding: 32px; min-width: 0; }
+.strength-page .launch-label { flex-wrap: wrap; gap: 8px; }
+.strength-page .launch-label > span { padding: 5px 10px; border-radius: 999px; color: var(--tone-strength); background: color-mix(in srgb,var(--strength) 18%,transparent); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.strength-page .launch-label time { font-size: 14px; color: var(--text-soft); }
+.strength-page .strength-launch h2 { font-family: var(--font-display); font-size: 60px; font-weight: 800; font-style: italic; text-transform: uppercase; line-height: .95; letter-spacing: 0; margin: 16px 0 4px; overflow-wrap: anywhere; }
+.launch-metrics { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 20px; }
+.launch-metrics > div { display: grid; gap: 6px; }
+.launch-metrics span { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.launch-metrics strong { font: 700 32px/1 var(--font-display); }
+.launch-metrics small { color: var(--muted-soft); font-size: 15px; }
+.strength-page .launch-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 26px; }
+.strength-page .launch-actions .strength-action { min-height: 52px; margin: 0; padding: 0 22px; }
+.strength-page .launch-actions .strength-action-primary { background: var(--volt); color: var(--on-accent); border-color: var(--volt); font-size: 16px; font-weight: 700; gap: 8px; }
+.strength-page .launch-plan-link { margin: 0; padding: 10px 0; color: var(--muted-soft); }
+.strength-page .launch-notes { padding: 32px; align-self: stretch; border-left: 1px solid var(--border); background: rgb(var(--deep-rgb) / .45); }
+.strength-page .launch-notes > span { color: var(--muted); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+.strength-page .launch-list { counter-reset: exercise; gap: 0; margin-top: 14px; }
+.strength-page .launch-list li { counter-increment: exercise; display: flex; gap: 14px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 15px; line-height: 18px; font-weight: 600; }
+.strength-page .launch-list li:last-child { border: 0; }
+.strength-page .launch-list li::before { content: counter(exercise,decimal-leading-zero); position: static; width: 22px; height: auto; flex-shrink: 0; background: none; color: var(--tone-strength); font: 700 18px/1 var(--font-display); }
+.strength-page .launch-note-box { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--surface2); }
+.strength-page .launch-note-box p { margin: 0; color: var(--text-soft); font-size: 13px; line-height: 1.5; }
+.strength-page .launch-note-box p + p { margin-top: 4px; }
+.strength-view-controls { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
+.strength-page .strength-nav { gap: 4px; border: 0; max-width: 100%; }
+.strength-page .strength-nav button { font-size: 14px; padding: 16px; border-bottom-width: 3px; }
+.strength-page .strength-nav button.active { border-bottom-color: var(--strength); font-weight: 600; }
+.strength-page .strength-toolbar { gap: 12px; }
+.strength-page .range-switch { padding: 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+.strength-page .range-chip { padding: 9px 12px; border: 0; border-radius: 999px; color: var(--muted-soft); background: transparent; font-weight: 500; }
+.strength-page .range-chip.active { background: var(--surface3); color: var(--text); font-weight: 700; }
+.strength-page .overview-grid { grid-template-columns: minmax(0,1.54fr) minmax(0,1fr); gap: 20px; }
+.strength-page .strength-rhythm, .strength-page .latest-session, .strength-page .strength-anchor { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); padding: 24px; box-shadow: none; min-width: 0; }
+.strength-page .strength-rhythm { grid-row: span 2; }
+.strength-page .card-title { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.strength-page .strength-rhythm .section-head { margin: 0; }
+.strength-page .strength-rhythm .card-title { margin: 0; }
+.strength-page .strength-rhythm h2 { font: italic 800 44px/1 var(--font-display); text-transform: uppercase; margin-top: 12px; letter-spacing: 0; }
+.rhythm-target { font-size: 11px; color: var(--muted-soft); white-space: nowrap; }
+.rhythm-target::before { content: ''; display: inline-block; width: 18px; margin-right: 8px; vertical-align: middle; border-top: 2px dashed var(--muted-soft); }
+.strength-page .section-copy { color: var(--muted-soft); line-height: 1.5; }
+.strength-page .strength-rhythm-bars { position: relative; gap: 10px; margin-top: 24px; }
+.strength-page .strength-rhythm-week > .rhythm-blocks { position: relative; display: flex; flex-direction: column-reverse; align-items: stretch; gap: 5px; height: 106px; margin: 0; background: transparent; }
+.strength-page .rhythm-blocks::after { content: ''; position: absolute; bottom: var(--target-position); left: -5px; right: -5px; border-top: 1px dashed var(--muted-soft); }
+.strength-page .rhythm-blocks i { width: 100%; max-width: none; flex: 1; min-height: 0; border: 1px solid var(--border-strong); border-radius: 5px; background: transparent; }
+.strength-page .rhythm-blocks i.filled { border-color: transparent; background: color-mix(in srgb,var(--strength) 68%,var(--surface)); }
+.strength-page .rhythm-current .rhythm-blocks i.filled { background: var(--strength); }
+.strength-page .rhythm-check { display: block; color: var(--tone-strength); font-size: 14px; margin: 10px 0 5px; }
+.strength-page .strength-rhythm-week > span, .strength-rhythm-week > small { display: block; font-size: 11px; font-weight: 600; line-height: 1.5; color: var(--muted-soft); }
+.strength-page .rhythm-current > span { color: var(--tone-strength); }
+.strength-page .latest-session .section-head { position: relative; margin: 0; }
+.strength-page .latest-session .card-title { margin: 0; line-height: 1.4; }
+.strength-page .latest-session .section-copy { margin: 0; }
+.strength-page .latest-session-title { font: 600 20px/1.3 var(--font-body); margin-top: 10px; }
+.strength-page .status-badge { border: 0; border-radius: 0; padding: 0; color: var(--tone-strength); background: transparent; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.strength-page .latest-session-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 20px 0; }
+.strength-page .latest-session-metrics > div { display: flex; flex-direction: column-reverse; padding: 0; border: 0; }
+.strength-page .latest-session-metrics strong { font: 700 30px/1 var(--font-display); }
+.strength-page .latest-session-metrics span { font-size: 12px; text-transform: none; letter-spacing: 0; color: var(--muted); }
+.strength-page .detail-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text-soft); background: transparent; font-size: 13px; font-weight: 600; }
+.strength-page .strength-anchor { grid-column: 2; display: block; }
+.strength-page .strength-anchor h2 { font: 600 18px/1.4 var(--font-body); margin: 10px 0 14px; }
+.strength-page .anchor-result { display: flex; align-items: baseline; flex-wrap: wrap; justify-content: start; gap: 8px; }
+.strength-page .anchor-result > strong { font: 700 46px/1 var(--font-display); color: var(--strength); }
+.strength-page .anchor-result > span { color: var(--muted); font-size: 12px; }
+.strength-page .anchor-result .detail-link { flex-basis: auto; margin: 8px 40% 0 0; white-space: nowrap; }
+.strength-page .strength-lift-volume { grid-column: 1 / -1; }
+.strength-page.view-progression .spotlight-stage { background: var(--surface); border-color: var(--border); border-radius: var(--radius-card); }
+.strength-page.view-progression .lift-row.active, .strength-page .analysis-mode button.active, .strength-page.view-analysis .bucket-row.active { background: color-mix(in srgb,var(--strength) 9%,transparent); color: var(--tone-strength); }
+.strength-page .analysis-week > div { background: rgb(var(--deep-rgb) / .4); }
+.strength-page .analysis-week i { background: var(--strength); }
+.strength-page .lift-grid-line { stroke: var(--border); }
+.strength-page .lift-progress-line, .strength-page .lift-progress-point { stroke: var(--strength); }
+.strength-page button:focus-visible, .strength-page a:focus-visible { outline-color: var(--strength); }
+@media(max-width:1100px) { .strength-page .strength-hero { align-items: start; } .strength-page .page-title { font-size: 64px; } .strength-view-controls { align-items: start; } .strength-page .launch-main, .strength-page .launch-notes { padding: 24px; } }
+@media(max-width:800px) { .strength-page.view-progression .analysis-grid-bottom, .strength-page.view-analysis .analysis-grid-top { grid-template-columns: minmax(0,1fr); }  .strength-page .strength-launch, .strength-page .overview-grid { grid-template-columns: minmax(0,1fr); } .strength-page .launch-notes { border-left: 0; border-top: 1px solid var(--border); } .strength-page .strength-rhythm { grid-row: auto; } .strength-page .strength-anchor { grid-column: 1; } .strength-page .strength-hero { flex-direction: column; } }
+@media(max-width:520px) { .strength-page .page-title { font-size: 56px; } .strength-page .page-sub { font-size: 13px; } .strength-page .strength-launch h2 { font-size: 48px; } .strength-page .launch-main, .strength-page .launch-notes { padding: 22px; } .strength-page .launch-metrics { gap: 18px; } .strength-page .launch-metrics strong { font-size: 28px; } .strength-page .strength-nav { width: 100%; } .strength-page .strength-nav button { padding: 14px 10px; font-size: 12px; } .strength-page .strength-toolbar { padding-bottom: 10px; max-width: 100%; } .strength-page .strength-toolbar .toolbar-select { min-width: 0; width: 100%; } .strength-page .strength-rhythm, .strength-page .latest-session, .strength-page .strength-anchor { padding: 20px; } .strength-page .strength-rhythm .section-head { flex-wrap: wrap; gap: 8px; } .strength-page .strength-rhythm .section-head { margin: 0; }
+.strength-page .strength-rhythm .card-title { margin: 0; }
+.strength-page .strength-rhythm h2 { font-size: 36px; } .strength-page .strength-rhythm-bars { gap: 5px; } .strength-page .strength-rhythm-week > span, .strength-rhythm-week > small { font-size: 8px; } .strength-page .latest-session .section-head { flex-wrap: wrap; } .strength-page .latest-session-metrics { gap: 8px; } .strength-page .latest-session-metrics strong { font-size: 28px; } .strength-page .launch-actions .strength-action { padding-inline: 18px; font-size: 14px; } }
+
+
+/* Multi-sport redesign layer — detail tabs. Strength cards + Activities log. */
+.strength-page:not(.view-overview) .strength-view-controls { align-items: start; gap: 0; }
+.strength-page:not(.view-overview) .strength-toolbar { display: flex; width: 100%; align-items: end; padding: 16px 0; gap: 16px; }
+.strength-page:not(.view-overview) .toolbar-label { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.strength-page:not(.view-overview) .toolbar-select { flex: 1; min-width: 160px; max-width: 300px; }
+.strength-page:not(.view-overview) .toolbar-select select { width: 100%; min-height: 42px; padding: 10px 32px 10px 14px; border: 1px solid var(--border-strong); border-radius: 999px; background-color: var(--surface); color: var(--text); font-size: 13px; text-overflow: ellipsis; }
+.strength-page .detail-panel-title { margin: 10px 0 8px; font: italic 800 34px/1.05 var(--font-display); text-transform: uppercase; letter-spacing: 0; overflow-wrap: anywhere; }
+.strength-page .strength-search input { min-height: 44px; padding: 12px 16px; border-radius: 999px; border-color: var(--border-strong); background: rgb(var(--deep-rgb) / .5); font-size: 13px; }
+.strength-page input:focus-visible, .strength-page select:focus-visible, .strength-page summary:focus-visible { outline: 2px solid var(--strength); outline-offset: 3px; }
+.strength-page.view-progression .analysis-grid-bottom { grid-template-columns: minmax(260px,.7fr) minmax(0,1.6fr); gap: 20px; }
+.strength-page.view-progression .lifts-stage,
+.strength-page.view-progression .spotlight-stage,
+.strength-page.view-history .sessions-stage,
+.strength-page.view-analysis .trend-stage,
+.strength-page.view-analysis .buckets-stage,
+.strength-page.view-analysis .pr-stage { padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; min-width: 0; }
+.strength-page.view-progression .lifts-stage .section-copy { display: block; font-size: 13px; }
+.strength-page.view-progression .lift-table { display: grid; max-height: 700px; gap: 6px; overflow: auto; }
+.strength-page.view-progression .lift-row { min-width: 0; width: 100%; padding: 16px; gap: 8px; border: 1px solid transparent; border-radius: 14px; background: rgb(var(--deep-rgb) / .4); cursor: pointer; }
+.strength-page.view-progression .lift-row:hover { border-color: var(--border-strong); background: var(--surface2); }
+.strength-page.view-progression .lift-row.active { border-color: color-mix(in srgb,var(--strength) 50%,transparent); background: color-mix(in srgb,var(--strength) 10%,var(--surface)); }
+.strength-page .lift-name strong { font-size: 14px; line-height: 1.4; }
+.strength-page .lift-meta, .strength-page .lift-trend small { font-size: 12px; }
+.strength-page .lift-trend .exercise-badge { color: var(--muted-soft); font-size: 11px; }
+.strength-page .spotlight-kicker, .strength-page .lift-log-heading, .strength-page .session-list-heading { font: 600 10px/1.5 var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.strength-page .spotlight-title { font: italic 800 44px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0; overflow-wrap: anywhere; }
+.strength-page .spotlight-copy { font-size: 13px; }
+.strength-page .trend-tone { border-radius: 999px; padding: 6px 10px; font-size: 11px; font-weight: 600; }
+.strength-page .trend-tone-up { color: var(--success-text); background: color-mix(in srgb,var(--volt) 12%,transparent); }
+.strength-page .trend-tone-steady, .strength-page .trend-tone-flat { color: var(--text-soft); background: var(--surface3); }
+.strength-page .spotlight-stats { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; padding: 20px 0; margin: 0; }
+.strength-page .spotlight-stat { min-width: 0; padding: 16px; border: 0; border-radius: 14px; background: var(--surface2); }
+.strength-page .spotlight-stat > span { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+.strength-page .spotlight-stat > strong { font: 700 30px/1.1 var(--font-display); overflow-wrap: anywhere; }
+.strength-page .spotlight-stat:nth-child(2) > strong { color: var(--tone-strength); }
+.strength-page .lift-chart-header h3 { font-size: 14px; }
+.strength-page .analysis-mode { display: flex; flex-wrap: wrap; width: fit-content; padding: 4px; gap: 3px; border: 1px solid var(--border); border-radius: 999px; background: rgb(var(--deep-rgb) / .5); }
+.strength-page .analysis-mode button { min-height: 34px; padding: 8px 12px; border-radius: 999px; font-size: 12px; }
+.strength-page .analysis-mode button.active { background: var(--surface3); color: var(--text); font-weight: 600; }
+.strength-page .lift-line-chart { padding: 12px 0 0; border-radius: 14px; background: rgb(var(--deep-rgb) / .4); }
+.strength-page .lift-progress-point { fill: var(--surface); }
+.strength-page .analysis-note, .strength-page .heuristic-note { color: var(--muted-soft); font-size: 12px; line-height: 1.6; }
+.strength-page.view-progression .history-row { font-size: 13px; padding: 14px 0; }
+.strength-page.view-progression .history-row strong { font: 600 18px/1.2 var(--font-display); }
+.strength-page.view-history .sessions-stage { padding-bottom: 0; overflow: hidden; }
+.strength-page .history-search { max-width: 440px; margin: 20px 0 24px; }
+.strength-page .session-list-heading { display: grid; grid-template-columns: 52px minmax(0,1fr) 150px 18px; gap: 20px; padding: 14px 0; border-top: 1px solid var(--border); }
+.strength-page .session-list-heading > span:nth-child(3) { text-align: right; }
+.strength-page.view-history .session-list { gap: 0; }
+.strength-page.view-history .session-card { display: block; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; }
+.strength-page.view-history .session-card > summary { grid-template-columns: 52px minmax(0,1fr) 150px 18px; padding: 20px 0; gap: 20px; }
+.strength-page.view-history .session-card > summary:hover { background: var(--surface2); }
+.strength-page .session-log-date { border-radius: 12px; padding: 8px 4px; background: color-mix(in srgb,var(--strength) 12%,transparent); }
+.strength-page .session-log-date strong { font: 700 28px/1 var(--font-display); color: var(--tone-strength); letter-spacing: 0; }
+.strength-page .session-log-date span { font-size: 10px; text-transform: uppercase; margin-top: 4px; }
+.strength-page .session-log-title strong { font-size: 15px; line-height: 1.4; }
+.strength-page .session-log-title span, .strength-page .session-log-duration span { font-size: 12px; line-height: 1.5; }
+.strength-page .session-log-duration strong { font: 700 24px/1.1 var(--font-display); }
+.strength-page.view-history .session-card[open] { background: rgb(var(--deep-rgb) / .35); }
+.strength-page.view-history .session-exercises { margin: 0; padding: 20px 0 24px 72px; gap: 18px; }
+.strength-page.view-history .session-exercise { padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.strength-page.view-history .exercise-head { flex-wrap: wrap; gap: 8px; }
+.strength-page.view-history .exercise-head strong { font-size: 14px; }
+.strength-page.view-history .set-pill { border-radius: 12px; background: var(--surface2); border-color: var(--border); padding: 8px 10px; }
+.strength-page.view-history .set-pill strong { font: 600 16px/1.2 var(--font-display); }
+.strength-page.view-history .set-pill.warmup { opacity: 1; border-style: dashed; color: var(--muted-soft); background: transparent; }
+.strength-page .session-detail-link { justify-self: start; }
+.strength-page.view-analysis .analysis-grid-top { grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); gap: 20px; }
+.strength-page.view-analysis .trend-stage .card-title, .strength-page.view-analysis .buckets-stage .card-title { font-size: 11px; }
+.strength-page .analysis-bars { gap: 10px; margin-top: 28px; }
+.strength-page .analysis-week > strong { font: 600 18px/1 var(--font-display); }
+.strength-page .analysis-week > div { height: 220px; border-radius: 8px; margin: 12px 0; }
+.strength-page .analysis-week i { border-radius: 6px 6px 2px 2px; background: color-mix(in srgb,var(--strength) 70%,var(--surface)); }
+.strength-page .analysis-week:last-child i { background: var(--strength); }
+.strength-page.view-analysis .bucket-stack { gap: 8px; }
+.strength-page.view-analysis .bucket-row { padding: 16px; border: 1px solid transparent; border-radius: 14px; background: rgb(var(--deep-rgb) / .4); cursor: pointer; }
+.strength-page.view-analysis .bucket-row:hover { border-color: var(--border-strong); }
+.strength-page.view-analysis .bucket-row.active { border-color: color-mix(in srgb,var(--strength) 45%,transparent); background: color-mix(in srgb,var(--strength) 9%,var(--surface)); }
+.strength-page .bucket-main > div:first-child { flex-wrap: wrap; gap: 4px 12px; }
+.strength-page .bucket-main strong { font-size: 14px; }
+.strength-page.view-analysis .bucket-meter { height: 6px; background: var(--surface3); }
+.strength-page .bucket-meter span { background: var(--strength); }
+.strength-page .bucket-side strong { font: 700 22px/1 var(--font-display); }
+.strength-page.view-analysis .pr-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 12px; margin-top: 20px; }
+.strength-page.view-analysis .pr-card { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: 20px; background: rgb(var(--deep-rgb) / .5); }
+.strength-page .pr-label { font-size: 11px; font-weight: 600; color: var(--muted-soft); }
+.strength-page.view-analysis .pr-value { display: block; margin: 12px 0 8px; color: var(--tone-strength); font: italic 800 40px/1 var(--font-display); }
+.strength-page .pr-date { color: var(--muted); font-size: 12px; }
+@media (max-width: 1000px) {
+  .strength-page.view-progression .analysis-grid-bottom, .strength-page.view-analysis .analysis-grid-top { grid-template-columns: minmax(0,1fr); }
+  .strength-page.view-progression .lift-table { display: flex; max-height: none; overflow-x: auto; }
+  .strength-page.view-progression .lift-row { flex: 0 0 220px; }
+}
+@media (max-width: 520px) {
+  .strength-page:not(.view-overview) .strength-toolbar { gap: 12px; }
+  .strength-page:not(.view-overview) .toolbar-select { max-width: none; min-width: 0; flex-basis: 100%; }
+  .strength-page.view-progression .lifts-stage, .strength-page.view-progression .spotlight-stage, .strength-page.view-history .sessions-stage, .strength-page.view-analysis .trend-stage, .strength-page.view-analysis .buckets-stage, .strength-page.view-analysis .pr-stage { padding: 20px; }
+  .strength-page .detail-panel-title { font-size: 30px; }
+  .strength-page .spotlight-title { font-size: 36px; }
+  .strength-page .spotlight-stat { padding: 12px; }
+  .strength-page .spotlight-stat > strong { font-size: 26px; }
+  .strength-page .lift-log-heading { font-size: 8px; letter-spacing: .06em; }
+  .strength-page.view-progression .history-row { font-size: 11px; }
+  .strength-page.view-progression .history-row strong { font-size: 16px; }
+  .strength-page .session-list-heading { display: none; }
+  .strength-page.view-history .session-card > summary { grid-template-columns: 42px minmax(0,1fr) 14px; gap: 10px; padding: 16px 0; }
+  .strength-page .session-log-duration { grid-column: 2; grid-row: 2; display: flex; justify-content: space-between; align-items: baseline; }
+  .strength-page .session-log-duration strong { font-size: 20px; }
+  .strength-page .session-log-duration span { font-size: 10px; }
+  .strength-page.view-history .session-exercises { padding: 16px 0; }
+  .strength-page .analysis-bars { gap: 5px; }
+  .strength-page .analysis-week > strong { font-size: 13px; }
+  .strength-page .analysis-week > div { height: 170px; }
+  .strength-page.view-analysis .bucket-row { padding: 12px; }
+  .strength-page.view-analysis .pr-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .strength-page.view-analysis .pr-card { padding: 14px; }
+  .strength-page.view-analysis .pr-value { font-size: 32px; }
+}
+
 </style>

@@ -658,4 +658,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   .fb-buttons { margin-left: 0; }
   .fb-btn { flex: 1 1 0; }
 }
+
+/* Multi-sport redesign layer */
+.fb { border-radius: var(--radius-card); }
+.fb .fb-btn, .fb .fb-btn.primary { border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); }
+.fb .fb-btn:hover, .fb .fb-btn.primary:hover:not(:disabled) { background: var(--surface2); }
+.fb .fb-chips button { --tone: var(--muted-soft); }
+.fb .fb-chips button.is-good, .fb .fb-verdict.is-loved { --tone: var(--z2); }
 </style>

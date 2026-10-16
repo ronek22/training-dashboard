@@ -4,6 +4,7 @@
     :class="{
       'is-today': isToday,
       'is-sick': sick,
+      'is-mountains': !sick && lifeLoad.some((tag) => tag.key === 'mountains'),
       'is-selected': selected,
       'is-outside': outside,
       'is-past': timeState === 'past',
@@ -25,6 +26,7 @@
         <span v-if="lifeLoad.length" class="day-life" :title="lifeLoad.map((tag) => tag.label).join(', ')" aria-hidden="true"><span v-for="tag in lifeLoad" :key="tag.key">{{ tag.icon }}&#xFE0E;</span></span>
       </span>
       <span v-if="sick" class="day-sick" title="Sick day">{{ compact ? 'Sick' : 'Sick day' }}</span>
+      <span v-else-if="lifeLoad.some((tag) => tag.key === 'mountains')" class="day-trip">Mountains</span>
       <span v-else-if="loadTone === 'hard'" class="day-hard">Hard</span>
     </button>
 
@@ -39,13 +41,20 @@
         :title="activityTitle(activity)"
         :aria-label="activityAriaLabel(activity)"
       >
-        <span class="event-icon"><ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="compact ? 13 : 17" /></span>
-        <span class="event-copy">
-          <strong>{{ activity.name || activity.type }}</strong>
-          <small v-if="compact" class="event-inline">{{ durationLabel(activity.duration_min) }}</small>
-          <small v-else class="event-meta">{{ activityMeta(activity) }}</small>
-          <small v-if="!compact && activityPlanChange(activity)" class="event-note">{{ activityPlanChange(activity) }}</small>
-          <small v-else-if="!compact && activity.workout_intent_label" class="event-intent">{{ activity.workout_intent_label }}</small>
+        <span class="event-bar" aria-hidden="true"></span>
+        <span v-if="compact" class="event-copy">
+          <strong>{{ shortName(activity.name, activity.type) }}</strong>
+          <small class="event-inline">{{ durationLabel(activity.duration_min) }}</small>
+        </span>
+        <span v-else class="event-copy">
+          <span class="event-kicker">{{ sportLabel(activity.type) }}</span>
+          <strong>{{ displayName(activity.name, activity.type) }}</strong>
+          <span class="event-big">{{ durationLabel(activity.duration_min) || '–' }}</span>
+          <small class="event-meta">{{ activityDetail(activity, true) || '\u00a0' }}</small>
+          <span class="event-tag-slot">
+            <small v-if="activityPlanChange(activity)" class="event-note">{{ activityPlanChange(activity) }}</small>
+            <small v-else-if="activity.workout_intent_label" class="event-tag">{{ activity.workout_intent_label }}</small>
+          </span>
         </span>
         <span v-if="isPlanMatch(activity)" class="event-status" :class="activityPlanChange(activity) ? 'is-changed' : 'is-done'" aria-hidden="true">
           <svg v-if="activityPlanChange(activity)" viewBox="0 0 16 16" width="12" height="12"><circle cx="8" cy="8" r="3" fill="currentColor" /></svg>
@@ -65,12 +74,17 @@
         @dragstart="onDragStart"
         @dragend="$emit('drag-end')"
       >
-        <span class="event-icon"><ActivityIcon :type="visiblePlan.session_type" :tone="activityTone(visiblePlan.session_type)" :size="compact ? 13 : 17" /></span>
-        <span class="event-copy">
-          <strong>{{ visiblePlan.title || visiblePlan.session_type }}</strong>
-          <small v-if="compact" class="event-inline">{{ planInline(visiblePlan) }}</small>
-          <small v-else class="event-meta">{{ planMeta(visiblePlan) }}</small>
-          <small v-if="!compact && visiblePlan.workout_intent_label" class="event-intent">{{ visiblePlan.workout_intent_label }}</small>
+        <span class="event-bar" aria-hidden="true"></span>
+        <span v-if="compact" class="event-copy">
+          <strong>{{ shortName(visiblePlan.title, visiblePlan.session_type) }}</strong>
+          <small class="event-inline">{{ planInline(visiblePlan) }}</small>
+        </span>
+        <span v-else class="event-copy">
+          <span class="event-kicker">{{ planStatusLabel(visiblePlan) }}</span>
+          <strong>{{ displayName(visiblePlan.title, visiblePlan.session_type) }}</strong>
+          <span class="event-big">{{ planInline(visiblePlan) || '–' }}</span>
+          <small class="event-meta">{{ planKm(visiblePlan) ? formatDistance(planKm(visiblePlan)) : '\u00a0' }}</small>
+          <span class="event-tag-slot"><small v-if="visiblePlan.workout_intent_label" class="event-tag">{{ visiblePlan.workout_intent_label }}</small></span>
         </span>
         <span class="event-status" :class="`is-${planStatusTone(visiblePlan)}`" aria-hidden="true">
           <svg v-if="planStatusTone(visiblePlan) === 'missed'" viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
@@ -89,7 +103,6 @@
 <script setup>
 import { computed } from 'vue'
 import { format, parseISO } from 'date-fns'
-import ActivityIcon from './ActivityIcon.vue'
 
 const props = defineProps({
   day: { type: Object, required: true },
@@ -180,6 +193,22 @@ const durationLong = (minutes) => {
   if (!total) return ''
   return total >= 60 ? `${Math.floor(total / 60)}h ${String(total % 60).padStart(2, '0')}m` : `${total} min`
 }
+const PROVIDER_PREFIX = /^(zwift|rouvy|trainerroad|mywhoosh|wahoo systm|fulgaz)\s*[-–:]\s*/i
+const TIME_OF_DAY = /^(early morning|morning|afternoon|evening|night|lunch|midday)\s+/i
+const GENERIC = { ride: 'Ride', 'virtual ride': 'Ride', walk: 'Walk', run: 'Run', hike: 'Hike', swim: 'Swim', workout: 'Workout', 'weight training': 'Weights', yoga: 'Yoga' }
+// Full name without the app prefix ("Zwift - …"), for the roomy week cards.
+const displayName = (name, type) => String(name || type || '').replace(PROVIDER_PREFIX, '').trim() || String(type || '')
+// Month chips have ~8 characters of room, so keep only the part that identifies the session.
+const shortName = (name, type) => {
+  let value = displayName(name, type).split(' · ')[0].trim()
+  if (/group ride/i.test(value)) return 'Group ride'
+  value = value.replace(/\s+\d+\s*[×x]\s*\d+.*$/i, '').replace(/\s+\d+(\s*min)?$/i, '').replace(/^light\s+/i, '')
+  const rest = value.replace(TIME_OF_DAY, '')
+  if (rest !== value && GENERIC[rest.toLowerCase()]) return GENERIC[rest.toLowerCase()]
+  return GENERIC[value.toLowerCase()] || value
+}
+const sportLabel = (type) => ({ ride: 'Ride', run: 'Run', strength: 'Strength', walk: 'Walk' })[activityTone(type)] || String(type || 'Session')
+const activityDetail = (item, short) => [item.distance_km ? formatDistance(item.distance_km) : '', short && averageSpeedKmh(item) ? `${Math.round(averageSpeedKmh(item))} km/h` : effortMetric(item)].filter(Boolean).join(' · ')
 const formatDistance = (distance) => `${Number(distance).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`
 const averageSpeedKmh = (item) => {
   if (!/ride|cycl/i.test(String(item.type || '')) || !item.distance_km || !item.duration_min) return null
@@ -278,11 +307,78 @@ const planStatusLabel = (item) => {
 .event-status.is-planned { color: var(--muted-soft); }
 .event-status.is-changed { color: var(--warning); }
 .event-status.is-missed { color: var(--danger); }
-/* Narrow month cells: a done session is recognised by sport icon + duration, so the title steps aside; planned rows keep the title. */
-@container (max-width: 108px) {
-  .is-compact .calendar-event.status-completed .event-copy strong, .is-compact .calendar-event.status-changed .event-copy strong { display: none; }
-  .is-compact .calendar-event.status-planned .event-inline { display: none; }
-}
 .more-events { width: 100%; min-height: 24px; padding: 2px 7px; border: 0; border-radius: 6px; background: transparent; color: var(--muted-soft); cursor: pointer; font-size: 11px; font-weight: 650; text-align: left; }
 .more-events:hover { background: rgb(var(--ov-rgb) / .06); color: var(--text); }
+
+/* ── Multi-sport redesign layer ── */
+.calendar-day { --cell: rgb(var(--deep-rgb) / .9); min-height: 116px; padding: 10px; border-radius: 14px; }
+.calendar-day:hover { background: var(--surface2); }
+.calendar-day.is-today { background: var(--cell); box-shadow: inset 0 0 0 2px var(--volt); }
+.calendar-day.is-sick { --cell: color-mix(in srgb, var(--warning) 9%, rgb(var(--deep-rgb))); }
+.calendar-day.is-selected { box-shadow: inset 0 0 0 1.5px var(--border-strong); }
+.calendar-day.is-today.is-selected { box-shadow: inset 0 0 0 2px var(--volt); }
+.day-number { min-width: 0; height: auto; padding: 0 2px; border-radius: 6px; color: var(--text); font-size: 19px; font-weight: 700; place-items: start; }
+.is-today .day-number { padding: 1px 7px; background: var(--volt); color: var(--on-accent); }
+.is-outside .day-number { color: var(--muted); }
+.day-sick { padding: 2px 7px; background: transparent; color: var(--warning-text); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.day-hard { padding: 2px 7px; background: transparent; color: var(--run); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.tone-walk { --tone: var(--z2); }
+.calendar-event { border-radius: 8px; background: color-mix(in srgb, var(--tone) 16%, transparent); box-shadow: inset 3px 0 0 var(--tone); }
+.calendar-event:hover { background: color-mix(in srgb, var(--tone) 26%, transparent); }
+.is-compact .calendar-event { min-height: 28px; padding: 4px 8px 4px 10px; }
+.is-compact .event-icon { display: none; }
+.event-copy strong { font-weight: 600; }
+.is-compact .event-inline { margin-left: auto; color: var(--text); font-family: var(--font-display); font-size: 14px; font-weight: 700; }
+.is-compact .event-copy { gap: 6px; }
+.calendar-event.status-planned { border: 1px dashed color-mix(in srgb, var(--tone) 70%, transparent); background: transparent; box-shadow: none; }
+.calendar-event.status-planned:hover { background: color-mix(in srgb, var(--tone) 10%, transparent); }
+.calendar-event.status-missed { background: color-mix(in srgb, var(--danger) 12%, transparent); box-shadow: inset 3px 0 0 var(--danger); }
+.event-status { color: var(--success-text); }
+.calendar-day.is-mountains { --cell: color-mix(in srgb, var(--tone-recovery) 12%, rgb(var(--deep-rgb))); }
+.day-trip { padding: 2px 7px; color: var(--tone-recovery); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+@container (max-width: 120px) { .day-trip { display: none; } }
+
+/* ── Chips & week cards (artboard match) ── */
+.calendar-event { align-items: center; gap: 6px; box-shadow: none; }
+.event-bar { flex: none; align-self: center; width: 4px; height: 14px; border-radius: 2px; background: var(--tone); }
+.calendar-event.status-missed .event-bar { background: var(--danger); }
+.calendar-event.is-rest .event-bar { background: var(--muted); }
+.is-compact .calendar-event { min-height: 28px; padding: 6px 7px 6px 7px; background: color-mix(in srgb, var(--tone) 16%, transparent); }
+.is-compact .calendar-event.status-planned { background: transparent; }
+.is-compact .calendar-event.status-missed { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.is-compact .event-copy { display: flex; align-items: center; gap: 6px; }
+.is-compact .event-copy strong { flex: 1 1 auto; min-width: 0; font-size: 12px; font-weight: 600; }
+.is-compact .event-inline { flex: none; margin-left: 0; color: var(--text); font-family: var(--font-display); font-size: 15px; font-weight: 700; line-height: 1; }
+.is-compact .event-status { display: none; }
+
+.calendar-day:not(.is-compact) { min-height: 200px; padding: 12px; }
+.calendar-day:not(.is-compact) .day-events { gap: 8px; margin-top: 10px; }
+.calendar-day:not(.is-compact) .calendar-event { position: relative; align-items: stretch; gap: 10px; padding: 12px 12px 12px 10px; border-radius: 12px; background: color-mix(in srgb, var(--tone) 13%, transparent); }
+.calendar-day:not(.is-compact) .calendar-event:hover { background: color-mix(in srgb, var(--tone) 22%, transparent); }
+.calendar-day:not(.is-compact) .calendar-event.status-planned { background: transparent; }
+.calendar-day:not(.is-compact) .calendar-event.status-missed { background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.calendar-day:not(.is-compact) .event-bar { align-self: stretch; height: auto; min-height: 40px; }
+.calendar-day:not(.is-compact) .event-copy { display: grid; gap: 4px; line-height: 1.25; }
+.event-kicker { padding-right: 18px; overflow: hidden; color: color-mix(in srgb, var(--tone) 80%, white); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.status-missed .event-kicker { color: var(--danger-text, var(--danger)); }
+.calendar-day:not(.is-compact) .event-copy strong { color: var(--text); font-size: 13px; font-weight: 600; -webkit-line-clamp: 2; overflow-wrap: break-word; }
+.event-big { margin-top: 4px; color: var(--text); font-family: var(--font-display); font-size: 26px; font-style: italic; font-weight: 800; line-height: 1; }
+.status-planned .event-big { color: var(--text-soft); }
+.calendar-day:not(.is-compact) .event-meta { margin-top: 0; color: var(--muted-soft); font-size: 11.5px; }
+.calendar-day:not(.is-compact) .event-note { margin-top: 2px; font-size: 11px; }
+.calendar-day:not(.is-compact) .event-status { position: absolute; top: 10px; right: 10px; width: 14px; height: 14px; }
+.calendar-day:not(.is-compact) .day-number { font-size: 26px; }
+.calendar-day:not(.is-compact).is-today .day-number { font-size: 22px; }
+.event-tag { justify-self: start; max-width: 100%; margin-top: 6px; padding: 2px 8px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--tone) 18%, transparent); color: color-mix(in srgb, var(--tone) 75%, white); font-size: 10.5px !important; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.status-planned .event-tag { background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 45%, transparent); }
+.calendar-day.is-mountains:not(.is-compact) .day-life, .is-compact.is-mountains .day-life { display: none; }
+@container (max-width: 120px) { .calendar-day.is-mountains .day-life { display: inline-flex; } }
+/* Week cards share one skeleton so every card in the row has the same height. */
+.calendar-day:not(.is-compact) .event-copy { grid-template-rows: auto calc(2 * 1.25em) auto auto 24px; }
+.calendar-day:not(.is-compact) .event-copy strong { align-self: start; }
+.calendar-day:not(.is-compact) .event-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event-tag-slot { display: flex; align-items: end; min-width: 0; }
+.event-tag-slot .event-tag, .event-tag-slot .event-note { margin-top: 0; }
+.calendar-day:not(.is-compact) .event-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-day:not(.is-compact) .calendar-event:not(.status-planned) { border: 1px solid transparent; }
 </style>

@@ -8,11 +8,12 @@
 
         </div>
         <div class="header-actions">
+          <span v-if="dashboard.computed_streak?.value" class="header-streak"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-9z" /></svg>{{ dashboard.computed_streak.value }}-day streak</span>
           <button v-if="!sickMode.active" class="header-sick-link" type="button" :disabled="sickModeStarting" @click="startSickMode">
-            <span aria-hidden="true">🤒</span><span>{{ sickModeStarting ? 'Starting…' : 'Feeling sick?' }}</span>
+            <svg class="sick-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M11.5 3.5a2 2 0 0 0-4 0v7.8a3.6 3.6 0 1 0 4 0z" /><path d="M9.5 8.5v5" /></svg><span>{{ sickModeStarting ? 'Starting…' : 'Feeling sick?' }}</span>
           </button>
           <button class="header-plan-link" type="button" @click="router.push('/plan')">
-            <span>Open weekly plan</span><span aria-hidden="true">→</span>
+            <span>Weekly plan</span><span aria-hidden="true">→</span>
           </button>
         </div>
       </header>
@@ -28,37 +29,44 @@
         </div>
         <TodayCard v-else v-bind="todayCard" @plan-changed="loadDashboard" />
 
+        <div class="signal-stack">
         <aside class="signal-card" aria-labelledby="signals-heading">
           <div class="signal-heading">
-            <div><span class="section-kicker">Training state</span><h2 id="signals-heading">Load &amp; recovery</h2></div>
+            <span class="section-kicker">Readiness</span>
             <span v-if="readinessScore && readinessScore.level !== 'unknown'" class="readiness-chip score-chip" :class="`score-${readinessScore.level}`" :title="readinessScore.advice">
-              <i aria-hidden="true"></i>{{ readinessScore.label }}
+              <i aria-hidden="true"></i>{{ readinessChipLabel }}
             </span>
             <span v-else-if="readiness" class="readiness-chip" :class="`readiness-${readiness.state}`">{{ readiness.label }}</span>
           </div>
-          <div v-if="readiness" class="signal-summary">
-            <strong>{{ loadRecoveryTitle }}</strong><p>{{ loadRecoverySummary }}</p>
+          <h2 id="signals-heading" class="signal-title">{{ loadRecoveryTitle.replace(/\.$/, '') }}</h2>
+          <p v-if="readiness" class="signal-advice">{{ loadRecoverySummary }}</p>
+          <div v-if="signalTiles.length" class="signal-tiles">
+            <div v-for="tile in signalTiles" :key="tile.key" class="signal-tile">
+              <span>{{ tile.label }}</span>
+              <strong>{{ tile.value }}<small v-if="tile.unit"> {{ tile.unit }}</small></strong>
+              <em :class="`tone-${tile.tone}`">{{ tile.note }}</em>
+            </div>
           </div>
-          <ul v-if="readinessScore?.drivers?.length" class="score-drivers" aria-label="What is pulling readiness down">
+          <ul v-else-if="readinessScore?.drivers?.length" class="score-drivers" aria-label="What is pulling readiness down">
             <li v-for="driver in readinessScore.drivers" :key="driver">{{ driver }}</li>
           </ul>
+          <LoadFormTrend v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :form="Number(trainingLoad.current?.form || 0)" :show-chart="false" />
+          <p v-if="rampWarning" class="ramp-warning ramp-box" :class="`ramp-${ramp.status}`"><template v-for="(part, index) in rampWarning.split(/(\d+%)/)" :key="index"><strong v-if="/\d+%/.test(part)">{{ part }}</strong><template v-else>{{ part }}</template></template></p>
+          <p v-if="sleepDebtHint" class="swap-hint" :class="`score-${readinessScore.sleep_debt.status === 'risk' ? 'red' : 'amber'}`">{{ sleepDebtHint }} <router-link to="/metrics?view=recovery">Sleep trend</router-link></p>
           <p v-if="illnessReturnHint" class="swap-hint" :class="`score-${illnessReturn.lingering_symptoms || illnessReturn.hard_sessions.length ? 'red' : 'amber'}`">{{ illnessReturnHint }}</p>
           <p v-if="mountainReentryHint" class="swap-hint score-amber">{{ mountainReentryHint }} <router-link :to="`/mountains/trips/${mountainReentry.trip.start_date}`">Trip recap</router-link></p>
           <p v-if="strengthPhase" class="swap-hint score-block">{{ strengthPhase.headline }}. <router-link to="/strength/workouts">Workout studio</router-link></p>
           <p v-if="stallBlock" class="swap-hint score-block" :title="`${stallBlock.label}: ${stallBlock.text}`">{{ stallBlock.headline }}. <router-link to="/strength">Strength</router-link></p>
-          <p v-if="swapHint" class="swap-hint" :class="`score-${readinessScore.level}`">{{ swapHint }} <router-link to="/plan">Open plan</router-link></p>
-          <p v-if="sleepDebtHint" class="swap-hint" :class="`score-${readinessScore.sleep_debt.status === 'risk' ? 'red' : 'amber'}`">{{ sleepDebtHint }} <router-link to="/metrics?view=recovery">Sleep trend</router-link></p>
-          <p v-if="rampWarning" class="ramp-warning" :class="`ramp-${ramp.status}`">{{ rampWarning }}</p>
           <VolumeTrendAlert :trend="volumeTrend" @labeled="onVolumeTrendLabeled" />
-          <LoadFormTrend v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :form="Number(trainingLoad.current?.form || 0)" />
-          <div v-if="loadMetrics.length" class="load-metrics" aria-label="Current training load">
-            <div v-for="metric in loadMetrics" :key="metric.label" :class="metric.tone"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.hint }}</small></div>
-          </div>
+        </aside>
+        <section class="checkin-card" aria-label="Check-in and protein">
           <DailyCheckin :checkin="dailyCheckin" @saved="onCheckinSaved" />
           <ProteinTick />
-
-        </aside>
+        </section>
+        </div>
       </section>
+
+      <TodayLoadChart v-if="trainingLoad?.chart?.length" :chart="trainingLoad.chart" :current="trainingLoad.current" :ratio="trainingLoad.ratio" />
 
       <section id="dashboard-coaching" class="coach-section" aria-labelledby="coach-heading">
         <header class="coach-head">
@@ -159,6 +167,7 @@ import WeekStrip from '../components/WeekStrip.vue'
 import YearProgress from '../components/YearProgress.vue'
 import RecentRecords from '../components/RecentRecords.vue'
 import LoadFormTrend from '../components/LoadFormTrend.vue'
+import TodayLoadChart from '../components/TodayLoadChart.vue'
 import RelativeEffortCard from '../components/RelativeEffortCard.vue'
 import MonthActivity from '../components/MonthActivity.vue'
 import DailyCheckin from '../components/DailyCheckin.vue'
@@ -486,6 +495,16 @@ const decisionReasons = computed(() => {
   const reasons = [...(dailyRecommendation.value?.reasons || [])]
   if (readiness.value?.state === 'strained' && readiness.value?.reasons?.[0]) reasons.push(readiness.value.reasons[0])
   return [...new Set(reasons)].slice(0, 2)
+})
+const readinessChipLabel = computed(() => ({ red: 'Recover', amber: 'Go easy', green: 'Ready' }[readinessScore.value?.level] || readinessScore.value?.label))
+// Physiology first: the three measured signals that best explain today's readiness.
+const SIGNAL_KEYS = ['resting_hr', 'sleep', 'hrv', 'sleep_debt']
+const signalTiles = computed(() => {
+  const factors = readinessScore.value?.factors || []
+  return SIGNAL_KEYS.map((key) => factors.find((factor) => factor.key === key)).filter(Boolean).slice(0, 3).map((factor) => {
+    const match = String(factor.detail || '').match(/^([+-]?[\d.]+)\s*([a-z%]+)?\s*,?\s*(.*)$/i)
+    return { key: factor.key, label: factor.label, value: match ? match[1] : factor.detail, unit: match?.[2] || '', note: match ? match[3] : '', tone: factor.tone || 'steady' }
+  })
 })
 const loadRecoveryTitle = computed(() => ({ red: 'Recovery signals are off.', amber: 'Some recovery signals are off.' }[readinessScore.value?.level]) || ({
   ready: 'Load is being absorbed.',
@@ -1234,4 +1253,121 @@ button { color: inherit; }
 .coach-next .coach-plan-error { color:oklch(from #ef9a90 calc(l - var(--dim-l)) c h); font-size: 12px; }
 .coach-placeholder { margin: 0; color: var(--dash-muted); font-size: 13px; }
 #dashboard-coaching { scroll-margin-top: 24px; }
+
+/* ── Multi-sport redesign layer: last in the file so it wins over the earlier passes. ── */
+.dashboard-shell { gap: 28px; }
+.dashboard-header { align-items: flex-end; }
+.dashboard-date { color: var(--muted-soft); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.dashboard-header h1 { margin-top: 6px; font-family: var(--font-display); font-size: clamp(44px, 7vw, 72px); font-style: italic; font-weight: 800; line-height: .95; letter-spacing: .005em; text-transform: uppercase; }
+.header-actions { gap: 10px; }
+.header-sick-link { min-height: 44px; padding: 0 18px; border-color: var(--border-strong); color: var(--text); font-size: 14px; }
+.dashboard-shell .header-plan-link { min-height: 44px; gap: 10px; padding: 0 20px; border: 0; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 700; }
+.dashboard-shell .header-plan-link:hover { background: var(--accent-strong); transform: none; }
+.decision-layout { grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr); gap: 20px; align-items: stretch; }
+.signal-card { padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.signal-heading .section-kicker { display: block; }
+.signal-heading h2 { margin-top: 2px; font-family: var(--font-display); font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: .005em; text-transform: uppercase; }
+.readiness-chip { padding: 5px 10px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.score-chip.score-green { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--success-text); }
+.score-chip.score-amber { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning-text); }
+.score-chip.score-red { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger-text); }
+.signal-summary strong { font-size: 18px; font-weight: 700; }
+.signal-summary p, .signal-card .signal-summary p { color: var(--muted-soft); font-size: 14px; line-height: 1.55; }
+.score-drivers { color: var(--text-soft); font-size: 13px; }
+.swap-hint, .ramp-warning { border-radius: 12px; padding: 10px 12px; font-size: 13px; }
+.swap-hint.score-amber, .ramp-warning.ramp-caution { background: color-mix(in srgb, var(--warning) 10%, transparent); }
+.swap-hint.score-red, .ramp-warning.ramp-high { background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger-text); }
+.swap-hint.score-block { background: var(--surface2); }
+.section-heading h2, .coach-head h2 { font-family: var(--font-display); font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: .005em; text-transform: uppercase; }
+.coach-head h2 span { color: var(--accent); }
+.coach-head button { min-height: 40px; border-radius: 999px; padding: 0 16px; }
+.coach-panel { border-radius: var(--radius-card); background: var(--surface); padding: 24px; }
+.explore-grid button { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 14px 16px; }
+.explore-grid button:hover { background: var(--surface2); }
+.explore-mark-load { background: color-mix(in srgb, var(--ride) 14%, transparent); color: var(--tone-ride); }
+.explore-mark-strength { background: color-mix(in srgb, var(--strength) 14%, transparent); color: var(--tone-strength); }
+.explore-mark-goals { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.explore-grid strong { font-size: 15px; font-weight: 600; }
+.explore-grid small { font-size: 12px; }
+@media (max-width: 900px) {
+  .decision-layout { grid-template-columns: 1fr; }
+  .signal-card { padding: 20px; }
+}
+@media (max-width: 640px) {
+  .dashboard-header h1 { font-size: 44px; }
+  .section-heading h2, .coach-head h2, .signal-heading h2 { font-size: 24px; }
+}
+
+/* Readiness card, artboard version. */
+.signal-stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.signal-card { justify-content: flex-start; gap: 0; }
+.signal-heading { min-height: 0; }
+.signal-title { margin: 14px 0 0; font-family: var(--font-display); font-size: 34px; font-weight: 800; line-height: .95; letter-spacing: .005em; text-transform: uppercase; }
+.signal-advice { margin: 8px 0 0; color: var(--muted-soft); font-size: 14px; line-height: 1.55; }
+.signal-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+.signal-tile { display: grid; align-content: start; gap: 6px; min-width: 0; border-radius: 14px; background: var(--surface2); padding: 14px; }
+.signal-tile span { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.signal-tile strong { font-family: var(--font-display); font-size: 32px; font-weight: 700; line-height: 1; }
+.signal-tile strong small { margin-left: 3px; color: var(--muted-soft); font-family: var(--font-body); font-size: 12px; font-weight: 500; }
+.signal-tile em { display: -webkit-box; overflow: hidden; color: var(--muted); font-size: 12px; font-style: normal; line-height: 1.35; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.signal-tile em.tone-caution { color: var(--warning-text); }
+.signal-tile em.tone-risk { color: var(--danger-text); }
+.signal-card :deep(.load-trend) { margin-top: 22px; }
+.signal-card .ramp-warning, .signal-card .swap-hint { margin-top: 12px; }
+.ramp-warning.ramp-high { background: var(--surface2); color: var(--text-soft); }
+.ramp-warning.ramp-high::first-letter { color: inherit; }
+.checkin-card { display: grid; gap: 4px; padding: 20px 24px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+@media (max-width: 640px) {
+  .signal-tiles { gap: 8px; }
+  .signal-tile { padding: 12px 10px; }
+  .signal-tile strong { font-size: 26px; }
+}
+
+.header-sick-link { gap: 8px; background: transparent; color: var(--text-soft); font-weight: 600; }
+.header-sick-link:hover:not(:disabled) { border-color: var(--muted); background: var(--surface2); color: var(--text); }
+.sick-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.coach-label { color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.coach-assessment h3 { font-size: 19px; font-weight: 700; }
+.coach-assessment p { color: var(--muted-soft); font-size: 14px; }
+.coach-next p { font-size: 14px; }
+.coach-next { border-left-color: var(--border); }
+.coach-plan-action { min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); padding: 0 20px; color: var(--on-accent); font-weight: 700; }
+.coach-plan-action:hover:not(:disabled) { border: 0; background: var(--accent-strong); }
+.coach-week-focus { background: var(--surface2); }
+
+.header-sick-link, .dashboard-shell .header-plan-link { white-space: nowrap; }
+@media (max-width: 520px) {
+  .header-sick-link { padding: 0 14px; }
+  .header-sick-link span { display: none; }
+  .header-sick-link::after { content: 'Sick?'; }
+}
+
+.coach-label { color: var(--muted); }
+.coach-plan-action { border: 1px solid var(--border-strong); background: transparent; color: var(--text); font-weight: 600; }
+.coach-plan-action:hover:not(:disabled) { border: 1px solid var(--muted); background: var(--surface2); }
+.coach-head h2 span { color: var(--muted-soft); }
+.signal-card .swap-hint, .signal-card .ramp-warning {
+  position: relative; margin: 0; border-radius: 0; border-top: 1px solid var(--border);
+  background: transparent; padding: 12px 0 12px 18px; color: var(--text-soft); font-size: 13px; line-height: 1.5;
+}
+.signal-card :deep(.load-trend) + .ramp-warning, .signal-card :deep(.load-trend) + .swap-hint { margin-top: 18px; }
+.signal-card .swap-hint::before, .signal-card .ramp-warning::before {
+  content: ''; position: absolute; left: 2px; top: 19px; width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
+}
+.signal-card .ramp-warning.ramp-high::before, .signal-card .swap-hint.score-red::before { background: var(--danger); }
+.signal-card .ramp-warning.ramp-caution::before, .signal-card .swap-hint.score-amber::before { background: var(--warning); }
+.signal-card .swap-hint.score-block::before { background: var(--strength); }
+.signal-card .swap-hint a { color: var(--text); }
+.checkin-card { gap: 0; padding: 0; overflow: hidden; }
+
+.decision-layout { align-items: start; }
+.checkin-card { padding: 0; }
+
+.header-streak { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 999px; background: color-mix(in srgb, var(--volt) 10%, transparent); color: var(--volt); font-size: 14px; font-weight: 700; white-space: nowrap; }
+.header-streak svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.signal-card .ramp-box { margin-top: 18px; border: 0; border-radius: 14px; background: var(--surface2); padding: 14px 16px; color: var(--text); font-size: 14px; }
+.signal-card .ramp-box::before { display: none; }
+.signal-card .ramp-box strong { color: var(--warning-text); font-weight: 700; }
+.signal-card .ramp-box + .swap-hint { margin-top: 12px; border-top: 0; }
+@media (max-width: 900px) { .header-streak { display: none; } }
 </style>

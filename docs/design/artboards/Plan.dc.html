@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrainLog · Plan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&amp;family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0C11}
+a{color:#D4FF3A;text-decoration:none}a:hover{color:#E8FF8A}
+.num{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;line-height:1}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600}
+.nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;color:#A3ABBC;font-size:14px;font-weight:500;min-height:24px}
+.nav a:hover{background:#191D27;color:#F3F5F9}
+.nav a.on{background:#191D27;color:#F3F5F9}
+.btn{font-family:inherit;cursor:pointer}
+.btn:hover{filter:brightness(1.12)}
+.clamp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #0A0C11; color: #F3F5F9; font-family: 'Archivo', system-ui, sans-serif">
+
+<nav class="nav" aria-label="Main" style="flex: 1 1 232px; max-width: 260px; box-sizing: border-box; padding: 24px 16px; border-right: 1px solid #1C212B; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px">
+<div style="width: 36px; height: 36px; border-radius: 10px; background: #D4FF3A; display: flex; align-items: center; justify-content: center">
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#0A0C11" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 11h4l2-6 4 10 2-4h4"></path></svg>
+</div>
+<div class="num" style="font-size: 26px; font-style: italic; font-weight: 800; letter-spacing: .02em">TRAINLOG</div>
+</div>
+<div class="lbl" style="padding: 8px 12px 6px">Train</div>
+<a href="Main.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l3 2"></path></svg>Today</a>
+<a class="on" href="Plan.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#D4FF3A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18V3M4 4h11l-2.5 3.5L15 11H4"></path></svg>Plan</a>
+<a href="Calendar.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="2"></rect><path d="M3 8h14M7 2v4M13 2v4"></path></svg>Calendar</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 2L4 11h5l-1 7 7-9h-5z"></path></svg>Workout studio</a>
+<div class="lbl" style="padding: 18px 12px 6px">Body</div>
+<a href="Strength.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 10h16M5 6v8M15 6v8M2.5 8v4M17.5 8v4"></path></svg>Strength</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17s-7-4.2-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 17 8c0 4.8-7 9-7 9z"></path></svg>Recovery</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2v6a2 2 0 0 0 4 0V2M8 2v16M14 2c-2 2-2 6 0 8v8"></path></svg>Food</a>
+<div class="lbl" style="padding: 18px 12px 6px">Review</div>
+<a href="Activities.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 5h10M7 10h10M7 15h10M3 5h.01M3 10h.01M3 15h.01"></path></svg>Activities</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 15l4-5 3 3 7-8"></path></svg>Trends</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8v5a4 4 0 0 1-8 0zM10 12v3M7 17h6M6 5H3v1a3 3 0 0 0 3 3M14 5h3v1a3 3 0 0 1-3 3"></path></svg>Records</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><circle cx="10" cy="10" r="3.5"></circle><circle cx="10" cy="10" r=".5"></circle></svg>Goals</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 16l5-8 3 4 3-5 5 9z"></path></svg>Mountains</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h10v14H5zM8 7h4M8 10h4M8 13h2"></path></svg>Coach notes</a>
+<div class="lbl" style="padding: 18px 12px 6px">System</div>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8a6 6 0 0 1 11-2.5M16 12a6 6 0 0 1-11 2.5M15 2.5v3h-3M5 17.5v-3h3"></path></svg>Data &amp; sync</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v-6M8.5 17V6M13 17v-4M17.5 17V3"></path></svg>Coach usage</a>
+<div style="flex: 1 1 auto; min-height: 24px"></div>
+<a href="#" style="border: 1px solid #252B37"><span style="width: 28px; height: 28px; border-radius: 50%; background: #252B37; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #F3F5F9">J</span><span style="display: flex; flex-direction: column"><span style="color: #F3F5F9">Jakub</span><span style="font-size: 12px; color: #8A93A6">Athlete profile</span></span></a>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 40px 64px">
+<div style="max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div>
+<div class="lbl" style="color: #A3ABBC">Train · Plan</div>
+<h1 class="num" style="margin: 6px 0 0; font-size: 72px; font-style: italic; font-weight: 800; text-transform: uppercase">Plan</h1>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px">
+<button class="btn" style="height: 48px; padding: 0 22px; border-radius: 999px; border: 0; background: #D4FF3A; color: #0A0C11; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#0A0C11" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2l1.8 4.6L16.5 8l-4.7 1.6L10 14l-1.8-4.4L3.5 8l4.7-1.4z"></path></svg>Plan this week with the coach</button>
+<a href="#" style="font-size: 13px; padding: 4px 0">Sunday planning for next week →</a>
+</div>
+</header>
+
+<section aria-label="Season" style="background: #12151C; border: 1px solid #1C212B; border-radius: 24px; padding: 24px 28px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px">
+<div><div class="lbl">Season</div><div class="num" style="font-size: 32px; font-style: italic; font-weight: 800; margin-top: 8px; text-transform: uppercase">Sep 28 – Feb 14, 2027</div></div>
+<div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #A3ABBC; align-items: center">
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #9B7BFF"></span>Trip</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #FFB547"></span>Re-entry</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 50%; border: 2px solid #3B8CFF; box-sizing: border-box"></span>Goal review</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 50%; background: #3B8CFF"></span>Goal date</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 3px; border-radius: 2px; background: #FF4D9A"></span>Stall block</span>
+</div>
+</div>
+
+<div style="overflow-x: auto; margin-top: 20px">
+<div style="min-width: 860px">
+<div style="display: grid; grid-template-columns: repeat(20, minmax(0, 1fr)); gap: 4px; font-size: 11px; font-weight: 600; color: #8A93A6; margin-bottom: 8px">
+<span style="grid-column: 1 / span 5">OCT</span><span style="grid-column: 6 / span 4">NOV</span><span style="grid-column: 10 / span 5">DEC</span><span style="grid-column: 15 / span 4">JAN 2027</span><span style="grid-column: 19 / span 2">FEB</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(20, minmax(0, 1fr)); gap: 4px; height: 56px">
+<sc-for list="{{season}}" as="s" hint-placeholder-count="20"><div title="{{s.tip}}" style="{{s.cell}}"><span style="{{s.markStyle}}"></span></div></sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(20, minmax(0, 1fr)); gap: 4px; margin-top: 6px">
+<div style="grid-column: 3 / span 3; height: 4px; border-radius: 2px; background: #FF4D9A"></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(20, minmax(0, 1fr)); gap: 4px; margin-top: 8px; font-size: 12px; line-height: 1.35">
+<div style="grid-column: 3 / span 3; color: #FF6FAE; font-weight: 600">Upright row stall · wk 1/3</div>
+<div style="grid-column: 6 / span 4; color: #6EA9FF">Review · Ride 100 km weekly</div>
+<div style="grid-column: 15 / span 6; color: #6EA9FF; font-weight: 600">Goal · 210 W for 15 min climb</div>
+</div>
+</div>
+</div>
+
+<div style="margin-top: 20px; padding: 16px 18px; border-radius: 16px; border: 1px dashed #2E3543; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between">
+<div style="flex: 1 1 380px"><div style="font-weight: 700; font-size: 16px">No winter arc yet</div><div style="font-size: 14px; color: #A3ABBC; margin-top: 4px; line-height: 1.5">Set a few ride blocks (base, sweet-spot build, a VO2 touch) and each week's plan follows the current one. Lifts stay as they are.</div></div>
+<button class="btn" style="height: 44px; padding: 0 20px; border-radius: 999px; border: 1px solid rgba(59,140,255,.5); background: rgba(59,140,255,.12); color: #6EA9FF; font-size: 14px; font-weight: 700">Plan the winter →</button>
+</div>
+</section>
+
+<section aria-label="This week" style="display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px">
+<div style="flex: 1 1 520px">
+<div style="display: flex; align-items: center; gap: 10px"><span class="lbl" style="color: #D4FF3A">This week</span><span style="font-size: 12px; color: #8A93A6">Adjusted 4 times</span></div>
+<h2 class="num" style="margin: 8px 0 0; font-size: 52px; font-style: italic; font-weight: 800; text-transform: uppercase">Oct 12 – 18</h2>
+<div style="font-weight: 700; font-size: 18px; margin-top: 8px">Back to structure: one quality ride, 3 lifts, legs return</div>
+<div style="font-size: 14px; color: #A3ABBC; margin-top: 4px; line-height: 1.5">Reintroduce one sweet-spot ride and a light lower-body lift after illness, ahead of the Oct 19–25 mountain trip.</div>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
+<div role="group" aria-label="Week" style="display: flex; gap: 4px">
+<button class="btn" aria-label="Previous week" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid #252B37; background: transparent; color: #F3F5F9; font-size: 18px">‹</button>
+<button class="btn" aria-label="Next week" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid #252B37; background: transparent; color: #F3F5F9; font-size: 18px">›</button>
+</div>
+<div role="group" aria-label="Plan version" style="display: flex; padding: 4px; border-radius: 999px; background: #12151C; border: 1px solid #1C212B">
+<button class="btn" aria-pressed="true" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: #252B37; color: #F3F5F9; font-size: 13px; font-weight: 600">Full week</button>
+<button class="btn" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: transparent; color: #A3ABBC; font-size: 13px">Minimum week</button>
+</div>
+<button class="btn" style="height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid #252B37; background: transparent; color: #F3F5F9; font-size: 14px">Manage week ⌄</button>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 12px">
+<div style="flex: 1 1 170px; background: #12151C; border: 1px solid #1C212B; border-radius: 18px; padding: 16px 18px"><div class="lbl">Planned</div><div class="num" style="font-size: 36px; margin-top: 8px">6h 40m</div></div>
+<div style="flex: 1 1 170px; background: #12151C; border: 1px solid #1C212B; border-radius: 18px; padding: 16px 18px"><div class="lbl">Ride volume</div><div class="num" style="font-size: 36px; margin-top: 8px">86<span style="font-size: 16px; color: #A3ABBC"> km</span></div></div>
+<div style="flex: 1 1 170px; background: #12151C; border: 1px solid #1C212B; border-radius: 18px; padding: 16px 18px"><div class="lbl">Recovery days</div><div class="num" style="font-size: 36px; margin-top: 8px">0</div></div>
+<div style="flex: 1.4 1 240px; background: #12151C; border: 1px solid #1C212B; border-radius: 18px; padding: 16px 18px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><div class="lbl">Execution</div><span style="font-size: 12px; color: #D4FF3A; font-weight: 600">4 of 4 matched so far</span></div>
+<div style="display: flex; align-items: center; gap: 14px; margin-top: 8px"><span class="num" style="font-size: 36px">4<span style="font-size: 20px; color: #8A93A6">/7</span></span>
+<div style="flex: 1; display: flex; gap: 4px"><span style="flex: 1; height: 10px; border-radius: 3px; background: #D4FF3A"></span><span style="flex: 1; height: 10px; border-radius: 3px; background: #D4FF3A"></span><span style="flex: 1; height: 10px; border-radius: 3px; background: #D4FF3A"></span><span style="flex: 1; height: 10px; border-radius: 3px; background: #D4FF3A"></span><span style="flex: 1; height: 10px; border-radius: 3px; border: 1px dashed #3A4150; box-sizing: border-box"></span><span style="flex: 1; height: 10px; border-radius: 3px; border: 1px dashed #3A4150; box-sizing: border-box"></span><span style="flex: 1; height: 10px; border-radius: 3px; border: 1px dashed #3A4150; box-sizing: border-box"></span></div></div>
+</div>
+</div>
+
+<div style="overflow-x: auto; padding-bottom: 6px">
+<div style="display: grid; grid-template-columns: repeat(7, minmax(232px, 1fr)); gap: 12px">
+<sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+<article style="{{d.card}}">
+<div style="{{d.head}}">
+<div style="display: flex; justify-content: space-between; align-items: flex-start">
+<div><div style="font-size: 12px; font-weight: 700; letter-spacing: .1em; color: #A3ABBC">{{d.dow}}</div><div class="num" style="font-size: 30px; font-weight: 800; margin-top: 4px">{{d.date}}</div></div>
+<div style="text-align: right"><span style="{{d.statusStyle}}">{{d.status}}</span><div style="{{d.weatherStyle}}">{{d.weather}}</div></div>
+</div>
+<div style="{{d.sportStyle}}"><span style="{{d.sportDot}}"></span>{{d.sport}}</div>
+<div style="font-weight: 700; font-size: 18px; line-height: 1.25; margin-top: 6px; min-height: 46px">{{d.title}}</div>
+<div style="display: flex; gap: 18px; margin-top: 12px">
+<div><div class="lbl" style="font-size: 10px">Duration</div><div class="num" style="font-size: 24px; margin-top: 4px">{{d.dur}}</div></div>
+<div><div class="lbl" style="font-size: 10px">Distance</div><div class="num" style="font-size: 24px; margin-top: 4px">{{d.dist}}</div></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px">
+<sc-for list="{{d.chips}}" as="c" hint-placeholder-count="2"><span style="{{c.style}}">{{c.label}}</span></sc-for>
+</div>
+</div>
+<div style="padding: 14px 16px 0; flex: 1 1 auto">
+<p class="clamp" style="margin: 0; font-size: 13px; color: #A3ABBC; line-height: 1.5">{{d.details}}</p>
+<a href="#" style="display: inline-block; font-size: 13px; font-weight: 600; padding: 8px 0">View details →</a>
+</div>
+<div style="padding: 0 12px 12px">
+<sc-if value="{{d.done}}" hint-placeholder-val="{{ true }}">
+<div style="{{d.doneBox}}">
+<div style="display: flex; justify-content: space-between; align-items: center"><span class="lbl" style="font-size: 10px; color: #D4FF3A">✓ Completed</span><a href="#" style="font-size: 12px; color: #A3ABBC">Relink</a></div>
+<div style="font-weight: 600; font-size: 14px; margin-top: 8px">{{d.actName}}</div>
+<div style="display: flex; gap: 12px; margin-top: 6px; font-size: 13px; color: #C9CFDA"><span class="num" style="font-size: 18px">{{d.actA}}</span><span class="num" style="font-size: 18px">{{d.actB}}</span><span class="num" style="font-size: 18px">{{d.actC}}</span></div>
+<div style="height: 4px; border-radius: 2px; background: #252B37; margin-top: 10px"><div style="{{d.matchBar}}"></div></div>
+<div style="font-size: 11px; color: #8A93A6; margin-top: 4px">{{d.matchText}}</div>
+</div>
+</sc-if>
+<sc-if value="{{d.upcoming}}" hint-placeholder-val="{{ false }}">
+<div style="border-radius: 14px; border: 1px dashed #2E3543; padding: 12px; font-size: 13px; color: #8A93A6">{{d.upNote}}</div>
+</sc-if>
+</div>
+</article>
+</sc-for>
+</div>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px">
+<section aria-label="Coach notes" style="flex: 1.5 1 480px; background: #12151C; border: 1px solid #1C212B; border-radius: 24px; padding: 24px">
+<div style="display: flex; justify-content: space-between; align-items: center"><div class="lbl">Coach's reasoning</div><a href="#" style="font-size: 13px; font-weight: 600; padding: 6px 0">Plan changes · 4</a></div>
+<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 14px">
+<div style="display: flex; gap: 12px"><span style="flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px; background: rgba(255,181,71,.14); color: #FFB547; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px">!</span><div style="font-size: 14px; color: #C9CFDA; line-height: 1.5">Illness window ends today, but readiness is <strong style="color: #FFB547">Watch</strong>: load +32% on last week, 3.4 h sleep debt, two RPE 8–9 lifts. Monday stays controlled and the quality ride is sweet spot 3×10, the gentlest structured option.</div></div>
+<div style="display: flex; gap: 12px"><span style="flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px; background: rgba(59,140,255,.14); color: #6EA9FF; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px">W</span><div style="font-size: 14px; color: #C9CFDA; line-height: 1.5">FTP 242 W is likely high: treat watts as a ceiling and ride by HR and feel. Drop to endurance if it feels hard.</div></div>
+<div style="display: flex; gap: 12px"><span style="flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px; background: rgba(255,77,154,.14); color: #FF6FAE; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px">L</span><div style="font-size: 14px; color: #C9CFDA; line-height: 1.5">No hard ride next to the lower-body lift. Key sessions sit Mon–Thu; Fri and Sun carry only easy work or a lift that can be shortened. Rotation C, D, A, then B.</div></div>
+</div>
+</section>
+<section aria-label="Goal alignment" style="flex: 1 1 300px; background: #12151C; border: 1px solid #1C212B; border-radius: 24px; padding: 24px">
+<div style="display: flex; justify-content: space-between; align-items: center"><div class="lbl">Goal alignment</div><button class="btn" aria-label="Add goal" style="width: 36px; height: 36px; border-radius: 999px; border: 1px solid #252B37; background: transparent; color: #F3F5F9; font-size: 18px">+</button></div>
+<div style="display: flex; gap: 24px; margin-top: 14px">
+<div><div class="num" style="font-size: 48px; color: #D4FF3A">4</div><div style="font-size: 13px; color: #A3ABBC; margin-top: 4px">goals supported this week</div></div>
+<div><div class="num" style="font-size: 48px">1</div><div style="font-size: 13px; color: #A3ABBC; margin-top: 4px">achieved</div></div>
+</div>
+<div style="margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: #191D27; font-size: 13px; color: #C9CFDA; line-height: 1.5">Eat enough and hit protein on lift days.</div>
+</section>
+</div>
+
+<section aria-label="Next 4 weeks" style="background: #12151C; border: 1px solid #1C212B; border-radius: 24px; padding: 24px 28px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px"><div><div class="lbl">Next 4 weeks</div><h2 class="num" style="margin: 8px 0 0; font-size: 32px; font-style: italic; font-weight: 800; text-transform: uppercase">Where the weeks are heading</h2></div><span style="font-size: 13px; color: #8A93A6">Each week gets its full plan when it arrives</span></div>
+<div style="display: flex; flex-direction: column; margin-top: 16px">
+<sc-for list="{{ahead}}" as="a" hint-placeholder-count="4">
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding: 16px 0; border-top: 1px solid #1C212B">
+<div style="flex: 0 0 130px"><div style="font-weight: 700; font-size: 15px">{{a.range}}</div><div style="font-size: 12px; color: #8A93A6; margin-top: 2px">{{a.when}}</div></div>
+<div style="flex: 1 1 280px; min-width: 0"><div style="font-size: 14px; font-weight: 600">{{a.summary}}</div><div style="font-size: 13px; color: #8A93A6; margin-top: 2px">{{a.note}}</div></div>
+<div style="flex: 0 0 150px"><div style="display: flex; align-items: baseline; gap: 6px"><span class="num" style="font-size: 22px">{{a.load}}</span><span style="font-size: 12px; color: #8A93A6">load</span></div><div style="{{a.rampStyle}}">{{a.ramp}}</div></div>
+<div style="flex: 0 1 260px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end"><sc-for list="{{a.tags}}" as="t" hint-placeholder-count="1"><span style="{{t.style}}">{{t.label}}</span></sc-for></div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-label="Fitness ahead" style="background: #12151C; border: 1px solid #1C212B; border-radius: 24px; padding: 28px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px">
+<div><div class="lbl">Fitness ahead</div><h2 class="num" style="margin: 8px 0 0; font-size: 32px; font-style: italic; font-weight: 800; text-transform: uppercase">Where fitness and fatigue are heading</h2></div>
+<div style="flex: 0 1 420px; padding: 12px 16px; border-radius: 14px; background: rgba(255,181,71,.08); border: 1px solid rgba(255,181,71,.3); font-size: 14px; color: #F3F5F9; line-height: 1.45"><strong style="color: #FFB547">Steep ramp ahead.</strong> The mountains week raises fitness by ~13, above the safe 7 a week. Keep the rides around it easy.</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 18px; margin-top: 18px; font-size: 12px; color: #A3ABBC">
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 16px; height: 3px; border-radius: 2px; background: #F3F5F9"></span>Fitness</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 16px; border-top: 3px dashed #FFB547"></span>Fatigue</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 2px; background: #3B8CFF"></span>Daily load</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 2px; border: 1px dashed #8A93A6; box-sizing: border-box"></span>Planned load (estimate)</span>
+</div>
+<div role="img" aria-label="Fitness falls from 112 to 76 over six weeks; the plan projects a rise to 87 after the mountain week, then a slow decline to 70 by mid-November. Fatigue peaks near 117 on Oct 25." style="position: relative; height: 260px; margin-top: 14px">
+<div style="position: absolute; left: 0; right: 32px; top: 0; bottom: 0; border-bottom: 1px solid #252B37">
+<div style="position: absolute; top: 0; bottom: 0; left: {{tripLeft}}; width: {{tripWidth}}; background: rgba(155,123,255,.10); border-left: 1px dashed rgba(155,123,255,.5); border-right: 1px dashed rgba(155,123,255,.5)"><span style="position: absolute; top: 6px; left: 8px; font-size: 11px; font-weight: 700; color: #B9A3FF; letter-spacing: .06em">MOUNTAINS</span></div>
+<div style="position: absolute; top: 0; bottom: 0; left: {{todayLeft}}; border-left: 2px solid #D4FF3A"><span style="position: absolute; top: -2px; left: 6px; font-size: 11px; font-weight: 700; color: #D4FF3A; white-space: nowrap">TODAY</span></div>
+<div style="position: absolute; left: 0; right: 0; top: 13%; border-top: 1px solid #1A1E27"></div>
+<div style="position: absolute; left: 0; right: 0; top: 56.5%; border-top: 1px solid #1A1E27"></div>
+<div style="position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 2px">
+<sc-for list="{{fBars}}" as="b" hint-placeholder-count="73"><div title="{{b.tip}}" style="{{b.style}}"></div></sc-for>
+</div>
+<svg viewBox="0 0 730 260" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none" aria-hidden="true">
+<defs><linearGradient id="faFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3F5F9" stop-opacity=".14"></stop><stop offset="1" stop-color="#F3F5F9" stop-opacity="0"></stop></linearGradient></defs>
+<polygon points="{{fArea}}" fill="url(#faFill)"></polygon>
+<polyline points="{{fCtlHist}}" fill="none" stroke="#F3F5F9" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+<polyline points="{{fCtlProj}}" fill="none" stroke="#F3F5F9" stroke-opacity=".6" stroke-width="2.5" stroke-dasharray="2 4" stroke-linecap="round" vector-effect="non-scaling-stroke"></polyline>
+<polyline points="{{fAtl}}" fill="none" stroke="#FFB547" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+</svg>
+</div>
+<div class="num" style="position: absolute; right: 0; top: 13%; transform: translateY(-50%); font-size: 13px; color: #8A93A6">200</div>
+<div class="num" style="position: absolute; right: 0; top: 56.5%; transform: translateY(-50%); font-size: 13px; color: #8A93A6">100</div>
+<div class="num" style="position: absolute; right: 0; bottom: 0; font-size: 13px; color: #8A93A6">0</div>
+</div>
+<div style="position: relative; height: 18px; margin-right: 32px; margin-top: 8px; font-size: 12px; color: #8A93A6">
+<span style="position: absolute; left: 0">Sep 4</span><span style="position: absolute; left: 25%">Sep 22</span><span style="position: absolute; left: 50%">Oct 10</span><span style="position: absolute; left: 75%">Oct 28</span><span style="position: absolute; right: 0">Nov 15</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 18px">
+<sc-for list="{{ramps}}" as="r" hint-placeholder-count="5">
+<div style="{{r.box}}"><div style="font-size: 12px; color: #A3ABBC">{{r.week}}</div><div style="display: flex; align-items: baseline; gap: 6px; margin-top: 6px"><span style="{{r.valStyle}}">{{r.val}}</span><span style="font-size: 12px; color: #8A93A6">fitness / wk</span></div><div style="font-size: 12px; color: #8A93A6; margin-top: 2px">Ends at {{r.end}}</div></div>
+</sc-for>
+</div>
+</section>
+
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2500}}'>
+class Component extends DCLogic {
+renderVals() {
+var C = { ride: '#3B8CFF', str: '#FF4D9A', rec: '#2ED3B0' };
+// Season timeline: 20 weeks from Sep 28
+var season = [];
+for (var i = 0; i < 20; i++) {
+var past = i < 2, cur = i === 2, trip = i === 3, re = i === 4, rev = i === 5, goal = i === 14;
+var bg = cur ? '#D4FF3A' : trip ? 'rgba(155,123,255,.55)' : re ? 'rgba(255,181,71,.45)' : past ? '#3A4150' : '#191D27';
+season.push({
+tip: ['Sep 28', 'Oct 5', 'Oct 12 · this week', 'Oct 19 · Mountains', 'Oct 26 · Re-entry', 'Nov 2 · Goal review', 'Nov 9', 'Nov 16', 'Nov 23', 'Nov 30', 'Dec 7', 'Dec 14', 'Dec 21', 'Dec 28', 'Jan 4 · Goal date', 'Jan 11', 'Jan 18', 'Jan 25', 'Feb 1', 'Feb 8'][i],
+cell: 'position:relative;border-radius:8px;background:' + bg + ';' + (past || cur || trip || re ? '' : 'border:1px solid #232834;box-sizing:border-box;'),
+markStyle: rev ? 'position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;border:2px solid #3B8CFF;box-sizing:border-box' : goal ? 'position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#3B8CFF;box-shadow:0 0 10px #3B8CFF' : 'display:none'
+});
+}
+function chip(label, color, dashed) { return { label: label, style: 'padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600;' + (dashed ? 'border:1px dashed ' + color + ';color:' + color : 'background:' + color + '24;color:' + color) }; }
+var D = [
+{ dow: 'MON', date: 'Oct 12', sport: 'strength', title: 'Workout C · Wide Shoulders', dur: '45m', dist: '—', chips: [chip('Upper-body', '#FF6FAE')], details: '40–45 min. Shoulder press, lateral raise, rear delt raise, upright row only if shoulders feel fine, one curl, one triceps movement. Leave 2 reps in reserve, nothing near failure.', act: ['Workout C · Wide Shoulders', '48 min', '', ''], match: 107, matchText: '48 of 45 min · upper-body ✓' },
+{ dow: 'TUE', date: 'Oct 13', sport: 'ride', title: 'Sweet spot 3 × 10 min', dur: '70m', dist: '—', chips: [chip('Tempo', '#FF8A2A'), chip('.zwo', '#6EA9FF', true), chip('Fuel ~60 g/h', '#2ED3B0', true)], details: '70 min indoor. Three 10-min sweet spot blocks. Treat the watt targets as a ceiling and go by HR/feel, since FTP is likely set high. If it feels too hard, swap to Endurance 60.', act: ['Zwift · Sweet spot 3 × 10', '42.2 km', '70 min', '164 W'], match: 100, matchText: '70 of 70 min · tempo ✓' },
+{ dow: 'WED', date: 'Oct 14', sport: 'ride', title: 'Easy endurance ride', dur: '60m', dist: '28 km', chips: [chip('Easy', '#2ED3B0'), chip('Endurance 60 .zwo', '#6EA9FF', true)], details: '60 min conversational Zone 2, flat. Outdoors if practical; easy outdoor rides have felt easier than indoor ones. Legs stay fresh for Thursday’s lift.', act: ['Zwift · Endurance 60', '29.5 km', '60 min', '124 W'], match: 100, matchText: '60 of 60 min · easy ✓' },
+{ dow: 'THU', date: 'Oct 15', today: true, weather: '15° / 10° · dry', sport: 'strength', title: 'Workout D · Lower + Core', dur: '50m', dist: '—', chips: [chip('Lower-body', '#FF6FAE')], details: '45–50 min, rebuilding legs gradually. Back squat about 60–65 kg, 3×6–8, RDL 3×8 at moderate load, Bulgarian split squat 3×8 at 14 kg, calf raise, hanging leg raise. Stop if the left knee complains.', act: ['Workout D · Lower + Core', '40 min', '5,295 kg', ''], match: 80, matchText: '40 of 50 min · lower-body ✓' },
+{ dow: 'FRI', date: 'Oct 16', sport: 'recovery', title: 'Recovery spin', dur: '40m', dist: '16 km', chips: [chip('Recovery', '#2ED3B0'), chip('.zwo', '#6EA9FF', true)], details: '40 min very easy spin to loosen the legs. Keeps the streak without adding load. Walk instead if tired.', up: 'Upcoming · keeps the streak' },
+{ dow: 'SAT', date: 'Oct 17', sport: 'ride', title: 'Long easy endurance ride', dur: '90m', dist: '42 km', chips: [chip('Long', '#6EA9FF'), chip('Bring food', '#2ED3B0', true)], details: '90 min steady Zone 2, no surges. Bring food and fluids and eat on the bike. The week’s volume ride, so keep it conversational. Shorten to 60–75 min if energy is low.', up: 'Upcoming · volume ride of the week' },
+{ dow: 'SUN', date: 'Oct 18', sport: 'strength', title: 'Workout A · Upper Chest', dur: '45m', dist: '—', chips: [chip('Upper-body', '#FF6FAE'), chip('Travel day', '#B9A3FF', true)], details: '40–45 min before the trip week. Incline bench, DB bench, pull-ups, lateral raise, one curl, one triceps movement. Short version if Sunday slips: incline bench, pull-ups and lateral raise only (25 min).', up: 'Upcoming · 25-min short version ready' }
+];
+var days = D.map(function (d) {
+var col = d.sport === 'ride' ? C.ride : d.sport === 'strength' ? C.str : C.rec;
+var done = !!d.act;
+return {
+dow: d.dow, date: d.date, title: d.title, dur: d.dur, dist: d.dist, chips: d.chips, details: d.details,
+sport: d.sport.toUpperCase(),
+done: done, upcoming: !done, upNote: d.up || '',
+status: d.today ? 'TODAY' : done ? '✓ MATCHED' : 'UPCOMING',
+statusStyle: 'display:inline-block;padding:4px 9px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.08em;' + (d.today ? 'background:#D4FF3A;color:#0A0C11' : done ? 'background:rgba(212,255,58,.12);color:#D4FF3A' : 'border:1px solid #2E3543;color:#A3ABBC'),
+weather: d.weather || '', weatherStyle: d.weather ? 'font-size:12px;color:#A3ABBC;margin-top:6px' : 'display:none',
+card: 'display:flex;flex-direction:column;border-radius:20px;overflow:hidden;background:#12151C;border:1px solid ' + (d.today ? '#D4FF3A' : '#1C212B') + ';' + (done || d.today ? '' : 'border-style:dashed;border-color:#2E3543;'),
+head: 'padding:16px;background-image:radial-gradient(120% 90% at 100% 0%,' + col + '2E 0%,rgba(0,0,0,0) 65%);border-bottom:1px solid #1C212B',
+sportStyle: 'display:flex;align-items:center;gap:6px;margin-top:14px;font-size:11px;font-weight:700;letter-spacing:.1em;color:' + col,
+sportDot: 'width:8px;height:8px;border-radius:' + (d.sport === 'strength' ? '2px' : '50%') + ';background:' + col,
+actName: done ? d.act[0] : '', actA: done ? d.act[1] : '', actB: done ? d.act[2] : '', actC: done ? d.act[3] : '',
+doneBox: 'border-radius:14px;padding:12px;background:' + col + '1A;border:1px solid ' + col + '40',
+matchBar: 'height:4px;border-radius:2px;background:#D4FF3A;width:' + Math.min(100, d.match || 0) + '%',
+matchText: d.matchText || ''
+};
+});
+function tag(label, color) { return { label: label, style: 'padding:5px 10px;border-radius:999px;font-size:12px;font-weight:600;background:' + color + '22;color:' + color }; }
+var ahead = [
+{ range: 'Oct 19–25', when: 'Next week', summary: 'Hikes instead of rides · 3 short travel lifts', note: 'Travel Mon and Sun', load: '1,120', ramp: '▲ +13.3 fitness · steep', rampStyle: 'font-size:12px;font-weight:600;color:#FFB547;margin-top:2px', tags: [tag('Mountains', '#B9A3FF'), tag('Travel Mon, Sun', '#A3ABBC')] },
+{ range: 'Oct 26–Nov 1', when: 'In 2 weeks', summary: '1× quality ride Fri–Sun · 3 lifts, legs at pre-trip loads', note: 'Easy only Mon–Tue · no intervals until Fri', load: '307', ramp: '▼ −6.6 fitness', rampStyle: 'font-size:12px;font-weight:600;color:#8A93A6;margin-top:2px', tags: [tag('Re-entry Oct 26–29', '#FFB547')] },
+{ range: 'Nov 2–8', when: 'In 3 weeks', summary: 'Normal week', note: '1 quality ride · 3 lifts', load: '307', ramp: '▼ −5.6 fitness', rampStyle: 'font-size:12px;font-weight:600;color:#8A93A6;margin-top:2px', tags: [tag('Goal review · Ride 100 km weekly', '#6EA9FF')] },
+{ range: 'Nov 9–15', when: 'In 4 weeks', summary: 'Normal week', note: '1 quality ride · 3 lifts', load: '307', ramp: '▼ −4.7 fitness', rampStyle: 'font-size:12px;font-weight:600;color:#8A93A6;margin-top:2px', tags: [] }
+];
+// Fitness ahead: 42 days of history (Sep 4 – Oct 15) + 31 days projected (Oct 16 – Nov 15): [load, ctl, atl, rideShare]
+var H = [[71,112,127],[88,111,122],[151,112,126],[28,110,112],[215,112,126],[184,114,134],[145,115,135],[138,115,136],[98,115,131],[98,114,126],[46,113,116],[43,111,106],[51,110,99],[130,110,103],[33,108,94],[27,107,85],[38,105,78],[29,103,72],[38,102,67],[20,100,61],[39,98,58],[67,98,59],[17,96,54],[54,95,54],[109,95,61],[127,96,70],[25,94,64],[8,92,56],[8,90,50],[9,88,44],[7,86,40],[13,85,36],[29,83,35],[27,82,34],[52,81,36],[26,80,35],[48,79,37],[78,79,42],[38,78,42],[63,78,44],[43,77,44],[32,76,43]];
+var P = [[16,75,39],[69,75,43],[36,74,42],[160,76,58],[160,78,72],[160,80,83],[160,81,94],[160,83,102],[160,85,110],[160,87,117],[44,86,107],[44,85,99],[44,84,91],[44,83,85],[44,82,80],[44,81,75],[44,80,71],[44,79,67],[44,79,64],[44,78,61],[44,77,59],[44,76,57],[44,75,55],[44,75,54],[44,74,52],[44,73,51],[44,73,50],[44,72,49],[44,71,49],[44,71,48],[44,70,48]];
+var ALL = H.concat(P), N = ALL.length, MAX = 230, h = H.length;
+var start = new Date(2026, 8, 4);
+var fBars = ALL.map(function (d, i) {
+var proj = i >= h;
+var dt = new Date(start.getTime() + i * 86400000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+return { tip: dt + (proj ? ' · planned ' : ' · load ') + d[0] + ' · fitness ' + d[1] + ' · fatigue ' + d[2],
+style: 'flex:1 1 0;min-width:0;border-radius:2px 2px 0 0;height:' + (d[0] / MAX * 100) + '%;' + (proj ? 'border:1px dashed rgba(163,171,188,.45);border-bottom:0;box-sizing:border-box;background:rgba(163,171,188,.06)' : 'background:#3B8CFF;opacity:.55') };
+});
+function x(i) { return ((i + .5) / N * 730).toFixed(1); }
+function y(v) { return (260 - v / MAX * 260).toFixed(1); }
+var ctlH = H.map(function (d, i) { return x(i) + ',' + y(d[1]); });
+var ctlP = [x(h - 1) + ',' + y(H[h - 1][1])].concat(P.map(function (d, i) { return x(h + i) + ',' + y(d[1]); }));
+var atl = ALL.map(function (d, i) { return x(i) + ',' + y(d[2]); }).join(' ');
+var fArea = ctlH.concat(ctlP.slice(1)).join(' ') + ' ' + x(N - 1) + ',260 ' + x(0) + ',260';
+var ramps = [
+{ week: 'This week', val: '−5.5', end: '73.6', warn: false },
+{ week: 'Oct 19 · Mountains', val: '+13.3', end: '86.8', warn: true },
+{ week: 'Oct 26', val: '−6.6', end: '80.2', warn: false },
+{ week: 'Nov 2', val: '−5.6', end: '74.6', warn: false },
+{ week: 'Nov 9', val: '−4.7', end: '69.9', warn: false }
+].map(function (r) { return { week: r.week, val: r.val, end: r.end,
+box: 'border-radius:14px;padding:12px 14px;' + (r.warn ? 'background:rgba(255,181,71,.08);border:1px solid rgba(255,181,71,.35)' : 'background:#191D27'),
+valStyle: 'font-family:Barlow Condensed,sans-serif;font-weight:700;font-size:26px;line-height:1;color:' + (r.warn ? '#FFB547' : '#F3F5F9') }; });
+return { season: season, days: days, ahead: ahead, fBars: fBars, fCtlHist: ctlH.join(' '), fCtlProj: ctlP.join(' '), fAtl: atl, fArea: fArea, ramps: ramps,
+todayLeft: ((h) / N * 100).toFixed(2) + '%', tripLeft: ((h + 3) / N * 100).toFixed(2) + '%', tripWidth: (7 / N * 100).toFixed(2) + '%' };
+}
+}
+</script>
+</body>
+</html>

@@ -1,8 +1,8 @@
 <template>
-  <main class="trends-page motion-page">
+  <main class="trends-page motion-page" :data-view="activeView">
     <header class="page-head">
       <div>
-        <div class="page-eyebrow">Your training, in perspective</div>
+        <div class="page-eyebrow">Review · Training insights</div>
         <h1 class="page-title">Trends</h1>
         <p class="page-sub">See the work. Find your rhythm. Watch your progress take shape.</p>
       </div>
@@ -68,9 +68,9 @@
             <button type="button" class="card-action" @click="openDialog('ftp')">Log an FTP test</button>
           </article>
           <article class="card marker-card">
-            <span class="marker-symbol" aria-hidden="true">〰</span><span class="marker-label">Running threshold</span><strong>{{ runThresholdLabel }}</strong><p>{{ runThresholdCopy }}</p>
+            <span class="marker-symbol marker-run" aria-hidden="true">〰</span><span class="marker-label">Running threshold</span><strong>{{ runThresholdLabel }}</strong><p>{{ runThresholdCopy }}</p>
           </article>
-          <article v-for="benchmark in visibleBenchmarks" :key="benchmark.key" class="card marker-card">
+          <article v-for="benchmark in visibleBenchmarks" :key="benchmark.key" class="card marker-card" :class="benchmark.key.startsWith('run_') ? 'marker-running' : 'marker-cycling'">
             <span class="marker-symbol" aria-hidden="true">◈</span><span class="marker-label">{{ benchmark.label }}</span><strong>{{ benchmarkValue(benchmark) }}</strong><p>{{ benchmarkCopy(benchmark) }}</p>
             <button v-if="benchmark.activity_id" type="button" class="card-action" @click="router.push(`/activities/${benchmark.activity_id}`)">View activity</button>
           </article>
@@ -88,8 +88,8 @@
             <div class="support-head"><span class="support-icon support-weight" aria-hidden="true">◇</span><div><span>Weight</span><strong>{{ latestWeightLabel }}</strong></div></div>
             <p>{{ weightSummary }}</p>
             <svg v-if="weightSparklinePoints" class="support-sparkline" viewBox="0 0 240 42" preserveAspectRatio="none" aria-hidden="true">
-              <defs><linearGradient id="weight-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbbf24" stop-opacity=".22"/><stop offset="1" stop-color="#fbbf24" stop-opacity="0"/></linearGradient></defs>
-              <path :d="`${weightSparklineArea} Z`" fill="url(#weight-area)"/><polyline :points="weightSparklinePoints" fill="none" stroke="#fbbf24" stroke-width="2" vector-effect="non-scaling-stroke"/>
+              <defs><linearGradient id="weight-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--tone-recovery)" stop-opacity=".22"/><stop offset="1" stop-color="var(--tone-recovery)" stop-opacity="0"/></linearGradient></defs>
+              <path :d="`${weightSparklineArea} Z`" fill="url(#weight-area)"/><polyline :points="weightSparklinePoints" fill="none" stroke="var(--tone-recovery)" stroke-width="2" vector-effect="non-scaling-stroke"/>
             </svg>
             <div class="support-actions"><button type="button" class="card-action" @click="selectView('weight')">View trend</button><button type="button" class="card-action" @click="openDialog('weight')">Log weight</button></div>
           </article>
@@ -98,8 +98,8 @@
             <div class="support-head"><span class="support-icon support-recovery" aria-hidden="true">♥</span><div><span>Resting heart rate</span><strong>{{ restingHeartRateLabel }}</strong></div></div>
             <p>{{ restingHeartRateCopy }}</p>
             <svg v-if="restingHrSparklinePoints" class="support-sparkline" viewBox="0 0 240 42" preserveAspectRatio="none" aria-hidden="true">
-              <defs><linearGradient id="rhr-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fb7185" stop-opacity=".22"/><stop offset="1" stop-color="#fb7185" stop-opacity="0"/></linearGradient></defs>
-              <path :d="`${restingHrSparklineArea} Z`" fill="url(#rhr-area)"/><polyline :points="restingHrSparklinePoints" fill="none" stroke="#fb7185" stroke-width="2" vector-effect="non-scaling-stroke"/>
+              <defs><linearGradient id="rhr-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--z2)" stop-opacity=".22"/><stop offset="1" stop-color="var(--z2)" stop-opacity="0"/></linearGradient></defs>
+              <path :d="`${restingHrSparklineArea} Z`" fill="url(#rhr-area)"/><polyline :points="restingHrSparklinePoints" fill="none" stroke="var(--z2)" stroke-width="2" vector-effect="non-scaling-stroke"/>
             </svg>
             <button type="button" class="status-chip status-chip-action" :class="restingHeartRate?.available ? 'status-connected' : 'status-muted'" @click="selectView('recovery')">{{ restingHeartRate?.available ? 'Explore recovery →' : 'Not imported' }}</button>
           </article>
@@ -213,7 +213,7 @@
     <section v-else class="measurement-detail" :aria-labelledby="`${activeView}-heading`">
       <div class="detail-head">
         <div><span class="section-kicker">Manual measurement</span><h2 :id="`${activeView}-heading`">{{ activeMetric.label }}</h2><p>{{ activeMetric.description }}</p></div>
-        <button class="primary-btn" type="button" @click="openDialog(activeView)">＋ {{ activeMetric.action }}</button>
+        <button class="secondary-btn" type="button" @click="openDialog(activeView)">＋ {{ activeMetric.action }}</button>
       </div>
       <div v-if="activeData.length" class="metric-summary-grid">
         <article class="card metric-summary-card"><span>Latest</span><strong>{{ formatMetricValue(activeData[0], activeView) }}</strong><small>{{ formatDate(activeData[0].date) }}</small></article>
@@ -233,7 +233,7 @@
         <div class="history-title">Measurement history</div>
         <div v-for="entry in activeData" :key="entry.id" class="history-row"><time :datetime="entry.date">{{ formatDate(entry.date) }}</time><strong>{{ formatMetricValue(entry, activeView) }}</strong><span>{{ entry.notes || 'No note' }}</span></div>
       </article>
-      <article v-else class="card empty-state"><span aria-hidden="true">＋</span><h3>No {{ activeMetric.label.toLowerCase() }} history yet</h3><p>{{ activeMetric.empty }}</p><button class="primary-btn" type="button" @click="openDialog(activeView)">{{ activeMetric.action }}</button></article>
+      <article v-else class="card empty-state"><span aria-hidden="true">＋</span><h3>No {{ activeMetric.label.toLowerCase() }} history yet</h3><p>{{ activeMetric.empty }}</p><button class="secondary-btn" type="button" @click="openDialog(activeView)">{{ activeMetric.action }}</button></article>
     </section>
 
     <Teleport to="body">
@@ -273,15 +273,15 @@ const metricMeta = {
   ftp: { label: 'Cycling FTP', description: 'A tested performance anchor used to set cycling zones and compare future tests.', action: 'Log FTP test', empty: 'Add a result after a repeatable FTP test. Everyday ride power does not belong here.' },
 }
 const recoveryMetricOptions = [
-  { key: 'sleep', label: 'Sleep', title: 'Sleep duration', eyebrow: 'Nightly recovery', unit: 'h', decimals: 1, chartType: 'bar', accent: '#8b9cff', higherIsPositive: null },
-  { key: 'resting_hr', label: 'Resting HR', title: 'Resting heart rate', eyebrow: 'Automatic morning signal', unit: 'bpm', decimals: 0, chartType: 'line', accent: '#fb7185', higherIsPositive: false },
-  { key: 'hrv', label: 'HRV', title: 'Heart-rate variability', eyebrow: 'Automatic recovery signal', unit: 'ms', decimals: 0, chartType: 'line', accent: '#34d399', higherIsPositive: true },
-  { key: 'sleep_debt', label: 'Sleep debt', title: '7-night sleep debt', eyebrow: 'Against your median night', unit: 'h', decimals: 1, chartType: 'line', accent: '#c4a5ff', higherIsPositive: false, targetMin: 0, targetMax: 3, targetLabel: 'Under 3 h · normal week-to-week noise' },
+  { key: 'sleep', label: 'Sleep', title: 'Sleep duration', eyebrow: 'Nightly recovery', unit: 'h', decimals: 1, chartType: 'bar', accent: 'var(--tone-recovery)', higherIsPositive: null },
+  { key: 'resting_hr', label: 'Resting HR', title: 'Resting heart rate', eyebrow: 'Automatic morning signal', unit: 'bpm', decimals: 0, chartType: 'line', accent: 'var(--z2)', higherIsPositive: false },
+  { key: 'hrv', label: 'HRV', title: 'Heart-rate variability', eyebrow: 'Automatic recovery signal', unit: 'ms', decimals: 0, chartType: 'line', accent: 'var(--z2)', higherIsPositive: true },
+  { key: 'sleep_debt', label: 'Sleep debt', title: '7-night sleep debt', eyebrow: 'Against your median night', unit: 'h', decimals: 1, chartType: 'line', accent: 'var(--tone-recovery)', higherIsPositive: false, targetMin: 0, targetMax: 3, targetLabel: 'Under 3 h · normal week-to-week noise' },
 ]
 const dailyMetricOptions = [
-  { key: 'steps', label: 'Steps', title: 'Steps', eyebrow: 'Whole-day total', unit: '', decimals: 0, chartType: 'bar', accent: '#60a5fa', higherIsPositive: null },
-  { key: 'walking_running_distance', label: 'Walking + running', title: 'Walking + running distance', eyebrow: 'Whole-day total', unit: 'km', decimals: 2, chartType: 'bar', accent: '#34d399', higherIsPositive: null },
-  { key: 'flights_climbed', label: 'Flights climbed', title: 'Flights climbed', eyebrow: 'Whole-day total', unit: '', decimals: 0, chartType: 'bar', accent: '#fbbf24', higherIsPositive: null },
+  { key: 'steps', label: 'Steps', title: 'Steps', eyebrow: 'Whole-day total', unit: '', decimals: 0, chartType: 'bar', accent: 'var(--z2)', higherIsPositive: null },
+  { key: 'walking_running_distance', label: 'Walking + running', title: 'Walking + running distance', eyebrow: 'Whole-day total', unit: 'km', decimals: 2, chartType: 'bar', accent: 'var(--z2)', higherIsPositive: null },
+  { key: 'flights_climbed', label: 'Flights climbed', title: 'Flights climbed', eyebrow: 'Whole-day total', unit: '', decimals: 0, chartType: 'bar', accent: 'var(--tone-recovery)', higherIsPositive: null },
 ]
 const normalizeView = (value) => value === 'training-load' ? 'training_load' : value === 'daily-activity' ? 'daily_activity' : views.some((item) => item.key === value) ? value : 'overview'
 const activeView = ref(normalizeView(route.query.view))
@@ -359,19 +359,19 @@ const sleepBreakdown = computed(() => {
   const night = sleepNight.value
   if (!night) return []
   const stages = [
-    { label: 'Deep', minutes: Number(night.stages?.deep || 0) * 60, color: '#8074fa' },
-    { label: 'REM', minutes: Number(night.stages?.rem || 0) * 60, color: '#d3adff' },
-    { label: 'Core', minutes: Number(night.stages?.core || 0) * 60, color: '#659eeb' },
+    { label: 'Deep', minutes: Number(night.stages?.deep || 0) * 60, color: 'var(--tone-recovery)' },
+    { label: 'REM', minutes: Number(night.stages?.rem || 0) * 60, color: 'var(--tone-strength)' },
+    { label: 'Core', minutes: Number(night.stages?.core || 0) * 60, color: 'var(--ride)' },
   ]
   const known = stages.reduce((sum, stage) => sum + stage.minutes, 0)
   if (!known) return []
   const unspecified = Math.max(0, Number(night.value) * 60 - known)
-  if (unspecified > 1) stages.push({ label: 'Unspecified', minutes: unspecified, color: '#64748b' })
+  if (unspecified > 1) stages.push({ label: 'Unspecified', minutes: unspecified, color: 'var(--muted)' })
   const total = stages.reduce((sum, stage) => sum + stage.minutes, 0)
   return stages.filter(stage => stage.minutes > 0).map(stage => ({ ...stage, percent: Math.round(stage.minutes / total * 100), share: stage.minutes / total * 100 }))
 })
 const sleepStageGradient = computed(() => {
-  if (!sleepBreakdown.value.length) return 'conic-gradient(#64748b33 0% 100%)'
+  if (!sleepBreakdown.value.length) return 'conic-gradient(var(--surface3) 0% 100%)'
   let offset = 0
   return `conic-gradient(${sleepBreakdown.value.map(stage => { const start = offset; offset += stage.share; return `${stage.color} ${start}% ${offset}%` }).join(', ')})`
 })
@@ -459,10 +459,10 @@ const restingHrSparklinePoints = computed(() => sparklinePoints(restingHeartRate
 const weightSparklineArea = computed(() => sparklineArea(metricData.value.weight, 240, 42, 3))
 const restingHrSparklineArea = computed(() => sparklineArea(restingHeartRate.value?.history, 240, 42, 3))
 const dailySignals = computed(() => [
-  { key: 'sleep', label: 'Sleep', value: sleepLabel.value, context: sleepCopy.value, accent: '#8b9cff', view: 'recovery', points: sparklinePoints(healthHistory('sleep'), 120, 24, 2) },
-  { key: 'hrv', label: 'HRV', value: healthMetricLabel('hrv', 'ms', 0), context: healthMetricDate('hrv'), accent: '#34d399', view: 'recovery', points: sparklinePoints(healthHistory('hrv'), 120, 24, 2) },
-  { key: 'steps', label: 'Steps', value: healthMetricLabel('steps', '', 0), context: healthMetricDate('steps'), accent: '#60a5fa', view: 'daily_activity', points: sparklinePoints(healthHistory('steps'), 120, 24, 2) },
-  { key: 'walking_running_distance', label: 'Walking + running', value: healthMetricLabel('walking_running_distance', 'km', 2), context: movementContext.value, accent: '#34d399', view: 'daily_activity', points: sparklinePoints(healthHistory('walking_running_distance'), 120, 24, 2) },
+  { key: 'sleep', label: 'Sleep', value: sleepLabel.value, context: sleepCopy.value, accent: 'var(--tone-recovery)', view: 'recovery', points: sparklinePoints(healthHistory('sleep'), 120, 24, 2) },
+  { key: 'hrv', label: 'HRV', value: healthMetricLabel('hrv', 'ms', 0), context: healthMetricDate('hrv'), accent: 'var(--z2)', view: 'recovery', points: sparklinePoints(healthHistory('hrv'), 120, 24, 2) },
+  { key: 'steps', label: 'Steps', value: healthMetricLabel('steps', '', 0), context: healthMetricDate('steps'), accent: 'var(--z2)', view: 'daily_activity', points: sparklinePoints(healthHistory('steps'), 120, 24, 2) },
+  { key: 'walking_running_distance', label: 'Walking + running', value: healthMetricLabel('walking_running_distance', 'km', 2), context: movementContext.value, accent: 'var(--z2)', view: 'daily_activity', points: sparklinePoints(healthHistory('walking_running_distance'), 120, 24, 2) },
 ])
 const activeDeltaLabel = computed(() => activeData.value.length < 2 ? '—' : signedMetricDelta(activeData.value[0].value - activeData.value[1].value, activeView.value))
 const chartPoints = computed(() => {
@@ -560,7 +560,7 @@ function sparklineArea(entries, width, height, padding) {
 .status-connected { background: rgba(52, 211, 153, .12); color: var(--success); }
 .daily-signal-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}.daily-signal-card{display:grid;gap:5px;padding:15px 17px}.daily-signal-card>span{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.daily-signal-card>strong{font-family:var(--font-display);font-size:18px}.daily-signal-card>small{overflow:hidden;color:var(--muted);font-size:9px;text-overflow:ellipsis;white-space:nowrap}
 .health-detail{display:grid;gap:14px}.metric-switcher{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.metric-switcher-4{grid-template-columns:repeat(4,minmax(0,1fr))}.metric-switcher button{--metric-color:var(--accent);position:relative;display:grid;min-width:0;gap:4px;border:1px solid var(--border);border-radius:14px;background:rgb(var(--panel-rgb) / .72);padding:15px 17px;color:var(--text);cursor:pointer;text-align:left}.metric-switcher button:before{position:absolute;inset:0 auto 0 0;width:2px;border-radius:14px 0 0 14px;background:var(--metric-color);content:'';opacity:0;transition:opacity .15s ease}.metric-switcher button:hover{border-color:color-mix(in srgb,var(--metric-color) 34%,var(--border));background:rgb(var(--deep-rgb) / .9)}.metric-switcher button.active{border-color:color-mix(in srgb,var(--metric-color) 42%,var(--border));background:color-mix(in srgb, color-mix(in srgb,var(--metric-color) 9%,transparent), rgb(var(--panel-rgb) / .88));box-shadow:inset 0 1px 0 rgb(var(--ov-rgb) / .025)}.metric-switcher button.active:before{opacity:1}.metric-switcher span{overflow:hidden;color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.1em;text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}.metric-switcher strong{font-family:var(--font-display);font-size:21px}.metric-switcher small{color:var(--muted);font-size:8px}.sleep-stage-strip{display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:12px;background:rgb(var(--panel-rgb) / .48);padding:10px 14px}.sleep-stage-strip span{display:grid;min-width:92px;gap:2px;border-right:1px solid var(--border);padding:0 15px}.sleep-stage-strip span:first-child{padding-left:0}.sleep-stage-strip span:last-child{border-right:0}.sleep-stage-strip i{color:var(--muted);font-size:7px;font-style:normal;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.sleep-stage-strip strong{font-size:11px}
-.training-history{display:grid;gap:14px}.history-insight-grid{display:grid;grid-template-columns:minmax(300px,.72fr) minmax(0,1.28fr);gap:12px;align-items:start}.hr-zone-card,.heatmap-card{padding:20px;overflow:hidden}.insight-card-head,.year-summary-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.insight-card-head>div,.year-summary-head>div{display:grid;gap:5px}.insight-card-head strong,.year-summary-head strong{font-size:15px}.history-total{color:var(--text);font-family:var(--font-display);font-size:15px}.hr-zone-card>p,.heatmap-card>p{min-height:38px;margin:13px 0 16px;color:var(--muted);font-size:11px;line-height:1.5}.zone-stack{display:flex;height:15px;overflow:hidden;border-radius:99px;background:var(--surface2)}.zone-stack span{display:flex;align-items:center;justify-content:center;min-width:2px}.zone-stack i{color:var(--on-accent);font-size:8px;font-style:normal;font-weight:850}.zone-zone1,.zone-dot-zone1{background:var(--muted)}.zone-zone2,.zone-dot-zone2{background:oklch(from #34d399 calc(l - var(--dim-l)) c h)}.zone-zone3,.zone-dot-zone3{background:oklch(from #60a5fa calc(l - var(--dim-l)) c h)}.zone-zone4,.zone-dot-zone4{background:oklch(from #fbbf24 calc(l - var(--dim-l)) c h)}.zone-zone5,.zone-dot-zone5{background:oklch(from #f87171 calc(l - var(--dim-l)) c h)}.zone-list{display:grid;gap:7px;margin-top:14px}.zone-list div{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:10px}.zone-list div>span{display:flex;align-items:center;gap:7px}.zone-list i{width:7px;height:7px;border-radius:50%}.zone-list strong{color:var(--text);font-size:10px}.heatmap-scroll{overflow-x:auto;padding-bottom:4px}.heatmap-months{display:grid;column-gap:3px;min-width:580px;width:100%;height:17px}.heatmap-months span{color:var(--muted);font-size:8px}.heatmap-grid{display:grid;grid-template-rows:repeat(7,auto);grid-auto-columns:minmax(8px,1fr);grid-auto-flow:column;column-gap:3px;row-gap:3px;min-width:580px;width:100%}.heatmap-cell{width:100%;height:auto;aspect-ratio:1;border-radius:2px;background:rgba(125,145,176,.1)}.heatmap-legend i{width:11px;height:11px;border-radius:2px;background:rgba(125,145,176,.1)}.heatmap-level-1{background:rgba(52,211,153,.28)!important}.heatmap-level-2{background:rgba(52,211,153,.48)!important}.heatmap-level-3{background:rgba(52,211,153,.7)!important}.heatmap-level-4{background:oklch(from #34d399 calc(l - var(--dim-l)) c h)!important}.heatmap-cell.is-outside,.heatmap-cell.is-future{opacity:.18}.heatmap-legend{display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-top:11px;color:var(--muted);font-size:8px}.year-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.year-summary-card{--year-color:oklch(from #34d399 calc(l - var(--dim-l)) c h);padding:18px}.year-summary-run{--year-color:oklch(from #60a5fa calc(l - var(--dim-l)) c h)}.year-summary-strength{--year-color:oklch(from #fbbf24 calc(l - var(--dim-l)) c h)}.year-summary-head>span{color:var(--muted);font-size:10px}.year-summary-head b{color:var(--text);font-family:var(--font-display);font-size:21px}.year-summary-card svg{display:block;width:100%;height:145px;margin-top:10px;overflow:visible}.year-grid-line{stroke:rgb(var(--tint-rgb) / .12)}.year-area{fill:color-mix(in srgb,var(--year-color) 13%,transparent)}.year-line{fill:none;stroke:var(--year-color);stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}.year-summary-card circle{fill:var(--surface);stroke:var(--year-color);stroke-width:2;vector-effect:non-scaling-stroke}.year-summary-card text{fill:var(--muted);font-size:7px}.year-summary-foot{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;border-top:1px solid var(--border);padding-top:11px}.year-summary-foot span{display:grid;gap:3px;color:var(--muted);font-size:8px;text-transform:uppercase}.year-summary-foot strong{overflow:hidden;color:var(--text);font-size:10px;text-overflow:ellipsis;white-space:nowrap;text-transform:none}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media(max-width:1000px){.history-insight-grid{grid-template-columns:1fr}.year-summary-grid{grid-template-columns:1fr 1fr}.year-summary-card:first-child{grid-column:1/-1}.daily-signal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.metric-switcher{grid-template-columns:1fr}.sleep-stage-strip{overflow-x:auto}.sleep-stage-strip span{min-width:78px}}@media(max-width:720px){.year-summary-grid,.daily-signal-grid{grid-template-columns:1fr}.year-summary-card:first-child{grid-column:auto}.heatmap-card{padding-right:12px}}
+.training-history{display:grid;gap:14px}.history-insight-grid{display:grid;grid-template-columns:minmax(300px,.72fr) minmax(0,1.28fr);gap:12px;align-items:start}.hr-zone-card,.heatmap-card{padding:20px;overflow:hidden}.insight-card-head,.year-summary-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.insight-card-head>div,.year-summary-head>div{display:grid;gap:5px}.insight-card-head strong,.year-summary-head strong{font-size:15px}.history-total{color:var(--text);font-family:var(--font-display);font-size:15px}.hr-zone-card>p,.heatmap-card>p{min-height:38px;margin:13px 0 16px;color:var(--muted);font-size:11px;line-height:1.5}.zone-stack{display:flex;height:15px;overflow:hidden;border-radius:99px;background:var(--surface2)}.zone-stack span{display:flex;align-items:center;justify-content:center;min-width:2px}.zone-stack i{color:var(--on-accent);font-size:8px;font-style:normal;font-weight:850}.zone-zone1,.zone-dot-zone1{background:var(--muted)}.zone-zone2,.zone-dot-zone2{background:oklch(from #34d399 calc(l - var(--dim-l)) c h)}.zone-zone3,.zone-dot-zone3{background:oklch(from #60a5fa calc(l - var(--dim-l)) c h)}.zone-zone4,.zone-dot-zone4{background:oklch(from #fbbf24 calc(l - var(--dim-l)) c h)}.zone-zone5,.zone-dot-zone5{background:oklch(from #f87171 calc(l - var(--dim-l)) c h)}.zone-list{display:grid;gap:7px;margin-top:14px}.zone-list div{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:10px}.zone-list div>span{display:flex;align-items:center;gap:7px}.zone-list i{width:7px;height:7px;border-radius:50%}.zone-list strong{color:var(--text);font-size:10px}.heatmap-scroll{overflow-x:auto;padding-bottom:4px}.heatmap-months{display:grid;column-gap:3px;min-width:580px;width:100%;height:17px}.heatmap-months span{color:var(--muted);font-size:8px}.heatmap-grid{display:grid;grid-template-rows:repeat(7,auto);grid-auto-columns:minmax(8px,1fr);grid-auto-flow:column;column-gap:3px;row-gap:3px;min-width:580px;width:100%}.heatmap-cell{width:100%;height:auto;aspect-ratio:1;border-radius:2px;background:rgba(125,145,176,.1)}.heatmap-legend i{width:11px;height:11px;border-radius:2px;background:rgba(125,145,176,.1)}.heatmap-level-1{background:rgba(52,211,153,.28)}.heatmap-level-2{background:rgba(52,211,153,.48)}.heatmap-level-3{background:rgba(52,211,153,.7)}.heatmap-level-4{background:oklch(from #34d399 calc(l - var(--dim-l)) c h)}.heatmap-cell.is-outside,.heatmap-cell.is-future{opacity:.18}.heatmap-legend{display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-top:11px;color:var(--muted);font-size:8px}.year-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.year-summary-card{--year-color:oklch(from #34d399 calc(l - var(--dim-l)) c h);padding:18px}.year-summary-run{--year-color:oklch(from #60a5fa calc(l - var(--dim-l)) c h)}.year-summary-strength{--year-color:oklch(from #fbbf24 calc(l - var(--dim-l)) c h)}.year-summary-head>span{color:var(--muted);font-size:10px}.year-summary-head b{color:var(--text);font-family:var(--font-display);font-size:21px}.year-summary-card svg{display:block;width:100%;height:145px;margin-top:10px;overflow:visible}.year-grid-line{stroke:rgb(var(--tint-rgb) / .12)}.year-area{fill:color-mix(in srgb,var(--year-color) 13%,transparent)}.year-line{fill:none;stroke:var(--year-color);stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}.year-summary-card circle{fill:var(--surface);stroke:var(--year-color);stroke-width:2;vector-effect:non-scaling-stroke}.year-summary-card text{fill:var(--muted);font-size:7px}.year-summary-foot{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;border-top:1px solid var(--border);padding-top:11px}.year-summary-foot span{display:grid;gap:3px;color:var(--muted);font-size:8px;text-transform:uppercase}.year-summary-foot strong{overflow:hidden;color:var(--text);font-size:10px;text-overflow:ellipsis;white-space:nowrap;text-transform:none}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media(max-width:1000px){.history-insight-grid{grid-template-columns:1fr}.year-summary-grid{grid-template-columns:1fr 1fr}.year-summary-card:first-child{grid-column:1/-1}.daily-signal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.metric-switcher{grid-template-columns:1fr}.sleep-stage-strip{overflow-x:auto}.sleep-stage-strip span{min-width:78px}}@media(max-width:720px){.year-summary-grid,.daily-signal-grid{grid-template-columns:1fr}.year-summary-card:first-child{grid-column:auto}.heatmap-card{padding-right:12px}}
 
 /* Interactive overview surfaces */
 .support-card{--support-color:var(--accent);position:relative;display:flex;flex-direction:column;min-height:242px;overflow:hidden;background:color-mix(in srgb, color-mix(in srgb,var(--support-color) 6%,transparent), rgb(var(--panel-rgb) / .96));transition:border-color var(--motion-duration-base) var(--motion-ease-standard),transform var(--motion-duration-base) var(--motion-ease-standard),box-shadow var(--motion-duration-base) var(--motion-ease-standard)}
@@ -698,4 +698,210 @@ function sparklineArea(entries, width, height, padding) {
   .trends-page .rhythm-caption { align-items: flex-start; flex-direction: column; }
 }
 
+
+/* Multi-sport redesign layer — Activities' summary, pills and stat tiles. */
+.trends-page { gap: 28px; --trend-color: var(--tone-recovery); }
+.trends-page[data-view="ftp"] { --trend-color: var(--ride); }
+.trends-page .page-head { align-items: flex-end; margin: 0; }
+.trends-page .page-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.trends-page .page-title { margin: 10px 0 8px; font-size: 72px; font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: -1.5px; line-height: .95; }
+.trends-page .page-sub { font-size: 13px; color: var(--muted-soft); line-height: 1.6; }
+.primary-btn { border-radius: 999px; background: var(--volt); color: var(--on-accent); min-height: 44px; padding: 12px 22px; }
+.secondary-btn { border-radius: 999px; border: 1px solid var(--border-strong); background: transparent; min-height: 44px; padding: 10px 18px; }
+.trends-page .trend-nav { flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; overflow: visible; }
+.trends-page .trend-nav button { flex: 0 0 auto; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--muted-soft); padding: 10px 17px; font-size: 12px; min-height: 44px; }
+.trends-page .trend-nav button:hover { color: var(--text); background: var(--surface2); }
+.trends-page .trend-nav button.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+.trends-page .section-kicker, .trends-page .marker-label, .trends-page .detail-eyebrow, .trends-page .metric-summary-card > span, .history-title { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .14em; }
+.trends-page .section-heading { margin-bottom: 18px; }
+.trends-page .section-heading h2, .trends-page .detail-head h2 { font-family: var(--font-display); font-size: 32px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: -.4px; }
+.trends-page .section-heading > p, .trends-page .detail-head p { font-size: 12px; line-height: 1.7; }
+.trends-page .text-btn, .trends-page .card-action { color: var(--text-soft); }
+.trends-page .text-btn:hover, .trends-page .card-action:hover { color: var(--text); text-decoration: underline; }
+.trends-page .card { border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: none; background: var(--surface); }
+.trends-page .momentum-hero { --momentum: var(--tone-ride); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: none; background: linear-gradient(115deg, color-mix(in srgb, var(--ride) 14%, var(--surface)), color-mix(in srgb, var(--strength) 8%, var(--surface)) 65%, color-mix(in srgb, var(--run) 12%, var(--surface))); }
+.trends-page .momentum-topline { padding: 26px 32px 0; }
+.trends-page .momentum-eyebrow { color: var(--muted-soft); font-size: 11px; letter-spacing: .14em; }
+.trends-page .momentum-eyebrow i { background: var(--ride); }
+.trends-page .momentum-layout { padding: 28px 32px 32px; gap: 36px; }
+.trends-page .momentum-story h2 { font-size: 44px; line-height: 1; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: -.6px; }
+.trends-page .momentum-story h2 em { font-style: inherit; color: var(--text); }
+.trends-page .momentum-total > strong { font-size: 88px; font-weight: 800; font-style: italic; letter-spacing: -2px; }
+.trends-page .momentum-facts strong { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--text); }
+.trends-page .momentum-link { color: var(--text-soft); }
+.trends-page .period-switch { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); }
+.trends-page .period-switch button, .trends-page .chart-mode button { border-radius: 999px; font-size: 11px; min-height: 32px; }
+.trends-page .period-switch button.active { background: var(--surface3); color: var(--text); }
+.trends-page .chart-mode button.active { background: color-mix(in srgb, var(--ride) 14%, transparent); color: var(--tone-ride); }
+.trends-page .rhythm-chart { background: repeating-linear-gradient(to top, transparent 0, transparent 51px, var(--border) 52px, transparent 53px); }
+.trends-page .rhythm-bar { background: color-mix(in srgb, var(--ride) 48%, transparent); border-radius: 8px 8px 2px 2px; }
+.trends-page .rhythm-week.selected .rhythm-bar, .trends-page .rhythm-week:hover .rhythm-bar { background: var(--ride); }
+.trends-page .rhythm-value { font-size: 18px; font-weight: 700; }
+.trends-page .rhythm-date { font-size: 10px; }
+.trends-page .rhythm-caption strong { color: var(--text); font-size: 14px; }
+.trends-page .momentum-footer { border-color: var(--border); background: rgb(var(--deep-rgb) / .3); padding: 14px 32px; font-size: 12px; }
+.trends-page .momentum-footer button { color: var(--text); }
+.trends-page .marker-grid { gap: 12px; border: 0; background: transparent; }
+.trends-page .marker-card, .trends-page .marker-card.marker-primary { padding: 22px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); }
+.trends-page .marker-card > strong { font-size: 36px; font-weight: 800; font-style: italic; letter-spacing: -.5px; }
+.trends-page .marker-symbol { color: var(--tone-recovery); }
+.trends-page .marker-primary .marker-symbol { color: var(--ride); }
+.trends-page .marker-symbol.marker-run { color: var(--run); }
+.trends-page .support-card { padding: 24px; background: var(--surface); }
+.trends-page .support-card-orb { display: none; }
+.trends-page .support-head strong { font-family: var(--font-display); font-size: 36px; font-weight: 800; letter-spacing: -.5px; }
+.trends-page .support-weight { color: var(--tone-recovery); background: color-mix(in srgb, var(--tone-recovery) 12%, transparent); }
+.trends-page .support-recovery { color: var(--z2); background: color-mix(in srgb, var(--z2) 12%, transparent); }
+.trends-page .support-consistency { color: var(--volt); background: color-mix(in srgb, var(--volt) 12%, transparent); }
+.trends-page .daily-signal-grid { gap: 12px; border: 0; margin-top: 16px; }
+.trends-page .daily-signal-card { padding: 20px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); }
+.trends-page .daily-signal-card > strong { font-size: 32px; font-weight: 800; }
+.trends-page .status-connected { color: var(--z2); background: color-mix(in srgb, var(--z2) 10%, transparent); border: 1px solid color-mix(in srgb, var(--z2) 20%, transparent); }
+.trends-page .zone-focus strong, .trends-page .zone-focus b { font-size: 28px; font-weight: 700; }
+.trends-page .insight-card-head strong { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: 0; }
+.trends-page .heatmap-card .history-total { color: var(--z2); }
+.trends-page .heatmap-level-0 { background: var(--surface3); }
+.trends-page .heatmap-level-1 { background: color-mix(in srgb, var(--z2) 22%, var(--surface)); }
+.trends-page .heatmap-level-2 { background: color-mix(in srgb, var(--z2) 45%, var(--surface)); }
+.trends-page .heatmap-level-3 { background: color-mix(in srgb, var(--z2) 70%, var(--surface)); }
+.trends-page .heatmap-level-4 { background: var(--z2); }
+.trends-page .heatmap-cell.active { box-shadow: 0 0 0 1px var(--text); }
+.trends-page .zone-zone1, .trends-page .zone-dot-zone1 { background: var(--ride); }
+.trends-page .zone-zone2, .trends-page .zone-dot-zone2 { background: var(--z2); }
+.trends-page .zone-zone3, .trends-page .zone-dot-zone3 { background: var(--warning); }
+.trends-page .zone-zone4, .trends-page .zone-dot-zone4 { background: var(--run); }
+.trends-page .zone-zone5, .trends-page .zone-dot-zone5 { background: var(--danger); }
+.trends-page .sleep-story { border-color: var(--border); background: linear-gradient(115deg, color-mix(in srgb, var(--tone-recovery) 12%, var(--surface)), var(--surface)); }
+.trends-page .sleep-story h3, .trends-page .movement-story h3 { font-size: 44px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: -.5px; line-height: 1; }
+.trends-page .sleep-dial strong { font-size: 44px; font-weight: 800; font-style: italic; letter-spacing: -.5px; }
+.trends-page .sleep-stage-row { border-color: var(--border); }
+.trends-page .night-picker select { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); min-height: 44px; }
+.trends-page .movement-story { border-color: var(--border); background: linear-gradient(115deg, color-mix(in srgb, var(--z2) 12%, var(--surface)), var(--surface)); }
+.trends-page .movement-story h3 em { font-style: inherit; }
+.trends-page .movement-number > strong { font-size: 64px; font-weight: 800; font-style: italic; letter-spacing: -1px; }
+.trends-page .movement-number small, .trends-page .movement-week-head, .trends-page .movement-week-foot { color: var(--muted-soft); }
+.trends-page .movement-day > div { background: rgb(var(--tint-rgb) / .06); }
+.trends-page .health-detail .metric-switcher { gap: 12px; border: 0; }
+.trends-page .health-detail .metric-switcher button { padding: 20px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); }
+.trends-page .health-detail .metric-switcher button.active { border-color: var(--metric-color); background: color-mix(in srgb, var(--metric-color) 7%, var(--surface)); box-shadow: none; }
+.trends-page .health-detail .metric-switcher strong { font-size: 36px; font-weight: 800; letter-spacing: -.5px; }
+.trends-page .health-detail .metric-switcher span { font-size: 11px; white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.5; }
+.trends-page .metric-summary-card { padding: 24px; gap: 10px; }
+.trends-page .metric-summary-card strong { font-size: 48px; font-weight: 800; font-style: italic; line-height: 1; }
+.trends-page .metric-summary-card:first-child strong { color: var(--trend-color); }
+.trends-page .trend-card, .trends-page .history-card { padding: 26px; }
+.trends-page .chart-line, .trends-page .chart-dot { stroke: var(--trend-color); }
+.trends-page .history-row strong { font-family: var(--font-display); font-size: 24px; font-weight: 700; }
+/* Shared analysis components are styled only inside Trends. */
+.trends-page :deep(.load-card) { padding: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); }
+.trends-page :deep(.card-title), .trends-page :deep(.load-chart-heading h3) { font-family: var(--font-display); font-size: 32px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: -.4px; }
+.trends-page :deep(.load-kpis) { gap: 12px; border: 0; }
+.trends-page :deep(.load-kpi), .trends-page :deep(.load-secondary-card) { border: 1px solid var(--border); border-radius: 20px; padding: 22px; background: rgb(var(--deep-rgb)); }
+.trends-page :deep(.load-kpi strong), .trends-page :deep(.compact-kpi strong) { font-size: 56px; font-weight: 800; font-style: italic; letter-spacing: -1px; }
+.trends-page :deep(.readiness-card) { background: color-mix(in srgb, var(--z2) 6%, var(--surface)); border: 1px solid var(--border); border-left: 3px solid var(--z2); border-radius: 14px; }
+.trends-page :deep(.readiness-title) { font-family: var(--font-display); font-size: 28px; font-weight: 700; }
+.trends-page :deep(.load-range) { border-color: var(--border-strong); background: transparent; }
+.trends-page :deep(.fitness-line) { stroke: var(--ride); }
+.trends-page :deep(.fatigue-line) { stroke: var(--run); }
+.trends-page :deep(.form-line) { stroke: var(--z2); }
+.trends-page :deep(.fitness-kpi strong), .trends-page :deep(.fitness-kpi-text) { color: var(--tone-ride); }
+.trends-page :deep(.fatigue-kpi strong), .trends-page :deep(.fatigue-kpi-text) { color: var(--tone-run); }
+.trends-page :deep(.form-kpi strong), .trends-page :deep(.form-kpi-text) { color: var(--z2); }
+.trends-page :deep(.health-trend-card) { padding: 28px; border-radius: var(--radius-card); background: var(--surface); }
+.trends-page :deep(.chart-title h3) { font-family: var(--font-display); font-size: 30px; font-weight: 700; letter-spacing: 0; }
+.trends-page :deep(.selected-value strong) { font-size: 44px; font-weight: 800; font-style: italic; }
+.trends-page :deep(.range-picker) { border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; }
+.trends-page :deep(.range-picker button) { min-height: 36px; border-radius: 999px; }
+.trends-page :deep(.range-picker button.active) { color: var(--text); background: var(--surface3); }
+.trends-page :deep(.comparison-head h2), .trends-page :deep(.page-heading h2) { font-family: var(--font-display); font-size: 36px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: -.5px; }
+.trends-page :deep(.comparisons select), .trends-page :deep(.comparisons button) { border-radius: 999px; background: transparent; }
+.trends-page :deep(.progress-story) { --story-accent: var(--z2); border-color: var(--border); border-radius: var(--radius-card); background: linear-gradient(115deg, color-mix(in srgb, var(--ride) 10%, var(--surface)), color-mix(in srgb, var(--strength) 6%, var(--surface))); }
+.trends-page :deep(.progress-story.mixed), .trends-page :deep(.progress-story.declining) { --story-accent: var(--warning-text); }
+.trends-page :deep(.takeaway h3) { font-family: var(--font-display); font-size: 48px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: -.5px; }
+.trends-page :deep(.eyebrow) { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .14em; }
+/* The dialog is teleported; these scoped selectors intentionally stand alone. */
+.metric-dialog { border-radius: var(--radius-card); padding: 28px; background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-lg); }
+.metric-dialog-head h2 { font-size: 36px; font-weight: 800; font-style: italic; text-transform: uppercase; }
+.metric-dialog .dialog-close { border: 1px solid var(--border-strong); background: transparent; border-radius: 999px; width: 44px; height: 44px; flex-shrink: 0; }
+.metric-form input, .metric-form select, .metric-form textarea { border: 1px solid var(--border-strong); border-radius: 12px; background: rgb(var(--deep-rgb)); color: var(--text); min-height: 44px; }
+.metric-form label > span { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.trends-page button:focus-visible, .trends-page a:focus-visible, .metric-dialog button:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+@media (max-width: 1100px) {
+  .trends-page .marker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .trends-page .page-head { display: grid; gap: 18px; }
+  .trends-page .page-title { font-size: 56px; }
+  .trends-page .page-head .primary-btn { width: auto; justify-self: start; }
+  .trends-page .trend-nav { gap: 8px; }
+  .trends-page .trend-nav button { padding: 10px 14px; }
+  .trends-page .momentum-topline, .trends-page .momentum-layout { padding: 22px; }
+  .trends-page .momentum-topline { padding-bottom: 0; flex-wrap: wrap; }
+  .trends-page .momentum-story h2, .trends-page .sleep-story h3, .trends-page .movement-story h3 { font-size: 36px; }
+  .trends-page .momentum-total > strong { font-size: 72px; }
+  .trends-page .momentum-footer { padding: 16px 22px; }
+  .trends-page .section-heading, .trends-page .detail-head { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .trends-page .marker-grid, .trends-page .metric-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .trends-page .marker-card, .trends-page .marker-card.marker-primary { padding: 18px; }
+  .trends-page .support-grid { grid-template-columns: 1fr; }
+  .trends-page .metric-summary-card { padding: 20px; }
+  .trends-page .metric-summary-card strong { font-size: 40px; }
+  .trends-page .health-detail .metric-switcher { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .trends-page .health-detail .metric-switcher button { padding: 16px; }
+  .trends-page .health-detail .metric-switcher strong { font-size: 30px; }
+  .trends-page .movement-number > strong { font-size: 56px; }
+  .trends-page .rhythm-date { font-size: 9px; }
+  .trends-page :deep(.load-card), .trends-page :deep(.health-trend-card) { padding: 20px; }
+  .trends-page :deep(.load-kpi), .trends-page :deep(.load-secondary-card) { padding: 16px; }
+  .trends-page :deep(.load-kpi strong), .trends-page :deep(.compact-kpi strong) { font-size: 40px; }
+  .trends-page :deep(.takeaway h3) { font-size: 36px; }
+  .metric-dialog-backdrop { padding: 12px; }
+  .metric-dialog { padding: 22px; max-height: calc(100dvh - 24px); overflow-y: auto; }
+}
+
+/* Evidence uses sport hues; outcome remains a separate status signal. */
+.trends-page :deep(.evidence) { --signal: var(--z2); padding: 26px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.trends-page :deep(.evidence.declining) { --signal: var(--warning-text); }
+.trends-page :deep(.evidence-story h4) { font-family: var(--font-display); font-size: 30px; font-weight: 700; letter-spacing: 0; }
+.trends-page :deep(.plot-label strong) { font-family: var(--font-display); font-size: 28px; font-weight: 700; }
+.trends-page :deep(.evidence + .evidence) { margin-top: 14px; }
+.trends-page :deep(.load-card .fitness-dot), .trends-page :deep(.chart-legend .fitness-dot) { fill: var(--ride); background: var(--ride); }
+.trends-page :deep(.load-card .fatigue-dot), .trends-page :deep(.chart-legend .fatigue-dot) { fill: var(--run); background: var(--run); }
+.trends-page :deep(.load-card .form-dot), .trends-page :deep(.chart-legend .form-dot) { fill: var(--z2); background: var(--z2); }
+.trends-page :deep(.hover-fitness) { color: var(--tone-ride); }
+.trends-page :deep(.hover-fatigue) { color: var(--tone-run); }
+.trends-page :deep(.hover-form) { color: var(--z2); }
+.trends-page :deep(.coverage-fill) { background: var(--ride); }
+.trends-page :deep(.focus-anaerobic) { background: var(--strength); }
+.trends-page :deep(.focus-high-aerobic) { background: var(--run); }
+.trends-page :deep(.focus-low-aerobic) { background: var(--ride); }
+@media(max-width:760px) { .trends-page :deep(.evidence) { padding: 20px; } }
+
+.trends-page :deep(.legend-fitness) { background: var(--ride); }
+.trends-page :deep(.legend-fatigue) { background: var(--run); }
+.trends-page :deep(.legend-form) { background: var(--z2); }
+.trends-page :deep(.ratio-segment-low) { background: var(--ride); }
+.trends-page :deep(.ratio-segment-balanced) { background: var(--z2); }
+.trends-page :deep(.ratio-segment-high) { background: var(--danger); }
+.trends-page :deep(.aerobic h3) { font-size: 36px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: -.5px; }
+.trends-page :deep(.aerobic h3 em) { color: var(--tone-recovery); font-style: inherit; }
+.trends-page :deep(.verdict > strong) { font-size: 72px; font-weight: 800; font-style: italic; letter-spacing: -1px; }
+.trends-page :deep(.mini-stats dd), .trends-page :deep(.ride-pair strong) { font-weight: 700; }
+.trends-page :deep(.aerobic .segmented) { border: 1px solid var(--border-strong); background: transparent; }
+.trends-page :deep(.aerobic .segmented button) { min-height: 36px; }
+.trends-page :deep(.aerobic .segmented button[aria-pressed=true]) { background: var(--surface3); }
+.trends-page :deep(.aerobic .direction.improving), .trends-page :deep(.aerobic .chip.steady) { color: var(--z2); background: color-mix(in srgb, var(--z2) 10%, transparent); }
+.trends-page :deep(.aerobic .steady .dot), .trends-page :deep(.aerobic .chip.steady i) { background: var(--z2); }
+.trends-page :deep(.ride-mix .type-recovery) { --type: var(--tone-recovery); }
+.trends-page :deep(.ride-mix .type-z2) { --type: var(--ride); }
+.trends-page :deep(.ride-mix .type-sweet_spot) { --type: var(--warning); }
+.trends-page :deep(.ride-mix .type-vo2) { --type: var(--danger); }
+.trends-page :deep(.rm-type-share) { font-family: var(--font-display); font-size: 30px; font-weight: 700; }
+.trends-page :deep(.evidence-section .section-head h3) { font-family: var(--font-display); font-size: 32px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: -.5px; }
+@media(max-width:760px) { .trends-page :deep(.verdict > strong) { font-size: 56px; } }
+
+.trends-page .marker-running .marker-symbol { color: var(--run); }
+.trends-page .marker-cycling .marker-symbol { color: var(--ride); }
+.metric-dialog .input-with-unit { border: 1px solid var(--border-strong); border-radius: 12px; background: rgb(var(--deep-rgb)); }
+.metric-dialog .input-with-unit input { border: 0; background: transparent; }
 </style>

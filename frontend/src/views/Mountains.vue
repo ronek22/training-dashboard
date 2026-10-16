@@ -2,23 +2,23 @@
   <div class="mountains-page motion-page">
     <header class="page-head motion-section">
       <div>
-        <span class="page-eyebrow">Trail coverage</span>
+        <span class="page-eyebrow">Explore · Mountains</span>
         <h1 class="page-title">Mountains</h1>
         <p class="page-sub">Marked trails you've already walked, matched from your Strava hikes, and what's still left.</p>
       </div>
       <div class="head-actions">
-        <div class="region-tabs" role="tablist" aria-label="View">
+        <div class="region-tabs view-tabs" role="tablist" aria-label="Mountain view">
           <button type="button" role="tab" :aria-selected="view === 'coverage'" :class="{ active: view === 'coverage' }" @click="setView('coverage')">Coverage</button>
           <button type="button" role="tab" :aria-selected="view === 'routes'" :class="{ active: view === 'routes' }" @click="setView('routes')">Route ideas</button>
           <button type="button" role="tab" :aria-selected="view === 'plan'" :class="{ active: view === 'plan' }" @click="setView('plan')">Planner</button>
         </div>
-        <div class="region-tabs" role="tablist" aria-label="Mountain range">
+        <div class="region-tabs range-tabs" role="tablist" aria-label="Mountain range">
           <button v-for="r in regions" :key="r.key" type="button" role="tab" :aria-selected="r.key === regionKey"
             :class="{ active: r.key === regionKey }" @click="selectRegion(r.key)">
             <span>{{ r.name }}</span><small v-if="r.imported_at">{{ r.done_pct }}%</small>
           </button>
         </div>
-        <button type="button" class="action" :disabled="busy" @click="syncHikes">
+        <button type="button" class="action primary-action" :disabled="busy" @click="syncHikes">
           {{ busy === 'sync' ? 'Syncing hikes…' : 'Sync hikes' }}
         </button>
       </div>
@@ -244,21 +244,6 @@
           </label>
         </section>
 
-        <section v-if="trips.trips.length || trips.upcoming.length" class="card trips-card">
-          <h2 class="card-title">Trips <small>{{ trips.trips.length || '' }}</small></h2>
-          <div class="list trips">
-            <p v-for="t in trips.upcoming" :key="t.start_date" class="trip-row upcoming">
-              <span class="date num">{{ tripRange(t.start_date, t.end_date) }}</span>
-              <span class="grow">Ahead · recap fills in as you hike</span>
-            </p>
-            <router-link v-for="t in trips.trips" :key="t.start_date" :to="t.url" class="trip-row">
-              <span class="date num">{{ tripRange(t.start_date, t.end_date) }}</span>
-              <span class="grow">{{ t.hike_days }} hiking day{{ t.hike_days === 1 ? '' : 's' }}<template v-if="t.ongoing"> · on now</template></span>
-              <span class="num">{{ formatKm(t.distance_km * 1000) }} km · ↑ {{ t.ascent_m }} m</span>
-            </router-link>
-          </div>
-        </section>
-
         <section v-if="placeKinds.length" class="card places-card">
           <h2 class="card-title">Summits &amp; places</h2>
           <div class="kind-tabs" role="tablist" aria-label="Kind of place">
@@ -324,6 +309,22 @@
               <span class="grow">{{ t.name || 'Hike' }}</span>
               <span v-if="newKmByTrack[t.id]" class="new num" title="Trail walked for the first time">+{{ formatKm(newKmByTrack[t.id]) }} km</span>
             </button>
+          </div>
+        </section>
+
+        <section v-if="trips.trips.length || trips.upcoming.length" class="card trips-card">
+          <h2 class="card-title">Trips <small>{{ trips.trips.length || '' }}</small></h2>
+          <div class="trips">
+            <p v-for="t in trips.upcoming" :key="t.start_date" class="trip-row upcoming">
+              <span class="trip-date">{{ tripRange(t.start_date, t.end_date) }}</span>
+              <span class="trip-status">Upcoming</span>
+              <span class="trip-note">Recap fills in as you hike</span>
+            </p>
+            <router-link v-for="t in trips.trips" :key="t.start_date" :to="t.url" class="trip-row">
+              <span class="trip-date">{{ tripRange(t.start_date, t.end_date) }}</span>
+              <span class="trip-days">{{ t.hike_days }} hiking day{{ t.hike_days === 1 ? '' : 's' }}<template v-if="t.ongoing"> · on now</template></span>
+              <span class="trip-metrics"><b>{{ formatKm(t.distance_km * 1000) }} km</b><i aria-hidden="true">↑</i>{{ t.ascent_m }} m</span>
+            </router-link>
           </div>
         </section>
 
@@ -1472,5 +1473,78 @@ a.trip-row:hover { background: rgb(var(--ov-rgb) / .06); }
   .map-card { height: 62vh; min-height: 420px; }
   .map-toolbar { left: 12px; top: 56px; }
   .map-legend { display: none; }
+}
+
+/* Multi-sport redesign layer — map discovery views borrow the compact filters and
+   editorial hierarchy of the Activities artboard while keeping the map dominant. */
+.mountains-page .page-head { align-items: flex-end; gap: 24px; margin-bottom: 22px; }
+.mountains-page .page-eyebrow { letter-spacing: .14em; }
+.mountains-page .page-title { margin: 0; }
+.mountains-page .page-sub { margin-top: 8px; max-width: 58ch; font-size: 13px; }
+.mountains-page .head-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.mountains-page .region-tabs { gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+.mountains-page .region-tabs button { min-height: 36px; padding: 7px 13px; border-radius: 999px; align-items: center; line-height: 1.2; font: 600 12px/1.2 var(--font-body); transition: color var(--motion-duration-fast), background var(--motion-duration-fast), border-color var(--motion-duration-fast); }
+.mountains-page .region-tabs button.active { background: var(--tone-recovery); color: var(--on-accent); box-shadow: none; }
+.mountains-page .region-tabs button.active small { color: inherit; opacity: .72; }
+.mountains-page .view-tabs button.active { background: var(--surface3); color: var(--text); box-shadow: inset 0 0 0 1px var(--border-strong); }
+.mountains-page .range-tabs button { padding-inline: 11px; }
+.mountains-page .range-tabs button.active { background: color-mix(in srgb, var(--tone-recovery) 16%, var(--surface)); color: var(--tone-recovery); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone-recovery) 35%, transparent); }
+.mountains-page .range-tabs button.active small { color: var(--tone-recovery); }
+.mountains-page .action.primary-action { min-height: 40px; padding: 9px 16px; border: 1px solid var(--volt); border-radius: 999px; background: var(--volt); color: var(--on-accent); font: 700 12px var(--font-body); box-shadow: none; }
+.mountains-page .action.primary-action:hover:not(:disabled) { border-color: var(--volt-strong); background: var(--volt-strong); }
+.mountains-page .mountains-layout { gap: 18px; }
+.mountains-page .map-card { border-color: var(--border); box-shadow: var(--shadow-card); }
+.mountains-page .side .card { padding: 18px; border-radius: var(--radius-card); }
+.mountains-page .side .card-title { color: var(--muted); font: 700 11px/1.4 var(--font-body); letter-spacing: .14em; text-transform: uppercase; }
+.mountains-page .side .card-title small { color: var(--tone-recovery); font: 600 12px var(--font-body); letter-spacing: 0; }
+.mountains-page .pct { color: var(--tone-recovery); font: italic 800 52px/1 var(--font-display); }
+.mountains-page .bar { background: color-mix(in srgb, var(--tone-recovery) 12%, var(--surface2)); }
+.mountains-page .bar i { background: var(--tone-recovery); }
+.mountains-page .bar.thin { height: 4px; }
+.mountains-page .trips-card .card-title { margin-bottom: 12px; }
+.mountains-page .trips { display: grid; gap: 4px; margin: 0; }
+.mountains-page .trip-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px 10px; min-width: 0; padding: 10px 11px; border: 1px solid transparent; border-radius: 14px; color: var(--text); text-decoration: none; }
+.mountains-page a.trip-row:hover { border-color: var(--border); background: var(--surface2); }
+.mountains-page .trip-date { min-width: 0; color: var(--muted-soft); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mountains-page .trip-days { min-width: 0; color: var(--text); font-size: 12px; font-weight: 600; text-align: right; white-space: nowrap; }
+.mountains-page .trip-metrics { grid-column: 1 / -1; display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.mountains-page .trip-metrics b { color: var(--text-soft); font-weight: 600; }
+.mountains-page .trip-metrics i { margin-left: 3px; color: var(--tone-recovery); font-style: normal; font-weight: 700; }
+.mountains-page .trip-row.upcoming { grid-template-columns: 1fr auto; background: color-mix(in srgb, var(--tone-recovery) 7%, var(--surface)); }
+.mountains-page .trip-status { color: var(--tone-recovery); font-size: 11px; font-weight: 700; }
+.mountains-page .trip-note { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
+.mountains-page .list button.on, .mountains-page .saved-group li.on .saved-open { background: color-mix(in srgb, var(--tone-recovery) 10%, var(--surface)); }
+.mountains-page .list button.on { box-shadow: inset 2px 0 0 var(--tone-recovery); }
+.mountains-page .route-card.on { border-color: color-mix(in srgb, var(--tone-recovery) 55%, var(--border)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone-recovery) 28%, transparent), var(--shadow-card); }
+.mountains-page .route-new b, .mountains-page .planner-stats strong.is-new { color: var(--tone-recovery); }
+.mountains-page .park-chips button.on, .mountains-page .place-filters button.on { border-color: color-mix(in srgb, var(--tone-recovery) 45%, var(--border-strong)); background: color-mix(in srgb, var(--tone-recovery) 14%, var(--surface)); color: var(--tone-recovery); }
+.mountains-page .kind-tabs button.on, .mountains-page .length-tabs button.on { background: var(--surface3); color: var(--text); }
+.mountains-page .kind-tabs button.on small, .mountains-page .length-tabs button.on small { color: var(--tone-recovery); }
+.mountains-page .planner-actions button, .mountains-page .planner-save button, .mountains-page .gpx-button { border-color: var(--border-strong); border-radius: 999px; background: transparent; color: var(--text-soft); }
+.mountains-page .planner-actions button:hover:not(:disabled), .mountains-page .planner-save button:hover:not(:disabled), .mountains-page .gpx-button:hover { border-color: var(--tone-recovery); background: color-mix(in srgb, var(--tone-recovery) 10%, var(--surface)); color: var(--tone-recovery); }
+.mountains-page .planner-save button.primary, .mountains-page .state-box .action { border-color: var(--volt); background: var(--volt); color: var(--on-accent); }
+.mountains-page .planner-save button.primary:hover:not(:disabled), .mountains-page .state-box .action:hover:not(:disabled) { border-color: var(--volt-strong); background: var(--volt-strong); color: var(--on-accent); }
+.mountains-page .planner-actions button.danger, .mountains-page .saved-tools button.danger { color: var(--danger-text); }
+.mountains-page .planner-warn { color: var(--warning-text); }
+.mountains-page .flash { border-color: color-mix(in srgb, var(--success-text) 35%, var(--border)); background: color-mix(in srgb, var(--success-text) 8%, var(--surface)); }
+.mountains-page .flash.error { border-color: color-mix(in srgb, var(--danger) 38%, var(--border)); background: color-mix(in srgb, var(--danger) 9%, var(--surface)); }
+.mountains-page .seg, .mountains-page .toggle { border-color: var(--border); box-shadow: 0 2px 10px rgb(var(--shadow-rgb) / .25); }
+.mountains-page .seg button.on { background: var(--surface3); color: var(--text); }
+.mountains-page .toggle.on { border-color: color-mix(in srgb, var(--tone-recovery) 45%, var(--border-strong)); color: var(--tone-recovery); background: var(--surface); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone-recovery) 18%, transparent); }
+.mountains-page :is(button, a):focus-visible { outline: 2px solid var(--tone-recovery); outline-offset: 3px; }
+
+@media (max-width: 1100px) {
+  .mountains-page .page-head { align-items: flex-start; }
+  .mountains-page .head-actions { justify-content: flex-start; }
+}
+@media (max-width: 760px) {
+  .mountains-page .page-head { gap: 16px; margin-bottom: 16px; }
+  .mountains-page .page-title { font-size: 56px; }
+  .mountains-page .head-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
+  .mountains-page .region-tabs { width: 100%; overflow-x: auto; justify-content: flex-start; }
+  .mountains-page .region-tabs button { flex: none; }
+  .mountains-page .action.primary-action { justify-self: start; }
+  .mountains-page .side .card { padding: 16px; border-radius: 20px; }
+  .mountains-page .map-card { border-radius: 20px; }
 }
 </style>

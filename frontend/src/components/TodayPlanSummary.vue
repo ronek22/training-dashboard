@@ -323,4 +323,10 @@ const tiles = computed(() => [durationTile.value, distanceTile.value, intensityT
 .plan-fuel-stats strong { color: var(--text); font-size: 15px; font-variant-numeric: tabular-nums; }
 .plan-fuel-stats small { margin-left: 4px; font-size: 10px; }
 .plan-fuel p { grid-column: 2; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+/* Redesign: the workout shape sits in an inset panel and reads as a chart, not a slab. */
+.plan-profile { --profile-height: 56px; gap: 10px; padding: 16px 16px 12px; border: 1px solid var(--border); border-radius: 16px; background: rgb(var(--deep-rgb) / .55); }
+.plan-profile :deep(.cycling-workout-profile) { border-bottom-color: var(--border-strong); }
+.plan-profile :deep(.cycling-workout-segment) { opacity: 1; -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, .3) 100%); mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, .3) 100%); }
+.plan-profile figcaption { align-items: center; color: var(--muted-soft); font-size: 13px; }
 </style>

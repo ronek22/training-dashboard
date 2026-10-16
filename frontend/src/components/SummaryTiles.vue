@@ -57,4 +57,18 @@ defineProps({ tiles: { type: Array, required: true } })
 .tile-zones i { flex-basis: 0; min-width: 0; border-radius: 2px; }
 .tile-spark { width: 100%; height: 16px; overflow: visible; }
 .tile-spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.4; stroke-linejoin: round; vector-effect: non-scaling-stroke; opacity: 0.8; }
+
+/* ── Multi-sport redesign layer ── */
+.tiles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { border-color: var(--border-strong); border-radius: 16px; background: rgb(var(--deep-rgb) / .55); padding: 16px; }
+.tile-label { font-size: 11px; letter-spacing: .14em; }
+.tile-value { font-family: var(--font-display); font-size: 44px; font-weight: 700; letter-spacing: .01em; }
+.tile-value small { font-family: var(--font-body); font-size: 14px; }
+.tile-caption { font-size: 12px; }
+
+/* One row on desktop: every tile shares the card width. */
+.tiles { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+@media (max-width: 760px) {
+  .tiles { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-columns: auto; }
+}
 </style>

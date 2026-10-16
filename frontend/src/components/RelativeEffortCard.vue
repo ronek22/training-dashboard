@@ -203,4 +203,16 @@ const chartLabel = computed(() => weeks.value.map((week) => `${format(parseISO(w
 @media (max-width: 860px) {
   .effort { grid-template-columns: 1fr; gap: 18px; padding: 18px; }
 }
+
+/* Redesign layer */
+.effort { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; padding: 24px; --effort-accent: var(--tone-recovery); }
+.effort.is-in { --effort-accent: var(--z2); }
+.effort.is-above { --effort-accent: var(--warning); }
+.effort-kicker { font-size: 11px; font-weight: 600; letter-spacing: .14em; }
+.effort h2 { font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: .005em; text-transform: uppercase; }
+.effort-detail { color: var(--muted-soft); font-size: 14px; }
+.effort-stat strong { font-family: var(--font-display); font-size: 32px; font-weight: 700; }
+.effort-week .is-below { color: var(--tone-recovery); }
+.effort-week .is-in { color: var(--z2); }
+.effort-week .is-above { color: var(--warning); }
 </style>

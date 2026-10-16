@@ -94,7 +94,7 @@ const props = defineProps({
   unit: { type: String, default: '' },
   decimals: { type: Number, default: 0 },
   chartType: { type: String, default: 'line' },
-  accent: { type: String, default: '#7ba3ff' },
+  accent: { type: String, default: 'var(--z2)' },
   higherIsPositive: { type: Boolean, default: null },
   targetMin: { type: Number, default: null },
   targetMax: { type: Number, default: null },
@@ -144,7 +144,7 @@ const points = computed(() => {
     return { ...item, index, x, y: yFor(item.value), stages, barX: x - barWidth / 2, barWidth, hitX: chartLeft + slot * index, hitWidth: Math.max(slot, 5), intensity: 0.42 + Math.min(0.58, ratio * 0.72), averageState, tooltip: `${formatDate(item.date)}: ${formatValue(item.value)}${stageText ? `. ${stageText}` : ''}` }
   })
 })
-const stageColors = { deep: '#8074fa', rem: '#d3adff', core: '#659eeb', unspecified: '#64748b' }
+const stageColors = { deep: 'var(--tone-recovery)', rem: 'var(--tone-strength)', core: 'var(--ride)', unspecified: 'var(--muted)' }
 const stageLabels = { deep: 'Deep', rem: 'REM', core: 'Core', unspecified: 'Unspecified' }
 const stageLegend = computed(() => Object.keys(stageColors).map(key => ({ key, label: stageLabels[key], color: stageColors[key] })))
 function stageSegmentsFor(item) {

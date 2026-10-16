@@ -121,6 +121,7 @@ const talk = () => wins.value && openCoachChat(weekChatRequest(wins.value))
     <RouterLink to="/" class="back">← Dashboard</RouterLink>
     <header class="wr-head">
       <div>
+        <span class="wr-kicker">Train · Review</span>
         <h1>Weekly review</h1>
         <p class="wr-sub">
           <span class="status" :class="{ live: report && !report.finished }">{{ status || 'Loading…' }}</span>
@@ -330,5 +331,57 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   .fuel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fuel-summary { grid-column: 1 / -1; }
   .stepper { width: 100%; justify-content: space-between; }
+}
+
+/* Multi-sport redesign layer — aligned with the Plan and Activities artboards. */
+.wr { max-width: 1440px; padding-top: 24px; }
+.back { display: none; }
+.wr-head { align-items: center; margin: 4px 0 24px; }
+.wr-kicker { display: block; margin-bottom: 6px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.wr h1 { color: var(--text); font-family: var(--font-display); font-size: clamp(42px, 5vw, 58px); font-style: italic; font-weight: 800; letter-spacing: -.02em; line-height: .95; text-transform: uppercase; }
+.wr-sub { margin-top: 10px; }
+.status { color: var(--muted); font-size: 12px; font-weight: 600; }
+.status.live::before { background: var(--volt); }
+.stepper { gap: 8px; }
+.stepper button { min-width: 40px; height: 40px; border-color: var(--border-strong); border-radius: 999px; background: transparent; }
+.stepper button.today { border-radius: 999px; }
+.stepper-label { min-width: 190px; font-family: var(--font-display); font-size: 19px; font-weight: 700; }
+.stepper-label small { font-family: var(--font-body); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.sunday-link { height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--volt); color: var(--bg); font-size: 12px; font-weight: 750; }
+.card { padding: 22px 24px; border-radius: var(--radius-card); background: var(--surface); box-shadow: none; }
+.card h2 { font-size: 15px; font-weight: 700; }
+.kpis { overflow: hidden; }
+.kpi { gap: 5px; padding: 18px 22px; }
+.kpi-label { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.kpi-value { font-size: 34px; font-style: italic; font-weight: 800; letter-spacing: -.02em; }
+.kpi-value em { font-style: normal; }
+.layout { grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 16px; margin-top: 16px; }
+.full { margin-top: 16px; }
+.goals { gap: 17px; }
+.bar { height: 7px; border-radius: 999px; }
+.bar span { background: var(--ride); }
+.bar.met span { background: var(--volt); }
+.anchor { border-radius: 999px; background: color-mix(in srgb, var(--volt) 14%, transparent); color: var(--volt); }
+.focus { border-color: var(--border-strong); border-radius: 16px; background: var(--surface2); }
+.focus-label { color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+.primary { border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); padding: 10px 16px; }
+.focus p { max-width: 68ch; }
+.coach { margin-top: 26px; }
+.section-title { margin-bottom: 10px; font-family: var(--font-display); font-size: 28px; font-style: italic; font-weight: 800; text-transform: uppercase; }
+.fuel-side { border-left-color: var(--z2); }
+.fuel-side.is-under { border-left-color: var(--warning); }
+.notice { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.notice button { border-color: var(--border-strong); border-radius: 999px; }
+button:focus-visible, a:focus-visible { outline-color: var(--volt); }
+@media (max-width: 760px) {
+  .wr { padding: 20px 16px 40px; }
+  .wr-head { align-items: flex-start; margin-bottom: 20px; }
+  .wr h1 { font-size: 42px; }
+  .stepper { flex-wrap: wrap; justify-content: flex-start; }
+  .stepper-label { flex: 1 1 120px; min-width: 120px; }
+  .sunday-link { flex: 1 0 100%; justify-content: center; }
+  .card { padding: 18px 16px; }
+  .kpi { padding: 14px 16px; }
+  .kpi-value { font-size: 29px; }
 }
 </style>

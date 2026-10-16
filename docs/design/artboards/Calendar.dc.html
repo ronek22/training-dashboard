@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrainLog · Calendar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&amp;family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0C11}
+a{color:#D4FF3A;text-decoration:none}a:hover{color:#E8FF8A}
+.num{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;line-height:1}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600}
+.nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;color:#A3ABBC;font-size:14px;font-weight:500;min-height:24px}
+.nav a:hover{background:#191D27;color:#F3F5F9}
+.nav a.on{background:#191D27;color:#F3F5F9}
+.btn{font-family:inherit;cursor:pointer}
+.btn:hover{filter:brightness(1.12)}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #0A0C11; color: #F3F5F9; font-family: 'Archivo', system-ui, sans-serif">
+
+<nav class="nav" aria-label="Main" style="flex: 1 1 232px; max-width: 260px; box-sizing: border-box; padding: 24px 16px; border-right: 1px solid #1C212B; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px">
+<div style="width: 36px; height: 36px; border-radius: 10px; background: #D4FF3A; display: flex; align-items: center; justify-content: center">
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#0A0C11" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 11h4l2-6 4 10 2-4h4"></path></svg>
+</div>
+<div class="num" style="font-size: 26px; font-style: italic; font-weight: 800; letter-spacing: .02em">TRAINLOG</div>
+</div>
+<div class="lbl" style="padding: 8px 12px 6px">Train</div>
+<a href="Main.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l3 2"></path></svg>Today</a>
+<a href="Plan.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18V3M4 4h11l-2.5 3.5L15 11H4"></path></svg>Plan</a>
+<a class="on" href="Calendar.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#D4FF3A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="2"></rect><path d="M3 8h14M7 2v4M13 2v4"></path></svg>Calendar</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 2L4 11h5l-1 7 7-9h-5z"></path></svg>Workout studio</a>
+<div class="lbl" style="padding: 18px 12px 6px">Body</div>
+<a href="Strength.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 10h16M5 6v8M15 6v8M2.5 8v4M17.5 8v4"></path></svg>Strength</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17s-7-4.2-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 17 8c0 4.8-7 9-7 9z"></path></svg>Recovery</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2v6a2 2 0 0 0 4 0V2M8 2v16M14 2c-2 2-2 6 0 8v8"></path></svg>Food</a>
+<div class="lbl" style="padding: 18px 12px 6px">Review</div>
+<a href="Activities.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 5h10M7 10h10M7 15h10M3 5h.01M3 10h.01M3 15h.01"></path></svg>Activities</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 15l4-5 3 3 7-8"></path></svg>Trends</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8v5a4 4 0 0 1-8 0zM10 12v3M7 17h6M6 5H3v1a3 3 0 0 0 3 3M14 5h3v1a3 3 0 0 1-3 3"></path></svg>Records</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><circle cx="10" cy="10" r="3.5"></circle><circle cx="10" cy="10" r=".5"></circle></svg>Goals</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 16l5-8 3 4 3-5 5 9z"></path></svg>Mountains</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h10v14H5zM8 7h4M8 10h4M8 13h2"></path></svg>Coach notes</a>
+<div class="lbl" style="padding: 18px 12px 6px">System</div>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8a6 6 0 0 1 11-2.5M16 12a6 6 0 0 1-11 2.5M15 2.5v3h-3M5 17.5v-3h3"></path></svg>Data &amp; sync</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v-6M8.5 17V6M13 17v-4M17.5 17V3"></path></svg>Coach usage</a>
+<div style="flex: 1 1 auto; min-height: 24px"></div>
+<a href="#" style="border: 1px solid #252B37"><span style="width: 28px; height: 28px; border-radius: 50%; background: #252B37; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #F3F5F9">J</span><span style="display: flex; flex-direction: column"><span style="color: #F3F5F9">Jakub</span><span style="font-size: 12px; color: #8A93A6">Athlete profile</span></span></a>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 40px 64px">
+<div style="max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div>
+<div class="lbl" style="color: #A3ABBC">Calendar &amp; plan</div>
+<h1 class="num" style="margin: 6px 0 0; font-size: 72px; font-style: italic; font-weight: 800; text-transform: uppercase">October 2026</h1>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<div role="group" aria-label="Move between months" style="display: flex; gap: 4px">
+<button class="btn" aria-label="Previous month" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid #252B37; background: transparent; color: #F3F5F9; font-size: 18px">‹</button>
+<button class="btn" style="height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid #252B37; background: transparent; color: #F3F5F9; font-size: 14px">Today</button>
+<button class="btn" aria-label="Next month" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid #252B37; background: transparent; color: #F3F5F9; font-size: 18px">›</button>
+</div>
+<div role="group" aria-label="View" style="display: flex; padding: 4px; border-radius: 999px; background: #12151C; border: 1px solid #1C212B">
+<button class="btn" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: transparent; color: #A3ABBC; font-size: 14px">Week</button>
+<button class="btn" aria-pressed="true" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #252B37; color: #F3F5F9; font-size: 14px; font-weight: 600">Month</button>
+</div>
+<button class="btn" style="height: 44px; padding: 0 20px; border-radius: 999px; border: 0; background: #D4FF3A; color: #0A0C11; font-size: 14px; font-weight: 700">Adjust plan</button>
+</div>
+</header>
+
+<section aria-label="Month summary" style="display: flex; flex-wrap: wrap; gap: 12px">
+<div style="flex: 1 1 160px; background: #12151C; border: 1px solid #1C212B; border-radius: 20px; padding: 18px 20px"><div class="lbl">Sessions</div><div class="num" style="font-size: 44px; margin-top: 8px">16</div></div>
+<div style="flex: 1 1 160px; background: #12151C; border: 1px solid #1C212B; border-radius: 20px; padding: 18px 20px"><div class="lbl">Training time</div><div class="num" style="font-size: 44px; margin-top: 8px">12h 50m</div></div>
+<div style="flex: 1 1 160px; background: #12151C; border: 1px solid #1C212B; border-radius: 20px; padding: 18px 20px"><div class="lbl">Plan followed</div><div style="margin-top: 8px"><span class="num" style="font-size: 44px; color: #D4FF3A">11</span><span class="num" style="font-size: 26px; color: #8A93A6">/15</span></div></div>
+<div style="flex: 2 1 340px; background: #12151C; border: 1px solid #1C212B; border-radius: 20px; padding: 18px 20px; display: flex; gap: 24px; flex-wrap: wrap">
+<div><div class="lbl" style="color: #6EA9FF">Ride</div><div class="num" style="font-size: 34px; margin-top: 10px">173.3<span style="font-size: 16px; color: #A3ABBC"> km</span></div></div>
+<div><div class="lbl" style="color: #FF6FAE">Strength</div><div class="num" style="font-size: 34px; margin-top: 10px">4h 41m</div></div>
+<div><div class="lbl" style="color: #2ED3B0">Walk</div><div class="num" style="font-size: 34px; margin-top: 10px">11.3<span style="font-size: 16px; color: #A3ABBC"> km</span></div></div>
+</div>
+</section>
+
+<section aria-label="Month grid" style="background: #12151C; border: 1px solid #1C212B; border-radius: 24px; padding: 20px; overflow-x: auto">
+<div style="min-width: 980px">
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) 200px; gap: 8px; padding: 0 0 10px">
+<div class="lbl" style="padding-left: 6px">Mon</div><div class="lbl" style="padding-left: 6px">Tue</div><div class="lbl" style="padding-left: 6px">Wed</div><div class="lbl" style="padding-left: 6px">Thu</div><div class="lbl" style="padding-left: 6px">Fri</div><div class="lbl" style="padding-left: 6px">Sat</div><div class="lbl" style="padding-left: 6px">Sun</div><div class="lbl" style="padding-left: 6px">Week</div>
+</div>
+<sc-for list="{{weeks}}" as="w" hint-placeholder-count="5">
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) 200px; gap: 8px; margin-bottom: 8px">
+<sc-for list="{{w.days}}" as="d" hint-placeholder-count="7">
+<div style="{{d.cell}}">
+<div style="display: flex; justify-content: space-between; align-items: center">
+<span style="{{d.numStyle}}">{{d.n}}</span>
+<span style="{{d.tagStyle}}">{{d.tag}}</span>
+</div>
+<sc-for list="{{d.items}}" as="it" hint-placeholder-count="1">
+<div style="{{it.chip}}">
+<span style="{{it.bar}}"></span>
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{it.label}}</span>
+<span class="num" style="font-size: 15px">{{it.time}}</span>
+</div>
+</sc-for>
+</div>
+</sc-for>
+<div style="{{w.sumStyle}}">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 6px"><span style="font-size: 12px; color: #A3ABBC; font-weight: 600">{{w.range}}</span><span style="{{w.badgeStyle}}">{{w.badge}}</span></div>
+<sc-if value="{{w.hasData}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: baseline; gap: 6px; margin-top: 8px"><span class="num" style="font-size: 30px; font-style: italic; font-weight: 800">{{w.time}}</span><span style="font-size: 12px; color: #8A93A6">{{w.sessions}}</span></div>
+<div style="font-size: 12px; color: #A3ABBC; margin-top: 2px">{{w.km}}</div>
+<div style="display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 2px; margin-top: 10px"><div style="{{w.mixRide}}"></div><div style="{{w.mixStr}}"></div><div style="{{w.mixWalk}}"></div></div>
+<div style="font-size: 11px; color: #8A93A6; margin-top: 6px">{{w.mixText}}</div>
+<div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #252B37">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 11px; color: #8A93A6">Effort</span><span><span class="num" style="font-size: 18px">{{w.effort}}</span><span style="{{w.effStyle}}"> {{w.effLabel}}</span></span></div>
+<div style="position: relative; height: 6px; border-radius: 3px; background: #252B37; margin-top: 6px"><div style="{{w.band}}"></div><div style="{{w.marker}}"></div></div>
+</div>
+</sc-if>
+<sc-if value="{{w.noData}}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 13px; color: #C9CFDA; margin-top: 10px; line-height: 1.4">{{w.km}}</div>
+<a href="#" style="{{w.ctaStyle}}">{{w.cta}}</a>
+</sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 18px; font-size: 13px; color: #A3ABBC; align-items: center">
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #3B8CFF"></span>Ride</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #FF8A2A"></span>Run</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #FF4D9A"></span>Strength</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #2ED3B0"></span>Walk · mobility · recovery</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 12px; border-radius: 3px; border: 1.5px dashed #8A93A6; box-sizing: border-box"></span>Planned</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 12px; border-radius: 3px; background: rgba(255,181,71,.25)"></span>Sick day</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 12px; border-radius: 3px; background: rgba(155,123,255,.25)"></span>Travel · hikes</span>
+</div>
+
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1250}}'>
+class Component extends DCLogic {
+renderVals() {
+var C = { ride: '#3B8CFF', run: '#FF8A2A', str: '#FF4D9A', walk: '#2ED3B0', trip: '#9B7BFF' };
+function it(sport, label, time, planned) { return { sport: sport, label: label, time: time, planned: !!planned }; }
+var raw = [
+{ range: 'Sep 28 – Oct 4', time: '4h 43m', km: '63.1 km', pct: 37, days: [
+{ n: '28', out: true, items: [it('ride', 'Afternoon ride', '1h49')] },
+{ n: '29', out: true, items: [it('ride', 'Afternoon ride', '1h30')] },
+{ n: '30', out: true, items: [it('str', 'Workout C', '31m')] },
+{ n: 'Oct 1', tag: 'Sick', items: [it('walk', 'Mobility', '10m')] },
+{ n: '2', tag: 'Sick', items: [it('walk', 'Mobility', '10m')] },
+{ n: '3', tag: 'Sick', items: [it('str', 'Weights', '11m')] },
+{ n: '4', tag: 'Sick', items: [it('walk', 'Walk', '21m')] }
+] },
+{ range: 'Oct 5 – 11', time: '8h 20m', km: '111.4 km', pct: 65, days: [
+{ n: '5', tag: 'Sick', items: [it('walk', 'Walk', '36m')] },
+{ n: '6', tag: 'Sick', items: [it('str', 'Light C', '37m')] },
+{ n: '7', items: [it('ride', 'Watopia', '46m')] },
+{ n: '8', items: [it('str', 'Workout B', '1h05')] },
+{ n: '9', items: [it('ride', 'Group ride', '1h01')] },
+{ n: '10', items: [it('str', 'Workout A', '1h00')] },
+{ n: '11', items: [it('walk', 'Walk', '1h55'), it('ride', 'Group ride', '1h21')] }
+] },
+{ range: 'Oct 12 – 18', time: '3h 39m', km: '71.7 km', pct: 55, current: true, days: [
+{ n: '12', items: [it('str', 'Workout C', '48m')] },
+{ n: '13', tag: 'Hard', items: [it('ride', 'Sweet spot', '1h10')] },
+{ n: '14', items: [it('ride', 'Endurance', '1h00')] },
+{ n: '15', today: true, items: [it('str', 'Workout D', '40m')] },
+{ n: '16', items: [it('walk', 'Recovery spin', '40m', true)] },
+{ n: '17', items: [it('ride', 'Long easy ride', '1h30', true)] },
+{ n: '18', tag: 'Travel', items: [it('str', 'Workout A', '45m', true)] }
+] },
+{ range: 'Oct 19 – 25', time: '–', km: 'Mountain week. Hikes keep the streak and cover legs.', pct: 0, days: [
+{ n: '19', trip: true, tag: 'Travel', items: [it('trip', 'Hikes', '')] },
+{ n: '20', trip: true, items: [it('trip', 'Hikes', '')] },
+{ n: '21', trip: true, items: [it('trip', 'Hikes', '')] },
+{ n: '22', trip: true, items: [it('trip', 'Hikes', '')] },
+{ n: '23', trip: true, items: [it('trip', 'Hikes', '')] },
+{ n: '24', trip: true, items: [it('trip', 'Hikes', '')] },
+{ n: '25', trip: true, tag: 'Travel', items: [it('trip', 'Hikes', '')] }
+] },
+{ range: 'Oct 26 – Nov 1', time: '–', km: 'Nothing planned yet.', pct: 0, days: [
+{ n: '26', items: [] }, { n: '27', items: [] }, { n: '28', items: [] }, { n: '29', items: [] }, { n: '30', items: [] }, { n: '31', items: [] }, { n: 'Nov 1', out: true, items: [] }
+] }
+];
+// Week summaries from the dashboard: minutes per sport and relative effort vs personal range
+var WS = {
+'Sep 28 – Oct 4': { sessions: '7 sessions', ride: 199, str: 62, walk: 22, eff: 288, lo: 430, hi: 853, status: 'below' },
+'Oct 5 – 11': { sessions: '8 sessions', ride: 187, str: 161, walk: 152, eff: 458, lo: 286, hi: 568, status: 'in' },
+'Oct 12 – 18': { sessions: '4 of 7 done', ride: 131, str: 88, walk: 0, eff: 355, lo: 245, hi: 487, status: 'in' }
+};
+function hm(m) { var h = Math.floor(m / 60), r = m % 60; return h ? h + 'h' + (r ? ' ' + r + 'm' : '') : r + 'm'; }
+var weeks = raw.map(function (w) {
+var s = WS[w.range];
+var out = {
+range: w.range, time: w.time, km: w.km, hasData: !!s, noData: !s,
+sumStyle: 'border-radius:14px;padding:12px;display:flex;flex-direction:column;' + (w.current ? 'background:#191D27;box-shadow:inset 0 0 0 1.5px #D4FF3A' : 'background:#0F1218'),
+badge: w.current ? '55% of plan' : w.range === 'Oct 19 – 25' ? 'Trip' : '',
+badgeStyle: w.current ? 'font-size:10px;font-weight:700;letter-spacing:.06em;color:#0A0C11;background:#D4FF3A;border-radius:999px;padding:2px 7px' : w.range === 'Oct 19 – 25' ? 'font-size:10px;font-weight:700;letter-spacing:.06em;color:#B9A3FF;background:rgba(155,123,255,.16);border-radius:999px;padding:2px 7px' : 'display:none',
+cta: w.range === 'Oct 19 – 25' ? 'Hikes + travel-kit lifts →' : 'Plan this week →',
+ctaStyle: 'display:inline-block;margin-top:10px;font-size:13px;font-weight:600;padding:6px 0;color:' + (w.range === 'Oct 19 – 25' ? '#B9A3FF' : '#D4FF3A')
+};
+if (s) {
+var tot = s.ride + s.str + s.walk;
+var scale = Math.max(s.hi * 1.25, s.eff * 1.1);
+var effC = s.status === 'in' ? '#D4FF3A' : s.status === 'below' ? '#FFB547' : '#FF7A7A';
+out.sessions = s.sessions;
+out.mixRide = 'background:#3B8CFF;width:' + (s.ride / tot * 100) + '%';
+out.mixStr = 'background:#FF4D9A;width:' + (s.str / tot * 100) + '%';
+out.mixWalk = s.walk ? 'background:#2ED3B0;width:' + (s.walk / tot * 100) + '%' : 'display:none';
+out.mixText = 'Ride ' + hm(s.ride) + ' · Lift ' + hm(s.str) + (s.walk ? ' · Other ' + hm(s.walk) : '');
+out.effort = String(s.eff);
+out.effLabel = s.status === 'in' ? 'in range' : s.status === 'below' ? 'below' : 'above';
+out.effStyle = 'font-size:11px;font-weight:600;color:' + effC;
+out.band = 'position:absolute;top:0;bottom:0;border-radius:3px;background:rgba(212,255,58,.22);left:' + (s.lo / scale * 100) + '%;width:' + ((s.hi - s.lo) / scale * 100) + '%';
+out.marker = 'position:absolute;top:-3px;width:3px;height:12px;border-radius:2px;background:' + effC + ';left:calc(' + (s.eff / scale * 100) + '% - 1.5px)';
+}
+return Object.assign(out, {
+days: w.days.map(function (d) {
+var bg = d.tag === 'Sick' ? 'rgba(255,181,71,.10)' : d.trip ? 'rgba(155,123,255,.10)' : '#0F1218';
+var cell = 'min-height:104px;border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:6px;background:' + bg + ';' + (d.today ? 'box-shadow:inset 0 0 0 2px #D4FF3A;' : '') + (d.out ? 'opacity:.5;' : '');
+var tagColor = d.tag === 'Sick' ? '#FFB547' : d.tag === 'Hard' ? '#FF8A2A' : '#B9A3FF';
+return {
+n: d.n, tag: d.tag || '', cell: cell,
+numStyle: 'font-family:Barlow Condensed,sans-serif;font-weight:700;font-size:18px;' + (d.today ? 'color:#0A0C11;background:#D4FF3A;border-radius:6px;padding:1px 6px' : 'color:#F3F5F9'),
+tagStyle: d.tag ? 'font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:' + tagColor : 'display:none',
+items: d.items.map(function (x) {
+var c = C[x.sport];
+return {
+label: x.label, time: x.time,
+chip: 'display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;font-size:12px;font-weight:600;color:#F3F5F9;' + (x.planned ? 'border:1px dashed ' + c + ';background:transparent' : 'background:' + c + '29'),
+bar: 'flex:0 0 auto;width:4px;height:14px;border-radius:2px;background:' + c
+};
+})
+};
+})
+});
+});
+return { weeks: weeks };
+}
+}
+</script>
+</body>
+</html>

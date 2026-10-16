@@ -81,7 +81,7 @@ const scores = Array.from({ length: 11 }, (_, n) => n)
         <fieldset>
           <legend>Starting stage</legend>
           <div class="stage-pick">
-            <button v-for="item in stages" :key="item.stage" type="button" :class="{ chosen: draft.start_stage === item.stage }" @click="draft.start_stage = item.stage">
+            <button v-for="item in stages" :key="item.stage" type="button" :class="{ chosen: draft.start_stage === item.stage }" :aria-pressed="draft.start_stage === item.stage" @click="draft.start_stage = item.stage">
               <strong>{{ item.stage }}</strong><span>{{ item.name }}</span>
             </button>
           </div>
@@ -144,10 +144,10 @@ const scores = Array.from({ length: 11 }, (_, n) => n)
 .rtr { margin-bottom: 16px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
 .rtr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .rtr-head h2 { margin: 4px 0 0; font-size: 17px; }
-.eyebrow { font-size: 10px; font-weight: 750; letter-spacing: 1.8px; color: oklch(from #7fd7b9 calc(l - var(--dim-l)) c h); }
+.eyebrow { font-size: 10px; font-weight: 750; letter-spacing: 1.8px; color: var(--z2); }
 button { cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text); padding: 7px 12px; border-radius: 9px; font: inherit; font-size: 13px; }
 button:disabled { cursor: progress; opacity: 0.7; }
-.primary { background: oklch(from #83dfba calc(l - var(--dim-l)) c h); border-color: oklch(from #83dfba calc(l - var(--dim-l)) c h); color: var(--on-accent); font-weight: 750; }
+.primary { background: var(--z2); border-color: var(--z2); color: var(--on-accent); font-weight: 750; }
 .link { background: none; border: 0; color: var(--muted); font-size: 12px; padding: 4px; }
 .link:hover { color: var(--text); }
 .rtr-intro { margin: 8px 0 0; font-size: 13px; color: var(--muted); line-height: 1.55; max-width: 80ch; }
@@ -162,7 +162,7 @@ legend { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .stage-pick button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 8px 10px; }
 .stage-pick strong { font-family: var(--font-display); font-size: 16px; }
 .stage-pick span { font-size: 11px; color: var(--muted-soft); }
-.stage-pick .chosen { border-color: oklch(from #83dfba calc(l - var(--dim-l)) c h); background: color-mix(in srgb, #83dfba 14%, transparent); }
+.stage-pick .chosen { border-color: var(--z2); background: color-mix(in srgb, var(--z2) 14%, transparent); }
 .rtr-suggest { font-size: 12px; color: var(--text-soft); }
 .rtr-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
@@ -170,15 +170,15 @@ legend { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .ladder li { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 4px solid rgb(var(--ov-rgb) / 0.1); min-width: 0; }
 .ladder li span { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--muted); }
 .ladder li small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ladder li.done { border-top-color: color-mix(in srgb, #83dfba 55%, transparent); }
-.ladder li.now { border-top-color: #83dfba; }
+.ladder li.done { border-top-color: color-mix(in srgb, var(--z2) 55%, transparent); }
+.ladder li.now { border-top-color: var(--z2); }
 .ladder li.now span, .ladder li.now small { color: var(--text); }
 
 .rtr-next { display: grid; gap: 3px; padding: 10px 14px; border-radius: 12px; border-left: 3px solid var(--muted); background: rgb(var(--ov-rgb) / 0.04); }
 .rtr-next strong { font-size: 14px; }
 .rtr-next span { font-size: 13px; color: var(--text-soft); }
 .rtr-next small { font-size: 11px; color: var(--muted); }
-.rtr-next.tone-go { border-left-color: #83dfba; }
+.rtr-next.tone-go { border-left-color: var(--z2); }
 .rtr-next.tone-wait { border-left-color: var(--warning); }
 .rtr-next.tone-stop { border-left-color: var(--danger); }
 
@@ -188,7 +188,7 @@ legend { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .run-row { padding: 7px 0; border-top: 1px solid var(--border); }
 .run-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; color: var(--text); text-decoration: none; min-width: 0; }
 .run-name small { color: var(--muted); }
-.flag { font-style: normal; font-size: 11px; padding: 1px 6px; border-radius: 999px; color: var(--warning-text); background: rgba(243, 180, 77, 0.12); }
+.flag { font-style: normal; font-size: 11px; padding: 1px 6px; border-radius: 999px; color: var(--warning-text); background: color-mix(in srgb, var(--warning) 12%, transparent); }
 .run-stage { font-family: var(--font-display); font-weight: 700; color: var(--text-soft); }
 select { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font: inherit; font-size: 12px; }
 .run-outcome { font-size: 12px; font-weight: 700; }
@@ -204,5 +204,39 @@ select { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border); 
   .runs-head { display: none; }
   .run-row { grid-template-columns: 1fr 1fr; }
   .run-name { grid-column: 1 / -1; }
+}
+
+/* Multi-sport redesign layer — staged recovery hero. */
+.rtr { margin-bottom: 24px; padding: 28px; border-radius: var(--radius-card); border-color: color-mix(in srgb, var(--z2) 30%, var(--border)); background: linear-gradient(120deg, color-mix(in srgb, var(--z2) 10%, transparent), transparent 65%), var(--surface); }
+.rtr .eyebrow { font: 700 11px var(--font-body); letter-spacing: .14em; color: var(--z2); }
+.rtr .rtr-head h2 { margin-top: 10px; font: italic 800 32px/1.05 var(--font-display); text-transform: uppercase; }
+.rtr button { color: var(--text); background: transparent; border: 1px solid var(--border-strong); border-radius: 999px; padding: 10px 16px; }
+.rtr button:hover:not(:disabled) { background: var(--surface2); border-color: var(--z2); }
+.rtr :is(button, input, select, summary):focus-visible { outline: 2px solid var(--z2); outline-offset: 3px; }
+.rtr .rtr-intro { margin-top: 14px; line-height: 1.7; }
+.rtr .ladder { margin: 24px 0; gap: 10px; }
+.rtr .ladder li { padding: 12px; border: 1px solid var(--border); border-top: 3px solid var(--border-strong); border-radius: 12px; background: rgb(var(--deep-rgb)); }
+.rtr .ladder li.done { border-top-color: var(--z2); }
+.rtr .ladder li.now { border-color: var(--z2); background: color-mix(in srgb, var(--z2) 8%, var(--surface)); }
+.rtr .ladder li span { font-size: 24px; }
+.rtr .rtr-next { padding: 18px 20px; gap: 7px; background: var(--surface2); border-radius: 14px; }
+.rtr .rtr-next strong { font-size: 15px; }
+.rtr .rtr-start { margin-top: 24px; gap: 20px; }
+.rtr .stage-pick { gap: 10px; }
+.rtr .stage-pick button { border-radius: 14px; padding: 14px; }
+.rtr .stage-pick strong { font-size: 26px; color: var(--z2); }
+.rtr .stage-pick .chosen { background: color-mix(in srgb, var(--z2) 10%, var(--surface)); border-color: var(--z2); }
+.rtr input, .rtr select { background: rgb(var(--deep-rgb)); border-color: var(--border-strong); border-radius: 10px; padding: 10px; }
+.rtr .run-row { padding: 12px 0; }
+.rtr .rtr-rules { margin-top: 20px; }
+@media (max-width: 760px) {
+  .rtr { padding: 20px 16px; }
+  .rtr .rtr-head { flex-direction: column; }
+  .rtr .rtr-head h2 { font-size: 28px; }
+  .rtr .ladder { gap: 8px; }
+  .rtr .ladder li { padding: 10px; }
+  .rtr .rtr-actions { flex-wrap: wrap; }
+  .rtr .stage-pick { gap: 6px; }
+  .rtr .stage-pick button { padding: 10px; }
 }
 </style>

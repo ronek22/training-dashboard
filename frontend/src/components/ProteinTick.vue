@@ -88,4 +88,24 @@ onMounted(load)
 .protein-link { flex: 1; color: oklch(from #91b1ff calc(l - var(--dim-l)) c h); font-size: 11px; }
 .protein-error { color: oklch(from #f09a90 calc(l - var(--dim-l)) c h); font-size: 11px; }
 @media (max-width: 480px) { .protein-choice button { height: 32px; } }
+
+/* Redesign: protein row in the check-in card. */
+.protein-tick { margin: 0; border-top: 1px solid var(--border); padding: 16px 24px 20px; }
+.protein-line { gap: 10px 14px; }
+.protein-line > span:first-child { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.protein-question { color: var(--text); font-size: 14px; font-weight: 500; }
+.protein-choice { gap: 8px; }
+.protein-choice button { height: 40px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font-size: 14px; font-weight: 600; }
+.protein-choice button:hover { border-color: var(--muted); }
+.protein-choice button.on { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.protein-choice button.on.miss { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning-text); }
+.protein-week { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 12px; }
+.protein-link { color: var(--accent); font-size: 13px; }
+
+.protein-tick { padding: 14px 22px; }
+.protein-line { justify-content: space-between; }
+.protein-line > span:first-child { color: var(--text); font-size: 15px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.protein-week { flex-basis: auto; margin-left: auto; color: var(--muted-soft); font-size: 13px; }
+.protein-question { flex: 1 1 100%; order: 3; color: var(--muted-soft); font-size: 13px; }
+.protein-choice { order: 4; }
 </style>

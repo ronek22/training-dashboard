@@ -212,4 +212,10 @@ button.month-day:focus-visible { outline: 2px solid var(--dot); outline-offset: 
 
 @media (max-width: 420px) { .month { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .month-day i { transition: none; } }
+
+/* Redesign layer */
+.month { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; padding: 24px; }
+.month-kicker { font-size: 11px; font-weight: 600; letter-spacing: .14em; }
+.month h2 { font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: .005em; text-transform: uppercase; }
+.month-count strong { font-family: var(--font-display); font-size: 48px; font-weight: 800; color: var(--accent); }
 </style>

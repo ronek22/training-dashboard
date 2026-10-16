@@ -1,21 +1,24 @@
 <template>
   <section class="week" aria-labelledby="week-heading">
     <header class="week-head">
-      <h2 id="week-heading">Your week</h2>
-      <p class="week-totals">
-        <span><strong><AnimatedNumber :value="summary.distance" cache-key="week:distance" /></strong></span>
-        <span><strong>{{ summary.duration }}</strong></span>
-        <span><strong><AnimatedNumber :value="summary.sessions" cache-key="week:sessions" /></strong> {{ summary.sessions === 1 ? 'session' : 'sessions' }}</span>
-      </p>
-      <div v-if="plannedMinutes" class="week-progress" role="img" :aria-label="`${progressPct}% of ${plannedLabel} planned`">
-        <span class="week-progress-track"><i v-fill:width="{ value: progressPct, key: 'week:progress' }"></i></span>
-        <small>{{ progressPct }}% of {{ plannedLabel }} planned</small>
+      <div class="week-head-main">
+        <span class="week-kicker" id="week-heading">This week · {{ rangeLabel }}</span>
+        <div class="week-total">
+          <strong>{{ summary.duration }}</strong>
+          <span>
+            <template v-if="plannedMinutes">{{ progressPct }}% of {{ plannedLabel }} planned · </template>{{ summary.distance }} · <AnimatedNumber :value="summary.sessions" cache-key="week:sessions" /> {{ summary.sessions === 1 ? 'session' : 'sessions' }}
+          </span>
+        </div>
       </div>
       <nav class="week-links">
         <router-link class="week-link" to="/weekly-review">Weekly review ↗</router-link>
-        <router-link class="week-link" to="/plan">View plan →</router-link>
+        <router-link class="week-link is-primary" to="/plan">View plan →</router-link>
       </nav>
     </header>
+
+    <div v-if="mix.length" class="week-mix" role="img" :aria-label="`${progressPct}% of the planned week done`">
+      <i v-for="seg in mix" :key="seg.date" :style="{ width: `${seg.pct}%`, background: seg.accent }" />
+    </div>
 
     <div class="week-grid">
       <button
@@ -23,36 +26,31 @@
         :key="day.date"
         type="button"
         class="week-cell"
-        :class="[`is-${day.state}`, { 'is-today': day.isToday, 'is-over': day.overPlan }]"
+        :class="[`is-${day.state}`, { 'is-today': day.isToday, 'is-over': day.overPlan, 'is-rest': !day.plannedMinutes && day.state !== 'actual' }]"
         :style="{ '--day-accent': day.accent }"
         :aria-label="`${day.dayLabel} ${day.dateLabel}, ${day.displayTitle}, ${day.minutesLabel}. ${day.activityId ? 'Open activity' : 'Open weekly plan'}`"
         @click="$emit('open', day)"
       >
         <span class="week-cell-top">
-          <span class="week-cell-day">{{ day.dayLabel }} <em>{{ day.dateLabel }}</em></span>
-          <span class="week-cell-icon" :class="`tone-${day.tone}`" aria-hidden="true">
-            <ActivityIcon v-if="day.hasIcon" :type="day.displayType" :tone="day.tone" :size="16" />
-          </span>
+          <span class="week-cell-day">{{ day.dayLabel }} {{ day.dateLabel }}</span>
+          <span class="week-cell-dot" aria-hidden="true" />
         </span>
-        <span class="week-cell-text">
-          <strong class="week-cell-title">{{ day.displayTitle }}</strong>
-          <small class="week-cell-sub">{{ day.subtitle }}</small>
+        <strong class="week-cell-title">{{ day.displayTitle }}</strong>
+        <span class="week-cell-time">
+          <b>{{ bigTime(day) }}</b>
+          <small v-if="day.state === 'actual' && day.plannedMinutes">of {{ day.plannedMinutes }}m</small>
         </span>
-        <span class="week-cell-bar" aria-hidden="true"><i v-fill:width="{ value: day.progressPct, key: `week-day:${day.date}` }"></i></span>
-        <span class="week-cell-foot">
-          <span class="week-cell-minutes">{{ day.minutesLabel }}</span>
-          <span class="week-cell-status">{{ day.statusLabel }}</span>
-        </span>
+        <span class="week-cell-status">{{ day.statusLabel }}</span>
       </button>
     </div>
   </section>
 </template>
 
 <script setup>
-import ActivityIcon from './ActivityIcon.vue'
+import { computed } from 'vue'
 import AnimatedNumber from './AnimatedNumber.vue'
 
-defineProps({
+const props = defineProps({
   days: { type: Array, required: true },
   summary: { type: Object, required: true },
   plannedMinutes: { type: Number, default: 0 },
@@ -60,6 +58,26 @@ defineProps({
   progressPct: { type: Number, default: 0 },
 })
 defineEmits(['open'])
+
+const fmt = (min) => {
+  const m = Math.round(Number(min || 0))
+  if (!m) return '—'
+  const h = Math.floor(m / 60)
+  const r = m % 60
+  return h ? `${h}h${r ? ` ${String(r).padStart(2, '0')}m` : ''}` : `${r}m`
+}
+const bigTime = (day) => (day.state === 'actual' ? fmt(day.actualMinutes) : day.plannedMinutes ? fmt(day.plannedMinutes) : 'Rest')
+const rangeLabel = computed(() => {
+  const first = props.days[0]
+  const last = props.days.at(-1)
+  return first && last ? `${first.dayLabel} ${first.dateLabel} – ${last.dayLabel} ${last.dateLabel}` : ''
+})
+// Done work as one bar, each session in its sport colour, against the planned week.
+const mix = computed(() => {
+  const done = props.days.filter((day) => day.state === 'actual' && Number(day.actualMinutes) > 0)
+  const total = Math.max(props.plannedMinutes, done.reduce((sum, day) => sum + Number(day.actualMinutes), 0), 1)
+  return done.map((day) => ({ date: day.date, accent: day.accent, pct: (Number(day.actualMinutes) / total) * 100 }))
+})
 </script>
 
 <style scoped>
@@ -141,5 +159,56 @@ defineEmits(['open'])
   .week-cell-text { grid-area: text; }
   .week-cell-bar { grid-area: bar; height: 4px; }
   .week-cell-foot { grid-area: foot; flex-direction: column; align-items: flex-end; gap: 0; }
+}
+
+/* ── Multi-sport redesign layer ── */
+.week { gap: 18px; padding: 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.week-head { align-items: flex-end; justify-content: space-between; gap: 16px; }
+.week-head-main { display: grid; gap: 8px; min-width: 0; }
+.week-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.week-total { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+.week-total strong { font-family: var(--font-display); font-size: 56px; font-style: italic; font-weight: 800; line-height: .95; text-transform: uppercase; }
+.week-total span { color: var(--muted-soft); font-size: 15px; font-variant-numeric: tabular-nums; }
+.week-links { gap: 20px; }
+.week-link { font-size: 14px; font-weight: 600; }
+.week-link.is-primary { color: var(--accent); }
+.week-mix { display: flex; gap: 2px; height: 10px; overflow: hidden; border-radius: 5px; background: var(--surface2); }
+.week-mix i { height: 100%; }
+.week-grid { gap: 10px; overflow: visible; border: 0; border-radius: 0; background: transparent; }
+.week-cell {
+  display: flex; flex-direction: column; gap: 10px;
+  border: 1px solid transparent; border-radius: 16px;
+  background: var(--surface2);
+  padding: 14px;
+}
+.week-cell:first-child { border-left: 1px solid transparent; }
+.week-cell.is-upcoming, .week-cell.is-today, .week-cell.is-rest, .week-cell.is-missed { border: 1px dashed var(--border-strong); background: transparent; }
+.week-cell.is-today { border: 0; background: var(--surface2); box-shadow: inset 0 0 0 2px var(--day-accent); }
+.week-cell:hover { background: var(--surface3); }
+.week-cell-day { color: var(--muted-soft); font-size: 12px; font-weight: 600; }
+.is-today .week-cell-day { color: var(--text); }
+.week-cell-dot { width: 10px; height: 10px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--day-accent); }
+.is-actual .week-cell-dot { background: var(--day-accent); }
+.week-cell-title { display: -webkit-box; min-height: 38px; overflow: hidden; color: var(--text); font-size: 14px; font-weight: 600; line-height: 1.35; white-space: normal; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.week-cell-time { display: flex; align-items: baseline; gap: 6px; margin-top: auto; }
+.week-cell-time b { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1; }
+.week-cell-time small { color: var(--muted); font-size: 12px; }
+.is-over .week-cell-time b { color: var(--warning-text); }
+.week-cell-status { color: var(--muted); font-size: 12px; font-weight: 600; }
+.is-actual .week-cell-status { color: var(--success-text); }
+.is-today .week-cell-status { color: var(--day-accent); }
+@media (max-width: 1100px) {
+  .week-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 780px) {
+  .week { padding: 20px; }
+  .week-total strong { font-size: 44px; }
+  .week-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .week-cell { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; grid-template-areas: "top title time" "top status time"; align-items: center; gap: 2px 12px; padding: 12px 14px; }
+  .week-cell.is-today { box-shadow: inset 0 0 0 2px var(--day-accent); }
+  .week-cell-top { grid-area: top; flex-direction: row-reverse; justify-content: flex-end; gap: 8px; }
+  .week-cell-title { grid-area: title; min-height: 0; -webkit-line-clamp: 1; }
+  .week-cell-status { grid-area: status; }
+  .week-cell-time { grid-area: time; margin-top: 0; }
 }
 </style>

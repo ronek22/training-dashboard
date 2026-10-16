@@ -391,4 +391,19 @@ load()
   .table-card { overflow-x: auto; }
   .training, .time, .target { display: none; }
 }
+
+/* Multi-sport redesign layer */
+ .dinner-planner .table-card { padding: 8px 12px; }
+.dinner-planner .week-table th { letter-spacing: .14em; font-size: 10px; }
+.dinner-planner .week-table td { padding-top: 18px; padding-bottom: 18px; }
+.dinner-planner .week-table th.p, .dinner-planner .num.p { color: var(--protein); }
+.dinner-planner .week-table th.c, .dinner-planner .num.c { color: var(--carbs); }
+.dinner-planner .week-table th.f, .dinner-planner .num.f { color: var(--fat); }
+.dinner-planner .week-table tbody tr.today td { background: transparent; border-top: 2px solid var(--volt); border-bottom: 2px solid var(--volt); }
+.dinner-planner .week-table tbody tr.today td:first-child { box-shadow: none; border-left: 2px solid var(--volt); }
+.dinner-planner .week-table tbody tr.today td:last-child { border-right: 2px solid var(--volt); }
+.dinner-planner .day-cell strong { font: 700 22px var(--font-display); }
+.dinner-planner .add { border-radius: 999px; min-height: 34px; }
+.dinner-planner .dish { white-space: normal; font-size: 14px; }
+@media (max-width: 700px) { .dinner-planner .table-card { padding: 4px; } }
 </style>

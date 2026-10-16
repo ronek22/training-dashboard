@@ -2,8 +2,8 @@
   <section v-if="cards.length" class="year" aria-labelledby="year-heading">
     <header class="year-head">
       <div>
-        <h2 id="year-heading">The work adds up.</h2>
-        <p>Your {{ year }} in motion: monthly work as bars, the running total as a line.</p>
+        <h2 id="year-heading">Your {{ year }} so far</h2>
+        <p>Monthly volume as bars, the running total as a line.</p>
       </div>
       <span class="year-head-meta">
         <RouterLink :to="`/season/${year}`" class="year-season-link">Your {{ year }} {{ yearEnding ? 'in review' : 'so far' }} ↗</RouterLink>
@@ -15,7 +15,7 @@
       <article v-for="card in cards" :key="card.key" class="year-card" :style="{ '--chart': card.color }" @mouseleave="active = null">
         <div class="year-card-top">
           <span class="year-card-icon" aria-hidden="true"><ActivityIcon :type="card.type" :tone="card.tone" :size="18" /></span>
-          <div class="year-card-name"><strong>{{ card.title }}</strong><small>Cumulative {{ card.unitLabel }}</small></div>
+          <div class="year-card-name"><strong>{{ card.title }}</strong><small>{{ card.unit === 'h' ? 'Hours' : 'Distance' }} this year</small></div>
           <div class="year-card-total"><strong><AnimatedNumber :value="card.total" :format="format" :cache-key="`year:${card.key}`" :duration="900" /></strong><span>{{ card.unit }}</span></div>
         </div>
 
@@ -32,14 +32,13 @@
             :key="`bar-${bar.month}`"
             :x="bar.x" :y="bar.y" :width="bar.width" :height="bar.height" rx="2"
             :style="{ '--i': bar.index }"
-            class="year-bar chart-grow" :class="{ 'is-peak': bar.isPeak, 'is-active': active?.key === card.key && active.index === bar.index }"
+            class="year-bar chart-grow" :class="{ 'is-peak': bar.isPeak, 'is-current': bar.index === card.lastIndex, 'is-active': active?.key === card.key && active.index === bar.index }"
           />
           <polygon :points="card.area" :fill="`url(#year-area-${card.key})`" class="chart-fade" />
           <polyline :points="card.line" pathLength="1" class="year-line-glow chart-draw" />
           <polyline :points="card.line" pathLength="1" class="year-line chart-draw" />
           <g class="chart-fade">
-            <line v-if="card.projection" :x1="card.last.x" :y1="card.last.y" :x2="card.projection.x" :y2="card.projection.y" class="year-projection" />
-            <circle v-if="card.projection" :cx="card.projection.x" :cy="card.projection.y" r="3" class="year-projection-dot" />
+            <text v-for="bar in card.bars.filter((b) => b.labelled)" :key="`v-${bar.month}`" :x="xFor(bar.index)" :y="bar.y - 5" text-anchor="middle" class="year-bar-value" :class="{ 'is-current': bar.index === card.lastIndex }">{{ bar.valueLabel }}</text>
             <circle :cx="card.last.x" :cy="card.last.y" r="7" class="year-last-halo" />
             <circle :cx="card.last.x" :cy="card.last.y" r="3.5" class="year-last-dot" />
           </g>
@@ -65,7 +64,6 @@
         <dl v-else class="year-foot">
           <div><dt>{{ card.currentMonth }} so far</dt><dd>{{ format(card.currentValue) }} {{ card.unit }}</dd></div>
           <div><dt>Best month</dt><dd>{{ card.peakMonth }} · {{ format(card.peakValue) }} {{ card.unit }}</dd></div>
-          <div v-if="card.projectedTotal"><dt>On pace for</dt><dd class="is-pace">~{{ format(card.projectedTotal) }} {{ card.unit }}</dd></div>
         </dl>
       </article>
     </div>
@@ -116,21 +114,23 @@ function buildCard({ key, title, type, tone, color, unit, unitLabel, series, mon
   const total = cumulative[lastIndex]
   // Linear pace from the days elapsed so far, only once there's enough of the year to mean something.
   const projectedTotal = lastIndex < 11 && dayOfYear >= 30 && total > 0 ? (total / dayOfYear) * daysInYear : 0
-  const lineMax = Math.max(projectedTotal, total, 1) * 1.04
+  const lineMax = Math.max(total, 1) * 1.06
   const barMax = Math.max(...monthly, 1)
   const yFor = (value) => BOTTOM - (value / lineMax) * (BOTTOM - TOP)
   const peakIndex = monthly.indexOf(Math.max(...monthly))
   const points = cumulative.map((value, index) => ({ x: xFor(index), y: yFor(value) }))
   const bars = series.map((item, index) => {
-    const height = Math.max((monthly[index] / barMax) * (BOTTOM - TOP) * 0.34, monthly[index] ? 2 : 0)
+    const height = Math.max((monthly[index] / barMax) * (BOTTOM - TOP) * 0.6, monthly[index] ? 2 : 0)
     const rows = unit === 'h'
       ? [['Month', item.month], ['Time', `${format(item.monthly_hours)} h`], ['Sessions', format(item.monthly_sessions)], ['Year total', `${format(cumulative[index])} h`]]
       : [['Month', item.month], ['Distance', `${format(monthly[index])} km`], ['Time', `${format(item.monthly_hours)} h`], ['Year total', `${format(cumulative[index])} km`]]
     return {
       index,
       month: item.month,
-      x: xFor(index) - step * 0.11,
-      width: step * 0.22,
+      x: xFor(index) - step * 0.3,
+      width: step * 0.6,
+      labelled: index === peakIndex || index === lastIndex,
+      valueLabel: unit === 'h' ? format(monthly[index]) : String(Math.round(monthly[index])),
       y: BOTTOM - height,
       height,
       isPeak: index === peakIndex,
@@ -143,19 +143,19 @@ function buildCard({ key, title, type, tone, color, unit, unitLabel, series, mon
     line: points.map((point) => `${point.x},${point.y}`).join(' '),
     area: [`${points[0].x},${BOTTOM}`, ...points.map((point) => `${point.x},${point.y}`), `${points[lastIndex].x},${BOTTOM}`].join(' '),
     last: points[lastIndex],
-    projection: projectedTotal ? { x: xFor(11), y: yFor(projectedTotal) } : null,
+    projection: null,
     currentMonth: series[lastIndex].month,
     currentValue: monthly[lastIndex],
     peakMonth: series[peakIndex].month,
     peakValue: monthly[peakIndex],
-    ariaLabel: `${title}: ${format(total)} ${unit} so far in ${year}${projectedTotal ? `, on pace for about ${format(projectedTotal)} ${unit}` : ''}`,
+    ariaLabel: `${title}: ${format(total)} ${unit} so far in ${year}`,
   }
 }
 
 const cards = computed(() => [
-  buildCard({ key: 'ride', title: 'Cycling', type: 'Ride', tone: 'ride', color: '#34c89b', unit: 'km', unitLabel: 'distance', series: props.rideSeries, monthlyKey: 'monthly_km', cumulativeKey: 'cumulative_km' }),
-  buildCard({ key: 'run', title: 'Running', type: 'Run', tone: 'run', color: '#6b9cff', unit: 'km', unitLabel: 'distance', series: props.runSeries, monthlyKey: 'monthly_km', cumulativeKey: 'cumulative_km' }),
-  buildCard({ key: 'strength', title: 'Strength', type: 'WeightTraining', tone: 'strength', color: '#efb557', unit: 'h', unitLabel: 'hours', series: props.strengthSeries, monthlyKey: 'monthly_hours', cumulativeKey: 'cumulative_hours' }),
+  buildCard({ key: 'ride', title: 'Cycling', type: 'Ride', tone: 'ride', color: 'var(--ride)', unit: 'km', unitLabel: 'distance', series: props.rideSeries, monthlyKey: 'monthly_km', cumulativeKey: 'cumulative_km' }),
+  buildCard({ key: 'run', title: 'Running', type: 'Run', tone: 'run', color: 'var(--run)', unit: 'km', unitLabel: 'distance', series: props.runSeries, monthlyKey: 'monthly_km', cumulativeKey: 'cumulative_km' }),
+  buildCard({ key: 'strength', title: 'Strength', type: 'WeightTraining', tone: 'strength', color: 'var(--strength)', unit: 'h', unitLabel: 'hours', series: props.strengthSeries, monthlyKey: 'monthly_hours', cumulativeKey: 'cumulative_hours' }),
 ].filter(Boolean))
 </script>
 
@@ -220,4 +220,39 @@ const cards = computed(() => [
 @media (max-width: 1100px) {
   .year-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Multi-sport redesign layer: line is the hero, bars readable behind it. ── */
+.year-head h2 { font-family: var(--font-display); font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: .005em; text-transform: uppercase; }
+.year-head p { color: var(--muted-soft); font-size: 13px; }
+.year-season-link { color: var(--accent); }
+.year-grid { gap: 20px; }
+.year-card {
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: radial-gradient(100% 90% at 100% 0%, color-mix(in srgb, var(--chart) 16%, transparent) 0%, transparent 60%), var(--surface);
+  box-shadow: none;
+  padding: 24px;
+}
+.year-card-top { grid-template-columns: auto minmax(0, 1fr); row-gap: 14px; }
+.year-card-name strong { color: var(--chart); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.year-card-name small { color: var(--muted-soft); font-size: 12px; }
+.year-card-total { grid-column: 1 / -1; gap: 8px; }
+.year-card-total strong { font-family: var(--font-display); font-size: 56px; font-style: italic; font-weight: 800; letter-spacing: .005em; }
+.year-card-total > span { color: var(--muted-soft); font-size: 15px; }
+.year-bar { opacity: .3; }
+.year-bar.is-peak { opacity: .5; }
+.year-bar.is-current { opacity: .78; }
+.year-bar.is-active { opacity: .95; }
+.year-line { stroke-width: 3; }
+.year-line-glow { opacity: .22; }
+.year-bar-value { fill: var(--muted-soft); font-family: var(--font-display); font-size: 12px; font-weight: 700; }
+.year-bar-value.is-current { fill: var(--text); }
+.year-month { fill: var(--muted); font-size: 10px; font-weight: 600; }
+.year-month.is-future { fill: rgb(var(--tint-rgb) / .35); }
+.year-grid-line { stroke: var(--border); }
+.year-foot { grid-template-columns: repeat(2, minmax(0, 1fr)); border-top-color: var(--border); padding-top: 14px; }
+.year-foot dt { font-size: 12px; }
+.year-foot dd { color: var(--text); font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+.year-foot.is-detail dd { font-size: 18px; }
 </style>

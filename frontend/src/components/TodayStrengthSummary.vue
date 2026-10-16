@@ -103,4 +103,15 @@ const tiles = computed(() => {
 .strength-lift-volume { color: var(--dash-soft, var(--text-soft)); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
 .strength-unlinked { margin: 0; border-radius: 12px; background: rgb(var(--deep-rgb) / 0.35); padding: 14px 16px; color: var(--dash-muted, var(--muted)); font-size: 13px; }
 .strength-unlinked a { margin-left: 6px; color: var(--accent); text-decoration: none; }
+
+/* ── Multi-sport redesign layer ── */
+.strength-lifts { gap: 0; }
+.strength-lifts li { padding: 12px 4px; border-radius: 0; border-top: 1px solid var(--border); }
+.strength-lifts li:nth-child(odd) { background: transparent; }
+.strength-lift-order { font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+.strength-lift-name strong { font-size: 15px; font-weight: 600; }
+.strength-lift-name small { font-size: 13px; }
+.strength-lift-bar { height: 6px; }
+.strength-lift-bar i { opacity: 1; }
+.strength-lift-volume { color: var(--text); font-family: var(--font-display); font-size: 22px; font-weight: 700; }
 </style>

@@ -2,8 +2,8 @@
   <details class="lift-volume-panel" :open="open">
     <summary class="lv-summary">
       <span class="lv-summary-main">
-        <strong>Weekly lift volume</strong>
-        <small>{{ volume.summary }}</small>
+        <span class="lv-kicker">This week's lift volume</span>
+        <strong>{{ volume.summary }}</strong>
       </span>
       <span class="lv-pills">
         <span v-if="volume.added_sets" class="lv-pill is-added">+{{ volume.added_sets }} set{{ volume.added_sets === 1 ? '' : 's' }}</span>
@@ -21,22 +21,22 @@
       <ul class="lv-groups">
         <li v-for="group in volume.groups" :key="group.key" :class="`is-${group.status}`">
           <span class="lv-label">{{ group.label }}<small v-if="!group.targeted">tracked</small></span>
-          <span class="lv-track" role="img" :aria-label="groupAria(group)">
-            <span v-if="group.targeted" class="lv-band" :style="bandStyle"></span>
-            <span class="lv-seg is-done" :style="segStyle(group.done_sets)"></span>
-            <span class="lv-seg is-planned" :style="segStyle(group.planned_sets)"></span>
-            <span class="lv-seg is-added" :style="segStyle(group.added_sets)"></span>
-          </span>
           <span class="lv-value">
             <strong>{{ group.total_sets }}</strong>
             <em v-if="group.added_sets">+{{ group.added_sets }}</em>
             <em v-if="group.shortfall" class="is-short">{{ group.shortfall }} short</em>
             <em v-else-if="group.status === 'hiking'">hiking</em>
           </span>
+          <span class="lv-track" role="img" :aria-label="groupAria(group)">
+            <span v-if="group.targeted" class="lv-band" :style="bandStyle"></span>
+            <span class="lv-seg is-done" :style="segStyle(group.done_sets)"></span>
+            <span class="lv-seg is-planned" :style="segStyle(group.planned_sets)"></span>
+            <span class="lv-seg is-added" :style="segStyle(group.added_sets)"></span>
+          </span>
         </li>
       </ul>
       <ul v-if="dayRows.length" class="lv-days">
-        <li v-for="row in dayRows" :key="row.date">
+        <li v-for="row in dayRows" :key="row.date" :class="`is-${row.state}`">
           <span class="lv-day">{{ formatDay(row.date) }}</span>
           <span class="lv-day-title">{{ row.title }}</span>
           <span v-if="row.additions.length" class="lv-day-adds">
@@ -125,5 +125,286 @@ const groupAria = group => `${group.label}: ${group.done_sets} logged, ${group.p
   .lv-groups li { grid-template-columns: 70px minmax(0, 1fr) 84px; gap: 8px; }
   .lv-days li { grid-template-columns: 44px minmax(0, 1fr); }
   .lv-day-adds, .lv-day-state { grid-column: 2; }
+}
+
+/* Multi-sport redesign layer */
+.lift-volume-panel {
+  min-width: 0;
+  margin-bottom: 0;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.lift-volume-panel .lv-summary {
+  min-width: 0;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 0;
+}
+
+.lift-volume-panel .lv-summary::after {
+  display: none;
+}
+
+.lift-volume-panel .lv-summary-main {
+  min-width: 0;
+  gap: 6px;
+}
+
+.lift-volume-panel .lv-kicker {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.lift-volume-panel .lv-summary-main strong {
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.lift-volume-panel .lv-pills {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin-left: auto;
+}
+
+.lift-volume-panel .lv-pill {
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--strength) 22%, var(--border));
+  background: color-mix(in srgb, var(--strength) 11%, transparent);
+  color: var(--tone-strength);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.lift-volume-panel .lv-pill.is-short {
+  border-color: color-mix(in srgb, var(--warning) 24%, var(--border));
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning-text);
+}
+
+.lift-volume-panel .lv-pill.is-ok {
+  border-color: color-mix(in srgb, var(--success) 24%, var(--border));
+  background: color-mix(in srgb, var(--success) 11%, transparent);
+  color: var(--success-text);
+}
+
+.lift-volume-panel .lv-body {
+  gap: 20px;
+  padding: 20px 0 0;
+  border-top: 0;
+}
+
+.lift-volume-panel .lv-legend {
+  display: none;
+}
+
+.lift-volume-panel .lv-groups {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.lift-volume-panel .lv-groups li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  align-content: start;
+  gap: 0;
+  min-width: 0;
+  padding: 16px;
+  border-radius: var(--radius-panel);
+  background: var(--bg-elevated);
+}
+
+.lift-volume-panel .lv-label {
+  min-width: 0;
+  color: var(--muted-soft);
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.lift-volume-panel .lv-label small {
+  display: block;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.lift-volume-panel .lv-value {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  margin-top: 8px;
+}
+
+.lift-volume-panel .lv-value strong {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: .95;
+}
+
+.lift-volume-panel .lv-value em {
+  color: var(--success-text);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.lift-volume-panel .lv-value em.is-short {
+  color: var(--warning-text);
+}
+
+.lift-volume-panel .lv-track {
+  display: flex;
+  width: 100%;
+  height: 6px;
+  margin-top: 10px;
+  border-radius: 3px;
+  background: var(--surface3);
+}
+
+.lift-volume-panel .lv-band {
+  display: none;
+}
+
+.lift-volume-panel .lv-seg {
+  height: 100%;
+}
+
+.lift-volume-panel .lv-seg.is-done {
+  background: var(--strength);
+}
+
+.lift-volume-panel .lv-seg.is-planned {
+  background: color-mix(in srgb, var(--strength) 46%, transparent);
+}
+
+.lift-volume-panel .lv-seg.is-added {
+  background: var(--tone-strength);
+}
+
+.lift-volume-panel .lv-days {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+  padding: 0;
+  border-top: 0;
+}
+
+.lift-volume-panel .lv-days li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 0;
+  min-width: 0;
+  min-height: 72px;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: var(--surface2);
+}
+
+.lift-volume-panel .lv-days li.is-planned {
+  border: 1px dashed color-mix(in srgb, var(--strength) 60%, var(--border));
+  background: transparent;
+}
+
+.lift-volume-panel .lv-day {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.lift-volume-panel .lv-day-title {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.lift-volume-panel .lv-day-adds,
+.lift-volume-panel .lv-day-state {
+  grid-column: 1;
+  margin-top: 4px;
+  color: var(--tone-strength);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.lift-volume-panel .lv-day-state {
+  color: var(--muted);
+}
+
+.lift-volume-panel .lv-method {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1000px) {
+  .lift-volume-panel .lv-groups {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .lift-volume-panel {
+    padding: 20px;
+  }
+
+  .lift-volume-panel .lv-summary {
+    flex-wrap: wrap;
+  }
+
+  .lift-volume-panel .lv-summary-main {
+    flex: 1 1 100%;
+  }
+
+  .lift-volume-panel .lv-pills {
+    margin-left: 0;
+  }
+
+  .lift-volume-panel .lv-body {
+    padding-top: 18px;
+  }
+
+  .lift-volume-panel .lv-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .lift-volume-panel .lv-groups li {
+    padding: 14px;
+  }
+
+  .lift-volume-panel .lv-value strong {
+    font-size: 32px;
+  }
+
+  .lift-volume-panel .lv-days {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
 }
 </style>

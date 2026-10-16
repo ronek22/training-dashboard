@@ -1,8 +1,8 @@
 <template>
-  <section v-if="arc" class="card arc-card" aria-labelledby="winter-arc-title">
+  <section v-if="arc" class="arc-card" :class="embedded ? 'arc-embedded' : 'card'" aria-labelledby="winter-arc-title">
     <div class="arc-head">
       <div>
-        <div class="arc-eyebrow">WINTER ARC</div>
+        <div v-if="!embedded" class="arc-eyebrow">WINTER ARC</div>
         <h2 id="winter-arc-title" class="arc-title">{{ headline }}</h2>
         <p class="arc-sub">{{ subline }}</p>
       </div>
@@ -114,7 +114,7 @@ import { addDays, differenceInCalendarDays, format, nextMonday, parseISO, startO
 import { useApi } from '../stores/api'
 
 // The Plan page hides the strip while the season timeline already draws the blocks.
-defineProps({ showStrip: { type: Boolean, default: true } })
+defineProps({ showStrip: { type: Boolean, default: true }, embedded: { type: Boolean, default: false } })
 const emit = defineEmits(['changed'])
 const api = useApi()
 const arc = ref(null)
@@ -297,9 +297,9 @@ defineExpose({ load })
 <style scoped>
 .arc-card { display: grid; gap: 18px; padding: 22px 24px; margin-bottom: 18px; }
 .focus-base { --focus: var(--z2); }
-.focus-sweet_spot { --focus: #eab308; }
-.focus-vo2 { --focus: #ef4444; }
-.focus-maintain { --focus: #8b9bb4; }
+.focus-sweet_spot { --focus: var(--warning); }
+.focus-vo2 { --focus: var(--danger); }
+.focus-maintain { --focus: var(--muted-soft); }
 
 .arc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .arc-eyebrow { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; }
@@ -367,4 +367,17 @@ defineExpose({ load })
   .arc-block-label span { display: none; }
   .arc-adjust { grid-template-columns: 1fr; padding: 14px; }
 }
+
+/* ── Multi-sport redesign layer ── */
+.arc-card { padding: 24px 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; }
+.arc-eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.arc-title { margin-top: 8px; font-family: var(--font-display); font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: .005em; text-transform: uppercase; }
+
+.arc-sub { color: var(--muted-soft); font-size: 14px; }
+.arc-button { min-height: 44px; border-radius: 999px; }
+
+.arc-card.arc-embedded { margin: 0; padding: 20px 24px; border: 1px dashed var(--border-strong); border-radius: 18px; background: transparent; }
+.arc-embedded .arc-title { margin-top: 0; font-family: var(--font-body); font-size: 17px; font-style: normal; font-weight: 700; text-transform: none; }
+.arc-embedded .arc-head { align-items: center; }
+.arc-embedded .arc-button { min-height: 44px; padding: 0 20px; border: 1px solid color-mix(in srgb, var(--ride) 50%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--ride) 12%, transparent); color: var(--tone-ride); font-weight: 700; }
 </style>

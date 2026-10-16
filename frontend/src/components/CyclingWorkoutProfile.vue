@@ -40,5 +40,5 @@ const segmentStyle = (segment) => ({
 
 <style scoped>
 .cycling-workout-profile { display: flex; align-items: stretch; gap: 1px; height: var(--profile-height, 72px); padding: 6px 0 0; border-bottom: 1px solid var(--border); }
-.cycling-workout-segment { flex-basis: 0; min-width: 1px; opacity: 0.85; }
+.cycling-workout-segment { flex-basis: 0; min-width: 1px; opacity: 0.9; border-radius: 3px 3px 0 0; }
 </style>

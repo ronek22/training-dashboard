@@ -213,4 +213,21 @@ onUnmounted(() => {
 .ask input { flex: 1; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); color: var(--text); font: inherit; font-size: 12.5px; }
 .ask-button { border: 1px solid var(--border-strong); background: transparent; color: var(--text); border-radius: 8px; padding: 0 12px; min-height: 32px; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .ask-button:disabled { opacity: .5; cursor: default; }
+
+/* Multi-sport redesign layer */
+
+.ideas-card { padding: 24px; gap: 18px; }
+.ideas-card .ideas-head { align-items: start; flex-direction: column; gap: 8px; }
+.ideas-card .pre-session { padding: 14px; border-radius: 14px; background: color-mix(in srgb, var(--run) 9%, var(--surface)); }
+.ideas-card .slots { border-radius: 999px; }
+.ideas-card .slots button { border-radius: 999px; font-family: var(--font-body); }
+.ideas-card .idea-list { gap: 10px; }
+.ideas-card .idea { padding: 14px; border-radius: 14px; background: rgb(var(--deep-rgb)); gap: 10px; }
+.ideas-card .idea-top { flex-wrap: wrap; gap: 6px; }
+.ideas-card .cover i { background: var(--z2); }
+.ideas-card .tag.claude, .ideas-card .more { color: var(--text-soft); }
+.ideas-card .ask { flex-wrap: wrap; }
+.ideas-card .ask input { flex-basis: 150px; border-radius: 12px; height: 40px; }
+.ideas-card .ask-button { border-radius: 999px; min-height: 40px; }
+
 </style>

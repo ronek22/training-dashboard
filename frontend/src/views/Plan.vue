@@ -2,9 +2,9 @@
   <div class="plan-page">
     <div class="page-head">
       <div>
-        <div class="page-eyebrow">MAKE THE WEEK YOURS</div>
+        <div class="page-eyebrow">Train · Plan</div>
         <h1 class="page-title">Plan</h1>
-        <p class="page-sub">A little structure. A clear purpose. Your next week of progress.</p>
+        
       </div>
       <div class="planner-action">
         <button type="button" class="planner-button" :disabled="planningWithCoach || !isLocalCoachHost" :title="isLocalCoachHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="openCoachPlanningBrief">
@@ -24,8 +24,10 @@
       <div v-if="flashMessage.detail" class="flash-detail">{{ flashMessage.detail }}</div>
     </div>
 
-    <WinterArcStrip :show-strip="!timelineShowsArc" @changed="onArcChanged" />
-    <SeasonTimeline ref="seasonTimeline" @loaded="data => (timelineShowsArc = Boolean(data?.has_content && data.blocks.length))" @open-week="openTimelineWeek" />
+    <SeasonTimeline ref="seasonTimeline" @loaded="data => { timelineShowsArc = Boolean(data?.has_content && data.blocks.length); timelineHasContent = Boolean(data?.has_content) }" @open-week="openTimelineWeek">
+      <WinterArcStrip embedded :show-strip="!timelineShowsArc" @changed="onArcChanged" />
+    </SeasonTimeline>
+    <WinterArcStrip v-if="!timelineHasContent" :show-strip="!timelineShowsArc" @changed="onArcChanged" />
 
     <div v-if="loading" class="skeleton-shell plan-loading-state">
       <div class="card skeleton-card plan-loading-trend">
@@ -63,21 +65,26 @@
       <section v-if="selectedPlan" class="plan-command card" aria-labelledby="plan-command-title">
         <div class="plan-command-top">
           <div>
-            <div class="page-eyebrow">WEEKLY PLAN</div>
-            <h2 id="plan-command-title" class="plan-command-title">{{ selectedWeekRange }}</h2>
-            <p class="plan-command-focus">{{ selectedPlan.focus || selectedPlan.title || 'Weekly training plan' }}</p>
+            <div class="plan-command-kicker"><span>{{ isViewingCurrentWeek ? 'This week' : 'Week' }}</span><small v-if="selectedPlan.revision_count">Adjusted {{ selectedPlan.revision_count }} {{ selectedPlan.revision_count === 1 ? 'time' : 'times' }}</small></div>
+            <h2 id="plan-command-title" class="plan-command-title">{{ selectedWeekShort }}</h2>
+            <p v-if="selectedPlan.title" class="plan-command-headline">{{ selectedPlan.title }}</p>
+            <p class="plan-command-focus">{{ selectedPlan.focus || 'Weekly training plan' }}</p>
           </div>
+          <div class="plan-command-controls">
           <div class="period-navigation" aria-label="Plan period navigation">
             <button type="button" class="period-button" :disabled="!canGoNewer" aria-label="View newer week" @click="goToNewerWeek">‹</button>
             <button type="button" class="period-today" :disabled="isViewingCurrentWeek" @click="goToCurrentWeek">This week</button>
             <button type="button" class="period-button" :disabled="!canGoOlder" aria-label="View older week" @click="goToOlderWeek">›</button>
           </div>
+          <div id="plan-week-controls" class="plan-week-controls"></div>
+          </div>
         </div>
 
           <div class="workload-summary" aria-label="Weekly workload summary">
-            <article v-for="metric in selectedWeekMetrics" :key="metric.label" class="workload-metric" :title="metric.detail">
-              <span>{{ metric.label }}</span>
+            <article v-for="metric in selectedWeekMetrics" :key="metric.label" class="workload-metric" :class="{ 'is-execution': metric.segments }" :title="metric.detail">
+              <span>{{ metric.label }}<em v-if="metric.segments">{{ metric.detail }}</em></span>
               <strong>{{ metric.value }}</strong>
+              <i v-if="metric.segments" class="execution-bar" aria-hidden="true"><b v-for="(seg, index) in metric.segments" :key="index" :class="seg" /></i>
 
             </article>
           </div>
@@ -108,10 +115,11 @@
             </div>
             <p v-if="plan.winter_arc?.note && !isHistoricalPlan(plan)" class="arc-week-note">{{ plan.winter_arc.note }}</p>
           </div>
-          <template v-if="isCurrentPlan(plan) && adjustableDays(plan).length">
-            <button v-if="plan.minimum_week?.active" type="button" class="ghost-button minimum-week-button" :disabled="minimumWeekBusy" @click="restoreFullWeek(plan)">{{ minimumWeekBusy ? 'Restoring…' : 'Restore full week' }}</button>
-            <button v-else type="button" class="ghost-button minimum-week-button" title="Shrink the rest of this week to the smallest version that keeps your anchors" :disabled="minimumWeekBusy" @click="openMinimumWeek(plan)">Minimum week</button>
-          </template>
+          <Teleport defer to="#plan-week-controls" :disabled="plan.week_start !== selectedPlan?.week_start">
+          <div v-if="isCurrentPlan(plan) && adjustableDays(plan).length" class="week-mode-toggle" role="group" aria-label="Week version">
+            <button type="button" :class="{ on: !plan.minimum_week?.active }" :aria-pressed="!plan.minimum_week?.active" :disabled="minimumWeekBusy" @click="plan.minimum_week?.active && restoreFullWeek(plan)">{{ minimumWeekBusy && plan.minimum_week?.active ? 'Restoring…' : 'Full week' }}</button>
+            <button type="button" :class="{ on: plan.minimum_week?.active }" :aria-pressed="Boolean(plan.minimum_week?.active)" title="Shrink the rest of this week to the smallest version that keeps your anchors" :disabled="minimumWeekBusy" @click="!plan.minimum_week?.active && openMinimumWeek(plan)">Minimum week</button>
+          </div>
           <details class="week-actions plan-actions-menu"><summary>Manage week <span aria-hidden="true">⌄</span></summary><div class="plan-actions-menu-items">
             <button v-if="isLocalCoachHost && isCurrentPlan(plan) && adjustableDays(plan).length" type="button" class="ghost-button planner-refine-button" :disabled="planningWithCoach" @click="openCoachPlanFeedback">Refine with the coach</button>
             <button
@@ -132,6 +140,7 @@
             </button>
             <div v-else-if="isPlanExpanded(plan)" class="adjust-hint">No adjustable days in this week.</div>
           </div></details>
+          </Teleport>
         </div>
 
         <div v-if="!isPlanExpanded(plan)" class="historical-week-preview">
@@ -443,7 +452,7 @@
               </div>
               </div>
 
-              <div class="session-match-status" :class="`match-${sessionMatch(day).tone}`"><span aria-hidden="true">{{ sessionMatch(day).icon }}</span>{{ sessionMatch(day).label }}</div>
+              <div class="session-match-status" :class="[`match-${sessionMatch(day).tone}`, { 'match-today': dayPill(day) === 'Today' }]" :title="sessionMatch(day).label"><span v-if="dayPill(day) !== 'Today' && sessionMatch(day).tone !== 'pending'" aria-hidden="true">{{ sessionMatch(day).icon }}</span>{{ dayPill(day) }}</div>
               <div v-if="lifeLoad.iconsFor(day.date).length" class="plan-day-life" :class="{ 'is-clash': lifeLoadConflict(plan, day.date) }"><span v-for="tag in lifeLoad.iconsFor(day.date)" :key="tag.key"><span aria-hidden="true">{{ tag.icon }}&#xFE0E;</span>{{ tag.label }}</span></div>
 
 
@@ -560,7 +569,7 @@
                       <span class="actual-name">{{ activity.name || activity.type }}</span>
                     </div>
                     <div class="actual-meta">
-                      <span v-if="activity.distance_km">{{ activity.distance_km }} km</span>
+                      <span v-if="activity.distance_km">{{ Number(activity.distance_km).toFixed(1) }} km</span>
                       <span v-if="activity.duration_min">{{ Math.round(activity.duration_min) }} min</span>
                       <span v-if="activity.avg_pace">{{ activity.avg_pace }}</span>
                       <span v-else-if="activity.avg_watts">{{ Math.round(activity.avg_watts) }} W</span>
@@ -574,6 +583,10 @@
                   </div>
                 </div>
 
+                <div v-if="actualProgress(day)" class="actual-progress">
+                  <i aria-hidden="true"><b :style="{ width: `${actualProgress(day).pct}%` }" /></i>
+                  <small>{{ actualProgress(day).text }}</small>
+                </div>
                 <div v-if="shouldShowLinkEditor(day) && isLinkEditorOpen(day)" class="link-editor">
                   <div class="link-editor-top">
                     <div>
@@ -635,74 +648,21 @@
           <span>{{ plan.run_guardrail.summary }}</span>
         </div>
 
-        <details v-if="plan.overview" class="week-purpose"><summary>Week focus and coaching notes</summary><p>{{ plan.overview }}</p></details>
 
-        <details v-if="!isHistoricalPlan(plan) && plan.goal_context?.active_goals?.length" class="goal-context-panel">
-          <summary class="goal-context-summary">
-            <span class="goal-context-summary-main">
-              <strong>Goal alignment</strong>
-              <small>How this week supports active goals</small>
-            </span>
-            <span class="goal-context-summary-metrics">
-              <span class="goal-summary-pill goal-summary-supported">{{ goalAlignmentSummary(plan).supported }} supported</span>
-              <span v-if="goalAlignmentSummary(plan).attention" class="goal-summary-pill goal-summary-attention">
-                {{ goalAlignmentSummary(plan).attention }} need attention
-              </span>
-              <span v-if="goalAlignmentSummary(plan).completed" class="goal-summary-pill goal-summary-completed">
-                {{ goalAlignmentSummary(plan).completed }} achieved
-              </span>
-            </span>
-          </summary>
-          <div class="goal-context-body">
-          <div v-if="actionableGoalConflicts(plan).length" class="goal-conflict-list">
-            <div v-for="conflict in actionableGoalConflicts(plan)" :key="`${plan.week_start}-${conflict.type}`" class="goal-conflict-pill">
-              <strong>{{ conflict.label }}</strong>
-              <span>{{ conflict.summary }}</span>
-            </div>
+        <div class="plan-insights">
+        <section v-if="displayPlanNotes(plan) || plan.overview || plan.revisions?.length" class="plan-notes plan-reasoning" aria-label="Coach's reasoning">
+          <span class="insight-kicker">Coach’s reasoning</span>
+          <ul v-if="displayPlanNotes(plan)">
+            <li v-for="(point, index) in notePoints(displayPlanNotes(plan))" :key="index"><span class="reason-icon" :class="`tone-${pointIcon(point).tone}`" aria-hidden="true">{{ pointIcon(point).sym }}</span><p><strong>{{ splitLead(point)[0] }}</strong> <span v-if="splitLead(point)[1]">{{ splitLead(point)[1] }}</span></p></li>
+          </ul>
+          <div v-if="plan.overview" class="reasoning-shape">
+            <span class="insight-kicker">Week shape</span>
+            <ol v-if="weekShape(plan.overview).days.length" class="shape-days">
+              <li v-for="day in weekShape(plan.overview).days" :key="day.day" :style="{ '--shape': planAccent(day.type) }"><small>{{ day.day }}</small><b>{{ day.text }}</b></li>
+            </ol>
+            <p v-if="weekShape(plan.overview).rest">{{ weekShape(plan.overview).rest }}</p>
           </div>
-          <div class="goal-context-grid">
-            <article v-for="goal in plan.goal_context.active_goals" :key="goal.id" class="goal-context-card">
-              <div class="goal-context-top">
-                <strong>{{ goal.title }}</strong>
-                <span class="goal-context-status" :class="`risk-${goal.risk_summary?.status || 'on_track'}`">
-                  {{ goal.risk_summary?.label || goalStatusLabel(goal.status) }}
-                </span>
-              </div>
-              <div class="goal-context-progress">
-                {{ goal.display_mode === 'performance' ? goal.target_summary : `${goal.current_value} / ${goal.target_value} ${goal.unit}` }}
-              </div>
-              <div class="goal-context-meta">
-                <span>{{ goal.family_label }} · {{ goal.period_label }}</span>
-                <span>{{ goal.supported_sessions }} supporting session{{ goal.supported_sessions === 1 ? '' : 's' }}</span>
-              </div>
-              <div class="goal-context-copy">
-                {{ goalSupportStateCopy(goal) }}
-              </div>
-              <div v-if="goal.weekly_requirement_summary" class="goal-context-copy">{{ goal.weekly_requirement_summary }}</div>
-              <div v-if="goal.requirement_statuses?.length" class="goal-context-requirements">
-                <span
-                  v-for="requirement in goal.requirement_statuses"
-                  :key="`${goal.id}-${requirement.type}`"
-                  class="goal-requirement-pill"
-                  :class="`support-${requirement.status}`"
-                >
-                  {{ requirement.label }} · {{ requirementSupportLabel(requirement.status) }}
-                </span>
-              </div>
-              <div v-if="goal.constraint_summary?.summary" class="goal-context-copy goal-context-copy-warn">{{ goal.constraint_summary.summary }}</div>
-              <div v-if="goal.requirement_support_status === 'unsupported' && goal.unsupported_requirements?.length" class="goal-context-copy goal-context-copy-warn">
-                Missing: {{ goal.unsupported_requirements[0].label }}
-              </div>
-              <div v-if="showGoalContextRiskSummary(goal)" class="goal-context-copy">{{ goal.risk_summary.summary }}</div>
-            </article>
-          </div>
-          <RouterLink to="/goals" class="goal-context-link">Open full goal details →</RouterLink>
-          </div>
-        </details>
-
-        <div v-if="displayPlanNotes(plan)" class="plan-notes">{{ displayPlanNotes(plan) }}</div>
-
-        <details v-if="plan.revisions?.length" class="revision-timeline"><summary>Plan changes <span>{{ plan.revisions.length }}</span></summary>
+          <details v-if="plan.revisions?.length" class="revision-timeline"><summary>Plan changes · {{ plan.revisions.length }}</summary>
           <div class="revision-timeline-list revision-timeline-horizontal">
             <article v-for="revision in plan.revisions" :key="revision.id" class="revision-entry revision-entry-horizontal">
               <div class="revision-entry-rail" aria-hidden="true">
@@ -727,6 +687,34 @@
             </article>
           </div>
         </details>
+
+        </section>
+        <section v-if="!isHistoricalPlan(plan) && plan.goal_context?.active_goals?.length" class="goal-card" aria-label="Goal alignment">
+          <div class="goal-card-head">
+            <span class="insight-kicker">Goal alignment</span>
+            <RouterLink to="/goals" class="insight-link">Goals →</RouterLink>
+          </div>
+          <div class="goal-card-numbers">
+            <div class="is-supported"><b>{{ goalAlignmentSummary(plan).supported }}</b><span>supported this week</span></div>
+            <div v-if="goalAlignmentSummary(plan).attention" class="is-attention"><b>{{ goalAlignmentSummary(plan).attention }}</b><span>need attention</span></div>
+            <div v-if="goalAlignmentSummary(plan).completed"><b>{{ goalAlignmentSummary(plan).completed }}</b><span>achieved</span></div>
+          </div>
+          <ul class="goal-card-list">
+            <li v-for="goal in plan.goal_context.active_goals" :key="goal.id">
+              <div class="goal-card-main">
+                <strong>{{ goal.title }}</strong>
+                <small>{{ goal.display_mode === 'performance' ? goal.target_summary : `${goal.current_value} / ${goal.target_value} ${goal.unit}` }} · {{ goal.supported_sessions }} session{{ goal.supported_sessions === 1 ? '' : 's' }}</small>
+              </div>
+              <span class="goal-card-status" :class="`risk-${goal.risk_summary?.status || goal.status || 'on_track'}`">{{ goal.risk_summary?.label || goalStatusLabel(goal.status) }}</span>
+            </li>
+          </ul>
+          <p v-for="conflict in actionableGoalConflicts(plan)" :key="`${plan.week_start}-${conflict.type}`" class="goal-card-conflict"><strong>{{ conflict.label }}.</strong> {{ conflict.summary }}</p>
+        </section>
+        </div>
+
+
+
+
         </template>
       </section>
       </div>
@@ -1346,6 +1334,7 @@ const weekPreview = ref(null)
 const loadForecast = ref(null)
 const seasonTimeline = ref(null)
 const timelineShowsArc = ref(false)
+const timelineHasContent = ref(false)
 const onArcChanged = () => {
   load()
   weekPreview.value?.load()
@@ -1591,6 +1580,14 @@ const goToCurrentWeek = () => {
   selectWeekAt(index >= 0 ? index : 0)
 }
 
+const selectedWeekShort = computed(() => {
+  const days = selectedPlan.value?.days || []
+  if (!days.length) return selectedWeekRange.value
+  const first = new Date(`${days[0].date}T12:00:00`)
+  const last = new Date(`${days.at(-1).date}T12:00:00`)
+  const month = (date) => date.toLocaleDateString('en-GB', { month: 'short' })
+  return first.getMonth() === last.getMonth() ? `${month(first)} ${first.getDate()} – ${last.getDate()}` : `${month(first)} ${first.getDate()} – ${month(last)} ${last.getDate()}`
+})
 const selectedWeekRange = computed(() => {
   const plan = selectedPlan.value
   if (!plan) return ''
@@ -1621,6 +1618,50 @@ const selectPlanDay = (day) => {
   selectedDayDate.value = day.date
 }
 
+// Coach notes read as a handful of short points: sentences grouped up to ~200 characters.
+// Lead sentence of a coaching point in bold, the rest quieter.
+const splitLead = (point) => {
+  const text = String(point)
+  const match = text.match(/^(.+?[.:;])\s+(.*)$/)
+  if (match && match[1].length <= 90) return [match[1], match[2]]
+  // Long first sentence: lead with its first clause.
+  const comma = text.indexOf(', ', 30)
+  if (comma > 0 && comma < 90) return [text.slice(0, comma + 1), text.slice(comma + 2)]
+  return match ? [match[1], match[2]] : [text, '']
+}
+// "Mon C upper, Tue quality ride, ..." becomes seven day chips; anything after stays as text.
+const weekShape = (overview) => {
+  const text = String(overview || '')
+  const days = []
+  const re = /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+([^,.]+)/g
+  let match
+  let end = 0
+  while ((match = re.exec(text))) {
+    const label = match[2].trim()
+    const type = /lift|upper|lower|strength|^[A-D]\b/i.test(label) ? 'strength' : /run/i.test(label) ? 'run' : /walk|hike|rest/i.test(label) ? 'walk' : /spin|recovery/i.test(label) ? 'recovery' : 'ride'
+    days.push({ day: match[1], text: label.replace(/^([A-D]) (upper|lower)$/i, '$1 · $2'), type })
+    end = re.lastIndex
+  }
+  const rest = days.length >= 5 ? text.slice(end).replace(/^[.,\s]+/, '').trim() : text
+  return { days: days.length >= 5 ? days : [], rest }
+}
+const pointIcon = (point) => {
+  if (/readiness|illness|sick|sleep|fatigue|strain|watch/i.test(point)) return { sym: '!', tone: 'warning' }
+  if (/FTP|watt|\bride|zone 2|HR\b|endurance/i.test(point)) return { sym: 'W', tone: 'ride' }
+  if (/lift|squat|rotation|strength|bench|RPE/i.test(point)) return { sym: 'L', tone: 'strength' }
+  if (/protein|eat|fuel|carb/i.test(point)) return { sym: 'F', tone: 'food' }
+  return { sym: '•', tone: 'neutral' }
+}
+const notePoints = (text) => {
+  const sentences = String(text || '').replace(/^Tradeoffs:\s*/i, '').replace(/^(\w)/, (c) => c.toUpperCase()).split(/(?<=[.!?])\s+(?=[A-Z])/).map((part) => part.trim()).filter(Boolean)
+  const points = []
+  for (const sentence of sentences) {
+    const last = points.at(-1)
+    if (last && last.length + sentence.length < 260 && !/^(Adjusted)/.test(sentence)) points[points.length - 1] = `${last} ${sentence}`
+    else points.push(sentence)
+  }
+  return points
+}
 const planAccent = (type) => ({ run: 'var(--tone-run)', ride: 'var(--tone-ride)', strength: 'var(--tone-strength)', recovery: 'var(--tone-recovery)', walk: 'var(--tone-walk)', neutral: 'var(--tone-neutral)' }[activityTone(type)])
 
 const selectedWeekMetrics = computed(() => {
@@ -1631,10 +1672,11 @@ const selectedWeekMetrics = computed(() => {
   const completed = days.filter((day) => day.comparison?.completed_activities?.length).length
   const changed = days.filter((day) => !isLightDay(day.comparison) && ['different', 'rest_day_changed', 'replaced', 'skipped', 'moved'].includes(day.comparison?.status)).length
   return [
-    { label: 'Planned load', value: duration ? `${Math.floor(duration / 60)}h ${duration % 60}m` : '—', detail: `${days.length - restDays} training days` },
-    { label: 'Volume', value: distance ? `${Math.round(distance * 10) / 10} km` : '—', detail: distance ? 'distance targets' : 'no distance targets' },
-    { label: 'Recovery', value: `${restDays} day${restDays === 1 ? '' : 's'}`, detail: `${Math.max(days.length - restDays, 0)} load days` },
-    { label: 'Execution', value: `${completed}/${days.length}`, detail: changed ? `${changed} changed or missed` : 'no exceptions' },
+    { label: 'Planned', value: duration ? `${Math.floor(duration / 60)}h ${String(duration % 60).padStart(2, '0')}m` : '—', detail: `${days.length - restDays} training days` },
+    { label: 'Ride volume', value: distance ? `${Math.round(distance * 10) / 10} km` : '—', detail: distance ? 'distance targets' : 'no distance targets' },
+    { label: 'Recovery days', value: `${restDays}`, detail: `${Math.max(days.length - restDays, 0)} load days` },
+    { label: 'Execution', value: `${completed}/${days.length}`, detail: changed ? `${changed} changed or missed` : `${completed} of ${completed} matched so far`,
+      segments: days.map((day) => (day.comparison?.completed_activities?.length ? (['different', 'rest_day_changed', 'replaced', 'skipped', 'moved'].includes(day.comparison?.status) && !isLightDay(day.comparison) ? 'is-changed' : 'is-done') : 'is-open')) },
   ]
 })
 
@@ -1934,6 +1976,22 @@ const overCapDetail = (comparison) => comparison?.recovery_check?.within_cap ===
   ? ` Over the recovery cap (${comparison.recovery_check.over.join('; ')}); the streak still counts, but readiness sees a training day.`
   : ''
 
+// Short status for the card corner; the full wording stays in the tooltip.
+const dayPill = (day) => {
+  const match = sessionMatch(day)
+  if (dayState(day.date) === 'today' && !day.comparison?.completed_activities?.length) return 'Today'
+  if (dayState(day.date) === 'today' && match.tone === 'done') return 'Today'
+  if (match.tone === 'pending') return isFutureDay(day.date) ? 'Upcoming' : 'Not matched'
+  return match.label.split(' · ')[0].replace(/ automatically$/, '').replace(/ to activity$/, '')
+}
+// Planned vs done time for the completed box.
+const actualProgress = (day) => {
+  const planned = Number(day.target_duration_min || 0)
+  const actual = (day.comparison?.completed_activities || []).reduce((sum, activity) => sum + Number(activity.duration_min || 0), 0)
+  if (!planned || !actual) return null
+  const intent = day.workout_intent_label ? ` · ${day.workout_intent_label.toLowerCase()}` : ''
+  return { pct: Math.min(100, Math.round((actual / planned) * 100)), text: `${Math.round(actual)} of ${planned} min${intent}${['matched', 'linked'].includes(day.comparison?.status) ? ' ✓' : ''}` }
+}
 const sessionMatch = (day) => {
   const status = day.comparison?.status
   // On a sick day the plan was paused on purpose; a light session isn't "different from plan".
@@ -5155,4 +5213,252 @@ const savePlanLink = async (day) => {
 .plan-page .actual-block .link-toggle-button { min-height: 32px; padding: 0; font-size: 12px; }
 .plan-page .actual-empty { padding: 4px 0 0; font-size: 12px; font-style: normal; color: var(--muted); }
 .plan-page .planner-hint a{color:var(--accent);white-space:nowrap}
+
+/* ── Multi-sport redesign layer: last in the file so it wins over earlier passes. ── */
+.plan-page .page-head { align-items: flex-end; }
+.plan-page .planner-button { min-height: 48px; border-radius: 999px; font-size: 15px; font-weight: 700; }
+
+/* Week header card */
+.plan-page .plan-command.card { padding: 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; }
+.plan-page .plan-command .page-eyebrow { color: var(--volt); }
+.plan-page .plan-command .plan-command-title { font-family: var(--font-display); font-size: clamp(40px, 4.5vw, 56px); font-style: italic; font-weight: 800; line-height: .95; letter-spacing: .005em; text-transform: uppercase; }
+.plan-page .plan-command-focus { margin-top: 8px; color: var(--text-soft); font-size: 16px; line-height: 1.5; }
+.plan-page .period-button, .plan-page .period-today { min-width: 44px; min-height: 44px; border-radius: 999px; }
+.plan-page .workload-summary { gap: 12px; }
+.plan-page .workload-summary .workload-metric { padding: 16px 18px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface2); }
+.plan-page .workload-summary .workload-metric span { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.plan-page .workload-summary .workload-metric strong { font-family: var(--font-display); font-size: 36px; font-weight: 700; line-height: 1; letter-spacing: .01em; }
+
+/* Day cards */
+.plan-page .week-emphasis-pill, .plan-page .minimum-week-pill, .plan-page .arc-week-pill { border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.plan-page .plan-grid > .plan-day {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: radial-gradient(120% 40% at 100% 0%, color-mix(in srgb, var(--day-accent) 22%, transparent) 0%, transparent 70%), var(--surface);
+  box-shadow: none;
+}
+.plan-page .plan-grid > .plan-day.is-future { border-style: dashed; border-color: var(--border-strong); background: radial-gradient(120% 40% at 100% 0%, color-mix(in srgb, var(--day-accent) 12%, transparent) 0%, transparent 70%), transparent; }
+.plan-page .plan-grid > .plan-day.is-today { border: 1px solid var(--volt); box-shadow: inset 0 0 0 1px var(--volt); }
+.plan-page .plan-day .plan-day-label { color: var(--muted-soft); font-size: 12px; font-weight: 700; letter-spacing: .12em; }
+.plan-page .plan-day .plan-day-date { font-family: var(--font-display); font-size: 32px; font-weight: 800; line-height: 1; letter-spacing: .005em; }
+.plan-page .plan-day .session-match-status { font-weight: 700; letter-spacing: .04em; }
+.plan-page .day-sport { font-weight: 700; letter-spacing: .12em; }
+.plan-page .day-session .plan-day-title { font-family: var(--font-body); font-size: 18px; font-weight: 700; line-height: 1.25; letter-spacing: 0; }
+.plan-page .day-stats { border: 0; background: transparent; gap: 18px; grid-template-columns: auto auto; justify-content: start; }
+.plan-page .day-stats > div { padding: 0; }
+.plan-page .day-stats > div + div { border-left: 0; }
+.plan-page .day-stats dt { letter-spacing: .14em; }
+.plan-page .day-stats dd { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: .01em; }
+.plan-page .day-tag-intent { border-color: transparent; background: color-mix(in srgb, var(--day-accent) 16%, transparent); }
+.plan-page .day-tag-workout { border: 1px dashed color-mix(in srgb, var(--ride) 60%, transparent); background: transparent; color: var(--tone-ride); }
+.plan-page .day-tag-workout:hover { background: color-mix(in srgb, var(--ride) 10%, transparent); }
+.plan-page .day-tag-fuel { border: 1px dashed color-mix(in srgb, var(--z2) 60%, transparent); background: transparent; color: var(--z2); }
+.plan-page .day-tag-benchmark { border-color: color-mix(in srgb, var(--warning) 35%, transparent); background: color-mix(in srgb, var(--warning) 10%, transparent); }
+.plan-page .day-notes .plan-day-details { color: var(--muted-soft); font-size: 13px; line-height: 1.5; }
+.plan-page .day-notes .plan-details-button { color: var(--volt); }
+.plan-page .plan-day > .actual-block { padding: 12px; border: 1px solid color-mix(in srgb, var(--day-accent) 30%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--day-accent) 9%, transparent); }
+.plan-page .plan-day.is-future > .actual-block { border: 1px dashed var(--border-strong); background: transparent; }
+.plan-page .actual-block .plan-block-label { color: var(--success-text); font-weight: 700; letter-spacing: .14em; }
+.plan-page .plan-day.is-future .actual-block .plan-block-label { color: var(--muted); }
+.plan-page .actual-name { font-weight: 600; }
+.plan-page .actual-meta { color: var(--text); font-family: var(--font-display); font-size: 17px; font-weight: 700; }
+.plan-page .intent-pill { border-radius: 999px; }
+.plan-page .workload-summary .workload-metric { display: grid; gap: 8px; align-content: start; }
+.plan-page .actual-block .link-toggle-button { color: var(--muted-soft); }
+.plan-page .plan-reasoning { display: grid; gap: 14px; padding: 24px 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); color: var(--text-soft); white-space: normal; }
+.plan-reasoning-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.plan-reasoning ul { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.plan-reasoning li { position: relative; padding: 12px 0 12px 22px; border-top: 1px solid var(--border); font-size: 14px; line-height: 1.55; }
+.plan-reasoning li:first-child { border-top: 0; padding-top: 2px; }
+.plan-reasoning li::before { content: ''; position: absolute; left: 4px; top: 20px; width: 7px; height: 7px; border-radius: 50%; background: var(--volt); }
+.plan-reasoning li:first-child::before { top: 10px; }
+.plan-page .week-purpose > summary, .plan-page .revision-timeline > summary, .plan-page .goal-context-summary { font-weight: 600; }
+.plan-page .goal-summary-pill { border-radius: 999px; }
+
+/* Page header + week header, artboard version */
+.plan-page > .page-head .page-eyebrow { display: block; color: var(--muted-soft); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.plan-page .planner-hint { color: var(--muted); font-size: 13px; }
+.plan-page .planner-hint a { color: var(--volt); font-weight: 600; }
+.plan-page .plan-command.card { padding: 4px 0 0; border: 0; border-radius: 0; background: transparent; }
+.plan-command-kicker { display: flex; align-items: baseline; gap: 12px; }
+.plan-command-kicker span { color: var(--volt); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.plan-command-kicker small { color: var(--muted); font-size: 13px; }
+.plan-page .plan-command .plan-command-title { margin-top: 8px; font-size: clamp(48px, 5vw, 64px); }
+.plan-command-headline { margin: 10px 0 0; color: var(--text); font-size: 19px; font-weight: 700; }
+.plan-page .plan-command-focus { margin-top: 4px; color: var(--muted-soft); font-size: 15px; }
+.plan-page .workload-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.35fr); margin-top: 20px; }
+.plan-page .workload-summary .workload-metric span { display: flex; justify-content: space-between; gap: 8px; }
+.plan-page .workload-summary .workload-metric span em { color: var(--success-text); font-size: 12px; font-style: normal; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.plan-page .workload-metric.is-execution { grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; align-items: center; }
+.plan-page .workload-metric.is-execution span { grid-column: 1 / -1; }
+.execution-bar { display: flex; gap: 5px; }
+.execution-bar b { flex: 1; height: 12px; border-radius: 4px; }
+.execution-bar .is-done { background: var(--volt); }
+.execution-bar .is-changed { background: var(--warning); }
+.execution-bar .is-open { border: 1px dashed var(--border-strong); }
+@media (max-width: 900px) { .plan-page .workload-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.plan-page > .page-head .page-title { font-size: clamp(48px, 5.4vw, 80px); letter-spacing: .005em; }
+@media (max-width: 640px) { .plan-page > .page-head .page-title { font-size: 48px; } }
+
+/* Day card corner pill + completed progress */
+.plan-page .plan-grid > .plan-day { position: relative; }
+.plan-page .plan-day .session-match-status { position: absolute; top: 16px; right: 16px; margin: 0; padding: 4px 10px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+.plan-page .plan-day .session-match-status.match-done { background: color-mix(in srgb, var(--success-text) 14%, transparent); color: var(--success-text); }
+.plan-page .plan-day .session-match-status.match-pending { border: 1px solid var(--border-strong); background: transparent; color: var(--muted-soft); }
+.plan-page .plan-day .session-match-status.match-today { border: 0; background: var(--volt); color: var(--on-accent); }
+.plan-page .plan-day .day-heading-row { padding-right: 96px; }
+.plan-page .plan-day-weather { position: absolute; top: 46px; right: 16px; }
+.actual-progress { display: grid; gap: 6px; margin-top: 10px; }
+.actual-progress i { display: block; height: 5px; border-radius: 3px; background: var(--surface3); overflow: hidden; }
+.actual-progress b { display: block; height: 100%; border-radius: 3px; background: var(--volt); }
+.actual-progress small { color: var(--muted-soft); font-size: 12px; }
+.plan-page .actual-list { gap: 8px; }
+.plan-page .actual-item { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.plan-page .actual-item .actual-type { display: none; }
+.plan-page .actual-main { margin-top: 6px; }
+.plan-page .actual-name { font-size: 15px; }
+.plan-page .actual-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: 20px; }
+.plan-page .actual-item .intent-row { display: none; }
+.plan-page .execution-quality-chip { padding: 3px 8px; border-radius: 999px; font-size: 10px; }
+
+/* Coach's reasoning beside goal alignment */
+.plan-insights { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); gap: 20px; align-items: start; margin-top: 8px; }
+.plan-insights .plan-reasoning { margin: 0; }
+.plan-reasoning li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 14px; align-items: start; padding-left: 0; }
+.plan-reasoning li::before { display: none; }
+.reason-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; font-size: 13px; font-weight: 800; }
+.reason-icon.tone-warning { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning-text); }
+.reason-icon.tone-ride { background: color-mix(in srgb, var(--ride) 16%, transparent); color: var(--tone-ride); }
+.reason-icon.tone-strength { background: color-mix(in srgb, var(--strength) 16%, transparent); color: var(--tone-strength); }
+.reason-icon.tone-food { background: color-mix(in srgb, var(--z2) 16%, transparent); color: var(--z2); }
+.reason-icon.tone-neutral { background: var(--surface2); color: var(--muted-soft); }
+.plan-page .plan-insights .goal-context-panel { margin: 0; padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.plan-page .plan-insights .goal-context-summary { display: grid; gap: 16px; cursor: pointer; list-style: none; }
+.plan-page .plan-insights .goal-context-summary::-webkit-details-marker { display: none; }
+.plan-page .plan-insights .goal-context-summary-main strong { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.plan-page .plan-insights .goal-context-summary-main small { display: block; margin-top: 4px; color: var(--muted-soft); font-size: 13px; }
+.plan-page .plan-insights .goal-context-summary-metrics { display: flex; flex-wrap: wrap; gap: 28px; }
+.plan-page .plan-insights .goal-summary-pill { display: grid; padding: 0; border: 0; background: transparent; color: var(--muted-soft); font-size: 13px; font-weight: 500; }
+.plan-page .plan-insights .goal-summary-pill::first-line { color: inherit; }
+.plan-page .plan-insights .goal-summary-supported { color: var(--success-text); }
+.plan-page .plan-insights .goal-summary-attention { color: var(--warning-text); }
+@media (max-width: 1000px) { .plan-insights { grid-template-columns: 1fr; } }
+.plan-page .plan-insights .goal-summary-pill b { color: var(--text); font-family: var(--font-display); font-size: 52px; font-weight: 800; line-height: 1; }
+.plan-page .plan-insights .goal-summary-supported b { color: var(--volt); }
+.plan-page .plan-insights .goal-summary-attention b { color: var(--warning-text); }
+.plan-page .plan-insights .goal-context-panel[open] .goal-context-summary { margin-bottom: 16px; }
+
+/* ── Round 2: artboard details ── */
+/* Header controls on the right */
+.plan-page .plan-command-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; }
+.plan-command-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.plan-page .period-navigation { gap: 8px; }
+.plan-page .period-today { display: none; }
+.plan-page .period-button { width: 44px; height: 44px; border: 1px solid var(--border-strong); background: transparent; color: var(--text); font-size: 18px; }
+.plan-week-controls { display: flex; align-items: center; gap: 10px; }
+.week-mode-toggle { display: flex; padding: 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+.week-mode-toggle button { min-height: 38px; padding: 0 16px; border: 0; border-radius: 999px; background: transparent; color: var(--muted-soft); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.week-mode-toggle button.on { background: var(--surface3); color: var(--text); font-weight: 700; cursor: default; }
+.week-mode-toggle button:not(.on):hover { color: var(--text); }
+.plan-week-controls .plan-actions-menu > summary { display: inline-flex; align-items: center; gap: 6px; min-height: 46px; padding: 0 18px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font-size: 14px; font-weight: 600; }
+.plan-page .week-card-current .week-emphasis-pill { display: none; }
+.plan-page .week-card-current .week-header { min-height: 0; margin: 0; padding: 0; }
+
+/* Tags: one intent pill in the sport colour, everything else quiet */
+.plan-page .day-tags { gap: 6px; }
+.plan-page .day-tag { min-height: 26px; padding: 0 10px; border: 1px dashed var(--border-strong); background: transparent; color: var(--muted-soft); font-size: 12px; font-weight: 600; }
+.plan-page .day-tag-intent { border: 0; background: color-mix(in srgb, var(--day-accent) 16%, transparent); color: var(--day-accent); }
+.plan-page .day-tag-workout, .plan-page .day-tag-fuel { border: 1px dashed var(--border-strong); color: var(--muted-soft); background: transparent; }
+.plan-page .day-tag-workout:hover { border-color: var(--muted); color: var(--text); background: transparent; }
+.plan-page .day-tag { max-width: 180px; }
+
+/* Completed: compact box, one line of stats, progress */
+.plan-page .plan-day > .actual-block { padding: 14px; border: 1px solid color-mix(in srgb, var(--day-accent) 26%, transparent); background: color-mix(in srgb, var(--day-accent) 7%, var(--surface)); }
+.plan-page .actual-block-head { min-height: 0; }
+.plan-page .actual-block .plan-block-label::before { content: '✓ '; }
+.plan-page .plan-day.is-future .actual-block .plan-block-label::before, .plan-page .plan-day.is-today .actual-block .plan-block-label::before { content: ''; }
+.plan-page .actual-block .link-toggle-button { min-height: 0; color: var(--muted-soft); font-size: 13px; font-weight: 500; }
+.plan-page .actual-list { display: grid; gap: 4px; margin-top: 8px; padding: 0; border: 0; background: transparent; }
+.plan-page .actual-item, .plan-page .actual-list > * { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.plan-page .execution-quality-chip { display: block; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.plan-page .execution-quality-chip span { display: none; }
+.plan-page .actual-main { margin-top: 2px; }
+.plan-page .actual-name { overflow: hidden; color: var(--text); font-size: 15px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.plan-page .actual-meta { flex-wrap: nowrap; gap: 12px; margin-top: 4px; overflow: hidden; font-size: 19px; white-space: nowrap; }
+.plan-page .actual-progress { margin-top: 12px; }
+.plan-page .actual-progress small { font-size: 12px; }
+
+/* Reasoning + goals */
+.plan-insights { align-items: stretch; margin-top: 4px; }
+.plan-reasoning { gap: 16px; }
+.plan-reasoning li { padding: 14px 0; }
+.reasoning-shape { display: grid; gap: 4px; padding-top: 14px; border-top: 1px solid var(--border); }
+.reasoning-shape span { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.reasoning-shape p { margin: 0; color: var(--muted-soft); font-size: 13px; line-height: 1.55; }
+.plan-reasoning .revision-timeline { margin: 0; border: 0; padding: 0; }
+.plan-reasoning .revision-timeline > summary { color: var(--volt); font-size: 14px; font-weight: 600; cursor: pointer; list-style: none; }
+.plan-reasoning .revision-timeline > summary::-webkit-details-marker { display: none; }
+.plan-reasoning .revision-timeline[open] > summary { margin-bottom: 12px; }
+.plan-page .plan-insights .goal-context-panel { position: relative; display: flex; flex-direction: column; }
+.plan-page .plan-insights .goal-context-summary::after { position: absolute; top: 20px; right: 20px; display: grid; place-items: center; width: 40px; height: 40px; margin: 0; border: 1px solid var(--border-strong); border-radius: 50%; color: var(--text); font-size: 18px; }
+.plan-page .plan-insights .goal-context-summary-metrics { gap: 40px; margin-top: 8px; }
+.plan-page .plan-command-top { flex-direction: row; }
+.plan-page .plan-command-top > div:first-child { flex: 1 1 520px; min-width: 0; }
+.plan-page .plan-command-controls { flex: 0 0 auto; margin-bottom: 4px; }
+.plan-page .actual-block-head { flex-wrap: nowrap; }
+.plan-page .actual-block .link-toggle-button { white-space: nowrap; }
+.plan-page .plan-block-label { white-space: nowrap; }
+.plan-page .plan-day > .actual-block { min-width: 0; max-width: 100%; box-sizing: border-box; overflow: hidden; }
+.plan-page .actual-list, .plan-page .actual-item, .plan-page .actual-main { min-width: 0; }
+.plan-page .actual-meta { font-size: 17px; gap: 10px; text-overflow: ellipsis; }
+.week-mode-toggle button { white-space: nowrap; }
+@media (max-width: 640px) {
+  .week-mode-toggle button { padding: 0 12px; font-size: 13px; }
+  .plan-page .workload-metric.is-execution { grid-column: 1 / -1; }
+}
+
+/* ── Insights row, rebuilt ── */
+.plan-insights { align-items: start; gap: 20px; }
+.insight-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.insight-link { color: var(--volt); font-size: 14px; font-weight: 600; text-decoration: none; }
+.plan-page .plan-reasoning { position: relative; gap: 18px; padding: 26px 28px; }
+.plan-reasoning ul { gap: 0; }
+.plan-reasoning li { grid-template-columns: 30px minmax(0, 1fr); gap: 14px; padding: 14px 0; border-top: 1px solid var(--border); }
+.plan-reasoning li:first-child { padding-top: 0; border-top: 0; }
+.plan-reasoning li p { margin: 0; color: var(--muted-soft); font-size: 14px; line-height: 1.55; }
+.plan-reasoning li p strong { display: block; margin-bottom: 2px; color: var(--text); font-size: 15px; font-weight: 600; line-height: 1.45; }
+.reason-icon { width: 30px; height: 30px; border-radius: 9px; }
+.reasoning-shape { gap: 12px; padding-top: 18px; }
+.shape-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.shape-days li { display: grid; gap: 6px; min-width: 0; padding: 10px 12px; border-radius: 12px; background: var(--surface2); box-shadow: inset 0 3px 0 var(--shape); }
+.shape-days small { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.shape-days b { color: var(--text); font-size: 13px; font-weight: 600; line-height: 1.3; }
+.reasoning-shape p { color: var(--muted-soft); font-size: 13px; }
+.plan-reasoning .revision-timeline > summary { position: absolute; top: 22px; right: 28px; }
+.plan-reasoning .revision-timeline[open] { padding-top: 4px; }
+.plan-reasoning .revision-timeline[open] > summary { margin: 0; }
+
+.goal-card { display: grid; gap: 18px; padding: 26px 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.goal-card-head { display: flex; align-items: center; justify-content: space-between; }
+.goal-card-numbers { display: flex; flex-wrap: wrap; gap: 32px; }
+.goal-card-numbers div { display: grid; gap: 4px; }
+.goal-card-numbers b { font-family: var(--font-display); font-size: 52px; font-weight: 800; line-height: .9; }
+.goal-card-numbers span { color: var(--muted-soft); font-size: 13px; }
+.goal-card-numbers .is-supported b { color: var(--volt); }
+.goal-card-numbers .is-attention b { color: var(--warning-text); }
+.goal-card-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.goal-card-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+.goal-card-main { display: grid; gap: 2px; min-width: 0; }
+.goal-card-main strong { overflow: hidden; color: var(--text); font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.goal-card-main small { color: var(--muted); font-size: 12px; }
+.goal-card-status { flex: none; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--success-text) 12%, transparent); color: var(--success-text); font-size: 11px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+.goal-card-status.risk-watch, .goal-card-status.risk-under_pressure { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning-text); }
+.goal-card-status.risk-at_risk, .goal-card-status.risk-constrained { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger-text); }
+.goal-card-status.risk-completed { background: var(--surface2); color: var(--text-soft); }
+.goal-card-conflict { margin: 0; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--warning) 8%, transparent); color: var(--text-soft); font-size: 13px; line-height: 1.5; }
+.goal-card-conflict strong { color: var(--warning-text); }
+@media (max-width: 1100px) { .shape-days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .shape-days { grid-template-columns: repeat(2, minmax(0, 1fr)); } .plan-reasoning .revision-timeline > summary { position: static; } }
+.plan-reasoning .shape-days li { display: grid; grid-template-columns: none; align-content: start; gap: 6px; padding: 10px 12px; border-top: 0; }
+.plan-reasoning .shape-days li:first-child { padding-top: 10px; }
 </style>

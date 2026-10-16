@@ -692,28 +692,39 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  padding: 12px 17px 12px 12px;
-  border: 1px solid rgba(123, 163, 255, .35);
+  width: auto;
+  min-width: 0;
+  height: 52px;
+  min-height: 52px;
+  padding: 7px 16px 7px 7px;
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
-  background:var(--accent);
-  color: white;
-  box-shadow: 0 2px 6px rgb(var(--shadow-rgb) / .3), 0 10px 24px rgb(var(--shadow-rgb) / .28);
-  font-weight: 750;
+  background: var(--surface2);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+  font: 700 14px/1 var(--font-body);
+  white-space: nowrap;
+  appearance: none;
   cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease, box-shadow .16s ease;
 }
-.coach-launcher:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgb(var(--shadow-rgb) / .32), 0 16px 34px rgb(var(--shadow-rgb) / .34); }
+.coach-launcher:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--volt) 45%, var(--border-strong)); background: var(--surface3); box-shadow: var(--shadow-lg); }
+.coach-launcher:focus-visible { outline: 2px solid var(--volt); outline-offset: 3px; }
 .coach-launcher-mark {
   display: grid;
   place-items: center;
-  width: 27px;
-  height: 27px;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: rgb(var(--ov-rgb) / .17);
+  background: var(--volt);
+  color: var(--on-accent);
+  font-size: 17px;
 }
 .coach-layer { position: fixed; inset: 0; z-index: 50; }
 .coach-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgb(var(--shadow-rgb) / .6); backdrop-filter: blur(3px); }
 .conversation-select, .conversation-delete { border: 0; background: transparent; color: inherit; cursor: pointer; }
-.coach-launcher-dot { position: absolute; top: 6px; right: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 0 2px var(--accent); }
+.coach-launcher-dot { position: absolute; top: 3px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 0 2px var(--surface2); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .conversation-tag { display: inline-block; margin-right: 5px; padding: 0 5px; border-radius: 5px; background: rgba(95, 140, 255, .14); color: var(--accent-strong); font-size: 8px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
 .coach-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }

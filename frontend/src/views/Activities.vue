@@ -4,33 +4,45 @@
       <div>
         <span class="page-eyebrow">Training history</span>
         <h1 class="page-title">Activities</h1>
-        <p class="page-sub">Every completed session, newest first.</p>
       </div>
-      <router-link to="/sync" class="sync-link">Manage data</router-link>
+      <div class="header-actions">
+        <router-link to="/sync" class="sync-link">Manage data</router-link>
+        <router-link to="/strength/workouts" class="start-workout">Start workout <span aria-hidden="true">→</span></router-link>
+      </div>
     </header>
 
-    <WhatWorkedPanel />
+    <section v-if="!loading && !errorMessage && activities.length" class="history-hero motion-section" aria-label="Training totals" aria-live="polite">
+      <div class="hero-distance">
+        <span class="hero-kicker" v-if="firstDate">Since {{ firstDate }}</span>
+        <div class="hero-value">{{ Math.round(filteredTotals.distance).toLocaleString() }}<small> KM</small></div>
+      </div>
+      <div class="hero-stats">
+        <div><b>{{ filteredActivities.length.toLocaleString() }}</b><span>{{ filteredActivities.length === 1 ? 'session' : 'sessions' }}</span></div>
+        <div><b>{{ formatHours(filteredTotals.minutes) }}</b><span>total time</span></div>
+        <div><b>{{ recentFeedbackRate }}%</b><span>of last 30 days rated</span></div>
+      </div>
+    </section>
 
     <section class="log motion-section" aria-labelledby="activity-log-title">
       <h2 id="activity-log-title" class="sr-only">Training log</h2>
 
       <div class="toolbar">
-        <label class="search-field">
-          <span class="sr-only">Search activities</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-          <input v-model.trim="search" type="search" placeholder="Search name, intent or note" autocomplete="off">
-        </label>
         <div class="sport-filters" role="group" aria-label="Filter by sport">
-          <button v-for="filter in sportFilters" :key="filter.value" type="button"
+          <button v-for="filter in [sportFilters[0], sportFilters[1], sportFilters[4], sportFilters[2], sportFilters[3], sportFilters[5]]" :key="filter.value" type="button"
             class="sport-filter" :class="{ active: activeFilter === filter.value }"
             :aria-pressed="activeFilter === filter.value" @click="activeFilter = filter.value">
             <span v-if="filter.value !== 'all'" class="sport-dot" :class="`tone-${filter.value}`"></span>
             <span>{{ filter.label }}</span>
-            <span class="filter-count">{{ filterCount(filter.value) }}</span>
+            <span class="filter-count">{{ filterCount(filter.value).toLocaleString() }}</span>
           </button>
         </div>
+        <label class="search-field">
+          <span class="sr-only">Search activities</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+          <input v-model.trim="search" type="search" placeholder="Search activities" autocomplete="off">
+        </label>
         <label class="sort-field">
-          <span class="sr-only">Sort activities</span>
+          <span>Sort</span>
           <select v-model="sortOrder" aria-label="Sort activities">
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
@@ -40,14 +52,10 @@
         </label>
       </div>
 
-      <div v-if="!loading && !errorMessage && activities.length" class="stat-strip" aria-live="polite">
-        <span><b>{{ filteredActivities.length }}</b> {{ filteredActivities.length === 1 ? 'session' : 'sessions' }}</span>
-        <span><b>{{ formatHours(filteredTotals.minutes) }}</b> total time</span>
-        <span><b>{{ Math.round(filteredTotals.distance).toLocaleString() }}</b> km</span>
-        <span v-if="firstDate">since {{ firstDate }}</span>
-        <span class="strip-muted">{{ recentFeedbackRate }}% of the last 30 days have feedback</span>
-        <button v-if="hasFilters" class="clear-button" type="button" @click="clearFilters">Clear filters</button>
-      </div>
+
+
+      <button v-if="hasFilters" class="clear-button filter-reset" type="button" @click="clearFilters">Clear filters</button>
+      <WhatWorkedPanel />
 
       <div v-if="loading" class="activity-skeletons" aria-live="polite" aria-label="Loading activities">
         <div v-for="item in 10" :key="item" class="activity-skeleton skeleton-card">
@@ -91,15 +99,17 @@
             </div>
               <template v-for="activity in section.items" :key="activity.id">
                 <article class="activity-row row-grid" @click="openRow($event, activity)">
-                  <time class="day" :datetime="activity.date"><b>{{ format(parseLocalDate(activity.date), 'EEE') }}</b>{{ format(parseLocalDate(activity.date), isChronological ? 'MMM d' : 'MMM d, yyyy') }}</time>
+                  <time class="day" :datetime="activity.date"><b>{{ format(parseLocalDate(activity.date), 'EEE') }}</b>{{ format(parseLocalDate(activity.date), isChronological ? 'd' : 'MMM d, yyyy') }}</time>
                   <span class="sport-mark" :class="`tone-${sportBucket(activity.type)}`" :title="sportLabel(activity.type)">
                     <ActivityIcon :type="activity.type" :tone="iconTone(activity.type)" :size="15" />
                   </span>
                   <div class="identity">
-                    <router-link :to="detailRoute(activity)" class="activity-name">{{ activityName(activity) }}</router-link>
+                    <div class="identity-title">
+                      <router-link :to="detailRoute(activity)" class="activity-name">{{ activityName(activity) }}</router-link>
+                      <router-link v-if="recordRanks[activity.id]" to="/records" class="tag record" :title="recordTitle(activity.id)">{{ recordTag(activity.id) }}</router-link>
+                    </div>
                     <div class="tags">
                       <span v-if="activity.benchmark_label" class="tag achievement">{{ activity.benchmark_label }}</span>
-                      <router-link v-if="recordRanks[activity.id]" to="/records" class="tag record" :title="recordTitle(activity.id)">{{ recordTag(activity.id) }}</router-link>
                       <span v-if="activity.planned_strength_identity" class="tag linked"
                         :title="activity.source_name !== activity.display_name ? `Imported as ${activity.source_name}` : null">
                         {{ activity.planned_strength_identity.match_strategy === 'explicit' ? 'Linked to plan' : 'Matched by date' }}
@@ -120,10 +130,10 @@
                     <template v-if="activity.elevation_m > 20">{{ Math.round(activity.elevation_m) }}<small>m</small></template><template v-else>—</template>
                   </span>
                   <span class="context">
-                    <button class="pill" :class="{ ghost: !activity.workout_intent_label }" type="button" @click="openIntentEditor(activity)">
+                    <button class="pill intent-pill" :class="[{ ghost: !activity.workout_intent_label }, `intent-${activity.workout_intent}`]" type="button" @click="openIntentEditor(activity)">
                       {{ activity.workout_intent_label || '+ intent' }}
                     </button>
-                    <button v-if="activity.feedback" class="pill" :class="rpeTone(activity.feedback.rpe)" type="button"
+                    <button v-if="activity.feedback" class="pill rpe-pill" :class="[rpeTone(activity.feedback.rpe), { moderate: activity.feedback.rpe >= 5 && activity.feedback.rpe < 8 }]" type="button"
                       :disabled="!isRecentActivity(activity.date)" :title="feedbackTitle(activity.feedback)" @click="openFeedbackDialog(activity)">
                       RPE {{ activity.feedback.rpe }}
                     </button>
@@ -475,5 +485,127 @@ const saveFeedback = async payload => {
   .search-field { max-width:none; } .sort-field { margin-left:0;flex:1; } .sort-field select { width:100%; }
   .row-grid { grid-template-columns:44px 26px minmax(0,1fr) 54px 18px; }
   .row-grid > :nth-child(4) { display:none; }
+}
+
+/* Multi-sport redesign layer */
+/* Keep the shared launcher secondary while this view is active. */
+:global(.layout:has(.activities-page) .coach-launcher) { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); box-shadow: var(--shadow-card); }
+:global(.layout:has(.activities-page) .coach-launcher:hover) { background: var(--surface2); }
+:global(.layout:has(.activities-page) .coach-launcher-mark) { background: var(--surface2); color: var(--muted-soft); }
+.activities-page { min-width: 0; padding: 0 8px; margin-top: -2px; }
+.activities-page .page-head { margin-bottom: 24px; }
+.activities-page .page-title { margin: 0; line-height: 70px; }
+.activities-page .page-eyebrow { display: block; line-height: 14px; margin-bottom: 6px; }
+.activities-page .header-actions { display: flex; gap: 10px; align-items: center; }
+.activities-page .sync-link, .activities-page .state-action { height: 44px; padding: 0 18px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font-size: 14px; font-weight: 400; }
+.activities-page .sync-link:hover, .activities-page .state-action:hover { background: var(--surface2); border-color: var(--muted); }
+.activities-page .start-workout { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 20px; border-radius: 999px; background: var(--volt); color: var(--on-accent); font-size: 14px; font-weight: 700; }
+.activities-page .start-workout:hover { background: var(--volt-strong); }
+.activities-page .history-hero { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px 32px; padding: 28px 32px; margin-bottom: 24px; border: 1px solid var(--border); border-radius: 28px; background: linear-gradient(100deg, color-mix(in srgb, var(--ride) 16%, transparent), color-mix(in srgb, var(--strength) 10%, transparent) 50%, color-mix(in srgb, var(--run) 12%, transparent)), var(--surface); }
+.activities-page .hero-kicker { display: block; line-height: 14px; font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--text-soft); }
+.activities-page .hero-value { margin-top: 8px; font: italic 800 88px/1 var(--font-display); }
+.activities-page .hero-value small { font-size: 32px; color: var(--text-soft); }
+.activities-page .hero-stats { display: flex; flex-wrap: wrap; gap: 36px; }
+.activities-page .hero-stats div { display: grid; gap: 4px; }
+.activities-page .hero-stats b { font: 700 44px/1 var(--font-display); }
+.activities-page .hero-stats span { color: var(--text-soft); font-size: 13px; }
+.activities-page .toolbar { display: grid; grid-template-columns: 220px 188px; gap: 12px 8px; margin-bottom: 24px; }
+.activities-page .sport-filters { grid-column: 1 / -1; gap: 8px; width: max-content; max-width: calc(100vw - 320px); }
+.activities-page .sport-filter { height: 44px; padding: 0 16px; gap: 8px; background: var(--surface); color: var(--text); font-size: 14px; font-weight: 600; }
+.activities-page .sport-filter.active { border-color: var(--text); background: var(--text); color: var(--bg); }
+.activities-page .filter-count { color: inherit; font: 700 16px var(--font-display); opacity: .8; }
+.activities-page .sport-dot { width: 8px; height: 8px; }
+.activities-page .search-field { max-width: none; }
+.activities-page .search-field input { height: 44px; padding-left: 42px; font-size: 14px; border-radius: 999px; border-color: var(--border-strong); }
+.activities-page .search-field svg { left: 16px; }
+.activities-page .sort-field { display: flex; align-items: center; min-width: 0; margin: 0; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--muted-soft); font-size: 14px; }
+.activities-page .sort-field select { min-width: 0; width: 100%; height: 44px; padding: 0 0 0 8px; border: 0; background: transparent; font-size: 14px; }
+.activities-page .filter-reset { margin: -12px 0 12px; }
+.activities-page .clear-button { color: var(--text-soft); border: 1px solid var(--border-strong); border-radius: 999px; padding: 8px 14px; }
+.activities-page .log-layout { display: block; }
+.activities-page .month-rail { display: none; }
+.activities-page .activity-table { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); overflow: clip; }
+.activities-page .row-grid { grid-template-columns: 76px 36px minmax(0, 1fr) 90px 80px 90px 70px 150px; column-gap: 16px; padding: 14px 24px; }
+.activities-page .row-grid > :nth-child(8), .activities-page .row-grid > :nth-child(10) { display: none; }
+.activities-page .row-grid > :nth-child(9) { display: flex; }
+.activities-page .cols { height: 44px; padding-top: 0; padding-bottom: 0; border-bottom: 1px solid var(--border); font-size: 11px; letter-spacing: .14em; }
+.activities-page .cols > :nth-child(3) { grid-column: 2 / 4; }
+.activities-page .cols > :nth-child(2) { display: none; }
+.activities-page .month-label { position: static; padding: 16px 24px 10px; background: transparent; font: italic 800 24px/1.1 var(--font-display); letter-spacing: 0; }
+.activities-page .month-sums { font: 400 12px/1.4 var(--font-body); color: var(--muted-soft); }
+.activities-page .activity-row { height: auto; min-height: 67px; }
+.activities-page .activity-row:hover { background: var(--surface2); }
+.activities-page .day { color: var(--text); font: 700 22px/1.1 var(--font-display); }
+.activities-page .day b { color: var(--muted); font: 400 12px/1.4 var(--font-body); }
+.activities-page .sport-mark { width: 36px; height: 36px; border-radius: 12px; }
+.activities-page .sport-mark :deep(svg) { display: none; }
+.activities-page .sport-mark::after { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--tone); }
+.activities-page .sport-mark.tone-strength::after { border-radius: 3px; }
+.activities-page .identity-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.activities-page .activity-name { font-size: 14px; }
+.activities-page .activity-name:hover { color: var(--text-soft); }
+.activities-page .record { color: var(--volt); background: color-mix(in srgb, var(--volt) 14%, transparent); }
+.activities-page .tags { flex-wrap: wrap; overflow: visible; white-space: normal; gap: 4px 6px; }
+.activities-page .linked { background: var(--surface2); color: var(--muted); }
+.activities-page .achievement { background: color-mix(in srgb, var(--warning) 12%, transparent); }
+.activities-page .note { flex-basis: 100%; color: var(--muted-soft); font-size: 13px; font-style: italic; line-height: 1.4; }
+.activities-page .num { font: 700 20px/1.2 var(--font-display); color: var(--text); }
+.activities-page .cols .num { color: var(--muted); font: inherit; }
+.activities-page .num small { font: inherit; color: inherit; margin-left: 4px; }
+.activities-page .context { justify-content: flex-start; flex-wrap: wrap; }
+.activities-page .pill.ghost { opacity: 1; }
+.activities-page .intent-pill { background: var(--surface2); }
+.activities-page .intent-easy, .activities-page .intent-recovery, .activities-page .intent-mobility { color: var(--z2); background: color-mix(in srgb, var(--z2) 14%, transparent); }
+.activities-page .intent-tempo, .activities-page .intent-interval, .activities-page .intent-race_specific { color: var(--run); background: color-mix(in srgb, var(--run) 14%, transparent); }
+.activities-page .intent-strength_upper, .activities-page .intent-strength_lower, .activities-page .intent-strength_general { color: var(--strength); background: color-mix(in srgb, var(--strength) 14%, transparent); }
+.activities-page .rpe-pill { padding: 0; border: 0; border-radius: 0; background: transparent; font: 700 16px/22px var(--font-display); }
+.activities-page .rpe-pill.good { color: var(--z2); background: transparent; }
+.activities-page .rpe-pill.warn { color: var(--danger); background: transparent; }
+.activities-page .rpe-pill.moderate { color: var(--warning); }
+.activities-page .intent-editor { padding: 16px 24px; background: var(--surface2); }
+.activities-page .intent-select { border-radius: 999px; }
+@media (max-width: 1200px) {
+  .activities-page .row-grid { grid-template-columns: 48px 36px minmax(0, 1fr) 72px 64px 70px 52px 130px; gap: 10px; padding-left: 16px; padding-right: 16px; }
+  .activities-page .hero-stats { gap: 24px; }
+}
+@media (max-width: 1000px) {
+  .activities-page .row-grid { grid-template-columns: 40px 32px minmax(0, 1fr) 68px 64px; }
+  .activities-page .row-grid > :nth-child(6), .activities-page .row-grid > :nth-child(7) { display: none; }
+  .activities-page .row-grid > :nth-child(9) { grid-column: 3 / -1; }
+  .activities-page .cols > :nth-child(9) { display: none; }
+  .activities-page .sport-filters { max-width: 100%; width: auto; }
+}
+@media (max-width: 640px) {
+  .activities-page { padding: 0; margin-top: 0; }
+  .activities-page .page-head { display: grid; gap: 20px; }
+  .activities-page .page-title { font-size: 56px; line-height: 1; }
+  .activities-page .header-actions { flex-wrap: wrap; }
+  .activities-page .sync-link, .activities-page .start-workout { font-size: 13px; padding: 0 16px; }
+  .activities-page .history-hero { padding: 24px; gap: 24px; }
+  .activities-page .hero-value { font-size: 64px; }
+  .activities-page .hero-value small { font-size: 26px; }
+  .activities-page .hero-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; width: 100%; }
+  .activities-page .hero-stats b { font-size: 32px; }
+  .activities-page .hero-stats div:last-child { grid-column: 1 / -1; }
+  .activities-page .toolbar { grid-template-columns: minmax(0, 1fr); }
+  .activities-page .sport-filters { gap: 8px; }
+  .activities-page .sport-filter { padding: 0 12px; font-size: 13px; }
+  .activities-page .sort-field { height: 44px; }
+  .activities-page .month-label { flex-wrap: wrap; padding: 16px; gap: 6px; }
+  .activities-page .month-sums { width: 100%; }
+  .activities-page .row-grid { grid-template-columns: 28px 28px minmax(0, 1fr) 52px; gap: 8px; padding: 14px 12px; }
+  .activities-page .cols { display: none; }
+  .activities-page .row-grid > :nth-child(4) { display: block; grid-column: 3; font-size: 16px; text-align: left; }
+  .activities-page .row-grid > :nth-child(5) { grid-column: 4; grid-row: 1; font-size: 18px; }
+  .activities-page .row-grid > :nth-child(9) { grid-column: 3 / -1; }
+  .activities-page .sport-mark { width: 28px; height: 32px; border-radius: 10px; }
+  .activities-page .day { font-size: 20px; }
+  .activities-page .identity-title { flex-wrap: wrap; gap: 4px; }
+  .activities-page .activity-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+  .activities-page .note { font-size: 12px; }
+  .activities-page .intent-editor { padding: 14px; gap: 8px; }
+  .activities-page .intent-editor label { min-width: 0; width: 100%; }
+  .activities-page .activity-skeleton { grid-template-columns: 28px 28px minmax(0, 1fr); }
+  .activities-page .activity-skeleton > :last-child { display: none; }
 }
 </style>

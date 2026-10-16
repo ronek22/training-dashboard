@@ -87,4 +87,27 @@ const title = (item) => item.logged
   .week-card { grid-template-columns: 1fr; }
   .stats { grid-template-columns: repeat(3, 1fr); margin-top: 12px; padding: 12px 0 0; border-left: 0; border-top: 1px solid var(--border); }
 }
+
+/* Multi-sport redesign layer */
+
+.week-card { padding: 24px; gap: 20px 28px; }
+.week-card .track { width: 32px; height: 115px; background: rgb(var(--deep-rgb)); border-radius: 8px; }
+.week-card .track .eaten, .week-card .sw.eaten { background: var(--z2); }
+.week-card .track .eaten.good { background: var(--volt); }
+.week-card .track .eaten.close { background: var(--warning); }
+.week-card .track .eaten.under { background: var(--danger); }
+.week-card .bar-day { border-radius: 12px; padding: 10px 0; }
+.week-card .bar-day.selected { box-shadow: inset 0 0 0 2px var(--volt); }
+.week-card .bar-value { font: 700 17px var(--font-display); }
+.week-card .stats strong { font: italic 800 32px var(--font-display); }
+.week-card .stats strong.under { color: var(--danger-text); }
+.week-card .stats small { font: 400 11px var(--font-body); }
+@media (max-width: 700px) {
+ .week-card { padding: 18px; gap: 16px; }
+ .week-card .track { width: 23px; }
+ .week-card .stats { gap: 8px; margin-top: 0; }
+ .week-card .stats strong { font-size: 28px; }
+ .week-card .stats small { display: block; }
+}
+
 </style>

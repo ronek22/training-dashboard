@@ -62,8 +62,8 @@ const pal = computed(() => {
   themeTick.value
   const g = (name: string) => themeColor(name)
   return {
-    sprint: g('--cp-sprint'), attack: g('--cp-attack'), climb: g('--cp-climb'), pink: g('--cp-pink'),
-    profile: g('--cp-profile'), profileFill: g('--cp-profile-fill'), sprintFill: g('--cp-sprint-fill'),
+    sprint: g('--ride'), attack: g('--tone-ride'), climb: g('--z2'), pink: g('--tone-recovery'),
+    profile: g('--ride'), profileFill: g('--cp-profile-fill'), sprintFill: g('--cp-sprint-fill'),
     pointBorder: g('--cp-point-border'), pointRing: g('--cp-point-ring'), grid: g('--cp-grid'), gridStrong: g('--cp-grid-strong'),
     axis: g('--cp-axis'), gapFill: g('--cp-gap-fill'), gapFill2: g('--cp-gap-fill-2'), gapLine: g('--cp-gap-line'),
     labelBg: g('--cp-label-bg'), labelText: g('--cp-label-text')
@@ -419,4 +419,40 @@ const hrOptions = computed<ChartOptions<'line'>>(() => ({ ...baseOptions('Heart 
 .ride-mix-flags small{color:var(--muted);font-size:11px;font-weight:500}
 .ride-mix-ok{padding:8px 12px;border-radius:999px;background:color-mix(in srgb,var(--success) 13%,transparent);color:var(--success-text);font-size:12px;font-weight:650;white-space:nowrap}
 @media(max-width:600px){.ride-mix-flags{justify-content:flex-start;margin-top:14px}}
+
+/* Multi-sport redesign layer */
+.power-trends { --cream: var(--text); --soft: var(--muted-soft); --cp-sprint: var(--ride); --cp-attack: var(--tone-ride); --cp-climb: var(--z2); --cp-pink: var(--tone-recovery); gap: 28px; }
+.power-trends h2, .power-trends h3 { font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: -.5px; }
+.power-trends h2 { font-size: 36px; }
+.power-trends h3 { font-size: 34px; }
+.power-trends .eyebrow { font-size: 11px; letter-spacing: .14em; color: var(--muted); }
+.power-trends .section-surface { border: 1px solid var(--border); border-radius: var(--radius-card); padding: 28px; background: var(--surface); }
+.power-trends .headline-strip { gap: 12px; }
+.power-trends .headline-tile { border: 1px solid var(--border); border-radius: 20px; background: var(--surface); padding: 22px; }
+.power-trends .headline-tile strong { font-size: 48px; font-weight: 800; font-style: italic; letter-spacing: -.5px; }
+.power-trends .tile-label { font-size: 11px; letter-spacing: .14em; }
+.power-trends .tile-recent { color: var(--muted-soft); }
+.power-trends button, .power-trends select { border-radius: 999px; border-color: var(--border-strong); background: transparent; min-height: 44px; }
+.power-trends .profile-readout strong, .power-trends .moment-highlight strong { font-weight: 800; font-style: italic; letter-spacing: -.5px; }
+.power-trends .moment-highlights { gap: 12px; }
+.power-trends .moment-highlight { padding: 22px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); }
+.power-trends .moment-highlight[aria-pressed=true] { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 6%, var(--surface)); }
+.power-trends .moment-explorer { border: 1px solid var(--border); border-radius: 20px; background: rgb(var(--deep-rgb)); }
+.power-trends .ladder-watts { font-size: 28px; font-weight: 700; }
+.power-trends .ladder-row { padding-block: 14px; }
+.power-trends .progress-selection { border: 1px solid var(--border); background: rgb(var(--deep-rgb)); border-radius: 20px; }
+.power-trends .comparison-result { border: 1px solid var(--border); background: rgb(var(--deep-rgb)); }
+.power-trends :deep(.cycling-advice) { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); }
+.power-trends :deep(.cycling-advice h3) { font-family: var(--font-display); font-size: 34px; font-weight: 800; font-style: italic; text-transform: uppercase; }
+.power-trends :deep(.cycling-advice .primary) { border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); }
+.power-trends :deep(.focus-index), .power-trends :deep(.focus-step span) { color: var(--tone-ride); }
+@media (max-width: 760px) {
+  .power-trends .headline-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .power-trends .headline-tile { padding: 18px; }
+  .power-trends .headline-tile strong { font-size: 36px; }
+  .power-trends .section-surface { padding: 22px 18px; }
+  .power-trends .moment-highlights { grid-template-columns: 1fr; }
+  .power-trends .moment-highlight { padding: 20px; }
+  .power-trends .moment-explorer { padding: 20px 14px; }
+}
 </style>

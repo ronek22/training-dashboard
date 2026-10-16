@@ -123,8 +123,8 @@
         >
           <defs>
             <linearGradient id="fitnessFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="rgba(59,130,246,0.35)" />
-              <stop offset="100%" stop-color="rgba(59,130,246,0.02)" />
+              <stop offset="0%" stop-color="var(--ride)" stop-opacity=".2" />
+              <stop offset="100%" stop-color="var(--ride)" stop-opacity="0" />
             </linearGradient>
           </defs>
           <line

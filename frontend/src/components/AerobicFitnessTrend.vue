@@ -77,7 +77,7 @@ const comparison = computed(() => {
 const pal = computed(() => {
   themeTick.value
   return {
-    efficiency: themeColor('--cp-climb'), drift: themeColor('--cp-pink'), steady: themeColor('--success-text'),
+    efficiency: themeColor('--z2'), drift: themeColor('--tone-recovery'), steady: themeColor('--z2'),
     grid: themeColor('--cp-grid'), axis: themeColor('--cp-axis'), ring: themeColor('--cp-point-ring'), gapLine: themeColor('--cp-gap-line')
   }
 })

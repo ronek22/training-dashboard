@@ -62,7 +62,7 @@ const pal = computed(() => {
   themeTick.value
   const g = (name: string) => themeColor(name)
   return {
-    sprint: g('--ride'), attack: g('--tone-ride'), climb: g('--z2'), pink: g('--tone-recovery'),
+    sprint: g('--ride'), attack: g('--run'), climb: g('--z2'), pink: g('--tone-recovery'),
     profile: g('--ride'), profileFill: g('--cp-profile-fill'), sprintFill: g('--cp-sprint-fill'),
     pointBorder: g('--cp-point-border'), pointRing: g('--cp-point-ring'), grid: g('--cp-grid'), gridStrong: g('--cp-grid-strong'),
     axis: g('--cp-axis'), gapFill: g('--cp-gap-fill'), gapFill2: g('--cp-gap-fill-2'), gapLine: g('--cp-gap-line'),
@@ -421,7 +421,7 @@ const hrOptions = computed<ChartOptions<'line'>>(() => ({ ...baseOptions('Heart 
 @media(max-width:600px){.ride-mix-flags{justify-content:flex-start;margin-top:14px}}
 
 /* Multi-sport redesign layer */
-.power-trends { --cream: var(--text); --soft: var(--muted-soft); --cp-sprint: var(--ride); --cp-attack: var(--tone-ride); --cp-climb: var(--z2); --cp-pink: var(--tone-recovery); gap: 28px; }
+.power-trends { --cream: var(--text); --soft: var(--muted-soft); --cp-sprint: var(--ride); --cp-attack: var(--run); --cp-climb: var(--z2); --cp-pink: var(--tone-recovery); gap: 28px; }
 .power-trends h2, .power-trends h3 { font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: -.5px; }
 .power-trends h2 { font-size: 36px; }
 .power-trends h3 { font-size: 34px; }

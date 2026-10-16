@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-15T23:30:00+02:00",
-  "summary": "Fresh round after the board ran low (32 done, 14 dismissed). Grounded in this week's data: lower-back tightness from stress, red readiness with sleep debt, a 7-day mountain trip, a 286-day streak, only 6 logged food days and HR-only outdoor rides. Added ache follow-up, mountain-day fuelling, streak milestones, one-tap unlogged food days, stress-week sleep protection, outdoor power estimates, indoor/outdoor from the forecast and ask-the-coach on cards.",
+  "reviewed_at": "2026-10-16T10:46:48+02:00",
+  "summary": "Reviewed recent commit and worktree summaries, current-state notes, the roadmap index and its open threads, and all 56 existing proposal scopes. Recent completed work now covers milestone celebrations, optional strength phases, winter-arc planning, food targets, Sunday planning, the data-quality inbox, backups, mountain re-entry and other items that overlap prior proposals. Inspected the milestone, strength-phase and Sunday-flow source declarations and current-state evidence. The remaining open threads are already explicit in the roadmap. No sufficiently distinct new proposal was identified. Source/documentation review only; no application tests or model calls were run, and no credentials, databases or private training records were opened.",
   "ideas": [
     {
       "id": "dependable-project-checks",

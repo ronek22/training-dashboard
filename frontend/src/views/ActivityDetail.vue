@@ -1,5 +1,5 @@
 <template>
-  <main class="activity-detail-v2 motion-page" :class="{ 'is-strength': presentation === 'strength' }">
+  <main class="activity-detail-v2 motion-page" :class="[`tone-${sportTone}`, { 'is-strength': presentation === 'strength' }]">
     <div class="ad-shell">
       <div v-if="loading" class="ad-state" role="status" aria-live="polite">
         <span class="ad-state-spinner"></span><h1>Loading activity</h1><p>Preparing the session record and available analysis.</p>
@@ -122,6 +122,15 @@ watch(() => route.params.activityId, () => {
 const presentation = computed(() => activityPresentation(detail.value?.activity?.type, detail.value?.mountain_region))
 const presentationComponent = computed(() => ({ endurance: EnduranceAnalysis, hike: HikeAnalysis, strength: StrengthAnalysis, generic: GenericAnalysis }[presentation.value]))
 const sport = computed(() => sportLabel(detail.value?.activity?.type))
+const sportTone = computed(() => {
+  const type = String(detail.value?.activity?.type || '').toLowerCase()
+  if (['weighttraining', 'strengthtraining', 'crossfit'].includes(type)) return 'strength'
+  if (['run', 'trailrun', 'virtualrun'].includes(type)) return 'run'
+  if (['ride', 'virtualride', 'ebikeride'].includes(type)) return 'ride'
+  if (type === 'hike') return 'hike'
+  if (type === 'walk') return 'walk'
+  return 'ride'
+})
 const backContext = computed(() => {
   const from = String(route.query.from || '').toLowerCase()
   if (from === 'calendar') return { label: 'Back to calendar', to: '/calendar' }
@@ -213,4 +222,44 @@ const saveFeedback = async (payload) => {
 
 
 .activity-detail-v2.is-strength .ad-header{padding-bottom:22px}.activity-detail-v2.is-strength .ad-header-row{margin-top:18px}.activity-detail-v2.is-strength .ad-header h1{font-size:clamp(1.8rem,2.6vw,2.6rem);line-height:1.08;letter-spacing:-.04em;max-width:none}.activity-detail-v2.is-strength .ad-header p{margin-top:8px}
+
+/* Multi-sport redesign layer — details borrow dark cards and display type from the
+   Activities and Strength artboards, with one accent for each sport. */
+.activity-detail-v2{--ad-accent:var(--ride);--ad-accent-soft:color-mix(in srgb,var(--ad-accent) 12%,transparent);--ad-ink:var(--text);--ad-muted:var(--muted);--ad-line:var(--border);--ad-surface:var(--surface);--ad-soft:rgb(var(--tint-rgb) / .08);padding:28px 34px 64px;color:var(--text);font-family:var(--font-body)}
+.activity-detail-v2.tone-run{--ad-accent:var(--run)}.activity-detail-v2.tone-strength{--ad-accent:var(--strength)}.activity-detail-v2.tone-hike{--ad-accent:var(--tone-recovery)}.activity-detail-v2.tone-walk{--ad-accent:var(--z2)}
+.activity-detail-v2 .ad-shell{width:min(1120px,100%)}.activity-detail-v2 .ad-header{padding:0 0 24px;border-bottom:1px solid var(--border)}
+.activity-detail-v2 .ad-back,.activity-detail-v2 .ad-inline-action{color:var(--text-soft);font-size:.82rem}.activity-detail-v2 .ad-back:hover,.activity-detail-v2 .ad-inline-action:hover{color:var(--volt)}
+.activity-detail-v2 .ad-header-row{margin-top:20px;align-items:flex-end}.activity-detail-v2 .ad-kicker{margin-bottom:8px}
+.activity-detail-v2 .ad-kicker span,.activity-detail-v2 .ad-quality{background:transparent;border-color:var(--border-strong);color:var(--muted);font-size:10px;letter-spacing:.14em;padding:6px 9px}
+.activity-detail-v2 .ad-kicker span:first-child{color:var(--ad-accent);border-color:color-mix(in srgb,var(--ad-accent) 34%,transparent);background:var(--ad-accent-soft)}
+.activity-detail-v2 .ad-header h1{font:italic 800 clamp(2.6rem,5vw,4rem)/.96 var(--font-display);letter-spacing:-.025em;text-transform:uppercase;max-width:900px}
+.activity-detail-v2.is-strength .ad-header h1{font:italic 800 clamp(2.4rem,4.1vw,3.5rem)/.98 var(--font-display);letter-spacing:-.02em}
+.activity-detail-v2 .ad-header p{color:var(--muted);font-size:.88rem;margin-top:9px}.activity-detail-v2 .ad-status{border:1px solid var(--border);background:var(--surface);color:var(--text-soft);padding:8px 12px;font-size:.72rem;letter-spacing:.07em;text-transform:uppercase}
+.activity-detail-v2 .ad-status-dot{background:var(--muted)}.activity-detail-v2 .ad-status.is-complete .ad-status-dot{background:var(--success-text)}.activity-detail-v2 .ad-status.is-partial .ad-status-dot{background:var(--warning)}
+.activity-detail-v2 .ad-plan-link{margin-top:20px;padding:15px 18px;border:1px dashed color-mix(in srgb,var(--ad-accent) 48%,var(--border));border-left:3px solid var(--ad-accent);border-radius:14px;background:var(--ad-accent-soft)}
+.activity-detail-v2 .ad-plan-link span{color:var(--ad-accent);font-size:10px;letter-spacing:.12em}.activity-detail-v2 .ad-plan-link strong{font-size:.95rem}.activity-detail-v2 .ad-plan-link a{color:var(--volt);font-size:.82rem}
+.activity-detail-v2 .ad-presentation{gap:18px;margin-top:20px}.activity-detail-v2 .ad-outcome,.activity-detail-v2 .ad-section,.activity-detail-v2 .ad-exercise{border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface);box-shadow:none}
+.activity-detail-v2 .ad-outcome{padding:23px}.activity-detail-v2 .ad-section{padding:22px}.activity-detail-v2 .ad-section-heading{margin-bottom:17px}
+.activity-detail-v2 .ad-section-heading>div>span{color:var(--ad-accent);font-size:10px;letter-spacing:.14em}.activity-detail-v2 .ad-section-heading h2{font:700 1.45rem/1.1 var(--font-display);letter-spacing:0}.activity-detail-v2 .ad-section-heading>p{color:var(--muted)}
+.activity-detail-v2 .ad-shared-grid,.activity-detail-v2 .ad-analysis-grid{gap:18px}.activity-detail-v2 .ad-shared-section{margin-top:18px}
+.activity-detail-v2 .ad-data-notice{margin-top:16px;background:color-mix(in srgb,var(--warning) 8%,var(--surface));border-color:color-mix(in srgb,var(--warning) 24%,var(--border));border-radius:14px;color:var(--text-soft)}.activity-detail-v2 .ad-data-notice span{color:var(--muted)}
+.activity-detail-v2 .ad-secondary-action{border-color:var(--border-strong);border-radius:999px;background:transparent;color:var(--text-soft)}.activity-detail-v2 .ad-secondary-action:hover{border-color:var(--ad-accent);background:var(--ad-accent-soft)}
+.activity-detail-v2 .overview-strip{border-color:var(--border);border-radius:16px;background:var(--bg-elevated)}
+.activity-detail-v2 .overview-stat{--metric-tone:var(--ad-accent);position:relative;border-color:color-mix(in srgb,var(--metric-tone) 22%,var(--border));padding:17px 18px;background:color-mix(in srgb,var(--metric-tone) 13%,var(--surface))}
+.activity-detail-v2 .overview-stat::before{content:"";position:absolute;inset:0 0 auto;height:2px;background:var(--metric-tone);opacity:.8}
+.activity-detail-v2 .overview-stat.is-distance{--metric-tone:var(--z2)}.activity-detail-v2 .overview-stat.is-time{--metric-tone:var(--ride)}
+.activity-detail-v2 .overview-stat.is-speed,.activity-detail-v2 .overview-stat.is-intensity{--metric-tone:var(--warning)}
+.activity-detail-v2 .overview-stat.is-heart{--metric-tone:var(--danger)}.activity-detail-v2 .overview-stat.is-power{--metric-tone:var(--tone-recovery)}
+.activity-detail-v2 .overview-stat.is-load{--metric-tone:var(--run)}
+.activity-detail-v2 .overview-stat dt{color:color-mix(in srgb,var(--metric-tone) 74%,var(--text-soft));letter-spacing:.12em;font-size:10px}.activity-detail-v2 .overview-stat dt::before{background:var(--metric-tone);box-shadow:0 0 0 3px color-mix(in srgb,var(--metric-tone) 22%,transparent)}
+.activity-detail-v2 .overview-value strong,.activity-detail-v2 .hike-metric strong{font-family:var(--font-display);font-weight:700;font-size:clamp(29px,3vw,40px);font-variant-numeric:tabular-nums}.activity-detail-v2 .overview-stat .overview-unit{color:var(--metric-tone)}.activity-detail-v2 .overview-hint,.activity-detail-v2 .overview-extra{color:var(--muted)}
+.activity-detail-v2 .ad-chart-card,.activity-detail-v2 .cockpit-map-panel,.activity-detail-v2 .cockpit-chart-panel{border-color:var(--border);border-radius:16px;background:var(--bg-elevated)}.activity-detail-v2 .ad-chart-grid{stroke:var(--border)}.activity-detail-v2 .ad-chart-line{stroke:var(--ad-accent)}
+.activity-detail-v2 .metric-tabs button.is-active,.activity-detail-v2 .metric-tabs button:hover{border-color:color-mix(in srgb,var(--ad-accent) 48%,var(--border));background:var(--ad-accent-soft);color:var(--text)}
+.activity-detail-v2 .ad-zone-bar span{background:var(--ad-accent)}.activity-detail-v2 .ad-zone-bar{background:rgb(var(--tint-rgb) / .14)}
+.activity-detail-v2 .ad-exercise{border-radius:18px;background:var(--bg-elevated)}.activity-detail-v2 .ad-exercise-order{background:var(--ad-accent-soft);color:var(--ad-accent)}.activity-detail-v2 .ad-set-head,.activity-detail-v2 .ad-set-kind{background:var(--surface2)}
+.activity-detail-v2 .ad-footer-meta{color:var(--muted);border-top:1px solid var(--border);margin-top:10px}.activity-detail-v2 .ad-state h1{font:italic 800 2.6rem var(--font-display);text-transform:uppercase}
+.activity-detail-v2 .hike-hero{border:1px solid var(--border);border-radius:var(--radius-card);overflow:hidden}.activity-detail-v2 .hike-overview{padding:23px}.activity-detail-v2 .hike-metric{padding-top:18px;padding-bottom:17px}.activity-detail-v2 .hike-metric + .hike-metric{border-color:var(--border)}.activity-detail-v2 .hike-profile .ad-section-heading{margin-bottom:10px}
+.activity-detail-v2 .ad-route-svg{border-color:var(--border);border-radius:14px}.activity-detail-v2 .ad-section blockquote{border-radius:0 12px 12px 0;border-left-color:var(--ad-accent)}
+@media(max-width:850px){.activity-detail-v2{padding:22px 20px 50px}}
+@media(max-width:560px){.activity-detail-v2{padding:18px 14px 40px}.activity-detail-v2 .ad-header-row{margin-top:16px}.activity-detail-v2 .ad-header h1{font-size:2.5rem}.activity-detail-v2 .ad-outcome,.activity-detail-v2 .ad-section{padding:17px;border-radius:18px}.activity-detail-v2 .overview-stat{padding:14px 12px}.activity-detail-v2 .overview-value strong,.activity-detail-v2 .hike-metric strong{font-size:28px}.activity-detail-v2 .hike-metric + .hike-metric{padding-left:12px}.activity-detail-v2 .ad-chart-card{border-radius:13px}}
 </style>

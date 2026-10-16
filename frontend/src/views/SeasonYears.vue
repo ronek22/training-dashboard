@@ -122,7 +122,7 @@ const LINE_TOP = 12
 const LINE_PLOT_W = LINE_W - LINE_LEFT - LINE_RIGHT
 // Years picked to compare get their own colour; the running year and the year to beat start picked.
 // Clicking a chip or a line adds or removes that year.
-const COMPARE_COLORS = ['var(--accent)', 'var(--season-strength)', '#2dbfa8', '#e0778f', '#a98bf0', '#d9b84a', '#5bb8e6']
+const COMPARE_COLORS = ['var(--volt)', 'var(--season-strength)', 'var(--z2)', 'var(--tone-recovery)', 'var(--run)', 'var(--tone-ride)', 'var(--warning)']
 const compare = ref([])
 watch(() => history.value?.sport, () => {
   compare.value = [current.value?.year, rival.value?.year].filter((year, index, list) => year && list.indexOf(year) === index)
@@ -250,9 +250,16 @@ const openSeason = (column) => { if (column.hasData) router.push(`/season/${colu
     <div v-else-if="error" class="years-state years-error" role="alert">{{ error }}</div>
 
     <template v-else-if="history">
+      <header class="page-heading">
+        <div>
+          <span class="page-kicker">Training history</span>
+          <h1 class="page-title">All years</h1>
+        </div>
+        <RouterLink to="/season" class="heading-action">Season in review <span aria-hidden="true">↗</span></RouterLink>
+      </header>
       <header class="hero">
         <div class="hero-row">
-          <span class="eyebrow">All years · <RouterLink to="/season" class="eyebrow-link">Season in review ↗</RouterLink></span>
+          <span class="eyebrow">{{ history.label }} · every year</span>
           <nav class="tabs" aria-label="Sport">
             <button v-for="sport in history.sports" :key="sport.key" type="button" class="tab" :class="{ active: sport.key === history.sport }"
                     :aria-pressed="sport.key === history.sport" @click="chooseSport(sport.key)">{{ sport.label }}</button>
@@ -260,7 +267,7 @@ const openSeason = (column) => { if (column.hasData) router.push(`/season/${colu
         </div>
 
         <div v-if="years.length" class="hero-main">
-          <h1 class="hero-title">{{ history.label }}</h1>
+          <h2 class="hero-title">{{ history.label }}</h2>
           <p class="hero-line">
             <span class="hero-stat"><strong><AnimatedNumber :value="lifetime" :format="compact" :cache-key="`years:${history.sport}:${metric}:life`" :duration="1500" /></strong> {{ metricInfo.unit || 'sessions' }} in total</span>
             <span class="hero-stat"><strong><AnimatedNumber :value="activeYears" :format="whole" :cache-key="`years:${history.sport}:active`" :duration="1100" /></strong> years with {{ history.label.toLowerCase() }}</span>
@@ -406,10 +413,10 @@ const openSeason = (column) => { if (column.hasData) router.push(`/season/${colu
 <style scoped>
 .years-page {
   --season-ride: var(--ride);
-  --season-trainer: #5b9be6;
+  --season-trainer: var(--tone-ride);
   --season-run: var(--run);
   --season-strength: var(--strength);
-  --season-hike: #e0778f;
+  --season-hike: var(--tone-recovery);
   --season-walk: var(--tone-walk);
   padding: 28px 32px 64px;
   max-width: 1280px;
@@ -418,7 +425,7 @@ const openSeason = (column) => { if (column.hasData) router.push(`/season/${colu
 .years-state { padding: 60px 0; text-align: center; color: var(--muted); }
 .years-error { color: var(--warning-text, var(--warning)); font-size: 13px; }
 .muted { color: var(--muted); }
-.eyebrow { font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-strong, var(--accent)); }
+.eyebrow { font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--volt-strong, var(--volt)); }
 .eyebrow-link { color: var(--muted); text-decoration: none; }
 .eyebrow-link:hover { color: var(--text); }
 
@@ -428,7 +435,7 @@ const openSeason = (column) => { if (column.hasData) router.push(`/season/${colu
 .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
 .tab { padding: 6px 12px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
 .tab:hover { color: var(--text); background: color-mix(in srgb, var(--tone-neutral) 8%, transparent); }
-.tab.active { color: var(--text); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.tab.active { color: var(--text); border-color: color-mix(in srgb, var(--volt) 45%, transparent); background: color-mix(in srgb, var(--volt) 10%, transparent); }
 .hero-main { margin-top: 18px; }
 .hero-title { font-family: var(--font-display); font-size: 88px; font-weight: 700; line-height: .9; letter-spacing: -3.5px; animation: title-in 800ms var(--motion-ease-emphasized) both; }
 @keyframes title-in { from { opacity: 0; transform: translateY(18px); } }
@@ -441,7 +448,7 @@ const openSeason = (column) => { if (column.hasData) router.push(`/season/${colu
 .controls { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 22px; }
 .segmented { display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
 .segmented button { padding: 6px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
-.segmented button.active { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
+.segmented button.active { background: color-mix(in srgb, var(--volt) 16%, transparent); color: var(--text); }
 .legend { display: inline-flex; gap: 16px; font-size: 12px; font-weight: 650; color: var(--text-soft); }
 .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
 
@@ -465,12 +472,12 @@ const openSeason = (column) => { if (column.hasData) router.push(`/season/${colu
 .heat-year { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text-soft); font: inherit; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; line-height: 1.1; }
 .heat-year small { font-size: 10px; font-weight: 600; color: var(--muted); }
 .heat-row.focus .heat-year { color: var(--text); }
-.heat-row.pinned .heat-year { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.heat-row.pinned .heat-year { border-color: color-mix(in srgb, var(--volt) 45%, transparent); background: color-mix(in srgb, var(--volt) 10%, transparent); }
 .heat-cell { position: relative; display: flex; align-items: center; justify-content: center; height: 30px; overflow: hidden; border-radius: 6px; background: color-mix(in srgb, var(--sport) var(--a), var(--surface2)); }
 .heat-cell.blank { background: color-mix(in srgb, var(--tone-neutral) 6%, transparent); }
 .heat-cell.future { background: transparent; border: 1px dashed var(--border); }
 .heat-cell em { font-style: normal; font-size: 11px; font-weight: 650; color: var(--text-soft); font-variant-numeric: tabular-nums; }
-.heat-cell.strong em { color: #fff; }
+.heat-cell.strong em { color: var(--text); }
 .heat-trainer { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--season-trainer); }
 .heat-row.focus .heat-cell:not(.future) { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 25%, transparent); }
 .heat-total { position: relative; display: flex; align-items: center; padding-left: 8px; }
@@ -497,7 +504,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .lines-wrap { position: relative; }
 .lines { cursor: crosshair; }
 .month-band { fill: color-mix(in srgb, var(--tone-neutral) 9%, transparent); pointer-events: none; }
-.today { stroke: var(--accent); stroke-dasharray: 3 3; opacity: .5; }
+.today { stroke: var(--volt); stroke-dasharray: 3 3; opacity: .5; }
 .line-group { cursor: pointer; }
 .line { fill: none; stroke-width: 1.25; stroke-linejoin: round; stroke: color-mix(in srgb, var(--muted) 32%, transparent); transition: opacity var(--motion-duration-fast) var(--motion-ease-standard), stroke var(--motion-duration-fast); }
 .hit { fill: none; stroke: transparent; stroke-width: 10; }
@@ -538,5 +545,43 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   .hero-title { font-size: 56px; letter-spacing: -2px; }
   .hero-stat strong { font-size: 26px; }
   .block { padding: 16px; }
+}
+
+/* Multi-sport redesign layer */
+.years-page { max-width:1280px; padding:28px 32px 64px; }
+.years-page .page-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:22px; }
+.years-page .page-kicker { display:block; margin-bottom:8px; color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+.years-page .page-title { margin:0; font:italic 800 64px/.92 var(--font-display); letter-spacing:-.02em; text-transform:uppercase; }
+.years-page .heading-action { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 18px; border:1px solid var(--border-strong); border-radius:999px; color:var(--text); font-size:13px; font-weight:650; text-decoration:none; }
+.years-page .heading-action:hover { border-color:var(--text-soft); background:var(--surface); }
+.years-page .hero { margin-bottom:20px; padding:24px; border:1px solid var(--border); border-radius:var(--radius-card); background:var(--surface); box-shadow:var(--shadow-card); }
+.years-page .eyebrow { color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.14em; }
+.years-page .tab { padding:7px 13px; border:1px solid var(--border); border-radius:999px; }
+.years-page .tab.active { color:var(--text); border-color:var(--border-strong); background:var(--surface2); }
+.years-page .hero-title { font-size:clamp(62px, 8vw, 96px); font-style:italic; font-weight:800; letter-spacing:-.04em; text-transform:uppercase; }
+.years-page .hero-stat strong { font-style:italic; font-weight:800; }
+.years-page .controls { margin-top:18px; }
+.years-page .segmented { border-color:var(--border); background:var(--deep); }
+.years-page .segmented button.active { background:var(--volt); color:var(--on-accent); }
+.years-page .block { margin-bottom:20px; padding:22px 24px; border-radius:var(--radius-card); box-shadow:none; }
+.years-page .block-head h2 { font-size:30px; font-style:italic; font-weight:800; letter-spacing:0; text-transform:uppercase; }
+.years-page .heat { gap:5px; }
+.years-page .heat-row { gap:5px; }
+.years-page .heat-cell { border-radius:8px; }
+.years-page .heat-cell.future { border-color:var(--border-strong); }
+.years-page .heat-year:focus-visible { outline:2px solid var(--volt); }
+.years-page .chip { padding:6px 12px 6px 9px; background:var(--deep); }
+.years-page .chip.on { border-color:color-mix(in srgb, var(--c) 65%, var(--border)); }
+.years-page button:focus-visible { outline:2px solid var(--volt); outline-offset:3px; }
+@media (max-width:760px) {
+  .years-page { padding:18px 16px 48px; }
+  .years-page .page-heading { align-items:flex-start; }
+  .years-page .page-title { font-size:48px; }
+  .years-page .heading-action { min-height:38px; padding:0 12px; }
+  .years-page .hero { padding:16px; }
+  .years-page .hero-title { font-size:58px; }
+  .years-page .block { padding:16px; }
+  .years-page .heat { overflow-x:auto; padding-bottom:4px; }
+  .years-page .heat-row { min-width:850px; }
 }
 </style>

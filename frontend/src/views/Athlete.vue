@@ -2,8 +2,8 @@
   <div class="motion-page athlete-page">
     <div class="page-head motion-section">
       <div>
-        <div class="page-eyebrow">Who you are</div>
-        <h1 class="page-title">Athlete</h1>
+        <div class="page-eyebrow">Athlete · Settings</div>
+        <h1 class="page-title">Your setup</h1>
         <p class="page-sub">What the planner and coach know about you. Changes shape the next plan and every coach reply.</p>
       </div>
     </div>
@@ -1337,7 +1337,7 @@ select:disabled { opacity: 0.5; }
 .hr-zone-bar span.is-z2 { opacity: 1; }
 .hr-zone-cells { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .hr-zone-cell { display: grid; gap: 4px; align-content: start; padding: 6px; border-radius: 9px; border: 1px solid transparent; }
-.hr-zone-cell.is-z2 { border-color: color-mix(in srgb, #3b82f6 45%, transparent); background: color-mix(in srgb, #3b82f6 8%, transparent); }
+.hr-zone-cell.is-z2 { border-color: color-mix(in srgb, var(--ride) 45%, transparent); background: color-mix(in srgb, var(--ride) 8%, transparent); }
 .hr-zone-name { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; color: var(--muted); }
 .hr-zone-name i { width: 8px; height: 8px; border-radius: 3px; }
 .hr-zone-below { display: flex; align-items: center; min-height: 34px; color: var(--muted-soft); font-size: 12.5px; }
@@ -1416,7 +1416,7 @@ select:disabled { opacity: 0.5; }
 .ghost-btn:hover:not(:disabled) { background: var(--surface2); }
 .ghost-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .primary-btn {
-  padding: 8px 16px; border-radius: 9px; border: 0; background: var(--accent); color: #fff;
+  padding: 8px 16px; border-radius: 9px; border: 0; background: var(--accent); color: var(--on-accent);
   font-size: 13.5px; font-weight: 600; cursor: pointer;
 }
 .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -1432,6 +1432,71 @@ select:disabled { opacity: 0.5; }
   position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 40; margin: 0;
   padding: 10px 16px; border-radius: 12px; background: var(--surface-strong); border: 1px solid var(--border-strong);
   color: var(--success-text); font-size: 13.5px; box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / 0.3);
+}
+
+/* Multi-sport redesign layer */
+.athlete-page { max-width: 1480px; margin-inline: auto; padding: 28px 34px 112px; }
+.athlete-page .page-head { align-items: flex-end; margin-bottom: 28px; }
+.athlete-page .page-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.athlete-page .page-title { font-size: clamp(48px, 5.2vw, 72px); }
+.athlete-page .page-sub { max-width: 66ch; }
+.athlete-page .athlete-tabs {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0;
+  margin: 0 0 20px; padding: 5px; border: 1px solid var(--border); border-radius: 18px;
+  background: var(--surface); box-shadow: var(--shadow-card);
+}
+.athlete-page .athlete-tab {
+  position: relative; gap: 5px; min-height: 96px; padding: 13px 16px 14px;
+  border: 1px solid transparent; border-radius: 14px; background: transparent;
+}
+.athlete-page .athlete-tab + .athlete-tab { border-left-color: var(--border); border-radius: 0 14px 14px 0; }
+.athlete-page .athlete-tab:hover { background: rgb(var(--ov-rgb) / .035); }
+.athlete-page .athlete-tab.is-active {
+  border-color: var(--border-strong); border-radius: 14px;
+  background: var(--surface2); box-shadow: inset 0 -2px 0 var(--volt);
+}
+.athlete-page .athlete-tab-label { font-size: 10px; letter-spacing: .14em; }
+.athlete-page .athlete-tab.is-active .athlete-tab-label { color: var(--volt); }
+.athlete-page .athlete-tab strong {
+  font-family: var(--font-display); font-size: 20px; font-weight: 700; line-height: 1.08;
+}
+.athlete-page .athlete-tab small { font-size: 11.5px; line-height: 1.35; }
+.athlete-page .athlete-panel { gap: 16px; align-items: start; }
+.athlete-page .athlete-panel > .card {
+  padding: 23px; border-radius: var(--radius-card); border: 1px solid var(--border);
+  background: var(--surface); box-shadow: var(--shadow-card);
+}
+.athlete-page .athlete-card-head { padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.athlete-page .athlete-card-head h2 { font-size: 23px; font-weight: 700; }
+.athlete-page .used-by { max-width: 58ch; font-size: 12px; line-height: 1.5; }
+.athlete-page .field-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.athlete-page .field-label small { letter-spacing: 0; text-transform: none; }
+.athlete-page input[type='text'], .athlete-page input[type='number'], .athlete-page input[type='date'],
+.athlete-page select, .athlete-page textarea { border-color: var(--border-strong); background: rgb(var(--deep-rgb) / .6); }
+.athlete-page input:focus, .athlete-page select:focus, .athlete-page textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--ride) 55%, transparent); outline-offset: 1px;
+}
+.athlete-page .hr-zone-cell.is-z2 { border-color: color-mix(in srgb, var(--ride) 45%, transparent); background: color-mix(in srgb, var(--ride) 8%, transparent); }
+.athlete-page .primary-btn { background: var(--volt); color: var(--on-accent); font-weight: 700; border-radius: 999px; }
+.athlete-page .ghost-btn { border-radius: 999px; background: transparent; }
+.athlete-page .save-bar { border-radius: 999px; padding: 9px 11px 9px 18px; }
+.athlete-page .athlete-nudge { border-radius: 14px; background: var(--surface); }
+
+@media (max-width: 900px) {
+  .athlete-page { padding: 24px 22px 112px; }
+  .athlete-page .athlete-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+  .athlete-page .athlete-tab + .athlete-tab { border-left-color: transparent; border-radius: 14px; }
+}
+@media (max-width: 640px) {
+  .athlete-page { padding: 18px 14px 120px; }
+  .athlete-page .page-head { margin-bottom: 20px; }
+  .athlete-page .athlete-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .athlete-page .athlete-tab { min-height: 88px; padding: 11px 12px; }
+  .athlete-page .athlete-tab strong { font-size: 18px; }
+  .athlete-page .athlete-panel > .card { padding: 18px; }
+  .athlete-page .athlete-card-head h2 { font-size: 21px; }
+  .athlete-page .rotation-rules { gap: 12px; }
+  .athlete-page .save-bar { border-radius: 18px; }
 }
 
 @media (max-width: 1100px) {

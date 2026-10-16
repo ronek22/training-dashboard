@@ -46,7 +46,7 @@
             <rect v-for="seg in bar.segs" :key="seg.kind" :x="bar.x" :y="seg.y" :width="bar.w" :height="seg.h" :class="`seg seg-${seg.kind}`" />
           </g>
           <polygon :points="fitnessArea" fill="url(#todayLoadFill)" class="chart-fade" />
-          <polyline :points="fitnessLine" pathLength="1" class="line-fitness chart-draw" />
+          <polyline :points="fitnessLine" class="line-fitness chart-fade" />
           <polyline :points="fatigueLine" class="line-fatigue chart-fade" />
           <rect :x="todayX - barW / 2 - 1" y="0" :width="barW + 2" :height="H" class="today-mark" />
         </svg>

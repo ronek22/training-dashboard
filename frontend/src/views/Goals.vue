@@ -1,8 +1,8 @@
 <template>
-  <div class="motion-page">
+  <div class="motion-page goals-page">
     <div class="page-head goals-page-head motion-section">
       <div>
-        <div class="page-eyebrow">Your targets</div>
+        <div class="page-eyebrow">Train · Goals</div>
         <h1 class="page-title">Goals</h1>
         <p class="page-sub">Where you stand, and the one thing worth doing next.</p>
       </div>
@@ -2300,5 +2300,53 @@ const showWeeklyRequirement = (goal) => {
   .gcard-value strong { font-size: 28px; }
   .goal-overview { padding: 20px; }
   .goal-overview-copy strong { font-size: 21px; }
+}
+/* Multi-sport redesign layer — Goals borrows the planning hierarchy and surfaces. */
+.goals-page .goals-page-head { align-items: flex-end; margin-bottom: 28px; }
+.goals-page .goals-page-head .page-eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.goals-page .goals-page-head .page-title { margin: 6px 0 0; font-size: clamp(48px, 5.4vw, 80px); font-style: italic; font-weight: 800; letter-spacing: .005em; line-height: .95; text-transform: uppercase; }
+.goals-page .goals-page-head .page-sub { margin-top: 10px; color: var(--muted-soft); font-size: 14px; }
+.goals-page .add-goal-btn { min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px; background: var(--volt); color: var(--on-accent); font-weight: 700; }
+.goals-page .goal-sections { gap: 28px; }
+.goals-page .goal-overview, .goals-page .goal-review { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.goals-page .goal-overview { padding: 24px 28px; }
+.goals-page .overview-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; }
+.goals-page .goal-overview-copy strong { font-size: 26px; font-weight: 800; line-height: 1.1; }
+.goals-page .goal-overview-stats div { border: 0; border-radius: 14px; background: var(--surface2); }
+.goals-page .goal-overview-stats strong { font-size: 32px; font-weight: 800; }
+.goals-page .goal-overview-stats span { color: var(--muted); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+.goals-page .goal-section-head .section-title { font-size: 18px; font-weight: 700; }
+.goals-page .goal-section-head > div { align-items: baseline; gap: 10px; }
+.goals-page .goal-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.goals-page .gcard { grid-row: auto; grid-template-rows: none; row-gap: 16px; padding: 22px 24px; border: 1px solid color-mix(in srgb, var(--tone) 18%, var(--border)); border-radius: var(--radius-card); background: radial-gradient(120% 40% at 100% 0%, color-mix(in srgb, var(--tone) 22%, transparent) 0%, transparent 70%), var(--surface); box-shadow: none; }
+.goals-page .gcard-icon { width: 40px; height: 40px; border-radius: 12px; background: color-mix(in srgb, var(--tone) 14%, var(--surface2)); }
+.goals-page .gcard-kicker { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.goals-page .gcard-titles h2 { font-size: 22px; font-weight: 700; letter-spacing: 0; }
+.goals-page .gcard-status { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.goals-page .gcard-value strong, .goals-page .gcard-performance strong { font-size: 38px; font-style: italic; font-weight: 800; }
+.goals-page .gcard-coach { border-radius: 14px; background: var(--surface2); color: var(--text-soft); }
+.goals-page .gcard-performance div, .goals-page .gcard-facts div { border: 1px solid var(--border); border-radius: 14px; background: var(--surface2); }
+.goals-page .gcard-more summary { color: var(--muted-soft); }
+.goals-page .gcard-actions { padding-top: 10px; border-top: 1px solid var(--border); }
+.goals-page .gcard-actions .goal-action, .goals-page .goal-action { min-height: 36px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text-soft); }
+.goals-page .gcard-actions .goal-action:hover, .goals-page .goal-action:hover { border-color: var(--muted); background: var(--surface2); color: var(--text); }
+.goals-page .goal-review { padding: 24px; }
+.goals-page .goal-review-item { border: 1px solid var(--border); border-radius: 16px; background: var(--surface2); }
+.goals-page .goal-review-action { min-height: 38px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); }
+.goals-page .goal-review-action.is-primary { border-color: var(--border-strong); background: var(--surface3); color: var(--text); }
+.goals-page .goal-suggestion-row { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.goals-page .goal-suggestion-kind { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.goals-page .goal-suggestion-why summary, .goals-page .goal-suggestion-why a { color: var(--tone-ride); }
+.goals-page .goal-settings-card, .goals-page .goal-athlete-link { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+@media (max-width: 760px) {
+  .goals-page .goals-page-head { align-items: stretch; }
+  .goals-page .goals-page-head .page-title { font-size: 48px; }
+  .goals-page .goal-overview { grid-template-columns: 1fr; gap: 18px; padding: 20px; }
+  .goals-page .goal-overview-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .goals-page .goal-overview-stats div { min-width: 0; padding: 10px; }
+  .goals-page .goal-grid { grid-template-columns: 1fr; }
+  .goals-page .goal-review-head { align-items: flex-start; flex-direction: column; }
+  .goals-page .goal-review-head small { text-align: left; }
+  .goals-page .goal-suggestion-row { padding: 20px; }
 }
 </style>

@@ -2,8 +2,9 @@
   <div class="food-page" @paste="onPaste">
     <header class="food-head">
       <div class="title-block">
-        <div class="page-eyebrow">{{ eyebrow }}</div>
+        <div class="page-eyebrow">Body · Nutrition</div>
         <h1 class="page-title">Food</h1>
+        <p class="food-subtitle">{{ eyebrow }} · Fuel for the work ahead.</p>
       </div>
       <nav class="food-seg page-tabs" role="tablist" aria-label="View">
         <button v-for="tab in tabs" :key="tab.value" type="button" role="tab" :aria-selected="view === tab.value" :class="{ active: view === tab.value }" @click="setView(tab.value)">{{ tab.label }}</button>
@@ -44,6 +45,7 @@
         <div class="main-col">
           <article class="card logger" :class="{ dragging, drafting: rows.length }" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop">
             <template v-if="!rows.length">
+              <div class="logger-heading"><div><span class="section-kicker">Daily log</span><h2>Fuel your day</h2></div><span class="logger-note">Describe it. Snap it. Log it.</span></div>
               <div class="logbar">
                 <label class="meal-select">
                   <span class="sr-only">Meal</span>
@@ -93,7 +95,7 @@
                   <select v-model="meal"><option v-for="option in meals" :key="option.value" :value="option.value">{{ option.label }}</option></select>
                 </label>
               </div>
-              <table class="draft-table">
+              <div class="draft-scroll" tabindex="0" role="region" aria-label="Meal items"><table class="draft-table">
                 <thead><tr><th class="left">Item</th><th>{{ rows.some((row) => row.portions) ? "Amount" : "g" }}</th><th>kcal</th><th>P</th><th>C</th><th>F</th><th></th></tr></thead>
                 <tbody>
                   <tr v-for="row in rows" :key="row.key">
@@ -123,7 +125,7 @@
                     <td></td>
                   </tr>
                 </tfoot>
-              </table>
+              </table></div>
               <p v-if="estimateNote" class="estimate-note">{{ estimateNote }}</p>
               <div class="draft-actions">
                 <button type="button" class="primary-button" :disabled="saving || !hasNamedRow" @click="saveEntry">{{ saving ? 'Saving…' : editingId ? 'Save changes' : `Log ${mealName(meal).toLowerCase()}` }}</button>
@@ -593,5 +595,52 @@ onUnmounted(() => {
   .draft-table td.left input { min-width: 110px; }
   .draft-table input { width: 50px; }
   .saved-picker input { width: 150px; }
+}
+
+/* Multi-sport redesign layer — Today artboard: inset stats and daily cards. */
+.food-page { min-width: 0; }
+.food-page .food-head { flex-wrap: wrap; align-items: flex-end; gap: 20px; margin-bottom: 28px; }
+.food-page .title-block { flex: 1 1 300px; }
+.food-page .food-subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.food-page .page-tabs { margin: 0 0 2px; }
+.food-page .head-tools { flex-wrap: wrap; margin-bottom: 2px; }
+.food-page .food-grid { grid-template-columns: minmax(0, 1fr) 350px; gap: 20px; align-items: start; }
+.food-page .food-grid.solo { grid-template-columns: minmax(0, 1fr); }
+.food-page .main-col, .food-page .side { grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 20px; align-content: start; }
+.food-page :deep(.summary) { margin-bottom: 24px; }
+.food-page .logger { padding: 24px; background: var(--surface); border-radius: var(--radius-card); box-shadow: none; }
+.food-page .logger-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.food-page .section-kicker { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.food-page .logger-heading h2 { margin-top: 6px; font: italic 800 30px/1 var(--font-display); text-transform: uppercase; }
+.food-page .logger-note { color: var(--muted); font-size: 12px; }
+.food-page .logbar { flex-wrap: wrap; padding: 12px; gap: 10px; border-radius: 14px; background: rgb(var(--deep-rgb)); }
+.food-page .logbar textarea { flex-basis: 200px; }
+.food-page .meal-select select { border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; height: 38px; }
+.food-page .logbar-sub { flex-wrap: wrap; gap: 12px; margin-top: 14px; padding: 0; }
+.food-page .saved-picker input { height: 36px; border-radius: 999px; }
+.food-page .hint { flex-basis: 100%; margin-left: 0; font-size: 11px; }
+.food-page .draft-scroll { overflow-x: auto; }
+.food-page .draft-actions { flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.food-page .draft-head { margin-bottom: 18px; }
+@media (max-width: 1200px) {
+  .food-page .food-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 700px) {
+  .food-page .food-head { gap: 16px; margin-bottom: 22px; }
+  .food-page .title-block { flex-basis: 100%; }
+  .food-page .page-tabs { width: 100%; }
+  .food-page .page-tabs button { flex: 1; }
+  .food-page .head-tools { width: 100%; margin: 0; gap: 8px; }
+  .food-page .profile-button { flex: 1; padding: 0 10px; }
+  .food-page .stepper .stepper-now { min-width: 80px; }
+  .food-page .logger { padding: 18px; }
+  .food-page .logger-heading { align-items: start; }
+  .food-page .logger-note { max-width: 90px; line-height: 1.5; text-align: right; }
+  .food-page .logbar textarea { order: -1; flex-basis: 100%; min-height: 70px; }
+  .food-page .logbar .primary-button { margin-left: auto; }
+  .food-page .saved-picker { width: 100%; }
+  .food-page .saved-picker input { width: 100%; }
+  .food-page .saved-list { width: min(300px, calc(100vw - 76px)); }
+  .food-page .draft-table { min-width: 540px; }
 }
 </style>

@@ -7,6 +7,7 @@
           transform="rotate(-90 60 60)" />
       </svg>
       <div class="intake-copy">
+        <span class="tile-label">Daily intake</span>
         <strong><AnimatedNumber :value="day.totals.kcal" :format="fmt" cache-key="food:kcal" /></strong>
         <span>{{ day.target ? `of ${fmt(day.target.kcal)} kcal` : 'kcal eaten' }}</span>
         <p :class="['gap', tone]">
@@ -155,4 +156,50 @@ const burnTitle = computed(() => burn.value.map((segment) => `${segment.label} $
   .summary { padding: 18px; }
   .cell { padding: 0 10px; }
 }
+
+/* Multi-sport redesign layer */
+
+.summary { grid-template-columns: minmax(240px, 1.25fr) repeat(3, minmax(0, 1fr)); gap: 14px; padding: 24px; background: var(--surface); }
+.summary .intake { gap: 18px; padding: 4px 12px 4px 0; }
+.summary .ring { width: 94px; height: 94px; }
+.summary .ring-fill { stroke: var(--z2); }
+.summary .ring-fill.good { stroke: var(--volt); }
+.summary .ring-fill.close { stroke: var(--warning); }
+.summary .ring-fill.under { stroke: var(--danger); }
+.summary .intake-copy strong { font: italic 800 48px/1.05 var(--font-display); margin: 6px 0; }
+.summary .gap { white-space: normal; line-height: 1.5; font-size: 12px; }
+.summary .gap.under { color: var(--danger-text); }
+.summary .gap.good { color: var(--success-text); }
+.summary .cell { align-self: stretch; border: 1px solid var(--border); padding: 16px; border-radius: 16px; background: rgb(var(--deep-rgb)); }
+.summary .value { margin: 10px 0 12px; }
+.summary .value strong { font: italic 800 36px/1 var(--font-display); }
+.summary .value small { font-size: 12px; }
+.summary .hint { margin-top: 10px; }
+.summary .bar { height: 5px; }
+.summary .burn { grid-column: 1 / -1; display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; align-items: center; gap: 10px 20px; background: transparent; border: 0; border-top: 1px solid var(--border); border-radius: 0; padding: 18px 0 0; }
+.summary .burn .tile-label { grid-column: 1; grid-row: 1; }
+.summary .burn .value { grid-column: 1; grid-row: 2; margin: 0; }
+.summary .burn .value strong { font-size: 30px; }
+.summary .burn .stack { grid-column: 2 / -1; grid-row: 1; }
+.summary .burn .legend { grid-column: 2 / -1; grid-row: 2; gap: 8px 18px; margin: 0; }
+.summary .eat-more { margin: 0; padding: 12px 16px; border-radius: 12px; }
+@media (max-width: 1180px) {
+ .summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+ .summary .intake { grid-column: 1 / -1; }
+ .summary .macro { padding: 16px; }
+}
+@media (max-width: 700px) {
+ .summary { padding: 18px; gap: 10px; }
+ .summary .intake { gap: 16px; padding: 0 0 10px; }
+ .summary .ring { width: 80px; height: 80px; }
+ .summary .macro { padding: 12px 8px; border-radius: 12px; }
+ .summary .value { white-space: normal; margin: 8px 0 10px; }
+ .summary .value strong { font-size: 30px; }
+ .summary .value small { display: block; font-size: 11px; margin-top: 3px; }
+ .summary .hint { white-space: normal; font-size: 10px; line-height: 1.4; }
+ .summary .burn { grid-template-columns: 90px minmax(0, 1fr); gap: 10px; }
+ .summary .burn .value small { display: inline; }
+ .summary .burn .legend { gap: 6px 10px; }
+}
+
 </style>

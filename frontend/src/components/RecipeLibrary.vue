@@ -95,4 +95,11 @@ load()
   .food-toolbar { flex-wrap: wrap; }
   .food-search { width: 100%; }
 }
+
+/* Multi-sport redesign layer */
+ .recipe-library .recipe { padding: 24px; gap: 12px; border-radius: var(--radius-card); }
+.recipe-library .title { font: italic 800 28px/1.05 var(--font-display); text-transform: uppercase; }
+.recipe-library .source { letter-spacing: .14em; }
+.recipe-library .recipe:hover { border-color: var(--border-strong); }
+.recipe-library .grid { gap: 20px; }
 </style>

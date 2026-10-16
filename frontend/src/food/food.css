@@ -1,7 +1,7 @@
 /* Shared pieces for every Food view: buttons, toolbars and segmented switches look the same on each tab. */
 .food-page {
-  --protein: var(--accent-strong);
-  --carbs: var(--z2);
+  --protein: var(--tone-ride);
+  --carbs: var(--run);
   --fat: var(--strength);
 }
 
@@ -42,3 +42,28 @@
 .food-dialog-shell { position: fixed; inset: 0; z-index: 70; display: grid; place-items: start center; padding: 10vh 16px 16px; background: rgb(0 0 0 / .32); }
 .food-dialog { width: min(560px, 100%); padding: 22px 24px; border-radius: 16px; background: var(--surface-strong, var(--surface)); border: 1px solid var(--border); box-shadow: 0 24px 60px rgb(0 0 0 / .22); }
 .food-dialog h3 { margin: 0 0 4px; font: 650 19px var(--font-display); }
+
+/* Multi-sport redesign layer — shared across Log, Week and Library. */
+.food-page .card { background: var(--surface); border-radius: var(--radius-card); box-shadow: none; }
+.food-page .primary-button, .food-page .ghost-button { min-height: 40px; border-radius: 999px; font-family: var(--font-body); font-weight: 600; }
+.food-page .primary-button { background: var(--volt); }
+.food-page .link-button { color: var(--text-soft); }
+.food-page .link-button:hover { color: var(--text); }
+.food-page .link-button.danger { color: var(--danger-text); }
+.food-page .tile-label { font-size: 10px; font-weight: 700; letter-spacing: .14em; }
+.food-page .card-title { font: italic 800 26px/1.1 var(--font-display); letter-spacing: 0; text-transform: uppercase; color: var(--text); }
+.food-page .food-seg { border-radius: 999px; padding: 4px; background: rgb(var(--deep-rgb)); }
+.food-page .food-seg button { min-height: 34px; border-radius: 999px; font: 600 13px var(--font-body); padding: 6px 18px; }
+.food-page .food-seg button.active { background: var(--surface3); box-shadow: none; }
+.food-page .stepper { height: 40px; border-radius: 999px; }
+.food-page .food-toolbar { gap: 12px; margin-bottom: 22px; flex-wrap: wrap; }
+.food-page .food-toolbar .toolbar-title { font: italic 800 28px var(--font-display); text-transform: uppercase; }
+.food-page .food-search { border-radius: 999px; height: 40px; }
+.food-page .table-card { overflow-x: auto; }
+.food-page button:focus-visible, .food-page a:focus-visible, .food-page input:focus-visible, .food-page select:focus-visible, .food-page textarea:focus-visible, .food-page [tabindex]:focus-visible { outline: 2px solid var(--tone-ride); outline-offset: 3px; }
+@media (max-width: 700px) {
+  .food-page .food-toolbar { gap: 10px; }
+  .food-page .food-search { width: 100%; }
+  .food-page .food-toolbar .push-right { margin-left: 0; }
+  .food-page .empty-actions { flex-wrap: wrap; }
+}

@@ -124,4 +124,25 @@ const total = computed(() => props.groups.reduce((sum, group) => ({
 @media (max-width: 700px) {
   .star { opacity: 1; }
 }
+
+/* Multi-sport redesign layer */
+
+.meals { padding: 24px; }
+.meals .col-head { padding-bottom: 18px; }
+.meals .meal { padding: 14px 0; }
+.meals .meal-head h3 { font: 700 20px var(--font-display); text-transform: uppercase; }
+.meals .meal.current h3::after { width: 4px; height: 14px; border-radius: 3px; background: var(--z2); }
+.meals .add-button { width: 28px; height: 28px; border: 1px solid var(--border-strong); border-radius: 999px; }
+.meals .add-button:hover { background: var(--surface3); color: var(--text); }
+.meals .item { padding: 7px 0; }
+.meals .day-total { padding-top: 18px; }
+@media (max-width: 700px) {
+ .meals { padding: 18px 14px; }
+ .meals .row { grid-template-columns: minmax(0, 1fr) 40px 27px 27px 27px 28px; gap: 4px; }
+ .meals .num { font-size: 11px; }
+ .meals .item-name { padding-left: 0; font-size: 12px; }
+ .meals .item-name small { display: block; margin-left: 0; }
+ .meals .meal-head h3 { font-size: 18px; }
+}
+
 </style>

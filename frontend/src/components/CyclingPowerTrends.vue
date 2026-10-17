@@ -62,9 +62,8 @@ const pal = computed(() => {
   themeTick.value
   const g = (name: string) => themeColor(name)
   return {
-    // One sport, one hue: duration families are ride-blue shades, not other sports' colors.
-    sprint: g('--tone-ride'), attack: g('--ride'), climb: g('--ride'), pink: g('--tone-recovery'),
-    profile: g('--ride'), profileFill: g('--cp-sprint-fill'), sprintFill: g('--cp-sprint-fill'),
+    sprint: g('--ride'), attack: g('--run'), climb: g('--z2'), pink: g('--tone-recovery'),
+    profile: g('--text'), profileFill: g('--cp-profile-fill'), sprintFill: g('--cp-sprint-fill'),
     pointBorder: g('--cp-point-border'), pointRing: g('--cp-point-ring'), grid: g('--cp-grid'), gridStrong: g('--cp-grid-strong'),
     axis: g('--cp-axis'), gapFill: g('--cp-gap-fill'), gapFill2: g('--cp-gap-fill-2'), gapLine: g('--cp-gap-line'),
     labelBg: g('--cp-label-bg'), labelText: g('--cp-label-text')
@@ -456,8 +455,8 @@ const hrOptions = computed<ChartOptions<'line'>>(() => ({ ...baseOptions('Heart 
   .power-trends .moment-highlight { padding: 20px; }
   .power-trends .moment-explorer { padding: 20px 14px; }
 }
-/* Multi-sport redesign layer 2 — Trends artboard: ride blue only, white active pills, card heads. */
-.power-trends { gap: 24px; --cp-sprint: var(--tone-ride); --cp-attack: var(--ride); --cp-climb: var(--ride); }
+/* Multi-sport redesign layer 2 — Trends artboard: Sprint / Attack / Climb keep their own colors, white active pills, card heads. */
+.power-trends { gap: 24px; }
 .power-trends .page-heading h2 { margin: 6px 0 0; font-size: 26px; }
 .power-trends .page-heading p { margin: 4px 0 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
 .power-trends .section-heading h3 { margin: 6px 0 0; font-size: 26px; line-height: 1; letter-spacing: 0; }
@@ -465,7 +464,9 @@ const hrOptions = computed<ChartOptions<'line'>>(() => ({ ...baseOptions('Heart 
 .power-trends .section-surface { padding: 24px 28px; }
 .power-trends .headline-tile { gap: 8px; padding: 16px 18px; border-top: 1px solid var(--border); border-radius: 18px; background: rgb(var(--deep-rgb)); }
 .power-trends .headline-tile .tile-label { color: var(--muted); }
-.power-trends .headline-tile strong { font-size: 44px; line-height: 1; color: var(--tone-ride); }
+.power-trends .headline-tile { border-top: 2px solid var(--tone); }
+.power-trends .headline-tile .tile-label { color: var(--tone); }
+.power-trends .headline-tile strong { font-size: 44px; line-height: 1; color: var(--text); }
 .power-trends .headline-tile strong small { font-style: normal; color: var(--muted-soft); }
 .power-trends .tile-sub { font-size: 12px; color: var(--muted); }
 .power-trends .tile-recent { padding-top: 0; border-top: 0; margin-top: 0; font-size: 12px; color: var(--muted-soft); }
@@ -473,19 +474,19 @@ const hrOptions = computed<ChartOptions<'line'>>(() => ({ ...baseOptions('Heart 
 .power-trends .duration-picker button { min-height: 34px; padding: 6px 12px; border: 1px solid var(--border-strong); background: transparent; color: var(--muted-soft); font-weight: 600; }
 .power-trends .duration-picker button:hover { color: var(--text); background: var(--surface2); }
 .power-trends .duration-picker button[aria-pressed=true] { background: var(--text); border-color: var(--text); color: var(--bg); }
-.power-trends .discipline-legend > span { color: var(--muted-soft); }
+.power-trends .discipline-legend > span { color: var(--tone); }
 .power-trends .profile-readout { justify-content: flex-start; gap: 18px; padding: 20px; border: 1px solid var(--border); border-radius: 18px; background: rgb(var(--deep-rgb)); }
-.power-trends .profile-readout > span { color: var(--muted-soft); }
-.power-trends .profile-readout strong { font-size: 56px; color: var(--tone-ride); }
-.power-trends .moment-highlight { border-top: 1px solid var(--border); }
-.power-trends .moment-category { color: var(--muted-soft); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
-.power-trends .moment-highlight strong { color: var(--tone-ride); }
-.power-trends .ladder-row { border-left: 0; }
+.power-trends .profile-readout > span { color: var(--tone); }
+.power-trends .profile-readout strong { font-size: 56px; color: var(--tone); }
+.power-trends .moment-highlight { border-top: 2px solid var(--tone); }
+.power-trends .moment-category { color: var(--tone); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.power-trends .moment-highlight strong { color: var(--text); }
+.power-trends .ladder-row { border-left: 2px solid var(--tone); }
 .power-trends .ladder-row.selected { background: var(--surface2); }
-.power-trends .ladder-duration { color: var(--text); }
-.power-trends .ladder-watts { font-style: italic; font-weight: 800; color: var(--tone-ride); }
-.power-trends .ladder-level b { color: var(--tone-ride); background: color-mix(in srgb, var(--ride) 16%, transparent); }
-.power-trends .benchmark-track i { background: var(--ride); }
+.power-trends .ladder-duration { color: var(--tone); }
+.power-trends .ladder-watts { font-style: italic; font-weight: 800; color: var(--text); }
+.power-trends .ladder-level b { color: var(--tone); background: color-mix(in srgb, var(--tone) 16%, transparent); }
+.power-trends .benchmark-track i { background: var(--tone); }
 .power-trends .ladder-gap em { color: var(--volt); }
 .power-trends .ladder-sort button[aria-pressed=true] { background: var(--surface3); }
 .power-trends .hr-fold > summary { border-radius: var(--radius-card); border: 1px solid var(--border); background: var(--surface); font-style: italic; font-weight: 800; text-transform: uppercase; }

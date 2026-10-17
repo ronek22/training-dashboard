@@ -144,8 +144,7 @@ const points = computed(() => {
     return { ...item, index, x, y: yFor(item.value), stages, barX: x - barWidth / 2, barWidth, hitX: chartLeft + slot * index, hitWidth: Math.max(slot, 5), intensity: 0.42 + Math.min(0.58, ratio * 0.72), averageState, tooltip: `${formatDate(item.date)}: ${formatValue(item.value)}${stageText ? `. ${stageText}` : ''}` }
   })
 })
-// Sleep stays violet (recovery); shades separate the stages.
-const stageColors = { deep: 'color-mix(in srgb, var(--tone-recovery) 70%, var(--ride))', rem: 'color-mix(in srgb, var(--tone-recovery) 45%, var(--text))', core: 'var(--tone-recovery)', unspecified: 'var(--surface3)' }
+const stageColors = { deep: 'var(--tone-recovery)', rem: 'var(--tone-strength)', core: 'var(--ride)', unspecified: 'var(--muted)' }
 const stageLabels = { deep: 'Deep', rem: 'REM', core: 'Core', unspecified: 'Unspecified' }
 const stageLegend = computed(() => Object.keys(stageColors).map(key => ({ key, label: stageLabels[key], color: stageColors[key] })))
 function stageSegmentsFor(item) {

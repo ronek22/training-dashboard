@@ -165,31 +165,22 @@
 
     <TrainingLoadPanel v-else-if="activeView === 'training_load'" title="Fitness takes the long view" subtitle="Fitness, fatigue and form over the last 12 weeks · hover for a day" :days="84" :focus-days="28" mode="full" />
 
-    <section v-else-if="activeView === 'recovery'" class="tab-stack" aria-labelledby="recovery-heading">
-      <div class="split-row">
-        <article class="t-card">
-          <header class="card-head">
-            <span class="card-icon" style="--tone: var(--tone-recovery)" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M15 12.5A6.5 6.5 0 0 1 7.5 5a6.5 6.5 0 1 0 7.5 7.5z" /></svg></span>
-            <div><h2 id="recovery-heading">{{ selectedSleepDate ? 'That night' : 'Last night' }}</h2><p>{{ sleepNight ? format(new Date(`${sleepNight.date}T12:00:00`), 'EEE d MMM') : 'Sleep' }} · stage totals, not a timeline</p></div>
-            <label v-if="sleepMetric?.history?.length" class="select-pill"><span class="sr-only">Explore a night</span><select v-model="selectedSleepDate"><option value="">Latest night</option><option v-for="night in sleepMetric.history" :key="night.date" :value="night.date">{{ formatDate(night.date) }}</option></select></label>
-          </header>
-          <template v-if="sleepNight">
-            <div class="night-total"><strong>{{ formatDuration(sleepNight.value * 60) }}</strong><span>asleep{{ sleepAwakeMinutes != null ? ` · ${formatDuration(sleepAwakeMinutes)} awake` : '' }}</span></div>
-            <div v-if="sleepBreakdown.length" class="stage-bar" aria-hidden="true"><i v-for="stage in sleepBreakdown" :key="stage.label" :style="{ flex: stage.minutes, background: stage.color }"></i></div>
-            <ul class="stage-list">
-              <li v-for="stage in sleepBreakdown" :key="stage.label"><i :style="{ background: stage.color }"></i><span>{{ stage.label }}</span><strong>{{ formatDuration(stage.minutes) }}</strong><small>{{ stage.percent }}%</small></li>
-            </ul>
-            <p v-if="!sleepBreakdown.length" class="card-copy">Stage details haven’t been imported for this night.</p>
-          </template>
-          <p v-else class="card-copy">Sleep appears here after an Apple Health import.</p>
-        </article>
-        <div class="metric-tiles" role="tablist" aria-label="Recovery metric">
-          <button v-for="option in recoveryMetricOptions" :key="option.key" type="button" role="tab" class="tile metric-tile" :aria-selected="recoveryMetric === option.key" :class="{ active: recoveryMetric === option.key }" :style="{ '--tone': option.accent }" @click="recoveryMetric = option.key">
-            <span class="t-label">{{ option.label }}</span><strong class="tile-value">{{ metricOptionValue(option) }}</strong><small>{{ healthMetricDate(option.key) }}</small>
-          </button>
-          <router-link to="/recovery" class="metric-note">One unusual reading is context, not a verdict. <b>Symptoms &amp; recovery ↗</b></router-link>
-        </div>
+    <section v-else-if="activeView === 'recovery'" class="health-detail recovery-detail" aria-labelledby="recovery-heading">
+      <div class="detail-head">
+        <div><span class="section-kicker">Automatic context</span><h2 id="recovery-heading">Recovery signals</h2><p>Follow your personal direction across several days. One unusual reading is context, not a verdict on today’s training.</p></div>
+        <router-link to="/recovery" class="status-chip status-connected">Symptoms & recovery support ↗</router-link>
       </div>
+      <article class="sleep-story">
+        <div class="sleep-story-copy"><span class="detail-eyebrow">THE OTHER HALF OF TRAINING</span><h3>Make room<br>for recovery.</h3><p>Your nights, alongside your resting heart rate and HRV. Follow the pattern across days.</p><label v-if="sleepMetric?.history?.length" class="night-picker">Explore a night<select v-model="selectedSleepDate"><option value="">Latest · {{ formatDate(sleepMetric.latest?.date) }}</option><option v-for="night in sleepMetric.history" :key="night.date" :value="night.date">{{ formatDate(night.date) }}</option></select></label><span v-else class="detail-empty-note">Sleep appears here after an Apple Health import.</span></div>
+        <div class="sleep-dial" :style="{ '--sleep-fill': sleepStageGradient }" role="img" :aria-label="`Sleep on ${sleepNight?.date || 'unavailable date'}: ${sleepNight ? formatDuration(sleepNight.value * 60) : 'not imported'}. ${sleepBreakdown.map(stage => `${stage.label}: ${formatDuration(stage.minutes)}`).join(', ')}`"><div><span aria-hidden="true">☾</span><strong>{{ sleepNight ? formatDuration(sleepNight.value * 60) : '—' }}</strong><small>TIME ASLEEP</small><time v-if="sleepNight">{{ formatDate(sleepNight.date) }}</time></div></div>
+        <div class="sleep-breakdown"><div class="sleep-breakdown-title"><strong>Your sleep composition</strong><span>Stage totals · not a sleep timeline</span></div><div v-for="stage in sleepBreakdown" :key="stage.label" class="sleep-stage-row"><i :style="{ background: stage.color }"></i><span>{{ stage.label }}</span><strong>{{ formatDuration(stage.minutes) }}</strong><small>{{ stage.percent }}%</small></div><p v-if="!sleepBreakdown.length">Stage details haven’t been imported for this night.</p><div class="sleep-awake"><span>Awake <small>separate from time asleep</small></span><strong>{{ sleepNight && (sleepNight.awake_minutes != null || sleepNight.stages?.awake != null) ? formatDuration(sleepNight.awake_minutes ?? sleepNight.stages.awake * 60) : '—' }}</strong></div></div>
+      </article>
+      <div class="metric-switcher metric-switcher-4" role="tablist" aria-label="Recovery metric">
+        <button v-for="option in recoveryMetricOptions" :key="option.key" type="button" role="tab" :aria-selected="recoveryMetric === option.key" :class="{ active: recoveryMetric === option.key }" :style="{ '--metric-color': option.accent }" @click="recoveryMetric = option.key">
+          <span>{{ option.label }}</span><strong>{{ metricOptionValue(option) }}</strong><small>{{ healthMetricDate(option.key) }}</small>
+        </button>
+      </div>
+
       <HealthTrendChart :key="selectedRecoveryMetric.key" v-bind="selectedRecoveryMetric" :history="healthHistory(selectedRecoveryMetric.key)" :show-stages="selectedRecoveryMetric.key === 'sleep'" :summary="selectedRecoveryMetric.key === 'sleep_debt' ? sleepDebt?.message || '' : ''" />
     </section>
 
@@ -392,9 +383,9 @@ const sleepBreakdown = computed(() => {
   const night = sleepNight.value
   if (!night) return []
   const stages = [
-    { label: 'Deep', minutes: Number(night.stages?.deep || 0) * 60, color: 'color-mix(in srgb, var(--tone-recovery) 70%, var(--ride))' },
-    { label: 'Core', minutes: Number(night.stages?.core || 0) * 60, color: 'var(--tone-recovery)' },
-    { label: 'REM', minutes: Number(night.stages?.rem || 0) * 60, color: 'color-mix(in srgb, var(--tone-recovery) 45%, var(--text))' },
+    { label: 'Deep', minutes: Number(night.stages?.deep || 0) * 60, color: 'var(--tone-recovery)' },
+    { label: 'REM', minutes: Number(night.stages?.rem || 0) * 60, color: 'var(--tone-strength)' },
+    { label: 'Core', minutes: Number(night.stages?.core || 0) * 60, color: 'var(--ride)' },
   ]
   const known = stages.reduce((sum, stage) => sum + stage.minutes, 0)
   if (!known) return []
@@ -403,11 +394,10 @@ const sleepBreakdown = computed(() => {
   const total = stages.reduce((sum, stage) => sum + stage.minutes, 0)
   return stages.filter(stage => stage.minutes > 0).map(stage => ({ ...stage, percent: Math.round(stage.minutes / total * 100), share: stage.minutes / total * 100 }))
 })
-const sleepAwakeMinutes = computed(() => {
-  const night = sleepNight.value
-  if (!night) return null
-  if (night.awake_minutes != null) return Number(night.awake_minutes)
-  return night.stages?.awake != null ? Number(night.stages.awake) * 60 : null
+const sleepStageGradient = computed(() => {
+  if (!sleepBreakdown.value.length) return 'conic-gradient(var(--surface3) 0% 100%)'
+  let offset = 0
+  return `conic-gradient(${sleepBreakdown.value.map(stage => { const start = offset; offset += stage.share; return `${stage.color} ${start}% ${offset}%` }).join(', ')})`
 })
 const movementDays = computed(() => {
   const history = healthHistory(selectedDailyMetric.value.key).slice(0, 7).slice().reverse()
@@ -507,12 +497,12 @@ const bodySignals = computed(() => {
   const healthValue = (key, unit, decimals) => splitValue(healthMetricLabel(key, unit, decimals))
   const rhrLatest = restingHeartRate.value?.latest
   return [
-    { key: 'weight', label: 'Weight', value: latestWeight.value ? Number(latestWeight.value.value).toFixed(1) : '—', unit: latestWeight.value ? 'kg' : '', context: weights.length > 1 ? `${signedMetricDelta(weights[0].value - weights[1].value, 'weight')} vs previous` : weights.length ? formatDate(weights[0].date) : 'Not tracked yet', accent: 'var(--tone-recovery)', link: 'Weight trend', open: () => selectView('weight'), ...signalSpark(weights) },
-    { key: 'resting_hr', label: 'Resting HR', value: rhrLatest ? Math.round(rhrLatest.value) : '—', unit: rhrLatest ? 'bpm' : '', context: restingHeartRateShort.value, accent: 'var(--z2)', link: 'Recovery', open: () => openRecovery('resting_hr'), ...signalSpark(restingHeartRate.value?.history) },
+    { key: 'weight', label: 'Weight', value: latestWeight.value ? Number(latestWeight.value.value).toFixed(1) : '—', unit: latestWeight.value ? 'kg' : '', context: weights.length > 1 ? `${signedMetricDelta(weights[0].value - weights[1].value, 'weight')} vs previous` : weights.length ? formatDate(weights[0].date) : 'Not tracked yet', accent: 'var(--warning)', link: 'Weight trend', open: () => selectView('weight'), ...signalSpark(weights) },
+    { key: 'resting_hr', label: 'Resting HR', value: rhrLatest ? Math.round(rhrLatest.value) : '—', unit: rhrLatest ? 'bpm' : '', context: restingHeartRateShort.value, accent: 'var(--danger-text)', link: 'Recovery', open: () => openRecovery('resting_hr'), ...signalSpark(restingHeartRate.value?.history) },
     { key: 'hrv', label: 'HRV', value: healthValue('hrv', 'ms', 0)[0], unit: healthValue('hrv', 'ms', 0)[1], context: healthMetricDate('hrv'), accent: 'var(--z2)', link: 'Recovery', open: () => openRecovery('hrv'), ...signalSpark(healthHistory('hrv')) },
     { key: 'sleep', label: 'Sleep', value: sleepMetric.value?.latest ? Number(sleepMetric.value.latest.value).toFixed(1) : '—', unit: sleepMetric.value?.latest ? 'h' : '', context: sleepCopy.value, accent: 'var(--tone-recovery)', link: 'Recovery', open: () => openRecovery('sleep'), ...signalSpark(healthHistory('sleep')) },
-    { key: 'steps', label: 'Steps', value: healthValue('steps', '', 0)[0], unit: '', context: healthMetricDate('steps'), accent: 'var(--z2)', link: 'Daily activity', open: () => openDaily('steps'), ...signalSpark(healthHistory('steps')) },
-    { key: 'walking_running_distance', label: 'Walk + run', value: healthValue('walking_running_distance', 'km', 2)[0], unit: healthValue('walking_running_distance', 'km', 2)[1], context: movementContext.value, accent: 'var(--z2)', link: 'Daily activity', open: () => openDaily('walking_running_distance'), ...signalSpark(healthHistory('walking_running_distance')) },
+    { key: 'steps', label: 'Steps', value: healthValue('steps', '', 0)[0], unit: '', context: healthMetricDate('steps'), accent: 'var(--tone-ride)', link: 'Daily activity', open: () => openDaily('steps'), ...signalSpark(healthHistory('steps')) },
+    { key: 'walking_running_distance', label: 'Walk + run', value: healthValue('walking_running_distance', 'km', 2)[0], unit: healthValue('walking_running_distance', 'km', 2)[1], context: movementContext.value, accent: 'var(--tone-strength)', link: 'Daily activity', open: () => openDaily('walking_running_distance'), ...signalSpark(healthHistory('walking_running_distance')) },
   ]
 })
 const activeDeltaLabel = computed(() => activeData.value.length < 2 ? '—' : signedMetricDelta(activeData.value[0].value - activeData.value[1].value, activeView.value))
@@ -714,6 +704,7 @@ function sparklineArea(entries, width, height, padding) {
 .spark-line { fill: none; stroke: var(--tone); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .spark-empty { display: grid; height: 40px; align-items: center; font-size: 12px; color: var(--muted); }
 .signal .tile-link { color: var(--tone); font-size: 12px; }
+.signal .t-label { color: var(--tone); }
 
 /* Footprint */
 .footprint-row { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 24px; }
@@ -820,6 +811,104 @@ function sparklineArea(entries, width, height, padding) {
 .input-with-unit strong { padding-right: 12px; font-size: 12px; color: var(--muted); }
 .metric-message { margin: 12px 0 0; font-size: 12px; font-weight: 600; color: var(--danger-text); }
 .metric-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+/* Recovery tab: kept from the earlier design (sleep dial and stage colors read better). */
+.page-head,.detail-head,.section-heading,.trend-card-head,.metric-dialog-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+.section-heading h2,.detail-head h2,.metric-dialog-head h2{margin:3px 0 0;font-family:var(--font-display);font-size:20px}
+.section-heading>p,.detail-head p,.metric-dialog-head p{max-width:460px;color:var(--muted);font-size:12px;line-height:1.55}
+.section-kicker,.marker-label,.metric-summary-card>span,.history-title{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.status-chip{display:inline-flex;margin-top:13px;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:750}
+.detail-head{align-items:end}
+@media(max-width:720px){.page-head,.detail-head,.section-heading,.trend-card-head{align-items:flex-start;flex-direction:column}}
+.status-connected{background: rgba(52, 211, 153, .12); color: var(--success);}
+.health-detail{display:grid;gap:14px}
+.metric-switcher{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.metric-switcher-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.metric-switcher button{--metric-color:var(--accent);position:relative;display:grid;min-width:0;gap:4px;border:1px solid var(--border);border-radius:14px;background:rgb(var(--panel-rgb) / .72);padding:15px 17px;color:var(--text);cursor:pointer;text-align:left}
+.metric-switcher button:before{position:absolute;inset:0 auto 0 0;width:2px;border-radius:14px 0 0 14px;background:var(--metric-color);content:'';opacity:0;transition:opacity .15s ease}
+.metric-switcher button:hover{border-color:color-mix(in srgb,var(--metric-color) 34%,var(--border));background:rgb(var(--deep-rgb) / .9)}
+.metric-switcher button.active{border-color:color-mix(in srgb,var(--metric-color) 42%,var(--border));background:color-mix(in srgb, color-mix(in srgb,var(--metric-color) 9%,transparent), rgb(var(--panel-rgb) / .88));box-shadow:inset 0 1px 0 rgb(var(--ov-rgb) / .025)}
+.metric-switcher button.active:before{opacity:1}
+.metric-switcher span{overflow:hidden;color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.1em;text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}
+.metric-switcher strong{font-family:var(--font-display);font-size:21px}
+.metric-switcher small{color:var(--muted);font-size:8px}
+.sleep-stage-strip{display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:12px;background:rgb(var(--panel-rgb) / .48);padding:10px 14px}
+.sleep-stage-strip span{display:grid;min-width:92px;gap:2px;border-right:1px solid var(--border);padding:0 15px}
+.sleep-stage-strip span:first-child{padding-left:0}
+.sleep-stage-strip span:last-child{border-right:0}
+.sleep-stage-strip i{color:var(--muted);font-size:7px;font-style:normal;font-weight:750;letter-spacing:.08em;text-transform:uppercase}
+.sleep-stage-strip strong{font-size:11px}
+@media(max-width:760px){.metric-switcher{grid-template-columns:1fr}.sleep-stage-strip{overflow-x:auto}.sleep-stage-strip span{min-width:78px}}
+.status-chip-action{align-self:flex-start;border:0;cursor:pointer;font:inherit}
+.status-chip-action:hover{filter:brightness(1.16)}
+.section-kicker{color:var(--text-soft);font-size:10px}
+.health-detail{gap:24px}
+.health-detail .detail-head h2{font-size:29px;letter-spacing:-1px}
+.detail-eyebrow{font-size:9px;font-weight:800;letter-spacing:.16em;color:var(--text)}
+.sleep-story{display:grid;grid-template-columns:1fr 240px 1fr;align-items:center;gap:30px;padding:34px;border:1px solid #a898ff30;border-radius:24px;background:var(--deep);overflow:hidden}
+.sleep-story h3,.movement-story h3{font-family:var(--font-display);font-size:35px;letter-spacing:-1.2px;line-height:1.15;font-weight:500;margin-top:17px}
+.sleep-story-copy>p,.movement-story p{max-width:340px;color:var(--text-soft);font-size:12px;line-height:1.8;margin-top:16px}
+.night-picker{display:grid;gap:7px;margin-top:24px;color:var(--text-soft);font-size:10px}
+.night-picker select{width:100%;max-width:235px;padding:9px 12px;border:1px solid #bca9ff33;border-radius:8px;color:var(--text);background:var(--deep);font:inherit}
+.sleep-dial{width:236px;aspect-ratio:1;padding:17px;border-radius:50%;background:var(--sleep-fill);box-shadow:var(--shadow-card);transform:rotate(-25deg)}
+.sleep-dial>div{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;background:var(--deep);transform:rotate(25deg)}
+.sleep-dial strong{font-family:var(--font-display);font-size:34px;letter-spacing:-1.5px}
+.sleep-dial span{font-size:27px;line-height:1;color:var(--text);margin-bottom:8px}
+.sleep-dial small{font-size:8px;letter-spacing:.16em;color:var(--text-soft)}
+.sleep-dial time{margin-top:8px;font-size:10px;color:var(--text-soft)}
+.sleep-breakdown-title{display:grid;gap:4px;margin-bottom:19px}
+.sleep-breakdown-title strong{font-size:13px}
+.sleep-breakdown-title>span,.sleep-breakdown>p{color:var(--text-soft);font-size:10px}
+.sleep-stage-row{display:grid;grid-template-columns:9px 1fr auto 30px;align-items:center;gap:9px;padding:11px 0;border-bottom:1px solid #afa4e612;font-size:12px}
+.sleep-stage-row>i{width:7px;height:7px;border-radius:50%}
+.sleep-stage-row strong{font-weight:600}
+.sleep-stage-row small{color:var(--text-soft);text-align:right;font-size:10px}
+.sleep-awake{display:flex;align-items:center;justify-content:space-between;margin-top:18px;color:var(--text);font-size:12px}
+.sleep-awake small{display:block;font-size:9px;color:var(--text-soft)}
+.detail-empty-note{display:block;margin-top:20px;color:var(--text-soft);font-size:11px}
+.health-detail .metric-switcher{gap:0;border-block:1px solid var(--border)}
+.health-detail .metric-switcher button{padding:20px 22px;border:0;border-right:1px solid var(--border);border-radius:0;background:transparent}
+.health-detail .metric-switcher button:last-child{border-right:0}
+.health-detail .metric-switcher button.active{background:color-mix(in srgb,var(--metric-color) 9%,transparent);box-shadow:inset 0 -2px var(--metric-color)}
+.health-detail .metric-switcher button:before{display:none}
+.health-detail .metric-switcher strong{font-size:30px;letter-spacing:-1px}
+.health-detail .metric-switcher span{font-size:10px}
+.health-detail .metric-switcher small{font-size:10px}
+.movement-story .detail-eyebrow,.movement-story h3 em{color:var(--movement-color);font-style:normal}
+.health-detail :deep(.health-trend-card){padding:28px;border-radius:22px;background:color-mix(in srgb, color-mix(in srgb,var(--signal-color) 4%,transparent), var(--surface))}
+.health-detail :deep(.chart-title h3){font-size:24px;letter-spacing:-.6px}
+.health-detail :deep(.selected-value strong){font-size:33px}
+.health-detail :deep(.health-trend-card){--health-chart-height:280px}
+@media(max-width:1150px){.sleep-story{grid-template-columns:1fr 220px;gap:25px}.sleep-dial{width:220px}.sleep-breakdown{grid-column:1/-1}.sleep-stage-row{grid-template-columns:9px 1fr auto 40px}}
+@media(max-width:760px){.sleep-story,.movement-story{grid-template-columns:1fr;padding:25px}.sleep-dial{justify-self:center;margin:10px 0}.sleep-breakdown{grid-column:auto}.sleep-story-copy>p{max-width:none}.sleep-story h3,.movement-story h3{font-size:32px}.health-detail .metric-switcher{grid-template-columns:repeat(3,minmax(0,1fr))}.health-detail .metric-switcher button{padding:16px 10px}.health-detail .metric-switcher strong{font-size:21px}.health-detail .metric-switcher span{font-size:8px}.health-detail .metric-switcher small{font-size:8px}.health-detail :deep(.health-trend-card){padding:18px}}
+.trends-page,
+.trends-page > *,
+.trends-page .card,
+.trends-page section,
+.trends-page article,
+.trends-page .page-head > *,
+.trends-page .section-heading > *,
+.trends-page .detail-head > *{min-width: 0;}
+@media (max-width: 640px){.trends-page .detail-head{gap: 12px;}.trends-page .sleep-story,
+  .trends-page .movement-story{padding: 18px; border-radius: 18px;}.trends-page .sleep-story h3,
+  .trends-page .movement-story h3{font-size: 29px;}.trends-page .sleep-dial{width: min(220px, 100%);}.trends-page .health-detail :deep(.health-trend-card){padding: 14px;}}
+@media (max-width: 380px){.trends-page .health-detail .metric-switcher{grid-template-columns: 1fr;}.trends-page .health-detail .metric-switcher button{min-height: 64px; padding: 13px 14px;}}
+.trends-page .section-kicker, .trends-page .marker-label, .trends-page .detail-eyebrow, .trends-page .metric-summary-card > span, .history-title{color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .14em;}
+.trends-page .section-heading h2, .trends-page .detail-head h2{font-family: var(--font-display); font-size: 32px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: -.4px;}
+.trends-page .section-heading > p, .trends-page .detail-head p{font-size: 12px; line-height: 1.7;}
+.trends-page .status-connected{color: var(--z2); background: color-mix(in srgb, var(--z2) 10%, transparent); border: 1px solid color-mix(in srgb, var(--z2) 20%, transparent);}
+.trends-page .sleep-story{border-color: var(--border); background: linear-gradient(115deg, color-mix(in srgb, var(--tone-recovery) 12%, var(--surface)), var(--surface));}
+.trends-page .sleep-story h3, .trends-page .movement-story h3{font-size: 44px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: -.5px; line-height: 1;}
+.trends-page .sleep-dial strong{font-size: 44px; font-weight: 800; font-style: italic; letter-spacing: -.5px;}
+.trends-page .sleep-stage-row{border-color: var(--border);}
+.trends-page .night-picker select{border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); min-height: 44px;}
+.trends-page .health-detail .metric-switcher{gap: 12px; border: 0;}
+.trends-page .health-detail .metric-switcher button{padding: 20px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface);}
+.trends-page .health-detail .metric-switcher button.active{border-color: var(--metric-color); background: color-mix(in srgb, var(--metric-color) 7%, var(--surface)); box-shadow: none;}
+.trends-page .health-detail .metric-switcher strong{font-size: 36px; font-weight: 800; letter-spacing: -.5px;}
+.trends-page .health-detail .metric-switcher span{font-size: 11px; white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.5;}
+@media (max-width: 760px){.trends-page .momentum-story h2, .trends-page .sleep-story h3, .trends-page .movement-story h3{font-size: 36px;}.trends-page .section-heading, .trends-page .detail-head{align-items: flex-start; flex-direction: column; gap: 10px;}.trends-page .health-detail .metric-switcher{grid-template-columns: repeat(2, minmax(0, 1fr));}.trends-page .health-detail .metric-switcher button{padding: 16px;}.trends-page .health-detail .metric-switcher strong{font-size: 30px;}}
+
 
 @media (max-width: 1200px) {
   .signal-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }

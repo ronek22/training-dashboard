@@ -7,11 +7,6 @@
         <p class="page-sub">Marked trails you've already walked, matched from your Strava hikes, and what's still left.</p>
       </div>
       <div class="head-actions">
-        <div class="region-tabs view-tabs" role="tablist" aria-label="Mountain view">
-          <button type="button" role="tab" :aria-selected="view === 'coverage'" :class="{ active: view === 'coverage' }" @click="setView('coverage')">Coverage</button>
-          <button type="button" role="tab" :aria-selected="view === 'routes'" :class="{ active: view === 'routes' }" @click="setView('routes')">Route ideas</button>
-          <button type="button" role="tab" :aria-selected="view === 'plan'" :class="{ active: view === 'plan' }" @click="setView('plan')">Planner</button>
-        </div>
         <div class="region-tabs range-tabs" role="tablist" aria-label="Mountain range">
           <button v-for="r in regions" :key="r.key" type="button" role="tab" :aria-selected="r.key === regionKey"
             :class="{ active: r.key === regionKey }" @click="selectRegion(r.key)">
@@ -24,6 +19,64 @@
       </div>
     </header>
     <p v-if="message" class="flash" :class="{ error: messageIsError }" role="status">{{ message }}</p>
+
+    <section v-if="data && sections.length" class="mtn-hero motion-section" aria-label="Coverage summary">
+      <div class="mtn-hero-top">
+        <div class="mtn-hero-main">
+          <span class="mtn-kicker">{{ heroLabel }} · trail walked</span>
+          <strong class="mtn-pct">{{ summary.pct }}<span>%</span></strong>
+          <div class="mtn-bar" role="img" :aria-label="`${summary.pct}% of trail walked`"><i :style="{ width: `${summary.pct}%` }"></i></div>
+          <div class="mtn-bar-foot"><span><b>{{ formatKm(summary.doneM) }}</b> of {{ formatKm(summary.totalM) }} km walked</span><span>{{ formatKm(Math.max(0, summary.totalM - summary.doneM)) }} km to go</span></div>
+        </div>
+        <div class="mtn-tiles">
+          <div v-if="peakCount" class="mtn-tile">
+            <span class="mtn-label">Summits reached</span>
+            <strong>{{ peakCount.reached }}<small> / {{ peakCount.total }}</small></strong>
+            <span class="mtn-foot">{{ otherPlacesLine || 'Summits on marked trails' }}</span>
+          </div>
+          <div class="mtn-tile">
+            <span class="mtn-label">Trail sections</span>
+            <strong>{{ summary.doneSections }}<small> / {{ summary.sections }}</small></strong>
+            <span class="mtn-foot">{{ summary.partialSections ? `${summary.partialSections} partly walked` : 'none partly walked' }}</span>
+          </div>
+          <div class="mtn-tile">
+            <span class="mtn-label">Mountain trips</span>
+            <strong>{{ trips.trips.length }}</strong>
+            <span class="mtn-foot">{{ tripsFoot }}</span>
+          </div>
+        </div>
+      </div>
+      <div v-if="nextTrip" class="mtn-next">
+        <span class="mtn-next-pill">{{ nextTrip.ongoing ? 'On a trip' : 'Next trip' }}</span>
+        <span class="mtn-next-text"><b>{{ tripRange(nextTrip.start_date, nextTrip.end_date) }}</b> — {{ nextTrip.when }}. The recap fills in as you hike.</span>
+        <button v-if="view !== 'routes'" type="button" class="mtn-link" @click="setView('routes')">See route ideas →</button>
+      </div>
+      <div class="mtn-hero-foot">
+        <div class="mtn-pills" role="group" aria-label="Park">
+          <button type="button" :class="{ on: park === 'all' }" @click="selectPark('all')">Whole range</button>
+          <button v-for="p in data.parks" :key="p.key" type="button" :class="{ on: park === p.key }" :title="p.name" @click="selectPark(p.key)">
+            {{ p.label || p.key }}<small v-if="p.country">{{ p.country }}</small>
+          </button>
+        </div>
+        <label v-if="hasAround" class="mtn-switch" :title="'Within 8 km of the boundary, e.g. Szklarska Poręba or Zakopane. Always on the map.'">
+          <input v-model="includeAround" type="checkbox">
+          <i aria-hidden="true"></i>
+          <span>Include trails around the park</span>
+        </label>
+      </div>
+    </section>
+
+    <div class="mtn-view-row motion-section">
+      <div class="mtn-pills" role="tablist" aria-label="Mountain view">
+        <button type="button" role="tab" :aria-selected="view === 'coverage'" :class="{ on: view === 'coverage' }" @click="setView('coverage')">Coverage</button>
+        <button type="button" role="tab" :aria-selected="view === 'routes'" :class="{ on: view === 'routes' }" @click="setView('routes')">Route ideas</button>
+        <button type="button" role="tab" :aria-selected="view === 'plan'" :class="{ on: view === 'plan' }" @click="setView('plan')">Planner</button>
+      </div>
+      <button v-if="data && sections.length" type="button" class="mtn-outline" title="Full screen map" @click="toggleFullscreen">
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Full screen
+      </button>
+    </div>
 
     <!-- Full screen moves the layout to <body>: the page's entrance animation leaves a transform
          that would otherwise trap position: fixed inside the content column. -->
@@ -46,7 +99,7 @@
             <button type="button" :class="{ on: base === 'relief' }" @click="base = 'relief'">Relief</button>
             <button type="button" :class="{ on: base === 'mapy' }" @click="base = 'mapy'">Mapy.com</button>
           </div>
-          <button type="button" class="toggle fullscreen-toggle" :aria-pressed="fullscreen" :title="fullscreen ? 'Exit full screen (Esc)' : 'Full screen map'" @click="toggleFullscreen">
+          <button v-if="fullscreen" type="button" class="toggle fullscreen-toggle" :aria-pressed="fullscreen" :title="fullscreen ? 'Exit full screen (Esc)' : 'Full screen map'" @click="toggleFullscreen">
             <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path :d="fullscreen ? 'M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4' : 'M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4'" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
             {{ fullscreen ? 'Exit full screen' : 'Full screen' }}
           </button>
@@ -225,34 +278,16 @@
       </aside>
 
       <aside v-else-if="data && sections.length" class="side" @mouseenter="peekSide(true)" @mouseleave="peekSide(false)">
-        <section class="card progress-card">
-          <div class="park-chips" role="group" aria-label="Park">
-            <button type="button" :class="{ on: park === 'all' }" @click="selectPark('all')">Whole range</button>
-            <button v-for="p in data.parks" :key="p.key" type="button" :class="{ on: park === p.key }" :title="p.name" @click="selectPark(p.key)">
-              {{ p.label || p.key }} <small v-if="p.country">{{ p.country }}</small>
-            </button>
-          </div>
-          <div class="progress-main">
-            <strong class="pct">{{ summary.pct }}<span>%</span></strong>
-            <span class="kms"><b>{{ formatKm(summary.doneM) }}</b> of {{ formatKm(summary.totalM) }} km</span>
-          </div>
-          <div class="bar"><i :style="{ width: `${summary.pct}%` }"></i></div>
-          <p class="fine">{{ summary.doneSections }} of {{ summary.sections }} trail sections done<span v-if="summary.partialSections"> · {{ summary.partialSections }} partly walked</span></p>
-          <label v-if="hasAround" class="around-switch">
-            <input v-model="includeAround" type="checkbox">
-            <span>Include trails around the park<small>Within 8 km of the boundary, e.g. Szklarska Poręba or Zakopane. Always on the map.</small></span>
-          </label>
-        </section>
-
         <section v-if="placeKinds.length" class="card places-card">
-          <h2 class="card-title">Summits &amp; places</h2>
+          <div class="mtn-head">
+            <span class="mtn-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M2 16l5-8 3 4 3-5 5 9z" /></svg></span>
+            <div><h2>Summits &amp; places</h2><p>{{ activeKindCount.reached }} of {{ activeKindCount.total }} {{ activeKindNoun }} reached</p></div>
+          </div>
           <div class="kind-tabs" role="tablist" aria-label="Kind of place">
             <button v-for="k in placeKinds" :key="k.kind" type="button" role="tab" :aria-selected="placeKind === k.kind" :class="{ on: placeKind === k.kind }" @click="placeKind = k.kind">
               <span>{{ k.label }}</span><small>{{ placeSummary.counts[k.kind].reached }}/{{ placeSummary.counts[k.kind].total }}</small>
             </button>
           </div>
-          <p class="places-head"><b>{{ activeKindCount.reached }}</b> of {{ activeKindCount.total }} {{ activeKindNoun }} reached</p>
-          <div class="bar thin"><i :style="{ width: `${activeKindCount.total ? (activeKindCount.reached / activeKindCount.total) * 100 : 0}%` }"></i></div>
           <div class="place-filters" role="group" aria-label="Show places">
             <button v-for="f in PLACE_FILTERS" :key="f.value" type="button" :class="{ on: placeShow === f.value }" @click="placeShow = f.value">{{ f.label }}</button>
           </div>
@@ -267,74 +302,98 @@
           </div>
         </section>
 
-        <section class="card">
-          <h2 class="card-title">By trail colour</h2>
-          <div v-for="row in summary.byColour" :key="row.colour" class="colour-row">
-            <div class="row-line">
-              <span class="colour-name"><i :style="{ background: colourOf(row.colour) }"></i>{{ COLOUR_LABELS[row.colour] }}</span>
-              <span class="num">{{ formatKm(row.doneM) }} / {{ formatKm(row.totalM) }} km · <b>{{ row.pct }}%</b></span>
-            </div>
-            <div class="bar thin"><i :style="{ width: `${row.pct}%`, background: colourOf(row.colour) }"></i></div>
+        <section class="card colour-card">
+          <div class="mtn-head">
+            <span class="mtn-icon is-neutral" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 6h12M4 10h12M4 14h12" /></svg></span>
+            <div><h2>By trail colour</h2><p>Done of each marked colour</p></div>
           </div>
-        </section>
-
-        <section v-if="summary.byYear.length" class="card">
-          <h2 class="card-title">New trail by year</h2>
-          <div class="years">
-            <div v-for="row in summary.byYear" :key="row.year" class="year" :title="`${formatKm(row.metres)} km of new trail`">
-              <span class="year-km num">{{ formatKm(row.metres) }}</span>
-              <i :style="{ height: `${Math.max(6, (row.metres / maxYear) * 64)}px` }"></i>
-              <span class="year-label">{{ row.year.slice(2) === row.year ? row.year : `’${row.year.slice(2)}` }}</span>
+          <div class="mtn-colours">
+            <div v-for="row in summary.byColour" :key="row.colour" class="mtn-colour" :title="`${formatKm(row.doneM)} of ${formatKm(row.totalM)} km`">
+              <span class="mtn-colour-name"><i :style="{ background: colourOf(row.colour) }"></i>{{ COLOUR_LABELS[row.colour] }}</span>
+              <span class="mtn-colour-bar"><i :style="{ width: `${row.pct}%`, background: colourOf(row.colour) }"></i></span>
+              <span class="mtn-colour-pct">{{ row.pct }}%</span>
             </div>
           </div>
         </section>
 
-        <section v-if="summary.longestTodo.length" class="card">
-          <h2 class="card-title">Longest sections still to do</h2>
-          <div class="list">
-            <button v-for="s in summary.longestTodo" :key="s.id" type="button" @click="focusSection(s)">
-              <span class="dots"><i v-for="c in s.colours" :key="c" :style="{ background: colourOf(c) }"></i></span>
-              <span class="grow">{{ sectionTitle(s) }}</span>
-              <span class="num">{{ formatKm(s.length_m) }} km</span>
-            </button>
-          </div>
-        </section>
-
-        <section class="card">
-          <h2 class="card-title">Hikes <small>{{ tracks.length }}</small></h2>
-          <p v-if="!tracks.length" class="fine">No hikes here yet. Use <b>Sync hikes</b> to pull your mountain activities from Strava.</p>
-          <div v-else class="list hikes">
-            <button v-for="t in tracks" :key="t.id" type="button" :class="{ on: activeTrack === t.id }" @click="focusTrack(t)">
-              <span class="date num">{{ shortDate(t.date) }}</span>
-              <span class="grow">{{ t.name || 'Hike' }}</span>
-              <span v-if="newKmByTrack[t.id]" class="new num" title="Trail walked for the first time">+{{ formatKm(newKmByTrack[t.id]) }} km</span>
-            </button>
-          </div>
-        </section>
-
-        <section v-if="trips.trips.length || trips.upcoming.length" class="card trips-card">
-          <h2 class="card-title">Trips <small>{{ trips.trips.length || '' }}</small></h2>
-          <div class="trips">
-            <p v-for="t in trips.upcoming" :key="t.start_date" class="trip-row upcoming">
-              <span class="trip-date">{{ tripRange(t.start_date, t.end_date) }}</span>
-              <span class="trip-status">Upcoming</span>
-              <span class="trip-note">Recap fills in as you hike</span>
-            </p>
-            <router-link v-for="t in trips.trips" :key="t.start_date" :to="t.url" class="trip-row">
-              <span class="trip-date">{{ tripRange(t.start_date, t.end_date) }}</span>
-              <span class="trip-days">{{ t.hike_days }} hiking day{{ t.hike_days === 1 ? '' : 's' }}<template v-if="t.ongoing"> · on now</template></span>
-              <span class="trip-metrics"><b>{{ formatKm(t.distance_km * 1000) }} km</b><i aria-hidden="true">↑</i>{{ t.ascent_m }} m</span>
-            </router-link>
-          </div>
-        </section>
-
-        <p class="fine source">
-          Trails © OpenStreetMap contributors<span v-if="data.imported_at"> · loaded {{ shortDate(data.imported_at.slice(0, 10)) }}</span> ·
-          <button type="button" class="link" :disabled="busy" @click="importTrails">{{ busy === 'import' ? 'reloading…' : 'reload' }}</button>
-        </p>
       </aside>
     </div>
     </Teleport>
+
+    <template v-if="data && sections.length && view === 'coverage'">
+      <div class="mtn-lower motion-section">
+        <section class="card mtn-card">
+          <div class="mtn-head">
+            <span class="mtn-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M3 17V9M8 17V4M13 17v-6M18 17V7" /></svg></span>
+            <div><h2>New trail by year</h2><p>First-time km walked · best year in volt</p></div>
+          </div>
+          <p v-if="!summary.byYear.length" class="fine mtn-empty">No trail walked here yet.</p>
+          <div v-else class="mtn-years">
+            <div v-for="row in summary.byYear" :key="row.year" class="mtn-year" :class="{ best: row.metres === maxYear }" :title="`${formatKm(row.metres)} km of new trail`">
+              <span class="mtn-year-km">{{ formatKm(row.metres) }}</span>
+              <i :style="{ height: `${Math.max(6, (row.metres / maxYear) * 130)}px` }"></i>
+              <span class="mtn-year-label">{{ row.year.slice(2) === row.year ? row.year : `’${row.year.slice(2)}` }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card mtn-card">
+          <div class="mtn-head">
+            <span class="mtn-icon is-amber" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h12M12 6l4 4-4 4" /></svg></span>
+            <div><h2>Longest still to do</h2><p>Sections you have never walked</p></div>
+          </div>
+          <p v-if="!summary.longestTodo.length" class="fine mtn-empty">Every section here is walked.</p>
+          <div v-else class="mtn-rows">
+            <button v-for="s in summary.longestTodo" :key="s.id" type="button" @click="focusSection(s)">
+              <span class="mtn-bars"><i v-for="c in s.colours" :key="c" :style="{ background: colourOf(c) }"></i></span>
+              <span class="grow">{{ sectionTitle(s) }}</span>
+              <span class="mtn-km">{{ formatKm(s.length_m) }}<small> km</small></span>
+            </button>
+          </div>
+        </section>
+
+        <section class="card mtn-card">
+          <div class="mtn-head">
+            <span class="mtn-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M5 17l3-6 3 2 4-8" /></svg></span>
+            <div><h2>Hikes</h2><p>Matched from Strava · new trail in violet</p></div>
+            <strong class="mtn-count">{{ tracks.length }}</strong>
+          </div>
+          <p v-if="!tracks.length" class="fine mtn-empty">No hikes here yet. Use <b>Sync hikes</b> to pull your mountain activities from Strava.</p>
+          <div v-else class="mtn-rows mtn-hikes">
+            <button v-for="t in tracks" :key="t.id" type="button" :class="{ on: activeTrack === t.id }" @click="focusTrack(t)">
+              <span class="mtn-date">{{ shortDate(t.date) }}</span>
+              <span class="grow">{{ t.name || 'Hike' }}</span>
+              <span v-if="newKmByTrack[t.id]" class="mtn-new" title="Trail walked for the first time">+{{ formatKm(newKmByTrack[t.id]) }} km</span>
+              <span v-else class="mtn-none" title="No new trail on this hike">—</span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <section v-if="trips.trips.length || trips.upcoming.length" class="card mtn-card mtn-trips motion-section">
+        <div class="mtn-head">
+          <span class="mtn-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M3 15l4-7 3 4 3-5 4 8M3 17h14" /></svg></span>
+          <div><h2>Trips</h2><p>Every mountain trip · open one for its recap</p></div>
+          <button v-if="trips.trips.length > TRIP_PREVIEW" type="button" class="mtn-link" @click="showAllTrips = !showAllTrips">{{ showAllTrips ? 'Show fewer' : `All ${trips.trips.length} trips →` }}</button>
+        </div>
+        <div class="mtn-trip-grid">
+          <div v-for="t in trips.upcoming" :key="t.start_date" class="mtn-trip is-upcoming">
+            <span class="mtn-label">Upcoming</span>
+            <span class="mtn-trip-date">{{ tripRange(t.start_date, t.end_date) }}</span>
+            <span class="mtn-trip-foot">Recap fills in as you hike</span>
+          </div>
+          <router-link v-for="t in shownTrips" :key="t.start_date" :to="t.url" class="mtn-trip" :class="{ best: t.distance_km === biggestTripKm }">
+            <span class="mtn-label">{{ tripRange(t.start_date, t.end_date) }}<template v-if="t.ongoing"> · on now</template></span>
+            <strong>{{ formatKm(t.distance_km * 1000) }}<small> km</small></strong>
+            <span class="mtn-trip-foot"><span>{{ t.hike_days }} hiking day{{ t.hike_days === 1 ? '' : 's' }}</span><span class="up">↑ {{ t.ascent_m.toLocaleString('en-GB') }} m</span></span>
+          </router-link>
+        </div>
+      </section>
+      <p class="fine mtn-source">
+        Trails © OpenStreetMap contributors<span v-if="data.imported_at"> · loaded {{ shortDate(data.imported_at.slice(0, 10)) }}</span> ·
+        <button type="button" class="link" :disabled="busy" @click="importTrails">{{ busy === 'import' ? 'reloading…' : 'reload' }}</button>
+      </p>
+    </template>
   </div>
 </template>
 
@@ -483,6 +542,34 @@ const placeIcon = (kind, reached) => placeIconSvg(kind, reached, theme.value)
 const hasAround = computed(() => sections.value.some((s) => s.around))
 const summary = computed(() => summarize(sections.value, { park: park.value, includeAround: includeAround.value }))
 const maxYear = computed(() => Math.max(1, ...summary.value.byYear.map((r) => r.metres)))
+const heroLabel = computed(() => {
+  if (park.value === 'all') return data.value?.region?.name || 'Range'
+  const p = data.value?.parks?.find((x) => x.key === park.value)
+  return p?.label || p?.key || park.value
+})
+const peakCount = computed(() => (placeSummary.value.counts.peak?.total ? placeSummary.value.counts.peak : null))
+const otherPlacesLine = computed(() => PLACE_KINDS.filter((k) => k.kind !== 'peak' && placeSummary.value.counts[k.kind]?.total)
+  .map((k) => `${placeSummary.value.counts[k.kind].reached} ${k.noun[placeSummary.value.counts[k.kind].reached === 1 ? 0 : 1]}`).join(' · '))
+const tripsFoot = computed(() => {
+  const days = trips.value.trips.reduce((sum, t) => sum + (t.hike_days || 0), 0)
+  const parts = []
+  if (trips.value.upcoming.length) parts.push(`+${trips.value.upcoming.length} upcoming`)
+  parts.push(`${days} hiking day${days === 1 ? '' : 's'}`)
+  return parts.join(' · ')
+})
+const nextTrip = computed(() => {
+  const ongoing = trips.value.trips.find((t) => t.ongoing)
+  if (ongoing) return { ...ongoing, when: 'on now' }
+  const t = trips.value.upcoming[0]
+  if (!t) return null
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const days = Math.round((new Date(`${t.start_date}T00:00:00`) - today) / 86400000)
+  return { ...t, when: days <= 0 ? 'starts today' : days === 1 ? 'starts tomorrow' : `in ${days} days` }
+})
+const TRIP_PREVIEW = 7
+const showAllTrips = ref(false)
+const shownTrips = computed(() => (showAllTrips.value ? trips.value.trips : trips.value.trips.slice(0, TRIP_PREVIEW)))
+const biggestTripKm = computed(() => Math.max(0, ...trips.value.trips.map((t) => t.distance_km || 0)))
 const colourOf = (colour) => trailColour(colour, theme.value)
 const legend = computed(() => ({
   done: colourOf('red'),
@@ -1546,5 +1633,142 @@ a.trip-row:hover { background: rgb(var(--ov-rgb) / .06); }
   .mountains-page .action.primary-action { justify-self: start; }
   .mountains-page .side .card { padding: 16px; border-radius: 20px; }
   .mountains-page .map-card { border-radius: 20px; }
+}
+/* Mountains artboard (docs/design/screens/mountains.png): violet hero with the coverage
+   numbers, view tabs above the map, a slim side rail, then year / to-do / hikes and trips. */
+.mountains-page { gap: 22px; }
+.mountains-page .page-head, .mountains-page .flash { margin-bottom: 0; }
+.mountains-page .range-tabs button.active { background: var(--surface3); color: var(--text); box-shadow: none; }
+.mountains-page .range-tabs button.active small { color: var(--tone-recovery); opacity: 1; }
+.mountains-page .mtn-hero {
+  padding: 30px 32px; border: 1px solid color-mix(in srgb, var(--tone-recovery) 35%, transparent); border-radius: 28px;
+  background: radial-gradient(80% 160% at 0% 0%, color-mix(in srgb, var(--tone-recovery) 20%, transparent) 0%, transparent 55%), var(--surface);
+}
+.mtn-hero-top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 32px; }
+.mtn-hero-main { flex: 0 1 340px; min-width: 240px; }
+.mtn-kicker, .mtn-label { display: block; color: var(--muted); font: 600 11px/1.3 var(--font-body); letter-spacing: .14em; text-transform: uppercase; }
+.mtn-kicker { color: var(--tone-recovery); }
+.mtn-pct { display: block; margin-top: 12px; color: var(--tone-recovery); font: italic 800 132px/.85 var(--font-display); letter-spacing: .01em; font-variant-numeric: tabular-nums; }
+.mtn-pct span { font-size: 56px; color: var(--muted-soft); }
+.mtn-bar { height: 10px; margin-top: 18px; border-radius: 999px; background: color-mix(in srgb, var(--tone-recovery) 14%, var(--surface2)); overflow: hidden; }
+.mtn-bar i { display: block; height: 100%; border-radius: inherit; background: var(--tone-recovery); transition: width var(--motion-duration-slow, .4s) ease; }
+.mtn-bar-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; color: var(--muted-soft); font-size: 13px; font-variant-numeric: tabular-nums; }
+.mtn-bar-foot b { color: var(--text); }
+.mtn-tiles { flex: 1 1 520px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.mtn-tile { padding: 16px 18px; border-radius: 18px; background: rgb(var(--deep-rgb) / .7); min-width: 0; }
+.mtn-tile strong { display: block; margin-top: 6px; color: var(--text); font: italic 800 48px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.mtn-tile strong small { color: var(--muted-soft); font-size: 16px; font-style: normal; }
+.mtn-foot { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
+.mtn-next { display: flex; align-items: center; gap: 14px; margin-top: 20px; padding: 14px 18px; border: 1px dashed color-mix(in srgb, var(--tone-recovery) 45%, transparent); border-radius: 16px; background: rgb(var(--deep-rgb) / .7); }
+.mtn-next-pill { flex: none; padding: 4px 10px; border-radius: 999px; background: var(--tone-recovery); color: var(--on-accent); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.mtn-next-text { color: var(--muted-soft); font-size: 14px; }
+.mtn-next-text b { color: var(--text); }
+.mtn-link { flex: none; margin-left: auto; border: 0; padding: 0; background: none; color: var(--tone-recovery); font: 600 13px var(--font-body); cursor: pointer; }
+.mtn-link:hover { text-decoration: underline; }
+.mtn-hero-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 20px; }
+.mtn-pills { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border: 1px solid var(--border-strong); border-radius: 999px; }
+.mtn-pills button { display: inline-flex; align-items: baseline; gap: 6px; padding: 7px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: 600 13px var(--font-body); cursor: pointer; white-space: nowrap; }
+.mtn-pills button small { color: var(--muted); font-size: 10.5px; opacity: .8; }
+.mtn-pills button:hover { color: var(--text); }
+.mtn-pills button.on { background: var(--surface3); color: var(--text); }
+.mtn-switch { display: inline-flex; align-items: center; gap: 10px; color: var(--muted-soft); font-size: 13px; cursor: pointer; }
+.mtn-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.mtn-switch i { position: relative; width: 34px; height: 20px; border-radius: 999px; background: var(--surface3); transition: background var(--motion-duration-fast); }
+.mtn-switch i::after { content: ''; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform var(--motion-duration-fast), background var(--motion-duration-fast); }
+.mtn-switch input:checked + i { background: color-mix(in srgb, var(--tone-recovery) 40%, var(--surface3)); }
+.mtn-switch input:checked + i::after { transform: translateX(14px); background: var(--tone-recovery); }
+.mtn-switch input:focus-visible + i { outline: 2px solid var(--tone-recovery); outline-offset: 3px; }
+.mtn-view-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: -6px; }
+.mtn-outline { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font: 600 13px var(--font-body); cursor: pointer; }
+.mtn-outline:hover { border-color: var(--tone-recovery); color: var(--tone-recovery); }
+
+.mountains-page .map-card { height: max(560px, calc(100vh - 150px)); }
+.mountains-page .side { max-height: max(560px, calc(100vh - 150px)); gap: 16px; }
+.mountains-page .mountains-layout { gap: 16px; }
+.mountains-page .side .card, .mountains-page .mtn-card { padding: 22px; border-radius: var(--radius-card); }
+.mtn-head { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.mtn-head > div { flex: 1 1 auto; min-width: 0; }
+.mtn-head h2 { margin: 0; font: italic 800 24px/1.05 var(--font-display); text-transform: uppercase; letter-spacing: .01em; }
+.mtn-head p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.mtn-icon { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; color: var(--tone-recovery); background: color-mix(in srgb, currentColor 14%, transparent); }
+.mtn-icon svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mtn-icon.is-neutral { color: var(--muted); }
+.mtn-icon.is-amber { color: var(--warning-text); }
+.mtn-count { flex: none; color: var(--tone-recovery); font: 700 28px/1 var(--font-display); }
+.mountains-page .places-card .kind-tabs { margin: 16px 0 14px; border-radius: 14px; background: rgb(var(--deep-rgb)); }
+.mountains-page .places-card .kind-tabs button { padding: 7px 2px; border-radius: 11px; }
+.mountains-page .places-card .kind-tabs button small { font: 700 13px var(--font-display); }
+.mountains-page .place-filters { gap: 6px; margin-bottom: 10px; }
+.mountains-page .place-filters button { padding: 6px 12px; font-size: 12px; }
+.mountains-page .places .ele, .mountains-page .places .when { font: 700 14px var(--font-display); }
+.mountains-page .places button.reached .when { color: var(--tone-recovery); }
+.mountains-page .places button { font-size: 13px; padding: 8px 10px; }
+.mtn-colours { display: grid; gap: 12px; margin-top: 18px; }
+.mtn-colour { display: grid; grid-template-columns: 70px minmax(0, 1fr) 44px; align-items: center; gap: 10px; font-size: 13px; }
+.mtn-colour-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.mtn-colour-name i { width: 4px; height: 14px; border-radius: 2px; }
+.mtn-colour-bar { height: 8px; border-radius: 999px; background: var(--surface2); overflow: hidden; }
+.mtn-colour-bar i { display: block; height: 100%; border-radius: inherit; }
+.mtn-colour-pct { text-align: right; font: 700 16px var(--font-display); font-variant-numeric: tabular-nums; }
+
+.mtn-lower { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.mtn-empty { margin-top: 16px; }
+.mtn-years { display: flex; align-items: flex-end; gap: 8px; height: 186px; margin-top: 18px; }
+.mtn-year { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; }
+.mtn-year i { width: 100%; max-width: 34px; border-radius: 6px 6px 3px 3px; background: var(--tone-recovery); }
+.mtn-year.best i { background: var(--volt); }
+.mtn-year-km { color: var(--text); font: 700 14px var(--font-display); font-variant-numeric: tabular-nums; }
+.mtn-year.best .mtn-year-km { color: var(--volt); }
+.mtn-year-label { color: var(--muted); font-size: 12px; }
+.mtn-rows { display: grid; margin-top: 14px; }
+.mtn-rows button { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 9px 8px; margin: 0 -8px; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; color: var(--text); font: 13px var(--font-body); text-align: left; cursor: pointer; }
+.mtn-rows button:hover, .mtn-rows button.on { background: color-mix(in srgb, var(--tone-recovery) 8%, transparent); border-radius: 10px; }
+.mtn-rows button.on { box-shadow: inset 2px 0 0 var(--tone-recovery); }
+.mtn-bars { flex: none; display: inline-flex; gap: 2px; min-width: 10px; }
+.mtn-bars i { width: 4px; height: 14px; border-radius: 2px; }
+.mtn-km { flex: none; font: 700 16px var(--font-display); font-variant-numeric: tabular-nums; }
+.mtn-km small { color: var(--muted); font: 600 12px var(--font-body); }
+.mtn-hikes { max-height: 312px; overflow-y: auto; overflow-x: hidden; }
+.mtn-date { flex: none; width: 82px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.mtn-new { flex: none; color: var(--tone-recovery); font: 700 15px var(--font-display); }
+.mtn-none { flex: none; color: var(--muted); font-size: 11.5px; opacity: .7; }
+
+.mtn-trips { padding: 24px 28px !important; }
+.mtn-trip-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.mtn-trip { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 16px 18px; border: 1px solid var(--border); border-radius: 18px; background: rgb(var(--deep-rgb) / .7); color: var(--text); text-decoration: none; transition: border-color var(--motion-duration-fast), transform var(--motion-duration-fast); }
+a.mtn-trip:hover { border-color: color-mix(in srgb, var(--tone-recovery) 50%, var(--border)); transform: translateY(-2px); }
+.mtn-trip strong { font: italic 800 38px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.mtn-trip strong small { color: var(--muted-soft); font-size: 14px; font-style: normal; }
+.mtn-trip.best strong { color: var(--volt); }
+.mtn-trip-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.mtn-trip-foot .up { color: var(--tone-recovery); }
+.mtn-trip.is-upcoming { border: 1.5px dashed color-mix(in srgb, var(--tone-recovery) 55%, transparent); background: transparent; }
+.mtn-trip.is-upcoming .mtn-label { color: var(--tone-recovery); }
+.mtn-trip-date { font-size: 14px; font-weight: 600; }
+.mtn-source { margin-top: -6px; padding: 0 4px; }
+
+@media (max-width: 1100px) {
+  .mtn-lower { grid-template-columns: 1fr; }
+  .mtn-trip-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .mountains-page .mtn-hero { padding: 22px 18px; border-radius: 22px; }
+  .mtn-pct { font-size: 96px; }
+  .mtn-pct span { font-size: 40px; }
+  .mtn-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .mtn-tile { padding: 12px 10px; border-radius: 14px; }
+  .mtn-tile .mtn-label { font-size: 9.5px; letter-spacing: .08em; }
+  .mtn-tile strong { font-size: 28px; white-space: nowrap; }
+  .mtn-tile strong small { font-size: 11px; }
+  .mtn-foot { font-size: 11px; }
+  .mtn-next { flex-wrap: wrap; }
+  .mtn-link { margin-left: 0; }
+  .mtn-pills { max-width: 100%; }
+  .mountains-page .mtn-trips { padding: 20px 16px !important; }
+  .mtn-trip-grid { gap: 8px; }
+  .mtn-trip { padding: 14px; border-radius: 14px; }
+  .mtn-trip strong { font-size: 32px; }
+  .mtn-trip-foot { flex-direction: column; gap: 2px; white-space: nowrap; }
+  .mountains-page .side .card, .mountains-page .mtn-card { padding: 18px 16px; }
 }
 </style>

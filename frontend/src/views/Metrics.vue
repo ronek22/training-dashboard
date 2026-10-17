@@ -139,7 +139,7 @@
           <p class="card-copy">{{ heartRateSummary?.summary || 'Heart-rate distribution will appear when recent run or ride streams are available.' }}</p>
         </section>
 
-        <section class="t-card" aria-labelledby="calendar-heading">
+        <section class="t-card calendar-card" aria-labelledby="calendar-heading">
           <header class="card-head">
             <span class="card-icon" style="--tone: var(--volt)" aria-hidden="true"><svg viewBox="0 0 20 20"><rect x="3" y="3" width="5" height="5" rx="1" /><rect x="12" y="3" width="5" height="5" rx="1" /><rect x="3" y="12" width="5" height="5" rx="1" /><rect x="12" y="12" width="5" height="5" rx="1" /></svg></span>
             <div><h2 id="calendar-heading">Workout calendar</h2><p>Each day colored by its main sport · brighter = longer</p></div>
@@ -156,6 +156,19 @@
               <div class="sport-legend"><span v-for="sport in sportOrder" :key="sport"><i :style="{ background: sportColor(sport) }"></i>{{ sportLabels[sport] }}</span></div>
               <div v-if="selectedHeatmapCell" class="heatmap-selection" aria-live="polite"><strong>{{ format(new Date(`${selectedHeatmapCell.date}T12:00:00`), 'EEE d MMM') }}</strong> · {{ selectedHeatmapCell.sessions ? `${sportLabels[mainSport(selectedHeatmapCell)]} · ${formatDuration(selectedHeatmapCell.total_duration_min)}${selectedHeatmapCell.sessions > 1 ? ` · ${selectedHeatmapCell.sessions} sessions` : ''}` : 'Rest day' }}</div>
             </div>
+          </div>
+          <div v-if="yearMonths.length" class="year-months" aria-label="Hours by month">
+            <div v-for="month in yearMonths" :key="month.key" class="year-month" :class="{ current: month.current, future: month.future }" :title="`${month.label}: ${(month.minutes / 60).toFixed(1)} h, ${month.days} active days`">
+              <span class="year-month-value">{{ month.minutes ? Math.round(month.minutes / 60) : '' }}</span>
+              <span class="year-month-track"><span class="year-month-stack" :style="{ height: `${month.height}%` }"><i v-for="part in month.parts" :key="part.key" :style="{ flex: part.minutes, background: part.color }"></i></span></span>
+              <span class="year-month-label">{{ month.label }}</span>
+            </div>
+          </div>
+          <div v-if="heatmapCells.length" class="year-stats">
+            <div><span class="t-label">Current streak</span><strong class="is-volt">{{ yearStats.currentStreak }}<small> days</small></strong></div>
+            <div><span class="t-label">Longest streak</span><strong>{{ yearStats.longestStreak }}<small> days</small></strong></div>
+            <div><span class="t-label">Busiest month</span><strong>{{ yearStats.busiest?.label || '—' }}<small v-if="yearStats.busiest"> {{ (yearStats.busiest.minutes / 60).toFixed(0) }} h</small></strong></div>
+            <div><span class="t-label">Hours in {{ currentYear }}</span><strong>{{ (yearStats.minutes / 60).toFixed(0) }}<small> h</small></strong></div>
           </div>
         </section>
       </div>
@@ -287,10 +300,10 @@ const zoneNames = { zone1: 'Recovery', zone2: 'Endurance', zone3: 'Tempo', zone4
 const levelOpacity = { 1: 0.5, 2: 0.7, 3: 0.85, 4: 1 }
 const todayKey = format(new Date(), 'yyyy-MM-dd')
 const mainSport = (cell) => Object.entries(cell?.sports || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || 'other'
-// Largest sport at the bottom of a stacked bar, so the order follows the hero list.
-const sportParts = (minutesBySport) => Object.entries(minutesBySport || {})
+// Biggest sport first for lists; stacked bars pass fixedOrder so colors sit in the same place on every bar.
+const sportParts = (minutesBySport, fixedOrder = false) => Object.entries(minutesBySport || {})
   .filter(([, minutes]) => minutes > 0)
-  .sort((a, b) => b[1] - a[1])
+  .sort((a, b) => (fixedOrder ? sportOrder.indexOf(a[0]) - sportOrder.indexOf(b[0]) : b[1] - a[1]))
   .map(([key, minutes]) => ({ key, minutes, label: sportLabels[key] || 'Other', color: sportColor(key) }))
 const metricMeta = {
   weight: { label: 'Weight', description: 'A supporting body-composition signal. Interpret the longer trend, not a single weigh-in.', action: 'Log weight', empty: 'Add weigh-ins when useful; this does not need to become a daily obligation.' },
@@ -418,6 +431,34 @@ const activeHeartRateZone = computed(() => heartRateZones.value.find((zone) => z
 const activityHeatmap = computed(() => trainingHistory.value?.activity_heatmap || null)
 const heatmapCells = computed(() => activityHeatmap.value?.cells || [])
 const heatmapMonths = computed(() => (activityHeatmap.value?.month_labels || []).filter((month, index) => index > 0 || month.label === 'Jan'))
+const yearCells = computed(() => heatmapCells.value.filter((cell) => cell.in_year && !cell.is_future))
+const yearMonths = computed(() => {
+  const months = Array.from({ length: 12 }, (_, index) => ({ key: index, label: format(new Date(2000, index, 1), 'MMM'), minutes: 0, days: 0, sports: {} }))
+  for (const cell of yearCells.value) {
+    const month = months[Number(cell.date.slice(5, 7)) - 1]
+    month.minutes += Number(cell.total_duration_min || 0)
+    month.days += Number(cell.sessions > 0)
+    for (const [sport, minutes] of Object.entries(cell.sports || {})) month.sports[sport] = (month.sports[sport] || 0) + Number(minutes)
+  }
+  const max = Math.max(1, ...months.map((month) => month.minutes))
+  const thisMonth = Number(todayKey.slice(5, 7)) - 1
+  const sameYear = String(currentYear.value) === todayKey.slice(0, 4)
+  return months.map((month, index) => ({ ...month, height: month.minutes / max * 100, parts: sportParts(month.sports, true), current: sameYear && index === thisMonth, future: sameYear && index > thisMonth }))
+})
+const yearStats = computed(() => {
+  let longest = 0
+  let run = 0
+  for (const cell of yearCells.value) {
+    run = cell.sessions > 0 ? run + 1 : 0
+    longest = Math.max(longest, run)
+  }
+  // Today without a session yet doesn't break the current streak.
+  const days = [...yearCells.value].reverse()
+  if (days[0] && days[0].date === todayKey && !days[0].sessions) days.shift()
+  const current = days.findIndex((cell) => !cell.sessions)
+  const busiest = yearMonths.value.reduce((best, month) => (month.minutes > (best?.minutes || 0) ? month : best), null)
+  return { currentStreak: current === -1 ? days.length : current, longestStreak: longest, busiest, minutes: yearMonths.value.reduce((sum, month) => sum + month.minutes, 0) }
+})
 const heatmapWeekCount = computed(() => Math.max(1, ...heatmapCells.value.map((cell) => Number(cell.week_index || 0) + 1)))
 const currentYear = computed(() => activityHeatmap.value?.year || format(new Date(), 'yyyy'))
 const momentumPeriod = ref(8)
@@ -440,7 +481,7 @@ const momentumWeeks = computed(() => {
   const recent = [...weeks.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-momentumPeriod.value)
   const value = week => momentumMode.value === 'hours' ? week.minutes / 60 : week.sessions
   const max = Math.max(1, ...recent.map(value))
-  return recent.map(week => ({ ...week, height: value(week) / max * 100, parts: sportParts(week.sports) }))
+  return recent.map(week => ({ ...week, height: value(week) / max * 100, parts: sportParts(week.sports, true) }))
 })
 const momentumSports = computed(() => {
   const totals = {}
@@ -743,6 +784,21 @@ function sparklineArea(entries, width, height, padding) {
 .sport-legend i { height: 12px; }
 .heatmap-selection { padding: 8px 12px; border-radius: 10px; background: rgb(var(--deep-rgb)); border: 1px solid var(--border); }
 .heatmap-selection strong { color: var(--text); }
+.calendar-card { display: flex; flex-direction: column; }
+.year-months { display: flex; gap: 10px; height: 150px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+.year-month { display: flex; flex: 1; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.year-month-value { font-family: var(--font-display); font-size: 14px; font-weight: 700; min-height: 14px; }
+.year-month-track { display: flex; flex: 1; align-items: flex-end; width: 100%; max-width: 40px; }
+.year-month-stack { display: flex; flex-direction: column-reverse; gap: 2px; width: 100%; overflow: hidden; border-radius: 6px; }
+.year-month-stack i { min-height: 2px; }
+.year-month-label { font-size: 11px; color: var(--muted); }
+.year-month.current .year-month-label, .year-month.current .year-month-value { color: var(--volt); }
+.year-month.future .year-month-track { border-bottom: 1px dashed var(--border-strong); }
+.year-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: auto; padding-top: 20px; }
+.year-stats > div { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 16px; background: rgb(var(--deep-rgb)); border: 1px solid var(--border); }
+.year-stats strong { font-family: var(--font-display); font-size: 30px; font-style: italic; font-weight: 800; line-height: 1; }
+.year-stats strong small { font-size: 13px; font-style: normal; color: var(--muted-soft); }
+.year-stats .is-volt { color: var(--volt); }
 
 /* Recovery + daily tabs */
 .tab-stack { display: flex; flex-direction: column; gap: 24px; }
@@ -933,6 +989,9 @@ function sparklineArea(entries, width, height, padding) {
   .rhythm-date { font-size: 10px; }
   .rhythm-caption { flex-direction: column; align-items: flex-start; }
   .signal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .year-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .year-months { gap: 4px; height: 120px; }
+  .year-month-value { font-size: 11px; }
   .marker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .marker .tile-value { font-size: 34px; }
   .night-total strong, .daily-row .night-total strong { font-size: 64px; }

@@ -14,6 +14,7 @@ MacBook Pro M4 in full screen (**1512 × 945 viewport**) and on phone.
 | Activities | `screens/activities.png` | `artboards/Activities.dc.html` |
 | Records | `screens/records.png` | `artboards/Records.dc.html` |
 | Season in review | `screens/season.png` | `artboards/Season.dc.html` |
+| All years | `screens/years.png` | `artboards/Years.dc.html` |
 | System (colors, type, components) | `screens/system.png` | `artboards/System.dc.html` |
 
 - Screenshots are 1440 px wide, rendered from the artboards. Read the PNG to see the target;

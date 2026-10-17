@@ -1,55 +1,49 @@
 <template>
   <section class="comparisons" aria-labelledby="comparison-heading" :aria-busy="loading">
-    <header class="comparison-head">
-      <div><span class="eyebrow">Your progress, in perspective</span><h2 id="comparison-heading">Am I improving?</h2></div>
-      <label class="window-picker">Look for comparable sessions<select v-model.number="days" @change="load"><option :value="90">Last 90 days</option><option :value="180">Last 180 days</option><option :value="365">Last year</option></select></label>
-    </header>
+    <h2 id="comparison-heading" class="sr-only">Am I improving?</h2>
 
-    <div v-if="loading" class="status-panel" role="status"><span class="eyebrow">Reading your training</span><h3>Looking for a fair comparison.</h3><p>Finding similar efforts and the details that put them in context…</p></div>
-    <div v-else-if="error" class="status-panel" role="alert"><span class="eyebrow">Comparison unavailable</span><h3>We couldn’t load your comparisons.</h3><p>{{ error }}</p><button type="button" @click="load">Try again <span aria-hidden="true">↗</span></button></div>
+    <div v-if="loading" class="c-card status-panel" role="status"><span class="label">Reading your training</span><h3>Looking for a fair comparison.</h3><p>Finding similar efforts and the details that put them in context…</p></div>
+    <div v-else-if="error" class="c-card status-panel" role="alert"><span class="label">Comparison unavailable</span><h3>We couldn’t load your comparisons.</h3><p>{{ error }}</p><button type="button" class="outline-btn" @click="load">Try again</button></div>
 
     <template v-else-if="data">
-      <section class="progress-story" :class="assessment.state" aria-labelledby="assessment-heading">
-        <div class="story-topline"><span class="eyebrow">01 / The takeaway</span><span class="period">{{ dateLabel(data.window.start) }} — {{ dateLabel(data.window.end) }}</span></div>
-        <div class="story-layout">
-          <div class="takeaway">
-            <span class="state-label"><span aria-hidden="true">{{ assessment.symbol }}</span> {{ assessment.label }}</span>
-            <h3 id="assessment-heading">{{ assessment.title }}</h3>
-            <p class="assessment-copy">{{ assessment.copy }}</p>
-            <p v-if="matched.length" class="evidence-basis">{{ evidenceBasis }} <span>Selected session pairs, not a trend across every workout.</span></p>
-            <a class="story-link" href="#progress-evidence">{{ matched.length ? 'See what changed' : 'See what’s needed' }} <span aria-hidden="true">↓</span></a>
-          </div>
-          <aside class="next-focus" aria-labelledby="focus-heading">
-            <span class="eyebrow">For your next training period</span>
-            <span class="focus-mark" aria-hidden="true">→</span>
-            <h4 id="focus-heading">{{ assessment.focusTitle }}</h4>
-            <p>{{ assessment.focus }}</p>
-            <span class="focus-note">One useful focus: make the next comparison clearer.</span>
-          </aside>
+      <section class="c-card progress-story" :class="assessment.state" aria-labelledby="assessment-heading">
+        <div class="takeaway">
+          <div class="story-meta"><span class="state-pill"><span aria-hidden="true">{{ assessment.symbol }}</span> {{ assessment.label }}</span><span>{{ dateLabel(data.window.start) }} – {{ dateLabel(data.window.end) }}</span></div>
+          <h3 id="assessment-heading">{{ assessment.title }}</h3>
+          <p class="assessment-copy">{{ assessment.copy }}</p>
+          <p v-if="matched.length" class="evidence-basis">{{ evidenceBasis }} Selected session pairs, not a trend across every workout.</p>
         </div>
-        <div class="story-bottom"><span class="eyebrow">Performance ≠ volume</span><p>More training doesn’t automatically mean better fitness. This view compares results at similar recorded effort or the same weight.</p></div>
+        <aside class="next-focus" aria-labelledby="focus-heading">
+          <span class="label">Next focus</span>
+          <h4 id="focus-heading">{{ assessment.focusTitle }}</h4>
+          <p>{{ assessment.focus }}</p>
+          <label class="window-picker"><span class="sr-only">Look for comparable sessions</span><select v-model.number="days" @change="load"><option :value="90">Window · last 90 days</option><option :value="180">Window · last 180 days</option><option :value="365">Window · last year</option></select></label>
+        </aside>
       </section>
 
-      <section id="progress-evidence" class="evidence-section" tabindex="-1" aria-labelledby="evidence-heading">
-        <header class="section-head"><div><span class="eyebrow">02 / The evidence</span><h3 id="evidence-heading">{{ matched.length ? 'Small details. A clearer picture.' : 'A clearer picture starts with a match.' }}</h3></div><p>{{ matched.length ? 'Earlier → more recent. Each comparison has its own dates and conditions.' : 'Comparable sessions tell us more than a bigger training total.' }}</p></header>
+      <section id="progress-evidence" class="c-card evidence-section" tabindex="-1" aria-labelledby="evidence-heading">
+        <header class="card-head">
+          <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 15l4-5 3 3 7-8" /><path d="M13 5h4v4" /></svg></span>
+          <div><h3 id="evidence-heading">The evidence</h3><p>{{ matched.length ? 'Earlier → recent, at similar effort. Each pair keeps its own conditions.' : 'Comparable sessions tell us more than a bigger training total.' }}</p></div>
+        </header>
         <ProgressEvidence v-for="item in featured" :key="`${item.kind}-${item.title}`" :item="item" />
         <details v-if="remaining.length" class="more-evidence">
-          <summary>{{ remaining.length }} more {{ remaining.length === 1 ? 'comparison' : 'comparisons' }} <span>Included in your takeaway</span></summary>
+          <summary>{{ remaining.length }} more {{ remaining.length === 1 ? 'comparison' : 'comparisons' }} <span>included in your takeaway</span></summary>
           <ProgressEvidence v-for="item in remaining" :key="`${item.kind}-${item.title}`" :item="item" />
         </details>
 
         <div v-if="missing.length || !data.strength.items.length" class="missing-evidence">
-          <h4>{{ matched.length ? 'Still waiting for a match' : 'What will unlock your evidence' }}</h4>
-          <div v-for="item in missing" :key="item.kind" class="missing-row"><span class="missing-mark" aria-hidden="true">···</span><div><strong>{{ sportLabel(item) }}</strong><p>{{ item.empty_reason }}</p><details v-if="item.rule"><summary>Matching requirements</summary><p>{{ item.rule }} Known conflicting intents are excluded; missing intent is flagged.</p></details></div></div>
-          <div v-if="!data.strength.items.length" class="missing-row"><span class="missing-mark" aria-hidden="true">···</span><div><strong>Strength</strong><p>No repeated lift at the same weight on distinct dates yet. Complete and link two workouts with working-set detail to see a comparison.</p><RouterLink to="/strength">Explore strength history <span aria-hidden="true">↗</span></RouterLink></div></div>
+          <span class="label">{{ matched.length ? 'Still waiting for a match' : 'What will unlock your evidence' }}</span>
+          <div v-for="item in missing" :key="item.kind" class="missing-row"><strong>{{ sportLabel(item) }}</strong><div><p>{{ item.empty_reason }}</p><details v-if="item.rule"><summary>Matching requirements</summary><p>{{ item.rule }} Known conflicting intents are excluded; missing intent is flagged.</p></details></div></div>
+          <div v-if="!data.strength.items.length" class="missing-row"><strong>Strength</strong><div><p>No repeated lift at the same weight on distinct dates yet. Complete and link two workouts with working-set detail to see a comparison.</p><RouterLink to="/strength">Explore strength history ↗</RouterLink></div></div>
         </div>
       </section>
 
-      <details class="methodology">
-        <summary><span>Behind the comparison</span><span class="summary-note">Matching rules & data coverage</span></summary>
+      <details class="c-card methodology">
+        <summary><span>Behind the comparison</span><span class="summary-note">Matching rules &amp; data coverage</span></summary>
         <div class="methodology-body">
-          <div><h3>How sessions are selected</h3><p>Within {{ dateLabel(data.window.start) }} – {{ dateLabel(data.window.end) }}, endurance pairs use the most recent session with a match, then the closest heart rate or power, duration, and date. Selection does not depend on improvement.</p><p>The takeaway describes the direction of the returned pairs. Opposing changes give a mixed picture; “unchanged” means an exact match in recorded values. A nonzero change is not necessarily a meaningful fitness change. These pairs may overlap and are not independent evidence.</p><p>Weather, route and sensor coverage are not verified. Open each comparison for its specific conditions and limitations.</p><p v-for="item in data.endurance" :key="item.kind">{{ sportLabel(item) }}: {{ item.excluded }} sessions excluded for missing or invalid required metrics.</p></div>
-          <div><h3>Lifting comparison coverage</h3><p>{{ data.strength.note }}</p><p>{{ data.strength.excluded_sets }} working sets excluded for missing or invalid weight/reps.</p><RouterLink to="/strength">Explore strength history <span aria-hidden="true">↗</span></RouterLink></div>
+          <div><h4>How sessions are selected</h4><p>Within {{ dateLabel(data.window.start) }} – {{ dateLabel(data.window.end) }}, endurance pairs use the most recent session with a match, then the closest heart rate or power, duration, and date. Selection does not depend on improvement.</p><p>The takeaway describes the direction of the returned pairs. Opposing changes give a mixed picture; “unchanged” means an exact match in recorded values. A nonzero change is not necessarily a meaningful fitness change. These pairs may overlap and are not independent evidence.</p><p>Weather, route and sensor coverage are not verified. Open each comparison for its specific conditions and limitations.</p><p v-for="item in data.endurance" :key="item.kind">{{ sportLabel(item) }}: {{ item.excluded }} sessions excluded for missing or invalid required metrics.</p></div>
+          <div><h4>Lifting comparison coverage</h4><p>{{ data.strength.note }}</p><p>{{ data.strength.excluded_sets }} working sets excluded for missing or invalid weight/reps.</p><RouterLink to="/strength">Explore strength history ↗</RouterLink></div>
         </div>
       </details>
     </template>
@@ -144,35 +138,49 @@ const assessment = computed(() => {
 </script>
 
 <style scoped>
-.comparisons { display: grid; gap: 32px; min-width: 0; }
-.comparison-head { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-.eyebrow { color: var(--muted-soft); font-size: 10px; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; }
-h2 { font-family: var(--font-display); font-size: 26px; font-weight: 500; letter-spacing: -.04em; margin-top: 5px; }
-.window-picker { display: grid; gap: 7px; color: var(--muted-soft); font-size: 11px; }
-select, button { min-height: 44px; padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: 9px; color: var(--text); background: var(--surface); }select { cursor: pointer; }button { cursor: pointer; margin-top: 18px; }
-.progress-story { --story-accent: var(--accent-strong); border: 1px solid var(--border-strong); border-radius: 22px; overflow: hidden; background: var(--surface); }
-.progress-story.improving { --story-accent:oklch(from #93dfba calc(l - var(--dim-l)) c h); }.progress-story.declining, .progress-story.mixed { --story-accent:oklch(from #edbd8b calc(l - var(--dim-l)) c h); }
-.story-topline { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 10px; padding: 24px 32px; border-bottom: 1px solid var(--border); }.period { font-size: 11px; color: var(--muted-soft); font-variant-numeric: tabular-nums; }
-.story-layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 72px); padding: 40px 32px; }
-.state-label { display: inline-flex; align-items: center; gap: 9px; color: var(--story-accent); font-size: 12px; }.state-label>span { font-size: 20px; }
-.takeaway h3 { max-width: 16ch; font-family: var(--font-display); font-weight: 500; font-size: clamp(34px, 4.2vw, 56px); line-height: 1.06; letter-spacing: -.055em; margin: 18px 0 24px; text-wrap: balance; }
-.assessment-copy { max-width: 57ch; color: var(--text-soft); font-size: 14px; line-height: 1.8; }.evidence-basis { color: var(--story-accent); font-size: 11px; line-height: 1.8; margin-top: 20px; }.evidence-basis>span { display: block; color: var(--muted-soft); margin-top: 4px; }
-.story-link { display: inline-flex; align-items: center; gap: 24px; padding: 12px 0; min-height: 44px; margin-top: 16px; color: var(--text); font-size: 12px; border-bottom: 1px solid var(--border-strong); }.story-link:hover { color: var(--story-accent); }
-.next-focus { align-self: center; padding-left: 28px; border-left: 1px solid var(--border-strong); }.focus-mark { display: block; font: 400 40px var(--font-display); color: var(--story-accent); margin: 14px 0; }.next-focus h4 { font: 500 25px/1.2 var(--font-display); letter-spacing: -.035em; max-width: 18ch; }.next-focus p { color: var(--text-soft); font-size: 13px; line-height: 1.85; margin-top: 16px; }.focus-note { display: block; color: var(--muted-soft); font-size: 10px; line-height: 1.7; margin-top: 20px; }
-.story-bottom { display: flex; align-items: baseline; gap: 26px; padding: 20px 32px; background: rgb(var(--shadow-rgb) / .1); border-top: 1px solid var(--border); }.story-bottom>.eyebrow { flex-shrink: 0; }.story-bottom p { color: var(--muted-soft); font-size: 11px; line-height: 1.7; }
-.evidence-section { scroll-margin-top: 24px; min-width: 0; }.section-head { display: flex; align-items: end; justify-content: space-between; gap: 32px; padding-bottom: 24px; }.section-head h3 { font: 500 clamp(23px, 2.5vw, 29px)/1.2 var(--font-display); letter-spacing: -.035em; margin-top: 10px; }.section-head>p { color: var(--muted-soft); font-size: 11px; max-width: 32ch; line-height: 1.8; }
-.more-evidence { border-top: 1px solid var(--border); }.more-evidence>summary { color: var(--text-soft); padding: 18px 0; font-size: 13px; }.more-evidence>summary span { margin-left: 12px; font-size: 11px; color: var(--muted-soft); }
-summary { cursor: pointer; min-height: 44px; }summary:hover { color: var(--text); }
-.missing-evidence { border-top: 1px solid var(--border); padding: 24px 0 0; }.missing-evidence h4 { font: 500 18px var(--font-display); letter-spacing: -.02em; margin-bottom: 8px; }.missing-row { display: flex; gap: 18px; padding: 18px 0; }.missing-mark { color: var(--muted-soft); font-size: 24px; line-height: 1; }.missing-row strong { font-size: 13px; font-weight: 550; }.missing-row p { color: var(--muted-soft); font-size: 12px; line-height: 1.8; margin-top: 5px; max-width: 85ch; }.missing-row summary { font-size: 12px; color: var(--text-soft); padding: 10px 0; }
-.missing-row a, .methodology a { display: inline-block; min-height: 44px; padding: 10px 0; font-size: 12px; text-decoration: underline; text-underline-offset: 5px; text-decoration-color: var(--border-strong); }
-.methodology { border: 1px solid var(--border); border-radius: var(--radius-panel); padding: 0 24px; }.methodology>summary { padding: 18px 0; font-size: 12px; color: var(--text-soft); }.summary-note { margin-left: 16px; color: var(--muted-soft); font-size: 11px; }.methodology-body { display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; border-top: 1px solid var(--border); padding: 24px 0; }.methodology h3 { font-size: 13px; font-weight: 550; margin-bottom: 12px; }.methodology p { font-size: 12px; color: var(--muted-soft); line-height: 1.8; margin-top: 10px; }
-.status-panel { border: 1px solid var(--border); border-radius: 22px; padding: clamp(24px, 5vw, 56px); background: var(--surface); }.status-panel h3 { font: 500 30px/1.2 var(--font-display); margin: 18px 0; letter-spacing: -.04em; }.status-panel p { color: var(--muted-soft); font-size: 13px; }
-button:focus-visible, select:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 4px; }
-@media(max-width: 900px) { .story-layout { gap: 30px; }.next-focus { padding-left: 22px; }.section-head { align-items: start; }.section-head>p { max-width: 28ch; } }
-@media(max-width: 760px) {
-  .comparisons { gap: 26px; }.comparison-head { align-items: start; flex-direction: column; gap: 18px; }.window-picker { width: 100%; }.window-picker select { width: 100%; }
-  .story-topline { padding: 20px; }.story-layout { grid-template-columns: 1fr; padding: 28px 20px; gap: 28px; }.takeaway h3 { font-size: clamp(34px, 8vw, 48px); max-width: 18ch; }.assessment-copy { font-size: 13px; }
-  .next-focus { padding: 24px 0 0; border-left: 0; border-top: 1px solid var(--border-strong); }.focus-mark { display: none; }.next-focus h4 { margin-top: 12px; max-width: none; font-size: 23px; }.next-focus p { margin-top: 12px; }.focus-note { margin-top: 12px; }
-  .story-bottom { flex-direction: column; gap: 8px; padding: 20px; }.section-head { flex-direction: column; gap: 12px; }.section-head>p { max-width: none; }.methodology { padding: 0 18px; }.methodology-body { grid-template-columns: 1fr; gap: 24px; }.summary-note { display: block; margin: 5px 0 0; }.more-evidence>summary span { display: block; margin: 4px 0 0; }
+.comparisons { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.c-card { min-width: 0; padding: 24px 28px; border-radius: var(--radius-card); background: var(--surface); border: 1px solid var(--border); }
+.label { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.status-panel { display: grid; justify-items: start; gap: 8px; }
+.status-panel h3 { margin: 0; font-size: 20px; }
+.status-panel p { margin: 0; color: var(--muted-soft); font-size: 13px; }
+.outline-btn, .window-picker select { min-height: 36px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+.progress-story { --state: var(--muted-soft); display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 32px; }
+.progress-story.mixed, .progress-story.declining { --state: var(--warning); }
+.progress-story.improving { --state: var(--z2); }
+.story-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.state-pill { padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--state) 14%, transparent); color: var(--state); font-size: 12px; font-weight: 700; }
+.takeaway h3 { margin: 14px 0 0; font-family: var(--font-display); font-size: 54px; font-style: italic; font-weight: 800; line-height: .95; text-transform: uppercase; }
+.assessment-copy { max-width: 600px; margin: 14px 0 0; font-size: 14px; line-height: 1.55; color: var(--muted-soft); }
+.evidence-basis { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+.next-focus { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 20px; border-radius: 18px; background: rgb(var(--deep-rgb)); border: 1px solid var(--border); }
+.next-focus h4 { margin: 2px 0 0; font-size: 20px; font-weight: 600; }
+.next-focus p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted-soft); }
+.window-picker { margin-top: 8px; }
+.card-head { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+.card-head > div { flex: 1; min-width: 0; }
+.card-head h3 { margin: 0; font-family: var(--font-display); font-size: 26px; font-style: italic; font-weight: 800; line-height: 1; text-transform: uppercase; }
+.card-head p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.card-icon { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 12px; color: var(--volt); background: color-mix(in srgb, var(--volt) 14%, transparent); }
+.card-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.more-evidence { margin-top: 10px; }
+.more-evidence > summary, .methodology > summary { cursor: pointer; padding: 8px 0; font-size: 13px; font-weight: 600; }
+.more-evidence > summary span, .summary-note { margin-left: 8px; font-size: 12px; font-weight: 400; color: var(--muted); }
+.missing-evidence { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.missing-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; padding: 12px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.missing-evidence .label + .missing-row { margin-top: 10px; }
+.missing-row p { margin: 0; color: var(--muted-soft); line-height: 1.5; }
+.missing-row a, .methodology a { color: var(--volt); font-weight: 600; font-size: 13px; text-decoration: none; }
+.missing-row details summary { margin-top: 6px; cursor: pointer; font-size: 12px; color: var(--muted-soft); }
+.methodology { padding: 16px 28px; }
+.methodology-body { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 12px 0 8px; }
+.methodology-body h4 { margin: 0 0 8px; font-size: 14px; }
+.methodology-body p { margin: 0 0 8px; font-size: 12px; line-height: 1.6; color: var(--muted-soft); }
+@media (max-width: 900px) { .progress-story, .methodology-body { grid-template-columns: 1fr; } }
+@media (max-width: 720px) {
+  .c-card { padding: 20px 16px; border-radius: 20px; }
+  .takeaway h3 { font-size: 38px; }
+  .card-head h3 { font-size: 22px; }
+  .missing-row { grid-template-columns: 1fr; gap: 4px; }
 }
 </style>

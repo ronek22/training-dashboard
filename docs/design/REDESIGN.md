@@ -16,13 +16,15 @@ MacBook Pro M4 in full screen (**1512 × 945 viewport**) and on phone.
 | Season in review | `screens/season.png` | `artboards/Season.dc.html` |
 | All years | `screens/years.png` | `artboards/Years.dc.html` |
 | Mountains | `screens/mountains.png` | `artboards/Mountains.dc.html` |
+| Trends · Overview | `screens/trends.png` | `artboards/Trends.dc.html` |
+| Trends · other tabs | `screens/trends-tabs.png` | `artboards/TrendsTabs.dc.html` |
 | System (colors, type, components) | `screens/system.png` | `artboards/System.dc.html` |
 
 - Screenshots are 1440 px wide, rendered from the artboards. Read the PNG to see the target;
   grep the `.dc.html` only for exact sizes/colors (styles are inline; data is in the
   `<script type="text/x-dc">` block at the bottom). Don't read whole artboard files.
 - To view an artboard live: open the `.dc.html` in a browser (it uses `support.js` next to it).
-- Pages without an artboard (Recovery, Food, Goals, Trends, Athlete, Coach
+- Pages without an artboard (Recovery, Food, Goals, Athlete, Coach
   Notes, Sync, Usage…): apply the system below and borrow patterns from the closest artboard.
 
 ## Status

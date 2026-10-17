@@ -2,7 +2,7 @@ import sqlite3
 import unittest
 from datetime import datetime
 
-from backend.app.services.dashboard import build_yearly_distance_series, build_yearly_duration_series
+from backend.app.services.dashboard import build_activity_heatmap, build_yearly_distance_series, build_yearly_duration_series
 
 
 class DashboardYearSeriesTests(unittest.TestCase):
@@ -46,6 +46,17 @@ class DashboardYearSeriesTests(unittest.TestCase):
         self.assertEqual(january["monthly_hours"], 0.8)
         self.assertEqual(january["monthly_sessions"], 1)
         self.assertEqual(january["cumulative_sessions"], 1)
+
+    def test_heatmap_cells_split_minutes_by_sport(self):
+        current_year = datetime.now().year
+        self.conn.executemany(
+            "INSERT INTO activities (date, type, distance_km, duration_min) VALUES (?, ?, ?, ?)",
+            [(f"{current_year}-01-05", "WeightTraining", 0.0, 40.0), (f"{current_year}-01-05", "Hike", 8.0, 90.0)],
+        )
+        cells = {cell["date"]: cell for cell in build_activity_heatmap(self.conn)["cells"]}
+
+        self.assertEqual(cells[f"{current_year}-01-05"]["sports"], {"ride": 120, "strength": 40, "walk": 90})
+        self.assertEqual(cells[f"{current_year}-01-06"]["sports"], {})
 
 
 if __name__ == "__main__":

@@ -1,250 +1,109 @@
 <template>
-  <section class="card load-card" :class="{ 'load-immersive': mode === 'full' }">
-    <div class="load-head">
-      <div>
-        <div v-if="mode === 'full'" class="load-eyebrow">THE WORK &amp; THE RESPONSE</div><div class="card-title">{{ title }}</div>
-        <div class="load-sub">{{ subtitle }}</div>
-      </div>
-      <div class="load-range">{{ focusWindowLabel }}</div>
-    </div>
-
-    <div v-if="loading" class="empty load-empty">Loading training load…</div>
-    <div v-else-if="!loadData?.chart?.length" class="empty load-empty">Not enough activity data yet.</div>
-    <div v-else-if="mode === 'compact'" class="compact-layout">
-      <div class="readiness-card" :class="`readiness-${readiness.tone}`">
-        <div>
-          <div class="readiness-label">Readiness</div>
-          <div class="readiness-title">{{ readiness.title }}</div>
-          <div class="readiness-copy">{{ readiness.copy }}</div>
+  <section class="load-panel" :class="`load-${mode}`">
+    <div v-if="loading" class="load-empty">Loading training load…</div>
+    <div v-else-if="!loadData?.chart?.length" class="load-empty">Not enough activity data yet.</div>
+    <template v-else>
+      <div class="load-top">
+        <div class="readiness" :class="`readiness-${readiness.tone}`">
+          <span class="readiness-pill">{{ readiness.badge }}</span>
+          <div><strong>{{ readiness.title }}</strong><p>{{ readiness.copy }}</p></div>
         </div>
-        <div class="readiness-meta">
-          <span class="readiness-pill" :class="`pill-${readiness.tone}`">{{ readiness.badge }}</span>
+        <div class="load-tile">
+          <span class="load-label">Fitness · CTL</span>
+          <strong class="tone-fitness">{{ loadData.current.fitness }}</strong>
+          <small>longer-term load</small>
+        </div>
+        <div class="load-tile">
+          <span class="load-label">Fatigue · ATL</span>
+          <strong class="tone-fatigue">{{ loadData.current.fatigue }}</strong>
+          <small>recent load</small>
+        </div>
+        <div class="load-tile">
+          <span class="load-label">Form · TSB</span>
+          <strong class="tone-form">{{ signedValue(loadData.current.form) }}</strong>
+          <small>fitness − fatigue</small>
+        </div>
+        <div v-if="mode === 'compact'" class="load-tile ratio-tile">
+          <span class="load-label">Load ratio</span>
+          <div class="ratio-value"><strong>{{ ratioValue }}</strong><span :class="`status-${loadData.ratio.status}`">{{ ratioLabel }}</span></div>
+          <div class="ratio-track"><i></i><i></i><i></i><b :style="{ left: `${ratioMarker}%` }"></b></div>
+          <div class="ratio-scale"><span>Recovery</span><span>Building</span><span>Overreach</span></div>
         </div>
       </div>
 
-      <div class="compact-grid">
-        <article class="load-secondary-card compact-primary">
-          <div class="secondary-title">Current State</div>
-          <div class="compact-kpis">
-            <div class="compact-kpi">
-              <span class="compact-kpi-label">Fitness</span>
-              <strong class="fitness-kpi-text">{{ loadData.current.fitness }}</strong>
+      <template v-if="mode === 'full'">
+        <article class="load-card">
+          <header class="load-card-head">
+            <span class="load-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11h4l2-6 4 10 2-4h4" /></svg></span>
+            <div><h3>{{ title }}</h3><p>{{ subtitle }}</p></div>
+            <div class="chart-legend">
+              <span><i class="legend-fitness"></i>Fitness</span>
+              <span><i class="legend-fatigue"></i>Fatigue</span>
+              <span><i class="legend-form"></i>Form</span>
             </div>
-            <div class="compact-kpi">
-              <span class="compact-kpi-label">Fatigue</span>
-              <strong class="fatigue-kpi-text">{{ loadData.current.fatigue }}</strong>
-            </div>
-            <div class="compact-kpi">
-              <span class="compact-kpi-label">Form</span>
-              <strong class="form-kpi-text">{{ signedValue(loadData.current.form) }}</strong>
+          </header>
+          <div class="load-chart-wrap">
+            <svg
+              ref="chartRef"
+              viewBox="0 0 640 190"
+              class="load-chart"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+              @mouseleave="clearActivePoint"
+              @mousemove="updateActivePoint"
+            >
+              <line v-for="line in gridLines" :key="line.y" x1="24" :y1="line.y" x2="616" :y2="line.y" class="grid-line" />
+              <line v-if="zeroAxis" x1="24" :y1="zeroAxis.y" x2="616" :y2="zeroAxis.y" class="zero-axis-line" />
+              <polyline :points="fitnessAreaPoints" class="fitness-area" />
+              <polyline :points="fitnessLinePoints" class="fitness-line" />
+              <polyline :points="fatigueLinePoints" class="fatigue-line" />
+              <polyline :points="formLinePoints" class="form-line" />
+              <line v-if="activeChartPoint" :x1="activeChartPoint.x" y1="20" :x2="activeChartPoint.x" y2="162" class="focus-line" />
+              <rect x="24" y="20" width="592" height="142" class="hover-capture" />
+            </svg>
+            <template v-if="activeChartPoint">
+              <i class="active-dot dot-fitness" :style="dotStyle(activeChartPoint.ctlY)"></i>
+              <i class="active-dot dot-fatigue" :style="dotStyle(activeChartPoint.atlY)"></i>
+              <i class="active-dot dot-form" :style="dotStyle(activeChartPoint.tsbY)"></i>
+            </template>
+            <div v-if="activeDataPoint && activeIndex !== null" class="chart-hover-card" :style="hoverCardStyle">
+              <div class="hover-date">{{ formatHoverDate(activeDataPoint.date) }}</div>
+              <div class="hover-stats">
+                <span class="hover-fitness">Fitness {{ roundValue(activeDataPoint.ctl) }}</span>
+                <span class="hover-fatigue">Fatigue {{ roundValue(activeDataPoint.atl) }}</span>
+                <span class="hover-form">Form {{ signedValue(roundValue(activeDataPoint.tsb)) }}</span>
+              </div>
             </div>
           </div>
-          <div class="compact-ratio-line">
-            <span class="compact-point-label">Load ratio</span>
-            <strong>{{ ratioValue }}</strong>
-            <span class="ratio-status" :class="`status-${loadData.ratio.status}`">{{ ratioLabel }}</span>
+          <div v-if="dateLabels.length" class="chart-dates">
+            <span v-for="label in dateLabels" :key="label.key">{{ label.label }}</span>
           </div>
-          <p class="secondary-copy">{{ conciseStateCopy }}</p>
         </article>
 
-        <article class="load-secondary-card compact-planning">
-          <div class="secondary-title">Planning Signal</div>
-          <div class="compact-points">
-            <div class="compact-point">
-              <span class="compact-point-label">Best use</span>
-              <strong>{{ readiness.bestUse }}</strong>
-            </div>
-            <div class="compact-point">
-              <span class="compact-point-label">Focus bias</span>
-              <strong>{{ dominantFocus.label }} {{ dominantFocus.value }}%</strong>
-            </div>
-            <div class="compact-point" v-if="coverage">
-              <span class="compact-point-label">Endurance detail</span>
-              <strong>{{ coverage.detailed_pct || 0 }}% detailed</strong>
-            </div>
-          </div>
-        </article>
-      </div>
-    </div>
-    <div v-else class="load-layout">
-      <div class="readiness-card" :class="`readiness-${readiness.tone}`">
-        <div>
-          <div class="readiness-label">Readiness</div>
-          <div class="readiness-title">{{ readiness.title }}</div>
-          <div class="readiness-copy">{{ readiness.copy }}</div>
-        </div>
-        <div class="readiness-meta">
-          <span class="readiness-pill" :class="`pill-${readiness.tone}`">{{ readiness.badge }}</span>
-          <span>Ratio {{ ratioValue }}</span>
-          <span>Form {{ signedValue(loadData.current.form) }}</span>
-        </div>
-      </div>
-
-      <div class="load-kpis">
-        <div class="load-kpi fitness-kpi">
-          <span class="load-kpi-label">Fitness</span>
-          <strong>{{ loadData.current.fitness }}</strong>
-          <span class="load-kpi-meta">CTL · Longer-term load</span>
-        </div>
-        <div class="load-kpi fatigue-kpi">
-          <span class="load-kpi-label">Fatigue</span>
-          <strong>{{ loadData.current.fatigue }}</strong>
-          <span class="load-kpi-meta">ATL · Recent load</span>
-        </div>
-        <div class="load-kpi form-kpi">
-          <span class="load-kpi-label">Form</span>
-          <strong>{{ signedValue(loadData.current.form) }}</strong>
-          <span class="load-kpi-meta">TSB · Fitness minus fatigue</span>
-        </div>
-      </div>
-
-      <div class="coverage-bar" v-if="coverage">
-        <div>
-          <div class="coverage-title">Detailed Endurance Coverage</div>
-          <div class="coverage-copy">
-            {{ coverage.detailed_sessions }} detailed, {{ coverage.fallback_sessions }} remaining stream-eligible fallback
-          </div>
-        </div>
-        <div class="coverage-track">
-          <div class="coverage-fill" :style="{ width: `${coverage.detailed_pct || 0}%` }"></div>
-        </div>
-        <div class="coverage-value">{{ coverage.detailed_pct || 0 }}%</div>
-      </div>
-
-      <div v-if="mode === 'full'" class="load-chart-wrap"><div class="load-chart-heading"><div><span>YOUR ADAPTATION CURVE</span><h3>Fitness takes the long view.</h3></div><p>Watch fitness, fatigue and form move together.</p></div>
-        <svg
-          ref="chartRef"
-          viewBox="0 0 640 190"
-          class="load-chart"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-          @mouseleave="clearActivePoint"
-          @mousemove="updateActivePoint"
-        >
-          <defs>
-            <linearGradient id="fitnessFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="var(--ride)" stop-opacity=".2" />
-              <stop offset="100%" stop-color="var(--ride)" stop-opacity="0" />
-            </linearGradient>
-          </defs>
-          <line
-            v-for="line in gridLines"
-            :key="line.y"
-            x1="24"
-            :y1="line.y"
-            x2="616"
-            :y2="line.y"
-            class="grid-line"
-          />
-          <line
-            v-if="zeroAxis"
-            x1="24"
-            :y1="zeroAxis.y"
-            x2="616"
-            :y2="zeroAxis.y"
-            class="zero-axis-line"
-          />
-          <polyline :points="fitnessAreaPoints" class="fitness-area" />
-          <polyline :points="fitnessLinePoints" class="fitness-line" />
-          <polyline :points="fatigueLinePoints" class="fatigue-line" />
-          <polyline :points="formLinePoints" class="form-line" />
-          <line
-            v-if="activeChartPoint"
-            :x1="activeChartPoint.x"
-            y1="20"
-            :x2="activeChartPoint.x"
-            y2="162"
-            class="focus-line"
-          />
-          <circle
-            v-if="activeChartPoint"
-            :cx="activeChartPoint.x"
-            :cy="activeChartPoint.ctlY"
-            r="3.25"
-            class="fitness-dot active-dot active-dot-fitness"
-          />
-          <circle
-            v-if="activeChartPoint"
-            :cx="activeChartPoint.x"
-            :cy="activeChartPoint.atlY"
-            r="3.25"
-            class="fatigue-dot active-dot active-dot-fatigue"
-          />
-          <circle
-            v-if="activeChartPoint"
-            :cx="activeChartPoint.x"
-            :cy="activeChartPoint.tsbY"
-            r="3.25"
-            class="form-dot active-dot active-dot-form"
-          />
-          <rect
-            x="24"
-            y="20"
-            width="592"
-            height="142"
-            class="hover-capture"
-          />
-        </svg>
-        <div v-if="activeDataPoint" class="chart-hover-card" :style="hoverCardStyle">
-          <div class="hover-date">{{ formatHoverDate(activeDataPoint.date) }}</div>
-          <div class="hover-stats">
-            <span class="hover-fitness">Fitness {{ roundValue(activeDataPoint.ctl) }}</span>
-            <span class="hover-fatigue">Fatigue {{ roundValue(activeDataPoint.atl) }}</span>
-            <span class="hover-form">Form {{ signedValue(roundValue(activeDataPoint.tsb)) }}</span>
-          </div>
-        </div>
-        <div class="chart-dates" v-if="dateLabels.length">
-          <span v-for="label in dateLabels" :key="label.key">{{ label.label }}</span>
-        </div>
-        <div class="chart-legend">
-          <span><i class="legend-swatch legend-fitness"></i>Fitness</span>
-          <span><i class="legend-swatch legend-fatigue"></i>Fatigue</span>
-          <span><i class="legend-swatch legend-form"></i>Form</span>
-        </div>
-      </div>
-
-      <div class="load-secondary" :class="{ 'load-secondary-compact': mode === 'compact' }">
-        <article class="load-secondary-card">
-          <div class="secondary-title">{{ mode === 'compact' ? 'Current Load State' : 'Training Load Ratio' }}</div>
-          <div class="ratio-row">
-            <strong>{{ ratioValue }}</strong>
-            <span class="ratio-status" :class="`status-${loadData.ratio.status}`">{{ ratioLabel }}</span>
-          </div>
-          <div class="ratio-track">
-            <div class="ratio-segment ratio-segment-low"></div>
-            <div class="ratio-segment ratio-segment-balanced"></div>
-            <div class="ratio-segment ratio-segment-high"></div>
-            <div class="ratio-marker" :style="{ left: `${ratioMarker}%` }"></div>
-          </div>
-          <p class="secondary-copy">{{ mode === 'compact' ? conciseStateCopy : ratioCopy }}</p>
-        </article>
-
-        <article class="load-secondary-card">
-          <div class="secondary-title">{{ mode === 'compact' ? 'Planning Signal' : 'Training Load Focus' }}</div>
-          <div v-if="mode === 'compact'" class="compact-points">
-            <div class="compact-point">
-              <span class="compact-point-label">Best use</span>
-              <strong>{{ readiness.bestUse }}</strong>
-            </div>
-            <div class="compact-point">
-              <span class="compact-point-label">Focus bias</span>
-              <strong>{{ dominantFocus.label }} {{ dominantFocus.value }}%</strong>
-            </div>
-          </div>
-          <div class="focus-list">
+        <div class="load-bottom">
+          <article class="load-card">
+            <span class="load-label">Load ratio · ATL ÷ CTL</span>
+            <div class="ratio-value big"><strong>{{ ratioValue }}</strong><span :class="`status-${loadData.ratio.status}`">{{ ratioLabel }}</span></div>
+            <div class="ratio-track"><i></i><i></i><i></i><b :style="{ left: `${ratioMarker}%` }"></b></div>
+            <div class="ratio-scale"><span>Recovery</span><span>Building</span><span>Overreach</span></div>
+            <p class="load-copy">{{ ratioCopy }}</p>
+          </article>
+          <article class="load-card">
+            <span class="load-label">Intensity focus · {{ focusWindowLabel }}</span>
             <div v-for="item in focusRows" :key="item.key" class="focus-row">
-              <div class="focus-meta">
-                <span>{{ item.label }}</span>
-                <strong>{{ item.value }}%</strong>
-              </div>
-              <div class="focus-track">
-                <div class="focus-fill" :class="item.className" :style="{ width: `${item.value}%` }"></div>
-              </div>
+              <div class="focus-meta"><span>{{ item.label }}</span><strong>{{ item.value }}%</strong></div>
+              <div class="focus-track"><div class="focus-fill" :class="item.className" :style="{ width: `${item.value}%` }"></div></div>
             </div>
-          </div>
-        </article>
-      </div>
-    </div>
+          </article>
+          <article v-if="coverage" class="load-card">
+            <span class="load-label">Detailed endurance coverage</span>
+            <div class="ratio-value big"><strong>{{ coverage.detailed_pct || 0 }}<small>%</small></strong></div>
+            <div class="focus-track"><div class="focus-fill coverage-fill" :style="{ width: `${coverage.detailed_pct || 0}%` }"></div></div>
+            <p class="load-copy">{{ coverage.detailed_sessions }} sessions with streams · {{ coverage.fallback_sessions }} on fallback</p>
+          </article>
+        </div>
+      </template>
+    </template>
   </section>
 </template>
 
@@ -509,6 +368,8 @@ const formatHoverDate = (value) => {
 }
 
 const roundValue = (value) => Math.round(value ?? 0)
+// Dots sit outside the stretched SVG so they stay round.
+const dotStyle = (y) => ({ left: `${(activeChartPoint.value.x / 640) * 100}%`, top: `${(y / 190) * 100}%` })
 
 const signedValue = (value) => {
   if (value > 0) return `+${value}`
@@ -517,533 +378,106 @@ const signedValue = (value) => {
 </script>
 
 <style scoped>
-.load-card {
-  margin-bottom: 20px;
-  padding: 22px;
-  background: var(--surface);
+.load-panel { display: grid; gap: 24px; min-width: 0; }
+.load-empty { padding: 40px 0; text-align: center; color: var(--muted); }
+.load-top { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.3fr); gap: 12px; }
+.load-full .load-top { grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)); }
+.load-compact .load-top { gap: 12px; }
+.load-compact .readiness { grid-column: 1 / -1; }
+.readiness { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 14px; background: color-mix(in srgb, var(--tone) 8%, transparent); border: 1px solid color-mix(in srgb, var(--tone) 22%, transparent); --tone: var(--z2); min-width: 0; }
+.load-full .readiness { flex-direction: column; align-items: flex-start; gap: 10px; padding: 18px 20px; border-radius: 18px; }
+.readiness-steady { --tone: var(--ride); }
+.readiness-ready { --tone: var(--volt); }
+.readiness-rest { --tone: var(--warning); }
+.readiness-pill { flex: none; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 16%, transparent); color: var(--tone); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.readiness strong { display: block; font-size: 15px; font-weight: 600; }
+.load-full .readiness strong { font-size: 19px; }
+.readiness p { margin: 2px 0 0; font-size: 12px; line-height: 1.45; color: var(--muted-soft); }
+.load-tile { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 16px 18px; border-radius: 18px; background: rgb(var(--deep-rgb)); border: 1px solid var(--border); }
+.load-label { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.load-tile > strong { font-family: var(--font-display); font-size: 40px; font-style: italic; font-weight: 800; line-height: 1; }
+.load-full .load-tile > strong { font-size: 52px; }
+.load-tile small { font-size: 12px; color: var(--muted); }
+.tone-fitness { color: var(--tone-ride); }
+.tone-fatigue { color: var(--tone-run); }
+.tone-form { color: var(--z2); }
+.ratio-value { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.ratio-value strong { font-family: var(--font-display); font-size: 40px; font-style: italic; font-weight: 800; line-height: 1; }
+.ratio-value.big { margin-top: 10px; }
+.ratio-value.big strong { font-size: 52px; }
+.ratio-value small { font-size: 18px; font-style: normal; color: var(--muted-soft); }
+.ratio-value span { font-size: 12px; font-weight: 600; color: var(--muted-soft); }
+.status-low { color: var(--z2) !important; }
+.status-balanced { color: var(--tone-ride) !important; }
+.status-high { color: var(--danger-text) !important; }
+.ratio-track { position: relative; display: flex; gap: 3px; height: 6px; margin-top: 12px; }
+.ratio-track i { flex: 1; border-radius: 3px; }
+.ratio-track i:nth-child(1) { background: color-mix(in srgb, var(--z2) 40%, transparent); }
+.ratio-track i:nth-child(2) { background: color-mix(in srgb, var(--ride) 40%, transparent); }
+.ratio-track i:nth-child(3) { background: color-mix(in srgb, var(--danger) 40%, transparent); }
+.ratio-track b { position: absolute; top: -4px; width: 4px; height: 14px; margin-left: -2px; border-radius: 2px; background: var(--text); }
+.ratio-scale { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--muted); }
+.load-card { min-width: 0; padding: 24px 28px; border-radius: var(--radius-card); background: var(--surface); border: 1px solid var(--border); }
+.load-card-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.load-card-head > div { flex: 1; min-width: 0; }
+.load-card-head h3 { margin: 0; font-family: var(--font-display); font-size: 26px; font-style: italic; font-weight: 800; text-transform: uppercase; line-height: 1; }
+.load-card-head p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.load-icon { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 12px; color: var(--ride); background: color-mix(in srgb, var(--ride) 14%, transparent); }
+.chart-legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted-soft); }
+.chart-legend span { display: inline-flex; align-items: center; gap: 8px; }
+.chart-legend i { width: 4px; height: 14px; border-radius: 2px; }
+.legend-fitness { background: var(--ride); }
+.legend-fatigue { background: var(--run); }
+.legend-form { background: var(--z2); }
+.load-chart-wrap { position: relative; }
+.load-chart { display: block; width: 100%; height: 280px; overflow: visible; }
+.grid-line { stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.zero-axis-line { stroke: var(--border-strong); stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
+.fitness-area { fill: color-mix(in srgb, var(--ride) 12%, transparent); stroke: none; }
+.fitness-line, .fatigue-line, .form-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.fitness-line { stroke: var(--ride); }
+.fatigue-line { stroke: var(--run); stroke-width: 2; }
+.form-line { stroke: var(--z2); stroke-width: 2; }
+.focus-line { stroke: var(--border-strong); stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.hover-capture { fill: transparent; cursor: crosshair; }
+.active-dot { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 2px solid var(--surface); pointer-events: none; }
+.dot-fitness { background: var(--ride); }
+.dot-fatigue { background: var(--run); }
+.dot-form { background: var(--z2); }
+.chart-hover-card { position: absolute; z-index: 2; width: 184px; padding: 10px 12px; border-radius: 12px; background: var(--surface3); border: 1px solid var(--border-strong); pointer-events: none; }
+.hover-date { font-size: 12px; font-weight: 600; }
+.hover-stats { display: grid; gap: 2px; margin-top: 6px; font-size: 12px; }
+.hover-fitness { color: var(--tone-ride); }
+.hover-fatigue { color: var(--tone-run); }
+.hover-form { color: var(--z2); }
+.chart-dates { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--muted); }
+.load-bottom { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.load-copy { margin: 14px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted-soft); }
+.focus-row { margin-top: 14px; }
+.focus-meta { display: flex; justify-content: space-between; font-size: 13px; }
+.focus-meta strong { font-family: var(--font-display); font-size: 17px; }
+.focus-track { height: 8px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: var(--surface3); }
+.focus-fill { height: 100%; border-radius: 999px; }
+.focus-low-aerobic { background: var(--z2); }
+.focus-high-aerobic { background: var(--warning); }
+.focus-anaerobic { background: var(--danger); }
+.coverage-fill { background: var(--text); }
+.load-bottom .focus-track:first-of-type { margin-top: 12px; }
+@media (max-width: 1100px) {
+  .load-top, .load-full .load-top { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .load-full .readiness { grid-column: 1 / -1; }
+  .load-bottom { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .load-top, .load-full .load-top { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .ratio-tile { grid-column: 1 / -1; }
+  .readiness { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .load-tile { padding: 12px; }
+  .load-tile > strong, .load-full .load-tile > strong { font-size: 32px; }
+  .load-label { font-size: 10px; letter-spacing: .1em; }
+  .load-card { padding: 20px 16px; }
+  .load-card-head { flex-wrap: wrap; }
+  .chart-legend { width: 100%; }
+  .load-chart { height: 220px; }
 }
-
-.load-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-  margin-bottom: 16px;
-}
-
-.load-sub {
-  color: var(--text);
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.load-range {
-  color: var(--muted);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.load-empty {
-  padding: 28px 0;
-}
-
-.load-layout {
-  display: grid;
-  gap: 18px;
-}
-
-.compact-layout {
-  display: grid;
-  gap: 14px;
-}
-
-.compact-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 0.9fr;
-  gap: 14px;
-}
-
-.readiness-card {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-  padding: 16px 18px;
-  border-radius: 16px;
-  border: 1px solid rgb(var(--ov-rgb) / 0.05);
-  background: rgb(var(--panel-rgb) / 0.56);
-}
-
-.readiness-ready {
-  background: rgba(22, 163, 74, 0.1);
-}
-
-.readiness-fresh {
-  background: rgba(56, 189, 248, 0.08);
-}
-
-.readiness-steady {
-  background: rgba(245, 158, 11, 0.08);
-}
-
-.readiness-rest {
-  background: rgba(239, 68, 68, 0.1);
-}
-
-.readiness-label {
-  color: var(--muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
-}
-
-.readiness-title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-
-.readiness-copy {
-  color: var(--muted);
-  font-size: 13px;
-  max-width: 720px;
-}
-
-.readiness-meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.readiness-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.pill-ready { background: rgba(74, 222, 128, 0.18); color:oklch(from #86efac calc(l - var(--dim-l)) c h); }
-.pill-fresh { background: rgba(56, 189, 248, 0.18); color:oklch(from #7dd3fc calc(l - var(--dim-l)) c h); }
-.pill-steady { background: rgba(245, 158, 11, 0.18); color:oklch(from #fcd34d calc(l - var(--dim-l)) c h); }
-.pill-rest { background: rgba(239, 68, 68, 0.18); color: var(--danger-text); }
-
-.load-kpis {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.load-kpi {
-  background: rgb(var(--panel-rgb) / 0.52);
-  border: 1px solid rgb(var(--ov-rgb) / 0.05);
-  border-radius: 16px;
-  padding: 14px 16px;
-  display: grid;
-  gap: 2px;
-}
-
-.load-kpi-label,
-.load-kpi-meta {
-  font-size: 11px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.load-kpi strong {
-  font-family: var(--font-display);
-  font-size: 30px;
-  line-height: 1;
-}
-
-.fitness-kpi strong { color: var(--info-text); }
-.fatigue-kpi strong { color: var(--danger-text); }
-.form-kpi strong { color: var(--success-text); }
-
-.load-chart-wrap {
-  position: relative;
-  background: rgb(var(--panel-rgb) / 0.48);
-  border: 1px solid rgb(var(--ov-rgb) / 0.05);
-  border-radius: 18px;
-  padding: 14px 14px 10px;
-}
-
-.coverage-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 320px) auto;
-  gap: 14px;
-  align-items: center;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: rgb(var(--panel-rgb) / 0.52);
-  border: 1px solid rgb(var(--ov-rgb) / 0.05);
-}
-
-.coverage-title {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.coverage-copy {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.coverage-track {
-  height: 12px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgb(var(--ov-rgb) / 0.06);
-}
-
-.coverage-fill {
-  height: 100%;
-  border-radius: 999px;
-  background:linear-gradient(90deg, oklch(from #38bdf8 calc(l - var(--dim-l)) c h), oklch(from #22c55e calc(l - var(--dim-l)) c h));
-}
-
-.coverage-value {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--info-text);
-}
-
-.load-chart {
-  width: 100%;
-  height: 190px;
-  display: block;
-}
-
-.grid-line {
-  stroke: rgba(107, 122, 153, 0.22);
-  stroke-width: 1;
-}
-
-.zero-axis-line {
-  stroke: rgba(74, 222, 128, 0.28);
-  stroke-width: 1.25;
-  stroke-dasharray: 6 6;
-}
-
-.fitness-area {
-  fill:url(#fitnessFill);
-  stroke: none;
-}
-
-.fitness-line,
-.fatigue-line,
-.form-line {
-  fill: none;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.fitness-line { stroke:#3b82f6; }
-.fatigue-line { stroke:oklch(from #fb7185 calc(l - var(--dim-l)) c h); }
-.form-line { stroke:oklch(from #4ade80 calc(l - var(--dim-l)) c h); }
-.fitness-dot { fill:#3b82f6; }
-.fatigue-dot { fill:oklch(from #fb7185 calc(l - var(--dim-l)) c h); }
-.form-dot { fill:oklch(from #4ade80 calc(l - var(--dim-l)) c h); }
-.focus-line {
-  stroke: rgb(var(--ov-rgb) / 0.22);
-  stroke-width: 1.5;
-  stroke-dasharray: 4 6;
-}
-.active-dot {
-  stroke-width: 1.5;
-}
-.active-dot-fitness {
-  stroke: rgba(96, 165, 250, 0.35);
-}
-.active-dot-fatigue {
-  stroke: rgba(251, 113, 133, 0.35);
-}
-.active-dot-form {
-  stroke: rgba(74, 222, 128, 0.35);
-}
-.hover-capture {
-  fill: transparent;
-  pointer-events: all;
-}
-
-.chart-hover-card {
-  position: absolute;
-  z-index: 3;
-  min-width: 184px;
-  pointer-events: none;
-  display: inline-grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgb(var(--deep-rgb) / 0.92);
-  border: 1px solid rgb(var(--ov-rgb) / 0.08);
-  box-shadow: 0 12px 28px rgb(var(--shadow-rgb) / 0.28);
-  backdrop-filter: blur(10px);
-}
-
-.hover-date {
-  color: var(--text);
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.hover-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  font-size: 12px;
-}
-
-.hover-fitness { color: var(--info-text); }
-.hover-fatigue { color: var(--danger-text); }
-.hover-form { color: var(--success-text); }
-
-.chart-dates {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 10px;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.chart-legend {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 10px;
-}
-
-.chart-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.legend-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  display: inline-block;
-}
-
-.legend-fitness { background:#3b82f6; }
-.legend-fatigue { background:oklch(from #fb7185 calc(l - var(--dim-l)) c h); }
-.legend-form { background:oklch(from #4ade80 calc(l - var(--dim-l)) c h); }
-
-.load-secondary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.load-secondary-compact {
-  grid-template-columns: 1.15fr 1fr;
-}
-
-.load-secondary-card {
-  background: rgb(var(--panel-rgb) / 0.52);
-  border: 1px solid rgb(var(--ov-rgb) / 0.05);
-  border-radius: 16px;
-  padding: 16px;
-}
-
-.secondary-title {
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-
-.ratio-row {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.ratio-row strong {
-  font-family: var(--font-display);
-  font-size: 26px;
-  line-height: 1;
-}
-
-.ratio-status {
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.status-high { color: var(--danger-text); }
-.status-balanced { color: var(--warning-text); }
-.status-recovery { color: var(--success-text); }
-.status-low { color: var(--muted); }
-
-.ratio-track {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 4px;
-  margin-bottom: 10px;
-}
-
-.ratio-segment {
-  height: 10px;
-  border-radius: 999px;
-}
-
-.ratio-segment-low { background:linear-gradient(90deg, oklch(from #38bdf8 calc(l - var(--dim-l)) c h), #2563eb); }
-.ratio-segment-balanced { background:linear-gradient(90deg, oklch(from #14b8a6 calc(l - var(--dim-l)) c h), oklch(from #facc15 calc(l - var(--dim-l)) c h)); }
-.ratio-segment-high { background:linear-gradient(90deg, oklch(from #fb923c calc(l - var(--dim-l)) c h), #ef4444); }
-
-.ratio-marker {
-  position: absolute;
-  top: -4px;
-  width: 14px;
-  height: 18px;
-  transform: translateX(-50%);
-  border-radius: 999px;
-  background: var(--text);
-  border: 3px solid var(--deep);
-  box-shadow: 0 0 0 1px rgb(var(--ov-rgb) / 0.08);
-}
-
-.secondary-copy {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.compact-primary,
-.compact-planning {
-  padding: 16px;
-}
-
-.compact-kpis {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.compact-kpi {
-  display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgb(var(--ov-rgb) / 0.04);
-}
-
-.compact-kpi-label {
-  color: var(--muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.compact-kpi strong {
-  font-family: var(--font-display);
-  font-size: 24px;
-  line-height: 1;
-}
-
-.fitness-kpi-text { color: var(--info-text); }
-.fatigue-kpi-text { color: var(--danger-text); }
-.form-kpi-text { color: var(--success-text); }
-
-.compact-ratio-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-
-.compact-points {
-  display: grid;
-  gap: 10px;
-}
-
-.compact-point {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
-}
-
-.compact-point-label {
-  color: var(--muted);
-}
-
-.focus-list {
-  display: grid;
-  gap: 12px;
-}
-
-.focus-row {
-  display: grid;
-  gap: 6px;
-}
-
-.focus-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
-}
-
-.focus-track {
-  height: 10px;
-  border-radius: 999px;
-  background: rgb(var(--ov-rgb) / 0.06);
-  overflow: hidden;
-}
-
-.focus-fill {
-  height: 100%;
-  border-radius: 999px;
-}
-
-.focus-anaerobic { background:linear-gradient(90deg, oklch(from #fb7185 calc(l - var(--dim-l)) c h), #ef4444); }
-.focus-high-aerobic { background:linear-gradient(90deg, oklch(from #f59e0b calc(l - var(--dim-l)) c h), oklch(from #fb923c calc(l - var(--dim-l)) c h)); }
-.focus-low-aerobic { background:linear-gradient(90deg, oklch(from #38bdf8 calc(l - var(--dim-l)) c h), #3b82f6); }
-
-@media (max-width: 900px) {
-  .load-kpis,
-  .load-secondary {
-    grid-template-columns: 1fr;
-  }
-  .compact-grid,
-  .compact-kpis {
-    grid-template-columns: 1fr;
-  }
-  .readiness-card {
-    flex-direction: column;
-  }
-  .readiness-meta {
-    justify-content: flex-start;
-  }
-  .coverage-bar {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Full analysis shares the editorial hierarchy of Trends. */
-.load-immersive{padding:30px;border-radius:24px;background:var(--deep);overflow:hidden}.load-eyebrow{color:var(--text);font-size:9px;font-weight:800;letter-spacing:.16em;margin-bottom:10px}.load-immersive .card-title{font-family:var(--font-display);font-size:32px;line-height:1.2;letter-spacing:-1px;text-transform:none}.load-immersive .load-sub{margin-top:8px;max-width:560px;line-height:1.7}.load-immersive .load-range{border:1px solid #97b3ed26;background:#7ba3ff0c;padding:8px 12px;border-radius:99px}.load-immersive .load-layout{gap:24px}.load-immersive .readiness-card{background:transparent;border:0;border-left:3px solid oklch(from #8aa5ff calc(l - var(--dim-l)) c h);border-radius:0;padding:18px 22px}.load-immersive .readiness-title{font-family:var(--font-display);font-size:24px;letter-spacing:-.5px}.load-immersive .load-kpis{gap:0;margin:4px 0;border-block:1px solid var(--border)}.load-immersive .load-kpi{border:0;border-right:1px solid var(--border);border-radius:0;background:transparent;padding:24px;gap:10px}.load-immersive .load-kpi:last-child{border-right:0}.load-immersive .load-kpi strong{font-size:58px;letter-spacing:-3px;font-weight:500}.load-immersive .load-kpi-meta{font-size:9px;letter-spacing:.02em;text-transform:none}.load-immersive .load-kpi-label{font-size:10px;letter-spacing:.12em}.load-immersive .load-chart-wrap{grid-row:3;border:0;border-radius:0;background:transparent;padding:10px 0 16px}.load-chart-heading{display:flex;justify-content:space-between;gap:20px;align-items:end;padding:0 12px 20px}.load-chart-heading span{font-size:9px;letter-spacing:.13em;color:var(--text-soft);font-weight:750}.load-chart-heading h3{font-family:var(--font-display);font-size:24px;font-weight:500;letter-spacing:-.6px;margin-top:6px}.load-chart-heading p{font-size:11px;max-width:210px;color:var(--muted)}.load-immersive .load-chart{height:280px}.load-immersive .coverage-bar{grid-row:5;background:transparent;border:0;border-top:1px solid var(--border);border-radius:0;padding:18px 0 0}.load-immersive .load-secondary{gap:30px;border-top:1px solid var(--border);padding-top:24px}.load-immersive .load-secondary-card{border:0;border-radius:0;background:transparent;padding:4px 10px}.load-immersive .ratio-row>strong{font-size:42px;letter-spacing:-1.5px}.load-immersive .ratio-track{height:9px;margin-block:20px}.load-immersive .focus-track{height:8px}.load-immersive .chart-legend{justify-content:center;gap:24px;margin-top:18px}
-@media(max-width:720px){.load-immersive{padding:21px 16px}.load-immersive .load-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.load-immersive .load-kpi{padding:18px 10px}.load-immersive .load-kpi strong{font-size:38px;letter-spacing:-1.5px}.load-immersive .load-kpi-label{font-size:8px}.load-immersive .load-kpi-meta{font-size:8px}.load-chart-heading{flex-direction:column;align-items:start;gap:8px}.load-chart-heading h3{font-size:22px}.load-chart-heading p{max-width:none}.load-immersive .load-chart{height:240px}.load-immersive .load-secondary{gap:22px}.load-immersive .coverage-bar{grid-template-columns:1fr auto}.load-immersive .coverage-track{grid-column:1/-1;grid-row:2}}
 </style>

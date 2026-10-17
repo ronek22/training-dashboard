@@ -1,6 +1,6 @@
 <template>
   <div class="tiles">
-    <article v-for="tile in tiles" :key="tile.key" class="tile">
+    <article v-for="tile in tiles" :key="tile.key" class="tile" :class="{ 'has-stacked-unit': tile.unitBelow }">
       <span class="tile-label">{{ tile.label }}</span>
       <strong class="tile-value"><AnimatedNumber :value="tile.value" :cache-key="`tile:${tile.key}`" /><small v-if="tile.unit">{{ tile.unit }}</small></strong>
 
@@ -65,6 +65,8 @@ defineProps({ tiles: { type: Array, required: true } })
 .tile-value { font-family: var(--font-display); font-size: 44px; font-weight: 700; letter-spacing: .01em; }
 .tile-value small { font-family: var(--font-body); font-size: 14px; }
 .tile-caption { font-size: 12px; }
+.tile.has-stacked-unit .tile-value { display: grid; justify-items: start; gap: 2px; overflow: visible; white-space: normal; }
+.tile.has-stacked-unit .tile-value small { margin: 0; font-size: 16px; line-height: 1.1; }
 
 /* One row on desktop: every tile shares the card width. */
 .tiles { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }

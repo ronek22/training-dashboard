@@ -252,36 +252,50 @@ const openSeason = (column) => { if (column.hasData) router.push(`/season/${colu
     <template v-else-if="history">
       <header class="page-heading">
         <div>
-          <span class="page-kicker">Training history</span>
+          <span class="page-kicker">Review · All years</span>
           <h1 class="page-title">All years</h1>
+          <p v-if="years.length" class="page-sub">Every season since {{ years.at(-1).year }}, side by side.</p>
         </div>
-        <RouterLink to="/season" class="heading-action">Season in review <span aria-hidden="true">↗</span></RouterLink>
-      </header>
-      <header class="hero">
-        <div class="hero-row">
-          <span class="eyebrow">{{ history.label }} · every year</span>
+        <div class="heading-right">
           <nav class="tabs" aria-label="Sport">
             <button v-for="sport in history.sports" :key="sport.key" type="button" class="tab" :class="{ active: sport.key === history.sport }"
                     :aria-pressed="sport.key === history.sport" @click="chooseSport(sport.key)">{{ sport.label }}</button>
           </nav>
+          <RouterLink to="/season" class="heading-action">Season in review <span aria-hidden="true">↗</span></RouterLink>
         </div>
-
+      </header>
+      <header class="hero" :style="{ '--sport': sportColor }">
         <div v-if="years.length" class="hero-main">
-          <h2 class="hero-title">{{ history.label }}</h2>
-          <p class="hero-line">
-            <span class="hero-stat"><strong><AnimatedNumber :value="lifetime" :format="compact" :cache-key="`years:${history.sport}:${metric}:life`" :duration="1500" /></strong> {{ metricInfo.unit || 'sessions' }} in total</span>
-            <span class="hero-stat"><strong><AnimatedNumber :value="activeYears" :format="whole" :cache-key="`years:${history.sport}:active`" :duration="1100" /></strong> years with {{ history.label.toLowerCase() }}</span>
-            <span v-if="best" class="hero-stat"><strong><AnimatedNumber :value="best.value" :format="whole" :cache-key="`years:${history.sport}:${metric}:best`" :duration="1300" /></strong> {{ metricInfo.unit }} best year · {{ best.year }}</span>
-          </p>
-          <p v-if="pace && pace.passedOn" class="pace ahead">
-            <strong>{{ current.year }} is already your biggest year</strong>
-            <span>It passed {{ pace.year }}'s full {{ withUnit(pace.full) }} on {{ day(pace.passedOn) }}.</span>
-          </p>
-          <p v-else-if="pace" class="pace" :class="pace.delta >= 0 ? 'ahead' : 'behind'">
-            <strong><AnimatedNumber :value="Math.abs(pace.delta)" :format="whole" :cache-key="`years:${history.sport}:${metric}:pace`" :duration="1400" /> {{ metricInfo.unit || 'sessions' }} {{ pace.delta >= 0 ? 'ahead of' : 'behind' }} {{ pace.year }}'s pace</strong>
-            <span>{{ pace.year }}, your biggest earlier year, had {{ withUnit(pace.then) }} by {{ day(history.as_of) }} and finished on {{ withUnit(pace.full) }}.</span>
-          </p>
+          <div class="hero-name">
+            <span class="eyebrow">{{ history.label }} · every year</span>
+            <h2 class="hero-title">{{ history.label }}</h2>
+          </div>
+          <div class="hero-line">
+            <div class="hero-stat">
+              <span class="eyebrow">Lifetime</span>
+              <strong><AnimatedNumber :value="lifetime" :format="whole" :cache-key="`years:${history.sport}:${metric}:life`" :duration="1500" /><small v-if="metricInfo.unit"> {{ metricInfo.unit }}</small></strong>
+              <span>all {{ activeYears }} seasons</span>
+            </div>
+            <div v-if="best" class="hero-stat best">
+              <span class="eyebrow">Best year</span>
+              <strong><AnimatedNumber :value="best.value" :format="whole" :cache-key="`years:${history.sport}:${metric}:best`" :duration="1300" /><small v-if="metricInfo.unit"> {{ metricInfo.unit }}</small></strong>
+              <span>{{ best.year }}<template v-if="best.year === current?.year"> · so far</template></span>
+            </div>
+            <div class="hero-stat">
+              <span class="eyebrow">Seasons</span>
+              <strong><AnimatedNumber :value="activeYears" :format="whole" :cache-key="`years:${history.sport}:active`" :duration="1100" /></strong>
+              <span>with {{ history.label.toLowerCase() }}</span>
+            </div>
+          </div>
         </div>
+        <p v-if="years.length && pace && pace.passedOn" class="pace ahead">
+          <span class="pace-tag">Biggest year</span>
+          <span><b>{{ current.year }} is already your biggest year</b> — it passed {{ pace.year }}’s full {{ withUnit(pace.full) }} on {{ day(pace.passedOn) }}.</span>
+        </p>
+        <p v-else-if="years.length && pace" class="pace" :class="pace.delta >= 0 ? 'ahead' : 'behind'">
+          <strong>{{ pace.delta >= 0 ? '+' : '−' }}<AnimatedNumber :value="Math.abs(pace.delta)" :format="whole" :cache-key="`years:${history.sport}:${metric}:pace`" :duration="1400" /> {{ metricInfo.unit || 'sessions' }}</strong>
+          <span>{{ pace.delta >= 0 ? 'ahead of' : 'behind' }} <b>{{ pace.year }}’s pace</b> — it had {{ withUnit(pace.then) }} by {{ day(history.as_of) }} and finished on {{ withUnit(pace.full) }}.</span>
+        </p>
         <p v-else class="years-state">No {{ history.label.toLowerCase() }} logged yet.</p>
 
         <div v-if="years.length" class="controls">
@@ -319,7 +333,7 @@ const openSeason = (column) => { if (column.hasData) router.push(`/season/${colu
                 <i v-if="cell.trainerShare" class="heat-trainer" :style="{ width: `${cell.trainerShare}%` }" />
               </span>
               <span class="heat-total" role="cell">
-                <span class="heat-total-bar" :class="{ best: row.isBest }" :style="{ width: `${row.totalShare}%` }" />
+                <span class="heat-total-bar" :class="{ best: row.isBest }" :style="{ width: `calc((100% - 72px) * ${row.totalShare / 100})` }" />
                 <strong>{{ compact(row.total) }}</strong>
               </span>
             </div>
@@ -392,7 +406,7 @@ const openSeason = (column) => { if (column.hasData) router.push(`/season/${colu
               <text :x="BAR_LEFT - 8" :y="tick.y + 4" class="tick">{{ compact(tick.value) }}</text>
             </g>
             <g v-for="column in bars.columns" :key="column.year" class="bar-col"
-               :class="{ focus: focusYear === column.year, dim: focusYear && focusYear !== column.year, link: column.hasData, running: !column.complete }"
+               :class="{ focus: focusYear === column.year, dim: focusYear && focusYear !== column.year, link: column.hasData, running: !column.complete, best: best?.year === column.year }"
                @mouseenter="hoverYear = column.year" @mouseleave="hoverYear = null" @click="openSeason(column)">
               <title>{{ column.title }}</title>
               <rect :x="column.x - 6" :y="0" :width="column.width + 12" :height="BAR_H - BAR_BOTTOM" class="bar-hit" />
@@ -548,40 +562,100 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 }
 
 /* Multi-sport redesign layer */
-.years-page { max-width:1280px; padding:28px 32px 64px; }
-.years-page .page-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:22px; }
-.years-page .page-kicker { display:block; margin-bottom:8px; color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
-.years-page .page-title { margin:0; font:italic 800 64px/.92 var(--font-display); letter-spacing:-.02em; text-transform:uppercase; }
-.years-page .heading-action { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 18px; border:1px solid var(--border-strong); border-radius:999px; color:var(--text); font-size:13px; font-weight:650; text-decoration:none; }
-.years-page .heading-action:hover { border-color:var(--text-soft); background:var(--surface); }
-.years-page .hero { margin-bottom:20px; padding:24px; border:1px solid var(--border); border-radius:var(--radius-card); background:var(--surface); box-shadow:var(--shadow-card); }
-.years-page .eyebrow { color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.14em; }
-.years-page .tab { padding:7px 13px; border:1px solid var(--border); border-radius:999px; }
-.years-page .tab.active { color:var(--text); border-color:var(--border-strong); background:var(--surface2); }
-.years-page .hero-title { font-size:clamp(62px, 8vw, 96px); font-style:italic; font-weight:800; letter-spacing:-.04em; text-transform:uppercase; }
-.years-page .hero-stat strong { font-style:italic; font-weight:800; }
-.years-page .controls { margin-top:18px; }
-.years-page .segmented { border-color:var(--border); background:var(--deep); }
-.years-page .segmented button.active { background:var(--volt); color:var(--on-accent); }
-.years-page .block { margin-bottom:20px; padding:22px 24px; border-radius:var(--radius-card); box-shadow:none; }
-.years-page .block-head h2 { font-size:30px; font-style:italic; font-weight:800; letter-spacing:0; text-transform:uppercase; }
-.years-page .heat { gap:5px; }
-.years-page .heat-row { gap:5px; }
-.years-page .heat-cell { border-radius:8px; }
-.years-page .heat-cell.future { border-color:var(--border-strong); }
-.years-page .heat-year:focus-visible { outline:2px solid var(--volt); }
-.years-page .chip { padding:6px 12px 6px 9px; background:var(--deep); }
-.years-page .chip.on { border-color:color-mix(in srgb, var(--c) 65%, var(--border)); }
-.years-page button:focus-visible { outline:2px solid var(--volt); outline-offset:3px; }
-@media (max-width:760px) {
-  .years-page { padding:18px 16px 48px; }
-  .years-page .page-heading { align-items:flex-start; }
-  .years-page .page-title { font-size:48px; }
-  .years-page .heading-action { min-height:38px; padding:0 12px; }
-  .years-page .hero { padding:16px; }
-  .years-page .hero-title { font-size:58px; }
-  .years-page .block { padding:16px; }
-  .years-page .heat { overflow-x:auto; padding-bottom:4px; }
-  .years-page .heat-row { min-width:850px; }
+.years-page { max-width: 1260px; padding: 32px 40px 64px; }
+.years-page .page-heading { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; margin-bottom: 24px; }
+.years-page .page-kicker { display: block; color: var(--volt); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.years-page .page-title { margin: 6px 0 0; font: italic 800 72px/.95 var(--font-display); letter-spacing: 0; text-transform: uppercase; }
+.years-page .page-sub { margin-top: 6px; color: var(--text-soft); font-size: 15px; }
+.heading-right { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+.years-page .tabs { flex-wrap: nowrap; gap: 2px; padding: 3px; border: 1px solid var(--border-strong); border-radius: 999px; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+.years-page .tab { flex: none; padding: 7px 14px; border: 0; color: var(--muted); font-weight: 600; }
+.years-page .tab:hover { color: var(--text); background: transparent; }
+.years-page .tab.active { color: var(--text); background: var(--surface3); }
+.years-page .heading-action { display: inline-flex; flex: none; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text); font-size: 14px; text-decoration: none; }
+.years-page .heading-action:hover { border-color: var(--muted); background: transparent; }
+
+/* Hero: sport-tinted, stat tiles beside the name */
+.years-page .hero {
+  margin-bottom: 24px;
+  padding: 32px;
+  border: 1px solid color-mix(in srgb, var(--sport, var(--ride)) 35%, transparent);
+  border-radius: 28px;
+  background: radial-gradient(80% 160% at 0% 0%, color-mix(in srgb, var(--sport, var(--ride)) 24%, transparent) 0%, transparent 55%), var(--surface);
+  box-shadow: none;
+}
+.years-page .hero-main { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 20px 32px; margin-top: 0; }
+.hero-name { flex: none; }
+.years-page .eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; }
+.years-page .hero-name .eyebrow { color: var(--sport, var(--tone-ride)); }
+.years-page .hero-title { margin-top: 12px; font-size: clamp(72px, 8vw, 120px); font-style: italic; font-weight: 800; line-height: .85; letter-spacing: 0; text-transform: uppercase; }
+.years-page .hero-line { flex: 1 1 480px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.years-page .hero-stat { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 16px 18px; border-radius: 18px; background: rgb(var(--deep-rgb) / .7); font-size: 12px; color: var(--muted); }
+.years-page .hero-stat strong { margin: 0; font-size: 52px; font-style: italic; font-weight: 800; line-height: 1; letter-spacing: 0; white-space: nowrap; }
+.years-page .hero-stat strong small { font-size: 16px; font-style: normal; font-weight: 600; color: var(--text-soft); }
+.years-page .hero-stat.best strong { color: var(--volt); }
+.years-page .pace { align-items: center; gap: 14px; margin-top: 20px; padding: 14px 18px; border-radius: 16px; background: rgb(var(--deep-rgb) / .7); font-size: 14px; color: var(--text-soft); }
+.years-page .pace b { color: var(--text); }
+.years-page .pace strong { flex: none; font-family: var(--font-display); font-size: 32px; font-style: italic; font-weight: 800; color: var(--volt); white-space: nowrap; }
+.years-page .pace.behind strong { color: var(--warning); }
+.pace-tag { flex: none; padding: 4px 10px; border-radius: 999px; background: var(--volt); color: #0a0c11; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.years-page .controls { margin-top: 20px; }
+.years-page .segmented { border-color: var(--border-strong); background: transparent; }
+.years-page .segmented button { font-weight: 600; }
+.years-page .segmented button.active { background: var(--surface3); color: var(--text); }
+.years-page .legend { color: var(--text-soft); font-weight: 500; }
+.years-page .legend i { width: 4px; height: 12px; border-radius: 2px; }
+
+/* Blocks */
+.years-page .block { margin-bottom: 24px; padding: 24px 28px; border-color: var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; }
+.years-page .block-head { margin-bottom: 18px; }
+.years-page .block-head h2 { font-size: 28px; font-style: italic; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
+.years-page .head-note { color: var(--muted); font-size: 13px; }
+
+/* Heat grid */
+.years-page .heat { gap: 4px; }
+.years-page .heat-row { gap: 4px; }
+.years-page .heat-cell { border-radius: 6px; background: color-mix(in srgb, var(--sport) var(--a), var(--surface2)); }
+.years-page .heat-cell.blank { background: var(--surface2); }
+.years-page .heat-cell.future { border-color: var(--border); }
+.years-page .heat-year { color: var(--text-soft); }
+.years-page .heat-row.pinned .heat-year { border-color: var(--volt); background: transparent; color: var(--text); }
+.years-page .heat-year:focus-visible { outline: 2px solid var(--volt); }
+.years-page .heat-total-bar { top: 11px; bottom: 11px; max-width: none; background: var(--sport); }
+.years-page .heat-total::before { content: ''; position: absolute; left: 8px; right: 64px; top: 11px; bottom: 11px; border-radius: 4px; background: var(--surface2); }
+.years-page .heat-total-bar.best { background: var(--volt); }
+.years-page .heat-total strong { margin-left: auto; font-family: var(--font-display); font-size: 16px; }
+.years-page .heat-row:has(.heat-total-bar.best) .heat-total strong { color: var(--volt); }
+
+/* Race chart */
+.years-page .chip { padding: 6px 12px; border: 1px solid transparent; background: var(--surface2); color: var(--text-soft); font-weight: 600; }
+.years-page .chip i { display: none; }
+.years-page .chip.on { border-color: var(--c); background: transparent; color: var(--text); }
+.years-page .chip.on i { display: block; }
+.years-page .chip:hover { border-color: var(--border-strong); }
+.years-page .line { stroke: var(--surface3); stroke-width: 1.5; }
+.years-page .line-group.on .line { stroke-width: 3; }
+.years-page .end-label { font-family: var(--font-display); font-size: 13px; }
+.years-page .end-group .end { fill: var(--c); stroke: none; }
+
+/* Year bars: the best year is the win */
+.years-page .bar-col.best rect:not(.bar-hit) { fill: var(--volt); opacity: 1; }
+.years-page .bar-col.best .bar-total { fill: var(--volt); }
+.years-page .bar-total { fill: var(--text); font-family: var(--font-display); font-size: 13px; }
+.years-page .tip { border-color: var(--border-strong); background: var(--surface2); }
+.years-page button:focus-visible { outline: 2px solid var(--volt); outline-offset: 3px; }
+
+@media (max-width: 760px) {
+  .years-page { padding: 18px 16px 48px; }
+  .years-page .page-title { font-size: 48px; }
+  .years-page .heading-action { height: 38px; padding: 0 14px; }
+  .years-page .hero { padding: 18px; }
+  .years-page .hero-title { font-size: 60px; }
+  .years-page .hero-line { grid-template-columns: 1fr; flex-basis: 100%; }
+  .years-page .hero-stat strong { font-size: 38px; }
+  .years-page .pace { flex-wrap: wrap; }
+  .years-page .block { padding: 18px 16px; }
+  .years-page .heat { overflow-x: auto; padding-bottom: 4px; }
+  .years-page .heat-row { min-width: 850px; }
 }
 </style>

@@ -483,146 +483,38 @@
                   </div>
                 </dl>
 
-                <div class="day-tags">
-                  <span v-if="day.workout_intent_label" class="day-tag day-tag-intent">{{ day.workout_intent_label }}</span>
-                  <span v-if="day.template_label && day.template_label !== day.title" class="day-tag">{{ day.template_label }}</span>
-                  <router-link v-if="day.lift_volume_additions?.length" to="/strength" class="day-tag day-tag-volume" :title="liftVolumeTitle(day)">{{ liftVolumeLabel(day) }}</router-link>
-                  <button
-                    v-if="day.cycling_workout_name"
-                    type="button"
-                    class="day-tag day-tag-workout"
-                    :aria-label="`Open structured workout ${day.cycling_workout_name}`"
-                    @click="openPlannedSessionDetails(day)"
-                  >
-                    {{ day.cycling_workout_name }} · .zwo
-                  </button>
-                  <span v-if="day.fuel_plan" class="day-tag day-tag-fuel" :title="`${day.fuel_plan.summary}. ${day.fuel_plan.tip}`">Fuel ~{{ day.fuel_plan.carbs_g_per_h.target }} g/h · {{ day.fuel_plan.bottles }}× bottle</span>
-                  <span v-if="day.benchmark_label" class="day-tag day-tag-benchmark">{{ day.benchmark_label }}</span>
-                  <span
-                    v-if="day.modality_restriction && day.modality_restriction.status !== 'allowed'"
-                    class="day-tag day-tag-restriction"
-                  >
-                    {{ day.modality_restriction.label }} {{ day.modality_restriction.status }}
-                  </span>
-                </div>
-
-                <div class="day-notes">
-                  <p v-if="day.details" class="plan-day-details">{{ day.details }}</p>
-                  <p v-if="day.planning_rule_reason" class="plan-status-detail">{{ day.planning_rule_reason }}</p>
-                  <p v-if="day.recovery_cap" class="plan-status-detail recovery-cap" :class="{ 'is-over': day.comparison?.recovery_check?.within_cap === false }">Recovery cap: {{ day.recovery_cap.summary }}</p>
-                  <p v-if="statusDetail(day.comparison)" class="plan-status-detail">{{ statusDetail(day.comparison) }}</p>
-                  <button
-                    v-if="day.details || day.cycling_workout_name"
-                    type="button"
-                    class="plan-details-button"
-                    @click="openPlannedSessionDetails(day)"
-                  >
-                    View details <span aria-hidden="true">→</span>
-                  </button>
-                </div>
-              </div>
-
-              <div class="actual-block">
-                <div class="actual-block-head">
-                  <div class="plan-block-label">Completed</div>
-                  <button
-                    v-if="shouldShowLinkAction(day)"
-                    type="button"
-                    class="link-toggle-button"
-                    @click="toggleLinkEditor(day)"
-                  >
-                    {{ isLinkEditorOpen(day) ? 'Close link' : linkActionLabel(day) }}
-                  </button>
-                </div>
-                <div
-                  v-if="!day.comparison?.completed_activities?.length && isFutureDay(day.date)"
-                  class="actual-empty actual-empty-future"
-                >
-                  Upcoming day.
-                </div>
-                <div
-                  v-else-if="!day.comparison?.completed_activities?.length"
-                  class="actual-empty"
-                >
-                  {{ emptyStateCopy(day) }}
-                </div>
-                <div v-else class="actual-list">
-                  <div
-                    v-if="shouldShowExecutionQuality(day.comparison?.execution_quality)"
-                    class="execution-quality-chip"
-                    :class="`quality-${day.comparison.execution_quality.status}`"
-                  >
-                    <strong>{{ executionQualityLabel(day.comparison.execution_quality) }}</strong>
-                    <span v-if="executionQualityDetail(day.comparison.execution_quality)">
-                      {{ executionQualityDetail(day.comparison.execution_quality) }}
+                <div class="day-lower">
+                  <div class="day-tags">
+                    <span v-if="day.workout_intent_label" class="day-tag day-tag-intent">{{ day.workout_intent_label }}</span>
+                    <router-link v-if="day.lift_volume_additions?.length" to="/strength" class="day-tag day-tag-volume" :title="liftVolumeTitle(day)">{{ liftVolumeLabel(day) }}</router-link>
+                    <span v-if="day.fuel_plan" class="day-tag day-tag-fuel" :title="`${day.fuel_plan.summary}. ${day.fuel_plan.tip}`">Fuel ~{{ day.fuel_plan.carbs_g_per_h.target }} g/h</span>
+                    <span v-if="day.benchmark_label" class="day-tag day-tag-benchmark">{{ day.benchmark_label }}</span>
+                    <span
+                      v-if="day.modality_restriction && day.modality_restriction.status !== 'allowed'"
+                      class="day-tag day-tag-restriction"
+                    >
+                      {{ day.modality_restriction.label }} {{ day.modality_restriction.status }}
                     </span>
                   </div>
-                  <div
-                    v-for="activity in day.comparison.completed_activities"
-                    :key="activity.id"
-                    class="actual-item"
-                  >
-                    <div class="actual-main">
-                      <span class="actual-type" :title="activity.type">
-                        <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="15" />
-                      </span>
-                      <span class="actual-name">{{ activity.name || activity.type }}</span>
-                    </div>
-                    <div class="actual-meta">
-                      <span v-if="activity.distance_km">{{ Number(activity.distance_km).toFixed(1) }} km</span>
-                      <span v-if="activity.duration_min">{{ Math.round(activity.duration_min) }} min</span>
-                      <span v-if="activity.avg_pace">{{ activity.avg_pace }}</span>
-                      <span v-else-if="activity.avg_watts">{{ Math.round(activity.avg_watts) }} W</span>
-                    </div>
-                    <div v-if="activity.workout_intent_label" class="intent-row">
-                      <span class="intent-pill intent-actual">{{ activity.workout_intent_label }}</span>
-                    </div>
-                    <div v-if="activity.benchmark_label" class="intent-row">
-                      <span class="intent-pill benchmark-pill">{{ activity.benchmark_label }}</span>
-                    </div>
-                  </div>
-                </div>
 
-                <div v-if="actualProgress(day)" class="actual-progress">
-                  <i aria-hidden="true"><b :style="{ width: `${actualProgress(day).pct}%` }" /></i>
-                  <small>{{ actualProgress(day).text }}</small>
-                </div>
-                <div v-if="shouldShowLinkEditor(day) && isLinkEditorOpen(day)" class="link-editor">
-                  <div class="link-editor-top">
-                    <div>
-                      <div class="link-editor-title">Planned-to-actual link</div>
-                      <div class="link-editor-copy">{{ linkEditorCopy(day) }}</div>
-                    </div>
-                    <div class="link-editor-state" :class="`state-${day.comparison?.matching_strategy || 'unmatched'}`">
-                      {{ linkStateLabel(day.comparison?.matching_strategy) }}
-                    </div>
-                  </div>
-                  <div class="link-editor-row">
-                    <select
-                      class="link-select"
-                      :value="selectedLinkCandidate(day)"
-                      @change="setSelectedLinkCandidate(day, $event.target.value)"
-                    >
-                      <option value="">No explicit link</option>
-                      <option
-                        v-for="activity in uniqueLinkCandidates(day)"
-                        :key="`${day.session_id}-${activity.id}`"
-                        :value="activity.id"
-                      >
-                        {{ formatLinkCandidate(activity) }}
-                      </option>
-                    </select>
+                  <div class="day-notes">
+                    <p v-if="day.details" class="plan-day-details">{{ day.details }}</p>
+                    <p v-if="day.planning_rule_reason" class="plan-status-detail">{{ day.planning_rule_reason }}</p>
+                    <p v-if="day.recovery_cap" class="plan-status-detail recovery-cap" :class="{ 'is-over': day.comparison?.recovery_check?.within_cap === false }">Recovery cap: {{ day.recovery_cap.summary }}</p>
+                    <p v-if="statusDetail(day.comparison)" class="plan-status-detail">{{ statusDetail(day.comparison) }}</p>
                     <button
+                      v-if="day.details || day.cycling_workout_name || hasCompletedActivity(day)"
                       type="button"
-                      class="ghost-button link-save-button"
-                      :disabled="linkingSessionId === day.session_id || !canSaveLink(day)"
-                      @click="savePlanLink(day)"
+                      class="plan-details-button"
+                      @click="openPlannedSessionDetails(day)"
                     >
-                      {{ linkingSessionId === day.session_id ? 'Saving…' : 'Save link' }}
+                      Workout details <span aria-hidden="true">↗</span>
                     </button>
                   </div>
                 </div>
               </div>
+
+
             </article>
           </div>
         </div>
@@ -937,6 +829,9 @@
               <div class="workout-chips">
                 <span v-for="chip in [plannedSessionDialog.workout_intent_label, plannedSessionDialog.template_label, plannedSessionDialog.benchmark_label].filter((chip) => chip && chip !== plannedSessionDialog.title)" :key="chip" class="workout-chip">{{ chip }}</span>
                 <span class="session-match-status" :class="`match-${sessionMatch(plannedSessionDialog).tone}`"><span aria-hidden="true">{{ sessionMatch(plannedSessionDialog).icon }}</span>{{ sessionMatch(plannedSessionDialog).label }}</span>
+                <button v-if="shouldShowLinkAction(plannedSessionDialog)" type="button" class="workout-link-toggle" @click="toggleLinkEditor(plannedSessionDialog)">
+                  {{ isLinkEditorOpen(plannedSessionDialog) ? 'Close link' : linkActionLabel(plannedSessionDialog) }}
+                </button>
               </div>
               <dl v-if="workoutBriefTargets.length" class="workout-targets"><div v-for="target in workoutBriefTargets" :key="target.label"><dt>{{ target.label }}</dt><dd>{{ target.value }}</dd></div></dl>
             </header>
@@ -958,6 +853,48 @@
                 <aside v-if="plannedSessionDetailView.optional.length" class="workout-alternative"><h3><svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><path d="M3 5.5h9.5M10 3l2.5 2.5L10 8M13 10.5H3.5M6 8l-2.5 2.5L6 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>If you need to adapt</h3><p v-for="(item, index) in plannedSessionDetailView.optional" :key="index">{{ item }}</p></aside>
               </template>
               <p v-else class="workout-no-instructions">No additional instructions for this session.</p>
+              <section v-if="hasCompletedActivity(plannedSessionDialog)" class="workout-completed" aria-labelledby="completed-workout-title">
+                <div class="workout-completed-head">
+                  <h3 id="completed-workout-title">Completed activity</h3>
+                  <span>{{ plannedSessionDialog.comparison.completed_activities.length }} {{ plannedSessionDialog.comparison.completed_activities.length === 1 ? 'activity' : 'activities' }}</span>
+                </div>
+                <div v-if="shouldShowExecutionQuality(plannedSessionDialog.comparison?.execution_quality)" class="execution-quality-chip" :class="`quality-${plannedSessionDialog.comparison.execution_quality.status}`">
+                  <strong>{{ executionQualityLabel(plannedSessionDialog.comparison.execution_quality) }}</strong>
+                  <span v-if="executionQualityDetail(plannedSessionDialog.comparison.execution_quality)">{{ executionQualityDetail(plannedSessionDialog.comparison.execution_quality) }}</span>
+                </div>
+                <article v-for="activity in plannedSessionDialog.comparison.completed_activities" :key="activity.id" class="workout-completed-activity">
+                  <div class="workout-completed-name"><ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="16" /><strong>{{ activity.name || activity.type }}</strong></div>
+                  <div class="workout-completed-stats">
+                    <span v-if="activity.distance_km">{{ Number(activity.distance_km).toFixed(1) }} km</span>
+                    <span v-if="activity.duration_min">{{ Math.round(activity.duration_min) }} min</span>
+                    <span v-if="activity.avg_pace">{{ activity.avg_pace }}</span>
+                    <span v-else-if="activity.avg_watts">{{ Math.round(activity.avg_watts) }} W</span>
+                  </div>
+                  <div v-if="activity.workout_intent_label || activity.benchmark_label" class="workout-completed-tags">
+                    <span v-if="activity.workout_intent_label" class="intent-pill intent-actual">{{ activity.workout_intent_label }}</span>
+                    <span v-if="activity.benchmark_label" class="intent-pill benchmark-pill">{{ activity.benchmark_label }}</span>
+                  </div>
+                </article>
+                <div v-if="actualProgress(plannedSessionDialog)" class="actual-progress">
+                  <i aria-hidden="true"><b :style="{ width: `${actualProgress(plannedSessionDialog).pct}%` }" /></i>
+                  <small>{{ actualProgress(plannedSessionDialog).text }}</small>
+                </div>
+              </section>
+              <section v-if="shouldShowLinkEditor(plannedSessionDialog) && isLinkEditorOpen(plannedSessionDialog)" class="workout-link-editor">
+                <div>
+                  <h3>Planned-to-actual link</h3>
+                  <p>{{ linkEditorCopy(plannedSessionDialog) }}</p>
+                </div>
+                <div class="workout-link-editor-row">
+                  <select class="link-select" :value="selectedLinkCandidate(plannedSessionDialog)" @change="setSelectedLinkCandidate(plannedSessionDialog, $event.target.value)">
+                    <option value="">No explicit link</option>
+                    <option v-for="activity in uniqueLinkCandidates(plannedSessionDialog)" :key="`${plannedSessionDialog.session_id}-${activity.id}`" :value="activity.id">{{ formatLinkCandidate(activity) }}</option>
+                  </select>
+                  <button type="button" class="ghost-button link-save-button" :disabled="linkingSessionId === plannedSessionDialog.session_id || !canSaveLink(plannedSessionDialog)" @click="savePlanLink(plannedSessionDialog)">
+                    {{ linkingSessionId === plannedSessionDialog.session_id ? 'Saving…' : 'Save link' }}
+                  </button>
+                </div>
+              </section>
               <details v-if="plannedSessionDialog.planning_rule_reason || statusDetail(plannedSessionDialog.comparison) || plannedSessionDialog.goal_links?.length" class="workout-context"><summary>Why this session <span>Goals &amp; plan context</span></summary><div class="workout-context-content"><p v-if="plannedSessionDialog.planning_rule_reason">{{ plannedSessionDialog.planning_rule_reason }}</p><p v-if="statusDetail(plannedSessionDialog.comparison)">{{ statusDetail(plannedSessionDialog.comparison) }}</p><div v-for="goalLink in plannedSessionDialog.goal_links || []" :key="goalLink.goal_id" class="workout-goal"><div><strong>{{ goalLink.goal_title }}</strong><span v-if="goalLink.risk_label">{{ goalLink.risk_label }}</span></div><p>{{ [...new Set([goalLink.requirement_label, goalLink.support_reason].filter(Boolean))].join(' · ') }}</p></div></div></details>
             </div>
           </div>
@@ -5461,4 +5398,42 @@ const savePlanLink = async (day) => {
 @media (max-width: 640px) { .shape-days { grid-template-columns: repeat(2, minmax(0, 1fr)); } .plan-reasoning .revision-timeline > summary { position: static; } }
 .plan-reasoning .shape-days li { display: grid; grid-template-columns: none; align-content: start; gap: 6px; padding: 10px 12px; border-top: 0; }
 .plan-reasoning .shape-days li:first-child { padding-top: 10px; }
+
+/* Completed workouts live in the session modal, keeping the week cards focused on the plan. */
+.plan-page .plan-grid { grid-template-rows: repeat(4, auto); align-content: start; }
+.plan-page .plan-grid > .plan-day { grid-row: 1 / span 4; }
+.plan-page .day-lower { display: grid; grid-row: 4; grid-column: 1; align-content: start; gap: 8px; min-width: 0; }
+.workout-link-toggle { min-height: 32px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; padding: 0 12px; color: var(--muted-soft); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.workout-link-toggle:hover { color: var(--text); border-color: var(--workout-accent); }
+.workout-completed { display: grid; gap: 12px; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 18px; }
+.workout-completed-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.workout-completed-head h3, .workout-link-editor h3 { color: var(--text); font-size: 14px; font-weight: 700; }
+.workout-completed-head > span { color: var(--muted); font-size: 12px; }
+.workout-completed-activity { display: grid; gap: 8px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface2); padding: 14px 16px; }
+.workout-completed-name { display: flex; align-items: center; gap: 9px; min-width: 0; color: var(--workout-accent); }
+.workout-completed-name strong { overflow: hidden; color: var(--text); font-size: 14px; text-overflow: ellipsis; }
+.workout-completed-stats { display: flex; flex-wrap: wrap; gap: 8px 14px; color: var(--muted-soft); font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+.workout-completed-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.workout-completed .actual-progress { margin-top: 0; }
+.workout-link-editor { display: grid; gap: 12px; margin-top: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface2); padding: 16px; }
+.workout-link-editor p { margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.workout-link-editor-row { display: flex; align-items: center; gap: 10px; }
+.workout-link-editor-row .link-select { flex: 1; min-width: 0; }
+@media (max-width: 520px) { .workout-link-editor-row { align-items: stretch; flex-direction: column; } }
+
+/* Plan card lower half: keep one strong intent cue, a short preview, and a clear modal action. */
+.plan-page .day-tags { align-items: center; gap: 6px 8px; min-height: 30px; }
+.plan-page .day-tag { max-width: min(100%, 220px); min-height: 25px; padding-inline: 9px; font-size: 11px; }
+.plan-page .day-tag-intent { border-radius: 999px; }
+.plan-page .day-tag-fuel { border: 0; background: color-mix(in srgb, var(--z2) 10%, transparent); color: var(--tone-z2, var(--z2)); }
+.plan-page .day-notes { gap: 8px; }
+.plan-page .day-notes .plan-day-details { -webkit-line-clamp: 2; font-size: 12px; line-height: 1.5; }
+.plan-page .day-notes .plan-status-detail { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.plan-page .day-notes .plan-details-button {
+  display: inline-flex; align-items: center; justify-self: start; gap: 9px; min-height: 34px; margin-top: 2px;
+  border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; padding: 0 12px;
+  color: var(--day-accent); font-size: 12px; font-weight: 650; text-decoration: none; transition: background .15s ease, border-color .15s ease;
+}
+.plan-page .day-notes .plan-details-button:hover { border-color: color-mix(in srgb, var(--day-accent) 55%, var(--border-strong)); background: color-mix(in srgb, var(--day-accent) 8%, transparent); text-decoration: none; }
+.plan-page .day-notes .plan-details-button span { font-size: 14px; }
 </style>

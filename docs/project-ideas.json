@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-16T10:46:48+02:00",
-  "summary": "Reviewed recent commit and worktree summaries, current-state notes, the roadmap index and its open threads, and all 56 existing proposal scopes. Recent completed work now covers milestone celebrations, optional strength phases, winter-arc planning, food targets, Sunday planning, the data-quality inbox, backups, mountain re-entry and other items that overlap prior proposals. Inspected the milestone, strength-phase and Sunday-flow source declarations and current-state evidence. The remaining open threads are already explicit in the roadmap. No sufficiently distinct new proposal was identified. Source/documentation review only; no application tests or model calls were run, and no credentials, databases or private training records were opened.",
+  "reviewed_at": "2026-10-17T09:31:44+02:00",
+  "summary": "Reviewed recent commits and worktree summary, current-state documentation, roadmap index and its two open threads, and all 56 existing proposal scopes. Recent changes include the multisport analysis redesign and milestone celebrations; the current uncommitted recovery change aligns with the existing ache follow-up proposal. Inspected analysis-page accessibility labels and focus states, plus the milestone implementation notes. General navigation accessibility and card-linked coaching already have proposals, and the remaining roadmap threads are explicit. No sufficiently distinct new proposal was identified. Source/documentation review only; no application tests or model calls were run, and no credentials, databases or private training records were opened.",
   "ideas": [
     {
       "id": "dependable-project-checks",

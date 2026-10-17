@@ -112,6 +112,7 @@
         v-if="weekDays.length"
         :days="weekDays"
         :summary="weekActualSummary"
+        :sport-totals="weekSportTotals"
         :planned-minutes="weekPlannedMinutes"
         :planned-label="formatDuration(weekPlannedMinutes)"
         :progress-pct="weekProgressPct"
@@ -779,6 +780,20 @@ const weekActualSummary = computed(() => {
     distance: distance ? `${formatCompactNumber(distance)} km` : '0 km',
     duration: formatDuration(duration),
     sessions: weekActualActivities.value.length,
+  }
+})
+const weekSportTotals = computed(() => {
+  const totals = { rideKm: 0, runKm: 0, strengthWorkouts: 0 }
+  for (const activity of weekActualActivities.value) {
+    const sport = activityTone(activity.type)
+    if (sport === 'ride') totals.rideKm += Number(activity.distance_km || 0)
+    if (sport === 'run') totals.runKm += Number(activity.distance_km || 0)
+    if (sport === 'strength') totals.strengthWorkouts += 1
+  }
+  return {
+    rideKm: formatCompactNumber(totals.rideKm),
+    runKm: formatCompactNumber(totals.runKm),
+    strengthWorkouts: totals.strengthWorkouts,
   }
 })
 const weekProgressPct = computed(() => {

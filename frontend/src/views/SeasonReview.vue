@@ -97,6 +97,11 @@ const SPORTS = {
 // ---- hero -----------------------------------------------------------------
 const totals = computed(() => review.value?.totals)
 const previousYear = computed(() => totals.value?.previous_year)
+const heroStats = computed(() => totals.value ? [
+  { key: 'sessions', label: 'Sessions', value: totals.value.total.sessions, duration: 1400 },
+  { key: 'hours', label: 'Hours', value: totals.value.total.hours, duration: 1600 },
+  { key: 'active_days', label: 'Days you showed up', value: totals.value.total.active_days, duration: 1800 },
+] : [])
 const subtitle = computed(() => {
   if (!review.value) return ''
   return review.value.complete ? `1 January – 31 December ${review.value.year}` : `So far, up to ${day(review.value.as_of)}`
@@ -141,7 +146,6 @@ const story = computed(() => {
     ...item,
     i: index,
     height: item.hours ? Math.max(4, (item.hours / max) * 100) : 0,
-    segments: SPORT_ORDER.filter((key) => item.sports[key]).map((key) => ({ key, color: SPORTS[key].color, share: (item.sports[key] / item.hours) * 100 })),
     title: item.available
       ? `${item.year}: ${whole(item.hours)} h, ${item.sessions} sessions, ${item.active_days} active days`
       : `${item.year}: nothing logged`,
@@ -373,44 +377,40 @@ const RING = 2 * Math.PI * 34
     <template v-else>
       <header class="page-heading">
         <div>
-          <span class="page-kicker">Training history</span>
+          <span class="page-kicker">Review · Season</span>
           <h1 class="page-title">Season in review</h1>
+          <p class="page-sub">{{ subtitle }}</p>
         </div>
-        <RouterLink to="/years" class="heading-action">All years <span aria-hidden="true">↗</span></RouterLink>
-      </header>
-      <!-- Hero ------------------------------------------------------------- -->
-      <header class="hero">
-        <div class="hero-top">
-          <span class="eyebrow">{{ subtitle }}</span>
+        <div class="heading-right">
           <nav v-if="story.length > 1" class="story" aria-label="Your seasons, hours by year">
             <button v-for="item in story" :key="item.year" type="button" class="story-year"
                     :class="{ active: item.year === review.year, closed: !item.available }" :disabled="!item.available"
                     :aria-pressed="item.year === review.year" :aria-label="item.title" :title="item.title" @click="chooseYear(item.year)">
               <span class="story-track">
-                <span class="story-bar" :style="{ height: `${item.height}%`, '--i': item.i }">
-                  <span v-for="segment in item.segments" :key="segment.key" :style="{ flexBasis: `${segment.share}%`, background: segment.color }" />
-                </span>
+                <span class="story-bar" :style="{ height: `${item.height}%`, '--i': item.i }" />
               </span>
-              <span class="story-label">{{ item.year }}</span>
+              <span class="story-label">’{{ String(item.year).slice(2) }}</span>
             </button>
           </nav>
+          <RouterLink to="/years" class="heading-action">All years <span aria-hidden="true">↗</span></RouterLink>
         </div>
+      </header>
+      <!-- Hero ------------------------------------------------------------- -->
+      <header class="hero">
         <div class="hero-main">
           <h2 :key="review.year" class="hero-year">{{ review.year }}</h2>
-          <p class="hero-line">
-            <span class="hero-stat"><strong><AnimatedNumber :value="totals.total.sessions" :format="whole" :cache-key="`season:${review.year}:sessions`" :duration="1400" /></strong> sessions</span>
-            <span class="hero-stat"><strong><AnimatedNumber :value="totals.total.hours" :format="whole" :cache-key="`season:${review.year}:hours`" :duration="1600" /></strong> hours</span>
-            <span class="hero-stat"><strong><AnimatedNumber :value="totals.total.active_days" :format="whole" :cache-key="`season:${review.year}:days`" :duration="1800" /></strong> days you showed up</span>
-          </p>
-          <p v-if="previousYear" class="hero-versus">
-            <span v-for="key in ['sessions', 'hours', 'active_days']" :key="key" class="pill" :class="tone(totals.total.change[key])">
-              {{ change(totals.total.change[key]) }} {{ key === 'active_days' ? 'active days' : key }}
-            </span>
-            <span class="muted">vs {{ previousYear }}<template v-if="comparedUntil"> by {{ comparedUntil }}</template></span>
-          </p>
+          <div class="hero-line">
+            <div v-for="stat in heroStats" :key="stat.key" class="hero-stat">
+              <span class="eyebrow">{{ stat.label }}</span>
+              <strong><AnimatedNumber :value="stat.value" :format="whole" :cache-key="`season:${review.year}:${stat.key}`" :duration="stat.duration" /></strong>
+              <span v-if="previousYear" class="hero-change"><span class="pill" :class="tone(totals.total.change[stat.key])">{{ change(totals.total.change[stat.key]) }}</span> vs {{ previousYear }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="pace" class="hero-notes">
           <p v-if="pace" class="pace" :class="pace.delta >= 0 ? 'ahead' : 'behind'">
-            <strong><AnimatedNumber :value="Math.abs(pace.delta)" :format="whole" :cache-key="`season:${review.year}:pace`" :duration="1500" /> h {{ pace.delta >= 0 ? 'ahead of' : 'behind' }} {{ pace.year }}'s pace</strong>
-            <span>{{ pace.year }}, your biggest year before this one, had {{ whole(pace.hours) }} h by {{ comparedUntil }} and finished on {{ whole(pace.full_hours) }} h.</span>
+            <strong>{{ pace.delta >= 0 ? '+' : '−' }}<AnimatedNumber :value="Math.abs(pace.delta)" :format="whole" :cache-key="`season:${review.year}:pace`" :duration="1500" /> h</strong>
+            <span>{{ pace.delta >= 0 ? 'ahead of' : 'behind' }} <b>{{ pace.year }}’s pace</b> — your biggest year before this one had {{ whole(pace.hours) }} h by {{ comparedUntil }} and finished on {{ whole(pace.full_hours) }} h.</span>
           </p>
         </div>
 
@@ -1074,46 +1074,160 @@ a.step-to:hover strong { color: var(--season-ride); }
 button:focus-visible, a:focus-visible { outline: 2px solid var(--volt); outline-offset: 3px; }
 
 /* Multi-sport redesign layer */
-.season-page { max-width: 1280px; padding: 28px 32px 64px; }
-.season-page .page-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:22px; }
-.season-page .page-kicker { display:block; margin-bottom:8px; color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
-.season-page .page-title { margin:0; font:italic 800 64px/.92 var(--font-display); letter-spacing:-.02em; text-transform:uppercase; }
-.season-page .heading-action { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 18px; border:1px solid var(--border-strong); border-radius:999px; color:var(--text); font-size:13px; font-weight:650; text-decoration:none; }
-.season-page .heading-action:hover { border-color:var(--text-soft); background:var(--surface); }
-.season-page .hero { margin-bottom:24px; padding:24px; border:1px solid var(--border); border-radius:var(--radius-card); background:var(--surface); box-shadow:var(--shadow-card); }
-.season-page .hero-top { flex-direction:row; align-items:center; }
-.season-page .eyebrow { color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.14em; }
-.season-page .story { grid-auto-columns:minmax(40px, 1fr); max-width:min(680px, 70%); }
-.season-page .story-year { border-color:transparent; border-radius:var(--radius-panel); }
-.season-page .story-year.active { border-color:var(--border-strong); background:var(--surface2); }
-.season-page .story-year.active .story-label { color:var(--text); }
-.season-page .hero-main { margin-top:24px; }
-.season-page .hero-year { font-size:clamp(96px, 11vw, 148px); font-style:italic; font-weight:800; letter-spacing:-.045em; }
-.season-page .hero-stat strong { font-style:italic; font-weight:800; }
-.season-page .hero-versus { align-items:center; }
-.season-page .pill { border:1px solid var(--border); background:var(--surface2); }
-.season-page .pill.up { color:var(--success-text); background:color-mix(in srgb, var(--success) 12%, var(--surface)); }
-.season-page .pill.down { color:var(--warning-text); background:color-mix(in srgb, var(--warning) 12%, var(--surface)); }
-.season-page .year-grid-wrap { margin-top:22px; padding:18px; border-radius:var(--radius-panel); background:var(--deep); box-shadow:none; }
-.season-page .block { margin-bottom:20px; padding:22px 24px; border-radius:var(--radius-card); box-shadow:none; }
-.season-page .block-head h2 { font-size:30px; font-style:italic; font-weight:800; letter-spacing:0; text-transform:uppercase; }
-.season-page .more-link { color:var(--text-soft); }
-.season-page .milestone, .season-page .season-best, .season-page .badge { border-radius:var(--radius-panel); }
-.season-page .season-best { border:1px solid var(--border); background:var(--deep); }
-.season-page .coach { border-left:3px solid var(--volt); }
-.season-page .primary { border-radius:999px; background:var(--volt); color:var(--on-accent); }
-.season-page button:focus-visible, .season-page a:focus-visible { outline-color:var(--volt); }
-@media (max-width:760px) {
-  .season-page { padding:18px 16px 48px; }
-  .season-page .page-heading { align-items:flex-start; }
-  .season-page .page-title { font-size:48px; }
-  .season-page .heading-action { min-height:38px; padding:0 12px; }
-  .season-page .hero { padding:16px; }
-  .season-page .hero-top { align-items:flex-start; flex-direction:column; }
-  .season-page .story { max-width:100%; width:100%; }
-  .season-page .hero-year { font-size:82px; }
-  .season-page .hero-stat strong { font-size:32px; }
-  .season-page .block { padding:18px 16px; }
+.season-page { max-width: 1260px; padding: 32px 40px 64px; }
+.season-page .page-heading { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; margin-bottom: 24px; }
+.season-page .page-kicker { display: block; color: var(--volt); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.season-page .page-title { margin: 6px 0 0; font: italic 800 72px/.95 var(--font-display); letter-spacing: 0; text-transform: uppercase; }
+.season-page .page-sub { margin-top: 6px; color: var(--text-soft); font-size: 15px; }
+.heading-right { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; }
+.season-page .heading-action { display: inline-flex; flex: none; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text); font-size: 14px; text-decoration: none; }
+.season-page .heading-action:hover { border-color: var(--muted); }
+
+/* Year strip: compact, the chosen season in volt */
+.season-page .story { display: flex; gap: 2px; padding: 4px; padding-top: 4px; border: 1px solid var(--border); border-radius: 14px; overflow-x: auto; max-width: 100%; }
+.season-page .story-year { flex: none; gap: 6px; padding: 6px 3px; border: 0; border-radius: 10px; }
+.season-page .story-year.active { background: var(--surface2); box-shadow: inset 0 0 0 1px var(--volt); }
+.season-page .story-track { height: 44px; width: 16px; }
+.season-page .story-bar { width: 100%; border-radius: 3px; opacity: 1; background: var(--surface3); }
+.season-page .story-year:hover:not(:disabled) .story-bar { background: var(--muted); }
+.season-page .story-year.active .story-bar { background: var(--volt); }
+.season-page .story-label { font-size: 10px; font-weight: 500; color: var(--muted); }
+.season-page .story-year.active .story-label { color: var(--text); font-weight: 700; }
+
+/* Hero */
+.season-page .hero {
+  margin-bottom: 24px;
+  padding: 32px;
+  border: 1px solid color-mix(in srgb, var(--volt) 28%, transparent);
+  border-radius: 28px;
+  background:
+    radial-gradient(80% 140% at 0% 0%, color-mix(in srgb, var(--volt) 14%, transparent) 0%, transparent 55%),
+    radial-gradient(60% 120% at 100% 100%, color-mix(in srgb, var(--ride) 16%, transparent) 0%, transparent 60%),
+    var(--surface);
+  box-shadow: none;
+}
+.season-page .hero-top { display: none; }
+.season-page .hero-main { align-items: flex-end; gap: 20px 32px; margin-top: 0; }
+.season-page .hero-year { font-size: clamp(110px, 12vw, 176px); font-style: italic; font-weight: 800; line-height: .82; letter-spacing: -.01em; }
+.season-page .hero-line { flex: 1 1 520px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 0; }
+.season-page .hero-stat { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border-radius: 18px; background: rgb(var(--deep-rgb) / .7); min-width: 0; }
+.season-page .hero-stat .eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; }
+.season-page .hero-stat strong { margin: 0; font-size: 52px; font-style: italic; font-weight: 800; letter-spacing: 0; }
+.hero-change { font-size: 12px; color: var(--muted); }
+.season-page .pill { border: 0; padding: 4px 10px; }
+.season-page .pill.up { color: var(--volt); background: color-mix(in srgb, var(--volt) 14%, transparent); }
+.season-page .pill.down { color: var(--danger-text); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.season-page .pill.flat, .season-page .pill.new { color: var(--tone-recovery); background: color-mix(in srgb, var(--tone-recovery) 14%, transparent); }
+.hero-notes { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+.season-page .pace { flex: 1 1 360px; align-items: center; gap: 14px; margin: 0; padding: 14px 18px; border: 0; border-radius: 16px; background: rgb(var(--deep-rgb) / .7); font-size: 13px; line-height: 1.45; }
+.season-page .pace strong { flex: none; font-size: 32px; font-style: italic; font-weight: 800; white-space: nowrap; color: var(--volt); }
+.season-page .pace.behind strong { color: var(--warning); }
+.season-page .pace b { color: var(--text); }
+.season-page .badges { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
+.season-page .badge { padding: 14px 18px; border: 0; border-radius: 16px; background: rgb(var(--deep-rgb) / .7); }
+.season-page .badge-icon { fill: var(--volt); background: color-mix(in srgb, var(--volt) 14%, transparent); }
+.season-page .badge.is-record_then .badge-icon { fill: var(--text-soft); background: var(--surface2); }
+.season-page .year-grid-wrap { margin-top: 20px; padding: 18px 20px 14px; border: 0; border-radius: 18px; background: rgb(var(--deep-rgb) / .7); box-shadow: none; }
+.season-page .day { border-radius: 3px; background: var(--surface2); }
+.season-page .day.active { background: color-mix(in srgb, var(--c) var(--a), var(--surface2)); }
+.season-page .day.future { background: transparent; outline-color: var(--border); }
+.season-page .day.streak { box-shadow: inset 0 -3px 0 var(--volt); }
+.season-page .grid-legend { color: var(--text-soft); gap: 6px 18px; }
+.season-page .grid-legend i { width: 4px; height: 12px; border-radius: 2px; }
+.season-page .grid-legend .legend-streak { width: 16px; height: 4px; background: var(--volt); box-shadow: none; }
+
+/* Blocks */
+.season-page .block { margin-bottom: 24px; padding: 24px 28px; border-color: var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; }
+.season-page .block-head { align-items: center; margin-bottom: 20px; }
+.season-page .block-head h2 { font-size: 28px; font-style: italic; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
+.season-page .more-link { display: inline-flex; align-items: center; height: 40px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text); font-size: 13px; font-weight: 500; }
+.season-page .more-link:hover { border-color: var(--muted); text-decoration: none; }
+.season-page .feature .more-link, .season-page .feature .links .more-link, .season-page .coach .more-link { height: auto; padding: 0; border: 0; color: var(--volt); font-weight: 600; }
+.season-page .head-note { color: var(--muted); font-size: 13px; }
+
+/* Sports */
+.season-page .split { height: 14px; border-radius: 7px; gap: 2px; background: transparent; }
+.season-page .split-seg { box-shadow: none; }
+.season-page .split-seg em { display: none; }
+.season-page .sport-row { grid-template-columns: 4px minmax(0, 1fr) auto 76px; padding: 12px 0; }
+.season-page .row-icon { width: 4px; height: 28px; border-radius: 3px; background: var(--sport); overflow: hidden; }
+.season-page .row-icon > * { display: none; }
+.season-page .row-number { font-size: 34px; font-style: italic; font-weight: 800; letter-spacing: 0; }
+.season-page .row-number small { font-style: normal; }
+.season-page .row-share { display: none; }
+.season-page .month-stack figcaption { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 10px; }
+.season-page .stack-total { fill: var(--text); font-family: var(--font-display); font-size: 12px; }
+
+/* Streak & best month: wins in volt */
+.season-page .duo { gap: 24px; margin-bottom: 24px; }
+.season-page .feature .eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; }
+.season-page .feature-number { font-size: 96px; font-style: italic; font-weight: 800; line-height: .9; letter-spacing: 0; margin-top: 8px; text-transform: uppercase; }
+.season-page .feature-number small { font-style: normal; font-size: 22px; text-transform: none; }
+.season-page .streak-card .feature-number { color: var(--volt); }
+.season-page .streak-facts strong { font-size: 32px; letter-spacing: 0; }
+.season-page .timeline-track { height: 10px; background: var(--surface3); }
+.season-page .timeline-bar { background: var(--volt); }
+.season-page .month-chart rect { fill: var(--surface3); }
+.season-page .month-chart rect.best { fill: var(--volt); }
+.season-page .month-value { fill: var(--volt); font-family: var(--font-display); font-size: 14px; }
+
+/* Records & bests */
+.season-page .power-readout { padding: 22px; border-radius: 18px; background: rgb(var(--deep-rgb)); }
+.season-page .power-readout .eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; }
+.season-page .readout-value { font-size: 72px; font-style: italic; font-weight: 800; letter-spacing: 0; }
+.season-page .readout-gain { font-size: 40px; font-style: italic; font-weight: 800; color: var(--volt); }
+.season-page .power-title { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.season-page .power-point.on .power-guide { stroke: var(--volt); opacity: 1; }
+.season-page .power-point.on .dot.now { fill: var(--volt); }
+.season-page .steps { padding-top: 20px; border-top: 1px solid var(--border); }
+.season-page .step-track { height: 22px; border-radius: 6px; background: var(--surface3); }
+.season-page .step-old { background: var(--surface3); border-right: 0; }
+.season-page .step-old em { color: var(--text-soft); }
+.season-page .step-to strong { font-size: 22px; }
+.season-page .season-best { border: 0; border-radius: 18px; background: rgb(var(--deep-rgb)); }
+.season-page .season-best:hover { transform: none; box-shadow: none; background: var(--surface2); }
+.season-page .best-tag { color: var(--volt); background: color-mix(in srgb, var(--volt) 14%, transparent); }
+.season-page .season-best.is-best_ever .best-tag { color: #0a0c11; background: var(--volt); }
+.season-page .best-label { color: var(--text); font-size: 14px; }
+.season-page .best-value { font-size: 40px; font-style: italic; font-weight: 800; letter-spacing: 0; }
+.season-page .seasons { height: 14px; }
+.season-page .season { border-radius: 3px; background: var(--surface3); }
+.season-page .season.beaten { background: color-mix(in srgb, var(--sport) 35%, var(--surface3)); }
+.season-page .season.now { box-shadow: none; }
+.season-page .lift-track { background: var(--surface3); }
+.season-page .lift-old { background: var(--surface3); border-right: 0; }
+.season-page .lift-old em { color: var(--text-soft); }
+.season-page .lift-gain { color: var(--volt); }
+.season-page .milestone { border: 0; border-radius: 18px; background: rgb(var(--deep-rgb)); box-shadow: inset 0 3px 0 var(--tone); }
+.season-page .milestone:hover { transform: none; box-shadow: inset 0 3px 0 var(--tone); background: var(--surface2); }
+.season-page .milestone-value { color: var(--text); font-style: italic; font-weight: 800; letter-spacing: 0; }
+.season-page .mountain-stat strong { font-style: italic; font-weight: 800; letter-spacing: 0; }
+.season-page .goal { border: 0; border-radius: 18px; background: rgb(var(--deep-rgb)); }
+.season-page .goal.done { background: color-mix(in srgb, var(--volt) 8%, rgb(var(--deep-rgb))); }
+.season-page .goal-check { background: var(--volt); color: #0a0c11; }
+
+/* Coach */
+.season-page .coach { padding: 24px 28px; border-left: 1px solid var(--border); }
+.season-page .coach > .eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; }
+.season-page .coach-empty p { font-size: 17px; line-height: 1.55; }
+.season-page .primary { height: 48px; padding: 0 24px; border-radius: 999px; background: var(--volt); color: #0a0c11; }
+.season-page button:focus-visible, .season-page a:focus-visible { outline-color: var(--volt); }
+
+@media (max-width: 1100px) {
+  .heading-right { width: 100%; }
+}
+@media (max-width: 760px) {
+  .season-page { padding: 18px 16px 48px; }
+  .season-page .page-title { font-size: 48px; }
+  .heading-right { flex-wrap: wrap; }
+  .season-page .heading-action { height: 38px; padding: 0 14px; }
+  .season-page .hero { padding: 18px; }
+  .season-page .hero-year { font-size: 96px; }
+  .season-page .hero-line { grid-template-columns: 1fr; flex-basis: 100%; }
+  .season-page .hero-stat strong { font-size: 38px; }
+  .season-page .block { padding: 18px 16px; }
+  .season-page .sport-row { grid-template-columns: 4px minmax(0, 1fr) auto; }
+  .season-page .feature-number { font-size: 64px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

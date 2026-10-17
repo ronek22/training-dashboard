@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrainLog · Records</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&amp;family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0C11}
+a{color:#D4FF3A;text-decoration:none}a:hover{color:#E8FF8A}
+.num{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;line-height:1}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600}
+.nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;color:#A3ABBC;font-size:14px;font-weight:500;min-height:24px}
+.nav a:hover{background:#191D27;color:#F3F5F9}
+.nav a.on{background:#191D27;color:#F3F5F9}
+.btn{font-family:inherit;cursor:pointer}
+.btn:hover{filter:brightness(1.12)}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #0A0C11; color: #F3F5F9; font-family: 'Archivo', system-ui, sans-serif">
+
+<nav class="nav" aria-label="Main" style="flex: 1 1 232px; max-width: 260px; box-sizing: border-box; padding: 24px 16px; border-right: 1px solid #1C212B; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px">
+<div style="width: 36px; height: 36px; border-radius: 10px; background: #D4FF3A; display: flex; align-items: center; justify-content: center">
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#0A0C11" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 11h4l2-6 4 10 2-4h4"></path></svg>
+</div>
+<div class="num" style="font-size: 26px; font-style: italic; font-weight: 800; letter-spacing: .02em">TRAINLOG</div>
+</div>
+<div class="lbl" style="padding: 8px 12px 6px">Train</div>
+<a href="Main.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l3 2"></path></svg>Today</a>
+<a href="Plan.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18V3M4 4h11l-2.5 3.5L15 11H4"></path></svg>Plan</a>
+<a href="Calendar.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="2"></rect><path d="M3 8h14M7 2v4M13 2v4"></path></svg>Calendar</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 2L4 11h5l-1 7 7-9h-5z"></path></svg>Workout studio</a>
+<div class="lbl" style="padding: 18px 12px 6px">Body</div>
+<a href="Strength.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 10h16M5 6v8M15 6v8M2.5 8v4M17.5 8v4"></path></svg>Strength</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17s-7-4.2-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 17 8c0 4.8-7 9-7 9z"></path></svg>Recovery</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2v6a2 2 0 0 0 4 0V2M8 2v16M14 2c-2 2-2 6 0 8v8"></path></svg>Food</a>
+<div class="lbl" style="padding: 18px 12px 6px">Review</div>
+<a href="Activities.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 5h10M7 10h10M7 15h10M3 5h.01M3 10h.01M3 15h.01"></path></svg>Activities</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 15l4-5 3 3 7-8"></path></svg>Trends</a>
+<a class="on" href="Records.dc.html"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#D4FF3A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8v5a4 4 0 0 1-8 0zM10 12v3M7 17h6M6 5H3v1a3 3 0 0 0 3 3M14 5h3v1a3 3 0 0 1-3 3"></path></svg>Records</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><circle cx="10" cy="10" r="3.5"></circle><circle cx="10" cy="10" r=".5"></circle></svg>Goals</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 16l5-8 3 4 3-5 5 9z"></path></svg>Mountains</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h10v14H5zM8 7h4M8 10h4M8 13h2"></path></svg>Coach notes</a>
+<div class="lbl" style="padding: 18px 12px 6px">System</div>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8a6 6 0 0 1 11-2.5M16 12a6 6 0 0 1-11 2.5M15 2.5v3h-3M5 17.5v-3h3"></path></svg>Data &amp; sync</a>
+<a href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v-6M8.5 17V6M13 17v-4M17.5 17V3"></path></svg>Coach usage</a>
+<div style="flex: 1 1 auto; min-height: 24px"></div>
+<a href="#" style="border: 1px solid #252B37"><span style="width: 28px; height: 28px; border-radius: 50%; background: #252B37; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #F3F5F9">J</span><span style="display: flex; flex-direction: column"><span style="color: #F3F5F9">Jakub</span><span style="font-size: 12px; color: #8A93A6">Athlete profile</span></span></a>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 40px 64px">
+<div style="max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div>
+<div class="lbl" style="color: #D4FF3A">Review · Records</div>
+<h1 class="num" style="margin: 6px 0 0; font-size: 72px; font-style: italic; font-weight: 800; text-transform: uppercase">Records</h1>
+<div style="color: #A3ABBC; font-size: 15px; margin-top: 6px">Every best you’ve earned on the bike, on foot and under the bar.</div>
+</div>
+<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center"><button class="btn" style="height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid #252B37; background: transparent; color: #F3F5F9; font-size: 14px">Season in review ↗</button><button class="btn" style="height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid #252B37; background: transparent; color: #F3F5F9; font-size: 14px">All years ↗</button></div>
+</header>
+
+<div style="display: flex; gap: 16px; flex-wrap: wrap"><div style="flex: 1 1 200px; border-radius: 20px; border: 1px solid #1C212B; background: #12151C; padding: 18px 20px; display: flex; justify-content: space-between; gap: 12px; align-items: center">
+<div><div class="lbl">Records held</div><div class="num" style="font-size: 44px; font-style: italic; font-weight: 800; margin-top: 8px; color: #F3F5F9">79</div><div style="font-size: 13px; color: #A3ABBC; margin-top: 8px">across 4 sports</div></div>
+</div><div style="flex: 1 1 200px; border-radius: 20px; border: 1px solid #1C212B; background: #12151C; padding: 18px 20px; display: flex; justify-content: space-between; gap: 12px; align-items: center">
+<div><div class="lbl">New PRs · 30 days</div><div class="num" style="font-size: 44px; font-style: italic; font-weight: 800; margin-top: 8px; color: #D4FF3A">7</div><div style="font-size: 13px; color: #A3ABBC; margin-top: 8px">latest 15 Oct</div></div>
+</div><div style="flex: 1 1 200px; border-radius: 20px; border: 1px solid #1C212B; background: #12151C; padding: 18px 20px; display: flex; justify-content: space-between; gap: 12px; align-items: center">
+<div><div class="lbl">Podium efforts</div><div class="num" style="font-size: 44px; font-style: italic; font-weight: 800; margin-top: 8px; color: #F3F5F9">9</div><div style="font-size: 13px; color: #A3ABBC; margin-top: 8px">2nd or 3rd best ever</div></div>
+</div><div style="flex: 1 1 200px; border-radius: 20px; border: 1px solid #1C212B; background: #12151C; padding: 18px 20px; display: flex; justify-content: space-between; gap: 12px; align-items: center">
+<div><div class="lbl">Day streak</div><div class="num" style="font-size: 44px; font-style: italic; font-weight: 800; margin-top: 8px; color: #D4FF3A">288<span style="font-size: 16px; color: #A3ABBC; font-style: normal"> days</span></div><div style="font-size: 13px; color: #A3ABBC; margin-top: 8px">12 days to 300</div></div><svg width="58" height="58" viewBox="0 0 58 58" aria-hidden="true"><circle cx="29" cy="29" r="22" fill="none" stroke="#232834" stroke-width="6"></circle><circle cx="29" cy="29" r="22" fill="none" stroke="#D4FF3A" stroke-width="6" stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="5.5" transform="rotate(-90 29 29)"></circle></svg>
+</div></div>
+<section aria-label="Latest personal record" style="border-radius: 28px; overflow: hidden; border: 1px solid rgba(255,77,154,.35); background: #12151C; background-image: radial-gradient(90% 160% at 0% 0%, rgba(255,77,154,.24) 0%, rgba(255,77,154,0) 55%); display: flex; flex-wrap: wrap">
+<div style="flex: 1 1 380px; padding: 32px">
+<div style="display: flex; gap: 8px; align-items: center"><span style="padding: 4px 10px; border-radius: 999px; background: #D4FF3A; color: #0A0C11; font-size: 11px; font-weight: 800; letter-spacing: .08em">NEW PR</span><span style="font-size: 14px; color: #C9CFDA">Thu · 15 Oct</span></div>
+<div class="lbl" style="margin-top: 22px; color: #FF6FAE">Lift · Dumbbell Row</div>
+<div class="num" style="font-size: 120px; font-style: italic; font-weight: 800; line-height: .9; margin-top: 8px">33.6<span style="font-size: 32px; color: #A3ABBC; font-style: normal"> kg</span></div>
+<div style="display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap"><span style="padding: 4px 10px; border-radius: 999px; background: #D4FF3A24; color: #D4FF3A; font-size: 12px; font-weight: 700">+0.8 kg</span><span style="font-size: 14px; color: #A3ABBC">Previous best 32.8 kg · 13 Apr 2026</span></div>
+<div style="font-size: 14px; color: #A3ABBC; margin-top: 8px">Estimated 1RM from 24 kg × 12</div>
+<div style="margin-top: 22px"><a href="#" style="font-size: 14px; font-weight: 600">Workout D · Lower + Core →</a></div>
+</div>
+<div style="flex: 1.2 1 420px; padding: 28px 28px 28px 0; display: flex; flex-direction: column; gap: 8px">
+<div class="lbl" style="padding: 4px 0 6px">Also new this month</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px"><div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(15,18,24,.7)"><span style="flex: 0 0 auto; width: 4px; height: 28px; border-radius: 3px; background: #3B8CFF"></span>
+<div style="flex: 1 1 auto; min-width: 0"><div style="font-size: 14px; font-weight: 600">45 min</div><div style="font-size: 12px; color: #8A93A6; margin-top: 2px">Power · 13 Oct</div></div>
+<div style="text-align: right"><div class="num" style="font-size: 22px">186 W</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px"></div></div></div><div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(15,18,24,.7)"><span style="flex: 0 0 auto; width: 4px; height: 28px; border-radius: 3px; background: #3B8CFF"></span>
+<div style="flex: 1 1 auto; min-width: 0"><div style="font-size: 14px; font-weight: 600">60 min</div><div style="font-size: 12px; color: #8A93A6; margin-top: 2px">Power · 13 Oct</div></div>
+<div style="text-align: right"><div class="num" style="font-size: 22px">172 W</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px"></div></div></div><div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(15,18,24,.7)"><span style="flex: 0 0 auto; width: 4px; height: 28px; border-radius: 3px; background: #FF4D9A"></span>
+<div style="flex: 1 1 auto; min-width: 0"><div style="font-size: 14px; font-weight: 600">Rear Delt Raise</div><div style="font-size: 12px; color: #8A93A6; margin-top: 2px">Lift · 12 Oct</div></div>
+<div style="text-align: right"><div class="num" style="font-size: 22px">22.4 kg</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">16 kg × 12</div></div></div><div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(15,18,24,.7)"><span style="flex: 0 0 auto; width: 4px; height: 28px; border-radius: 3px; background: #FF4D9A"></span>
+<div style="flex: 1 1 auto; min-width: 0"><div style="font-size: 14px; font-weight: 600">Dumbbell Bench Press</div><div style="font-size: 12px; color: #8A93A6; margin-top: 2px">Lift · 10 Oct</div></div>
+<div style="text-align: right"><div class="num" style="font-size: 22px">32.8 kg</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">24 kg × 11</div></div></div><div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(15,18,24,.7)"><span style="flex: 0 0 auto; width: 4px; height: 28px; border-radius: 3px; background: #FF4D9A"></span>
+<div style="flex: 1 1 auto; min-width: 0"><div style="font-size: 14px; font-weight: 600">Dumbbell Bicep Curl</div><div style="font-size: 12px; color: #8A93A6; margin-top: 2px">Lift · 10 Oct</div></div>
+<div style="text-align: right"><div class="num" style="font-size: 22px">21.3 kg</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">16 kg × 10</div></div></div><div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(15,18,24,.7)"><span style="flex: 0 0 auto; width: 4px; height: 28px; border-radius: 3px; background: #FF4D9A"></span>
+<div style="flex: 1 1 auto; min-width: 0"><div style="font-size: 14px; font-weight: 600">Incline Dumbbell Curl</div><div style="font-size: 12px; color: #8A93A6; margin-top: 2px">Lift · 8 Oct</div></div>
+<div style="text-align: right"><div class="num" style="font-size: 22px">19.6 kg</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">14 kg × 12</div></div></div></div>
+</div>
+</section>
+<section style="border-radius: 24px; border: 1px solid #1C212B; background: #12151C; padding: 24px 28px">
+<div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
+<div style="width: 40px; height: 40px; border-radius: 12px; background: #3B8CFF24; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#3B8CFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="13" r="3.2"></circle><circle cx="15" cy="13" r="3.2"></circle><path d="M5 13l3.5-6h4L15 13M8.5 7 10 4h2"></path></svg></div>
+<div style="flex: 1 1 auto"><div class="num" style="font-size: 28px; font-style: italic; font-weight: 800; text-transform: uppercase">Bike power</div><div style="font-size: 13px; color: #8A93A6; margin-top: 2px">Best average watts for each duration · indoor and outdoor</div></div>
+
+</div>
+<div style="display: flex; gap: 24px; margin-top: 22px; flex-wrap: wrap">
+<div style="flex: 1 1 600px; display: flex; gap: 8px"><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #F3F5F9">894</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 200px; border-radius: 8px 8px 4px 4px; background: #3B8CFF; "></div></div>
+<div style="font-size: 12px; color: #8A93A6; font-weight: 500">5s</div></div><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #F3F5F9">815</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 182px; border-radius: 8px 8px 4px 4px; background: #3B8CFF; "></div></div>
+<div style="font-size: 12px; color: #8A93A6; font-weight: 500">15s</div></div><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #F3F5F9">644</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 144px; border-radius: 8px 8px 4px 4px; background: #3B8CFF; "></div></div>
+<div style="font-size: 12px; color: #8A93A6; font-weight: 500">30s</div></div><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #F3F5F9">446</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 100px; border-radius: 8px 8px 4px 4px; background: #3B8CFF; "></div></div>
+<div style="font-size: 12px; color: #8A93A6; font-weight: 500">1m</div></div><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #F3F5F9">339</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 76px; border-radius: 8px 8px 4px 4px; background: #3B8CFF; "></div></div>
+<div style="font-size: 12px; color: #8A93A6; font-weight: 500">2m</div></div><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #F3F5F9">316</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 71px; border-radius: 8px 8px 4px 4px; background: #3B8CFF; "></div></div>
+<div style="font-size: 12px; color: #8A93A6; font-weight: 500">3m</div></div><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #F3F5F9">280</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 63px; border-radius: 8px 8px 4px 4px; background: #3B8CFF; "></div></div>
+<div style="font-size: 12px; color: #8A93A6; font-weight: 500">5m</div></div><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #F3F5F9">230</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 51px; border-radius: 8px 8px 4px 4px; background: #3B8CFF; "></div></div>
+<div style="font-size: 12px; color: #8A93A6; font-weight: 500">10m</div></div><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #F3F5F9">202</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 45px; border-radius: 8px 8px 4px 4px; background: #3B8CFF; "></div></div>
+<div style="font-size: 12px; color: #8A93A6; font-weight: 500">15m</div></div><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #F3F5F9">202</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 45px; border-radius: 8px 8px 4px 4px; background: #6EA9FF;  outline: 2px solid #F3F5F9; outline-offset: 2px;"></div></div>
+<div style="font-size: 12px; color: #8A93A6; font-weight: 500">20m</div></div><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #F3F5F9">198</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 44px; border-radius: 8px 8px 4px 4px; background: #3B8CFF; "></div></div>
+<div style="font-size: 12px; color: #8A93A6; font-weight: 500">30m</div></div><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #D4FF3A">186</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 42px; border-radius: 8px 8px 4px 4px; background: #3B8CFF; box-shadow: inset 0 3px 0 #D4FF3A;"></div></div>
+<div style="font-size: 12px; color: #D4FF3A; font-weight: 700">NEW · 45m</div></div><div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div class="num" style="font-size: 18px; color: #D4FF3A">172</div>
+<div style="height: 200px; width: 100%; display: flex; align-items: flex-end"><div style="width: 100%; height: 38px; border-radius: 8px 8px 4px 4px; background: #3B8CFF; box-shadow: inset 0 3px 0 #D4FF3A;"></div></div>
+<div style="font-size: 12px; color: #D4FF3A; font-weight: 700">NEW · 60m</div></div></div>
+<aside style="flex: 0 1 230px; border-radius: 16px; background: #0F1218; padding: 20px; align-self: stretch">
+<div class="lbl">FTP estimate</div>
+<div class="num" style="font-size: 64px; font-style: italic; font-weight: 800; color: #6EA9FF; margin-top: 8px">192<span style="font-size: 20px; color: #A3ABBC; font-style: normal"> W</span></div>
+<div style="font-size: 13px; color: #A3ABBC; margin-top: 6px">95% of best 20 min · last 90 days</div>
+<div style="margin-top: 12px"><span style="padding: 4px 10px; border-radius: 999px; background: #FFB54724; color: #FFB547; font-size: 12px; font-weight: 700">−50 W vs stored 242 W</span></div>
+<div style="font-size: 12px; color: #8A93A6; margin-top: 14px; line-height: 1.5">From training efforts, not a test — a floor rather than a ceiling.</div>
+</aside></div>
+<div style="margin-top: 18px; border-radius: 16px; background: #0F1218; padding: 16px 20px; display: flex; gap: 28px; align-items: center; flex-wrap: wrap">
+<div><div class="lbl">20 min · top 3</div><div style="font-size: 13px; color: #8A93A6; margin-top: 4px">Selected bar</div></div>
+<div style="display: flex; gap: 10px; align-items: baseline"><span class="num" style="font-size: 26px; color: #D4FF3A">1</span><span class="num" style="font-size: 26px">202 W</span><span style="font-size: 13px; color: #8A93A6">13 Oct · Zwift Tempo</span></div>
+<div style="display: flex; gap: 10px; align-items: baseline"><span class="num" style="font-size: 22px; color: #8A93A6">2</span><span class="num" style="font-size: 22px; color: #A3ABBC">198 W</span><span style="font-size: 13px; color: #8A93A6">21 Sep</span></div>
+<div style="display: flex; gap: 10px; align-items: baseline"><span class="num" style="font-size: 22px; color: #8A93A6">3</span><span class="num" style="font-size: 22px; color: #A3ABBC">191 W</span><span style="font-size: 13px; color: #8A93A6">3 Aug</span></div>
+</div>
+</section>
+<section style="border-radius: 24px; border: 1px solid #1C212B; background: #12151C; padding: 24px 28px">
+<div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
+<div style="width: 40px; height: 40px; border-radius: 12px; background: #3B8CFF24; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#3B8CFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="13" r="3.2"></circle><circle cx="15" cy="13" r="3.2"></circle><path d="M5 13l3.5-6h4L15 13M8.5 7 10 4h2"></path></svg></div>
+<div style="flex: 1 1 auto"><div class="num" style="font-size: 28px; font-style: italic; font-weight: 800; text-transform: uppercase">Bike distance</div><div style="font-size: 13px; color: #8A93A6; margin-top: 2px">Fastest stretch of each distance inside any ride</div></div>
+<div style="display: flex; gap: 2px; padding: 3px; border-radius: 999px; border: 1px solid #252B37"><span style="padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #232834; color: #F3F5F9">Outdoor</span><span style="padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #8A93A6">Indoor</span></div>
+</div>
+<div style="position: relative; display: flex; gap: 8px; margin-top: 20px"><div style="position: absolute; left: 7.14%; right: 7.14%; top: 33px; height: 3px; background: #232834"><div style="width: 91.7%; height: 100%; background: #3B8CFF"></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">5K</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #3B8CFF; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">7:46</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">38.6 km/h</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">29 Aug</div><div style="font-size: 12px; color: #D4FF3A; font-weight: 700; margin-top: 4px">0:36 faster</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">10K</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #3B8CFF; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">18:21</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">32.7 km/h</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">29 Aug</div><div style="font-size: 12px; color: #D4FF3A; font-weight: 700; margin-top: 4px">0:36 faster</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">20K</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #3B8CFF; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">37:56</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">31.6 km/h</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">21 Sep</div><div style="font-size: 12px; color: #D4FF3A; font-weight: 700; margin-top: 4px">1:00 faster</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">40K</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #3B8CFF; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">1:22:31</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">29.1 km/h</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">21 Sep</div><div style="font-size: 12px; color: #D4FF3A; font-weight: 700; margin-top: 4px">4:38 faster</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">50K</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #3B8CFF; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">1:45:06</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">28.5 km/h</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">21 Sep</div><div style="font-size: 12px; color: #D4FF3A; font-weight: 700; margin-top: 4px">6:08 faster</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">100K</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #3B8CFF; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">3:59:31</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">25.1 km/h</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">8 Aug</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl">150K</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; border: 2px dashed #3B8CFF; box-sizing: border-box; margin: 10px auto; background: #12151C"></div>
+<div style="border-radius: 14px; border: 1px dashed #3B8CFF; padding: 12px 6px"><div style="font-size: 13px; font-weight: 700; color: #6EA9FF">Next goal</div><div style="font-size: 12px; color: #8A93A6; margin-top: 4px">longest 130 km</div></div></div></div><div style="display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap"><div style="flex: 1 1 200px; border-radius: 16px; background: #0F1218; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px"><div><div class="lbl">Longest ride</div><div style="font-size: 12px; color: #8A93A6; margin-top: 4px">3 Aug 2016 · Lunch Ride</div></div><div class="num" style="font-size: 32px; font-style: italic; font-weight: 800; color: #6EA9FF">130.0 km</div></div><div style="flex: 1 1 200px; border-radius: 16px; background: #0F1218; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px"><div><div class="lbl">Biggest climb</div><div style="font-size: 12px; color: #8A93A6; margin-top: 4px">20 Aug 2016 · Lunch Ride</div></div><div class="num" style="font-size: 32px; font-style: italic; font-weight: 800; color: #6EA9FF">670 m</div></div></div>
+</section>
+<section style="border-radius: 24px; border: 1px solid #1C212B; background: #12151C; padding: 24px 28px">
+<div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
+<div style="width: 40px; height: 40px; border-radius: 12px; background: #FF8A2A24; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#FF8A2A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="3.5" r="1.6"></circle><path d="M7 18l2.5-5 3 2V11l-3-2-3 2M12.5 11l2.5 2h2.5"></path></svg></div>
+<div style="flex: 1 1 auto"><div class="num" style="font-size: 28px; font-style: italic; font-weight: 800; text-transform: uppercase">Run</div><div style="font-size: 13px; color: #8A93A6; margin-top: 2px">Fastest stretch of each distance inside any run</div></div>
+
+</div>
+<div style="position: relative; display: flex; gap: 8px; margin-top: 20px"><div style="position: absolute; left: 6.25%; right: 6.25%; top: 33px; height: 3px; background: #232834"><div style="width: 92.9%; height: 100%; background: #FF8A2A"></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">1K</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #FF8A2A; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">3:02</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">3:02 /km</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">4 Nov</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">1 mile</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #FF8A2A; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">5:25</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">3:22 /km</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">21 Jul</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">5K</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #FF8A2A; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">17:59</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">3:36 /km</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">29 Nov</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">10K</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #FF8A2A; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">38:03</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">3:48 /km</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">23 Sep</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">15K</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #FF8A2A; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">59:50</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">3:59 /km</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">26 Mar</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">Half</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #FF8A2A; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">1:24:40</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">4:01 /km</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">26 Mar</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl" style="color: #A3ABBC">30K</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; background: #FF8A2A; margin: 10px auto; box-shadow: 0 0 0 4px #12151C"></div>
+<div style="border-radius: 14px; background: #0F1218; padding: 12px 6px"><div class="num" style="font-size: 24px">2:36:29</div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">5:13 /km</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">3 Dec</div></div></div><div style="flex: 1 1 0; min-width: 0; text-align: center"><div class="lbl">Full</div>
+<div style="width: 14px; height: 14px; border-radius: 50%; border: 2px dashed #FF8A2A; box-sizing: border-box; margin: 10px auto; background: #12151C"></div>
+<div style="border-radius: 14px; border: 1px dashed #FF8A2A; padding: 12px 6px"><div style="font-size: 13px; font-weight: 700; color: #FF9D4D">Next goal</div><div style="font-size: 12px; color: #8A93A6; margin-top: 4px">longest 31.8 km</div></div></div></div><div style="display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap"><div style="flex: 1 1 200px; border-radius: 16px; background: #0F1218; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px"><div><div class="lbl">Longest run</div><div style="font-size: 12px; color: #8A93A6; margin-top: 4px">3 Dec 2016 · Morning Run</div></div><div class="num" style="font-size: 32px; font-style: italic; font-weight: 800; color: #FF9D4D">31.8 km</div></div></div>
+</section>
+<section style="border-radius: 24px; border: 1px solid #1C212B; background: #12151C; padding: 24px 28px">
+<div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
+<div style="width: 40px; height: 40px; border-radius: 12px; background: #FF4D9A24; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#FF4D9A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10h14M5 6v8M15 6v8M2 8v4M18 8v4"></path></svg></div>
+<div style="flex: 1 1 auto"><div class="num" style="font-size: 28px; font-style: italic; font-weight: 800; text-transform: uppercase">Lifts</div><div style="font-size: 13px; color: #8A93A6; margin-top: 2px">Estimated one-rep max from your working sets · reps for bodyweight moves</div></div>
+<button class="btn" style="height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid #252B37; background: transparent; color: #F3F5F9; font-size: 14px">Show all 42 lifts</button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-top: 20px"><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; ">
+<div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Pull Up</div>
+<div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; color: #FF6FAE; margin-top: 8px">18<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> reps</span></div>
+<div style="font-size: 12px; color: #8A93A6; margin-top: 4px">in one set · <span style="color: #D4FF3A; font-weight: 700">+1 rep</span></div>
+<svg viewBox="0 0 100 24" preserveAspectRatio="none" style="width: 100%; height: 24px; margin-top: 8px" aria-hidden="true"><polyline points="0,10.4 20,10.3 40,7.8 60,6.5 80,5.7 100,5.1" fill="none" stroke="#FF4D9A" stroke-width="2" vector-effect="non-scaling-stroke"></polyline></svg>
+<div style="font-size: 11px; color: #8A93A6; margin-top: 6px; display: flex; gap: 6px; align-items: center">12 Feb 2026</div></div><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; ">
+<div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Standing DB Shoulder Press</div>
+<div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; color: #FF6FAE; margin-top: 8px">27.9<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> kg</span></div>
+<div style="font-size: 12px; color: #8A93A6; margin-top: 4px">22 kg × 8 · <span style="color: #D4FF3A; font-weight: 700">+2.6 kg</span></div>
+<svg viewBox="0 0 100 24" preserveAspectRatio="none" style="width: 100%; height: 24px; margin-top: 8px" aria-hidden="true"><polyline points="0,18.7 20,16.8 40,16.2 60,12.6 80,8.4 100,7.6" fill="none" stroke="#FF4D9A" stroke-width="2" vector-effect="non-scaling-stroke"></polyline></svg>
+<div style="font-size: 11px; color: #8A93A6; margin-top: 6px; display: flex; gap: 6px; align-items: center">13 May 2026</div></div><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; ">
+<div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Barbell Incline Bench</div>
+<div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; color: #FF6FAE; margin-top: 8px">90<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> kg</span></div>
+<div style="font-size: 12px; color: #8A93A6; margin-top: 4px">75 kg × 6 · <span style="color: #D4FF3A; font-weight: 700">+1.3 kg</span></div>
+<svg viewBox="0 0 100 24" preserveAspectRatio="none" style="width: 100%; height: 24px; margin-top: 8px" aria-hidden="true"><polyline points="0,18.8 20,17.3 40,16.9 60,7.4 80,6.8 100,5.7" fill="none" stroke="#FF4D9A" stroke-width="2" vector-effect="non-scaling-stroke"></polyline></svg>
+<div style="font-size: 11px; color: #8A93A6; margin-top: 6px; display: flex; gap: 6px; align-items: center">25 Apr 2026</div></div><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; ">
+<div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Chin Up</div>
+<div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; color: #FF6FAE; margin-top: 8px">15<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> reps</span></div>
+<div style="font-size: 12px; color: #8A93A6; margin-top: 4px">in one set · <span style="color: #D4FF3A; font-weight: 700">+2 reps</span></div>
+<svg viewBox="0 0 100 24" preserveAspectRatio="none" style="width: 100%; height: 24px; margin-top: 8px" aria-hidden="true"><polyline points="0,17.7 20,16.8 40,15.7 60,14.0 80,9.0 100,7.1" fill="none" stroke="#FF4D9A" stroke-width="2" vector-effect="non-scaling-stroke"></polyline></svg>
+<div style="font-size: 11px; color: #8A93A6; margin-top: 6px; display: flex; gap: 6px; align-items: center">14 Feb 2026</div></div><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; ">
+<div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Bent Over Barbell Row</div>
+<div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; color: #FF6FAE; margin-top: 8px">113.3<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> kg</span></div>
+<div style="font-size: 12px; color: #8A93A6; margin-top: 4px">85 kg × 10 · <span style="color: #D4FF3A; font-weight: 700">+8.3 kg</span></div>
+<svg viewBox="0 0 100 24" preserveAspectRatio="none" style="width: 100%; height: 24px; margin-top: 8px" aria-hidden="true"><polyline points="0,18.1 20,14.7 40,13.7 60,12.1 80,6.8 100,5.4" fill="none" stroke="#FF4D9A" stroke-width="2" vector-effect="non-scaling-stroke"></polyline></svg>
+<div style="font-size: 11px; color: #8A93A6; margin-top: 6px; display: flex; gap: 6px; align-items: center">18 Mar 2026</div></div><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; box-shadow: inset 0 0 0 1px #D4FF3A66;">
+<div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Dumbbell Bench Press</div>
+<div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; color: #FF6FAE; margin-top: 8px">32.8<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> kg</span></div>
+<div style="font-size: 12px; color: #8A93A6; margin-top: 4px">24 kg × 11 · <span style="color: #D4FF3A; font-weight: 700">+0.8 kg</span></div>
+<svg viewBox="0 0 100 24" preserveAspectRatio="none" style="width: 100%; height: 24px; margin-top: 8px" aria-hidden="true"><polyline points="0,19.0 20,17.8 40,12.8 60,11.6 80,8.8 100,5.4" fill="none" stroke="#FF4D9A" stroke-width="2" vector-effect="non-scaling-stroke"></polyline></svg>
+<div style="font-size: 11px; color: #8A93A6; margin-top: 6px; display: flex; gap: 6px; align-items: center">10 Oct 2026<span style="padding: 4px 10px; border-radius: 999px; background: #D4FF3A; color: #0A0C11; font-size: 11px; font-weight: 800; letter-spacing: .08em">NEW</span></div></div><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; ">
+<div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">DB Incline Bench Press</div>
+<div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; color: #FF6FAE; margin-top: 8px">33.6<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> kg</span></div>
+<div style="font-size: 12px; color: #8A93A6; margin-top: 4px">24 kg × 12 · <span style="color: #D4FF3A; font-weight: 700">+5.6 kg</span></div>
+<svg viewBox="0 0 100 24" preserveAspectRatio="none" style="width: 100%; height: 24px; margin-top: 8px" aria-hidden="true"><polyline points="0,18.5 20,18.1 40,17.6 60,13.2 80,12.1 100,10.6" fill="none" stroke="#FF4D9A" stroke-width="2" vector-effect="non-scaling-stroke"></polyline></svg>
+<div style="font-size: 11px; color: #8A93A6; margin-top: 6px; display: flex; gap: 6px; align-items: center">24 Feb 2026</div></div><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; ">
+<div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Barbell Bench Press</div>
+<div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; color: #FF6FAE; margin-top: 8px">106.7<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> kg</span></div>
+<div style="font-size: 12px; color: #8A93A6; margin-top: 4px">80 kg × 10 · <span style="color: #D4FF3A; font-weight: 700">+4.7 kg</span></div>
+<svg viewBox="0 0 100 24" preserveAspectRatio="none" style="width: 100%; height: 24px; margin-top: 8px" aria-hidden="true"><polyline points="0,17.0 20,13.6 40,10.9 60,8.9 80,6.6 100,4.7" fill="none" stroke="#FF4D9A" stroke-width="2" vector-effect="non-scaling-stroke"></polyline></svg>
+<div style="font-size: 11px; color: #8A93A6; margin-top: 6px; display: flex; gap: 6px; align-items: center">14 Mar 2026</div></div><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; ">
+<div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Back Squat</div>
+<div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; color: #FF6FAE; margin-top: 8px">101.3<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> kg</span></div>
+<div style="font-size: 12px; color: #8A93A6; margin-top: 4px">80 kg × 8 · <span style="color: #D4FF3A; font-weight: 700">+6.3 kg</span></div>
+<svg viewBox="0 0 100 24" preserveAspectRatio="none" style="width: 100%; height: 24px; margin-top: 8px" aria-hidden="true"><polyline points="0,14.0 20,12.6 40,11.5 60,9.5 80,8.5 100,4.7" fill="none" stroke="#FF4D9A" stroke-width="2" vector-effect="non-scaling-stroke"></polyline></svg>
+<div style="font-size: 11px; color: #8A93A6; margin-top: 6px; display: flex; gap: 6px; align-items: center">19 Feb 2026</div></div><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; ">
+<div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Barbell Shoulder Press</div>
+<div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; color: #FF6FAE; margin-top: 8px">66.7<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> kg</span></div>
+<div style="font-size: 12px; color: #8A93A6; margin-top: 4px">50 kg × 10 · <span style="color: #D4FF3A; font-weight: 700">+2.7 kg</span></div>
+<svg viewBox="0 0 100 24" preserveAspectRatio="none" style="width: 100%; height: 24px; margin-top: 8px" aria-hidden="true"><polyline points="0,20.0 20,14.1 40,10.6 60,8.4 80,7.2 100,7.1" fill="none" stroke="#FF4D9A" stroke-width="2" vector-effect="non-scaling-stroke"></polyline></svg>
+<div style="font-size: 11px; color: #8A93A6; margin-top: 6px; display: flex; gap: 6px; align-items: center">19 Feb 2026</div></div></div>
+</section>
+<div style="display: flex; gap: 24px; flex-wrap: wrap">
+<section style="border-radius: 24px; border: 1px solid #1C212B; background: #12151C; padding: 24px 28px; flex: 1.4 1 520px">
+<div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
+<div style="width: 40px; height: 40px; border-radius: 12px; background: #D4FF3A24; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#D4FF3A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5l2.2 4.6 5 .6-3.7 3.4 1 5L10 13.6 5.5 16l1-5L2.8 7.7l5-.6L10 2.5Z"></path></svg></div>
+<div style="flex: 1 1 auto"><div class="num" style="font-size: 28px; font-style: italic; font-weight: 800; text-transform: uppercase">Milestones</div><div style="font-size: 13px; color: #8A93A6; margin-top: 2px">Each one celebrated once — open any of them again</div></div>
+<button class="btn" style="height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid #252B37; background: transparent; color: #F3F5F9; font-size: 14px">All 63</button>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px"><span style="padding: 6px 12px; border-radius: 999px; background: #191D27; color: #A3ABBC; font-size: 13px"><b style="color:#F3F5F9">12 days</b> to 300-day streak</span><span style="padding: 6px 12px; border-radius: 999px; background: #191D27; color: #A3ABBC; font-size: 13px"><b style="color:#F3F5F9">4 weeks</b> to Lift 3× for 8</span><span style="padding: 6px 12px; border-radius: 999px; background: #191D27; color: #A3ABBC; font-size: 13px"><b style="color:#F3F5F9">2,353 km</b> to 7,500 km riding</span></div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 16px"><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; border-top: 3px solid #3B8CFF"><div class="lbl" style="color: #3B8CFF">Year km</div><div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; margin-top: 6px">5,000<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> km</span></div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">5,000 km of riding in 2026</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">11 Oct</div></div><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; border-top: 3px solid #FF4D9A"><div class="lbl" style="color: #FF4D9A">Lift 3×</div><div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; margin-top: 6px">4<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> weeks</span></div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">Lift 3× for 4 weeks</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">10 Oct</div></div><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; border-top: 3px solid #FF8A2A"><div class="lbl" style="color: #FF8A2A">Year km</div><div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; margin-top: 6px">250<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> km</span></div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">250 km of running</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">20 Aug</div></div><div style="border-radius: 16px; background: #0F1218; padding: 14px 16px; border-top: 3px solid #D4FF3A"><div class="lbl" style="color: #D4FF3A">Streak</div><div class="num" style="font-size: 34px; font-style: italic; font-weight: 800; margin-top: 6px">200<span style="font-size: 14px; color: #A3ABBC; font-style: normal"> days</span></div><div style="font-size: 12px; color: #A3ABBC; margin-top: 4px">200-day streak</div><div style="font-size: 11px; color: #8A93A6; margin-top: 2px">21 Jul</div></div></div>
+</section>
+<section style="border-radius: 24px; border: 1px solid #1C212B; background: #12151C; padding: 24px 28px; flex: 1 1 380px">
+<div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
+<div style="width: 40px; height: 40px; border-radius: 12px; background: #D4FF3A24; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#D4FF3A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2c.8 3-1.2 4.2-1.2 6.2 0 1.2.8 2 1.9 2 1.2 0 1.8-1 1.8-2.1 1.7 1.3 2.5 3.2 2.5 5A5 5 0 0 1 5 13c0-2.8 1.9-4.5 3-6.3C9 5 9.7 3.6 10 2Z"></path></svg></div>
+<div style="flex: 1 1 auto"><div class="num" style="font-size: 28px; font-style: italic; font-weight: 800; text-transform: uppercase">Streak badges</div><div style="font-size: 13px; color: #8A93A6; margin-top: 2px">Longest run of active days: 288</div></div>
+
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 8px; margin-top: 20px"><div style="text-align: center"><div style="width: 64px; height: 64px; border-radius: 50%; box-sizing: border-box; background: rgba(212,255,58,.12); border: 2px solid #D4FF3A; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto"><span class="num" style="font-size: 24px; color: #D4FF3A">7</span><span style="font-size: 9px; letter-spacing: .12em; color: #8A93A6">DAYS</span></div><div style="font-size: 11px; color: #8A93A6; margin-top: 6px; font-weight: 500">8 Jul</div></div><div style="text-align: center"><div style="width: 64px; height: 64px; border-radius: 50%; box-sizing: border-box; background: rgba(212,255,58,.12); border: 2px solid #D4FF3A; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto"><span class="num" style="font-size: 24px; color: #D4FF3A">14</span><span style="font-size: 9px; letter-spacing: .12em; color: #8A93A6">DAYS</span></div><div style="font-size: 11px; color: #8A93A6; margin-top: 6px; font-weight: 500">26 Jul</div></div><div style="text-align: center"><div style="width: 64px; height: 64px; border-radius: 50%; box-sizing: border-box; background: rgba(212,255,58,.12); border: 2px solid #D4FF3A; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto"><span class="num" style="font-size: 24px; color: #D4FF3A">30</span><span style="font-size: 9px; letter-spacing: .12em; color: #8A93A6">DAYS</span></div><div style="font-size: 11px; color: #8A93A6; margin-top: 6px; font-weight: 500">25 Sep</div></div><div style="text-align: center"><div style="width: 64px; height: 64px; border-radius: 50%; box-sizing: border-box; background: rgba(212,255,58,.12); border: 2px solid #D4FF3A; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto"><span class="num" style="font-size: 24px; color: #D4FF3A">50</span><span style="font-size: 9px; letter-spacing: .12em; color: #8A93A6">DAYS</span></div><div style="font-size: 11px; color: #8A93A6; margin-top: 6px; font-weight: 500">21 Feb</div></div><div style="text-align: center"><div style="width: 64px; height: 64px; border-radius: 50%; box-sizing: border-box; background: rgba(212,255,58,.12); border: 2px solid #D4FF3A; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto"><span class="num" style="font-size: 24px; color: #D4FF3A">100</span><span style="font-size: 9px; letter-spacing: .12em; color: #8A93A6">DAYS</span></div><div style="font-size: 11px; color: #8A93A6; margin-top: 6px; font-weight: 500">12 Apr</div></div><div style="text-align: center"><div style="width: 64px; height: 64px; border-radius: 50%; box-sizing: border-box; background: rgba(212,255,58,.12); border: 2px solid #D4FF3A; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto"><span class="num" style="font-size: 24px; color: #D4FF3A">200</span><span style="font-size: 9px; letter-spacing: .12em; color: #8A93A6">DAYS</span></div><div style="font-size: 11px; color: #8A93A6; margin-top: 6px; font-weight: 500">21 Jul</div></div><div style="text-align: center"><div style="width: 64px; height: 64px; border-radius: 50%; box-sizing: border-box; border: 2px dashed #D4FF3A; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto"><span class="num" style="font-size: 24px; color: #F3F5F9">300</span><span style="font-size: 9px; letter-spacing: .12em; color: #8A93A6">DAYS</span></div><div style="font-size: 11px; color: #D4FF3A; margin-top: 6px; font-weight: 700">12 to go</div></div><div style="text-align: center"><div style="width: 64px; height: 64px; border-radius: 50%; box-sizing: border-box; border: 2px dashed #252B37; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto"><span class="num" style="font-size: 24px; color: #8A93A6">365</span><span style="font-size: 9px; letter-spacing: .12em; color: #8A93A6">DAYS</span></div><div style="font-size: 11px; color: #8A93A6; margin-top: 6px; font-weight: 500">locked</div></div></div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2740}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

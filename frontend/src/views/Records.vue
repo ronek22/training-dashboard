@@ -172,54 +172,67 @@ const ringOffset = computed(() => {
       <!-- Page header -->
       <header class="hero motion-section">
         <div class="hero-copy">
-          <span class="hero-eyebrow">Review · Personal bests</span>
+          <span class="hero-eyebrow">Review · Records</span>
           <h1>Records</h1>
           <p>Every best you’ve earned on the bike, on foot and under the bar.</p>
-          <div class="hero-stats">
-            <span><strong>{{ totalRecords }}</strong> records held</span>
-            <span><strong>{{ prs.length }}</strong> new PRs in {{ data.recent_days }} days</span>
-            <span v-if="podiums"><strong>{{ podiums }}</strong> podium efforts</span>
-            <RouterLink to="/season" class="season-link">Season in review ↗</RouterLink>
-            <RouterLink to="/years" class="season-link">All years ↗</RouterLink>
-          </div>
         </div>
-        <div v-if="streaks" class="streak-ring" :title="streaks.note">
-          <svg viewBox="0 0 120 120" aria-hidden="true">
-            <defs>
-              <linearGradient id="streak-grad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="var(--warning)" />
-                <stop offset="100%" stop-color="var(--danger)" />
-              </linearGradient>
-            </defs>
+        <nav class="hero-links" aria-label="Season reviews">
+          <RouterLink to="/season" class="outline-link">Season in review ↗</RouterLink>
+          <RouterLink to="/years" class="outline-link">All years ↗</RouterLink>
+        </nav>
+      </header>
+
+      <section class="stat-row motion-section" aria-label="Records at a glance">
+        <div class="stat-tile">
+          <span class="mini-label">Records held</span>
+          <strong>{{ totalRecords }}</strong>
+          <small>across bike, run and lifts</small>
+        </div>
+        <div class="stat-tile win">
+          <span class="mini-label">New PRs · {{ data.recent_days }} days</span>
+          <strong>{{ prs.length }}</strong>
+          <small v-if="spotlight">latest {{ shortDate(spotlight.date) }}</small>
+        </div>
+        <div class="stat-tile">
+          <span class="mini-label">Podium efforts</span>
+          <strong>{{ podiums }}</strong>
+          <small>2nd or 3rd best ever</small>
+        </div>
+        <div v-if="streaks" class="stat-tile win streak-tile" :title="streaks.note">
+          <div>
+            <span class="mini-label">Day streak</span>
+            <strong>{{ streaks.current?.days ?? 0 }}<small> days</small></strong>
+            <small v-if="streaks.next_milestone">{{ streaks.next_milestone.days_to_go }} days to {{ streaks.next_milestone.days }}</small>
+          </div>
+          <svg viewBox="0 0 120 120" class="streak-ring" aria-hidden="true">
             <circle cx="60" cy="60" r="52" class="ring-track" />
             <circle cx="60" cy="60" r="52" class="ring-fill" :stroke-dasharray="RING" :stroke-dashoffset="ringOffset" />
           </svg>
-          <div class="ring-center">
-            <strong>{{ streaks.current?.days ?? 0 }}</strong>
-            <span>day streak</span>
-          </div>
-          <small v-if="streaks.next_milestone">{{ streaks.next_milestone.days_to_go }} days to {{ streaks.next_milestone.days }}</small>
         </div>
-      </header>
+      </section>
 
       <!-- Spotlight -->
       <section v-if="spotlight" class="spotlight motion-section" :class="`sport-${sportOf(spotlight.category)}`" aria-label="Latest personal record">
         <div class="spot-main">
-          <span class="spot-ribbon">New PR · {{ shortDate(spotlight.date) }}</span>
+          <span class="spot-ribbon-row"><span class="spot-ribbon">New PR</span><span class="spot-day">{{ formatDate(spotlight.date) }}</span></span>
           <span class="spot-what">{{ spotlight.category }} · {{ spotlight.label }}</span>
           <strong class="spot-value">{{ splitDisplay(spotlight.display)[0] }}<small>{{ splitDisplay(spotlight.display)[1] }}</small></strong>
-          <span v-if="spotlight.metric === 'e1rm' && spotlight.detail" class="spot-was">Estimated 1RM from {{ spotlight.detail }}</span>
           <span v-if="spotlight.previous" class="spot-was">Previous best {{ spotlight.previous.display }} · {{ formatDate(spotlight.previous.date) }}</span>
+          <span v-if="spotlight.metric === 'e1rm' && spotlight.detail" class="spot-was">Estimated 1RM from {{ spotlight.detail }}</span>
           <router-link v-if="spotlight.activity_id" :to="`/activities/${spotlight.activity_id}`" class="spot-link">{{ spotlight.activity_name }} →</router-link>
         </div>
-        <ul v-if="otherPrs.length" class="spot-more" aria-label="Other recent PRs">
-          <li v-for="item in otherPrs" :key="`${item.category}-${item.label}-${item.date}`">
-            <router-link :to="item.activity_id ? `/activities/${item.activity_id}` : '/records'">
-              <span>{{ item.label }} <em>{{ shortCategory(item.category) }} · {{ shortDate(item.date) }}</em></span>
-              <strong>{{ item.display }}<em v-if="item.metric === 'e1rm' && item.detail"> e1RM · {{ item.detail }}</em></strong>
-            </router-link>
-          </li>
-        </ul>
+        <div v-if="otherPrs.length" class="spot-side">
+          <span class="mini-label">Also new lately</span>
+          <ul class="spot-more" aria-label="Other recent PRs">
+            <li v-for="item in otherPrs" :key="`${item.category}-${item.label}-${item.date}`" :class="`sport-${sportOf(item.category)}`">
+              <router-link :to="item.activity_id ? `/activities/${item.activity_id}` : '/records'">
+                <i class="chip-bar" aria-hidden="true" />
+                <span class="more-name">{{ item.label }}<em>{{ shortCategory(item.category) }} · {{ shortDate(item.date) }}</em></span>
+                <span class="more-value"><strong>{{ item.display }}</strong><em v-if="item.metric === 'e1rm' && item.detail">{{ item.detail }}</em></span>
+              </router-link>
+            </li>
+          </ul>
+        </div>
       </section>
 
       <!-- Bike power -->
@@ -333,6 +346,7 @@ const ringOffset = computed(() => {
         <button v-if="lifts.length > 10" type="button" class="more-button" @click="showAllLifts = !showAllLifts">{{ showAllLifts ? 'Show fewer' : `Show all ${lifts.length} lifts` }}</button>
       </section>
 
+      <div class="duo">
       <!-- Milestone shelf: every celebration, reopenable -->
       <section v-if="milestones?.milestones.length" class="sport-card sport-milestone motion-section" aria-labelledby="milestone-title">
         <div class="sport-head">
@@ -374,6 +388,7 @@ const ringOffset = computed(() => {
           </li>
         </ol>
       </section>
+      </div>
     </template>
   </div>
 </template>
@@ -582,8 +597,13 @@ a.lift-date:hover { color: var(--text); }
 /* ---- Multi-sport redesign layer ---- */
 .records-page {
   --sport: var(--ride);
-  gap: 22px;
+  --hot: var(--volt);
+  gap: 24px;
 }
+.records-page .sport-milestone,
+.records-page .sport-streak { --sport: var(--volt); }
+
+/* Header */
 .records-page .hero {
   padding: 0;
   border: 0;
@@ -591,101 +611,209 @@ a.lift-date:hover { color: var(--text); }
   overflow: visible;
   background: transparent;
   align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 .records-page .hero-copy { min-width: 0; }
-.records-page .hero-eyebrow {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: .14em;
-}
+.records-page .hero-eyebrow { display: block; color: var(--volt); font-size: 11px; font-weight: 700; letter-spacing: .14em; }
 .records-page .hero h1 {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   font-family: var(--font-display);
-  font-size: clamp(48px, 5vw, 68px);
+  font-size: clamp(52px, 5vw, 72px);
   font-style: italic;
   font-weight: 800;
-  letter-spacing: -.035em;
-  line-height: .98;
+  letter-spacing: 0;
+  line-height: .95;
   text-transform: uppercase;
 }
-.records-page .hero p { margin-top: 8px; color: var(--muted); font-size: 13px; }
-.records-page .hero-stats { gap: 8px; margin-top: 16px; }
-.records-page .hero-stats span {
-  padding: 5px 10px;
-  color: var(--text-soft);
-  background: var(--surface);
-  border-color: var(--border);
-  font-size: 12px;
+.records-page .hero p { margin-top: 6px; color: var(--text-soft); font-size: 15px; }
+.hero-links { display: flex; flex-wrap: wrap; gap: 10px; }
+.outline-link {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 14px;
+  text-decoration: none;
 }
-.records-page .hero-stats strong { color: var(--text); font-size: 15px; }
-.records-page .hero-stats .season-link { color: var(--text-soft); font-size: 12px; }
-.records-page .streak-ring { width: 112px; }
-.records-page .streak-ring svg { width: 112px; height: 112px; }
-.records-page .ring-center { width: 112px; height: 112px; }
-.records-page .ring-center strong { color: var(--warning); background: none; -webkit-text-fill-color: currentColor; font-style: italic; font-weight: 800; }
-.records-page .spotlight {
-  padding: 22px 24px;
+.outline-link:hover { border-color: var(--muted); }
+
+/* Stat tiles */
+.stat-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 18px 20px;
+  border-radius: 20px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  box-shadow: none;
-}
-.records-page .spot-value { font-style: italic; font-weight: 800; }
-.records-page .sport-card {
-  padding: 22px 24px;
-  border-color: var(--border);
-  border-radius: var(--radius-card);
   background: var(--surface);
 }
-.records-page .sport-head { margin-bottom: 20px; }
-.records-page .sport-head h2 {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-style: italic;
-  font-weight: 800;
-  letter-spacing: -.01em;
-  text-transform: uppercase;
-}
-.records-page .sport-head p { color: var(--muted); font-size: 12px; }
-.records-page .sport-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
+.stat-tile strong { font-family: var(--font-display); font-size: 44px; font-style: italic; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat-tile strong small { font-size: 16px; font-style: normal; font-weight: 600; color: var(--text-soft); }
+.stat-tile > small, .stat-tile div > small { font-size: 13px; color: var(--text-soft); }
+.stat-tile.win strong { color: var(--volt); }
+.streak-tile { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+.streak-tile > div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.streak-tile .streak-ring { flex: none; width: 58px; height: 58px; transform: rotate(-90deg); }
+.records-page .ring-track { stroke: var(--surface3); stroke-width: 12; }
+.records-page .ring-fill { stroke: var(--volt); stroke-width: 12; filter: none; }
+
+/* Spotlight */
+.records-page .spotlight {
+  --sport-rgb: 255 77 154;
+  gap: 24px;
+  padding: 0;
+  border-radius: 28px;
+  border: 1px solid color-mix(in srgb, var(--sport) 35%, transparent);
+  background: radial-gradient(90% 160% at 0% 0%, color-mix(in srgb, var(--sport) 24%, transparent) 0%, transparent 55%), var(--surface);
   box-shadow: none;
-  background: color-mix(in srgb, var(--sport) 12%, var(--deep));
 }
-.records-page .ftp-card,
-.records-page .stop-card,
-.records-page .trophy,
-.records-page .lift-card,
-.records-page .shelf-card {
-  border-color: var(--border);
-  background: var(--deep);
+.records-page .spot-main { padding: 32px; gap: 6px; }
+.spot-ribbon-row { display: flex; align-items: center; gap: 10px; }
+.records-page .spot-ribbon { padding: 4px 10px; background: var(--volt); color: #0a0c11; font-size: 11px; letter-spacing: .08em; }
+.spot-day { font-size: 14px; color: var(--text-soft); }
+.records-page .spot-what { margin-top: 16px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--sport); opacity: 1; }
+.records-page .sport-strength .spot-what { color: var(--tone-strength); }
+.records-page .sport-ride .spot-what { color: var(--tone-ride); }
+.records-page .sport-run .spot-what { color: var(--tone-run); }
+.records-page .spot-value { margin: 4px 0 8px; font-size: clamp(72px, 8vw, 120px); font-style: italic; font-weight: 800; line-height: .9; letter-spacing: 0; }
+.records-page .spot-value small { font-size: 32px; font-style: normal; color: var(--text-soft); opacity: 1; }
+.records-page .spot-was { font-size: 14px; color: var(--text-soft); opacity: 1; }
+.records-page .spot-link { margin-top: 14px; color: var(--volt); font-size: 14px; }
+.spot-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 28px 28px 28px 0; }
+.records-page .spot-more { align-content: start; }
+.records-page .spot-more a {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: rgb(var(--deep-rgb) / .7);
 }
-.records-page .ftp-card strong,
-.records-page .trophy strong,
-.records-page .lift-value,
-.records-page .shelf-card strong { font-style: italic; font-weight: 800; }
-.records-page .rung-track { background: var(--deep); }
-.records-page .stop-card { border-radius: 12px; }
-.records-page .stop-card.ghost { background: transparent; border-color: var(--border-strong); }
-.records-page .venue-switch { background: var(--deep); border-color: var(--border); }
-.records-page .venue-switch button[aria-pressed='true'] { color: var(--bg); box-shadow: none; }
+.records-page .spot-more a:hover { background: var(--surface2); transform: none; }
+.chip-bar { flex: none; width: 4px; height: 28px; border-radius: 3px; background: var(--sport); }
+.more-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; font-weight: 600; opacity: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.records-page .more-name em, .records-page .more-value em { font-size: 12px; font-weight: 400; color: var(--muted); opacity: 1; margin: 0; font-family: var(--font-body); }
+.more-value { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; white-space: nowrap; }
+.records-page .more-value strong { font-size: 22px; }
+
+/* Sport cards */
+.records-page .sport-card { padding: 24px 28px; border-color: var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.records-page .sport-head { margin-bottom: 20px; }
+.records-page .sport-head h2 { font-size: 28px; font-style: italic; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
+.records-page .sport-head p { color: var(--muted); font-size: 13px; }
+.records-page .sport-icon,
+.records-page .sport-icon.flame { width: 40px; height: 40px; border-radius: 12px; box-shadow: none; color: var(--sport); background: color-mix(in srgb, var(--sport) 14%, transparent); }
+.records-page .mini-label { font-size: 11px; font-weight: 600; letter-spacing: .14em; color: var(--muted); }
+.records-page .new-pill { color: #0a0c11; background: var(--volt); }
+
+/* Power ladder: flat ride bars, new bests get a volt cap */
+.records-page .rung-track { background: transparent; }
+.records-page .rung-bar { border-radius: 8px 8px 4px 4px; background: var(--ride); }
+.records-page .rung.fresh .rung-bar { background: var(--ride); box-shadow: inset 0 3px 0 var(--volt); }
+.records-page .rung.selected .rung-bar { background: var(--tone-ride); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text); }
+.records-page .rung.fresh .rung-value,
+.records-page .rung.fresh .rung-label { color: var(--volt); }
+.records-page .rung-new { display: none; }
+.records-page .ftp-card { border: 0; border-radius: 16px; background: rgb(var(--deep-rgb)); padding: 20px; }
+.records-page .ftp-card strong { font-size: 64px; font-style: italic; font-weight: 800; color: var(--tone-ride); }
+.records-page .ftp-card .ftp-gap { align-self: flex-start; margin-top: 8px; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); font-size: 12px; font-weight: 700; }
+
+/* Distance roads */
+.records-page .road::before { top: 32px; height: 3px; background: var(--surface3); }
+.records-page .road::after { top: 32px; height: 3px; background: var(--sport); box-shadow: none; }
+.records-page .stop-name { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--text-soft); }
+.records-page .stop-dot { width: 14px; height: 14px; border: 0; background: var(--sport); box-shadow: 0 0 0 4px var(--surface); }
+.records-page .road li.fresh .stop-dot { background: var(--volt); box-shadow: 0 0 0 4px var(--surface); }
+.records-page .road li.locked .stop-dot { background: var(--surface); box-shadow: inset 0 0 0 2px var(--sport), 0 0 0 4px var(--surface); }
+.records-page .road li.next .stop-dot { animation: none; }
+.records-page .stop-card { padding: 12px 6px; border: 1px solid transparent; border-radius: 14px; background: rgb(var(--deep-rgb)); gap: 3px; }
+.records-page button.stop-card:hover { transform: none; box-shadow: none; border-color: var(--border-strong); }
+.records-page .road li.selected .stop-card { border-color: var(--sport); box-shadow: none; }
+.records-page .road li.fresh .stop-card { border-color: color-mix(in srgb, var(--volt) 45%, transparent); }
+.records-page .stop-card strong { font-size: 24px; }
+.records-page .stop-card.ghost strong { font-size: 13px; font-family: var(--font-body); }
+.records-page .stop-card em { color: var(--volt); font-weight: 700; }
+.records-page .stop-card.ghost { background: transparent; border: 1px dashed var(--border-strong); }
+.records-page .road li.next .stop-card.ghost { border-color: var(--sport); }
+.records-page .sport-ride .road li.next .stop-card.ghost strong { color: var(--tone-ride); }
+.records-page .sport-run .road li.next .stop-card.ghost strong { color: var(--tone-run); }
+.records-page .trophy {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 12px;
+  padding: 14px 18px;
+  border: 1px solid transparent;
+  background: rgb(var(--deep-rgb));
+}
+.records-page .trophy:hover, .records-page .trophy.selected { border-color: var(--sport); }
+.records-page .trophy strong { order: 2; font-size: 32px; font-style: italic; font-weight: 800; }
+.records-page .trophy > span:last-child { order: 3; flex-basis: 100%; }
+.records-page .sport-ride .trophy strong { color: var(--tone-ride); }
+.records-page .sport-run .trophy strong { color: var(--tone-run); }
+.records-page .venue-switch { background: transparent; border-color: var(--border-strong); }
+.records-page .venue-switch button[aria-pressed='true'] { background: var(--surface3); color: var(--text); box-shadow: none; }
+
+/* Lifts */
+.records-page .lift-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.records-page .lift-card { border: 0; background: rgb(var(--deep-rgb)); }
+.records-page .lift-card.fresh { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--volt) 40%, transparent); }
+.records-page .lift-name { color: var(--text); }
+.records-page .lift-value { color: var(--tone-strength); font-size: 34px; font-style: italic; font-weight: 800; }
+.records-page .lift-set em { color: var(--volt); font-weight: 700; }
 .records-page .more-button {
+  margin-top: 16px;
+  height: 40px;
+  padding: 0 18px;
   border-color: var(--border-strong);
   background: transparent;
-  color: var(--text-soft);
+  color: var(--text);
 }
-.records-page .more-button:hover { border-color: var(--sport); color: var(--text); }
-.records-page .shelf-card { border-radius: 14px; }
-.records-page .badges li.earned .badge-medal { color: var(--bg); }
+.records-page .more-button:hover { border-color: var(--muted); }
+
+/* Milestones + streak side by side */
+.duo { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.records-page .next-up li { background: var(--surface2); color: var(--text-soft); font-size: 13px; padding: 6px 12px; }
+.records-page .shelf { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.records-page .shelf-card { --tone: var(--volt); border: 0; border-radius: 16px; background: rgb(var(--deep-rgb)); box-shadow: inset 0 3px 0 var(--tone); }
+.records-page .shelf-card:hover { transform: none; box-shadow: inset 0 3px 0 var(--tone); background: var(--surface2); }
+.records-page .shelf-lift { --tone: var(--strength); }
+.records-page .shelf-year_km { --tone: var(--ride); }
+.records-page .shelf-card strong { color: var(--text); font-size: 34px; }
+.records-page .shelf-title { font-size: 12px; font-weight: 500; }
+.records-page .badges { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px 8px; }
+.records-page .badge-medal { width: 64px; height: 64px; border-color: var(--border-strong); }
+.records-page .badge-medal strong { font-size: 24px; }
+.records-page .badge-medal small { font-size: 9px; color: var(--muted); }
+.records-page .badges li.earned .badge-medal { border: 2px solid var(--volt); color: var(--volt); background: color-mix(in srgb, var(--volt) 12%, transparent); box-shadow: none; }
+.records-page .badges li.next .badge-medal { border-color: var(--volt); color: var(--text); }
+.records-page .badges li.next .badge-when { color: var(--volt); }
+.records-page .badge-when { font-size: 11px; color: var(--muted); }
+
+@media (max-width: 1100px) {
+  .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .duo { grid-template-columns: 1fr; }
+  .spot-side { padding: 0 24px 24px; }
+}
 @media (max-width: 760px) {
-  .records-page .hero { align-items: flex-start; }
-  .records-page .hero h1 { font-size: 54px; }
-  .records-page .streak-ring { display: none; }
-  .records-page .spotlight { padding: 18px; }
+  .records-page .hero h1 { font-size: 52px; }
+  .stat-row { gap: 10px; }
+  .stat-tile { padding: 14px 16px; }
+  .stat-tile strong { font-size: 34px; }
+  .streak-tile .streak-ring { display: none; }
+  .records-page .spot-main { padding: 22px 20px 8px; }
+  .records-page .spot-more { grid-template-columns: 1fr; }
+  .spot-side { padding: 0 16px 18px; }
   .records-page .sport-card { padding: 18px 16px; }
+  .records-page .sport-head h2 { font-size: 24px; }
 }
 
 /* ---- Responsive ---- */

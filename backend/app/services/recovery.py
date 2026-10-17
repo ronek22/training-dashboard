@@ -14,6 +14,35 @@ AREA_NOISE = {
 }
 AREA_ALIASES = {"calves": "calf", "feet": "foot", "achilles": "achilles", "quadriceps": "quad"}
 
+# Match common English and Polish mentions in short athlete notes. Keep the
+# canonical keys aligned with settings.BODY_AREAS so protection can use them.
+BODY_AREA_TERMS = {
+    "knee": ("knee", "knees", "kolano", "kolana", "kolanie", "kolan"),
+    "heel": ("heel", "heels", "achilles", "achillesa", "achillesie", "pieta", "pięta", "pięty", "pięcie"),
+    "hip": ("hip", "hips", "biodro", "biodra", "biodrze", "bioder"),
+    "lower_back": ("lower back", "lumbar", "back", "plecy", "pleców", "plecach", "lędźwie", "ledzwie", "lędźwi", "ledzwi"),
+    "shoulder": ("shoulder", "shoulders", "bark", "barki", "barku", "barkach"),
+    "elbow": ("elbow", "elbows", "łokieć", "lokiec", "łokcia", "lokcia", "łokciu", "lokciu"),
+    "wrist": ("wrist", "wrists", "nadgarstek", "nadgarstka", "nadgarstku"),
+    "neck": ("neck", "szyja", "szyi", "kark", "karku"),
+}
+
+
+def detect_body_areas(text):
+    """Return canonical protected-area keys named in English or Polish text."""
+    def fold(value):
+        return value.lower().translate(str.maketrans({"ł": "l", "ę": "e", "ą": "a", "ś": "s", "ć": "c", "ń": "n", "ó": "o", "ż": "z", "ź": "z"}))
+
+    normalized = fold(text or "")
+    found = []
+    for area, terms in BODY_AREA_TERMS.items():
+        for term in terms:
+            term_normalized = fold(term)
+            if re.search(rf"(?<![a-z]){re.escape(term_normalized)}(?![a-z])", normalized):
+                found.append(area)
+                break
+    return found
+
 
 def area_tokens(text):
     tokens = set()

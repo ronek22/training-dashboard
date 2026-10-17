@@ -275,6 +275,19 @@ def build_activity_heatmap(conn: sqlite3.Connection) -> dict:
         for row in rows
     }
 
+    # Minutes per sport for each day, so weekly bars and calendar squares can use sport colors.
+    from .season_review import _sport_of
+
+    sport_minutes: dict[str, dict[str, int]] = {}
+    for row in conn.execute(
+        "SELECT date, type, COALESCE(SUM(duration_min), 0) AS minutes FROM activities "
+        "WHERE date >= ? AND date <= ? GROUP BY date, type",
+        (grid_start.isoformat(), grid_end.isoformat()),
+    ):
+        sport = "walk" if row["type"] == "Hike" else _sport_of(row["type"])
+        day = sport_minutes.setdefault(row["date"], {})
+        day[sport] = day.get(sport, 0) + int(round(row["minutes"] or 0))
+
     active_scores = []
     cells = []
     month_labels = []
@@ -305,6 +318,7 @@ def build_activity_heatmap(conn: sqlite3.Connection) -> dict:
                 "sessions": entry["sessions"],
                 "total_duration_min": entry["total_duration_min"],
                 "total_distance_km": round(entry["total_distance_km"], 1),
+                "sports": sport_minutes.get(current.isoformat(), {}),
                 "score": score,
             }
         )

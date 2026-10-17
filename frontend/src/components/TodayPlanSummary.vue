@@ -220,6 +220,7 @@ const intensityTile = computed(() => {
   if (zone == null) return null
   return {
     key: 'intensity', label: 'Target zone', value: `Z${zone + 1}`, unit: INTENSITY[zone].name,
+    unitBelow: true,
     visual: 'zones', segments: segments(zone),
     caption: INTENSITY[zone].hint,
   }

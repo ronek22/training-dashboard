@@ -212,4 +212,26 @@ function formatDate(value, pattern = 'd MMM yyyy') { try { return format(new Dat
 @media(max-width:760px){.health-trend-card{padding:17px}.chart-header{display:grid}.chart-controls{justify-content:space-between}.chart-canvas{height:220px}.y-axis-label{font-size:8px}.average-level{right:1%;font-size:7px}.chart-footer{align-items:flex-start;flex-direction:column}.inspection{min-width:0;justify-items:start}.selected-value strong{font-size:21px}}
 
 .chart-legend .stage-swatch{width:8px;height:8px;border-radius:50%}
+/* Multi-sport redesign layer — Trends recovery and daily-activity charts. */
+.health-trend-card { padding: 24px 28px; border-radius: var(--radius-card); background: var(--surface); border: 1px solid var(--border); box-shadow: none; }
+.health-trend-card .chart-header { align-items: center; margin-bottom: 8px; }
+.health-trend-card .chart-title > span { font-size: 11px; font-weight: 600; letter-spacing: .14em; color: var(--muted); }
+.health-trend-card .chart-title h3 { margin: 0; font-family: var(--font-display); font-size: 26px; font-style: italic; font-weight: 800; line-height: 1; text-transform: uppercase; }
+.health-trend-card .chart-title p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.health-trend-card .chart-controls { align-items: center; gap: 16px; }
+.health-trend-card .range-picker { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; }
+.health-trend-card .range-picker button { padding: 6px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; }
+.health-trend-card .range-picker button.active { background: var(--surface3); color: var(--text); box-shadow: none; }
+.health-trend-card .selected-value strong { font-family: var(--font-display); font-size: 32px; font-style: italic; font-weight: 800; line-height: 1; color: var(--text); }
+.health-trend-card .selected-value small { font-size: 11px; color: var(--muted); }
+.health-trend-card .grid-line { stroke: var(--border); }
+.health-trend-card .average-line { stroke: var(--muted); stroke-dasharray: 5 5; }
+.health-trend-card .average-band { fill: transparent; }
+.health-trend-card .chart-axis, .health-trend-card .y-axis-label { font-size: 11px; color: var(--muted); }
+.health-trend-card .chart-legend { font-size: 12px; color: var(--muted-soft); }
+.health-trend-card .chart-legend .stage-swatch { width: 4px; height: 12px; border-radius: 2px; }
+.health-trend-card .inspection { border-radius: 12px; background: rgb(var(--deep-rgb)); border: 1px solid var(--border); }
+.health-trend-card .inspection strong { font-size: 13px; }
+.health-trend-card .average-level { font-size: 11px; color: var(--muted-soft); background: var(--surface); }
+@media (max-width: 720px) { .health-trend-card { padding: 20px 16px; border-radius: 20px; } .health-trend-card .chart-title h3 { font-size: 22px; } }
 </style>

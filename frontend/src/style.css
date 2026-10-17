@@ -285,13 +285,13 @@ button.card:active,
 .chart-intro:not(.is-playing) .chart-fade { opacity: 0 !important; }
 .chart-intro.is-playing .chart-draw {
   stroke-dashoffset: 0;
-  transition: stroke-dashoffset 1000ms var(--motion-ease-standard) 120ms;
+  transition: stroke-dashoffset 750ms linear;
 }
 .chart-intro.is-playing .chart-grow {
   transform: none;
   transition: transform 560ms var(--motion-ease-emphasized) calc(var(--i, 0) * 28ms);
 }
-.chart-intro.is-playing .chart-fade { transition: opacity 500ms var(--motion-ease-standard) 600ms; }
+.chart-intro.is-playing .chart-fade { transition: opacity 420ms var(--motion-ease-standard) 80ms; }
 
 .card-title {
   font-family: var(--font-body);

@@ -24,6 +24,11 @@ class RecoveryTests(unittest.TestCase):
     def tearDown(self):
         self.conn.close()
 
+    def test_body_area_detection_handles_polish_and_english_notes(self):
+        self.assertEqual(service.detect_body_areas("Tightness in lower back after run"), ["lower_back"])
+        self.assertEqual(service.detect_body_areas("Ból w lewym kolanie i barku"), ["knee", "shoulder"])
+        self.assertEqual(service.detect_body_areas("Napięcie w dolnych plecach"), ["lower_back"])
+
     def create(self, **values):
         return service.create_issue(self.conn, IssueCreate(**{"body_area": "knee", "side": "left", **values}))
 

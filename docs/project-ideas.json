@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-15T23:30:00+02:00",
-  "summary": "Fresh round after the board ran low (32 done, 14 dismissed). Grounded in this week's data: lower-back tightness from stress, red readiness with sleep debt, a 7-day mountain trip, a 286-day streak, only 6 logged food days and HR-only outdoor rides. Added ache follow-up, mountain-day fuelling, streak milestones, one-tap unlogged food days, stress-week sleep protection, outdoor power estimates, indoor/outdoor from the forecast and ask-the-coach on cards.",
+  "reviewed_at": "2026-10-17T09:31:44+02:00",
+  "summary": "Reviewed recent commits and worktree summary, current-state documentation, roadmap index and its two open threads, and all 56 existing proposal scopes. Recent changes include the multisport analysis redesign and milestone celebrations; the current uncommitted recovery change aligns with the existing ache follow-up proposal. Inspected analysis-page accessibility labels and focus states, plus the milestone implementation notes. General navigation accessibility and card-linked coaching already have proposals, and the remaining roadmap threads are explicit. No sufficiently distinct new proposal was identified. Source/documentation review only; no application tests or model calls were run, and no credentials, databases or private training records were opened.",
   "ideas": [
     {
       "id": "dependable-project-checks",

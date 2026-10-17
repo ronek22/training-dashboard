@@ -35,9 +35,10 @@ from .power_trends import (
     get_cycling_power_trends_data,
 )
 from .strength import _filtered_sessions, _match_pr_pattern
+from .ride_record_eligibility import cleaned_distance_stream, ride_has_record_evidence
 
 
-ALGORITHM_VERSION = "records-v1"
+ALGORITHM_VERSION = "records-v5"
 RIDE_TYPES = ("Ride", "VirtualRide")
 RUN_TYPES = ("Run",)
 RIDE_DISTANCES = (
@@ -156,25 +157,30 @@ def _window_gain(streams: Any, start_index: int, end_index: int) -> Optional[int
 def extract_activity_efforts(activity_type: str, streams: Any, *, power_meter: bool) -> dict[str, Any]:
     kind = "run" if activity_type in RUN_TYPES else "ride"
     targets = RUN_DISTANCES if kind == "run" else RIDE_DISTANCES
-    points = _distance_points(streams)
+    effort_streams = streams
+    if kind == "ride" and isinstance(streams, dict):
+        effort_streams = {**streams, "distance": {"data": cleaned_distance_stream(streams)}}
+    points = _distance_points(effort_streams)
     distance_efforts = []
-    for label, target_m in targets:
-        window = fastest_distance_window(points, target_m)
-        if window is None:
-            continue
-        kmh = (target_m / window["duration_s"]) * 3.6
-        if kmh > MAX_PLAUSIBLE_KMH[kind]:
-            continue
-        distance_efforts.append(
-            {
-                "label": label,
-                "distance_m": target_m,
-                "duration_s": round(window["duration_s"], 1),
-                "start_s": round(window["start_s"], 1),
-                "avg_hr": _window_hr(streams, window["start_index"], window["end_index"]),
-                "elevation_gain_m": _window_gain(streams, window["start_index"], window["end_index"]),
-            }
-        )
+    distance_record_eligible = kind == "run" or ride_has_record_evidence(streams)
+    if distance_record_eligible:
+        for label, target_m in targets:
+            window = fastest_distance_window(points, target_m)
+            if window is None:
+                continue
+            kmh = (target_m / window["duration_s"]) * 3.6
+            if kmh > MAX_PLAUSIBLE_KMH[kind]:
+                continue
+            distance_efforts.append(
+                {
+                    "label": label,
+                    "distance_m": target_m,
+                    "duration_s": round(window["duration_s"], 1),
+                    "start_s": round(window["start_s"], 1),
+                    "avg_hr": _window_hr(streams, window["start_index"], window["end_index"]),
+                    "elevation_gain_m": _window_gain(streams, window["start_index"], window["end_index"]),
+                }
+            )
     sprint = None
     if power_meter:
         effort = _best_effort_from_runs(_build_segments(streams), SPRINT_POWER_SECONDS)
@@ -184,7 +190,11 @@ def extract_activity_efforts(activity_type: str, streams: Any, *, power_meter: b
                 "avg_hr": round(float(effort["avg_hr"])) if effort.get("avg_hr") is not None else None,
                 "start_s": round(float(effort["start_seconds"]), 1),
             }
-    return {"distance": distance_efforts, "sprint_power": sprint}
+    return {
+        "distance": distance_efforts,
+        "distance_record_eligible": distance_record_eligible,
+        "sprint_power": sprint,
+    }
 
 
 def _ensure_cache_table(conn: sqlite3.Connection) -> None:
@@ -653,7 +663,7 @@ def _build_endurance_sections(conn: sqlite3.Connection, today: date) -> dict[str
         "cycling_distance": {
             "outdoor": _distance_section(outdoor, efforts, starts, RIDE_DISTANCES, kind="ride"),
             "indoor": _distance_section(indoor, efforts, starts, RIDE_DISTANCES, kind="ride"),
-            "note": "Indoor speed is simulated by the trainer platform, so indoor distance records are kept separate. Power counts from both.",
+            "note": "Fastest ride distance segments require a GPS track or recorded power. Indoor distance records stay separate. Power counts from both.",
         },
         "running": _distance_section(runs, efforts, starts, RUN_DISTANCES, kind="run"),
     }

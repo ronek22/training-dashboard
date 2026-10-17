@@ -28,6 +28,7 @@
 
     <section v-if="preparedCharts.length || powerEfforts.length || efforts.length" class="ad-section analysis-cockpit-section" aria-labelledby="effort-heading">
       <div class="ad-section-heading"><div><span>{{ preparedCharts.length ? (routeCoordinates.length ? 'Route and effort' : 'Effort trace') : (powerEfforts.length ? 'Peak power' : 'Comparable segments') }}</span><h2 id="effort-heading">{{ preparedCharts.length ? 'Session analysis' : (powerEfforts.length ? 'Power bests' : 'Best efforts') }}</h2></div></div>
+      <p v-if="excludedImplausibleEfforts.length" class="effort-data-warning" role="status">{{ excludedImplausibleEfforts.join(', ') }} {{ excludedImplausibleEfforts.length === 1 ? 'effort was' : 'efforts were' }} excluded from best efforts and records because the recorded speed is implausible.</p>
       <div v-if="preparedCharts.length" class="analysis-cockpit" :class="{'without-map':!routeCoordinates.length}">
         <div v-if="routeCoordinates.length" class="cockpit-map-panel">
           <div ref="mapElement" class="interactive-route-map" role="application" aria-label="Interactive activity route map — drag to pan, scroll or pinch to zoom"></div>
@@ -207,6 +208,7 @@ const zoneTotalMinutes = computed(() => zonePanels.value[0]?.summary.total_minut
 const zoneLead = computed(() => { const summary = zonePanels.value[0]?.summary; return summary?.zones.find(zone => zone.key === summary.dominant_zone_key) })
 const zoneTwoSummary = computed(() => zonePanels.value.map(panel => ({ key: panel.key, minutes: panel.summary.zone2_minutes, by: zonePanels.value.length > 1 ? panel.by : `(${panel.summary.zone2_pct}%)` })))
 const efforts = computed(() => props.detail.best_efforts?.efforts || [])
+const excludedImplausibleEfforts = computed(() => props.detail.best_efforts?.excluded_implausible_efforts || [])
 const familyTitle = computed(() => ({ Hike:'Hike overview', Walk:'Walk overview' }[props.detail.activity.type] || { running:'Run performance',cycling:'Ride performance',swimming:'Swim performance',default:'Endurance performance' }[sportFamily(props.detail.activity.type)]))
 // The SVG is drawn at the wrap's real pixel size so the trace fills the panel and labels stay crisp.
 const chartWidth = computed(() => chartBox.value.width || (routeCoordinates.value.length ? 760 : 1240))
@@ -590,6 +592,7 @@ onBeforeUnmount(() => { window.removeEventListener('themechange', syncMapTheme);
 .zone-row-bar em{position:absolute;top:0;left:7px;line-height:18px;font-style:normal;font-size:10px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}.zone-row-bar em.is-inside{color:rgb(var(--deep-rgb));font-weight:700}
 .zone-row-min{text-align:right;font:700 13px var(--font-display);color:var(--text);font-variant-numeric:tabular-nums}.zone-row-pct{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
 .zone-row.is-empty .zone-row-name,.zone-row.is-empty .zone-row-min{color:var(--muted)}.zone-row.is-empty .zone-row-name::before{opacity:.35}
+.effort-data-warning{margin:0 0 14px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--warning) 35%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--warning) 8%,transparent);color:var(--warning-text);font-size:12px;line-height:1.5}
 @media(max-width:1000px){.zone-columns.has-both{grid-template-columns:minmax(0,1fr)}}
 @media(prefers-reduced-motion:reduce){.zone-row{transition:none}}
 </style>

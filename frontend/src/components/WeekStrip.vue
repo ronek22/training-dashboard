@@ -16,6 +16,12 @@
       </nav>
     </header>
 
+    <div class="week-sport-totals" role="group" aria-label="Training by sport this week">
+      <span class="week-sport-total is-ride"><i aria-hidden="true" />Cycling<strong>{{ sportTotals.rideKm }} km</strong></span>
+      <span class="week-sport-total is-run"><i aria-hidden="true" />Running<strong>{{ sportTotals.runKm }} km</strong></span>
+      <span class="week-sport-total is-strength"><i aria-hidden="true" />Strength<strong>{{ sportTotals.strengthWorkouts }} {{ sportTotals.strengthWorkouts === 1 ? 'workout' : 'workouts' }}</strong></span>
+    </div>
+
     <div v-if="mix.length" class="week-mix" role="img" :aria-label="`${progressPct}% of the planned week done`">
       <i v-for="seg in mix" :key="seg.date" :style="{ width: `${seg.pct}%`, background: seg.accent }" />
     </div>
@@ -53,6 +59,7 @@ import AnimatedNumber from './AnimatedNumber.vue'
 const props = defineProps({
   days: { type: Array, required: true },
   summary: { type: Object, required: true },
+  sportTotals: { type: Object, required: true },
   plannedMinutes: { type: Number, default: 0 },
   plannedLabel: { type: String, default: '' },
   progressPct: { type: Number, default: 0 },
@@ -174,6 +181,13 @@ const mix = computed(() => {
 .week-link.is-primary { color: var(--accent); }
 .week-mix { display: flex; gap: 2px; height: 10px; overflow: hidden; border-radius: 5px; background: var(--surface2); }
 .week-mix i { height: 100%; }
+.week-sport-totals { display: flex; flex-wrap: wrap; gap: 8px; }
+.week-sport-total { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 11px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface2); color: var(--muted-soft); font-size: 11px; }
+.week-sport-total i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.week-sport-total strong { color: var(--text); font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.week-sport-total.is-ride { color: var(--tone-ride); }
+.week-sport-total.is-run { color: var(--tone-run); }
+.week-sport-total.is-strength { color: var(--tone-strength); }
 .week-grid { gap: 10px; overflow: visible; border: 0; border-radius: 0; background: transparent; }
 .week-cell {
   display: flex; flex-direction: column; gap: 10px;
@@ -202,6 +216,8 @@ const mix = computed(() => {
 }
 @media (max-width: 780px) {
   .week { padding: 20px; }
+  .week-sport-totals { gap: 6px; }
+  .week-sport-total { gap: 6px; padding: 0 9px; }
   .week-total strong { font-size: 44px; }
   .week-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .week-cell { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; grid-template-areas: "top title time" "top status time"; align-items: center; gap: 2px 12px; padding: 12px 14px; }

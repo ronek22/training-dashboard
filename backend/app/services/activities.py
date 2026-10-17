@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from bisect import bisect_left, bisect_right
 from datetime import date, datetime, timedelta
 from typing import Callable, Optional
 
@@ -32,7 +33,8 @@ from .activity_analysis import (
     request_activity_analysis,
     save_activity_analysis,
 )
-from .personal_records import RIDE_DISTANCES, RUN_DISTANCES, fastest_distance_window
+from .personal_records import MAX_PLAUSIBLE_KMH, RIDE_DISTANCES, RUN_DISTANCES, fastest_distance_window
+from .ride_record_eligibility import cleaned_distance_stream, ride_has_record_evidence
 from .session_win import build_session_win
 from .benchmarks import attach_benchmark_from_lookup, build_benchmark_session_lookup
 from .heart_rate_zones import build_activity_heart_rate_zone_summary
@@ -54,7 +56,7 @@ from .settings import (
     set_workout_template_settings_for_conn,
 )
 
-DETAIL_DERIVED_VERSION = "v6"
+DETAIL_DERIVED_VERSION = "v11"
 
 
 def _normalize_text_for_match(value: Optional[str]) -> str:
@@ -406,6 +408,30 @@ def _moving_timeline(time_stream: list[object], velocity_stream: list[object]) -
     return moving, pauses
 
 
+def _velocity_from_distance(distance_stream: list[object], time_stream: list[object], window_seconds: float = 10.0) -> list[Optional[float]]:
+    """Estimate m/s from cumulative GPS distance when a device speed stream is absent."""
+    count = min(len(distance_stream), len(time_stream))
+    samples: list[tuple[int, float, float]] = []
+    for index in range(count):
+        try:
+            samples.append((index, float(time_stream[index]), float(distance_stream[index])))
+        except (TypeError, ValueError):
+            continue
+
+    times = [sample[1] for sample in samples]
+    speeds: list[Optional[float]] = [None] * count
+    half_window = max(window_seconds / 2, 1.0)
+    for sample_index, current_time, _ in samples:
+        start_at = max(0, bisect_right(times, current_time - half_window) - 1)
+        end_at = min(len(samples) - 1, bisect_left(times, current_time + half_window))
+        _, start_time, start_distance = samples[start_at]
+        _, end_time, end_distance = samples[end_at]
+        elapsed = end_time - start_time
+        distance = end_distance - start_distance
+        speeds[sample_index] = distance / elapsed if elapsed > 0 and distance >= 0 else None
+    return speeds
+
+
 def _rolling_mean(points: list[dict], window_seconds: float) -> list[dict]:
     """Centered rolling mean of ``y`` over ``window_seconds`` of the chart axis (minutes in ``x``)."""
     if window_seconds <= 0 or len(points) < 3:
@@ -615,7 +641,14 @@ def _build_best_efforts(activity: dict, streams: Optional[dict]) -> Optional[dic
     if not streams:
         return None
 
+    activity_type = activity.get("type")
+    if activity_type in {"Ride", "VirtualRide"}:
+        if not ride_has_record_evidence(streams):
+            return None
+
     distance_stream = (streams.get("distance") or {}).get("data") or []
+    if activity_type in {"Ride", "VirtualRide"}:
+        distance_stream = cleaned_distance_stream(streams)
     time_stream = (streams.get("time") or {}).get("data") or []
     heartrate_stream = (streams.get("heartrate") or {}).get("data") or []
     altitude_stream = (streams.get("altitude") or {}).get("data") or []
@@ -625,7 +658,6 @@ def _build_best_efforts(activity: dict, streams: Optional[dict]) -> Optional[dic
         return None
 
     total_distance_m = distance_points[-1][0]
-    activity_type = activity.get("type")
     if activity_type == "Run":
         metric_label = "Pace"
         metric_unit = "min/km"
@@ -639,6 +671,8 @@ def _build_best_efforts(activity: dict, streams: Optional[dict]) -> Optional[dic
         return lambda duration_s: (target_distance_m / duration_s) * 3.6
 
     efforts = []
+    excluded_implausible = []
+    max_speed = MAX_PLAUSIBLE_KMH["run" if activity_type == "Run" else "ride"]
     for label, target_distance_m in _best_effort_targets_for_activity(activity_type):
         if total_distance_m < target_distance_m * 0.98:
             continue
@@ -654,6 +688,10 @@ def _build_best_efforts(activity: dict, streams: Optional[dict]) -> Optional[dic
         )
         if not best:
             continue
+        speed_kmh = target_distance_m / best["duration_s"] * 3.6 if best["duration_s"] > 0 else float("inf")
+        if speed_kmh > max_speed:
+            excluded_implausible.append(label)
+            continue
         efforts.append(
             {
                 "label": label,
@@ -662,7 +700,7 @@ def _build_best_efforts(activity: dict, streams: Optional[dict]) -> Optional[dic
             }
         )
 
-    if not efforts:
+    if not efforts and not excluded_implausible:
         return None
 
     return {
@@ -670,6 +708,7 @@ def _build_best_efforts(activity: dict, streams: Optional[dict]) -> Optional[dic
         "subtitle": "Fastest rolling distance segments from this activity.",
         "metric_label": metric_label,
         "efforts": efforts,
+        "excluded_implausible_efforts": excluded_implausible,
     }
 
 
@@ -709,6 +748,11 @@ def _build_activity_charts(activity: dict, detail: Optional[dict], streams: Opti
     streams = streams or {}
     time_stream = (streams.get("time") or {}).get("data") or []
     velocity_stream = (streams.get("velocity_smooth") or {}).get("data") or []
+    if not any(value is not None for value in velocity_stream):
+        distance_stream = (streams.get("distance") or {}).get("data") or []
+        if activity.get("type") in {"Ride", "VirtualRide"}:
+            distance_stream = cleaned_distance_stream(streams)
+        velocity_stream = _velocity_from_distance(distance_stream, time_stream)
     # Trainer rides report zero speed while pedalling, so only gaps count as pauses there.
     indoor = activity.get("type") == "VirtualRide" or (isinstance(detail, dict) and detail.get("trainer") is True)
     moving, pauses = _moving_timeline(time_stream, [] if indoor else velocity_stream)
@@ -719,7 +763,7 @@ def _build_activity_charts(activity: dict, detail: Optional[dict], streams: Opti
             "pace",
             "Pace",
             "min/km",
-            (streams.get("velocity_smooth") or {}).get("data") or [],
+            velocity_stream,
             time_stream,
             transform=lambda value: 1000 / value / 60 if value > 0 else 0,
             smooth_seconds=PACE_SMOOTHING_SECONDS,
@@ -732,7 +776,7 @@ def _build_activity_charts(activity: dict, detail: Optional[dict], streams: Opti
             "speed",
             "Speed",
             "km/h",
-            (streams.get("velocity_smooth") or {}).get("data") or [],
+            velocity_stream,
             time_stream,
             transform=lambda value: value * 3.6,
             smooth_seconds=SPEED_SMOOTHING_SECONDS,

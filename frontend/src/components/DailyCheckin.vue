@@ -5,10 +5,10 @@
         <span id="daily-checkin-title">Morning check-in</span>
         <button type="button" class="checkin-link" @click="startEditing">Edit</button>
       </div>
-      <div v-for="bar in bars" :key="bar.label" class="checkin-bar" :class="`is-${bar.tone}`">
+      <div v-for="bar in bars" :key="bar.label" class="checkin-bar" :class="`is-${bar.tone}`" :data-metric="bar.key">
         <span>{{ bar.label }}</span>
-        <i aria-hidden="true"><b v-for="n in bar.max" :key="n" :class="{ on: n <= bar.value }" /></i>
-        <strong>{{ bar.value }}/{{ bar.max }}</strong>
+        <i role="img" :aria-label="`${bar.label}: ${bar.value} out of ${bar.max}, ${bar.qualifier}; ${bar.direction}`"><b v-for="n in bar.max" :key="n" :class="{ on: n <= bar.filled }" /></i>
+        <strong>{{ bar.value }}/{{ bar.max }}<small>{{ bar.qualifier }}</small></strong>
       </div>
     </div>
 
@@ -122,17 +122,27 @@ const answered = computed(() => rows.filter((row) => form[row.key] > 0).length)
 const bars = computed(() => {
   const c = props.checkin
   if (!c) return []
-  const rows = [
-    { label: 'Energy', value: c.energy, good: 'high' },
-    { label: 'Sleep', value: c.sleep_quality, good: 'high' },
-    { label: 'Stress', value: c.stress, good: 'low' },
-    { label: 'Soreness', value: c.muscle_soreness, good: 'low' },
+  const scores = [
+    { key: 'energy', label: 'Energy', value: c.energy, good: 'high' },
+    { key: 'sleep_quality', label: 'Sleep', value: c.sleep_quality, good: 'high' },
+    { key: 'stress', label: 'Stress', value: c.stress, good: 'low' },
+    { key: 'muscle_soreness', label: 'Soreness', value: c.muscle_soreness, good: 'low' },
   ]
-  return rows.filter((row) => row.value != null).map((row) => {
+  return scores.filter((row) => row.value != null).map((row) => {
     const value = Number(row.value)
     const bad = row.good === 'high' ? value <= 2 : value >= 4
     const good = row.good === 'high' ? value >= 4 : value <= 2
-    return { label: row.label, value, max: 5, tone: bad ? 'risk' : good ? 'positive' : 'neutral' }
+    const max = 5
+    return {
+      key: row.key,
+      label: row.label,
+      value,
+      max,
+      filled: row.good === 'high' ? value : max + 1 - value,
+      qualifier: rows.find((scale) => scale.key === row.key).words[value - 1],
+      direction: row.good === 'high' ? 'higher is better' : 'lower is better',
+      tone: bad ? 'risk' : good ? 'positive' : 'neutral',
+    }
   })
 })
 const chips = computed(() => {
@@ -309,4 +319,23 @@ async function save() {
 
 .cm-readout { font-family: var(--font-body); font-size: 13px; font-weight: 500; text-transform: none; color: var(--muted); }
 .cm-readout.is-set { font-family: var(--font-display); font-size: 20px; font-weight: 700; text-transform: uppercase; }
+
+/* Multi-sport redesign layer: show the meaning of each rating, not just its direction. */
+.daily-checkin .checkin-bar { grid-template-columns: 72px minmax(0, 1fr) 76px; }
+.daily-checkin .checkin-bar strong { line-height: 1; }
+.daily-checkin .checkin-bar strong small { display: block; margin-top: 3px; color: var(--z2); font-family: var(--font-body); font-size: 10px; font-weight: 650; line-height: 1.2; }
+.daily-checkin .checkin-bar.is-neutral strong small { color: var(--muted); }
+.daily-checkin .checkin-bar.is-risk strong small { color: var(--warning-text); }
+.daily-checkin .checkin-bar[data-metric="energy"] { --metric-color: var(--volt); }
+.daily-checkin .checkin-bar[data-metric="sleep_quality"] { --metric-color: var(--ride); }
+.daily-checkin .checkin-bar[data-metric="stress"] { --metric-color: var(--z2); }
+.daily-checkin .checkin-bar[data-metric="muscle_soreness"] { --metric-color: var(--tone-recovery); }
+.daily-checkin .checkin-bar b.on { background: var(--metric-color); }
+.daily-checkin .checkin-bar b { height: 9px; border-radius: 999px; }
+@media (max-width: 520px) {
+  .daily-checkin { padding: 18px 16px; }
+  .daily-checkin .checkin-bar { grid-template-columns: 62px minmax(0, 1fr) 70px; gap: 8px; }
+  .daily-checkin .checkin-bar > span { font-size: 13px; }
+  .daily-checkin .checkin-bar strong { font-size: 18px; }
+}
 </style>

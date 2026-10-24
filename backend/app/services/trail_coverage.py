@@ -781,6 +781,46 @@ def fetch_track_streams(client: httpx.Client, activity_id: str) -> tuple[Optiona
     return (body.get("latlng") or {}).get("data") or [], (body.get("altitude") or {}).get("data") or [], False
 
 
+def _store_tracks(conn: sqlite3.Connection, client: httpx.Client, candidates: list) -> tuple[int, set, bool]:
+    """Fetch and store GPS for Strava summary activities. (added, regions touched, finished without rate limit)."""
+    added, regions = 0, set()
+    for activity in candidates:
+        latlng, altitude, limited = fetch_track_streams(client, activity["id"])
+        if limited:
+            return added, regions, False
+        region_key = region_for_activity(activity)
+        if not latlng or len(latlng) < 2:
+            continue
+        bbox = REGIONS[region_key]["bbox"]
+        repo.upsert_track(conn, {
+            "activity_id": str(activity["id"]),
+            "region": region_key,
+            "name": (activity.get("name") or "").strip(),
+            "date": (activity.get("start_date_local") or activity.get("start_date") or "")[:10],
+            "sport_type": activity.get("sport_type") or activity.get("type"),
+            "distance_km": round((activity.get("distance") or 0) / 1000, 2),
+            "elevation_m": round(activity.get("total_elevation_gain") or 0),
+            "latlng": thin_track(latlng, TRACK_STORE_SPACING_M, Projection((bbox[0] + bbox[2]) / 2), altitude),
+        })
+        added += 1
+        regions.add(region_key)
+    return added, regions, True
+
+
+def store_new_mountain_tracks(conn: sqlite3.Connection, client: httpx.Client, strava_activities: list) -> int:
+    """Called from the regular Strava import: store tracks of newly imported foot activities in a mapped
+    range, so their detail page gets the hike view without a separate Mountains sync."""
+    known = repo.track_ids(conn)
+    candidates = [a for a in strava_activities if is_foot_activity(a) and region_for_activity(a) and str(a["id"]) not in known]
+    if not candidates:
+        return 0
+    added, regions, _ = _store_tracks(conn, client, candidates)
+    conn.commit()
+    for region_key in sorted(regions):
+        recompute_region(conn, region_key)
+    return added
+
+
 def sync_tracks(conn: sqlite3.Connection, client: httpx.Client) -> dict:
     """Fetch GPS for mountain foot activities from Strava that are not stored yet, then add
     altitude to tracks stored before altitude was kept."""
@@ -798,29 +838,7 @@ def sync_tracks(conn: sqlite3.Connection, client: httpx.Client) -> dict:
         listed.extend(batch)
         page += 1
     candidates = [a for a in listed if is_foot_activity(a) and region_for_activity(a) and str(a["id"]) not in known]
-
-    added, regions, complete = 0, set(), True
-    for activity in candidates:
-        latlng, altitude, limited = fetch_track_streams(client, activity["id"])
-        if limited:
-            complete = False
-            break
-        region_key = region_for_activity(activity)
-        if not latlng or len(latlng) < 2:
-            continue
-        bbox = REGIONS[region_key]["bbox"]
-        repo.upsert_track(conn, {
-            "activity_id": str(activity["id"]),
-            "region": region_key,
-            "name": (activity.get("name") or "").strip(),
-            "date": (activity.get("start_date_local") or activity.get("start_date") or "")[:10],
-            "sport_type": activity.get("sport_type") or activity.get("type"),
-            "distance_km": round((activity.get("distance") or 0) / 1000, 2),
-            "elevation_m": round(activity.get("total_elevation_gain") or 0),
-            "latlng": thin_track(latlng, TRACK_STORE_SPACING_M, Projection((bbox[0] + bbox[2]) / 2), altitude),
-        })
-        added += 1
-        regions.add(region_key)
+    added, regions, complete = _store_tracks(conn, client, candidates)
 
     altitude_added, altitude_pending = 0, 0
     if complete:

@@ -24,27 +24,6 @@
           <li v-for="line in brief.bail" :key="line">{{ line }}</li>
         </ul>
       </article>
-      <article v-if="brief.plateaus?.length" class="brief-plateaus">
-        <span class="brief-label">Stalled lifts</span>
-        <ul>
-          <li v-for="lift in shownPlateaus" :key="lift.exercise_name">
-            <strong>{{ lift.exercise_name }}</strong>
-            <small :title="`Best estimated 1RM ${lift.e1rm} kg on ${lift.since}, not beaten in ${lift.sessions - 1} sessions since`">e1RM {{ lift.e1rm }} kg, flat {{ lift.weeks }} wk</small>
-            <p><em>{{ lift.suggestion.label }}</em> {{ lift.suggestion.text }}</p>
-            <p v-if="lift.suggestion.history" class="brief-plateau-history">{{ lift.suggestion.history.text }}</p>
-          </li>
-        </ul>
-        <p v-if="morePlateaus" class="brief-plateaus-more">+{{ morePlateaus }} more {{ morePlateaus === 1 ? 'lift' : 'lifts' }} marked stalled below; hover for the suggestion. Change one lift at a time.</p>
-      </article>
-      <article v-if="brief.effort_notes?.length" class="brief-plateaus brief-efforts">
-        <span class="brief-label">How it felt last time</span>
-        <ul>
-          <li v-for="lift in brief.effort_notes" :key="lift.exercise_name">
-            <strong>{{ lift.exercise_name }}</strong>
-            <p><em :class="lift.effort">{{ effortLabel[lift.effort] }}</em> {{ lift.text }}</p>
-          </li>
-        </ul>
-      </article>
       <p v-for="note in brief.notes" :key="note" class="brief-note">{{ note }}</p>
     </section>
 
@@ -74,7 +53,7 @@
     <ol v-if="lifts.length" class="plan-lifts">
       <li v-for="(lift, index) in lifts" :key="`${lift.name}-${index}`">
         <span class="plan-lift-order">{{ String(index + 1).padStart(2, '0') }}</span>
-        <span class="plan-lift-name"><strong>{{ lift.name }}</strong><small>{{ lift.summary }}<em v-if="lift.held" class="plan-lift-held" :title="lift.hint">hold</em><em v-else-if="lift.change" class="plan-lift-change" :title="lift.hint">{{ lift.change }}</em><em v-if="lift.volume" class="plan-lift-volume" :title="lift.volumeReason">{{ lift.volume }}</em><em v-if="lift.stalled" class="plan-lift-stalled" :title="lift.stalled">stalled</em></small></span>
+        <span class="plan-lift-name"><strong>{{ lift.name }}</strong><small>{{ lift.summary }}<em v-if="lift.held" class="plan-lift-held" :title="lift.hint">hold</em><em v-else-if="lift.change" class="plan-lift-change" :title="lift.hint">{{ lift.change }}</em><em v-if="lift.volume" class="plan-lift-volume" :title="lift.volumeReason">{{ lift.volume }}</em><em v-if="lift.stalled" class="plan-lift-stalled" :title="lift.stalled.text">{{ lift.stalled.label }}</em><em v-if="lift.effort" class="plan-lift-effort" :class="lift.effort.effort" :title="lift.effort.text">{{ effortLabel[lift.effort.effort] }}</em></small></span>
         <span class="plan-lift-sets" aria-hidden="true"><i v-for="set in lift.sets" :key="set"></i></span>
         <span class="plan-lift-rest">{{ lift.rest }}</span>
       </li>
@@ -171,16 +150,16 @@ const liftChange = (exercise) => {
   return ''
 }
 
-// The brief lists the longest stalls; the rest are tagged in the lift list.
-const SHOWN_PLATEAUS = 2
-const effortLabel = { form: 'Form broke', grinding: 'Grinding', easy: 'Easy' }
-const plateaus = computed(() => props.brief?.plateaus || [])
-const shownPlateaus = computed(() => plateaus.value.slice(0, SHOWN_PLATEAUS))
-const morePlateaus = computed(() => Math.max(plateaus.value.length - SHOWN_PLATEAUS, 0))
-const stalledByName = computed(() => new Map(plateaus.value.map((item) => [
+// Stalls and last session's effort ride on the lift rows as short tags; the full advice sits in the tooltip.
+const effortLabel = { form: 'form broke', grinding: 'grinding', easy: 'easy' }
+const stalledByName = computed(() => new Map((props.brief?.plateaus || []).map((item) => [
   item.exercise_name.toLowerCase(),
-  `Estimated 1RM flat for ${item.weeks} weeks. ${item.suggestion.label}: ${item.suggestion.text}${item.suggestion.history ? ` ${item.suggestion.history.text}` : ''}`,
+  {
+    label: item.suggestion.label.toLowerCase(),
+    text: `Estimated 1RM ${item.e1rm} kg, flat for ${item.weeks} weeks. ${item.suggestion.label}: ${item.suggestion.text}${item.suggestion.history ? ` ${item.suggestion.history.text}` : ''}`,
+  },
 ])))
+const effortByName = computed(() => new Map((props.brief?.effort_notes || []).map((item) => [item.exercise_name.toLowerCase(), item])))
 
 const lifts = computed(() => props.exercises.filter((exercise) => exercise.exercise_name?.trim()).map((exercise) => ({
   name: exercise.exercise_name,
@@ -191,7 +170,8 @@ const lifts = computed(() => props.exercises.filter((exercise) => exercise.exerc
   held: Boolean(exercise.progress_held),
   volume: !exercise.volume_added_sets ? '' : exercise.volume_added_sets === Number(exercise.set_count) ? 'added' : `+${exercise.volume_added_sets} set${exercise.volume_added_sets === 1 ? '' : 's'}`,
   volumeReason: exercise.volume_reason || '',
-  stalled: stalledByName.value.get(exercise.exercise_name.toLowerCase()) || '',
+  stalled: stalledByName.value.get(exercise.exercise_name.toLowerCase()) || null,
+  effort: effortByName.value.get(exercise.exercise_name.toLowerCase()) || null,
   rest: !exercise.rest_seconds ? '' : exercise.rest_seconds >= 60 ? `${Number((exercise.rest_seconds / 60).toFixed(1))} min rest` : `${exercise.rest_seconds} s rest`,
 })))
 
@@ -278,7 +258,8 @@ const tiles = computed(() => [durationTile.value, distanceTile.value, intensityT
 .plan-lift-change { margin-left: 6px; color: var(--success-text); font-style: normal; font-weight: 600; }
 .plan-lift-volume { margin-left: 6px; color: var(--accent); font-style: normal; font-weight: 600; }
 .plan-lift-held { margin-left: 6px; color: var(--dash-muted, var(--muted)); font-style: normal; font-weight: 600; cursor: help; }
-.plan-lift-stalled { margin-left: 6px; color: var(--warning-text); font-style: normal; font-weight: 600; cursor: help; }
+.plan-lift-stalled, .plan-lift-effort { margin-left: 6px; color: var(--warning-text); font-style: normal; font-weight: 600; cursor: help; }
+.plan-lift-effort.easy { color: var(--success-text); }
 .plan-lift-sets { display: flex; gap: 4px; }
 .plan-lift-sets i { width: 14px; height: 14px; border: 1.5px solid color-mix(in srgb, var(--accent) 70%, transparent); border-radius: 4px; }
 .plan-lift-rest { color: var(--dash-muted, var(--muted)); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
@@ -305,17 +286,6 @@ const tiles = computed(() => [durationTile.value, distanceTile.value, intensityT
 .brief-bail .brief-label { color: var(--warning-text); }
 .brief-bail ul { display: grid; gap: 6px; margin: 7px 0 0; padding-left: 16px; color: var(--text-soft); font-size: 13px; line-height: 1.5; }
 .brief-bail li::marker { color: var(--warning-text); }
-.brief-plateaus { grid-column: 1 / -1; }
-.brief-plateaus ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px 18px; margin: 7px 0 0; padding: 0; list-style: none; }
-.brief-plateaus li { min-width: 0; }
-.brief-plateaus strong { color: var(--text); font-size: 13px; font-weight: 600; }
-.brief-plateaus small { margin-left: 8px; color: var(--muted-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
-.brief-plateaus li p { margin-top: 3px; }
-.brief-plateaus em { margin-right: 6px; color: var(--accent); font-style: normal; font-weight: 600; }
-.brief-efforts em.form, .brief-efforts em.grinding { color: var(--warning-text); }
-.brief-efforts em.easy { color: var(--success-text); }
-.brief-plateaus .brief-plateau-history { color: var(--muted); font-size: 12px; }
-.brief-plateaus .brief-plateaus-more { margin-top: 8px; color: var(--muted); font-size: 12px; }
 .brief-note { grid-column: 1 / -1; margin: 0 !important; padding: 0 4px; color: var(--muted) !important; font-size: 12px !important; }
 @media (max-width: 900px) { .brief { grid-template-columns: 1fr; } }
 .plan-fuel { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: baseline; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }

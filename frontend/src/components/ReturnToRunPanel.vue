@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useApi } from '../stores/api'
 
 // Return-to-run tracker: staged progression driven by symptom scores per run.
 const api = useApi()
+const emit = defineEmits(['state'])
 const data = ref(null)
 const error = ref('')
 const busy = ref(false)
@@ -21,6 +22,7 @@ const load = async () => {
   }
 }
 onMounted(load)
+watch(() => !!data.value?.active, active => emit('state', active), { immediate: true })
 
 const save = async (payload) => {
   busy.value = true
@@ -61,11 +63,12 @@ const scores = Array.from({ length: 11 }, (_, n) => n)
 </script>
 
 <template>
-  <section v-if="data" class="rtr" aria-labelledby="rtr-title">
+  <section v-if="data" class="rtr" :class="{ idle: !data.active && !startOpen }" aria-labelledby="rtr-title">
     <div class="rtr-head">
       <div>
         <span class="eyebrow">RETURN TO RUN</span>
-        <h2 id="rtr-title">{{ data.active ? `Stage ${current} of ${stages.length} · ${data.stage.name}` : 'Not sure the heel is fully gone?' }}</h2>
+        <h2 id="rtr-title">{{ data.active ? `Stage ${current} of ${stages.length} · ${data.stage.name}` : 'Not sure it’s fully gone?' }}</h2>
+        <p v-if="!data.active && !startOpen" class="rtr-intro">Test it with a staged run plan: score it during each run and the next morning. Clean runs move you up, a flare moves you down.</p>
       </div>
       <button v-if="data.active" type="button" class="link" :disabled="busy" @click="stop">End program</button>
       <button v-else-if="!startOpen" type="button" class="primary" @click="startOpen = true">Start a cautious return</button>
@@ -75,8 +78,7 @@ const scores = Array.from({ length: 11 }, (_, n) => n)
 
     <!-- Not active: start form with a suggested stage -->
     <template v-if="!data.active">
-      <p v-if="!startOpen" class="rtr-intro">Test it with a staged plan: score the {{ draft.symptom.toLowerCase() }} during each run and the next morning. Clean runs move you up, a flare moves you down, and the plan follows the stage.</p>
-      <form v-else class="rtr-start" @submit.prevent="start">
+      <form v-if="startOpen" class="rtr-start" @submit.prevent="start">
         <label>What are you watching?<input v-model="draft.symptom" maxlength="40" required /></label>
         <fieldset>
           <legend>Starting stage</legend>
@@ -207,7 +209,14 @@ select { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border); 
 }
 
 /* Multi-sport redesign layer — staged recovery hero. */
-.rtr { margin-bottom: 24px; padding: 28px; border-radius: var(--radius-card); border-color: color-mix(in srgb, var(--z2) 30%, var(--border)); background: linear-gradient(120deg, color-mix(in srgb, var(--z2) 10%, transparent), transparent 65%), var(--surface); }
+.rtr { margin-bottom: 0; padding: 28px; border-radius: var(--radius-card); border-color: color-mix(in srgb, var(--z2) 30%, var(--border)); background: var(--surface); }
+/* Idle: one slim row so it doesn't compete with the injury being tracked. */
+.rtr.idle { padding: 18px 24px; border-color: var(--border); }
+.rtr.idle .rtr-head { align-items: center; }
+.rtr.idle .rtr-head > div { flex: 1; min-width: 0; }
+.rtr.idle .rtr-head h2 { margin-top: 6px; font: 700 20px/1.1 var(--font-display); font-style: normal; text-transform: none; }
+.rtr.idle .rtr-intro { margin-top: 4px; font-size: 13px; line-height: 1.5; }
+.rtr.idle .rtr-head button { flex-shrink: 0; }
 .rtr .eyebrow { font: 700 11px var(--font-body); letter-spacing: .14em; color: var(--z2); }
 .rtr .rtr-head h2 { margin-top: 10px; font: italic 800 32px/1.05 var(--font-display); text-transform: uppercase; }
 .rtr button { color: var(--text); background: transparent; border: 1px solid var(--border-strong); border-radius: 999px; padding: 10px 16px; }

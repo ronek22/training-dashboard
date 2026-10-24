@@ -73,7 +73,7 @@ const distanceTile = computed(() => {
   const speed = !isRun.value && chart('speed')
   const parts = [
     !isRun.value && summary.value.avg_speed_kmh ? `${summary.value.avg_speed_kmh} km/h avg` : '',
-    activity.value.elevation_m ? `${Math.round(activity.value.elevation_m)} m climb` : '',
+    activity.value.elevation_m && !climbTile.value ? `${Math.round(activity.value.elevation_m)} m climb` : '',
   ].filter(Boolean)
   return {
     key: 'distance', label: 'Distance', value: Number(distance.toFixed(1)), unit: 'km',
@@ -132,7 +132,20 @@ const heartTile = computed(() => {
   }
 })
 
-const tiles = computed(() => [timeTile.value, distanceTile.value, paceTile.value, powerTile.value, heartTile.value].filter(Boolean))
+// Hikes and walks have no pace or power, so the climb gets its own tile.
+const climbTile = computed(() => {
+  const climb = Math.round(Number(activity.value.elevation_m || 0))
+  if (!/hike|walk/i.test(activity.value.type || '') || climb < 50) return null
+  const altitude = chart('altitude')
+  return {
+    key: 'climb', label: 'Climb', value: climb, unit: 'm',
+    visual: altitude ? 'spark' : null,
+    spark: altitude ? sparkline(altitude.points) : '',
+    caption: altitude ? `Highest point ${Math.round(altitude.max)} m` : '',
+  }
+})
+
+const tiles = computed(() => [timeTile.value, distanceTile.value, climbTile.value, paceTile.value, powerTile.value, heartTile.value].filter(Boolean))
 
 const profile = computed(() => {
   const heart = chart('heartrate')

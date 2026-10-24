@@ -60,9 +60,10 @@ defineProps({ tiles: { type: Array, required: true } })
 
 /* ── Multi-sport redesign layer ── */
 .tiles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.tile { border-color: var(--border-strong); border-radius: 16px; background: rgb(var(--deep-rgb) / .55); padding: 16px; }
+.tile { border-color: var(--border-strong); border-radius: 16px; background: rgb(var(--deep-rgb) / .55); padding: 16px; container-type: inline-size; }
 .tile-label { font-size: 11px; letter-spacing: .14em; }
-.tile-value { font-family: var(--font-display); font-size: 44px; font-weight: 700; letter-spacing: .01em; }
+/* Shrinks with the tile so "2h 36m" still fits when four tiles share a row. */
+.tile-value { font-family: var(--font-display); font-size: clamp(28px, 27cqi, 44px); font-weight: 700; letter-spacing: .01em; }
 .tile-value small { font-family: var(--font-body); font-size: 14px; }
 .tile-caption { font-size: 12px; }
 .tile.has-stacked-unit .tile-value { display: grid; justify-items: start; gap: 2px; overflow: visible; white-space: normal; }

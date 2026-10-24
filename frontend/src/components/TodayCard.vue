@@ -51,6 +51,7 @@
     </nav>
 
     <TodayEnduranceSummary v-if="selected?.kind === 'endurance' && selected.detail" :key="selected.id" :detail="selected.detail" :ftp="ftp" :planned-minutes="selected.plannedMinutes" />
+    <TodayMountainStrip v-if="selected?.kind === 'endurance' && selected.detail?.mountain_region" :key="`mtn-${selected.id}`" :activity-id="String(selected.id)" />
     <TodaySickSummary v-else-if="selected?.kind === 'sick' && selected.detail?.sick_session" :key="selected.id" :detail="selected.detail" />
     <TodayStrengthSummary v-else-if="selected?.kind === 'strength' && selected.detail" :key="selected.id" :detail="selected.detail" :planned-minutes="selected.plannedMinutes" />
 
@@ -73,7 +74,7 @@
     </dl>
 
     <SessionVerdict
-      v-if="state === 'completed' && selected && ['endurance', 'strength'].includes(selected.kind) && selected.type !== 'Walk'"
+      v-if="state === 'completed' && selected && ['endurance', 'strength'].includes(selected.kind) && !['Walk', 'Hike'].includes(selected.type)"
       :key="`verdict-${selected.id}`"
       class="today-verdict"
       compact
@@ -145,6 +146,7 @@ import SessionVerdict from './SessionVerdict.vue'
 import ActivityIcon from './ActivityIcon.vue'
 import CyclingWorkoutProfile from './CyclingWorkoutProfile.vue'
 import TodayEnduranceSummary from './TodayEnduranceSummary.vue'
+import TodayMountainStrip from './TodayMountainStrip.vue'
 import TodayStrengthSummary from './TodayStrengthSummary.vue'
 import TodaySickSummary from './TodaySickSummary.vue'
 import TodayPlanSummary from './TodayPlanSummary.vue'

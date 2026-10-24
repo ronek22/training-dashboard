@@ -474,7 +474,7 @@ async function adaptTomorrowPlan() {
   }
 }
 
-const dashboardSportAccent = (type) => ({ ride: 'var(--tone-ride)', run: 'var(--tone-run)', strength: 'var(--tone-strength)', recovery: 'var(--tone-recovery)', walk: 'var(--tone-walk)' }[activityTone(type)] || 'var(--tone-neutral)')
+const dashboardSportAccent = (type) => ({ ride: 'var(--tone-ride)', run: 'var(--tone-run)', strength: 'var(--tone-strength)', recovery: 'var(--tone-recovery)', hike: 'var(--tone-recovery)', walk: 'var(--tone-walk)' }[activityTone(type)] || 'var(--tone-neutral)')
 
 const primaryDecisionTone = computed(() => {
   if (todayPlanCompleted.value) return 'complete'
@@ -627,7 +627,7 @@ const todaySessions = computed(() => {
   const activities = todayActivities.value
   const sickIds = new Set((sickMode.value.completed_today || []).map((item) => item.activity_id).filter(Boolean))
   const isSickSession = (activity) => sickIds.has(activity.id) || String(activity.id).startsWith('sick-')
-  const kindOf = (activity) => (isSickSession(activity) ? 'sick' : ['ride', 'run', 'walk'].includes(activityTone(activity.type)) ? 'endurance' : activityTone(activity.type) === 'strength' ? 'strength' : 'other')
+  const kindOf = (activity) => (isSickSession(activity) ? 'sick' : ['ride', 'run', 'walk', 'hike'].includes(activityTone(activity.type)) ? 'endurance' : activityTone(activity.type) === 'strength' ? 'strength' : 'other')
   const order = { endurance: 0, strength: 1, sick: 1, other: 2 }
   return activities
     .map((activity, index) => ({
@@ -813,6 +813,7 @@ function activityTone(type) {
   if (value.includes('strength') || value.includes('weight')) return 'strength'
   if (value === 'recovery' || value === 'rest') return 'recovery'
   if (value === 'walk') return 'walk'
+  if (value === 'hike') return 'hike'
   return 'neutral'
 }
 function sessionTypeLabel(type) {

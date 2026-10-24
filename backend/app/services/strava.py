@@ -577,6 +577,18 @@ def build_strava_status_data(
     }
 
 
+def _store_mountain_tracks(conn: sqlite3.Connection, raw_items: list, access_token: str) -> None:
+    """Hikes and walks in a mapped range get their GPS stored for the trail map and hike view. Best effort:
+    a failure here must not fail the activity import (the Mountains page sync retries later)."""
+    from .trail_coverage import store_new_mountain_tracks, strava_client
+
+    try:
+        with strava_client(access_token) as client:
+            store_new_mountain_tracks(conn, client, raw_items)
+    except (httpx.HTTPError, sqlite3.Error):
+        pass
+
+
 def import_strava_activities_data(
     conn: sqlite3.Connection,
     payload,
@@ -639,6 +651,7 @@ def import_strava_activities_data(
                 intensity_bucket_from_hr_fn,
             )
     conn.commit()
+    _store_mountain_tracks(conn, raw_items, access_token)
     set_setting_fn("strava_last_import_at", datetime.now().isoformat())
     return {
         "imported": imported,

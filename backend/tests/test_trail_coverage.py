@@ -17,6 +17,7 @@ from backend.app.services.trail_coverage import (
     import_region,
     list_regions,
     region_map,
+    store_new_mountain_tracks,
     sync_tracks,
 )
 
@@ -351,6 +352,17 @@ class StoreTests(unittest.TestCase):
             again = sync_tracks(self.conn, client)
         self.assertEqual(again["added"], 0)
         self.assertEqual(handler.stream_calls, ["11"])
+
+    def test_regular_import_stores_new_mountain_hikes_for_the_hike_view(self):
+        acts = [activity(11, "Hike", [LAT, LON], 1725782400), activity(12, "Ride", [LAT, LON], 1725782500)]
+        handler = strava_transport(acts, {"11": line(0, LON, LON + 0.03, steps=300)})
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            self.assertEqual(store_new_mountain_tracks(self.conn, client, acts), 1)
+            self.assertEqual(store_new_mountain_tracks(self.conn, client, acts), 0)  # already stored
+        self.assertEqual(handler.stream_calls, ["11"])
+        from backend.app.services.hike_detail import mountain_region
+        self.assertEqual(mountain_region(self.conn, "11"), "tatras")
+        self.assertTrue(any(s["walked_by"] == ["11"] for s in region_map(self.conn, "tatras")["sections"]))
 
     def test_rate_limit_keeps_sync_cursor_so_missing_tracks_are_retried(self):
         def limited(request):

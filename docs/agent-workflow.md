@@ -26,4 +26,4 @@ follow. This page lists the habits on your side that keep a session cheap.
   existing ideas compactly instead of reading the 97 KB catalog.
 - Codex subagents default to medium reasoning effort (worker: high) with at most two at once,
   and `AGENTS.md` asks agents to work inline.
-- `views/Plan.vue` and `tests/test_app_smoke.py` were split into smaller files.
+- `views/Plan.vue` went from 5,439 to ~2,040 lines (styles in `plan/Plan.css`, pure helpers in `plan/plan-helpers.mjs`, the coaching-context section in `components/PlanInsights.vue`), and `tests/test_app_smoke.py` became five `test_smoke_*.py` files.

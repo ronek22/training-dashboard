@@ -56,6 +56,13 @@ def init_recovery_schema(conn):
             status TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS recovery_routine_ticks (
+            routine_id INTEGER NOT NULL REFERENCES recovery_routines(id) ON DELETE CASCADE,
+            day TEXT NOT NULL,
+            exercise_index INTEGER NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (routine_id, day, exercise_index)
+        );
         CREATE INDEX IF NOT EXISTS recovery_messages_issue ON recovery_messages(issue_id, id);
         CREATE INDEX IF NOT EXISTS recovery_requests_issue ON recovery_requests(issue_id);
         CREATE INDEX IF NOT EXISTS recovery_checkins_issue ON recovery_checkins(issue_id, id);

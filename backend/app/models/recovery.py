@@ -37,6 +37,12 @@ class CheckinCreate(RecoveryModel):
     note: str = Field(default="", max_length=2000)
 
 
+class RoutineTick(RecoveryModel):
+    day: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    index: int = Field(ge=0, le=50, strict=True)
+    done: StrictBool = True
+
+
 class PlanExercise(RecoveryModel):
     name: str = Field(min_length=1, max_length=120)
     dose: str = Field(default="", max_length=200)

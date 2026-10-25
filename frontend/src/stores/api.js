@@ -71,6 +71,7 @@ export const useApi = () => ({
   sendRecoveryMessage: (id, payload) => api.post(`/recovery/issues/${id}/messages`, payload),
   requestRecoveryAI: (id) => api.post(`/recovery/issues/${id}/requests`),
   addRecoveryCheckin: (id, payload) => api.post(`/recovery/issues/${id}/checkins`, payload),
+  tickRecoveryExercise: (id, payload) => api.put(`/recovery/issues/${id}/ticks`, payload),
   startRecoveryAI: (payload) => coachHelper.post('/recovery-chat', payload),
   getRecoveryAIJob: (id) => coachHelper.get(`/recovery-chat/${encodeURIComponent(id)}`),
   failRecoveryRequest: (id, requestId) => api.post(`/recovery/issues/${id}/requests/${requestId}/failed`),

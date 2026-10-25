@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..db import get_db
-from ..models.recovery import AIResult, CheckinCreate, HealIssue, IssueCreate, IssueUpdate, MessageCreate
+from ..models.recovery import AIResult, CheckinCreate, HealIssue, IssueCreate, IssueUpdate, MessageCreate, RoutineTick
 from ..repositories import recovery as repo
 from ..services import recovery as service
 
@@ -96,3 +96,8 @@ def failed(issue_id: int, request_id: str, conn=Depends(connection)):
 @router.post("/issues/{issue_id}/checkins", status_code=201)
 def checkin(issue_id: int, payload: CheckinCreate, conn=Depends(connection)):
     return service.add_checkin(conn, issue_id, payload)
+
+
+@router.put("/issues/{issue_id}/ticks")
+def tick(issue_id: int, payload: RoutineTick, conn=Depends(connection)):
+    return service.set_tick(conn, issue_id, payload)

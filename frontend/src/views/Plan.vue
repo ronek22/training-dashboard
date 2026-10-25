@@ -489,6 +489,7 @@
                     <router-link v-if="day.lift_volume_additions?.length" to="/strength" class="day-tag day-tag-volume" :title="liftVolumeTitle(day)">{{ liftVolumeLabel(day) }}</router-link>
                     <span v-if="day.fuel_plan" class="day-tag day-tag-fuel" :title="`${day.fuel_plan.summary}. ${day.fuel_plan.tip}`">Fuel ~{{ day.fuel_plan.carbs_g_per_h.target }} g/h</span>
                     <span v-if="day.benchmark_label" class="day-tag day-tag-benchmark">{{ day.benchmark_label }}</span>
+                    <button v-for="routine in day.rehab || []" :key="routine.routine_id" type="button" class="day-tag day-tag-rehab" :class="{ 'is-done': routine.ticked.length >= routine.exercises.length }" @click="openPlannedSessionDetails(day)">Rehab {{ routine.ticked.length }}/{{ routine.exercises.length }}</button>
                     <span
                       v-if="day.modality_restriction && day.modality_restriction.status !== 'allowed'"
                       class="day-tag day-tag-restriction"
@@ -767,6 +768,7 @@
                 :ftp="cyclingLibrary?.ftp"
                 :export-note="cyclingLibrary?.export_note"
               />
+              <RehabChecklist v-for="routine in plannedSessionDialog.rehab || []" :key="routine.routine_id" :routine="routine" :date="plannedSessionDialog.date" @updated="syncRehabTicks" />
               <p v-if="plannedSessionDialog.modality_restriction?.status && plannedSessionDialog.modality_restriction.status !== 'allowed'" class="workout-restriction">{{ plannedSessionDialog.modality_restriction.label }} · {{ plannedSessionDialog.modality_restriction.status }}</p>
               <template v-if="plannedSessionDetailView">
                 <section v-if="plannedSessionDetailView.prescriptionItems.length" class="workout-instructions"><h3>{{ plannedSessionDetailView.prescriptionTitle || 'The session' }}</h3><ol><li v-for="(item, index) in plannedSessionDetailView.prescriptionItems" :key="index"><span aria-hidden="true">{{ index + 1 }}</span><p>{{ item }}</p></li></ol></section>
@@ -836,6 +838,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
+import RehabChecklist from '../components/RehabChecklist.vue'
 import LifeLoadPicker from '../components/LifeLoadPicker.vue'
 import WeekPreview from '../components/WeekPreview.vue'
 import LoadForecast from '../components/LoadForecast.vue'
@@ -988,6 +991,10 @@ const editorMoveSourceDate = ref(null)
 const editorMoveAnnouncement = ref('')
 const coachingReview = ref(null)
 const plannedSessionDialog = ref(null)
+// The dialog holds the card's own day object, so this keeps the card's "Rehab n/m" tag in step.
+const syncRehabTicks = ({ issue_id, ticked }) => {
+  for (const routine of plannedSessionDialog.value?.rehab || []) if (routine.issue_id === issue_id) routine.ticked = ticked
+}
 const cyclingLibrary = ref(null)
 const cyclingWorkouts = computed(() => cyclingLibrary.value?.workouts || [])
 const cyclingWorkoutFor = (day) => (

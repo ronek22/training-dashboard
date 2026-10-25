@@ -24,6 +24,7 @@ from .goal_portfolio import build_portfolio_check, portfolio_conflict
 from .goals import build_requirement_summary, serialize_goal
 from .lift_ride_clash import legs_check, locked_dates, plan_clashes, resolve_clashes
 from .heart_rate_zones import build_activity_heart_rate_zone_summary, run_hr_cap
+from .recovery import rehab_for_day, rehab_routines
 from .recovery_day import check_recovery_day, recovery_cap, spin_hr_limit
 from .settings import (
     get_athlete_profile_for_conn,
@@ -1139,6 +1140,7 @@ def _serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection])
 
         enriched_days = []
         cap = recovery_cap(conn)
+        routines = rehab_routines(conn)
         for day in days:
             comparison = build_plan_day_comparison(
                 conn,
@@ -1158,6 +1160,7 @@ def _serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection])
             enriched_day["modality_restriction"] = restrictions.get("modalities", {}).get(day_modality) if day_modality else None
             enriched_day["comparison"] = comparison
             enriched_day["recovery_cap"] = cap if normalize_plan_session_type(day.get("session_type")) in {"Recovery", "Rest"} else None
+            enriched_day["rehab"] = rehab_for_day(conn, day, routines)
             enriched_day["fuel_plan"] = build_fuel_plan(enriched_day)
             enriched_day["link_candidates"] = build_link_candidates(day, activity_rows, benchmark_lookup)
             enriched_day["goal_links"] = []

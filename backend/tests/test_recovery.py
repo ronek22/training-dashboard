@@ -1,9 +1,10 @@
 import json
 import sqlite3
 import unittest
+from datetime import date, timedelta
 from unittest.mock import patch
 
-from backend.app.models.recovery import AIResult, CheckinCreate, IssueCreate, MessageCreate
+from backend.app.models.recovery import AIResult, CheckinCreate, IssueCreate, MessageCreate, RoutineTick
 from backend.app.repositories.recovery import delete_issue, init_recovery_schema
 from backend.app.services import recovery as service
 
@@ -130,3 +131,27 @@ class RecoveryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_rehab_days_carry_the_routine_and_ticks_are_kept_per_day(self):
+        issue_id = self.create(pain=3)["id"]
+        self.reply(issue_id, plan={**PLAN, "exercises": PLAN["exercises"] + [{"name": "Glute bridge", "dose": "3 x 12"}]})
+        today = date.today().isoformat()
+        routines = service.rehab_routines(self.conn)
+        self.assertEqual([item["name"] for item in routines[0]["exercises"]], ["Wall sit", "Glute bridge"])
+        self.assertEqual(service.rehab_for_day(self.conn, {"date": today, "title": "Workout A"}, routines), [])
+
+        result = service.set_tick(self.conn, issue_id, RoutineTick(day=today, index=1))
+        self.assertEqual((result["ticked"], result["total"]), ([1], 2))
+        day = service.rehab_for_day(self.conn, {"date": today, "title": "Easy spin", "details": "Add the rehab routine after."}, routines)
+        self.assertEqual(day[0]["ticked"], [1])
+        self.assertEqual(service.get_issue(self.conn, issue_id)["ticked_today"], [1])
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        self.assertEqual(service.rehab_for_day(self.conn, {"date": yesterday, "title": "Rehab: knee"}, routines)[0]["ticked"], [])
+
+        self.assertEqual(service.set_tick(self.conn, issue_id, RoutineTick(day=today, index=1, done=False))["ticked"], [])
+        with self.assertRaisesRegex(ValueError, "on the day"):
+            service.set_tick(self.conn, issue_id, RoutineTick(day=(date.today() + timedelta(days=1)).isoformat(), index=0))
+        with self.assertRaises(LookupError):
+            service.set_tick(self.conn, issue_id, RoutineTick(day=today, index=5))
+        service.heal(self.conn, issue_id, "")
+        self.assertEqual(service.rehab_routines(self.conn), [])

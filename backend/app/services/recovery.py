@@ -114,6 +114,7 @@ def get_issue(conn, issue_id):
          "created_at": row["created_at"]}
         for row in children["checkins"]
     ]
+    issue["ticked_today"] = _ticked(conn, issue["current_plan"]["id"], date.today().isoformat()) if issue["current_plan"] else []
     issue["latest_request"] = children["requests"][-1] if children["requests"] else None
     issue["related"] = related_issues(conn, issue["body_area"], exclude_id=issue_id,
                                       previous_issue_id=issue["previous_issue_id"])
@@ -317,3 +318,51 @@ def coaching_summary(conn):
                                               for exercise in plan.get("exercises", []) if isinstance(exercise, dict)],
                           "see_professional": bool(item["see_professional"])})
     return {"issues": summaries, "instruction": "Athlete-reported injuries and soreness, not diagnoses. Keep planned sessions from aggravating them; rehab_exercises is the athlete's current recovery routine."}
+
+
+REHAB_DAY = re.compile(r"\brehab", re.IGNORECASE)
+
+
+def _ticked(conn, routine_id, day):
+    return [row[0] for row in conn.execute(
+        "SELECT exercise_index FROM recovery_routine_ticks WHERE routine_id = ? AND day = ? ORDER BY exercise_index",
+        (routine_id, day))]
+
+
+def rehab_routines(conn):
+    """The current routine of every active issue, for rehab days on the plan."""
+    routines = []
+    for item in _active_issue_rows(conn):
+        row = conn.execute("""SELECT id, exercises_json FROM recovery_routines WHERE issue_id = ? AND status = 'current'
+            ORDER BY id DESC LIMIT 1""", (item["id"],)).fetchone()
+        plan = json.loads(row["exercises_json"]) if row else {}
+        exercises = [{"name": exercise.get("name"), "dose": exercise.get("dose"), "how": exercise.get("how")}
+                     for exercise in (plan.get("exercises") or []) if isinstance(exercise, dict)] if isinstance(plan, dict) else []
+        if exercises:
+            routines.append({"issue_id": item["id"], "routine_id": row["id"], "title": item["title"], "exercises": exercises})
+    return routines
+
+
+def rehab_for_day(conn, day, routines):
+    """Routines with that day's ticks, when the planned day is a rehab session or asks for the routine."""
+    text = f"{day.get('title') or ''} {day.get('details') or ''}"
+    if not routines or not day.get("date") or not REHAB_DAY.search(text):
+        return []
+    return [{**routine, "ticked": _ticked(conn, routine["routine_id"], day["date"])} for routine in routines]
+
+
+def set_tick(conn, issue_id, payload):
+    active_issue(conn, issue_id)
+    if payload.day > date.today().isoformat():
+        raise ValueError("Exercises can be ticked off on the day, not ahead of it.")
+    routine = next((item for item in rehab_routines(conn) if item["issue_id"] == issue_id), None)
+    if routine is None or payload.index >= len(routine["exercises"]):
+        raise LookupError("No such exercise in the current routine.")
+    if payload.done:
+        conn.execute("INSERT OR IGNORE INTO recovery_routine_ticks (routine_id, day, exercise_index) VALUES (?, ?, ?)",
+                     (routine["routine_id"], payload.day, payload.index))
+    else:
+        conn.execute("DELETE FROM recovery_routine_ticks WHERE routine_id = ? AND day = ? AND exercise_index = ?",
+                     (routine["routine_id"], payload.day, payload.index))
+    return {"issue_id": issue_id, "day": payload.day, "ticked": _ticked(conn, routine["routine_id"], payload.day),
+            "total": len(routine["exercises"])}

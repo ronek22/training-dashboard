@@ -19,7 +19,8 @@ from .muscle_gain import MUSCLE_GROUPS, TARGET_SETS_MAX, TARGET_SETS_MIN, muscle
 from .illness_return import illness_return_dates
 from .life_load import mountain_dates
 from .mountain_reentry import mountain_reentry_dates
-from .settings import get_modality_restrictions_for_conn, protected_area_for_exercise
+from .recovery import issue_body_areas
+from .settings import get_modality_restrictions_for_conn, normalize_body_areas, protected_area_for_exercise
 from .sick_mode import sick_dates
 from .strength_progression import _dumbbell_step_kg, _max_dumbbell_kg, _normalize, _session_index, _working_sets, latest_next_steps, plan_next_step
 
@@ -40,6 +41,8 @@ ACCESSORIES: dict[str, list[str]] = {
 _LIGHT_DAY = re.compile(r"\b(?:light|easy|low energy|recovery|deload|mobility|travel kit)\b", re.IGNORECASE)
 # Two or more hiking days in the week cover legs: no leg sets are added on top.
 HIKING_DAYS_FOR_LEGS = 2
+# A protected knee, hip or heel rests legs: no leg sets are added, whatever the lift.
+LEG_AREAS = {"knee", "hip", "heel"}
 
 
 def _is_lift_day(day: dict) -> bool:
@@ -170,6 +173,9 @@ def build_lift_volume(
         body_areas = get_modality_restrictions_for_conn(conn).get("body_areas") or []
     except sqlite3.OperationalError:
         body_areas = []
+    # Active injuries protect their area too; the Athlete-page entries win on duplicates.
+    body_areas = normalize_body_areas(body_areas + issue_body_areas(conn))
+    injury_rests_legs = any(item["area"] in LEG_AREAS for item in body_areas)
     skipped: set[str] = set()
 
     done = _empty_counts()
@@ -209,7 +215,7 @@ def build_lift_volume(
     deficits = {
         group["key"]: TARGET_SETS_MIN - done[group["key"]] - planned[group["key"]]
         for group in MUSCLE_GROUPS
-        if group["targeted"] and not (hiking_covers_legs and group["key"] == "legs")
+        if group["targeted"] and not ((hiking_covers_legs or injury_rests_legs) and group["key"] == "legs")
     }
     added = _empty_counts()
     for group in sorted((key for key, gap in deficits.items() if gap > 0), key=lambda key: (-deficits[key], key)):
@@ -249,6 +255,8 @@ def build_lift_volume(
         total = done[key] + planned[key] + added[key]
         if not group["targeted"]:
             status = "tracked"
+        elif injury_rests_legs and key == "legs" and total < TARGET_SETS_MIN:
+            status = "protected"
         elif hiking_covers_legs and key == "legs" and total < TARGET_SETS_MIN:
             status = "hiking"
         elif total < TARGET_SETS_MIN:
@@ -267,7 +275,7 @@ def build_lift_volume(
                 "added_sets": added[key],
                 "total_sets": total,
                 "status": status,
-                "shortfall": max(0, TARGET_SETS_MIN - total) if group["targeted"] and status != "hiking" else 0,
+                "shortfall": max(0, TARGET_SETS_MIN - total) if group["targeted"] and status not in {"hiking", "protected"} else 0,
             }
         )
 
@@ -287,6 +295,8 @@ def build_lift_volume(
     if hiking_covers_legs:
         summary += " Hiking covers legs this week."
     protected_labels = [item["summary_label"] for item in body_areas]
+    if injury_rests_legs:
+        summary += f" No leg sets added while your {', '.join(item['summary_label'] for item in body_areas if item['area'] in LEG_AREAS)} recovers."
     if skipped and protected_labels:
         summary += f" Left out lifts that load your {', '.join(protected_labels)}."
 
@@ -298,6 +308,7 @@ def build_lift_volume(
         "added_sets": added_total,
         "minimum_week_active": minimum_week_active,
         "hiking_covers_legs": hiking_covers_legs,
+        "injury_rests_legs": injury_rests_legs,
         "protected_areas": protected_labels,
         "skipped_for_protection": sorted(skipped),
         "summary": summary,

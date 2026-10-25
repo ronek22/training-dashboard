@@ -198,6 +198,29 @@ def validate_daily_state_request(payload: object) -> str:
     return context_key
 
 
+INJURY_GUIDANCE = """get_recent_context includes recovery_issues: injuries and soreness the
+athlete logged, each with current_pain (0-10), protected_areas, avoid, do and
+rehab_exercises. An active issue outranks the strength rotation, leg volume,
+mountain_reentry and winter_arc:
+- Never plan a lift or exercise that loads a protected area. For a knee, hip
+  or heel: no lower-body workout (strength_lower, Workout D), squats, lunges,
+  split squats, step-ups, deadlifts, leg press, jumps or calf work beyond the
+  rehab routine. Skip the rotation's lower-body workout this week (it stays
+  next in the rotation) and put an upper-body workout on that day so the lift
+  anchor holds. Upper-body work is the place to add training while the area
+  rests: extra upper-body sets or a third upper-body session are welcome.
+- Rides, runs and hikes that load the area stay easy and short, with a pain
+  check written into the day (go only if pain at rest is 0-2/10, otherwise
+  walk easy or do the rehab routine) and never intervals, tempo or long rides
+  while current_pain is 3 or more. Follow the issue's avoid and do lists.
+- When an issue has rehab_exercises, plan 2-3 rehab sessions in the week:
+  session_type "Recovery", 20-30 min, title "Rehab: <area>", with every
+  exercise and its dose listed in details. One may replace a rest day; on other
+  days add the routine to an easy day's details instead of a second session.
+- If see_professional is true, say so in the summary. Explain in the overview
+  which sessions changed because of the injury."""
+
+
 def build_prompt(week_start: str, planning_brief: str = "") -> str:
     athlete_preferences = json.dumps(planning_brief or "No additional input provided.", ensure_ascii=False)
     return f"""Create and save my training plan for the week starting {week_start}.
@@ -215,6 +238,8 @@ Treat that input as an important preference and constraint, while still
 protecting completed days, respecting modality restrictions, and avoiding
 unsafe load decisions. If it conflicts with recovery evidence or an active
 restriction, choose the safer plan and explain the tradeoff in the summary.
+
+{INJURY_GUIDANCE}
 
 If this week already has a plan, preserve all past and completed days and use
 adjust_weekly_plan to update only the remaining days. Otherwise use
@@ -240,7 +265,8 @@ When get_recent_context shows mountain_reentry, the athlete is just back from
 a hiking trip: keep sessions before window_ends_on within its rpe_cap, with
 no intervals, tempo or quality rides, and if both windows are open the lower
 rpe_cap wins. Lifts stay (anchor goal): no extra leg sets, and the first
-lower-body lift repeats pre-trip loads with 2+ reps in reserve.
+lower-body lift repeats pre-trip loads with 2+ reps in reserve, unless an
+active recovery issue protects a leg area: then no lower-body lift at all.
 get_recent_context includes plan_follow_through (what happened to planned sessions over recent weeks):
 when quality_rides shows a weekly goal that recent plans rarely included,
 plan that session; put key sessions (quality rides, lower-body lifts) on
@@ -291,6 +317,8 @@ athlete shrank it on purpose: keep it small unless the feedback asks for more.
 If the feedback conflicts with recovery
 evidence or an active restriction, choose the safer revision and explain the
 tradeoff in the summary.
+
+{INJURY_GUIDANCE}
 
 Use adjust_weekly_plan to update only eligible remaining days. Preserve every
 day that does not need to change, and include a concise adaptation reason that

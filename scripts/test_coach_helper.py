@@ -44,6 +44,9 @@ class CoachHelperTests(unittest.TestCase):
         self.assertIn("adjust_weekly_plan", prompt)
         self.assertIn("Keep Friday free", prompt)
         self.assertIn("choose the safer plan", prompt)
+        self.assertIn("recovery_issues", prompt)
+        self.assertIn("Skip the rotation's lower-body workout", prompt)
+        self.assertIn("rehab_exercises", prompt)
         with self.assertRaisesRegex(ValueError, "must be text"):
             helper.validate_planning_request({
                 "week_start": "2026-08-24",
@@ -74,6 +77,7 @@ class CoachHelperTests(unittest.TestCase):
         self.assertIn("protecting completed and past days", prompt)
         self.assertIn("Move the intervals to Thursday", prompt)
         self.assertIn("choose the safer revision", prompt)
+        self.assertIn("Never plan a lift or exercise that loads a protected area", prompt)
         with self.assertRaisesRegex(ValueError, "must not be empty"):
             helper.validate_plan_revision_request({
                 "week_start": "2026-08-24",

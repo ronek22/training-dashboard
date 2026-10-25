@@ -96,9 +96,14 @@ class RecoveryTests(unittest.TestCase):
         self.reply(issue_id, plan=PLAN)
         summary = service.coaching_summary(self.conn)["issues"]
         self.assertEqual(summary[0]["avoid"], ["Hills"])
+        self.assertEqual(summary[0]["rehab_exercises"], [{"name": "Wall sit", "dose": "5 x 30 s, daily"}])
+        self.assertEqual(summary[0]["protected_areas"], ["knee"])
+        self.assertEqual(service.issue_body_areas(self.conn)[0] | {"since": None},
+                         {"area": "knee", "side": "left", "since": None, "recovery_issue_id": issue_id})
         self.assertNotIn("climbs", json.dumps(summary))
         service.heal(self.conn, issue_id, "")
         self.assertEqual(service.coaching_summary(self.conn)["issues"], [])
+        self.assertEqual(service.issue_body_areas(self.conn), [])
 
     def test_delete_removes_children(self):
         issue_id = self.create(pain=3)["id"]

@@ -1,5 +1,6 @@
 import json
 import re
+import sqlite3
 import uuid
 from datetime import date
 
@@ -278,16 +279,41 @@ def add_checkin(conn, issue_id, payload):
     return get_issue(conn, issue_id)
 
 
+def _active_issue_rows(conn):
+    try:
+        return [dict(row) for row in conn.execute(
+            "SELECT * FROM recovery_issues WHERE status = 'active' ORDER BY updated_at DESC, id DESC LIMIT 8")]
+    except sqlite3.OperationalError:
+        return []
+
+
+def issue_body_areas(conn):
+    """Protected-area entries (settings.BODY_AREAS keys) for every active issue.
+
+    A logged injury protects its area on its own, so the weekly lift top-up
+    and the planner leave it alone without a separate Athlete-page toggle.
+    """
+    areas = []
+    for row in _active_issue_rows(conn):
+        for area in detect_body_areas(f"{row['title']} {row['body_area']}"):
+            areas.append({"area": area, "side": row["side"], "since": row["started_on"], "recovery_issue_id": row["id"]})
+    return areas
+
+
 def coaching_summary(conn):
     """Active injuries for Coach and planning context: no conversation text."""
     summaries = []
-    for row in conn.execute("SELECT * FROM recovery_issues WHERE status = 'active' ORDER BY updated_at DESC, id DESC LIMIT 8"):
-        item = dict(row)
+    for item in _active_issue_rows(conn):
         plan = conn.execute("""SELECT exercises_json FROM recovery_routines WHERE issue_id = ? AND status = 'current'
             ORDER BY id DESC LIMIT 1""", (item["id"],)).fetchone()
         plan = json.loads(plan[0]) if plan else {}
+        plan = plan if isinstance(plan, dict) else {}
         summaries.append({"issue_id": item["id"], "title": item["title"], "body_area": item["body_area"], "side": item["side"],
                           "started_on": item["started_on"], "current_pain": _current_pain(conn, item["id"]),
-                          "avoid": plan.get("avoid", []) if isinstance(plan, dict) else [],
+                          "protected_areas": detect_body_areas(f"{item['title']} {item['body_area']}"),
+                          "avoid": plan.get("avoid", []),
+                          "do": plan.get("do", []),
+                          "rehab_exercises": [{"name": exercise.get("name"), "dose": exercise.get("dose")}
+                                              for exercise in plan.get("exercises", []) if isinstance(exercise, dict)],
                           "see_professional": bool(item["see_professional"])})
-    return {"issues": summaries, "instruction": "Athlete-reported injuries and soreness, not diagnoses. Keep planned sessions from aggravating them; any plan changes require athlete approval."}
+    return {"issues": summaries, "instruction": "Athlete-reported injuries and soreness, not diagnoses. Keep planned sessions from aggravating them; rehab_exercises is the athlete's current recovery routine."}

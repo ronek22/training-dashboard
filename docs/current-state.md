@@ -28,6 +28,7 @@ One line per shipped feature, newest first. The full entry (what shipped, API, U
 
 When a feature ships: add its full entry at the top of `docs/shipped/YYYY-MM.md` (create the file for a new month, same shape: `### Title`, a blank line, then `YYYY-MM-DD: summary...`), and add its line at the top of this list.
 
+- 2026-10-26 — Injury-aware weekly planning (`shipped/2026-10.md`)
 - 2026-10-25 — Ideas when nothing is planned (`shipped/2026-10.md`)
 - 2026-10-15 — Milestone celebrations (`shipped/2026-10.md`)
 - 2026-10-15 — Gentle strength phases (`shipped/2026-10.md`)

@@ -86,18 +86,39 @@ class LiftVolumeTests(unittest.TestCase):
         legs_per_day = [sum(item["sets"] for item in row["additions"] if item["group"] == "legs") for row in volume["days"]]
         self.assertEqual(sorted(legs_per_day), [2, 3, 3])
 
-    def test_protected_knee_keeps_split_squats_out_of_the_top_up(self):
+    def test_protected_knee_rests_legs_entirely(self):
         days = [_day("2026-10-08", "Workout A"), _day("2026-10-09", "Workout B"), _day("2026-10-10", "Workout C")]
-        restrictions = {"body_areas": [{"area": "knee", "side": "left", "summary_label": "left knee"}]}
+        restrictions = {"body_areas": [{"area": "knee", "side": "left"}]}
+        with patch.object(strength_volume, "get_modality_restrictions_for_conn", lambda conn: restrictions):
+            volume = self._build(days)
+
+        legs = self._group(volume, "legs")
+        self.assertEqual((legs["added_sets"], legs["status"], legs["shortfall"]), (0, "protected", 0))
+        self.assertTrue(volume["injury_rests_legs"])
+        self.assertFalse([item for row in volume["days"] for item in row["additions"] if item["group"] == "legs"])
+        self.assertEqual(volume["protected_areas"], ["left knee"])
+        self.assertIn("no leg sets added while your left knee recovers", volume["summary"].lower())
+
+    def test_active_recovery_issue_protects_its_area_without_a_setting(self):
+        days = [_day("2026-10-08", "Workout A"), _day("2026-10-09", "Workout B")]
+        issue = [{"area": "knee", "side": "left", "since": "2026-10-05", "recovery_issue_id": 2}]
+        with patch.object(strength_volume, "issue_body_areas", lambda conn: issue):
+            volume = self._build(days)
+
+        self.assertEqual(self._group(volume, "legs")["added_sets"], 0)
+        self.assertEqual(volume["protected_areas"], ["left knee"])
+
+    def test_protected_lower_back_keeps_its_lifts_out_of_the_top_up(self):
+        days = [_day("2026-10-08", "Workout A"), _day("2026-10-09", "Workout B"), _day("2026-10-10", "Workout C")]
+        restrictions = {"body_areas": [{"area": "lower_back"}]}
         with patch.object(strength_volume, "get_modality_restrictions_for_conn", lambda conn: restrictions):
             volume = self._build(days)
 
         added = [item["exercise_name"] for row in volume["days"] for item in row["additions"]]
-        self.assertNotIn("Dumbbell Bulgarian Split Squat", added)
-        self.assertIn("Romanian Deadlift", added)
-        self.assertIn("Dumbbell Bulgarian Split Squat", volume["skipped_for_protection"])
-        self.assertEqual(volume["protected_areas"], ["left knee"])
-        self.assertIn("left out lifts that load your left knee", volume["summary"].lower())
+        self.assertNotIn("Romanian Deadlift", added)
+        self.assertIn("Dumbbell Bulgarian Split Squat", added)
+        self.assertIn("Romanian Deadlift", volume["skipped_for_protection"])
+        self.assertIn("left out lifts that load your lower back", volume["summary"].lower())
 
     def test_small_gap_extends_the_lightest_matching_lift_on_a_day_that_trains_it(self):
         days = [_day("2026-10-08", "Workout B"), _day("2026-10-10", "Workout A"), _day("2026-10-11", "Workout D")]

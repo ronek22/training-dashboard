@@ -1,5 +1,5 @@
 <template>
-  <div class="runner-page motion-page" :class="{ 'session-busy': changingWorkout }" :inert="changingWorkout">
+  <div class="runner-page motion-page" :class="{ 'session-busy': changingWorkout, live: session?.status === 'active' }" :inert="changingWorkout">
     <div v-if="loading" class="card empty-state">Loading workout…</div>
     <div v-else-if="error && !session" class="card error-card" role="alert">{{ error }}</div>
 
@@ -9,6 +9,7 @@
         <div class="runner-title">
           <div class="runner-kicker" :class="{ live: session.status === 'active' }">{{ session.status === 'active' ? 'Body · Strength · Live' : 'Body · Strength · Review' }}<span> · {{ formatDate(session.started_at) }}</span></div>
           <h1>{{ session.template_name }}</h1>
+          <p v-if="session.notes && session.status === 'active'" class="runner-notes" :title="session.notes">{{ session.notes }}</p>
         </div>
         <div class="session-vitals">
           <div><span>Elapsed</span><strong>{{ elapsedClock }}</strong></div>
@@ -21,7 +22,7 @@
         </div>
       </section>
 
-      <p v-if="session.notes" class="session-instructions"><span>Session notes</span>{{ session.notes }}</p>
+      <p v-if="session.notes && session.status !== 'active'" class="session-instructions"><span>Session notes</span>{{ session.notes }}</p>
 
       <div v-if="error" class="card error-card" role="alert">{{ error }}</div>
 
@@ -56,9 +57,9 @@
 
             <div class="set-heading">
               <div class="set-heading-copy">
-                <span>Exercise {{ currentExercise.exercise_order }} of {{ session.exercises.length }}</span>
-                <h2>{{ currentExercise.exercise_name }}</h2>
-                <p v-if="currentExercise.notes">{{ currentExercise.notes }}</p>
+                <span>Exercise {{ currentExercise.exercise_order }} of {{ session.exercises.length }}<b class="set-of" :class="{ warmup: currentSet.set_type === 'warmup' }"> · {{ currentSet.set_type === 'warmup' ? 'Warm-up' : 'Set' }} {{ setDisplayNumber(currentExercise, currentSet) }} of {{ currentSet.set_type === 'warmup' ? currentExercise.warmup_set_count : workingSetCount(currentExercise) }}</b></span>
+                <h2 :title="currentExercise.notes || undefined">{{ currentExercise.exercise_name }}</h2>
+                <p v-if="currentExercise.notes" :title="currentExercise.notes">{{ currentExercise.notes }}</p>
                 <div v-if="currentBlock" class="stall-note trying">
                   <p v-if="currentBlock.due"><em>Block done</em> {{ blockDoneCopy(currentBlock) }}</p>
                   <p v-else><em>{{ currentBlock.scope === 'block' ? `Trying · week ${currentBlock.week} of ${currentBlock.weeks}` : 'Trying today' }}</em> {{ currentBlock.label }}: {{ currentBlock.text }}</p>
@@ -84,51 +85,49 @@
                   </span>
                 </div>
               </div>
-              <div class="set-ordinal" :class="{ warmup: currentSet.set_type === 'warmup' }">
-                <span>{{ currentSet.set_type === 'warmup' ? 'Warm-up' : 'Set' }}</span>
-                <strong>{{ setDisplayNumber(currentExercise, currentSet) }}<small>/{{ currentSet.set_type === 'warmup' ? currentExercise.warmup_set_count : workingSetCount(currentExercise) }}</small></strong>
-              </div>
             </div>
 
-            <div class="reference-row">
-              <div class="reference">
-                <span>Target</span>
-                <strong>{{ currentSet.target_reps }} × {{ formatWeight(currentSet.target_weight_kg, 'BW') }}</strong>
-                <small v-if="currentPlates" class="plates" :title="`Plates per side on a ${formatKg(barbellSetup.barKg)} kg bar`">
-                  <PlateStack :plates="currentPlates.perSide" :size="22" />
-                  <span>
-                    <template v-if="currentPlates.perSide.length">{{ formatPlates(currentPlates.perSide) }} per side</template>
-                    <template v-else>Empty bar</template>
-                    <template v-if="!currentPlates.exact"> · nearest {{ formatKg(currentPlates.loadedKg) }} kg</template>
-                  </span>
-                </small>
-                <small>{{ formatRest(currentSet.rest_seconds) }} rest</small>
+            <div class="console-panels">
+              <div class="reference-row">
+                <div class="reference">
+                  <span>Target</span>
+                  <strong>{{ currentSet.target_reps }} × {{ formatWeight(currentSet.target_weight_kg, 'BW') }}</strong>
+                  <small v-if="currentPlates" class="plates" :title="`Plates per side on a ${formatKg(barbellSetup.barKg)} kg bar`">
+                    <PlateStack :plates="currentPlates.perSide" :size="22" />
+                    <span>
+                      <template v-if="currentPlates.perSide.length">{{ formatPlates(currentPlates.perSide) }} per side</template>
+                      <template v-else>Empty bar</template>
+                      <template v-if="!currentPlates.exact"> · nearest {{ formatKg(currentPlates.loadedKg) }} kg</template>
+                    </span>
+                  </small>
+                  <small>{{ formatRest(currentSet.rest_seconds) }} rest</small>
+                </div>
+                <div class="reference">
+                  <span>Last time<template v-if="lastTimeDate && lastTimeSet"> · {{ lastTimeDate }}</template></span>
+                  <strong v-if="lastTimeSet">{{ lastTimeSet.reps ?? '—' }} × {{ formatWeight(lastTimeSet.weight_kg, 'BW') }}</strong>
+                  <strong v-else class="muted">{{ historyLoading ? '…' : 'No history' }}</strong>
+                  <small v-if="lastTimeDelta" class="delta-line"><span :class="lastTimeDelta.tone">{{ lastTimeDelta.label }}</span><template v-if="lastTimeEffort"> · felt {{ lastTimeEffort }}</template></small>
+                </div>
+                <button type="button" class="reset-target" :disabled="isAtTarget" @click="applyTarget">Reset to target</button>
               </div>
-              <div class="reference">
-                <span>Last time<template v-if="lastTimeDate"> · {{ lastTimeDate }}</template></span>
-                <strong v-if="lastTimeSet">{{ lastTimeSet.reps ?? '—' }} × {{ formatWeight(lastTimeSet.weight_kg, 'BW') }}</strong>
-                <strong v-else class="muted">{{ historyLoading ? '…' : 'No history' }}</strong>
-                <small v-if="lastTimeDelta" :class="lastTimeDelta.tone">{{ lastTimeDelta.label }}<template v-if="lastTimeEffort"> · felt {{ lastTimeEffort }}</template></small>
-              </div>
-              <button type="button" class="reset-target" :disabled="isAtTarget" @click="applyTarget">Reset to target</button>
+              <SetCoach
+                v-if="coachPrevious && currentSet && !(coachPrevious.rateOnly && setEfforts[coachPrevious.id] && restRemaining === 0)"
+                :exercise-name="currentExercise.exercise_name"
+                :previous="coachPrevious"
+                :target="{ reps: currentSet.target_reps, weight: currentSet.target_weight_kg }"
+                :current="{ reps: actualReps, weight: actualWeight }"
+                :effort="setEfforts[coachPrevious.id] || null"
+                :sets-left="coachSetsLeft"
+                :last-time="lastTimeSet ? { reps: lastTimeSet.reps, weight: lastTimeSet.weight_kg } : null"
+                :rest-remaining="restRemaining"
+                :rate-only="Boolean(coachPrevious.rateOnly)"
+                :dumbbell-step-kg="barbellSetup.dumbbellStepKg"
+                @rate="rateSet(coachPrevious.id, $event)"
+                @apply="applyCoach"
+                @extend-rest="adjustRest"
+              />
+              <p v-else class="set-coach-empty"><span>How did it feel?</span>After each set, tap how it felt and the coach tunes the next one.</p>
             </div>
-
-            <SetCoach
-              v-if="coachPrevious && currentSet && !(coachPrevious.rateOnly && setEfforts[coachPrevious.id] && restRemaining === 0)"
-              :exercise-name="currentExercise.exercise_name"
-              :previous="coachPrevious"
-              :target="{ reps: currentSet.target_reps, weight: currentSet.target_weight_kg }"
-              :current="{ reps: actualReps, weight: actualWeight }"
-              :effort="setEfforts[coachPrevious.id] || null"
-              :sets-left="coachSetsLeft"
-              :last-time="lastTimeSet ? { reps: lastTimeSet.reps, weight: lastTimeSet.weight_kg } : null"
-              :rest-remaining="restRemaining"
-              :rate-only="Boolean(coachPrevious.rateOnly)"
-              :dumbbell-step-kg="barbellSetup.dumbbellStepKg"
-              @rate="rateSet(coachPrevious.id, $event)"
-              @apply="applyCoach"
-              @extend-rest="adjustRest"
-            />
 
             <div v-if="currentDraft.state === 'conflict'" class="draft-note conflict" role="status">
               <span><strong>Unlogged entry</strong> {{ currentDraft.draft.reps }} × {{ formatWeight(currentDraft.draft.weight === '' ? null : currentDraft.draft.weight, 'BW') }} from earlier — this set was {{ currentSet.status === 'completed' ? 'logged' : 'changed' }} since.</span>
@@ -152,17 +151,19 @@
                   </div>
                 </label>
                 <div class="performance-field">
-                  <label for="actual-weight">Load <small>kg</small></label>
+                  <div class="field-head">
+                    <label for="actual-weight">Load <small>kg</small></label>
+                    <div class="weight-shortcuts" aria-label="Adjust weight quickly">
+                      <button type="button" @click="adjustWeight(-5)">−5</button>
+                      <button type="button" @click="adjustWeight(-1)">−1</button>
+                      <button type="button" @click="adjustWeight(1)">+1</button>
+                      <button type="button" @click="adjustWeight(5)">+5</button>
+                    </div>
+                  </div>
                   <div class="stepper">
                     <button type="button" aria-label="Decrease weight" @click="adjustWeight(-loadStep)">−</button>
                     <input id="actual-weight" v-model.number="actualWeight" aria-label="Weight used in kilograms" type="number" min="0" max="1000" step="0.5" inputmode="decimal" placeholder="BW" />
                     <button type="button" aria-label="Increase weight" @click="adjustWeight(loadStep)">+</button>
-                  </div>
-                  <div class="weight-shortcuts" aria-label="Adjust weight quickly">
-                    <button type="button" @click="adjustWeight(-5)">−5</button>
-                    <button type="button" @click="adjustWeight(-1)">−1</button>
-                    <button type="button" @click="adjustWeight(1)">+1</button>
-                    <button type="button" @click="adjustWeight(5)">+5</button>
                   </div>
                 </div>
               </div>
@@ -174,25 +175,13 @@
             </form>
 
             <div class="current-exercise-sets">
-              <div class="current-sets-head">
-                <span>This exercise</span>
-                <details class="set-management">
-                  <summary>Manage sets &amp; exercise</summary>
-                  <div class="set-tools">
-                    <button type="button" :disabled="mutationBusy || workingSetCount(currentExercise) >= 20" @click="addWorkingSet">+ Set</button>
-                    <button type="button" :disabled="mutationBusy" @click="addWarmupSet">{{ addingWarmup ? 'Adding…' : '+ Warm-up' }}</button>
-                    <button v-if="suggestedWarmups.length" type="button" :disabled="mutationBusy" :title="suggestedWarmups.map((item) => `${item.target_reps} × ${formatKg(item.target_weight_kg)} kg`).join(', ')" @click="addSuggestedWarmups">Suggest warm-ups</button>
-                    <button type="button" class="danger" :disabled="mutationBusy || (currentSet.set_type !== 'warmup' && workingSetCount(currentExercise) <= 1)" @click="removeCurrentSet">Remove {{ setKindLabel(currentExercise, currentSet).toLowerCase() }}</button>
-                    <button type="button" class="danger" :disabled="mutationBusy || session.exercises.length <= 1" @click="removeCurrentExercise">Remove exercise</button>
-                  </div>
-                </details>
-              </div>
-              <div class="set-table" role="list">
+              <div class="set-strip" role="list" aria-label="Sets of this exercise">
                 <button
                   v-for="workoutSet in currentExercise.sets"
                   :key="workoutSet.id"
                   type="button"
                   role="listitem"
+                  :title="lastSetFor(currentExercise, workoutSet) ? `Last time ${lastSetFor(currentExercise, workoutSet)}` : undefined"
                   :class="{
                     current: isCurrent(currentExercise, workoutSet),
                     completed: workoutSet.status === 'completed',
@@ -202,15 +191,24 @@
                   }"
                   @click="goToSet(currentExercise, workoutSet)"
                 >
-                  <span class="set-name">{{ setKindLabel(currentExercise, workoutSet) }}</span>
-                  <span class="set-target">{{ workoutSet.target_reps }} × {{ formatWeight(workoutSet.target_weight_kg, 'BW') }}</span>
-                  <span class="set-last">{{ lastSetFor(currentExercise, workoutSet) || '—' }}</span>
-                  <strong class="set-actual">{{ workoutSet.status === 'completed' ? `✓ ${workoutSet.actual_reps} × ${formatWeight(workoutSet.actual_weight_kg, 'BW')}` : isCurrent(currentExercise, workoutSet) ? 'Up now' : hasDraft(workoutSet) ? 'Not logged' : '' }}</strong>
+                  <span class="set-badge" aria-hidden="true">{{ workoutSet.status === 'completed' ? '✓' : `${workoutSet.set_type === 'warmup' ? 'W' : ''}${setDisplayNumber(currentExercise, workoutSet)}` }}</span>
+                  <span class="set-copy">
+                    <span class="set-name">{{ setKindLabel(currentExercise, workoutSet) }}<template v-if="workoutSet.status !== 'completed'"> · {{ isCurrent(currentExercise, workoutSet) ? 'up now' : hasDraft(workoutSet) ? 'not logged' : 'target' }}</template></span>
+                    <strong class="set-actual">{{ workoutSet.status === 'completed' ? `${workoutSet.actual_reps} × ${formatWeight(workoutSet.actual_weight_kg, 'BW')}` : `${workoutSet.target_reps} × ${formatWeight(workoutSet.target_weight_kg, 'BW')}` }}</strong>
+                  </span>
                 </button>
               </div>
+              <details class="set-management">
+                  <summary aria-label="Manage sets and exercise">Manage</summary>
+                  <div class="set-tools">
+                    <button type="button" :disabled="mutationBusy || workingSetCount(currentExercise) >= 20" @click="addWorkingSet">+ Set</button>
+                    <button type="button" :disabled="mutationBusy" @click="addWarmupSet">{{ addingWarmup ? 'Adding…' : '+ Warm-up' }}</button>
+                    <button v-if="suggestedWarmups.length" type="button" :disabled="mutationBusy" :title="suggestedWarmups.map((item) => `${item.target_reps} × ${formatKg(item.target_weight_kg)} kg`).join(', ')" @click="addSuggestedWarmups">Suggest warm-ups</button>
+                    <button type="button" class="danger" :disabled="mutationBusy || (currentSet.set_type !== 'warmup' && workingSetCount(currentExercise) <= 1)" @click="removeCurrentSet">Remove {{ setKindLabel(currentExercise, currentSet).toLowerCase() }}</button>
+                    <button type="button" class="danger" :disabled="mutationBusy || session.exercises.length <= 1" @click="removeCurrentExercise">Remove exercise</button>
+                  </div>
+              </details>
             </div>
-
-            <ExerciseGuide :key="currentExercise.id" :name="currentExercise.exercise_name" />
           </article>
 
           <aside class="card exercise-switcher">
@@ -272,6 +270,8 @@
                 {{ addingExercise ? 'Adding…' : 'Add & switch to exercise' }}
               </button>
             </form>
+
+            <ExerciseGuide :key="currentExercise.id" class="lineup-guide" :name="currentExercise.exercise_name" compact />
 
             <p class="watch-status"><span aria-hidden="true">♥</span>Keep the watch's Strength Training running — link it after finishing.</p>
           </aside>
@@ -615,7 +615,7 @@ const lastTimeDelta = computed(() => {
   const repDelta = last.reps != null ? Number(actualReps.value) - Number(last.reps) : 0
   if (weightDelta > 0 || (weightDelta === 0 && repDelta > 0)) return { tone: 'up', label: weightDelta ? `+${weightDelta} kg vs last` : `+${repDelta} rep${repDelta === 1 ? '' : 's'} vs last` }
   if (weightDelta < 0 || repDelta < 0) return { tone: 'down', label: weightDelta ? `${weightDelta} kg vs last` : `${repDelta} rep${repDelta === -1 ? '' : 's'} vs last` }
-  return { tone: 'same', label: 'Matches last time' }
+  return { tone: 'same', label: 'Same as last' }
 })
 watch(() => currentExercise.value?.exercise_name, (name) => { if (name) loadExerciseHistory(name) })
 
@@ -1212,11 +1212,6 @@ onBeforeUnmount(() => {
 .stall-actions button:hover:not(:disabled) { background: color-mix(in srgb, var(--warning-text) 10%, transparent); }
 .stall-actions button:disabled { opacity: .5; }
 .queue-stalled { margin-left: 6px; color: var(--warning-text); font-style: normal; font-weight: 600; cursor: help; }
-.set-ordinal { flex: 0 0 auto; display: grid; justify-items: end; }
-.set-ordinal span { color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
-.set-ordinal strong { color: var(--runner-accent); font: 600 38px/1 var(--font-display); font-variant-numeric: tabular-nums; }
-.set-ordinal strong small { color: var(--muted); font-size: 18px; font-weight: 500; }
-.set-ordinal.warmup strong { color: var(--text); }
 
 /* Target vs last time: the two numbers an athlete decides the next set from. */
 .reference-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 1px; align-items: stretch; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--border); }
@@ -1239,7 +1234,6 @@ onBeforeUnmount(() => {
 .draft-note.conflict { border-style: solid; background: #f6bd670a; }
 .draft-note.muted { border-color: var(--border); color: var(--muted); }
 .draft-note button { min-height: 30px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface2); color: var(--text-soft); font-size: 12px; font-weight: 700; }
-.set-table > button.drafted .set-actual { color: var(--runner-accent); font-style: italic; font-weight: 500; }
 .actual-inputs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .performance-field { display: grid; gap: 7px; min-width: 0; }
 .performance-field > span, .performance-field > label { color: var(--text-soft); font-size: 12px; font-weight: 600; }
@@ -1262,27 +1256,33 @@ onBeforeUnmount(() => {
 
 /* Per-set ledger: target, last time, what you did. */
 .current-exercise-sets { display: grid; gap: 8px; }
-.current-sets-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.current-sets-head > span { color: var(--muted); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
-.set-tools { display: flex; flex-wrap: wrap; gap: 2px; }
-.set-tools button { min-height: 32px; padding: 0 9px; border: 0; border-radius: 7px; background: transparent; color: var(--text-soft); font-size: 11px; }
+/* Sets of the current exercise: one row of chips, management in a popover. */
+.current-exercise-sets { display: flex; align-items: center; gap: 10px; }
+.set-strip { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.set-strip > button { display: flex; align-items: center; gap: 10px; min-width: 132px; padding: 8px 12px; border: 1px solid transparent; border-radius: 12px; background: rgb(var(--ov-rgb) / .035); color: var(--text-soft); text-align: left; font-variant-numeric: tabular-nums; transition: background var(--motion-duration-base) var(--motion-ease-standard), border-color var(--motion-duration-base) var(--motion-ease-standard); }
+.set-strip > button:hover { background: rgb(var(--ov-rgb) / .06); }
+.set-badge { flex: 0 0 auto; display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--border-strong); border-radius: 50%; color: var(--muted-soft); font: 700 12px/1 var(--font-display); }
+.set-copy { display: grid; gap: 1px; min-width: 0; }
+.set-name { overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.set-actual { color: var(--text-soft); font: 700 16px/1.15 var(--font-display); }
+.set-strip > button.warmup .set-badge { border-style: dashed; font-size: 10px; }
+.set-strip > button.completed { background: color-mix(in srgb, var(--success) 7%, transparent); }
+.set-strip > button.completed .set-badge { border-color: transparent; background: var(--success); color: var(--deep); }
+.set-strip > button.completed .set-actual { color: var(--text); }
+.set-strip > button.current { border-color: color-mix(in srgb, var(--strength) 50%, transparent); background: color-mix(in srgb, var(--strength) 12%, transparent); }
+.set-strip > button.current .set-badge { border-color: var(--tone-strength); background: color-mix(in srgb, var(--strength) 18%, transparent); color: var(--tone-strength); }
+.set-strip > button.current .set-name { color: var(--tone-strength); }
+.set-strip > button.current .set-actual { color: var(--text); }
+.set-strip > button.drafted:not(.completed) .set-actual { color: var(--runner-accent); font-style: italic; }
+.set-strip > button.just-done { animation: set-logged 900ms var(--motion-ease-standard); }
+.set-strip > button.just-done .set-badge { animation: set-check 420ms var(--motion-ease-emphasized); }
+.set-management { position: relative; flex-shrink: 0; }
+.set-tools { position: absolute; z-index: 5; right: 0; bottom: calc(100% + 6px); display: grid; gap: 4px; width: max-content; padding: 8px; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--surface); box-shadow: 0 12px 30px rgb(var(--shadow-rgb) / .35); }
+.set-tools button { min-height: 34px; padding: 0 9px; border: 0; border-radius: 7px; background: transparent; text-align: left; color: var(--text-soft); font-size: 11px; }
 .set-tools button:hover:not(:disabled) { background: rgb(var(--ov-rgb) / .04); }
 .set-tools button.danger { color: var(--danger-text); opacity: .8; }
-.set-table { display: grid; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-.set-table > button { display: grid; grid-template-columns: 90px 1fr 1fr 1fr; align-items: center; gap: 12px; min-height: 40px; padding: 0 14px; border: 0; border-top: 1px solid var(--border); background: transparent; color: var(--text-soft); text-align: left; font-size: 12px; font-variant-numeric: tabular-nums; }
-.set-table > button:first-child { border-top: 0; }
-.set-table > button:hover { background: rgb(var(--ov-rgb) / .025); }
-.set-name { color: var(--muted-soft); }
-.set-last { color: var(--muted); }
-.set-actual { font-weight: 600; text-align: right; }
-.set-table > button.warmup .set-name { color: var(--muted); font-style: italic; }
-.set-table > button.completed .set-actual { color: var(--success-text); }
-.set-table > button.just-done { animation: set-logged 900ms var(--motion-ease-standard); }
-.set-table > button.just-done .set-actual { display: inline-block; animation: set-check 420ms var(--motion-ease-emphasized); }
 @keyframes set-logged { 0% { background: color-mix(in srgb, var(--runner-mint) 22%, transparent); } 100% { background: transparent; } }
 @keyframes set-check { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
-.set-table > button.current { background: #f6bd670d; box-shadow: inset 3px 0 0 var(--runner-accent); }
-.set-table > button.current .set-name, .set-table > button.current .set-actual { color: var(--runner-accent); }
 
 /* Lineup */
 .exercise-switcher { position: sticky; top: 16px; display: grid; gap: 2px; padding: 16px 10px 12px; background: var(--deep); box-shadow: none; }
@@ -1311,6 +1311,7 @@ onBeforeUnmount(() => {
 .queue-set-markers i.selected { background: var(--runner-accent); }
 .watch-status { display: flex; gap: 8px; margin: 10px 6px 0; padding-top: 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; line-height: 1.45; }
 .watch-status span { color: var(--text-soft); }
+.lineup-guide { margin: 12px 6px 0; }
 .form-heading { display: grid; gap: 3px; }
 .form-heading span { color: var(--muted); font-size: 11px; }
 
@@ -1353,7 +1354,6 @@ onBeforeUnmount(() => {
   .rest-actions { width: 100%; }
   .rest-actions button { flex: 1; }
   .set-heading h2 { font-size: 26px; }
-  .set-ordinal strong { font-size: 30px; }
   .reference-row { grid-template-columns: 1fr 1fr; }
   .reset-target { grid-column: 1 / -1; min-height: 40px; }
   .actual-inputs { grid-template-columns: 1fr; gap: 12px; }
@@ -1361,8 +1361,6 @@ onBeforeUnmount(() => {
   .stepper input { font-size: 42px; }
   .weight-shortcuts button { min-height: 40px; }
   .complete-button kbd { display: none; }
-  .set-table > button { grid-template-columns: 64px 1fr 1fr; }
-  .set-last { display: none; }
   .section-head { align-items: flex-start; }
   .session-actions { flex-wrap: wrap; }
   .session-actions p { order: 3; flex-basis: 100%; text-align: center; }
@@ -1431,9 +1429,6 @@ onBeforeUnmount(() => {
 .runner-page .set-heading { align-items: flex-start; gap: 16px; }
 .runner-page .set-heading-copy > span { font-size: 11px; letter-spacing: .14em; }
 .runner-page .set-heading h2 { font-size: clamp(32px, 3vw, 46px); font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: -.01em; }
-.runner-page .set-ordinal { flex-shrink: 0; padding: 10px 16px; border: 1px solid var(--border); border-radius: 14px; background: rgb(var(--deep-rgb) / .6); }
-.runner-page .set-ordinal strong { color: var(--tone-strength); font-size: 42px; font-weight: 800; }
-.runner-page .set-ordinal.warmup strong { color: var(--muted-soft); }
 .runner-page .reference-row { border-color: var(--border); border-radius: 14px; background: rgb(var(--deep-rgb)); }
 .runner-page .reference { padding: 14px 16px; background: transparent; gap: 5px; }
 .runner-page .reference > span { font-size: 10px; font-weight: 600; letter-spacing: .12em; }
@@ -1450,15 +1445,11 @@ onBeforeUnmount(() => {
 .runner-page .complete-button:hover:not(:disabled) { background: var(--volt-strong); }
 .runner-page .complete-button kbd { border-color: currentColor; }
 .runner-page .current-exercise-sets { gap: 14px; }
-.runner-page .current-sets-head > span { font-size: 11px; font-weight: 600; letter-spacing: .14em; }
 .runner-page .set-management { max-width: 100%; font-size: 12px; color: var(--muted-soft); }
-.runner-page .set-management summary { cursor: pointer; min-height: 40px; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: 999px; }
-.runner-page .set-tools { padding-top: 10px; gap: 6px; }
-.runner-page .set-tools button { min-height: 40px; border: 1px solid var(--border-strong); border-radius: 999px; }
-.runner-page .set-table { background: rgb(var(--deep-rgb) / .5); }
-.runner-page .set-table > button { min-height: 46px; }
-.runner-page .set-table > button.current { background: color-mix(in srgb, var(--strength) 8%, transparent); box-shadow: inset 3px 0 0 var(--strength); }
-.runner-page .set-table > button.completed .set-actual { color: var(--success-text); }
+.runner-page .set-management summary { cursor: pointer; list-style: none; display: grid; place-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; }
+.runner-page .set-management summary::-webkit-details-marker { display: none; }
+.runner-page .set-management[open] summary { color: var(--text); background: var(--surface2); }
+.runner-page .set-tools button { min-height: 36px; padding: 0 14px; border: 0; border-radius: 10px; }
 .runner-page .exercise-switcher { min-width: 0; padding: 24px 16px; border-radius: var(--radius-card); background: var(--surface); }
 .runner-page .queue-head { padding: 0 8px 18px; }
 .runner-page .queue-head span { font-size: 11px; font-weight: 600; letter-spacing: .14em; }
@@ -1511,21 +1502,142 @@ onBeforeUnmount(() => {
   .runner-page .current-set-card { padding: 0 18px 20px; gap: 20px; }
   .runner-page .rest-strip { margin: 0 -18px; padding: 14px 18px; }
   .runner-page .set-heading h2 { font-size: 32px; }
-  .runner-page .set-ordinal { padding: 8px 10px; }
-  .runner-page .set-ordinal strong { font-size: 34px; }
   .runner-page .reference { padding: 12px; }
   .runner-page .reference strong { font-size: 24px; }
   .runner-page .reference-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .runner-page .actual-inputs { grid-template-columns: minmax(0, 1fr); }
   .runner-page .complete-button { flex-direction: column; gap: 4px; padding: 14px; }
   .runner-page .complete-button > span { font-size: 16px; }
-  .runner-page .set-table > button { padding: 10px; gap: 6px; grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1fr); font-size: 11px; }
   .runner-page .workout-detail { padding: 20px 18px; }
   .runner-page .section-head { flex-wrap: wrap; }
   .runner-page .session-instructions { flex-direction: column; gap: 4px; }
   .runner-page .session-actions { align-items: stretch; }
   .runner-page .session-actions .finish-button { flex-basis: 100%; }
   .runner-page .log-title { flex-wrap: wrap; gap: 4px; }
+}
+
+/* One decision panel under the exercise name: target | last time | how the last set felt, coach tip as its footer. */
+.runner-page .console-panels { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 24px; padding: 12px 20px; border: 1px solid var(--border); border-radius: 16px; background: rgb(var(--deep-rgb) / .55); }
+.runner-page .console-panels .reference-row { display: contents; }
+.runner-page .console-panels .reference { display: grid; align-content: start; gap: 3px; padding: 0; grid-row: 1; }
+.runner-page .console-panels .reference:first-child { grid-column: 1; }
+.runner-page .console-panels .reference + .reference { grid-column: 2; }
+.runner-page .console-panels .reference > span { font-size: 10px; }
+.runner-page .console-panels .reference strong { margin-bottom: 2px; font: 700 22px/1.1 var(--font-display); }
+.runner-page .console-panels .reference strong.muted { font: 500 14px/1.6 var(--font-body); }
+.runner-page .console-panels .reference small { font-size: 12px; }
+.runner-page .console-panels .reference small.delta-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.runner-page .console-panels .reference .delta-line span { color: inherit; font-size: inherit; letter-spacing: 0; text-transform: none; }
+.runner-page .console-panels .reference .delta-line .up { color: var(--success-text); }
+.runner-page .console-panels .reference .delta-line .down { color: var(--warning-text); }
+.runner-page .console-panels .reference small.plates { margin: 0; }
+.runner-page .console-panels .reset-target { grid-column: 1; grid-row: 1; justify-self: end; align-self: start; min-height: 0; padding: 2px 0; border: 0; border-bottom: 1px dashed var(--border-strong); border-radius: 0; background: none; color: var(--muted-soft); font-size: 11px; }
+.runner-page .console-panels .reset-target:hover:not(:disabled) { background: none; color: var(--text); }
+.runner-page .console-panels .reset-target:disabled { display: none; }
+.runner-page .console-panels > .set-coach { display: contents; }
+.runner-page .console-panels :deep(.coach-rate), .runner-page .console-panels .set-coach-empty { grid-column: 1 / -1; grid-row: 2; margin: 0; padding-top: 12px; border-top: 1px solid var(--border); }
+.runner-page .console-panels :deep(.coach-tip) { grid-column: 1 / -1; grid-row: 3; }
+.runner-page .console-panels :deep(.effort-chips button) { padding: 0 11px; }
+@media (min-width: 1181px) {
+  .runner-page .console-panels { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.7fr); }
+  .runner-page .console-panels { row-gap: 0; }
+  .runner-page .console-panels .reference { grid-row: 1 / span 2; }
+  .runner-page .console-panels :deep(.coach-rate), .runner-page .console-panels :deep(.coach-tip), .runner-page .console-panels .set-coach-empty { grid-column: 3; padding: 0 0 0 24px; border-top: 0; border-left: 1px solid var(--border); }
+  .runner-page .console-panels :deep(.coach-rate) { grid-row: 1; padding-bottom: 10px; }
+  .runner-page .console-panels :deep(.coach-tip) { grid-row: 2; gap: 10px; }
+  .runner-page .console-panels .set-coach-empty { grid-row: 1 / span 2; }
+  .runner-page .console-panels :deep(.coach-copy) { display: flex; align-items: baseline; gap: 8px; }
+  .runner-page .console-panels :deep(.coach-copy strong) { font-size: 13px; }
+  .runner-page .console-panels :deep(.coach-copy p) { -webkit-line-clamp: 1; }
+}
+.set-coach-empty { display: grid; align-content: center; gap: 6px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.set-coach-empty span { color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+
+/* Lean console: fewer boxes, one control row per job. */
+.runner-page .set-heading-copy > span .set-of { color: var(--text-soft); font-weight: inherit; }
+.runner-page .performance-field > span, .runner-page .field-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 28px; }
+.runner-page .field-head > label { color: var(--muted-soft); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.runner-page .field-head > label small { color: var(--muted); font-weight: 400; }
+.runner-page .weight-shortcuts { display: flex; gap: 4px; }
+.runner-page .weight-shortcuts button { min-height: 26px; padding: 0 10px; border-color: var(--border); font-size: 12px; }
+.runner-page .stepper { grid-template-columns: 46px minmax(0, 1fr) 46px; padding: 5px; border-color: var(--border); border-radius: 16px; }
+.runner-page .stepper button { height: 46px; border: 0; border-radius: 12px; background: rgb(var(--ov-rgb) / .05); }
+.runner-page .stepper input { height: 46px; font-size: 42px; }
+/* Bottom zone: inputs and Log as one group, the set track set apart below a hairline. */
+.runner-page .console-panels { margin-bottom: 6px; }
+.runner-page .log-form { gap: 18px; }
+.runner-page .current-exercise-sets { margin-top: 6px; padding-top: 16px; border-top: 1px solid var(--border); }
+@media (min-width: 561px) {
+  .runner-page .set-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .runner-page .set-strip > button { min-width: 0; }
+}
+.runner-page .set-management summary { min-height: 32px; padding: 0 12px; border-color: var(--border); font-size: 12px; }
+
+/* Live session on desktop: header, rest, target and the log button fit one screen. */
+.runner-notes { margin: 6px 0 0; color: var(--muted-soft); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 961px) {
+  .runner-page.live { gap: 16px; }
+  .runner-page.live .runner-head { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px 28px; }
+  .runner-page.live .runner-head h1 { margin-top: 4px; font-size: clamp(28px, 2.4vw, 36px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .runner-page.live .session-vitals { grid-column: 2; grid-row: 1; display: flex; gap: 28px; }
+  .runner-page.live .session-vitals > div { padding: 0; border: 0; border-radius: 0; background: transparent; }
+  .runner-page.live .session-vitals strong { font-size: 26px; }
+  .runner-page.live .session-vitals small { font-size: 14px; }
+  .runner-page.live .back-link { grid-column: 3; }
+  .runner-page.live .runner-progress { margin-top: 0; }
+  .runner-page.live .current-set-card { gap: 14px; padding: 0 24px 20px; }
+  .runner-page.live .rest-strip { margin: 0 -24px; padding: 10px 24px; }
+  .runner-page.live .set-heading h2 { font-size: clamp(28px, 2.4vw, 36px); }
+  .runner-page.live .exercise-switcher { padding: 18px 14px; }
+  .runner-page.live .queue-head { padding-bottom: 10px; }
+  .runner-page.live .queue-head strong { font-size: 22px; }
+  .runner-page.live .queue-item { min-height: 58px; }
+  .runner-page.live .complete-button { min-height: 50px; }
+  .runner-page.live .set-heading p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .runner-page.live .set-heading .stall-note { flex-wrap: nowrap; }
+  .runner-page.live .set-heading .stall-note p { flex: 1 1 auto; min-width: 0; }
+  .runner-page.live .console-panels { margin-bottom: 0; }
+  .runner-page.live .log-form { gap: 14px; }
+  .runner-page.live .current-exercise-sets { margin-top: 0; padding-top: 14px; }
+}
+/* Tall enough desktop: the page never scrolls; the set card and lineup scroll inside. */
+@media (min-width: 961px) and (min-height: 640px) {
+  .runner-page.live { display: flex; flex-direction: column; height: calc(100dvh - 74px); }
+  .runner-page.live > * { flex: none; }
+  .runner-page.live .runner-console { flex: 1 1 auto; min-height: 0; align-items: start; }
+  .runner-page.live .current-set-card, .runner-page.live .exercise-switcher { position: static; max-height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  .runner-page.live :is(.current-set-card, .exercise-switcher) { align-content: start; grid-auto-rows: max-content; }
+  .runner-page.live .rest-strip { position: sticky; top: 0; z-index: 2; background: color-mix(in srgb, var(--deep) 45%, var(--surface)); }
+  .runner-page.live .rest-strip.recovering { background: color-mix(in srgb, var(--z2) 8%, var(--surface)); }
+  .runner-page.live .workout-detail { display: none; }
+  .runner-page.live .session-actions { padding: 0 140px 0 0; }
+  .runner-page.live .session-actions :is(.finish-button, .danger-button) { min-height: 36px; padding: 6px 16px; }
+}
+/* Shorter laptop windows: trim the big numbers rather than scroll. */
+@media (min-width: 961px) and (min-height: 640px) and (max-height: 840px) {
+  .runner-page.live { gap: 12px; }
+  .runner-page.live .runner-head { gap: 8px 28px; }
+  .runner-page.live .runner-head h1 { font-size: 28px; }
+  .runner-page.live .session-vitals strong { font-size: 22px; }
+  .runner-page.live .current-set-card { gap: 10px; padding-bottom: 16px; }
+  .runner-page.live .rest-strip { padding-block: 8px; }
+  .runner-page.live .set-heading h2 { font-size: 28px; }
+  .runner-page.live .stepper { padding: 4px; }
+  .runner-page.live .stepper button { height: 40px; }
+  .runner-page.live .stepper input { height: 42px; font-size: 38px; }
+  .runner-page.live .weight-shortcuts button { min-height: 28px; }
+  .runner-page.live .queue-head { padding-bottom: 6px; }
+  .runner-page.live .queue-item { min-height: 50px; padding-block: 5px; }
+  .runner-page.live .watch-status { display: none; }
+  .runner-page.live .set-heading-copy > p { display: none; }
+  .runner-page.live .console-panels { padding: 8px 16px; row-gap: 8px; }
+  .runner-page.live .console-panels .reference strong { font-size: 20px; }
+  .runner-page.live :deep(.coach-copy p) { -webkit-line-clamp: 1; }
+  .runner-page.live .console-panels { margin-bottom: 0; }
+  .runner-page.live .log-form { gap: 12px; }
+  .runner-page.live .current-exercise-sets { margin-top: 0; padding-top: 8px; }
+  .runner-page.live .set-strip > button { padding-block: 5px; }
+  .runner-page.live .stepper input { height: 40px; }
 }
 
 </style>

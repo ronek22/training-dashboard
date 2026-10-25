@@ -88,13 +88,20 @@ restore file:
 # Run the backend test suite.
 test-backend:
     # Prefer the backend virtualenv (pip install -r backend/requirements.txt); fall back to .tmp_test_deps.
+    # Quiet on purpose: a passing run prints only the summary (agents read all of it). For per-test
+    # names and unclosed-connection warnings, run `just test-backend-verbose`.
     if [ -x "{{root}}/backend/.venv/bin/python" ]; then py="{{root}}/backend/.venv/bin/python"; else py=python3; fi; \
-    PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest discover -s backend/tests
+    PYTHONWARNINGS="ignore::ResourceWarning" PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest discover -q -s backend/tests
+
+# Run the backend test suite with per-test output and every warning.
+test-backend-verbose:
+    if [ -x "{{root}}/backend/.venv/bin/python" ]; then py="{{root}}/backend/.venv/bin/python"; else py=python3; fi; \
+    PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest discover -v -s backend/tests
 
 # Run the helper-script tests (coach helper, recovery, Sunday review, team coaching).
 test-scripts:
     if [ -x "{{root}}/backend/.venv/bin/python" ]; then py="{{root}}/backend/.venv/bin/python"; else py=python3; fi; \
-    cd "{{root}}" && PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest scripts.test_coach_helper scripts.test_recovery_helper scripts.test_sunday_review scripts.test_team_coaching_helper scripts.test_meal_helper scripts.test_recipe_helper
+    cd "{{root}}" && PYTHONPATH="{{root}}/.tmp_test_deps:{{root}}" PYTHONPYCACHEPREFIX="{{root}}/.tmp_pycache" "$py" -m unittest -q scripts.test_coach_helper scripts.test_recovery_helper scripts.test_sunday_review scripts.test_team_coaching_helper scripts.test_meal_helper scripts.test_recipe_helper
 
 # Run the frontend behavior tests.
 test-frontend:
@@ -102,7 +109,8 @@ test-frontend:
 
 # Build the frontend (catches template and import errors).
 build-frontend:
-    cd "{{root}}/frontend" && npm run build
+    # Warnings and errors only; plain `npm run build` lists every chunk.
+    cd "{{root}}/frontend" && npm run build -- --logLevel warn
 
 # One check before shipping: frontend tests, frontend build, backend and helper tests.
 check: test-frontend build-frontend test-backend test-scripts

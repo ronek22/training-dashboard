@@ -52,6 +52,12 @@ from .services.widget_brief import write_widget_brief
 mcp_app = build_mcp_app(**build_mcp_router_dependencies())
 logger = logging.getLogger(__name__)
 
+# FastMCP sets the root logger to INFO, which logs every httpx request (Strava calls, and each
+# TestClient request in the tests: ~700 lines per run) and every MCP call. Keep our own INFO
+# lines, drop that chatter.
+for _noisy in ("httpx", "mcp"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
+
 
 def _import_health_data_once() -> None:
     conn = get_db()

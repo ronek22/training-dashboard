@@ -345,7 +345,7 @@ def rehab_routines(conn):
 
 def rehab_for_day(conn, day, routines):
     """Routines with that day's ticks, when the planned day is a rehab session or asks for the routine."""
-    text = f"{day.get('title') or ''} {day.get('details') or ''}"
+    text = " ".join([day.get("title") or "", day.get("details") or "", *(day.get("steps") or [])])
     if not routines or not day.get("date") or not REHAB_DAY.search(text):
         return []
     return [{**routine, "ticked": _ticked(conn, routine["routine_id"], day["date"])} for routine in routines]

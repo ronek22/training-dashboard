@@ -453,6 +453,10 @@ export const sanitizeEditorDay = (day) => ({
   target_duration_min: sanitizeNumber(day.target_duration_min),
   target_distance_km: sanitizeNumber(day.target_distance_km),
   cycling_workout_id: isRideSessionType(day.session_type) ? day.cycling_workout_id || null : null,
+  check: day.check || null,
+  steps: day.steps || [],
+  cues: day.cues || [],
+  fallback: day.fallback || null,
 })
 export const diffStatusLabel = (status) => {
   if (status === 'edited') return 'Edited'

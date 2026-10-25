@@ -105,3 +105,16 @@ class CyclingWorkoutTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PlanDayBriefTests(unittest.TestCase):
+    def test_structured_brief_fields_are_trimmed_and_kept(self):
+        day = WeeklyPlanDay(date="2026-10-28", label="Wed", title="Easy spin", session_type="ride",
+                            check="  Go only if pain is 0-2/10 ", steps=["10 min easy", " ", "25 min Zone 2"],
+                            cues=["Stop at the first ping"], fallback="")
+        payload = serialize_plan_day(day)
+        self.assertEqual(payload["check"], "Go only if pain is 0-2/10")
+        self.assertEqual(payload["steps"], ["10 min easy", "25 min Zone 2"])
+        self.assertIsNone(payload["fallback"])
+        with self.assertRaises(ValidationError):
+            WeeklyPlanDay(date="2026-10-28", label="Wed", title="Too long", steps=["step"] * 13)

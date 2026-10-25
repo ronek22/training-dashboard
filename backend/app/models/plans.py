@@ -21,12 +21,21 @@ class WeeklyPlanDay(BaseModel):
     planning_rule_reason: Optional[str] = None
     title: str
     details: Optional[str] = None
+    # Structured brief for the workout dialog; details stays the short summary on the card.
+    check: Optional[str] = Field(default=None, max_length=300)
+    steps: list[str] = Field(default_factory=list, max_length=12)
+    cues: list[str] = Field(default_factory=list, max_length=6)
+    fallback: Optional[str] = Field(default=None, max_length=400)
     target_duration_min: Optional[int] = None
     target_distance_km: Optional[float] = None
     cycling_workout_id: Optional[str] = None
 
     @model_validator(mode="after")
     def validate_cycling_workout(self):
+        self.steps = [item.strip() for item in self.steps if item and item.strip()]
+        self.cues = [item.strip() for item in self.cues if item and item.strip()]
+        self.check = (self.check or "").strip() or None
+        self.fallback = (self.fallback or "").strip() or None
         if not self.cycling_workout_id:
             self.cycling_workout_id = None
             return self

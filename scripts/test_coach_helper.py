@@ -47,6 +47,7 @@ class CoachHelperTests(unittest.TestCase):
         self.assertIn("recovery_issues", prompt)
         self.assertIn("Skip the rotation's lower-body workout", prompt)
         self.assertIn("rehab_exercises", prompt)
+        self.assertIn("steps is the session in order", prompt)
         with self.assertRaisesRegex(ValueError, "must be text"):
             helper.validate_planning_request({
                 "week_start": "2026-08-24",

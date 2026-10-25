@@ -153,6 +153,8 @@
             <CyclingWorkoutSteps v-if="planCyclingWorkout" class="brief-cycling" :workout="planCyclingWorkout" :ftp="cyclingLibrary?.ftp" :export-note="cyclingLibrary?.export_note" />
 
             <template v-if="planDetailView">
+              <p v-if="planDetailView.summary" class="brief-summary">{{ planDetailView.summary }}</p>
+              <p v-if="planDetailView.check" class="brief-check"><strong>Before you start</strong> {{ planDetailView.check }}</p>
               <section v-if="planDetailView.prescriptionItems.length" class="brief-section">
                 <h3>{{ planDetailView.prescriptionTitle || 'The session' }}</h3>
                 <ol><li v-for="(item, index) in planDetailView.prescriptionItems" :key="index"><span aria-hidden="true">{{ index + 1 }}</span>{{ item }}</li></ol>
@@ -206,7 +208,7 @@ import LifeLoadPicker from '../components/LifeLoadPicker.vue'
 import { useLifeLoad } from '../composables/useLifeLoad'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
 import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
-import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail'
+import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail.mjs'
 import { clashText, swapLabel } from '../plan/lift-ride-clash.mjs'
 
 const api = useApi()
@@ -405,7 +407,7 @@ const ensureCyclingLibrary = async () => {
   if (cyclingLibrary.value) return
   try { const { data } = await api.getCyclingWorkouts(); cyclingLibrary.value = data } catch { cyclingLibrary.value = { workouts: [] } }
 }
-const planDetailView = computed(() => buildSessionDetailView(popupPlan.value?.details))
+const planDetailView = computed(() => buildSessionDetailView(popupPlan.value?.details, popupPlan.value))
 const planTargets = computed(() => popupPlan.value ? sessionTargets(popupPlan.value, planDetailView.value) : [])
 const planCyclingWorkout = computed(() => popupPlan.value?.cycling_workout_id ? (cyclingLibrary.value?.workouts || []).find((workout) => workout.id === popupPlan.value.cycling_workout_id) || null : null)
 const planSubline = computed(() => [popupPlan.value?.template_label, popupPlan.value?.workout_intent_label, popupPlan.value?.benchmark_label].filter(Boolean).join(' · '))
@@ -689,6 +691,9 @@ a.pop-title:hover { text-decoration: underline; }
 .brief-section ul li::before { content: ''; flex: none; width: 5px; height: 5px; margin-top: 8px; border-radius: 50%; background: var(--tone); }
 .brief-adapt { padding: 9px 11px; border-radius: 9px; background: rgb(var(--ov-rgb) / .05); }
 .brief-adapt p { color: var(--muted-soft); font-size: 12.5px; line-height: 1.5; }
+.brief-summary { margin: 0; font-size: 13px; line-height: 1.5; }
+.brief-check { margin: 0; padding: 9px 11px; border-radius: 9px; border: 1px solid color-mix(in srgb, var(--warning-text) 35%, var(--border)); font-size: 12.5px; line-height: 1.5; }
+.brief-check strong { color: var(--warning-text); }
 .brief-why summary { color: var(--muted-soft); cursor: pointer; font-size: 12px; font-weight: 650; }
 .brief-why p { margin-top: 6px; color: var(--muted-soft); font-size: 12.5px; line-height: 1.5; }
 .brief-goal { margin-top: 8px; font-size: 12.5px; }

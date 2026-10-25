@@ -214,11 +214,24 @@ mountain_reentry and winter_arc:
   walk easy or do the rehab routine) and never intervals, tempo or long rides
   while current_pain is 3 or more. Follow the issue's avoid and do lists.
 - When an issue has rehab_exercises, plan 2-3 rehab sessions in the week:
-  session_type "Recovery", 20-30 min, title "Rehab: <area>", with every
-  exercise and its dose listed in details. One may replace a rest day; on other
-  days add the routine to an easy day's details instead of a second session.
+  session_type "Recovery", 20-30 min, title "Rehab: <area>"; the dashboard
+  attaches the routine as a checklist. One may replace a rest day; on other
+  days mention the rehab routine on an easy day instead of a second session.
 - If see_professional is true, say so in the summary. Explain in the overview
   which sessions changed because of the injury."""
+
+
+DAY_FORMAT_GUIDANCE = """Write each planned day for the workout dialog, not as one paragraph:
+details is one or two plain sentences summarising the session (it shows on
+the plan card). Put the rest in the structured fields: check is the go/no-go
+condition before starting, if there is one; steps is the session in order,
+one complete instruction per item (warm-up, main set, cool-down; for a lift,
+each exercise with sets x reps and load or reps in reserve), never single
+words or fragments; cues are at most 3 things to keep in mind; fallback is
+what to do instead when the check fails or time is short. Do not repeat the
+same instruction in details and steps. On a day with a rehab routine, do not
+list its exercises: the dashboard shows the routine as a checklist, so add
+one step such as "Rehab routine (checklist below), about 20 min"."""
 
 
 def build_prompt(week_start: str, planning_brief: str = "") -> str:
@@ -240,6 +253,10 @@ unsafe load decisions. If it conflicts with recovery evidence or an active
 restriction, choose the safer plan and explain the tradeoff in the summary.
 
 {INJURY_GUIDANCE}
+
+{DAY_FORMAT_GUIDANCE}
+
+{DAY_FORMAT_GUIDANCE}
 
 If this week already has a plan, preserve all past and completed days and use
 adjust_weekly_plan to update only the remaining days. Otherwise use
@@ -319,6 +336,8 @@ evidence or an active restriction, choose the safer revision and explain the
 tradeoff in the summary.
 
 {INJURY_GUIDANCE}
+
+{DAY_FORMAT_GUIDANCE}
 
 Use adjust_weekly_plan to update only eligible remaining days. Preserve every
 day that does not need to change, and include a concise adaptation reason that

@@ -145,6 +145,7 @@ if __name__ == "__main__":
         day = service.rehab_for_day(self.conn, {"date": today, "title": "Easy spin", "details": "Add the rehab routine after."}, routines)
         self.assertEqual(day[0]["ticked"], [1])
         self.assertEqual(service.get_issue(self.conn, issue_id)["ticked_today"], [1])
+        self.assertEqual(len(service.rehab_for_day(self.conn, {"date": today, "title": "Easy spin", "steps": ["Rehab routine (checklist below)"]}, routines)), 1)
         yesterday = (date.today() - timedelta(days=1)).isoformat()
         self.assertEqual(service.rehab_for_day(self.conn, {"date": yesterday, "title": "Rehab: knee"}, routines)[0]["ticked"], [])
 

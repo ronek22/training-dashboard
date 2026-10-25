@@ -689,12 +689,14 @@ const todayCard = computed(() => {
     }
   }
   if (!plan) {
+    const ideas = sick ? null : dashboard.value?.unplanned_ideas
     return {
       ...coach,
       state: 'empty',
       kicker: 'Today',
-      title: dailyRecommendation.value?.action || 'No workout planned today',
-      summary: 'Use your readiness and recent training to decide between recovery and easy movement.',
+      title: ideas ? 'No workout planned today' : dailyRecommendation.value?.action || 'No workout planned today',
+      summary: ideas?.message || 'Use your readiness and recent training to decide between recovery and easy movement.',
+      ideas,
       primaryAction: { label: 'Build your week', to: '/plan' },
     }
   }

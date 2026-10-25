@@ -88,6 +88,8 @@
       <button v-if="coachChatAvailable" type="button" @click="talkAboutSession">Talk this through</button>
     </div>
 
+    <TodayIdeas v-if="state === 'empty' && ideas?.ideas?.length" :state="ideas" />
+
     <TodayAdjust v-if="state === 'planned' && plan?.date" :date-key="plan.date" @changed="emit('plan-changed')" />
 
     <section v-if="comparison && !sessions.length" class="today-compare" aria-label="Planned versus actual duration">
@@ -151,6 +153,7 @@ import TodayStrengthSummary from './TodayStrengthSummary.vue'
 import TodaySickSummary from './TodaySickSummary.vue'
 import TodayPlanSummary from './TodayPlanSummary.vue'
 import TodayAdjust from './TodayAdjust.vue'
+import TodayIdeas from './TodayIdeas.vue'
 import WeeklyBodyCheckin from './WeeklyBodyCheckin.vue'
 import { coachChatAvailable, openCoachChat } from '../coach/chat-bus'
 import { sessionChatRequest } from '../coach/session-chat.mjs'
@@ -187,6 +190,8 @@ const props = defineProps({
   plannedExercises: { type: Array, default: () => [] },
   form: { type: Number, default: null },
   checkIn: { type: Object, default: null },
+  // Nothing planned today: { date, message, ideas } from the dashboard's unplanned_ideas.
+  ideas: { type: Object, default: null },
 })
 
 const selectedId = ref(null)

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { dayChatRequest, sessionChatRequest, sessionChatTitle, weekChatRequest } from '../src/coach/session-chat.mjs'
+import { dayChatRequest, sessionChatRequest, sessionChatTitle, unplannedDayChatRequest, weekChatRequest } from '../src/coach/session-chat.mjs'
 
 const ride = { id: 16001, type: 'VirtualRide', date: '2026-10-04T07:30:00' }
 
@@ -80,4 +80,16 @@ test('a moment opens the chat it belongs to', () => {
   assert.equal(session.opener, 'Hi')
   const week = momentRequest({ kind: 'week', week: { week_start: '2026-09-28', finished: true, wins: [], focus: null } })
   assert.equal(week.context_id, '2026-09-28')
+})
+
+test('an unplanned day opens a day chat that lists the ideas', () => {
+  const request = unplannedDayChatRequest({
+    date: '2026-10-25',
+    message: 'Nothing is planned today.',
+    ideas: [{ title: 'Easy spin', minutes: 40, summary: '40 min conversational.' }],
+  })
+  assert.equal(request.context_kind, 'day')
+  assert.equal(request.context_id, '2026-10-25')
+  assert.equal(request.title, 'Today · 25 Oct: nothing planned')
+  assert.match(request.opener, /• Easy spin \(40 min\): 40 min conversational\./)
 })

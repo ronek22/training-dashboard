@@ -11,6 +11,7 @@ from .downshift import build_downshift, downshift_coaching_context
 from .guided_sessions import guided_completion_dates, reconcile_guided_session_activities
 from .illness_return import build_illness_return, illness_return_coaching_context
 from .mountain_reentry import build_mountain_reentry, mountain_reentry_coaching_context
+from .unplanned_ideas import build_unplanned_ideas
 from .sick_mode import build_sick_mode, sick_mode_coaching_context
 from .volume_trend import build_volume_trend
 from .plan_follow_through import plan_follow_through_coaching_context
@@ -1388,6 +1389,8 @@ def build_dashboard_data(
         goals_assessment=goal_summary,
         recent_patterns=recent_pattern_summary,
     )
+    illness_return = build_illness_return(conn)
+    mountain_reentry = build_mountain_reentry(conn)
 
     return {
         "last_14_days": [dict(r) for r in recent],
@@ -1420,8 +1423,12 @@ def build_dashboard_data(
         "daily_checkin": get_daily_checkin(conn),
         "volume_trend": build_volume_trend(conn),
         "sick_mode": build_sick_mode(conn),
-        "illness_return": build_illness_return(conn),
-        "mountain_reentry": build_mountain_reentry(conn),
+        "illness_return": illness_return,
+        "mountain_reentry": mountain_reentry,
+        "unplanned_ideas": build_unplanned_ideas(
+            conn, weekly_plan=serialized_latest_plan, daily_recommendation=daily_recommendation,
+            mountain_reentry=mountain_reentry, illness_return=illness_return,
+        ),
         "downshift": build_downshift(conn),
         "training_load": training_load,
         "relative_effort": build_relative_effort(conn),

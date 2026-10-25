@@ -24,6 +24,17 @@ export const dayChatRequest = (dateKey, state) => {
   return { context_kind: 'day', context_id: dateKey, title, opener, question: '' }
 }
 
+// The chat about a day with nothing planned, opened from the ideas on the Today card.
+export const unplannedDayChatRequest = (state) => {
+  const ideas = (state?.ideas || []).map((idea) => `• ${idea.title} (${idea.minutes} min): ${idea.summary}`)
+  const opener = [
+    state?.message || 'Nothing is planned today.',
+    ideas.length ? `A few ideas:\n${ideas.join('\n')}` : '',
+    'How much time do you have, and how do the legs feel? I’ll help you pick one.',
+  ].filter(Boolean).join('\n\n')
+  return { context_kind: 'day', context_id: state?.date, title: `Today · ${shortDate(state?.date)}: nothing planned`, opener, question: '' }
+}
+
 // The chat about one training week, opened from its "3 wins, 1 focus" card.
 export const weekChatRequest = (state) => {
   const wins = (state?.wins || []).map((win) => `• ${win.headline}`)

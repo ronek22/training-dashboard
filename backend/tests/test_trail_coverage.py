@@ -238,6 +238,8 @@ def strava_transport(activities, streams):
             page = int(request.url.params["page"])
             after = int(request.url.params["after"])
             return httpx.Response(200, json=[a for a in activities if a["epoch"] > after][(page - 1) * 200:page * 200])
+        if request.url.path.endswith("/photos"):
+            return httpx.Response(200, json=[])
         activity_id = request.url.path.split("/")[-2]
         handler.stream_calls.append(activity_id)
         return httpx.Response(200, json={"latlng": {"data": streams.get(activity_id, [])}})
@@ -432,7 +434,7 @@ class AltitudeBackfillTests(unittest.TestCase):
 
     def test_sync_adds_altitude_to_tracks_stored_without_it(self):
         def handler(request):
-            if request.url.path.endswith("/athlete/activities"):
+            if request.url.path.endswith("/athlete/activities") or request.url.path.endswith("/photos"):
                 return httpx.Response(200, json=[])
             handler.calls.append((request.url.path.split("/")[-2], request.url.params["keys"]))
             return httpx.Response(200, json={"latlng": {"data": line(0, LON, LON + 0.01)}, "altitude": {"data": [2000.0] * 61}})
@@ -509,7 +511,7 @@ class HistoryBackfillTests(unittest.TestCase):
 
     def test_sync_adds_missing_hikes_and_walks_but_not_runs(self):
         def handler(request):
-            if request.url.path.endswith("/athlete/activities"):
+            if request.url.path.endswith("/athlete/activities") or request.url.path.endswith("/photos"):
                 return httpx.Response(200, json=[])
             activity_id = request.url.path.rsplit("/", 1)[-1]
             handler.calls.append(activity_id)

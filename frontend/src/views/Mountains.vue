@@ -635,7 +635,8 @@ async function syncHikes() {
     const added = result.added === 1 ? '1 new mountain activity' : `${result.added} new mountain activities`
     const parts = [result.added ? `Added ${added}.` : 'No new mountain activities on Strava.']
     if (result.history_added) parts.push(`${result.history_added} older ${result.history_added === 1 ? 'hike is' : 'hikes and walks are'} now in Activities.`)
-    if (result.pending || result.history_pending) parts.push(`${(result.pending || 0) + (result.history_pending || 0)} more after Strava's rate limit resets — sync again in 15 minutes.`)
+    if (result.photos_added) parts.push(`${result.photos_added} new hike ${result.photos_added === 1 ? 'photo' : 'photos'} for the trip recaps.`)
+    if (result.pending || result.history_pending || result.photos_pending) parts.push(`${(result.pending || 0) + (result.history_pending || 0) + (result.photos_pending || 0)} more after Strava's rate limit resets — sync again in 15 minutes.`)
     flash(parts.join(' '))
     await Promise.all([loadRegions(), loadRegion()])
   } catch (error) {

@@ -103,6 +103,27 @@ CREATE TABLE IF NOT EXISTS saved_routes (
     updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_saved_routes_region ON saved_routes(region);
+
+CREATE TABLE IF NOT EXISTS activity_photos (
+    unique_id TEXT PRIMARY KEY,
+    activity_id TEXT NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,
+    taken_at TEXT,
+    taken_at_local TEXT,
+    lat REAL,
+    lon REAL,
+    caption TEXT,
+    width INTEGER,
+    height INTEGER,
+    fetched_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_activity_photos_activity ON activity_photos(activity_id);
+
+CREATE TABLE IF NOT EXISTS activity_photo_syncs (
+    activity_id TEXT PRIMARY KEY,
+    photo_count INTEGER NOT NULL,
+    synced_at TEXT NOT NULL
+);
 """
 
 

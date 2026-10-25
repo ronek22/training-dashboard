@@ -15,6 +15,7 @@ from typing import Callable, Optional
 import httpx
 
 from ..repositories import trails as repo
+from .activity_photos import sync_listed_photos, sync_track_photos
 from ..request_cache import db_memo
 from ..repositories.settings import get_setting_value, set_setting_value
 
@@ -809,13 +810,15 @@ def _store_tracks(conn: sqlite3.Connection, client: httpx.Client, candidates: li
 
 def store_new_mountain_tracks(conn: sqlite3.Connection, client: httpx.Client, strava_activities: list) -> int:
     """Called from the regular Strava import: store tracks of newly imported foot activities in a mapped
-    range, so their detail page gets the hike view without a separate Mountains sync."""
+    range, so their detail page gets the hike view without a separate Mountains sync, and fetch their
+    Strava photos when the listed photo count changed."""
     known = repo.track_ids(conn)
-    candidates = [a for a in strava_activities if is_foot_activity(a) and region_for_activity(a) and str(a["id"]) not in known]
-    if not candidates:
-        return 0
-    added, regions, _ = _store_tracks(conn, client, candidates)
+    mountain = [a for a in strava_activities if is_foot_activity(a) and region_for_activity(a)]
+    candidates = [a for a in mountain if str(a["id"]) not in known]
+    added, regions, complete = _store_tracks(conn, client, candidates) if candidates else (0, set(), True)
     conn.commit()
+    if complete:
+        sync_listed_photos(conn, client, mountain)
     for region_key in sorted(regions):
         recompute_region(conn, region_key)
     return added
@@ -823,7 +826,7 @@ def store_new_mountain_tracks(conn: sqlite3.Connection, client: httpx.Client, st
 
 def sync_tracks(conn: sqlite3.Connection, client: httpx.Client) -> dict:
     """Fetch GPS for mountain foot activities from Strava that are not stored yet, then add
-    altitude to tracks stored before altitude was kept."""
+    altitude to tracks stored before altitude was kept, then fetch the tracks' Strava photos."""
     after = int(get_setting_value(conn, SYNCED_UNTIL_KEY) or 0)
     known = repo.track_ids(conn)
     listed, page, newest = [], 1, after
@@ -857,6 +860,9 @@ def sync_tracks(conn: sqlite3.Connection, client: httpx.Client) -> dict:
     history_added, history_pending = 0, 0
     if complete and altitude_pending == 0:
         history_added, history_pending = _add_missing_to_history(conn, client)
+    photos_added, photos_pending = 0, 0
+    if complete and altitude_pending == 0 and history_pending == 0:
+        photos_added, photos_pending = sync_track_photos(conn, client)
 
     for activity in listed:
         if activity.get("start_date"):
@@ -876,6 +882,8 @@ def sync_tracks(conn: sqlite3.Connection, client: httpx.Client) -> dict:
         "altitude_pending": altitude_pending,
         "history_added": history_added,
         "history_pending": history_pending,
+        "photos_added": photos_added,
+        "photos_pending": photos_pending,
     }
 
 

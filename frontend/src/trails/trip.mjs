@@ -1,5 +1,5 @@
 // Pure helpers for the mountain trip recap: one colour per day, a day's elevation profile across
-// its outings, and the date range label.
+// its outings, the date range label, and the trip's photos with their map clusters.
 import { profileFromTrack } from './hike.mjs'
 
 // Distinct on the grey relief map in both themes; the trip's days cycle through them.
@@ -28,4 +28,35 @@ export function tripRange(start, end) {
   if (y1 !== y2) return `${d1} ${MONTHS[m1 - 1]} ${y1} – ${d2} ${MONTHS[m2 - 1]} ${y2}`
   if (m1 !== m2) return `${d1} ${MONTHS[m1 - 1]} – ${d2} ${MONTHS[m2 - 1]} ${y2}`
   return `${d1}–${d2} ${MONTHS[m2 - 1]} ${y2}`
+}
+
+export const photoSrc = (id, thumb = false) => `/api/trails/photos/${encodeURIComponent(id)}${thumb ? '?size=thumb' : ''}`
+
+// Every photo of the trip in the order it was taken, with its day and outing. Strava's local time
+// carries a "Z" it doesn't mean, so the clock time is read straight from the string.
+export function tripPhotos(days) {
+  const out = []
+  for (const day of days || []) {
+    for (const activity of day.activities || []) {
+      for (const photo of activity.photos || []) {
+        out.push({ ...photo, day: day.number, date: day.date, activity: activity.name || activity.type, time: (photo.taken_at_local || '').slice(11, 16) })
+      }
+    }
+  }
+  return out
+    .map((photo, order) => ({ photo, order }))
+    .sort((a, b) => (a.photo.taken_at || '').localeCompare(b.photo.taken_at || '') || a.order - b.order)
+    .map(({ photo }, index) => ({ ...photo, index }))
+}
+
+// Groups photos whose pins would overlap at the current zoom: `points` are [{index, x, y}] in screen
+// pixels, and each cluster is [index, ...] led by its earliest photo, placed where that photo is.
+export function clusterPins(points, radius = 40) {
+  const clusters = []
+  for (const point of points) {
+    const near = clusters.find((c) => Math.hypot(c.x - point.x, c.y - point.y) < radius)
+    if (near) near.members.push(point.index)
+    else clusters.push({ x: point.x, y: point.y, members: [point.index] })
+  }
+  return clusters.map((c) => c.members)
 }

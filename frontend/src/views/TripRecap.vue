@@ -39,6 +39,26 @@
             @mouseenter="activeDay = d.date" @mouseleave="activeDay = null" @click="focusDay(d)">
             <i :style="{ background: dayColour(d.number) }"></i>Day {{ d.number }}
           </button>
+          <button v-if="mappedPhotos.length" type="button" class="photo-toggle" :aria-pressed="showPhotos" @click="showPhotos = !showPhotos">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4.5h2l1-1.5h5l1 1.5h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z" /><circle cx="8" cy="8.75" r="2.5" /></svg>
+            {{ showPhotos ? 'Hide photos' : 'Show photos' }}
+          </button>
+        </div>
+      </section>
+
+      <section v-if="photos.length" class="filmstrip" aria-label="Photos of the trip">
+        <header class="strip-head">
+          <h2>Along the way</h2>
+          <span class="muted">{{ photos.length }} photo{{ photos.length === 1 ? '' : 's' }} from Strava<template v-if="unmappedCount"> · {{ unmappedCount }} without a location, not on the map</template></span>
+        </header>
+        <div class="strip-row">
+          <button v-for="p in photos" :key="p.id" type="button" class="strip-photo"
+            :class="{ hot: hotPhotos.includes(p.index), dim: activeDay && activeDay !== p.date, 'day-start': p.index === 0 || photos[p.index - 1].day !== p.day }"
+            :style="{ '--day': dayColour(p.day), '--i': p.index }" :aria-label="`Open photo ${p.index + 1}: day ${p.day}${p.time ? ` at ${p.time}` : ''}`"
+            @mouseenter="hoverPhotos([p.index], p.date)" @mouseleave="hoverPhotos([], null)" @click="lightboxIndex = p.index">
+            <img :src="photoSrc(p.id, true)" alt="" loading="lazy" :width="p.width" :height="p.height">
+            <span class="strip-tag"><b v-if="p.index === 0 || photos[p.index - 1].day !== p.day">Day {{ p.day }}</b>{{ p.time }}</span>
+          </button>
         </div>
       </section>
 
@@ -73,6 +93,8 @@
           </template>
         </article>
       </section>
+
+      <PhotoLightbox v-model:index="lightboxIndex" :photos="photos" />
     </template>
   </div>
 </template>
@@ -89,9 +111,10 @@ import { useApi } from '../stores/api'
 import { resolveTheme } from '../utils/theme'
 import { addLabelsPane, reliefLayers } from '../trails/baseMap.js'
 import { displayName } from '../trails/labels.mjs'
-import { dayColour, dayProfile, tripRange } from '../trails/trip.mjs'
+import { clusterPins, dayColour, dayProfile, photoSrc, tripPhotos, tripRange } from '../trails/trip.mjs'
 import AnimatedNumber from '../components/AnimatedNumber.vue'
 import ElevationProfile from '../components/trails/ElevationProfile.vue'
+import PhotoLightbox from '../components/trails/PhotoLightbox.vue'
 
 const api = useApi()
 const route = useRoute()
@@ -110,6 +133,12 @@ const trip = computed(() => recap.value?.trip)
 const hikeDays = computed(() => (recap.value?.days || []).filter((d) => !d.rest))
 const profiles = computed(() => Object.fromEntries((recap.value?.days || []).map((d) => [d.date, dayProfile(d)])))
 const hasTracks = computed(() => hikeDays.value.some((d) => d.activities.some((a) => a.track.length > 1)))
+const photos = computed(() => tripPhotos(recap.value?.days))
+const mappedPhotos = computed(() => photos.value.filter((p) => p.lat != null && p.lon != null))
+const unmappedCount = computed(() => photos.value.length - mappedPhotos.value.length)
+const showPhotos = ref(true)
+const hotPhotos = ref([]) // indexes highlighted on the map and in the filmstrip
+const lightboxIndex = ref(null)
 
 const title = computed(() => {
   const names = recap.value.regions.map((r) => r.name)
@@ -130,6 +159,7 @@ const heroNumbers = computed(() => {
     t.new_trail_km != null && { key: 'new', value: t.new_trail_km, format: oneDecimal, label: 'km of new trail' },
     t.summits && { key: 'summits', value: t.summits, format: whole, label: t.new_summits ? `summits · ${t.new_summits} new` : 'summits' },
     t.highest_m && { key: 'top', value: t.highest_m, format: whole, label: 'm highest point' },
+    t.photos && { key: 'photos', value: t.photos, format: whole, label: t.photos === 1 ? 'photo taken' : 'photos taken' },
   ].filter(Boolean)
 })
 
@@ -145,6 +175,7 @@ function drawMap() {
     map = L.map(mapEl.value, { zoomControl: true, scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.5 })
     map.on('click', () => map.scrollWheelZoom.enable())
     map.on('mouseout', () => map.scrollWheelZoom.disable())
+    map.on('zoomend', drawPhotos)
     addLabelsPane(map)
   }
   baseLayers.forEach((layer) => layer.remove())
@@ -170,6 +201,59 @@ function drawMap() {
     lines.set(d.date, dayLines)
   }
   styleLines()
+  map.whenReady(drawPhotos) // Pins are clustered in screen pixels, so they need the map's view.
+}
+
+// ---------- photo pins ----------
+// Photos taken close together share one pin at the current zoom; it shows the earliest one and
+// how many there are, and opens the lightbox there.
+let photoLayer = null
+let clusters = [] // [{marker, members, date}]
+
+function pinIcon(members) {
+  const lead = photos.value[members[0]]
+  const count = members.length > 1 ? `<b>${members.length}</b>` : ''
+  return L.divIcon({
+    className: 'photo-marker',
+    html: `<span class="photo-pin" style="--day:${dayColour(lead.day)}"><img src="${photoSrc(lead.id, true)}" alt="">${count}</span>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+  })
+}
+
+function drawPhotos() {
+  photoLayer?.remove()
+  photoLayer = null
+  clusters = []
+  if (!map || !showPhotos.value || !mappedPhotos.value.length) return
+  photoLayer = L.layerGroup().addTo(map)
+  const points = mappedPhotos.value.map((p) => ({ index: p.index, ...map.latLngToLayerPoint([p.lat, p.lon]) }))
+  for (const members of clusterPins(points, 40)) {
+    const lead = photos.value[members[0]]
+    const when = members.length > 1 ? `${members.length} photos` : lead.time || 'Photo'
+    const marker = L.marker([lead.lat, lead.lon], { icon: pinIcon(members), riseOnHover: true, keyboard: true, title: `Day ${lead.day} · ${when}` })
+      .on('click', () => { lightboxIndex.value = members[0] })
+      .on('mouseover', () => hoverPhotos(members, lead.date))
+      .on('mouseout', () => hoverPhotos([], null))
+      .addTo(photoLayer)
+    clusters.push({ marker, members, date: lead.date })
+  }
+  stylePins()
+}
+
+function hoverPhotos(indexes, date) {
+  hotPhotos.value = indexes
+  activeDay.value = date
+}
+
+function stylePins() {
+  for (const { marker, members, date } of clusters) {
+    const hot = members.some((index) => hotPhotos.value.includes(index))
+    const el = marker.getElement()
+    el?.classList.toggle('is-hot', hot)
+    el?.classList.toggle('is-dim', Boolean(activeDay.value) && !hot && date !== activeDay.value)
+    marker.setZIndexOffset(hot ? 1000 : 0)
+  }
 }
 
 function styleLines() {
@@ -192,7 +276,9 @@ function focusDay(d) {
   if (map && points.length) map.fitBounds(L.latLngBounds(points), { padding: [48, 48] })
 }
 
-watch(activeDay, styleLines)
+watch(activeDay, () => { styleLines(); stylePins() })
+watch(hotPhotos, stylePins)
+watch(showPhotos, drawPhotos)
 
 const onThemeChange = () => {
   theme.value = resolveTheme()
@@ -261,6 +347,25 @@ onBeforeUnmount(() => {
 .trip-legend button.dim { opacity: .45; }
 .trip-legend i { width: 14px; height: 4px; border-radius: 2px; }
 
+.trip-legend .photo-toggle { gap: 5px; margin-left: 4px; border-left: 1px solid var(--border); border-radius: 0 7px 7px 0; }
+.trip-legend .photo-toggle svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.4; }
+
+.filmstrip { margin-top: 22px; }
+.strip-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 10px; }
+.strip-head h2 { font: 650 20px var(--font-display); letter-spacing: -.4px; }
+.strip-head .muted { font-size: 12.5px; }
+.strip-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 10px; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.strip-photo { position: relative; flex: none; height: 148px; padding: 0; border: 0; border-bottom: 3px solid var(--day); border-radius: 10px; overflow: hidden; background: var(--deep); cursor: zoom-in; scroll-snap-align: start; box-shadow: var(--shadow-card); transition: transform var(--motion-duration-base) var(--motion-ease-standard), opacity var(--motion-duration-base) var(--motion-ease-standard); animation: rise 600ms var(--motion-ease-emphasized) both; animation-delay: calc(200ms + min(var(--i), 12) * 40ms); }
+.strip-photo.day-start { margin-left: 10px; }
+.strip-photo:first-child { margin-left: 0; }
+.strip-photo img { display: block; height: 100%; width: auto; object-fit: cover; }
+.strip-photo:hover, .strip-photo.hot { transform: translateY(-3px); }
+.strip-photo.dim { opacity: .4; }
+.strip-photo:focus-visible { outline: 2px solid var(--day); outline-offset: 2px; }
+.strip-tag { position: absolute; left: 6px; bottom: 6px; display: inline-flex; gap: 6px; padding: 2px 7px; border-radius: 99px; background: rgb(8 10 14 / .68); color: #fff; font: 600 11px var(--font-display); font-variant-numeric: tabular-nums; }
+.strip-tag:empty { display: none; }
+.strip-tag b { color: var(--day); }
+
 .days { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-top: 22px; }
 .day-card { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid var(--border); border-top: 3px solid var(--day); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-card); transition: transform var(--motion-duration-base) var(--motion-ease-standard), box-shadow var(--motion-duration-base) var(--motion-ease-standard); }
 .day-card.active { transform: translateY(-3px); box-shadow: var(--shadow-card-hover); }
@@ -284,7 +389,7 @@ onBeforeUnmount(() => {
 @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @keyframes grow { from { width: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .trip-title, .trip-number, .share-bar i { animation: none; }
+  .trip-title, .trip-number, .share-bar i, .strip-photo { animation: none; }
 }
 @media (max-width: 720px) {
   .trip-page { padding: 18px 16px 48px; }

@@ -2,12 +2,13 @@ import os
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from ..db import get_db
 from ..services.settings import get_setting, set_setting
 from ..services.strava import get_strava_access_token
+from ..services.activity_photos import stored_photo
 from ..services.hike_detail import hike_context
 from ..services.mountain_trips import build_trip_recap, list_trips
 from ..services.route_ideas import HOUR_PRESETS, route_ideas
@@ -64,6 +65,16 @@ def mountain_trip_recap(start_date: str):
     if not recap:
         raise HTTPException(status_code=404, detail="No mountain trip with hikes on that date")
     return JSONResponse(recap)
+
+
+@router.get("/trails/photos/{photo_id}")
+def trail_photo(photo_id: str, size: str = "full"):
+    """A hike photo stored from Strava; `size=thumb` for the map pin and filmstrip version."""
+    path = stored_photo(photo_id, thumb=size == "thumb")
+    if not path:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    # Stored once per Strava photo id and never rewritten, so the browser may keep it.
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=31536000, immutable"})
 
 
 @router.get("/trails/{region}")

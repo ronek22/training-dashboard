@@ -4,7 +4,8 @@ A trip is found from the life-load tags (the same "mountains" tag the re-entry w
 holds the hikes, walks and trail runs logged on its days; a tagged run with none of them is only
 an upcoming or empty trip, not a recap. Its recap adds the days up (distance, ascent, hours on
 foot), takes new trail and first summits from the trail coverage when the hike's GPS track is in
-a mapped range, draws every track on one map and gives each day its highlight and profile.
+a mapped range, draws every track on one map with the Strava photos taken along the way, and
+gives each day its highlight and profile.
 Everything is read from data the app already keeps; there is no new tracking.
 
 Each trip is addressed by its first day (``/mountains/trips/2026-10-19``).
@@ -15,6 +16,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 from ..repositories import trails as trail_repo
+from .activity_photos import photos_for
 from .life_load import get_life_load_days
 from .trail_coverage import REGIONS, Projection, thin_track
 
@@ -168,6 +170,7 @@ def build_trip_recap(conn: sqlite3.Connection, start_date: str, today: Optional[
             regions.add(region)
     ids = {a["id"] for a in activities}
     new_km, reached = _coverage(conn, regions, ids)
+    photos = photos_for(conn, [a["id"] for a in activities])
 
     days = []
     for offset in range((last - first).days + 1):
@@ -190,6 +193,7 @@ def build_trip_recap(conn: sqlite3.Connection, start_date: str, today: Optional[
                 {
                     "id": a["id"], "type": a["type"], "name": a["name"], "distance_km": a["distance_km"],
                     "duration_min": a["duration_min"], "elevation_m": a["elevation_m"], "track": tracks[a["id"]],
+                    "photos": photos.get(str(a["id"]), []),
                 }
                 for a in on_day
             ],
@@ -202,6 +206,7 @@ def build_trip_recap(conn: sqlite3.Connection, start_date: str, today: Optional[
     totals["new_summits"] = sum(1 for p in peaks if p["first_time"])
     highest = max((point[2] for points in tracks.values() for point in points if len(point) > 2 and point[2] is not None), default=None)
     totals["highest_m"] = round(highest) if highest is not None else None
+    totals["photos"] = sum(len(items) for items in photos.values())
 
     # Share of the calendar year's climbing (all sports), like the Season in review totals.
     season_m = _season_ascent(conn, first.year)

@@ -89,7 +89,7 @@ just backup
 
 ## Checks Before Shipping
 
-One command runs everything: frontend behavior tests, the frontend build, the backend suite and the helper-script tests. It stops at the first failure.
+One command runs everything: frontend behavior tests, the frontend build, the backend suite and the helper-script tests. It stops at the first failure. GitHub Actions runs the same `just setup-checks` and `just check` on every pull request and push to `main` (`.github/workflows/check.yml`).
 
 ```bash
 just check

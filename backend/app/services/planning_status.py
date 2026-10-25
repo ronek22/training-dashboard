@@ -71,10 +71,15 @@ def _parse_open_threads(index_text: str) -> list[dict]:
     return [{"title": m.group(1).strip(), "detail": m.group(2).strip()} for m in pattern.finditer(_section(index_text, "Open Threads"))]
 
 
-def _parse_shipped(current_state_text: str) -> list[dict]:
-    """Dated entries under "Recently Completed", newest first. Undated entries are old sprint records."""
+def _parse_shipped(current_state_text: str, shipped_texts: list[str] = ()) -> list[dict]:
+    """Dated shipped entries, newest first. Undated entries are old sprint records.
+
+    Full entries live in docs/shipped/YYYY-MM.md; any still written under "Recently Completed"
+    in current-state.md count too (that section is otherwise a one-line index).
+    """
     items: list[dict] = []
-    parts = re.split(r"^### ", _section(current_state_text, "Recently Completed"), flags=re.MULTILINE)[1:]
+    sources = [_section(current_state_text, "Recently Completed"), *shipped_texts]
+    parts = [part for text in sources for part in re.split(r"^### ", text, flags=re.MULTILINE)[1:]]
     for part in parts:
         title, _, body = part.partition("\n")
         lead = body.strip().split("\n\n", 1)[0]
@@ -118,7 +123,8 @@ def get_planning_status() -> dict:
     active_path = _get_active_roadmap_path(docs_dir, index_text)
     phases = _parse_roadmap_phases(_read_text(active_path)) if active_path else []
     sprints = _parse_sprint_listing(_read_text(sprints_dir / "README.md"))
-    shipped = _parse_shipped(_read_text(docs_dir / "current-state.md"))
+    shipped_texts = [_read_text(path) for path in sorted((docs_dir / "shipped").glob("*.md"))]
+    shipped = _parse_shipped(_read_text(docs_dir / "current-state.md"), shipped_texts)
 
     return {
         "generated_at": datetime.now().isoformat(),
@@ -140,7 +146,8 @@ def get_planning_status() -> dict:
         },
         "sources": [
             {"label": "Roadmap index and open threads", "path": "docs/roadmap.md"},
-            {"label": "Shipped log", "path": "docs/current-state.md"},
+            {"label": "Shipped index", "path": "docs/current-state.md"},
+            {"label": "Shipped log", "path": "docs/shipped/"},
             {"label": "Sprint archive", "path": "docs/sprints/README.md"},
         ],
     }

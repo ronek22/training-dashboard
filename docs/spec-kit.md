@@ -36,7 +36,7 @@ Do not describe unfinished work as implemented or retroactively rewrite all spri
 - `.agents/skills/speckit-*/SKILL.md`: project-local Codex skills.
 - `.specify/feature.json`: ignored, checkout-local active-feature pointer.
 
-Keep `docs/sprints/`, roadmaps, and `docs/current-state.md` updated with outcomes
+Keep `docs/sprints/`, roadmaps, `docs/current-state.md` and `docs/shipped/` updated with outcomes
 and links to feature artifacts. Commit the skills, toolkit files, specs symlink,
 and documents together. No Git extension is enabled; core feature scaffolding
 creates artifact directories without automatically switching branches. When a

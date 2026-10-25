@@ -4,7 +4,7 @@ This file is the stable entrypoint for roadmap discovery. The in-app Roadmap pag
 
 Active roadmap: none
 
-Numbered sprints ended with Sprint 39 (2026-09-29). New work is picked from the Ideas board (`docs/project-ideas.json`, decided in the app) and recorded under "Recently Completed" in `docs/current-state.md`. Roadmap V3 was closed on 2026-10-13.
+Numbered sprints ended with Sprint 39 (2026-09-29). New work is picked from the Ideas board (`docs/project-ideas.json`, decided in the app) and recorded in `docs/shipped/YYYY-MM.md` with a one-line entry under "Recently Completed" in `docs/current-state.md`. Roadmap V3 was closed on 2026-10-13.
 
 Archived roadmaps:
 

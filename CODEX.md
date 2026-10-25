@@ -9,6 +9,7 @@ This file is the root guidance note for working in this repository.
 - Prefer updating an existing document in `docs/` instead of scattering notes across the repository root.
 - When a sprint or planned feature is implemented, update the corresponding documentation before closing the task.
 - Mark the relevant sprint, roadmap, or feature-status documents as complete or implemented when that work is done.
+- Record a shipped feature as a full entry in `docs/shipped/YYYY-MM.md` plus one index line in `docs/current-state.md`; never paste full entries into `current-state.md`.
 
 ## Spec Kit
 

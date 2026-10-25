@@ -19,7 +19,7 @@ Root:
 
 - `backend/app/main.py` — app composition root
 - `backend/app/db.py` — SQLite path resolution and schema init
-- `backend/tests/test_app_smoke.py` — lightweight backend smoke tests
+- `backend/tests/test_smoke_*.py` — backend smoke tests by area (activities, strength, goals, plans, context), sharing setup from `smoke_base.py`
 
 ### Models
 

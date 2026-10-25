@@ -12,8 +12,10 @@ This directory is the source of truth for product planning and engineering decis
 - `decisions.md` — durable decisions, tradeoffs, and conventions
 - `architecture.md` — high-level system design and data flow
 - `project-structure.md` — practical codebase map by backend/frontend area
-- `current-state.md` — what is implemented now and what should happen next
+- `current-state.md` — what is implemented now, a one-line index of shipped features, and what should happen next
+- `shipped/` — full shipped-feature entries by month (`YYYY-MM.md`) and the old sprint records (`earlier.md`)
 - `coach-helper.md` — local one-click Codex actions and troubleshooting
+- `agent-workflow.md` — habits that keep coding-agent sessions cheap on this large repository
 - `sprints/` — concrete implementation plans for the next work slices
 
 ## Working Rule

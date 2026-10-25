@@ -68,7 +68,8 @@ Always use tokens, never raw hex.
 1. Look at the screenshot. Read only the page's `.vue` template + the parts of its style you touch.
 2. Change the template where the structure differs from the artboard (python/sed edits are fine).
 3. Restyle by appending a **"Multi-sport redesign layer"** block at the end of the component's
-   `<style scoped>`. If an older rule wins, raise specificity with the page root class
+   `<style scoped>` (Plan keeps its styles in `src/plan/Plan.css`, loaded with
+   `<style scoped src>`; its "Coaching context" section is `components/PlanInsights.vue`). If an older rule wins, raise specificity with the page root class
    (e.g. `.plan-page …`) instead of `!important`.
 4. Verify in the browser at 1512 × 945 **and** mobile (375 px): compare against the screenshot,
    and check `document.documentElement.scrollWidth - innerWidth <= 0` (no horizontal overflow).

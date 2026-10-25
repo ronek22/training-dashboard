@@ -19,7 +19,7 @@ Root:
 
 - `backend/app/main.py` — app composition root
 - `backend/app/db.py` — SQLite path resolution and schema init
-- `backend/tests/test_app_smoke.py` — lightweight backend smoke tests
+- `backend/tests/test_smoke_*.py` — backend smoke tests by area (activities, strength, goals, plans, context), sharing setup from `smoke_base.py`
 
 ### Models
 
@@ -85,7 +85,7 @@ Root:
 ### Views
 
 - `views/Dashboard.vue` — main coaching/dashboard surface
-- `views/Plan.vue` — weekly plans, plan-vs-actual view, in-app adjustment flow
+- `views/Plan.vue` — weekly plans, plan-vs-actual view, in-app adjustment flow; its pure helpers are in `plan/plan-helpers.mjs`, its styles in `plan/Plan.css`, and the coaching-context section in `components/PlanInsights.vue`
 - `views/Calendar.vue` — weekly training calendar
 - `views/Goals.vue` — goal management and visibility
 - `views/Activities.vue` — imported/manual activities

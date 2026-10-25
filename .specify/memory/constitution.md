@@ -58,8 +58,8 @@ and specification examples. Use synthetic examples for sensitive training data.
 
 ## Development Workflow
 
-Read `CODEX.md`, `docs/current-state.md`, and the relevant existing planning documents
-before scoping work. For new features use specify, optional clarify, plan, tasks,
+Read `CODEX.md`, `docs/current-state.md` (a short index; open a `docs/shipped/` entry only
+when it is relevant), and the relevant existing planning documents before scoping work. For new features use specify, optional clarify, plan, tasks,
 analyze, implement, and converge. Routine small fixes may use a proportionate workflow.
 
 Feature artifacts live in `docs/specs/`; the root `specs` symlink supports upstream

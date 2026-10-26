@@ -34,7 +34,7 @@ from .power_trends import (
     _stream_values,
     get_cycling_power_trends_data,
 )
-from .strength import _filtered_sessions, _match_pr_pattern
+from .strength import _classify_body_part, _filtered_sessions, _match_pr_pattern
 from .ride_record_eligibility import cleaned_distance_stream, ride_has_record_evidence
 
 
@@ -589,6 +589,7 @@ def _build_lift_section(conn: sqlite3.Connection) -> dict[str, Any]:
                 "metric": metric,
                 "metric_label": metric_label,
                 "key_lift": pattern is not None,
+                "body_part": _classify_body_part(name),
                 "sessions": bucket["sessions"],
                 "heaviest": _compact(metric_extra) if metric_extra else None,
                 **ranked,

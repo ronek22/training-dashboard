@@ -2,8 +2,10 @@ import json
 import sqlite3
 import unittest
 from datetime import date
+from unittest import mock
 
 from backend.app.services.personal_records import (
+    _build_lift_section,
     _endurance_sections,
     _rank,
     _streak_section,
@@ -118,6 +120,15 @@ class LiftAndStreakTests(unittest.TestCase):
         self.assertEqual(streaks["longest"]["start"], "2026-09-20")
         self.assertEqual(streaks["milestones"][0], {"days": 7, "reached_on": "2026-09-07"})
         self.assertEqual(streaks["next_milestone"], {"days": 14, "days_to_go": 2})
+
+    def test_lift_records_carry_body_area(self):
+        def session(day, name, weight, reps):
+            return {"workout_date": day, "title": "Gym", "exercises": [{"exercise_name": name, "sets": [{"weight_kg": weight, "reps": reps}]}]}
+        sessions = [session(f"2026-09-0{d}", name, 60 + d, 8) for d in (1, 2, 3) for name in ("Back Squat", "Barbell Bench Press")]
+        with mock.patch("backend.app.services.personal_records._filtered_sessions", return_value=(None, sessions)):
+            records = {r["label"]: r for r in _build_lift_section(None)["records"]}
+        self.assertEqual(records["Back Squat"]["body_part"], "lower")
+        self.assertEqual(records["Barbell Bench Press"]["body_part"], "push")
 
 
 class EnduranceSectionTests(unittest.TestCase):

@@ -78,7 +78,6 @@ const ftp = computed(() => power.value?.ftp_estimate)
 const bike = computed(() => data.value?.cycling_distance?.[venue.value])
 const run = computed(() => data.value?.running)
 const lifts = computed(() => data.value?.lifts?.records ?? [])
-const visibleLifts = computed(() => showAllLifts.value ? lifts.value : lifts.value.slice(0, 10))
 const streaks = computed(() => data.value?.streaks)
 
 const prs = computed(() => (data.value?.recent ?? []).filter(item => item.rank === 1))
@@ -134,24 +133,61 @@ const detailFor = (section) => {
     power: power.value?.records ?? [],
     bike: [...(bike.value?.records ?? []), ...extras(bike.value, 'bike')],
     run: [...(run.value?.records ?? []), ...extras(run.value, 'run')],
+    lift: lifts.value,
   }
   return pools[section]?.find(r => r.key === key) ?? null
 }
 
-const liftSpark = (lift) => {
-  const items = lift.progression || []
-  if (items.length < 2) return ''
-  const values = items.map(p => p.value)
-  const min = Math.min(...values)
-  const span = (Math.max(...values) - min) || 1
-  return items.map((p, i) => `${((i / (items.length - 1)) * 100).toFixed(1)},${(22 - ((p.value - min) / span) * 18).toFixed(1)}`).join(' ')
-}
+// Lifts grouped by body area, each with growth since its first logged best.
+const LIFT_GROUPS = [
+  { key: 'push', label: 'Push' },
+  { key: 'pull', label: 'Pull' },
+  { key: 'lower', label: 'Legs' },
+  { key: 'rest', label: 'Core & other' },
+]
+const LIFT_ROWS = 5
+const STALE_DAYS = 90
+const daysSince = (value) => data.value
+  ? Math.max(0, Math.round((new Date(`${data.value.as_of}T12:00:00`) - new Date(`${value}T12:00:00`)) / 86400000))
+  : 0
+const ago = (days) => days < 1 ? 'today'
+  : days < 14 ? `${days} d ago`
+  : days < 60 ? `${Math.round(days / 7)} wk ago`
+  : days < 548 ? `${Math.round(days / 30)} mo ago`
+  : `${Math.round(days / 365)} yr ago`
+const liftRows = computed(() => {
+  const rows = lifts.value.map(lift => {
+    const first = lift.progression?.[0]
+    const growth = first?.value ? ((lift.record.value - first.value) / first.value) * 100 : 0
+    const days = daysSince(lift.record.date)
+    return { ...lift, first, growth, days, fresh: isRecent(lift.record.date), stale: days >= STALE_DAYS }
+  })
+  // Bars fill at +50%, so one bodyweight outlier doesn't flatten the rest.
+  const top = Math.min(50, Math.max(1, ...rows.map(row => row.growth)))
+  return rows.map(row => ({ ...row, growthPct: Math.min(100, Math.max(row.growth > 0 ? 4 : 0, (row.growth / top) * 100)) }))
+})
+const liftGroups = computed(() => LIFT_GROUPS.map(group => {
+  const all = liftRows.value.filter(row => group.key === 'rest' ? !['push', 'pull', 'lower'].includes(row.body_part) : row.body_part === group.key)
+  return { ...group, total: all.length, fresh: all.filter(row => row.fresh).length, rows: showAllLifts.value ? all : all.slice(0, LIFT_ROWS) }
+}).filter(group => group.total))
+const liftsHidden = computed(() => liftGroups.value.some(group => group.total > LIFT_ROWS))
+const liftSummary = computed(() => {
+  const rows = liftRows.value
+  const loaded = rows.filter(row => row.metric !== 'reps')
+  const climber = (loaded.length ? loaded : rows).reduce((best, row) => (!best || row.growth > best.growth ? row : best), null)
+  return {
+    fresh: rows.filter(row => row.fresh).length,
+    stale: rows.filter(row => row.stale).length,
+    climber: climber?.growth > 0 ? climber : null,
+  }
+})
 const liftGain = (lift) => {
   const prev = lift.record?.previous
   if (!prev) return ''
   const unit = lift.metric === 'reps' ? ' reps' : ' kg'
   return `+${Math.round((lift.record.value - prev.value) * 10) / 10}${unit}`
 }
+const growthLabel = (row) => row.first && row.progression.length > 1 ? `+${Math.round(row.growth)}%` : 'first best'
 
 // Streak ring progress toward the next milestone.
 const RING = 2 * Math.PI * 52
@@ -333,17 +369,34 @@ const ringOffset = computed(() => {
           <div><h2 id="lift-title">Lifts</h2><p :title="data.lifts.method">Estimated one-rep max from your working sets · reps for bodyweight moves</p></div>
         </div>
         <p v-if="!lifts.length" class="hint">Log an exercise in three sessions and it earns a spot here.</p>
-        <div v-else class="lift-grid">
-          <article v-for="lift in visibleLifts" :key="lift.key" class="lift-card" :class="{ fresh: isRecent(lift.record.date) }">
-            <span class="lift-name">{{ lift.label }}</span>
-            <strong class="lift-value">{{ splitDisplay(lift.record.display)[0] }}<small>{{ splitDisplay(lift.record.display)[1] }}</small></strong>
-            <span class="lift-set">{{ lift.metric === 'reps' ? 'in one set' : lift.record.detail }}<em v-if="liftGain(lift)">{{ liftGain(lift) }}</em></span>
-            <svg v-if="liftSpark(lift)" viewBox="0 0 100 24" preserveAspectRatio="none" class="lift-spark" aria-hidden="true"><polyline :points="liftSpark(lift)" /></svg>
-            <router-link v-if="lift.record.activity_id" :to="`/activities/${lift.record.activity_id}`" class="lift-date">{{ formatDate(lift.record.date) }}<i v-if="isRecent(lift.record.date)" class="new-pill">NEW</i></router-link>
-            <span v-else class="lift-date">{{ formatDate(lift.record.date) }}</span>
-          </article>
-        </div>
-        <button v-if="lifts.length > 10" type="button" class="more-button" @click="showAllLifts = !showAllLifts">{{ showAllLifts ? 'Show fewer' : `Show all ${lifts.length} lifts` }}</button>
+        <template v-else>
+          <ul class="lift-summary">
+            <li :class="{ on: liftSummary.fresh }"><strong>{{ liftSummary.fresh }}</strong> new {{ liftSummary.fresh === 1 ? 'best' : 'bests' }} · last {{ data.recent_days || 30 }} days</li>
+            <li v-if="liftSummary.climber"><strong>+{{ Math.round(liftSummary.climber.growth) }}%</strong> {{ liftSummary.climber.label }} since {{ shortDate(liftSummary.climber.first.date) }} {{ liftSummary.climber.first.date.slice(0, 4) }}</li>
+            <li><strong>{{ liftSummary.stale }}</strong> quiet 3+ months</li>
+          </ul>
+          <div class="lift-groups">
+            <section v-for="group in liftGroups" :key="group.key" class="lift-group" :aria-label="`${group.label} lifts`">
+              <header><h3>{{ group.label }}</h3><span>{{ group.total }} {{ group.total === 1 ? 'lift' : 'lifts' }}<em v-if="group.fresh"> · {{ group.fresh }} new</em></span></header>
+              <button
+                v-for="row in group.rows" :key="row.key" type="button" class="lift-row"
+                :class="{ fresh: row.fresh, stale: row.stale, selected: selected.lift === row.key }"
+                :aria-pressed="selected.lift === row.key" @click="select('lift', row.key)"
+              >
+                <span class="lift-name" :title="row.label">{{ row.label }}</span>
+                <strong class="lift-value">{{ splitDisplay(row.record.display)[0] }}<small>{{ splitDisplay(row.record.display)[1] }}</small></strong>
+                <span class="lift-growth" :title="row.first ? `From ${row.first.display} on ${formatDate(row.first.date)}` : ''"><i :style="{ width: `${row.growthPct}%` }" /></span>
+                <span class="lift-meta">
+                  <b>{{ growthLabel(row) }}</b>
+                  <span v-if="row.fresh" class="lift-new">NEW{{ liftGain(row) ? ` ${liftGain(row)}` : '' }}</span>
+                  <span v-else>{{ ago(row.days) }}</span>
+                </span>
+              </button>
+            </section>
+          </div>
+          <RecordDetail v-if="detailFor('lift')" :record="detailFor('lift')" />
+          <button v-if="liftsHidden" type="button" class="more-button" @click="showAllLifts = !showAllLifts">{{ showAllLifts ? 'Show fewer' : `Show all ${lifts.length} lifts` }}</button>
+        </template>
       </section>
 
       <div class="duo">
@@ -553,18 +606,32 @@ button.stop-card:hover { transform: translateY(-2px); border-color: var(--sport)
 .trophy > span:last-child { font-size: 12px; color: var(--muted-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---- Lifts ---- */
-.lift-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
-.lift-card { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--sport) 22%, var(--border)); background: linear-gradient(170deg, color-mix(in srgb, var(--sport) 12%, transparent), transparent 65%); min-width: 0; }
-.lift-card.fresh { border-color: color-mix(in srgb, var(--hot) 60%, transparent); }
-.lift-name { font-size: 13px; font-weight: 600; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lift-value { font-family: var(--font-display); font-size: 32px; font-weight: 700; line-height: 1.1; color: var(--sport); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.lift-value small { font-size: 14px; margin-left: 4px; color: var(--text-soft); letter-spacing: 0; }
-.lift-set { font-size: 12px; color: var(--muted-soft); }
-.lift-set em { margin-left: 8px; font-style: normal; font-weight: 600; color: var(--success-text); }
-.lift-spark { width: 100%; height: 26px; margin: 4px 0 2px; overflow: visible; }
-.lift-spark polyline { fill: none; stroke: var(--sport); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
-.lift-date { font-size: 12px; color: var(--muted); text-decoration: none; }
-a.lift-date:hover { color: var(--text); }
+.lift-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
+.lift-summary li { padding: 6px 12px; border-radius: 999px; background: var(--surface2); color: var(--text-soft); font-size: 13px; }
+.lift-summary strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.lift-summary li.on strong { color: var(--success-text); }
+.lift-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; align-items: start; }
+.lift-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.lift-group header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 4px 4px; }
+.lift-group h3 { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.lift-group header span { font-size: 12px; color: var(--muted-soft); }
+.lift-group header em { font-style: normal; color: var(--success-text); }
+.lift-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; row-gap: 6px;
+  width: 100%; padding: 10px 12px; border: 1px solid transparent; border-radius: 12px;
+  background: var(--surface2); color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.lift-row:hover, .lift-row.selected { border-color: var(--sport); }
+.lift-row.stale .lift-meta span { color: var(--muted-soft); }
+.lift-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lift-value { font-family: var(--font-display); font-size: 20px; font-weight: 700; line-height: 1; color: var(--sport); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lift-value small { font-size: 11px; margin-left: 3px; color: var(--text-soft); }
+.lift-growth { height: 4px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.lift-growth i { display: block; height: 100%; border-radius: inherit; background: var(--sport); }
+.lift-meta { display: flex; gap: 8px; justify-content: flex-end; font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lift-meta b { font-weight: 600; color: var(--text-soft); }
+.lift-new { font-weight: 700; color: var(--success-text); }
+.lift-groups + .record-detail { margin-top: 16px; }
 .more-button { margin-top: 12px; padding: 8px 16px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--sport) 40%, transparent); background: color-mix(in srgb, var(--sport) 10%, transparent); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 
 /* ---- Milestone shelf ---- */
@@ -763,12 +830,12 @@ a.lift-date:hover { color: var(--text); }
 .records-page .venue-switch button[aria-pressed='true'] { background: var(--surface3); color: var(--text); box-shadow: none; }
 
 /* Lifts */
-.records-page .lift-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
-.records-page .lift-card { border: 0; background: rgb(var(--deep-rgb)); }
-.records-page .lift-card.fresh { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--volt) 40%, transparent); }
-.records-page .lift-name { color: var(--text); }
-.records-page .lift-value { color: var(--tone-strength); font-size: 34px; font-style: italic; font-weight: 800; }
-.records-page .lift-set em { color: var(--volt); font-weight: 700; }
+.records-page .lift-row { background: rgb(var(--deep-rgb)); }
+.records-page .lift-row.fresh { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--volt) 40%, transparent); }
+.records-page .lift-value { color: var(--tone-strength); font-size: 22px; font-style: italic; font-weight: 800; }
+.records-page .lift-growth i { background: var(--tone-strength); }
+.records-page .lift-summary li { background: rgb(var(--deep-rgb)); }
+.records-page .lift-summary li.on strong, .records-page .lift-new, .records-page .lift-group header em { color: var(--volt); }
 .records-page .more-button {
   margin-top: 16px;
   height: 40px;

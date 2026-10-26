@@ -127,6 +127,8 @@ const draggedId = ref<string | null>(null), dropTarget = ref<Status | null>(null
 const showSummary = ref(false), query = ref(''), category = ref('All'), archiveOpen = ref(new Set<Status>())
 const drawerEl = ref<HTMLElement | null>(null)
 let returnFocus: HTMLElement | null = null
+// A click that jitters a few pixels starts a native drag and the browser swallows the click.
+let dragStartedAt = 0
 const statuses: { value: Status; label: string; hint: string; empty: string }[] = [
   { value: 'new', label: 'New', hint: 'Fresh from the review', empty: 'No new ideas — the next review adds more.' },
   { value: 'shortlisted', label: 'Shortlisted', hint: 'Worth building soon', empty: 'Shortlist ideas you want to build.' },
@@ -192,7 +194,7 @@ async function changeStatus(idea: Idea, status: Status) {
 }
 function startDrag(event: DragEvent, idea: Idea) {
   if (!event.dataTransfer || saving.value.has(idea.id) || loading.value) { event.preventDefault(); return }
-  draggedId.value = idea.id
+  draggedId.value = idea.id; dragStartedAt = event.timeStamp
   event.dataTransfer.effectAllowed = 'move'
   event.dataTransfer.setData('text/plain', idea.id)
 }
@@ -205,13 +207,18 @@ function dragOver(event: DragEvent, status: Status) {
 function leaveColumn(event: DragEvent) {
   if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) dropTarget.value = null
 }
-function endDrag() { draggedId.value = null; dropTarget.value = null }
+function endDrag(event?: DragEvent) {
+  const id = draggedId.value
+  draggedId.value = null; dropTarget.value = null
+  if (id && event?.dataTransfer?.dropEffect === 'none' && event.timeStamp - dragStartedAt < 400) openIdea(id)
+}
 async function dropIdea(event: DragEvent, status: Status) {
   if (!draggedId.value) return
   event.preventDefault()
   const idea = board.value?.ideas.find(item => item.id === draggedId.value)
   endDrag()
-  if (idea) await changeStatus(idea, status)
+  if (idea?.status === status) { if (event.timeStamp - dragStartedAt < 400) openIdea(idea.id) }
+  else if (idea) await changeStatus(idea, status)
 }
 async function copyBrief(idea: Idea) {
   copyFallback.value = null

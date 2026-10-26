@@ -291,9 +291,9 @@ const api = useApi()
 const route = useRoute()
 const router = useRouter()
 const views = [{ key: 'overview', label: 'Overview' }, { key: 'improving', label: 'Am I improving?' }, { key: 'cycling-power', label: 'Cycling power' }, { key: 'training_load', label: 'Training load' }, { key: 'recovery', label: 'Recovery' }, { key: 'daily_activity', label: 'Daily activity' }, { key: 'weight', label: 'Weight' }, { key: 'ftp', label: 'FTP' }]
-const sportOrder = ['ride', 'run', 'strength', 'walk', 'other']
-const sportLabels = { ride: 'Ride', run: 'Run', strength: 'Strength', walk: 'Walk', other: 'Other' }
-const sportColors = { ride: 'var(--ride)', run: 'var(--run)', strength: 'var(--strength)', walk: 'var(--z2)', other: 'var(--tone-recovery)' }
+const sportOrder = ['ride', 'run', 'strength', 'hike', 'walk', 'other']
+const sportLabels = { ride: 'Ride', run: 'Run', strength: 'Strength', hike: 'Hike', walk: 'Walk', other: 'Other' }
+const sportColors = { ride: 'var(--ride)', run: 'var(--run)', strength: 'var(--strength)', hike: 'var(--tone-recovery)', walk: 'var(--z2)', other: 'var(--tone-neutral)' }
 const sportColor = (sport) => sportColors[sport] || sportColors.other
 const zoneNames = { zone1: 'Recovery', zone2: 'Endurance', zone3: 'Tempo', zone4: 'Threshold', zone5: 'VO2 max' }
 // Calendar squares: the day's main sport, brighter for bigger days (heatmap level 1–4).

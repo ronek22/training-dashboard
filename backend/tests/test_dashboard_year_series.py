@@ -55,7 +55,7 @@ class DashboardYearSeriesTests(unittest.TestCase):
         )
         cells = {cell["date"]: cell for cell in build_activity_heatmap(self.conn)["cells"]}
 
-        self.assertEqual(cells[f"{current_year}-01-05"]["sports"], {"ride": 120, "strength": 40, "walk": 90})
+        self.assertEqual(cells[f"{current_year}-01-05"]["sports"], {"ride": 120, "strength": 40, "hike": 90})
         self.assertEqual(cells[f"{current_year}-01-06"]["sports"], {})
 
 

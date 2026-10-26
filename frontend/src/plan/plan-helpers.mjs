@@ -70,7 +70,7 @@ export const weekShape = (overview) => {
   let end = 0
   while ((match = re.exec(text))) {
     const label = match[2].trim()
-    const type = /lift|upper|lower|strength|^[A-D]\b/i.test(label) ? 'strength' : /run/i.test(label) ? 'run' : /walk|hike|rest/i.test(label) ? 'walk' : /spin|recovery/i.test(label) ? 'recovery' : 'ride'
+    const type = /lift|upper|lower|strength|^[A-D]\b/i.test(label) ? 'strength' : /run/i.test(label) ? 'run' : /hike/i.test(label) ? 'hike' : /walk|rest/i.test(label) ? 'walk' : /spin|recovery/i.test(label) ? 'recovery' : 'ride'
     days.push({ day: match[1], text: label.replace(/^([A-D]) (upper|lower)$/i, '$1 · $2'), type })
     end = re.lastIndex
   }
@@ -94,14 +94,15 @@ export const notePoints = (text) => {
   }
   return points
 }
-export const planAccent = (type) => ({ run: 'var(--tone-run)', ride: 'var(--tone-ride)', strength: 'var(--tone-strength)', recovery: 'var(--tone-recovery)', walk: 'var(--tone-walk)', neutral: 'var(--tone-neutral)' }[activityTone(type)])
+export const planAccent = (type) => ({ run: 'var(--tone-run)', ride: 'var(--tone-ride)', strength: 'var(--tone-strength)', recovery: 'var(--tone-recovery)', walk: 'var(--tone-walk)', hike: 'var(--tone-recovery)', neutral: 'var(--tone-neutral)' }[activityTone(type)])
 export const activityTone = (type) => {
   const normalizedType = String(type || '').replace(/[\s_-]+/g, '').toLowerCase()
   if (normalizedType === 'run' || normalizedType === 'running') return 'run'
   if (['ride', 'virtualride', 'cycling', 'bike'].includes(normalizedType)) return 'ride'
   if (['weighttraining', 'strength', 'weights'].includes(normalizedType)) return 'strength'
   if (normalizedType === 'recovery' || normalizedType === 'rest') return 'recovery'
-  if (normalizedType === 'walk' || normalizedType === 'hike') return 'walk'
+  if (normalizedType === 'walk') return 'walk'
+  if (normalizedType === 'hike') return 'hike'
   return 'neutral'
 }
 export const isIconSessionType = (type) => {

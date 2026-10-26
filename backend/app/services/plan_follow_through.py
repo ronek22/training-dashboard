@@ -43,7 +43,7 @@ REPLACEMENT_SPORTS = {
     "WeightTraining": "lift",
     "Run": "run",
     "Walk": "walk",
-    "Hike": "walk",
+    "Hike": "hike",
 }
 MIN_SAMPLES = 3
 RELIABLE_PCT = 80

@@ -28,7 +28,7 @@
 
       <div class="toolbar">
         <div class="sport-filters" role="group" aria-label="Filter by sport">
-          <button v-for="filter in [sportFilters[0], sportFilters[1], sportFilters[4], sportFilters[2], sportFilters[3], sportFilters[5]]" :key="filter.value" type="button"
+          <button v-for="filter in sportFilters" :key="filter.value" type="button"
             class="sport-filter" :class="{ active: activeFilter === filter.value }"
             :aria-pressed="activeFilter === filter.value" @click="activeFilter = filter.value">
             <span v-if="filter.value !== 'all'" class="sport-dot" :class="`tone-${filter.value}`"></span>
@@ -228,11 +228,11 @@ const workoutIntentOptions = {
 const intentLabels = { recovery:'Recovery', easy:'Easy', long:'Long', tempo:'Tempo', interval:'Interval', race_specific:'Race-specific', strength_general:'General strength', strength_lower:'Lower-body strength', strength_upper:'Upper-body strength', mobility:'Mobility' }
 const intentOptionsForType = (type) => (workoutIntentOptions[type] || []).map(value => ({ value, label: intentLabels[value] }))
 const sportFilters = [
-  { label:'All', value:'all' }, { label:'Rides', value:'ride' }, { label:'Strength', value:'strength' },
-  { label:'Walks', value:'walk' }, { label:'Runs', value:'run' }, { label:'Other', value:'other' },
+  { label:'All', value:'all' }, { label:'Rides', value:'ride' }, { label:'Runs', value:'run' }, { label:'Strength', value:'strength' },
+  { label:'Hikes', value:'hike' }, { label:'Walks', value:'walk' }, { label:'Other', value:'other' },
 ]
 // Older links used Strava type names for the sport filter.
-const LEGACY_FILTERS = { Run:'run', Ride:'ride', WeightTraining:'strength', Walk:'walk' }
+const LEGACY_FILTERS = { Run:'run', Ride:'ride', WeightTraining:'strength', Walk:'walk', Hike:'hike' }
 if (LEGACY_FILTERS[activeFilter.value]) activeFilter.value = LEGACY_FILTERS[activeFilter.value]
 
 const load = async () => {
@@ -387,7 +387,7 @@ const saveFeedback = async payload => {
 
 /* Sport tones, shared by filter dots and icons. */
 .tone-ride { --tone: var(--ride); } .tone-run { --tone: var(--run); } .tone-strength { --tone: var(--strength); }
-.tone-walk { --tone: var(--tone-walk); } .tone-other { --tone: var(--tone-recovery); }
+.tone-hike { --tone: var(--tone-recovery); } .tone-walk { --tone: var(--tone-walk); } .tone-other { --tone: var(--tone-neutral); }
 
 .toolbar { display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px; }
 .search-field { position:relative;display:flex;align-items:center;flex:1 1 240px;max-width:360px; }

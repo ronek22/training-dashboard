@@ -37,6 +37,7 @@
         <li class="is-ride">Ride</li>
         <li class="is-run">Run</li>
         <li class="is-strength">Strength</li>
+        <li class="is-hike">Hike</li>
         <li class="is-other">Other</li>
       </ul>
     </div>
@@ -118,6 +119,7 @@ function activityTone(type) {
   if (value.includes('run')) return 'run'
   if (value.includes('ride') || value.includes('cycl')) return 'ride'
   if (value.includes('strength') || value.includes('weight')) return 'strength'
+  if (value.includes('hike')) return 'hike'
   return 'other'
 }
 function dominantTone(activities) {
@@ -196,6 +198,7 @@ button.month-day:focus-visible { outline: 2px solid var(--dot); outline-offset: 
 .month-day.is-ride { --dot: var(--tone-ride); }
 .month-day.is-run { --dot: var(--tone-run); }
 .month-day.is-strength { --dot: var(--tone-strength); }
+.month-day.is-hike { --dot: var(--tone-recovery); }
 .month-day.is-other { --dot: var(--dash-soft, var(--text-soft)); }
 .month-day.is-future { --dot: rgb(var(--tint-rgb) / 0.07); }
 .month-day.is-multi i { box-shadow: 0 0 0 2px var(--dash-surface), 0 0 0 3.5px color-mix(in srgb, var(--dot) 45%, transparent); }
@@ -208,6 +211,7 @@ button.month-day:focus-visible { outline: 2px solid var(--dot); outline-offset: 
 .month-legend .is-ride { --c: var(--tone-ride); }
 .month-legend .is-run { --c: var(--tone-run); }
 .month-legend .is-strength { --c: var(--tone-strength); }
+.month-legend .is-hike { --c: var(--tone-recovery); }
 .month-legend .is-other { --c: var(--dash-soft, var(--text-soft)); }
 
 @media (max-width: 420px) { .month { grid-template-columns: minmax(0, 1fr); } }

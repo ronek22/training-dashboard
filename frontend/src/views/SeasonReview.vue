@@ -89,7 +89,7 @@ const SPORTS = {
   ride: { icon: 'Ride', tone: 'ride', color: 'var(--season-ride)' },
   run: { icon: 'Run', tone: 'run', color: 'var(--season-run)' },
   strength: { icon: 'WeightTraining', tone: 'strength', color: 'var(--season-strength)' },
-  hike: { icon: 'Walk', tone: 'walk', color: 'var(--season-hike)' },
+  hike: { icon: 'Hike', tone: 'hike', color: 'var(--season-hike)' },
   walk: { icon: 'Walk', tone: 'walk', color: 'var(--season-walk)' },
   other: { icon: 'Workout', tone: 'neutral', color: 'var(--season-other)' },
 }

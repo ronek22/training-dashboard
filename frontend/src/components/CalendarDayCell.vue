@@ -180,6 +180,7 @@ const activityTone = (type) => {
   if (value.includes('run')) return 'run'
   if (value.includes('ride') || value.includes('cycl')) return 'ride'
   if (value.includes('weight') || value.includes('strength')) return 'strength'
+  if (value.includes('hike')) return 'hike'
   if (value.includes('walk')) return 'walk'
   return 'neutral'
 }
@@ -207,7 +208,7 @@ const shortName = (name, type) => {
   if (rest !== value && GENERIC[rest.toLowerCase()]) return GENERIC[rest.toLowerCase()]
   return GENERIC[value.toLowerCase()] || value
 }
-const sportLabel = (type) => ({ ride: 'Ride', run: 'Run', strength: 'Strength', walk: 'Walk' })[activityTone(type)] || String(type || 'Session')
+const sportLabel = (type) => ({ ride: 'Ride', run: 'Run', strength: 'Strength', hike: 'Hike', walk: 'Walk' })[activityTone(type)] || String(type || 'Session')
 const activityDetail = (item, short) => [item.distance_km ? formatDistance(item.distance_km) : '', short && averageSpeedKmh(item) ? `${Math.round(averageSpeedKmh(item))} km/h` : effortMetric(item)].filter(Boolean).join(' · ')
 const formatDistance = (distance) => `${Number(distance).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`
 const averageSpeedKmh = (item) => {
@@ -284,7 +285,7 @@ const planStatusLabel = (item) => {
 .calendar-event { --tone: var(--muted); --state: var(--success); position: relative; width: 100%; min-width: 0; display: flex; align-items: flex-start; gap: 7px; padding: 6px 7px; border: 0; border-radius: 8px; background: color-mix(in srgb, var(--tone) 17%, transparent); color: var(--text); text-align: left; cursor: pointer; }
 .is-compact .calendar-event { align-items: center; min-height: 26px; gap: 5px; padding: 4px 5px; }
 .calendar-event:hover { background: color-mix(in srgb, var(--tone) 26%, transparent); }
-.tone-ride { --tone: var(--ride); } .tone-run { --tone: var(--run); } .tone-strength { --tone: var(--strength); } .tone-walk { --tone: var(--muted); }
+.tone-ride { --tone: var(--ride); } .tone-run { --tone: var(--run); } .tone-strength { --tone: var(--strength); } .tone-walk { --tone: var(--muted); } .tone-hike { --tone: var(--tone-recovery); }
 .status-planned { background: color-mix(in srgb, var(--tone) 7%, transparent); color: var(--text-soft); }
 .status-planned:hover { background: color-mix(in srgb, var(--tone) 15%, transparent); }
 .status-missed { background: rgba(239, 94, 94, .12); }

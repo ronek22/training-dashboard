@@ -83,6 +83,16 @@
       <path d="M10.5 10.2l2.4-2.1 2.1 1.1c.8.4 1.2 1 1.2 1.9V15h-2v-3l-1-.5-1.4 2.1V21h-2v-5.2l-2 2.1H5v-2h1.9l3.6-3.9z" fill="currentColor" />
     </svg>
     <svg
+      v-else-if="iconName === 'hike'"
+      :width="size"
+      :height="size"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path d="M2.5 19.5 9 8.5l3.6 6 2.4-3.7 6.5 8.7z" fill="currentColor" />
+    </svg>
+    <svg
       v-else
       :width="size"
       :height="size"
@@ -112,6 +122,7 @@ const iconName = computed(() => {
   if (normalizedType.value === 'weighttraining' || normalizedType.value === 'strength') return 'strength'
   if (normalizedType.value === 'recovery' || normalizedType.value === 'rest') return 'recovery'
   if (normalizedType.value === 'walk') return 'walk'
+  if (normalizedType.value === 'hike') return 'hike'
   return 'default'
 })
 
@@ -121,6 +132,7 @@ const label = computed(() => {
   if (iconName.value === 'strength') return 'Strength'
   if (iconName.value === 'recovery') return 'Recovery'
   if (iconName.value === 'walk') return 'Walk'
+  if (iconName.value === 'hike') return 'Hike'
   return props.type || 'Activity'
 })
 </script>
@@ -137,5 +149,6 @@ const label = computed(() => {
 .activity-icon-strength { color: var(--strength); }
 .activity-icon-recovery { color:var(--text); }
 .activity-icon-walk { color: var(--muted); }
+.activity-icon-hike { color: var(--tone-recovery); }
 .activity-icon-neutral { color: var(--muted); }
 </style>

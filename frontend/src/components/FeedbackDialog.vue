@@ -209,7 +209,8 @@ const sportMeta = (type = '') => {
   if (/weight|strength|workout|crossfit/i.test(type)) return { label: 'Strength', color: 'var(--strength)' }
   if (/ride|cycl|bike/i.test(type)) return { label: 'Ride', color: 'var(--ride)' }
   if (/run/i.test(type)) return { label: 'Run', color: 'var(--run)' }
-  if (/walk|hike/i.test(type)) return { label: type, color: 'var(--tone-walk)' }
+  if (/hike/i.test(type)) return { label: 'Hike', color: 'var(--tone-recovery)' }
+  if (/walk/i.test(type)) return { label: 'Walk', color: 'var(--tone-walk)' }
   return { label: type || 'Session', color: 'var(--accent)' }
 }
 const sportLabel = computed(() => sportMeta(props.activity?.type).label)

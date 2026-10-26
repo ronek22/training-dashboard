@@ -53,7 +53,7 @@ const SPORTS = {
   ride: { label: 'Ride', color: 'var(--ride)' },
   run: { label: 'Run', color: 'var(--run)' },
   strength: { label: 'Strength', color: 'var(--strength)' },
-  hike: { label: 'Hike', color: '#e0778f' },
+  hike: { label: 'Hike', color: 'var(--tone-recovery)' },
   walk: { label: 'Walk', color: 'var(--tone-walk)' },
   guided: { label: 'Guided session', color: 'var(--tone-recovery)' },
   other: { label: 'Other', color: 'var(--tone-neutral)' },

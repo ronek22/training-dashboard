@@ -305,7 +305,8 @@ const disciplineSummary = computed(() => {
     { key: 'ride', label: 'Cycling', iconType: 'Ride', tone: 'ride', match: (type) => /ride|cycl/i.test(type) },
     { key: 'run', label: 'Running', iconType: 'Run', tone: 'run', match: (type) => /run/i.test(type) },
     { key: 'strength', label: 'Strength', iconType: 'WeightTraining', tone: 'strength', isStrength: true, match: (type) => /weight|strength/i.test(type) },
-    { key: 'walk', label: 'Walking', iconType: 'Walk', tone: 'walk', match: (type) => /walk|hike/i.test(type) },
+    { key: 'hike', label: 'Hiking', iconType: 'Hike', tone: 'hike', match: (type) => /hike/i.test(type) },
+    { key: 'walk', label: 'Walking', iconType: 'Walk', tone: 'walk', match: (type) => /walk/i.test(type) },
     { key: 'swim', label: 'Swimming', iconType: 'Swim', tone: 'neutral', match: (type) => /swim/i.test(type) },
   ]
   const groups = definitions.map((definition) => ({ ...definition, sessions: 0, distance: 0, duration: 0 }))
@@ -463,7 +464,7 @@ const activityPerformance = (activity) => {
 }
 const formatWeekRange = (start, end) => { const a = safeDate(start); const b = safeDate(end); return `${format(a, 'MMM d')}–${format(b, a.getMonth() === b.getMonth() ? 'd' : 'MMM d')}` }
 // Done minutes per sport for the week column's split bar.
-const MIX_TONES = { ride: ['Ride', 'var(--ride)'], strength: ['Lift', 'var(--strength)'], run: ['Run', 'var(--run)'], walk: ['Walk', 'var(--z2)'], neutral: ['Other', 'var(--muted)'] }
+const MIX_TONES = { ride: ['Ride', 'var(--ride)'], strength: ['Lift', 'var(--strength)'], run: ['Run', 'var(--run)'], hike: ['Hike', 'var(--tone-recovery)'], walk: ['Walk', 'var(--z2)'], neutral: ['Other', 'var(--muted)'] }
 const weekMix = (week) => {
   const totals = {}
   for (const day of week.days || []) for (const activity of day.activities || []) {
@@ -473,7 +474,7 @@ const weekMix = (week) => {
   return Object.keys(MIX_TONES).filter((tone) => totals[tone] > 0).map((tone) => ({ tone, minutes: Math.round(totals[tone]), label: MIX_TONES[tone][0], color: MIX_TONES[tone][1] }))
 }
 const weekVolumePercent = (week) => { const max = Math.max(...(monthData.value?.weeks || []).map((item) => item.total_duration_min || 0), 1); return Math.round((week.total_duration_min || 0) / max * 100) }
-const activityTone = (type) => { const value = String(type || '').toLowerCase(); if (value.includes('run')) return 'run'; if (value.includes('ride') || value.includes('cycl')) return 'ride'; if (value.includes('weight') || value.includes('strength')) return 'strength'; if (value.includes('walk')) return 'walk'; return 'neutral' }
+const activityTone = (type) => { const value = String(type || '').toLowerCase(); if (value.includes('run')) return 'run'; if (value.includes('ride') || value.includes('cycl')) return 'ride'; if (value.includes('weight') || value.includes('strength')) return 'strength'; if (value.includes('hike')) return 'hike'; if (value.includes('walk')) return 'walk'; return 'neutral' }
 const planStatusLabel = (day) => ({ linked: 'Done as planned', matched: 'Done', moved: 'Moved and done', replaced: 'Changed', partially_matched: 'Modified', rest_day_changed: 'Rest changed', skipped: 'Missed', not_completed_yet: selectedDate.value === todayKey ? 'Planned today' : selectedDate.value < todayKey ? 'Missed' : 'Upcoming' }[day.comparison?.status] || 'Planned')
 const openFeedbackDialog = (activity) => { popupOpen.value = false; feedbackMessage.value = ''; dialogActivity.value = { ...activity, dateLabel: selectedDayTitle.value } }
 const closeFeedbackDialog = () => { if (!feedbackSaving.value) { dialogActivity.value = null; feedbackMessage.value = '' } }
@@ -566,7 +567,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .calendar-page { --cal-action:#3f66d6; max-width: 1680px; margin: 0 auto; }
-.tone-ride { --tone: var(--ride); } .tone-run { --tone: var(--run); } .tone-strength { --tone: var(--strength); } .tone-walk { --tone: var(--muted); }
+.tone-ride { --tone: var(--ride); } .tone-run { --tone: var(--run); } .tone-strength { --tone: var(--strength); } .tone-walk { --tone: var(--muted); } .tone-hike { --tone: var(--tone-recovery); }
 
 .cal-head { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
 .cal-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; line-height: 1.2; }

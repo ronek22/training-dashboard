@@ -807,7 +807,7 @@ function formatLocalDate(value, pattern) { return value ? format(new Date(`${val
 function splitPlanSentences(value) {
   return String(value || '').trim().split(/(?<=[.!?])\s+/).filter(Boolean)
 }
-function isIconSessionType(type) { return ['run', 'ride', 'strength', 'recovery', 'walk'].includes(activityTone(type)) }
+function isIconSessionType(type) { return ['run', 'ride', 'strength', 'recovery', 'walk', 'hike'].includes(activityTone(type)) }
 function activityTone(type) {
   const value = String(type || '').toLowerCase()
   if (value.includes('run')) return 'run'

@@ -285,7 +285,7 @@ def build_activity_heatmap(conn: sqlite3.Connection) -> dict:
         "WHERE date >= ? AND date <= ? GROUP BY date, type",
         (grid_start.isoformat(), grid_end.isoformat()),
     ):
-        sport = "walk" if row["type"] == "Hike" else _sport_of(row["type"])
+        sport = _sport_of(row["type"])
         day = sport_minutes.setdefault(row["date"], {})
         day[sport] = day.get(sport, 0) + int(round(row["minutes"] or 0))
 

@@ -1,7 +1,7 @@
 // Pure helpers for the Activities training log: month sections, totals and the month rail.
 
 const SPORT_BUCKETS = {
-  Run: 'run', Ride: 'ride', VirtualRide: 'ride', WeightTraining: 'strength', Walk: 'walk', Hike: 'walk',
+  Run: 'run', Ride: 'ride', VirtualRide: 'ride', WeightTraining: 'strength', Walk: 'walk', Hike: 'hike',
 }
 
 export const sportBucket = type => SPORT_BUCKETS[type] || 'other'

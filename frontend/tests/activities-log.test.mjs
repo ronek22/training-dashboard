@@ -33,4 +33,6 @@ test('totals sums time and distance', () => {
 test('sportBucket folds unknown types into other', () => {
   assert.equal(sportBucket('VirtualRide'), 'ride')
   assert.equal(sportBucket('Yoga'), 'other')
+  assert.equal(sportBucket('Hike'), 'hike')
+  assert.equal(sportBucket('Walk'), 'walk')
 })

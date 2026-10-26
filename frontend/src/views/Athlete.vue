@@ -38,10 +38,11 @@
       </section>
 
       <div v-show="tab === 'profile'" id="panel-profile" class="athlete-panel" role="tabpanel">
-        <section class="athlete-summary" aria-label="Profile summary">
-          <div v-for="tile in profileTiles" :key="tile.label" class="summary-tile">
+        <section class="athlete-summary" :aria-label="'Profile summary'">
+          <div v-for="tile in summaryTiles.profile" :key="tile.label" class="summary-tile" :class="tile.tone && `is-${tile.tone}`">
             <span>{{ tile.label }}</span>
-            <strong>{{ tile.value }}</strong>
+            <strong>{{ tile.value }}<small v-if="tile.unit"> {{ tile.unit }}</small></strong>
+            <em v-if="tile.detail">{{ tile.detail }}</em>
           </div>
         </section>
         <!-- Profile -->
@@ -136,6 +137,13 @@
       </div>
 
       <div v-show="tab === 'zones'" id="panel-zones" class="athlete-panel" role="tabpanel">
+        <section class="athlete-summary" :aria-label="'Zones summary'">
+          <div v-for="tile in summaryTiles.zones" :key="tile.label" class="summary-tile" :class="tile.tone && `is-${tile.tone}`">
+            <span>{{ tile.label }}</span>
+            <strong>{{ tile.value }}<small v-if="tile.unit"> {{ tile.unit }}</small></strong>
+            <em v-if="tile.detail">{{ tile.detail }}</em>
+          </div>
+        </section>
 
         <!-- Thresholds -->
         <section id="thresholds" class="card athlete-card" aria-labelledby="thresholds-title">
@@ -257,6 +265,13 @@
       </div>
 
       <div v-show="tab === 'limits'" id="panel-limits" class="athlete-panel" role="tabpanel">
+        <section class="athlete-summary" :aria-label="'Limits summary'">
+          <div v-for="tile in summaryTiles.limits" :key="tile.label" class="summary-tile" :class="tile.tone && `is-${tile.tone}`">
+            <span>{{ tile.label }}</span>
+            <strong>{{ tile.value }}<small v-if="tile.unit"> {{ tile.unit }}</small></strong>
+            <em v-if="tile.detail">{{ tile.detail }}</em>
+          </div>
+        </section>
         <!-- Restrictions -->
         <section id="restrictions" class="card athlete-card" aria-labelledby="restrictions-title">
           <header class="athlete-card-head">
@@ -328,7 +343,7 @@
           <div v-if="activeIssues.length" class="field">
             <span class="field-label">Active in Recovery</span>
             <ul class="issue-list">
-              <li v-for="issue in activeIssues" :key="issue.id">
+              <li v-for="issue in activeIssues" :key="issue.id" :class="{ 'is-unprotected': !issueProtected(issue) }">
                 <router-link to="/recovery" class="issue-title">{{ issue.title }}</router-link>
                 <small>{{ issue.side ? `${issue.side}, ` : '' }}since {{ shortDate(issue.started_on) }}<template v-if="issue.current_pain != null"> · pain {{ issue.current_pain }}/10</template></small>
                 <span v-if="issueProtected(issue)" class="ok-chip">Protected</span>
@@ -340,6 +355,13 @@
       </div>
 
       <div v-show="tab === 'strength'" id="panel-strength" class="athlete-panel" role="tabpanel">
+        <section class="athlete-summary" :aria-label="'Strength summary'">
+          <div v-for="tile in summaryTiles.strength" :key="tile.label" class="summary-tile" :class="tile.tone && `is-${tile.tone}`">
+            <span>{{ tile.label }}</span>
+            <strong>{{ tile.value }}<small v-if="tile.unit"> {{ tile.unit }}</small></strong>
+            <em v-if="tile.detail">{{ tile.detail }}</em>
+          </div>
+        </section>
         <!-- Strength rotation -->
         <section id="rotation" class="card athlete-card athlete-card-wide" aria-labelledby="rotation-title">
           <header class="athlete-card-head">
@@ -948,17 +970,51 @@ const tabs = computed(() => {
   ].map((item) => ({ ...item, attention: nudges.value.some((nudge) => (nudge.tab || 'zones') === item.key) }))
 })
 
-// Profile tab: the four things the planner reads first.
-const profileTiles = computed(() => {
+// Summary tiles at the top of each tab: what the planner reads first.
+const statusTone = { limited: 'warn', blocked: 'alert' }
+const summaryTiles = computed(() => {
   const formState = profileForm.value
   const days = weekdayOptions.filter((day) => formState.preferred_long_session_days.includes(day.value)).map((day) => day.label)
   const month = (value) => monthOptions.find((option) => option.value === value)?.label?.slice(0, 3)
-  return [
-    { label: 'Focus', value: focusOptions.find((option) => option.value === formState.primary_focus)?.label || 'General fitness' },
-    { label: 'Block', value: formState.current_block ? formState.current_block.split(/[,(]/)[0].trim() : 'Not set' },
-    { label: 'Long days', value: days.length ? days.join(' · ') : 'Any day' },
-    { label: 'Off season', value: formState.off_season_start ? `${month(formState.off_season_start)} – ${month(formState.off_season_end)}` : 'None' },
-  ]
+  const modalities = restrictionForm.value.modalities
+  const areas = restrictionForm.value.body_areas
+  const unprotected = activeIssues.value.filter((issue) => !issueProtected(issue))
+  const rotationState = rotationForm.value
+  const next = rotationState.templates.find((template) => template.id === rotationState.next_template_id)
+  const last = rotationState.templates.find((template) => template.id === lastTemplateId.value)
+  const dumbbellStep = dumbbellStepOptions.find((option) => option.value === formState.dumbbell_step_kg)?.label || 'Auto'
+  const runPace = runPaceSeconds.value ? formatPace(runPaceSeconds.value) : null
+  return {
+    profile: [
+      { label: 'Focus', value: focusOptions.find((option) => option.value === formState.primary_focus)?.label || 'General fitness' },
+      { label: 'Block', value: formState.current_block ? formState.current_block.split(/[,(]/)[0].trim() : 'Not set' },
+      { label: 'Long days', value: days.length ? days.join(' · ') : 'Any day' },
+      { label: 'Off season', value: formState.off_season_start ? `${month(formState.off_season_start)} – ${month(formState.off_season_end)}` : 'None' },
+    ],
+    zones: [
+      { label: 'FTP in use', value: chosenFtp.value ? String(Math.round(chosenFtp.value)) : '—', unit: chosenFtp.value ? 'W' : '', detail: ftpSourceLabel[performanceForm.value.ftp_source] || 'Logged' },
+      { label: 'Ride zone 2', value: rideZonePreview.value.replace(' W', ''), unit: chosenFtp.value ? 'W' : '', detail: `${performanceForm.value.ride_low}–${performanceForm.value.ride_high}% of FTP` },
+      { label: 'Run threshold', value: runPace || 'Not set', unit: runPace ? '/km' : '', detail: runPace ? runZonePreview.value : 'Running zone 2 uses heart rate', tone: runPace ? '' : 'muted' },
+      { label: 'Ride HR zone 2', value: hrZoneRows('ride')[1].range, unit: 'bpm', detail: `Run ${hrZoneRows('run')[1].range} bpm` },
+    ],
+    limits: [
+      ...sports.map((sport) => {
+        const status = modalities[sport.key]?.status || 'allowed'
+        return { label: sport.label, value: statusOptions.find((option) => option.value === status)?.label || 'Allowed', detail: status === 'allowed' ? 'No limits' : modalities[sport.key].reason || 'No reason given', tone: statusTone[status] || 'ok' }
+      }),
+      {
+        label: 'Protected areas', value: areas.length ? String(areas.length) : 'None',
+        detail: unprotected.length ? `${unprotected.length} active in Recovery, not protected` : areas.length ? areas.map(areaLabel).join(', ') : 'Nothing protected',
+        tone: unprotected.length ? 'warn' : '',
+      },
+    ],
+    strength: [
+      { label: 'Next workout', value: next ? `${next.code} · ${next.title}` : 'None', detail: next ? focusLabel(next.focus_area) : 'Pick one below', tone: next ? 'strength' : '' },
+      { label: 'Last done', value: last ? `${last.code} · ${last.title}` : '—', detail: lastCompletedAt.value ? shortDate(lastCompletedAt.value) : 'Nothing logged yet' },
+      { label: 'Bar up to', value: formatKg(barbell.value.maxKg), unit: 'kg', detail: `${formatKg(formState.bar_weight_kg || 20)} kg bar · ${barbell.value.stepKg == null ? 'no' : formatKg(barbell.value.stepKg) + ' kg'} jumps` },
+      { label: 'Dumbbells', value: formState.max_dumbbell_kg ? formatKg(formState.max_dumbbell_kg) : 'No limit', unit: formState.max_dumbbell_kg ? 'kg' : '', detail: `Adjusts in ${dumbbellStep.toLowerCase()}` },
+    ],
+  }
 })
 
 // Save
@@ -1480,6 +1536,48 @@ select:disabled { opacity: 0.5; }
 .athlete-page .athlete-nudges { margin-bottom: 20px; }
 .athlete-page .priority-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
 .athlete-page .priority-list li { border-radius: 14px; background: var(--surface2); }
+.summary-tile strong small { margin-left: 4px; font-size: .55em; font-style: normal; font-weight: 600; color: var(--muted); }
+.summary-tile em { font-style: normal; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summary-tile.is-ok strong { color: var(--success-text); }
+.summary-tile.is-muted strong { color: var(--muted-soft); }
+.summary-tile.is-strength strong { color: var(--tone-strength); }
+.summary-tile.is-warn { border-color: color-mix(in srgb, var(--warning) 30%, transparent); background: color-mix(in srgb, var(--warning) 6%, var(--surface)); }
+.summary-tile.is-warn strong, .summary-tile.is-warn span { color: var(--warning-text); }
+.summary-tile.is-alert { border-color: color-mix(in srgb, var(--danger) 30%, transparent); background: color-mix(in srgb, var(--danger) 6%, var(--surface)); }
+.summary-tile.is-alert strong, .summary-tile.is-alert span { color: var(--danger-text); }
+
+/* Zones */
+.athlete-page .ftp-option { border-radius: 16px; padding: 14px 16px; }
+.athlete-page .ftp-option strong { font-size: 30px; font-style: italic; line-height: 1.05; }
+.athlete-page .ftp-option.is-active { border-color: color-mix(in srgb, var(--volt) 55%, transparent); background: color-mix(in srgb, var(--volt) 8%, var(--surface)); box-shadow: none; }
+.athlete-page .ftp-option.is-active .ftp-option-label { color: var(--success-text); }
+.athlete-page .ftp-workout-check { border-radius: 16px; }
+.athlete-page .threshold-row { border-radius: 14px; }
+.athlete-page .hr-zone-sport { border-radius: 18px; }
+.athlete-page .hr-zone-cell { border-radius: 12px; }
+
+/* Limits */
+.athlete-page .sport-restrictions { gap: 8px; }
+.athlete-page .sport-restriction { padding: 12px 12px 12px 16px; border-radius: 14px; background: var(--surface2); }
+.athlete-page .sport-restriction-top strong { font-size: 15px; font-weight: 600; }
+.athlete-page .sport-restriction.is-limited { background: color-mix(in srgb, var(--warning) 9%, var(--surface2)); }
+.athlete-page .sport-restriction.is-blocked { background: color-mix(in srgb, var(--danger) 9%, var(--surface2)); }
+.athlete-page .segmented { border-radius: 999px; }
+.athlete-page .segmented button { border-radius: 999px; }
+.athlete-page .segmented button.is-active.status-allowed { background: color-mix(in srgb, var(--volt) 16%, var(--surface2)); color: var(--success-text); }
+.athlete-page #body-areas .empty-line { padding: 14px 16px; border: 1px dashed var(--border-strong); border-radius: 14px; }
+.athlete-page .area-row { border-radius: 14px; }
+.athlete-page .issue-list li { padding: 10px 10px 10px 16px; border-radius: 14px; border-style: solid; border-color: var(--border); background: var(--surface2); }
+.athlete-page .issue-list li.is-unprotected { border-color: color-mix(in srgb, var(--warning) 35%, transparent); background: color-mix(in srgb, var(--warning) 7%, var(--surface2)); }
+.athlete-page .issue-list li.is-unprotected .ghost-btn { border-color: color-mix(in srgb, var(--warning) 45%, transparent); color: var(--warning-text); }
+
+/* Strength */
+.athlete-page .rotation-step { border-radius: 18px; }
+.athlete-page .rotation-code { font-family: var(--font-display); font-size: 26px; font-weight: 800; font-style: italic; }
+.athlete-page .gym-preview { border-radius: 18px; background: var(--surface2); }
+.athlete-page .gym-stats div { border-radius: 16px; background: var(--surface2); border-color: transparent; }
+.athlete-page .gym-stats dd { font-size: 30px; font-style: italic; }
+.athlete-page .plate-rack li { border-radius: 16px; }
 .athlete-page .athlete-nudge.nudge-warn, .athlete-page .athlete-nudge.nudge-alert {
   border-color: color-mix(in srgb, var(--warning) 28%, transparent); background: color-mix(in srgb, var(--warning) 7%, var(--surface));
 }
@@ -1492,7 +1590,7 @@ select:disabled { opacity: 0.5; }
   background: var(--surface); box-shadow: var(--shadow-card);
 }
 .athlete-page .athlete-card-head { padding-bottom: 14px; border-bottom: 1px solid var(--border); }
-.athlete-page .athlete-card-head h2 { font-size: 23px; font-weight: 700; }
+.athlete-page .athlete-card-head h2 { font-size: 26px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; line-height: 1; }
 .athlete-page .used-by { max-width: 58ch; font-size: 12px; line-height: 1.5; }
 .athlete-page .field-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .athlete-page .field-label small { letter-spacing: 0; text-transform: none; }
@@ -1517,9 +1615,10 @@ select:disabled { opacity: 0.5; }
   .athlete-page .athlete-tabs { flex-wrap: nowrap; width: 100%; overflow-x: auto; border-radius: 18px; scrollbar-width: none; }
   .athlete-page .athlete-tab { flex: none; padding: 0 14px; }
   .summary-tile { padding: 14px 16px; }
-  .summary-tile strong { font-size: 24px; }
+  .summary-tile strong { font-size: 24px; white-space: normal; }
+  .summary-tile em { white-space: normal; }
   .athlete-page .athlete-panel > .card { padding: 18px; }
-  .athlete-page .athlete-card-head h2 { font-size: 21px; }
+  .athlete-page .athlete-card-head h2 { font-size: 23px; }
   .athlete-page .rotation-rules { gap: 12px; }
   .athlete-page .save-bar { border-radius: 18px; }
 }

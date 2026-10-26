@@ -12,7 +12,11 @@ from .activity_sources import find_activity_match, get_source_activity_id, strav
 
 
 STRAVA_TOKEN_URL = "https://www.strava.com/oauth/token"
+STRAVA_AUTHORIZE_URL = "https://www.strava.com/oauth/authorize"
+# Activities (incl. private ones) plus the profile, which is where Strava lists shoes and bikes.
+STRAVA_SCOPES = "read,activity:read_all,profile:read_all"
 STRAVA_ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
+STRAVA_ATHLETE_URL = "https://www.strava.com/api/v3/athlete"
 STRAVA_ACTIVITY_DETAIL_URL = "https://www.strava.com/api/v3/activities/{activity_id}"
 STRAVA_ACTIVITY_STREAMS_URL = "https://www.strava.com/api/v3/activities/{activity_id}/streams"
 STRAVA_PAGE_SIZE = 100
@@ -105,6 +109,72 @@ def build_activity_from_strava(item: dict) -> dict:
     }
 
 
+def build_strava_authorize_url(redirect_uri: str) -> str:
+    client_id = os.getenv("STRAVA_CLIENT_ID")
+    if not client_id:
+        raise HTTPException(status_code=400, detail="Missing STRAVA_CLIENT_ID in the backend configuration.")
+    query = httpx.QueryParams(
+        client_id=client_id,
+        response_type="code",
+        redirect_uri=redirect_uri,
+        approval_prompt="force",
+        scope=STRAVA_SCOPES,
+    )
+    return f"{STRAVA_AUTHORIZE_URL}?{query}"
+
+
+def exchange_strava_code(
+    code: str,
+    scope: Optional[str],
+    get_setting_fn: Callable[[str], Optional[str]],
+    set_setting_fn: Callable[[str, str], None],
+) -> dict:
+    """Swap the authorization code for a refresh token and keep it in settings (it wins over the env var)."""
+    client_id, client_secret = os.getenv("STRAVA_CLIENT_ID"), os.getenv("STRAVA_CLIENT_SECRET")
+    if not client_id or not client_secret:
+        raise HTTPException(status_code=400, detail="Missing STRAVA_CLIENT_ID or STRAVA_CLIENT_SECRET in the backend configuration.")
+    response = httpx.post(
+        STRAVA_TOKEN_URL,
+        data={"client_id": client_id, "client_secret": client_secret, "code": code, "grant_type": "authorization_code"},
+        timeout=20,
+    )
+    if response.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Strava authorization failed: {response.text}")
+    refresh_token = response.json().get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=502, detail="Strava did not return a refresh token.")
+    set_setting_fn("strava_refresh_token", refresh_token)
+    granted = sorted(filter(None, (scope or "").split(",")))
+    set_setting_fn("strava_scope", ",".join(granted))
+    return {"connected": True, "scopes": granted, "gear_access": "profile:read_all" in granted}
+
+
+def backfill_strava_gear_ids(
+    conn: sqlite3.Connection,
+    start_date: str,
+    end_date: str,
+    get_setting_fn: Callable[[str], Optional[str]],
+    set_setting_fn: Callable[[str, str], None],
+) -> int:
+    """Record each past Strava activity's gear id, so kit parts can count rides from before tracking."""
+    access_token = get_strava_access_token(get_setting_fn, set_setting_fn)
+    matched = 0
+    for item in fetch_strava_activities(start_date, end_date, access_token=access_token):
+        if not item.get("gear_id"):
+            continue
+        cursor = conn.execute(
+            """
+            UPDATE activity_source_refs
+            SET metadata_json = json_set(COALESCE(NULLIF(metadata_json, ''), '{}'), '$.gear_id', ?)
+            WHERE source = 'strava' AND external_id = ?
+            """,
+            (item["gear_id"], str(item["id"])),
+        )
+        matched += cursor.rowcount
+    conn.commit()
+    return matched
+
+
 def get_strava_access_token(
     get_setting_fn: Callable[[str], Optional[str]],
     set_setting_fn: Callable[[str, str], None],
@@ -131,6 +201,36 @@ def get_strava_access_token(
     if not access_token:
         raise HTTPException(status_code=502, detail="Strava token refresh returned no access_token")
     return access_token
+
+
+def fetch_strava_gear(
+    get_setting_fn: Callable[[str], Optional[str]],
+    set_setting_fn: Callable[[str, str], None],
+) -> list[dict]:
+    """Shoes and bikes on the Strava profile, with lifetime distance."""
+    access_token = get_strava_access_token(get_setting_fn, set_setting_fn)
+    response = httpx.get(STRAVA_ATHLETE_URL, headers={"Authorization": f"Bearer {access_token}"}, timeout=20)
+    if response.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Strava athlete request failed: {response.text}")
+    data = response.json()
+    if "shoes" not in data and "bikes" not in data:
+        # Strava only lists gear for tokens granted the profile:read_all scope.
+        raise HTTPException(
+            status_code=403,
+            detail="Strava did not return gear. Reconnect Strava with the profile:read_all scope to read shoes and bikes.",
+        )
+    return [
+        {
+            "gear_id": item["id"],
+            "name": item.get("name") or item.get("nickname") or item["id"],
+            "kind": kind,
+            "distance_km": round((item.get("distance") or 0) / 1000, 1),
+            "primary": bool(item.get("primary")),
+            "retired": bool(item.get("retired")),
+        }
+        for key, kind in (("shoes", "shoes"), ("bikes", "bike"))
+        for item in data.get(key) or []
+    ]
 
 
 def resolve_strava_import_range(
@@ -571,6 +671,8 @@ def build_strava_status_data(
         "has_client_secret": bool(config["client_secret"]),
         "has_refresh_token": bool(config["refresh_token"]),
         "last_import_at": get_setting_fn("strava_last_import_at"),
+        # Only known after a reconnect from the app; a pasted token's scope is unknown.
+        "scopes": (get_setting_fn("strava_scope") or "").split(",") if get_setting_fn("strava_scope") else None,
         "latest_activity_date": latest_activity_date,
         "pending_stream_backfill": _stream_backfill_candidate_count(conn),
         "stream_fetch_limit": STRAVA_STREAM_FETCH_LIMIT,
@@ -633,7 +735,7 @@ def import_strava_activities_data(
             started_at=strava_started_at(item),
             status="linked",
             match_reason="Existing Strava ID." if canonical_id == strava_id else "Reconciled to a unique compatible dashboard workout.",
-            metadata={"start_date_local": item.get("start_date_local")},
+            metadata={"start_date_local": item.get("start_date_local"), "gear_id": item.get("gear_id")},
         )
         activities.append(activity)
         imported += 1

@@ -60,6 +60,16 @@ const shortDate = (value) => new Date(`${value}T12:00:00`).toLocaleDateString('e
 const outcomeLabel = { clean: 'Clean', hold: 'Hold', flare: 'Flare', unscored: 'Needs score' }
 const statusTone = computed(() => ({ ready: 'go', graduated: 'go', rest: 'wait', needs_score: 'wait', needs_morning: 'wait', flare: 'stop' }[data.value?.next?.status] || 'wait'))
 const scores = Array.from({ length: 11 }, (_, n) => n)
+// Worn shoes are a quiet heel risk: show the default pair and a calm cue near the end.
+const shoes = computed(() => data.value?.shoes || null)
+const shoesLabel = computed(() => {
+  const item = shoes.value
+  if (!item) return ''
+  const used = item.threshold_km ? `${Math.round(item.used_km)} of ${Math.round(item.threshold_km)} km` : `${Math.round(item.used_km)} km`
+  if (item.status === 'due') return `${used}: due for replacement before the next stage.`
+  if (item.status === 'nearly_due') return `${used}: nearly due, plan a new pair.`
+  return used
+})
 </script>
 
 <template>
@@ -139,6 +149,13 @@ const scores = Array.from({ length: 11 }, (_, n) => n)
         <ul><li v-for="rule in data.rules" :key="rule">{{ rule }}</li></ul>
       </details>
     </template>
+
+    <!-- Idle: only a pair close to its threshold is worth a line. -->
+    <p v-if="shoes && (data.active || ['nearly_due', 'due'].includes(shoes.status))" class="rtr-shoes" :class="`is-${shoes.status}`">
+      <strong>{{ shoes.name }}</strong>
+      <span>{{ shoesLabel }}</span>
+      <router-link to="/athlete#kit">Kit</router-link>
+    </p>
   </section>
 </template>
 
@@ -183,6 +200,10 @@ legend { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .rtr-next.tone-go { border-left-color: var(--z2); }
 .rtr-next.tone-wait { border-left-color: var(--warning); }
 .rtr-next.tone-stop { border-left-color: var(--danger); }
+.rtr-shoes { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; font-size: 13px; color: var(--text-soft); }
+.rtr-shoes strong { color: var(--text); }
+.rtr-shoes.is-nearly_due span { color: var(--warning); }
+.rtr-shoes.is-due span { color: var(--danger-text); }
 
 .runs { margin-top: 14px; display: grid; gap: 2px; font-size: 13px; }
 .runs-head, .run-row { display: grid; grid-template-columns: minmax(0, 2.2fr) 52px 120px 120px 100px; gap: 10px; align-items: center; }

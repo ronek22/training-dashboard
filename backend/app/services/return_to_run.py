@@ -25,6 +25,7 @@ from typing import Any, Optional
 
 from ..repositories.settings import get_setting_value, set_setting_value
 from .heart_rate_zones import DEFAULT_HR_ZONE_STARTS, run_hr_cap
+from .kit import default_item
 
 SETTINGS_KEY = "return_to_run"
 CLEAN_MAX = 2
@@ -168,7 +169,8 @@ def build_return_to_run(conn: sqlite3.Connection, today: Optional[date] = None) 
     today = today or date.today()
     program = get_program(conn)
     hr_cap = run_hr_cap(conn)
-    base = {"program": program, "stages": list(STAGES), "hr_cap_bpm": hr_cap}
+    # Worn shoes are a quiet heel risk, so the current pair rides along.
+    base = {"program": program, "stages": list(STAGES), "hr_cap_bpm": hr_cap, "shoes": default_item(conn, "Run", "shoes", today)}
     if not program["active"] or not program["started_on"]:
         return {**base, "active": False, "suggested_start": suggest_start_stage(conn, today)}
 

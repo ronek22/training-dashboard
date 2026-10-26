@@ -56,6 +56,8 @@
           <p class="ad-notes">{{ activityNotes }}</p>
         </section>
 
+        <ActivityKit v-if="['Run', 'Ride', 'VirtualRide', 'Hike', 'Walk'].includes(detail.activity.type)" :activity-id="detail.activity.id" />
+
         <footer class="ad-footer-meta">
           <span>{{ sport }}</span><span v-if="detail.cache?.fetched_at">Detail updated {{ formatDateTime(detail.cache.fetched_at) }}</span><span>Activity ID {{ detail.activity.id }}</span>
         </footer>
@@ -78,6 +80,7 @@ import GenericAnalysis from '../components/activity-detail/GenericAnalysis.vue'
 import HikeAnalysis from '../components/activity-detail/HikeAnalysis.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
 import SessionReadPanel from '../components/activity-detail/SessionReadPanel.vue'
+import ActivityKit from '../components/activity-detail/ActivityKit.vue'
 import SessionWinCard from '../components/activity-detail/SessionWinCard.vue'
 import WorkoutExecutionCard from '../components/activity-detail/WorkoutExecutionCard.vue'
 import { coachChatAvailable, openCoachChat } from '../coach/chat-bus'

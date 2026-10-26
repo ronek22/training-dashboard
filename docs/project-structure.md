@@ -48,6 +48,7 @@ Root:
 - `services/ache_followups.py` — next-morning "better, same or worse?" threads for mild aches named in notes; optional expiring lift protection
 - `services/dashboard.py` — dashboard aggregation, recent context, training load
 - `services/goals.py` — goal creation and listing
+- `services/kit.py` — kit wear (shoes, bikes with fitted parts, trainer): per-activity assignment by sport default, Strava gear, parent bike or manual choice; service log (wax, lube...) and replacement history; nearly-due status
 - `services/mcp.py` — MCP tool definitions and dispatch
 - `services/metrics.py` — metric history and writes
 - `services/notes.py` — note creation and listing
@@ -63,6 +64,7 @@ Root:
 - `routers/dashboard.py` — `/dashboard`, `/training-load`, `/context/recent`
 - `routers/goals.py` — `/goals`
 - `routers/integrations.py` — Strava routes
+- `routers/kit.py` — `/kit` (incl. replace, events, Strava gear), `/activities/{id}/kit`
 - `routers/mcp.py` — `/mcp`
 - `routers/metrics.py` — `/metrics`
 - `routers/notes.py` — `/notes`

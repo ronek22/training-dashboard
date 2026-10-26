@@ -38,6 +38,7 @@ from .routers.milestones import router as milestones_router
 from .routers.session_brief import router as session_brief_router
 from .routers.what_worked import router as what_worked_router
 from .routers.return_to_run import router as return_to_run_router
+from .routers.kit import router as kit_router
 from .routers.life_load import router as life_load_router
 from .routers.trails import router as trails_router
 from .routers.backups import router as backups_router
@@ -200,6 +201,7 @@ app.include_router(milestones_router)
 app.include_router(session_brief_router)
 app.include_router(what_worked_router)
 app.include_router(return_to_run_router)
+app.include_router(kit_router)
 app.include_router(life_load_router)
 app.include_router(trails_router)
 app.include_router(backups_router)

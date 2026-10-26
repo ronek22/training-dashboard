@@ -453,6 +453,19 @@
         </section>
 
       </div>
+
+      <div v-show="tab === 'kit'" id="panel-kit" class="athlete-panel" role="tabpanel">
+        <!-- Kit wear -->
+        <section id="kit" class="card athlete-card athlete-card-wide" aria-labelledby="kit-title">
+          <header class="athlete-card-head">
+            <div>
+              <h2 id="kit-title">Kit</h2>
+              <p class="used-by">New runs and rides count toward the default item for their sport, or the item linked to their Strava gear. Change one on its activity page. Saves on its own.</p>
+            </div>
+          </header>
+          <KitList @summary="kitSummary = $event" />
+        </section>
+      </div>
     </template>
 
     <Transition name="expand-fade">
@@ -473,6 +486,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
 import { ZONE_COLORS } from '../components/activityVisuals'
 import PlateStack from '../components/PlateStack.vue'
+import KitList from '../components/KitList.vue'
 import AnimatedNumber from '../components/AnimatedNumber.vue'
 import { DEFAULT_PLATES, barbellRange, plateColor } from '../coach/plates.mjs'
 
@@ -540,8 +554,8 @@ const noteFields = [
 ]
 
 // Each section lives on one tab; old #section links still land on it.
-const sectionTabs = { profile: 'profile', notes: 'profile', thresholds: 'zones', 'hr-zones': 'zones', restrictions: 'limits', 'body-areas': 'limits', rotation: 'strength', equipment: 'strength' }
-const tabKeys = ['profile', 'zones', 'limits', 'strength']
+const sectionTabs = { profile: 'profile', notes: 'profile', thresholds: 'zones', 'hr-zones': 'zones', restrictions: 'limits', 'body-areas': 'limits', rotation: 'strength', equipment: 'strength', kit: 'kit' }
+const tabKeys = ['profile', 'zones', 'limits', 'strength', 'kit']
 const tabFromHash = (hash) => {
   const key = hash.slice(1)
   return tabKeys.includes(key) ? key : sectionTabs[key] || null
@@ -899,6 +913,7 @@ const nudges = computed(() => {
 })
 
 // Tab tiles: each shows what the planner currently believes.
+const kitSummary = ref(null)
 const ftpSourceLabel = { stored: 'Logged', estimate: 'Training estimate', manual: 'Working FTP' }
 const tabs = computed(() => {
   const formState = profileForm.value
@@ -928,6 +943,7 @@ const tabs = computed(() => {
       value: next ? `Next: ${next.code} · ${next.title}` : 'No rotation',
       detail: `${rotationForm.value.templates.length} workouts · bar up to ${formatKg(barbell.value.maxKg)} kg`,
     },
+    { key: 'kit', label: 'Kit', value: kitSummary.value?.value || 'Kit', detail: kitSummary.value?.detail || 'Shoes, chain, tyres' },
   ]
 })
 
@@ -1162,7 +1178,7 @@ function monthsFromSeasonRange(start, end) {
 }
 .athlete-card { display: grid; gap: 18px; align-content: start; }
 
-.athlete-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+.athlete-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
 .athlete-tab {
   display: grid; gap: 3px; align-content: start; min-width: 0; text-align: left; cursor: pointer;
   padding: 13px 16px 14px; border-radius: 14px; border: 1px solid var(--border);
@@ -1441,7 +1457,7 @@ select:disabled { opacity: 0.5; }
 .athlete-page .page-title { font-size: clamp(48px, 5.2vw, 72px); }
 .athlete-page .page-sub { max-width: 66ch; }
 .athlete-page .athlete-tabs {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0;
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0;
   margin: 0 0 20px; padding: 5px; border: 1px solid var(--border); border-radius: 18px;
   background: var(--surface); box-shadow: var(--shadow-card);
 }

@@ -59,6 +59,10 @@
       <p v-if="importMessage" class="import-message" role="status">{{ importMessage }}</p>
       <details v-if="!pageLoading && !stravaStatus.configured" class="sync-details"><summary>Connect Strava</summary><p class="import-hint">Add your Strava credentials to the backend configuration: <code>STRAVA_CLIENT_ID</code>, <code>STRAVA_CLIENT_SECRET</code>, and <code>STRAVA_REFRESH_TOKEN</code>.</p></details>
       <p v-if="stravaStatus.configured && stravaStatus.last_import_at" class="import-hint">Last import: {{ formatDateTime(stravaStatus.last_import_at) }}</p>
+      <p v-if="!pageLoading && stravaStatus.has_client_id" class="import-hint">
+        {{ stravaStatus.scopes?.includes('profile:read_all') ? 'Connected with access to activities and gear.' : 'Shoes and bikes need gear access.' }}
+        <button type="button" class="link-btn" :disabled="reconnecting" @click="reconnectStrava">{{ reconnecting ? 'Opening Strava…' : 'Reconnect Strava' }}</button>
+      </p>
     </section>
 
     <section v-show="activeSource === 'health'" id="source-health" class="card import-card fitbod-card" aria-labelledby="health-heading">
@@ -337,6 +341,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { format, formatDistanceToNow } from 'date-fns'
 import { useApi } from '../stores/api'
+import { useRoute, useRouter } from 'vue-router'
 import DataInbox from '../components/DataInbox.vue'
 
 const api = useApi()
@@ -352,6 +357,39 @@ const sources = computed(() => [
 const importing = ref(false)
 const backfilling = ref(false)
 const importMessage = ref('')
+const route = useRoute()
+const router = useRouter()
+const reconnecting = ref(false)
+// Strava sends the browser back here with ?code&scope (or ?error) after the consent page.
+const stravaRedirect = () => `${window.location.origin}/sync`
+async function reconnectStrava() {
+  reconnecting.value = true
+  try {
+    window.location.href = (await api.getStravaAuthorizeUrl(stravaRedirect())).data.url
+  } catch (error) {
+    importMessage.value = error?.response?.data?.detail || 'Could not start the Strava connection.'
+    reconnecting.value = false
+  }
+}
+async function finishStravaReconnect() {
+  const { code, scope, error } = route.query
+  if (!code && !error) return
+  router.replace({ query: {} })
+  if (error) {
+    importMessage.value = 'Strava connection was cancelled. Nothing changed.'
+    return
+  }
+  try {
+    const { data } = await api.exchangeStravaCode({ code, scope })
+    importMessage.value = data.gear_access
+      ? 'Strava reconnected with gear access. Shoes and bikes can now be added from Athlete › Kit.'
+      : 'Strava reconnected, but gear access was not ticked. Reconnect and keep "View data about your private profile" on to read shoes and bikes.'
+    await loadStravaStatus()
+  } catch (exc) {
+    importMessage.value = exc?.response?.data?.detail || 'Strava reconnection failed.'
+  }
+}
+onMounted(finishStravaReconnect)
 const fitbodImporting = ref(false)
 const fitbodMessage = ref('')
 const healthFitPreview = ref(null)
@@ -797,6 +835,8 @@ const formatSeconds = (value) => {
 .status-missing { background: rgba(245, 158, 11, 0.14); color:#b45309; }
 .import-message { margin: 14px 0 0; font-weight: 600; }
 .import-hint { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+.link-btn { padding: 0; border: 0; background: none; color: var(--accent-strong); font: inherit; font-weight: 600; cursor: pointer; }
+.link-btn:disabled { opacity: .6; cursor: default; }
 .filter-btn {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);

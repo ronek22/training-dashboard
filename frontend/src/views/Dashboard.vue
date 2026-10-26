@@ -57,6 +57,7 @@
           <p v-if="illnessReturnHint" class="swap-hint" :class="`score-${illnessReturn.lingering_symptoms || illnessReturn.hard_sessions.length ? 'red' : 'amber'}`">{{ illnessReturnHint }}</p>
           <p v-if="mountainReentryHint" class="swap-hint score-amber">{{ mountainReentryHint }} <router-link :to="`/mountains/trips/${mountainReentry.trip.start_date}`">Trip recap</router-link></p>
           <p v-if="strengthPhase" class="swap-hint score-block">{{ strengthPhase.headline }}. <router-link to="/strength/workouts">Workout studio</router-link></p>
+          <p v-if="kitDueHint" class="swap-hint score-block">{{ kitDueHint }} <router-link to="/athlete#kit">Kit</router-link></p>
           <p v-if="stallBlock" class="swap-hint score-block" :title="`${stallBlock.label}: ${stallBlock.text}`">{{ stallBlock.headline }}. <router-link to="/strength">Strength</router-link></p>
           <VolumeTrendAlert :trend="volumeTrend" @labeled="onVolumeTrendLabeled" />
         </aside>
@@ -293,6 +294,22 @@ const volumeTrend = computed(() => dashboard.value?.volume_trend || null)
 const sickMode = computed(() => dashboard.value?.sick_mode || { active: false })
 const downshift = computed(() => dashboard.value?.downshift || { offer: false })
 const sleepPayback = computed(() => dashboard.value?.sleep_payback || { active: false })
+// Calm wear cue: only items at 90%+ of their replacement threshold arrive here.
+const kitDueHint = computed(() => {
+  const items = dashboard.value?.kit_due || []
+  if (!items.length) return ''
+  const [first] = items
+  const name = first.parent_name ? `${first.name} (${first.parent_name})` : first.name
+  const more = items.length > 1 ? ` ${items.length - 1} more item${items.length > 2 ? 's' : ''} close too.` : ''
+  if (first.due_reason === 'service') {
+    const service = first.service
+    const since = service.every_km ? `${Math.round(service.since_km)} of ${Math.round(service.every_km)} km` : `${Math.round(service.since_km)} km`
+    return `${name}: ${service.due_label.toLowerCase()} ${service.status === 'due' ? 'due' : 'soon'}, ${since} since the last one.${more}`
+  }
+  const used = first.threshold_km ? `${Math.round(first.used_km)} of ${Math.round(first.threshold_km)} km` : `${first.used_hours} of ${first.threshold_hours} h`
+  const verdict = first.status === 'due' ? 'due for replacement' : 'nearly due'
+  return `${name} ${verdict}: ${used}.${more}`
+})
 // The days after sick mode ends: effort stays capped while the body catches up.
 const illnessReturn = computed(() => dashboard.value?.illness_return || null)
 const illnessReturnHint = computed(() => {

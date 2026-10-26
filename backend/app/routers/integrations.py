@@ -1,4 +1,7 @@
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 from ..db import get_db
 from ..models.integrations import (
@@ -12,6 +15,8 @@ from ..services.activities import upsert_activity
 from ..services.dashboard import estimate_thresholds, intensity_bucket_from_hr
 from ..services.settings import get_setting, set_setting
 from ..services.strava import (
+    build_strava_authorize_url,
+    exchange_strava_code,
     backfill_strava_streams_data,
     build_strava_status_data,
     import_strava_activities_data,
@@ -62,6 +67,21 @@ def import_healthfit_files():
     finally:
         conn.close()
 
+
+
+class StravaAuthCode(BaseModel):
+    code: str = Field(min_length=1, max_length=200)
+    scope: Optional[str] = Field(default=None, max_length=200)
+
+
+@router.get("/integrations/strava/authorize-url")
+def strava_authorize_url(redirect_uri: str):
+    return {"url": build_strava_authorize_url(redirect_uri)}
+
+
+@router.post("/integrations/strava/exchange")
+def strava_exchange(payload: StravaAuthCode):
+    return exchange_strava_code(payload.code, payload.scope, get_setting, set_setting)
 
 
 @router.get("/integrations/strava/status")

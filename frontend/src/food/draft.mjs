@@ -13,7 +13,31 @@ export function draftRow(item = {}) {
   const portions = Number(item.portions) || 0
   row.portions = portions || null
   row.perPortion = portions ? Object.fromEntries(MACROS.map((macro) => [macro, (Number(item[macro]) || 0) / portions])) : null
+  row.recipeId = portions ? item.recipe_id ?? null : null
   return row
+}
+
+// The recipe behind a portion row: by id when the draft carries one, else by its exact title
+// (a logged dish being edited keeps only its name).
+export function rowRecipe(row, recipes) {
+  if (!row.portions) return null
+  if (row.recipeId) return recipes.find((recipe) => recipe.id === row.recipeId) || null
+  const name = row.name.trim().toLowerCase()
+  return recipes.find((recipe) => recipe.title.trim().toLowerCase() === name) || null
+}
+
+// Raw ingredient weights for the portions eaten, so a bowl can be checked against the recipe.
+export function portionIngredients(recipe, portions) {
+  const share = (Number(portions) || 0) / (Number(recipe?.servings) || 1)
+  return (recipe?.ingredients || [])
+    .filter((item) => Number(item.grams) > 0)
+    .map((item) => ({ name: item.name, grams: roundGrams(item.grams * share) }))
+}
+
+// Whole grams for small amounts (oil, spices), nearest 5 g once a scale would show it that way.
+function roundGrams(grams) {
+  const step = grams >= 50 ? 5 : 1
+  return Math.max(1, Math.round(grams / step) * step)
 }
 
 export const PORTION_STEP = 0.5

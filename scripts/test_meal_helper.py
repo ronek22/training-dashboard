@@ -40,6 +40,11 @@ class MealHelperTests(unittest.TestCase):
         self.assertEqual(parsed["items"][1]["kcal"], 0.0)
         self.assertEqual(parsed["note"], "porcja sosu niepewna")
 
+    def test_parse_items_keeps_recipe_id_only_for_portions(self):
+        answer = '{"items":[{"name":"curry","portions":1.5,"recipe_id":7,"kcal":800},{"name":"chleb","grams":40,"recipe_id":7,"kcal":100}]}'
+        parsed = meal_helper.parse_items(answer)
+        self.assertEqual([item.get("recipe_id") for item in parsed["items"]], [7, None])
+
     def test_parse_label_copies_values_and_checks_barcode(self):
         label = meal_helper.parse_label('{"name":"Frankfurterki z jagnięciną","brand":"Pikok","barcode":"2012 3456",'
                                         '"per_100g":{"kcal":"251","protein_g":14.2,"carbs_g":null,"fat_g":21},"serving_g":50,"package_g":"400"}')

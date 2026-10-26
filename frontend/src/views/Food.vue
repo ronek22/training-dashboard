@@ -98,7 +98,8 @@
               <div class="draft-scroll" tabindex="0" role="region" aria-label="Meal items"><table class="draft-table">
                 <thead><tr><th class="left">Item</th><th>{{ rows.some((row) => row.portions) ? "Amount" : "g" }}</th><th>kcal</th><th>P</th><th>C</th><th>F</th><th></th></tr></thead>
                 <tbody>
-                  <tr v-for="row in rows" :key="row.key">
+                  <template v-for="row in rows" :key="row.key">
+                  <tr>
                     <td class="left">
                       <span class="confidence" :class="row.confidence" :title="row.confidence ? `${row.confidence} confidence` : 'entered by you'"></span>
                       <input v-model="row.name" aria-label="Item name" />
@@ -116,6 +117,13 @@
                     </td>
                     <td><button type="button" class="icon-button" aria-label="Remove item" @click="removeRow(row)">✕</button></td>
                   </tr>
+                  <tr v-if="portionBreakdown(row).length" class="portion-ingredients">
+                    <td colspan="7">
+                      <span class="portion-ingredients-label">×{{ String(row.portions).replace('.', ',') }} of the recipe, raw</span>
+                      <span v-for="item in portionBreakdown(row)" :key="item.name" class="portion-ingredient"><b>{{ item.grams }} g</b> {{ item.name }}</span>
+                    </td>
+                  </tr>
+                  </template>
                 </tbody>
                 <tfoot>
                   <tr>
@@ -151,7 +159,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { addDays, format, parseISO } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
@@ -166,7 +174,7 @@ import FoodWeekCard from '../components/FoodWeekCard.vue'
 import NutritionProfileDialog from '../components/NutritionProfileDialog.vue'
 import { defaultGrams, productLabel, scalePer100 } from '../food/products.mjs'
 import { readPhoto as downscalePhoto } from '../food/photo.mjs'
-import { MACROS, PORTION_STEP, defaultMeal, draftRow, portionLabel, rowsToItems, setGrams, setMacro, setPortions, sumRows } from '../food/draft.mjs'
+import { MACROS, PORTION_STEP, defaultMeal, draftRow, portionIngredients, portionLabel, rowRecipe, rowsToItems, setGrams, setMacro, setPortions, sumRows } from '../food/draft.mjs'
 import '../food/food.css'
 
 const api = useApi()
@@ -207,6 +215,18 @@ const dragging = ref(false)
 const textBox = ref(null)
 const route = useRoute()
 const productOpen = ref(false)
+// Recipes behind portion rows, fetched the first time a draft has one.
+const recipes = ref(null)
+watch(() => rows.value.some((row) => row.portions), async (hasPortions) => {
+  if (!hasPortions || recipes.value) return
+  recipes.value = []
+  try {
+    recipes.value = (await api.getRecipes()).data
+  } catch {
+    recipes.value = null
+  }
+})
+const portionBreakdown = (row) => portionIngredients(rowRecipe(row, recipes.value || []), row.portions)
 const router = useRouter()
 // Old links (?view=dinners|recipes|products) still land in the right place.
 const legacyViews = { dinners: 'week', recipes: 'library', products: 'library' }
@@ -579,6 +599,10 @@ onUnmounted(() => {
 .draft-table input:focus { outline: none; border-color: var(--accent); }
 .draft-table td.left { display: flex; align-items: center; gap: 8px; }
 .draft-table td.left input { flex: 1; width: auto; min-width: 200px; text-align: left; }
+.draft-table .portion-ingredients td { text-align: left; padding: 0 4px 8px 19px; color: var(--text-soft); font-size: 12px; }
+.portion-ingredients td > span { display: inline-block; margin-right: 14px; }
+.portion-ingredients-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.portion-ingredient b { color: var(--text); font-weight: 600; }
 .confidence { flex: 0 0 7px; height: 7px; border-radius: 999px; background: var(--border-strong); }
 .confidence.high { background: var(--success-fill); }
 .confidence.medium { background: var(--warning); }

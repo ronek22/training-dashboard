@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { defaultMeal, draftRow, intakeTone, portionLabel, rowsToItems, setGrams, setMacro, setPortions, sumRows } from '../src/food/draft.mjs'
+import { defaultMeal, draftRow, intakeTone, portionIngredients, portionLabel, rowRecipe, rowsToItems, setGrams, setMacro, setPortions, sumRows } from '../src/food/draft.mjs'
 
 test('changing grams rescales every macro', () => {
   const row = setGrams(draftRow({ name: 'ryż', grams: 200, kcal: 260, protein_g: 5, carbs_g: 56, fat_g: 0.6 }), 300)
@@ -52,4 +52,19 @@ test('a recipe dish rescales by portions and keeps them when logged', () => {
   assert.equal(rowsToItems([draftRow({ name: 'skyr', grams: 150, kcal: 95 })])[0].portions, null)
   assert.equal(portionLabel(1), '1 portion')
   assert.equal(portionLabel(1.5), '1,5 portions')
+})
+
+test('a recipe row shows raw ingredient grams for the portions eaten', () => {
+  const recipe = { id: 4, title: 'Kurczak z ryżem', servings: 4, ingredients: [
+    { name: 'ryż', grams: 300 }, { name: 'pierś z kurczaka', grams: 600 }, { name: 'olej', grams: 18 }, { name: 'sól', grams: null },
+  ] }
+  const other = { id: 5, title: 'Curry', servings: 2, ingredients: [] }
+  const row = setPortions(draftRow({ name: 'kurczak', portions: 1, recipe_id: 4, kcal: 600 }), 1.5)
+  assert.equal(rowRecipe(row, [other, recipe]), recipe)
+  assert.deepEqual(portionIngredients(recipe, row.portions), [
+    { name: 'ryż', grams: 115 }, { name: 'pierś z kurczaka', grams: 225 }, { name: 'olej', grams: 7 },
+  ])
+  assert.equal(rowRecipe(draftRow({ name: ' kurczak Z ryżem ', portions: 1, kcal: 600 }), [recipe]), recipe)
+  assert.equal(rowRecipe(draftRow({ name: 'Kurczak z ryżem', grams: 300, kcal: 600 }), [recipe]), null)
+  assert.deepEqual(portionIngredients(null, 1), [])
 })

@@ -167,6 +167,7 @@ def serving_items(recipe: dict, servings: float = 1) -> list[dict]:
         "name": recipe["title"],
         "grams": None,
         "portions": servings,
+        "recipe_id": recipe["id"],
         **{key: round(recipe["per_serving"][key] * servings, 1) for key in MACROS},
         "confidence": "medium",
     }]

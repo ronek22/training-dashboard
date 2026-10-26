@@ -41,7 +41,8 @@ Rules:
 - When a saved food or product below matches what was eaten, use its values scaled to the portion.
   Products list real label values per 100 g; prefer them over typical values for branded foods.
 - When a dish matches one of the athlete's recipes below, use its per-portion values scaled to the portions eaten,
-  set "portions" to that count (e.g. 1 or 1.5) and grams to 0. Leave "portions" out for everything else.
+  set "portions" to that count (e.g. 1 or 1.5), "recipe_id" to the recipe's id and grams to 0.
+  Leave "portions" and "recipe_id" out for everything else.
 - confidence: "high" when weights or packaging are given, "medium" for typical portions, "low" for guesses.
 - If nothing edible is described or visible, return an empty items list and say why in note.
 
@@ -97,7 +98,7 @@ def saved_foods_hint() -> str:
     except Exception:
         recipes = []
     rows = [
-        {"name": recipe["title"], **{key: recipe["per_serving"].get(key) for key in MACROS}}
+        {"id": recipe["id"], "name": recipe["title"], **{key: recipe["per_serving"].get(key) for key in MACROS}}
         for recipe in (recipes or [])[:40] if recipe.get("per_serving", {}).get("kcal")
     ]
     if rows:
@@ -152,11 +153,13 @@ def parse_items(answer: str) -> dict:
             portions = min(50.0, max(0.0, round(float(item.get("portions") or 0), 2)))
         except (TypeError, ValueError):
             portions = 0.0
+        recipe_id = item.get("recipe_id")
         items.append({
             "name": str(item["name"]).strip()[:120],
             **values,
             "confidence": confidence if confidence in ("high", "medium", "low") else "medium",
             **({"portions": portions} if portions else {}),
+            **({"recipe_id": recipe_id} if portions and isinstance(recipe_id, int) and recipe_id > 0 else {}),
         })
     note = data.get("note")
     return {"items": items[:30], "note": str(note).strip()[:300] if note else ""}

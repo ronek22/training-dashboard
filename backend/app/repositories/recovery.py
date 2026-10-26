@@ -80,6 +80,8 @@ def init_recovery_schema(conn):
         ("what_helped", "TEXT NOT NULL DEFAULT ''"),
         ("previous_issue_id", "INTEGER"),
         ("see_professional", "INTEGER NOT NULL DEFAULT 0"),
+        # 0 for light issues opened from an ache follow-up: protection there is a separate, expiring choice.
+        ("protects_area", "INTEGER NOT NULL DEFAULT 1"),
     ):
         if name not in columns:
             conn.execute(f"ALTER TABLE recovery_issues ADD COLUMN {name} {ddl}")

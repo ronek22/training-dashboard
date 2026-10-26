@@ -108,6 +108,15 @@ class LiftVolumeTests(unittest.TestCase):
         self.assertEqual(self._group(volume, "legs")["added_sets"], 0)
         self.assertEqual(volume["protected_areas"], ["left knee"])
 
+    def test_ache_follow_up_protection_counts_while_it_lasts(self):
+        days = [_day("2026-10-08", "Workout A"), _day("2026-10-09", "Workout B")]
+        chosen = [{"area": "knee", "since": "2026-10-05", "note": "Ache follow-up until 2026-10-10"}]
+        with patch.object(strength_volume, "ache_protected_areas", lambda conn, today: chosen):
+            volume = self._build(days)
+
+        self.assertEqual(self._group(volume, "legs")["added_sets"], 0)
+        self.assertEqual(volume["protected_areas"], ["knee"])
+
     def test_protected_lower_back_keeps_its_lifts_out_of_the_top_up(self):
         days = [_day("2026-10-08", "Workout A"), _day("2026-10-09", "Workout B"), _day("2026-10-10", "Workout C")]
         restrictions = {"body_areas": [{"area": "lower_back"}]}

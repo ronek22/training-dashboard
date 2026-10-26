@@ -19,6 +19,7 @@ from .muscle_gain import MUSCLE_GROUPS, TARGET_SETS_MAX, TARGET_SETS_MIN, muscle
 from .illness_return import illness_return_dates
 from .life_load import mountain_dates
 from .mountain_reentry import mountain_reentry_dates
+from .ache_followups import protected_areas as ache_protected_areas
 from .recovery import issue_body_areas
 from .settings import get_modality_restrictions_for_conn, normalize_body_areas, protected_area_for_exercise
 from .sick_mode import sick_dates
@@ -173,8 +174,8 @@ def build_lift_volume(
         body_areas = get_modality_restrictions_for_conn(conn).get("body_areas") or []
     except sqlite3.OperationalError:
         body_areas = []
-    # Active injuries protect their area too; the Athlete-page entries win on duplicates.
-    body_areas = normalize_body_areas(body_areas + issue_body_areas(conn))
+    # Active injuries and ache follow-ups the athlete chose to protect count too; the Athlete-page entries win on duplicates.
+    body_areas = normalize_body_areas(body_areas + issue_body_areas(conn) + ache_protected_areas(conn, today))
     injury_rests_legs = any(item["area"] in LEG_AREAS for item in body_areas)
     skipped: set[str] = set()
 

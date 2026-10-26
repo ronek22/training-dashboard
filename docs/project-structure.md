@@ -45,6 +45,7 @@ Root:
 ### Services
 
 - `services/activities.py` — activity CRUD and calendar-week aggregation
+- `services/ache_followups.py` — next-morning "better, same or worse?" threads for mild aches named in notes; optional expiring lift protection
 - `services/dashboard.py` — dashboard aggregation, recent context, training load
 - `services/goals.py` — goal creation and listing
 - `services/mcp.py` — MCP tool definitions and dispatch

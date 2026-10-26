@@ -2,6 +2,8 @@ import sqlite3
 from datetime import datetime
 from typing import Optional
 
+from .ache_followups import note_mention
+
 CHECKIN_COLUMNS = "date, energy, muscle_soreness, stress, sleep_quality, pain_level, note, updated_at"
 
 
@@ -44,5 +46,6 @@ def upsert_daily_checkin(conn: sqlite3.Connection, payload: dict) -> dict:
             (payload.get("note") or None),
         ),
     )
+    note_mention(conn, "checkin", day, day, payload.get("pain_level", 0), payload.get("note"))
     conn.commit()
     return get_daily_checkin(conn, day)

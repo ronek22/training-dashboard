@@ -3,7 +3,8 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from ..db import get_db
-from ..models.checkins import DailyCheckinInput, GuidedSessionCompletionInput, SickModeLogInput, SickModeStartInput, VolumeTrendLabelInput
+from ..models.checkins import AcheFollowupAcceptInput, AcheFollowupAnswerInput, DailyCheckinInput, GuidedSessionCompletionInput, SickModeLogInput, SickModeStartInput, VolumeTrendLabelInput
+from ..services import ache_followups
 from ..services.checkins import get_daily_checkin, upsert_daily_checkin
 from ..services.downshift import build_downshift
 from ..services.guided_sessions import public_session, reconcile_guided_session_activities, save_guided_completion
@@ -29,6 +30,40 @@ def save_checkin(checkin: DailyCheckinInput):
         return {"checkin": upsert_daily_checkin(conn, checkin.model_dump())}
     finally:
         conn.close()
+
+
+def _followup_action(action):
+    conn = get_db()
+    try:
+        result = action(conn)
+        conn.commit()
+        return result
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error))
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error))
+    finally:
+        conn.close()
+
+
+@router.get("/ache-followups")
+def list_ache_followups():
+    return {"followups": _followup_action(ache_followups.pending)}
+
+
+@router.post("/ache-followups/{followup_id}/answer")
+def answer_ache_followup(followup_id: int, payload: AcheFollowupAnswerInput):
+    return {"followup": _followup_action(lambda conn: ache_followups.answer(conn, followup_id, payload.answer))}
+
+
+@router.post("/ache-followups/{followup_id}/accept")
+def accept_ache_followup(followup_id: int, payload: AcheFollowupAcceptInput):
+    return _followup_action(lambda conn: ache_followups.accept(conn, followup_id, payload))
+
+
+@router.post("/ache-followups/{followup_id}/dismiss")
+def dismiss_ache_followup(followup_id: int):
+    return {"followup": _followup_action(lambda conn: ache_followups.dismiss(conn, followup_id))}
 
 
 @router.post("/volume-trend/label")

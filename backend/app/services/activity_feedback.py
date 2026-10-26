@@ -2,6 +2,7 @@ import sqlite3
 
 from fastapi import HTTPException
 
+from .ache_followups import note_mention
 from ..repositories.activity_feedback import (
     get_activity_feedback_row,
     list_recent_feedback_rows,
@@ -58,6 +59,9 @@ def upsert_activity_feedback_data(conn: sqlite3.Connection, activity_id: str, fe
     if not activity:
         raise HTTPException(status_code=404, detail=f"Activity {activity_id} not found")
     upsert_activity_feedback_row(conn, activity_id, feedback)
+    saved = get_activity_feedback_row(conn, activity_id)
+    if saved is not None:
+        note_mention(conn, "feedback", activity_id, saved["activity_date"], saved["pain_level"], saved["note"])
     conn.commit()
     return get_activity_feedback_data(conn, activity_id) or {}
 

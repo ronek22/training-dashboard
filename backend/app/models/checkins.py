@@ -39,3 +39,16 @@ class GuidedSessionCompletionInput(BaseModel):
 class LifeLoadDayInput(BaseModel):
     tags: list[Literal["travel", "deadline", "family", "poor_sleep", "late_night", "mountains"]] = Field(default_factory=list, max_length=6)
     note: Optional[str] = Field(default=None, max_length=300)
+
+
+class AcheFollowupAnswerInput(BaseModel):
+    answer: Literal["better", "same", "worse"]
+
+
+class AcheFollowupAcceptInput(BaseModel):
+    title: str = Field(min_length=1, max_length=100)
+    body_area: str = Field(min_length=1, max_length=80)
+    side: Literal["", "left", "right", "both"] = ""
+    pain: Optional[int] = Field(default=None, ge=0, le=10)
+    # 0 opens the issue without protecting the area in the lift top-up.
+    protect_days: int = Field(default=0, ge=0, le=14)

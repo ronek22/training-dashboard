@@ -10,6 +10,7 @@
         <i role="img" :aria-label="`${bar.label}: ${bar.value} out of ${bar.max}, ${bar.qualifier}; ${bar.direction}`"><b v-for="n in bar.max" :key="n" :class="{ on: n <= bar.filled }" /></i>
         <strong>{{ bar.value }}/{{ bar.max }}<small>{{ bar.qualifier }}</small></strong>
       </div>
+      <AcheFollowups />
     </div>
 
     <div v-else-if="!editing" class="checkin-summary-block">
@@ -36,6 +37,7 @@
           </header>
 
           <div class="cm-body">
+            <AcheFollowups />
             <section v-for="row in rows" :key="row.key" class="cm-row">
               <div class="cm-row-head">
                 <span :id="`checkin-${row.key}`" class="cm-label"><span class="cm-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path :d="row.icon" /></svg></span>{{ row.label }}</span>
@@ -71,6 +73,18 @@
                   @click="form.pain_level = option.value"
                 >{{ option.label }}</button>
               </div>
+              <!-- Naming the spot lets tomorrow's check-in follow it up. -->
+              <div v-if="form.pain_level === 2" class="cm-areas" role="radiogroup" aria-label="Where?">
+                <button
+                  v-for="area in painAreas"
+                  :key="area"
+                  type="button"
+                  role="radio"
+                  :aria-checked="painArea === area"
+                  :class="{ on: painArea === area }"
+                  @click="painArea = painArea === area ? '' : area"
+                >{{ area }}</button>
+              </div>
             </section>
           </div>
 
@@ -94,6 +108,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useApi } from '../stores/api'
+import AcheFollowups from './AcheFollowups.vue'
 
 const props = defineProps({ checkin: { type: Object, default: null } })
 const emit = defineEmits(['saved'])
@@ -111,11 +126,16 @@ const toneColor = (row, n) => tones[(row.inverted ? 6 - n : n) - 1]
 const painOptions = [{ label: 'None', value: 0, tone: tones[4] }, { label: 'Mild', value: 2, tone: tones[1] }, { label: 'Painful', value: 5, tone: tones[0] }]
 const todayLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
 
+// Labels match the backend's protected body areas, so a saved "Niggle: Lower back" note is detected.
+const painAreas = ['Lower back', 'Knee', 'Hip', 'Heel', 'Shoulder', 'Neck', 'Elbow', 'Wrist']
+const NIGGLE_NOTE = /^Niggle: (.+)$/
+
 const blank = () => ({ energy: 0, muscle_soreness: 0, stress: 0, sleep_quality: 0, pain_level: 0 })
 const form = reactive(blank())
 const editing = ref(false)
 const saving = ref(false)
 const error = ref('')
+const painArea = ref('')
 
 const answered = computed(() => rows.filter((row) => form[row.key] > 0).length)
 
@@ -167,6 +187,7 @@ function startEditing() {
     sleep_quality: props.checkin.sleep_quality,
     pain_level: props.checkin.pain_level >= 4 ? 5 : props.checkin.pain_level >= 1 ? 2 : 0,
   })
+  painArea.value = (props.checkin.note || '').match(NIGGLE_NOTE)?.[1] || ''
   editing.value = true
 }
 
@@ -186,7 +207,10 @@ async function save() {
   saving.value = true
   error.value = ''
   try {
-    const { data } = await api.saveDailyCheckin({ ...form })
+    // Only the niggle note is set here; any other note written elsewhere is kept.
+    const existing = props.checkin?.note || null
+    const note = form.pain_level === 2 && painArea.value ? `Niggle: ${painArea.value}` : NIGGLE_NOTE.test(existing || '') ? null : existing
+    const { data } = await api.saveDailyCheckin({ ...form, note })
     closeForm()
     emit('saved', data.checkin)
   } catch {
@@ -231,6 +255,11 @@ async function save() {
 .cm-seg button { min-width: 0; padding: 9px 2px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; transition: background var(--motion-duration-fast), color var(--motion-duration-fast), border-color var(--motion-duration-fast); }
 .cm-seg button:hover { background: color-mix(in srgb, var(--tone) 10%, transparent); color: var(--text); }
 .cm-seg button.on { border-color: color-mix(in srgb, var(--tone) 55%, transparent); background: color-mix(in srgb, var(--tone) 20%, var(--surface)); color: var(--text); font-weight: 700; box-shadow: var(--shadow-card); }
+
+.cm-areas { display: flex; flex-wrap: wrap; gap: 6px; }
+.cm-areas button { min-height: 34px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface2); padding: 0 10px; color: var(--muted-soft); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.cm-areas button:hover { color: var(--text); }
+.cm-areas button.on { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, var(--surface)); color: var(--text); }
 
 .cm-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px 18px; border-top: 1px solid var(--border); }
 .cm-progress { display: flex; align-items: center; gap: 5px; }

@@ -296,6 +296,8 @@ def issue_body_areas(conn):
     """
     areas = []
     for row in _active_issue_rows(conn):
+        if not row.get("protects_area", 1):
+            continue
         for area in detect_body_areas(f"{row['title']} {row['body_area']}"):
             areas.append({"area": area, "side": row["side"], "since": row["started_on"], "recovery_issue_id": row["id"]})
     return areas
@@ -311,7 +313,8 @@ def coaching_summary(conn):
         plan = plan if isinstance(plan, dict) else {}
         summaries.append({"issue_id": item["id"], "title": item["title"], "body_area": item["body_area"], "side": item["side"],
                           "started_on": item["started_on"], "current_pain": _current_pain(conn, item["id"]),
-                          "protected_areas": detect_body_areas(f"{item['title']} {item['body_area']}"),
+                          "protected_areas": detect_body_areas(f"{item['title']} {item['body_area']}")
+                          if item.get("protects_area", 1) else [],
                           "avoid": plan.get("avoid", []),
                           "do": plan.get("do", []),
                           "rehab_exercises": [{"name": exercise.get("name"), "dose": exercise.get("dose")}

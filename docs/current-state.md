@@ -28,6 +28,7 @@ One line per shipped feature, newest first. The full entry (what shipped, API, U
 
 When a feature ships: add its full entry at the top of `docs/shipped/YYYY-MM.md` (create the file for a new month, same shape: `### Title`, a blank line, then `YYYY-MM-DD: summary...`), and add its line at the top of this list.
 
+- 2026-10-26 — Sleep payback plan (`shipped/2026-10.md`)
 - 2026-10-26 — Estimated power for outdoor rides (`shipped/2026-10.md`)
 - 2026-10-26 — Heart-rate load on the TSS scale (`shipped/2026-10.md`)
 - 2026-10-26 — Planned-day brief on the dashboard week (`shipped/2026-10.md`)

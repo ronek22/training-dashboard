@@ -10,6 +10,7 @@ from .checkins import get_daily_checkin
 from .ftp import ftp_on
 from .power_estimate import CALIBRATION_BAND, MODEL_VERSION as POWER_ESTIMATE_MODEL, estimated_tss, estimates_for
 from .downshift import build_downshift, downshift_coaching_context
+from .sleep_payback import build_sleep_payback, sleep_payback_coaching_context
 from .guided_sessions import guided_completion_dates, reconcile_guided_session_activities
 from .illness_return import build_illness_return, illness_return_coaching_context
 from .mountain_reentry import build_mountain_reentry, mountain_reentry_coaching_context
@@ -1296,6 +1297,7 @@ def build_recent_context(
         "illness_return": illness_return_coaching_context(conn),
         "mountain_reentry": mountain_reentry_coaching_context(conn),
         "downshift": downshift_coaching_context(conn),
+        "sleep_payback": sleep_payback_coaching_context(conn),
         "life_load": life_load_coaching_context(conn),
         "nutrition": nutrition_coaching_context(conn),
         "minimum_week": minimum_week_state(conn, (datetime.now().date() - timedelta(days=datetime.now().weekday())).isoformat()),
@@ -1507,6 +1509,7 @@ def build_dashboard_data(
             mountain_reentry=mountain_reentry, illness_return=illness_return,
         ),
         "downshift": build_downshift(conn),
+        "sleep_payback": build_sleep_payback(conn),
         "training_load": training_load,
         "relative_effort": build_relative_effort(conn),
         "weekly_plan": serialized_latest_plan,

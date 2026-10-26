@@ -23,9 +23,10 @@
           <SickModeCard :state="sickMode" @changed="onSickModeChanged" />
           <TodayCard v-if="todayActivities.length" v-bind="todayCard" />
         </div>
-        <div v-else-if="downshift.offer" class="sick-stack">
+        <div v-else-if="downshift.offer || sleepPayback.active" class="sick-stack">
           <TodayCard v-bind="todayCard" @plan-changed="loadDashboard" />
-          <DownshiftCard :state="downshift" />
+          <SleepPaybackCard v-if="sleepPayback.active" :plan="sleepPayback" />
+          <DownshiftCard v-if="downshift.offer" :state="downshift" />
         </div>
         <TodayCard v-else v-bind="todayCard" @plan-changed="loadDashboard" />
 
@@ -193,6 +194,7 @@ import ProteinTick from '../components/ProteinTick.vue'
 import VolumeTrendAlert from '../components/VolumeTrendAlert.vue'
 import SickModeCard from '../components/SickModeCard.vue'
 import DownshiftCard from '../components/DownshiftCard.vue'
+import SleepPaybackCard from '../components/SleepPaybackCard.vue'
 import WeekWinsCard from '../components/WeekWinsCard.vue'
 import { useApi } from '../stores/api'
 import { buildStrengthPlanDraft } from '../strength-plan-draft.mjs'
@@ -290,6 +292,7 @@ const onCheckinSaved = () => loadDashboard()
 const volumeTrend = computed(() => dashboard.value?.volume_trend || null)
 const sickMode = computed(() => dashboard.value?.sick_mode || { active: false })
 const downshift = computed(() => dashboard.value?.downshift || { offer: false })
+const sleepPayback = computed(() => dashboard.value?.sleep_payback || { active: false })
 // The days after sick mode ends: effort stays capped while the body catches up.
 const illnessReturn = computed(() => dashboard.value?.illness_return || null)
 const illnessReturnHint = computed(() => {
@@ -339,7 +342,8 @@ const swapHint = computed(() => {
 })
 const sleepDebtHint = computed(() => {
   const debt = readinessScore.value?.sleep_debt
-  if (!debt || !['caution', 'risk'].includes(debt.status) || swapHint.value) return ''
+  // The payback card carries the sleep advice when it is showing.
+  if (!debt || !['caution', 'risk'].includes(debt.status) || swapHint.value || sleepPayback.value.active) return ''
   const hours = `~${Math.round(debt.debt_hours)} h sleep debt this week`
   const isHard = (day) => day && hardPlanIntents.has(String(day.workout_intent || '').toLowerCase())
   const todayOpen = !todayPlanCompleted.value && !todayActivities.value.length

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useApi } from '../stores/api'
+import { cached, onCacheRefresh, useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import RecordDetail from '../components/RecordDetail.vue'
 import { openMilestone } from '../stores/milestones'
@@ -28,17 +28,19 @@ watch(venue, value => {
   try { localStorage.setItem(VENUE_KEY, value) } catch { /* storage unavailable */ }
 })
 
-onMounted(async () => {
+const loadRecords = async () => {
   const day = new Date().toLocaleDateString('en-CA')
-  api.getMilestones(day).then(({ data: result }) => { milestones.value = result }).catch(() => { /* The shelf stays hidden. */ })
+  cached(() => api.getMilestones(day)).then(({ data: result }) => { milestones.value = result }).catch(() => { /* The shelf stays hidden. */ })
   try {
-    data.value = (await api.getPersonalRecords()).data
+    data.value = (await cached(api.getPersonalRecords)).data
   } catch {
     error.value = 'Records could not be loaded. Check that the backend is running and try again.'
   } finally {
     loading.value = false
   }
-})
+}
+onMounted(loadRecords)
+onCacheRefresh(loadRecords)
 
 // ---- formatting -----------------------------------------------------------
 const formatDate = (value) => value

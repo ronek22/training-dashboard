@@ -837,7 +837,7 @@
 import { computed, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { format, parseISO, startOfWeek } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
-import { useApi } from '../stores/api'
+import { cached, onCacheRefresh, useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
 import RehabChecklist from '../components/RehabChecklist.vue'
@@ -1266,10 +1266,10 @@ const openTimelineWeek = async (week) => {
 }
 
 const load = async () => {
-  loading.value = true
+  loading.value = !plans.value.length
   flashMessage.value = null
   try {
-    const plansResult = await requestWithTimeout(api.getWeeklyPlans({ limit: 8 }))
+    const plansResult = await requestWithTimeout(cached(() => api.getWeeklyPlans({ limit: 8 })))
     plans.value = plansResult.data
     const currentPlan = plans.value.find((plan) => isCurrentPlan(plan)) || plans.value[0]
     if (!selectedWeekStart.value || !plans.value.some((plan) => plan.week_start === selectedWeekStart.value)) {
@@ -1293,14 +1293,14 @@ const load = async () => {
   }
 
   try {
-    const libraryResult = await requestWithTimeout(api.getCyclingWorkouts(), 6000)
+    const libraryResult = await requestWithTimeout(cached(api.getCyclingWorkouts), 6000)
     cyclingLibrary.value = libraryResult.data
   } catch {
     cyclingLibrary.value = null
   }
 
   try {
-    const trendsResult = await requestWithTimeout(api.getWeeklyPlanTrends({ weeks: 6 }), 6000)
+    const trendsResult = await requestWithTimeout(cached(() => api.getWeeklyPlanTrends({ weeks: 6 })), 6000)
     planTrends.value = trendsResult.data
   } catch {
     planTrends.value = null
@@ -1340,6 +1340,19 @@ const loadSickDates = async () => {
 
 onMounted(load)
 onMounted(loadSickDates)
+
+// Newer data from a background refresh replaces the plans in place, keeping open editors and
+// the selected week; `load` would reset them.
+onCacheRefresh(async () => {
+  try {
+    const [plansResult, trendsResult] = await Promise.all([
+      cached(() => api.getWeeklyPlans({ limit: 8 })),
+      cached(() => api.getWeeklyPlanTrends({ weeks: 6 })),
+    ])
+    plans.value = plansResult.data
+    planTrends.value = trendsResult.data
+  } catch {}
+})
 
 // Life-load tags: chips on day cards, and the plan's clash list is rebuilt after each change.
 const lifeLoad = useLifeLoad()

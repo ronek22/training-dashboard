@@ -488,7 +488,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useApi } from '../stores/api'
+import { cached, onCacheRefresh, useApi } from '../stores/api'
 import GoalHistorySparkline from '../components/GoalHistorySparkline.vue'
 import NavIcon from '../components/NavIcon.vue'
 import AnimatedNumber from '../components/AnimatedNumber.vue'
@@ -526,9 +526,10 @@ const goalDraftPreview = ref(null)
 const goalDraftInput = ref(null)
 const form = ref(defaultForm())
 const loadGoals = async () => {
-  loading.value = true
+  // A background refresh updates the goals in place, without the skeleton.
+  loading.value = !allGoals.value.length
   try {
-    allGoals.value = (await api.getGoals({ limit: 48, include_history: true, include_outcomes: true })).data
+    allGoals.value = (await cached(() => api.getGoals({ limit: 48, include_history: true, include_outcomes: true }))).data
   } finally {
     loading.value = false
   }
@@ -538,7 +539,7 @@ const loadGoals = async () => {
 // The review is a secondary layer: if it fails, the goals page still works.
 const loadReview = async () => {
   try {
-    goalReview.value = (await api.getGoalReview()).data
+    goalReview.value = (await cached(api.getGoalReview)).data
   } catch {
     goalReview.value = null
   }
@@ -546,7 +547,7 @@ const loadReview = async () => {
 
 const loadSuggestions = async () => {
   try {
-    const result = await api.getGoalSuggestions()
+    const result = await cached(api.getGoalSuggestions)
     const suggestions = result.data?.suggestions ?? result.data
     goalSuggestions.value = Array.isArray(suggestions) ? suggestions.slice(0, 3) : []
   } catch {
@@ -563,9 +564,10 @@ const proteinLine = computed(() => {
   return `Protein on lift days this week: ${week.hits}/${week.lift_days}${target}`
 })
 
+onCacheRefresh(loadGoals)
 onMounted(async () => {
   await loadGoals()
-  api.getProteinStatus().then(({ data }) => { proteinStatus.value = data }).catch(() => {})
+  cached(api.getProteinStatus).then(({ data }) => { proteinStatus.value = data }).catch(() => {})
 })
 
 const groupedGoals = computed(() => {

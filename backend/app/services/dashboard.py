@@ -21,6 +21,7 @@ from .volume_trend import build_volume_trend
 from .plan_follow_through import plan_follow_through_coaching_context
 from .personal_records import build_recent_records_context
 from .session_brief import build_briefs_for_date
+from ..request_cache import db_memo
 from .stall_blocks import current_block as current_stall_block
 from .strength_phases import current_phase as current_strength_phase
 from .winter_arc import winter_arc_coaching_context
@@ -1340,6 +1341,22 @@ def build_dashboard_data(
 
     reconcile_guided_session_activities(conn)
     reconcile_workout_template_rotation_state(conn)
+    # Everything below only reads, so the payload holds until the database changes. The hour in
+    # the key bounds anything that depends on the clock rather than the data.
+    hour_key = datetime.now().strftime("%Y-%m-%dT%H")
+    return db_memo(
+        conn,
+        ("dashboard", hour_key, getattr(list_goals_data_fn, "__qualname__", "")),
+        lambda: _build_dashboard_payload(conn, list_goals_data_fn, build_relative_effort, get_weekly_direction),
+    )
+
+
+def _build_dashboard_payload(
+    conn: sqlite3.Connection,
+    list_goals_data_fn: Callable[[sqlite3.Connection, bool, int], list[dict]],
+    build_relative_effort: Callable[[sqlite3.Connection], dict],
+    get_weekly_direction: Callable[[sqlite3.Connection], Optional[dict]],
+) -> dict:
     computed_streak = compute_activity_streak(conn)
 
     recent = conn.execute("""

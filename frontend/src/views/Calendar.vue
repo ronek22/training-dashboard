@@ -159,7 +159,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { addDays, addMonths, endOfWeek, format, isValid, parseISO, startOfWeek } from 'date-fns'
-import { useApi } from '../stores/api'
+import { cached, onCacheRefresh, useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import CalendarDayCell from '../components/CalendarDayCell.vue'
 import LifeLoadPicker from '../components/LifeLoadPicker.vue'
@@ -285,11 +285,12 @@ const sickDates = ref(new Set())
 const loadSickDates = async () => {
   try { sickDates.value = new Set((await api.getSickDates()).data.dates) } catch { sickDates.value = new Set() }
 }
-const fetchPlans = async () => { const { data } = await api.getWeeklyPlans({ limit: 16 }); plans.value = data }
-const loadWeek = async () => { const { data } = await api.getCalendarWeeks({ weeks: 16 }); weeks.value = data }
-const loadMonth = async () => { const { data } = await api.getCalendarMonth({ month: activeMonthKey.value }); monthData.value = data }
+const fetchPlans = async () => { const { data } = await cached(() => api.getWeeklyPlans({ limit: 16 })); plans.value = data }
+const loadWeek = async () => { const { data } = await cached(() => api.getCalendarWeeks({ weeks: 16 })); weeks.value = data }
+const loadMonth = async () => { const { data } = await cached(() => api.getCalendarMonth({ month: activeMonthKey.value })); monthData.value = data }
 const reload = async () => {
-  loading.value = true
+  // A background refresh updates the calendar in place, without the skeleton.
+  loading.value = !weeks.value.length
   error.value = ''
   try { await Promise.all([loadWeek(), loadMonth(), fetchPlans()]); syncSelectedDate() } catch (err) { error.value = err?.response?.data?.detail || 'Check the connection and try again.' } finally { loading.value = false }
 }
@@ -499,6 +500,7 @@ const undoMove = () => {
 
 watch([popupOpen, selectedDate, cyclingLibrary], () => { if (popupOpen.value) nextTick(positionPopup) }, { flush: 'post' })
 
+onCacheRefresh(reload)
 onMounted(() => {
   reload()
   loadSickDates()

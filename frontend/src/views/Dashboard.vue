@@ -197,7 +197,7 @@ import SickModeCard from '../components/SickModeCard.vue'
 import DownshiftCard from '../components/DownshiftCard.vue'
 import SleepPaybackCard from '../components/SleepPaybackCard.vue'
 import WeekWinsCard from '../components/WeekWinsCard.vue'
-import { useApi } from '../stores/api'
+import { cached, onCacheRefresh, useApi } from '../stores/api'
 import { buildStrengthPlanDraft } from '../strength-plan-draft.mjs'
 
 const api = useApi()
@@ -234,17 +234,18 @@ function monthActivityWindowDays() {
 }
 
 const loadDashboard = async () => {
-  loading.value = true
+  // A refresh of data already on screen updates it in place, without the skeleton.
+  loading.value = !dashboard.value
   // The goal count and today's activities don't need the dashboard payload, so they load
   // alongside it instead of after it.
   void loadGoalReviewCount()
-  const activitiesRequest = api.getActivities({ days: monthActivityWindowDays(), limit: 200 }).then(
+  const activitiesRequest = cached(() => api.getActivities({ days: monthActivityWindowDays(), limit: 200 })).then(
     ({ data }) => { recentActivities.value = data },
     () => { recentActivities.value = [] },
   )
   void activitiesRequest.then(loadTodayActivityDetails)
   try {
-    const [dashboardResult] = await Promise.allSettled([api.getDashboard(), activitiesRequest])
+    const [dashboardResult] = await Promise.allSettled([cached(api.getDashboard), activitiesRequest])
     dashboard.value = dashboardResult.status === 'fulfilled' ? dashboardResult.value.data : null
     if (dashboard.value && isLocalCoachHost.value) void refreshCoachState(false)
     if (todayPlan.value?.cycling_workout_id && !cyclingLibrary.value) void loadCyclingLibrary()
@@ -264,7 +265,7 @@ async function loadTodayActivityDetails() {
 // Only the count is shown here; the Goals page carries the full review.
 async function loadGoalReviewCount() {
   try {
-    goalReviewCount.value = (await api.getGoalReview()).data?.attention_count || 0
+    goalReviewCount.value = (await cached(api.getGoalReview)).data?.attention_count || 0
   } catch { goalReviewCount.value = 0 }
 }
 
@@ -281,6 +282,7 @@ async function loadCyclingLibrary() {
 }
 
 onMounted(loadDashboard)
+onCacheRefresh(loadDashboard)
 
 const todayKey = computed(() => format(new Date(), 'yyyy-MM-dd'))
 const tomorrowKey = computed(() => format(addDays(new Date(), 1), 'yyyy-MM-dd'))

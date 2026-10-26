@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -18,7 +18,7 @@ const settleRequest = (config) => {
   apiBusy.value = false
 }
 api.interceptors.request.use((config) => {
-  if (config.timeout && config.timeout > 30000) return config
+  if (config.quiet || (config.timeout && config.timeout > 30000)) return config
   config.countsAsBusy = true
   pendingRequests += 1
   busyTimer ??= setTimeout(() => {
@@ -45,6 +45,120 @@ api.get = (url, config = {}) => {
   inFlightGets.set(key, request)
   return request
 }
+
+// Pages read through `cached(() => api.getX())` so a revisit paints the last copy at once and
+// refreshes it behind the scenes; pages that do so re-run their loader with `onCacheRefresh`
+// when the refresh brings something new. Any write clears the lot, so an edit is never shown
+// stale. Plain `api.get` calls (polls, status checks) never touch this cache.
+const FRESH_MS = 15_000
+const MAX_STALE_MS = 30 * 60_000
+const responseCache = new Map()
+const refreshListeners = new Set()
+const backgroundRefreshes = new Map()
+let cacheGeneration = 0
+let cachingCalls = 0
+let prefetching = 0
+let currentPage = ''
+let refreshNotice = null
+
+const PAGE_KEYS_STORAGE = 'api-page-reads'
+const pageKeys = (() => {
+  try { return new Map(Object.entries(JSON.parse(localStorage.getItem(PAGE_KEYS_STORAGE)) || {})) } catch { return new Map() }
+})()
+const rememberPageRead = (key, url, params) => {
+  if (!currentPage) return
+  const reads = pageKeys.get(currentPage) || []
+  if (reads.some((read) => read.key === key)) return
+  pageKeys.set(currentPage, [...reads, { key, url, params }].slice(-12))
+  try { localStorage.setItem(PAGE_KEYS_STORAGE, JSON.stringify(Object.fromEntries(pageKeys))) } catch { /* private mode */ }
+}
+
+const storeResponse = (key, response, generation) => {
+  if (generation !== cacheGeneration) return false
+  const json = JSON.stringify(response.data)
+  const previous = responseCache.get(key)
+  responseCache.set(key, { json, at: Date.now() })
+  return Boolean(previous) && previous.json !== json
+}
+const fromStore = (entry) => ({ data: JSON.parse(entry.json), status: 200, headers: {}, config: {}, cached: true })
+
+const announceRefresh = () => {
+  if (refreshNotice) return
+  // One re-run per page, however many of its reads changed.
+  refreshNotice = setTimeout(() => {
+    refreshNotice = null
+    refreshListeners.forEach((listener) => listener())
+  }, 30)
+}
+
+const refreshInBackground = (key, url, config) => {
+  if (backgroundRefreshes.has(key)) return
+  const generation = cacheGeneration
+  const request = sendGet(url, { ...config, quiet: true })
+    .then((response) => { if (storeResponse(key, response, generation)) announceRefresh() })
+    .catch(() => {})
+    .finally(() => backgroundRefreshes.delete(key))
+  backgroundRefreshes.set(key, request)
+}
+
+const cachedGet = (url, config) => {
+  const key = `${url}?${JSON.stringify(config.params || {})}`
+  if (prefetching) config = { ...config, quiet: true }
+  else rememberPageRead(key, url, config.params)
+  const entry = responseCache.get(key)
+  const age = entry ? Date.now() - entry.at : Infinity
+  if (age < MAX_STALE_MS) {
+    if (age >= FRESH_MS) refreshInBackground(key, url, config)
+    return Promise.resolve(fromStore(entry))
+  }
+  const generation = cacheGeneration
+  return originalGet(url, config).then((response) => {
+    storeResponse(key, response, generation)
+    return response
+  })
+}
+
+const originalGet = api.get
+api.get = (url, config = {}) => (cachingCalls ? cachedGet(url, config) : originalGet(url, config))
+
+export const cached = (read) => {
+  cachingCalls += 1
+  try { return read() } finally { cachingCalls -= 1 }
+}
+
+// Warms a read for a page the pointer is heading to; quiet, and failures wait for the real load.
+export const prefetch = (read) => {
+  prefetching += 1
+  try { cached(read).catch(() => {}) } catch { /* the page load reports it */ } finally { prefetching -= 1 }
+}
+
+export const onCacheRefresh = (loader) => {
+  onMounted(() => refreshListeners.add(loader))
+  onBeforeUnmount(() => refreshListeners.delete(loader))
+}
+
+export const setCurrentPage = (path) => { currentPage = path }
+
+// Hovering a link warms the reads that page made last time, so the click paints at once.
+export const prefetchPage = (path) => {
+  for (const { key, url, params } of pageKeys.get(path) || []) {
+    const entry = responseCache.get(key)
+    if (entry && Date.now() - entry.at < FRESH_MS) continue
+    refreshInBackground(key, url, { params })
+  }
+}
+
+// For writes the app learns of some other way (a coach job finishing).
+export const invalidateCache = () => {
+  cacheGeneration += 1
+  responseCache.clear()
+}
+
+api.interceptors.response.use((response) => {
+  if (response.config?.method && response.config.method !== 'get') invalidateCache()
+  return response
+})
+
 const coachHelper = axios.create({
   baseURL: import.meta.env.VITE_COACH_HELPER_URL || 'http://127.0.0.1:8765',
   timeout: 8000,

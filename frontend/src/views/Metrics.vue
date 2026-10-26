@@ -285,7 +285,7 @@ import TrainingLoadPanel from '../components/TrainingLoadPanel.vue'
 import CyclingPowerTrends from '../components/CyclingPowerTrends.vue'
 import SessionComparisons from '../components/SessionComparisons.vue'
 import HealthTrendChart from '../components/HealthTrendChart.vue'
-import { useApi } from '../stores/api'
+import { cached, onCacheRefresh, useApi } from '../stores/api'
 
 const api = useApi()
 const route = useRoute()
@@ -340,9 +340,10 @@ const selectedHeartRateZone = ref('zone2')
 const selectedHeatmapCell = ref(null)
 
 const loadPage = async () => {
-  loading.value = true
+  // A background refresh updates the page in place, without the skeleton.
+  loading.value = !performanceSummary.value && !trainingHistory.value
   loadError.value = ''
-  const results = await Promise.allSettled([api.getPerformanceSummary(), api.getPerformanceSettings(), api.getWeeklyPlanTrends({ weeks: 4 }), api.getHealthSummary({ days: 90 }), api.getMetric('weight'), api.getMetric('ftp'), api.getTrainingHistory()])
+  const results = await cached(() => Promise.allSettled([api.getPerformanceSummary(), api.getPerformanceSettings(), api.getWeeklyPlanTrends({ weeks: 4 }), api.getHealthSummary({ days: 90 }), api.getMetric('weight'), api.getMetric('ftp'), api.getTrainingHistory()]))
   if (results.every((result) => result.status === 'rejected')) {
     loadError.value = 'None of the supporting training data could be loaded.'
     loading.value = false
@@ -356,11 +357,13 @@ const loadPage = async () => {
   metricData.value.ftp = results[5].status === 'fulfilled' ? results[5].value.data : []
   trainingHistory.value = results[6].status === 'fulfilled' ? results[6].value.data : null
   const selectableDays = (trainingHistory.value?.activity_heatmap?.cells || []).filter((cell) => cell.in_year && !cell.is_future && cell.sessions > 0)
-  selectedHeatmapCell.value = selectableDays.at(-1) || null
+  const keepCell = selectableDays.find((cell) => cell.date === selectedHeatmapCell.value?.date)
+  selectedHeatmapCell.value = keepCell || selectableDays.at(-1) || null
   loading.value = false
 }
 
 onMounted(loadPage)
+onCacheRefresh(loadPage)
 watch(() => route.query.view, (value) => { activeView.value = normalizeView(value) })
 
 const selectView = async (key) => {

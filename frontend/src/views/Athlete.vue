@@ -506,7 +506,7 @@
 <script setup>
 import { computed, defineComponent, h, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useApi } from '../stores/api'
+import { cached, onCacheRefresh, useApi } from '../stores/api'
 import { ZONE_COLORS } from '../components/activityVisuals'
 import PlateStack from '../components/PlateStack.vue'
 import KitList from '../components/KitList.vue'
@@ -657,16 +657,16 @@ const dirtyLabels = computed(() => [
   dirty.value.rotation && 'rotation',
 ].filter(Boolean))
 
-async function load() {
-  loading.value = true
+async function load({ refresh = false } = {}) {
+  loading.value = !refresh && !profile.value
   loadError.value = ''
   try {
-    const [profileResult, performanceResult, restrictionResult, rotationResult] = await Promise.all([
+    const [profileResult, performanceResult, restrictionResult, rotationResult] = await cached(() => Promise.all([
       api.getAthleteProfile(),
       api.getPerformanceSettings(),
       api.getModalityRestrictions(),
       api.getWorkoutTemplateSettings(),
-    ])
+    ]))
     applyProfile(profileResult.data)
     applyPerformance(performanceResult.data)
     applyRestrictions(restrictionResult.data)
@@ -678,9 +678,9 @@ async function load() {
     loading.value = false
   }
   // Secondary context: the page works without it.
-  api.getRecoveryIssues().then(({ data }) => { recoveryIssues.value = Array.isArray(data) ? data : [] }).catch(() => {})
-  api.getStrengthWorkoutTemplates().then(({ data }) => { savedWorkouts.value = Array.isArray(data) ? data : [] }).catch(() => {})
-  if (sectionTabs[route.hash.slice(1)]) goToSection(route.hash.slice(1))
+  cached(api.getRecoveryIssues).then(({ data }) => { recoveryIssues.value = Array.isArray(data) ? data : [] }).catch(() => {})
+  cached(api.getStrengthWorkoutTemplates).then(({ data }) => { savedWorkouts.value = Array.isArray(data) ? data : [] }).catch(() => {})
+  if (!refresh && sectionTabs[route.hash.slice(1)]) goToSection(route.hash.slice(1))
 }
 
 function applyProfile(data) { profile.value = data; profileForm.value = profileFormFrom(data) }
@@ -689,6 +689,8 @@ function applyRestrictions(data) { restrictions.value = data; restrictionForm.va
 function applyRotation(data) { rotation.value = data; rotationForm.value = rotationFormFrom(data) }
 
 onMounted(load)
+// Newer settings from a background refresh never overwrite edits in progress.
+onCacheRefresh(() => { if (!dirtyLabels.value.length) load({ refresh: true }) })
 
 // Profile
 const sportLabel = (key) => sports.find((sport) => sport.key === key)?.label || key

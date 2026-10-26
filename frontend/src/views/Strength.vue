@@ -315,7 +315,7 @@
 import ExerciseGuide from '../components/ExerciseGuide.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { format, startOfWeek } from 'date-fns'
-import { useApi } from '../stores/api'
+import { cached, onCacheRefresh, useApi } from '../stores/api'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import MuscleGainCheck from '../components/MuscleGainCheck.vue'
 import LiftVolumePanel from '../components/LiftVolumePanel.vue'
@@ -351,7 +351,7 @@ const weekLiftVolume = computed(() => {
 })
 const maxWeeklySessions = computed(() => Math.max(1, ...(overview.value?.weekly || []).map(week => Number(week.session_count || 0))))
 const loadWorkoutContext = async () => {
-  const results = await Promise.allSettled([api.getActiveStrengthWorkoutSession(), api.getWeeklyPlans({ limit: 8 })])
+  const results = await Promise.allSettled([api.getActiveStrengthWorkoutSession(), cached(() => api.getWeeklyPlans({ limit: 8 }))])
   activeWorkout.value = results[0].status === 'fulfilled' ? results[0].value.data : null
   strengthPlans.value = results[1].status === 'fulfilled' ? results[1].value.data : []
   workoutContextError.value = results.some(result => result.status === 'rejected')
@@ -560,7 +560,7 @@ const fetchStrengthOverview = async () => {
       body_part: selectedBodyPart.value,
     }
     if (selectedExercise.value) params.exercise = selectedExercise.value
-    const { data } = await api.getStrengthOverview(params)
+    const { data } = await cached(() => api.getStrengthOverview(params))
     if (request !== overviewRequest) return
     overview.value = data
     if (selectedExercise.value && !data.filters.exercise_options.some((option) => option.exercise_name === selectedExercise.value)) {
@@ -584,6 +584,10 @@ watch(selectedExercise, () => {
 })
 
 onMounted(() => {
+  fetchStrengthOverview()
+  loadWorkoutContext()
+})
+onCacheRefresh(() => {
   fetchStrengthOverview()
   loadWorkoutContext()
 })

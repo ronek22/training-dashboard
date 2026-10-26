@@ -72,7 +72,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import FeelCard from '../components/FeelCard.vue'
 import { useRoute } from 'vue-router'
-import { useApi } from '../stores/api'
+import { cached, invalidateCache, onCacheRefresh, useApi } from '../stores/api'
 import ActivityHeader from '../components/activity-detail/ActivityHeader.vue'
 import EnduranceAnalysis from '../components/activity-detail/EnduranceAnalysis.vue'
 import StrengthAnalysis from '../components/activity-detail/StrengthAnalysis.vue'
@@ -103,9 +103,10 @@ let viewActive = true
 // Tags feed the what-worked memory; only training sessions are compared.
 const isTaggable = computed(() => ['Ride', 'VirtualRide', 'Run', 'WeightTraining'].includes(detail.value?.activity?.type))
 
+// Reloading the activity already on screen (a refresh, a saved tag) updates it in place.
 const load = async () => {
-  loading.value = true; error.value = null
-  try { detail.value = (await api.getActivityDetail(route.params.activityId)).data }
+  loading.value = String(detail.value?.activity?.id) !== String(route.params.activityId); error.value = null
+  try { detail.value = (await cached(() => api.getActivityDetail(route.params.activityId))).data }
   catch (requestError) {
     const code = requestError?.response?.status
     error.value = code === 404
@@ -116,6 +117,7 @@ const load = async () => {
   } finally { loading.value = false }
 }
 onMounted(load)
+onCacheRefresh(load)
 watch(() => route.params.activityId, () => {
   analysisMessage.value = ''
   analysisMessageError.value = false
@@ -180,6 +182,8 @@ const analyzeWithCoach = async (question = '') => {
       analysisMessage.value = job.message || 'The coach is analyzing the workout…'
       if (job.status === 'failed') throw new Error(job.message || 'The coach could not analyze this activity.')
       if (job.status === 'succeeded') {
+        // The coach saved its analysis outside this app's requests.
+        invalidateCache()
         await load()
         analysisMessage.value = ''
         return

@@ -190,7 +190,7 @@ import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
-import { useApi } from '../stores/api'
+import { cached, onCacheRefresh, useApi } from '../stores/api'
 import WhatWorkedPanel from '../components/WhatWorkedPanel.vue'
 import { groupByMonth, parseLocalDate, sliceMonths, sportBucket, totals } from '../activities/log.mjs'
 
@@ -235,22 +235,24 @@ const sportFilters = [
 const LEGACY_FILTERS = { Run:'run', Ride:'ride', WeightTraining:'strength', Walk:'walk', Hike:'hike' }
 if (LEGACY_FILTERS[activeFilter.value]) activeFilter.value = LEGACY_FILTERS[activeFilter.value]
 
-const load = async () => {
-  loading.value = true; errorMessage.value = ''
+// A background refresh updates the list in place and keeps any intent being picked.
+const load = async ({ refresh = false } = {}) => {
+  loading.value = !refresh && !activities.value.length; errorMessage.value = ''
   try {
-    const { data } = await api.getActivities({ limit: ALL_ACTIVITIES_LIMIT })
+    const { data } = await cached(() => api.getActivities({ limit: ALL_ACTIVITIES_LIMIT }))
     activities.value = Array.isArray(data) ? data : []
-    selectedIntents.value = {}
+    if (!refresh) selectedIntents.value = {}
   } catch (error) {
     errorMessage.value = error?.response?.data?.detail || 'Check your connection and try again.'
   } finally { loading.value = false }
 }
 onMounted(load)
+onCacheRefresh(() => load({ refresh: true }))
 
 // All-time top-3 places per activity from the records wall; optional decoration.
 const recordRanks = ref({})
 onMounted(async () => {
-  try { recordRanks.value = (await api.getActivityRecordRanks()).data || {} } catch { recordRanks.value = {} }
+  try { recordRanks.value = (await cached(api.getActivityRecordRanks)).data || {} } catch { recordRanks.value = {} }
 })
 const recordTag = (id) => {
   const prs = (recordRanks.value[id] || []).filter(item => item.rank === 1).length

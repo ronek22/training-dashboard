@@ -162,7 +162,7 @@
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { addDays, format, parseISO } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
-import { useApi } from '../stores/api'
+import { cached, onCacheRefresh, useApi } from '../stores/api'
 import DinnerPlanner from '../components/DinnerPlanner.vue'
 import RecipeLibrary from '../components/RecipeLibrary.vue'
 import ProductLibrary from '../components/ProductLibrary.vue'
@@ -292,7 +292,7 @@ const isSaved = (item) => saved.value.some((food) => food.name.toLowerCase() ===
 
 async function loadDay() {
   try {
-    const { data } = await api.getFoodDay(selectedDay.value)
+    const { data } = await cached(() => api.getFoodDay(selectedDay.value))
     if (disposed) return
     day.value = data
     Object.assign(profile, data.profile)
@@ -302,7 +302,7 @@ async function loadDay() {
   }
 }
 async function loadSaved() {
-  try { saved.value = (await api.getSavedFoods()).data } catch { saved.value = [] }
+  try { saved.value = (await cached(api.getSavedFoods)).data } catch { saved.value = [] }
 }
 function setDay(key) {
   selectedDay.value = key
@@ -526,6 +526,12 @@ onMounted(() => {
   loadDay()
   loadSaved()
   textBox.value?.focus()
+})
+// The day carries the nutrition profile, so a refresh waits while the profile is being edited.
+onCacheRefresh(() => {
+  if (profileOpen.value) return
+  loadDay()
+  loadSaved()
 })
 onUnmounted(() => {
   disposed = true

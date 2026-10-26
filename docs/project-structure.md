@@ -50,6 +50,7 @@ Root:
 - `services/mcp.py` — MCP tool definitions and dispatch
 - `services/metrics.py` — metric history and writes
 - `services/notes.py` — note creation and listing
+- `services/power_estimate.py` — physics power estimate for outdoor rides without a meter (load and ride type only) and its calibration check
 - `services/plans.py` — plan serialization, adjustment, comparison semantics
 - `services/settings.py` — app settings reads/writes including modality restrictions and athlete profile normalization
 - `services/strava.py` — Strava import and stream backfill logic

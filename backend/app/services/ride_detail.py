@@ -4,7 +4,9 @@ Power is only treated as measured when ``_confirmed_power_meter`` says so
 (Strava's ``device_watts`` flag, or a backfilled VirtualRide watts stream).
 Outdoor rides without a meter still carry Strava's *estimated* average power;
 that is reported as ``power_source = "estimated"`` so the page can label it
-and never use it for intensity, load, or power bests.
+and never use it for intensity, load, or power bests. The app's own physics
+estimate (``estimated_power``) is shown beside it, labelled, because load and
+ride type use it; it never feeds power bests.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from typing import Any, Optional
 from ..request_cache import blob_memo
 from .aerobic_decoupling import EXCLUSION_REASONS, _environment, analyse_ride_streams
 from .ftp import ftp_on
+from .power_estimate import CALIBRATION_BAND, estimate_for_detail, estimated_tss
 from .power_trends import (
     POWER_EFFORT_LABELS,
     _best_effort_from_runs,
@@ -126,6 +129,22 @@ def _decoupling(streams_json: Any, ftp: Optional[float]) -> dict[str, Any]:
     }
 
 
+def _estimated_power(conn: sqlite3.Connection, activity: dict, detail_row: Any, ftp: Optional[float]) -> Optional[dict[str, Any]]:
+    estimate = estimate_for_detail(conn, activity, detail_row)
+    if not estimate:
+        return None
+    tss = estimated_tss(estimate, ftp, float(activity.get("duration_min") or 0))
+    return {
+        "avg_watts": round(estimate["avg_watts"]),
+        "normalized_watts": round(estimate["normalized_power"]),
+        "intensity_factor": round(estimate["normalized_power"] / ftp, 2) if ftp else None,
+        "tss": round(tss) if tss is not None else None,
+        "rider_kg": estimate["rider_kg"],
+        "error_band_pct": round(CALIBRATION_BAND * 100),
+        "model": estimate["model"],
+    }
+
+
 def build_ride_detail(
     conn: sqlite3.Connection,
     activity: dict,
@@ -160,6 +179,7 @@ def build_ride_detail(
             **base,
             "power_source": "estimated" if estimated else "none",
             "estimated_avg_watts": estimated,
+            "estimated_power": _estimated_power(conn, activity, detail_row, ftp),
             "power": None,
             "power_efforts": [],
             "decoupling": None,
@@ -186,6 +206,7 @@ def build_ride_detail(
         **base,
         "power_source": "measured",
         "estimated_avg_watts": None,
+        "estimated_power": None,
         "power": power,
         "power_efforts": _power_efforts(runs, streams, streams_json, str(activity.get("id")), ftp, records),
         "decoupling": _decoupling(streams_json, ftp),

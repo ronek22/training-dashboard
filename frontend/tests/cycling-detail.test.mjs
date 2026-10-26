@@ -36,6 +36,17 @@ test('estimated power is a flagged chip and the raw summary average is hidden', 
   assert.equal(chips[0].key, 'hr_load')
 })
 
+test('the physics estimate replaces the Strava chip and says what it is not used for', () => {
+  const ride = { ...estimated, estimated_power: { avg_watts: 142, normalized_watts: 171, tss: 64, rider_kg: 80, error_band_pct: 15 } }
+  const chips = cyclingSecondaryChips(stats, ride)
+  const power = chips.filter((chip) => chip.key === 'estimated_power')
+  assert.equal(power.length, 1)
+  assert.equal(power[0].display, '~142 W · NP ~171 W')
+  assert.equal(power[0].estimated, true)
+  assert.match(power[0].title, /never for records, power curve or FTP/)
+  assert.equal(chips.find((chip) => chip.key === 'estimated_tss').display, '~64')
+})
+
 test('max HR folds into the avg HR tile and indoor rides keep distance as a chip', () => {
   const chips = cyclingSecondaryChips(stats, measured).map((chip) => chip.key)
   assert.ok(!chips.includes('max_hr'))

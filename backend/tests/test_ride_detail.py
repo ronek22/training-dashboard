@@ -59,6 +59,19 @@ class RideDetailTests(unittest.TestCase):
         self.assertEqual(result["power_efforts"], [])
         self.assertEqual(result["hr_load"], 80.0)
 
+    def test_outdoor_ride_with_speed_gets_a_flagged_physics_estimate(self):
+        times = list(range(1801))
+        streams = {
+            "time": {"data": times}, "velocity_smooth": {"data": [8.0 for _ in times]},
+            "distance": {"data": [8.0 * second for second in times]}, "altitude": {"data": [100.0 for _ in times]},
+        }
+        result = self.build({"id": "5", "type": "Ride", "date": "2026-02-01", "avg_watts": 150, "duration_min": 30}, detail={"device_watts": False}, streams=streams)
+        estimate = result["estimated_power"]
+        self.assertEqual(estimate["avg_watts"], 172)  # 93 kg on a hybrid at 28.8 km/h, flat
+        self.assertEqual(estimate["error_band_pct"], 15)
+        self.assertIsNone(result["power"])
+        self.assertEqual(result["power_efforts"], [])
+
     def test_ride_without_any_power_reports_none(self):
         result = self.build({"id": "3", "type": "Ride", "date": "2026-02-01", "avg_watts": None}, detail={})
         self.assertEqual(result["power_source"], "none")

@@ -2,8 +2,9 @@
 
 Each ride is classified from what was actually ridden. A trusted power stream
 is read against the FTP estimate from recent training efforts (no test), an
-outdoor ride without a power meter falls back to its heart-rate stream, and a
-ride with neither uses its intent label or averages. A type is flagged when it
+outdoor ride without a power meter uses power estimated from its speed and
+elevation (``power_estimate``), then its heart-rate stream, and a ride with
+none of these uses its intent label or averages. A type is flagged when it
 showed up earlier in the window but not in the last two weeks.
 """
 
@@ -15,6 +16,7 @@ from datetime import date, timedelta
 from typing import Any, Optional
 
 from .ftp import working_ftp
+from .power_estimate import estimable, estimated_watts, rider_weight_on
 from .heart_rate_zones import DEFAULT_HR_ZONE_STARTS, hr_zone_definitions
 from .power_trends import MAX_STREAM_GAP_SECONDS, _confirmed_power_meter, _decode_json, _finite_number, _stream_values
 
@@ -142,6 +144,7 @@ def classify_ride(
     detail: Optional[sqlite3.Row],
     ftp: Optional[float],
     hr_bands: Optional[tuple[float, float]] = None,
+    rider_kg: Optional[float] = None,
 ) -> dict[str, Any]:
     """Return {type, basis, reason} for one ride. Hard work found in a stream wins over the label."""
     minutes = float(ride.get("duration_min") or 0)
@@ -154,23 +157,32 @@ def classify_ride(
     )
     evidence = None
     basis = None
+    estimated = (
+        estimated_watts(streams, rider_kg) if not power_ok and ftp and rider_kg
+        and estimable(ride["type"], detail["detail_json"], detail["source_status"], streams) else None
+    )
     if power_ok:
         evidence, basis = _from_power(streams, ftp), "power"
+    elif estimated:
+        # Same thresholds as a power meter; labelled so it is never mistaken for measured power.
+        evidence, basis = _from_power(estimated, ftp), "estimated_power"
     elif streams and len(_stream_values(streams, "heartrate")) >= 2:
         # Sweet spot from zone 3, VO2 from zone 5 of the ride HR zones.
         bands = hr_bands or (float(DEFAULT_HR_ZONE_STARTS["ride"][1]), float(DEFAULT_HR_ZONE_STARTS["ride"][3]))
         evidence, basis = _from_heart_rate(streams, bands), "heart_rate"
 
     if evidence:
+        note = " (estimated power)" if basis == "estimated_power" else ""
         if evidence["vo2_seconds"] >= evidence["vo2_needed"]:
-            return {"type": "vo2", "basis": basis, "reason": f"{round(evidence['vo2_seconds'] / 60)} min at VO2 effort"}
+            return {"type": "vo2", "basis": basis, "reason": f"{round(evidence['vo2_seconds'] / 60)} min at VO2 effort{note}"}
         if evidence["sweet_spot_seconds"] >= SWEET_SPOT_MIN_SECONDS:
-            return {"type": "sweet_spot", "basis": basis, "reason": f"{round(evidence['sweet_spot_seconds'] / 60)} min at sweet spot or above"}
+            return {"type": "sweet_spot", "basis": basis, "reason": f"{round(evidence['sweet_spot_seconds'] / 60)} min at sweet spot or above{note}"}
         if intent == "recovery":
             return {"type": "recovery", "basis": "intent", "reason": "Marked as a recovery ride"}
         if minutes <= RECOVERY_MAX_MINUTES:
-            if basis == "power" and evidence["average"] is not None and evidence["average"] <= ftp * RECOVERY_MAX_FTP:
-                return {"type": "recovery", "basis": basis, "reason": f"Short and easy: {round(evidence['average'])} W average"}
+            if basis in {"power", "estimated_power"} and evidence["average"] is not None and evidence["average"] <= ftp * RECOVERY_MAX_FTP:
+                prefix = "~" if basis == "estimated_power" else ""
+                return {"type": "recovery", "basis": basis, "reason": f"Short and easy: {prefix}{round(evidence['average'])} W average"}
             if basis == "heart_rate" and ride.get("avg_hr") and ride["avg_hr"] <= RECOVERY_MAX_AVG_HR:
                 return {"type": "recovery", "basis": basis, "reason": f"Short and easy: {round(ride['avg_hr'])} bpm average"}
         return {"type": "z2", "basis": basis, "reason": "Steady aerobic riding"}
@@ -224,7 +236,8 @@ def build_ride_balance(conn: sqlite3.Connection, today: Optional[date] = None, w
         if minutes < MIN_RIDE_MINUTES:
             continue
         has_detail = row["streams_json"] is not None or row["detail_json"] is not None
-        result = classify_ride(ride, row if has_detail else None, reference["watts"], hr_bands)
+        rider_kg = rider_weight_on(conn, ride["date"]) if ride["type"] == "Ride" and row["streams_json"] else None
+        result = classify_ride(ride, row if has_detail else None, reference["watts"], hr_bands, rider_kg)
         ride_day = date.fromisoformat(str(ride["date"])[:10])
         week = week_rows[(_week_start(ride_day) - window_start).days // 7]
         week["counts"][result["type"]] += 1
@@ -272,7 +285,8 @@ def build_ride_balance(conn: sqlite3.Connection, today: Optional[date] = None, w
     method = (
         f"Each ride of {MIN_RIDE_MINUTES}+ min gets one type from what you rode. With a power meter: 60 s power at "
         f"{round(VO2_FTP * 100)}%+ of FTP for {VO2_MIN_POWER_SECONDS // 60}+ min is VO2, and {round(SWEET_SPOT_FTP * 100)}%+ in "
-        f"5 min blocks for {SWEET_SPOT_MIN_SECONDS // 60}+ min is sweet spot. FTP is {ftp_note}. Without power, heart rate "
+        f"5 min blocks for {SWEET_SPOT_MIN_SECONDS // 60}+ min is sweet spot. FTP is {ftp_note}. Outdoor rides without a meter use power estimated from speed, "
+        f"elevation and body weight on the same thresholds; without that, heart rate "
         f"≥ {vo2_low:g} bpm counts as VO2 and {sweet_low:g}–{vo2_low - 1:g} bpm as sweet spot. Short, easy rides and rides "
         f"marked recovery count as recovery; the rest is Z2. A type is flagged when none has happened in {GONE_AFTER_DAYS} days."
     )

@@ -8,6 +8,7 @@ from .plans import build_multi_week_execution_trend, serialize_weekly_plan
 from .plans import format_workout_intent_label, normalize_workout_intent
 from .checkins import get_daily_checkin
 from .ftp import ftp_on
+from .power_estimate import CALIBRATION_BAND, MODEL_VERSION as POWER_ESTIMATE_MODEL, estimated_tss, estimates_for
 from .downshift import build_downshift, downshift_coaching_context
 from .guided_sessions import guided_completion_dates, reconcile_guided_session_activities
 from .illness_return import build_illness_return, illness_return_coaching_context
@@ -766,6 +767,14 @@ def generic_load_details(row: sqlite3.Row, thresholds: Optional[dict] = None, hr
     return {"load": round(duration_min * 0.7, 1), "bucket": "low_aerobic", "source": "duration"}
 
 
+def estimated_power_load_details(estimate: dict, ftp: float, duration_min: float) -> dict:
+    """Outdoor ride without a power meter, scored from its estimated normalized power."""
+    tss = estimated_tss(estimate, ftp, duration_min) or 0.0
+    intensity_factor = min(estimate["normalized_power"] / ftp, 1.5)
+    bucket = "low_aerobic" if intensity_factor <= 0.75 else "high_aerobic" if intensity_factor <= 0.9 else "anaerobic"
+    return {"load": round(tss, 1), "bucket": bucket, "source": "estimated_power_tss"}
+
+
 def bucket_from_stream_summary(row: sqlite3.Row) -> Optional[str]:
     low = int(row["stream_low_aerobic_seconds"] or 0)
     high = int(row["stream_high_aerobic_seconds"] or 0)
@@ -869,6 +878,7 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
     activity_rows = conn.execute(
         """
         SELECT
+            a.id,
             a.date,
             a.type,
             a.duration_min,
@@ -909,9 +919,15 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
         }
 
     focus_cutoff = today - timedelta(days=safe_focus_days - 1)
-    load_sources = {"power_tss": 0, "hr_trimp": 0, "duration": 0}
+    load_sources = {"power_tss": 0, "estimated_power_tss": 0, "hr_trimp": 0, "duration": 0}
     historical_thresholds: dict[str, dict] = {}
     ftp_by_day: dict[str, Optional[float]] = {}
+    # Outdoor rides without a power meter get power estimated from speed and elevation,
+    # so they count on the same TSS scale as trainer rides instead of the HR fallback.
+    power_estimates = estimates_for(conn, [
+        row["id"] for row in activity_rows
+        if row["type"] == "Ride" and row["stream_power_tss"] is None and row["date"] in by_day
+    ])
 
     for row in activity_rows:
         day = row["date"]
@@ -934,7 +950,12 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
             if activity_thresholds is None:
                 activity_thresholds = estimate_thresholds(conn, as_of_date=day)
                 historical_thresholds[day] = activity_thresholds
-        details = activity_load_details(row, activity_thresholds, hr_scales)
+        estimate = power_estimates.get(row["id"])
+        estimate_ftp = _ftp_on_cached(conn, ftp_by_day, day[:10]) if estimate else None
+        if estimate and estimate_ftp:
+            details = estimated_power_load_details(estimate, estimate_ftp, float(row["duration_min"] or 0))
+        else:
+            details = activity_load_details(row, activity_thresholds, hr_scales)
         load = details["load"]
         bucket = details["bucket"]
         row_day = datetime.strptime(day, "%Y-%m-%d").date()
@@ -989,7 +1010,7 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
     }
     total_focus_load = sum(focus_loads.values())
     ratio = round(current["atl"] / current["ctl"], 2) if current["ctl"] > 0 else 0.0
-    detailed_sources = {"power_tss", "hr_trimp"}
+    detailed_sources = {"power_tss", "estimated_power_tss", "hr_trimp"}
     detailed_sessions = sum(load_sources.get(source, 0) for source in detailed_sources)
     fallback_sessions = max(load_sources.get("duration", 0), 0)
     total_scored_sessions = detailed_sessions + fallback_sessions
@@ -1038,7 +1059,12 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
             "anaerobic": round((focus_loads["anaerobic"] / total_focus_load) * 100) if total_focus_load else 0,
         },
         "model": {
-            "name": "hybrid_hrtss_tss_v2",
+            "name": "hybrid_hrtss_tss_v3",
+            "estimated_power": {
+                "model": POWER_ESTIMATE_MODEL,
+                "rides": load_sources["estimated_power_tss"],
+                "error_band_pct": round(CALIBRATION_BAND * 100),
+            },
             "hr_load_scale": {sport: round(scale, 2) for sport, scale in hr_scales.items()},
             "resting_hr": round(thresholds["resting_hr"]),
             "ftp": round(thresholds["ftp"]) if thresholds["ftp"] else None,

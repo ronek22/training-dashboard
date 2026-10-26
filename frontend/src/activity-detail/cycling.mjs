@@ -66,7 +66,15 @@ export function cyclingSecondaryChips(stats = [], ride = null) {
     const display = ['moving_time_min', 'elapsed_time_min'].includes(stat.key) ? clock(stat.value) : `${stat.value}${stat.unit ? ` ${stat.unit}` : ''}`
     chips.push({ key: stat.key, label: stat.label, display })
   }
-  if (ride?.power_source === 'estimated' && ride.estimated_avg_watts != null) {
+  const physics = ride?.estimated_power
+  if (physics) {
+    const band = `±${physics.error_band_pct}%`
+    chips.push({
+      key: 'estimated_power', label: 'Est. power', display: `~${physics.avg_watts} W · NP ~${physics.normalized_watts} W`, estimated: true,
+      title: `Estimated from speed, elevation and ${physics.rider_kg} kg body weight (no wind or drafting), typically within ${band}. Used for load and ride type only, never for records, power curve or FTP.`,
+    })
+    if (physics.tss != null) chips.push({ key: 'estimated_tss', label: 'Est. TSS', display: `~${physics.tss}`, estimated: true, title: 'Training load from the estimated normalized power. This is what fitness and fatigue count for this ride.' })
+  } else if (ride?.power_source === 'estimated' && ride.estimated_avg_watts != null) {
     chips.push({
       key: 'estimated_power', label: 'Est. power', display: `~${Math.round(ride.estimated_avg_watts)} W`, estimated: true,
       title: 'Strava estimate from speed and elevation, not a power meter. Not used for intensity, load or power bests.',

@@ -1313,7 +1313,8 @@ button { color: inherit; }
 
 /* Keep the dashboard inside the phone viewport while preserving deliberate
    horizontal scrollers for the week strip and chart data. */
-.dashboard-shell, .dashboard-shell > *, .dashboard-shell .signal-card, .dashboard-shell .explore-section{ min-width: 0; max-width: 100%; }
+.dashboard-shell{ min-width: 0; }
+.dashboard-shell > *, .dashboard-shell .signal-card, .dashboard-shell .explore-section{ min-width: 0; max-width: 100%; }
 .dashboard-header > div, .signal-heading > div, .section-heading > div{ min-width: 0; }
 .explore-grid strong{ overflow-wrap: anywhere; }
 .dashboard-shell .header-plan-link, .dashboard-shell .explore-grid button{ min-height: 44px; }

@@ -453,6 +453,10 @@ tr:hover td { background: var(--surface2); }
 .motion-section:nth-child(3) { animation-delay: 30ms; }
 .motion-section:nth-child(4) { animation-delay: 45ms; }
 
+/* Big monitors: pages without their own width cap stay at the 1440 px artboard width,
+   centred, instead of stretching every card. Pages that set a max-width keep it. */
+.main-content > * { max-width: 1440px; margin-inline: auto; }
+
 /* Only the incoming page moves. The outgoing one leaves at once: animating both kept
    them in the flow together, so the new page rendered below the old one, then jumped up. */
 .route-forward-enter-active,

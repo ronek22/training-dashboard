@@ -293,6 +293,9 @@ button:disabled { opacity: .5; cursor: wait; }
 .idea-card h3 { font: 600 14.5px/1.35 var(--font-display); letter-spacing: -.01em; margin-bottom: 6px; }
 .title-button { all: unset; cursor: pointer; }
 .title-button::after { content: ''; position: absolute; inset: 0; }
+/* The global press scale would make the button the overlay's containing block, shrinking it to the title mid-click. Press the card instead. */
+.title-button:active { scale: none; }
+.idea-card:has(.title-button:active) { scale: .99; }
 .idea-card { position: relative; }
 .title-button:focus-visible { outline: none; }
 .idea-card:has(.title-button:focus-visible) { outline: 2px solid var(--accent-strong); outline-offset: 2px; }

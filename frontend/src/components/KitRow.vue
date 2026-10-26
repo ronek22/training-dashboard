@@ -81,7 +81,7 @@ const canReplace = computed(() => !['bike', 'trainer'].includes(item.value.kind)
   <li class="kit-row" :class="[`is-${item.status}`, { 'is-part': part }]">
     <div class="kit-name">
       <strong>{{ item.name }}</strong>
-      <small>{{ item.kind_label }}<template v-if="!part"> · {{ sportLabel(item.sport) }}</template> · since {{ shortDate(item.started_on) }}</small>
+      <small>{{ item.kind_label }}<template v-if="!part"> · {{ sportLabel(item.sport) }}</template><template v-else-if="!item.count_indoor"> · outdoor only</template> · since {{ shortDate(item.started_on) }}</small>
     </div>
     <div class="kit-wear">
       <span class="kit-bar" aria-hidden="true"><i :style="{ width: barWidth(item.used_share) }"></i></span>

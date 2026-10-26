@@ -32,7 +32,8 @@ from typing import Any, Optional
 KINDS = {
     "shoes": {"label": "Shoes", "sport": "Run", "unit": "km"},
     "bike": {"label": "Bike", "sport": "Ride", "unit": "km"},
-    "chain": {"label": "Chain", "sport": "Ride", "unit": "km", "part": True},
+    # A direct-drive trainer still turns the bike's chain, but not its wheels, cassette or brakes.
+    "chain": {"label": "Chain", "sport": "Ride", "unit": "km", "part": True, "indoor": True},
     "tyres": {"label": "Tyres", "sport": "Ride", "unit": "km", "part": True},
     "cassette": {"label": "Cassette", "sport": "Ride", "unit": "km", "part": True},
     "brake_pads": {"label": "Brake pads", "sport": "Ride", "unit": "km", "part": True},
@@ -51,14 +52,16 @@ SERVICE_ACTIONS = {
 
 EDITABLE = (
     "name", "sport", "started_on", "threshold_km", "threshold_hours", "start_km", "start_hours", "is_default",
-    "retired_on", "strava_gear_id", "notes", "parent_id", "service_action", "service_every_km",
+    "retired_on", "strava_gear_id", "notes", "parent_id", "service_action", "service_every_km", "count_indoor",
 )
+INDOOR = "VirtualRide"
 # Added after the first release; existing databases get them on first use.
 _LATER_COLUMNS = {
     "parent_id": "INTEGER",
     "service_action": "TEXT",
     "service_every_km": "REAL",
     "replaces_id": "INTEGER",
+    "count_indoor": "INTEGER",
 }
 
 
@@ -107,6 +110,9 @@ def ensure_tables(conn: sqlite3.Connection) -> None:
     for column, kind in _LATER_COLUMNS.items():
         if column not in existing:
             conn.execute(f"ALTER TABLE kit_items ADD COLUMN {column} {kind}")
+            if column == "count_indoor":
+                indoor = ", ".join(f"'{key}'" for key, meta in KINDS.items() if meta.get("indoor"))
+                conn.execute(f"UPDATE kit_items SET count_indoor = kind IN ({indoor})")
 
 
 def _has_table(conn: sqlite3.Connection, name: str) -> bool:
@@ -141,7 +147,16 @@ def sync_assignments(conn: sqlite3.Connection) -> None:
     parts = ", ".join(f"'{kind}'" for kind in PART_KINDS)
     _claim_defaults(conn, f"k.kind NOT IN ({parts})")
     # Parts follow the activity's bike. A part row left over from another bike
-    # (the bike was changed by hand or by Strava gear) is dropped first.
+    # (the bike was changed by hand or by Strava gear), or an indoor ride on a
+    # part that only wears outdoors, is dropped first.
+    conn.execute(
+        f"""
+        DELETE FROM activity_kit
+        WHERE source = 'auto'
+            AND kit_id IN (SELECT id FROM kit_items WHERE parent_id IS NOT NULL AND NOT COALESCE(count_indoor, 0))
+            AND activity_id IN (SELECT id FROM activities WHERE type = '{INDOOR}')
+        """
+    )
     conn.execute(
         """
         DELETE FROM activity_kit
@@ -156,7 +171,7 @@ def sync_assignments(conn: sqlite3.Connection) -> None:
     if _has_table(conn, "activity_source_refs"):
         # Rides from before the bike was tracked still carry its Strava gear id.
         conn.execute(
-            """
+            f"""
             INSERT OR IGNORE INTO activity_kit (activity_id, slot, kit_id, source)
             SELECT a.id, k.kind, k.id, 'auto'
             FROM kit_items k
@@ -167,16 +182,18 @@ def sync_assignments(conn: sqlite3.Connection) -> None:
             LEFT JOIN activity_kit b ON b.activity_id = a.id AND b.slot = 'bike'
             WHERE a.date >= k.started_on AND (k.retired_on IS NULL OR a.date <= k.retired_on)
                 AND (b.kit_id IS NULL OR b.kit_id = bike.id) AND COALESCE(b.source, '') != 'manual'
+                AND (a.type != '{INDOOR}' OR COALESCE(k.count_indoor, 0))
             """
         )
     conn.execute(
-        """
+        f"""
         INSERT OR IGNORE INTO activity_kit (activity_id, slot, kit_id, source)
         SELECT a.id, k.kind, k.id, 'auto'
         FROM kit_items k
         JOIN activity_kit b ON b.kit_id = k.parent_id AND b.slot = 'bike'
         JOIN activities a ON a.id = b.activity_id
         WHERE k.parent_id IS NOT NULL AND a.date >= k.started_on AND (k.retired_on IS NULL OR a.date <= k.retired_on)
+            AND (a.type != '{INDOOR}' OR COALESCE(k.count_indoor, 0))
         """
     )
     # Loose parts (not fitted to a bike) can still be a sport default.
@@ -255,6 +272,7 @@ def _service(conn: sqlite3.Connection, item: dict[str, Any], events: list[dict[s
 def _serialize(row: sqlite3.Row, today: date, conn: Optional[sqlite3.Connection] = None) -> dict[str, Any]:
     item = dict(row)
     item["is_default"] = bool(item["is_default"])
+    item["count_indoor"] = bool(item.get("count_indoor"))
     used_km = round((item.pop("activity_km") or 0) + (item["start_km"] or 0), 1)
     used_hours = round((item.pop("activity_min") or 0) / 60 + (item["start_hours"] or 0), 1)
     shares = [
@@ -429,6 +447,7 @@ def create_item(conn: sqlite3.Connection, payload: dict[str, Any], today: Option
         "service_action": payload.get("service_action") or None,
         "service_every_km": payload.get("service_every_km"),
         "replaces_id": payload.get("replaces_id"),
+        "count_indoor": 1 if payload.get("count_indoor", KINDS[kind].get("indoor", False)) else 0,
     }
     _validate(conn, fields, kind)
     cursor = conn.execute(
@@ -457,6 +476,8 @@ def update_item(conn: sqlite3.Connection, kit_id: int, payload: dict[str, Any], 
         fields["strava_gear_id"] = fields["strava_gear_id"] or None
     if "service_action" in fields:
         fields["service_action"] = fields["service_action"] or None
+    if "count_indoor" in fields:
+        fields["count_indoor"] = 1 if fields["count_indoor"] else 0
     if fields:
         assignments = ", ".join(f"{key} = ?" for key in fields)
         conn.execute(f"UPDATE kit_items SET {assignments} WHERE id = ?", (*fields.values(), kit_id))
@@ -502,6 +523,7 @@ def replace_item(conn: sqlite3.Connection, kit_id: int, payload: dict[str, Any],
             "parent_id": current["parent_id"],
             "service_action": current["service_action"],
             "service_every_km": current["service_every_km"],
+            "count_indoor": bool(current["count_indoor"]),
             "replaces_id": kit_id,
         },
         today,

@@ -80,7 +80,8 @@ const openForm = async () => {
 }
 const blank = (kind, extra = {}) => ({
   kind, name: '', sport: kindMeta(kind).sport || 'Run', started_on: today(), start_km: 0, start_hours: 0, is_default: !isPart(kind) || !extra.parent_id,
-  strava_gear_id: '', threshold_km: null, threshold_hours: null, parent_id: null, service_action: '', service_every_km: null, ...SUGGESTED[kind], ...extra,
+  strava_gear_id: '', threshold_km: null, threshold_hours: null, parent_id: null, service_action: '', service_every_km: null,
+  count_indoor: !!kindMeta(kind).indoor, ...SUGGESTED[kind], ...extra,
 })
 const startNew = (kind = 'shoes', extra = {}) => {
   form.value = blank(kind, extra)
@@ -111,6 +112,7 @@ const payloadFrom = (value) => ({
   parent_id: isPart(value.kind) ? value.parent_id || null : null,
   service_action: value.service_action || null,
   service_every_km: value.service_action ? value.service_every_km || null : null,
+  ...(isPart(value.kind) ? { count_indoor: !!value.count_indoor } : {}),
 })
 
 const run = async (fn) => {
@@ -221,7 +223,8 @@ const editingName = computed(() => items.value.find((item) => item.id === editin
         </select>
       </label>
       <label v-if="!form.parent_id" class="kit-check"><input v-model="form.is_default" type="checkbox" /> Default for new {{ form.sport === 'VirtualRide' ? 'indoor rides' : `${form.sport.toLowerCase()}s` }}</label>
-      <p v-if="form.parent_id" class="kit-hint">Counts rides on this bike from the fitted date. For wear from before you started tracking, fill in "Used before".</p>
+      <label v-if="isPart(form.kind) && form.parent_id" class="kit-check"><input v-model="form.count_indoor" type="checkbox" /> Count indoor rides on the trainer</label>
+      <p v-if="form.parent_id" class="kit-hint">Counts rides on this bike from the fitted date. For wear from before you started tracking, fill in "Used before". On a direct-drive trainer the chain still wears; tyres, cassette and brakes don't.</p>
       <div class="kit-form-actions">
         <button type="button" class="ghost-btn" @click="editing = null">Cancel</button>
         <button type="submit" class="primary-btn" :disabled="busy">{{ editing === 'new' ? 'Add' : 'Save' }}</button>

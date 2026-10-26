@@ -190,6 +190,22 @@ class KitTests(unittest.TestCase):
         self.assertEqual(self.item(chain["id"])["used_km"], 50.0)
         self.assertEqual(self.item(chain["id"])["parent_name"], "Road")
 
+    def test_indoor_rides_wear_the_chain_not_the_tyres(self):
+        self.add("road", "2026-09-05", activity_type="Ride", km=50, gear="b1")
+        self.add("kickr", "2026-09-06", activity_type="VirtualRide", km=30, gear="b1")
+        canyon = create_item(self.conn, {"kind": "bike", "name": "Canyon", "started_on": "2026-09-01", "strava_gear_id": "b1"}, TODAY)
+        chain = create_item(self.conn, {"kind": "chain", "parent_id": canyon["id"], "started_on": "2026-09-01"}, TODAY)
+        tyres = create_item(self.conn, {"kind": "tyres", "parent_id": canyon["id"], "started_on": "2026-09-01"}, TODAY)
+        self.assertTrue(chain["count_indoor"])
+        self.assertFalse(tyres["count_indoor"])
+        self.assertEqual(self.item(chain["id"])["used_km"], 80.0)
+        self.assertEqual(self.item(tyres["id"])["used_km"], 50.0)
+        # Switching it off drops indoor rides already counted.
+        update_item(self.conn, chain["id"], {"count_indoor": False}, TODAY)
+        self.assertEqual(self.item(chain["id"])["used_km"], 50.0)
+        update_item(self.conn, tyres["id"], {"count_indoor": True}, TODAY)
+        self.assertEqual(self.item(tyres["id"])["used_km"], 80.0)
+
     def test_only_parts_fit_bikes(self):
         road, _ = self.two_bikes()
         shoes = create_item(self.conn, {"kind": "shoes", "started_on": "2026-01-01"}, TODAY)
@@ -240,8 +256,10 @@ class KitTests(unittest.TestCase):
             " notes TEXT, created_at TEXT)"
         )
         self.conn.execute("INSERT INTO kit_items (name, kind, sport, started_on) VALUES ('Old bike', 'bike', 'Ride', '2026-01-01')")
-        items = list_kit(self.conn, TODAY)["items"]
+        self.conn.execute("INSERT INTO kit_items (name, kind, sport, started_on) VALUES ('Old chain', 'chain', 'Ride', '2026-01-01')")
+        items = sorted(list_kit(self.conn, TODAY)["items"], key=lambda item: item["id"])
         self.assertEqual(items[0]["parent_id"], None)
+        self.assertEqual([item["count_indoor"] for item in items], [False, True])
         self.assertEqual(items[0]["service"], None)
 
     def test_part_counts_past_rides_on_its_strava_bike(self):

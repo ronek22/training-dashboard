@@ -44,6 +44,7 @@ class KitItemInput(BaseModel):
     parent_id: Optional[int] = None
     service_action: Optional[str] = None
     service_every_km: Optional[float] = Field(default=None, ge=0)
+    count_indoor: Optional[bool] = None
 
 
 class KitReplaceInput(BaseModel):

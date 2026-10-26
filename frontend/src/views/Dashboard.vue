@@ -154,17 +154,34 @@
     <section v-else class="dashboard-error">
       <span aria-hidden="true">!</span><h1>Dashboard unavailable</h1><p>Your training data could not be loaded right now.</p><button type="button" @click="loadDashboard">Try again</button>
     </section>
+    <Teleport to="body">
+      <Transition name="day-brief">
+        <div v-if="briefDay" ref="briefEl" class="day-brief-popup" role="dialog" :aria-label="`${briefDayLabel}, ${briefDay.displayTitle}`" tabindex="-1" :style="briefStyle" @keydown.esc.stop="closeBrief">
+          <header class="day-brief-head">
+            <div><span>{{ briefDayLabel }}</span><h2>{{ briefDateLabel }}</h2></div>
+            <button type="button" class="day-brief-close" aria-label="Close" @click="closeBrief">×</button>
+          </header>
+          <PlannedSessionBrief v-if="briefPlanned" :plan="briefDay" :label="briefStatusLabel" :cycling-library="cyclingLibrary" />
+          <p v-else class="day-brief-empty">Rest day. Nothing scheduled.</p>
+          <footer class="day-brief-actions">
+            <router-link v-if="briefStrengthStart" class="day-brief-primary" :to="briefStrengthStart">Start in Workout Studio</router-link>
+            <router-link to="/plan">Open in plan →</router-link>
+          </footer>
+        </div>
+      </Transition>
+    </Teleport>
   </main>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { addDays, format, startOfWeek } from 'date-fns'
 import { useRouter } from 'vue-router'
 import TeamCoaching from '../components/TeamCoaching.vue'
 import ActivityIcon from '../components/ActivityIcon.vue'
 import TodayCard from '../components/TodayCard.vue'
 import WeekStrip from '../components/WeekStrip.vue'
+import PlannedSessionBrief from '../components/PlannedSessionBrief.vue'
 import YearProgress from '../components/YearProgress.vue'
 import RecentRecords from '../components/RecentRecords.vue'
 import LoadFormTrend from '../components/LoadFormTrend.vue'
@@ -906,16 +923,90 @@ function daySubtitle(activities = []) {
   return [distance ? `${formatCompactNumber(distance)} km` : '', watts ? `${Math.round(watts)} W` : pace || ''].filter(Boolean).join(' · ')
     || sessionTypeLabel(activities[0]?.type)
 }
-function openWeekDay(day) {
+function openWeekDay(day, cell) {
   if (day.activityId) {
     router.push(`/activities/${encodeURIComponent(day.activityId)}`)
     return
   }
-  router.push('/plan')
+  if (briefDay.value?.date === day.date) { closeBrief(); return }
+  openBrief(day, cell)
 }
+
+// Planned days open the session brief in place, like the calendar's day popup.
+const briefDay = ref(null)
+const briefEl = ref(null)
+const briefAnchor = ref(null)
+const briefPos = ref({ left: 0, top: 0 })
+const briefStyle = computed(() => ({ left: `${briefPos.value.left}px`, top: `${briefPos.value.top}px` }))
+const briefPlanned = computed(() => Boolean(briefDay.value && !/rest/i.test(String(briefDay.value.session_type || '')) && (briefDay.value.title || briefDay.value.plannedMinutes)))
+const briefDayLabel = computed(() => (briefDay.value?.isToday ? 'Today' : briefDay.value ? formatLocalDate(briefDay.value.date, 'EEEE') : ''))
+const briefDateLabel = computed(() => (briefDay.value ? formatLocalDate(briefDay.value.date, 'MMMM d, yyyy') : ''))
+const briefStatusLabel = computed(() => (briefDay.value?.state === 'missed' ? 'Missed' : briefDay.value?.isToday ? 'Planned today' : 'Upcoming'))
+const briefStrengthStart = computed(() => (briefPlanned.value && briefDay.value.state !== 'missed' && activityTone(briefDay.value.session_type) === 'strength'
+  ? { path: '/strength/workouts', query: { planDate: briefDay.value.date } }
+  : null))
+function positionBrief() {
+  const pop = briefEl.value
+  const cell = briefAnchor.value
+  if (!pop || !cell) return
+  const rect = cell.getBoundingClientRect()
+  const gap = 8
+  const margin = 12
+  let left = rect.right + gap
+  if (left + pop.offsetWidth > window.innerWidth - margin) left = rect.left - gap - pop.offsetWidth
+  left = Math.max(margin, Math.min(left, window.innerWidth - pop.offsetWidth - margin))
+  const top = Math.max(margin, Math.min(rect.top, window.innerHeight - pop.offsetHeight - margin))
+  briefPos.value = { left, top }
+}
+async function openBrief(day, cell) {
+  briefDay.value = day
+  briefAnchor.value = cell || null
+  if (day.cycling_workout_id && !cyclingLibrary.value) void loadCyclingLibrary().then(() => nextTick(positionBrief))
+  await nextTick()
+  positionBrief()
+  briefEl.value?.focus({ preventScroll: true })
+}
+function closeBrief() {
+  if (!briefDay.value) return
+  const anchor = briefAnchor.value
+  briefDay.value = null
+  briefAnchor.value = null
+  anchor?.focus?.({ preventScroll: true })
+}
+function onBriefPointerDown(event) {
+  if (!briefDay.value || briefEl.value?.contains(event.target) || briefAnchor.value?.contains(event.target)) return
+  briefDay.value = null
+  briefAnchor.value = null
+}
+function onBriefViewportChange() { if (briefDay.value) positionBrief() }
+onMounted(() => {
+  window.addEventListener('pointerdown', onBriefPointerDown)
+  window.addEventListener('resize', onBriefViewportChange)
+  window.addEventListener('scroll', onBriefViewportChange, true)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('pointerdown', onBriefPointerDown)
+  window.removeEventListener('resize', onBriefViewportChange)
+  window.removeEventListener('scroll', onBriefViewportChange, true)
+})
 </script>
 
 <style scoped>
+.day-brief-popup { position: fixed; z-index: 30; width: 440px; max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); overflow-y: auto; padding: 16px; border-radius: 14px; background: var(--deep); box-shadow: 0 18px 50px rgb(var(--shadow-rgb) / .55), 0 0 0 1px rgb(var(--ov-rgb) / .06); outline: none; }
+.day-brief-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
+.day-brief-head > div { flex: 1; min-width: 0; }
+.day-brief-head span { color: var(--accent-strong); font-size: 12px; font-weight: 650; }
+.day-brief-head h2 { margin-top: 1px; font-family: var(--font-display); font-size: 17px; }
+.day-brief-close { flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--muted-soft); cursor: pointer; font-size: 20px; line-height: 1; }
+.day-brief-close:hover { background: rgb(var(--ov-rgb) / .08); color: var(--text); }
+.day-brief-empty { margin: 8px 0 0; color: var(--muted-soft); font-size: 13px; }
+.day-brief-actions { display: flex; align-items: center; justify-content: flex-end; gap: 14px; margin-top: 12px; font-size: 13px; font-weight: 650; }
+.day-brief-actions a { color: var(--muted-soft); }
+.day-brief-actions a:hover { color: var(--text); }
+.day-brief-actions .day-brief-primary { margin-right: auto; padding: 7px 12px; border-radius: 9px; background: var(--volt); color: var(--on-accent); }
+.day-brief-actions .day-brief-primary:hover { color: var(--on-accent); filter: brightness(1.05); }
+.day-brief-enter-active, .day-brief-leave-active { transition: opacity .14s ease, transform .14s ease; }
+.day-brief-enter-from, .day-brief-leave-to { opacity: 0; transform: translateY(-4px); }
 .dashboard-shell {
   --dash-surface: rgb(var(--panel-rgb) / 0.92);
   --dash-border: rgb(var(--tint-rgb) / 0.16);

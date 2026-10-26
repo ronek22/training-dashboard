@@ -34,8 +34,8 @@
         class="week-cell"
         :class="[`is-${day.state}`, { 'is-today': day.isToday, 'is-over': day.overPlan, 'is-rest': !day.plannedMinutes && day.state !== 'actual' }]"
         :style="{ '--day-accent': day.accent }"
-        :aria-label="`${day.dayLabel} ${day.dateLabel}, ${day.displayTitle}, ${day.minutesLabel}. ${day.activityId ? 'Open activity' : 'Open weekly plan'}`"
-        @click="$emit('open', day)"
+        :aria-label="`${day.dayLabel} ${day.dateLabel}, ${day.displayTitle}, ${day.minutesLabel}. ${day.activityId ? 'Open activity' : 'Show planned session'}`"
+        @click="$emit('open', day, $event.currentTarget)"
       >
         <span class="week-cell-top">
           <span class="week-cell-day">{{ day.dayLabel }} {{ day.dateLabel }}</span>

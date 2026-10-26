@@ -136,49 +136,7 @@
             </li>
           </ul>
 
-          <div v-if="popupPlan" class="pop-brief" :class="[`tone-${activityTone(popupPlan.session_type)}`, { 'is-missed': popupPlanLabel === 'Missed' }]">
-            <div class="brief-top">
-              <ActivityIcon :type="popupPlan.session_type" :tone="activityTone(popupPlan.session_type)" :size="20" />
-              <div class="pop-body">
-                <span class="pop-kicker">{{ popupPlanLabel }}</span>
-                <strong class="pop-title">{{ popupPlan.title || popupPlan.session_type }}</strong>
-                <span v-if="planSubline" class="pop-meta">{{ planSubline }}</span>
-              </div>
-            </div>
-
-            <dl v-if="planTargets.length" class="brief-targets">
-              <div v-for="target in planTargets" :key="target.label"><dt>{{ target.label }}</dt><dd>{{ target.value }}</dd></div>
-            </dl>
-
-            <CyclingWorkoutSteps v-if="planCyclingWorkout" class="brief-cycling" :workout="planCyclingWorkout" :ftp="cyclingLibrary?.ftp" :export-note="cyclingLibrary?.export_note" />
-
-            <template v-if="planDetailView">
-              <p v-if="planDetailView.summary" class="brief-summary">{{ planDetailView.summary }}</p>
-              <p v-if="planDetailView.check" class="brief-check"><strong>Before you start</strong> {{ planDetailView.check }}</p>
-              <section v-if="planDetailView.prescriptionItems.length" class="brief-section">
-                <h3>{{ planDetailView.prescriptionTitle || 'The session' }}</h3>
-                <ol><li v-for="(item, index) in planDetailView.prescriptionItems" :key="index"><span aria-hidden="true">{{ index + 1 }}</span>{{ item }}</li></ol>
-              </section>
-              <section v-if="planDetailView.guidance.length" class="brief-section">
-                <h3>{{ planDetailView.prescriptionItems.length ? 'Keep in mind' : planDetailView.lead || 'The session' }}</h3>
-                <ul><li v-for="(item, index) in planDetailView.guidance" :key="index">{{ item }}</li></ul>
-              </section>
-              <aside v-if="planDetailView.optional.length" class="brief-adapt">
-                <h3>If you need to adapt</h3>
-                <p v-for="(item, index) in planDetailView.optional" :key="index">{{ item }}</p>
-              </aside>
-            </template>
-            <p v-else-if="popupPlanNote" class="pop-note">{{ popupPlanNote }}</p>
-
-            <details v-if="popupPlan.planning_rule_reason || popupPlan.goal_links?.length" class="brief-why">
-              <summary>Why this session</summary>
-              <p v-if="popupPlan.planning_rule_reason">{{ popupPlan.planning_rule_reason }}</p>
-              <div v-for="goalLink in popupPlan.goal_links || []" :key="goalLink.goal_id" class="brief-goal">
-                <strong>{{ goalLink.goal_title }}</strong><span v-if="goalLink.risk_label"> · {{ goalLink.risk_label }}</span>
-                <p>{{ [...new Set([goalLink.requirement_label, goalLink.support_reason].filter(Boolean))].join(' · ') }}</p>
-              </div>
-            </details>
-          </div>
+          <PlannedSessionBrief v-if="popupPlan" :plan="popupPlan" :label="popupPlanLabel" :cycling-library="cyclingLibrary" />
 
           <p v-if="!popupSessions.length && !popupPlan" class="empty-day">{{ emptyDayText }}</p>
         </div>
@@ -207,8 +165,7 @@ import CalendarDayCell from '../components/CalendarDayCell.vue'
 import LifeLoadPicker from '../components/LifeLoadPicker.vue'
 import { useLifeLoad } from '../composables/useLifeLoad'
 import FeedbackDialog from '../components/FeedbackDialog.vue'
-import CyclingWorkoutSteps from '../components/CyclingWorkoutSteps.vue'
-import { buildSessionDetailView, sessionTargets } from '../utils/plannedSessionDetail.mjs'
+import PlannedSessionBrief from '../components/PlannedSessionBrief.vue'
 import { clashText, swapLabel } from '../plan/lift-ride-clash.mjs'
 
 const api = useApi()
@@ -408,11 +365,6 @@ const ensureCyclingLibrary = async () => {
   if (cyclingLibrary.value) return
   try { const { data } = await api.getCyclingWorkouts(); cyclingLibrary.value = data } catch { cyclingLibrary.value = { workouts: [] } }
 }
-const planDetailView = computed(() => buildSessionDetailView(popupPlan.value?.details, popupPlan.value))
-const planTargets = computed(() => popupPlan.value ? sessionTargets(popupPlan.value, planDetailView.value) : [])
-const planCyclingWorkout = computed(() => popupPlan.value?.cycling_workout_id ? (cyclingLibrary.value?.workouts || []).find((workout) => workout.id === popupPlan.value.cycling_workout_id) || null : null)
-const planSubline = computed(() => [popupPlan.value?.template_label, popupPlan.value?.workout_intent_label, popupPlan.value?.benchmark_label].filter(Boolean).join(' · '))
-const popupPlanNote = computed(() => selectedPlan.value?.notes || selectedPlan.value?.rationale || '')
 const sessionMeta = (activity) => [activity.duration_min ? formatMinutes(activity.duration_min) : '', activityPerformance(activity), activity.avg_watts ? `${Math.round(activity.avg_watts)} W` : ''].filter(Boolean).join(' · ') || 'Completed'
 const planMinutes = (plan) => plan.target_duration_min ?? plan.duration_min
 const planKm = (plan) => plan.target_distance_km ?? plan.distance_km
@@ -545,7 +497,7 @@ const undoMove = () => {
   if (undo) runMove(undo.fromDate, undo.toDate, { undoable: false })
 }
 
-watch([popupOpen, selectedDate, planCyclingWorkout, planDetailView], () => { if (popupOpen.value) nextTick(positionPopup) }, { flush: 'post' })
+watch([popupOpen, selectedDate, cyclingLibrary], () => { if (popupOpen.value) nextTick(positionPopup) }, { flush: 'post' })
 
 onMounted(() => {
   reload()
@@ -676,30 +628,6 @@ a.pop-title:hover { text-decoration: underline; }
 .fb-metric i { position: absolute; left: 0; bottom: 0; height: 3px; border-radius: 0 3px 3px 0; background: var(--fb); }
 .fb-note { margin: 8px 0 0; padding: 2px 0 2px 10px; border-left: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent); color: var(--text-soft); font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
 .day-popup.is-wide { width: 440px; }
-.pop-brief { --tone: var(--muted); display: grid; gap: 12px; margin-top: 8px; padding: 12px; border-radius: 12px; background: color-mix(in srgb, var(--tone) 11%, transparent); }
-.pop-brief.is-missed { background: rgba(239, 94, 94, .12); }
-.pop-brief.is-missed .pop-kicker { color:oklch(from #ff8a8a calc(l - var(--dim-l)) c h); }
-.brief-top { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; }
-.brief-top > :first-child { margin-top: 2px; }
-.brief-targets { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
-.brief-targets div { padding: 5px 10px; border-radius: 8px; background: rgb(var(--ov-rgb) / .06); }
-.brief-targets dt { color: var(--muted); font-size: 11px; }
-.brief-targets dd { margin: 0; font-family: var(--font-display); font-size: 14px; font-weight: 650; }
-.brief-section h3, .brief-adapt h3 { margin-bottom: 6px; color: var(--muted-soft); font-size: 12px; font-weight: 650; }
-.brief-section ol, .brief-section ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
-.brief-section li { display: flex; gap: 9px; color: var(--text-soft); font-size: 13px; line-height: 1.45; }
-.brief-section ol li span { flex: none; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--tone) 28%, transparent); color: var(--text); font-size: 11px; font-weight: 700; }
-.brief-section ul li::before { content: ''; flex: none; width: 5px; height: 5px; margin-top: 8px; border-radius: 50%; background: var(--tone); }
-.brief-adapt { padding: 9px 11px; border-radius: 9px; background: rgb(var(--ov-rgb) / .05); }
-.brief-adapt p { color: var(--muted-soft); font-size: 12.5px; line-height: 1.5; }
-.brief-summary { margin: 0; font-size: 13px; line-height: 1.5; }
-.brief-check { margin: 0; padding: 9px 11px; border-radius: 9px; border: 1px solid color-mix(in srgb, var(--warning-text) 35%, var(--border)); font-size: 12.5px; line-height: 1.5; }
-.brief-check strong { color: var(--warning-text); }
-.brief-why summary { color: var(--muted-soft); cursor: pointer; font-size: 12px; font-weight: 650; }
-.brief-why p { margin-top: 6px; color: var(--muted-soft); font-size: 12.5px; line-height: 1.5; }
-.brief-goal { margin-top: 8px; font-size: 12.5px; }
-.brief-goal span { color: var(--muted-soft); }
-.pop-note { margin: 4px 0 0; color: var(--muted-soft); font-size: 12px; line-height: 1.5; }
 .feedback-btn { grid-column: 2; justify-self: start; min-height: 28px; margin-top: 4px; padding: 0 10px; border: 0; border-radius: 7px; background: rgb(var(--ov-rgb) / .08); color: var(--text-soft); cursor: pointer; font-size: 12px; }
 .feedback-btn:hover { background: rgb(var(--ov-rgb) / .14); color: var(--text); }
 .empty-day { padding: 4px 0 2px; color: var(--muted-soft); font-size: 13px; }

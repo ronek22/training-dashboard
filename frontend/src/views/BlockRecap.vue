@@ -265,7 +265,7 @@ watch(() => route.params.startDate, () => { recap.value = null; load() }, { imme
 .week-target, .week-done { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 8px; }
 .week-target { border: 2px dashed color-mix(in srgb, var(--tone-neutral) 45%, transparent); }
 .week-done { left: 4px; right: 4px; background: color-mix(in srgb, var(--tone-ride) 70%, transparent); transform-origin: bottom; animation: lift 900ms var(--motion-ease-emphasized) both; animation-delay: calc(250ms + var(--i) * 90ms); }
-.week.hit .week-done { background: var(--success); }
+.week.hit .week-done { background: var(--success-fill); }
 .week.lost .week-done { background: color-mix(in srgb, var(--tone-neutral) 40%, transparent); }
 .week-dots { display: flex; gap: 3px; min-height: 8px; }
 .week-dots i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--muted); }
@@ -286,7 +286,7 @@ watch(() => route.params.startDate, () => { recap.value = null; load() }, { imme
 .streak b { font: 650 18px var(--font-display); color: var(--text); }
 .streak-weeks { display: flex; gap: 3px; }
 .streak-weeks i { width: 14px; height: 22px; border-radius: 4px; background: color-mix(in srgb, var(--tone-neutral) 16%, transparent); }
-.streak-weeks i.on { background: var(--success); }
+.streak-weeks i.on { background: var(--success-fill); }
 
 .power-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .power-tile { display: flex; flex-direction: column; gap: 4px; }
@@ -311,7 +311,7 @@ watch(() => route.params.startDate, () => { recap.value = null; load() }, { imme
 .suggestion-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .suggestion-done { font-size: 13px; color: var(--muted); }
 .recap-button { padding: 7px 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--text); font: 600 13px var(--font-display); cursor: pointer; }
-.recap-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.recap-button.primary { background: var(--volt-fill); border-color: var(--volt-fill); color: #fff; }
 .recap-button:disabled { opacity: .55; cursor: default; }
 .recap-error { color: var(--danger-text); font-size: 13px; }
 

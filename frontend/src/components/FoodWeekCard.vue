@@ -63,8 +63,8 @@ const title = (item) => item.logged
 .bar-day.unlogged .bar-value { color: var(--muted); font-weight: 400; }
 .track { position: relative; width: 26px; height: 96px; background: var(--surface3); border-radius: 6px; overflow: hidden; }
 .bar-day.unlogged .track { opacity: .45; }
-.track .eaten { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 6px 6px 0 0; background: var(--accent); }
-.track .eaten.good { background: var(--success); }
+.track .eaten { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 6px 6px 0 0; background: var(--volt-fill); }
+.track .eaten.good { background: var(--success-fill); }
 .track .eaten.close { background: var(--warning); }
 .track .eaten.under { background: var(--danger); }
 .track .target-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--text); opacity: .85; z-index: 1; }
@@ -75,7 +75,7 @@ const title = (item) => item.logged
 .legend li { display: flex; align-items: center; gap: 5px; }
 .legend b { color: var(--ride); font-weight: 600; }
 .sw { display: inline-block; width: 10px; }
-.sw.eaten { height: 8px; border-radius: 2px; background: var(--accent); }
+.sw.eaten { height: 8px; border-radius: 2px; background: var(--volt-fill); }
 .sw.line { height: 2px; background: var(--text); }
 .stats { display: grid; gap: 14px; align-self: stretch; align-content: center; padding-left: 22px; border-left: 1px solid var(--border); }
 .week-card > .fine { margin: 0; align-self: center; }
@@ -93,7 +93,7 @@ const title = (item) => item.logged
 .week-card { padding: 24px; gap: 20px 28px; }
 .week-card .track { width: 32px; height: 115px; background: rgb(var(--deep-rgb)); border-radius: 8px; }
 .week-card .track .eaten, .week-card .sw.eaten { background: var(--z2); }
-.week-card .track .eaten.good { background: var(--volt); }
+.week-card .track .eaten.good { background: var(--volt-fill); }
 .week-card .track .eaten.close { background: var(--warning); }
 .week-card .track .eaten.under { background: var(--danger); }
 .week-card .bar-day { border-radius: 12px; padding: 10px 0; }

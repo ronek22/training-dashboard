@@ -315,7 +315,7 @@ const kickerLabel = computed(() => String(props.kicker || '').split('·').pop().
 .today-compare-head .is-over { color: var(--warning-text); }
 .today-compare-head .is-under { color: var(--info-text); }
 .today-compare-track { position: relative; height: 12px; border-radius: 6px; background: rgb(var(--tint-rgb) / 0.1); }
-.today-compare-track i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent); }
+.today-compare-track i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--volt-fill); }
 .today-compare-track b { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; border-radius: 1px; background:oklch(from #eef3fb calc(l - var(--dim-l)) c h); box-shadow: 0 0 0 2px var(--deep); }
 .today-compare-scale { display: flex; justify-content: space-between; gap: 12px; color: var(--dash-muted, var(--muted)); font-size: 11px; font-variant-numeric: tabular-nums; }
 
@@ -351,7 +351,7 @@ const kickerLabel = computed(() => String(props.kicker || '').split('·').pop().
   display: inline-flex; align-items: center; gap: 10px; min-height: 42px;
   border-radius: 11px; padding: 0 18px; font-size: 13px; font-weight: 600; text-decoration: none;
 }
-.today-primary { background: var(--accent); color: var(--on-accent); }
+.today-primary { background: var(--volt-fill); color: var(--on-volt); }
 .today-primary:hover { background: color-mix(in srgb, var(--accent) 82%, white); }
 .today-secondary { border: 1px solid rgb(var(--tint-rgb) / 0.2); color: var(--dash-soft, var(--text-soft)); }
 .today-secondary:hover { border-color: rgb(var(--tint-rgb) / 0.4); color: var(--text); }
@@ -373,7 +373,7 @@ const kickerLabel = computed(() => String(props.kicker || '').split('·').pop().
 .today-card {
   border-radius: var(--radius-card);
   background:
-    radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--accent) 20%, transparent) 0%, transparent 55%),
+    radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--accent) var(--hero-glow), transparent) 0%, transparent 55%),
     var(--surface);
   box-shadow: none;
 }
@@ -393,8 +393,8 @@ const kickerLabel = computed(() => String(props.kicker || '').split('·').pop().
 .today-primary, .today-secondary { min-height: 44px; border-radius: 999px; font-size: 14px; }
 .today-guide article, .today-activities a { border-radius: 14px; background: rgb(var(--deep-rgb) / .55); }
 
-.today-primary { background: var(--volt); color: var(--on-accent); font-weight: 700; }
-.today-primary:hover { background: var(--volt-strong); }
+.today-primary { background: var(--volt-fill); color: var(--on-volt); font-weight: 700; }
+.today-primary:hover { background: var(--volt-fill-strong); }
 .today-coach-link { font-size: 13px; }
 
 .today-kicker { display: inline-flex; align-items: center; padding: 6px 11px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .1em; }

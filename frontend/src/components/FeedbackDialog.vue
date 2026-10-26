@@ -641,11 +641,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 }
 .fb-btn:hover { background: var(--surface2); }
 .fb-btn.primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
+  border-color: var(--volt-fill);
+  background: var(--volt-fill);
+  color: var(--on-volt);
 }
-.fb-btn.primary:hover:not(:disabled) { background: var(--accent-strong); }
+.fb-btn.primary:hover:not(:disabled) { background: var(--volt-fill-strong); }
 .fb-btn.primary:disabled {
   opacity: 0.65;
   cursor: not-allowed;

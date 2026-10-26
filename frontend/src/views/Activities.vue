@@ -499,8 +499,8 @@ const saveFeedback = async payload => {
 .activities-page .header-actions { display: flex; gap: 10px; align-items: center; }
 .activities-page .sync-link, .activities-page .state-action { height: 44px; padding: 0 18px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font-size: 14px; font-weight: 400; }
 .activities-page .sync-link:hover, .activities-page .state-action:hover { background: var(--surface2); border-color: var(--muted); }
-.activities-page .start-workout { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 20px; border-radius: 999px; background: var(--volt); color: var(--on-accent); font-size: 14px; font-weight: 700; }
-.activities-page .start-workout:hover { background: var(--volt-strong); }
+.activities-page .start-workout { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 20px; border-radius: 999px; background: var(--volt-fill); color: var(--on-volt); font-size: 14px; font-weight: 700; }
+.activities-page .start-workout:hover { background: var(--volt-fill-strong); }
 .activities-page .history-hero { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px 32px; padding: 28px 32px; margin-bottom: 24px; border: 1px solid var(--border); border-radius: 28px; background: linear-gradient(100deg, color-mix(in srgb, var(--ride) 16%, transparent), color-mix(in srgb, var(--strength) 10%, transparent) 50%, color-mix(in srgb, var(--run) 12%, transparent)), var(--surface); }
 .activities-page .hero-kicker { display: block; line-height: 14px; font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--text-soft); }
 .activities-page .hero-value { margin-top: 8px; font: italic 800 88px/1 var(--font-display); }

@@ -645,7 +645,7 @@ function sparklineArea(entries, width, height, padding) {
 .btn-outline { border: 1px solid var(--border-strong); background: transparent; color: var(--text); font-weight: 500; }
 .btn-outline:hover { background: var(--surface2); }
 .btn-outline.small { min-height: 36px; padding: 0 14px; font-size: 13px; }
-.btn-volt { border: 0; background: var(--volt); color: #0a0c11; font-weight: 700; }
+.btn-volt { border: 0; background: var(--volt-fill); color: #0a0c11; font-weight: 700; }
 .btn-volt:hover { filter: brightness(1.08); }
 .btn-volt:disabled { opacity: .45; cursor: not-allowed; }
 .trend-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -722,7 +722,7 @@ function sparklineArea(entries, width, height, padding) {
 .follow-bar { display: flex; gap: 3px; height: 10px; margin: 14px 0 12px; overflow: hidden; border-radius: 999px; }
 .follow-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted-soft); }
 .follow-legend i { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; }
-.is-done { background: var(--volt); }
+.is-done { background: var(--volt-fill); }
 .is-adapted { background: var(--warning); }
 .is-missed { background: var(--danger); }
 .follow-legend .is-missed { background: color-mix(in srgb, var(--danger) 70%, transparent); }

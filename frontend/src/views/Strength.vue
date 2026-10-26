@@ -1404,7 +1404,7 @@ const round = (value) => Math.round(value * 10) / 10
 .launch-metrics small { color: var(--muted-soft); font-size: 15px; }
 .strength-page .launch-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 26px; }
 .strength-page .launch-actions .strength-action { min-height: 52px; margin: 0; padding: 0 22px; }
-.strength-page .launch-actions .strength-action-primary { background: var(--volt); color: var(--on-accent); border-color: var(--volt); font-size: 16px; font-weight: 700; gap: 8px; }
+.strength-page .launch-actions .strength-action-primary { background: var(--volt-fill); color: var(--on-volt); border-color: var(--volt-fill); font-size: 16px; font-weight: 700; gap: 8px; }
 .strength-page .launch-plan-link { margin: 0; padding: 10px 0; color: var(--muted-soft); }
 .strength-page .launch-notes { padding: 32px; align-self: stretch; border-left: 1px solid var(--border); background: rgb(var(--deep-rgb) / .45); }
 .strength-page .launch-notes > span { color: var(--muted); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }

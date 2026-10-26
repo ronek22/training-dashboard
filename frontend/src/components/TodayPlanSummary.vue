@@ -278,7 +278,7 @@ const tiles = computed(() => [durationTile.value, distanceTile.value, intensityT
 .rpe-row strong { font-family: var(--font-display); font-size: 17px; color: var(--text); white-space: nowrap; }
 .rpe-scale { display: flex; gap: 2px; flex: 1; max-width: 140px; }
 .rpe-scale i { flex: 1; height: 6px; border-radius: 2px; background: rgb(var(--ov-rgb) / 0.08); }
-.rpe-scale i.on { background: var(--accent); }
+.rpe-scale i.on { background: var(--volt-fill); }
 .brief-targets { display: flex; flex-wrap: wrap; gap: 6px; margin: 9px 0 0; padding: 0; list-style: none; }
 .brief-targets li { padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--text); background: color-mix(in srgb, var(--accent) 14%, transparent); font-variant-numeric: tabular-nums; }
 .brief-targets span { font-weight: 400; color: var(--muted-soft); }

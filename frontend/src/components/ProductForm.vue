@@ -69,7 +69,7 @@ label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); fo
 input { width: 100%; min-width: 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font: inherit; font-size: 13px; padding: 7px 9px; }
 input:focus { outline: none; border-color: var(--accent); }
 .actions { display: flex; align-items: center; gap: 12px; }
-.primary-button { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 8px; padding: 0 16px; min-height: 34px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.primary-button { border: 0; background: var(--volt-fill); color: var(--on-volt); border-radius: 8px; padding: 0 16px; min-height: 34px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
 .primary-button:disabled { opacity: .45; cursor: default; }
 .link-button { border: 0; background: none; color: var(--accent-strong); font: inherit; font-size: 13px; cursor: pointer; padding: 0; }
 </style>

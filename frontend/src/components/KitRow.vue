@@ -265,7 +265,7 @@ const partMeta = computed(() => {
 .ghost-btn.is-volt { border-color: color-mix(in srgb, var(--volt) 45%, transparent); color: var(--success-text); }
 .ghost-btn:hover:not(:disabled) { background: rgb(var(--ov-rgb) / .05); color: var(--text); }
 .ghost-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.primary-btn { min-height: 34px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--volt); color: var(--on-accent); font-size: 13px; font-weight: 700; cursor: pointer; }
+.primary-btn { min-height: 34px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--volt-fill); color: var(--on-volt); font-size: 13px; font-weight: 700; cursor: pointer; }
 .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .more-btn { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; }
 .more-btn:hover, .more-btn[aria-expanded='true'] { background: var(--surface3); color: var(--text); }

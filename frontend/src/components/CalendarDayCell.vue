@@ -319,7 +319,7 @@ const planStatusLabel = (item) => {
 .calendar-day.is-selected { box-shadow: inset 0 0 0 1.5px var(--border-strong); }
 .calendar-day.is-today.is-selected { box-shadow: inset 0 0 0 2px var(--volt); }
 .day-number { min-width: 0; height: auto; padding: 0 2px; border-radius: 6px; color: var(--text); font-size: 19px; font-weight: 700; place-items: start; }
-.is-today .day-number { padding: 1px 7px; background: var(--volt); color: var(--on-accent); }
+.is-today .day-number { padding: 1px 7px; background: var(--volt-fill); color: var(--on-volt); }
 .is-outside .day-number { color: var(--muted); }
 .day-sick { padding: 2px 7px; background: transparent; color: var(--warning-text); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .day-hard { padding: 2px 7px; background: transparent; color: var(--run); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }

@@ -107,7 +107,7 @@ const groupAria = group => `${group.label}: ${group.done_sets} logged, ${group.p
 .lv-seg { position: relative; height: 100%; }
 .lv-seg.is-done, .lv-legend .is-done { background: var(--strength); }
 .lv-seg.is-planned, .lv-legend .is-planned { background: color-mix(in srgb, var(--strength) 45%, transparent); }
-.lv-seg.is-added, .lv-legend .is-added { background: var(--accent); }
+.lv-seg.is-added, .lv-legend .is-added { background: var(--volt-fill); }
 .is-tracked .lv-seg { opacity: 0.55; }
 .lv-value { display: flex; align-items: baseline; gap: 6px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .lv-value strong { color: var(--text); }

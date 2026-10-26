@@ -51,7 +51,7 @@ defineProps({ tiles: { type: Array, required: true } })
 
 .tile-meter, .tile-zones { position: relative; display: flex; height: 6px; border-radius: 3px; }
 .tile-meter { background: rgb(var(--tint-rgb) / 0.12); }
-.tile-meter i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent); }
+.tile-meter i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--volt-fill); }
 .tile-meter b, .tile-zones b { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background:oklch(from #eef3fb calc(l - var(--dim-l)) c h); box-shadow: 0 0 0 2px var(--deep); }
 .tile-zones { gap: 2px; }
 .tile-zones i { flex-basis: 0; min-width: 0; border-radius: 2px; }

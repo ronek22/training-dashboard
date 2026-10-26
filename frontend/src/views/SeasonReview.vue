@@ -1054,7 +1054,7 @@ a.step-to:hover strong { color: var(--season-ride); }
 .goal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
 .goal { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-strong); font-size: 14px; }
 .goal.done { border-color: color-mix(in srgb, var(--success) 35%, transparent); background: color-mix(in srgb, var(--success) 7%, var(--surface)); }
-.goal-check { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--success); color: var(--on-accent); font-size: 26px; font-weight: 800; }
+.goal-check { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--success-fill); color: var(--on-volt); font-size: 26px; font-weight: 800; }
 .is-in .goal-check { animation: check-pop 700ms var(--motion-ease-emphasized) 300ms both; }
 @keyframes check-pop { 0% { transform: scale(0); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
 .goal-ring { width: 56px; height: 56px; }
@@ -1068,7 +1068,7 @@ a.step-to:hover strong { color: var(--season-ride); }
 .coach footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 16px; font-size: 12px; }
 .coach-empty { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-top: 10px; }
 .coach-empty p { font-size: 15px; color: var(--text-soft); max-width: 60ch; }
-.primary { border: 0; border-radius: 12px; background: var(--volt); color: var(--on-accent); padding: 11px 18px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: transform var(--motion-duration-fast) var(--motion-ease-standard); }
+.primary { border: 0; border-radius: 12px; background: var(--volt-fill); color: var(--on-volt); padding: 11px 18px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: transform var(--motion-duration-fast) var(--motion-ease-standard); }
 .primary:hover:not(:disabled) { transform: translateY(-1px); }
 .primary:disabled { opacity: .6; cursor: default; }
 button:focus-visible, a:focus-visible { outline: 2px solid var(--volt); outline-offset: 3px; }
@@ -1090,7 +1090,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--volt); outline-
 .season-page .story-track { height: 44px; width: 16px; }
 .season-page .story-bar { width: 100%; border-radius: 3px; opacity: 1; background: var(--surface3); }
 .season-page .story-year:hover:not(:disabled) .story-bar { background: var(--muted); }
-.season-page .story-year.active .story-bar { background: var(--volt); }
+.season-page .story-year.active .story-bar { background: var(--volt-fill); }
 .season-page .story-label { font-size: 10px; font-weight: 500; color: var(--muted); }
 .season-page .story-year.active .story-label { color: var(--text); font-weight: 700; }
 
@@ -1134,7 +1134,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--volt); outline-
 .season-page .day.streak { box-shadow: inset 0 -3px 0 var(--volt); }
 .season-page .grid-legend { color: var(--text-soft); gap: 6px 18px; }
 .season-page .grid-legend i { width: 4px; height: 12px; border-radius: 2px; }
-.season-page .grid-legend .legend-streak { width: 16px; height: 4px; background: var(--volt); box-shadow: none; }
+.season-page .grid-legend .legend-streak { width: 16px; height: 4px; background: var(--volt-fill); box-shadow: none; }
 
 /* Blocks */
 .season-page .block { margin-bottom: 24px; padding: 24px 28px; border-color: var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; }
@@ -1166,7 +1166,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--volt); outline-
 .season-page .streak-card .feature-number { color: var(--volt); }
 .season-page .streak-facts strong { font-size: 32px; letter-spacing: 0; }
 .season-page .timeline-track { height: 10px; background: var(--surface3); }
-.season-page .timeline-bar { background: var(--volt); }
+.season-page .timeline-bar { background: var(--volt-fill); }
 .season-page .month-chart rect { fill: var(--surface3); }
 .season-page .month-chart rect.best { fill: var(--volt); }
 .season-page .month-value { fill: var(--volt); font-family: var(--font-display); font-size: 14px; }
@@ -1187,7 +1187,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--volt); outline-
 .season-page .season-best { border: 0; border-radius: 18px; background: rgb(var(--deep-rgb)); }
 .season-page .season-best:hover { transform: none; box-shadow: none; background: var(--surface2); }
 .season-page .best-tag { color: var(--volt); background: color-mix(in srgb, var(--volt) 14%, transparent); }
-.season-page .season-best.is-best_ever .best-tag { color: #0a0c11; background: var(--volt); }
+.season-page .season-best.is-best_ever .best-tag { color: #0a0c11; background: var(--volt-fill); }
 .season-page .best-label { color: var(--text); font-size: 14px; }
 .season-page .best-value { font-size: 40px; font-style: italic; font-weight: 800; letter-spacing: 0; }
 .season-page .seasons { height: 14px; }
@@ -1204,13 +1204,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--volt); outline-
 .season-page .mountain-stat strong { font-style: italic; font-weight: 800; letter-spacing: 0; }
 .season-page .goal { border: 0; border-radius: 18px; background: rgb(var(--deep-rgb)); }
 .season-page .goal.done { background: color-mix(in srgb, var(--volt) 8%, rgb(var(--deep-rgb))); }
-.season-page .goal-check { background: var(--volt); color: #0a0c11; }
+.season-page .goal-check { background: var(--volt-fill); color: #0a0c11; }
 
 /* Coach */
 .season-page .coach { padding: 24px 28px; border-left: 1px solid var(--border); }
 .season-page .coach > .eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; }
 .season-page .coach-empty p { font-size: 17px; line-height: 1.55; }
-.season-page .primary { height: 48px; padding: 0 24px; border-radius: 999px; background: var(--volt); color: #0a0c11; }
+.season-page .primary { height: 48px; padding: 0 24px; border-radius: 999px; background: var(--volt-fill); color: #0a0c11; }
 .season-page button:focus-visible, .season-page a:focus-visible { outline-color: var(--volt); }
 
 @media (max-width: 1100px) {

@@ -341,7 +341,7 @@ load()
 .day-cell { width: 130px; white-space: nowrap; }
 .weekday { display: inline-block; width: 34px; color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
 .day-cell strong { font-weight: 650; }
-.day-cell em { margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 10px; font-style: normal; font-weight: 650; }
+.day-cell em { margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: var(--volt-fill); color: var(--on-volt); font-size: 10px; font-style: normal; font-weight: 650; }
 .dinner-cell { max-width: 0; width: 42%; }
 .dish { display: block; font-weight: 650; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .desc { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -369,7 +369,7 @@ load()
 .day-picks { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .day-pick { border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font: inherit; font-size: 12px; font-weight: 600; padding: 4px 11px; cursor: pointer; }
 .day-pick.empty { color: var(--muted); border-style: dashed; }
-.day-pick[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.day-pick[aria-pressed="true"] { background: var(--volt-fill); border-color: var(--volt-fill); color: var(--on-volt); }
 .shopping-empty { color: var(--muted); font-size: 13px; margin: 14px 0 2px; }
 .shopping-cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 28px; margin-top: 14px; }
 .shopping-cols h4 { margin: 0 0 6px; font-size: 11px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }

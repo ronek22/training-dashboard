@@ -90,7 +90,7 @@ const weekdays = computed(() => (data.value?.weekdays || []).map((day) => ({
 .findings { list-style: none; display: grid; gap: 10px; }
 .findings li { display: flex; gap: 10px; font-size: 14px; line-height: 1.5; }
 .findings .dot { flex: none; width: 8px; height: 8px; margin-top: 7px; border-radius: 50%; background: var(--info-text); }
-.findings .is-good .dot { background: var(--success); }
+.findings .is-good .dot { background: var(--success-fill); }
 .findings .is-warn .dot { background: var(--warning); }
 
 .sub { margin: 18px 0 10px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
@@ -113,7 +113,7 @@ const weekdays = computed(() => (data.value?.weekdays || []).map((day) => ({
 .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--surface2); gap: 1px; }
 .bar span { display: block; height: 100%; }
 .replaced { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); }
-.seg-done { background: var(--success); }
+.seg-done { background: var(--success-fill); }
 .seg-changed { background: color-mix(in srgb, var(--success) 45%, var(--surface3)); }
 .seg-replaced { background: var(--warning); }
 .seg-skipped { background: var(--danger); }

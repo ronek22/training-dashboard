@@ -717,8 +717,8 @@ onUnmounted(() => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--volt);
-  color: var(--on-accent);
+  background: var(--volt-fill);
+  color: var(--on-volt);
   font-size: 17px;
 }
 .coach-layer { position: fixed; inset: 0; z-index: 50; }
@@ -802,7 +802,7 @@ onUnmounted(() => {
 .conversation-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); margin-bottom: 2px; border-radius: 10px; }
 .conversation-row:hover { background: rgb(var(--ov-rgb) / .04); }
 .conversation-row.active { background: rgba(95, 140, 255, .14); }
-.conversation-row.active::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--accent); }
+.conversation-row.active::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--volt-fill); }
 .conversation-select, .conversation-delete { border: 0; background: transparent; color: inherit; cursor: pointer; }
 .conversation-select { display: grid; gap: 3px; min-width: 0; padding: 9px 30px 10px 12px; text-align: left; }
 .conversation-meta { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted); font-size: 11px; }
@@ -811,7 +811,7 @@ onUnmounted(() => {
 .conversation-select strong { display: -webkit-box; overflow: hidden; color: var(--text-soft); font-size: 13px; font-weight: 600; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .conversation-row.active .conversation-select strong, .conversation-row.unread .conversation-select strong { color: var(--text); }
 .conversation-row.unread .conversation-select strong { font-weight: 750; }
-.unread-dot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--accent-strong); }
+.unread-dot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--volt-fill-strong); }
 .conversation-delete { position: absolute; top: 6px; right: 4px; width: 24px; height: 24px; border-radius: 7px; color: var(--muted); font-size: 16px; opacity: 0; }
 .conversation-row:hover .conversation-delete, .conversation-delete:focus-visible { opacity: 1; }
 .conversation-row:hover time { visibility: hidden; }
@@ -850,7 +850,7 @@ onUnmounted(() => {
 .coach-message.is-user .coach-message-author { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 .coach-message.is-user p { white-space: pre-wrap; }
 .coach-message.is-thinking p { color: var(--muted); font-size: 13px; }
-.coach-message.is-thinking i { display: inline-block; width: 5px; height: 5px; margin-right: 3px; border-radius: 50%; background: var(--accent-strong); animation: coach-pulse 1.2s ease-in-out infinite; }
+.coach-message.is-thinking i { display: inline-block; width: 5px; height: 5px; margin-right: 3px; border-radius: 50%; background: var(--volt-fill-strong); animation: coach-pulse 1.2s ease-in-out infinite; }
 .coach-message.is-thinking i:nth-child(2) { animation-delay: .15s; }
 .coach-message.is-thinking i:nth-child(3) { animation-delay: .3s; }
 
@@ -859,7 +859,7 @@ onUnmounted(() => {
 .coach-composer:focus-within { border-color: rgba(95, 140, 255, .55); }
 .coach-composer textarea { flex: 1; min-height: 24px; max-height: 180px; padding: 7px 0; border: 0; outline: none; resize: none; background: transparent; color: var(--text); font: inherit; font-size: 14.5px; line-height: 1.5; }
 .coach-composer textarea::placeholder { color: var(--muted); }
-.coach-composer button { flex: 0 0 auto; display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 11px; background: var(--accent); color: white; cursor: pointer; }
+.coach-composer button { flex: 0 0 auto; display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 11px; background: var(--volt-fill); color: white; cursor: pointer; }
 .coach-composer button svg { width: 18px; height: 18px; }
 .coach-composer button:disabled { background: rgb(var(--ov-rgb) / .08); color: var(--muted); cursor: not-allowed; }
 .coach-error { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; background: rgba(239, 94, 94, .12); color: var(--danger-text); font-size: 12px; }

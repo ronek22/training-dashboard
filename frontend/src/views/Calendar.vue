@@ -576,7 +576,7 @@ onBeforeUnmount(() => {
 .week-total small { color: var(--muted-soft); font-size: 11px; }
 .week-total .wt-distance { color: var(--text-soft); }
 .volume-track { height: 3px; margin-top: auto; opacity: .8; overflow: hidden; border-radius: 3px; background: rgb(var(--ov-rgb) / .08); }
-.volume-track i { display: block; height: 100%; border-radius: inherit; background: var(--accent-strong); }
+.volume-track i { display: block; height: 100%; border-radius: inherit; background: var(--volt-fill-strong); }
 .week-brief { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 12px; padding: 18px 20px; border-radius: 14px; background: var(--bg-elevated); }
 .brief-plan > span { color: var(--accent-strong); font-size: 12px; font-weight: 650; }
 .brief-plan h2 { margin: 2px 0 4px; font-family: var(--font-display); font-size: 18px; }
@@ -671,7 +671,7 @@ a.pop-title:hover { text-decoration: underline; }
 .cal-controls .view-switch { display: flex; padding: 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
 .cal-controls .view-switch button { min-height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: transparent; color: var(--muted-soft); font-size: 14px; }
 .cal-controls .view-switch button.active { background: var(--surface3); color: var(--text); font-weight: 700; }
-.cal-controls .plan-action { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 999px; background: var(--volt); color: var(--on-accent); font-size: 14px; font-weight: 700; }
+.cal-controls .plan-action { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 999px; background: var(--volt-fill); color: var(--on-volt); font-size: 14px; font-weight: 700; }
 
 .summary-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 2fr); gap: 12px; margin-bottom: 20px; padding: 0; background: transparent; }
 .summary-stats { display: contents; }
@@ -739,7 +739,7 @@ a.pop-title:hover { text-decoration: underline; }
 .brief-goals .goal-main { display: grid; gap: 8px; min-width: 0; }
 .brief-goals strong { overflow: hidden; color: var(--text); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .brief-goals i { height: 4px; margin: 0; background: var(--surface3); }
-.brief-goals .tone-neutral b { background: var(--volt); }
+.brief-goals .tone-neutral b { background: var(--volt-fill); }
 .brief-goals .goal-value { font-size: 22px; white-space: nowrap; }
 .brief-goals .goal-state { justify-self: end; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--success-text) 12%, transparent); color: var(--success-text); font-size: 11px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
 .brief-goals .goal-state.state-behind_pace { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning-text); }

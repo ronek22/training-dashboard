@@ -157,7 +157,7 @@ const endSickMode = () => run(() => api.endSickMode())
 .sick-hint { margin: -6px 0 0; color: var(--dash-muted, var(--muted)); font-size: 12px; }
 .sick-watch { margin: 0; color: var(--dash-muted, var(--muted)); font-size: 12px; }
 .sick-watch strong { color: var(--accent); font-weight: 650; }
-.sick-start { align-self: flex-start; border-radius: 999px; background: var(--accent); padding: 6px 14px; color: #0d1622; font-size: 12px; font-weight: 700; text-decoration: none; }
+.sick-start { align-self: flex-start; border-radius: 999px; background: var(--volt-fill); padding: 6px 14px; color: #0d1622; font-size: 12px; font-weight: 700; text-decoration: none; }
 .sick-start:hover { filter: brightness(1.08); }
 .sick-start:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sick-logged { color: var(--success-text); font-size: 12px; font-weight: 600; }

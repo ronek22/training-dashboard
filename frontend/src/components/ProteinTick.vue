@@ -97,7 +97,7 @@ onMounted(load)
 .protein-choice { gap: 8px; }
 .protein-choice button { height: 40px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font-size: 14px; font-weight: 600; }
 .protein-choice button:hover { border-color: var(--muted); }
-.protein-choice button.on { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.protein-choice button.on { border-color: var(--volt-fill); background: var(--volt-fill); color: var(--on-volt); }
 .protein-choice button.on.miss { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning-text); }
 .protein-week { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 12px; }
 .protein-link { color: var(--accent); font-size: 13px; }

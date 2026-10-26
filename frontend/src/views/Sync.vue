@@ -822,7 +822,7 @@ const formatSeconds = (value) => {
 .file-upload input { max-width: 260px; }
 .import-btn {
   padding: 10px 16px; border: 0; border-radius: 10px; cursor: pointer;
-  background: var(--accent); color:#fff; font-weight: 600;
+  background: var(--volt-fill); color:#fff; font-weight: 600;
 }
 .import-btn-secondary {
   background: var(--deep);
@@ -844,7 +844,7 @@ const formatSeconds = (value) => {
   transition: all 0.15s;
 }
 .filter-btn:hover { color: var(--text); }
-.filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+.filter-btn.active { background: var(--volt-fill); color: white; border-color: var(--volt-fill); }
 .fitbod-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

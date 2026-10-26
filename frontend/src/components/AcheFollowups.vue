@@ -139,7 +139,7 @@ onMounted(async () => {
 .af-later, .af-open { min-height: 38px; border-radius: 999px; padding: 0 16px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
 .af-later { border: 0; background: none; color: var(--muted); }
 .af-later:hover { background: var(--surface); color: var(--text); }
-.af-open { border: 0; background: var(--volt); color: var(--on-accent); }
+.af-open { border: 0; background: var(--volt-fill); color: var(--on-volt); }
 .af-open:disabled, .af-answers button:disabled { opacity: 0.45; cursor: not-allowed; }
 .af-error { margin: 0; color: var(--warning-text); font-size: 12px; }
 .ache-followups button:focus-visible, .ache-followups a:focus-visible { outline: 2px solid var(--volt); outline-offset: 2px; }

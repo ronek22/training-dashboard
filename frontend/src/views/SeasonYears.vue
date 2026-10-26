@@ -598,7 +598,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .years-page .pace b { color: var(--text); }
 .years-page .pace strong { flex: none; font-family: var(--font-display); font-size: 32px; font-style: italic; font-weight: 800; color: var(--volt); white-space: nowrap; }
 .years-page .pace.behind strong { color: var(--warning); }
-.pace-tag { flex: none; padding: 4px 10px; border-radius: 999px; background: var(--volt); color: #0a0c11; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.pace-tag { flex: none; padding: 4px 10px; border-radius: 999px; background: var(--volt-fill); color: #0a0c11; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .years-page .controls { margin-top: 20px; }
 .years-page .segmented { border-color: var(--border-strong); background: transparent; }
 .years-page .segmented button { font-weight: 600; }
@@ -623,7 +623,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .years-page .heat-year:focus-visible { outline: 2px solid var(--volt); }
 .years-page .heat-total-bar { top: 11px; bottom: 11px; max-width: none; background: var(--sport); }
 .years-page .heat-total::before { content: ''; position: absolute; left: 8px; right: 64px; top: 11px; bottom: 11px; border-radius: 4px; background: var(--surface2); }
-.years-page .heat-total-bar.best { background: var(--volt); }
+.years-page .heat-total-bar.best { background: var(--volt-fill); }
 .years-page .heat-total strong { margin-left: auto; font-family: var(--font-display); font-size: 16px; }
 .years-page .heat-row:has(.heat-total-bar.best) .heat-total strong { color: var(--volt); }
 

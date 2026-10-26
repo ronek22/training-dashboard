@@ -344,7 +344,7 @@ button:disabled { opacity: .5; cursor: wait; }
 .evidence li { font-size: 11px; color: var(--muted); }
 .brief-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 24px; }
 .brief-head h3 { margin: 0; }
-.copy-button { padding: 8px 12px; border-radius: 9px; background: var(--accent-strong); color: var(--on-accent); border: 0; font-size: 11px; font-weight: 700; }
+.copy-button { padding: 8px 12px; border-radius: 9px; background: var(--volt-fill-strong); color: var(--on-volt); border: 0; font-size: 11px; font-weight: 700; }
 .copy-button:hover { filter: brightness(1.08); }
 .brief-hint { margin: 8px 0; font-size: 11.5px !important; color: var(--muted) !important; }
 textarea { width: 100%; box-sizing: border-box; background: var(--surface); color: var(--text-soft); border: 1px solid var(--border-strong); border-radius: 10px; padding: 12px; font: 11px/1.7 ui-monospace, monospace; resize: vertical; }

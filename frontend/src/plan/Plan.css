@@ -2478,7 +2478,7 @@
 .plan-reasoning ul { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
 .plan-reasoning li { position: relative; padding: 12px 0 12px 22px; border-top: 1px solid var(--border); font-size: 14px; line-height: 1.55; }
 .plan-reasoning li:first-child { border-top: 0; padding-top: 2px; }
-.plan-reasoning li::before { content: ''; position: absolute; left: 4px; top: 20px; width: 7px; height: 7px; border-radius: 50%; background: var(--volt); }
+.plan-reasoning li::before { content: ''; position: absolute; left: 4px; top: 20px; width: 7px; height: 7px; border-radius: 50%; background: var(--volt-fill); }
 .plan-reasoning li:first-child::before { top: 10px; }
 .plan-page .week-purpose > summary, .plan-page .revision-timeline > summary, .plan-page .goal-context-summary { font-weight: 600; }
 .plan-page .goal-summary-pill { border-radius: 999px; }
@@ -2501,7 +2501,7 @@
 .plan-page .workload-metric.is-execution span { grid-column: 1 / -1; }
 .execution-bar { display: flex; gap: 5px; }
 .execution-bar b { flex: 1; height: 12px; border-radius: 4px; }
-.execution-bar .is-done { background: var(--volt); }
+.execution-bar .is-done { background: var(--volt-fill); }
 .execution-bar .is-changed { background: var(--warning); }
 .execution-bar .is-open { border: 1px dashed var(--border-strong); }
 @media (max-width: 900px) { .plan-page .workload-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }}
@@ -2513,12 +2513,12 @@
 .plan-page .plan-day .session-match-status { position: absolute; top: 16px; right: 16px; margin: 0; padding: 4px 10px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
 .plan-page .plan-day .session-match-status.match-done { background: color-mix(in srgb, var(--success-text) 14%, transparent); color: var(--success-text); }
 .plan-page .plan-day .session-match-status.match-pending { border: 1px solid var(--border-strong); background: transparent; color: var(--muted-soft); }
-.plan-page .plan-day .session-match-status.match-today { border: 0; background: var(--volt); color: var(--on-accent); }
+.plan-page .plan-day .session-match-status.match-today { border: 0; background: var(--volt-fill); color: var(--on-volt); }
 .plan-page .plan-day .day-heading-row { padding-right: 96px; }
 .plan-page .plan-day-weather { position: absolute; top: 46px; right: 16px; }
 .actual-progress { display: grid; gap: 6px; margin-top: 10px; }
 .actual-progress i { display: block; height: 5px; border-radius: 3px; background: var(--surface3); overflow: hidden; }
-.actual-progress b { display: block; height: 100%; border-radius: 3px; background: var(--volt); }
+.actual-progress b { display: block; height: 100%; border-radius: 3px; background: var(--volt-fill); }
 .actual-progress small { color: var(--muted-soft); font-size: 12px; }
 .plan-page .actual-list { gap: 8px; }
 .plan-page .actual-item { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }

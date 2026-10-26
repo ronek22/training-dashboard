@@ -241,7 +241,7 @@ const talk = () => wins.value && openCoachChat(weekChatRequest(wins.value))
 h1 { font-size: 28px; letter-spacing: -.4px; }
 .wr-sub { margin-top: 6px; font-size: 13px; color: var(--muted); }
 .status { color: var(--text); font-weight: 600; }
-.status.live::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--success); vertical-align: 1px; }
+.status.live::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--success-fill); vertical-align: 1px; }
 .stepper { display: flex; align-items: center; gap: 6px; }
 .stepper button { min-width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; font-size: 18px; cursor: pointer; }
 .stepper button:disabled { opacity: .35; cursor: default; }
@@ -280,7 +280,7 @@ h1 { font-size: 28px; letter-spacing: -.4px; }
 .insights { list-style: none; display: grid; gap: 10px; }
 .insights li { display: flex; gap: 10px; font-size: 14px; line-height: 1.5; }
 .insights .dot { flex: none; width: 8px; height: 8px; margin-top: 7px; border-radius: 50%; background: var(--info-text); }
-.insights .is-good .dot { background: var(--success); }
+.insights .is-good .dot { background: var(--success-fill); }
 .insights .is-warn .dot { background: var(--warning); }
 
 .goals { list-style: none; display: grid; gap: 14px; }
@@ -288,8 +288,8 @@ h1 { font-size: 28px; letter-spacing: -.4px; }
 .goal-line strong { font-weight: 600; white-space: nowrap; }
 .anchor { margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-strong, var(--accent)); font-style: normal; font-size: 10px; font-weight: 650; }
 .bar { height: 6px; margin: 7px 0 5px; border-radius: 3px; background: var(--surface2); overflow: hidden; }
-.bar span { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
-.bar.met span { background: var(--success); }
+.bar span { display: block; height: 100%; border-radius: 3px; background: var(--volt-fill); }
+.bar.met span { background: var(--success-fill); }
 .goal-hint { font-size: 11px; color: var(--muted); }
 .goal-hint.met { color: var(--success-text); }
 
@@ -299,7 +299,7 @@ h1 { font-size: 28px; letter-spacing: -.4px; }
 .focus-label { display: block; margin-bottom: 3px; font-size: 11px; font-weight: 650; color: var(--accent-strong, var(--accent)); }
 .focus strong { font-size: 14px; line-height: 1.4; }
 .focus p { margin-top: 3px; font-size: 12px; line-height: 1.5; color: var(--muted); }
-.primary { flex: none; border: 0; border-radius: 10px; background: var(--accent); color: #fff; padding: 9px 14px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.primary { flex: none; border: 0; border-radius: 10px; background: var(--volt-fill); color: #fff; padding: 9px 14px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
 .wins { list-style: none; display: grid; gap: 10px; }
 .wins li { display: flex; gap: 10px; font-size: 13px; font-weight: 600; line-height: 1.4; }
 .wins a { color: var(--text); text-decoration: none; }
@@ -341,13 +341,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .wr h1 { color: var(--text); font-family: var(--font-display); font-size: clamp(42px, 5vw, 58px); font-style: italic; font-weight: 800; letter-spacing: -.02em; line-height: .95; text-transform: uppercase; }
 .wr-sub { margin-top: 10px; }
 .status { color: var(--muted); font-size: 12px; font-weight: 600; }
-.status.live::before { background: var(--volt); }
+.status.live::before { background: var(--volt-fill); }
 .stepper { gap: 8px; }
 .stepper button { min-width: 40px; height: 40px; border-color: var(--border-strong); border-radius: 999px; background: transparent; }
 .stepper button.today { border-radius: 999px; }
 .stepper-label { min-width: 190px; font-family: var(--font-display); font-size: 19px; font-weight: 700; }
 .stepper-label small { font-family: var(--font-body); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
-.sunday-link { height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--volt); color: var(--bg); font-size: 12px; font-weight: 750; }
+.sunday-link { height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--volt-fill); color: var(--bg); font-size: 12px; font-weight: 750; }
 .card { padding: 22px 24px; border-radius: var(--radius-card); background: var(--surface); box-shadow: none; }
 .card h2 { font-size: 15px; font-weight: 700; }
 .kpis { overflow: hidden; }
@@ -360,7 +360,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .goals { gap: 17px; }
 .bar { height: 7px; border-radius: 999px; }
 .bar span { background: var(--ride); }
-.bar.met span { background: var(--volt); }
+.bar.met span { background: var(--volt-fill); }
 .anchor { border-radius: 999px; background: color-mix(in srgb, var(--volt) 14%, transparent); color: var(--volt); }
 .focus { border-color: var(--border-strong); border-radius: 16px; background: var(--surface2); }
 .focus-label { color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }

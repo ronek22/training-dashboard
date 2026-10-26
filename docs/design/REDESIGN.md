@@ -48,6 +48,8 @@ Always use tokens, never raw hex.
 - **Volt `--volt` (#d4ff3a) is for the ONE primary action per view and for wins**
   (streaks, plan followed, today ring). Don't overuse it: secondary actions are **outline
   buttons** (transparent, `1px solid var(--border-strong)`, pill radius).
+  For volt as a background use `--volt-fill` / `--volt-fill-strong` with `--on-volt` text
+  (`--success-fill` for success bars); `--volt` itself darkens in light mode so it reads as text.
 - **Status:** `--warning` / `--warning-text` (amber), `--danger` / `--danger-text`, `--success-text`.
 - **Type:** body `--font-body` (Archivo). Numbers and titles `--font-display`
   (Barlow Condensed), page titles and hero numbers **italic 800 uppercase**.

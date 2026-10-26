@@ -1,6 +1,6 @@
 const STORAGE_KEY = 'training-dashboard-theme'
 const MODES = ['auto', 'light', 'dark']
-const THEME_COLORS = { light: '#f5f5f3', dark: '#0a0c11' }
+const THEME_COLORS = { light: '#e8ecf2', dark: '#0a0c11' }
 
 export function getThemeMode() {
   try {

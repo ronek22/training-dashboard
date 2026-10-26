@@ -322,8 +322,8 @@ defineExpose({ load })
 .arc-button { padding: 8px 14px; border: 1px solid var(--border-strong); border-radius: 10px; background: transparent; color: var(--text-soft); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .arc-button:hover:not(:disabled) { background: rgb(var(--ov-rgb) / 0.05); color: var(--text); }
 .arc-button:disabled { opacity: 0.55; cursor: default; }
-.arc-primary { border-color: transparent; background: var(--accent); color: var(--on-accent); }
-.arc-primary:hover:not(:disabled) { background: var(--accent-strong); color: var(--on-accent); }
+.arc-primary { border-color: transparent; background: var(--volt-fill); color: var(--on-volt); }
+.arc-primary:hover:not(:disabled) { background: var(--volt-fill-strong); color: var(--on-volt); }
 .arc-danger { color: var(--danger); }
 
 .arc-adjust { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 14px 24px; padding: 16px 18px; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 12px; background: rgba(245, 158, 11, 0.07); }

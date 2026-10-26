@@ -154,7 +154,7 @@ h2 { margin: 6px 0 0; font-size: 28px; font-weight: 750; }
 .highlights strong { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .highlights span, .highlights a { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .highlights a { text-decoration: underline; text-underline-offset: 3px; }
-.close { margin-top: 24px; padding: 11px 28px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+.close { margin-top: 24px; padding: 11px 28px; border: 0; border-radius: 999px; background: var(--volt-fill); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
 .close:hover { filter: brightness(1.08); }
 .error { color: var(--muted); }
 

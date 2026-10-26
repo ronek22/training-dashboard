@@ -747,7 +747,7 @@ input:focus, textarea:focus { outline: 2px solid color-mix(in srgb, var(--streng
 .workouts-page .page-sub { margin-top: 10px; color: var(--muted); font-size: 14px; }
 .workouts-page .studio-hero-action { display: flex; flex-wrap: wrap; justify-content: end; min-width: 0; gap: 10px; }
 .workouts-page :is(.primary-button, .quiet-button, .start-button) { min-height: 44px; padding: 0 20px; gap: 8px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font: 600 13px var(--font-body); text-decoration: none; box-shadow: none; }
-.workouts-page .primary-button { border-color: var(--volt); background: var(--volt); color: var(--on-accent); }
+.workouts-page .primary-button { border-color: var(--volt-fill); background: var(--volt-fill); color: var(--on-volt); }
 .workouts-page .quiet-button:hover, .workouts-page .start-button:hover:not(:disabled) { background: var(--surface2); border-color: var(--strength); filter: none; transform: none; }
 .workouts-page .studio-summary { min-width: 0; }
 .workouts-page .studio-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; }

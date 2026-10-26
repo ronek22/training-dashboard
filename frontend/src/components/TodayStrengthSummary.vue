@@ -99,7 +99,7 @@ const tiles = computed(() => {
 .strength-lift-name strong { overflow: hidden; color: var(--text); font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .strength-lift-name small { color: var(--dash-muted, var(--muted)); font-size: 11px; font-variant-numeric: tabular-nums; }
 .strength-lift-bar { position: relative; height: 5px; border-radius: 3px; background: rgb(var(--tint-rgb) / 0.1); }
-.strength-lift-bar i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent); opacity: 0.8; }
+.strength-lift-bar i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--volt-fill); opacity: 0.8; }
 .strength-lift-volume { color: var(--dash-soft, var(--text-soft)); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
 .strength-unlinked { margin: 0; border-radius: 12px; background: rgb(var(--deep-rgb) / 0.35); padding: 14px 16px; color: var(--dash-muted, var(--muted)); font-size: 13px; }
 .strength-unlinked a { margin-left: 6px; color: var(--accent); text-decoration: none; }

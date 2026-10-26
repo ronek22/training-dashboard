@@ -224,7 +224,7 @@ details > summary::-webkit-details-marker { display: none; }
 .mg-signal > summary strong { font-size: 17px; font-weight: 600; color: var(--text); white-space: nowrap; }
 .mg-signal > summary small { font-size: 11px; font-weight: 400; color: var(--muted); }
 .mg-signal > summary::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--warning); align-self: center; flex-shrink: 0; margin-right: -4px; }
-.mg-signal.is-good > summary::before { background: var(--success); }
+.mg-signal.is-good > summary::before { background: var(--success-fill); }
 .mg-signal > summary > span { margin-right: auto; }
 .mg-signal > summary strong.mg-unavailable { font-size: 13px; font-weight: 500; color: var(--muted); }
 .mg-direction { width: 14px; text-align: center; color: var(--muted); }
@@ -500,7 +500,7 @@ summary:focus-visible { outline: 2px solid var(--strength-accent, var(--accent))
 }
 
 .muscle-gain .mg-signal.is-good > summary::before {
-  background: var(--success);
+  background: var(--success-fill);
 }
 
 .muscle-gain .mg-signal.is-attention > summary::before {

@@ -742,7 +742,7 @@ button.stop-card:hover { transform: translateY(-2px); border-color: var(--sport)
 }
 .records-page .spot-main { padding: 32px; gap: 6px; }
 .spot-ribbon-row { display: flex; align-items: center; gap: 10px; }
-.records-page .spot-ribbon { padding: 4px 10px; background: var(--volt); color: #0a0c11; font-size: 11px; letter-spacing: .08em; }
+.records-page .spot-ribbon { padding: 4px 10px; background: var(--volt-fill); color: #0a0c11; font-size: 11px; letter-spacing: .08em; }
 .spot-day { font-size: 14px; color: var(--text-soft); }
 .records-page .spot-what { margin-top: 16px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--sport); opacity: 1; }
 .records-page .sport-strength .spot-what { color: var(--tone-strength); }
@@ -778,7 +778,7 @@ button.stop-card:hover { transform: translateY(-2px); border-color: var(--sport)
 .records-page .sport-icon,
 .records-page .sport-icon.flame { width: 40px; height: 40px; border-radius: 12px; box-shadow: none; color: var(--sport); background: color-mix(in srgb, var(--sport) 14%, transparent); }
 .records-page .mini-label { font-size: 11px; font-weight: 600; letter-spacing: .14em; color: var(--muted); }
-.records-page .new-pill { color: #0a0c11; background: var(--volt); }
+.records-page .new-pill { color: #0a0c11; background: var(--volt-fill); }
 
 /* Power ladder: flat ride bars, new bests get a volt cap */
 .records-page .rung-track { background: transparent; }
@@ -797,7 +797,7 @@ button.stop-card:hover { transform: translateY(-2px); border-color: var(--sport)
 .records-page .road::after { top: 32px; height: 3px; background: var(--sport); box-shadow: none; }
 .records-page .stop-name { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--text-soft); }
 .records-page .stop-dot { width: 14px; height: 14px; border: 0; background: var(--sport); box-shadow: 0 0 0 4px var(--surface); }
-.records-page .road li.fresh .stop-dot { background: var(--volt); box-shadow: 0 0 0 4px var(--surface); }
+.records-page .road li.fresh .stop-dot { background: var(--volt-fill); box-shadow: 0 0 0 4px var(--surface); }
 .records-page .road li.locked .stop-dot { background: var(--surface); box-shadow: inset 0 0 0 2px var(--sport), 0 0 0 4px var(--surface); }
 .records-page .road li.next .stop-dot { animation: none; }
 .records-page .stop-card { padding: 12px 6px; border: 1px solid transparent; border-radius: 14px; background: rgb(var(--deep-rgb)); gap: 3px; }

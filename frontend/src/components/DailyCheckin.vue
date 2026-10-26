@@ -269,7 +269,7 @@ async function save() {
 .cm-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .cm-later { border: 0; border-radius: 10px; background: none; padding: 9px 12px; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .cm-later:hover { background: var(--surface2); color: var(--text); }
-.cm-save { min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); padding: 0 20px; color: var(--on-accent); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; transition: opacity var(--motion-duration-fast); }
+.cm-save { min-height: 44px; border: 0; border-radius: 999px; background: var(--volt-fill); padding: 0 20px; color: var(--on-volt); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; transition: opacity var(--motion-duration-fast); }
 .cm-save:disabled { opacity: 0.35; cursor: not-allowed; }
 .checkin-modal button:focus-visible, .checkin-link:focus-visible { outline: 2px solid oklch(from #91b1ff calc(l - var(--dim-l)) c h); outline-offset: 2px; }
 
@@ -298,8 +298,8 @@ async function save() {
 .checkin-bar strong { font-family: var(--font-display); font-size: 20px; font-weight: 700; text-align: right; }
 .checkin-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .checkin-empty p { margin: 0; color: var(--muted-soft); font-size: 14px; }
-.checkin-cta { min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); padding: 0 20px; color: var(--on-accent); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
-.checkin-cta:hover { background: var(--accent-strong); }
+.checkin-cta { min-height: 44px; border: 0; border-radius: 999px; background: var(--volt-fill); padding: 0 20px; color: var(--on-volt); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.checkin-cta:hover { background: var(--volt-fill-strong); }
 
 .daily-checkin { padding: 18px 22px; }
 .checkin-summary-block { gap: 10px; }
@@ -333,10 +333,10 @@ async function save() {
 .cm-seg button.on { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 18%, var(--surface)); color: var(--text); box-shadow: inset 0 -3px 0 var(--tone); }
 .cm-foot { padding: 18px 28px 24px; }
 .cm-progress span { width: 22px; height: 5px; }
-.cm-progress span.done { background: var(--volt); }
+.cm-progress span.done { background: var(--volt-fill); }
 .cm-progress small { font-family: var(--font-display); font-size: 15px; font-weight: 700; }
 .cm-later { min-height: 44px; border-radius: 999px; padding: 0 18px; font-size: 14px; }
-.cm-save { min-height: 48px; background: var(--volt); padding: 0 24px; font-size: 15px; font-weight: 700; }
+.cm-save { min-height: 48px; background: var(--volt-fill); padding: 0 24px; font-size: 15px; font-weight: 700; }
 .cm-save:disabled { background: var(--surface3); color: var(--muted); opacity: 1; }
 .checkin-modal button:focus-visible { outline-color: var(--volt); }
 @media (max-width: 520px) {

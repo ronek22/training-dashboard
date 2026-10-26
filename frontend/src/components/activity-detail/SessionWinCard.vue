@@ -61,7 +61,7 @@ watch([coachChatChanged, coachChatAvailable], loadChatCount)
 .sw-also{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0 0;padding:0;list-style:none}
 .sw-also li{padding:3px 9px;border-radius:999px;background:var(--ad-soft);color:var(--ad-muted);font-size:.74rem;font-weight:650}
 .sw-actions{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
-.sw-talk{min-height:48px;padding:0 20px;border:1px solid color-mix(in srgb,var(--volt) 78%,transparent);border-radius:999px;background:var(--volt);color:var(--on-accent);font:inherit;font-size:.9rem;font-weight:750;cursor:pointer;white-space:nowrap;box-shadow:0 5px 16px color-mix(in srgb,var(--volt) 18%,transparent);transition:filter .15s ease,transform .15s ease,box-shadow .15s ease}
+.sw-talk{min-height:48px;padding:0 20px;border:1px solid color-mix(in srgb,var(--volt) 78%,transparent);border-radius:999px;background:var(--volt-fill);color:var(--on-volt);font:inherit;font-size:.9rem;font-weight:750;cursor:pointer;white-space:nowrap;box-shadow:0 5px 16px color-mix(in srgb,var(--volt) 18%,transparent);transition:filter .15s ease,transform .15s ease,box-shadow .15s ease}
 .sw-talk:hover{filter:brightness(1.06);transform:translateY(-1px);box-shadow:0 7px 20px color-mix(in srgb,var(--volt) 24%,transparent)}
 .sw-talk:focus-visible{outline:2px solid var(--volt);outline-offset:4px}
 .sw-talk:active{transform:translateY(0)}

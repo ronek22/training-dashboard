@@ -129,7 +129,7 @@ h2 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -.3px; }
 .ww-focus > div { flex: 1; min-width: 0; }
 .ww-focus-label { display: block; margin-bottom: 2px; color: var(--accent); font-size: 11px; font-weight: 650; }
 .ww-focus strong { color: var(--text); font-size: 14px; font-weight: 650; }
-.ww-talk { flex: none; border: 0; border-radius: 10px; background: var(--accent); padding: 9px 14px; color: #fff; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.ww-talk { flex: none; border: 0; border-radius: 10px; background: var(--volt-fill); padding: 9px 14px; color: #fff; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
 .ww-muted { margin: 0; color: var(--muted); font-size: 13px; }
 @media (max-width: 760px) {
   .week-wins { padding: 18px; }

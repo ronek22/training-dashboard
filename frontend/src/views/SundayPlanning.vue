@@ -232,7 +232,7 @@ h1 { margin: 0; font-size: 24px; font-weight: 700; color: var(--text); }
 textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: rgb(var(--ov-rgb) / .04); color: var(--text); font: inherit; font-size: 13px; resize: vertical; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .primary, .ghost { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 650; text-decoration: none; cursor: pointer; }
-.primary { border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent, #fff); }
+.primary { border: 1px solid var(--accent); background: var(--volt-fill); color: var(--on-volt); }
 .ghost { border: 1px solid var(--border); background: transparent; color: var(--text-soft); }
 .primary:disabled, .ghost:disabled { opacity: .5; cursor: default; }
 .error { margin: 0; color: var(--danger); font-size: 13px; }

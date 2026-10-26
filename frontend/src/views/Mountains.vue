@@ -1578,8 +1578,8 @@ a.trip-row:hover { background: rgb(var(--ov-rgb) / .06); }
 .mountains-page .range-tabs button { padding-inline: 11px; }
 .mountains-page .range-tabs button.active { background: color-mix(in srgb, var(--tone-recovery) 16%, var(--surface)); color: var(--tone-recovery); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone-recovery) 35%, transparent); }
 .mountains-page .range-tabs button.active small { color: var(--tone-recovery); }
-.mountains-page .action.primary-action { min-height: 40px; padding: 9px 16px; border: 1px solid var(--volt); border-radius: 999px; background: var(--volt); color: var(--on-accent); font: 700 12px var(--font-body); box-shadow: none; }
-.mountains-page .action.primary-action:hover:not(:disabled) { border-color: var(--volt-strong); background: var(--volt-strong); }
+.mountains-page .action.primary-action { min-height: 40px; padding: 9px 16px; border: 1px solid var(--volt); border-radius: 999px; background: var(--volt-fill); color: var(--on-volt); font: 700 12px var(--font-body); box-shadow: none; }
+.mountains-page .action.primary-action:hover:not(:disabled) { border-color: var(--volt-strong); background: var(--volt-fill-strong); }
 .mountains-page .mountains-layout { gap: 18px; }
 .mountains-page .map-card { border-color: var(--border); box-shadow: var(--shadow-card); }
 .mountains-page .side .card { padding: 18px; border-radius: var(--radius-card); }
@@ -1610,8 +1610,8 @@ a.trip-row:hover { background: rgb(var(--ov-rgb) / .06); }
 .mountains-page .kind-tabs button.on small, .mountains-page .length-tabs button.on small { color: var(--tone-recovery); }
 .mountains-page .planner-actions button, .mountains-page .planner-save button, .mountains-page .gpx-button { border-color: var(--border-strong); border-radius: 999px; background: transparent; color: var(--text-soft); }
 .mountains-page .planner-actions button:hover:not(:disabled), .mountains-page .planner-save button:hover:not(:disabled), .mountains-page .gpx-button:hover { border-color: var(--tone-recovery); background: color-mix(in srgb, var(--tone-recovery) 10%, var(--surface)); color: var(--tone-recovery); }
-.mountains-page .planner-save button.primary, .mountains-page .state-box .action { border-color: var(--volt); background: var(--volt); color: var(--on-accent); }
-.mountains-page .planner-save button.primary:hover:not(:disabled), .mountains-page .state-box .action:hover:not(:disabled) { border-color: var(--volt-strong); background: var(--volt-strong); color: var(--on-accent); }
+.mountains-page .planner-save button.primary, .mountains-page .state-box .action { border-color: var(--volt-fill); background: var(--volt-fill); color: var(--on-volt); }
+.mountains-page .planner-save button.primary:hover:not(:disabled), .mountains-page .state-box .action:hover:not(:disabled) { border-color: var(--volt-strong); background: var(--volt-fill-strong); color: var(--on-volt); }
 .mountains-page .planner-actions button.danger, .mountains-page .saved-tools button.danger { color: var(--danger-text); }
 .mountains-page .planner-warn { color: var(--warning-text); }
 .mountains-page .flash { border-color: color-mix(in srgb, var(--success-text) 35%, var(--border)); background: color-mix(in srgb, var(--success-text) 8%, var(--surface)); }
@@ -1717,7 +1717,7 @@ a.trip-row:hover { background: rgb(var(--ov-rgb) / .06); }
 .mtn-years { display: flex; align-items: flex-end; gap: 8px; height: 186px; margin-top: 18px; }
 .mtn-year { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; }
 .mtn-year i { width: 100%; max-width: 34px; border-radius: 6px 6px 3px 3px; background: var(--tone-recovery); }
-.mtn-year.best i { background: var(--volt); }
+.mtn-year.best i { background: var(--volt-fill); }
 .mtn-year-km { color: var(--text); font: 700 14px var(--font-display); font-variant-numeric: tabular-nums; }
 .mtn-year.best .mtn-year-km { color: var(--volt); }
 .mtn-year-label { color: var(--muted); font-size: 12px; }

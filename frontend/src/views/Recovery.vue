@@ -364,8 +364,8 @@ button, input, textarea { font: inherit; }
 button { cursor: pointer; color: var(--text); background: transparent; border: 1px solid var(--border-strong); border-radius: 999px; padding: 9px 16px; font-size: 13px; transition: background .15s, border-color .15s; }
 button:hover:not(:disabled) { background: var(--surface2); border-color: var(--z2); }
 button:disabled { opacity: .55; cursor: not-allowed; }
-.primary { background: var(--volt); border-color: var(--volt); color: var(--on-accent); font-weight: 700; }
-.primary:hover:not(:disabled) { background: var(--volt-strong); border-color: var(--volt-strong); }
+.primary { background: var(--volt-fill); border-color: var(--volt-fill); color: var(--on-volt); font-weight: 700; }
+.primary:hover:not(:disabled) { background: var(--volt-fill-strong); border-color: var(--volt-strong); }
 :is(button, input, textarea, summary):focus-visible { outline: 2px solid var(--z2); outline-offset: 3px; }
 .eyebrow { display: block; font: 700 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .subtle { font-size: 12px; color: var(--muted); }

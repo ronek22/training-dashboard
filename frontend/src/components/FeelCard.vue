@@ -164,11 +164,11 @@ const contextChips = computed(() => {
 }
 .feel-edit:hover { background: var(--surface2); color: var(--text); }
 .feel-edit.primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
+  border-color: var(--volt-fill);
+  background: var(--volt-fill);
+  color: var(--on-volt);
 }
-.feel-edit.primary:hover { background: var(--accent-strong); }
+.feel-edit.primary:hover { background: var(--volt-fill-strong); }
 
 /* Tiles */
 .feel-tiles {

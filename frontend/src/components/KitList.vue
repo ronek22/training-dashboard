@@ -488,8 +488,8 @@ const submitLabel = computed(() => (editing.value === 'new' ? `Add ${(kindMeta(f
 .ghost-btn.sm { min-height: 30px; padding: 0 12px; font-size: 12px; }
 .ghost-btn:hover:not(:disabled) { background: rgb(var(--ov-rgb) / .05); }
 .ghost-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.primary-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 20px; border-radius: 999px; border: 0; background: var(--volt); color: var(--on-accent); font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-.primary-btn:hover:not(:disabled) { background: var(--volt-strong); }
+.primary-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 20px; border-radius: 999px; border: 0; background: var(--volt-fill); color: var(--on-volt); font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.primary-btn:hover:not(:disabled) { background: var(--volt-fill-strong); }
 .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Drawer */

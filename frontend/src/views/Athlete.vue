@@ -1487,7 +1487,7 @@ select:disabled { opacity: 0.5; }
 .ghost-btn:hover:not(:disabled) { background: var(--surface2); }
 .ghost-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .primary-btn {
-  padding: 8px 16px; border-radius: 9px; border: 0; background: var(--accent); color: var(--on-accent);
+  padding: 8px 16px; border-radius: 9px; border: 0; background: var(--volt-fill); color: var(--on-volt);
   font-size: 13.5px; font-weight: 600; cursor: pointer;
 }
 .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -1524,7 +1524,7 @@ select:disabled { opacity: 0.5; }
 .athlete-page .athlete-tab:hover { background: rgb(var(--ov-rgb) / .04); color: var(--text); }
 .athlete-page .athlete-tab.is-active { background: var(--surface3); color: var(--text); box-shadow: none; }
 .tab-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); }
-.tab-dot.is-dirty { background: var(--volt); }
+.tab-dot.is-dirty { background: var(--volt-fill); }
 .tab-count {
   min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px;
   background: var(--danger); color: var(--on-accent); font-size: 11px; font-weight: 700; line-height: 20px; text-align: center;
@@ -1600,7 +1600,7 @@ select:disabled { opacity: 0.5; }
   outline: 2px solid color-mix(in srgb, var(--ride) 55%, transparent); outline-offset: 1px;
 }
 .athlete-page .hr-zone-cell.is-z2 { border-color: color-mix(in srgb, var(--ride) 45%, transparent); background: color-mix(in srgb, var(--ride) 8%, transparent); }
-.athlete-page .primary-btn { background: var(--volt); color: var(--on-accent); font-weight: 700; border-radius: 999px; }
+.athlete-page .primary-btn { background: var(--volt-fill); color: var(--on-volt); font-weight: 700; border-radius: 999px; }
 .athlete-page .ghost-btn { border-radius: 999px; background: transparent; }
 .athlete-page .save-bar { border-radius: 999px; padding: 9px 11px 9px 18px; }
 .athlete-page .athlete-nudge { border-radius: 14px; background: var(--surface); }

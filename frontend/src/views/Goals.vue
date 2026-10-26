@@ -1427,7 +1427,7 @@ const showWeeklyRequirement = (goal) => {
   border: 0;
   border-radius: 10px;
   cursor: pointer;
-  background: var(--accent);
+  background: var(--volt-fill);
   color:#fff;
   font-weight: 600;
 }
@@ -1603,7 +1603,7 @@ const showWeeklyRequirement = (goal) => {
   border: 0;
   border-radius: 10px;
   cursor: pointer;
-  background: var(--accent);
+  background: var(--volt-fill);
   color:#fff;
   font-weight: 600;
 }
@@ -2281,7 +2281,7 @@ const showWeeklyRequirement = (goal) => {
 .goal-review-headline { font-size: 14px; line-height: 1.55; }
 .goal-review-evidence { font-size: 13px; }
 .goal-review-action { padding: 9px 15px; border: 0; border-radius: 8px; background: rgb(var(--ov-rgb) / .09); font-size: 13px; }
-.goal-review-action.is-primary { background: var(--accent); color:#fff; }
+.goal-review-action.is-primary { background: var(--volt-fill); color:#fff; }
 .goal-verdict-chip { border: 0; border-radius: 6px; text-transform: none; letter-spacing: 0; font-size: 12px; padding: 4px 9px; }
 
 .goal-suggestion-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 16px; background: transparent; border: 0; box-shadow: none; overflow: visible; }
@@ -2306,7 +2306,7 @@ const showWeeklyRequirement = (goal) => {
 .goals-page .goals-page-head .page-eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
 .goals-page .goals-page-head .page-title { margin: 6px 0 0; font-size: clamp(48px, 5.4vw, 80px); font-style: italic; font-weight: 800; letter-spacing: .005em; line-height: .95; text-transform: uppercase; }
 .goals-page .goals-page-head .page-sub { margin-top: 10px; color: var(--muted-soft); font-size: 14px; }
-.goals-page .add-goal-btn { min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px; background: var(--volt); color: var(--on-accent); font-weight: 700; }
+.goals-page .add-goal-btn { min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px; background: var(--volt-fill); color: var(--on-volt); font-weight: 700; }
 .goals-page .goal-sections { gap: 28px; }
 .goals-page .goal-overview, .goals-page .goal-review { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
 .goals-page .goal-overview { padding: 24px 28px; }

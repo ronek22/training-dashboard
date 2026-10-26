@@ -171,7 +171,7 @@ defineExpose({ load })
 .season-legend i { width: 10px; height: 10px; border-radius: 3px; }
 .legend-lighter { background: color-mix(in srgb, var(--z2) 38%, transparent); }
 .legend-trip { background: var(--ride); }
-.legend-goal { background: var(--accent); border-radius: 50% !important; }
+.legend-goal { background: var(--volt-fill); border-radius: 50% !important; }
 .legend-review { border: 2px solid var(--accent); border-radius: 50% !important; }
 .legend-stall { background: var(--strength); height: 4px !important; }
 
@@ -182,7 +182,7 @@ defineExpose({ load })
 .season-pins { position: relative; }
 .season-pin { position: absolute; display: flex; align-items: center; gap: 5px; max-width: 240px; height: 18px; color: var(--text-soft); font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .season-pin span { overflow: hidden; text-overflow: ellipsis; }
-.season-pin i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+.season-pin i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--volt-fill); }
 .pin-review i { border: 2px solid var(--accent); background: transparent; }
 .season-trip-bar { position: absolute; min-width: 6px; height: 6px; border-radius: 999px; background: var(--ride); }
 .pin-trip { padding-left: 6px; }
@@ -241,7 +241,7 @@ a.season-pin:hover span { color: var(--text); text-decoration: underline; }
 .season-cell:not(:disabled):hover { border-color: var(--muted); }
 .season-cell.is-past { border-color: transparent; background: var(--surface3); }
 .season-cell.is-trip { border-color: transparent; background: color-mix(in srgb, var(--tone-recovery) 55%, var(--surface2)); }
-.season-cell.is-now { border-color: transparent; background: var(--volt); }
+.season-cell.is-now { border-color: transparent; background: var(--volt-fill); }
 .season-cell:not(.no-block):not(.is-now) { background: color-mix(in srgb, var(--focus) 32%, var(--surface2)); border-color: color-mix(in srgb, var(--focus) 45%, transparent); }
 .season-cell.is-lighter:not(.is-now) { background: color-mix(in srgb, var(--focus, var(--muted)) 14%, var(--surface2)); }
 .cell-goal { width: 16px; height: 16px; border-radius: 50%; background: var(--ride); box-shadow: 0 0 12px var(--ride); }

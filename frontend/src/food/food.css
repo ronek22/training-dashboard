@@ -5,7 +5,7 @@
   --fat: var(--strength);
 }
 
-.food-page .primary-button { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 8px; padding: 0 16px; min-height: 34px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.food-page .primary-button { border: 0; background: var(--volt-fill); color: var(--on-volt); border-radius: 8px; padding: 0 16px; min-height: 34px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; white-space: nowrap; }
 .food-page .ghost-button { border: 1px solid var(--border-strong); background: transparent; color: var(--text); border-radius: 8px; padding: 0 14px; min-height: 34px; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
 .food-page .ghost-button[aria-pressed='true'] { background: var(--surface2); border-color: var(--muted); }
 .food-page .primary-button:disabled, .food-page .ghost-button:disabled, .food-page .link-button:disabled { opacity: .45; cursor: default; }
@@ -46,7 +46,7 @@
 /* Multi-sport redesign layer — shared across Log, Week and Library. */
 .food-page .card { background: var(--surface); border-radius: var(--radius-card); box-shadow: none; }
 .food-page .primary-button, .food-page .ghost-button { min-height: 40px; border-radius: 999px; font-family: var(--font-body); font-weight: 600; }
-.food-page .primary-button { background: var(--volt); }
+.food-page .primary-button { background: var(--volt-fill); }
 .food-page .link-button { color: var(--text-soft); }
 .food-page .link-button:hover { color: var(--text); }
 .food-page .link-button.danger { color: var(--danger-text); }

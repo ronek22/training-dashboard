@@ -1267,7 +1267,7 @@ onBeforeUnmount(() => {
 .set-actual { color: var(--text-soft); font: 700 16px/1.15 var(--font-display); }
 .set-strip > button.warmup .set-badge { border-style: dashed; font-size: 10px; }
 .set-strip > button.completed { background: color-mix(in srgb, var(--success) 7%, transparent); }
-.set-strip > button.completed .set-badge { border-color: transparent; background: var(--success); color: var(--deep); }
+.set-strip > button.completed .set-badge { border-color: transparent; background: var(--success-fill); color: var(--deep); }
 .set-strip > button.completed .set-actual { color: var(--text); }
 .set-strip > button.current { border-color: color-mix(in srgb, var(--strength) 50%, transparent); background: color-mix(in srgb, var(--strength) 12%, transparent); }
 .set-strip > button.current .set-badge { border-color: var(--tone-strength); background: color-mix(in srgb, var(--strength) 18%, transparent); color: var(--tone-strength); }
@@ -1441,8 +1441,8 @@ onBeforeUnmount(() => {
 .runner-page .stepper button { border: 1px solid var(--border); border-radius: 999px; background: var(--surface2); }
 .runner-page .stepper button:hover { background: var(--surface3); color: var(--tone-strength); }
 .runner-page .weight-shortcuts button { border-color: var(--border-strong); border-radius: 999px; }
-.runner-page .complete-button { min-height: 56px; border-radius: 999px; background: var(--volt); color: var(--on-accent); box-shadow: none; }
-.runner-page .complete-button:hover:not(:disabled) { background: var(--volt-strong); }
+.runner-page .complete-button { min-height: 56px; border-radius: 999px; background: var(--volt-fill); color: var(--on-volt); box-shadow: none; }
+.runner-page .complete-button:hover:not(:disabled) { background: var(--volt-fill-strong); }
 .runner-page .complete-button kbd { border-color: currentColor; }
 .runner-page .current-exercise-sets { gap: 14px; }
 .runner-page .set-management { max-width: 100%; font-size: 12px; color: var(--muted-soft); }
@@ -1478,7 +1478,7 @@ onBeforeUnmount(() => {
 .runner-page .set-log button.completed { border-color: color-mix(in srgb, var(--strength) 25%, var(--border)); background: color-mix(in srgb, var(--strength) 5%, transparent); }
 .runner-page .all-done { border-color: color-mix(in srgb, var(--volt) 30%, var(--border)); background: color-mix(in srgb, var(--volt) 6%, var(--surface)); }
 .runner-page .all-done h2 { font-size: 32px; font-weight: 800; font-style: italic; text-transform: uppercase; }
-.runner-page .all-done .finish-button { border-color: var(--volt); background: var(--volt); color: var(--on-accent); }
+.runner-page .all-done .finish-button { border-color: var(--volt-fill); background: var(--volt-fill); color: var(--on-volt); }
 .runner-page .error-card { border-color: var(--danger); }
 .runner-page .watch-link { border-color: var(--border); }
 .runner-page .linked-activity { border-color: var(--border); background: rgb(var(--deep-rgb)); }

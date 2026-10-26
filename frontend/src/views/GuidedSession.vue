@@ -361,7 +361,7 @@ onBeforeUnmount(() => {
 .guide-watch { border: 1px solid rgb(var(--tint-rgb) / 0.16); border-radius: 999px; padding: 5px 12px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .guide-watch.is-live { border-color: color-mix(in srgb, var(--accent) 50%, transparent); color: var(--accent); }
 .guide-progress { height: 4px; overflow: hidden; border-radius: 99px; background: rgb(var(--tint-rgb) / 0.1); }
-.guide-progress i { display: block; height: 100%; background: var(--accent); transition: width .3s ease; }
+.guide-progress i { display: block; height: 100%; background: var(--volt-fill); transition: width .3s ease; }
 
 .guide-intro, .guide-done { display: grid; justify-items: center; gap: 22px; padding: 40px 0; text-align: center; }
 .guide-watch-step { display: flex; align-items: center; gap: 24px; max-width: 720px; text-align: left; }
@@ -398,7 +398,7 @@ onBeforeUnmount(() => {
   background: transparent; padding: 10px 18px; color: inherit; font: inherit; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer;
 }
 .guide-sound { padding: 6px 12px; font-size: 12px; }
-.guide-controls .guide-primary, .guide-primary { border-color: transparent; background: var(--accent); color: #0d1622; }
+.guide-controls .guide-primary, .guide-primary { border-color: transparent; background: var(--volt-fill); color: #0d1622; }
 .guide-primary { padding: 12px 24px; font-size: 15px; }
 .guide-primary kbd { border-radius: 5px; background: rgb(0 0 0 / 0.12); padding: 1px 6px; font: inherit; font-size: 11px; }
 button:disabled { opacity: .45; cursor: default; }

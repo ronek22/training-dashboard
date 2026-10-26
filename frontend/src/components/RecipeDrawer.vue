@@ -504,7 +504,7 @@ h4 small { color: var(--muted); font-weight: 400; margin-left: 6px; }
 .step-list li::marker { color: var(--accent-strong); font-weight: 650; }
 .recipe-notes { margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--surface2); color: var(--text-soft); font-size: 13px; white-space: pre-line; }
 
-.primary-button { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 9px; padding: 0 16px; min-height: 36px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.primary-button { border: 0; background: var(--volt-fill); color: var(--on-volt); border-radius: 9px; padding: 0 16px; min-height: 36px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
 .primary-button:disabled { opacity: .45; cursor: default; }
 .ghost-button { border: 1px solid var(--border-strong); background: transparent; color: var(--text); border-radius: 9px; padding: 0 14px; min-height: 36px; font: inherit; font-size: 13px; cursor: pointer; }
 .ghost-button:disabled { opacity: .45; cursor: default; }

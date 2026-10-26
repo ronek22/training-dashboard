@@ -137,7 +137,7 @@ h2 { font-size: 14px; font-weight: 650; }
 .months { display: flex; gap: 6px; flex-wrap: wrap; }
 .months button { border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--muted); padding: 5px 11px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .months button.active { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--text); }
-.primary { border: 0; border-radius: 10px; background: var(--accent); color: #fff; padding: 9px 14px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.primary { border: 0; border-radius: 10px; background: var(--volt-fill); color: #fff; padding: 9px 14px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
 .quiet { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); padding: 7px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .primary:disabled, .quiet:disabled { opacity: .6; cursor: default; }
 .error { margin-top: 10px; font-size: 12px; color: var(--warning-text); }

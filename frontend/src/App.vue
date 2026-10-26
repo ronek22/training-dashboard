@@ -405,8 +405,8 @@ const routeTransitionName = computed(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--volt-fill);
+  color: var(--on-volt);
   flex: 0 0 auto;
 }
 .logo-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
@@ -451,11 +451,11 @@ const routeTransitionName = computed(() => {
   border: 1px solid transparent;
 }
 .nav-item:hover {
-  background: var(--surface2);
+  background: var(--nav-active-bg);
   color: var(--text);
 }
 .nav-item.active {
-  background: var(--surface2);
+  background: var(--nav-active-bg);
   color: var(--text);
   font-weight: 600;
 }
@@ -566,7 +566,7 @@ const routeTransitionName = computed(() => {
   position: absolute;
   inset: 0 auto 0 0;
   width: 40%;
-  background: var(--accent);
+  background: var(--volt-fill);
 }
 
 .route-progress.is-active span {

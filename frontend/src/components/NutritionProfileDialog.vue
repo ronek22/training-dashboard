@@ -42,7 +42,7 @@ input, select { width: 100%; background: var(--surface2); border: 1px solid var(
 .note { margin: 14px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .err { margin: 10px 0 0; color: var(--danger); font-size: 13px; }
 .actions { display: flex; gap: 8px; margin-top: 18px; }
-.save { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 8px; padding: 0 18px; min-height: 34px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.save { border: 0; background: var(--volt-fill); color: var(--on-volt); border-radius: 8px; padding: 0 18px; min-height: 34px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
 .save:disabled { opacity: .45; cursor: default; }
 .cancel { border: 1px solid var(--border-strong); background: transparent; color: var(--text); border-radius: 8px; padding: 0 14px; min-height: 34px; font: inherit; font-size: 13px; cursor: pointer; }
 </style>

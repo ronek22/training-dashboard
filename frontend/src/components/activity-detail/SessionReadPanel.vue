@@ -146,7 +146,7 @@ const formatDateTime = (input) => {
 .sr-answer-meta{display:block;margin-top:8px;color:var(--ad-muted);font-size:.74rem}
 .sr-answer-wait{color:var(--ad-muted)!important}
 .sr-progress{height:3px;margin-top:10px;border-radius:999px;background:rgb(var(--tint-rgb) / .14);overflow:hidden}
-.sr-progress span{display:block;width:35%;height:100%;border-radius:999px;background:var(--accent);animation:sr-progress 1.4s ease-in-out infinite}
+.sr-progress span{display:block;width:35%;height:100%;border-radius:999px;background:var(--volt-fill);animation:sr-progress 1.4s ease-in-out infinite}
 @keyframes sr-progress{from{transform:translateX(-100%)}to{transform:translateX(290%)}}
 .sr-ask{display:flex;gap:8px}
 .sr-ask input{flex:1;min-width:0;padding:8px 11px;border-radius:9px;border:1px solid var(--ad-line);background:rgb(var(--panel-rgb) / .6);color:var(--text);font:inherit;font-size:.86rem}

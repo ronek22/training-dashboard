@@ -120,7 +120,7 @@ const tone = (ratio) => {
 .workout-exec-bar i { display: block; height: 100%; border-radius: 999px; background: var(--ad-muted); }
 .workout-exec-bar i.is-on { background: var(--ad-accent); }
 .workout-exec-bar i.is-under { background: var(--warning-text); }
-.workout-exec-bar i.is-over { background: var(--accent); }
+.workout-exec-bar i.is-over { background: var(--volt-fill); }
 .workout-exec-target { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ad-ink); }
 .workout-exec-watts { font-variant-numeric: tabular-nums; }
 .workout-exec-hr { color: var(--ad-muted); font-size: 0.84rem; font-variant-numeric: tabular-nums; text-align: right; }

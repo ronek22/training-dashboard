@@ -158,7 +158,7 @@ const talk = () => openCoachChat(dayChatRequest(props.dateKey, state.value))
 .adjust-preview { display: grid; gap: 10px; }
 .adjust-preview p { margin: 0; color: var(--text-soft); font-size: 13px; line-height: 1.55; }
 .adjust-preview div { display: flex; align-items: center; gap: 12px; }
-.adjust-apply { border: 0; border-radius: 10px; background: var(--accent); padding: 8px 14px; color: #fff; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.adjust-apply { border: 0; border-radius: 10px; background: var(--volt-fill); padding: 8px 14px; color: #fff; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
 .adjust-link { border: 0; background: transparent; padding: 0; color: var(--accent); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
 .adjust-error { margin: 0; color: var(--danger-text); font-size: 12px; }
 </style>

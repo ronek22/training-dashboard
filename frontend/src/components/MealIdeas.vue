@@ -204,7 +204,7 @@ onUnmounted(() => {
 .idea-items { color: var(--muted); font-size: 11.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .idea-foot { display: flex; align-items: center; gap: 8px; }
 .cover { flex: 1; height: 4px; border-radius: 4px; background: var(--surface3); overflow: hidden; }
-.cover i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.cover i { display: block; height: 100%; background: var(--volt-fill); border-radius: 4px; }
 .tag { font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .tag.claude { color: var(--accent-strong); }
 

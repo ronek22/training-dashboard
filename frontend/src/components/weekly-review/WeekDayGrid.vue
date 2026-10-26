@@ -101,7 +101,7 @@ const rows = computed(() => props.days.map((day) => ({
 .activity small { color: var(--muted); font-size: 10.5px; }
 .load { flex-direction: row; align-items: flex-end; gap: 6px; min-height: 52px; }
 .load-bar { display: flex; align-items: flex-end; width: 10px; height: 40px; border-radius: 3px; background: var(--surface3); overflow: hidden; }
-.load-bar span { display: block; width: 100%; border-radius: 3px; background: var(--accent); }
+.load-bar span { display: block; width: 100%; border-radius: 3px; background: var(--volt-fill); }
 .load small, .health small { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .health { justify-content: center; gap: 1px; }
 .health .hrv { color: var(--text-soft, var(--text)); }

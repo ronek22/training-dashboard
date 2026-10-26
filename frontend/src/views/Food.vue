@@ -580,7 +580,7 @@ onUnmounted(() => {
 .draft-table td.left { display: flex; align-items: center; gap: 8px; }
 .draft-table td.left input { flex: 1; width: auto; min-width: 200px; text-align: left; }
 .confidence { flex: 0 0 7px; height: 7px; border-radius: 999px; background: var(--border-strong); }
-.confidence.high { background: var(--success); }
+.confidence.high { background: var(--success-fill); }
 .confidence.medium { background: var(--warning); }
 .confidence.low { background: var(--danger); }
 

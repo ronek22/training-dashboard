@@ -89,11 +89,11 @@ const total = computed(() => props.groups.reduce((sum, group) => ({
 .meal-head h3 { margin: 0; font-size: 13px; font-weight: 650; }
 .meal-head .num { font-weight: 650; }
 .meal.is-empty h3 { color: var(--text-soft); font-weight: 600; }
-.meal.current h3::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 8px; border-radius: 999px; background: var(--accent); vertical-align: middle; }
+.meal.current h3::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 8px; border-radius: 999px; background: var(--volt-fill); vertical-align: middle; }
 .empty-slot { grid-column: 2 / 6; justify-self: end; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; padding: 0; cursor: pointer; }
 .empty-slot:hover { color: var(--text-soft); }
 .add-button { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
-.add-button:hover { background: var(--accent); color: var(--on-accent); }
+.add-button:hover { background: var(--volt-fill); color: var(--on-volt); }
 
 .entry { margin: 0 -8px; padding: 1px 8px; border-radius: 8px; cursor: pointer; transition: background .12s; }
 .entry:hover, .entry:focus-visible { background: var(--surface2); outline: none; }

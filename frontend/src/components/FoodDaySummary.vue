@@ -128,7 +128,7 @@ const burnTitle = computed(() => burn.value.map((segment) => `${segment.label} $
 .bar { height: 4px; border-radius: 999px; background: var(--surface3); overflow: hidden; }
 .bar i { display: block; height: 100%; border-radius: inherit; }
 .bar .protein { background: var(--protein); }
-.bar .good { background: var(--success); }
+.bar .good { background: var(--success-fill); }
 .bar .carbs { background: var(--carbs); }
 .bar .fat { background: var(--fat); }
 .hint { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

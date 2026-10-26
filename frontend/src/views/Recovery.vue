@@ -119,8 +119,9 @@
                 <p class="plan-summary">{{ issue.current_plan.summary }}</p>
                 <ol class="exercises">
                   <li v-for="(exercise, index) in issue.current_plan.exercises" :key="index">
-                    <details :class="{ 'no-how': !exercise.how }">
-                      <summary><span class="ex-index">{{ String(index + 1).padStart(2, '0') }}</span><span class="ex-text"><strong>{{ exercise.name }}</strong><span v-if="exercise.dose" class="dose">{{ exercise.dose }}</span></span><span v-if="exercise.how" class="ex-more" aria-hidden="true">+</span></summary>
+                    <details :class="{ 'no-how': !exercise.how && !demoFor(exercise.name) }" @toggle="setOpen(index, $event.target.open)">
+                      <summary><span class="ex-index">{{ String(index + 1).padStart(2, '0') }}</span><span class="ex-text"><strong>{{ exercise.name }}</strong><span v-if="exercise.dose" class="dose">{{ exercise.dose }}</span></span><ExerciseDemo v-if="demoFor(exercise.name)" class="ex-thumb" :demo="demoFor(exercise.name)" still /><span v-if="exercise.how || demoFor(exercise.name)" class="ex-more" aria-hidden="true">+</span></summary>
+                      <ExerciseDemo v-if="openExercises.has(index) && demoFor(exercise.name)" class="ex-demo-open" :demo="demoFor(exercise.name)" />
                       <p v-if="exercise.how">{{ exercise.how }}</p>
                     </details>
                   </li>
@@ -186,8 +187,10 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import ReturnToRunPanel from '../components/ReturnToRunPanel.vue'
+import ExerciseDemo from '../components/ExerciseDemo.vue'
 import { useApi } from '../stores/api'
 import { runRecoveryReply } from '../recovery-chat.mjs'
+import { demoFor } from '../recovery/exercise-demos.mjs'
 
 const api = useApi()
 const sides = [{ value: '', label: 'Not sided' }, { value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }, { value: 'both', label: 'Both' }]
@@ -204,6 +207,13 @@ const activeIssues = computed(() => issues.value.filter(item => item.status === 
 const healedIssues = computed(() => issues.value.filter(item => item.status !== 'active'))
 const replyPending = computed(() => issue.value?.latest_request?.status === 'pending')
 const rtrActive = ref(false)
+// Demos animate only while their card is open.
+const openExercises = ref(new Set())
+const setOpen = (index, open) => {
+  const next = new Set(openExercises.value)
+  open ? next.add(index) : next.delete(index)
+  openExercises.value = next
+}
 // The chips only earn their space when there's something else to switch to.
 const showSwitcher = computed(() => activeIssues.value.length > 1 || (activeIssues.value.length > 0 && (creating.value || issue.value?.status !== 'active')))
 const healPlaceholder = computed(() => {
@@ -452,7 +462,10 @@ h1 { margin: 8px 0 6px; font-size: 64px; line-height: .95; font-style: italic; f
 .exercises { list-style: none; margin: 20px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: start; }
 .exercises details { border-radius: 14px; background: rgb(var(--deep-rgb)); border: 1px solid var(--border); }
 .exercises details[open] { border-color: color-mix(in srgb, var(--z2) 40%, var(--border)); }
-.exercises summary { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 12px 14px; cursor: pointer; list-style: none; }
+.exercises summary { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; align-items: start; gap: 10px; padding: 12px 14px; cursor: pointer; list-style: none; }
+.ex-thumb { width: 64px; margin: -4px 0; opacity: .85; }
+.exercises details[open] .ex-thumb { display: none; }
+.ex-demo-open { margin: 0 14px 12px; }
 .exercises summary::-webkit-details-marker { display: none; }
 .exercises details.no-how summary { cursor: default; }
 .ex-index { color: var(--z2); font: 700 17px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }

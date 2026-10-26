@@ -23,7 +23,7 @@ LIFT_TYPES = {"strength", "weighttraining"}
 REST_TYPES = {"rest", ""}
 ENDURANCE_FALLBACK_MIN = 45
 FLAT_SHARE = 0.6
-QUICK_MIN = {"lift": 25, "endurance": 30}
+QUICK_MIN = {"lift": 30, "endurance": 30}
 EASY_INTENTS = {None, "", "easy", "recovery", "long"}
 
 FLAT_LIFT = ("Feeling flat: same lifts, 2 working sets each at last time's weights, stop 2-3 reps short of failure. "

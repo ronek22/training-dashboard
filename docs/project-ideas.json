@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-25T22:21:35+01:00",
-  "summary": "Reviewed recent repository changes, current-state index, project structure, roadmap index and all 56 existing idea scopes. Recent commits include file/test organization, CI checks, and new Today-card and workout-runner behavior; the worktree adds Strava activity photos to mountain trip recaps. Inspected the photo sync, storage, recap, API and test paths, plus the shipped notes for this feature and Today suggestions. The trip-recap enhancement overlaps the existing mountain-trip-recap scope, while the Today-card behavior is already implemented; other broad reliability and workflow opportunities are already proposed or documented as open threads. No sufficiently distinct new proposal was identified. Source/documentation review only; no application tests or model calls were run, and no credentials, databases or private training records were opened.",
+  "reviewed_at": "2026-10-26T12:30:00+01:00",
+  "summary": "Fresh batch after the board was cleared (37 done, 19 dismissed). Checked current-state, roadmap open threads, the views list and targeted greps so new proposals avoid shipped work (express lifts, readiness, kit wear, sleep payback, season review) and dismissed themes (event taper, FTP test, forecast, trail goals, calendar life-load, card-level coach questions). Eight proposals: five athlete-facing, three engineering. Source/documentation review only; no tests run and no private training data opened.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -1290,6 +1290,196 @@
         "Tests cover the context payload."
       ],
       "created_on": "2026-10-15"
+    },
+    {
+      "id": "same-week-last-year",
+      "title": "This week compared with the same week last year",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The year charts show cumulative totals, but there is no direct answer to 'am I fitter than this time last winter?' at the level of a single week: volume, fitness, FTP and lift weights then versus now.",
+      "proposal": "Add a 'Same week last year' card to the weekly review and Sunday flow. Show hours by sport, fitness (CTL), FTP in force, and the top weight on two or three anchor lifts for the matching ISO week a year ago next to this week, with a one-line verdict. Hide the card when there is no data a year back.",
+      "benefit": "A concrete, motivating reference point during the winter arc, without needing a test.",
+      "evidence": [
+        "frontend/src/views/WeeklyReview.vue",
+        "frontend/src/views/SundayPlanning.vue",
+        "frontend/src/views/SeasonYears.vue",
+        "No same-week or year-over-year code in backend/app/services"
+      ],
+      "acceptance_criteria": [
+        "The card compares the current ISO week with the same ISO week one year earlier",
+        "It shows hours per sport, CTL, FTP in force and at least two anchor-lift top weights for both weeks",
+        "A one-line verdict says up, level or down for each row",
+        "The card is hidden when the earlier week has no activities",
+        "A backend test covers the week matching across a year boundary"
+      ],
+      "created_on": "2026-10-26"
+    },
+    {
+      "id": "protein-spread-across-meals",
+      "title": "Spread protein across the day's meals",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "High",
+      "problem": "The Food page tracks daily protein, but muscle gain also depends on getting enough at each meal. A day can hit the total with one big dinner and almost nothing at breakfast and lunch.",
+      "proposal": "On the Food day view, show protein per meal as a small bar row, mark meals under about 25 g, and when one is light, suggest a quick top-up drawn from saved products or recipes. Feed the same per-meal numbers to the muscle-gain check.",
+      "benefit": "Supports the lift-for-muscle goal and the under-eating focus with one simple, actionable view.",
+      "evidence": [
+        "frontend/src/views/Food.vue",
+        "backend/app/services/meal_ideas.py",
+        "backend/app/services/dinner_plan.py",
+        "No per-meal protein summary in backend/app/services"
+      ],
+      "acceptance_criteria": [
+        "Each logged meal shows its protein grams on the day view",
+        "Meals below the threshold are marked",
+        "A light meal offers at least one top-up suggestion from saved products or recipes",
+        "The threshold is a single setting, not hard-coded in the view",
+        "Days with no food logged show no warnings"
+      ],
+      "created_on": "2026-10-26"
+    },
+    {
+      "id": "home-climb-progress",
+      "title": "Track your home climbs over time",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "Without an FTP test, the repeated local climbs you ride are one of the clearest fitness signals, but each effort is only visible inside a single ride.",
+      "proposal": "Let the athlete star a few Strava segments as home climbs. After each sync, collect efforts on them into a per-climb history: time, average power (measured or estimated), heart rate and W/kg. Show a small chart per climb on the Records page and note a new best on the ride's detail page.",
+      "benefit": "A real-world progress signal for the winter arc that needs no test day.",
+      "evidence": [
+        "backend/app/services/ride_detail.py",
+        "backend/app/services/strava.py",
+        "frontend/src/views/Records.vue",
+        "Strava MCP exposes list-segment-efforts and star-segment"
+      ],
+      "acceptance_criteria": [
+        "The athlete can mark and unmark a segment as a home climb",
+        "Efforts on marked climbs are stored with date, time, power, heart rate and source of power",
+        "Records shows a history chart per home climb",
+        "A ride that sets a best effort on a home climb shows it on Activity Detail",
+        "Estimated power is labelled as estimated"
+      ],
+      "created_on": "2026-10-26"
+    },
+    {
+      "id": "coach-chat-remember-this",
+      "title": "Turn a coach chat answer into a standing preference",
+      "category": "Experience",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "Decisions agreed in the coach chat, such as 'no leg lifts the day before a long ride', stay buried in that conversation and are not reused by planning or later chats.",
+      "proposal": "Add a 'Remember this' action on chat messages that saves a short, editable statement as a coach note tagged as a standing preference. Include active preferences in the planning brief and the chat's live context, and list them on the Athlete page where they can be edited or retired.",
+      "benefit": "Keeps the in-app coach chat useful by tying it into planning instead of being a dead end.",
+      "evidence": [
+        "frontend/src/components/CoachChatDrawer.vue",
+        "MCP tool add_coach_note",
+        "frontend/src/views/Athlete.vue",
+        "frontend/src/views/Notes.vue"
+      ],
+      "acceptance_criteria": [
+        "Any coach or athlete chat message offers Remember this",
+        "The saved text can be edited before it is stored",
+        "Active preferences appear in the weekly planning context",
+        "Preferences can be retired from the Athlete page and then stop appearing in planning",
+        "The original chat is linked from the saved preference"
+      ],
+      "created_on": "2026-10-26"
+    },
+    {
+      "id": "winter-indoor-ride-variety",
+      "title": "Keep winter trainer rides from getting repetitive",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Low",
+      "problem": "During the winter arc most rides are on the trainer, and the plan can pick the same few workouts from the library week after week, which hurts motivation.",
+      "proposal": "When the planner or Today options choose a library workout, prefer one with the same intent and similar load that has not been ridden in the last three weeks. Show 'last ridden' on library workouts so a manual swap is easy.",
+      "benefit": "Same training stimulus with less boredom through the indoor months.",
+      "evidence": [
+        "backend/app/services/cycling_workouts.py",
+        "backend/app/services/today_options.py",
+        "MCP tool get_cycling_workout_library"
+      ],
+      "acceptance_criteria": [
+        "Each library workout shows the date it was last ridden",
+        "Automatic selection avoids workouts ridden in the last three weeks when an equivalent exists",
+        "Equivalence uses the same intent and a load within a set margin",
+        "When no equivalent exists, the previous choice is kept",
+        "A unit test covers the rotation and the fallback"
+      ],
+      "created_on": "2026-10-26"
+    },
+    {
+      "id": "frontend-backend-route-check",
+      "title": "Catch API calls that point at missing routes",
+      "category": "Engineering",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The frontend calls the backend through hand-written paths in one store file, and nothing checks those paths still exist after a router is renamed or removed. Breakage only shows up in the browser.",
+      "proposal": "Add a backend test that loads the FastAPI app's route table and compares it with the method and path pairs extracted from frontend/src/stores/api.js, failing with a list of unmatched calls. Run it in just check.",
+      "benefit": "Removes a whole class of silent frontend breakages for a few lines of test code.",
+      "evidence": [
+        "frontend/src/stores/api.js",
+        "backend/app/main.py",
+        "justfile"
+      ],
+      "acceptance_criteria": [
+        "The test extracts method and path for every call in api.js, treating path parameters as wildcards",
+        "Every extracted call must match a registered FastAPI route",
+        "The failure message lists each unmatched call",
+        "The test runs as part of just check",
+        "Intentional exceptions are listed explicitly in the test"
+      ],
+      "created_on": "2026-10-26"
+    },
+    {
+      "id": "split-largest-views",
+      "title": "Break up the largest pages into components",
+      "category": "Engineering",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "Goals.vue (about 2,350 lines), Plan.vue (about 2,050) and several other views are so large that every change needs grep-and-slice reading, which slows work and makes the redesign harder to apply section by section.",
+      "proposal": "Split Goals.vue and Plan.vue along their existing visual sections into child components with explicit props and events, moving pure helpers into tested modules under frontend/src. Do it one page per change with no behaviour change, verified against the artboard at 1512 px.",
+      "benefit": "Faster, cheaper future changes and a smoother redesign rollout.",
+      "evidence": [
+        "frontend/src/views/Goals.vue",
+        "frontend/src/views/Plan.vue",
+        "frontend/src/views/Mountains.vue",
+        "AGENTS.md lists these files as needing grep-first reading"
+      ],
+      "acceptance_criteria": [
+        "Goals.vue and Plan.vue are each under 800 lines",
+        "Extracted pure helpers have frontend tests",
+        "No API calls or visible behaviour change",
+        "npm test and the frontend build pass",
+        "A 1512 px screenshot of each page matches its pre-split state"
+      ],
+      "created_on": "2026-10-26"
+    },
+    {
+      "id": "redesign-screenshot-checks",
+      "title": "Screenshot checks for redesigned pages",
+      "category": "Engineering",
+      "effort": "Medium",
+      "priority": "Low",
+      "problem": "Redesigned pages are checked against artboards by eye, so later changes can drift layouts at the 1512 px desktop width without anyone noticing.",
+      "proposal": "Add an optional Playwright check that loads each redesigned page against a seeded fixture database at 1512 px in light and dark themes and compares screenshots with stored baselines, with a just recipe to update baselines on purpose.",
+      "benefit": "Keeps the redesign consistent as features keep landing on the same pages.",
+      "evidence": [
+        "docs/design/REDESIGN.md",
+        "docs/design/screens/",
+        "frontend/package.json has no browser test runner",
+        "frontend/src/views/Athlete.vue"
+      ],
+      "acceptance_criteria": [
+        "A just recipe runs the screenshot check locally",
+        "It uses fixture data, never the real database",
+        "Each redesigned page is captured at 1512 px in light and dark themes",
+        "Differences above a threshold fail with a diff image",
+        "A separate recipe updates baselines"
+      ],
+      "created_on": "2026-10-26"
     }
   ]
 }

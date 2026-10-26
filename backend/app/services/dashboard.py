@@ -1,6 +1,7 @@
 import math
 import sqlite3
 from datetime import date, datetime, timedelta
+from statistics import median
 from typing import Callable, Optional
 
 from .plans import build_multi_week_execution_trend, serialize_weekly_plan
@@ -645,6 +646,47 @@ def trimp_score(duration_min: float, avg_hr: Optional[int], resting_hr: float, m
     return duration_min * hr_ratio * 0.64 * math.exp(1.92 * hr_ratio)
 
 
+HR_LOAD_PAIR_DAYS = 365
+HR_LOAD_MIN_PAIRS = 5
+
+
+def hr_load_scales(conn: sqlite3.Connection, thresholds: dict, today: date) -> dict:
+    """Multipliers that put heart-rate TRIMP on the TSS scale.
+
+    Banister TRIMP runs about twice as high as power TSS for the same ride, so adding the
+    two raw inflated fitness whenever rides lacked power and made it slide once they had it.
+    Rides calibrate from the athlete's own rides that carry both scores; runs (and rides
+    without enough pairs) anchor an hour at threshold heart rate to 100, as TSS does.
+    """
+    def anchored(lthr: float, max_hr: float) -> float:
+        reference = trimp_score(60, lthr, thresholds["resting_hr"], max_hr)
+        return 100 / reference if reference > 0 else 1.0
+
+    ratios = [
+        float(row["ratio"])
+        for row in conn.execute(
+            """
+            SELECT s.power_tss / s.hr_trimp AS ratio
+            FROM activities a
+            JOIN activity_stream_summaries s ON s.activity_id = a.id
+            WHERE a.type IN ('Ride', 'VirtualRide') AND s.power_tss > 0 AND s.hr_trimp > 0
+              AND a.date BETWEEN ? AND ?
+            """,
+            ((today - timedelta(days=HR_LOAD_PAIR_DAYS)).isoformat(), today.isoformat()),
+        )
+    ]
+    ride_scale = (
+        min(max(median(ratios), 0.25), 1.0)
+        if len(ratios) >= HR_LOAD_MIN_PAIRS
+        else anchored(thresholds["ride_lthr"], thresholds["ride_max_hr"])
+    )
+    return {"ride": ride_scale, "run": anchored(thresholds["run_lthr"], thresholds["run_max_hr"])}
+
+
+def hr_load_scale_for(activity_type: str, hr_scales: dict) -> float:
+    return hr_scales["ride"] if activity_type in {"Ride", "VirtualRide"} else hr_scales["run"]
+
+
 def intensity_bucket_from_hr(avg_hr: Optional[int], zone2_upper: int, zone3_upper: int) -> str:
     if not avg_hr or avg_hr <= zone2_upper:
         return "low_aerobic"
@@ -653,14 +695,14 @@ def intensity_bucket_from_hr(avg_hr: Optional[int], zone2_upper: int, zone3_uppe
     return "anaerobic"
 
 
-def run_load_details(row: sqlite3.Row, thresholds: dict) -> dict:
+def run_load_details(row: sqlite3.Row, thresholds: dict, hr_scale: float) -> dict:
     duration_min = float(row["duration_min"] or 0)
     avg_hr = row["avg_hr"]
     distance_km = float(row["distance_km"] or 0)
     if duration_min <= 0:
         return {"load": 0.0, "bucket": "low_aerobic", "source": "none"}
 
-    trimp = trimp_score(duration_min, avg_hr, thresholds["resting_hr"], thresholds["run_max_hr"])
+    trimp = trimp_score(duration_min, avg_hr, thresholds["resting_hr"], thresholds["run_max_hr"]) * hr_scale
     if trimp > 0:
         if avg_hr and avg_hr >= thresholds["run_lthr"]:
             trimp *= 1.08
@@ -671,7 +713,7 @@ def run_load_details(row: sqlite3.Row, thresholds: dict) -> dict:
     return {"load": round(duration_min * fallback_multiplier, 1), "bucket": "low_aerobic", "source": "duration"}
 
 
-def ride_load_details(row: sqlite3.Row, thresholds: dict) -> dict:
+def ride_load_details(row: sqlite3.Row, thresholds: dict, hr_scale: float) -> dict:
     duration_min = float(row["duration_min"] or 0)
     avg_hr = row["avg_hr"]
     avg_watts = float(row["avg_watts"] or 0)
@@ -691,7 +733,7 @@ def ride_load_details(row: sqlite3.Row, thresholds: dict) -> dict:
             bucket = "anaerobic"
         return {"load": round(tss, 1), "bucket": bucket, "source": "power_tss"}
 
-    trimp = trimp_score(duration_min, avg_hr, thresholds["resting_hr"], thresholds["ride_max_hr"])
+    trimp = trimp_score(duration_min, avg_hr, thresholds["resting_hr"], thresholds["ride_max_hr"]) * hr_scale
     if trimp > 0:
         bucket = intensity_bucket_from_hr(avg_hr, 152, 162)
         return {"load": round(trimp, 1), "bucket": bucket, "source": "hr_trimp"}
@@ -706,11 +748,17 @@ def strength_load_details(row: sqlite3.Row) -> dict:
     return {"load": round(duration_min * 0.8, 1), "bucket": "high_aerobic", "source": "duration"}
 
 
-def generic_load_details(row: sqlite3.Row) -> dict:
+def generic_load_details(row: sqlite3.Row, thresholds: Optional[dict] = None, hr_scale: Optional[float] = None) -> dict:
     activity_type = row["type"]
     duration_min = float(row["duration_min"] or 0)
     if duration_min <= 0:
         return {"load": 0.0, "bucket": "low_aerobic", "source": "none"}
+    if activity_type in {"Walk", "Hike"} and thresholds and hr_scale:
+        # A flat per-minute rate scored an easy 8-hour hike like a hard ride; heart rate,
+        # on the run scale, says how hard the day actually was.
+        trimp = trimp_score(duration_min, row["avg_hr"], thresholds["resting_hr"], thresholds["run_max_hr"]) * hr_scale
+        if trimp > 0:
+            return {"load": round(trimp, 1), "bucket": "low_aerobic", "source": "hr_trimp"}
     if activity_type == "Walk":
         return {"load": round(duration_min * 0.35, 1), "bucket": "low_aerobic", "source": "duration"}
     if activity_type == "Hike":
@@ -732,9 +780,10 @@ def bucket_from_stream_summary(row: sqlite3.Row) -> Optional[str]:
     return "low_aerobic"
 
 
-def activity_load_details(row: sqlite3.Row, thresholds: dict) -> dict:
+def activity_load_details(row: sqlite3.Row, thresholds: dict, hr_scales: dict) -> dict:
+    hr_scale = hr_load_scale_for(row["type"], hr_scales)
     if row["stream_power_tss"] is not None or row["stream_hr_trimp"] is not None:
-        stream_load = row["stream_power_tss"] if row["stream_power_tss"] is not None else row["stream_hr_trimp"]
+        stream_load = row["stream_power_tss"] if row["stream_power_tss"] is not None else float(row["stream_hr_trimp"] or 0) * hr_scale
         bucket = bucket_from_stream_summary(row) or "low_aerobic"
         return {
             "load": round(float(stream_load or 0), 1),
@@ -744,12 +793,12 @@ def activity_load_details(row: sqlite3.Row, thresholds: dict) -> dict:
 
     activity_type = row["type"]
     if activity_type == "Run":
-        return run_load_details(row, thresholds)
+        return run_load_details(row, thresholds, hr_scale)
     if activity_type in {"Ride", "VirtualRide"}:
-        return ride_load_details(row, thresholds)
+        return ride_load_details(row, thresholds, hr_scale)
     if activity_type == "WeightTraining":
         return strength_load_details(row)
-    return generic_load_details(row)
+    return generic_load_details(row, thresholds, hr_scale)
 
 
 def ewma(values: list[float], time_constant_days: float) -> list[float]:
@@ -794,6 +843,7 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
     today = today or datetime.now().date()
     start_day = today - timedelta(days=safe_days - 1)
     thresholds = estimate_thresholds(conn)
+    hr_scales = hr_load_scales(conn, thresholds, today)
 
     # CTL and ATL are stateful: the value on the first displayed day depends on
     # all training before it. Starting the EWMA at the edge of the moving chart
@@ -884,7 +934,7 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
             if activity_thresholds is None:
                 activity_thresholds = estimate_thresholds(conn, as_of_date=day)
                 historical_thresholds[day] = activity_thresholds
-        details = activity_load_details(row, activity_thresholds)
+        details = activity_load_details(row, activity_thresholds, hr_scales)
         load = details["load"]
         bucket = details["bucket"]
         row_day = datetime.strptime(day, "%Y-%m-%d").date()
@@ -988,7 +1038,8 @@ def build_training_load_summary(conn: sqlite3.Connection, days: int = 42, focus_
             "anaerobic": round((focus_loads["anaerobic"] / total_focus_load) * 100) if total_focus_load else 0,
         },
         "model": {
-            "name": "hybrid_trimp_tss_v1",
+            "name": "hybrid_hrtss_tss_v2",
+            "hr_load_scale": {sport: round(scale, 2) for sport, scale in hr_scales.items()},
             "resting_hr": round(thresholds["resting_hr"]),
             "ftp": round(thresholds["ftp"]) if thresholds["ftp"] else None,
             "run_lthr": round(thresholds["run_lthr"]),

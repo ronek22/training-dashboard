@@ -56,5 +56,62 @@ class LongHistoryTests(unittest.TestCase):
         self.assertEqual(dashboard.estimate_thresholds(self.conn, as_of_date=old_day)["run_max_hr"], 204.0)
 
 
+class HeartRateLoadScaleTests(unittest.TestCase):
+    """Heart-rate TRIMP must land on the TSS scale, or HR-only rides count double."""
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        previous = db.DB_PATH
+        db.DB_PATH = os.path.join(temp.name, "training.db")
+        self.addCleanup(setattr, db, "DB_PATH", previous)
+        db.init_db()
+        self.conn = sqlite3.connect(db.DB_PATH)
+        self.conn.row_factory = sqlite3.Row
+        self.addCleanup(self.conn.close)
+        self.today = date.today()
+        self.thresholds = dashboard.estimate_thresholds(self.conn)
+
+    def add(self, activity_id, kind, minutes, avg_hr, days_ago=1, hr_trimp=None, power_tss=None):
+        day = (self.today - timedelta(days=days_ago)).isoformat()
+        self.conn.execute(
+            "INSERT INTO activities (id, date, type, name, duration_min, distance_km, avg_hr) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (activity_id, day, kind, kind, minutes, 10.0, avg_hr),
+        )
+        if hr_trimp is not None:
+            self.conn.execute(
+                "INSERT INTO activity_stream_summaries (activity_id, fetched_at, source, hr_trimp, power_tss) VALUES (?, ?, ?, ?, ?)",
+                (activity_id, day, "power_tss" if power_tss else "hr_trimp", hr_trimp, power_tss),
+            )
+        self.conn.commit()
+
+    def test_an_hour_at_threshold_heart_rate_scores_100(self):
+        scales = dashboard.hr_load_scales(self.conn, self.thresholds, self.today)
+        for sport, lthr, max_hr in (("run", "run_lthr", "run_max_hr"), ("ride", "ride_lthr", "ride_max_hr")):
+            trimp = dashboard.trimp_score(60, self.thresholds[lthr], self.thresholds["resting_hr"], self.thresholds[max_hr])
+            self.assertAlmostEqual(trimp * scales[sport], 100.0, places=6)
+
+    def test_rides_calibrate_from_rides_with_both_scores(self):
+        for index in range(5):
+            self.add(f"paired-{index}", "VirtualRide", 60, 150, days_ago=index + 2, hr_trimp=120.0, power_tss=60.0)
+        self.add("hr-only", "Ride", 90, 150, hr_trimp=200.0)
+
+        summary = dashboard.build_training_load_summary(self.conn, days=14)
+
+        self.assertEqual(summary["model"]["hr_load_scale"]["ride"], 0.5)
+        day = (self.today - timedelta(days=1)).isoformat()
+        self.assertEqual(next(item for item in summary["chart"] if item["date"] == day)["load"], 100.0)
+
+    def test_an_easy_hike_is_scored_by_heart_rate_not_duration(self):
+        self.add("hike", "Hike", 480, 100)
+
+        summary = dashboard.build_training_load_summary(self.conn, days=14)
+
+        day = (self.today - timedelta(days=1)).isoformat()
+        hike = next(item for item in summary["chart"] if item["date"] == day)
+        self.assertEqual(hike["load_source"], "hr_trimp")
+        self.assertLess(hike["load"], 480 * 0.6 / 2)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -11,9 +11,11 @@
 		0568E5E202514A8C473DBB7F /* QuickLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10A7B084CF58AD83C3603DB /* QuickLogSheet.swift */; };
 		060527AC9C3F7EC7AB18CBEF /* ActivitiesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CB4D14BAB2BB7DEC58078D /* ActivitiesTests.swift */; };
 		1ECE60EB652766334247F6E5 /* PlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00CD08DE079F66CE7586C33 /* PlanTests.swift */; };
+		27623E1B5C49B23D65C4E211 /* Reminders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182BB3EC5490E8009AB7F938 /* Reminders.swift */; };
 		2AB2EED77A398A1DD1C8868B /* StrengthSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */; };
 		40039F29AC725FE67E3FE202 /* TrainLogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */; };
 		4012ED2F1A8F181070B6F220 /* Archivo.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */; };
+		47334F55D41030EFB9932E45 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA62ACA1E1EE1616ED24F65 /* SettingsModel.swift */; };
 		54AB99EC9265B668DA43038A /* Food.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6906A4138E3E54E166438B26 /* Food.swift */; };
 		5949E6B54064073FF68DD91C /* TodayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECFF6858D98599C67E6EEC8 /* TodayTests.swift */; };
 		596B94B045D4FE90A37695C7 /* StrengthSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */; };
@@ -40,7 +42,9 @@
 		CAA1710E904C67B7C0D44AC0 /* StrengthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADADEEF3EC729686F3AD8BD5 /* StrengthSession.swift */; };
 		CFB15F923AA4D931073261DE /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CDA809C9D860B28A4DB61A /* APIClient.swift */; };
 		D2312971324EB18D3E32AA50 /* MoveDaySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F6C3A816B5B7AB82A6DB7C /* MoveDaySheet.swift */; };
+		D2BCDEA473DECA30A0B3A7C6 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1168AEF0F0CD20E70D9C73 /* SettingsView.swift */; };
 		D5FC7557DBEE38694F3F8F87 /* OFL-BarlowCondensed.txt in Resources */ = {isa = PBXBuildFile; fileRef = DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */; };
+		D8A6B99501A49EDD398A4882 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64B465973FE67D56B0AD2792 /* SettingsTests.swift */; };
 		D9F0161252DCA55F451D2C13 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 01AD5A97B8F6DB6B3A07C749 /* Assets.xcassets */; };
 		ED06E04A91F8BC227943ED86 /* QuickLogModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B57840DCD55E73EF2B16B562 /* QuickLogModel.swift */; };
 		F3D68722FA8D53F429E5C98D /* BarlowCondensed-ExtraBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9F112A2FC94E41B5BFB208A4 /* BarlowCondensed-ExtraBoldItalic.ttf */; };
@@ -63,12 +67,15 @@
 		0243D4E3976851681CA3EF5E /* BarlowCondensed-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-SemiBold.ttf"; sourceTree = "<group>"; };
 		027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionModel.swift; sourceTree = "<group>"; };
 		0BA5F6A6FF01D809A7EE68A8 /* PlanModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanModel.swift; sourceTree = "<group>"; };
+		182BB3EC5490E8009AB7F938 /* Reminders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reminders.swift; sourceTree = "<group>"; };
 		1DE5C544BD255D9F8B9F2A36 /* FeedbackSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackSheet.swift; sourceTree = "<group>"; };
 		2432CF39E1025EE60FFEA9AE /* FoodModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodModel.swift; sourceTree = "<group>"; };
 		26CDA809C9D860B28A4DB61A /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		2AF11B1C65F8EFD3AF340D10 /* BarlowCondensed-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-Bold.ttf"; sourceTree = "<group>"; };
+		3A1168AEF0F0CD20E70D9C73 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		42F5CA0ED7E7D3B5DB47A093 /* PlanDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanDayView.swift; sourceTree = "<group>"; };
 		5E1B90F67C5BEB5AA4C54A0B /* QuickLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLog.swift; sourceTree = "<group>"; };
+		64B465973FE67D56B0AD2792 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
 		6906A4138E3E54E166438B26 /* Food.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Food.swift; sourceTree = "<group>"; };
 		6A82E7ED074ABF53C867C009 /* TodayModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayModel.swift; sourceTree = "<group>"; };
 		6FED9A0BA3F896F441C12CFE /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -78,6 +85,7 @@
 		82CB4D14BAB2BB7DEC58078D /* ActivitiesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitiesTests.swift; sourceTree = "<group>"; };
 		8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainLogApp.swift; sourceTree = "<group>"; };
 		8D06FFA209BAA7436AB6E384 /* TrainLog.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TrainLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8FA62ACA1E1EE1616ED24F65 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
 		947E7B26646DCF89AEB291E0 /* QuickLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogTests.swift; sourceTree = "<group>"; };
 		97817D1288D6173D1208D11B /* MealEstimateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEstimateSheet.swift; sourceTree = "<group>"; };
 		9F112A2FC94E41B5BFB208A4 /* BarlowCondensed-ExtraBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-ExtraBoldItalic.ttf"; sourceTree = "<group>"; };
@@ -133,6 +141,16 @@
 			path = Food;
 			sourceTree = "<group>";
 		};
+		3B774F5FE51D9082BA86AED3 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				182BB3EC5490E8009AB7F938 /* Reminders.swift */,
+				8FA62ACA1E1EE1616ED24F65 /* SettingsModel.swift */,
+				3A1168AEF0F0CD20E70D9C73 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
 		3DD793074BA91A76914E2C0A /* TrainLogTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -140,6 +158,7 @@
 				FE84774476766302F5B40E04 /* FoodTests.swift */,
 				F00CD08DE079F66CE7586C33 /* PlanTests.swift */,
 				947E7B26646DCF89AEB291E0 /* QuickLogTests.swift */,
+				64B465973FE67D56B0AD2792 /* SettingsTests.swift */,
 				7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */,
 				AECFF6858D98599C67E6EEC8 /* TodayTests.swift */,
 			);
@@ -195,6 +214,7 @@
 				27E9C683881D66F4424F0A91 /* Food */,
 				43F6528F7E2E956600D9239A /* Plan */,
 				B2245C2113E4D95AB2B87336 /* QuickLog */,
+				3B774F5FE51D9082BA86AED3 /* Settings */,
 				564D327BEA581193F3E1A74C /* Strength */,
 				4C749BA487B9D65C0547881A /* Today */,
 			);
@@ -391,6 +411,9 @@
 				75C511A0E9893D7205E311D1 /* QuickLog.swift in Sources */,
 				ED06E04A91F8BC227943ED86 /* QuickLogModel.swift in Sources */,
 				0568E5E202514A8C473DBB7F /* QuickLogSheet.swift in Sources */,
+				27623E1B5C49B23D65C4E211 /* Reminders.swift in Sources */,
+				47334F55D41030EFB9932E45 /* SettingsModel.swift in Sources */,
+				D2BCDEA473DECA30A0B3A7C6 /* SettingsView.swift in Sources */,
 				CAA1710E904C67B7C0D44AC0 /* StrengthSession.swift in Sources */,
 				2AB2EED77A398A1DD1C8868B /* StrengthSessionModel.swift in Sources */,
 				859D6A666F8C99A4587E4D55 /* StrengthSessionView.swift in Sources */,
@@ -409,6 +432,7 @@
 				8CB0D0D61C2DA03E0CB2727E /* FoodTests.swift in Sources */,
 				1ECE60EB652766334247F6E5 /* PlanTests.swift in Sources */,
 				BD8C1B1F425DA86FC239C2DB /* QuickLogTests.swift in Sources */,
+				D8A6B99501A49EDD398A4882 /* SettingsTests.swift in Sources */,
 				596B94B045D4FE90A37695C7 /* StrengthSessionTests.swift in Sources */,
 				5949E6B54064073FF68DD91C /* TodayTests.swift in Sources */,
 			);

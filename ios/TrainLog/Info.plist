@@ -23,6 +23,14 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_companion-link._tcp</string>
+		<string>_airplay._tcp</string>
+		<string>_ssh._tcp</string>
+		<string>_smb._tcp</string>
+		<string>_rfb._tcp</string>
+	</array>
 	<key>UIAppFonts</key>
 	<array>
 		<string>BarlowCondensed-SemiBold.ttf</string>

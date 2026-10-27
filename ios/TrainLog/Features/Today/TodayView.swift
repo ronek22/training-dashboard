@@ -3,11 +3,29 @@ import SwiftUI
 struct TodayView: View {
     @State private var model = TodayModel()
     @State private var showFallback = false
+    @State private var showSettings = false
+    /// Tells the root to hide the tab bar while Settings is open.
+    @Binding var showingDetail: Bool
     var onStartStrength: (Int?) -> Void = { _ in }
     /// Bumped when the strength screen closes, so the banner and plan reload.
     var refresh = 0
 
     var body: some View {
+        NavigationStack {
+            content
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationTitle("Today")
+                .navigationDestination(isPresented: $showSettings) { SettingsView() }
+        }
+        .tint(.volt)
+        .onChange(of: showSettings) {
+            showingDetail = showSettings
+            // Back from Settings may have pointed the app at another server.
+            if !showSettings { Task { await model.load() } }
+        }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 header
@@ -64,11 +82,20 @@ struct TodayView: View {
                     .background(Color.volt.opacity(0.12), in: Capsule())
                     .accessibilityLabel("\(streak) day streak")
                 }
-                Text("J")
-                    .font(AppFont.body(14, weight: .bold))
-                    .foregroundStyle(Color.ink)
-                    .frame(width: 34, height: 34)
-                    .background(Color.raised, in: Circle())
+                Button {
+                    showSettings = true
+                } label: {
+                    Text("J")
+                        .font(AppFont.body(14, weight: .bold))
+                        .foregroundStyle(Color.ink)
+                        .frame(width: 34, height: 34)
+                        .background(Color.raised, in: Circle())
+                        .frame(width: 44, height: 44)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .padding(-5)
+                .accessibilityLabel("Settings")
             }
             .padding(.bottom, 4)
         }
@@ -452,5 +479,5 @@ private struct DayRing: View {
 }
 
 #Preview {
-    TodayView().preferredColorScheme(.dark)
+    TodayView(showingDetail: .constant(false)).preferredColorScheme(.dark)
 }

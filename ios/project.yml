@@ -36,6 +36,13 @@ targets:
       properties:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        # Settings › Find on this Wi-Fi browses these to find Macs (ServerFinder.serviceTypes).
+        NSBonjourServices:
+          - _companion-link._tcp
+          - _airplay._tcp
+          - _ssh._tcp
+          - _smb._tcp
+          - _rfb._tcp
         UIAppFonts:
           - BarlowCondensed-SemiBold.ttf
           - BarlowCondensed-Bold.ttf

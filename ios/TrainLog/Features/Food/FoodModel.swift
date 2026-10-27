@@ -56,6 +56,9 @@ final class FoodModel {
             let loaded = try await api.get("/nutrition/food?date=\(date)", as: FoodDay.self)
             guard date == selectedDate else { return }
             day = loaded.value
+            if isToday, let target = loaded.value.target?.kcal, eaten.kcal >= target {
+                Reminders.dinnerTargetMet(date: date)
+            }
             syncedAt = loaded.syncedAt
             offline = loaded.fromCache
             error = nil

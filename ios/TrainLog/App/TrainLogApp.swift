@@ -21,12 +21,13 @@ struct RootView: View {
     @State private var todayRefresh = 0
     @State private var activityDetailOpen = false
     @State private var planDetailOpen = false
+    @State private var settingsOpen = false
 
     var body: some View {
         ZStack {
             Color.bg.ignoresSafeArea()
             switch tab {
-            case .today: TodayView(onStartStrength: { strength = StrengthLaunch(templateId: $0) }, refresh: todayRefresh)
+            case .today: TodayView(showingDetail: $settingsOpen, onStartStrength: { strength = StrengthLaunch(templateId: $0) }, refresh: todayRefresh)
             case .plan: PlanView(showingDetail: $planDetailOpen, onStartStrength: { strength = StrengthLaunch(templateId: $0) })
             case .food: FoodView()
             case .activities: ActivitiesView(showingDetail: $activityDetailOpen)
@@ -34,7 +35,7 @@ struct RootView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             // Detail pages are pushed with their own back button, as in the artboard.
-            if !(tab == .activities && activityDetailOpen) && !(tab == .plan && planDetailOpen) {
+            if !(tab == .activities && activityDetailOpen) && !(tab == .plan && planDetailOpen) && !(tab == .today && settingsOpen) {
                 TabBar(selection: $tab, onPlus: { showQuickLog = true })
             }
         }
@@ -43,6 +44,8 @@ struct RootView: View {
                 .presentationDetents([.large])
                 .presentationBackground(Color.card)
         }
+        // Rolls the dinner nudges a week ahead.
+        .task { await Reminders.apply() }
         .fullScreenCover(item: $strength, onDismiss: { todayRefresh += 1 }) { launch in
             StrengthSessionView(templateId: launch.templateId)
         }

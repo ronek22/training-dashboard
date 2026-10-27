@@ -79,7 +79,7 @@ Same system as the web (`../docs/design/REDESIGN.md`, tokens in `../frontend/src
 
 ## Build and verify
 
-- Build and run in the iOS Simulator (iPhone 16 Pro). After a UI change, screenshot the
+- Build and run in the iOS Simulator (iPhone 17 Pro, iOS 26; same 393 × 852 pt as the artboard). After a UI change, screenshot the
   simulator and compare with the screen's frame in `overview.png`.
 - Run unit tests with `xcodebuild test` (scheme `TrainLog`, simulator destination); pipe
   through `tail`.

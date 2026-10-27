@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrainLog · iOS MVP</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&amp;family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#05070A;color:#F3F5F9;font-family:'Archivo',system-ui,sans-serif}
+.num{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;line-height:1}
+.ttl{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;text-transform:uppercase;line-height:.95;letter-spacing:.01em}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600}
+.muted{color:#8A93A6}
+.canvas{display:flex;flex-wrap:wrap;gap:64px 56px;padding:56px 64px 72px;max-width:2000px}
+.canvas-head{width:100%;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.frame{display:flex;flex-direction:column;gap:14px}
+.frame-cap{font-size:13px;color:#A3ABBC;max-width:393px;line-height:1.4}
+.frame-cap b{color:#F3F5F9;font-weight:600}
+.phone{width:393px;height:852px;border-radius:56px;background:#0A0C11;position:relative;overflow:hidden;box-shadow:0 0 0 10px #171A21,0 0 0 11px #2A2F3A,0 30px 80px rgba(0,0,0,.55)}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000;z-index:20}
+.sb{height:54px;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 44px;font-weight:600;font-size:16px;box-sizing:border-box;position:relative;z-index:10}
+.sb-r{display:flex;gap:6px;align-items:center}
+.home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#F3F5F9;z-index:30}
+.body{padding:6px 16px 0;display:flex;flex-direction:column;gap:12px}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;padding:6px 4px 6px}
+.card{background:#12151C;border:1px solid #1C212B;border-radius:22px;padding:16px}
+.inset{background:#0E1117;border:1px solid #1C212B;border-radius:14px;padding:10px 12px}
+.pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.obtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 16px;border-radius:999px;border:1px solid #2A303C;color:#F3F5F9;font-size:14px;font-weight:600;background:transparent}
+.vbtn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:999px;background:#D4FF3A;color:#0A0C11;font-size:16px;font-weight:700}
+.row{display:flex;align-items:center;gap:12px}
+.sep{height:1px;background:#1C212B}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:86px;background:rgba(14,17,23,.94);border-top:1px solid #1C212B;display:flex;justify-content:space-around;align-items:flex-start;padding:8px 10px 0;box-sizing:border-box;z-index:15}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;font-weight:600;color:#6B7385;width:64px}
+.tab.on{color:#D4FF3A}
+.tab-plus{width:52px;height:52px;margin-top:-4px;border-radius:50%;background:#D4FF3A;display:flex;align-items:center;justify-content:center}
+.bar{height:6px;border-radius:3px;background:#1F242E;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:3px}
+.seg{display:flex;background:#0E1117;border:1px solid #1C212B;border-radius:12px;padding:3px}
+.seg>span{flex:1;text-align:center;font-size:13px;font-weight:600;padding:7px 0;border-radius:9px;color:#8A93A6}
+.seg>span.on{background:#232835;color:#F3F5F9}
+.dot5{display:flex;gap:8px}
+.dot5>span{flex:1;height:44px;border-radius:12px;border:1px solid #2A303C;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;color:#A3ABBC}
+.toggle{width:51px;height:31px;border-radius:16px;background:#2ED3B0;position:relative;flex:none}
+.toggle::after{content:'';position:absolute;top:2px;right:2px;width:27px;height:27px;border-radius:50%;background:#fff}
+.toggle.off{background:#2A303C}
+.toggle.off::after{right:auto;left:2px}
+.lrow{display:flex;align-items:center;gap:12px;padding:12px 0}
+.sport{width:4px;align-self:stretch;border-radius:2px;flex:none}
+.chev{color:#4A5263;font-size:18px}
+</style>
+</helmet>
+
+<div class="canvas">
+
+<div class="canvas-head">
+<div>
+<div class="lbl" style="color:#D4FF3A">TrainLog · iOS · MVP</div>
+<div class="ttl" style="font-size:56px;margin-top:6px">Pocket TrainLog</div>
+<div class="muted" style="font-size:15px;margin-top:8px;max-width:760px;line-height:1.45">Native SwiftUI client for the existing backend. The phone does what happens away from the desk: today's session, logging sets, food and check-ins. Planning and deep analysis stay on the MacBook. Same tokens as <b style="color:#F3F5F9">System.dc.html</b>; iOS layout: large titles, bottom tab bar, sheets.</div>
+</div>
+<div class="muted" style="font-size:12px;text-align:right;line-height:1.6">iPhone 16 Pro · 393 × 852 pt<br>Dark only (matches web)<br>Tabs: Today · Plan · Log · Food · Activities</div>
+</div>
+
+<!-- ============ 1. TODAY ============ -->
+<div class="frame">
+<div class="lbl">01 · Today</div>
+<div class="phone">
+<div class="island"></div>
+<div class="sb"><span>7:12</span><span class="sb-r"><svg width="18" height="12" viewBox="0 0 18 12" fill="#F3F5F9"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="#F3F5F9" stroke-width="2" stroke-linecap="round"><path d="M1.5 4.5a9.5 9.5 0 0 1 13 0M4 7.3a6 6 0 0 1 8 0"/><circle cx="8" cy="10.2" r="1.2" fill="#F3F5F9" stroke="none"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="16" height="8" rx="2" fill="#F3F5F9"/><path d="M25 4.5v4" stroke="#8A93A6" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+<div class="body">
+<div class="hdr">
+<div><div class="lbl">Wednesday · 28 October</div><div class="ttl" style="font-size:44px;margin-top:4px">Today</div></div>
+<div class="row" style="gap:8px;padding-bottom:4px">
+<span class="pill" style="background:rgba(212,255,58,.12);color:#D4FF3A;letter-spacing:.02em;text-transform:none;font-size:13px"><svg width="13" height="13" viewBox="0 0 20 20" fill="#D4FF3A"><path d="M10 1.5c1.2 3.2 5 5 5 9.5a5 5 0 0 1-10 0c0-2.4 1.2-3.7 2.4-4.8.1 1.7 1 2.8 2.2 2.8 0-2.7-1.2-4.7.4-7.5z"/></svg>299</span>
+<div style="width:34px;height:34px;border-radius:50%;background:#232835;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">J</div>
+</div>
+</div>
+
+<div class="card" style="border-color:rgba(255,77,154,.35)">
+<div class="row" style="gap:6px"><span class="pill" style="background:rgba(255,77,154,.14);color:#FF7AB5">Strength</span><span class="muted" style="font-size:12px">Planned · evening · ~45 min</span></div>
+<div class="ttl" style="font-size:30px;margin-top:12px">Workout B · Back + Core</div>
+<div class="muted" style="font-size:13px;margin-top:4px">5 exercises · knee-friendly · last done Thu 22</div>
+<div style="margin-top:14px;display:flex;flex-direction:column;gap:9px">
+<div class="row" style="font-size:14px"><span class="num" style="color:#FF4D9A;width:22px;font-size:16px">01</span><span style="flex:1">Pull-ups</span><span class="muted">3 × 6 · BW</span></div>
+<div class="row" style="font-size:14px"><span class="num" style="color:#FF4D9A;width:22px;font-size:16px">02</span><span style="flex:1">DB Row</span><span class="muted">3 × 10 · 34 kg</span></div>
+<div class="row" style="font-size:14px"><span class="num" style="color:#FF4D9A;width:22px;font-size:16px">03</span><span style="flex:1">Rear Delt Raise</span><span class="muted">3 × 15 · 22.5 kg</span></div>
+<div class="muted" style="font-size:13px;padding-left:34px">+ 2 more</div>
+</div>
+<div class="vbtn" style="margin-top:16px"><svg width="14" height="16" viewBox="0 0 14 16" fill="#0A0C11"><path d="M1 1.5v13a1 1 0 0 0 1.5.9l11-6.5a1 1 0 0 0 0-1.8L2.5.6A1 1 0 0 0 1 1.5z"/></svg>Start session</div>
+<div class="row" style="margin-top:10px;gap:8px"><span class="obtn" style="flex:1;height:36px;font-size:13px">Short on time</span><span class="obtn" style="flex:1;height:36px;font-size:13px">Swap day</span></div>
+</div>
+
+<div class="card">
+<div class="row" style="justify-content:space-between"><span class="lbl">Readiness</span><span class="row" style="gap:6px;font-size:13px;font-weight:600;color:#2ED3B0"><i style="width:8px;height:8px;border-radius:50%;background:#2ED3B0"></i>Good to go</span></div>
+<div class="row" style="margin-top:14px;gap:14px;align-items:flex-start">
+<div style="flex:1;"><div class="num" style="font-size:30px;color:#F3F5F9">58<span class="muted" style="font-size:13px;font-family:Archivo;font-weight:500"> bpm</span></div><div class="muted" style="font-size:12px;margin-top:4px">Resting HR</div></div>
+<div style="flex:1;border-left:1px solid #1C212B;padding-left:14px;"><div class="num" style="font-size:30px;color:#F3F5F9">7.4<span class="muted" style="font-size:13px;font-family:Archivo;font-weight:500"> h</span></div><div class="muted" style="font-size:12px;margin-top:4px">Sleep</div></div>
+<div style="flex:1;border-left:1px solid #1C212B;padding-left:14px;"><div class="num" style="font-size:30px;color:#2ED3B0">1<span class="muted" style="font-size:13px;font-family:Archivo;font-weight:500"> /10</span></div><div class="muted" style="font-size:12px;margin-top:4px">Knee pain</div></div>
+</div>
+<div style="font-size:13px;color:#A3ABBC;margin-top:12px;line-height:1.4">Knee stayed quiet on yesterday's ride. Lift as planned.</div>
+</div>
+
+<div class="card">
+<div class="row" style="justify-content:space-between;align-items:baseline"><span class="lbl">This week</span><span><span class="num" style="font-size:22px">2h 47m</span><span class="muted" style="font-size:13px"> of 6h 10m</span></span></div>
+<div style="display:flex;gap:2px;height:6px;margin-top:10px;border-radius:3px;overflow:hidden;background:#1F242E"><i style="width:26.8%;background:#FF4D9A"></i><i style="width:9.2%;background:#2ED3B0"></i><i style="width:8.1%;background:#3B8CFF"></i></div>
+<div style="display:flex;margin-top:14px">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><span style="font-size:11px;font-weight:600;color:#8A93A6">M</span><span style="width:32px;height:32px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:#FF4D9A"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#0A0C11" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3"/></svg></span></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><span style="font-size:11px;font-weight:600;color:#8A93A6">T</span><span style="width:32px;height:32px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:conic-gradient(#2ED3B0 0 50%,#3B8CFF 50% 100%)"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#0A0C11" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3"/></svg></span></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><span style="font-size:11px;font-weight:700;color:#D4FF3A">W</span><span style="width:32px;height:32px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border:2px solid #D4FF3A"><i style="width:10px;height:10px;border-radius:50%;background:#FF4D9A"></i></span></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><span style="font-size:11px;font-weight:600;color:#8A93A6">T</span><span style="width:32px;height:32px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border:2px solid rgba(59,140,255,.45)"></span></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><span style="font-size:11px;font-weight:600;color:#8A93A6">F</span><span style="width:32px;height:32px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,77,154,.45)"></span></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><span style="font-size:11px;font-weight:600;color:#8A93A6">S</span><span style="width:32px;height:32px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border:2px solid rgba(59,140,255,.45)"></span></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><span style="font-size:11px;font-weight:600;color:#8A93A6">S</span><span style="width:32px;height:32px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center"><i style="width:5px;height:5px;border-radius:50%;background:#3A4150"></i></span></div>
+</div>
+</div>
+</div>
+
+<div class="tabbar">
+<div class="tab on"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 5.5V10l3 2"/></svg>Today</div>
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/></svg>Plan</div>
+<div class="tab"><div class="tab-plus"><svg width="22" height="22" viewBox="0 0 20 20" stroke="#0A0C11" stroke-width="2.6" stroke-linecap="round"><path d="M10 3v14M3 10h14"/></svg></div></div>
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2v6a2 2 0 0 0 4 0V2M7 8v10M14 18V2c-2 1.5-3 4-3 7h3"/></svg>Food</div>
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 11h4l2-6 4 10 2-4h4"/></svg>Activities</div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>One thing to do today</b>, front and centre. Volt is reserved for <b>Start session</b>. Readiness is three numbers and one sentence, no boxes. The week reads like Apple Fitness rings: filled = done, outline = planned, volt ring = today.</div>
+</div>
+
+<!-- ============ 2. STRENGTH SESSION ============ -->
+<div class="frame">
+<div class="lbl">02 · Strength session (full screen)</div>
+<div class="phone">
+<div class="island"></div>
+<div class="sb"><span>19:34</span><span class="sb-r"><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="12" height="8" rx="2" fill="#F3F5F9"/><path d="M25 4.5v4" stroke="#8A93A6" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+<div class="body" style="gap:14px">
+<div class="row" style="justify-content:space-between;padding-top:4px">
+<div style="width:36px;height:36px;border-radius:50%;background:#191D27;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 14 14" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></div>
+<div style="text-align:center"><div class="lbl" style="font-size:10px">Workout B · Back + Core</div><div class="num" style="font-size:20px;margin-top:3px">18:42</div></div>
+<div style="width:36px;height:36px;border-radius:50%;background:#191D27;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round"><path d="M3 5h14M3 10h14M3 15h14"/></svg></div>
+</div>
+<div style="display:flex;gap:4px"><i style="flex:1;height:4px;border-radius:2px;background:#FF4D9A"></i><i style="flex:1;height:4px;border-radius:2px;background:linear-gradient(90deg,#FF4D9A 33%,#2A303C 33%)"></i><i style="flex:1;height:4px;border-radius:2px;background:#2A303C"></i><i style="flex:1;height:4px;border-radius:2px;background:#2A303C"></i><i style="flex:1;height:4px;border-radius:2px;background:#2A303C"></i></div>
+
+<div style="padding:6px 4px 0">
+<div class="lbl" style="color:#FF7AB5">Exercise 2 of 5</div>
+<div class="ttl" style="font-size:42px;margin-top:6px">Dumbbell Row</div>
+<div class="muted" style="font-size:13px;margin-top:6px">Last time 3 × 10 @ 33.6 kg · felt <b style="color:#F3F5F9;font-weight:600">Good</b> → +0.4 kg today</div>
+</div>
+
+<div class="card" style="padding:18px 16px">
+<div class="row" style="justify-content:space-between"><span class="lbl">Set 2 of 3</span><span class="muted" style="font-size:12px">per arm</span></div>
+<div class="row" style="margin-top:14px;gap:10px">
+<div style="flex:1" class="inset">
+<div class="lbl" style="font-size:9px">Weight · kg</div>
+<div class="row" style="justify-content:space-between;margin-top:8px"><span style="width:34px;height:34px;border-radius:50%;border:1px solid #2A303C;display:flex;align-items:center;justify-content:center;font-size:20px;color:#A3ABBC">−</span><span class="num" style="font-size:48px">34</span><span style="width:34px;height:34px;border-radius:50%;border:1px solid #2A303C;display:flex;align-items:center;justify-content:center;font-size:20px;color:#A3ABBC">+</span></div>
+</div>
+<div style="flex:1" class="inset">
+<div class="lbl" style="font-size:9px">Reps</div>
+<div class="row" style="justify-content:space-between;margin-top:8px"><span style="width:34px;height:34px;border-radius:50%;border:1px solid #2A303C;display:flex;align-items:center;justify-content:center;font-size:20px;color:#A3ABBC">−</span><span class="num" style="font-size:48px">10</span><span style="width:34px;height:34px;border-radius:50%;border:1px solid #2A303C;display:flex;align-items:center;justify-content:center;font-size:20px;color:#A3ABBC">+</span></div>
+</div>
+</div>
+<div class="lbl" style="margin-top:16px;font-size:10px">How did it feel?</div>
+<div class="row" style="gap:8px;margin-top:8px">
+<span class="obtn" style="flex:1;height:38px;font-size:13px">Easy</span>
+<span class="obtn" style="flex:1;height:38px;font-size:13px;border-color:#FF4D9A;background:rgba(255,77,154,.14);color:#FF9AC6">Good</span>
+<span class="obtn" style="flex:1;height:38px;font-size:13px">Hard</span>
+</div>
+</div>
+
+<div class="card" style="padding:6px 16px">
+<div class="lrow"><span style="width:22px;height:22px;border-radius:50%;background:rgba(46,211,176,.18);display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#2ED3B0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3"/></svg></span><span style="flex:1;font-size:14px">Set 1</span><span class="num" style="font-size:18px">34 kg × 10</span><span class="muted" style="font-size:12px;width:40px;text-align:right">Good</span></div>
+<div class="sep"></div>
+<div class="lrow"><span style="width:22px;height:22px;border-radius:50%;border:2px solid #FF4D9A;box-sizing:border-box"></span><span style="flex:1;font-size:14px;font-weight:600">Set 2</span><span class="num" style="font-size:18px">34 kg × 10</span><span style="font-size:12px;width:40px;text-align:right;color:#FF7AB5">now</span></div>
+<div class="sep"></div>
+<div class="lrow" style="color:#6B7385"><span style="width:22px;height:22px;border-radius:50%;border:1.5px dashed #4A5263;box-sizing:border-box"></span><span style="flex:1;font-size:14px">Set 3</span><span class="num" style="font-size:18px">34 kg × 10</span><span style="width:40px"></span></div>
+</div>
+</div>
+<div style="position:absolute;left:16px;right:16px;bottom:34px">
+<div class="vbtn">Log set 2 · rest 1:30</div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>One set at a time</b>, big thumb targets, no tab bar. Effort tap drives the next target (the conservative progression rule). Logging a set starts the rest timer and the Live Activity (frame 07).</div>
+</div>
+
+<!-- ============ 3. FOOD ============ -->
+<div class="frame">
+<div class="lbl">03 · Food</div>
+<div class="phone">
+<div class="island"></div>
+<div class="sb"><span>18:05</span><span class="sb-r"><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="14" height="8" rx="2" fill="#F3F5F9"/><path d="M25 4.5v4" stroke="#8A93A6" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+<div class="body">
+<div class="hdr">
+<div><div class="lbl">Tuesday · rest day</div><div class="ttl" style="font-size:44px;margin-top:4px">Food</div></div>
+<div class="row" style="gap:8px;padding-bottom:4px"><span class="obtn" style="height:34px;font-size:13px;padding:0 12px">‹ Mon</span></div>
+</div>
+
+<div class="card">
+<div class="lbl">Eaten today</div>
+<div class="row" style="align-items:baseline;gap:8px;margin-top:8px"><span class="num" style="font-size:52px">1,857</span><span class="muted" style="font-size:14px">of 2,775 kcal</span></div>
+<div class="bar" style="height:10px;margin-top:10px;border-radius:5px"><i style="width:67%;background:#D4FF3A;opacity:.85"></i></div>
+<div class="row" style="margin-top:10px;font-size:13px;gap:6px"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#FFB547" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v5M10 14h.01"/></svg><span style="color:#FFC873;font-weight:600">918 kcal to go</span><span class="muted">· dinner covers ~750</span></div>
+<div class="row" style="margin-top:16px;gap:8px">
+<div class="inset" style="flex:1"><div class="lbl" style="font-size:9px">Protein</div><div class="num" style="font-size:24px;margin-top:6px">163<span class="muted" style="font-size:12px;font-family:Archivo;font-weight:500"> /130 g</span></div><div class="bar" style="margin-top:8px;height:4px"><i style="width:100%;background:#2ED3B0"></i></div></div>
+<div class="inset" style="flex:1"><div class="lbl" style="font-size:9px">Carbs</div><div class="num" style="font-size:24px;margin-top:6px">167<span class="muted" style="font-size:12px;font-family:Archivo;font-weight:500"> /240 g</span></div><div class="bar" style="margin-top:8px;height:4px"><i style="width:70%;background:#3B8CFF"></i></div></div>
+<div class="inset" style="flex:1"><div class="lbl" style="font-size:9px">Fat</div><div class="num" style="font-size:24px;margin-top:6px">57<span class="muted" style="font-size:12px;font-family:Archivo;font-weight:500"> /85 g</span></div><div class="bar" style="margin-top:8px;height:4px"><i style="width:66%;background:#FF8A2A"></i></div></div>
+</div>
+</div>
+
+<div class="card" style="padding:4px 16px">
+<div class="lrow"><div style="width:44px;height:44px;border-radius:12px;background:#1B1F29;flex:none;display:flex;align-items:center;justify-content:center;font-size:20px">🥣</div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">Oats, banana, whey</div><div class="muted" style="font-size:12px;margin-top:2px">Breakfast · 07:40</div></div><div style="text-align:right"><div class="num" style="font-size:18px">520</div><div class="muted" style="font-size:11px">38 g P</div></div></div>
+<div class="sep"></div>
+<div class="lrow"><div style="width:44px;height:44px;border-radius:12px;background:#1B1F29;flex:none;display:flex;align-items:center;justify-content:center;font-size:20px">🍗</div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">Chicken rice bowl</div><div class="muted" style="font-size:12px;margin-top:2px">Lunch · 13:10 · from photo</div></div><div style="text-align:right"><div class="num" style="font-size:18px">812</div><div class="muted" style="font-size:11px">71 g P</div></div></div>
+<div class="sep"></div>
+<div class="lrow"><div style="width:44px;height:44px;border-radius:12px;background:#1B1F29;flex:none;display:flex;align-items:center;justify-content:center;font-size:20px">🥛</div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">Skyr + granola</div><div class="muted" style="font-size:12px;margin-top:2px">Snack · 16:20</div></div><div style="text-align:right"><div class="num" style="font-size:18px">525</div><div class="muted" style="font-size:11px">54 g P</div></div></div>
+<div class="sep"></div>
+<div class="lrow"><div style="width:44px;height:44px;border-radius:12px;border:1.5px dashed #3A4150;box-sizing:border-box;flex:none;display:flex;align-items:center;justify-content:center;font-size:20px;opacity:.7">🐟</div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:#A3ABBC">Salmon pasta</div><div class="muted" style="font-size:12px;margin-top:2px">Dinner · planned · tap to log</div></div><div style="text-align:right;color:#8A93A6"><div class="num" style="font-size:18px">~750</div><div style="font-size:11px">42 g P</div></div></div>
+</div>
+</div>
+<div style="position:absolute;right:16px;bottom:104px;z-index:16" class="vbtn"><span style="padding:0 20px 0 16px;display:flex;align-items:center;gap:8px"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#0A0C11" stroke-width="2" stroke-linejoin="round"><path d="M2.5 6.5a1.5 1.5 0 0 1 1.5-1.5h2l1.5-2h5l1.5 2h2a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5z"/><circle cx="10" cy="10.5" r="3"/></svg>Snap meal</span></div>
+<div class="tabbar">
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 5.5V10l3 2"/></svg>Today</div>
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/></svg>Plan</div>
+<div class="tab"><div class="tab-plus" style="background:#232835"><svg width="22" height="22" viewBox="0 0 20 20" stroke="#F3F5F9" stroke-width="2.6" stroke-linecap="round"><path d="M10 3v14M3 10h14"/></svg></div></div>
+<div class="tab on"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2v6a2 2 0 0 0 4 0V2M7 8v10M14 18V2c-2 1.5-3 4-3 7h3"/></svg>Food</div>
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 11h4l2-6 4 10 2-4h4"/></svg>Activities</div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>Under-eating first:</b> the headline is "kcal to go", not a diary. <b>Snap meal</b> opens the camera straight away; Claude estimates as on the web. Planned dinner sits dashed until logged. On this tab the centre + goes grey so only one volt shows.</div>
+</div>
+
+<!-- ============ 4. QUICK LOG SHEET ============ -->
+<div class="frame">
+<div class="lbl">04 · Quick log (+ sheet)</div>
+<div class="phone">
+<div class="island"></div>
+<div class="sb" style="opacity:.5"><span>7:12</span><span></span></div>
+<div class="body" style="opacity:.28;filter:blur(1px)">
+<div class="hdr"><div><div class="lbl">Wednesday · 28 October</div><div class="ttl" style="font-size:44px;margin-top:4px">Today</div></div></div>
+<div class="card" style="height:240px"></div>
+</div>
+<div style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
+<div style="position:absolute;left:0;right:0;bottom:0;top:118px;background:#12151C;border-radius:32px 32px 0 0;border-top:1px solid #232835;padding:8px 16px 0;box-sizing:border-box;display:flex;flex-direction:column;gap:16px">
+<div style="width:36px;height:5px;border-radius:3px;background:#3A4150;margin:0 auto"></div>
+<div class="row" style="justify-content:space-between"><span style="font-size:16px;color:#A3ABBC">Cancel</span><span style="font-size:16px;font-weight:700">Log</span><span style="width:52px"></span></div>
+<div class="seg"><span class="on">Check-in</span><span>Weight</span><span>Activity</span><span>Note</span></div>
+<div>
+<div class="row" style="justify-content:space-between"><span class="lbl">Energy</span><span class="muted" style="font-size:12px">Fresh</span></div>
+<div class="dot5" style="margin-top:8px"><span>1</span><span>2</span><span>3</span><span style="background:rgba(212,255,58,.14);border-color:#D4FF3A;color:#D4FF3A">4</span><span>5</span></div>
+</div>
+<div>
+<div class="row" style="justify-content:space-between"><span class="lbl">Stress</span><span class="muted" style="font-size:12px">Low</span></div>
+<div class="dot5" style="margin-top:8px"><span>1</span><span style="background:rgba(212,255,58,.14);border-color:#D4FF3A;color:#D4FF3A">2</span><span>3</span><span>4</span><span>5</span></div>
+</div>
+<div>
+<div class="row" style="justify-content:space-between"><span class="lbl">Pain · left knee (ITB)</span><span class="num" style="font-size:18px;color:#2ED3B0">1 / 10</span></div>
+<div style="position:relative;height:28px;margin-top:8px"><div class="bar" style="position:absolute;left:0;right:0;top:11px"><i style="width:10%;background:#2ED3B0"></i></div><div style="position:absolute;left:calc(10% - 12px);top:2px;width:24px;height:24px;border-radius:50%;background:#F3F5F9;box-shadow:0 2px 6px rgba(0,0,0,.5)"></div></div>
+</div>
+<div>
+<div class="lbl">Sore today</div>
+<div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px">
+<span class="obtn" style="height:34px;font-size:13px;border-color:#FF4D9A;color:#FF9AC6;background:rgba(255,77,154,.1)">Chest</span><span class="obtn" style="height:34px;font-size:13px">Legs</span><span class="obtn" style="height:34px;font-size:13px">Back</span><span class="obtn" style="height:34px;font-size:13px">Shoulders</span><span class="obtn" style="height:34px;font-size:13px">None</span>
+</div>
+</div>
+<div class="row" style="justify-content:space-between;padding:4px 0"><div><div style="font-size:15px;font-weight:600">Feeling sick</div><div class="muted" style="font-size:12px;margin-top:2px">Pauses the plan, keeps the streak</div></div><div class="toggle off"></div></div>
+<div class="vbtn" style="margin-top:auto;margin-bottom:34px">Save check-in</div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>The centre + opens one sheet</b> for everything quick: morning check-in, body weight, a manual activity, a coach note. Big 1–5 tap targets instead of sliders; a slider only where it's a scale (pain).</div>
+</div>
+
+<!-- ============ 5. ACTIVITIES ============ -->
+<div class="frame">
+<div class="lbl">05 · Activities</div>
+<div class="phone">
+<div class="island"></div>
+<div class="sb"><span>21:40</span><span class="sb-r"><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="9" height="8" rx="2" fill="#F3F5F9"/><path d="M25 4.5v4" stroke="#8A93A6" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+<div class="body">
+<div class="hdr"><div><div class="lbl">Synced 2 min ago</div><div class="ttl" style="font-size:44px;margin-top:4px">Activities</div></div></div>
+<div class="row" style="gap:8px;overflow:hidden">
+<span class="pill" style="background:#F3F5F9;color:#0A0C11;text-transform:none;letter-spacing:0;font-size:13px;height:32px;padding:0 14px">All</span>
+<span class="pill" style="border:1px solid #2A303C;color:#A3ABBC;text-transform:none;letter-spacing:0;font-size:13px;height:32px;padding:0 14px"><i style="width:8px;height:8px;border-radius:2px;background:#3B8CFF"></i>Ride</span>
+<span class="pill" style="border:1px solid #2A303C;color:#A3ABBC;text-transform:none;letter-spacing:0;font-size:13px;height:32px;padding:0 14px"><i style="width:8px;height:8px;border-radius:2px;background:#FF4D9A"></i>Strength</span>
+<span class="pill" style="border:1px solid #2A303C;color:#A3ABBC;text-transform:none;letter-spacing:0;font-size:13px;height:32px;padding:0 14px"><i style="width:8px;height:8px;border-radius:2px;background:#8B7BFF"></i>Hike</span>
+<span class="pill" style="border:1px solid #2A303C;color:#A3ABBC;text-transform:none;letter-spacing:0;font-size:13px;height:32px;padding:0 14px"><i style="width:8px;height:8px;border-radius:2px;background:#FF8A2A"></i>Run</span>
+</div>
+
+<div class="lbl" style="padding:6px 4px 0">This week · Oct 26 – Nov 1</div>
+<div class="card" style="padding:2px 14px">
+<div class="lrow"><span class="sport" style="background:#3B8CFF"></span><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">Test MyWhoosh &amp; Knee</div><div class="muted" style="font-size:12px;margin-top:3px">Tue 27 · Virtual ride · Recovery</div></div><div style="text-align:right"><div class="num" style="font-size:20px">13.5<span class="muted" style="font-size:12px"> km</span></div><div class="muted" style="font-size:11px;margin-top:2px">30m · 113 W</div></div><span class="chev">›</span></div>
+<div class="sep"></div>
+<div class="lrow"><span class="sport" style="background:#2ED3B0"></span><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">Rehab routine</div><div class="muted" style="font-size:12px;margin-top:3px">Tue 27 · Guided · 8 exercises</div></div><div style="text-align:right"><div class="num" style="font-size:20px">34<span class="muted" style="font-size:12px"> min</span></div><div class="muted" style="font-size:11px;margin-top:2px">116 bpm</div></div><span class="chev">›</span></div>
+<div class="sep"></div>
+<div class="lrow"><span class="sport" style="background:#FF4D9A"></span><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">Workout A · Upper Chest</div><div class="muted" style="font-size:12px;margin-top:3px">Mon 26 · Strength · RPE 3</div></div><div style="text-align:right"><div class="num" style="font-size:20px">1h 39<span class="muted" style="font-size:12px">m</span></div><div class="muted" style="font-size:11px;margin-top:2px">106 bpm</div></div><span class="chev">›</span></div>
+</div>
+
+<div class="lbl" style="padding:6px 4px 0">Last week · Tatras trip</div>
+<div class="card" style="padding:2px 14px">
+<div class="lrow"><span class="sport" style="background:#FF4D9A"></span><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">Workout C · Wide Shoulders</div><div class="muted" style="font-size:12px;margin-top:3px">Sun 25 · Strength · <span style="color:#D4FF3A">Loved it</span></div></div><div style="text-align:right"><div class="num" style="font-size:20px">45<span class="muted" style="font-size:12px"> min</span></div><div class="muted" style="font-size:11px;margin-top:2px">129 bpm</div></div><span class="chev">›</span></div>
+<div class="sep"></div>
+<div class="lrow"><span class="sport" style="background:#8B7BFF"></span><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">Morning Hike</div><div class="muted" style="font-size:12px;margin-top:3px">Sat 24 · <span style="color:#FF7A7A">Knee pain 6/10</span></div></div><div style="text-align:right"><div class="num" style="font-size:20px">10.2<span class="muted" style="font-size:12px"> km</span></div><div class="muted" style="font-size:11px;margin-top:2px">2h 36 · 398 m↑</div></div><span class="chev">›</span></div>
+<div class="sep"></div>
+<div class="lrow"><span class="sport" style="background:#8B7BFF"></span><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">Morning Hike</div><div class="muted" style="font-size:12px;margin-top:3px">Fri 23 · <span style="color:#FF7A7A">Knee pain 6/10</span></div></div><div style="text-align:right"><div class="num" style="font-size:20px">9.9<span class="muted" style="font-size:12px"> km</span></div><div class="muted" style="font-size:11px;margin-top:2px">2h 52 · 484 m↑</div></div><span class="chev">›</span></div>
+<div class="sep"></div>
+<div class="lrow"><span class="sport" style="background:#8B7BFF"></span><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">Morning Hike</div><div class="muted" style="font-size:12px;margin-top:3px">Thu 22 · Long</div></div><div style="text-align:right"><div class="num" style="font-size:20px">19.4<span class="muted" style="font-size:12px"> km</span></div><div class="muted" style="font-size:11px;margin-top:2px">4h 28 · 423 m↑</div></div><span class="chev">›</span></div>
+</div>
+</div>
+<div class="tabbar">
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 5.5V10l3 2"/></svg>Today</div>
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/></svg>Plan</div>
+<div class="tab"><div class="tab-plus"><svg width="22" height="22" viewBox="0 0 20 20" stroke="#0A0C11" stroke-width="2.6" stroke-linecap="round"><path d="M10 3v14M3 10h14"/></svg></div></div>
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2v6a2 2 0 0 0 4 0V2M7 8v10M14 18V2c-2 1.5-3 4-3 7h3"/></svg>Food</div>
+<div class="tab on"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 11h4l2-6 4 10 2-4h4"/></svg>Activities</div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>Grouped by week</b>, sport colour bar on the left, one headline number on the right. The subtitle surfaces what matters (pain, verdict, intent). Swipe a row → <b>Rate</b> / <b>Pain</b>; pull to refresh triggers a Strava sync.</div>
+</div>
+
+<!-- ============ 6. ACTIVITY DETAIL ============ -->
+<div class="frame">
+<div class="lbl">06 · Activity detail</div>
+<div class="phone">
+<div class="island"></div>
+<div class="sb"><span>21:41</span><span></span></div>
+<div class="body">
+<div class="row" style="justify-content:space-between;padding:2px 0"><span style="color:#D4FF3A;font-size:16px;font-weight:500">‹ Activities</span><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#A3ABBC" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13V3M6 7l4-4 4 4M4 11v5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-5"/></svg></div>
+<div style="padding:0 4px">
+<div class="lbl" style="color:#6FAEFF">Ride · Tue 27 Oct · MyWhoosh · Recovery</div>
+<div class="ttl" style="font-size:36px;margin-top:6px">Test MyWhoosh &amp; Knee</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+<div class="inset"><div class="lbl" style="font-size:9px">Distance</div><div class="num" style="font-size:26px;margin-top:6px">13.5<span class="muted" style="font-size:12px;font-family:Archivo"> km</span></div></div>
+<div class="inset"><div class="lbl" style="font-size:9px">Time</div><div class="num" style="font-size:26px;margin-top:6px">30:24</div></div>
+<div class="inset"><div class="lbl" style="font-size:9px">Avg power</div><div class="num" style="font-size:26px;margin-top:6px">113<span class="muted" style="font-size:12px;font-family:Archivo"> W</span></div></div>
+<div class="inset"><div class="lbl" style="font-size:9px">Avg HR</div><div class="num" style="font-size:26px;margin-top:6px">140<span class="muted" style="font-size:12px;font-family:Archivo"> bpm</span></div></div>
+<div class="inset"><div class="lbl" style="font-size:9px">Max HR</div><div class="num" style="font-size:26px;margin-top:6px">159</div></div>
+<div class="inset"><div class="lbl" style="font-size:9px">Knee</div><div class="num" style="font-size:26px;margin-top:6px;color:#2ED3B0">0<span class="muted" style="font-size:12px;font-family:Archivo"> /10</span></div></div>
+</div>
+<div class="card" style="padding:14px 14px 10px">
+<div class="row" style="justify-content:space-between"><span class="lbl">Power &amp; heart rate</span><span class="muted" style="font-size:11px"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#3B8CFF;margin-right:4px"></i>W <i style="display:inline-block;width:8px;height:2px;background:#FF5A6E;margin:0 4px 2px 8px"></i>bpm</span></div>
+<svg viewBox="0 0 330 120" width="100%" height="120" style="margin-top:10px;display:block">
+<path d="M0 120 L0 92 L12 80 L24 74 L36 70 L48 72 L60 66 L72 68 L84 64 L96 70 L108 62 L120 66 L132 60 L144 64 L156 58 L168 66 L180 62 L192 56 L204 64 L216 60 L228 66 L240 58 L252 62 L264 70 L276 66 L288 78 L300 86 L312 94 L330 100 L330 120Z" fill="rgba(59,140,255,.28)"/>
+<path d="M0 92 L12 80 L24 74 L36 70 L48 72 L60 66 L72 68 L84 64 L96 70 L108 62 L120 66 L132 60 L144 64 L156 58 L168 66 L180 62 L192 56 L204 64 L216 60 L228 66 L240 58 L252 62 L264 70 L276 66 L288 78 L300 86 L312 94 L330 100" fill="none" stroke="#3B8CFF" stroke-width="1.6"/>
+<path d="M0 84 C40 60 60 48 100 44 S180 36 220 34 S280 30 300 40 S320 56 330 60" fill="none" stroke="#FF5A6E" stroke-width="2"/>
+</svg>
+<div class="row muted" style="justify-content:space-between;font-size:10px;margin-top:4px"><span>0:00</span><span>10:00</span><span>20:00</span><span>30:24</span></div>
+</div>
+<div class="card">
+<div class="lbl">How it felt</div>
+<div class="row" style="gap:8px;margin-top:10px"><span class="pill" style="border:1px solid #2A303C;color:#A3ABBC;text-transform:none;letter-spacing:0;font-size:12px">RPE 3</span><span class="pill" style="border:1px solid #2A303C;color:#A3ABBC;text-transform:none;letter-spacing:0;font-size:12px">Energy 3</span><span class="pill" style="background:rgba(46,211,176,.12);color:#2ED3B0;text-transform:none;letter-spacing:0;font-size:12px">Pain 0</span></div>
+<div style="font-size:14px;line-height:1.45;margin-top:10px;color:#C9CFDA">“Don't feel pain in knee really, maybe little discomfort but that's all.”</div>
+</div>
+<div class="card" style="border-color:rgba(212,255,58,.25)">
+<div class="lbl" style="color:#D4FF3A">Coach take</div>
+<div style="font-size:14px;line-height:1.45;margin-top:8px">Pain-free at 113 W is the green light: keep rides easy and flat this week, then retest at Z2 power on Saturday.</div>
+</div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>Read-only, phone-sized:</b> six stat tiles, one combined chart (Swift Charts), your feedback and the coach's analysis. Laps, zones and segments stay on the web page.</div>
+</div>
+
+<!-- ============ 7. LOCK SCREEN / LIVE ACTIVITY ============ -->
+<div class="frame">
+<div class="lbl">07 · Lock screen · Live Activity + widgets</div>
+<div class="phone" style="background:#0B0E14">
+<div class="island" style="width:250px;height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 16px 0 12px;box-sizing:border-box">
+<span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#FF7AB5"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#FF4D9A" stroke-width="2.2" stroke-linecap="round"><path d="M3 10h14M5 7v6M15 7v6M2 9v2M18 9v2"/></svg>Set 3</span><span class="num" style="font-size:17px;color:#D4FF3A">1:12</span>
+</div>
+<div class="sb"><span></span><span class="sb-r"><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="12" height="8" rx="2" fill="#F3F5F9"/><path d="M25 4.5v4" stroke="#8A93A6" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+<div style="text-align:center;margin-top:18px">
+<div style="font-size:17px;font-weight:600;color:#C9CFDA">Wednesday 28 October</div>
+<div class="num" style="font-size:104px;font-weight:600;margin-top:2px;letter-spacing:-.01em">19:43</div>
+</div>
+<div style="display:flex;gap:10px;justify-content:center;margin-top:10px">
+<div style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;position:relative"><svg width="72" height="72" viewBox="0 0 72 72" style="position:absolute;inset:0"><circle cx="36" cy="36" r="30" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="6"/><circle cx="36" cy="36" r="30" fill="none" stroke="#D4FF3A" stroke-width="6" stroke-linecap="round" stroke-dasharray="85 189" transform="rotate(-90 36 36)"/></svg><div style="text-align:center"><div class="num" style="font-size:18px">2:47</div><div style="font-size:9px;color:#A3ABBC">of 6h10</div></div></div>
+<div style="width:150px;height:72px;border-radius:20px;background:rgba(255,255,255,.08);padding:10px 12px;box-sizing:border-box"><div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#A3ABBC">FOOD</div><div class="num" style="font-size:24px;margin-top:4px">918 <span style="font-size:13px;color:#FFC873">kcal to go</span></div><div class="bar" style="margin-top:6px;height:4px;background:rgba(255,255,255,.12)"><i style="width:67%;background:#D4FF3A"></i></div></div>
+</div>
+
+<div style="position:absolute;left:12px;right:12px;bottom:110px;border-radius:24px;background:rgba(18,21,28,.92);border:1px solid #232835;padding:16px">
+<div class="row" style="justify-content:space-between"><span class="row" style="gap:8px"><span style="width:26px;height:26px;border-radius:8px;background:#D4FF3A;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="#0A0C11" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11h4l2-6 4 10 2-4h4"/></svg></span><span style="font-size:13px;font-weight:600;color:#A3ABBC">Workout B · 2 of 5</span></span><span style="font-size:12px;color:#8A93A6">24:10</span></div>
+<div class="row" style="justify-content:space-between;margin-top:12px;align-items:flex-end">
+<div><div class="lbl" style="font-size:10px">Rest · next up</div><div style="font-size:19px;font-weight:700;margin-top:4px">DB Row · set 3</div><div class="muted" style="font-size:13px;margin-top:2px">34 kg × 10</div></div>
+<div class="num" style="font-size:52px;color:#D4FF3A">1:12</div>
+</div>
+<div class="bar" style="margin-top:12px"><i style="width:20%;background:#D4FF3A"></i></div>
+</div>
+<div style="position:absolute;left:44px;right:44px;bottom:42px;display:flex;justify-content:space-between">
+<div style="width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#F3F5F9" stroke-width="1.8"><path d="M7 2h6v5l-1 2v8a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V9L7 7z"/></svg></div>
+<div style="width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#F3F5F9" stroke-width="1.8" stroke-linejoin="round"><path d="M2.5 6.5a1.5 1.5 0 0 1 1.5-1.5h2l1.5-2h5l1.5 2h2a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5z"/><circle cx="10" cy="10.5" r="3"/></svg></div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>Phase 2, native-only.</b> Rest timer as a Live Activity and in the Dynamic Island, so the phone can stay locked between sets. Lock-screen widgets: week hours ring and kcal to go.</div>
+</div>
+
+<!-- ============ 8. SETTINGS ============ -->
+<div class="frame">
+<div class="lbl">08 · Settings (from the avatar)</div>
+<div class="phone">
+<div class="island"></div>
+<div class="sb"><span>7:13</span><span></span></div>
+<div class="body">
+<div class="row" style="justify-content:space-between;padding:2px 0"><span style="color:#D4FF3A;font-size:16px;font-weight:500">‹ Today</span></div>
+<div class="hdr"><div class="ttl" style="font-size:40px">Settings</div></div>
+
+<div class="lbl" style="padding:0 4px">Server</div>
+<div class="card" style="padding:4px 16px">
+<div class="lrow"><div style="flex:1"><div style="font-size:15px;font-weight:600">TrainLog on MacBook</div><div class="muted" style="font-size:12px;margin-top:3px;font-family:ui-monospace,Menlo,monospace">http://192.168.1.24:8000</div></div><span class="pill" style="background:rgba(46,211,176,.12);color:#2ED3B0;height:24px;text-transform:none;letter-spacing:0;font-size:12px"><i style="width:7px;height:7px;border-radius:50%;background:#2ED3B0"></i>38 ms</span></div>
+<div class="sep"></div>
+<div class="lrow"><span style="flex:1;font-size:15px">Find on this Wi-Fi</span><span class="muted" style="font-size:13px">Bonjour</span><span class="chev">›</span></div>
+<div class="sep"></div>
+<div class="lrow"><span style="flex:1;font-size:15px">Enter address manually</span><span class="chev">›</span></div>
+</div>
+<div class="muted" style="font-size:12px;padding:0 4px;line-height:1.45">Works on home Wi-Fi only for now. Away from home the app shows the last synced data read-only and queues new logs until it's back.</div>
+
+<div class="lbl" style="padding:6px 4px 0">Apple Health</div>
+<div class="card" style="padding:4px 16px">
+<div class="lrow"><span style="flex:1;font-size:15px">Read sleep, resting HR, HRV</span><div class="toggle"></div></div>
+<div class="sep"></div>
+<div class="lrow"><span style="flex:1;font-size:15px">Save strength sessions as workouts</span><div class="toggle"></div></div>
+<div class="sep"></div>
+<div class="lrow"><span style="flex:1;font-size:15px">Read body weight</span><div class="toggle off"></div></div>
+</div>
+
+<div class="lbl" style="padding:6px 4px 0">Reminders</div>
+<div class="card" style="padding:4px 16px">
+<div class="lrow"><div style="flex:1"><div style="font-size:15px">Morning check-in</div><div class="muted" style="font-size:12px;margin-top:2px">07:30</div></div><div class="toggle"></div></div>
+<div class="sep"></div>
+<div class="lrow"><div style="flex:1"><div style="font-size:15px">Log dinner nudge</div><div class="muted" style="font-size:12px;margin-top:2px">20:30 if under target</div></div><div class="toggle"></div></div>
+</div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>LAN-only for now:</b> enter the Mac's address or find it with Bonjour. Switching to Tailscale later is just a different address. HealthKit and reminders are opt-in toggles.</div>
+</div>
+
+</div>
+</x-dc>
+</body>
+</html>

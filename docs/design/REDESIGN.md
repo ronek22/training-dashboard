@@ -19,6 +19,7 @@ MacBook Pro M4 in full screen (**1512 × 945 viewport**) and on phone.
 | Trends · Overview | `screens/trends.png` | `artboards/Trends.dc.html` |
 | Trends · other tabs | `screens/trends-tabs.png` | `artboards/TrendsTabs.dc.html` |
 | System (colors, type, components) | `screens/system.png` | `artboards/System.dc.html` |
+| iOS app (MVP, 8 iPhone screens) | `screens/ios/overview.png` | `artboards/iOS.dc.html` |
 
 - Screenshots are 1440 px wide, rendered from the artboards. Read the PNG to see the target;
   grep the `.dc.html` only for exact sizes/colors (styles are inline; data is in the

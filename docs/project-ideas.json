@@ -1,6 +1,6 @@
 {
-  "reviewed_at": "2026-10-26T12:30:00+01:00",
-  "summary": "Fresh batch after the board was cleared (37 done, 19 dismissed). Checked current-state, roadmap open threads, the views list and targeted greps so new proposals avoid shipped work (express lifts, readiness, kit wear, sleep payback, season review) and dismissed themes (event taper, FTP test, forecast, trail goals, calendar life-load, card-level coach questions). Eight proposals: five athlete-facing, three engineering. Source/documentation review only; no tests run and no private training data opened.",
+  "reviewed_at": "2026-10-27T12:30:00+01:00",
+  "summary": "Athlete-focused batch on request. Checked the live strength runner (rest timer already exists), weather use (only in season and session comparisons, not briefs), fuelling, muscle-gain check and personal records so proposals avoid shipped work, and kept clear of dismissed themes (indoor-or-outdoor from forecast, trail goals, FTP test). Six proposals, all athlete-facing. Source review only; no tests run and no private training data opened.",
   "ideas": [
     {
       "id": "dependable-project-checks",
@@ -1480,6 +1480,261 @@
         "A separate recipe updates baselines"
       ],
       "created_on": "2026-10-26"
+    },
+    {
+      "id": "missed-lift-make-up-slot",
+      "title": "Rescue a missed lift later in the same week",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "Three lifts a week is an anchor goal, but when a planned lift day passes without a session nothing offers a way to still get three in. The lift-ride clash rule can move a lift, yet only to separate it from a hard ride, not to recover a skipped one.",
+      "proposal": "When a planned lift day ends without a matched strength session, offer one make-up slot on the next free or easy day this week. Reuse the clash rule so the moved lift never lands next to a hard ride, respect busy life-load days, and keep it approval-based: one tap moves it, one tap lets it go. If no safe day is left, say so plainly instead of stacking two lifts.",
+      "benefit": "Keep the three-lifts-a-week habit alive after a busy day without rebuilding the whole week by hand.",
+      "evidence": [
+        "backend/app/services/lift_ride_clash.py: moves lifts only to resolve clashes",
+        "backend/app/services/plan_follow_through.py: lift intents per day",
+        "backend/app/services/life_load.py",
+        "frontend/src/views/Dashboard.vue: planned week"
+      ],
+      "acceptance_criteria": [
+        "A planned lift day that ends with no matched strength session shows one make-up suggestion for a later day in the same week.",
+        "The suggested day never sits next to a hard ride and never on a day tagged busy.",
+        "Accepting moves the lift in the stored plan with a recorded reason; dismissing leaves the plan untouched.",
+        "When no safe day remains, the card says so and suggests nothing.",
+        "Past and completed days are never moved."
+      ],
+      "created_on": "2026-10-27"
+    },
+    {
+      "id": "food-left-on-widget",
+      "title": "Today's food and protein left on the iPhone widget",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "Under-eating is the main nutrition risk, but the Home Screen widget only shows the plan, readiness and load. How much is still left to eat today is visible only by opening the Food page on the MacBook.",
+      "proposal": "Add today's remaining kcal and protein (target from the planned week minus logged meals) to the widget file, plus a short nudge on big training days when intake is well behind by mid-afternoon. Keep the existing widget layout and skip the line entirely when nothing is logged and no target exists.",
+      "benefit": "See at a glance on the phone whether you have eaten enough for today's session, where the reminder actually helps.",
+      "evidence": [
+        "backend/app/services/widget_brief.py: no food fields",
+        "backend/app/services/food_log.py: target_for and fuel_status_by_day",
+        "backend/app/services/food_targets.py",
+        "docs/iphone-widget.js"
+      ],
+      "acceptance_criteria": [
+        "The widget JSON includes remaining kcal and protein for today when a target exists.",
+        "Values match the Food page for the same day.",
+        "The behind-on-food nudge shows only on days with a big planned session and intake below a stated share of target.",
+        "The widget script renders the new line without breaking the current small and medium layouts.",
+        "test_widget_brief covers a logged day, an unlogged day and a day with no target."
+      ],
+      "created_on": "2026-10-27"
+    },
+    {
+      "id": "shopping-list-tick-off-by-section",
+      "title": "Tick off the shopping list in the shop",
+      "category": "Experience",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The shopping list from planned dinners is one flat read-only list you copy out. In the shop there is no way to tick items off, and items are not grouped the way a store is laid out.",
+      "proposal": "Group the list into a few fixed sections (vegetables and fruit, meat and fish, dairy, bakery, dry goods, other) using the linked product's category or a small keyword map, and let each item be ticked off. Keep ticks per list (date range) so a refresh in the shop keeps progress. The phone layout is the one that matters here.",
+      "benefit": "Use the list directly while shopping instead of copying it into another app.",
+      "evidence": [
+        "backend/app/services/dinner_plan.py: shopping_list returns one flat group list",
+        "frontend/src/components/DinnerPlanner.vue: shopping copy",
+        "backend/app/services/products.py"
+      ],
+      "acceptance_criteria": [
+        "Items appear under fixed sections; anything unmatched goes to Other.",
+        "Ticking an item persists across refresh for the same date range.",
+        "A new date range starts with nothing ticked.",
+        "Copy still produces the full list, with ticked items marked or left out.",
+        "The list is usable at phone width without horizontal scrolling."
+      ],
+      "created_on": "2026-10-27"
+    },
+    {
+      "id": "mcp-tool-contract-tests",
+      "title": "Catch broken coach tools before the coach does",
+      "category": "Engineering",
+      "effort": "Medium",
+      "priority": "High",
+      "problem": "The MCP server exposes about 44 tools that weekly planning, the coach chat and session reads rely on. Tests reach some of them indirectly, but nothing checks that every registered tool still runs, so a renamed field or service change can break a tool silently until a planning run fails.",
+      "proposal": "Add one test module that lists every registered MCP tool, calls each with minimal valid arguments against the seeded smoke database, and asserts it returns a well-formed result rather than an error. Write tools run inside a rolled-back fixture. New tools fail the test until they get sample arguments.",
+      "benefit": "Weekly planning and coach chats keep working after refactors like the recent Plan and Goals splits.",
+      "evidence": [
+        "backend/app/services/mcp.py: about 44 tool definitions in 1,229 lines",
+        "backend/tests/smoke_base.py",
+        "backend/tests/test_smoke_context.py",
+        "justfile: check recipe"
+      ],
+      "acceptance_criteria": [
+        "A test enumerates registered tools from the server, not a hand-kept list.",
+        "Every tool is called once and must return without an error result.",
+        "Write tools leave the test database unchanged afterwards.",
+        "Adding a tool without sample arguments fails with a message naming it.",
+        "The test runs as part of just check."
+      ],
+      "created_on": "2026-10-27"
+    },
+    {
+      "id": "migration-dry-run-on-backup",
+      "title": "Try schema changes on a copy of the real database first",
+      "category": "Reliability",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "Schema changes run inside init_db on the live database at startup. Tests use fresh databases, so a migration that trips over years of real rows (old nulls, legacy values) is only found when the app starts against the real data.",
+      "proposal": "Add a local command that copies the newest automatic backup to a temporary file, runs init_db against it, runs a few integrity checks (PRAGMA integrity_check, row counts per table before and after) and deletes the copy. Document running it before shipping any change to db.py. It never touches the live database and never runs in CI.",
+      "benefit": "Find a bad migration on a throwaway copy instead of at startup on your training history.",
+      "evidence": [
+        "backend/app/db.py: init_db runs schema changes",
+        "backend/app/services/backups.py",
+        "backend/tests/test_coach_chat_migration.py",
+        "justfile"
+      ],
+      "acceptance_criteria": [
+        "One command runs migrations against a temporary copy of the latest backup.",
+        "The live database file is never opened for writing.",
+        "The command reports integrity check results and any table whose row count dropped.",
+        "The temporary copy is removed even when the run fails.",
+        "AGENTS.md or the shipped docs mention running it for db.py changes."
+      ],
+      "created_on": "2026-10-27"
+    },
+    {
+      "id": "what-to-wear-outdoor-ride",
+      "title": "What to wear for today's outdoor ride",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "High",
+      "problem": "Winter outdoor rides start cold and change fast, but the planned-day brief says nothing about clothing. The forecast is already fetched for other features, so the guesswork is avoidable. This is not about choosing indoor or outdoor; it applies once an outdoor ride is planned.",
+      "proposal": "For a planned outdoor ride, read the forecast for the ride window and suggest layers from a small fixed table: feels-like temperature, wind and rain decide base layer, jacket, gloves, overshoes and head cover. Show it as one line in the ride brief, and let you mark after the ride whether you were too cold, right or too warm so the thresholds shift by a degree or two for you.",
+      "benefit": "Leave the house dressed right instead of freezing for the first hour or overheating on the climb.",
+      "evidence": [
+        "backend/app/services/weather.py: Open-Meteo forecast already fetched",
+        "backend/app/services/session_brief.py: no weather or clothing",
+        "backend/app/services/kit.py"
+      ],
+      "acceptance_criteria": [
+        "Planned outdoor rides show a clothing line built from the forecast for the ride window.",
+        "Indoor rides and non-ride sessions show nothing.",
+        "The suggestion comes from a documented temperature, wind and rain table, not a model.",
+        "After-ride feedback of too cold or too warm shifts later suggestions by a bounded amount.",
+        "A forecast failure hides the line instead of showing a guess."
+      ],
+      "created_on": "2026-10-27"
+    },
+    {
+      "id": "personal-exercise-cues",
+      "title": "Your own cues on every lift",
+      "category": "Experience",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "Little setup details (bench notch, grip width, seat height, 'elbows in') are remembered only in your head. The live runner shows the prescription, effort and stall blocks, but no place for a note about how you like to do that exercise.",
+      "proposal": "Keep one short personal cue per exercise, editable from the live set card and the exercise page. Show it under the exercise name during a workout, and offer to save a session note as the cue when it looks like a setup detail.",
+      "benefit": "Set up each lift the same way every time without relearning it after a break.",
+      "evidence": [
+        "frontend/src/views/StrengthWorkoutSession.vue: current set card and queue",
+        "frontend/src/views/Strength.vue",
+        "backend/app/services/strength.py"
+      ],
+      "acceptance_criteria": [
+        "Each exercise can store one cue of up to about 140 characters.",
+        "The cue shows on the current set card during a live workout.",
+        "Editing the cue mid-workout never changes logged sets.",
+        "Exercises without a cue show nothing extra."
+      ],
+      "created_on": "2026-10-27"
+    },
+    {
+      "id": "ride-fuel-feedback",
+      "title": "Did you eat what the long ride needed?",
+      "category": "Product",
+      "effort": "Medium",
+      "priority": "Medium",
+      "problem": "Rides get a carbs-per-hour and bottles suggestion, but nothing records what you actually ate and drank or how the end of the ride felt. Under-fuelling on rides can't be spotted, and the suggestion never learns.",
+      "proposal": "After rides over about 90 minutes that had a fuelling suggestion, ask two quick taps: how much of it you ate (none, half, all) and how the last hour felt (faded, fine, strong). Show the pattern over recent rides on the ride page and in the session read, and when you fade after eating little, make the next pre-ride brief say so plainly.",
+      "benefit": "Connect the bad last hour to the empty pockets and actually fuel the next long ride.",
+      "evidence": [
+        "backend/app/services/fuelling.py: carbs and bottles per planned ride",
+        "backend/app/services/activity_feedback.py",
+        "backend/app/services/session_read.py"
+      ],
+      "acceptance_criteria": [
+        "Rides over the threshold with a fuelling suggestion offer the two-tap question once.",
+        "Answers are stored per activity and can be changed.",
+        "The ride page shows fuel eaten and how the finish felt for recent long rides.",
+        "Repeated fade-after-under-eating adds one plain line to the next long ride brief.",
+        "Short rides and indoor rides under the threshold never ask."
+      ],
+      "created_on": "2026-10-27"
+    },
+    {
+      "id": "monthly-body-measurements",
+      "title": "Waist and arms tell you if the muscle is coming",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "The muscle-gain check reads weight, protein and hard sets, but body weight alone can't separate muscle from fat or water. There is no simple monthly measurement to back up the verdict.",
+      "proposal": "A monthly reminder to log waist, chest, upper arm and thigh, as optional metrics. Feed the trend into the muscle-gain check: arms or chest up with waist flat is a clear yes, waist rising faster than the rest is a gentle flag. Optional progress photo kept locally next to the measurements.",
+      "benefit": "See whether lifting three times a week is building muscle, not just moving the scale.",
+      "evidence": [
+        "backend/app/services/muscle_gain.py: _weigh_ins and _verdict use weight only",
+        "backend/app/services/metrics.py",
+        "frontend/src/views/Metrics.vue"
+      ],
+      "acceptance_criteria": [
+        "Four measurement metrics can be logged with one form.",
+        "A reminder appears once a month and can be skipped.",
+        "The muscle-gain check uses measurements when at least two are logged a month apart.",
+        "With no measurements the check behaves exactly as today."
+      ],
+      "created_on": "2026-10-27"
+    },
+    {
+      "id": "record-within-reach-live",
+      "title": "Show when a set is one rep from a record",
+      "category": "Experience",
+      "effort": "Small",
+      "priority": "Medium",
+      "problem": "Lift records exist by body area, but during a live workout you can't see that the set in front of you is close to your best at that weight. The record only shows up afterwards.",
+      "proposal": "On the current set card, when the prescribed weight matches a weight you have a rep record for, show 'best here: 8 reps' and, if the target is within one or two reps of it, a small 'record within reach' marker. Celebrate it when the logged set beats the record. Never raise the prescribed load; it only reads reps at the weight already set, in line with conservative progression.",
+      "benefit": "Make an ordinary set a small win to chase, without pushing extra weight.",
+      "evidence": [
+        "frontend/src/views/StrengthWorkoutSession.vue: current set card",
+        "backend/app/services/personal_records.py",
+        "backend/app/services/progression_guard.py"
+      ],
+      "acceptance_criteria": [
+        "The current set shows your best reps at that exact weight when one exists.",
+        "'Record within reach' appears only within two reps of the best.",
+        "Beating it shows a brief celebration and the record list updates.",
+        "Prescribed weight and reps are never changed by this feature.",
+        "Warm-up sets never show it."
+      ],
+      "created_on": "2026-10-27"
+    },
+    {
+      "id": "winter-climbing-to-the-mountains",
+      "title": "Climb the Tatras on the trainer this winter",
+      "category": "Product",
+      "effort": "Small",
+      "priority": "Low",
+      "problem": "Winter trainer rides pile up elevation and work that feel like nothing on a screen. The mountain side of the app comes to life only in summer.",
+      "proposal": "Turn winter-arc climbing into a progress line toward real mountains you know: the climb from Zakopane to Rysy, then Gerlach, then a full Orla Perć, using virtual elevation from trainer rides (or kJ when there is no elevation). Show it as a small celebratory card on the dashboard with a count-up when a mountain is reached, and a final total at block recap.",
+      "benefit": "Give the indoor winter a goal you care about and a moment to celebrate along the way.",
+      "evidence": [
+        "backend/app/services/winter_arc.py",
+        "backend/app/services/milestones.py",
+        "backend/app/services/block_recap.py",
+        "frontend/src/views/Mountains.vue"
+      ],
+      "acceptance_criteria": [
+        "Elevation from indoor rides since the arc started adds up toward a fixed list of mountains.",
+        "Reaching each mountain shows one celebration, not repeated on reload.",
+        "The card shows the current mountain and how far to the next.",
+        "Outdoor rides and hikes are not counted, so the total stays a winter trainer total."
+      ],
+      "created_on": "2026-10-27"
     }
   ]
 }

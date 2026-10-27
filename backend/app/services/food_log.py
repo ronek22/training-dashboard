@@ -259,6 +259,8 @@ def build_food_day(conn: sqlite3.Connection, day: str, today: Optional[date] = N
 
     judged = [item for item in week if item["logged"] and item["finished"] and item["gap_kcal"] is not None]
     selected_entries = [entry for entry in entries if entry["date"] == day]
+    from .meal_protein import build_meal_protein
+
     return {
         "date": day,
         "profile": profile,
@@ -268,6 +270,7 @@ def build_food_day(conn: sqlite3.Connection, day: str, today: Optional[date] = N
         "totals": _sum([item for entry in selected_entries for item in entry["items"]]),
         "target": selected_target,
         "protein_target_g": protein_target_g(weight_kg) if weight_kg else None,
+        "meal_protein": build_meal_protein(conn, selected_entries),
         "exercise": exercise.get(day, {"kcal": 0, "activities": []}),
         "planned_week": {**plan, "days": plan_days},
         "week": week,

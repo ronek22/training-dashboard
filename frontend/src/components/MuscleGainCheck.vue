@@ -101,6 +101,9 @@
                   <span>{{ item.hit === true ? 'Hit' : item.hit === false ? 'Missed' : 'No answer' }}<template v-if="item.source === 'weekly'"> · weekly check-in</template></span>
                 </li>
               </ul>
+              <p v-if="spread?.logged_days" class="mg-note">
+                Per meal, from the food log: every main meal reached {{ spread.threshold_g }} g on {{ spread.even_days }} of {{ spread.logged_days }} logged lift days<template v-if="spread.most_often_light">; {{ spread.most_often_light.label.toLowerCase() }} was light most often ({{ spread.most_often_light.days }}×)</template>.
+              </p>
             </div>
           </details>
 
@@ -154,6 +157,7 @@ const api = useApi()
 const state = ref(null)
 const loading = ref(false)
 const error = ref('')
+const spread = computed(() => state.value?.protein.meal_spread)
 
 const setsScale = computed(() => Math.max(
   (state.value?.hard_sets.target_max || 16) * 1.25,

@@ -204,6 +204,27 @@ class MuscleGainCheckTests(unittest.TestCase):
         self.assertEqual(result["verdict"]["status"], "working")
         self.assertEqual(result["suggestion"]["lever"], "keep")
 
+    def test_light_breakfasts_on_lift_days_steer_the_suggestion(self):
+        self.conn.executescript(
+            """
+            CREATE TABLE food_entries (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, meal TEXT);
+            CREATE TABLE food_items (id INTEGER PRIMARY KEY AUTOINCREMENT, entry_id INTEGER, protein_g REAL);
+            """
+        )
+        self._full_month(legs_sets=3)
+        for session in self.sessions:
+            day = session["workout_date"]
+            self.conn.execute("INSERT INTO daily_nutrition VALUES (?, 1)", (day,))
+            for meal, grams in (("breakfast", 12), ("lunch", 50), ("dinner", 40)):
+                entry = self.conn.execute("INSERT INTO food_entries (date, meal) VALUES (?, ?)", (day, meal)).lastrowid
+                self.conn.execute("INSERT INTO food_items (entry_id, protein_g) VALUES (?, ?)", (entry, grams))
+        result = self._check()
+        spread = result["protein"]["meal_spread"]
+        self.assertEqual((spread["logged_days"], spread["even_days"]), (12, 0))
+        self.assertEqual(result["suggestion"]["lever"], "protein")
+        self.assertIn("Breakfast under 25 g protein on 12 of 12", result["suggestion"]["headline"])
+        self.assertEqual(result["verdict"]["status"], "working")
+
 
 if __name__ == "__main__":
     unittest.main()

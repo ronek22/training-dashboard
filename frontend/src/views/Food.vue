@@ -146,6 +146,7 @@
 
           <FoodMealList :groups="mealGroups" :current="rows.length ? '' : meal" :editing-id="editingId" :just-logged-id="justLoggedId"
             :just-starred="justStarred" :is-saved="isSaved" @start="startMeal" @edit="editEntry" @star="saveStaple" />
+          <FoodMealProtein v-if="day" :split="day.meal_protein" @use="useIdea" />
           <FoodWeekCard v-if="day" :week="day.week" :summary="day.week_summary" :selected="selectedDay" @pick="setDay" />
         </div>
 
@@ -170,6 +171,7 @@ import ProductDialog from '../components/ProductDialog.vue'
 import MealIdeas from '../components/MealIdeas.vue'
 import FoodDaySummary from '../components/FoodDaySummary.vue'
 import FoodMealList from '../components/FoodMealList.vue'
+import FoodMealProtein from '../components/FoodMealProtein.vue'
 import FoodWeekCard from '../components/FoodWeekCard.vue'
 import NutritionProfileDialog from '../components/NutritionProfileDialog.vue'
 import { defaultGrams, productLabel, scalePer100 } from '../food/products.mjs'

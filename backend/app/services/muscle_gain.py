@@ -12,6 +12,8 @@ Four signals over the last four weeks, each naming the sessions it came from:
   window), using the same like-for-like metric as strength progression.
 * Protein adherence on lift days, from the daily protein tick, falling back to
   the weekly check-in's "most days?" answer for that week.
+  Logged food adds how evenly protein landed across main meals on lift days
+  (``meal_protein.meal_spread``); it can steer the suggestion, not the verdict.
 * Body-weight trend, from a 7-day trailing average of weigh-ins, against a
   gentle gain rate. Fewer than ``MIN_WEIGH_INS`` weigh-ins means unavailable.
 
@@ -26,6 +28,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 from .health_data import get_health_metric_history
+from .meal_protein import meal_spread
 from .protein import _logged_lift_dates
 from .sick_mode import sick_dates
 from .weekly_body_checkin import weekly_protein_answers
@@ -38,6 +41,9 @@ TARGET_SETS_MIN = 8
 TARGET_SETS_MAX = 16
 PROGRESSED_SHARE_GOOD = 0.5
 PROTEIN_SHARE_GOOD = 0.7
+# Logged lift days needed before the per-meal spread can steer the suggestion.
+MIN_SPREAD_DAYS = 3
+SPREAD_SHARE_GOOD = 0.5
 WEIGHT_WINDOW_DAYS = 42
 MIN_WEIGH_INS = 4
 MIN_WEIGHT_SPAN_DAYS = 14
@@ -252,6 +258,7 @@ def _protein(conn: sqlite3.Connection, window_start: str, window_end: str) -> di
         "hits": hits,
         "share": round(hits / len(days), 2) if days and answered else None,
         "days": days,
+        "meal_spread": meal_spread(conn, lift_days),
     }
 
 
@@ -363,6 +370,14 @@ def _suggestion(sessions_per_week: float, groups: list[dict], progression: dict,
             "lever": "protein",
             "headline": f"Protein hit on {protein['hits']} of {protein['lift_days']} lift days",
             "detail": "Plan one protein-rich meal or a shake after each lift so the target lands on training days.",
+        }
+    spread = protein.get("meal_spread")
+    if spread and spread["logged_days"] >= MIN_SPREAD_DAYS and spread["share"] < SPREAD_SHARE_GOOD and spread["most_often_light"]:
+        light = spread["most_often_light"]
+        return {
+            "lever": "protein",
+            "headline": f"{light['label']} under {spread['threshold_g']} g protein on {light['days']} of {spread['logged_days']} logged lift days",
+            "detail": f"The day's total isn't the whole story: muscle builds best with about {spread['threshold_g']} g at each main meal. Add skyr, eggs or a shake to {light['label'].lower()}.",
         }
     if weight["available"] and weight["status"] in {"flat", "losing"}:
         return {

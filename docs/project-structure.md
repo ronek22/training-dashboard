@@ -49,6 +49,7 @@ Root:
 - `services/dashboard.py` — dashboard aggregation, recent context, training load
 - `services/goals.py` — goal creation and listing
 - `services/kit.py` — kit wear (shoes, bikes with fitted parts, trainer): per-activity assignment by sport default, Strava gear, parent bike or manual choice; service log (wax, lube...) and replacement history; nearly-due status
+- `services/meal_protein.py` — protein per meal on the Food day (threshold, light meals, top-ups) and the per-meal spread for the muscle-gain check
 - `services/mcp.py` — MCP tool definitions and dispatch
 - `services/metrics.py` — metric history and writes
 - `services/notes.py` — note creation and listing

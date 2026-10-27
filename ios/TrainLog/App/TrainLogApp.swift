@@ -19,6 +19,7 @@ struct RootView: View {
     @State private var showQuickLog = false
     @State private var strength: StrengthLaunch?
     @State private var todayRefresh = 0
+    @State private var activityDetailOpen = false
 
     var body: some View {
         ZStack {
@@ -27,11 +28,14 @@ struct RootView: View {
             case .today: TodayView(onStartStrength: { strength = StrengthLaunch(templateId: $0) }, refresh: todayRefresh)
             case .plan: Placeholder(title: "Plan")
             case .food: FoodView()
-            case .activities: Placeholder(title: "Activities")
+            case .activities: ActivitiesView(showingDetail: $activityDetailOpen)
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            TabBar(selection: $tab, onPlus: { showQuickLog = true })
+            // Activity detail is a pushed page with its own back button, as in the artboard.
+            if !(tab == .activities && activityDetailOpen) {
+                TabBar(selection: $tab, onPlus: { showQuickLog = true })
+            }
         }
         .sheet(isPresented: $showQuickLog, onDismiss: { todayRefresh += 1 }) {
             QuickLogSheet()

@@ -42,9 +42,9 @@ struct APIClient: Sendable {
     }()
 
     /// GET that falls back to the last good response when the server is unreachable.
-    func get<T: Decodable & Sendable>(_ path: String, as type: T.Type = T.self) async throws -> Loaded<T> {
+    func get<T: Decodable & Sendable>(_ path: String, as type: T.Type = T.self, timeout: TimeInterval = 8) async throws -> Loaded<T> {
         do {
-            let data = try await fetch(path)
+            let data = try await fetch(path, timeout: timeout)
             let value = try Self.decoder.decode(T.self, from: data)
             cache.store(data, for: path)
             return Loaded(value: value, syncedAt: .now, fromCache: false)
@@ -70,20 +70,20 @@ struct APIClient: Sendable {
 
     /// POST / PUT / DELETE with an already-encoded JSON body.
     @discardableResult
-    func send(_ method: String, _ path: String, body: Data? = nil) async throws -> Data {
-        try await fetch(path, method: method, body: body)
+    func send(_ method: String, _ path: String, body: Data? = nil, timeout: TimeInterval = 8) async throws -> Data {
+        try await fetch(path, method: method, body: body, timeout: timeout)
     }
 
     func send<T: Decodable & Sendable>(_ method: String, _ path: String, body: Data? = nil, as type: T.Type) async throws -> T {
         try Self.decoder.decode(T.self, from: try await fetch(path, method: method, body: body))
     }
 
-    private func fetch(_ path: String, method: String = "GET", body: Data? = nil) async throws -> Data {
+    private func fetch(_ path: String, method: String = "GET", body: Data? = nil, timeout: TimeInterval = 8) async throws -> Data {
         guard let url = URL(string: baseURL.trimmingCharacters(in: .init(charactersIn: "/")) + path) else {
             throw APIError.badURL(baseURL)
         }
         var request = URLRequest(url: url)
-        request.timeoutInterval = 8
+        request.timeoutInterval = timeout
         request.httpMethod = method
         if let body {
             request.httpBody = body

@@ -432,6 +432,7 @@ export const useApi = () => ({
   getActivityRecordRanks: () => api.get('/records/activities'),
   getRideBalance: (params) => api.get('/metrics/ride-balance', { params }),
   getCyclingPower: () => api.get('/metrics/cycling-power'),
+  getCyclingSeason: () => api.get('/metrics/cycling-season'),
   getAerobicDecoupling: (weeks = 12) => api.get('/metrics/aerobic-decoupling', { params: { weeks } }),
   getCyclingPowerAdvice: () => api.get('/metrics/cycling-power/advice'),
   startCyclingPowerReview: (payload) => coachHelper.post('/cycling-power-review', payload),

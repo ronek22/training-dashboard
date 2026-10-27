@@ -17,6 +17,7 @@ const moreLinks = [
   { path: '/activities', label: 'Activities' },
   { path: '/records', label: 'Records' },
   { path: '/running', label: 'Running' },
+  { path: '/cycling', label: 'Cycling' },
   { path: '/mountains', label: 'Mountains' },
   { path: '/strength', label: 'Strength' },
   { path: '/recovery', label: 'Recovery' },

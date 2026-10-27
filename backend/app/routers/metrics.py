@@ -80,6 +80,16 @@ def cycling_power_trends():
         conn.close()
 
 
+@router.get("/metrics/cycling-season")
+def cycling_season():
+    from ..services.cycling_season import build_cycling_season
+    conn = get_db()
+    try:
+        return build_cycling_season(conn)
+    finally:
+        conn.close()
+
+
 @router.get("/metrics/ride-balance")
 def ride_balance(weeks: int = Query(default=6, ge=4, le=8)):
     from ..services.ride_balance import build_ride_balance

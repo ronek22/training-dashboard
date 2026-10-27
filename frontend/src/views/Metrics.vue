@@ -18,8 +18,7 @@
       </button>
     </nav>
 
-    <CyclingPowerTrends v-if="activeView === 'cycling-power'" />
-    <div v-else-if="loading" class="t-card state-card" role="status">Loading trends…</div>
+    <div v-if="loading" class="t-card state-card" role="status">Loading trends…</div>
     <div v-else-if="loadError" class="t-card state-card">
       <strong>Trends are unavailable</strong>
       <p>{{ loadError }}</p>
@@ -282,7 +281,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import TrainingLoadPanel from '../components/TrainingLoadPanel.vue'
-import CyclingPowerTrends from '../components/CyclingPowerTrends.vue'
 import SessionComparisons from '../components/SessionComparisons.vue'
 import HealthTrendChart from '../components/HealthTrendChart.vue'
 import { cached, onCacheRefresh, useApi } from '../stores/api'
@@ -290,7 +288,7 @@ import { cached, onCacheRefresh, useApi } from '../stores/api'
 const api = useApi()
 const route = useRoute()
 const router = useRouter()
-const views = [{ key: 'overview', label: 'Overview' }, { key: 'improving', label: 'Am I improving?' }, { key: 'cycling-power', label: 'Cycling power' }, { key: 'training_load', label: 'Training load' }, { key: 'recovery', label: 'Recovery' }, { key: 'daily_activity', label: 'Daily activity' }, { key: 'weight', label: 'Weight' }, { key: 'ftp', label: 'FTP' }]
+const views = [{ key: 'overview', label: 'Overview' }, { key: 'improving', label: 'Am I improving?' }, { key: 'training_load', label: 'Training load' }, { key: 'recovery', label: 'Recovery' }, { key: 'daily_activity', label: 'Daily activity' }, { key: 'weight', label: 'Weight' }, { key: 'ftp', label: 'FTP' }]
 const sportOrder = ['ride', 'run', 'strength', 'hike', 'walk', 'other']
 const sportLabels = { ride: 'Ride', run: 'Run', strength: 'Strength', hike: 'Hike', walk: 'Walk', other: 'Other' }
 const sportColors = { ride: 'var(--ride)', run: 'var(--run)', strength: 'var(--strength)', hike: 'var(--tone-recovery)', walk: 'var(--z2)', other: 'var(--tone-neutral)' }

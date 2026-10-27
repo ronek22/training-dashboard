@@ -93,6 +93,17 @@
       <path d="M2.5 19.5 9 8.5l3.6 6 2.4-3.7 6.5 8.7z" fill="currentColor" />
     </svg>
     <svg
+      v-else-if="iconName === 'water'"
+      :width="size"
+      :height="size"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path d="M3 10c1.5 0 1.5-1.5 3-1.5S7.5 10 9 10s1.5-1.5 3-1.5S13.5 10 15 10s1.5-1.5 3-1.5S19.5 10 21 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      <path d="M3 15.5c1.5 0 1.5-1.5 3-1.5s1.5 1.5 3 1.5 1.5-1.5 3-1.5 1.5 1.5 3 1.5 1.5-1.5 3-1.5 1.5 1.5 3 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </svg>
+    <svg
       v-else
       :width="size"
       :height="size"
@@ -100,7 +111,7 @@
       fill="none"
       aria-hidden="true"
     >
-      <circle cx="12" cy="12" r="4" fill="currentColor" />
+      <path d="M3 12h4l2.5-6 5 12 2.5-6h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
     </svg>
   </span>
 </template>
@@ -118,11 +129,12 @@ const normalizedType = computed(() => (props.type || '').toLowerCase())
 
 const iconName = computed(() => {
   if (normalizedType.value === 'run') return 'run'
-  if (normalizedType.value === 'ride' || normalizedType.value === 'virtualride' || normalizedType.value === 'cycling') return 'ride'
+  if (['ride', 'virtualride', 'cycling', 'gravelride', 'mountainbikeride', 'ebikeride'].includes(normalizedType.value)) return 'ride'
   if (normalizedType.value === 'weighttraining' || normalizedType.value === 'strength') return 'strength'
-  if (normalizedType.value === 'recovery' || normalizedType.value === 'rest') return 'recovery'
+  if (['recovery', 'rest', 'yoga', 'physicaltherapy'].includes(normalizedType.value)) return 'recovery'
   if (normalizedType.value === 'walk') return 'walk'
   if (normalizedType.value === 'hike') return 'hike'
+  if (['swim', 'canoeing', 'kayaking', 'rowing'].includes(normalizedType.value)) return 'water'
   return 'default'
 })
 
@@ -133,6 +145,7 @@ const label = computed(() => {
   if (iconName.value === 'recovery') return 'Recovery'
   if (iconName.value === 'walk') return 'Walk'
   if (iconName.value === 'hike') return 'Hike'
+  if (iconName.value === 'water') return props.type || 'Swim'
   return props.type || 'Activity'
 })
 </script>

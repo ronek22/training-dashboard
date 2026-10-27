@@ -101,7 +101,7 @@
                 <article class="activity-row row-grid" @click="openRow($event, activity)">
                   <time class="day" :datetime="activity.date"><b>{{ format(parseLocalDate(activity.date), 'EEE') }}</b>{{ format(parseLocalDate(activity.date), isChronological ? 'd' : 'MMM d, yyyy') }}</time>
                   <span class="sport-mark" :class="`tone-${sportBucket(activity.type)}`" :title="sportLabel(activity.type)">
-                    <ActivityIcon :type="activity.type" :tone="iconTone(activity.type)" :size="15" />
+                    <ActivityIcon :type="activity.type" :tone="iconTone(activity.type)" :size="18" />
                   </span>
                   <div class="identity">
                     <div class="identity-title">
@@ -542,9 +542,6 @@ const saveFeedback = async payload => {
 .activities-page .day { color: var(--text); font: 700 22px/1.1 var(--font-display); }
 .activities-page .day b { color: var(--muted); font: 400 12px/1.4 var(--font-body); }
 .activities-page .sport-mark { width: 36px; height: 36px; border-radius: 12px; }
-.activities-page .sport-mark :deep(svg) { display: none; }
-.activities-page .sport-mark::after { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--tone); }
-.activities-page .sport-mark.tone-strength::after { border-radius: 3px; }
 .activities-page .identity-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .activities-page .activity-name { font-size: 14px; }
 .activities-page .activity-name:hover { color: var(--text-soft); }

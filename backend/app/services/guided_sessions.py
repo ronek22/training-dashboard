@@ -205,6 +205,9 @@ REHAB_SKIPPED_TYPES = {
     "Run", "TrailRun", "VirtualRun", "Ride", "VirtualRide", "GravelRide", "MountainBikeRide", "EBikeRide",
     "WeightTraining", "Swim", "Walk", "Hike", "NordicSki", "BackcountrySki", "AlpineSki", "Rowing",
 }
+# Core Training can still reach Strava as WeightTraining (HealthFit, or a manual type pick). A lift that
+# started this close to the guided start is the rehab session, not a separate workout.
+REHAB_LIFT_START_TOLERANCE_SECONDS = 15 * 60
 
 
 def _meta(key: str) -> dict:
@@ -285,14 +288,27 @@ def _completion_note(completion: dict) -> str:
     return f"{CONTEXT_LABELS[session['context']]}: {session['title']}{added} (guided in TrainLog)."
 
 
+def _is_rehab_lift(row: sqlite3.Row, guided_start: Optional[datetime]) -> bool:
+    started = _parse_instant(row["started_at"])
+    return (
+        row["type"] == "WeightTraining"
+        and guided_start is not None
+        and started is not None
+        and abs((started - guided_start).total_seconds()) <= REHAB_LIFT_START_TOLERANCE_SECONDS
+    )
+
+
 def reconcile_guided_session_activities(conn: sqlite3.Connection) -> None:
     """Match each sick-mode or rehab session to the watch workout that synced for it and mark it as mobility.
 
     Downshift sessions are skipped: they have no watch workout, and on a normal training day the
     nearest activity is a real session that must not be relabelled. Rehab happens on training
-    days too, so it only matches activities that are not rides, runs, walks or lifts.
+    days too, so it only matches activities that are not rides, runs, walks or lifts; a lift counts
+    only when it started within 15 minutes of the guided start.
 
-    Mobility is the intent every synced type accepts (WeightTraining rejects "recovery").
+    Mobility is the intent every synced type accepts (WeightTraining rejects "recovery"). A match
+    that came in as WeightTraining (the Strava import maps every "Workout" to it) becomes a plain
+    Workout, so it never reads as a lift; the Strava upsert keeps that type on later syncs.
 
     Picks the same-day activity whose recorded start is closest to the guided start (within
     3 hours); without a recorded start, the only unmatched activity that day.
@@ -318,9 +334,9 @@ def reconcile_guided_session_activities(conn: sqlite3.Connection) -> None:
             """,
             (completion["date"],),
         ).fetchall()
-        if context == rehab_session.CONTEXT:
-            candidates = [row for row in candidates if row["type"] not in REHAB_SKIPPED_TYPES]
         guided_start = _parse_instant(completion["started_at"])
+        if context == rehab_session.CONTEXT:
+            candidates = [row for row in candidates if row["type"] not in REHAB_SKIPPED_TYPES or _is_rehab_lift(row, guided_start)]
         timed = [
             (abs((_parse_instant(row["started_at"]) - guided_start).total_seconds()), row)
             for row in candidates
@@ -336,7 +352,7 @@ def reconcile_guided_session_activities(conn: sqlite3.Connection) -> None:
         note = _completion_note(dict(completion))
         conn.execute("UPDATE sick_session_completions SET activity_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (match["id"], completion["id"]))
         conn.execute(
-            "UPDATE activities SET workout_intent = 'mobility', notes = CASE WHEN notes IS NULL OR notes = '' THEN ? ELSE notes || char(10) || ? END WHERE id = ?",
+            "UPDATE activities SET workout_intent = 'mobility', type = CASE WHEN type = 'WeightTraining' THEN 'Workout' ELSE type END, notes = CASE WHEN notes IS NULL OR notes = '' THEN ? ELSE notes || char(10) || ? END WHERE id = ?",
             (note, note, match["id"]),
         )
         changed = True
@@ -380,6 +396,24 @@ def guided_completion_dates(conn: sqlite3.Connection) -> set[str]:
         return {row[0] for row in conn.execute("SELECT DISTINCT date FROM sick_session_completions")}
     except sqlite3.OperationalError:
         return set()
+
+
+def guided_label_for_activity(conn: sqlite3.Connection, activity_id: str) -> Optional[dict]:
+    """Name and context of the guided session behind an activity, for list rows."""
+    try:
+        row = conn.execute(
+            "SELECT session_key FROM sick_session_completions WHERE activity_id = ? ORDER BY started_at DESC LIMIT 1",
+            (activity_id,),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        row = None
+    key = row["session_key"] if row else next((key for key in SESSIONS if str(activity_id).startswith("sick-") and str(activity_id).endswith(f"-{key}")), None)
+    if not key:
+        return None
+    meta = _meta(key)
+    if key == rehab_session.SESSION_KEY:
+        return {"title": meta["title"], "context_label": rehab_session.CONTEXT_LABEL}
+    return {"title": meta["title"], "context_label": CONTEXT_LABELS.get(meta["context"], "Guided")}
 
 
 def guided_session_for_activity(conn: sqlite3.Connection, activity_id: str) -> Optional[dict]:

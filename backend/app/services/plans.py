@@ -815,6 +815,17 @@ def build_plan_goal_context(conn: sqlite3.Connection, days: list[dict], week_sta
     }
 
 
+def _fills_planned_type(row: sqlite3.Row, planned_type: Optional[str], session_id: Optional[str]) -> bool:
+    """A lift or workout tagged mobility or recovery (a synced rehab or sick-mode session) neither is nor replaces the planned lift."""
+    if row["linked_planned_session_id"] == session_id and session_id:
+        return True
+    return not (
+        planned_type == "WeightTraining"
+        and row["type"] in ("WeightTraining", "Workout")
+        and row["workout_intent"] in ("mobility", "recovery")
+    )
+
+
 def find_moved_session(
     day: dict,
     by_date: dict[str, list[sqlite3.Row]],
@@ -840,6 +851,7 @@ def find_moved_session(
             for row in by_date.get(nearby_date, [])
             if normalize_plan_session_type(row["type"]) == planned_type
             and row["linked_planned_session_id"] in {None, day.get("session_id")}
+            and _fills_planned_type(row, planned_type, day.get("session_id"))
         ]
         if matches:
             return {"date": nearby_date, "activities": matches}
@@ -924,6 +936,7 @@ def build_plan_day_comparison(
         row
         for row in activities
         if row["linked_planned_session_id"] in {None, day.get("session_id")}
+        and _fills_planned_type(row, planned_type, day.get("session_id"))
     ]
     completed = [build_activity_summary(row, benchmark_lookup) for row in eligible_activities]
 

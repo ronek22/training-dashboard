@@ -360,7 +360,7 @@ const ramp = computed(() => readiness.value?.ramp || null)
 const rampWarning = computed(() => (['caution', 'high'].includes(ramp.value?.status) ? ramp.value.message : ''))
 const hardPlanIntents = new Set(['tempo', 'interval', 'race_specific', 'strength_lower'])
 const swapHint = computed(() => {
-  if (!readinessScore.value?.suggests_swap || !todayPlan.value || todayPlanCompleted.value || todayActivities.value.length) return ''
+  if (!readinessScore.value?.suggests_swap || !todayPlan.value || todayPlanCompleted.value || todayTrainingActivities.value.length) return ''
   const isHard = hardPlanIntents.has(String(todayPlan.value.workout_intent || '').toLowerCase())
   if (readinessScore.value.level === 'red') return `Readiness is red. Swap ${isHard ? 'today’s hard session' : 'today’s session'} for recovery work or rest.`
   return isHard ? 'Readiness is amber. Consider an easier version of today’s hard session.' : ''
@@ -371,7 +371,7 @@ const sleepDebtHint = computed(() => {
   if (!debt || !['caution', 'risk'].includes(debt.status) || swapHint.value || sleepPayback.value.active) return ''
   const hours = `~${Math.round(debt.debt_hours)} h sleep debt this week`
   const isHard = (day) => day && hardPlanIntents.has(String(day.workout_intent || '').toLowerCase())
-  const todayOpen = !todayPlanCompleted.value && !todayActivities.value.length
+  const todayOpen = !todayPlanCompleted.value && !todayTrainingActivities.value.length
   const next = todayOpen && isHard(todayPlan.value) ? { day: todayPlan.value, when: 'today’s' } : isHard(tomorrowPlan.value) ? { day: tomorrowPlan.value, when: 'tomorrow’s' } : null
   if (next && debt.status === 'risk') return `${hours}. Keep ${next.when} ${next.day.title || 'hard session'} easy or swap it, and bank an early night.`
   if (next) return `${hours}. An early night before ${next.when} ${next.day.title || 'hard session'} keeps it on track.`
@@ -639,6 +639,11 @@ const todayCyclingWorkout = computed(() => {
   return id ? cyclingLibrary.value?.workouts?.find((workout) => workout.id === id) || null : null
 })
 const todayActivities = computed(() => activitiesByDate.value[todayKey.value] || [])
+// A synced rehab session leaves today's planned session still to do.
+const todayTrainingActivities = computed(() => {
+  const rehabIds = new Set((rehab.value.completed_today || []).map((item) => item.activity_id).filter(Boolean))
+  return todayActivities.value.filter((activity) => !rehabIds.has(activity.id))
+})
 const todayCompletedStats = computed(() => {
   const activities = todayActivities.value
   const sum = (key) => activities.reduce((total, activity) => total + Number(activity[key] || 0), 0)

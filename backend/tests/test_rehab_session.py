@@ -4,9 +4,10 @@ from datetime import date, timedelta
 from unittest.mock import patch
 
 from backend.app.models.recovery import AIResult, IssueCreate, MessageCreate, RoutineTick
+from backend.app.repositories.activities import upsert_activity_row
 from backend.app.repositories.recovery import init_recovery_schema
 from backend.app.services import recovery
-from backend.app.services.guided_sessions import completions_on, guided_session_for_activity, public_session, save_guided_completion
+from backend.app.services.guided_sessions import completions_on, guided_label_for_activity, guided_session_for_activity, public_session, save_guided_completion
 from backend.app.services.rehab_session import build_rehab_today, parse_dose, todays_session
 from backend.tests.test_sick_mode import SCHEMA
 
@@ -103,6 +104,31 @@ class RehabSessionTests(unittest.TestCase):
         linked = guided_session_for_activity(self.conn, "core")
         self.assertEqual(([item["name"] for item in linked["exercises"]], linked["guided_min"], linked["context_label"]),
                          (["Quad isometric", "Side-lying hip abduction"], 10.0, "Rehab"))
+
+    def test_a_lift_links_only_when_it_started_with_the_rehab_session(self):
+        day = TODAY.isoformat()
+        self.conn.execute("INSERT INTO activities (id, date, type, name, duration_min) VALUES ('lift', ?, 'WeightTraining', 'Morning Weights', 60)", (day,))
+        self.conn.execute("INSERT INTO activity_source_refs (source, external_id, activity_id, started_at) VALUES ('strava', 'lift', 'lift', ?)", (f"{day}T11:00:00+00:00",))
+        self.tick(0)
+        payload = {"session_key": "rehab", "started_at": f"{day}T11:48:19Z", "elapsed_seconds": 2010}
+        state = save_guided_completion(self.conn, payload, today=TODAY)
+        self.assertIsNone(state["completed_today"][0]["activity_id"])  # the morning lift is a real lift
+        # Core Training that reached Strava as WeightTraining, started two seconds before the guided session.
+        self.conn.execute("INSERT INTO activities (id, date, type, name, duration_min) VALUES ('core', ?, 'WeightTraining', 'Lunch Workout', 34)", (day,))
+        self.conn.execute("INSERT INTO activity_source_refs (source, external_id, activity_id, started_at) VALUES ('strava', 'core', 'core', ?)", (f"{day}T11:48:17+00:00",))
+        save_guided_completion(self.conn, payload, today=TODAY)
+        [completion] = completions_on(self.conn, day, "rehab")
+        self.assertEqual(completion["activity_id"], "core")
+        rows = {row["id"]: (row["type"], row["workout_intent"]) for row in self.conn.execute("SELECT id, type, workout_intent FROM activities")}
+        self.assertEqual(rows, {"lift": ("WeightTraining", None), "core": ("Workout", "mobility")})
+        # A Strava resync sends WeightTraining again; the rehab session stays a plain workout.
+        upsert_activity_row(self.conn, {
+            "id": "core", "date": day, "type": "WeightTraining", "name": "Lunch Workout", "distance_km": None, "duration_min": 34,
+            "avg_hr": 116, "max_hr": 148, "avg_pace": None, "avg_watts": None, "elevation_m": None, "calories": None, "zone2": False, "notes": None,
+        }, preserve_annotations=True)
+        self.assertEqual(tuple(self.conn.execute("SELECT type, workout_intent FROM activities WHERE id = 'core'").fetchone()), ("Workout", "mobility"))
+        self.assertEqual(guided_label_for_activity(self.conn, "core"), {"title": "Rehab routine", "context_label": "Rehab"})
+        self.assertIsNone(guided_label_for_activity(self.conn, "lift"))
 
 
 if __name__ == "__main__":

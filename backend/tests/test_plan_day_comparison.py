@@ -190,6 +190,24 @@ class PlanDayComparisonTests(unittest.TestCase):
         self.assertEqual(comparison["status"], "not_completed_yet")
         self.assertEqual(comparison["completed_activities"], [])
 
+    def test_rehab_session_neither_fills_nor_replaces_the_planned_lift(self):
+        today = datetime.now().date().isoformat()
+        day = {"date": today, "session_type": "strength", "session_id": "lift-today", "workout_intent": "strength_upper"}
+        for activity_type in ("WeightTraining", "Workout"):
+            rehab = make_activity_row(
+                self.conn,
+                activity_id="rehab",
+                date=today,
+                activity_type=activity_type,
+                workout_intent="mobility",
+                duration_min=34,
+            )
+
+            comparison = build_plan_day_comparison(self.conn, day, [rehab], {today: [rehab]}, {today: day}, [])
+
+            self.assertEqual(comparison["status"], "not_completed_yet", activity_type)
+            self.assertEqual(comparison["completed_activities"], [])
+
     def test_past_day_can_still_be_marked_moved_when_done_on_nearby_day(self):
         today = datetime.now().date().isoformat()
         yesterday = (datetime.now().date() - timedelta(days=1)).isoformat()

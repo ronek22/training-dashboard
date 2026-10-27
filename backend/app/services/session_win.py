@@ -109,7 +109,12 @@ def build_session_win(
     read = session_read if session_read and session_read.get("available") else {}
     candidates: list[dict] = [{"kind": "progress", **win} for win in read.get("wins") or []]
 
-    if detail_payload.get("sick_session"):
+    guided = detail_payload.get("sick_session")
+    if guided and guided.get("context") == "rehab":
+        moves = len(guided.get("exercises") or [])
+        candidates.append({"score": 60, "kind": "consistency", "headline": "Rehab done",
+                           "detail": f"{moves} move{'s' if moves != 1 else ''} ticked off: the slow work that gets you back to full training."})
+    elif guided:
         candidates.append({"score": 60, "kind": "consistency", "headline": "Kept moving while sick",
                            "detail": "A gentle session that keeps the habit without digging a hole."})
     try:

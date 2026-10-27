@@ -71,6 +71,13 @@ class SessionWinTests(unittest.TestCase):
         self.assertEqual(win["headline"], "Second session of the week in the bank")
         self.assertEqual(win["kind"], "consistency")
 
+    def test_a_guided_rehab_session_is_rehab_not_sick(self):
+        self.conn.execute("INSERT INTO activities (id, date, type, duration_min) VALUES ('c', '2026-10-27', 'Workout', 34)")
+        payload = {"activity": {"id": "c", "date": "2026-10-27", "type": "Workout", "duration_min": 34},
+                   "sick_session": {"context": "rehab", "exercises": [{"name": "Quad isometric"}, {"name": "Glute bridge"}]}}
+        win = session_win.build_session_win(self.conn, payload, {"available": False})
+        self.assertEqual((win["headline"], win["detail"]), ("Rehab done", "2 moves ticked off: the slow work that gets you back to full training."))
+
     def test_a_tough_day_counts(self):
         self.conn.execute("INSERT INTO activities (id, date, type, duration_min) VALUES ('b', '2026-10-06', 'Run', 30)")
         payload = {"activity": {"id": "b", "date": "2026-10-06", "type": "Run", "duration_min": 30}}

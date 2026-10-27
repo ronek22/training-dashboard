@@ -113,8 +113,8 @@
           <LifeLoadPicker v-if="lifeLoad.tagMeta.value.length" class="pop-life" :date="selectedDate" :tags="lifeLoad.tagMeta.value" :selected="lifeLoad.tagsFor(selectedDate)" :past="selectedDate < todayKey" :save="lifeLoad.setDay" />
 
           <ul v-if="popupSessions.length" class="pop-list">
-            <li v-for="activity in popupSessions" :key="activity.id" class="pop-item" :class="`tone-${activityTone(activity.type)}`">
-              <ActivityIcon :type="activity.type" :tone="activityTone(activity.type)" :size="18" />
+            <li v-for="activity in popupSessions" :key="activity.id" class="pop-item" :class="`tone-${sessionTone(activity)}`">
+              <ActivityIcon :type="activity.type" :tone="sessionTone(activity)" :size="18" />
               <div class="pop-body">
                 <router-link class="pop-title" :to="{ path: `/activities/${activity.id}`, query: { from: 'calendar' } }">{{ activity.name || activity.type }}</router-link>
                 <span class="pop-meta">{{ sessionMeta(activity) }}</span>
@@ -421,13 +421,15 @@ const MIX_TONES = { ride: ['Ride', 'var(--ride)'], strength: ['Lift', 'var(--str
 const weekMix = (week) => {
   const totals = {}
   for (const day of week.days || []) for (const activity of day.activities || []) {
-    const tone = activityTone(activity.type)
+    const tone = sessionTone(activity)
     totals[tone] = (totals[tone] || 0) + Number(activity.duration_min || 0)
   }
   return Object.keys(MIX_TONES).filter((tone) => totals[tone] > 0).map((tone) => ({ tone, minutes: Math.round(totals[tone]), label: MIX_TONES[tone][0], color: MIX_TONES[tone][1] }))
 }
 const weekVolumePercent = (week) => { const max = Math.max(...(monthData.value?.weeks || []).map((item) => item.total_duration_min || 0), 1); return Math.round((week.total_duration_min || 0) / max * 100) }
 const activityTone = (type) => { const value = String(type || '').toLowerCase(); if (value.includes('run')) return 'run'; if (value.includes('ride') || value.includes('cycl')) return 'ride'; if (value.includes('weight') || value.includes('strength')) return 'strength'; if (value.includes('hike')) return 'hike'; if (value.includes('walk')) return 'walk'; return 'neutral' }
+// A lift tagged mobility or recovery (a synced rehab or sick-mode session) reads as mobility, not strength.
+const sessionTone = (activity) => (['mobility', 'recovery'].includes(activity.workout_intent) && activityTone(activity.type) === 'strength' ? 'walk' : activityTone(activity.type))
 const planStatusLabel = (day) => ({ linked: 'Done as planned', matched: 'Done', moved: 'Moved and done', replaced: 'Changed', partially_matched: 'Modified', rest_day_changed: 'Rest changed', skipped: 'Missed', not_completed_yet: selectedDate.value === todayKey ? 'Planned today' : selectedDate.value < todayKey ? 'Missed' : 'Upcoming' }[day.comparison?.status] || 'Planned')
 const openFeedbackDialog = (activity) => { popupOpen.value = false; feedbackMessage.value = ''; dialogActivity.value = { ...activity, dateLabel: selectedDayTitle.value } }
 const closeFeedbackDialog = () => { if (!feedbackSaving.value) { dialogActivity.value = null; feedbackMessage.value = '' } }

@@ -598,6 +598,7 @@ def goal_value_for_window(
             SELECT COUNT(*) AS value
             FROM activities
             WHERE type = 'WeightTraining'
+              AND COALESCE(workout_intent, '') NOT IN ('mobility', 'recovery')
               AND date >= ? AND date <= ?
             """,
             (start_date, end_date),

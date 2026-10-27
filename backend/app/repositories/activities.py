@@ -15,6 +15,13 @@ def get_latest_activity_date(conn: sqlite3.Connection) -> Optional[str]:
     return row["date"] if row and row["date"] else None
 
 
+def _is_guided_session_activity(conn: sqlite3.Connection, activity_id: str) -> bool:
+    try:
+        return conn.execute("SELECT 1 FROM sick_session_completions WHERE activity_id = ?", (activity_id,)).fetchone() is not None
+    except sqlite3.OperationalError:
+        return False
+
+
 def upsert_activity_row(conn: sqlite3.Connection, activity: dict, preserve_annotations: bool = False) -> None:
     if preserve_annotations:
         existing = conn.execute(
@@ -27,6 +34,9 @@ def upsert_activity_row(conn: sqlite3.Connection, activity: dict, preserve_annot
                 activity["zone2"] = bool(existing["zone2"])
             activity["linked_planned_session_id"] = existing["linked_planned_session_id"]
             activity["workout_intent"] = existing["workout_intent"]
+            if _is_guided_session_activity(conn, activity["id"]):
+                # A rehab or sick-mode session was relabelled from WeightTraining to Workout.
+                activity["type"] = conn.execute("SELECT type FROM activities WHERE id = ?", (activity["id"],)).fetchone()["type"]
 
     conn.execute(
         """

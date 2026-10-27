@@ -115,6 +115,8 @@
                         {{ activity.planned_strength_identity.match_strategy === 'explicit' ? 'Linked to plan' : 'Matched by date' }}
                       </span>
                       <span v-if="activity.recorded_strength_session" class="tag linked">Recorded in TrainLog</span>
+                      <span v-if="activity.guided_session" class="tag linked"
+                        :title="activity.source_name !== activity.display_name ? `Imported as ${activity.source_name}` : null">{{ activity.guided_session.context_label }} · guided in TrainLog</span>
                       <span v-if="activity.feedback?.note" class="note" :title="activity.feedback.note">“{{ activity.feedback.note }}”</span>
                     </div>
                   </div>

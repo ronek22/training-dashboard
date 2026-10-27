@@ -48,7 +48,7 @@ from .plans import (
     format_workout_intent_label,
     normalize_workout_intent,
 )
-from .guided_sessions import guided_session_for_activity
+from .guided_sessions import guided_label_for_activity, guided_session_for_activity
 from .sick_mode import sick_dates
 from .settings import (
     get_performance_settings_for_conn,
@@ -187,11 +187,16 @@ def _attach_strength_plan_identity(conn: sqlite3.Connection, activity: dict) -> 
                 "started_at": row["started_at"],
                 "completed_at": row["completed_at"],
             }
-    identity = _strength_plan_identity_for_activity(conn, enriched)
+    guided = guided_label_for_activity(conn, str(enriched.get("id")))
+    # A rehab or sick-mode session is never a planned lift, even if it synced as one.
+    identity = None if guided else _strength_plan_identity_for_activity(conn, enriched)
     enriched["source_name"] = enriched.get("name")
     enriched["recorded_strength_session"] = recorded_session
     enriched["planned_strength_identity"] = identity
-    if recorded_session:
+    enriched["guided_session"] = guided
+    if guided:
+        enriched["display_name"] = guided["title"]
+    elif recorded_session:
         enriched["display_name"] = recorded_session.get("name") or enriched.get("name")
     elif identity:
         enriched["display_name"] = identity.get("template_label") or identity.get("title") or enriched.get("name")
@@ -1196,6 +1201,12 @@ def build_calendar_week_payload(
         day = week_start + timedelta(days=day_offset)
         activities = by_date.get(day.isoformat(), [])
         day_payload = build_calendar_day_payload(day, activities, benchmark_lookup)
+        # A synced rehab or sick-mode session is named after the guided session, not the watch default.
+        for item in day_payload["activities"]:
+            guided = guided_label_for_activity(conn, str(item["id"]))
+            if guided:
+                item["name"] = guided["title"]
+                item["guided_session"] = guided
 
         for activity in activities:
             activity_type = activity["type"]

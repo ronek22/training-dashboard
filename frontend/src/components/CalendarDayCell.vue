@@ -36,7 +36,7 @@
         :key="`activity-${activity.id}`"
         :to="{ path: `/activities/${activity.id}`, query: { from: 'calendar' } }"
         class="calendar-event"
-        :class="[`tone-${activityTone(activity.type)}`, activityPlanChange(activity) ? 'status-changed' : 'status-completed']"
+        :class="[`tone-${sessionTone(activity)}`, activityPlanChange(activity) ? 'status-changed' : 'status-completed']"
         :tabindex="selected ? 0 : -1"
         :title="activityTitle(activity)"
         :aria-label="activityAriaLabel(activity)"
@@ -47,7 +47,7 @@
           <small class="event-inline">{{ durationLabel(activity.duration_min) }}</small>
         </span>
         <span v-else class="event-copy">
-          <span class="event-kicker">{{ sportLabel(activity.type) }}</span>
+          <span class="event-kicker">{{ activity.guided_session?.context_label || sportLabel(activity.type) }}</span>
           <strong>{{ displayName(activity.name, activity.type) }}</strong>
           <span class="event-big">{{ durationLabel(activity.duration_min) || '–' }}</span>
           <small class="event-meta">{{ activityDetail(activity, true) || '\u00a0' }}</small>
@@ -184,6 +184,8 @@ const activityTone = (type) => {
   if (value.includes('walk')) return 'walk'
   return 'neutral'
 }
+// A lift tagged mobility or recovery (a synced rehab or sick-mode session) reads as mobility, not strength.
+const sessionTone = (activity) => (['mobility', 'recovery'].includes(activity.workout_intent) && activityTone(activity.type) === 'strength' ? 'walk' : activityTone(activity.type))
 const durationLabel = (minutes) => {
   const total = Math.round(Number(minutes) || 0)
   if (!total) return ''

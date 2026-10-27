@@ -15,9 +15,9 @@ User instructions always take precedence over this orchestration policy.
   feature's full entry is in `docs/shipped/YYYY-MM.md`: grep its `### Title` and read that range,
   not the whole file. Skip `docs/sprints/`, `docs/roadmaps/` and `docs/specs/` unless the task is
   about them.
-- Files over ~1,000 lines (`views/Plan.vue`, `views/Goals.vue`, `services/goals.py`,
-  `services/plans.py`, `views/Dashboard.vue`, the larger tests): grep for the symbol, then read
-  only the lines around it.
+- Files over ~1,000 lines (`views/Mountains.vue`, `views/Dashboard.vue`, `services/goals.py`,
+  `services/plans.py`, the larger tests): grep for the symbol, then read only the lines around it.
+  Plan and Goals are split into `plan/` and `goals/` (components, composables, tested helpers).
 - Tests: run the focused file first
   (`PYTHONPATH="$PWD" backend/.venv/bin/python -m unittest -q backend.tests.test_<area>`,
   `cd frontend && npm test`), then `just check` once before finishing. Both print only a

@@ -89,9 +89,13 @@ Root:
 ### Views
 
 - `views/Dashboard.vue` — main coaching/dashboard surface
-- `views/Plan.vue` — weekly plans, plan-vs-actual view, in-app adjustment flow; its pure helpers are in `plan/plan-helpers.mjs`, its styles in `plan/Plan.css`, and the coaching-context section in `components/PlanInsights.vue`
+- `views/Plan.vue` — weekly plans, plan-vs-actual view, in-app adjustment flow. It keeps page state and wiring; the rest lives in `plan/`:
+  - components, each with its own scoped sheet next to it: `PlanDayGrid` (day cards), `PlanWeekEditor` (adjust remaining week, drag/move swaps), `PlanCoachingDiff` (coaching draft approval), `PlanWeekNotes` (reasoning, plan changes, goal alignment), `PlannedSessionDialog` (workout brief and planned-to-actual link), `CoachPromptDialog` (plan brief and plan feedback), `MinimumWeekDialog`
+  - composables: `usePlanCoach` (coach planning/revision jobs), `useMinimumWeek`, `usePlanLinks`
+  - pure modules (tested): `plan-helpers.mjs` (labels, formatting, plan/day predicates), `plan-editor.mjs` (editor state and swaps), `plan-week.mjs` (day match status, week metrics, strength rotation); `plan-storage.mjs` holds the weather location, coaching draft and request timeout
+  - page styles in `plan/Plan.css`; the coaching-context section is `components/PlanInsights.vue`
 - `views/Calendar.vue` — weekly training calendar
-- `views/Goals.vue` — goal management and visibility
+- `views/Goals.vue` — goal management and visibility; its goal card (`goals/GoalCard.vue`), add/edit dialog (`goals/GoalEditDialog.vue`), pure helpers (`goals/goal-helpers.mjs`, tested) and styles (`goals/*.css`) live in `goals/`
 - `views/Activities.vue` — imported/manual activities
 - `views/Notes.vue` — coach notes
 - `views/Metrics.vue` — metric history and trends
@@ -123,5 +127,5 @@ These are not problems by themselves, but they are the files most likely to need
 
 - `backend/app/services/dashboard.py`
 - `backend/app/services/plans.py`
-- `frontend/src/views/Plan.vue`
 - `frontend/src/views/Dashboard.vue`
+- `frontend/src/views/Mountains.vue`, `Athlete.vue`, `Strength.vue`, `StrengthWorkoutSession.vue` (over 1,500 lines each)

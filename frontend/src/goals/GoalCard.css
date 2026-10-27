@@ -1,0 +1,105 @@
+.pace-positive { color: var(--success-text); }
+.pace-negative { color: var(--danger-text); }
+.pace-neutral { color: var(--text); }
+.goal-verdict-chip { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--border); color:var(--text); background: rgb(var(--ov-rgb) / .04); }
+.goal-verdict-chip.verdict-good { border-color: rgba(53,198,150,.25); color:oklch(from #5fd9ae calc(l - var(--dim-l)) c h); background: rgba(53,198,150,.08); }
+.goal-verdict-chip.verdict-warn { border-color: rgba(240,189,110,.3); color:oklch(from #f0bd6e calc(l - var(--dim-l)) c h); background: rgba(240,189,110,.08); }
+.goal-verdict-chip.verdict-act { border-color: rgba(123,156,255,.35); color: var(--info-text); background: rgba(111,145,248,.12); }
+.goal-outcomes { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
+.goal-outcome { display: flex; align-items: baseline; gap: 8px; font-size: 11px; min-width: 0; }
+.goal-outcome-trend { flex: none; font-weight: 700; color: var(--info-text); }
+.goal-outcome-trend.outcome-improving { color:oklch(from #5fd9ae calc(l - var(--dim-l)) c h); }
+.goal-outcome-trend.outcome-declining { color:oklch(from #f0bd6e calc(l - var(--dim-l)) c h); }
+.goal-outcome-trend.outcome-insufficient { color: var(--muted); font-weight: 600; }
+.goal-outcome-label { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.goal-action { padding: 6px 11px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color:var(--text); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.goal-action:hover:not(:disabled) { background: rgb(var(--ov-rgb) / .05); border-color: rgba(123,156,255,.3); }
+.goal-action:disabled { opacity: .5; cursor: not-allowed; }
+.gcard { --tone: var(--accent); display: grid; grid-row: span 6; grid-template-rows: subgrid; row-gap: 18px; padding: 24px; border: 0; border-radius: 16px; background: color-mix(in srgb, color-mix(in srgb, var(--tone) 11%, var(--bg-elevated)), var(--bg-elevated)); box-shadow: none; }
+.tone-ride { --tone: var(--ride); } .tone-run { --tone: var(--run); } .tone-strength { --tone: var(--strength); } .tone-z2 { --tone: var(--z2); }
+.gcard-head { display: flex; align-items: flex-start; gap: 14px; }
+.gcard-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: color-mix(in srgb, var(--tone) 18%, transparent); color: var(--tone); }
+.gcard-icon svg { width: 22px; height: 22px; }
+.gcard-titles { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.gcard-kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.gcard-kicker em { font-style: normal; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 650; }
+.gcard-anchor { background: rgba(52,211,153,.14); color:oklch(from #5fd9ae calc(l - var(--dim-l)) c h); }
+.gcard-season { background: rgb(var(--ov-rgb) / .07); color: var(--muted-soft); }
+.gcard-season.is-ended { background: rgba(243,180,77,.16); color:oklch(from #f0bd6e calc(l - var(--dim-l)) c h); }
+.gcard-titles h2 { margin: 0; font-family: var(--font-display); font-size: 20px; line-height: 1.25; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.gcard-purpose { margin: 2px 0 0; color: var(--muted-soft); font-size: 13px; line-height: 1.45; }
+.gcard-status { flex: none; display: inline-flex; align-items: center; gap: 7px; padding-top: 3px; font-size: 13px; font-weight: 650; color:var(--text); white-space: nowrap; }
+.gcard-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.gcard-status.status-completed, .gcard-status.status-ahead_of_pace { color:oklch(from #5fd9ae calc(l - var(--dim-l)) c h); }
+.gcard-status.status-behind_pace, .gcard-status.status-constrained { color:oklch(from #f5c67a calc(l - var(--dim-l)) c h); }
+
+.gcard-progress { display: flex; align-items: center; gap: 22px; }
+.gcard-ring { position: relative; flex: none; width: 92px; height: 92px; }
+.gcard-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.gcard-ring circle { fill: none; stroke-width: 7; }
+.ring-track { stroke: rgb(var(--ov-rgb) / .08); }
+.ring-fill { stroke: var(--tone); stroke-linecap: round; }
+.gcard-completed .ring-fill, .gcard-ahead_of_pace .ring-fill { stroke: var(--success); }
+.gcard-ring strong { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-display); font-size: 26px; line-height: 1; letter-spacing: -.04em; }
+.gcard-ring strong span { position: relative; }
+.gcard-ring strong small { position: absolute; left: 100%; bottom: 2px; margin-left: 1px; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.gcard-figures { display: grid; gap: 8px; min-width: 0; }
+.gcard-value { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.gcard-value strong { font-family: var(--font-display); font-size: 36px; line-height: 1; letter-spacing: -.04em; }
+.gcard-value span { color: var(--muted-soft); font-size: 14px; }
+.gcard-figures p { margin: 0; color: var(--muted); font-size: 13px; }
+.gcard-performance { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.gcard-performance div { display: grid; gap: 4px; padding: 12px 14px; border-radius: 10px; background: rgb(var(--ov-rgb) / .05); }
+.gcard-performance span { color: var(--muted); font-size: 12px; }
+.gcard-performance strong { font-family: var(--font-display); font-size: 20px; }
+.gcard-performance p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
+
+.gcard-coach { align-self: start; margin: 0; padding: 12px 14px; border-radius: 10px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--text-soft); font-size: 13.5px; line-height: 1.55; }
+.gcard-coach.is-empty { visibility: hidden; padding: 0; }
+.gcard-history { align-self: end; min-width: 0; }
+.gcard .goal-history { --goal-tone: var(--tone); margin-top: 0; }
+.gcard-more { align-self: start; }
+.gcard-more summary, .gcard-menu summary { cursor: pointer; list-style: none; }
+.gcard-more summary::-webkit-details-marker, .gcard-menu summary::-webkit-details-marker { display: none; }
+.gcard-more summary { width: fit-content; color: var(--muted); font-size: 13px; font-weight: 600; }
+.gcard-more summary::after { content: ' ▾'; }
+.gcard-more[open] summary::after { content: ' ▴'; }
+.gcard-more summary:hover { color: var(--text); }
+.gcard-more-body { display: grid; gap: 12px; margin-top: 12px; }
+.gcard-facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.gcard-facts div { flex: 1 1 130px; padding: 10px 12px; border-radius: 10px; background: rgb(var(--ov-rgb) / .05); }
+.gcard-facts dt { color: var(--muted); font-size: 12px; }
+.gcard-facts dd { margin: 3px 0 0; font-size: 14px; font-weight: 650; }
+.gcard-note { margin: 0; color: var(--muted-soft); font-size: 12.5px; line-height: 1.55; }
+.gcard-note strong { color: var(--text-soft); }
+.gcard-protein { font-size: 11.5px; }
+.gcard-more-body .goal-verdict-chip { width: fit-content; }
+.gcard-actions { display: flex; align-items: center; gap: 4px; margin: 0 -10px -10px; }
+.gcard-actions .goal-action { border: 0; background: transparent; color: var(--text-soft); }
+.gcard-actions .goal-action:hover { background: rgb(var(--ov-rgb) / .07); }
+.gcard-menu { position: relative; }
+.gcard-menu summary { display: inline-block; color: var(--muted); }
+.gcard-menu-list { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 5; display: grid; min-width: 160px; padding: 6px; border-radius: 10px; background: var(--surface3); box-shadow: var(--shadow-lg); }
+.gcard-menu-list button { padding: 9px 12px; border: 0; border-radius: 6px; background: transparent; color: var(--text-soft); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.gcard-menu-list button:hover { background: rgb(var(--ov-rgb) / .08); color: var(--text); }
+.goal-action { padding: 8px 14px; border-radius: 8px; }
+.goal-verdict-chip { border: 0; border-radius: 6px; text-transform: none; letter-spacing: 0; font-size: 12px; padding: 4px 9px; }
+@media (max-width: 760px) { .gcard { grid-row: auto; grid-template-rows: none; } }
+@media (max-width: 600px) {
+  .gcard { padding: 20px; }
+  .gcard-progress { gap: 16px; }
+  .gcard-ring { width: 80px; height: 80px; }
+  .gcard-value strong { font-size: 28px; }
+}
+.goals-page .gcard { grid-row: auto; grid-template-rows: none; row-gap: 16px; padding: 22px 24px; border: 1px solid color-mix(in srgb, var(--tone) 18%, var(--border)); border-radius: var(--radius-card); background: radial-gradient(120% 40% at 100% 0%, color-mix(in srgb, var(--tone) 22%, transparent) 0%, transparent 70%), var(--surface); box-shadow: none; }
+.goals-page .gcard-icon { width: 40px; height: 40px; border-radius: 12px; background: color-mix(in srgb, var(--tone) 14%, var(--surface2)); }
+.goals-page .gcard-kicker { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.goals-page .gcard-titles h2 { font-size: 22px; font-weight: 700; letter-spacing: 0; }
+.goals-page .gcard-status { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.goals-page .gcard-value strong, .goals-page .gcard-performance strong { font-size: 38px; font-style: italic; font-weight: 800; }
+.goals-page .gcard-coach { border-radius: 14px; background: var(--surface2); color: var(--text-soft); }
+.goals-page .gcard-performance div, .goals-page .gcard-facts div { border: 1px solid var(--border); border-radius: 14px; background: var(--surface2); }
+.goals-page .gcard-more summary { color: var(--muted-soft); }
+.goals-page .gcard-actions { padding-top: 10px; border-top: 1px solid var(--border); }
+.goals-page .gcard-actions .goal-action, .goals-page .goal-action { min-height: 36px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text-soft); }
+.goals-page .gcard-actions .goal-action:hover, .goals-page .goal-action:hover { border-color: var(--muted); background: var(--surface2); color: var(--text); }

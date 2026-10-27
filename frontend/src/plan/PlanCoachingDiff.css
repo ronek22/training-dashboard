@@ -1,0 +1,228 @@
+.week-emphasis-current {
+  background: rgba(95, 140, 255, 0.16);
+  color:var(--text);
+}
+.week-emphasis-upcoming {
+  background: rgba(31, 190, 141, 0.14);
+  color:oklch(from #98f0cf calc(l - var(--dim-l)) c h);
+}
+.week-emphasis-historical {
+  background: rgba(127, 146, 178, 0.14);
+  color:var(--text-soft);
+}
+.adjust-button,
+.history-toggle,
+.ghost-button,
+.save-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
+}
+.adjust-button:hover,
+.history-toggle:hover,
+.ghost-button:hover,
+.save-button:hover {
+  transform: translateY(-1px);
+}
+.ghost-button {
+  background: var(--chip-bg);
+  color: var(--text);
+  border: 1px solid rgb(var(--tint-rgb) / 0.18);
+}
+.save-button {
+  background:color-mix(in srgb, oklch(from #10b981 calc(l - var(--dim-l)) c h), oklch(from #34d399 calc(l - var(--dim-l)) c h));
+  color:#042f2e;
+  min-width: 138px;
+}
+.save-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+  transform: none;
+}
+.coaching-diff-panel {
+  margin-bottom: 16px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  background: rgb(var(--panel-rgb) / 0.5);
+}
+.coaching-diff-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.coaching-diff-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.coaching-diff-sub {
+  color: var(--muted);
+  font-size: 13px;
+}
+.coaching-diff-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.coaching-diff-summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.diff-pill,
+.diff-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.diff-edited,
+.diff-state-edited .diff-status {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--warning-text);
+}
+.diff-protected,
+.diff-state-protected .diff-status {
+  background: rgb(var(--tint-rgb) / 0.14);
+  color: var(--text-soft);
+}
+.diff-unchanged,
+.diff-state-unchanged .diff-status {
+  background: rgba(16, 185, 129, 0.14);
+  color:oklch(from #86efac calc(l - var(--dim-l)) c h);
+}
+.coaching-diff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+.coaching-diff-day {
+  border-radius: 16px;
+  border: 1px solid rgb(var(--ov-rgb) / 0.06);
+  background: rgb(var(--ov-rgb) / 0.03);
+  padding: 14px;
+}
+.coaching-diff-day-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.coaching-diff-day-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+.coaching-diff-day-date {
+  color: var(--muted);
+  font-size: 12px;
+}
+.coaching-diff-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.coaching-diff-column {
+  border-radius: 14px;
+  padding: 12px;
+  background: rgb(var(--shadow-rgb) / 0.34);
+  border: 1px solid rgb(var(--ov-rgb) / 0.05);
+}
+.coaching-diff-column-label {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.coaching-diff-session-title {
+  font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+.coaching-diff-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--text-soft);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.coaching-diff-details {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.coaching-diff-change-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.coaching-diff-change-list span {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(96, 165, 250, 0.12);
+  color: var(--info-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+.week-card-historical .goal-context-panel,
+.week-card-historical .revision-banner,
+.week-card-historical .coaching-diff-panel,
+.week-card-historical .plan-day {
+  opacity: 0.88;
+}
+.intent-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.intent-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.intent-planned {
+  color:var(--text);
+  background: rgba(109, 40, 217, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+.intent-actual {
+  color: var(--success-text);
+  background: rgba(5, 150, 105, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+@media (max-width: 920px) {
+  .save-button {
+    width: 100%;
+  }}.plan-page button:focus-visible,.plan-page a:focus-visible,.plan-page summary:focus-visible{outline:2px solid var(--plan-highlight);outline-offset:4px}
+.plan-page .plan-day-weather-copy small,.plan-page .intent-pill{font-size:11px;letter-spacing:0}
+.plan-page,
+.plan-page > *,
+.plan-page > .page-head > *,
+.plan-page .plan-command,
+.plan-page .week-card,
+.plan-page .weeks-list,
+.plan-page .plan-grid-wrap,
+.plan-page .plan-day,
+.plan-page .today-brief,
+.plan-page .coaching-review-banner,
+.plan-page .adjust-panel { min-width: 0; }
+.plan-page .intent-pill { border-radius: 999px; }

@@ -1,0 +1,271 @@
+.goal-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.goal-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.goal-draft-shell {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(120, 146, 214, 0.18);
+  background: color-mix(in srgb, rgba(71, 98, 173, 0.12), rgb(var(--ov-rgb) / 0.03));
+}
+.goal-draft-field {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.goal-form input,
+.goal-form select,
+.goal-draft-field textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.2;
+  box-sizing: border-box;
+}
+.goal-draft-field textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+.goal-draft-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.goal-draft-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+.goal-draft-review {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgb(var(--deep-rgb) / 0.48);
+  border: 1px solid rgb(var(--ov-rgb) / 0.06);
+}
+.goal-draft-review-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.goal-draft-review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.goal-draft-summary {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.goal-draft-callout {
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.draft-callout-warning {
+  background: rgba(245,158,11,0.08);
+  border: 1px solid rgba(245,158,11,0.18);
+  color: var(--warning-text);
+}
+.goal-control {
+  width: 100%;
+}
+.goal-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 42px !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(207, 219, 255, 0.78) 50%),
+    linear-gradient(135deg, rgba(207, 219, 255, 0.78) 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) calc(50% - 3px),
+    calc(100% - 14px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+.goal-family-panel,
+.goal-inline-hint {
+  border-radius: 14px;
+  border: 1px solid rgba(120, 146, 214, 0.18);
+  background: color-mix(in srgb, rgba(71, 98, 173, 0.12), rgb(var(--ov-rgb) / 0.03));
+  padding: 14px 15px;
+}
+.goal-family-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+}
+.goal-family-panel-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.goal-family-panel-top strong {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.3;
+}
+.goal-family-panel-top span {
+  flex-shrink: 0;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(123, 156, 255, 0.14);
+  color:var(--text);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.goal-family-panel p,
+.goal-inline-hint span {
+  margin: 0;
+  color:var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.goal-family-panel-foot {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.goal-inline-hint {
+  display: grid;
+  gap: 4px;
+  align-self: stretch;
+}
+.goal-inline-hint strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+.save-btn {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--volt-fill);
+  color:#fff;
+  font-weight: 600;
+}
+.save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.goal-message { margin-top: 12px; font-weight: 600; }
+.goal-family-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(123, 156, 255, 0.1);
+  border: 1px solid rgba(123, 156, 255, 0.16);
+  color: var(--info-text);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.goal-status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  min-width: 84px;
+  text-align: center;
+  align-self: flex-start;
+}
+.pace-positive { color: var(--success-text); }
+.pace-negative { color: var(--danger-text); }
+.pace-neutral { color: var(--text); }
+.goal-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(var(--deep-rgb) / 0.68);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 24px 40px;
+  z-index: 50;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.goal-dialog {
+  width: min(760px, 100%);
+  max-height: none;
+  margin: 0 auto;
+  padding: 22px;
+}
+.goal-dialog-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.goal-dialog-sub {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: -8px;
+}
+.dialog-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+.goal-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+.dialog-secondary {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+}
+@media (max-width: 760px) {
+  .goal-form { grid-template-columns: 1fr; }
+  .goal-dialog-backdrop { padding: 16px 16px 28px; }
+}
+.goal-form-wide { grid-column: 1 / -1; }
+.goal-form label em, .goal-draft-field em { font-style: normal; opacity: .7; }
+.goal-form .goal-anchor-toggle { flex-direction: row; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(53,198,150,.18); background: rgba(53,198,150,.05); cursor: pointer; }
+.goal-form .goal-anchor-toggle input { width: 18px; min-height: 18px; height: 18px; margin: 1px 0 0; padding: 0; flex: none; accent-color:oklch(from #35c696 calc(l - var(--dim-l)) c h); }
+.goal-anchor-toggle span { display: grid; gap: 3px; }
+.goal-anchor-toggle strong { color: var(--text); font-size: 13px; }
+.goal-anchor-toggle small { font-size: 12px; line-height: 1.45; }

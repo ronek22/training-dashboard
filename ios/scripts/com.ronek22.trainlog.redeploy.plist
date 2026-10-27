@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ronek22.trainlog.redeploy</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/jakubronkiewicz/Projekty/training-dashboard/ios/scripts/redeploy-device.sh</string>
+    </array>
+    <!-- Every 4 hours; the script exits early unless the profile is near expiry and the phone is reachable. -->
+    <key>StartInterval</key>
+    <integer>14400</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/jakubronkiewicz/Library/Logs/TrainLog-redeploy.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/jakubronkiewicz/Library/Logs/TrainLog-redeploy.log</string>
+</dict>
+</plist>

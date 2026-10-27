@@ -16,8 +16,17 @@ The Simulator reaches the Mac at `http://localhost:8000` directly.
 
 ## On your iPhone
 
-- Free Apple ID signing works, but the app expires after 7 days and must be reinstalled from
-  Xcode. A paid developer account ($99/yr) removes that and enables TestFlight.
+- Free Apple ID signing works, but the app expires after 7 days. `scripts/redeploy-device.sh`
+  re-signs and reinstalls it when the profile has under 2 days left and the phone is reachable
+  (`FORCE=1` to do it now). A launchd agent runs it every 4 hours:
+
+  ```bash
+  cp scripts/com.ronek22.trainlog.redeploy.plist ~/Library/LaunchAgents/
+  launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ronek22.trainlog.redeploy.plist
+  ```
+
+  Log: `~/Library/Logs/TrainLog-redeploy.log`. It builds whatever is checked out in `ios/`.
+  A paid developer account ($99/yr) removes the 7-day limit and enables TestFlight.
 - The phone and the Mac must be on the same Wi-Fi. Allow the "Local Network" prompt on first
   launch.
 - Away from home the app shows cached data and queues new logs. Tailscale is the planned

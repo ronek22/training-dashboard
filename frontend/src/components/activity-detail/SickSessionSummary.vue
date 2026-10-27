@@ -1,7 +1,7 @@
 <template>
   <section class="ad-section sick-session" aria-labelledby="sick-session-heading">
     <div class="ad-section-heading">
-      <div><span>Sick mode · guided in TrainLog</span><h2 id="sick-session-heading">{{ session.title }}</h2></div>
+      <div><span>{{ session.context_label || 'Sick mode' }} · guided in TrainLog</span><h2 id="sick-session-heading">{{ session.title }}</h2></div>
       <p>{{ meta }}</p>
     </div>
     <ol class="sick-session-exercises">
@@ -15,7 +15,7 @@
         <span>added live</span>
       </li>
     </ol>
-    <p class="sick-session-note">Light movement while ill — no sets or loads tracked, and it doesn't count toward the strength rotation.</p>
+    <p class="sick-session-note">{{ rehab ? 'Rehab routine from the Recovery page. Counts as mobility, not toward the strength rotation.' : 'Light movement while ill — no sets or loads tracked, and it doesn\'t count toward the strength rotation.' }}</p>
   </section>
 </template>
 
@@ -25,7 +25,11 @@ import { formatClock } from '../../sick-session-steps.mjs'
 
 const props = defineProps({ session: { type: Object, required: true } })
 
-const dose = (exercise) => `${exercise.reps ? `×${exercise.reps}` : formatClock(exercise.seconds)}${exercise.per_side ? ' per side' : ''}${props.session.rounds > 1 ? ' each round' : ''}`
+const rehab = computed(() => props.session.layout === 'sets')
+const dose = (exercise) => {
+  if (rehab.value) return exercise.dose
+  return `${exercise.reps ? `×${exercise.reps}` : formatClock(exercise.seconds)}${exercise.per_side ? ' per side' : ''}${props.session.rounds > 1 ? ' each round' : ''}`
+}
 const meta = computed(() => [
   props.session.guided_min ? `${Math.round(props.session.guided_min)} min guided` : props.session.logged_manually ? 'logged manually' : '',
   `⌚ ${props.session.watch_workout}`,

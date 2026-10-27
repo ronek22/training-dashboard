@@ -64,3 +64,32 @@ test('muscle input singularises names, counts rounds and skips extra-round marke
     { exercise_name: 'Pull-up', set_count: 1 },
   ])
 })
+
+test('rehab runs straight sets with rest between sets and ticks after the last set', () => {
+  const rehab = {
+    layout: 'sets',
+    rest_seconds: 30,
+    exercises: [
+      { name: 'Quad isometric', sets: 2, seconds: 30, per_side: false, issue_id: 2, index: 0 },
+      { name: 'Clamshell', sets: 2, reps: 8, range: '8–10', per_side: true, issue_id: 2, index: 3 },
+      { name: 'Walk', sets: 1, per_side: false, dose: 'easy, as tolerated', issue_id: 2, index: 5 },
+    ],
+  }
+  const steps = buildSickSessionSteps(rehab)
+  assert.deepEqual(steps.map((step) => `${step.round}/${step.rounds}:${step.kind}:${step.name}:${step.side}`), [
+    '1/2:exercise:Quad isometric:',
+    '1/2:rest:Rest:',
+    '2/2:exercise:Quad isometric:',
+    '1/2:exercise:Clamshell:Left side',
+    '1/2:exercise:Clamshell:Right side',
+    '1/2:rest:Rest:',
+    '2/2:exercise:Clamshell:Left side',
+    '2/2:exercise:Clamshell:Right side',
+    '1/1:exercise:Walk:',
+  ])
+  assert.deepEqual(steps.filter((step) => step.completes).map((step) => [steps.indexOf(step), step.completes.index]), [[2, 0], [7, 3], [8, 5]])
+  assert.equal(steps[1].cue, 'Set 2 of 2 next: Quad isometric.')
+  assert.equal(stepDose(steps[3]), '×8–10')
+  assert.equal(stepDose(steps[8]), 'easy, as tolerated')
+  assert.equal(steps[3].position, 2)
+})

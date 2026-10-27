@@ -2,7 +2,8 @@
 link from a finished session to the watch workout that synced for it.
 
 Used by sick mode (gentle home movement while ill), the downshift (breathing and mobility on
-high-stress days) and travel (no-equipment lifts on a mountain trip). Finished sessions live in sick_session_completions, a name kept from when
+high-stress days), travel (no-equipment lifts on a mountain trip) and rehab (today's Recovery-page
+routine, built in rehab_session rather than kept in SESSIONS). Finished sessions live in sick_session_completions, a name kept from when
 only sick mode used them.
 """
 import json
@@ -10,6 +11,8 @@ import math
 import sqlite3
 from datetime import date, datetime
 from typing import Optional
+
+from . import rehab_session
 
 
 def _today(today: Optional[date]) -> date:
@@ -197,7 +200,23 @@ def session_steps(session: dict) -> list[str]:
     return ([f"{session['rounds']} {pace}rounds"] if session["rounds"] > 1 else []) + steps
 
 
-def public_session(key: str) -> Optional[dict]:
+# Watch workouts that sync as these types are real training, never a rehab session.
+REHAB_SKIPPED_TYPES = {
+    "Run", "TrailRun", "VirtualRun", "Ride", "VirtualRide", "GravelRide", "MountainBikeRide", "EBikeRide",
+    "WeightTraining", "Swim", "Walk", "Hike", "NordicSki", "BackcountrySki", "AlpineSki", "Rowing",
+}
+
+
+def _meta(key: str) -> dict:
+    """Title and context of a session key, the dynamic rehab session included."""
+    if key == rehab_session.SESSION_KEY:
+        return {"title": "Rehab routine", "context": rehab_session.CONTEXT}
+    return SESSIONS.get(key, {"title": key, "context": None})
+
+
+def public_session(key: str, conn: Optional[sqlite3.Connection] = None, today: Optional[date] = None) -> Optional[dict]:
+    if key == rehab_session.SESSION_KEY:
+        return rehab_session.todays_session(conn, today) if conn is not None else None
     session = SESSIONS.get(key)
     if not session:
         return None
@@ -211,17 +230,24 @@ def public_session(key: str) -> Optional[dict]:
 
 
 def save_guided_completion(conn: sqlite3.Connection, payload: dict, today: Optional[date] = None) -> dict:
-    """Record a finished guided session; re-finishing (after an extra round) updates the same row."""
-    if payload["session_key"] not in SESSIONS:
-        raise ValueError(f"Unknown guided session: {payload['session_key']}")
+    """Record a finished guided session; re-finishing (after an extra round) updates the same row.
+
+    A rehab session keeps a snapshot of the exercises ticked today: the routine can change later,
+    and the activity page should still show what was done.
+    """
+    key = payload["session_key"]
+    if key not in SESSIONS and key != rehab_session.SESSION_KEY:
+        raise ValueError(f"Unknown guided session: {key}")
+    snapshot = rehab_session.done_session(conn, today) if key == rehab_session.SESSION_KEY else None
     conn.execute(
         """
-        INSERT INTO sick_session_completions (date, session_key, started_at, elapsed_seconds, completed_steps, extras_json)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO sick_session_completions (date, session_key, started_at, elapsed_seconds, completed_steps, extras_json, session_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(session_key, started_at) DO UPDATE SET
             elapsed_seconds = excluded.elapsed_seconds,
             completed_steps = excluded.completed_steps,
             extras_json = excluded.extras_json,
+            session_json = excluded.session_json,
             updated_at = CURRENT_TIMESTAMP
         """,
         (
@@ -231,11 +257,12 @@ def save_guided_completion(conn: sqlite3.Connection, payload: dict, today: Optio
             int(payload["elapsed_seconds"]),
             int(payload.get("completed_steps") or 0),
             json.dumps(payload.get("extras") or []),
+            json.dumps(snapshot) if snapshot else None,
         ),
     )
     conn.commit()
     reconcile_guided_session_activities(conn)
-    return {"completed_today": completions_on(conn, _today(today).isoformat(), SESSIONS[payload["session_key"]]["context"])}
+    return {"completed_today": completions_on(conn, _today(today).isoformat(), _meta(key)["context"])}
 
 
 def _parse_instant(value: Optional[str]) -> Optional[datetime]:
@@ -247,17 +274,23 @@ def _parse_instant(value: Optional[str]) -> Optional[datetime]:
 
 
 def _completion_note(completion: dict) -> str:
-    session = SESSIONS[completion["session_key"]]
     extras = json.loads(completion["extras_json"] or "[]")
     added = f" + {', '.join(extras)}" if extras else ""
+    if completion["session_key"] == rehab_session.SESSION_KEY:
+        snapshot = json.loads(completion.get("session_json") or "{}")
+        issues = ", ".join(snapshot.get("issues") or [])
+        moves = ", ".join(item["name"] for item in snapshot.get("exercises") or [])
+        return f"Rehab{f' ({issues})' if issues else ''}: {moves or 'routine'}{added} (guided in TrainLog)."
+    session = SESSIONS[completion["session_key"]]
     return f"{CONTEXT_LABELS[session['context']]}: {session['title']}{added} (guided in TrainLog)."
 
 
 def reconcile_guided_session_activities(conn: sqlite3.Connection) -> None:
-    """Match each sick-mode session to the watch workout that synced for it and mark it as mobility.
+    """Match each sick-mode or rehab session to the watch workout that synced for it and mark it as mobility.
 
     Downshift sessions are skipped: they have no watch workout, and on a normal training day the
-    nearest activity is a real session that must not be relabelled.
+    nearest activity is a real session that must not be relabelled. Rehab happens on training
+    days too, so it only matches activities that are not rides, runs, walks or lifts.
 
     Mobility is the intent every synced type accepts (WeightTraining rejects "recovery").
 
@@ -266,17 +299,18 @@ def reconcile_guided_session_activities(conn: sqlite3.Connection) -> None:
     """
     try:
         completions = conn.execute(
-            "SELECT id, date, session_key, started_at, extras_json FROM sick_session_completions WHERE activity_id IS NULL"
+            "SELECT id, date, session_key, started_at, extras_json, session_json FROM sick_session_completions WHERE activity_id IS NULL"
         ).fetchall()
     except sqlite3.OperationalError:
         return
     changed = False
     for completion in completions:
-        if SESSIONS.get(completion["session_key"], {}).get("context") != "sick":
+        context = _meta(completion["session_key"])["context"]
+        if context not in ("sick", rehab_session.CONTEXT):
             continue
         candidates = conn.execute(
             """
-            SELECT activity.id, activity.notes,
+            SELECT activity.id, activity.notes, activity.type,
                    (SELECT MIN(ref.started_at) FROM activity_source_refs ref WHERE ref.activity_id = activity.id) AS started_at
             FROM activities activity
             WHERE activity.date = ? AND activity.id NOT LIKE 'sick-%'
@@ -284,6 +318,8 @@ def reconcile_guided_session_activities(conn: sqlite3.Connection) -> None:
             """,
             (completion["date"],),
         ).fetchall()
+        if context == rehab_session.CONTEXT:
+            candidates = [row for row in candidates if row["type"] not in REHAB_SKIPPED_TYPES]
         guided_start = _parse_instant(completion["started_at"])
         timed = [
             (abs((_parse_instant(row["started_at"]) - guided_start).total_seconds()), row)
@@ -326,7 +362,7 @@ def completions_on(conn: sqlite3.Connection, day: str, context: Optional[str] = 
     return [
         {
             "session_key": row["session_key"],
-            "title": SESSIONS.get(row["session_key"], {}).get("title", row["session_key"]),
+            "title": _meta(row["session_key"])["title"],
             "elapsed_min": round(row["elapsed_seconds"] / 60, 1),
             "extras": json.loads(row["extras_json"] or "[]"),
             "activity_id": row["activity_id"],
@@ -334,7 +370,7 @@ def completions_on(conn: sqlite3.Connection, day: str, context: Optional[str] = 
             "activity_duration_min": row["activity_duration_min"],
         }
         for row in rows
-        if context is None or SESSIONS.get(row["session_key"], {}).get("context") == context
+        if context is None or _meta(row["session_key"])["context"] == context
     ]
 
 
@@ -350,7 +386,7 @@ def guided_session_for_activity(conn: sqlite3.Connection, activity_id: str) -> O
     """The guided session behind an activity: a linked watch workout or a manual sick-mode log."""
     try:
         row = conn.execute(
-            "SELECT session_key, elapsed_seconds, extras_json FROM sick_session_completions WHERE activity_id = ? ORDER BY started_at DESC LIMIT 1",
+            "SELECT session_key, elapsed_seconds, extras_json, session_json FROM sick_session_completions WHERE activity_id = ? ORDER BY started_at DESC LIMIT 1",
             (activity_id,),
         ).fetchone()
     except sqlite3.OperationalError:
@@ -360,7 +396,10 @@ def guided_session_for_activity(conn: sqlite3.Connection, activity_id: str) -> O
     else:
         key = next((key for key in SESSIONS if str(activity_id).startswith("sick-") and str(activity_id).endswith(f"-{key}")), None)
         guided_min, extras = None, []
-    session = public_session(key) if key else None
+    if key == rehab_session.SESSION_KEY:
+        session = json.loads(row["session_json"] or "null") or rehab_session.build_session([], [])
+    else:
+        session = public_session(key) if key else None
     if not session:
         return None
     return {**session, "guided_min": guided_min, "extras": extras, "logged_manually": row is None}

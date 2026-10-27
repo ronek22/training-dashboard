@@ -97,7 +97,11 @@ def get_sick_dates():
 
 @router.get("/guided-sessions/{session_key}")
 def get_guided_session(session_key: str):
-    session = public_session(session_key)
+    conn = get_db()
+    try:
+        session = public_session(session_key, conn)
+    finally:
+        conn.close()
     if not session:
         raise HTTPException(status_code=404, detail=f"Unknown guided session: {session_key}")
     return {"session": session}

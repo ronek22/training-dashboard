@@ -19,7 +19,19 @@
       </header>
       <div class="guide-progress" aria-hidden="true"><i :style="{ width: `${progressPct}%` }"></i></div>
 
-      <section v-if="phase === 'intro'" class="guide-intro">
+      <section v-if="phase === 'intro' && isRehab && !steps.length" class="guide-intro">
+        <div class="guide-watch-step">
+          <span class="guide-big-icon" aria-hidden="true">✓</span>
+          <div>
+            <p class="guide-kicker">{{ session.issues.join(' · ') }}</p>
+            <h2>Nothing left in today's routine</h2>
+            <p>Everything due today is ticked off. The rest of the routine is on its off day.</p>
+          </div>
+        </div>
+        <router-link to="/" class="guide-primary">Back to Today</router-link>
+      </section>
+
+      <section v-else-if="phase === 'intro'" class="guide-intro">
         <div v-if="session.watch_workout" class="guide-watch-step">
           <span class="guide-big-icon" aria-hidden="true">⌚</span>
           <div>
@@ -43,16 +55,18 @@
       </section>
 
       <section v-else-if="phase === 'running' && current" class="guide-run">
-        <article class="guide-current" :class="`is-${current.kind}`">
+        <article class="guide-current" :class="[`is-${current.kind}`, { 'has-demo': currentDemo }]">
           <p class="guide-kicker">
-            {{ current.kind === 'rest' ? 'Rest' : current.rounds > 1 ? `Round ${current.round} of ${current.rounds}` : 'Now' }}
+            {{ kicker }}
             <span v-if="current.side"> · {{ current.side }}</span>
           </p>
+          <ExerciseDemo v-if="currentDemo" :key="currentDemo.title" class="guide-demo" :demo="currentDemo" />
           <h2>{{ current.name }}<small v-if="current.extra" class="guide-extra-tag">added</small></h2>
           <div v-if="current.seconds" class="guide-timer" :style="{ '--pct': `${timerPct}%` }" role="timer" :aria-label="`${formatClock(remaining)} remaining`">
             <span>{{ formatClock(remaining) }}</span>
           </div>
-          <p v-else class="guide-reps">×{{ current.reps }}</p>
+          <p v-else-if="current.reps" class="guide-reps">×{{ current.range || current.reps }}</p>
+          <p v-else class="guide-dose">{{ current.dose || 'As written in your routine' }}</p>
           <p class="guide-cue">{{ current.cue }}</p>
           <div class="guide-controls">
             <button type="button" :disabled="index === 0" @click="go(index - 1)">← Back</button>
@@ -76,7 +90,18 @@
 
       <section v-else class="guide-done">
         <span class="guide-big-icon" aria-hidden="true">✓</span>
-        <template v-if="session.watch_workout">
+        <template v-if="isRehab">
+          <h2>Rehab done. Nice and steady.</h2>
+          <p>Stop and save the <strong>{{ session.watch_workout }}</strong> workout on your watch. Once it syncs through Strava it is linked here and lands in Activities and the Calendar.</p>
+          <div v-for="issue in rehabIssues" :key="issue.id" class="guide-pain">
+            <p>{{ issue.title }}: pain right now?</p>
+            <div class="guide-pain-scale" role="group" :aria-label="`${issue.title} pain right now`">
+              <button v-for="n in 11" :key="n" type="button" :class="[painTone(n - 1), { on: pain[issue.id] === n - 1 }]" :disabled="pain[issue.id] !== undefined || painSaving" @click="checkIn(issue.id, n - 1)">{{ n - 1 }}</button>
+            </div>
+            <small v-if="pain[issue.id] !== undefined">Saved as a Recovery check-in ✓</small>
+          </div>
+        </template>
+        <template v-else-if="session.watch_workout">
           <h2>Done. That's today's movement.</h2>
           <p>Stop and save the <strong>{{ session.watch_workout }}</strong> workout on your watch. It'll sync through Strava with heart rate and keep the streak going. Now rest.</p>
         </template>
@@ -90,7 +115,7 @@
         </p>
         <div class="guide-controls guide-more">
           <span>Want a bit more?</span>
-          <button type="button" @click="addRound">+ One more round</button>
+          <button v-if="!isRehab" type="button" @click="addRound">+ One more round</button>
           <button type="button" :aria-expanded="adding" @click="adding = !adding">+ Add exercise <kbd>A</kbd></button>
         </div>
         <div class="guide-controls">
@@ -123,6 +148,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '../stores/api'
+import ExerciseDemo from '../components/ExerciseDemo.vue'
+import { demoFor } from '../recovery/exercise-demos.mjs'
 import { buildSickSessionSteps, describeExercise, extraExerciseSteps, extraRoundSteps, formatClock, stepDose } from '../sick-session-steps.mjs'
 
 const route = useRoute()
@@ -146,6 +173,10 @@ const adding = ref(false)
 const customName = ref(null)
 const custom = reactive({ name: '', amount: 10, unit: 'reps', per_side: false })
 const saveState = ref('')
+const pain = reactive({})
+const painSaving = ref(false)
+const ticked = new Set()
+const pendingTicks = []
 let startedAt = null
 
 const quickPicks = [
@@ -166,6 +197,17 @@ const current = computed(() => steps.value[index.value] || null)
 const upNext = computed(() => steps.value[index.value + 1] || null)
 const overview = computed(() => session.value?.steps || [])
 const progressPct = computed(() => (phase.value === 'done' ? 100 : steps.value.length ? (100 * index.value) / steps.value.length : 0))
+const isRehab = computed(() => session.value?.context === 'rehab')
+const currentDemo = computed(() => (current.value?.kind === 'exercise' ? demoFor(current.value.name) : null))
+const kicker = computed(() => {
+  const step = current.value
+  if (step.kind === 'rest') return 'Rest'
+  if (step.position) return `Exercise ${step.position} of ${step.count}${step.rounds > 1 ? ` · Set ${step.round} of ${step.rounds}` : ''}`
+  return step.rounds > 1 ? `Round ${step.round} of ${step.rounds}` : 'Now'
+})
+// The routine's issues behind this session, for the pain question at the end.
+const rehabIssues = computed(() => [...new Map((session.value?.exercises || []).filter((item) => item.issue_id != null).map((item) => [item.issue_id, { id: item.issue_id, title: item.issue_title }])).values()])
+const painTone = (value) => (value <= 2 ? 'tone-ok' : value <= 5 ? 'tone-mid' : 'tone-high')
 const timerPct = computed(() => (current.value?.seconds ? (100 * (current.value.seconds - remaining.value)) / current.value.seconds : 0))
 
 function beep(frequency = 880, duration = 0.12) {
@@ -184,8 +226,32 @@ async function holdScreenAwake() {
   try { wakeLock = await navigator.wakeLock?.request('screen') } catch { wakeLock = null }
 }
 
+function localDay() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
+// Passing an exercise's last set ticks it off on the Recovery routine.
+function tickStep(step) {
+  const done = step?.completes
+  if (!done || ticked.has(`${done.issue_id}:${done.index}`)) return
+  ticked.add(`${done.issue_id}:${done.index}`)
+  pendingTicks.push(api.tickRecoveryExercise(done.issue_id, { day: localDay(), index: done.index, done: true }).catch(() => ticked.delete(`${done.issue_id}:${done.index}`)))
+}
+
+async function checkIn(issueId, value) {
+  painSaving.value = true
+  try {
+    await api.addRecoveryCheckin(issueId, { pain: value, did_plan: true, note: 'Rehab routine done (guided)' })
+    pain[issueId] = value
+  } finally {
+    painSaving.value = false
+  }
+}
+
 function go(stepIndex) {
   if (stepIndex < 0) return
+  if (stepIndex > index.value) tickStep(current.value)
   if (stepIndex >= steps.value.length) return finish()
   index.value = stepIndex
   remaining.value = steps.value[stepIndex].seconds || 0
@@ -255,6 +321,8 @@ watch(adding, async (open) => {
 async function saveCompletion() {
   saveState.value = 'saving'
   try {
+    // The rehab record keeps what was ticked, so the ticks land first.
+    await Promise.allSettled(pendingTicks)
     await api.completeGuidedSession({
       session_key: session.value.key,
       started_at: startedAt,
@@ -389,6 +457,25 @@ onBeforeUnmount(() => {
   background: radial-gradient(closest-side, var(--deep) 86%, transparent 87%), conic-gradient(var(--accent) var(--pct), rgb(var(--tint-rgb) / 0.1) 0);
 }
 .guide-timer span { font-family: var(--font-display); font-size: clamp(44px, 5vw, 72px); font-weight: 700; font-variant-numeric: tabular-nums; }
+.guide-demo { width: min(340px, 100%); }
+/* The demo takes the room the big type had, so the whole card still fits a 900px-tall window. */
+.guide-current.has-demo { gap: 10px; padding: 24px 36px; }
+.guide-current.has-demo h2 { font-size: clamp(30px, 3vw, 44px); }
+.guide-current.has-demo .guide-timer { width: clamp(150px, 13vw, 190px); }
+.guide-current.has-demo .guide-timer span { font-size: clamp(36px, 3.6vw, 52px); }
+.guide-current.has-demo .guide-reps { font-size: clamp(56px, 6vw, 88px); }
+.guide-current.has-demo .guide-cue { font-size: 16px; }
+.guide-dose { margin: 0; color: var(--accent); font-family: var(--font-display); font-size: clamp(24px, 2.6vw, 34px); font-weight: 650; }
+.guide-pain { display: grid; gap: 8px; width: min(440px, 100%); margin: 4px auto 0; text-align: left; }
+.guide-pain p { margin: 0; color: var(--text); font-size: 14px; font-weight: 600; }
+.guide-pain small { color: var(--success-text); font-size: 12px; }
+.guide-pain-scale { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 4px; }
+.guide-pain-scale button { border: 1px solid rgb(var(--tint-rgb) / 0.14); border-radius: 8px; background: transparent; padding: 8px 0; color: var(--muted); font: inherit; font-size: 13px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.guide-pain-scale .tone-ok { --tone: var(--success-text); }
+.guide-pain-scale .tone-mid { --tone: var(--warning-text); }
+.guide-pain-scale .tone-high { --tone: var(--danger-text); }
+.guide-pain-scale button:hover:not(:disabled), .guide-pain-scale button.on { border-color: var(--tone); color: var(--text); }
+.guide-pain-scale button.on { background: color-mix(in srgb, var(--tone) 18%, transparent); opacity: 1; }
 .guide-cue { max-width: 52ch; margin: 0; color: var(--muted); font-size: 18px; line-height: 1.5; }
 .guide-next { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
 .guide-next strong { color: var(--text); }

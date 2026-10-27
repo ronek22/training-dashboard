@@ -534,6 +534,7 @@ def init_db(snapshot: bool = True):
             elapsed_seconds INTEGER NOT NULL,
             completed_steps INTEGER NOT NULL DEFAULT 0,
             extras_json TEXT,
+            session_json TEXT,
             activity_id TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -866,6 +867,9 @@ def init_db(snapshot: bool = True):
         conn.execute("ALTER TABLE dinner_plans ADD COLUMN recipe_id INTEGER")
     if "servings" not in dinner_plan_columns:
         conn.execute("ALTER TABLE dinner_plans ADD COLUMN servings REAL NOT NULL DEFAULT 1")
+    guided_columns = {row["name"] for row in conn.execute("PRAGMA table_info(sick_session_completions)").fetchall()}
+    if guided_columns and "session_json" not in guided_columns:
+        conn.execute("ALTER TABLE sick_session_completions ADD COLUMN session_json TEXT")
     food_item_columns = {row["name"] for row in conn.execute("PRAGMA table_info(food_items)").fetchall()}
     if food_item_columns and "portions" not in food_item_columns:
         conn.execute("ALTER TABLE food_items ADD COLUMN portions REAL")

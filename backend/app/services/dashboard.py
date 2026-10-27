@@ -13,7 +13,8 @@ from .power_estimate import CALIBRATION_BAND, MODEL_VERSION as POWER_ESTIMATE_MO
 from .downshift import build_downshift, downshift_coaching_context
 from .sleep_payback import build_sleep_payback, sleep_payback_coaching_context
 from .kit import kit_due, kit_due_coaching_context
-from .guided_sessions import guided_completion_dates, reconcile_guided_session_activities
+from .guided_sessions import completions_on, guided_completion_dates, reconcile_guided_session_activities
+from .rehab_session import build_rehab_today
 from .illness_return import build_illness_return, illness_return_coaching_context
 from .mountain_reentry import build_mountain_reentry, mountain_reentry_coaching_context
 from .unplanned_ideas import build_unplanned_ideas
@@ -1530,6 +1531,7 @@ def _build_dashboard_payload(
             mountain_reentry=mountain_reentry, illness_return=illness_return,
         ),
         "downshift": build_downshift(conn),
+        "rehab": build_rehab_today(conn, completions_on(conn, datetime.now().date().isoformat(), "rehab")),
         "sleep_payback": build_sleep_payback(conn),
         "kit_due": kit_due(conn),
         "training_load": training_load,

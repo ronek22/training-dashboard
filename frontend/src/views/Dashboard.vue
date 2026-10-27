@@ -22,9 +22,11 @@
         <div v-if="sickMode.active" class="sick-stack">
           <SickModeCard :state="sickMode" @changed="onSickModeChanged" />
           <TodayCard v-if="todayActivities.length" v-bind="todayCard" />
+          <RehabCard v-if="showRehab" :state="rehab" />
         </div>
-        <div v-else-if="downshift.offer || sleepPayback.active" class="sick-stack">
+        <div v-else-if="downshift.offer || sleepPayback.active || showRehab" class="sick-stack">
           <TodayCard v-bind="todayCard" @plan-changed="loadDashboard" />
+          <RehabCard v-if="showRehab" :state="rehab" />
           <SleepPaybackCard v-if="sleepPayback.active" :plan="sleepPayback" />
           <DownshiftCard v-if="downshift.offer" :state="downshift" />
         </div>
@@ -194,6 +196,7 @@ import DailyCheckin from '../components/DailyCheckin.vue'
 import ProteinTick from '../components/ProteinTick.vue'
 import VolumeTrendAlert from '../components/VolumeTrendAlert.vue'
 import SickModeCard from '../components/SickModeCard.vue'
+import RehabCard from '../components/RehabCard.vue'
 import DownshiftCard from '../components/DownshiftCard.vue'
 import SleepPaybackCard from '../components/SleepPaybackCard.vue'
 import WeekWinsCard from '../components/WeekWinsCard.vue'
@@ -295,6 +298,9 @@ const onCheckinSaved = () => loadDashboard()
 const volumeTrend = computed(() => dashboard.value?.volume_trend || null)
 const sickMode = computed(() => dashboard.value?.sick_mode || { active: false })
 const downshift = computed(() => dashboard.value?.downshift || { offer: false })
+const rehab = computed(() => dashboard.value?.rehab || { active: false })
+// Hidden on the routine's off days (nothing due and nothing done).
+const showRehab = computed(() => rehab.value.active && (rehab.value.due_count > 0 || rehab.value.completed_today.length > 0))
 const sleepPayback = computed(() => dashboard.value?.sleep_payback || { active: false })
 // Calm wear cue: only items at 90%+ of their replacement threshold arrive here.
 const kitDueHint = computed(() => {

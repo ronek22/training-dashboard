@@ -24,7 +24,7 @@ CREATE TABLE activities (
 CREATE TABLE activity_source_refs (source TEXT, external_id TEXT, activity_id TEXT, started_at TEXT, file_name TEXT);
 CREATE TABLE sick_session_completions (
     id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, session_key TEXT NOT NULL, started_at TEXT NOT NULL,
-    elapsed_seconds INTEGER NOT NULL, completed_steps INTEGER NOT NULL DEFAULT 0, extras_json TEXT, activity_id TEXT,
+    elapsed_seconds INTEGER NOT NULL, completed_steps INTEGER NOT NULL DEFAULT 0, extras_json TEXT, session_json TEXT, activity_id TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(session_key, started_at)
 );
 CREATE TABLE sick_periods (

@@ -179,8 +179,12 @@ def plan_clashes(
     return result
 
 
+# Activities that lock a plan day: not the streak walk, not a mobility/recovery session (a synced rehab).
+LOCKING_ACTIVITY_SQL = "type != 'Walk' AND COALESCE(workout_intent, '') NOT IN ('mobility', 'recovery')"
+
+
 def locked_dates(conn: Optional[sqlite3.Connection], days: list[dict], today: Optional[date] = None) -> set[str]:
-    """Past days and days that already have a recorded activity."""
+    """Past days and days that already have a recorded training session (walks and rehab don't count)."""
     if not days:
         return set()
     today_key = (today or date.today()).isoformat()
@@ -189,7 +193,7 @@ def locked_dates(conn: Optional[sqlite3.Connection], days: list[dict], today: Op
     if conn is not None:
         try:
             busy = {row[0] for row in conn.execute(
-                "SELECT DISTINCT date FROM activities WHERE date BETWEEN ? AND ?", (dates[0], dates[-1])
+                f"SELECT DISTINCT date FROM activities WHERE date BETWEEN ? AND ? AND {LOCKING_ACTIVITY_SQL}", (dates[0], dates[-1])
             )}
         except sqlite3.OperationalError:
             busy = set()

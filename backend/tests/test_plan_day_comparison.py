@@ -354,6 +354,33 @@ class PlanDayComparisonTests(unittest.TestCase):
 
         self.assertEqual(comparison["status"], "rest_day_changed")
 
+    def test_rehab_session_matches_a_planned_rehab_day(self):
+        activity = make_activity_row(
+            self.conn,
+            activity_id="rehab",
+            date="2026-07-22",
+            activity_type="Workout",
+            workout_intent="mobility",
+            name="Lunch Workout",
+            duration_min=34,
+        )
+
+        comparison = build_plan_day_comparison(
+            self.conn,
+            {
+                "date": "2026-07-22",
+                "session_id": "rehab-a",
+                "session_type": "Recovery",
+                "workout_intent": "recovery",
+            },
+            [activity],
+            {"2026-07-22": [activity]},
+            {"2026-07-22": {"date": "2026-07-22", "session_type": "Recovery"}},
+            [],
+        )
+
+        self.assertEqual(comparison["status"], "matched")
+
 
 class AdjustmentDiffSessionTypeTest(unittest.TestCase):
     def _plan(self, session_type: str) -> dict:

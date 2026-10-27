@@ -22,7 +22,7 @@ from .fitbod_imports import get_fitbod_strength_detail_for_activity
 from ..repositories.goals import ACTIVE_GOAL_CONDITION
 from .goal_portfolio import build_portfolio_check, portfolio_conflict
 from .goals import build_requirement_summary, serialize_goal
-from .lift_ride_clash import legs_check, locked_dates, plan_clashes, resolve_clashes
+from .lift_ride_clash import LOCKING_ACTIVITY_SQL, legs_check, locked_dates, plan_clashes, resolve_clashes
 from .heart_rate_zones import build_activity_heart_rate_zone_summary, run_hr_cap
 from .recovery import rehab_for_day, rehab_routines
 from .recovery_day import check_recovery_day, recovery_cap, spin_hr_limit
@@ -508,7 +508,8 @@ def is_recovery_activity(activity: dict) -> bool:
     activity_intent = activity.get("workout_intent")
     if activity_intent in {"tempo", "interval", "race_specific"}:
         return False
-    if activity_intent == "recovery":
+    # A mobility session (a synced rehab routine) is what a planned recovery/rehab day asks for.
+    if activity_intent in {"recovery", "mobility"}:
         return True
 
     activity_type = normalize_plan_session_type(activity.get("type"))
@@ -1712,7 +1713,7 @@ def swap_weekly_plan_days_data(
     """Exchange the planned sessions of two dates in one week (or move one onto an empty date).
 
     Session ids travel with the sessions; only the date and weekday label change.
-    Past days and days that already have a recorded activity are protected.
+    Past days and days that already have a recorded training session are protected.
     """
     parse_plan_date(swap.from_date)
     parse_plan_date(swap.to_date)
@@ -1746,10 +1747,11 @@ def swap_weekly_plan_days_data(
     target = by_date.get(swap.to_date)
 
     today = datetime.now().date().isoformat()
+    # A walk or a mobility/recovery session (rehab) doesn't complete the planned session, so it doesn't lock the day.
     busy_dates = {
         row["date"]
         for row in conn.execute(
-            "SELECT DISTINCT date FROM activities WHERE date IN (?, ?)",
+            f"SELECT DISTINCT date FROM activities WHERE date IN (?, ?) AND {LOCKING_ACTIVITY_SQL}",
             (swap.from_date, swap.to_date),
         ).fetchall()
     } - set(unprotected_dates)

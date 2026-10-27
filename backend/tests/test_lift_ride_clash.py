@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from datetime import date
 
+from fastapi import HTTPException
+
 from backend.app import db
 from backend.app.models.plans import WeeklyPlan, WeeklyPlanDay, WeeklyPlanSwap
 from backend.app.services.lift_ride_clash import (
@@ -141,6 +143,15 @@ class ClashPlanFlowTests(unittest.TestCase):
         self.save(week(UPPER, REST, REST, VO2, REST, REST, REST))
         result = swap_weekly_plan_days_data(self.conn, WeeklyPlanSwap(from_date="2030-01-07", to_date="2030-01-09"))
         self.assertEqual(result["clashes"], [])
+
+    def test_a_rehab_session_does_not_lock_the_day_but_a_lift_does(self):
+        self.save(week(UPPER, REST, REST, REST, Z2, REST, REST))
+        self.conn.execute("INSERT INTO activities (id, date, type, workout_intent) VALUES (1, '2030-01-07', 'WeightTraining', 'mobility')")
+        swap_weekly_plan_days_data(self.conn, WeeklyPlanSwap(from_date="2030-01-07", to_date="2030-01-11"))
+        self.assertEqual(self.stored_days()[4]["title"], "Upper")
+        self.conn.execute("INSERT INTO activities (id, date, type) VALUES (2, '2030-01-07', 'WeightTraining')")
+        with self.assertRaises(HTTPException):
+            swap_weekly_plan_days_data(self.conn, WeeklyPlanSwap(from_date="2030-01-07", to_date="2030-01-11"))
 
 
 if __name__ == "__main__":

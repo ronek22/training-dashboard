@@ -446,14 +446,16 @@ const saveFeedback = async (payload) => {
   } catch (err) { feedbackMessage.value = err?.response?.data?.detail || 'Feedback save failed.' } finally { feedbackSaving.value = false }
 }
 
-// Drag & drop: rearrange planned sessions inside one week. Past days and days with a recorded activity are locked (the API enforces the same).
+// Drag & drop: rearrange planned sessions inside one week. Past days and days with a recorded training session are locked (the API enforces the same).
 const dragFrom = ref(null)
 const moveBusy = ref(false)
 const moveNotice = ref(null)
 let noticeTimer = null
 const weekKeyOf = (date) => format(startOfWeek(safeDate(date), { weekStartsOn: 1 }), 'yyyy-MM-dd')
 const dayActivities = (date) => displayDays.value.find((day) => day.date === date)?.activities || []
-const isMovable = (date) => date >= todayKey && !dayActivities(date).length
+// A walk or a mobility/recovery session (rehab) doesn't complete the plan, so it doesn't lock the day.
+const locksDay = (activity) => activity.type !== 'Walk' && !['mobility', 'recovery'].includes(activity.workout_intent)
+const isMovable = (date) => date >= todayKey && !dayActivities(date).some(locksDay)
 const canDragFrom = (date) => !moveBusy.value && Boolean(planFor(date)) && isMovable(date)
 const dropStateFor = (date) => {
   if (!dragFrom.value || date === dragFrom.value) return ''

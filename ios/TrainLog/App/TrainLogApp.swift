@@ -33,8 +33,8 @@ struct RootView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             TabBar(selection: $tab, onPlus: { showQuickLog = true })
         }
-        .sheet(isPresented: $showQuickLog) {
-            Placeholder(title: "Log")
+        .sheet(isPresented: $showQuickLog, onDismiss: { todayRefresh += 1 }) {
+            QuickLogSheet()
                 .presentationDetents([.large])
                 .presentationBackground(Color.card)
         }

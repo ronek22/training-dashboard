@@ -66,8 +66,8 @@ enum Sport: String, Decodable, Sendable {
     }
 }
 
-// Barlow Condensed for numbers and titles, Archivo for body. Falls back to SF condensed / SF
-// until the font files are added to Resources/Fonts.
+// Barlow Condensed for numbers and titles, Archivo for body (Resources/Fonts, OFL). Falls back
+// to SF condensed / SF if a font fails to load.
 enum AppFont {
     static func title(_ size: CGFloat) -> Font {
         custom("BarlowCondensed-ExtraBoldItalic", size) ?? .system(size: size, weight: .heavy).width(.condensed).italic()
@@ -78,15 +78,12 @@ enum AppFont {
         return custom(name, size) ?? .system(size: size, weight: weight).width(.condensed)
     }
 
+    /// Archivo ships as one variable font, so it's picked by family and weight.
     static func body(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        let name = switch weight {
-        case .medium: "Archivo-Medium"
-        case .semibold: "Archivo-SemiBold"
-        case .bold, .heavy, .black: "Archivo-Bold"
-        default: "Archivo-Regular"
-        }
-        return custom(name, size) ?? .system(size: size, weight: weight)
+        archivoAvailable ? .custom("Archivo", fixedSize: size).weight(weight) : .system(size: size, weight: weight)
     }
+
+    private static let archivoAvailable = !UIFont.fontNames(forFamilyName: "Archivo").isEmpty
 
     private static func custom(_ name: String, _ size: CGFloat) -> Font? {
         UIFont(name: name, size: size) == nil ? nil : .custom(name, fixedSize: size)

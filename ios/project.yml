@@ -38,13 +38,8 @@ targets:
         UIAppFonts:
           - BarlowCondensed-SemiBold.ttf
           - BarlowCondensed-Bold.ttf
-          - BarlowCondensed-ExtraBold.ttf
-          - BarlowCondensed-BoldItalic.ttf
           - BarlowCondensed-ExtraBoldItalic.ttf
-          - Archivo-Regular.ttf
-          - Archivo-Medium.ttf
-          - Archivo-SemiBold.ttf
-          - Archivo-Bold.ttf
+          - Archivo.ttf
   TrainLogTests:
     type: bundle.unit-test
     platform: iOS

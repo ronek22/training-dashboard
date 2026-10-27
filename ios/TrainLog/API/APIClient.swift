@@ -24,8 +24,13 @@ struct Loaded<Value: Sendable>: Sendable {
 /// The one place that knows the base URL, decoding rules and offline cache.
 struct APIClient: Sendable {
     static let baseURLKey = "serverBaseURL"
-    /// The Simulator reaches the Mac directly; a phone needs the Mac's Wi-Fi address (Settings).
+    /// The Simulator reaches the Mac directly; a phone finds it by Bonjour name on home Wi-Fi
+    /// (stable across DHCP changes). Settings will be able to override this.
+    #if targetEnvironment(simulator)
     static let defaultBaseURL = "http://localhost:8000"
+    #else
+    static let defaultBaseURL = "http://MacBook-Pro-Jakub.local:8000"
+    #endif
 
     var baseURL: String
     var session: URLSession = .shared

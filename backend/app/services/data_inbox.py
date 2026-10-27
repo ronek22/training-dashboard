@@ -1,8 +1,9 @@
 """One inbox for missing and messy training data.
 
-Four kinds of gaps, each from the last 30 days so the list never becomes a
+Five kinds of gaps, each from the last 30 days so the list never becomes a
 backlog: workouts without feedback, planned sessions no activity matched,
-runs and rides without heart-rate streams, and a stale FTP benchmark. Each
+runs and rides without heart-rate streams, runs whose HealthFit file (Apple
+Watch running dynamics) has not arrived, and a stale FTP benchmark. Each
 item resolves itself once the data is there (feedback saved, session linked,
 streams fetched, FTP updated). The athlete can also mark an item as fine;
 dismissals are stored by item key and stay dismissed.
@@ -20,7 +21,7 @@ WINDOW_DAYS = 30
 # Walks are commutes and errands; asking how they felt is noise.
 FEEDBACK_SKIP_TYPES = ("Walk",)
 STREAM_TYPES = ("Run", "Ride", "VirtualRide")
-KIND_ORDER = {"feedback": 0, "unmatched_session": 1, "missing_streams": 2, "stale_benchmark": 3}
+KIND_ORDER = {"feedback": 0, "unmatched_session": 1, "missing_streams": 2, "missing_dynamics": 3, "stale_benchmark": 4}
 
 
 def init_schema(conn: sqlite3.Connection) -> None:
@@ -163,6 +164,28 @@ def missing_stream_items(conn: sqlite3.Connection, today: date) -> list[dict]:
     ]
 
 
+def missing_dynamics_items(conn: sqlite3.Connection, today: date) -> list[dict]:
+    """Runs synced from Strava whose HealthFit file, with the watch's running dynamics, is not in yet."""
+    from .running_fitness import runs_missing_dynamics
+
+    return [
+        {
+            "key": f"dynamics:{row['id']}",
+            "kind": "missing_dynamics",
+            "date": row["date"],
+            "title": row["name"] or "Run",
+            "detail": (
+                "Strava has this run, but not the Apple Watch running dynamics (cadence, ground contact, "
+                "vertical oscillation, power). Open HealthFit on your iPhone so it exports the run to iCloud; "
+                "new files are read every 15 minutes, or check now."
+            ),
+            "activity_id": row["id"],
+            "activity_type": "Run",
+        }
+        for row in runs_missing_dynamics(conn, today, WINDOW_DAYS)
+    ]
+
+
 def stale_benchmark_items(conn: sqlite3.Connection, today: date) -> list[dict]:
     """The FTP every power reader trains with, once it is older than the stale limit."""
     ftp = working_ftp(conn, today)
@@ -189,6 +212,7 @@ DETECTORS: tuple[Callable[[sqlite3.Connection, date], list[dict]], ...] = (
     missing_feedback_items,
     unmatched_session_items,
     missing_stream_items,
+    missing_dynamics_items,
     stale_benchmark_items,
 )
 

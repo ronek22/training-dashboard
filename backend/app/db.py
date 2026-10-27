@@ -1047,6 +1047,8 @@ def init_db(snapshot: bool = True):
     init_project_ideas_schema(conn)
     from .services.data_inbox import init_schema as init_data_inbox_schema
     init_data_inbox_schema(conn)
+    from .services.run_dynamics import init_schema as init_run_dynamics_schema
+    init_run_dynamics_schema(conn)
     from .services.ache_followups import init_schema as init_ache_followups_schema
     init_ache_followups_schema(conn)
     from .repositories.trails import SCHEMA as TRAILS_SCHEMA, migrate as migrate_trails

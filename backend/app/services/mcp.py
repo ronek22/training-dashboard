@@ -403,6 +403,17 @@ MCP_TOOLS = [
         },
     },
     {
+        "name": "get_running_fitness",
+        "description": "Read running fitness: current VDOT (effort, heart-rate and resting-HR estimates), peak VDOT, 5K/10K/half/marathon predictions (now, 8-week projection, peak, actual bests), Daniels training paces, pace at the easy HR cap, decoupling, Apple Watch form and running power, the weekly build-up guard and runs still missing their HealthFit file",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "get_return_to_run",
         "description": "Read the return-to-run tracker: current stage and its prescription, the next step (rest, log a score, ready, flare, graduated), recent runs with during and next-morning symptom scores, and the progression rules",
         "annotations": {
@@ -1041,6 +1052,16 @@ def call_mcp_tool(
 
             weeks = min(26, max(8, int(args.get("weeks") or 12)))
             data = build_aerobic_decoupling(conn, weeks=weeks)
+            message = json.dumps(data, indent=2)
+
+        elif name == "get_running_fitness":
+            from .running_fitness import build_running_fitness
+
+            data = dict(build_running_fitness(conn))
+            if data.get("available"):
+                # Keep the coach's context small: two years of months, no per-run form series.
+                data["timeline"] = data["timeline"][-24:]
+                data["form"] = {key: value for key, value in data["form"].items() if key != "series"}
             message = json.dumps(data, indent=2)
 
         elif name == "get_return_to_run":

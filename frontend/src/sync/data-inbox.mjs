@@ -5,12 +5,14 @@ export const KIND_LABELS = {
   feedback: 'Missing feedback',
   unmatched_session: 'Unmatched planned session',
   missing_streams: 'Missing heart-rate stream',
+  missing_dynamics: 'Missing running dynamics',
   stale_benchmark: 'Stale benchmark',
 }
 
 const DISMISS_LABELS = {
   unmatched_session: 'Skipped, that\'s right',
   stale_benchmark: 'Still holds',
+  missing_dynamics: 'No watch on this run',
 }
 
 export const kindLabel = (kind) => KIND_LABELS[kind] || 'Data gap'

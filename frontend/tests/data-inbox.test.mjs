@@ -13,6 +13,8 @@ test('kind and dismiss labels fit each item kind', () => {
   assert.equal(kindLabel('missing_streams'), 'Missing heart-rate stream')
   assert.equal(dismissLabel('unmatched_session'), "Skipped, that's right")
   assert.equal(dismissLabel('feedback'), 'Mark as fine')
+  assert.equal(kindLabel('missing_dynamics'), 'Missing running dynamics')
+  assert.equal(dismissLabel('missing_dynamics'), 'No watch on this run')
 })
 
 test('candidateLabel names the activity, day and length', () => {

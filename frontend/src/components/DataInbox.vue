@@ -11,7 +11,7 @@
 
     <p v-if="error" class="inbox-error" role="alert">{{ error }} <button type="button" class="inbox-btn ghost" @click="load">Retry</button></p>
     <p v-else-if="!inbox" class="inbox-empty">Checking your data…</p>
-    <p v-else-if="!inbox.count" class="inbox-empty">Feedback, plan links, heart-rate streams and benchmarks are all in place.</p>
+    <p v-else-if="!inbox.count" class="inbox-empty">Feedback, plan links, heart-rate streams, running dynamics and benchmarks are all in place.</p>
 
     <ul v-else class="inbox-list">
       <li v-for="item in inbox.items" :key="item.key" class="inbox-item" :class="`is-${item.kind}`">
@@ -30,6 +30,7 @@
             <button type="button" class="inbox-btn" :disabled="busy === item.key || !linkChoice[item.key]" @click="linkSession(item)">{{ busy === item.key ? 'Linking…' : 'Link' }}</button>
           </template>
           <button v-else-if="item.kind === 'missing_streams'" type="button" class="inbox-btn" :disabled="busy === item.key" @click="refetch(item)">{{ busy === item.key ? 'Fetching…' : 'Re-fetch streams' }}</button>
+          <button v-else-if="item.kind === 'missing_dynamics'" type="button" class="inbox-btn" :disabled="busy === item.key" @click="checkHealthfit(item)">{{ busy === item.key ? 'Checking…' : 'Check HealthFit' }}</button>
           <router-link v-else-if="item.kind === 'stale_benchmark'" to="/athlete" class="inbox-btn">Update FTP</router-link>
           <button type="button" class="inbox-btn ghost" :disabled="busy === item.key" @click="dismiss(item)">{{ dismissLabel(item.kind) }}</button>
         </div>
@@ -99,6 +100,12 @@ const refetch = (item) => run(item, async () => {
   if (inbox.value?.items.some(open => open.key === item.key)) messages[item.key] = data.message
 })
 
+const checkHealthfit = (item) => run(item, async () => {
+  await api.scanRunDynamics()
+  await load()
+  if (inbox.value?.items.some(open => open.key === item.key)) messages[item.key] = 'No HealthFit file for this run yet. Open HealthFit on your iPhone, then check again.'
+})
+
 const openFeedback = (item) => { feedbackMessage.value = ''; feedbackItem.value = item }
 
 const saveFeedback = async (payload) => {
@@ -136,6 +143,7 @@ onMounted(load)
 .is-feedback { --kind: #8fb4ff; }
 .is-unmatched_session { --kind: #b7a3ff; }
 .is-missing_streams { --kind: #ff9b72; }
+.is-missing_dynamics { --kind: var(--run); }
 .is-stale_benchmark { --kind: #e8bc77; }
 .inbox-copy strong { display: block; margin-top: 4px; font-size: 14px; font-weight: 600; }
 .inbox-copy p { margin: 3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }

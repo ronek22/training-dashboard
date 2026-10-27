@@ -227,6 +227,11 @@ TOOLS = [
         }
     },
     {
+        "name": "get_running_fitness",
+        "description": "Read running fitness: current VDOT (effort, heart-rate and resting-HR estimates), peak VDOT, 5K/10K/half/marathon predictions (now, 8-week projection, peak, actual bests), Daniels training paces, pace at the easy HR cap, decoupling, Apple Watch form and running power, the weekly build-up guard and runs still missing their HealthFit file",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
         "name": "get_return_to_run",
         "description": "Read the return-to-run tracker: current stage and its prescription, the next step (rest, log a score, ready, flare, graduated), recent runs with during and next-morning symptom scores, and the progression rules",
         "inputSchema": {"type": "object", "properties": {}}
@@ -617,6 +622,10 @@ def handle_tool(name: str, args: dict) -> str:
 
         elif name == "get_aerobic_fitness_trend":
             result = call_api("GET", "/metrics/aerobic-decoupling", args)
+            return json.dumps(result, indent=2)
+
+        elif name == "get_running_fitness":
+            result = call_remote_mcp_tool(name)
             return json.dumps(result, indent=2)
 
         elif name == "get_return_to_run":

@@ -191,6 +191,7 @@ const navGroups = [
       { to: '/activities', label: 'Activities', icon: 'activities', match: pathPrefix('/activities') },
       { to: '/metrics', label: 'Trends', icon: 'metrics', match: exactPath('/metrics') },
       { to: '/records', label: 'Records', icon: 'records', match: exactPath('/records') },
+      { to: '/running', label: 'Running', icon: 'run', match: exactPath('/running') },
       { to: '/goals', label: 'Goals', icon: 'goals', match: exactPath('/goals') },
       { to: '/mountains', label: 'Mountains', icon: 'mountains', match: pathPrefix('/mountains') },
       { to: '/notes', label: 'Coach Notes', icon: 'notes', match: exactPath('/notes') },

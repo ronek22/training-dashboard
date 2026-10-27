@@ -55,6 +55,8 @@ Root:
 - `services/notes.py` — note creation and listing
 - `services/power_estimate.py` — physics power estimate for outdoor rides without a meter (load and ride type only) and its calibration check
 - `services/plans.py` — plan serialization, adjustment, comparison semantics
+- `services/run_dynamics.py` — Apple Watch running dynamics from HealthFit FIT files (`run_dynamics` table), matched to runs from any source
+- `services/running_fitness.py` — Running page: VDOT (efforts, heart rate, resting HR), race predictions, training paces, comeback curve, form, power, build-up guard
 - `services/settings.py` — app settings reads/writes including modality restrictions and athlete profile normalization
 - `services/strava.py` — Strava import and stream backfill logic
 - `services/weekly_summary.py` — weekly summary writes/reads
@@ -70,6 +72,7 @@ Root:
 - `routers/metrics.py` — `/metrics`
 - `routers/notes.py` — `/notes`
 - `routers/plans.py` — `/plans/weekly`, `/plans/weekly/adjust`
+- `routers/running.py` — `/running/fitness`, `/running/dynamics/scan`
 - `routers/settings.py` — settings-backed athlete profile and modality restriction routes
 - `routers/weekly_summary.py` — `/weekly`
 
@@ -100,6 +103,7 @@ Root:
 - `views/Activities.vue` — imported/manual activities
 - `views/Notes.vue` — coach notes
 - `views/Metrics.vue` — metric history and trends
+- `views/Running.vue` — running fitness page; its charts and panels (`RunFitnessHero`, `RunRaceSimulator`, `RunTrainingPaces`, `RunComebackChart`, `RunPaceTrend`, `RunFormPanel`, `RunPowerPanel`) and tested helpers (`running-helpers.mjs`) live in `running/`
 
 ### Components
 

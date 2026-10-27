@@ -369,4 +369,9 @@ def preview_healthfit_import(conn: sqlite3.Connection) -> dict:
 
 
 def apply_healthfit_import(conn: sqlite3.Connection) -> dict:
-    return _apply_fit_import(conn, source=HEALTHFIT_SOURCE, directory=healthfit_directory(), source_label="HealthFit")
+    from .run_dynamics import scan_run_dynamics
+
+    result = _apply_fit_import(conn, source=HEALTHFIT_SOURCE, directory=healthfit_directory(), source_label="HealthFit")
+    # Runs created or linked just now get their Apple Watch running dynamics too.
+    result["run_dynamics"] = scan_run_dynamics(conn, healthfit_directory())
+    return result

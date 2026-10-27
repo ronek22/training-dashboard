@@ -415,6 +415,8 @@ export const useApi = () => ({
   saveSessionTags: (activityId, payload) => api.put(`/activities/${encodeURIComponent(activityId)}/tags`, payload),
   getWhatWorked: () => api.get('/what-worked'),
   getReturnToRun: () => api.get('/return-to-run'),
+  getRunningFitness: () => api.get('/running/fitness'),
+  scanRunDynamics: () => api.post('/running/dynamics/scan'),
   saveReturnToRun: (payload) => api.put('/return-to-run', payload),
   saveRunSymptoms: (activityId, payload) => api.put(`/activities/${encodeURIComponent(activityId)}/symptoms`, payload),
   getKit: () => api.get('/kit'),

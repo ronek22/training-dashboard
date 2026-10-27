@@ -16,6 +16,7 @@ const moreLinks = [
   { path: '/calendar', label: 'Calendar' },
   { path: '/activities', label: 'Activities' },
   { path: '/records', label: 'Records' },
+  { path: '/running', label: 'Running' },
   { path: '/mountains', label: 'Mountains' },
   { path: '/strength', label: 'Strength' },
   { path: '/recovery', label: 'Recovery' },

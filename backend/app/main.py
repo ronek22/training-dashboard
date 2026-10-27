@@ -43,9 +43,12 @@ from .routers.life_load import router as life_load_router
 from .routers.trails import router as trails_router
 from .routers.backups import router as backups_router
 from .routers.data_inbox import router as data_inbox_router
+from .routers.running import router as running_router
 from . import db as db_module
 from .services import backups
 from .services.health_data import apply_health_data_import
+from .services.healthfit import healthfit_directory
+from .services.run_dynamics import scan_run_dynamics
 from .services.settings import get_setting, set_setting
 from .services.strava_history_backfill import run_batch as run_history_backfill
 from .services.widget_brief import write_widget_brief
@@ -70,6 +73,16 @@ def _import_health_data_once() -> None:
         conn.close()
 
 
+def _scan_run_dynamics_once() -> None:
+    conn = get_db()
+    try:
+        scan_run_dynamics(conn)
+    except Exception:
+        logger.exception("Reading HealthFit running dynamics failed")
+    finally:
+        conn.close()
+
+
 def _write_widget_brief_once(directory: str) -> None:
     conn = get_db()
     try:
@@ -80,11 +93,14 @@ def _write_widget_brief_once(directory: str) -> None:
         conn.close()
 
 
-async def _background_sync_loop(import_health: bool, widget_dir: str) -> None:
+async def _background_sync_loop(import_health: bool, widget_dir: str, scan_dynamics: bool = False) -> None:
     interval = max(60, int(os.getenv("HEALTH_DATA_IMPORT_INTERVAL_SECONDS", "900")))
     while True:
         if import_health:
             await asyncio.to_thread(_import_health_data_once)
+        # New HealthFit run files carry the Apple Watch running dynamics Strava drops.
+        if scan_dynamics:
+            await asyncio.to_thread(_scan_run_dynamics_once)
         # After the import, so the widget sees this morning's sleep, HRV and resting HR.
         if widget_dir:
             await asyncio.to_thread(_write_widget_brief_once, widget_dir)
@@ -135,8 +151,9 @@ async def app_lifespan(app_instance: FastAPI):
         task = None
         import_health = os.getenv("HEALTH_DATA_AUTO_IMPORT", "false").lower() in {"1", "true", "yes", "on"}
         widget_dir = os.getenv("WIDGET_EXPORT_DIR", "").strip()
-        if import_health or widget_dir:
-            task = asyncio.create_task(_background_sync_loop(import_health, widget_dir))
+        scan_dynamics = healthfit_directory().is_dir()
+        if import_health or widget_dir or scan_dynamics:
+            task = asyncio.create_task(_background_sync_loop(import_health, widget_dir, scan_dynamics))
         backfill_task = asyncio.create_task(_strava_history_backfill_loop()) if os.getenv("STRAVA_HISTORY_BACKFILL", "true").lower() not in {"0", "false", "no", "off"} else None
         backup_task = asyncio.create_task(_daily_backup_loop()) if os.getenv("TRAINING_BACKUPS", "true").lower() not in {"0", "false", "no", "off"} else None
         try:
@@ -206,6 +223,7 @@ app.include_router(life_load_router)
 app.include_router(trails_router)
 app.include_router(backups_router)
 app.include_router(data_inbox_router)
+app.include_router(running_router)
 
 init_db()
 app.mount("/mcp", mcp_app)

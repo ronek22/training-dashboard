@@ -54,6 +54,7 @@ const router = createRouter({
     { path: '/notes', component: Notes },
     { path: '/metrics', component: Metrics },
     { path: '/records', component: () => import('./views/Records.vue') },
+    { path: '/running', component: () => import('./views/Running.vue') },
     { path: '/years/:sport?', component: () => import('./views/SeasonYears.vue') },
     { path: '/plan/blocks/:startDate', component: () => import('./views/BlockRecap.vue') },
     { path: '/season/:year?', component: () => import('./views/SeasonReview.vue') },

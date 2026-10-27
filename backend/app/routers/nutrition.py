@@ -3,8 +3,8 @@ from typing import Optional
 from fastapi import APIRouter, Query
 
 from ..db import get_db
-from ..models.nutrition import DinnerPlanInput, FoodEntryInput, ProductInput, RecipeInput, FoodItemInput, NutritionProfileInput, ProteinTickInput, WeeklyBodyCheckinInput
-from ..services import dinner_plan, food_log, meal_ideas, products, recipes
+from ..models.nutrition import DinnerPlanInput, FoodEntryInput, MealEstimateInput, ProductInput, RecipeInput, FoodItemInput, NutritionProfileInput, ProteinTickInput, WeeklyBodyCheckinInput
+from ..services import dinner_plan, food_log, meal_estimate_relay, meal_ideas, products, recipes
 from ..services.protein import build_protein_status, set_protein_tick
 from ..services.weekly_body_checkin import build_weekly_body_checkin, save_weekly_body_checkin
 
@@ -72,6 +72,17 @@ def post_food_entry(payload: FoodEntryInput):
         return food_log.create_food_entry(conn, payload.model_dump())
     finally:
         conn.close()
+
+
+# The iOS app can't reach the coach helper on the Mac's loopback, so the backend relays.
+@router.post("/phone/meal-estimate", status_code=202)
+def post_phone_meal_estimate(payload: MealEstimateInput):
+    return meal_estimate_relay.start_estimate(payload.model_dump(exclude_none=True))
+
+
+@router.get("/phone/meal-estimate/{job_id}")
+def get_phone_meal_estimate(job_id: str):
+    return meal_estimate_relay.get_estimate(job_id)
 
 
 @router.put("/nutrition/food/entries/{entry_id}")

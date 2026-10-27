@@ -28,6 +28,16 @@ class FoodEntryInput(BaseModel):
     items: list[FoodItemInput]
 
 
+class MealPhotoInput(BaseModel):
+    media_type: str
+    data: str  # base64
+
+
+class MealEstimateInput(BaseModel):
+    text: str = ""
+    image: Optional[MealPhotoInput] = None
+
+
 class DinnerPlanInput(BaseModel):
     # An empty dish clears the day.
     dish: Optional[str] = None

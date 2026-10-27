@@ -20,20 +20,21 @@ struct RootView: View {
     @State private var strength: StrengthLaunch?
     @State private var todayRefresh = 0
     @State private var activityDetailOpen = false
+    @State private var planDetailOpen = false
 
     var body: some View {
         ZStack {
             Color.bg.ignoresSafeArea()
             switch tab {
             case .today: TodayView(onStartStrength: { strength = StrengthLaunch(templateId: $0) }, refresh: todayRefresh)
-            case .plan: Placeholder(title: "Plan")
+            case .plan: PlanView(showingDetail: $planDetailOpen, onStartStrength: { strength = StrengthLaunch(templateId: $0) })
             case .food: FoodView()
             case .activities: ActivitiesView(showingDetail: $activityDetailOpen)
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            // Activity detail is a pushed page with its own back button, as in the artboard.
-            if !(tab == .activities && activityDetailOpen) {
+            // Detail pages are pushed with their own back button, as in the artboard.
+            if !(tab == .activities && activityDetailOpen) && !(tab == .plan && planDetailOpen) {
                 TabBar(selection: $tab, onPlus: { showQuickLog = true })
             }
         }
@@ -100,22 +101,5 @@ struct TabBar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-}
-
-/// Screens that aren't built yet.
-struct Placeholder: View {
-    let title: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased()).font(AppFont.title(44)).foregroundStyle(Color.ink)
-            Text("Coming next.").font(AppFont.body(14)).foregroundStyle(Color.muted)
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.bg)
     }
 }

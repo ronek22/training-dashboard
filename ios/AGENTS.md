@@ -8,11 +8,12 @@ These rules override the root `AGENTS.md` for anything under `ios/`. The root fi
 A native SwiftUI client for the existing FastAPI backend in `../backend`. The phone does what
 happens away from the desk; planning and deep analysis stay on the web app (MacBook).
 
-MVP scope is the eight screens in `../docs/design/artboards/iOS.dc.html`
+MVP scope is the screens in `../docs/design/artboards/iOS.dc.html`
 (picture: `../docs/design/screens/ios/overview.png`):
 
 1. Today · 2. Strength session · 3. Food · 4. Quick log sheet · 5. Activities ·
-6. Activity detail · 7. Lock screen Live Activity + widgets (phase 2) · 8. Settings
+6. Activity detail · 7. Lock screen Live Activity + widgets (phase 2) · 8. Settings ·
+9. Plan week · 10. Plan day · 11. Move day sheet
 
 Do not port web-only pages (Trends, Records, Mountains, Season, Goals, Calendar, Plan editor…).
 If a feature isn't in the artboard, ask before building it.
@@ -56,6 +57,8 @@ If a feature isn't in the artboard, ask before building it.
   - Quick log: `POST /checkins`, `POST /sick-mode`, `POST /activities`
   - Activities: `GET /activities`, `GET /activities/{id}`,
     `GET|POST /activities/{id}/feedback`
+  - Plan: `GET /plans/weekly?limit=4`, `POST /plans/weekly/swap`,
+    `PUT /recovery/issues/{id}/ticks` (rehab checklist)
 - When the phone needs a lighter or new endpoint, add it to the backend in the same branch,
   with a backend test (`PYTHONPATH="$PWD" backend/.venv/bin/python -m unittest -q
   backend.tests.test_<area>` from the repo root). Don't change existing response shapes the web

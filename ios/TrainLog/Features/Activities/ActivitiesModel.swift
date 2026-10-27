@@ -263,7 +263,7 @@ enum ActivityFormat {
 
     private static let english = Locale(identifier: "en_GB")
 
-    private static let mondayCalendar: Calendar = {
+    static let mondayCalendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.firstWeekday = 2
         calendar.minimumDaysInFirstWeek = 4

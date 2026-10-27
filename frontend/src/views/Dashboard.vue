@@ -165,7 +165,16 @@
             <div><span>{{ briefDayLabel }}</span><h2>{{ briefDateLabel }}</h2></div>
             <button type="button" class="day-brief-close" aria-label="Close" @click="closeBrief">×</button>
           </header>
-          <PlannedSessionBrief v-if="briefPlanned" :plan="briefDay" :label="briefStatusLabel" :cycling-library="cyclingLibrary" />
+          <ul v-if="briefSessions.length" class="day-brief-sessions">
+            <li v-for="session in briefSessions" :key="session.id">
+              <router-link :to="`/activities/${encodeURIComponent(session.id)}`" :style="{ '--session-accent': session.accent }">
+                <i aria-hidden="true" />
+                <span><strong>{{ session.title }}</strong><small>{{ session.detail }}</small></span>
+                <em>Open ↗</em>
+              </router-link>
+            </li>
+          </ul>
+          <PlannedSessionBrief v-else-if="briefPlanned" :plan="briefDay" :label="briefStatusLabel" :cycling-library="cyclingLibrary" />
           <p v-else class="day-brief-empty">Rest day. Nothing scheduled.</p>
           <footer class="day-brief-actions">
             <router-link v-if="briefStrengthStart" class="day-brief-primary" :to="briefStrengthStart">Start in Workout Studio</router-link>
@@ -799,6 +808,7 @@ const weekDaysBase = computed(() => (weeklyPlan.value?.days || []).map((day) => 
     tone: activityTone(presentation.displayType),
     plannedMinutes: Number(day.target_duration_min || 0),
     actualMinutes: Math.round(actualActivities.reduce((sum, activity) => sum + Number(activity.duration_min || 0), 0)),
+    segments: actualActivities.map((activity) => ({ id: activity.id, type: activity.type, minutes: Number(activity.duration_min || 0) })),
   }
 }))
 const weekDays = computed(() => {
@@ -808,6 +818,7 @@ const weekDays = computed(() => {
     return {
       ...day,
       accent: dashboardSportAccent(day.displayType),
+      segments: day.segments.map((segment) => ({ ...segment, accent: dashboardSportAccent(segment.type) })),
       hasIcon: isIconSessionType(day.displayType),
       progressPct: planned ? Math.min(100, Math.round((actual / planned) * 100)) : done ? 100 : 0,
       overPlan: planned > 0 && actual > planned * 1.15,
@@ -904,9 +915,11 @@ function actualDayPresentation(activities) {
 
   const totalMinutes = activities.reduce((sum, activity) => sum + Number(activity.duration_min || 0), 0)
   const totalDistance = activities.reduce((sum, activity) => sum + Number(activity.distance_km || 0), 0)
+  // Name every session so a second one on the same day stays visible.
+  const longest = [...activities].sort((a, b) => Number(b.duration_min || 0) - Number(a.duration_min || 0))[0]
   return {
-    displayType: activities[0].type,
-    displayTitle: `${activities.length} activities`,
+    displayType: longest.type,
+    displayTitle: activities.map((activity) => actualDayPresentation([activity]).displayTitle).join(' + '),
     displayDetail: [totalDistance ? `${formatCompactNumber(totalDistance)} km` : '', totalMinutes ? `${Math.round(totalMinutes)} min` : ''].filter(Boolean).join(' · '),
     activityId: activities[0].id,
     source: 'actual',
@@ -958,7 +971,7 @@ function daySubtitle(activities = []) {
     || sessionTypeLabel(activities[0]?.type)
 }
 function openWeekDay(day, cell) {
-  if (day.activityId) {
+  if (day.activityId && day.segments.length < 2) {
     router.push(`/activities/${encodeURIComponent(day.activityId)}`)
     return
   }
@@ -972,6 +985,15 @@ const briefEl = ref(null)
 const briefAnchor = ref(null)
 const briefPos = ref({ left: 0, top: 0 })
 const briefStyle = computed(() => ({ left: `${briefPos.value.left}px`, top: `${briefPos.value.top}px` }))
+// A day with several sessions lists them, each opening its own activity.
+const briefSessions = computed(() => (briefDay.value?.state === 'actual'
+  ? (activitiesByDate.value[briefDay.value.date] || []).map((activity) => ({
+    id: activity.id,
+    title: actualDayPresentation([activity]).displayTitle,
+    detail: activityMetricsLabel(activity) || sessionTypeLabel(activity.type),
+    accent: dashboardSportAccent(activity.type),
+  }))
+  : []))
 const briefPlanned = computed(() => Boolean(briefDay.value && !/rest/i.test(String(briefDay.value.session_type || '')) && (briefDay.value.title || briefDay.value.plannedMinutes)))
 const briefDayLabel = computed(() => (briefDay.value?.isToday ? 'Today' : briefDay.value ? formatLocalDate(briefDay.value.date, 'EEEE') : ''))
 const briefDateLabel = computed(() => (briefDay.value ? formatLocalDate(briefDay.value.date, 'MMMM d, yyyy') : ''))
@@ -1033,6 +1055,14 @@ onBeforeUnmount(() => {
 .day-brief-head h2 { margin-top: 1px; font-family: var(--font-display); font-size: 17px; }
 .day-brief-close { flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--muted-soft); cursor: pointer; font-size: 20px; line-height: 1; }
 .day-brief-close:hover { background: rgb(var(--ov-rgb) / .08); color: var(--text); }
+.day-brief-sessions { display: grid; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+.day-brief-sessions a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; background: var(--surface2); color: inherit; text-decoration: none; }
+.day-brief-sessions a:hover { background: var(--surface3); }
+.day-brief-sessions i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--session-accent); }
+.day-brief-sessions span { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.day-brief-sessions strong { overflow: hidden; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.day-brief-sessions small { color: var(--muted-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
+.day-brief-sessions em { flex: none; color: var(--success-text); font-size: 12px; font-style: normal; font-weight: 650; }
 .day-brief-empty { margin: 8px 0 0; color: var(--muted-soft); font-size: 13px; }
 .day-brief-actions { display: flex; align-items: center; justify-content: flex-end; gap: 14px; margin-top: 12px; font-size: 13px; font-weight: 650; }
 .day-brief-actions a { color: var(--muted-soft); }

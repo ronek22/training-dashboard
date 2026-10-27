@@ -23,7 +23,7 @@
     </div>
 
     <div v-if="mix.length" class="week-mix" role="img" :aria-label="`${progressPct}% of the planned week done`">
-      <i v-for="seg in mix" :key="seg.date" :style="{ width: `${seg.pct}%`, background: seg.accent }" />
+      <i v-for="seg in mix" :key="seg.key" :style="{ width: `${seg.pct}%`, background: seg.accent }" />
     </div>
 
     <div class="week-grid">
@@ -34,12 +34,14 @@
         class="week-cell"
         :class="[`is-${day.state}`, { 'is-today': day.isToday, 'is-over': day.overPlan, 'is-rest': !day.plannedMinutes && day.state !== 'actual' }]"
         :style="{ '--day-accent': day.accent }"
-        :aria-label="`${day.dayLabel} ${day.dateLabel}, ${day.displayTitle}, ${day.minutesLabel}. ${day.activityId ? 'Open activity' : 'Show planned session'}`"
+        :aria-label="`${day.dayLabel} ${day.dateLabel}, ${day.displayTitle}, ${day.minutesLabel}. ${day.segments?.length > 1 ? 'Show sessions' : day.activityId ? 'Open activity' : 'Show planned session'}`"
         @click="$emit('open', day, $event.currentTarget)"
       >
         <span class="week-cell-top">
           <span class="week-cell-day">{{ day.dayLabel }} {{ day.dateLabel }}</span>
-          <span class="week-cell-dot" aria-hidden="true" />
+          <span class="week-cell-dots" aria-hidden="true">
+            <span v-for="seg in dots(day)" :key="seg.key" class="week-cell-dot" :style="{ '--day-accent': seg.accent }" />
+          </span>
         </span>
         <strong class="week-cell-title">{{ day.displayTitle }}</strong>
         <span class="week-cell-time">
@@ -79,11 +81,18 @@ const rangeLabel = computed(() => {
   const last = props.days.at(-1)
   return first && last ? `${first.dayLabel} ${first.dateLabel} – ${last.dayLabel} ${last.dateLabel}` : ''
 })
+// One dot per session done that day, else the day's own dot.
+const dots = (day) => (day.state === 'actual' && day.segments?.length > 1
+  ? day.segments.map((seg) => ({ key: seg.id, accent: seg.accent }))
+  : [{ key: day.date, accent: day.accent }])
 // Done work as one bar, each session in its sport colour, against the planned week.
 const mix = computed(() => {
-  const done = props.days.filter((day) => day.state === 'actual' && Number(day.actualMinutes) > 0)
-  const total = Math.max(props.plannedMinutes, done.reduce((sum, day) => sum + Number(day.actualMinutes), 0), 1)
-  return done.map((day) => ({ date: day.date, accent: day.accent, pct: (Number(day.actualMinutes) / total) * 100 }))
+  const done = props.days
+    .filter((day) => day.state === 'actual')
+    .flatMap((day) => (day.segments?.length ? day.segments : [{ id: day.date, accent: day.accent, minutes: day.actualMinutes }]))
+    .filter((seg) => Number(seg.minutes) > 0)
+  const total = Math.max(props.plannedMinutes, done.reduce((sum, seg) => sum + Number(seg.minutes), 0), 1)
+  return done.map((seg) => ({ key: seg.id, accent: seg.accent, pct: (Number(seg.minutes) / total) * 100 }))
 })
 </script>
 
@@ -201,6 +210,7 @@ const mix = computed(() => {
 .week-cell:hover { background: var(--surface3); }
 .week-cell-day { color: var(--muted-soft); font-size: 12px; font-weight: 600; }
 .is-today .week-cell-day { color: var(--text); }
+.week-cell-dots { display: inline-flex; gap: 4px; }
 .week-cell-dot { width: 10px; height: 10px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--day-accent); }
 .is-actual .week-cell-dot { background: var(--day-accent); }
 .week-cell-title { display: -webkit-box; min-height: 38px; overflow: hidden; color: var(--text); font-size: 14px; font-weight: 600; line-height: 1.35; white-space: normal; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

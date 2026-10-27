@@ -4,14 +4,20 @@ Steps are defined as FTP fractions. Exported .zwo files keep those fractions so
 Zwift scales every target to the FTP configured in Zwift itself; watt targets
 shown in the app use the latest stored FTP metric and say which one.
 """
+import json
 import sqlite3
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 from xml.sax.saxutils import escape, quoteattr
 
 from .ftp import FTP_STALE_AFTER_DAYS, working_ftp
 
 ZWO_AUTHOR = "Training Dashboard"
+# Automatic picks skip a workout ridden this recently when an equivalent one is free.
+ROTATION_DAYS = 21
+# An equivalent workout has the same intent and an estimated TSS within this share of the original.
+ROTATION_LOAD_MARGIN = 0.2
+RIDE_ACTIVITY_TYPES = ("Ride", "VirtualRide")
 
 
 def _warmup(minutes, low, high):
@@ -189,13 +195,67 @@ def latest_ftp(conn: sqlite3.Connection, today: Optional[date] = None) -> dict:
     return working_ftp(conn, today)
 
 
+def last_ridden_dates(conn: sqlite3.Connection) -> dict[str, str]:
+    """The latest date each library workout was planned and a ride was recorded that day."""
+    try:
+        planned: dict[str, str] = {}
+        for row in conn.execute("SELECT days_json FROM weekly_plans").fetchall():
+            for day in json.loads(row[0] or "[]"):
+                if day.get("cycling_workout_id") and day.get("date"):
+                    planned[day["date"]] = day["cycling_workout_id"]
+        if not planned:
+            return {}
+        ridden = {row[0] for row in conn.execute(
+            "SELECT DISTINCT substr(date, 1, 10) FROM activities WHERE type IN (?, ?)", RIDE_ACTIVITY_TYPES,
+        )}
+    except sqlite3.OperationalError:
+        return {}
+    last: dict[str, str] = {}
+    for day, workout_id in planned.items():
+        if day in ridden and day > last.get(workout_id, ""):
+            last[workout_id] = day
+    return last
+
+
+def _estimated_tss(workout: dict) -> int:
+    return _intensity_summary(workout["steps"])["estimated_tss"]
+
+
+def rotated_workout_id(workout_id: str, last_ridden: dict[str, str], on: date) -> str:
+    """``workout_id``, or an equivalent (same intent, similar load) one when it was ridden in the three
+    weeks before ``on``. Least recently ridden wins; with no equivalent free, keep the original."""
+    cutoff = (on - timedelta(days=ROTATION_DAYS)).isoformat()
+
+    def fresh(candidate: str) -> bool:
+        return last_ridden.get(candidate, "") <= cutoff
+
+    original = get_cycling_workout(workout_id)
+    if not original or fresh(workout_id):
+        return workout_id
+    load = _estimated_tss(original)
+    equivalents = [
+        workout for workout in CYCLING_WORKOUTS
+        if workout["id"] != workout_id and workout["workout_intent"] == original["workout_intent"]
+        and abs(_estimated_tss(workout) - load) <= load * ROTATION_LOAD_MARGIN and fresh(workout["id"])
+    ]
+    if not equivalents:
+        return workout_id
+    return min(equivalents, key=lambda workout: (
+        last_ridden.get(workout["id"], ""), abs(_estimated_tss(workout) - load),
+    ))["id"]
+
+
 def build_cycling_workout_library(conn: sqlite3.Connection, today: Optional[date] = None) -> dict:
     ftp = latest_ftp(conn, today)
+    last_ridden = last_ridden_dates(conn)
     return {
         "ftp": ftp,
         "ftp_stale_after_days": FTP_STALE_AFTER_DAYS,
         "export_note": "Exported .zwo targets are FTP percentages, so Zwift scales them to the FTP set in Zwift.",
-        "workouts": [render_cycling_workout(workout, ftp["watts"]) for workout in CYCLING_WORKOUTS],
+        "workouts": [
+            {**render_cycling_workout(workout, ftp["watts"]), "last_ridden": last_ridden.get(workout["id"])}
+            for workout in CYCLING_WORKOUTS
+        ],
     }
 
 

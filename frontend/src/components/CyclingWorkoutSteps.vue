@@ -5,6 +5,7 @@
         <h3 id="cycling-workout-title">{{ workout.name }}</h3>
         <p class="cycling-workout-meta">
           {{ workout.category }} · {{ workout.duration_min }} min · ~{{ workout.estimated_tss }} TSS · IF {{ workout.intensity_factor.toFixed(2) }}
+          <template v-if="'last_ridden' in workout"> · {{ lastRiddenLabel(workout.last_ridden) }}</template>
         </p>
       </div>
       <a class="cycling-workout-download" :href="zwoUrl" :download="`${workout.id}.zwo`">Download .zwo</a>
@@ -28,6 +29,7 @@
 import { computed } from 'vue'
 import CyclingWorkoutProfile from './CyclingWorkoutProfile.vue'
 import { zoneColor } from './cyclingZones'
+import { lastRiddenLabel } from './cyclingWorkoutRecency.mjs'
 
 const props = defineProps({
   workout: { type: Object, required: true },

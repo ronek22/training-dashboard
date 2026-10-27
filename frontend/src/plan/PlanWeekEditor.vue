@@ -127,7 +127,7 @@
             >
               <option value="">None</option>
               <option v-for="workout in cyclingWorkouts" :key="workout.id" :value="workout.id">
-                {{ workout.name }} · {{ workout.duration_min }} min
+                {{ workout.name }} · {{ workout.duration_min }} min · {{ lastRiddenLabel(workout.last_ridden) }}
               </option>
             </select>
           </label>
@@ -210,6 +210,7 @@ import {
   sessionTypeOptionsFor,
   swapEditorDays,
 } from './plan-editor.mjs'
+import { lastRiddenLabel } from '../components/cyclingWorkoutRecency.mjs'
 
 // "Adjust remaining week": edits the open days of one plan and swaps sessions between them.
 // The page owns saving; this owns the drag-and-move state.

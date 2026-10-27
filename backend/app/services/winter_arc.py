@@ -26,7 +26,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from ..models.plans import WinterArc
-from .cycling_workouts import get_cycling_workout, render_cycling_workout
+from .cycling_workouts import get_cycling_workout, last_ridden_dates, render_cycling_workout, rotated_workout_id
 from .ride_balance import INTENT_TYPES
 
 SCHEMA = """
@@ -442,13 +442,15 @@ def _adjacent_to_hard(days: list[dict], value: str) -> bool:
     return any(day["date"] in near and ride_type(day) in QUALITY_TYPES for day in days)
 
 
-def _key_ride(day: dict, kind: str, target: dict) -> dict:
+def _key_ride(day: dict, kind: str, target: dict, last_ridden: dict[str, str]) -> dict:
+    """The block's key ride on ``day``, swapped for an equivalent workout when it was ridden lately."""
     spec = KEY_RIDES[kind]
-    workout = render_cycling_workout(get_cycling_workout(spec["workout_id"]))
+    workout_id = rotated_workout_id(spec["workout_id"], last_ridden, date.fromisoformat(target["week_start"]))
+    workout = render_cycling_workout(get_cycling_workout(workout_id))
     return {
         **day,
         "workout_intent": spec["intent"],
-        "cycling_workout_id": spec["workout_id"],
+        "cycling_workout_id": workout_id,
         "title": workout["name"],
         "details": f"{target['label']} key ride: {workout['description']}",
         "target_duration_min": workout["duration_min"],
@@ -468,6 +470,7 @@ def fit_week_to_arc(
         return days, []
     days = [dict(day) for day in days]
     guarded = _guarded_dates(conn, days, today)
+    last_ridden = last_ridden_dates(conn)
     changes: list[dict] = []
 
     for kind in QUALITY_TYPES:
@@ -485,10 +488,10 @@ def fit_week_to_arc(
                 _adjacent_to_hard(days, day["date"]), date.fromisoformat(day["date"]).weekday() >= 5, day["date"],
             ))
             index = days.index(pick)
-            days[index] = _key_ride(pick, kind, target)
+            days[index] = _key_ride(pick, kind, target, last_ridden)
             changes.append({"date": pick["date"], "kind": "key_ride", "type": kind, "from": pick.get("title"), "to": days[index]["title"]})
 
-    changes += _carry_over(conn, days, target, guarded)
+    changes += _carry_over(conn, days, target, guarded, last_ridden)
 
     if target["lighter"]:
         cap = target["ride_hours"] * 60
@@ -510,7 +513,9 @@ def fit_week_to_arc(
     return days, changes
 
 
-def _carry_over(conn: sqlite3.Connection, days: list[dict], target: dict, guarded: set[str]) -> list[dict]:
+def _carry_over(
+    conn: sqlite3.Connection, days: list[dict], target: dict, guarded: set[str], last_ridden: dict[str, str],
+) -> list[dict]:
     """Move last week's missed key ride into this week once, on a free easy weekday. Edits ``days``."""
     carry, _ = _carry_candidate(target, last_week_review(conn, target["week_start"]))
     if not carry or any(_is_carried(day) for day in days):
@@ -533,7 +538,7 @@ def _carry_over(conn: sqlite3.Connection, days: list[dict], target: dict, guarde
         return []
     pick = min(candidates, key=lambda day: (date.fromisoformat(day["date"]).weekday() >= 5, day["date"]))
     index = days.index(pick)
-    days[index] = {**_key_ride(pick, kind, target), "planning_rule_reason": reason}
+    days[index] = {**_key_ride(pick, kind, target, last_ridden), "planning_rule_reason": reason}
     return [{"date": pick["date"], "kind": "carry_over", "type": kind, "from": carry["date"], "to": days[index]["title"]}]
 
 

@@ -1,3 +1,4 @@
+import json
 import sqlite3
 import unittest
 import xml.etree.ElementTree as ET
@@ -11,7 +12,9 @@ from backend.app.services.cycling_workouts import (
     build_cycling_workout_library,
     build_zwo,
     get_cycling_workout,
+    last_ridden_dates,
     render_cycling_workout,
+    rotated_workout_id,
 )
 from backend.app.services.plans import build_day_change_details, serialize_plan_day
 
@@ -101,6 +104,53 @@ class CyclingWorkoutTests(unittest.TestCase):
         self.assertEqual(before["cycling_workout_name"], "Endurance 60")
         changes = build_day_change_details(before, after)
         self.assertEqual([item["label"] for item in changes], ["Structured workout"])
+
+
+class WorkoutRotationTests(unittest.TestCase):
+    def setUp(self):
+        self.conn = sqlite3.connect(":memory:")
+        self.conn.row_factory = sqlite3.Row
+        self.conn.execute("CREATE TABLE metrics (id INTEGER PRIMARY KEY, date TEXT, metric TEXT, value REAL)")
+        self.conn.execute("CREATE TABLE weekly_plans (week_start TEXT PRIMARY KEY, days_json TEXT)")
+        self.conn.execute("CREATE TABLE activities (id TEXT PRIMARY KEY, date TEXT, type TEXT)")
+        self.addCleanup(self.conn.close)
+
+    def plan(self, week_start, *days):
+        self.conn.execute("INSERT INTO weekly_plans VALUES (?, ?)", (week_start, json.dumps([
+            {"date": day, "session_type": "Ride", "cycling_workout_id": workout_id} for day, workout_id in days
+        ])))
+
+    def ride(self, day, kind="VirtualRide"):
+        self.conn.execute("INSERT INTO activities VALUES (?, ?, ?)", (f"{day}-{kind}", f"{day}T18:00:00", kind))
+
+    def test_last_ridden_needs_a_planned_workout_and_a_ride_that_day(self):
+        self.plan("2026-10-05", ("2026-10-06", "sweet-spot-3x10"), ("2026-10-08", "vo2-5x3"))
+        self.plan("2026-10-12", ("2026-10-13", "sweet-spot-3x10"), ("2026-10-15", "endurance-60"))
+        self.ride("2026-10-06")
+        self.ride("2026-10-13", "Ride")
+        self.ride("2026-10-15", "Run")  # not a ride
+        self.assertEqual(last_ridden_dates(self.conn), {"sweet-spot-3x10": "2026-10-13"})
+        library = {item["id"]: item for item in build_cycling_workout_library(self.conn, date(2026, 10, 27))["workouts"]}
+        self.assertEqual(library["sweet-spot-3x10"]["last_ridden"], "2026-10-13")
+        self.assertIsNone(library["vo2-5x3"]["last_ridden"])
+
+    def test_rotation_prefers_an_unridden_equivalent_and_keeps_fresh_choices(self):
+        on = date(2026, 10, 26)
+        # Ridden 13 days ago: same intent (tempo), similar load, never ridden beats the rest; closest load breaks ties.
+        self.assertEqual(rotated_workout_id("sweet-spot-3x10", {"sweet-spot-3x10": "2026-10-13"}, on), "tempo-3x12")
+        self.assertEqual(rotated_workout_id(
+            "sweet-spot-3x10", {"sweet-spot-3x10": "2026-10-13", "tempo-3x12": "2026-10-20"}, on), "sweet-spot-2x20")
+        # Exactly three weeks ago no longer counts as recent.
+        self.assertEqual(rotated_workout_id("sweet-spot-3x10", {"sweet-spot-3x10": "2026-10-05"}, on), "sweet-spot-3x10")
+        # VO2 5x3 swaps to 30/30, never to threshold (same intent, but load is outside the margin).
+        self.assertEqual(rotated_workout_id("vo2-5x3", {"vo2-5x3": "2026-10-20"}, on), "vo2-30-30")
+
+    def test_rotation_falls_back_to_the_original_without_an_equivalent(self):
+        on = date(2026, 10, 26)
+        recent = {"sweet-spot-3x10": "2026-10-13", "tempo-3x12": "2026-10-16", "sweet-spot-2x20": "2026-10-20"}
+        self.assertEqual(rotated_workout_id("sweet-spot-3x10", recent, on), "sweet-spot-3x10")
+        # The long ride has no other "long" workout in the library.
+        self.assertEqual(rotated_workout_id("endurance-long-120", {"endurance-long-120": "2026-10-25"}, on), "endurance-long-120")
 
 
 if __name__ == "__main__":

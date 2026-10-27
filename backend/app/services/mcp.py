@@ -518,7 +518,7 @@ MCP_TOOLS = [
     },
     {
         "name": "get_cycling_workout_library",
-        "description": "Read the structured cycling workout library (FTP-relative steps, duration, intent, estimated TSS) that planned ride days can reference via cycling_workout_id",
+        "description": "Read the structured cycling workout library (FTP-relative steps, duration, intent, estimated TSS, last ridden date) that planned ride days can reference via cycling_workout_id",
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False,

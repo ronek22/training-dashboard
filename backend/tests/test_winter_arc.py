@@ -114,6 +114,16 @@ class WinterArcTests(unittest.TestCase):
         status = list_weekly_plans_data(self.conn)[0]["winter_arc"]
         self.assertEqual(status["missing"], [])
 
+    def test_key_ride_rotates_away_from_a_recently_ridden_workout(self):
+        self.save_arc()
+        self.conn.execute("INSERT INTO weekly_plans (week_start, title, days_json) VALUES (?, ?, ?)", ("2029-12-31", "Last", json.dumps([
+            {"date": "2030-01-02", "label": "Wed", "session_type": "Ride", "title": "Sweet spot", "cycling_workout_id": "sweet-spot-3x10"},
+        ])))
+        self.conn.execute("INSERT INTO activities (id, date, type) VALUES ('r1', '2030-01-02T18:00:00', 'VirtualRide')")
+        _, days = self.save_week(week(LIFT, Z2, REST, LIFT, Z2, LONG, LIFT))
+        self.assertEqual([day["cycling_workout_id"] for day in days if day.get("cycling_workout_id")], ["tempo-3x12"] * 2)
+        self.assertEqual(planned_mix(days)["sweet_spot"], 2)
+
     def test_tagged_days_never_get_a_quality_ride(self):
         self.save_arc()
         set_life_load_day(self.conn, DATES[1], ["deadline"])

@@ -11,20 +11,25 @@
 		2AB2EED77A398A1DD1C8868B /* StrengthSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */; };
 		40039F29AC725FE67E3FE202 /* TrainLogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */; };
 		4012ED2F1A8F181070B6F220 /* Archivo.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */; };
+		54AB99EC9265B668DA43038A /* Food.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6906A4138E3E54E166438B26 /* Food.swift */; };
 		5949E6B54064073FF68DD91C /* TodayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECFF6858D98599C67E6EEC8 /* TodayTests.swift */; };
 		596B94B045D4FE90A37695C7 /* StrengthSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */; };
 		6543B82B223246C9075683DC /* BarlowCondensed-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AF11B1C65F8EFD3AF340D10 /* BarlowCondensed-Bold.ttf */; };
 		790DBDAE15B345608EE42C8E /* PhoneToday.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDCA15FBA972C52E02035AF5 /* PhoneToday.swift */; };
+		7DFBA72175D47731D87ACE6C /* MealEstimateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97817D1288D6173D1208D11B /* MealEstimateSheet.swift */; };
 		859D6A666F8C99A4587E4D55 /* StrengthSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF38361D28FBEE8E2C70373 /* StrengthSessionView.swift */; };
 		8855717FEAFC4B6CA4379BFB /* OFL-Archivo.txt in Resources */ = {isa = PBXBuildFile; fileRef = CBB385EB2D063C2EA0283EA2 /* OFL-Archivo.txt */; };
+		8CB0D0D61C2DA03E0CB2727E /* FoodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE84774476766302F5B40E04 /* FoodTests.swift */; };
 		9ADA8691ED676CD19EF94141 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FED9A0BA3F896F441C12CFE /* Theme.swift */; };
 		AE619AC886E9DA86C3B36FEA /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86C506CB1DD44FBB105F6B2 /* TodayView.swift */; };
+		C19583684F90BBC18C547B71 /* FoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD75917A58F54334CDFA0079 /* FoodView.swift */; };
 		C54F26CB7A1F3913691533CC /* TodayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A82E7ED074ABF53C867C009 /* TodayModel.swift */; };
 		CAA1710E904C67B7C0D44AC0 /* StrengthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADADEEF3EC729686F3AD8BD5 /* StrengthSession.swift */; };
 		CFB15F923AA4D931073261DE /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CDA809C9D860B28A4DB61A /* APIClient.swift */; };
 		D5FC7557DBEE38694F3F8F87 /* OFL-BarlowCondensed.txt in Resources */ = {isa = PBXBuildFile; fileRef = DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */; };
 		D9F0161252DCA55F451D2C13 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 01AD5A97B8F6DB6B3A07C749 /* Assets.xcassets */; };
 		F3D68722FA8D53F429E5C98D /* BarlowCondensed-ExtraBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9F112A2FC94E41B5BFB208A4 /* BarlowCondensed-ExtraBoldItalic.ttf */; };
+		F3E405E6B5D0598BD6EF819F /* FoodModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2432CF39E1025EE60FFEA9AE /* FoodModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -41,8 +46,10 @@
 		01AD5A97B8F6DB6B3A07C749 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0243D4E3976851681CA3EF5E /* BarlowCondensed-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-SemiBold.ttf"; sourceTree = "<group>"; };
 		027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionModel.swift; sourceTree = "<group>"; };
+		2432CF39E1025EE60FFEA9AE /* FoodModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodModel.swift; sourceTree = "<group>"; };
 		26CDA809C9D860B28A4DB61A /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		2AF11B1C65F8EFD3AF340D10 /* BarlowCondensed-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-Bold.ttf"; sourceTree = "<group>"; };
+		6906A4138E3E54E166438B26 /* Food.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Food.swift; sourceTree = "<group>"; };
 		6A82E7ED074ABF53C867C009 /* TodayModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayModel.swift; sourceTree = "<group>"; };
 		6FED9A0BA3F896F441C12CFE /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		790BB6C3EDE7CCEC73639DFB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -50,15 +57,18 @@
 		7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionTests.swift; sourceTree = "<group>"; };
 		8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainLogApp.swift; sourceTree = "<group>"; };
 		8D06FFA209BAA7436AB6E384 /* TrainLog.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TrainLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		97817D1288D6173D1208D11B /* MealEstimateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEstimateSheet.swift; sourceTree = "<group>"; };
 		9F112A2FC94E41B5BFB208A4 /* BarlowCondensed-ExtraBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-ExtraBoldItalic.ttf"; sourceTree = "<group>"; };
 		ADADEEF3EC729686F3AD8BD5 /* StrengthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSession.swift; sourceTree = "<group>"; };
 		AECFF6858D98599C67E6EEC8 /* TodayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayTests.swift; sourceTree = "<group>"; };
+		BD75917A58F54334CDFA0079 /* FoodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodView.swift; sourceTree = "<group>"; };
 		C86C506CB1DD44FBB105F6B2 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		CBB385EB2D063C2EA0283EA2 /* OFL-Archivo.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Archivo.txt"; sourceTree = "<group>"; };
 		CDF38361D28FBEE8E2C70373 /* StrengthSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionView.swift; sourceTree = "<group>"; };
 		D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Archivo.ttf; sourceTree = "<group>"; };
 		DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-BarlowCondensed.txt"; sourceTree = "<group>"; };
 		EDCA15FBA972C52E02035AF5 /* PhoneToday.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneToday.swift; sourceTree = "<group>"; };
+		FE84774476766302F5B40E04 /* FoodTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -70,9 +80,20 @@
 			path = Design;
 			sourceTree = "<group>";
 		};
+		27E9C683881D66F4424F0A91 /* Food */ = {
+			isa = PBXGroup;
+			children = (
+				2432CF39E1025EE60FFEA9AE /* FoodModel.swift */,
+				BD75917A58F54334CDFA0079 /* FoodView.swift */,
+				97817D1288D6173D1208D11B /* MealEstimateSheet.swift */,
+			);
+			path = Food;
+			sourceTree = "<group>";
+		};
 		3DD793074BA91A76914E2C0A /* TrainLogTests */ = {
 			isa = PBXGroup;
 			children = (
+				FE84774476766302F5B40E04 /* FoodTests.swift */,
 				7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */,
 				AECFF6858D98599C67E6EEC8 /* TodayTests.swift */,
 			);
@@ -113,6 +134,7 @@
 		646AC62442454EA8C4DFB819 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				27E9C683881D66F4424F0A91 /* Food */,
 				564D327BEA581193F3E1A74C /* Strength */,
 				4C749BA487B9D65C0547881A /* Today */,
 			);
@@ -146,6 +168,7 @@
 			isa = PBXGroup;
 			children = (
 				26CDA809C9D860B28A4DB61A /* APIClient.swift */,
+				6906A4138E3E54E166438B26 /* Food.swift */,
 				EDCA15FBA972C52E02035AF5 /* PhoneToday.swift */,
 				ADADEEF3EC729686F3AD8BD5 /* StrengthSession.swift */,
 			);
@@ -278,6 +301,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				CFB15F923AA4D931073261DE /* APIClient.swift in Sources */,
+				54AB99EC9265B668DA43038A /* Food.swift in Sources */,
+				F3E405E6B5D0598BD6EF819F /* FoodModel.swift in Sources */,
+				C19583684F90BBC18C547B71 /* FoodView.swift in Sources */,
+				7DFBA72175D47731D87ACE6C /* MealEstimateSheet.swift in Sources */,
 				790DBDAE15B345608EE42C8E /* PhoneToday.swift in Sources */,
 				CAA1710E904C67B7C0D44AC0 /* StrengthSession.swift in Sources */,
 				2AB2EED77A398A1DD1C8868B /* StrengthSessionModel.swift in Sources */,
@@ -293,6 +320,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8CB0D0D61C2DA03E0CB2727E /* FoodTests.swift in Sources */,
 				596B94B045D4FE90A37695C7 /* StrengthSessionTests.swift in Sources */,
 				5949E6B54064073FF68DD91C /* TodayTests.swift in Sources */,
 			);
@@ -335,6 +363,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TrainLog/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrainLog;
+				INFOPLIST_KEY_NSCameraUsageDescription = "TrainLog photographs meals so Claude can estimate calories and protein.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "TrainLog talks to the TrainLog server on your Mac over home Wi-Fi.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -502,6 +531,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TrainLog/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrainLog;
+				INFOPLIST_KEY_NSCameraUsageDescription = "TrainLog photographs meals so Claude can estimate calories and protein.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "TrainLog talks to the TrainLog server on your Mac over home Wi-Fi.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;

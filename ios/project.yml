@@ -29,6 +29,7 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_CFBundleDisplayName: TrainLog
+        INFOPLIST_KEY_NSCameraUsageDescription: TrainLog photographs meals so Claude can estimate calories and protein.
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: TrainLog talks to the TrainLog server on your Mac over home Wi-Fi.
     info:
       path: TrainLog/Info.plist

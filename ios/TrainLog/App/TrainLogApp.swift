@@ -26,7 +26,7 @@ struct RootView: View {
             switch tab {
             case .today: TodayView(onStartStrength: { strength = StrengthLaunch(templateId: $0) }, refresh: todayRefresh)
             case .plan: Placeholder(title: "Plan")
-            case .food: Placeholder(title: "Food")
+            case .food: FoodView()
             case .activities: Placeholder(title: "Activities")
             }
         }
@@ -60,11 +60,12 @@ struct TabBar: View {
             item(.today, "Today", "clock")
             item(.plan, "Plan", "calendar")
             Button(action: onPlus) {
+                // Food has its own volt action (Snap meal), so the + steps back there.
                 Image(systemName: "plus")
                     .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(Color.bg)
+                    .foregroundStyle(selection == .food ? Color.ink : Color.bg)
                     .frame(width: 52, height: 52)
-                    .background(Color.volt, in: Circle())
+                    .background(selection == .food ? Color.raised : Color.volt, in: Circle())
             }
             .frame(maxWidth: .infinity)
             .padding(.top, -4)

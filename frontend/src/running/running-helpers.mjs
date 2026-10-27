@@ -177,3 +177,31 @@ export const halfArc = (cx, cy, r, from, to) => {
   const [x1, y1] = polar(cx, cy, r, a1)
   return `M${x0.toFixed(2)},${y0.toFixed(2)}A${r},${r} 0 0 1 ${x1.toFixed(2)},${y1.toFixed(2)}`
 }
+
+// Comeback chart fitness line: the best effort VDOT in a rolling window, so a month of only easy
+// running (no fast stretch to measure) doesn't read as lost fitness. Null once the window is empty.
+export const rollingBest = (values, window = 3) => values.map((_, index) => {
+  const recent = values.slice(Math.max(0, index - window + 1), index + 1).filter((value) => value != null)
+  return recent.length ? Math.max(...recent) : null
+})
+
+// What the comeback chart says: change in the fitness line over the last `span` months, the
+// volume behind it, and the lowest point in view (when the line has climbed off it).
+export const comebackStory = (months, fitness, span = 6) => {
+  const last = fitness.findLastIndex((value) => value != null)
+  if (last < 0) return null
+  const from = fitness.findIndex((value, index) => value != null && index >= last - span)
+  const delta = fitness[last] - fitness[from]
+  const recent = months.slice(-span)
+  const km = recent.reduce((sum, month) => sum + month.km, 0) / Math.max(1, recent.length)
+  let low = null
+  fitness.forEach((value, index) => { if (value != null && (low == null || value <= low.value)) low = { value, index } })
+  return {
+    now: fitness[last],
+    delta: Number(delta.toFixed(1)),
+    months: last - from,
+    direction: delta >= 1 ? 'up' : delta <= -1 ? 'down' : 'flat',
+    km: Math.round(km),
+    low: low && low.index < last && fitness[last] - low.value >= 1 ? { value: low.value, month: months[low.index].month } : null,
+  }
+}

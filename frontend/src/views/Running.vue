@@ -40,9 +40,9 @@
       <section class="card motion-section" aria-labelledby="curve-title">
         <div class="card-head">
           <span class="sport-icon"><NavIcon name="metrics" /></span>
-          <div><h2 id="curve-title">Comeback curve</h2><p>Every month of your running: race-like efforts, heart-rate fitness and volume</p></div>
+          <div><h2 id="curve-title">Comeback curve</h2><p>Is the comeback working? Your fitness line month by month, with the volume behind it</p></div>
         </div>
-        <RunComebackChart :timeline="data.timeline" :peak="vdot.peak?.vdot ?? null" :peak-month="vdot.peak?.date.slice(0, 7) ?? ''" :current="vdot.current" />
+        <RunComebackChart :timeline="data.timeline" :peak="vdot.peak?.vdot ?? null" :peak-month="vdot.peak?.date.slice(0, 7) ?? ''" :current="vdot.current" :basis="vdot.basis" />
       </section>
 
       <div class="two-col motion-section">

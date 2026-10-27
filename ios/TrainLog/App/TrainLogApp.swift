@@ -17,12 +17,13 @@ enum AppTab: Hashable {
 struct RootView: View {
     @State private var tab: AppTab = .today
     @State private var showQuickLog = false
+    @State private var strength: StrengthLaunch?
 
     var body: some View {
         ZStack {
             Color.bg.ignoresSafeArea()
             switch tab {
-            case .today: TodayView()
+            case .today: TodayView(onStartStrength: { strength = StrengthLaunch(templateId: $0) })
             case .plan: Placeholder(title: "Plan")
             case .food: Placeholder(title: "Food")
             case .activities: Placeholder(title: "Activities")
@@ -36,7 +37,16 @@ struct RootView: View {
                 .presentationDetents([.large])
                 .presentationBackground(Color.card)
         }
+        .fullScreenCover(item: $strength) { launch in
+            StrengthSessionView(templateId: launch.templateId)
+        }
     }
+}
+
+/// Opens the strength session screen; a nil template resumes the active workout.
+struct StrengthLaunch: Identifiable {
+    let id = UUID()
+    let templateId: Int?
 }
 
 /// Bottom bar from the artboard: four tabs around one volt + that opens the quick log sheet.

@@ -57,12 +57,38 @@ struct APIClient: Sendable {
         }
     }
 
-    private func fetch(_ path: String) async throws -> Data {
+    static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        return encoder
+    }()
+
+    /// GET without the offline fallback, for state that must be live (an active workout).
+    func getLive<T: Decodable & Sendable>(_ path: String, as type: T.Type = T.self) async throws -> T {
+        try Self.decoder.decode(T.self, from: try await fetch(path))
+    }
+
+    /// POST / PUT / DELETE with an already-encoded JSON body.
+    @discardableResult
+    func send(_ method: String, _ path: String, body: Data? = nil) async throws -> Data {
+        try await fetch(path, method: method, body: body)
+    }
+
+    func send<T: Decodable & Sendable>(_ method: String, _ path: String, body: Data? = nil, as type: T.Type) async throws -> T {
+        try Self.decoder.decode(T.self, from: try await fetch(path, method: method, body: body))
+    }
+
+    private func fetch(_ path: String, method: String = "GET", body: Data? = nil) async throws -> Data {
         guard let url = URL(string: baseURL.trimmingCharacters(in: .init(charactersIn: "/")) + path) else {
             throw APIError.badURL(baseURL)
         }
         var request = URLRequest(url: url)
         request.timeoutInterval = 8
+        request.httpMethod = method
+        if let body {
+            request.httpBody = body
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
         let data: Data
         let response: URLResponse
         do {
@@ -74,6 +100,57 @@ struct APIClient: Sendable {
             throw APIError.status(http.statusCode)
         }
         return data
+    }
+}
+
+/// Writes made while the server was unreachable, replayed in order once it's back. Kept in
+/// Application Support so a logged set survives the app being killed.
+struct WriteQueue: Sendable {
+    struct Write: Codable, Sendable, Equatable {
+        let method: String
+        let path: String
+        let body: Data?
+    }
+
+    var file: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        .appending(path: "write-queue.json")
+
+    var pending: [Write] {
+        (try? Data(contentsOf: file)).flatMap { try? JSONDecoder().decode([Write].self, from: $0) } ?? []
+    }
+
+    func append(_ write: Write) {
+        save(pending + [write])
+    }
+
+    /// Sends queued writes in order. Stops at the first unreachable one; drops writes the server
+    /// rejects (e.g. a set in a workout finished on the web) so one bad write can't block the rest.
+    /// Returns whether the queue is now empty.
+    @discardableResult
+    func flush(with client: APIClient) async -> Bool {
+        var remaining = pending
+        while let write = remaining.first {
+            do {
+                try await client.send(write.method, write.path, body: write.body)
+            } catch APIError.status(let code) where (400..<500).contains(code) {
+                // Rejected for good; fall through and drop it.
+            } catch {
+                save(remaining)
+                return false
+            }
+            remaining.removeFirst()
+        }
+        save(remaining)
+        return true
+    }
+
+    private func save(_ writes: [Write]) {
+        try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if writes.isEmpty {
+            try? FileManager.default.removeItem(at: file)
+        } else if let data = try? JSONEncoder().encode(writes) {
+            try? data.write(to: file, options: .atomic)
+        }
     }
 }
 

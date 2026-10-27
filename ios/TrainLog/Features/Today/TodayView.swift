@@ -3,6 +3,7 @@ import SwiftUI
 struct TodayView: View {
     @State private var model = TodayModel()
     @State private var showFallback = false
+    var onStartStrength: (Int?) -> Void = { _ in }
 
     var body: some View {
         ScrollView {
@@ -12,7 +13,7 @@ struct TodayView: View {
                     if model.offline, let syncedAt = model.syncedAt {
                         offlineNote(syncedAt)
                     }
-                    SessionCard(data: data, showFallback: $showFallback)
+                    SessionCard(data: data, showFallback: $showFallback, onStartStrength: onStartStrength)
                     ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone)
                     WeekCard(week: data.week, minutes: data.weekMinutes, today: data.date)
                 } else if let error = model.error {
@@ -91,6 +92,7 @@ struct TodayView: View {
 private struct SessionCard: View {
     let data: PhoneToday
     @Binding var showFallback: Bool
+    let onStartStrength: (Int?) -> Void
 
     var body: some View {
         if let session = data.today, session.sport != .rest {
@@ -147,11 +149,12 @@ private struct SessionCard: View {
                 .padding(.top, 16)
             } else {
                 Button {
-                    // Strength session screen (frame 02) is the next screen to build.
+                    onStartStrength(session.strength?.templateId)
                 } label: {
                     Label("Start session", systemImage: "play.fill")
                 }
                 .buttonStyle(VoltButtonStyle())
+                .disabled(session.strength == nil)
                 .padding(.top, 16)
 
                 HStack(spacing: 8) {

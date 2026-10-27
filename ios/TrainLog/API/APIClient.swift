@@ -79,8 +79,8 @@ struct APIClient: Sendable {
         try await fetch(path, method: method, body: body, timeout: timeout)
     }
 
-    func send<T: Decodable & Sendable>(_ method: String, _ path: String, body: Data? = nil, as type: T.Type) async throws -> T {
-        try Self.decoder.decode(T.self, from: try await fetch(path, method: method, body: body))
+    func send<T: Decodable & Sendable>(_ method: String, _ path: String, body: Data? = nil, as type: T.Type, timeout: TimeInterval = 8) async throws -> T {
+        try Self.decoder.decode(T.self, from: try await fetch(path, method: method, body: body, timeout: timeout))
     }
 
     private func fetch(_ path: String, method: String = "GET", body: Data? = nil, timeout: TimeInterval = 8) async throws -> Data {

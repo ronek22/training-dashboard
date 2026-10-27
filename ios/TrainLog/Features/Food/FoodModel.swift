@@ -155,7 +155,8 @@ final class MealEstimateModel {
         )
         let api = client()
         do {
-            var job = try await api.send("POST", "/phone/meal-estimate", body: try APIClient.encoder.encode(request), as: MealEstimateJob.self)
+            // A photo is a few hundred KB; on weak Wi-Fi the upload alone can outlast the default 8 s.
+            var job = try await api.send("POST", "/phone/meal-estimate", body: try APIClient.encoder.encode(request), as: MealEstimateJob.self, timeout: 45)
             while job.status != "succeeded" {
                 if job.status == "failed" { throw EstimateFailed(message: job.message ?? "The estimate failed.") }
                 phase = .estimating(job.message ?? "Estimating…")

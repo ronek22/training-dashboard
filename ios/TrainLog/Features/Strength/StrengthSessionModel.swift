@@ -184,8 +184,9 @@ final class StrengthSessionModel {
 
     private func close() async {
         store.clear()
-        phase = .closed
+        // Flush before closing so Today's reload doesn't still see the workout as open.
         unsynced = !(await queue.flush(with: client()))
+        phase = .closed
     }
 
     /// Replays queued writes, then trusts the server's copy (its progression and position).

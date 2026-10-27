@@ -10,6 +10,8 @@ final class TodayModel {
     private(set) var offline = false
     private(set) var error: String?
     private(set) var loading = false
+    /// An open strength workout (started here or on the web), for the Resume banner.
+    private(set) var activeWorkout: StrengthSession?
 
     private let client: () -> APIClient
 
@@ -28,8 +30,10 @@ final class TodayModel {
     func load() async {
         loading = true
         defer { loading = false }
+        let api = client()
+        async let workout = Self.activeWorkout(api)
         do {
-            let loaded = try await client().get(Self.path, as: PhoneToday.self)
+            let loaded = try await api.get(Self.path, as: PhoneToday.self)
             data = loaded.value
             syncedAt = loaded.syncedAt
             offline = loaded.fromCache
@@ -37,6 +41,16 @@ final class TodayModel {
         } catch {
             offline = data != nil
             self.error = error.localizedDescription
+        }
+        activeWorkout = await workout
+    }
+
+    /// The server's open workout; when it's unreachable, the one this phone has in progress.
+    private static func activeWorkout(_ client: APIClient) async -> StrengthSession? {
+        do {
+            return try await client.getLive("/strength/workouts/sessions/active", as: StrengthSession?.self)
+        } catch {
+            return SessionStore().load().flatMap { $0.isActive ? $0 : nil }
         }
     }
 }

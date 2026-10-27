@@ -18,12 +18,13 @@ struct RootView: View {
     @State private var tab: AppTab = .today
     @State private var showQuickLog = false
     @State private var strength: StrengthLaunch?
+    @State private var todayRefresh = 0
 
     var body: some View {
         ZStack {
             Color.bg.ignoresSafeArea()
             switch tab {
-            case .today: TodayView(onStartStrength: { strength = StrengthLaunch(templateId: $0) })
+            case .today: TodayView(onStartStrength: { strength = StrengthLaunch(templateId: $0) }, refresh: todayRefresh)
             case .plan: Placeholder(title: "Plan")
             case .food: Placeholder(title: "Food")
             case .activities: Placeholder(title: "Activities")
@@ -37,7 +38,7 @@ struct RootView: View {
                 .presentationDetents([.large])
                 .presentationBackground(Color.card)
         }
-        .fullScreenCover(item: $strength) { launch in
+        .fullScreenCover(item: $strength, onDismiss: { todayRefresh += 1 }) { launch in
             StrengthSessionView(templateId: launch.templateId)
         }
     }

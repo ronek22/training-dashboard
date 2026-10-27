@@ -4,16 +4,26 @@ struct TodayView: View {
     @State private var model = TodayModel()
     @State private var showFallback = false
     var onStartStrength: (Int?) -> Void = { _ in }
+    /// Bumped when the strength screen closes, so the banner and plan reload.
+    var refresh = 0
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 header
+                if let workout = model.activeWorkout {
+                    ResumeWorkoutCard(workout: workout) { onStartStrength(nil) }
+                }
                 if let data = model.data {
                     if model.offline, let syncedAt = model.syncedAt {
                         offlineNote(syncedAt)
                     }
-                    SessionCard(data: data, showFallback: $showFallback, onStartStrength: onStartStrength)
+                    SessionCard(
+                        data: data,
+                        showFallback: $showFallback,
+                        workoutOpen: model.activeWorkout != nil,
+                        onStartStrength: onStartStrength
+                    )
                     ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone)
                     WeekCard(week: data.week, minutes: data.weekMinutes, today: data.date)
                 } else if let error = model.error {
@@ -32,7 +42,7 @@ struct TodayView: View {
         }
         .background(Color.bg)
         .refreshable { await model.load() }
-        .task { await model.load() }
+        .task(id: refresh) { await model.load() }
     }
 
     private var header: some View {
@@ -92,6 +102,8 @@ struct TodayView: View {
 private struct SessionCard: View {
     let data: PhoneToday
     @Binding var showFallback: Bool
+    /// The Resume banner owns the volt action while a workout is open.
+    let workoutOpen: Bool
     let onStartStrength: (Int?) -> Void
 
     var body: some View {
@@ -147,7 +159,7 @@ private struct SessionCard: View {
                 .frame(maxWidth: .infinity, minHeight: 52)
                 .background(Color.volt.opacity(0.12), in: Capsule())
                 .padding(.top, 16)
-            } else {
+            } else if !workoutOpen {
                 Button {
                     onStartStrength(session.strength?.templateId)
                 } label: {
@@ -219,6 +231,63 @@ private struct SessionCard: View {
             return parts.joined(separator: " · ")
         }
         return session.intentLabel
+    }
+}
+
+// MARK: - Resume
+
+private struct ResumeWorkoutCard: View {
+    let workout: StrengthSession
+    let onResume: () -> Void
+
+    var body: some View {
+        let working = workout.exercises.flatMap(\.workingSets)
+        let done = working.filter(\.isCompleted).count
+        let index = workout.exercises.firstIndex { $0.exerciseOrder == workout.currentExerciseOrder }
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Kicker("Workout in progress", color: Color(hex: 0xFF7AB5))
+                Spacer()
+                if let startedAt = StrengthFormat.parseMoment(workout.startedAt) {
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(StrengthFormat.clock(Int(context.date.timeIntervalSince(startedAt))))
+                            .font(AppFont.number(20))
+                            .foregroundStyle(Color.ink)
+                            .monospacedDigit()
+                    }
+                }
+            }
+            Text(workout.templateName.uppercased())
+                .font(AppFont.title(26))
+                .foregroundStyle(Color.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .padding(.top, 8)
+            Text(meta(done: done, total: working.count, index: index))
+                .font(AppFont.body(13))
+                .foregroundStyle(Color.muted)
+                .padding(.top, 4)
+            GeometryReader { proxy in
+                Capsule().fill(Color.track).overlay(alignment: .leading) {
+                    Capsule().fill(Color.strength)
+                        .frame(width: proxy.size.width * (working.isEmpty ? 0 : Double(done) / Double(working.count)))
+                }
+            }
+            .frame(height: 4)
+            .padding(.top, 12)
+            Button(action: onResume) {
+                Label("Resume workout", systemImage: "play.fill")
+            }
+            .buttonStyle(VoltButtonStyle())
+            .padding(.top, 16)
+        }
+        .card(border: Color.strength.opacity(0.35))
+    }
+
+    private func meta(done: Int, total: Int, index: Int?) -> String {
+        var parts = ["\(done) of \(total) sets"]
+        if let index { parts.insert("Exercise \(index + 1) of \(workout.exercises.count)", at: 0) }
+        return parts.joined(separator: " · ")
     }
 }
 

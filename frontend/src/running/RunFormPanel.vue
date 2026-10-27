@@ -1,5 +1,6 @@
 <template>
   <div class="form-panel">
+    <RunnerFigure v-if="animatable" :form="form" />
     <div class="metric-grid">
       <article v-for="metric in metrics" :key="metric.key" class="metric" :title="metric.note">
         <span class="mini-label">{{ metric.label }}</span>
@@ -53,10 +54,12 @@
 
 <script setup>
 import { computed } from 'vue'
+import RunnerFigure from './RunnerFigure.vue'
 import { FORM_METRICS, dayMonth, linePath, pace, rangeMarker, scale, signed, trendTone } from './running-helpers.mjs'
 
 const props = defineProps({ form: { type: Object, required: true } })
 
+const animatable = computed(() => ['cadence_spm', 'stance_time_ms', 'vertical_oscillation_cm', 'step_length_m'].every((key) => props.form.latest[key] != null))
 const fmt = (value, digits) => (value == null ? '—' : Number(value).toFixed(digits))
 const THRESHOLDS = { cadence_spm: 1, stance_time_ms: 3, vertical_oscillation_cm: 0.2, vertical_ratio_pct: 0.2, step_length_m: 0.02 }
 

@@ -125,6 +125,29 @@
                     </component>
                     <p v-else><ChatSpans :spans="block.spans" /></p>
                   </template>
+                  <form v-if="rememberDraft?.messageId === message.id" class="coach-remember" @submit.prevent="saveRemember">
+                    <label :for="`remember-${message.id}`">Remember as a standing preference</label>
+                    <textarea
+                      :id="`remember-${message.id}`"
+                      ref="rememberInput"
+                      v-model="rememberDraft.text"
+                      rows="3"
+                      :maxlength="PREFERENCE_MAX_LENGTH"
+                      @keydown.esc.stop="cancelRemember"
+                    ></textarea>
+                    <small>Planning and later chats follow it until you retire it on the Athlete page.</small>
+                    <p v-if="rememberDraft.error" class="coach-error" role="alert">{{ rememberDraft.error }}</p>
+                    <div class="coach-remember-actions">
+                      <button type="button" @click="cancelRemember">Cancel</button>
+                      <button type="submit" class="is-primary" :disabled="rememberDraft.saving || !rememberDraft.text.trim()">
+                        {{ rememberDraft.saving ? 'Saving…' : 'Save preference' }}
+                      </button>
+                    </div>
+                  </form>
+                  <div v-else class="coach-message-actions">
+                    <router-link v-if="rememberedIds.has(message.id)" class="coach-remembered" to="/athlete#preferences" @click="closeDrawer">✓ Remembered</router-link>
+                    <button v-else type="button" class="coach-remember-button" @click="startRemember(message)">Remember this</button>
+                  </div>
                 </div>
               </article>
               <article v-if="chatSending" class="coach-message is-assistant is-thinking">
@@ -254,9 +277,9 @@ import { computed, h, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { format } from 'date-fns'
 import { useApi } from '../stores/api'
-import { coachChatAvailable, coachChatChanged, coachChatRequest } from '../coach/chat-bus'
+import { coachChatAvailable, coachChatChanged, coachChatRequest, coachPreferencesChanged } from '../coach/chat-bus'
 import { groupConversations, momentRequest, pageSuggestions } from '../coach/session-chat.mjs'
-import { conversationTime, parseChatMarkdown, splitConversationTitle } from '../coach/chat-markdown.mjs'
+import { PREFERENCE_MAX_LENGTH, conversationTime, parseChatMarkdown, preferenceDraft, splitConversationTitle } from '../coach/chat-markdown.mjs'
 import {
   coachDiagnosticsPayload,
   coachDiagnosticsWarning,
@@ -293,6 +316,10 @@ let pendingPollWait = null
 
 const route = useRoute()
 const moments = ref([])
+// "Remember this": the message being turned into a standing preference, and messages already saved.
+const rememberDraft = ref(null)
+const rememberInput = ref(null)
+const rememberedIds = ref(new Set())
 const progressDetailsOpen = ref(false)
 const conversationGroups = computed(() => groupConversations(chatConversations.value))
 const suggestions = computed(() => pageSuggestions(route.path))
@@ -504,6 +531,7 @@ const loadChat = async () => {
 const openDrawer = async () => {
   drawerOpen.value = true
   void loadMoments()
+  void loadRemembered()
   if (!chatLoaded.value) await loadChat()
   else if (activeConversationId.value) await markRead(activeConversationId.value)
   await nextTick()
@@ -512,10 +540,50 @@ const openDrawer = async () => {
 
 const closeDrawer = () => { drawerOpen.value = false }
 
+const loadRemembered = async () => {
+  try {
+    const { data } = await api.getCoachPreferences({ include_retired: true })
+    rememberedIds.value = new Set(data.map((item) => item.source_message_id).filter(Boolean))
+  } catch {
+    // The marks are a convenience; "Remember this" still works without them.
+  }
+}
+
+const startRemember = async (message) => {
+  rememberDraft.value = { messageId: message.id, text: preferenceDraft(message.content), saving: false, error: '' }
+  await nextTick()
+  const input = Array.isArray(rememberInput.value) ? rememberInput.value[0] : rememberInput.value
+  input?.focus()
+  input?.select()
+}
+
+const cancelRemember = () => { rememberDraft.value = null }
+
+const saveRemember = async () => {
+  const draft = rememberDraft.value
+  if (!draft || draft.saving || !draft.text.trim()) return
+  draft.saving = true
+  draft.error = ''
+  try {
+    await api.createCoachPreference({
+      content: draft.text,
+      conversation_id: activeConversationId.value,
+      message_id: draft.messageId,
+    })
+    rememberedIds.value = new Set([...rememberedIds.value, draft.messageId])
+    rememberDraft.value = null
+    coachPreferencesChanged.value += 1
+  } catch (error) {
+    draft.saving = false
+    draft.error = error?.response?.data?.detail || error?.message || 'The preference could not be saved.'
+  }
+}
+
 const selectConversation = async (conversationId) => {
   if (chatSending.value || conversationId === activeConversationId.value) return
   activeConversationId.value = conversationId
   chatError.value = ''
+  rememberDraft.value = null
   clearCoachJobProgress()
   await loadConversationMessages(conversationId)
 }
@@ -640,6 +708,17 @@ const openLinkedConversation = async (request) => {
   if (!request || chatSending.value) return
   drawerOpen.value = true
   chatError.value = ''
+  void loadRemembered()
+  // A saved preference links back to the chat it came from.
+  if (request.conversation_id) {
+    if (!chatLoaded.value) await loadChat()
+    if (!chatConversations.value.some((item) => item.id === request.conversation_id)) {
+      chatError.value = 'That conversation was deleted.'
+      return
+    }
+    await selectConversation(request.conversation_id)
+    return
+  }
   try {
     const { data: conversation } = await api.openCoachChatConversation({
       context_kind: request.context_kind,
@@ -846,6 +925,20 @@ onUnmounted(() => {
 .coach-message-body strong { color: var(--text); font-weight: 700; }
 .coach-message-body code { padding: 1px 5px; border-radius: 5px; background: rgb(var(--ov-rgb) / .07); font: 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .coach-message.is-user { justify-content: flex-end; }
+.coach-message-actions { display: flex; margin-top: 6px; }
+.coach-message.is-user .coach-message-actions { justify-content: flex-end; }
+.coach-remember-button, .coach-remembered { padding: 2px 0; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 650; text-decoration: none; cursor: pointer; }
+.coach-message:not(:hover):not(:focus-within) .coach-remember-button { opacity: 0; }
+.coach-remember-button:hover, .coach-remember-button:focus-visible { color: var(--accent-strong); }
+.coach-remembered { color: var(--success, var(--accent-strong)); }
+.coach-remember { display: grid; gap: 6px; margin-top: 10px; padding: 12px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); color: var(--text); }
+.coach-remember label { font-size: 12px; font-weight: 700; }
+.coach-remember textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface2, var(--surface)); color: var(--text); font: inherit; font-size: 13.5px; line-height: 1.5; resize: vertical; }
+.coach-remember small { color: var(--muted); font-size: 11.5px; }
+.coach-remember-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.coach-remember-actions button { padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: 9px; background: transparent; color: var(--text-soft); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.coach-remember-actions button.is-primary { border-color: transparent; background: var(--volt-fill); color: #0a0c11; }
+.coach-remember-actions button:disabled { opacity: .45; cursor: not-allowed; }
 .coach-message.is-user .coach-message-body { flex: 0 1 auto; max-width: 78%; padding: 10px 15px; border-radius: 16px 16px 4px 16px; background: rgba(95, 140, 255, .2); color: var(--text); }
 .coach-message.is-user .coach-message-author { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 .coach-message.is-user p { white-space: pre-wrap; }

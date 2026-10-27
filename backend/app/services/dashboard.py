@@ -7,6 +7,7 @@ from typing import Callable, Optional
 from .plans import build_multi_week_execution_trend, serialize_weekly_plan
 from .plans import format_workout_intent_label, normalize_workout_intent
 from .checkins import get_daily_checkin
+from .notes import active_preferences_context
 from .ftp import ftp_on
 from .power_estimate import CALIBRATION_BAND, MODEL_VERSION as POWER_ESTIMATE_MODEL, estimated_tss, estimates_for
 from .downshift import build_downshift, downshift_coaching_context
@@ -1288,6 +1289,7 @@ def build_recent_context(
         "recent_feedback": context_payload["recent_feedback"],
         "latest_subjective_state": context_payload["latest_subjective_state"],
         "recent_notes": context_payload["recent_notes"],
+        "standing_preferences": active_preferences_context(conn),
         "latest_metrics": [dict(row) for row in latest_metrics],
         "weekly_mix": weekly_mix,
         "volume_trend": build_volume_trend(conn),

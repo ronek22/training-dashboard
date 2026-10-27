@@ -75,6 +75,11 @@ def get_chat_conversation_row(conn: sqlite3.Connection, conversation_id: int) ->
 
 def delete_chat_conversation_row(conn: sqlite3.Connection, conversation_id: int) -> bool:
     conn.execute("DELETE FROM coach_chat_messages WHERE conversation_id = ?", (conversation_id,))
+    # A saved preference outlives its chat; it just loses the link.
+    conn.execute(
+        "UPDATE coach_notes SET source_conversation_id = NULL, source_message_id = NULL WHERE source_conversation_id = ?",
+        (conversation_id,),
+    )
     cursor = conn.execute("DELETE FROM coach_chat_conversations WHERE id = ?", (conversation_id,))
     return cursor.rowcount > 0
 
@@ -111,3 +116,49 @@ def list_chat_message_rows(conn: sqlite3.Connection, conversation_id: int, limit
         """,
         (conversation_id, limit),
     ).fetchall()
+
+
+PREFERENCE_CATEGORY = "preference"
+
+
+def insert_preference(
+    conn: sqlite3.Connection,
+    date: str,
+    content: str,
+    conversation_id: Optional[int],
+    message_id: Optional[int],
+) -> int:
+    cursor = conn.execute(
+        "INSERT INTO coach_notes (date, category, content, status, source_conversation_id, source_message_id, updated_at) "
+        "VALUES (?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP)",
+        (date, PREFERENCE_CATEGORY, content, conversation_id, message_id),
+    )
+    return cursor.lastrowid
+
+
+def list_preference_rows(conn: sqlite3.Connection, include_retired: bool = False) -> list[sqlite3.Row]:
+    where = "" if include_retired else "AND n.status = 'active'"
+    return conn.execute(
+        f"""
+        SELECT n.id, n.date, n.content, n.status, n.source_conversation_id, n.source_message_id,
+            n.created_at, n.updated_at, c.title AS source_conversation_title
+        FROM coach_notes n
+        LEFT JOIN coach_chat_conversations c ON c.id = n.source_conversation_id
+        WHERE n.category = ? {where}
+        ORDER BY n.status = 'active' DESC, n.id DESC
+        """,
+        (PREFERENCE_CATEGORY,),
+    ).fetchall()
+
+
+def get_preference_row(conn: sqlite3.Connection, preference_id: int) -> Optional[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM coach_notes WHERE id = ? AND category = ?", (preference_id, PREFERENCE_CATEGORY)
+    ).fetchone()
+
+
+def update_preference_row(conn: sqlite3.Connection, preference_id: int, content: str, status: str) -> None:
+    conn.execute(
+        "UPDATE coach_notes SET content = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (content, status, preference_id),
+    )

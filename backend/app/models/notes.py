@@ -24,3 +24,14 @@ class CoachChatContextOpen(BaseModel):
     context_id: str
     title: str
     opener: Optional[str] = None
+
+
+class CoachPreferenceCreate(BaseModel):
+    content: str
+    conversation_id: Optional[int] = None
+    message_id: Optional[int] = None
+
+
+class CoachPreferenceUpdate(BaseModel):
+    content: Optional[str] = None
+    status: Optional[str] = None

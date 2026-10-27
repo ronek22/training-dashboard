@@ -10,6 +10,9 @@ export const coachChatRequest = ref(null)
 // Bumped by the drawer when a linked conversation is opened or gets a new message.
 export const coachChatChanged = ref(0)
 
+// Bumped by the drawer when "Remember this" saves a standing preference.
+export const coachPreferencesChanged = ref(0)
+
 let sequence = 0
 export const openCoachChat = (request) => {
   sequence += 1

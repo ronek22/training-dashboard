@@ -54,6 +54,20 @@ class CoachHelperTests(unittest.TestCase):
                 "planning_brief": ["Friday free"],
             })
 
+    def test_standing_preferences_reach_planning_and_chat_prompts(self):
+        preferences = [{"preference": "No leg lifts the day before a long ride", "since": "2026-10-27"}]
+        for prompt in (
+            helper.build_prompt("2026-08-24", "", preferences),
+            helper.build_plan_revision_prompt("2026-08-24", "Move Friday", None, preferences),
+        ):
+            self.assertIn("No leg lifts the day before a long ride", prompt)
+            self.assertIn("say which one you set aside", prompt)
+        chat = helper.build_coach_chat_prompt("Can I lift Friday?", [], None, preferences)
+        self.assertIn("No leg lifts the day before a long ride", chat)
+        self.assertIn("retire it on the Athlete page", chat)
+        self.assertNotIn("Standing preferences", helper.build_prompt("2026-08-24", ""))
+        self.assertNotIn("Standing preferences", helper.build_coach_chat_prompt("Hi", []))
+
     def test_activity_prompt_uses_structured_analysis_tools(self):
         self.assertEqual(helper.validate_activity_id("healthfit:ride-123"), "healthfit:ride-123")
         with self.assertRaisesRegex(ValueError, "invalid"):

@@ -98,3 +98,19 @@ export const conversationTime = (value, now = new Date()) => {
   if (days < 7) return date.toLocaleDateString('en-GB', { weekday: 'short' })
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
+
+// Starting text for "Remember this": the message's first sentence without markdown, short enough to keep.
+export const PREFERENCE_MAX_LENGTH = 300
+export const preferenceDraft = (content) => {
+  const firstBlock = String(content || '').trim().split(/\n\s*\n/)[0] || ''
+  const plain = firstBlock
+    .split('\n')
+    .map((line) => line.replace(/^\s*(?:#+\s+|[-*•]\s+|\d+[.)]\s+)/, ''))
+    .join(' ')
+    .replace(/(\*\*|__|\*|_|`)(.+?)\1/g, '$2')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const sentence = plain.match(/^.+?[.!?](?=\s|$)/)?.[0] || plain
+  if (sentence.length <= PREFERENCE_MAX_LENGTH) return sentence
+  return sentence.slice(0, PREFERENCE_MAX_LENGTH).replace(/\s+\S*$/, '')
+}

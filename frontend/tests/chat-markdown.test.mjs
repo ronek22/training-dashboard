@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { conversationTime, parseChatMarkdown, parseInline, splitConversationTitle } from '../src/coach/chat-markdown.mjs'
+import { PREFERENCE_MAX_LENGTH, conversationTime, parseChatMarkdown, parseInline, preferenceDraft, splitConversationTitle } from '../src/coach/chat-markdown.mjs'
 
 test('inline bold, italics and code become spans', () => {
   assert.deepEqual(parseInline('Hold **195 W**, *easy* at `Z2`'), [
@@ -37,4 +37,14 @@ test('conversation times read as clock, weekday or date', () => {
   assert.equal(conversationTime(new Date(2026, 9, 13, 9, 5).toISOString(), now), 'Yesterday')
   assert.equal(conversationTime(new Date(2026, 9, 1, 9, 5).toISOString(), now), '1 Oct')
   assert.equal(conversationTime('', now), '')
+})
+
+test('Remember this starts from the first plain sentence of a message', () => {
+  assert.equal(preferenceDraft('**Agreed:** no leg lifts the day before a long ride. Upper body is fine.\n\nMore detail.'),
+    'Agreed: no leg lifts the day before a long ride.')
+  assert.equal(preferenceDraft('- Keep Mondays\n  easy'), 'Keep Mondays easy')
+  assert.equal(preferenceDraft('Ride 3.5 h on Saturday'), 'Ride 3.5 h on Saturday')
+  const long = preferenceDraft('word '.repeat(100))
+  assert.ok(long.length <= PREFERENCE_MAX_LENGTH && !long.endsWith(' '))
+  assert.equal(preferenceDraft(''), '')
 })

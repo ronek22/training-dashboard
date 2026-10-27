@@ -5,14 +5,18 @@ from typing import Optional
 from ..repositories.notes import (
     delete_chat_conversation_row,
     get_chat_conversation_row,
+    get_preference_row,
     insert_chat_conversation,
     insert_chat_message,
     insert_note,
+    insert_preference,
     list_chat_conversation_rows,
     list_chat_message_rows,
     list_note_rows,
+    list_preference_rows,
     mark_chat_conversation_read,
     touch_chat_conversation,
+    update_preference_row,
 )
 
 
@@ -141,3 +145,64 @@ def list_chat_messages_data(conn: sqlite3.Connection, conversation_id: int, limi
         raise ValueError("conversation not found")
     safe_limit = max(1, min(int(limit), 200))
     return [dict(row) for row in list_chat_message_rows(conn, conversation_id, limit=safe_limit)]
+
+
+PREFERENCE_MAX_LENGTH = 300
+PREFERENCE_STATUSES = {"active", "retired"}
+
+
+def _preference_text(content: str) -> str:
+    text = " ".join(str(content or "").split())
+    if not text:
+        raise ValueError("the preference must not be empty")
+    if len(text) > PREFERENCE_MAX_LENGTH:
+        raise ValueError(f"keep the preference under {PREFERENCE_MAX_LENGTH} characters")
+    return text
+
+
+def list_preferences_data(conn: sqlite3.Connection, include_retired: bool = False) -> list[dict]:
+    return [dict(row) for row in list_preference_rows(conn, include_retired)]
+
+
+def create_preference_data(
+    conn: sqlite3.Connection,
+    content: str,
+    conversation_id: Optional[int] = None,
+    message_id: Optional[int] = None,
+    today: Optional[date] = None,
+) -> dict:
+    """A standing preference agreed in the coach chat; planning and later chats follow it until it is retired."""
+    text = _preference_text(content)
+    if conversation_id is not None and not get_chat_conversation_row(conn, conversation_id):
+        raise ValueError("conversation not found")
+    if message_id is not None:
+        message = conn.execute("SELECT conversation_id FROM coach_chat_messages WHERE id = ?", (message_id,)).fetchone()
+        if not message or (conversation_id is not None and message["conversation_id"] != conversation_id):
+            raise ValueError("message not found in that conversation")
+        conversation_id = message["conversation_id"]
+    preference_id = insert_preference(conn, (today or date.today()).isoformat(), text, conversation_id, message_id)
+    conn.commit()
+    return next(item for item in list_preferences_data(conn, include_retired=True) if item["id"] == preference_id)
+
+
+def update_preference_data(
+    conn: sqlite3.Connection,
+    preference_id: int,
+    content: Optional[str] = None,
+    status: Optional[str] = None,
+) -> dict:
+    row = get_preference_row(conn, preference_id)
+    if not row:
+        raise LookupError("preference not found")
+    text = row["content"] if content is None else _preference_text(content)
+    new_status = row["status"] if status is None else str(status).strip().lower()
+    if new_status not in PREFERENCE_STATUSES:
+        raise ValueError("status must be active or retired")
+    update_preference_row(conn, preference_id, text, new_status)
+    conn.commit()
+    return next(item for item in list_preferences_data(conn, include_retired=True) if item["id"] == preference_id)
+
+
+def active_preferences_context(conn: sqlite3.Connection) -> list[dict]:
+    """What the planner and coach chat read: the rule and when it was agreed."""
+    return [{"id": row["id"], "preference": row["content"], "since": row["date"]} for row in list_preference_rows(conn)]

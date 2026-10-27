@@ -256,6 +256,10 @@ def init_db(snapshot: bool = True):
             date TEXT NOT NULL,
             category TEXT NOT NULL,
             content TEXT NOT NULL,
+            status TEXT,
+            source_conversation_id INTEGER,
+            source_message_id INTEGER,
+            updated_at TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -879,6 +883,16 @@ def init_db(snapshot: bool = True):
         )
     if "effort" not in strength_set_columns:
         conn.execute("ALTER TABLE strength_session_sets ADD COLUMN effort TEXT")
+    coach_note_columns = {row["name"] for row in conn.execute("PRAGMA table_info(coach_notes)").fetchall()}
+    # Standing preferences are coach notes saved from a chat; they can be retired and link back to it.
+    for column, definition in (
+        ("status", "TEXT"),
+        ("source_conversation_id", "INTEGER"),
+        ("source_message_id", "INTEGER"),
+        ("updated_at", "TEXT"),
+    ):
+        if column not in coach_note_columns:
+            conn.execute(f"ALTER TABLE coach_notes ADD COLUMN {column} {definition}")
     chat_conversation_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(coach_chat_conversations)").fetchall()
     }

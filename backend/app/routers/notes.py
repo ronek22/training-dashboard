@@ -3,17 +3,27 @@ from datetime import date
 from typing import Optional
 
 from ..db import get_db
-from ..models.notes import CoachChatContextOpen, CoachChatConversationCreate, CoachChatMessageCreate, CoachNote
+from ..models.notes import (
+    CoachChatContextOpen,
+    CoachChatConversationCreate,
+    CoachChatMessageCreate,
+    CoachNote,
+    CoachPreferenceCreate,
+    CoachPreferenceUpdate,
+)
 from ..services.notes import (
     create_chat_conversation_data,
     create_chat_message_data,
     create_note_data,
+    create_preference_data,
     delete_chat_conversation_data,
     list_chat_conversations_data,
     list_chat_messages_data,
     list_notes_data,
+    list_preferences_data,
     mark_chat_conversation_read_data,
     open_context_conversation_data,
+    update_preference_data,
 )
 from ..services.coach_moments import build_coach_moments
 
@@ -115,6 +125,41 @@ def create_chat_message(message: CoachChatMessageCreate):
                 message.role,
                 message.content,
             )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        conn.close()
+
+
+@router.get("/notes/preferences")
+def list_preferences(include_retired: bool = False):
+    conn = get_db()
+    try:
+        return list_preferences_data(conn, include_retired=include_retired)
+    finally:
+        conn.close()
+
+
+@router.post("/notes/preferences", status_code=201)
+def create_preference(preference: CoachPreferenceCreate):
+    conn = get_db()
+    try:
+        try:
+            return create_preference_data(conn, preference.content, preference.conversation_id, preference.message_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        conn.close()
+
+
+@router.patch("/notes/preferences/{preference_id}")
+def update_preference(preference_id: int, update: CoachPreferenceUpdate):
+    conn = get_db()
+    try:
+        try:
+            return update_preference_data(conn, preference_id, update.content, update.status)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
     finally:

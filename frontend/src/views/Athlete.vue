@@ -134,6 +134,17 @@
             <textarea v-model="profileForm[note.key]" :rows="note.rows" :placeholder="note.placeholder"></textarea>
           </label>
         </section>
+
+        <!-- Standing preferences saved from the coach chat -->
+        <section id="preferences" class="card athlete-card athlete-card-wide" aria-labelledby="preferences-title">
+          <header class="athlete-card-head">
+            <div>
+              <h2 id="preferences-title">Agreed with the coach</h2>
+              <p class="used-by">Saved from the coach chat with Remember this. Weekly planning and later chats follow the active ones; retire one when it no longer applies.</p>
+            </div>
+          </header>
+          <CoachPreferences />
+        </section>
       </div>
 
       <div v-show="tab === 'zones'" id="panel-zones" class="athlete-panel" role="tabpanel">
@@ -510,6 +521,7 @@ import { cached, onCacheRefresh, useApi } from '../stores/api'
 import { ZONE_COLORS } from '../components/activityVisuals'
 import PlateStack from '../components/PlateStack.vue'
 import KitList from '../components/KitList.vue'
+import CoachPreferences from '../components/CoachPreferences.vue'
 import AnimatedNumber from '../components/AnimatedNumber.vue'
 import { DEFAULT_PLATES, barbellRange, plateColor } from '../coach/plates.mjs'
 
@@ -577,7 +589,7 @@ const noteFields = [
 ]
 
 // Each section lives on one tab; old #section links still land on it.
-const sectionTabs = { profile: 'profile', notes: 'profile', thresholds: 'zones', 'hr-zones': 'zones', restrictions: 'limits', 'body-areas': 'limits', rotation: 'strength', equipment: 'strength', kit: 'kit' }
+const sectionTabs = { profile: 'profile', notes: 'profile', preferences: 'profile', thresholds: 'zones', 'hr-zones': 'zones', restrictions: 'limits', 'body-areas': 'limits', rotation: 'strength', equipment: 'strength', kit: 'kit' }
 const tabKeys = ['profile', 'zones', 'limits', 'strength', 'kit']
 const tabFromHash = (hash) => {
   const key = hash.slice(1)

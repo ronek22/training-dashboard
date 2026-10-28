@@ -47,7 +47,10 @@ struct PlanView: View {
             .background(Color.bg)
             .toolbar(.hidden, for: .navigationBar)
             .navigationTitle("Plan")
-            .refreshable { await model.load() }
+            .refreshable {
+                await APIClient.current.reconnect()
+                await model.load()
+            }
             .task { await model.load() }
             .navigationDestination(for: String.self) { date in
                 PlanDayView(model: model, date: date, onMove: { moving = $0 }, onStartStrength: onStartStrength)

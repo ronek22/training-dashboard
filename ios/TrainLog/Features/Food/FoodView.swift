@@ -36,7 +36,10 @@ struct FoodView: View {
         }
         .background(Color.bg)
         .overlay(alignment: .bottomTrailing) { snapButton }
-        .refreshable { await model.load() }
+        .refreshable {
+            await APIClient.current.reconnect()
+            await model.load()
+        }
         .task { await model.load() }
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { image in

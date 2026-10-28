@@ -31,11 +31,18 @@ final class ActivitiesModel {
         ActivityFormat.weeks(activities.filter { filter == nil || ActivityFormat.sport($0) == filter })
     }
 
+    static let listPath = "/activities?limit=60"
+
     func load() async {
         let api = client()
+        if activities.isEmpty, let cached = api.cached(Self.listPath, as: [ActivitySummary].self) {
+            activities = cached.value
+            syncedAt = cached.syncedAt
+            loaded = true
+        }
         await queue.flush(with: api)
         do {
-            let result = try await api.get("/activities?limit=60", as: [ActivitySummary].self)
+            let result = try await api.get(Self.listPath, as: [ActivitySummary].self)
             activities = result.value
             syncedAt = result.syncedAt
             offline = result.fromCache
@@ -50,6 +57,7 @@ final class ActivitiesModel {
     /// Pull to refresh: ask the server to pull new Strava activities first. A failed sync (no
     /// Strava token, Strava down) still reloads what the server has.
     func sync() async {
+        guard await client().reconnect() else { return await load() }
         let body = try? APIClient.encoder.encode(["fetch_streams": false])
         _ = try? await client().send("POST", "/integrations/strava/import", body: body, timeout: 30)
         await load()

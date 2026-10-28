@@ -29,6 +29,7 @@
 		859D6A666F8C99A4587E4D55 /* StrengthSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF38361D28FBEE8E2C70373 /* StrengthSessionView.swift */; };
 		8855717FEAFC4B6CA4379BFB /* OFL-Archivo.txt in Resources */ = {isa = PBXBuildFile; fileRef = CBB385EB2D063C2EA0283EA2 /* OFL-Archivo.txt */; };
 		8CB0D0D61C2DA03E0CB2727E /* FoodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE84774476766302F5B40E04 /* FoodTests.swift */; };
+		94D4295DC2C299DF58981A1A /* OfflineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B75853302B3165E45B90291 /* OfflineTests.swift */; };
 		9ADA8691ED676CD19EF94141 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FED9A0BA3F896F441C12CFE /* Theme.swift */; };
 		A2C995FC688A02DC863F7F96 /* ActivitiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD5EDF9EAF1496F240DB1987 /* ActivitiesView.swift */; };
 		A572A367254F23089573D64E /* PlanDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F5CA0ED7E7D3B5DB47A093 /* PlanDayView.swift */; };
@@ -74,6 +75,7 @@
 		2AF11B1C65F8EFD3AF340D10 /* BarlowCondensed-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-Bold.ttf"; sourceTree = "<group>"; };
 		3A1168AEF0F0CD20E70D9C73 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		42F5CA0ED7E7D3B5DB47A093 /* PlanDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanDayView.swift; sourceTree = "<group>"; };
+		4B75853302B3165E45B90291 /* OfflineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineTests.swift; sourceTree = "<group>"; };
 		5E1B90F67C5BEB5AA4C54A0B /* QuickLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLog.swift; sourceTree = "<group>"; };
 		64B465973FE67D56B0AD2792 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
 		6906A4138E3E54E166438B26 /* Food.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Food.swift; sourceTree = "<group>"; };
@@ -156,6 +158,7 @@
 			children = (
 				82CB4D14BAB2BB7DEC58078D /* ActivitiesTests.swift */,
 				FE84774476766302F5B40E04 /* FoodTests.swift */,
+				4B75853302B3165E45B90291 /* OfflineTests.swift */,
 				F00CD08DE079F66CE7586C33 /* PlanTests.swift */,
 				947E7B26646DCF89AEB291E0 /* QuickLogTests.swift */,
 				64B465973FE67D56B0AD2792 /* SettingsTests.swift */,
@@ -430,6 +433,7 @@
 			files = (
 				060527AC9C3F7EC7AB18CBEF /* ActivitiesTests.swift in Sources */,
 				8CB0D0D61C2DA03E0CB2727E /* FoodTests.swift in Sources */,
+				94D4295DC2C299DF58981A1A /* OfflineTests.swift in Sources */,
 				1ECE60EB652766334247F6E5 /* PlanTests.swift in Sources */,
 				BD8C1B1F425DA86FC239C2DB /* QuickLogTests.swift in Sources */,
 				D8A6B99501A49EDD398A4882 /* SettingsTests.swift in Sources */,

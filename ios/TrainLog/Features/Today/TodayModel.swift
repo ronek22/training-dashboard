@@ -31,6 +31,10 @@ final class TodayModel {
         loading = true
         defer { loading = false }
         let api = client()
+        if data == nil, let cached = api.cached(Self.path, as: PhoneToday.self) {
+            data = cached.value
+            syncedAt = cached.syncedAt
+        }
         async let workout = Self.activeWorkout(api)
         do {
             let loaded = try await api.get(Self.path, as: PhoneToday.self)

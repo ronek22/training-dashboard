@@ -22,6 +22,7 @@ struct RootView: View {
     @State private var activityDetailOpen = false
     @State private var planDetailOpen = false
     @State private var settingsOpen = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -46,9 +47,27 @@ struct RootView: View {
         }
         // Rolls the dinner nudges a week ahead.
         .task { await Reminders.apply() }
+        .task(id: scenePhase) {
+            if scenePhase == .active { await CacheWarmer.warm() }
+        }
         .fullScreenCover(item: $strength, onDismiss: { todayRefresh += 1 }) { launch in
             StrengthSessionView(templateId: launch.templateId)
         }
+    }
+}
+
+/// Fills every tab's offline cache while the Mac is reachable, so tabs that weren't opened at home
+/// still have something to show away from it. Skipped when the server is already known offline.
+enum CacheWarmer {
+    static func warm(_ api: APIClient = .current) async {
+        guard !api.reachability.knownOffline else { return }
+        let today = FoodFormat.iso(.now)
+        async let plan = try? api.get(PlanModel.weeksPath, as: [WeeklyPlan].self)
+        async let activities = try? api.get(ActivitiesModel.listPath, as: [ActivitySummary].self)
+        async let food = try? api.get(FoodModel.dayPath(today), as: FoodDay.self)
+        async let dinners = try? api.get(FoodModel.dinnersPath(today), as: DinnerWeek.self)
+        async let templates = try? api.get("/strength/workouts/templates", as: [StrengthTemplateSummary].self)
+        _ = await (plan, activities, food, dinners, templates)
     }
 }
 

@@ -47,11 +47,18 @@ final class PlanModel {
         weeks.lazy.flatMap(\.days).first { $0.date == date }
     }
 
+    static let weeksPath = "/plans/weekly?limit=4"
+
     func load() async {
         today = Self.todayISO
+        if weeks.isEmpty, let cached = client().cached(Self.weeksPath, as: [WeeklyPlan].self) {
+            weeks = cached.value.sorted { $0.weekStart < $1.weekStart }
+            syncedAt = cached.syncedAt
+            selected = PlanFormat.currentWeek(weeks.map(\.weekStart), today: today)
+        }
         do {
             // Four covers next week (when it's saved) and a few back; each week is large.
-            let result = try await client().get("/plans/weekly?limit=4", as: [WeeklyPlan].self)
+            let result = try await client().get(Self.weeksPath, as: [WeeklyPlan].self)
             weeks = result.value.sorted { $0.weekStart < $1.weekStart }
             syncedAt = result.syncedAt
             offline = result.fromCache

@@ -18,6 +18,10 @@ final class ActivityDetailModel {
     }
 
     func load() async {
+        if detail == nil, let cached = client().cached("/activities/\(id)", as: ActivityDetail.self) {
+            detail = cached.value
+            feedback = cached.value.feedback
+        }
         do {
             // The first open of an activity can fetch streams from Strava, so allow longer.
             let loaded = try await client().get("/activities/\(id)", as: ActivityDetail.self, timeout: 30)
@@ -94,7 +98,10 @@ struct ActivityDetailView: View {
                 }
             }
         }
-        .refreshable { await model.load() }
+        .refreshable {
+            await APIClient.current.reconnect()
+            await model.load()
+        }
         .task { await model.load() }
         .sheet(isPresented: $editingFeedback) {
             FeedbackSheet(title: activity?.title ?? "", existing: model.feedback) { input in

@@ -47,13 +47,21 @@ final class FoodModel {
         await load()
     }
 
+    static func dayPath(_ date: String) -> String { "/nutrition/food?date=\(date)" }
+    static func dinnersPath(_ date: String) -> String { "/nutrition/dinners?week_start=\(date)" }
+
     func load() async {
         let api = client()
-        if await queue.flush(with: api) { pending = [] }
         let date = selectedDate
-        async let dinners = try? api.get("/nutrition/dinners?week_start=\(date)", as: DinnerWeek.self)
+        if day == nil, let cached = api.cached(Self.dayPath(date), as: FoodDay.self) {
+            day = cached.value
+            syncedAt = cached.syncedAt
+            dinner = api.cached(Self.dinnersPath(date), as: DinnerWeek.self)?.value.days.first { $0.date == date }
+        }
+        if await queue.flush(with: api) { pending = [] }
+        async let dinners = try? api.get(Self.dinnersPath(date), as: DinnerWeek.self)
         do {
-            let loaded = try await api.get("/nutrition/food?date=\(date)", as: FoodDay.self)
+            let loaded = try await api.get(Self.dayPath(date), as: FoodDay.self)
             guard date == selectedDate else { return }
             day = loaded.value
             if isToday, let target = loaded.value.target?.kcal, eaten.kcal >= target {

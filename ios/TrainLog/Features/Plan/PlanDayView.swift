@@ -22,7 +22,10 @@ struct PlanDayView: View {
         .scrollIndicators(.hidden)
         .background(Color.bg)
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable { await model.load() }
+        .refreshable {
+            await APIClient.current.reconnect()
+            await model.load()
+        }
     }
 
     private func content(_ day: PlanDay) -> some View {

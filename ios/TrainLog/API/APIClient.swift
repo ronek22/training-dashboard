@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 enum APIError: LocalizedError {
     case badURL(String)
@@ -35,6 +36,7 @@ struct APIClient: Sendable {
     var baseURL: String
     var session: URLSession = .shared
     var cache = ResponseCache()
+    var reachability: Reachability = .shared
 
     static var current: APIClient {
         APIClient(baseURL: UserDefaults.standard.string(forKey: baseURLKey) ?? defaultBaseURL)
@@ -45,6 +47,13 @@ struct APIClient: Sendable {
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return decoder
     }()
+
+    /// The last good response, without touching the network: lets a screen draw at once while it
+    /// refreshes.
+    func cached<T: Decodable & Sendable>(_ path: String, as type: T.Type = T.self) -> Loaded<T>? {
+        guard let cached = cache.load(path), let value = try? Self.decoder.decode(T.self, from: cached.data) else { return nil }
+        return Loaded(value: value, syncedAt: cached.savedAt, fromCache: true)
+    }
 
     /// GET that falls back to the last good response when the server is unreachable.
     func get<T: Decodable & Sendable>(_ path: String, as type: T.Type = T.self, timeout: TimeInterval = 8) async throws -> Loaded<T> {
@@ -73,6 +82,14 @@ struct APIClient: Sendable {
         try Self.decoder.decode(T.self, from: try await fetch(path))
     }
 
+    /// Pull to refresh: forgets that the server was unreachable and asks `/health` with a short
+    /// timeout, so the screen's reload either goes live or falls back to the cache quickly.
+    @discardableResult
+    func reconnect() async -> Bool {
+        reachability.retry()
+        return (try? await fetch("/health", timeout: 3)) != nil
+    }
+
     /// POST / PUT / DELETE with an already-encoded JSON body.
     @discardableResult
     func send(_ method: String, _ path: String, body: Data? = nil, timeout: TimeInterval = 8) async throws -> Data {
@@ -87,6 +104,9 @@ struct APIClient: Sendable {
         guard let url = URL(string: baseURL.trimmingCharacters(in: .init(charactersIn: "/")) + path) else {
             throw APIError.badURL(baseURL)
         }
+        // Away from home every screen would otherwise wait out its own timeout for the same answer.
+        // Writes still try, so a meal or a set is never queued without a real attempt.
+        if method == "GET", reachability.knownOffline { throw APIError.unreachable }
         var request = URLRequest(url: url)
         request.timeoutInterval = timeout
         request.httpMethod = method
@@ -98,9 +118,14 @@ struct APIClient: Sendable {
         let response: URLResponse
         do {
             (data, response) = try await session.data(for: request)
+        } catch let error as URLError where error.code == .cancelled {
+            // The screen went away mid-load; says nothing about the server.
+            throw error
         } catch {
+            reachability.markUnreachable()
             throw APIError.unreachable
         }
+        reachability.markReachable()
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw APIError.status(http.statusCode)
         }
@@ -134,6 +159,8 @@ struct WriteQueue: Sendable {
     @discardableResult
     func flush(with client: APIClient) async -> Bool {
         var remaining = pending
+        // Don't hold a screen's load behind a write that can't go out yet.
+        if !remaining.isEmpty, client.reachability.knownOffline { return false }
         while let write = remaining.first {
             do {
                 try await client.send(write.method, write.path, body: write.body)
@@ -157,6 +184,25 @@ struct WriteQueue: Sendable {
             try? data.write(to: file, options: .atomic)
         }
     }
+}
+
+/// Whether the Mac answered lately. Once a request can't reach it, GETs fail at once (and serve the
+/// cache) for a short while instead of each waiting out its timeout; pull to refresh retries now.
+final class Reachability: Sendable {
+    static let shared = Reachability()
+    static let retryAfter: TimeInterval = 30
+
+    /// When a request last failed to reach the server; nil once one gets through.
+    private let unreachableSince = Mutex<Date?>(nil)
+
+    var knownOffline: Bool {
+        unreachableSince.withLock { $0.map { Date.now.timeIntervalSince($0) < Self.retryAfter } ?? false }
+    }
+
+    func markUnreachable() { unreachableSince.withLock { $0 = .now } }
+    func markReachable() { unreachableSince.withLock { $0 = nil } }
+    /// Lets the next request try the network again.
+    func retry() { markReachable() }
 }
 
 /// Last good response per path, in Caches.

@@ -59,7 +59,10 @@ struct TodayView: View {
             Color.clear.frame(height: 0).background(Color.bg)
         }
         .background(Color.bg)
-        .refreshable { await model.load() }
+        .refreshable {
+            await APIClient.current.reconnect()
+            await model.load()
+        }
         .task(id: refresh) { await model.load() }
     }
 

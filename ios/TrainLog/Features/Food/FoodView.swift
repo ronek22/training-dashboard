@@ -4,6 +4,7 @@ struct FoodView: View {
     @State private var model = FoodModel()
     @State private var showCamera = false
     @State private var draft: MealDraft?
+    @State private var editing: FoodEntry?
 
     var body: some View {
         ScrollView {
@@ -19,6 +20,7 @@ struct FoodView: View {
                         pending: model.pending.filter { $0.date == model.selectedDate },
                         dinner: model.plannedDinner,
                         onLogDinner: { Task { await model.logPlannedDinner() } },
+                        onEdit: { editing = $0 },
                         onDelete: { entry in Task { await model.delete(entry) } }
                     )
                 } else if let error = model.error {
@@ -51,6 +53,15 @@ struct FoodView: View {
         .sheet(item: $draft) { draft in
             MealEstimateSheet(draft: draft, date: model.selectedDate) { entry in
                 Task { await model.save(entry) }
+            }
+            .presentationDetents([.large])
+            .presentationBackground(Color.card)
+        }
+        .sheet(item: $editing) { entry in
+            MealEditSheet(entry: entry) { input in
+                Task { await model.update(entry, with: input) }
+            } onDelete: {
+                Task { await model.delete(entry) }
             }
             .presentationDetents([.large])
             .presentationBackground(Color.card)
@@ -257,6 +268,7 @@ private struct MealsCard: View {
     let pending: [FoodEntryInput]
     let dinner: DinnerWeek.Day?
     let onLogDinner: () -> Void
+    let onEdit: (FoodEntry) -> Void
     let onDelete: (FoodEntry) -> Void
 
     var body: some View {
@@ -282,14 +294,18 @@ private struct MealsCard: View {
     private var rows: [AnyView] {
         var rows = entries.map { entry in
             AnyView(
-                MealRow(
-                    icon: FoodFormat.emoji(entry.meal),
-                    title: FoodFormat.entryTitle(entry),
-                    meta: FoodFormat.entryMeta(entry),
-                    kcal: FoodFormat.kcal(entry.totals.kcal),
-                    protein: entry.totals.proteinG
-                )
+                Button { onEdit(entry) } label: {
+                    MealRow(
+                        icon: FoodFormat.emoji(entry.meal),
+                        title: FoodFormat.entryTitle(entry),
+                        meta: FoodFormat.entryMeta(entry),
+                        kcal: FoodFormat.kcal(entry.totals.kcal),
+                        protein: entry.totals.proteinG
+                    )
+                }
+                .buttonStyle(.plain)
                 .contextMenu {
+                    Button("Edit", systemImage: "pencil") { onEdit(entry) }
                     Button("Delete", systemImage: "trash", role: .destructive) { onDelete(entry) }
                 }
             )

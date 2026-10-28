@@ -108,6 +108,27 @@ final class FoodModel {
         WidgetStore.update { $0.food = food }
     }
 
+    /// Saves corrections to a logged meal; offline, the change is queued and shown straight away.
+    func update(_ entry: FoodEntry, with input: FoodEntryInput) async {
+        let api = client()
+        let path = "/nutrition/food/entries/\(entry.id)"
+        guard let body = try? APIClient.encoder.encode(input) else { return }
+        do {
+            day = try await api.send("PUT", path, body: body, as: FoodDay.self)
+            syncedAt = .now
+            offline = false
+            error = nil
+        } catch APIError.unreachable {
+            queue.append(.init(method: "PUT", path: path, body: body))
+            day = day.map { FoodFormat.replacing(entry.id, with: input, in: $0) }
+            offline = true
+        } catch {
+            self.error = error.localizedDescription
+        }
+        publishWidget()
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
     func delete(_ entry: FoodEntry) async {
         do {
             day = try await client().send("DELETE", "/nutrition/food/entries/\(entry.id)", as: FoodDay.self)
@@ -290,16 +311,43 @@ enum FoodFormat {
     }
 
     /// Scales an item's kcal and macros to new grams; an item without grams just takes them.
+    /// Zero is ignored: it's only ever on the way to typing "0.5", and scaling by it can't be undone.
     static func rescale(_ item: FoodItem, grams: Double) -> FoodItem {
+        guard grams > 0 else { return item }
         var scaled = item
         scaled.grams = grams
         guard let old = item.grams, old > 0 else { return scaled }
-        let factor = grams / old
+        return scale(scaled, by: grams / old)
+    }
+
+    /// Scales a recipe dish's kcal and macros to a new number of portions.
+    static func rescale(_ item: FoodItem, portions: Double) -> FoodItem {
+        guard portions > 0 else { return item }
+        var scaled = item
+        scaled.portions = portions
+        guard let old = item.portions, old > 0 else { return scaled }
+        return scale(scaled, by: portions / old)
+    }
+
+    private static func scale(_ item: FoodItem, by factor: Double) -> FoodItem {
+        var scaled = item
         scaled.kcal = (item.kcal * factor).rounded()
         scaled.proteinG = (item.proteinG * factor * 10).rounded() / 10
         scaled.carbsG = (item.carbsG * factor * 10).rounded() / 10
         scaled.fatG = (item.fatG * factor * 10).rounded() / 10
         return scaled
+    }
+
+    /// The day with one entry swapped for its edited version, totals recounted (for offline edits).
+    static func replacing(_ id: Int, with input: FoodEntryInput, in day: FoodDay) -> FoodDay {
+        let entries = day.entries.map { entry in
+            guard entry.id == id else { return entry }
+            return FoodEntry(id: id, date: entry.date, meal: input.meal, source: input.source, rawText: input.rawText,
+                             createdAt: entry.createdAt, items: input.items, totals: input.items.reduce(.zero, add))
+        }
+        return FoodDay(date: day.date, entries: entries, totals: entries.map(\.totals).reduce(.zero) {
+            Macros(kcal: $0.kcal + $1.kcal, proteinG: $0.proteinG + $1.proteinG, carbsG: $0.carbsG + $1.carbsG, fatG: $0.fatG + $1.fatG)
+        }, target: day.target, proteinTargetG: day.proteinTargetG)
     }
 
     static func kcal(_ value: Double) -> String {

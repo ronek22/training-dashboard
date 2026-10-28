@@ -32,7 +32,7 @@ struct MealEstimateSheet: View {
                         .padding(12)
                         .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
                         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
-                    mealPicker
+                    MealPicker(selection: $model.meal)
                     result
                 }
                 .padding(.horizontal, 16)
@@ -124,28 +124,6 @@ struct MealEstimateSheet: View {
         }
     }
 
-    private var mealPicker: some View {
-        HStack(spacing: 4) {
-            ForEach(FoodFormat.meals, id: \.value) { meal in
-                let selected = model.meal == meal.value
-                Button {
-                    model.meal = meal.value
-                } label: {
-                    Text(meal.label)
-                        .font(AppFont.body(13, weight: .semibold))
-                        .foregroundStyle(selected ? Color.ink : Color.muted)
-                        .frame(maxWidth: .infinity, minHeight: 36)
-                        .background(selected ? Color.raised : .clear, in: RoundedRectangle(cornerRadius: 10))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
-    }
-
     @ViewBuilder
     private var result: some View {
         switch model.phase {
@@ -218,8 +196,35 @@ struct MealEstimateSheet: View {
     }
 }
 
-/// One estimated item: name, then grams / kcal / protein to correct.
-private struct ItemEditor: View {
+/// Breakfast · Dinner · Supper · Snack.
+struct MealPicker: View {
+    @Binding var selection: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(FoodFormat.meals, id: \.value) { meal in
+                let selected = selection == meal.value
+                Button {
+                    selection = meal.value
+                } label: {
+                    Text(meal.label)
+                        .font(AppFont.body(13, weight: .semibold))
+                        .foregroundStyle(selected ? Color.ink : Color.muted)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .background(selected ? Color.raised : .clear, in: RoundedRectangle(cornerRadius: 10))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
+    }
+}
+
+/// One estimated or logged item: name, then grams (or portions) / kcal / protein to correct.
+struct ItemEditor: View {
     @Binding var item: FoodItem
     let onRemove: () -> Void
 
@@ -242,7 +247,7 @@ private struct ItemEditor: View {
                 if item.portions == nil {
                     field("g", value: gramsBinding)
                 } else {
-                    field("portion", value: Binding(get: { item.portions ?? 1 }, set: { item.portions = $0 }))
+                    field("portion", value: portionsBinding)
                 }
                 field("kcal", value: $item.kcal)
                 field("g P", value: $item.proteinG)
@@ -256,6 +261,14 @@ private struct ItemEditor: View {
         Binding(
             get: { item.grams ?? 0 },
             set: { item = FoodFormat.rescale(item, grams: $0) }
+        )
+    }
+
+    /// A recipe dish's macros are for its portions, so changing them rescales too.
+    private var portionsBinding: Binding<Double> {
+        Binding(
+            get: { item.portions ?? 1 },
+            set: { item = FoodFormat.rescale(item, portions: $0) }
         )
     }
 

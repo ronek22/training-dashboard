@@ -72,6 +72,26 @@ struct FoodTests {
         #expect(FoodFormat.rescale(FoodItem(name: "Soup", kcal: 200, proteinG: 8), grams: 400).kcal == 200)
     }
 
+    @Test func rescalesDishesByPortions() {
+        let stew = FoodItem(name: "Stew", kcal: 600, proteinG: 40, carbsG: 50, fatG: 20, portions: 1)
+        let half = FoodFormat.rescale(stew, portions: 0.5)
+        #expect(half.kcal == 300)
+        #expect(half.proteinG == 20)
+        #expect(half.portions == 0.5)
+        #expect(FoodFormat.rescale(stew, portions: 0) == stew)
+    }
+
+    @Test func replacesEditedEntryOffline() throws {
+        let day = try APIClient.decoder.decode(FoodDay.self, from: Data(sample.utf8))
+        let entry = try #require(day.entries.first)
+        let edited = FoodEntryInput(date: entry.date, meal: "snack", source: entry.source, rawText: nil,
+                                    items: [FoodItem(name: "Toast", kcal: 100, proteinG: 4)])
+        let updated = FoodFormat.replacing(entry.id, with: edited, in: day)
+        #expect(updated.entries.first?.meal == "snack")
+        #expect(updated.entries.first?.totals.kcal == 100)
+        #expect(updated.totals.kcal == day.totals.kcal - entry.totals.kcal + 100)
+    }
+
     @Test func picksMealByHour() {
         let calendar = Calendar.current
         let at = { (hour: Int) in calendar.date(bySettingHour: hour, minute: 0, second: 0, of: .now)! }

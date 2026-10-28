@@ -982,6 +982,9 @@ def finish_session(
     from .stall_blocks import close_session_changes
 
     close_session_changes(conn, session_id)
+    if not linked_activity_id:
+        # The watch workout may already be here (stopped before the session was finished).
+        auto_link_session(conn, session_id)
     return get_session(conn, session_id)
 
 
@@ -1151,3 +1154,43 @@ def activity_candidates(conn: sqlite3.Connection, session_id: int) -> list[dict]
     for item in scored:
         del item["_rank"]
     return scored[:12]
+
+
+def _only_strong_candidate(conn: sqlite3.Connection, session_id: int) -> Optional[str]:
+    strong = [item["id"] for item in activity_candidates(conn, session_id) if item["match"] == "strong"]
+    return strong[0] if len(strong) == 1 else None
+
+
+def auto_link_session(conn: sqlite3.Connection, session_id: int) -> Optional[str]:
+    """Attach the one workout that clearly lines up with an unlinked session (the watch recording)."""
+    session = _session_or_404(conn, session_id)
+    if session["linked_activity_id"]:
+        return None
+    activity_id = _only_strong_candidate(conn, session_id)
+    if activity_id:
+        link_activity(conn, session_id, activity_id)
+    return activity_id
+
+
+def auto_link_activity(conn: sqlite3.Connection, activity_id: str) -> Optional[int]:
+    """The other direction: a strength workout that arrived after (or during) its session in the app."""
+    activity = conn.execute("SELECT date, type FROM activities WHERE id = ?", (activity_id,)).fetchone()
+    if not activity or activity["type"] not in {"WeightTraining", "Workout"}:
+        return None
+    if conn.execute(
+        "SELECT 1 FROM strength_workout_sessions WHERE linked_activity_id = ?", (activity_id,)
+    ).fetchone():
+        return None
+    sessions = conn.execute(
+        """
+        SELECT id FROM strength_workout_sessions
+        WHERE linked_activity_id IS NULL
+          AND substr(started_at, 1, 10) BETWEEN date(?, '-1 day') AND date(?, '+1 day')
+        """,
+        (activity["date"], activity["date"]),
+    ).fetchall()
+    matched = [row["id"] for row in sessions if _only_strong_candidate(conn, row["id"]) == activity_id]
+    if len(matched) != 1:
+        return None
+    link_activity(conn, matched[0], activity_id)
+    return matched[0]

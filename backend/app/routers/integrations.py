@@ -28,6 +28,7 @@ from ..services import strava_history_backfill
 from ..services.strava_export_import import import_export_streams
 from ..services.healthfit import apply_healthfit_import, preview_healthfit_import
 from ..services.health_data import apply_health_data_import, preview_health_data_import, push_health_data
+from ..services.health_workouts import push_health_workouts
 
 router = APIRouter()
 
@@ -56,6 +57,16 @@ def push_health_data_samples(payload: dict):
     conn = get_db()
     try:
         return push_health_data(conn, payload)
+    finally:
+        conn.close()
+
+
+@router.post("/integrations/health-workouts/push")
+def push_health_workout_data(payload: dict):
+    """Apple Watch workouts from the TrainLog iOS app, with their per-second streams."""
+    conn = get_db()
+    try:
+        return push_health_workouts(conn, payload)
     finally:
         conn.close()
 

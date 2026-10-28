@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager, suppress
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,6 +50,7 @@ from .services.health_data import apply_health_data_import
 from .services.healthfit import healthfit_directory
 from .services.run_dynamics import scan_run_dynamics
 from .services.settings import get_setting, set_setting
+from .services.strava import require_strava_config
 from .services.strava_history_backfill import run_batch as run_history_backfill
 from .services.widget_brief import write_widget_brief
 
@@ -137,6 +138,31 @@ def _daily_backup_once() -> None:
         logger.exception("Weekly restore drill failed")
 
 
+def _strava_auto_import_once() -> None:
+    from fastapi import HTTPException
+
+    from .models.integrations import StravaImportRequest
+    from .routers.integrations import import_strava_activities
+
+    try:
+        require_strava_config(get_setting)
+    except HTTPException:
+        return  # Strava isn't connected
+    try:
+        # Two days back: watch workouts pushed by the phone get Strava's title, power and photos,
+        # and rides recorded elsewhere (Zwift) arrive without pressing Sync.
+        import_strava_activities(StravaImportRequest(start_date=(date.today() - timedelta(days=2)).isoformat()))
+    except Exception:
+        logger.exception("Automatic Strava import failed")
+
+
+async def _strava_auto_import_loop() -> None:
+    interval = max(5, int(os.getenv("STRAVA_AUTO_IMPORT_MINUTES", "30"))) * 60
+    while True:
+        await asyncio.sleep(interval)
+        await asyncio.to_thread(_strava_auto_import_once)
+
+
 async def _daily_backup_loop() -> None:
     # Hourly check; the first one runs at startup, so a day without a copy gets one within the hour.
     # The same check runs the restore drill once a week.
@@ -156,10 +182,11 @@ async def app_lifespan(app_instance: FastAPI):
             task = asyncio.create_task(_background_sync_loop(import_health, widget_dir, scan_dynamics))
         backfill_task = asyncio.create_task(_strava_history_backfill_loop()) if os.getenv("STRAVA_HISTORY_BACKFILL", "true").lower() not in {"0", "false", "no", "off"} else None
         backup_task = asyncio.create_task(_daily_backup_loop()) if os.getenv("TRAINING_BACKUPS", "true").lower() not in {"0", "false", "no", "off"} else None
+        strava_task = asyncio.create_task(_strava_auto_import_loop()) if os.getenv("STRAVA_AUTO_IMPORT", "true").lower() not in {"0", "false", "no", "off"} else None
         try:
             yield
         finally:
-            for running in (task, backfill_task, backup_task):
+            for running in (task, backfill_task, backup_task, strava_task):
                 if running:
                     running.cancel()
                     with suppress(asyncio.CancelledError):

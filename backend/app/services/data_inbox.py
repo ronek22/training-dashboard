@@ -137,7 +137,7 @@ def missing_stream_items(conn: sqlite3.Connection, today: date) -> list[dict]:
         LEFT JOIN strava_history_backfill b ON b.activity_id = a.id
         WHERE a.date BETWEEN ? AND ?
           AND a.type IN ({types})
-          AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%')
+          AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%' AND a.id NOT LIKE 'healthkit:%')
           AND COALESCE(b.status, '') != 'no_streams'
           AND (
               d.streams_json IS NULL
@@ -274,7 +274,7 @@ def refetch_streams(
                a.duration_min, a.avg_hr, a.avg_watts, a.max_hr, a.distance_km
         FROM activities a
         LEFT JOIN activity_source_refs sr ON sr.activity_id = a.id AND sr.source = 'strava'
-        WHERE a.id = ? AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%')
+        WHERE a.id = ? AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%' AND a.id NOT LIKE 'healthkit:%')
         """,
         (activity_id,),
     ).fetchone()

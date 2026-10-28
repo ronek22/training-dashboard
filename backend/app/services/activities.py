@@ -25,6 +25,7 @@ from ..repositories.activities import (
 from .fitbod_imports import get_fitbod_strength_detail_for_activity
 from .strength_progression import build_strength_progression
 from .strength_workouts import get_trainlog_strength_detail_for_activity
+from .activity_sources import strava_activity_id
 from .activity_feedback import attach_feedback_by_activity_id, get_activity_feedback_data
 from .activity_analysis import (
     fail_activity_analysis,
@@ -314,6 +315,11 @@ def _load_json_blob(value: Optional[str]) -> Optional[dict]:
 
 def _is_strava_backed_activity(activity_id: str) -> bool:
     return activity_id.isdigit()
+
+
+def _awaits_strava_detail(detail_row: sqlite3.Row) -> bool:
+    """Streams came from the watch (HealthKit or HealthFit) and Strava's detail wasn't tried yet."""
+    return not detail_row["detail_json"] and detail_row["source_status"] in {"healthkit_fit", "healthfit_fit"}
 
 
 def _encode_route_polyline(latlng: list) -> Optional[str]:
@@ -947,26 +953,52 @@ def get_activity_detail_data(
         raise HTTPException(status_code=404, detail=f"Activity not found: {activity_id}")
 
     detail_row = get_activity_detail_row(conn, activity_id)
+    strava_id = strava_activity_id(conn, activity_id)
+    watch_streams = None
     if detail_row:
-        payload = _build_activity_detail_payload(conn, activity_row, detail_row)
-        _attach_analysis(conn, payload)
-        return payload
+        if not (strava_id and _awaits_strava_detail(detail_row)):
+            payload = _build_activity_detail_payload(conn, activity_row, detail_row)
+            _attach_analysis(conn, payload)
+            return payload
+        # Recorded on the watch, linked to Strava since: keep the watch streams, add Strava's detail
+        # (title, device_watts, estimated power, route polyline) once.
+        watch_streams = _load_json_blob(detail_row["streams_json"])
 
-    if not _is_strava_backed_activity(activity_id):
+    if not strava_id:
         payload = _build_activity_detail_payload(conn, activity_row, None)
         _attach_analysis(conn, payload)
         return payload
 
     import httpx
 
-    access_token = get_strava_access_token_fn(get_setting_fn, set_setting_fn)
-    with httpx.Client(timeout=20, headers={"Authorization": f"Bearer {access_token}"}) as client:
-        detail, _ = fetch_strava_activity_detail_fn(client, activity_id)
-        streams, _ = fetch_strava_activity_streams_fn(
-            client,
-            activity_id,
-            "time,distance,latlng,altitude,heartrate,watts,velocity_smooth,cadence,grade_smooth",
+    try:
+        access_token = get_strava_access_token_fn(get_setting_fn, set_setting_fn)
+        with httpx.Client(timeout=20, headers={"Authorization": f"Bearer {access_token}"}) as client:
+            detail, _ = fetch_strava_activity_detail_fn(client, strava_id)
+            streams = watch_streams
+            if streams is None:
+                streams, _ = fetch_strava_activity_streams_fn(
+                    client,
+                    strava_id,
+                    "time,distance,latlng,altitude,heartrate,watts,velocity_smooth,cadence,grade_smooth",
+                )
+    except (HTTPException, httpx.HTTPError):
+        if _is_strava_backed_activity(activity_id):
+            raise
+        # Recorded elsewhere and only linked to Strava: show what's here rather than an error.
+        payload = _build_activity_detail_payload(conn, activity_row, detail_row)
+        _attach_analysis(conn, payload)
+        return payload
+
+    if watch_streams is not None and not detail:
+        conn.execute(
+            "UPDATE activity_details SET source_status = ? WHERE activity_id = ?",
+            (f"{detail_row['source_status']}+strava", activity_id),
         )
+        conn.commit()
+        payload = _build_activity_detail_payload(conn, activity_row, get_activity_detail_row(conn, activity_id))
+        _attach_analysis(conn, payload)
+        return payload
 
     if not detail and not streams:
         payload = _build_activity_detail_payload(conn, activity_row, None)
@@ -974,7 +1006,7 @@ def get_activity_detail_data(
         return payload
 
     fetched_at = datetime.now().isoformat()
-    source_status = "fetched"
+    source_status = "fetched" if watch_streams is None else f"{detail_row['source_status']}+strava"
     activity_payload = dict(activity_row)
     cached_charts = _build_activity_charts(activity_payload, detail, streams)
     cached_best_efforts = _build_best_efforts(activity_payload, streams)

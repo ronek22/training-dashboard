@@ -578,7 +578,7 @@ def _stream_backfill_candidate_count(conn: sqlite3.Connection, *, cycling_only: 
         WHERE (s.activity_id IS NULL OR d.streams_json IS NULL)
           AND a.type IN ('Run', 'Ride', 'VirtualRide')
           AND (a.type IN ('Ride', 'VirtualRide') OR a.avg_hr IS NOT NULL)
-          AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%')
+          AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%' AND a.id NOT LIKE 'healthkit:%')
           {type_clause}
         """,
     ).fetchone()
@@ -597,7 +597,7 @@ def list_stream_backfill_candidates(
         f"""
         SELECT
             a.id,
-            COALESCE(sr.external_id, CASE WHEN a.id NOT LIKE 'healthfit:%' THEN a.id END) AS strava_id,
+            COALESCE(sr.external_id, CASE WHEN a.id NOT LIKE 'healthfit:%' AND a.id NOT LIKE 'healthkit:%' THEN a.id END) AS strava_id,
             a.date,
             a.type,
             a.name,
@@ -613,7 +613,7 @@ def list_stream_backfill_candidates(
         WHERE (s.activity_id IS NULL OR d.streams_json IS NULL)
           AND a.type IN ('Run', 'Ride', 'VirtualRide')
           AND (a.type IN ('Ride', 'VirtualRide') OR a.avg_hr IS NOT NULL)
-          AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%')
+          AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%' AND a.id NOT LIKE 'healthkit:%')
           {type_clause}
         ORDER BY
           CASE

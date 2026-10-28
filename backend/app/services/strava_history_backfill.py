@@ -62,7 +62,7 @@ _CANDIDATES = f"""
     LEFT JOIN strava_history_backfill b ON b.activity_id = a.id
     WHERE a.type IN ({", ".join(f"'{kind}'" for kind in TYPES)})
       AND d.streams_json IS NULL
-      AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%')
+      AND (sr.external_id IS NOT NULL OR a.id NOT LIKE 'healthfit:%' AND a.id NOT LIKE 'healthkit:%')
       AND (b.activity_id IS NULL OR (b.status = 'failed' AND b.attempts < {MAX_ATTEMPTS}))
 """
 

@@ -12,6 +12,17 @@ def get_source_activity_id(conn: sqlite3.Connection, source: str, external_id: s
     return row["activity_id"] if row and row["activity_id"] else None
 
 
+def strava_activity_id(conn: sqlite3.Connection, activity_id: str) -> Optional[str]:
+    """The Strava ID behind an activity: its linked ref, or the ID itself for Strava-first rows."""
+    row = conn.execute(
+        "SELECT external_id FROM activity_source_refs WHERE source = 'strava' AND activity_id = ? LIMIT 1",
+        (activity_id,),
+    ).fetchone()
+    if row:
+        return row["external_id"]
+    return activity_id if activity_id.isdigit() else None
+
+
 def upsert_source_ref(
     conn: sqlite3.Connection,
     *,

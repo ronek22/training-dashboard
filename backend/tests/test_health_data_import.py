@@ -335,5 +335,30 @@ class ShortcutImportTests(unittest.TestCase):
         self.assertEqual(result["applied"]["samples_inserted"], 2)
 
 
+class AppPushTests(unittest.TestCase):
+    setUp = HealthDataImportTests.setUp
+    tearDown = HealthDataImportTests.tearDown
+
+    def test_app_push_keeps_the_healthkit_source_and_leaves_no_row_when_nothing_is_new(self):
+        watch = {"source": "Apple Watch (Jakub)", "source_bundle": "com.apple.health.ABC", "device": "Watch7,5"}
+        payload = shortcut_payload(
+            hrv=[{"start": "2026-09-27T06:50:08+02:00", "end": "2026-09-27T06:51:08+02:00", "value": 91.86, **watch}],
+            sleep=[{"start": "2026-09-26T23:00:00+02:00", "end": "2026-09-27T01:00:00+02:00", "value": 3, **watch}],
+            steps=[{"start": "2026-09-27T00:00:00+02:00", "end": "2026-09-28T00:00:00+02:00", "value": 8400}],
+        )
+
+        first = health_data.push_health_data(self.conn, payload)
+        repeat = health_data.push_health_data(self.conn, payload)
+        resent = health_data.push_health_data(self.conn, {**payload, "exported_at": "2026-09-28T10:00:00+02:00"})
+
+        self.assertEqual(first["samples_inserted"], 3)
+        self.assertTrue(repeat["duplicate"])
+        self.assertEqual(resent["samples_inserted"], 0)
+        self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM health_data_imports").fetchone()[0], 1)
+        row = self.conn.execute("SELECT source_bundle, source_device, category_label FROM health_metric_samples WHERE metric = 'sleep'").fetchone()
+        self.assertEqual(tuple(row), ("com.apple.health.ABC", "Watch7,5", "core"))
+        self.assertEqual(health_data.get_health_metric_history(self.conn, "steps", 730)[0]["value"], 8400)
+
+
 if __name__ == "__main__":
     unittest.main()

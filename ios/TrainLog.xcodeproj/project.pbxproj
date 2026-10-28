@@ -13,6 +13,8 @@
 		060527AC9C3F7EC7AB18CBEF /* ActivitiesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CB4D14BAB2BB7DEC58078D /* ActivitiesTests.swift */; };
 		1C78A94319F86B32903FD7E8 /* TrendsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97FFCC221BB33F6F97AAF9C1 /* TrendsTests.swift */; };
 		1ECE60EB652766334247F6E5 /* PlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00CD08DE079F66CE7586C33 /* PlanTests.swift */; };
+		234EA1A4B7A268BDE90562B3 /* HealthSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A7BF848A42528930E7F48B /* HealthSync.swift */; };
+		2749C34ACC4B164A8FD9D3DE /* HealthPush.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F17020D9675275CE912B1F /* HealthPush.swift */; };
 		27623E1B5C49B23D65C4E211 /* Reminders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182BB3EC5490E8009AB7F938 /* Reminders.swift */; };
 		2AB2EED77A398A1DD1C8868B /* StrengthSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */; };
 		40039F29AC725FE67E3FE202 /* TrainLogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */; };
@@ -79,6 +81,7 @@
 		2432CF39E1025EE60FFEA9AE /* FoodModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodModel.swift; sourceTree = "<group>"; };
 		26CDA809C9D860B28A4DB61A /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		2AF11B1C65F8EFD3AF340D10 /* BarlowCondensed-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-Bold.ttf"; sourceTree = "<group>"; };
+		32BFBE48F0A518D839DF18AC /* TrainLog.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TrainLog.entitlements; sourceTree = "<group>"; };
 		3A1168AEF0F0CD20E70D9C73 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		42F5CA0ED7E7D3B5DB47A093 /* PlanDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanDayView.swift; sourceTree = "<group>"; };
 		4B75853302B3165E45B90291 /* OfflineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineTests.swift; sourceTree = "<group>"; };
@@ -94,6 +97,7 @@
 		7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionTests.swift; sourceTree = "<group>"; };
 		82CB4D14BAB2BB7DEC58078D /* ActivitiesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitiesTests.swift; sourceTree = "<group>"; };
 		8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainLogApp.swift; sourceTree = "<group>"; };
+		83F17020D9675275CE912B1F /* HealthPush.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthPush.swift; sourceTree = "<group>"; };
 		8D06FFA209BAA7436AB6E384 /* TrainLog.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TrainLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8FA62ACA1E1EE1616ED24F65 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
 		947E7B26646DCF89AEB291E0 /* QuickLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogTests.swift; sourceTree = "<group>"; };
@@ -114,6 +118,7 @@
 		CBB385EB2D063C2EA0283EA2 /* OFL-Archivo.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Archivo.txt"; sourceTree = "<group>"; };
 		CDF38361D28FBEE8E2C70373 /* StrengthSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionView.swift; sourceTree = "<group>"; };
 		D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Archivo.ttf; sourceTree = "<group>"; };
+		D3A7BF848A42528930E7F48B /* HealthSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSync.swift; sourceTree = "<group>"; };
 		DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-BarlowCondensed.txt"; sourceTree = "<group>"; };
 		E77B96BF1230B0932CC403E7 /* ActivitiesModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitiesModel.swift; sourceTree = "<group>"; };
 		ECA017667044B6D2E29E7436 /* ActivityDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityDetailView.swift; sourceTree = "<group>"; };
@@ -245,10 +250,12 @@
 			children = (
 				01AD5A97B8F6DB6B3A07C749 /* Assets.xcassets */,
 				790BB6C3EDE7CCEC73639DFB /* Info.plist */,
+				32BFBE48F0A518D839DF18AC /* TrainLog.entitlements */,
 				88DA7E145BF230CBD3532958 /* API */,
 				C2201C39232DA1483B680114 /* App */,
 				0437262C4DBAE5078D50D4B1 /* Design */,
 				646AC62442454EA8C4DFB819 /* Features */,
+				8AFB7ED896F332968773374A /* Health */,
 				E9EFB92FFD7C752A1707AD5B /* Resources */,
 			);
 			path = TrainLog;
@@ -276,6 +283,15 @@
 				F82A37EF65E30B4BBE2ADC4D /* Trends.swift */,
 			);
 			path = API;
+			sourceTree = "<group>";
+		};
+		8AFB7ED896F332968773374A /* Health */ = {
+			isa = PBXGroup;
+			children = (
+				83F17020D9675275CE912B1F /* HealthPush.swift */,
+				D3A7BF848A42528930E7F48B /* HealthSync.swift */,
+			);
+			path = Health;
 			sourceTree = "<group>";
 		};
 		A949AC44299C2723DD0F0138 = {
@@ -432,6 +448,8 @@
 				54AB99EC9265B668DA43038A /* Food.swift in Sources */,
 				F3E405E6B5D0598BD6EF819F /* FoodModel.swift in Sources */,
 				C19583684F90BBC18C547B71 /* FoodView.swift in Sources */,
+				2749C34ACC4B164A8FD9D3DE /* HealthPush.swift in Sources */,
+				234EA1A4B7A268BDE90562B3 /* HealthSync.swift in Sources */,
 				7DFBA72175D47731D87ACE6C /* MealEstimateSheet.swift in Sources */,
 				D2312971324EB18D3E32AA50 /* MoveDaySheet.swift in Sources */,
 				790DBDAE15B345608EE42C8E /* PhoneToday.swift in Sources */,
@@ -507,11 +525,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TrainLog/TrainLog.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TrainLog/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrainLog;
 				INFOPLIST_KEY_NSCameraUsageDescription = "TrainLog photographs meals so Claude can estimate calories and protein.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "TrainLog reads sleep, resting heart rate, HRV, steps and weight from Apple Health and sends them to your Mac for recovery tracking.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "TrainLog talks to the TrainLog server on your Mac over home Wi-Fi.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -675,11 +695,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TrainLog/TrainLog.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TrainLog/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrainLog;
 				INFOPLIST_KEY_NSCameraUsageDescription = "TrainLog photographs meals so Claude can estimate calories and protein.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "TrainLog reads sleep, resting heart rate, HRV, steps and weight from Apple Health and sends them to your Mac for recovery tracking.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "TrainLog talks to the TrainLog server on your Mac over home Wi-Fi.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;

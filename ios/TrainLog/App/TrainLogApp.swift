@@ -2,6 +2,11 @@ import SwiftUI
 
 @main
 struct TrainLogApp: App {
+    init() {
+        // Must run during launch so HealthKit can wake the app in the background for new samples.
+        HealthSync.shared.startObserving()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -48,7 +53,11 @@ struct RootView: View {
         // Rolls the dinner nudges a week ahead.
         .task { await Reminders.apply() }
         .task(id: scenePhase) {
-            if scenePhase == .active { await CacheWarmer.warm() }
+            if scenePhase == .active {
+                async let health: Void = HealthSync.shared.sync()
+                await CacheWarmer.warm()
+                await health
+            }
         }
         .fullScreenCover(item: $strength, onDismiss: { todayRefresh += 1 }) { launch in
             StrengthSessionView(templateId: launch.templateId)

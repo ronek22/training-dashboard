@@ -27,7 +27,7 @@ from pathlib import Path
 from ..services import strava_history_backfill
 from ..services.strava_export_import import import_export_streams
 from ..services.healthfit import apply_healthfit_import, preview_healthfit_import
-from ..services.health_data import apply_health_data_import, preview_health_data_import
+from ..services.health_data import apply_health_data_import, preview_health_data_import, push_health_data
 
 router = APIRouter()
 
@@ -46,6 +46,16 @@ def import_health_data_files():
     conn = get_db()
     try:
         return apply_health_data_import(conn)
+    finally:
+        conn.close()
+
+
+@router.post("/integrations/health-data/push")
+def push_health_data_samples(payload: dict):
+    """HealthKit samples from the TrainLog iOS app, in the Shortcut payload format."""
+    conn = get_db()
+    try:
+        return push_health_data(conn, payload)
     finally:
         conn.close()
 

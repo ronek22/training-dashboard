@@ -9,6 +9,9 @@ struct SettingsView: View {
     @AppStorage(Reminders.morningEnabledKey) private var morningOn = false
     @AppStorage(Reminders.morningMinutesKey) private var morningMinutes = Reminders.defaultMorningMinutes
     @AppStorage(Reminders.dinnerEnabledKey) private var dinnerOn = false
+    @AppStorage(HealthSync.recoveryKey) private var readRecovery = false
+    @AppStorage(HealthSync.weightKey) private var readWeight = false
+    private var healthSync = HealthSync.shared
 
     enum AddressSheet: String, Identifiable {
         case find, manual
@@ -49,6 +52,8 @@ struct SettingsView: View {
         .onChange(of: morningOn) { reschedule(turnedOn: morningOn) { morningOn = false } }
         .onChange(of: dinnerOn) { reschedule(turnedOn: dinnerOn) { dinnerOn = false } }
         .onChange(of: morningMinutes) { Task { await Reminders.apply() } }
+        .onChange(of: readRecovery) { healthChanged(turnedOn: readRecovery) }
+        .onChange(of: readWeight) { healthChanged(turnedOn: readWeight) }
     }
 
     // MARK: Server
@@ -93,13 +98,69 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Kicker("Apple Health").padding(.horizontal, 4).padding(.top, 6)
             SettingsCard {
-                comingSoonRow("Read sleep, resting HR, HRV")
+                Toggle(isOn: $readRecovery) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Read sleep, resting HR, HRV").font(AppFont.body(15)).foregroundStyle(Color.ink)
+                        Text("Also steps, distance, flights").font(AppFont.body(12)).foregroundStyle(Color.muted)
+                    }
+                }
+                .tint(Color.mobility)
+                .settingsRow()
                 Divider().overlay(Color.cardBorder)
                 comingSoonRow("Save strength sessions as workouts")
                 Divider().overlay(Color.cardBorder)
-                comingSoonRow("Read body weight")
+                Toggle(isOn: $readWeight) {
+                    Text("Read body weight").font(AppFont.body(15)).foregroundStyle(Color.ink)
+                }
+                .tint(Color.mobility)
+                .settingsRow()
+                if readRecovery || readWeight {
+                    Divider().overlay(Color.cardBorder)
+                    healthStatusRow
+                }
             }
-            footnote("Coming with the HealthKit build. Until then sleep and HRV reach TrainLog through the Mac's Health import.")
+            footnote(readRecovery || readWeight
+                ? "Sent to the Mac when you open TrainLog and whenever Health gets new data, while the phone is on home Wi-Fi. Missed days are caught up on the next sync."
+                : "Reads Health on this iPhone and sends it to the Mac. Replaces the Health Data Export app.")
+        }
+    }
+
+    private var healthStatusRow: some View {
+        Button {
+            Task { await healthSync.sync(force: true) }
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Sync now").font(AppFont.body(15)).foregroundStyle(Color.ink)
+                    Text(healthStatus).font(AppFont.body(12)).foregroundStyle(healthSync.failed ? Color.warning : Color.muted)
+                }
+                Spacer(minLength: 0)
+                if healthSync.syncing {
+                    ProgressView().controlSize(.small).tint(.muted)
+                } else {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.muted)
+                }
+            }
+            .settingsRow()
+        }
+        .buttonStyle(.plain)
+        .disabled(healthSync.syncing)
+    }
+
+    private var healthStatus: String {
+        let last = healthSync.lastSuccess.map { "Last sent " + $0.formatted(.relative(presentation: .named)) }
+        if healthSync.failed { return "Couldn't send" + (last.map { " · \($0)" } ?? "") }
+        guard let last else { return "Not sent yet" }
+        return last + (healthSync.lastInserted.map { " · \($0) new" } ?? "")
+    }
+
+    private func healthChanged(turnedOn: Bool) {
+        Task {
+            if turnedOn { await healthSync.requestAccess() }
+            healthSync.startObserving()
+            if turnedOn { await healthSync.sync(force: true) }
         }
     }
 

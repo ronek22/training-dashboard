@@ -59,6 +59,8 @@ If a feature isn't in the artboard, ask before building it.
     `GET|POST /activities/{id}/feedback`
   - Plan: `GET /plans/weekly?limit=4`, `POST /plans/weekly/swap`,
     `PUT /recovery/issues/{id}/ticks` (rehab checklist)
+  - Apple Health: `POST /integrations/health-data/push` (Shortcut payload format, see
+    `../docs/apple-health-shortcut.md`), sent by `Health/HealthSync.swift`
 - When the phone needs a lighter or new endpoint, add it to the backend in the same branch,
   with a backend test (`PYTHONPATH="$PWD" backend/.venv/bin/python -m unittest -q
   backend.tests.test_<area>` from the repo root). Don't change existing response shapes the web

@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import sqlite3
+import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -51,6 +52,8 @@ SHORTCUT_FILE_PREFIX = "shortcut"
 SHORTCUT_DAILY_METRICS = {"steps", "walking_running_distance", "flights_climbed"}
 SHORTCUT_DAILY_SOURCE_NAME = "iOS Shortcut (daily total)"
 SHORTCUT_DAILY_SOURCE_BUNDLE = "shortcut.daily"
+# The iOS app posts the same payload to /integrations/health-data/push.
+IOS_APP_IMPORT_NAME = "TrainLog iOS app"
 SHORTCUT_UNITS = {
     "resting_hr": "bpm",
     "hrv": "ms",
@@ -421,7 +424,11 @@ def _shortcut_sleep_stage(value) -> Optional[str]:
     return None
 
 
-def _shortcut_source(conn: sqlite3.Connection, name: Optional[str], cache: dict) -> dict:
+def _shortcut_source(conn: sqlite3.Connection, point: dict, cache: dict) -> dict:
+    name = point.get("source")
+    if point.get("source_bundle"):
+        # The iOS app reads HealthKit directly and knows the real source.
+        return {"name": name, "bundle_identifier": point["source_bundle"], "device": point.get("device")}
     # Shortcuts only exposes the source's display name. Reuse the bundle id that
     # Health Data Export recorded for that name so sleep stays one nightly source.
     if not name:
@@ -443,14 +450,15 @@ def _shortcut_source(conn: sqlite3.Connection, name: Optional[str], cache: dict)
     return cache[name]
 
 
-def _sample_exists(conn: sqlite3.Connection, metric: str, timestamp: str, category_label: Optional[str]) -> bool:
+def _sample_exists(conn: sqlite3.Connection, metric: str, start: datetime, category_label: Optional[str]) -> bool:
+    # Exporters drop sub-second precision differently, so allow a second either way.
     return conn.execute(
         """
         SELECT 1 FROM health_metric_samples
-        WHERE metric = ? AND timestamp = ? AND COALESCE(category_label, '') = ?
+        WHERE metric = ? AND timestamp BETWEEN ? AND ? AND COALESCE(category_label, '') = ?
         LIMIT 1
         """,
-        (metric, timestamp, category_label or ""),
+        (metric, _utc_timestamp(start - timedelta(seconds=1)), _utc_timestamp(start + timedelta(seconds=1)), category_label or ""),
     ).fetchone() is not None
 
 
@@ -510,9 +518,9 @@ def _import_shortcut_payload(conn: sqlite3.Connection, payload: dict, import_id:
                 continue
 
             timestamp = _utc_timestamp(start)
-            if _sample_exists(conn, metric, timestamp, stage):
+            if _sample_exists(conn, metric, start, stage):
                 continue
-            source = _shortcut_source(conn, point.get("source"), source_cache)
+            source = _shortcut_source(conn, point, source_cache)
             end_timestamp = _utc_timestamp(end)
             raw_rows.append((
                 _sample_key(metric, timestamp, end_timestamp, value, unit, stage, source),
@@ -634,6 +642,49 @@ def apply_health_data_import(conn: sqlite3.Connection) -> dict:
             applied["errors"].append({"file_name": path.name, "reason": str(exc)})
 
     return {**preview_health_data_import(conn), "applied": applied}
+
+
+def push_health_data(conn: sqlite3.Connection, payload: dict) -> dict:
+    """Imports a Shortcut-format payload sent straight from the TrainLog iOS app.
+
+    The app re-sends a rolling window after every HealthKit change, so most pushes
+    carry nothing new; those leave no import row behind.
+    """
+    raw = json.dumps(payload, sort_keys=True).encode("utf-8")
+    file_hash = hashlib.sha256(raw).hexdigest()
+    if conn.execute("SELECT 1 FROM health_data_imports WHERE file_hash = ?", (file_hash,)).fetchone():
+        return {"samples_seen": 0, "samples_inserted": 0, "metrics": {}, "duplicate": True}
+    exported_at = payload.get("exported_at")
+    metadata_payload = {"format": "ios_app", "metric_names": {}, "category_metric_names": {}}
+    try:
+        cursor = conn.execute(
+            """
+            INSERT INTO health_data_imports
+                (file_name, file_hash, file_size, file_modified_ns, export_date, status, import_version, metadata_json)
+            VALUES (?, ?, ?, ?, ?, 'processing', ?, ?)
+            """,
+            (IOS_APP_IMPORT_NAME, file_hash, len(raw), time.time_ns(), str(exported_at) if exported_at else None,
+             CURRENT_IMPORT_VERSION, json.dumps(metadata_payload)),
+        )
+        import_id = cursor.lastrowid
+        seen, inserted, metric_counts = _import_shortcut_payload(conn, payload, import_id)
+        if inserted == 0:
+            conn.rollback()
+            return {"samples_seen": seen, "samples_inserted": 0, "metrics": metric_counts, "duplicate": False}
+        conn.execute(
+            """
+            UPDATE health_data_imports
+            SET status = 'imported', samples_seen = ?, samples_inserted = ?, metadata_json = ?,
+                imported_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (seen, inserted, json.dumps({**metadata_payload, "target_counts": metric_counts}), import_id),
+        )
+        conn.commit()
+    except (ValueError, sqlite3.Error) as exc:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"samples_seen": seen, "samples_inserted": inserted, "metrics": metric_counts, "duplicate": False}
 
 
 def get_health_metric_history(conn: sqlite3.Connection, metric: str, days: int = 90) -> list[dict]:

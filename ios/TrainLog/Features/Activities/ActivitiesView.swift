@@ -4,7 +4,7 @@ struct ActivitiesView: View {
     /// Tells the root to hide the tab bar while a detail page is open.
     @Binding var showingDetail: Bool
     @State private var model = ActivitiesModel()
-    @State private var path: [String] = []
+    @State private var path = NavigationPath()
     @State private var feedbackFor: ActivitySummary?
     @State private var ratingFor: ActivitySummary?
 
@@ -64,6 +64,7 @@ struct ActivitiesView: View {
                     Task { await model.saveFeedback(input, for: id) }
                 }
             }
+            .navigationDestination(for: TrendsRoute.self) { _ in TrendsView() }
         }
         .tint(.volt)
         .onChange(of: path) { showingDetail = !path.isEmpty }
@@ -86,9 +87,29 @@ struct ActivitiesView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Kicker(syncedKicker)
-            Text("ACTIVITIES").font(AppFont.title(44)).foregroundStyle(Color.ink)
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 4) {
+                Kicker(syncedKicker)
+                Text("ACTIVITIES").font(AppFont.title(44)).foregroundStyle(Color.ink)
+            }
+            Spacer()
+            Button {
+                path.append(TrendsRoute())
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chart.xyaxis.line")
+                    Text("Trends")
+                }
+                .font(AppFont.body(13, weight: .semibold))
+                .foregroundStyle(Color.ink)
+                .padding(.horizontal, 14)
+                .frame(height: 36)
+                .overlay(Capsule().strokeBorder(Color.outline))
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.bottom, 2)
         }
         .padding(.horizontal, 4)
         .padding(.top, 6)

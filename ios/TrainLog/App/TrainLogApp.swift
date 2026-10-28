@@ -67,7 +67,9 @@ enum CacheWarmer {
         async let food = try? api.get(FoodModel.dayPath(today), as: FoodDay.self)
         async let dinners = try? api.get(FoodModel.dinnersPath(today), as: DinnerWeek.self)
         async let templates = try? api.get("/strength/workouts/templates", as: [StrengthTemplateSummary].self)
-        _ = await (plan, activities, food, dinners, templates)
+        async let history = try? api.get(TrendsModel.historyPath, as: TrainingHistory.self)
+        async let health = try? api.get(TrendsModel.healthPath, as: HealthSummary.self, timeout: 12)
+        _ = await (plan, activities, food, dinners, templates, history, health)
     }
 }
 

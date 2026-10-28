@@ -112,6 +112,9 @@ enum ActivityFormat {
 
     /// Dot decimals whatever the phone's region, like the rest of the app.
     static let oneDecimal = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(1)).locale(Locale(identifier: "en_US_POSIX"))
+    static let twoDecimals = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(2)).locale(Locale(identifier: "en_US_POSIX"))
+    /// "62.5", "14".
+    static let upToOneDecimal = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...1)).locale(Locale(identifier: "en_US_POSIX")).grouping(.never)
 
     /// The colour family. Strava "Workout" covers both guided rehab and lifting, so the intent decides.
     static func sport(_ activity: ActivitySummary) -> Sport {

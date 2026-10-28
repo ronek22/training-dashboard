@@ -8,6 +8,7 @@ struct StrengthSessionView: View {
     @State private var editingWeight = false
     @State private var weightText = ""
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
 
     init(templateId: Int?) {
         _model = State(initialValue: StrengthSessionModel(templateId: templateId))
@@ -27,6 +28,14 @@ struct StrengthSessionView: View {
         }
         .background(Color.bg.ignoresSafeArea())
         .task { await model.load() }
+        // Keeps in step with the web runner while the app is in front.
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                await model.refresh()
+                try? await Task.sleep(for: .seconds(4))
+            }
+        }
         .onChange(of: model.phase) { _, phase in
             if phase == .closed { dismiss() }
         }

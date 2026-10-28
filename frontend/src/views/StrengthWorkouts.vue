@@ -275,6 +275,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
+import { useLivePoll } from '../composables/useLivePoll'
 import ExerciseHistory from '../components/ExerciseHistory.vue'
 import StrengthExerciseExplorer from '../components/StrengthExerciseExplorer.vue'
 import StrengthPhaseCard from '../components/StrengthPhaseCard.vue'
@@ -538,6 +539,16 @@ const formatSuggestion = (suggestion) => {
   const weight = suggestion.suggested_weight_kg == null ? 'bodyweight' : `${trimNumber(suggestion.suggested_weight_kg)} kg`
   return `${sets} × ${reps} · ${weight}`
 }
+
+// A workout started or finished on the phone flips the banner and Start buttons without a reload.
+useLivePoll(async () => {
+  if (loading.value || startingId.value) return
+  try {
+    activeSession.value = (await api.getActiveStrengthWorkoutSession()).data
+  } catch {
+    // Keep what's shown; the next poll tries again.
+  }
+}, 5000)
 
 onMounted(async () => { await load(); await openPlanDraft() })
 onBeforeUnmount(() => {

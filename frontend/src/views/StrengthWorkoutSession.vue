@@ -375,6 +375,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../stores/api'
+import { useLivePoll } from '../composables/useLivePoll'
 import { isDumbbell } from '../coach/set-coach.mjs'
 import { formatPlates, isBarbellExercise, plateBreakdown, suggestWarmups } from '../coach/plates.mjs'
 import { clearDrafts, draftFor, pruneDrafts, readDrafts, recordDraft, removeDraft, sameValues, setBaseline, writeDrafts } from '../coach/set-drafts.mjs'
@@ -1077,6 +1078,25 @@ const formatHistoricalTarget = (suggestion) => {
   const weight = suggestion.suggested_weight_kg == null ? 'bodyweight' : formatWeight(suggestion.suggested_weight_kg)
   return `${suggestion.suggested_set_count} × ${suggestion.suggested_reps ?? '—'} · ${weight}`
 }
+
+// Sets logged on the phone appear here. A poll that raced a local change is dropped, so it never
+// rolls back a set just logged on this page.
+let sessionWrites = 0
+watch(session, () => { sessionWrites++ }, { flush: 'sync' })
+const pollSession = async () => {
+  if (session.value?.status !== 'active' || mutationBusy.value || loading.value) return
+  const writes = sessionWrites
+  try {
+    const { data } = await api.getStrengthWorkoutSession(session.value.id)
+    if (writes !== sessionWrites || mutationBusy.value) return
+    if (JSON.stringify(data) === JSON.stringify(session.value)) return
+    if (data.status !== 'active') return loadSession()
+    session.value = data
+  } catch {
+    // Offline for a moment; the next poll tries again.
+  }
+}
+useLivePoll(pollSession)
 
 onMounted(() => {
   loadSession()

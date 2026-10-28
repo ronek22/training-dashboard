@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TodayView: View {
     @State private var model = TodayModel()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showFallback = false
     @State private var showSettings = false
     @State private var showBody = false
@@ -72,6 +73,13 @@ struct TodayView: View {
             await model.load()
         }
         .task(id: refresh) { await model.load() }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(5))
+                await model.refreshWorkout()
+            }
+        }
     }
 
     private var header: some View {

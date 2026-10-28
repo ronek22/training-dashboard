@@ -21,6 +21,8 @@ final class StrengthSessionModel {
     private(set) var unsynced = false
     private(set) var restEndsAt: Date?
     private(set) var restSeconds = 0
+    /// Bumped by every local write, so a poll that raced one is dropped instead of rolling it back.
+    private var edits = 0
 
     var draftWeight: Double?
     var draftReps = 0
@@ -189,8 +191,26 @@ final class StrengthSessionModel {
         phase = .closed
     }
 
+    /// Picks up sets logged on the web while this screen is open. Skipped while this phone has
+    /// writes the server hasn't seen, and dropped if one started while the request was out.
+    func refresh() async {
+        let started = edits
+        guard phase == .ready, queue.pending.isEmpty, let id = session?.id,
+              let live = try? await client().getLive("/strength/workouts/sessions/\(id)", as: StrengthSession.self),
+              edits == started, phase == .ready, queue.pending.isEmpty, live != session
+        else { return }
+        if live.isActive {
+            show(live)
+        } else {
+            // Finished or discarded on the web.
+            store.clear()
+            phase = .closed
+        }
+    }
+
     /// Replays queued writes, then trusts the server's copy (its progression and position).
     private func sync() async {
+        edits += 1
         let api = client()
         guard await queue.flush(with: api) else {
             unsynced = true

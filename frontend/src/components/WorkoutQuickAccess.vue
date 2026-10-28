@@ -38,7 +38,7 @@ watch(() => route.fullPath, () => {
 })
 onMounted(() => {
   refresh()
-  refreshTimer = setInterval(refresh, 30000)
+  refreshTimer = setInterval(refresh, 5000)
   window.addEventListener('focus', refresh)
   document.addEventListener('visibilitychange', refresh)
 })

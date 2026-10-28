@@ -49,6 +49,13 @@ final class TodayModel {
         activeWorkout = await workout
     }
 
+    /// Keeps the Resume banner in step with a workout started, advanced or finished on the web.
+    func refreshWorkout() async {
+        guard !loading else { return }
+        let workout = await Self.activeWorkout(client())
+        if workout != activeWorkout { activeWorkout = workout }
+    }
+
     /// The server's open workout; when it's unreachable, the one this phone has in progress.
     private static func activeWorkout(_ client: APIClient) async -> StrengthSession? {
         do {

@@ -7,7 +7,7 @@ struct QuickLogTests {
     private let day = ISO8601DateFormatter().date(from: "2026-10-28T07:12:00Z")!
 
     private func model() -> QuickLogModel {
-        QuickLogModel(today: day, makeID: { "phone-1" })
+        QuickLogModel(today: day)
     }
 
     @Test func decodesTodayCheckin() throws {
@@ -69,22 +69,26 @@ struct QuickLogTests {
         #expect(log.weightInput == nil)
     }
 
-    @Test func activityNeedsDurationAndNamesItself() {
+    @Test func weightIsOptionalButMustMakeSense() {
         let log = model()
-        #expect(log.activityInput == nil)
-        log.activityType = QuickLogFormat.activityTypes[4]
-        log.duration = "25"
-        #expect(log.activityInput == ActivityInput(id: "phone-1", date: "2026-10-28", type: "Yoga", name: "Mobility",
-                                                   durationMin: 25, distanceKm: nil, notes: nil))
-        log.distance = "abc"
-        #expect(log.activityInput == nil)
+        log.energy = 4
+        log.sleep = 3
+        log.stress = 2
+        #expect(log.canSave)
+        #expect(log.writes.map(\.path) == ["/checkins"])
+        log.weight = "8"
+        #expect(!log.canSave)
+        log.weight = "82,4"
+        #expect(log.canSave)
+        #expect(log.writes.map(\.path) == ["/checkins", "/metrics"])
     }
 
-    @Test func noteIsTrimmed() {
+    @Test func sickToggleAddsItsWrite() {
         let log = model()
-        log.noteText = "   "
-        #expect(log.noteInput == nil)
-        log.noteText = " Knee tight on stairs \n"
-        #expect(log.noteInput?.content == "Knee tight on stairs")
+        log.energy = 2
+        log.sleep = 2
+        log.stress = 3
+        log.sick = true
+        #expect(log.writes.map(\.path) == ["/checkins", "/sick-mode"])
     }
 }

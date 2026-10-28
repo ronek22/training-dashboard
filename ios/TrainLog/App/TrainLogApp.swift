@@ -22,7 +22,6 @@ enum AppTab: Hashable {
 
 struct RootView: View {
     @State private var tab: AppTab = .today
-    @State private var showQuickLog = false
     @State private var strength: StrengthLaunch?
     @State private var todayRefresh = 0
     @State private var activityDetailOpen = false
@@ -43,13 +42,8 @@ struct RootView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             // Detail pages are pushed with their own back button, as in the artboard.
             if !(tab == .activities && activityDetailOpen) && !(tab == .plan && planDetailOpen) && !(tab == .today && settingsOpen) {
-                TabBar(selection: $tab, onPlus: { showQuickLog = true })
+                TabBar(selection: $tab)
             }
-        }
-        .sheet(isPresented: $showQuickLog, onDismiss: { todayRefresh += 1 }) {
-            QuickLogSheet()
-                .presentationDetents([.large])
-                .presentationBackground(Color.card)
         }
         // Rolls the dinner nudges a week ahead.
         .task { await Reminders.apply() }
@@ -103,30 +97,18 @@ struct StrengthLaunch: Identifiable {
     let templateId: Int?
 }
 
-/// Bottom bar from the artboard: four tabs around one volt + that opens the quick log sheet.
+/// Bottom bar: four tabs. The check-in that used to sit behind a centre + lives on Today.
 struct TabBar: View {
     /// Height above the home indicator. Tabs inside a NavigationStack don't receive the root's
     /// safeAreaInset, so their scroll views add this as a bottom content margin instead.
     static let height: CGFloat = 52
 
     @Binding var selection: AppTab
-    let onPlus: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             item(.today, "Today", "clock")
             item(.plan, "Plan", "calendar")
-            Button(action: onPlus) {
-                // Food has its own volt action (Snap meal), so the + steps back there.
-                Image(systemName: "plus")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(selection == .food ? Color.ink : Color.bg)
-                    .frame(width: 52, height: 52)
-                    .background(selection == .food ? Color.raised : Color.volt, in: Circle())
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.top, -4)
-            .accessibilityLabel("Quick log")
             item(.food, "Food", "fork.knife")
             item(.activities, "Activities", "waveform.path.ecg")
         }

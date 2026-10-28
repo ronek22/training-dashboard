@@ -51,21 +51,3 @@ struct MetricPoint: Decodable, Sendable {
     let date: String
     let value: Double
 }
-
-/// `POST /activities` for a session that never reached Strava (backend/app/models/activities.py).
-struct ActivityInput: Encodable, Sendable, Equatable {
-    let id: String
-    let date: String
-    let type: String
-    let name: String?
-    let durationMin: Double
-    let distanceKm: Double?
-    let notes: String?
-}
-
-/// `POST /notes`: a coach note, the same table the MCP `add_coach_note` writes.
-struct NoteInput: Encodable, Sendable, Equatable {
-    let date: String
-    let category: String
-    let content: String
-}

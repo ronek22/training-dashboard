@@ -6,6 +6,7 @@ struct TodayView: View {
     @State private var showFallback = false
     @State private var showSettings = false
     @State private var showBody = false
+    @State private var showCheckin = false
     /// Tells the root to hide the tab bar while Settings is open.
     @Binding var showingDetail: Bool
     var onStartStrength: (Int?) -> Void = { _ in }
@@ -46,11 +47,8 @@ struct TodayView: View {
                         workoutOpen: model.activeWorkout != nil,
                         onStartStrength: onStartStrength
                     )
-                    Button { showBody = true } label: {
-                        ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Opens sleep, steps, heart rate and training load")
+                    ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone,
+                                  onOpen: { showBody = true }, onCheckin: { showCheckin = true })
                     WeekCard(week: data.week, minutes: data.weekMinutes, today: data.date)
                 } else if let error = model.error {
                     errorCard(error)
@@ -73,6 +71,11 @@ struct TodayView: View {
             await model.load()
         }
         .task(id: refresh) { await model.load() }
+        .sheet(isPresented: $showCheckin, onDismiss: { Task { await model.load() } }) {
+            QuickLogSheet()
+                .presentationDetents([.large])
+                .presentationBackground(Color.card)
+        }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
             while !Task.isCancelled {
@@ -343,10 +346,43 @@ private struct ReadinessCard: View {
     let readiness: PhoneToday.Readiness
     let vitals: PhoneToday.Vitals
     let checkinDone: Bool
+    let onOpen: () -> Void
+    let onCheckin: () -> Void
 
     var body: some View {
-        let status = TodayFormat.readiness(readiness.level)
         VStack(alignment: .leading, spacing: 0) {
+            // The card opens Body; the check-in below is its own button, so it can't sit inside that one.
+            Button(action: onOpen) { summary.contentShape(Rectangle()) }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens sleep, steps, heart rate and training load")
+            if checkinDone {
+                Button(action: onCheckin) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.mobility)
+                        Text("Checked in today").foregroundStyle(Color.muted)
+                        Spacer()
+                        Text("Edit").foregroundStyle(Color.inkSoft)
+                    }
+                    .font(AppFont.body(12, weight: .semibold))
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+                .padding(.bottom, -10)
+                .accessibilityLabel("Edit today's check-in")
+            } else {
+                Button("Check in", action: onCheckin)
+                    .buttonStyle(OutlineButtonStyle(height: 44))
+                    .padding(.top, 14)
+            }
+        }
+        .card()
+    }
+
+    private var summary: some View {
+        let status = TodayFormat.readiness(readiness.level)
+        return VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Kicker("Readiness")
                 Spacer()
@@ -375,14 +411,7 @@ private struct ReadinessCard: View {
                     .lineSpacing(2)
                     .padding(.top, 12)
             }
-            if !checkinDone {
-                Text("No check-in yet today. Tap + to log one.")
-                    .font(AppFont.body(12))
-                    .foregroundStyle(Color.muted)
-                    .padding(.top, 6)
-            }
         }
-        .card()
     }
 
     private var divider: some View {

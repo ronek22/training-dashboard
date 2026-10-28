@@ -11,7 +11,7 @@ happens away from the desk; planning and deep analysis stay on the web app (MacB
 MVP scope is the screens in `../docs/design/artboards/iOS.dc.html`
 (picture: `../docs/design/screens/ios/overview.png`):
 
-1. Today · 2. Strength session · 3. Food · 4. Quick log sheet · 5. Activities ·
+1. Today · 2. Strength session · 3. Food · 4. Check-in sheet (opened from Today; was the + quick log) · 5. Activities ·
 6. Activity detail · 7. Lock screen Live Activity + widgets (phase 2) · 8. Settings ·
 9. Plan week · 10. Plan day · 11. Move day sheet
 
@@ -57,7 +57,7 @@ If a feature isn't in the artboard, ask before building it.
   - Strength session: `/strength/workouts/sessions` (`GET /sessions/active`, `POST /sessions`,
     `GET /sessions/{id}`) and `/strength/workouts/templates`
   - Food: `GET /nutrition/food`, `POST /nutrition/food/entries`, `GET /nutrition/dinners`
-  - Quick log: `POST /checkins`, `POST /sick-mode`, `POST /activities`
+  - Check-in: `POST /checkins`, `POST /sick-mode`, `POST /metrics` (weight)
   - Activities: `GET /activities`, `GET /activities/{id}`,
     `GET|POST /activities/{id}/feedback`
   - Plan: `GET /plans/weekly?limit=4`, `POST /plans/weekly/swap`,
@@ -82,7 +82,7 @@ Same system as the web (`../docs/design/REDESIGN.md`, tokens in `../frontend/src
   outline pills. Flat design: no decorative gradients.
 - Fonts: Barlow Condensed (numbers, titles; titles italic 800 uppercase), Archivo (body).
   Bundle both. Kickers: 11pt, semibold, tracking .14em, uppercase, muted `#8A93A6`.
-- iOS patterns: large titles, bottom tab bar (Today · Plan · + · Food · Activities), sheets for
+- iOS patterns: large titles, bottom tab bar (Today · Plan · Food · Activities; no centre +), sheets for
   quick input, swipe actions on rows, 44pt minimum tap targets, haptics on set logged.
 
 ## Build and verify

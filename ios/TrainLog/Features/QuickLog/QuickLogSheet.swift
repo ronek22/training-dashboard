@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The centre + sheet from the artboard: one place for everything quick.
+/// The morning check-in, opened from the Readiness card on Today. Weight rides along at the bottom.
 struct QuickLogSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model = QuickLogModel()
@@ -9,15 +9,10 @@ struct QuickLogSheet: View {
     var body: some View {
         VStack(spacing: 16) {
             topBar
-            tabs
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    switch model.tab {
-                    case .checkin: checkin
-                    case .weight: weight
-                    case .activity: activity
-                    case .note: note
-                    }
+                    checkin
+                    weight
                     if let error = model.error {
                         Text(error).font(AppFont.body(13)).foregroundStyle(Color.danger)
                     }
@@ -29,7 +24,7 @@ struct QuickLogSheet: View {
             Button {
                 Task { if await model.save() { dismiss() } }
             } label: {
-                if model.saving { ProgressView().tint(Color.bg) } else { Text(model.actionTitle) }
+                if model.saving { ProgressView().tint(Color.bg) } else { Text(model.isEditing ? "Update check-in" : "Save check-in") }
             }
             .buttonStyle(VoltButtonStyle())
             .disabled(!model.canSave)
@@ -39,7 +34,6 @@ struct QuickLogSheet: View {
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .task { await model.load() }
-        .onChange(of: model.tab) { focused = false }
     }
 
     private var topBar: some View {
@@ -49,14 +43,10 @@ struct QuickLogSheet: View {
                 .foregroundStyle(Color.inkSoft)
                 .frame(minWidth: 52, minHeight: 44, alignment: .leading)
             Spacer()
-            Text("Log").font(AppFont.body(16, weight: .bold)).foregroundStyle(Color.ink)
+            Text("Check-in").font(AppFont.body(16, weight: .bold)).foregroundStyle(Color.ink)
             Spacer()
             Color.clear.frame(width: 52, height: 44)
         }
-    }
-
-    private var tabs: some View {
-        Segmented(options: QuickLogModel.Tab.allCases, selection: $model.tab) { $0.rawValue }
     }
 
     // MARK: Check-in
@@ -138,146 +128,30 @@ struct QuickLogSheet: View {
 
     @ViewBuilder private var weight: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Kicker("Body weight · this morning")
+            HStack {
+                Kicker("Weight")
+                Spacer()
+                Text("Optional").font(AppFont.body(12)).foregroundStyle(Color.muted)
+            }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                TextField("0.0", text: $model.weight)
+                TextField(model.lastWeight.map { QuickLogFormat.decimal($0.value) } ?? "0.0", text: $model.weight)
                     .keyboardType(.decimalPad)
                     .focused($focused)
-                    .font(AppFont.number(64))
+                    .font(AppFont.number(32))
                     .foregroundStyle(Color.ink)
-                    .fixedSize()
-                Text("kg").font(AppFont.number(24, weight: .semibold)).foregroundStyle(Color.muted)
+                Text("kg").font(AppFont.number(18, weight: .semibold)).foregroundStyle(Color.muted)
             }
             .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder))
+            .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
+            .contentShape(Rectangle())
             .onTapGesture { focused = true }
             if let last = model.lastWeight {
                 Text("Last: \(QuickLogFormat.decimal(last.value)) kg on \(last.date)")
                     .font(AppFont.body(12)).foregroundStyle(Color.muted)
             }
         }
-    }
-
-    // MARK: Activity
-
-    @ViewBuilder private var activity: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Kicker("Type")
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                ForEach(QuickLogFormat.activityTypes, id: \.self) { type in
-                    let on = model.activityType == type
-                    Button(type.label) { model.activityType = type }
-                        .buttonStyle(.plain)
-                        .font(AppFont.body(13, weight: .semibold))
-                        .foregroundStyle(on ? type.sport.color : Color.ink)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(on ? type.sport.color.opacity(0.12) : .clear, in: Capsule())
-                        .overlay(Capsule().strokeBorder(on ? type.sport.color : Color.outline, lineWidth: 1))
-                        .contentShape(Capsule())
-                        .accessibilityAddTraits(on ? .isSelected : [])
-                }
-            }
-        }
-        HStack(spacing: 12) {
-            field("Duration", unit: "min", text: $model.duration)
-            field("Distance", unit: "km", text: $model.distance)
-        }
-        VStack(alignment: .leading, spacing: 8) {
-            Kicker("Name")
-            TextField(model.activityType.label, text: $model.activityName)
-                .focused($focused)
-                .font(AppFont.body(15))
-                .foregroundStyle(Color.ink)
-                .padding(12)
-                .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
-        }
-        Text("Logged for today. Use this for sessions that won't come from Strava.")
-            .font(AppFont.body(12)).foregroundStyle(Color.muted)
-    }
-
-    private func field(_ title: String, unit: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Kicker(title)
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                TextField("–", text: text)
-                    .keyboardType(.decimalPad)
-                    .focused($focused)
-                    .font(AppFont.number(28))
-                    .foregroundStyle(Color.ink)
-                Text(unit).font(AppFont.body(13)).foregroundStyle(Color.muted)
-            }
-            .padding(.horizontal, 12)
-            .frame(minHeight: 56)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
-        }
-    }
-
-    // MARK: Note
-
-    @ViewBuilder private var note: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Kicker("For the coach")
-            TextField("What should the coach know? e.g. left knee tight on stairs", text: $model.noteText, axis: .vertical)
-                .focused($focused)
-                .font(AppFont.body(15))
-                .foregroundStyle(Color.ink)
-                .lineLimit(4...10)
-                .padding(12)
-                .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
-        }
-        VStack(alignment: .leading, spacing: 8) {
-            Kicker("Topic")
-            FlowLayout(spacing: 8) {
-                ForEach(QuickLogFormat.noteCategories, id: \.value) { category in
-                    let on = model.noteCategory == category.value
-                    Button(category.label) { model.noteCategory = category.value }
-                        .buttonStyle(.plain)
-                        .font(AppFont.body(13, weight: .semibold))
-                        .foregroundStyle(on ? Color.ink : Color.muted)
-                        .padding(.horizontal, 16)
-                        .frame(height: 44)
-                        .background(on ? Color.raised : .clear, in: Capsule())
-                        .overlay(Capsule().strokeBorder(Color.outline, lineWidth: 1))
-                        .contentShape(Capsule())
-                        .accessibilityAddTraits(on ? .isSelected : [])
-                }
-            }
-        }
-    }
-}
-
-/// The artboard's `.seg`: an inset track with the selected option raised.
-struct Segmented<Option: Hashable>: View {
-    let options: [Option]
-    @Binding var selection: Option
-    let label: (Option) -> String
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(options, id: \.self) { option in
-                let on = selection == option
-                Button {
-                    selection = option
-                } label: {
-                    Text(label(option))
-                        .font(AppFont.body(13, weight: .semibold))
-                        .foregroundStyle(on ? Color.ink : Color.muted)
-                        .frame(maxWidth: .infinity, minHeight: 36)
-                        .background(on ? Color.raised : .clear, in: RoundedRectangle(cornerRadius: 9))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(on ? .isSelected : [])
-            }
-        }
-        .padding(3)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.cardBorder))
     }
 }
 

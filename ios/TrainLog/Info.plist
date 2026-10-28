@@ -16,6 +16,17 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.ronek22.trainlog</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>trainlog</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>NSAppTransportSecurity</key>
@@ -31,6 +42,8 @@
 		<string>_smb._tcp</string>
 		<string>_rfb._tcp</string>
 	</array>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIAppFonts</key>
 	<array>
 		<string>BarlowCondensed-SemiBold.ttf</string>

@@ -62,6 +62,16 @@ struct RootView: View {
         .fullScreenCover(item: $strength, onDismiss: { todayRefresh += 1 }) { launch in
             StrengthSessionView(templateId: launch.templateId)
         }
+        // Widgets and the strength Live Activity.
+        .onOpenURL { url in
+            guard url.scheme == "trainlog" else { return }
+            switch url.host() {
+            case "food": tab = .food
+            case "plan": tab = .plan
+            case "strength": if strength == nil { strength = StrengthLaunch(templateId: nil) }
+            default: tab = .today
+            }
+        }
     }
 }
 
@@ -78,7 +88,11 @@ enum CacheWarmer {
         async let templates = try? api.get("/strength/workouts/templates", as: [StrengthTemplateSummary].self)
         async let history = try? api.get(TrendsModel.historyPath, as: TrainingHistory.self)
         async let health = try? api.get(TrendsModel.healthPath, as: HealthSummary.self, timeout: 12)
-        _ = await (plan, activities, food, dinners, templates, history, health)
+        _ = await (plan, activities, dinners, templates, history, health)
+        // The Food widgets, before the Food tab has been opened today.
+        if let day = await food, !day.fromCache {
+            WidgetStore.update { $0.food = .init(day.value, eaten: day.value.totals) }
+        }
     }
 }
 

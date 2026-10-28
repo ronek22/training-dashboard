@@ -11,25 +11,34 @@
 		054F2BE35CEDCA29B28ED5B2 /* ActivityDetailFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 572F7520C1797D9587E01198 /* ActivityDetailFormat.swift */; };
 		0568E5E202514A8C473DBB7F /* QuickLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10A7B084CF58AD83C3603DB /* QuickLogSheet.swift */; };
 		060527AC9C3F7EC7AB18CBEF /* ActivitiesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CB4D14BAB2BB7DEC58078D /* ActivitiesTests.swift */; };
+		09768067D6CE829DDCD86661 /* WidgetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 628E9967DDE0257DBDB7C508 /* WidgetTests.swift */; };
+		19252000DB3CBDC4D09F33EE /* StrengthActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6BBAC8C19B152CC5B05A9FC /* StrengthActivity.swift */; };
+		1B823BE0C83ED9A8EB08C487 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5643ADC614AE0FDB4DF3384 /* WidgetSnapshot.swift */; };
 		1C78A94319F86B32903FD7E8 /* TrendsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97FFCC221BB33F6F97AAF9C1 /* TrendsTests.swift */; };
 		1ECE60EB652766334247F6E5 /* PlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00CD08DE079F66CE7586C33 /* PlanTests.swift */; };
 		234EA1A4B7A268BDE90562B3 /* HealthSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A7BF848A42528930E7F48B /* HealthSync.swift */; };
 		2749C34ACC4B164A8FD9D3DE /* HealthPush.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F17020D9675275CE912B1F /* HealthPush.swift */; };
 		27623E1B5C49B23D65C4E211 /* Reminders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182BB3EC5490E8009AB7F938 /* Reminders.swift */; };
+		29701B35851FF1CB790F564C /* TrainLogWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04082B44C3130F260F9162CC /* TrainLogWidgets.swift */; };
 		2AB2EED77A398A1DD1C8868B /* StrengthSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */; };
+		3BF6A8982B0969C3E4443EC7 /* BarlowCondensed-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AF11B1C65F8EFD3AF340D10 /* BarlowCondensed-Bold.ttf */; };
 		40039F29AC725FE67E3FE202 /* TrainLogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */; };
 		4012ED2F1A8F181070B6F220 /* Archivo.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */; };
 		47334F55D41030EFB9932E45 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA62ACA1E1EE1616ED24F65 /* SettingsModel.swift */; };
 		4D4E5EED8467E4BC70506D95 /* TrendsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F1EC93FC7BA8D8D4DAEA58 /* TrendsModel.swift */; };
 		54AB99EC9265B668DA43038A /* Food.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6906A4138E3E54E166438B26 /* Food.swift */; };
+		59134E364542DFECB0EBECEB /* OFL-Archivo.txt in Resources */ = {isa = PBXBuildFile; fileRef = CBB385EB2D063C2EA0283EA2 /* OFL-Archivo.txt */; };
 		5949E6B54064073FF68DD91C /* TodayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECFF6858D98599C67E6EEC8 /* TodayTests.swift */; };
 		596B94B045D4FE90A37695C7 /* StrengthSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */; };
 		5B44F95AE124CC73DCA73481 /* TrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A34FE40F0B4A424DD1A25C /* TrendsView.swift */; };
 		60F09C24C415FEAF841F31D0 /* PlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFDBF801B91A97A8E95DCA4F /* PlanView.swift */; };
 		616BC71964E4758DDD95BA05 /* BodyModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6792F9B147DBC380B9FD90 /* BodyModel.swift */; };
+		6458A82795EE81D9B0889CDD /* TrainLogWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 18D43DC63E781C9944ACB57E /* TrainLogWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		6543B82B223246C9075683DC /* BarlowCondensed-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AF11B1C65F8EFD3AF340D10 /* BarlowCondensed-Bold.ttf */; };
 		6587A02C639342CFF169FA34 /* BodyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9430F1CA886700E3F8D4F03 /* BodyView.swift */; };
 		68297E816D5D94464ED5BBCA /* Activities.swift in Sources */ = {isa = PBXBuildFile; fileRef = A599FA5C0909F97C3AA92ECA /* Activities.swift */; };
+		6A3E5292221EEBB8372E4EFE /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5643ADC614AE0FDB4DF3384 /* WidgetSnapshot.swift */; };
+		6D608015D33A3B49E694A568 /* PhoneToday.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDCA15FBA972C52E02035AF5 /* PhoneToday.swift */; };
 		75C511A0E9893D7205E311D1 /* QuickLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1B90F67C5BEB5AA4C54A0B /* QuickLog.swift */; };
 		790DBDAE15B345608EE42C8E /* PhoneToday.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDCA15FBA972C52E02035AF5 /* PhoneToday.swift */; };
 		7B1301E67C9CB9ABE0665EEA /* HealthSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9EE1F2002B2014D0D57BFF3 /* HealthSyncTests.swift */; };
@@ -43,8 +52,12 @@
 		90AA5331DE708BCF6A15830B /* Trends.swift in Sources */ = {isa = PBXBuildFile; fileRef = F82A37EF65E30B4BBE2ADC4D /* Trends.swift */; };
 		94D4295DC2C299DF58981A1A /* OfflineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B75853302B3165E45B90291 /* OfflineTests.swift */; };
 		9ADA8691ED676CD19EF94141 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FED9A0BA3F896F441C12CFE /* Theme.swift */; };
+		9B6066DD628DC94AA5442C73 /* BarlowCondensed-ExtraBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9F112A2FC94E41B5BFB208A4 /* BarlowCondensed-ExtraBoldItalic.ttf */; };
 		A2C995FC688A02DC863F7F96 /* ActivitiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD5EDF9EAF1496F240DB1987 /* ActivitiesView.swift */; };
 		A572A367254F23089573D64E /* PlanDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F5CA0ED7E7D3B5DB47A093 /* PlanDayView.swift */; };
+		A791F233764F3A02D340FA64 /* StrengthActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D01836CFA034C828DF59B62F /* StrengthActivityAttributes.swift */; };
+		A8374CA89FF29285D94B840E /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FED9A0BA3F896F441C12CFE /* Theme.swift */; };
+		ACE4F7A27DF7F2437613BDBD /* StrengthActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D01836CFA034C828DF59B62F /* StrengthActivityAttributes.swift */; };
 		AE619AC886E9DA86C3B36FEA /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86C506CB1DD44FBB105F6B2 /* TodayView.swift */; };
 		AEC7E99787987D9C15614CD9 /* LiveHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 069C959EF75C5018A65096AB /* LiveHealth.swift */; };
 		B333C40F1D12ADE2ED7B1072 /* PlanModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BA5F6A6FF01D809A7EE68A8 /* PlanModel.swift */; };
@@ -57,17 +70,30 @@
 		CAA1710E904C67B7C0D44AC0 /* StrengthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADADEEF3EC729686F3AD8BD5 /* StrengthSession.swift */; };
 		CFB15F923AA4D931073261DE /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CDA809C9D860B28A4DB61A /* APIClient.swift */; };
 		D2312971324EB18D3E32AA50 /* MoveDaySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F6C3A816B5B7AB82A6DB7C /* MoveDaySheet.swift */; };
+		D26D91F8C3B776862999FED7 /* Food.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6906A4138E3E54E166438B26 /* Food.swift */; };
 		D2BCDEA473DECA30A0B3A7C6 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1168AEF0F0CD20E70D9C73 /* SettingsView.swift */; };
 		D5FC7557DBEE38694F3F8F87 /* OFL-BarlowCondensed.txt in Resources */ = {isa = PBXBuildFile; fileRef = DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */; };
 		D8A6B99501A49EDD398A4882 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64B465973FE67D56B0AD2792 /* SettingsTests.swift */; };
 		D9F0161252DCA55F451D2C13 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 01AD5A97B8F6DB6B3A07C749 /* Assets.xcassets */; };
+		E5A5DDD6E75551AC868D7857 /* StrengthLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C48F3797F00F70170A5FD4B /* StrengthLiveActivity.swift */; };
 		ED06E04A91F8BC227943ED86 /* QuickLogModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B57840DCD55E73EF2B16B562 /* QuickLogModel.swift */; };
+		F39D8B776736279B1E1D80BD /* BarlowCondensed-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0243D4E3976851681CA3EF5E /* BarlowCondensed-SemiBold.ttf */; };
 		F3D68722FA8D53F429E5C98D /* BarlowCondensed-ExtraBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9F112A2FC94E41B5BFB208A4 /* BarlowCondensed-ExtraBoldItalic.ttf */; };
 		F3E405E6B5D0598BD6EF819F /* FoodModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2432CF39E1025EE60FFEA9AE /* FoodModel.swift */; };
+		FA071C807EEE55903138DF6B /* OFL-BarlowCondensed.txt in Resources */ = {isa = PBXBuildFile; fileRef = DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */; };
+		FC38EF113D5E3D345D5D8C6D /* Archivo.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */; };
+		FE7CBDB13209D6CCD4C63912 /* SnapshotWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C050D3398D05ECE9CCE14943 /* SnapshotWidgets.swift */; };
 		FE8798CF033971064A21BC66 /* ActivityDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECA017667044B6D2E29E7436 /* ActivityDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		45A9D176E2DD37DA4DED0A0B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B0833A1E9293B06460465C0E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B92B6B4FA3C26B61A9B59877;
+			remoteInfo = TrainLogWidgets;
+		};
 		AF5D5FADBF86AE318A145A57 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = B0833A1E9293B06460465C0E /* Project object */;
@@ -77,13 +103,29 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		0A379C56F0799B17BA40A5F0 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6458A82795EE81D9B0889CDD /* TrainLogWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		01AD5A97B8F6DB6B3A07C749 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0243D4E3976851681CA3EF5E /* BarlowCondensed-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-SemiBold.ttf"; sourceTree = "<group>"; };
 		027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionModel.swift; sourceTree = "<group>"; };
+		04082B44C3130F260F9162CC /* TrainLogWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainLogWidgets.swift; sourceTree = "<group>"; };
 		069C959EF75C5018A65096AB /* LiveHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveHealth.swift; sourceTree = "<group>"; };
 		0BA5F6A6FF01D809A7EE68A8 /* PlanModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanModel.swift; sourceTree = "<group>"; };
 		182BB3EC5490E8009AB7F938 /* Reminders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reminders.swift; sourceTree = "<group>"; };
+		18D43DC63E781C9944ACB57E /* TrainLogWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = TrainLogWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1DE5C544BD255D9F8B9F2A36 /* FeedbackSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackSheet.swift; sourceTree = "<group>"; };
 		2432CF39E1025EE60FFEA9AE /* FoodModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodModel.swift; sourceTree = "<group>"; };
 		26CDA809C9D860B28A4DB61A /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -95,10 +137,12 @@
 		4B75853302B3165E45B90291 /* OfflineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineTests.swift; sourceTree = "<group>"; };
 		572F7520C1797D9587E01198 /* ActivityDetailFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityDetailFormat.swift; sourceTree = "<group>"; };
 		5E1B90F67C5BEB5AA4C54A0B /* QuickLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLog.swift; sourceTree = "<group>"; };
+		628E9967DDE0257DBDB7C508 /* WidgetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTests.swift; sourceTree = "<group>"; };
 		64B465973FE67D56B0AD2792 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
 		6906A4138E3E54E166438B26 /* Food.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Food.swift; sourceTree = "<group>"; };
 		6A6792F9B147DBC380B9FD90 /* BodyModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyModel.swift; sourceTree = "<group>"; };
 		6A82E7ED074ABF53C867C009 /* TodayModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayModel.swift; sourceTree = "<group>"; };
+		6C48F3797F00F70170A5FD4B /* StrengthLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthLiveActivity.swift; sourceTree = "<group>"; };
 		6FED9A0BA3F896F441C12CFE /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		70C9B1AFE4D446D107F23124 /* ActivityDetailCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityDetailCards.swift; sourceTree = "<group>"; };
 		790BB6C3EDE7CCEC73639DFB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -117,15 +161,21 @@
 		ADADEEF3EC729686F3AD8BD5 /* StrengthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSession.swift; sourceTree = "<group>"; };
 		AECFF6858D98599C67E6EEC8 /* TodayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayTests.swift; sourceTree = "<group>"; };
 		B10A7B084CF58AD83C3603DB /* QuickLogSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogSheet.swift; sourceTree = "<group>"; };
+		B5643ADC614AE0FDB4DF3384 /* WidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshot.swift; sourceTree = "<group>"; };
 		B57840DCD55E73EF2B16B562 /* QuickLogModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogModel.swift; sourceTree = "<group>"; };
+		B6BBAC8C19B152CC5B05A9FC /* StrengthActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthActivity.swift; sourceTree = "<group>"; };
 		BD75917A58F54334CDFA0079 /* FoodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodView.swift; sourceTree = "<group>"; };
+		BE21E588EDC172EE627EFE67 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BFDBF801B91A97A8E95DCA4F /* PlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanView.swift; sourceTree = "<group>"; };
+		C050D3398D05ECE9CCE14943 /* SnapshotWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotWidgets.swift; sourceTree = "<group>"; };
 		C0F6C3A816B5B7AB82A6DB7C /* MoveDaySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoveDaySheet.swift; sourceTree = "<group>"; };
 		C86C506CB1DD44FBB105F6B2 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		C9F1EC93FC7BA8D8D4DAEA58 /* TrendsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsModel.swift; sourceTree = "<group>"; };
 		CB4B437C24B11803E9C28EE6 /* Plan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Plan.swift; sourceTree = "<group>"; };
 		CBB385EB2D063C2EA0283EA2 /* OFL-Archivo.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Archivo.txt"; sourceTree = "<group>"; };
 		CDF38361D28FBEE8E2C70373 /* StrengthSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionView.swift; sourceTree = "<group>"; };
+		D01836CFA034C828DF59B62F /* StrengthActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthActivityAttributes.swift; sourceTree = "<group>"; };
+		D0969C0EE47DBE1A1C8A7694 /* TrainLogWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TrainLogWidgets.entitlements; sourceTree = "<group>"; };
 		D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Archivo.ttf; sourceTree = "<group>"; };
 		D3A7BF848A42528930E7F48B /* HealthSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSync.swift; sourceTree = "<group>"; };
 		D9430F1CA886700E3F8D4F03 /* BodyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyView.swift; sourceTree = "<group>"; };
@@ -198,6 +248,7 @@
 				7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */,
 				AECFF6858D98599C67E6EEC8 /* TodayTests.swift */,
 				97FFCC221BB33F6F97AAF9C1 /* TrendsTests.swift */,
+				628E9967DDE0257DBDB7C508 /* WidgetTests.swift */,
 			);
 			path = TrainLogTests;
 			sourceTree = "<group>";
@@ -225,6 +276,7 @@
 		564D327BEA581193F3E1A74C /* Strength */ = {
 			isa = PBXGroup;
 			children = (
+				B6BBAC8C19B152CC5B05A9FC /* StrengthActivity.swift */,
 				027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */,
 				CDF38361D28FBEE8E2C70373 /* StrengthSessionView.swift */,
 			);
@@ -281,6 +333,7 @@
 			children = (
 				8D06FFA209BAA7436AB6E384 /* TrainLog.app */,
 				7A42369D06F44C4B76267BEB /* TrainLogTests.xctest */,
+				18D43DC63E781C9944ACB57E /* TrainLogWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -323,8 +376,10 @@
 		A949AC44299C2723DD0F0138 = {
 			isa = PBXGroup;
 			children = (
+				E90ECB47365472D76A3FC7E2 /* Shared */,
 				6ADC6A4A8AB97945B101B0AF /* TrainLog */,
 				3DD793074BA91A76914E2C0A /* TrainLogTests */,
+				C2B699AED1069C36826F5F3E /* TrainLogWidgets */,
 				6C5A222CD4BF19ADC524F513 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -355,6 +410,27 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		C2B699AED1069C36826F5F3E /* TrainLogWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				BE21E588EDC172EE627EFE67 /* Info.plist */,
+				C050D3398D05ECE9CCE14943 /* SnapshotWidgets.swift */,
+				6C48F3797F00F70170A5FD4B /* StrengthLiveActivity.swift */,
+				D0969C0EE47DBE1A1C8A7694 /* TrainLogWidgets.entitlements */,
+				04082B44C3130F260F9162CC /* TrainLogWidgets.swift */,
+			);
+			path = TrainLogWidgets;
+			sourceTree = "<group>";
+		};
+		E90ECB47365472D76A3FC7E2 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				D01836CFA034C828DF59B62F /* StrengthActivityAttributes.swift */,
+				B5643ADC614AE0FDB4DF3384 /* WidgetSnapshot.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		E9EFB92FFD7C752A1707AD5B /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -372,10 +448,12 @@
 			buildPhases = (
 				0251D3C51106C0E0ABA9023E /* Sources */,
 				942188C0D255B3E21110195B /* Resources */,
+				0A379C56F0799B17BA40A5F0 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				1507B6DCCBDE0268FC03E35F /* PBXTargetDependency */,
 			);
 			name = TrainLog;
 			packageProductDependencies = (
@@ -383,6 +461,24 @@
 			productName = TrainLog;
 			productReference = 8D06FFA209BAA7436AB6E384 /* TrainLog.app */;
 			productType = "com.apple.product-type.application";
+		};
+		B92B6B4FA3C26B61A9B59877 /* TrainLogWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7F35313EFDFE25DFFD047B30 /* Build configuration list for PBXNativeTarget "TrainLogWidgets" */;
+			buildPhases = (
+				5BE2DAD13475561D620365DB /* Sources */,
+				92EF9D30D0328FF599E723E6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TrainLogWidgets;
+			packageProductDependencies = (
+			);
+			productName = TrainLogWidgets;
+			productReference = 18D43DC63E781C9944ACB57E /* TrainLogWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		DADE89526DBB4F66F0A5B3BA /* TrainLogTests */ = {
 			isa = PBXNativeTarget;
@@ -415,6 +511,10 @@
 						DevelopmentTeam = 7LNZV748SW;
 						ProvisioningStyle = Automatic;
 					};
+					B92B6B4FA3C26B61A9B59877 = {
+						DevelopmentTeam = 7LNZV748SW;
+						ProvisioningStyle = Automatic;
+					};
 					DADE89526DBB4F66F0A5B3BA = {
 						DevelopmentTeam = 7LNZV748SW;
 						ProvisioningStyle = Automatic;
@@ -436,12 +536,26 @@
 			projectRoot = "";
 			targets = (
 				654D42BF0F8C0B02FEDC4898 /* TrainLog */,
+				B92B6B4FA3C26B61A9B59877 /* TrainLogWidgets */,
 				DADE89526DBB4F66F0A5B3BA /* TrainLogTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		92EF9D30D0328FF599E723E6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC38EF113D5E3D345D5D8C6D /* Archivo.ttf in Resources */,
+				3BF6A8982B0969C3E4443EC7 /* BarlowCondensed-Bold.ttf in Resources */,
+				9B6066DD628DC94AA5442C73 /* BarlowCondensed-ExtraBoldItalic.ttf in Resources */,
+				F39D8B776736279B1E1D80BD /* BarlowCondensed-SemiBold.ttf in Resources */,
+				59134E364542DFECB0EBECEB /* OFL-Archivo.txt in Resources */,
+				FA071C807EEE55903138DF6B /* OFL-BarlowCondensed.txt in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		942188C0D255B3E21110195B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -493,6 +607,8 @@
 				27623E1B5C49B23D65C4E211 /* Reminders.swift in Sources */,
 				47334F55D41030EFB9932E45 /* SettingsModel.swift in Sources */,
 				D2BCDEA473DECA30A0B3A7C6 /* SettingsView.swift in Sources */,
+				19252000DB3CBDC4D09F33EE /* StrengthActivity.swift in Sources */,
+				ACE4F7A27DF7F2437613BDBD /* StrengthActivityAttributes.swift in Sources */,
 				CAA1710E904C67B7C0D44AC0 /* StrengthSession.swift in Sources */,
 				2AB2EED77A398A1DD1C8868B /* StrengthSessionModel.swift in Sources */,
 				859D6A666F8C99A4587E4D55 /* StrengthSessionView.swift in Sources */,
@@ -503,6 +619,22 @@
 				90AA5331DE708BCF6A15830B /* Trends.swift in Sources */,
 				4D4E5EED8467E4BC70506D95 /* TrendsModel.swift in Sources */,
 				5B44F95AE124CC73DCA73481 /* TrendsView.swift in Sources */,
+				6A3E5292221EEBB8372E4EFE /* WidgetSnapshot.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5BE2DAD13475561D620365DB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D26D91F8C3B776862999FED7 /* Food.swift in Sources */,
+				6D608015D33A3B49E694A568 /* PhoneToday.swift in Sources */,
+				FE7CBDB13209D6CCD4C63912 /* SnapshotWidgets.swift in Sources */,
+				A791F233764F3A02D340FA64 /* StrengthActivityAttributes.swift in Sources */,
+				E5A5DDD6E75551AC868D7857 /* StrengthLiveActivity.swift in Sources */,
+				A8374CA89FF29285D94B840E /* Theme.swift in Sources */,
+				29701B35851FF1CB790F564C /* TrainLogWidgets.swift in Sources */,
+				1B823BE0C83ED9A8EB08C487 /* WidgetSnapshot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -521,12 +653,18 @@
 				596B94B045D4FE90A37695C7 /* StrengthSessionTests.swift in Sources */,
 				5949E6B54064073FF68DD91C /* TodayTests.swift in Sources */,
 				1C78A94319F86B32903FD7E8 /* TrendsTests.swift in Sources */,
+				09768067D6CE829DDCD86661 /* WidgetTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		1507B6DCCBDE0268FC03E35F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B92B6B4FA3C26B61A9B59877 /* TrainLogWidgets */;
+			targetProxy = 45A9D176E2DD37DA4DED0A0B /* PBXContainerItemProxy */;
+		};
 		9F93F9AAA25B8646660EC684 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 654D42BF0F8C0B02FEDC4898 /* TrainLog */;
@@ -551,6 +689,25 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TrainLog.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TrainLog";
 			};
 			name = Debug;
+		};
+		1EA855F56FC294E4C6DA0E2B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TrainLogWidgets/TrainLogWidgets.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TrainLogWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TrainLog;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "TrainLog widgets refresh from the TrainLog server on your Mac over home Wi-Fi.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ronek22.trainlog.widgets;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
 		};
 		68E0807B402BFA48E27AE508 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -722,6 +879,25 @@
 			};
 			name = Release;
 		};
+		C58CB75492A24C1213B92B15 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TrainLogWidgets/TrainLogWidgets.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TrainLogWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TrainLog;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "TrainLog widgets refresh from the TrainLog server on your Mac over home Wi-Fi.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ronek22.trainlog.widgets;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
 		EF446431565216D31A5D1CD6 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -765,6 +941,15 @@
 			buildConfigurations = (
 				A339FA697B7D93961A33054D /* Debug */,
 				C3CCF2E01CD21DF04E11D248 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7F35313EFDFE25DFFD047B30 /* Build configuration list for PBXNativeTarget "TrainLogWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C58CB75492A24C1213B92B15 /* Debug */,
+				1EA855F56FC294E4C6DA0E2B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

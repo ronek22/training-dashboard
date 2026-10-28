@@ -42,11 +42,15 @@ final class TodayModel {
             syncedAt = loaded.syncedAt
             offline = loaded.fromCache
             error = nil
+            let baseURL = api.baseURL
+            WidgetStore.update { $0.baseURL = baseURL; $0.today = .init(loaded.value) }
         } catch {
             offline = data != nil
             self.error = error.localizedDescription
         }
         activeWorkout = await workout
+        // A workout finished on the web leaves no open session to end the Live Activity.
+        if activeWorkout == nil { StrengthActivity.end() }
     }
 
     /// Keeps the Resume banner in step with a workout started, advanced or finished on the web.

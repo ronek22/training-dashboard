@@ -124,6 +124,12 @@ final class StrengthSessionModel {
         store.save(session)
         if positionChanged { resetDrafts() }
         phase = .ready
+        showActivity()
+    }
+
+    private func showActivity() {
+        guard let session, session.isActive else { return }
+        StrengthActivity.show(session, restEndsAt: restEndsAt, restSeconds: restSeconds)
     }
 
     // MARK: Actions
@@ -162,6 +168,7 @@ final class StrengthSessionModel {
 
     func skipRest() {
         restEndsAt = nil
+        showActivity()
     }
 
     func adjustWeight(by steps: Int) {
@@ -186,6 +193,7 @@ final class StrengthSessionModel {
 
     private func close() async {
         store.clear()
+        StrengthActivity.end()
         // Flush before closing so Today's reload doesn't still see the workout as open.
         unsynced = !(await queue.flush(with: client()))
         phase = .closed
@@ -204,6 +212,7 @@ final class StrengthSessionModel {
         } else {
             // Finished or discarded on the web.
             store.clear()
+            StrengthActivity.end()
             phase = .closed
         }
     }

@@ -19,11 +19,14 @@ APP="$IOS_DIR/build/device/Build/Products/Debug-iphoneos/TrainLog.app"
 log() { print -r -- "$(date '+%F %T') $*"; }
 notify() { osascript -e "display notification \"$1\" with title \"TrainLog redeploy\"" >/dev/null 2>&1 || true; }
 
-# Newest cached profile for this app id, and its expiry as epoch seconds.
-profile=""; expires=0
+# Newest cached profile for this app id, and its expiry as epoch seconds. The widget extension
+# (APP_ID.widgets) has its own profile issued alongside; it's renewed together with the app's.
+profile=""; expires=0; extension_profiles=()
 for f in "$PROFILES"/*.mobileprovision(N); do
   plist=$(security cms -D -i "$f" 2>/dev/null) || continue
-  [[ $(plutil -extract Entitlements.application-identifier raw - <<<"$plist" 2>/dev/null) == "$APP_ID" ]] || continue
+  app_id=$(plutil -extract Entitlements.application-identifier raw - <<<"$plist" 2>/dev/null)
+  if [[ "$app_id" == "$APP_ID".* ]]; then extension_profiles+=("$f"); continue; fi
+  [[ "$app_id" == "$APP_ID" ]] || continue
   exp=$(TZ=UTC date -j -f '%Y-%m-%dT%H:%M:%SZ' "$(plutil -extract ExpirationDate raw - <<<"$plist")" +%s)
   if (( exp > expires )); then profile="$f"; expires=$exp; fi
 done
@@ -45,7 +48,9 @@ fi
 # Xcode reuses a cached profile until it expires; moving it aside makes it issue a fresh 7-day one.
 # A plain install keeps it unless it's about to run out anyway.
 if [[ -n "$profile" ]] && { [[ "$INSTALL" != 1 ]] || (( days_left < RENEW_DAYS )); }; then
-  mv "$profile" "$HOME/.Trash/" && log "moved old profile $(basename "$profile") to Trash"
+  for f in "$profile" "${extension_profiles[@]}"; do
+    mv "$f" "$HOME/.Trash/" && log "moved old profile $(basename "$f") to Trash"
+  done
 fi
 
 log "building $(git -C "$IOS_DIR" rev-parse --abbrev-ref HEAD)@$(git -C "$IOS_DIR" rev-parse --short HEAD)"

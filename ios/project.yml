@@ -18,6 +18,9 @@ targets:
     platform: iOS
     sources:
       - path: TrainLog
+      - path: Shared
+    dependencies:
+      - target: TrainLogWidgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ronek22.trainlog
@@ -38,9 +41,16 @@ targets:
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
         com.apple.developer.healthkit.background-delivery: true
+        com.apple.security.application-groups: [group.com.ronek22.trainlog]
     info:
       path: TrainLog/Info.plist
       properties:
+        # Rest timer on the Lock Screen and in the Dynamic Island (Features/Strength/StrengthActivity.swift).
+        NSSupportsLiveActivities: true
+        # Widgets and the Live Activity open trainlog://today, food, plan or strength.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.ronek22.trainlog
+            CFBundleURLSchemes: [trainlog]
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         # Settings › Find on this Wi-Fi browses these to find Macs (ServerFinder.serviceTypes).
@@ -50,6 +60,40 @@ targets:
           - _ssh._tcp
           - _smb._tcp
           - _rfb._tcp
+        UIAppFonts:
+          - BarlowCondensed-SemiBold.ttf
+          - BarlowCondensed-Bold.ttf
+          - BarlowCondensed-ExtraBoldItalic.ttf
+          - Archivo.ttf
+  TrainLogWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: TrainLogWidgets
+      - path: Shared
+      - path: TrainLog/Design/Theme.swift
+      - path: TrainLog/API/PhoneToday.swift
+      - path: TrainLog/API/Food.swift
+      - path: TrainLog/Resources/Fonts
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ronek22.trainlog.widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: TrainLog
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: TrainLog widgets refresh from the TrainLog server on your Mac over home Wi-Fi.
+    entitlements:
+      path: TrainLogWidgets/TrainLogWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.ronek22.trainlog]
+    info:
+      path: TrainLogWidgets/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
         UIAppFonts:
           - BarlowCondensed-SemiBold.ttf
           - BarlowCondensed-Bold.ttf

@@ -116,4 +116,33 @@ struct StrengthSessionTests {
         #expect(queue.pending.count == 2)
         try? FileManager.default.removeItem(at: file)
     }
+
+    @Test func liveActivityShowsTheSetUpNextAndTheRest() throws {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        let state = try #require(StrengthActivity.state(
+            for: try session(), restEndsAt: now.addingTimeInterval(72), restSeconds: 90, now: now
+        ))
+        #expect(state.exercise == "Dumbbell Row")
+        #expect(state.setLabel == "Set 2")
+        // The weight changed on set 1 carries on.
+        #expect(state.load == "36 kg × 10")
+        #expect(state.exerciseNumber == 1 && state.exerciseCount == 2)
+        #expect(state.setsDone == 1 && state.setsTotal == 5)
+        #expect(state.restRange == now.addingTimeInterval(-18)...now.addingTimeInterval(72))
+        #expect(!state.allSetsDone)
+    }
+
+    @Test func liveActivityUsesTheShortWorkoutName() {
+        #expect(StrengthActivity.shortName("Workout B · Back + Core") == "Workout B")
+        #expect(StrengthActivity.shortName("Legs") == "Legs")
+    }
+
+    @Test func liveActivityDropsARestThatIsOver() throws {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        let state = try #require(StrengthActivity.state(
+            for: try session(), restEndsAt: now.addingTimeInterval(-1), restSeconds: 90, now: now
+        ))
+        #expect(state.restEnd == nil)
+        #expect(state.restRange == nil)
+    }
 }

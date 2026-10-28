@@ -38,6 +38,9 @@ If a feature isn't in the artboard, ask before building it.
   - `TrainLog/Features/<Screen>/`: one folder per screen (view + view model)
   - `TrainLog/Design/`: tokens (colors, fonts, spacing) and shared components
   - `TrainLogTests/`: unit tests for decoding and view-model logic
+  - `TrainLogWidgets/`: widget extension (Home/Lock Screen widgets, strength Live Activity)
+  - `Shared/`: code compiled into both the app and the extension (widget snapshot in the
+    `group.com.ronek22.trainlog` App Group, Live Activity attributes)
 - DTOs mirror backend JSON with `snake_case` keys (use `.convertFromSnakeCase`). Decode only
   fields the app uses; make anything optional that the backend may omit.
 

@@ -78,6 +78,7 @@ final class FoodModel {
         if date == selectedDate {
             dinner = week?.value.days.first { $0.date == date }
         }
+        publishWidget()
     }
 
     /// Saves a meal; when the server is unreachable it's queued and counted locally.
@@ -96,12 +97,21 @@ final class FoodModel {
         } catch {
             self.error = error.localizedDescription
         }
+        publishWidget()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    /// Today's kcal to go for the Food widgets, counting meals still queued here.
+    private func publishWidget() {
+        guard isToday, let day, day.date == selectedDate else { return }
+        let food = WidgetSnapshot.Food(day, eaten: eaten)
+        WidgetStore.update { $0.food = food }
     }
 
     func delete(_ entry: FoodEntry) async {
         do {
             day = try await client().send("DELETE", "/nutrition/food/entries/\(entry.id)", as: FoodDay.self)
+            publishWidget()
         } catch {
             self.error = error.localizedDescription
         }

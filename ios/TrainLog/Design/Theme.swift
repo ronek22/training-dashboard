@@ -64,6 +64,19 @@ enum Sport: String, Decodable, Sendable {
         default: rawValue.capitalized
         }
     }
+
+    var symbol: String {
+        switch self {
+        case .ride: "bicycle"
+        case .run: "figure.run"
+        case .strength: "dumbbell.fill"
+        case .mobility: "figure.cooldown"
+        case .walk: "figure.walk"
+        case .hike: "figure.hiking"
+        case .rest: "bed.double.fill"
+        case .other: "figure.mixed.cardio"
+        }
+    }
 }
 
 // Barlow Condensed for numbers and titles, Archivo for body (Resources/Fonts, OFL). Falls back

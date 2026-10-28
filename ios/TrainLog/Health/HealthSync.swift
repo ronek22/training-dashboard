@@ -48,7 +48,8 @@ final class HealthSync {
     /// whether reading was allowed; a denied type just reads as empty.
     func requestAccess() async {
         guard Self.isAvailable, !types.isEmpty else { return }
-        try? await store.requestAuthorization(toShare: [], read: Set(types))
+        let live = readsRecovery ? LiveHealth.types : []
+        try? await store.requestAuthorization(toShare: [], read: Set(types + live))
     }
 
     /// Call at launch and after a toggle changes. HealthKit relaunches the app in the background for

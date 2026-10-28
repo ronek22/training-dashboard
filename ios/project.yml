@@ -31,7 +31,7 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: TrainLog
         INFOPLIST_KEY_NSCameraUsageDescription: TrainLog photographs meals so Claude can estimate calories and protein.
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: TrainLog talks to the TrainLog server on your Mac over home Wi-Fi.
-        INFOPLIST_KEY_NSHealthShareUsageDescription: TrainLog reads sleep, resting heart rate, HRV, steps and weight from Apple Health and sends them to your Mac for recovery tracking.
+        INFOPLIST_KEY_NSHealthShareUsageDescription: TrainLog reads sleep, heart rate, HRV, steps and weight from Apple Health and sends them to your Mac for recovery tracking.
     entitlements:
       path: TrainLog/TrainLog.entitlements
       properties:

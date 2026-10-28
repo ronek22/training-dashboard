@@ -46,6 +46,7 @@ struct SleepStages: Decodable, Sendable, Equatable {
     var core: Double?
     var deep: Double?
     var rem: Double?
+    var awake: Double?
 }
 
 struct HealthImport: Decodable, Sendable, Equatable {

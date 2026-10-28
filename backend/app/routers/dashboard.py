@@ -6,6 +6,7 @@ from fastapi import APIRouter, Query
 from ..db import get_db
 from ..services.dashboard import build_dashboard_data, build_recent_context, build_training_load_summary
 from ..services.goals import list_goals_data
+from ..services.phone_body import build_phone_body
 from ..services.phone_today import build_phone_today
 from ..services.widget_brief import build_widget_brief
 
@@ -35,6 +36,15 @@ def phone_today(day: Optional[date] = Query(None, alias="date")):
     conn = get_db()
     try:
         return build_phone_today(conn, day)
+    finally:
+        conn.close()
+
+
+@router.get("/phone/body")
+def phone_body(day: Optional[date] = Query(None, alias="date")):
+    conn = get_db()
+    try:
+        return build_phone_body(conn, day)
     finally:
         conn.close()
 

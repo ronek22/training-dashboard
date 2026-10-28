@@ -4,6 +4,7 @@ struct TodayView: View {
     @State private var model = TodayModel()
     @State private var showFallback = false
     @State private var showSettings = false
+    @State private var showBody = false
     /// Tells the root to hide the tab bar while Settings is open.
     @Binding var showingDetail: Bool
     var onStartStrength: (Int?) -> Void = { _ in }
@@ -16,8 +17,10 @@ struct TodayView: View {
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationTitle("Today")
                 .navigationDestination(isPresented: $showSettings) { SettingsView() }
+                .navigationDestination(isPresented: $showBody) { BodyView() }
         }
         .tint(.volt)
+        .onChange(of: showBody) { showingDetail = showBody }
         .onChange(of: showSettings) {
             showingDetail = showSettings
             // Back from Settings may have pointed the app at another server.
@@ -42,7 +45,11 @@ struct TodayView: View {
                         workoutOpen: model.activeWorkout != nil,
                         onStartStrength: onStartStrength
                     )
-                    ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone)
+                    Button { showBody = true } label: {
+                        ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens sleep, steps, heart rate and training load")
                     WeekCard(week: data.week, minutes: data.weekMinutes, today: data.date)
                 } else if let error = model.error {
                     errorCard(error)
@@ -340,6 +347,10 @@ private struct ReadinessCard: View {
                     Text(status.label).font(AppFont.body(13, weight: .semibold))
                 }
                 .foregroundStyle(status.color)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.faint)
+                    .padding(.leading, 4)
             }
             HStack(alignment: .top, spacing: 14) {
                 stat(vitals.restingHr.map { String(Int($0.rounded())) }, unit: "bpm", label: "Resting HR")

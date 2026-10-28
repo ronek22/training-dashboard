@@ -24,27 +24,25 @@ struct RootView: View {
     @State private var tab: AppTab = .today
     @State private var strength: StrengthLaunch?
     @State private var todayRefresh = 0
-    @State private var activityDetailOpen = false
-    @State private var planDetailOpen = false
-    @State private var settingsOpen = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        ZStack {
-            Color.bg.ignoresSafeArea()
-            switch tab {
-            case .today: TodayView(showingDetail: $settingsOpen, onStartStrength: { strength = StrengthLaunch(templateId: $0) }, refresh: todayRefresh)
-            case .plan: PlanView(showingDetail: $planDetailOpen, onStartStrength: { strength = StrengthLaunch(templateId: $0) })
-            case .food: FoodView()
-            case .activities: ActivitiesView(showingDetail: $activityDetailOpen)
+        // System tab bar: Liquid Glass on iOS 26, and every tab keeps its scroll and navigation state.
+        TabView(selection: $tab) {
+            Tab("Today", systemImage: "clock", value: .today) {
+                TodayView(onStartStrength: { strength = StrengthLaunch(templateId: $0) }, refresh: todayRefresh)
+            }
+            Tab("Plan", systemImage: "calendar", value: .plan) {
+                PlanView(onStartStrength: { strength = StrengthLaunch(templateId: $0) })
+            }
+            Tab("Food", systemImage: "fork.knife", value: .food) {
+                FoodView()
+            }
+            Tab("Activities", systemImage: "waveform.path.ecg", value: .activities) {
+                ActivitiesView()
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            // Detail pages are pushed with their own back button, as in the artboard.
-            if !(tab == .activities && activityDetailOpen) && !(tab == .plan && planDetailOpen) && !(tab == .today && settingsOpen) {
-                TabBar(selection: $tab)
-            }
-        }
+        .tint(.volt)
         // Rolls the dinner nudges a week ahead.
         .task { await Reminders.apply() }
         .task(id: scenePhase) {
@@ -97,43 +95,9 @@ struct StrengthLaunch: Identifiable {
     let templateId: Int?
 }
 
-/// Bottom bar: four tabs. The check-in that used to sit behind a centre + lives on Today.
-struct TabBar: View {
-    /// Height above the home indicator. Tabs inside a NavigationStack don't receive the root's
-    /// safeAreaInset, so their scroll views add this as a bottom content margin instead.
-    static let height: CGFloat = 52
-
-    @Binding var selection: AppTab
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            item(.today, "Today", "clock")
-            item(.plan, "Plan", "calendar")
-            item(.food, "Food", "fork.knife")
-            item(.activities, "Activities", "waveform.path.ecg")
-        }
-        .padding(.horizontal, 10)
-        .padding(.top, 8)
-        .frame(maxWidth: .infinity)
-        .background {
-            Color.inset.opacity(0.94)
-                .overlay(alignment: .top) { Rectangle().fill(Color.cardBorder).frame(height: 1) }
-                .ignoresSafeArea(edges: .bottom)
-        }
-    }
-
-    private func item(_ tab: AppTab, _ title: String, _ icon: String) -> some View {
-        Button {
-            selection = tab
-        } label: {
-            VStack(spacing: 4) {
-                Image(systemName: icon).font(.system(size: 21, weight: .medium)).frame(height: 24)
-                Text(title).font(AppFont.body(10, weight: .semibold))
-            }
-            .foregroundStyle(selection == tab ? Color.volt : Color.faint)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+extension View {
+    /// Detail pages are pushed with their own back button, as in the artboard.
+    func hidesTabBar() -> some View {
+        toolbar(.hidden, for: .tabBar)
     }
 }

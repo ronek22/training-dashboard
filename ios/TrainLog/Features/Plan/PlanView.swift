@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct PlanView: View {
-    /// Tells the root to hide the tab bar while a day page is open.
-    @Binding var showingDetail: Bool
     let onStartStrength: (Int?) -> Void
     @State private var model = PlanModel()
     @State private var path: [String] = []
@@ -44,7 +42,6 @@ struct PlanView: View {
             .scrollIndicators(.hidden)
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .contentMargins(.top, 0, for: .scrollContent)
-            .contentMargins(.bottom, TabBar.height, for: .scrollContent)
             .background(Color.bg)
             .toolbar(.hidden, for: .navigationBar)
             .navigationTitle("Plan")
@@ -55,10 +52,10 @@ struct PlanView: View {
             .task { await model.load() }
             .navigationDestination(for: String.self) { date in
                 PlanDayView(model: model, date: date, onMove: { moving = $0 }, onStartStrength: onStartStrength)
+                    .hidesTabBar()
             }
         }
         .tint(.volt)
-        .onChange(of: path) { showingDetail = !path.isEmpty }
         .sheet(item: $moving) { day in
             if let week = model.week {
                 MoveDaySheet(source: day, slots: PlanFormat.slots(week), today: model.today) { target in

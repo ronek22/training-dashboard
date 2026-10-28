@@ -7,8 +7,6 @@ struct TodayView: View {
     @State private var showSettings = false
     @State private var showBody = false
     @State private var showCheckin = false
-    /// Tells the root to hide the tab bar while Settings is open.
-    @Binding var showingDetail: Bool
     var onStartStrength: (Int?) -> Void = { _ in }
     /// Bumped when the strength screen closes, so the banner and plan reload.
     var refresh = 0
@@ -18,13 +16,11 @@ struct TodayView: View {
             content
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationTitle("Today")
-                .navigationDestination(isPresented: $showSettings) { SettingsView() }
-                .navigationDestination(isPresented: $showBody) { BodyView() }
+                .navigationDestination(isPresented: $showSettings) { SettingsView().hidesTabBar() }
+                .navigationDestination(isPresented: $showBody) { BodyView().hidesTabBar() }
         }
         .tint(.volt)
-        .onChange(of: showBody) { showingDetail = showBody }
         .onChange(of: showSettings) {
-            showingDetail = showSettings
             // Back from Settings may have pointed the app at another server.
             if !showSettings { Task { await model.load() } }
         }
@@ -60,7 +56,6 @@ struct TodayView: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
-        .contentMargins(.bottom, TabBar.height, for: .scrollContent)
         .safeAreaInset(edge: .top, spacing: 0) {
             // Keeps scrolled cards from running under the status bar.
             Color.clear.frame(height: 0).background(Color.bg)
@@ -531,5 +526,5 @@ private struct DayRing: View {
 }
 
 #Preview {
-    TodayView(showingDetail: .constant(false)).preferredColorScheme(.dark)
+    TodayView().preferredColorScheme(.dark)
 }

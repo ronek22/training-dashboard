@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct ActivitiesView: View {
-    /// Tells the root to hide the tab bar while a detail page is open.
-    @Binding var showingDetail: Bool
     @State private var model = ActivitiesModel()
     @State private var path = NavigationPath()
     @State private var feedbackFor: ActivitySummary?
@@ -54,7 +52,6 @@ struct ActivitiesView: View {
             .scrollIndicators(.hidden)
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .contentMargins(.top, 0, for: .scrollContent)
-            .contentMargins(.bottom, TabBar.height, for: .scrollContent)
             .background(Color.bg)
             .toolbar(.hidden, for: .navigationBar)
             .navigationTitle("Activities")
@@ -64,11 +61,11 @@ struct ActivitiesView: View {
                 ActivityDetailView(id: id, summary: model.activities.first { $0.id == id }) { input in
                     Task { await model.saveFeedback(input, for: id) }
                 }
+                .hidesTabBar()
             }
-            .navigationDestination(for: TrendsRoute.self) { _ in TrendsView() }
+            .navigationDestination(for: TrendsRoute.self) { _ in TrendsView().hidesTabBar() }
         }
         .tint(.volt)
-        .onChange(of: path) { showingDetail = !path.isEmpty }
         .sheet(item: $feedbackFor) { activity in
             FeedbackSheet(title: activity.title, existing: activity.feedback) { input in
                 Task { await model.saveFeedback(input, for: activity.id) }

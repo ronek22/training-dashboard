@@ -54,6 +54,7 @@ struct TodayView: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
+        .contentMargins(.bottom, TabBar.height, for: .scrollContent)
         .safeAreaInset(edge: .top, spacing: 0) {
             // Keeps scrolled cards from running under the status bar.
             Color.clear.frame(height: 0).background(Color.bg)

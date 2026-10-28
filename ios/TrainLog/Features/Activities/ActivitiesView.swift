@@ -54,6 +54,7 @@ struct ActivitiesView: View {
             .scrollIndicators(.hidden)
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .contentMargins(.top, 0, for: .scrollContent)
+            .contentMargins(.bottom, TabBar.height, for: .scrollContent)
             .background(Color.bg)
             .toolbar(.hidden, for: .navigationBar)
             .navigationTitle("Activities")

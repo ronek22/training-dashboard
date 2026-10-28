@@ -90,6 +90,10 @@ struct StrengthLaunch: Identifiable {
 
 /// Bottom bar from the artboard: four tabs around one volt + that opens the quick log sheet.
 struct TabBar: View {
+    /// Height above the home indicator. Tabs inside a NavigationStack don't receive the root's
+    /// safeAreaInset, so their scroll views add this as a bottom content margin instead.
+    static let height: CGFloat = 52
+
     @Binding var selection: AppTab
     let onPlus: () -> Void
 

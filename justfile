@@ -122,6 +122,14 @@ setup-checks:
     "{{root}}/backend/.venv/bin/pip" install -r "{{root}}/backend/requirements.txt"
     cd "{{root}}/frontend" && npm ci
 
+# Build the native app and install it on the iPhone now, then open it (phone unlocked, same Wi-Fi).
+ios:
+    INSTALL=1 "{{root}}/ios/scripts/redeploy-device.sh"
+
+# Same, but also renew the free 7-day signing profile.
+ios-renew:
+    FORCE=1 "{{root}}/ios/scripts/redeploy-device.sh"
+
 # Serve the built iPhone app on the Mac's Wi-Fi IP (find it in System Settings > Wi-Fi > Details).
 phone ip:
     TRAINLOG_LAN_IP="{{ip}}" docker compose -f docker-compose.yml -f docker-compose.phone.yml up -d --build backend phone

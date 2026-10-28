@@ -36,7 +36,8 @@ struct HealthSyncTests {
         let now = date("2026-10-28T08:00:00Z")
         let start = { (last: Date?) in HealthPush.windowStart(now: now, lastSuccess: last, calendar: calendar) }
 
-        #expect(start(date("2026-10-28T06:00:00Z")) == date("2026-10-20T23:00:00Z"))
+        // Midnight on 21 Oct is still summer time (UTC+2); clocks went back on the 25th.
+        #expect(start(date("2026-10-28T06:00:00Z")) == date("2026-10-20T22:00:00Z"))
         #expect(start(date("2026-10-12T06:00:00Z")) == date("2026-10-10T22:00:00Z"))
         #expect(start(nil) == date("2026-09-27T22:00:00Z"))
         #expect(start(date("2026-08-01T06:00:00Z")) == date("2026-09-27T22:00:00Z"))

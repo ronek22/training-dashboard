@@ -12,6 +12,7 @@
 		0568E5E202514A8C473DBB7F /* QuickLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10A7B084CF58AD83C3603DB /* QuickLogSheet.swift */; };
 		060527AC9C3F7EC7AB18CBEF /* ActivitiesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CB4D14BAB2BB7DEC58078D /* ActivitiesTests.swift */; };
 		09768067D6CE829DDCD86661 /* WidgetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 628E9967DDE0257DBDB7C508 /* WidgetTests.swift */; };
+		10D69E614B8EA14CF015A170 /* WorkoutSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C1F25AB9BBF9F5A2082B9B9 /* WorkoutSync.swift */; };
 		19252000DB3CBDC4D09F33EE /* StrengthActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6BBAC8C19B152CC5B05A9FC /* StrengthActivity.swift */; };
 		1B823BE0C83ED9A8EB08C487 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5643ADC614AE0FDB4DF3384 /* WidgetSnapshot.swift */; };
 		1C78A94319F86B32903FD7E8 /* TrendsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97FFCC221BB33F6F97AAF9C1 /* TrendsTests.swift */; };
@@ -51,6 +52,7 @@
 		85B8FBAB0BFB430EF8FEDCF3 /* ActivityDetailCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C9B1AFE4D446D107F23124 /* ActivityDetailCards.swift */; };
 		8855717FEAFC4B6CA4379BFB /* OFL-Archivo.txt in Resources */ = {isa = PBXBuildFile; fileRef = CBB385EB2D063C2EA0283EA2 /* OFL-Archivo.txt */; };
 		8CB0D0D61C2DA03E0CB2727E /* FoodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE84774476766302F5B40E04 /* FoodTests.swift */; };
+		8DA89CDA3DB28A90107EBF0B /* WorkoutSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 750838068CEBD75A49FE93BE /* WorkoutSyncTests.swift */; };
 		90AA5331DE708BCF6A15830B /* Trends.swift in Sources */ = {isa = PBXBuildFile; fileRef = F82A37EF65E30B4BBE2ADC4D /* Trends.swift */; };
 		94D4295DC2C299DF58981A1A /* OfflineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B75853302B3165E45B90291 /* OfflineTests.swift */; };
 		9ADA8691ED676CD19EF94141 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FED9A0BA3F896F441C12CFE /* Theme.swift */; };
@@ -83,6 +85,7 @@
 		F39D8B776736279B1E1D80BD /* BarlowCondensed-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0243D4E3976851681CA3EF5E /* BarlowCondensed-SemiBold.ttf */; };
 		F3D68722FA8D53F429E5C98D /* BarlowCondensed-ExtraBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9F112A2FC94E41B5BFB208A4 /* BarlowCondensed-ExtraBoldItalic.ttf */; };
 		F3E405E6B5D0598BD6EF819F /* FoodModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2432CF39E1025EE60FFEA9AE /* FoodModel.swift */; };
+		F78030B6BBD3602453EA97AA /* WorkoutPush.swift in Sources */ = {isa = PBXBuildFile; fileRef = A328ACC1C28F23D41EFA6650 /* WorkoutPush.swift */; };
 		FA071C807EEE55903138DF6B /* OFL-BarlowCondensed.txt in Resources */ = {isa = PBXBuildFile; fileRef = DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */; };
 		FC38EF113D5E3D345D5D8C6D /* Archivo.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */; };
 		FE7CBDB13209D6CCD4C63912 /* SnapshotWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C050D3398D05ECE9CCE14943 /* SnapshotWidgets.swift */; };
@@ -146,9 +149,11 @@
 		6906A4138E3E54E166438B26 /* Food.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Food.swift; sourceTree = "<group>"; };
 		6A6792F9B147DBC380B9FD90 /* BodyModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyModel.swift; sourceTree = "<group>"; };
 		6A82E7ED074ABF53C867C009 /* TodayModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayModel.swift; sourceTree = "<group>"; };
+		6C1F25AB9BBF9F5A2082B9B9 /* WorkoutSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSync.swift; sourceTree = "<group>"; };
 		6C48F3797F00F70170A5FD4B /* StrengthLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthLiveActivity.swift; sourceTree = "<group>"; };
 		6FED9A0BA3F896F441C12CFE /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		70C9B1AFE4D446D107F23124 /* ActivityDetailCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityDetailCards.swift; sourceTree = "<group>"; };
+		750838068CEBD75A49FE93BE /* WorkoutSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSyncTests.swift; sourceTree = "<group>"; };
 		790BB6C3EDE7CCEC73639DFB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7A42369D06F44C4B76267BEB /* TrainLogTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TrainLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionTests.swift; sourceTree = "<group>"; };
@@ -161,6 +166,7 @@
 		97817D1288D6173D1208D11B /* MealEstimateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEstimateSheet.swift; sourceTree = "<group>"; };
 		97FFCC221BB33F6F97AAF9C1 /* TrendsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsTests.swift; sourceTree = "<group>"; };
 		9F112A2FC94E41B5BFB208A4 /* BarlowCondensed-ExtraBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-ExtraBoldItalic.ttf"; sourceTree = "<group>"; };
+		A328ACC1C28F23D41EFA6650 /* WorkoutPush.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPush.swift; sourceTree = "<group>"; };
 		A599FA5C0909F97C3AA92ECA /* Activities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Activities.swift; sourceTree = "<group>"; };
 		ADADEEF3EC729686F3AD8BD5 /* StrengthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSession.swift; sourceTree = "<group>"; };
 		AECFF6858D98599C67E6EEC8 /* TodayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayTests.swift; sourceTree = "<group>"; };
@@ -257,6 +263,7 @@
 				AECFF6858D98599C67E6EEC8 /* TodayTests.swift */,
 				97FFCC221BB33F6F97AAF9C1 /* TrendsTests.swift */,
 				628E9967DDE0257DBDB7C508 /* WidgetTests.swift */,
+				750838068CEBD75A49FE93BE /* WorkoutSyncTests.swift */,
 			);
 			path = TrainLogTests;
 			sourceTree = "<group>";
@@ -369,6 +376,8 @@
 				83F17020D9675275CE912B1F /* HealthPush.swift */,
 				D3A7BF848A42528930E7F48B /* HealthSync.swift */,
 				069C959EF75C5018A65096AB /* LiveHealth.swift */,
+				A328ACC1C28F23D41EFA6650 /* WorkoutPush.swift */,
+				6C1F25AB9BBF9F5A2082B9B9 /* WorkoutSync.swift */,
 			);
 			path = Health;
 			sourceTree = "<group>";
@@ -631,6 +640,8 @@
 				4D4E5EED8467E4BC70506D95 /* TrendsModel.swift in Sources */,
 				5B44F95AE124CC73DCA73481 /* TrendsView.swift in Sources */,
 				6A3E5292221EEBB8372E4EFE /* WidgetSnapshot.swift in Sources */,
+				F78030B6BBD3602453EA97AA /* WorkoutPush.swift in Sources */,
+				10D69E614B8EA14CF015A170 /* WorkoutSync.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -666,6 +677,7 @@
 				5949E6B54064073FF68DD91C /* TodayTests.swift in Sources */,
 				1C78A94319F86B32903FD7E8 /* TrendsTests.swift in Sources */,
 				09768067D6CE829DDCD86661 /* WidgetTests.swift in Sources */,
+				8DA89CDA3DB28A90107EBF0B /* WorkoutSyncTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -732,7 +744,7 @@
 				INFOPLIST_FILE = TrainLog/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrainLog;
 				INFOPLIST_KEY_NSCameraUsageDescription = "TrainLog photographs meals so Claude can estimate calories and protein.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "TrainLog reads sleep, heart rate, HRV, steps and weight from Apple Health and sends them to your Mac for recovery tracking.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "TrainLog reads workouts, sleep, heart rate, HRV, steps and weight from Apple Health and sends them to your Mac for training and recovery tracking.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "TrainLog talks to the TrainLog server on your Mac over home Wi-Fi.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -921,7 +933,7 @@
 				INFOPLIST_FILE = TrainLog/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrainLog;
 				INFOPLIST_KEY_NSCameraUsageDescription = "TrainLog photographs meals so Claude can estimate calories and protein.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "TrainLog reads sleep, heart rate, HRV, steps and weight from Apple Health and sends them to your Mac for recovery tracking.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "TrainLog reads workouts, sleep, heart rate, HRV, steps and weight from Apple Health and sends them to your Mac for training and recovery tracking.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "TrainLog talks to the TrainLog server on your Mac over home Wi-Fi.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;

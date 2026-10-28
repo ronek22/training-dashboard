@@ -5,6 +5,7 @@ struct TrainLogApp: App {
     init() {
         // Must run during launch so HealthKit can wake the app in the background for new samples.
         HealthSync.shared.startObserving()
+        WorkoutSync.shared.startObserving()
         ServerRoute.shared.watchNetwork()
     }
 
@@ -48,8 +49,10 @@ struct RootView: View {
         .task(id: scenePhase) {
             if scenePhase == .active {
                 async let health: Void = HealthSync.shared.sync()
+                async let workouts: Void = WorkoutSync.shared.sync()
                 await CacheWarmer.warm()
                 await health
+                await workouts
             }
         }
         .fullScreenCover(item: $strength, onDismiss: { todayRefresh += 1 }) { launch in

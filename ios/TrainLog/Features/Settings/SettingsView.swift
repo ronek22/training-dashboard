@@ -11,7 +11,9 @@ struct SettingsView: View {
     @AppStorage(Reminders.dinnerEnabledKey) private var dinnerOn = false
     @AppStorage(HealthSync.recoveryKey) private var readRecovery = false
     @AppStorage(HealthSync.weightKey) private var readWeight = false
+    @AppStorage(WorkoutSync.enabledKey) private var sendWorkouts = false
     private var healthSync = HealthSync.shared
+    private var workoutSync = WorkoutSync.shared
 
     enum AddressSheet: String, Identifiable {
         case find, home, remote
@@ -59,6 +61,7 @@ struct SettingsView: View {
         .onChange(of: morningMinutes) { Task { await Reminders.apply() } }
         .onChange(of: readRecovery) { healthChanged(turnedOn: readRecovery) }
         .onChange(of: readWeight) { healthChanged(turnedOn: readWeight) }
+        .onChange(of: sendWorkouts) { workoutsChanged() }
     }
 
     // MARK: Server
@@ -133,6 +136,16 @@ struct SettingsView: View {
                 .tint(Color.mobility)
                 .settingsRow()
                 Divider().overlay(Color.cardBorder)
+                Toggle(isOn: $sendWorkouts) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Send Apple Watch workouts").font(AppFont.body(15)).foregroundStyle(Color.ink)
+                        Text(workoutStatus).font(AppFont.body(12))
+                            .foregroundStyle(sendWorkouts && workoutSync.failed ? Color.warning : Color.muted)
+                    }
+                }
+                .tint(Color.mobility)
+                .settingsRow()
+                Divider().overlay(Color.cardBorder)
                 comingSoonRow("Save strength sessions as workouts")
                 Divider().overlay(Color.cardBorder)
                 Toggle(isOn: $readWeight) {
@@ -140,12 +153,12 @@ struct SettingsView: View {
                 }
                 .tint(Color.mobility)
                 .settingsRow()
-                if readRecovery || readWeight {
+                if readRecovery || readWeight || sendWorkouts {
                     Divider().overlay(Color.cardBorder)
                     healthStatusRow
                 }
             }
-            footnote(readRecovery || readWeight
+            footnote(readRecovery || readWeight || sendWorkouts
                 ? "Sent to the Mac when you open TrainLog and whenever Health gets new data, while the Mac is reachable. Missed days are caught up on the next sync."
                 : "Reads Health on this iPhone and sends it to the Mac. Replaces the Health Data Export app.")
         }
@@ -153,7 +166,11 @@ struct SettingsView: View {
 
     private var healthStatusRow: some View {
         Button {
-            Task { await healthSync.sync(force: true) }
+            Task {
+                async let health: Void = healthSync.sync(force: true)
+                await workoutSync.sync()
+                await health
+            }
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -161,7 +178,7 @@ struct SettingsView: View {
                     Text(healthStatus).font(AppFont.body(12)).foregroundStyle(healthSync.failed ? Color.warning : Color.muted)
                 }
                 Spacer(minLength: 0)
-                if healthSync.syncing {
+                if healthSync.syncing || workoutSync.syncing {
                     ProgressView().controlSize(.small).tint(.muted)
                 } else {
                     Image(systemName: "arrow.triangle.2.circlepath")
@@ -172,7 +189,7 @@ struct SettingsView: View {
             .settingsRow()
         }
         .buttonStyle(.plain)
-        .disabled(healthSync.syncing)
+        .disabled(healthSync.syncing || workoutSync.syncing)
     }
 
     private var healthStatus: String {
@@ -180,6 +197,22 @@ struct SettingsView: View {
         if healthSync.failed { return "Couldn't send" + (last.map { " · \($0)" } ?? "") }
         guard let last else { return "Not sent yet" }
         return last + (healthSync.lastInserted.map { " · \($0) new" } ?? "")
+    }
+
+    /// Strava still adds the title, power and photos once it has the same workout.
+    private var workoutStatus: String {
+        guard sendWorkouts else { return "As soon as they finish; Strava adds the rest later" }
+        let last = workoutSync.lastSuccess.map { "Last sent " + $0.formatted(.relative(presentation: .named)) }
+        if workoutSync.failed { return "Couldn't send" + (last.map { " · \($0)" } ?? "") }
+        return last ?? "Not sent yet"
+    }
+
+    private func workoutsChanged() {
+        Task {
+            if sendWorkouts { await workoutSync.requestAccess() }
+            workoutSync.startObserving()
+            if sendWorkouts { await workoutSync.sync() }
+        }
     }
 
     private func healthChanged(turnedOn: Bool) {

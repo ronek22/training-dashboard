@@ -21,6 +21,8 @@ final class StrengthSessionModel {
     private(set) var unsynced = false
     private(set) var restEndsAt: Date?
     private(set) var restSeconds = 0
+    /// The set just logged, for the confirmation that pops up over the log button.
+    private(set) var lastLogged: LoggedSet?
     /// Bumped by every local write, so a poll that raced one is dropped instead of rolling it back.
     private var edits = 0
 
@@ -139,12 +141,19 @@ final class StrengthSessionModel {
         let reps = draftReps
         let weight = draftWeight
         let effort = draftEffort
+        let label = current.map { StrengthLogic.label(for: set, in: $0.exercise) } ?? "Set"
         session = StrengthLogic.complete(session, setId: set.id, reps: reps, weightKg: weight, effort: effort)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+        lastLogged = LoggedSet(setId: set.id, label: label, load: StrengthFormat.load(weight: weight, reps: reps))
         restSeconds = set.restSeconds
         restEndsAt = .now.addingTimeInterval(TimeInterval(set.restSeconds))
         show(session)
         resetDrafts()
+        if let restEndsAt, let next = current, !allSetsDone {
+            RestAlarm.schedule(at: restEndsAt, next: "\(next.exercise.exerciseName) · \(StrengthFormat.load(weight: draftWeight, reps: draftReps))")
+        } else {
+            RestAlarm.cancel()
+        }
 
         let base = "/strength/workouts/sessions/\(session.id)/sets/\(set.id)"
         let completion = StrengthSetCompletion(actualReps: reps, actualWeightKg: weight)
@@ -168,6 +177,7 @@ final class StrengthSessionModel {
 
     func skipRest() {
         restEndsAt = nil
+        RestAlarm.cancel()
         showActivity()
     }
 
@@ -193,6 +203,7 @@ final class StrengthSessionModel {
 
     private func close() async {
         store.clear()
+        RestAlarm.cancel()
         StrengthActivity.end()
         // Flush before closing so Today's reload doesn't still see the workout as open.
         unsynced = !(await queue.flush(with: client()))
@@ -212,6 +223,7 @@ final class StrengthSessionModel {
         } else {
             // Finished or discarded on the web.
             store.clear()
+            RestAlarm.cancel()
             StrengthActivity.end()
             phase = .closed
         }
@@ -238,6 +250,12 @@ final class StrengthSessionModel {
         draftReps = current.set.targetReps
         draftEffort = nil
     }
+}
+
+struct LoggedSet: Equatable {
+    let setId: Int
+    let label: String
+    let load: String
 }
 
 private struct StrengthSetCompletion: Encodable {

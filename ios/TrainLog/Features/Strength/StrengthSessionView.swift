@@ -7,6 +7,7 @@ struct StrengthSessionView: View {
     @State private var showExercises = false
     @State private var editingWeight = false
     @State private var weightText = ""
+    @State private var toast: LoggedSet?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
@@ -132,12 +133,21 @@ struct StrengthSessionView: View {
                     allDone(session)
                 } else if let current = model.current {
                     exerciseHeader(current.exercise, in: session)
+                        .id(current.exercise.id)
+                        .transition(.opacity)
                     setCard(current.exercise, current.set)
+                        .id(current.set.id)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .trailing).combined(with: .opacity),
+                            removal: .move(edge: .leading).combined(with: .opacity)
+                        ))
                     setList(current.exercise, currentId: current.set.id)
                 }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
+            .animation(.spring(duration: 0.5, bounce: 0.18), value: model.current?.set.id)
+            .animation(.spring(duration: 0.5, bounce: 0.18), value: model.allSetsDone)
         }
         .scrollIndicators(.hidden)
         .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
@@ -341,6 +351,7 @@ struct StrengthSessionView: View {
         VStack(spacing: 10) {
             if let restEndsAt = model.restEndsAt, !model.allSetsDone {
                 RestStrip(endsAt: restEndsAt, total: model.restSeconds, onSkip: model.skipRest)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             if model.allSetsDone {
                 Button("Finish workout") { Task { await model.finish() } }
@@ -357,7 +368,25 @@ struct StrengthSessionView: View {
         .padding(.horizontal, 16)
         .padding(.top, 10)
         .padding(.bottom, 8)
+        .animation(.spring(duration: 0.45, bounce: 0.2), value: model.restEndsAt)
         .background(Color.bg.opacity(0.94).ignoresSafeArea(edges: .bottom))
+        // Floats above the bar so popping in doesn't push the layout around.
+        .overlay(alignment: .top) {
+            if let toast {
+                LoggedToast(logged: toast)
+                    .offset(y: -54)
+                    .transition(.scale(scale: 0.85, anchor: .bottom).combined(with: .opacity).combined(with: .offset(y: 12)))
+            }
+        }
+        .onChange(of: model.lastLogged) { _, logged in
+            withAnimation(.spring(duration: 0.4, bounce: 0.35)) { toast = logged }
+        }
+        .task(id: toast?.setId) {
+            guard toast != nil else { return }
+            try? await Task.sleep(for: .seconds(1.6))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.3)) { toast = nil }
+        }
     }
 
     private func logTitle(_ exercise: StrengthSession.Exercise, _ set: StrengthSession.WorkoutSet) -> String {
@@ -423,6 +452,7 @@ private struct SetRow: View {
                 .foregroundStyle(Color.mobility)
                 .frame(width: 22, height: 22)
                 .background(Color.mobility.opacity(0.18), in: Circle())
+                .transition(.scale(scale: 0.2).combined(with: .opacity))
         } else if isCurrent {
             Circle().strokeBorder(Color.strength, lineWidth: 2).frame(width: 22, height: 22)
         } else {
@@ -430,6 +460,38 @@ private struct SetRow: View {
                 .strokeBorder(Color(hex: 0x4A5263), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
                 .frame(width: 22, height: 22)
         }
+    }
+}
+
+/// Pops up over the log button for a moment after a set is logged.
+private struct LoggedToast: View {
+    let logged: LoggedSet
+    @State private var checked = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 12, weight: .heavy))
+                .foregroundStyle(Color.bg)
+                .frame(width: 24, height: 24)
+                .background(Color.volt, in: Circle())
+                .symbolEffect(.bounce, value: checked)
+            Text("\(logged.label) logged")
+                .font(AppFont.body(14, weight: .semibold))
+                .foregroundStyle(Color.ink)
+            Text(logged.load)
+                .font(AppFont.number(18))
+                .foregroundStyle(Color.volt)
+                .monospacedDigit()
+        }
+        .padding(.leading, 8)
+        .padding(.trailing, 16)
+        .frame(height: 40)
+        .background(Color.raised, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color.cardBorder))
+        .shadow(color: .black.opacity(0.35), radius: 12, y: 4)
+        .onAppear { checked = true }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -465,7 +527,11 @@ private struct RestStrip: View {
                     .buttonStyle(OutlineButtonStyle(height: 44))
                     .frame(width: 72)
             }
-            .sensoryFeedback(.warning, trigger: over) { _, isOver in isOver }
+            // Only a fresh crossing chimes: coming back to the app long after the rest ended
+            // (the notification already rang) stays quiet.
+            .onChange(of: left) { old, new in
+                if new > 0 || (old > 0 && new > -2) { RestAlarm.countdown(max(new, 0)) }
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)

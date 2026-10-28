@@ -74,6 +74,7 @@
 		C54F26CB7A1F3913691533CC /* TodayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A82E7ED074ABF53C867C009 /* TodayModel.swift */; };
 		CAA1710E904C67B7C0D44AC0 /* StrengthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADADEEF3EC729686F3AD8BD5 /* StrengthSession.swift */; };
 		CFB15F923AA4D931073261DE /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CDA809C9D860B28A4DB61A /* APIClient.swift */; };
+		D1551A44556E7DD2FAC38C9C /* RestAlarm.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF9130DF7AE2AB262F71881F /* RestAlarm.swift */; };
 		D2312971324EB18D3E32AA50 /* MoveDaySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F6C3A816B5B7AB82A6DB7C /* MoveDaySheet.swift */; };
 		D26D91F8C3B776862999FED7 /* Food.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6906A4138E3E54E166438B26 /* Food.swift */; };
 		D2BCDEA473DECA30A0B3A7C6 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1168AEF0F0CD20E70D9C73 /* SettingsView.swift */; };
@@ -185,6 +186,7 @@
 		CB4B437C24B11803E9C28EE6 /* Plan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Plan.swift; sourceTree = "<group>"; };
 		CBB385EB2D063C2EA0283EA2 /* OFL-Archivo.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Archivo.txt"; sourceTree = "<group>"; };
 		CDF38361D28FBEE8E2C70373 /* StrengthSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionView.swift; sourceTree = "<group>"; };
+		CF9130DF7AE2AB262F71881F /* RestAlarm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestAlarm.swift; sourceTree = "<group>"; };
 		D01836CFA034C828DF59B62F /* StrengthActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthActivityAttributes.swift; sourceTree = "<group>"; };
 		D0969C0EE47DBE1A1C8A7694 /* TrainLogWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TrainLogWidgets.entitlements; sourceTree = "<group>"; };
 		D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Archivo.ttf; sourceTree = "<group>"; };
@@ -291,6 +293,7 @@
 		564D327BEA581193F3E1A74C /* Strength */ = {
 			isa = PBXGroup;
 			children = (
+				CF9130DF7AE2AB262F71881F /* RestAlarm.swift */,
 				B6BBAC8C19B152CC5B05A9FC /* StrengthActivity.swift */,
 				027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */,
 				CDF38361D28FBEE8E2C70373 /* StrengthSessionView.swift */,
@@ -624,6 +627,7 @@
 				ED06E04A91F8BC227943ED86 /* QuickLogModel.swift in Sources */,
 				0568E5E202514A8C473DBB7F /* QuickLogSheet.swift in Sources */,
 				27623E1B5C49B23D65C4E211 /* Reminders.swift in Sources */,
+				D1551A44556E7DD2FAC38C9C /* RestAlarm.swift in Sources */,
 				B370A0E4F4E155C37AFC57E0 /* ServerRoute.swift in Sources */,
 				47334F55D41030EFB9932E45 /* SettingsModel.swift in Sources */,
 				D2BCDEA473DECA30A0B3A7C6 /* SettingsView.swift in Sources */,

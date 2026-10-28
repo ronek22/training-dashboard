@@ -146,6 +146,8 @@ struct VoltButtonStyle: ButtonStyle {
             .foregroundStyle(Color.bg)
             .frame(maxWidth: .infinity, minHeight: 52)
             .background(Color.volt.opacity(configuration.isPressed ? 0.8 : 1), in: Capsule())
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.snappy(duration: 0.15), value: configuration.isPressed)
     }
 }
 

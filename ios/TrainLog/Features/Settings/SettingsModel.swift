@@ -2,7 +2,7 @@ import Foundation
 import Network
 import Observation
 
-/// Settings: which server the app talks to, and whether it answers.
+/// Settings: the home and anywhere server addresses, which one is in use, and whether each answers.
 @MainActor
 @Observable
 final class SettingsModel {
@@ -12,31 +12,42 @@ final class SettingsModel {
         case offline
     }
 
-    private(set) var baseURL: String
-    private(set) var status: Status = .checking
+    private(set) var home: String
+    private(set) var remote: String?
+    private(set) var activeKind: ServerRoute.Kind
+    private(set) var homeStatus: Status = .checking
+    private(set) var remoteStatus: Status = .checking
 
-    private let defaults: UserDefaults
+    private let route: ServerRoute
 
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
-        baseURL = defaults.string(forKey: APIClient.baseURLKey) ?? APIClient.defaultBaseURL
+    init(route: ServerRoute = .shared) {
+        self.route = route
+        home = route.home
+        remote = route.remote
+        activeKind = route.activeKind
     }
 
-    var isDefault: Bool { baseURL == APIClient.defaultBaseURL }
-
+    /// Pings both addresses and switches to the one that answers.
     func check() async {
-        status = .checking
-        status = await ServerAddress.ping(baseURL).map { .online(ms: $0) } ?? .offline
+        homeStatus = .checking
+        remoteStatus = remote == nil ? .offline : .checking
+        let result = await route.resolve()
+        homeStatus = result.home.map { .online(ms: $0) } ?? .offline
+        remoteStatus = result.remote.map { .online(ms: $0) } ?? .offline
+        activeKind = route.activeKind
+        if result.home != nil || result.remote != nil { Reachability.shared.retry() }
     }
 
-    /// Saves a new address (or clears the override when it's the built-in default) and re-checks it.
-    func use(_ url: String) async {
-        baseURL = url
-        if url == APIClient.defaultBaseURL {
-            defaults.removeObject(forKey: APIClient.baseURLKey)
-        } else {
-            defaults.set(url, forKey: APIClient.baseURLKey)
-        }
+    func useHome(_ url: String) async {
+        route.setHome(url)
+        home = route.home
+        await check()
+    }
+
+    /// nil removes the anywhere address.
+    func useRemote(_ url: String?) async {
+        route.setRemote(url)
+        remote = route.remote
         await check()
     }
 }

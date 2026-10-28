@@ -5,6 +5,7 @@ struct TrainLogApp: App {
     init() {
         // Must run during launch so HealthKit can wake the app in the background for new samples.
         HealthSync.shared.startObserving()
+        ServerRoute.shared.watchNetwork()
     }
 
     var body: some Scene {

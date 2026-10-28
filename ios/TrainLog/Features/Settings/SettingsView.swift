@@ -14,7 +14,7 @@ struct SettingsView: View {
     private var healthSync = HealthSync.shared
 
     enum AddressSheet: String, Identifiable {
-        case find, manual
+        case find, home, remote
         var id: String { rawValue }
     }
 
@@ -42,8 +42,13 @@ struct SettingsView: View {
         .sheet(item: $sheet) { kind in
             Group {
                 switch kind {
-                case .find: FindServerSheet(current: model.baseURL) { url in await model.use(url) }
-                case .manual: ManualAddressSheet(current: model.baseURL) { url in await model.use(url) }
+                case .find: FindServerSheet(current: model.home) { url in await model.useHome(url) }
+                case .home:
+                    ManualAddressSheet(kicker: "Home Wi-Fi", current: model.home, placeholder: "192.168.1.24 or mac.local",
+                                       defaultURL: APIClient.defaultBaseURL) { url in await model.useHome(url ?? APIClient.defaultBaseURL) }
+                case .remote:
+                    ManualAddressSheet(kicker: "Anywhere", current: model.remote ?? "", placeholder: "https://mac.tailnet.ts.net",
+                                       defaultURL: ServerRoute.defaultRemoteURL, canRemove: model.remote != nil) { url in await model.useRemote(url) }
                 }
             }
             .presentationDetents([.medium, .large])
@@ -62,34 +67,55 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Kicker("Server").padding(.horizontal, 4)
             SettingsCard {
-                Button {
-                    Task { await model.check() }
-                } label: {
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(ServerAddress.displayName(model.baseURL))
-                                .font(AppFont.body(15, weight: .semibold))
-                                .foregroundStyle(Color.ink)
-                            Text(model.baseURL)
-                                .font(.system(size: 12, design: .monospaced))
-                                .foregroundStyle(Color.muted)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
-                        Spacer(minLength: 0)
-                        StatusPill(status: model.status)
-                    }
-                    .settingsRow()
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint("Checks the connection again")
+                serverRow("Home Wi-Fi", url: model.home, status: model.homeStatus, inUse: model.activeKind == .home)
+                Divider().overlay(Color.cardBorder)
+                serverRow("Anywhere", url: model.remote, status: model.remoteStatus, inUse: model.activeKind == .remote)
                 Divider().overlay(Color.cardBorder)
                 navRow("Find on this Wi-Fi", detail: "Bonjour") { sheet = .find }
                 Divider().overlay(Color.cardBorder)
-                navRow("Enter address manually") { sheet = .manual }
+                navRow("Edit home address") { sheet = .home }
+                Divider().overlay(Color.cardBorder)
+                navRow(model.remote == nil ? "Add anywhere address" : "Edit anywhere address", detail: "Tailscale") { sheet = .remote }
             }
-            footnote("Works on home Wi-Fi only for now. Away from home the app shows the last synced data read-only and queues new logs until it's back.")
+            footnote(model.remote == nil
+                ? "Works on home Wi-Fi only. Add a Tailscale address to reach the Mac from anywhere; until then, away from home the app shows the last synced data and queues new logs."
+                : "Uses the home address on Wi-Fi and Tailscale everywhere else, switching on its own. With neither reachable the app shows the last synced data and queues new logs.")
         }
+    }
+
+    private func serverRow(_ label: String, url: String?, status: SettingsModel.Status, inUse: Bool) -> some View {
+        Button {
+            Task { await model.check() }
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(label)
+                            .font(AppFont.body(15, weight: .semibold))
+                            .foregroundStyle(Color.ink)
+                        if inUse {
+                            Text("IN USE")
+                                .font(AppFont.body(10, weight: .bold))
+                                .tracking(1)
+                                .foregroundStyle(Color.mobility)
+                                .padding(.horizontal, 6)
+                                .frame(height: 18)
+                                .background(Color.mobility.opacity(0.12), in: Capsule())
+                        }
+                    }
+                    Text(url ?? "Not set")
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(Color.muted)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                Spacer(minLength: 0)
+                if url != nil { StatusPill(status: status) }
+            }
+            .settingsRow()
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Checks the connection again")
     }
 
     // MARK: Apple Health
@@ -120,7 +146,7 @@ struct SettingsView: View {
                 }
             }
             footnote(readRecovery || readWeight
-                ? "Sent to the Mac when you open TrainLog and whenever Health gets new data, while the phone is on home Wi-Fi. Missed days are caught up on the next sync."
+                ? "Sent to the Mac when you open TrainLog and whenever Health gets new data, while the Mac is reachable. Missed days are caught up on the next sync."
                 : "Reads Health on this iPhone and sends it to the Mac. Replaces the Health Data Export app.")
         }
     }
@@ -394,8 +420,14 @@ struct FindServerSheet: View {
 
 /// Typed address: a bare host gets http:// and :8000. Tested before it's saved.
 struct ManualAddressSheet: View {
+    let kicker: String
     let current: String
-    let onSave: (String) async -> Void
+    let placeholder: String
+    /// Offered as a reset when the address differs from it.
+    let defaultURL: String?
+    var canRemove = false
+    /// nil removes the address.
+    let onSave: (String?) async -> Void
     @State private var text = ""
     @State private var testing = false
     @State private var error: String?
@@ -404,8 +436,8 @@ struct ManualAddressSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SheetHeader(kicker: "Server", title: "Enter address")
-            TextField("192.168.1.24 or mac.local", text: $text)
+            SheetHeader(kicker: kicker, title: "Enter address")
+            TextField(placeholder, text: $text)
                 .font(.system(size: 16, design: .monospaced))
                 .foregroundStyle(Color.ink)
                 .keyboardType(.URL)
@@ -440,10 +472,19 @@ struct ManualAddressSheet: View {
             .buttonStyle(VoltButtonStyle())
             .disabled(testing || ServerAddress.normalize(text) == nil)
             .opacity(ServerAddress.normalize(text) == nil ? 0.5 : 1)
-            if current != APIClient.defaultBaseURL {
-                Button("Reset to \(APIClient.defaultBaseURL)") {
+            if let defaultURL, current != defaultURL {
+                Button("Reset to \(defaultURL)") {
                     Task {
-                        await onSave(APIClient.defaultBaseURL)
+                        await onSave(defaultURL)
+                        dismiss()
+                    }
+                }
+                .buttonStyle(OutlineButtonStyle(height: 44))
+            }
+            if canRemove {
+                Button("Remove address") {
+                    Task {
+                        await onSave(nil)
                         dismiss()
                     }
                 }

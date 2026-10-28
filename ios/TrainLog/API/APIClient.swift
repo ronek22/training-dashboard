@@ -26,7 +26,7 @@ struct Loaded<Value: Sendable>: Sendable {
 struct APIClient: Sendable {
     static let baseURLKey = "serverBaseURL"
     /// The Simulator reaches the Mac directly; a phone finds it by Bonjour name on home Wi-Fi
-    /// (stable across DHCP changes). Settings will be able to override this.
+    /// (stable across DHCP changes). Settings can override it; `ServerRoute` adds the anywhere address.
     #if targetEnvironment(simulator)
     static let defaultBaseURL = "http://localhost:8000"
     #else
@@ -37,9 +37,11 @@ struct APIClient: Sendable {
     var session: URLSession = .shared
     var cache = ResponseCache()
     var reachability: Reachability = .shared
+    /// Home and anywhere addresses: when `baseURL` stops answering, the request is retried on the other.
+    var route: ServerRoute?
 
     static var current: APIClient {
-        APIClient(baseURL: UserDefaults.standard.string(forKey: baseURLKey) ?? defaultBaseURL)
+        APIClient(baseURL: ServerRoute.shared.active, route: .shared)
     }
 
     static let decoder: JSONDecoder = {
@@ -101,12 +103,33 @@ struct APIClient: Sendable {
     }
 
     private func fetch(_ path: String, method: String = "GET", body: Data? = nil, timeout: TimeInterval = 8) async throws -> Data {
-        guard let url = URL(string: baseURL.trimmingCharacters(in: .init(charactersIn: "/")) + path) else {
-            throw APIError.badURL(baseURL)
-        }
         // Away from home every screen would otherwise wait out its own timeout for the same answer.
         // Writes still try, so a meal or a set is never queued without a real attempt.
         if method == "GET", reachability.knownOffline { throw APIError.unreachable }
+        do {
+            return try await request(baseURL, path, method: method, body: body, timeout: timeout)
+        } catch let failure as Unreachable {
+            // A write that may have reached the server isn't sent twice; the queue retries it later.
+            if let route, method == "GET" || !failure.mayHaveArrived,
+               let other = await route.failover(from: baseURL) {
+                do {
+                    return try await request(other, path, method: method, body: body, timeout: timeout)
+                } catch is Unreachable {}
+            }
+            reachability.markUnreachable()
+            throw APIError.unreachable
+        }
+    }
+
+    /// The server didn't answer; `mayHaveArrived` when the request could have got there anyway (a timeout).
+    private struct Unreachable: Error {
+        let mayHaveArrived: Bool
+    }
+
+    private func request(_ base: String, _ path: String, method: String, body: Data?, timeout: TimeInterval) async throws -> Data {
+        guard let url = URL(string: base.trimmingCharacters(in: .init(charactersIn: "/")) + path) else {
+            throw APIError.badURL(base)
+        }
         var request = URLRequest(url: url)
         request.timeoutInterval = timeout
         request.httpMethod = method
@@ -121,9 +144,11 @@ struct APIClient: Sendable {
         } catch let error as URLError where error.code == .cancelled {
             // The screen went away mid-load; says nothing about the server.
             throw error
+        } catch let error as URLError {
+            let neverConnected: Set<URLError.Code> = [.cannotFindHost, .dnsLookupFailed, .cannotConnectToHost, .notConnectedToInternet]
+            throw Unreachable(mayHaveArrived: !neverConnected.contains(error.code))
         } catch {
-            reachability.markUnreachable()
-            throw APIError.unreachable
+            throw Unreachable(mayHaveArrived: true)
         }
         reachability.markReachable()
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {

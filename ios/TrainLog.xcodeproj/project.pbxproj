@@ -17,6 +17,7 @@
 		1C78A94319F86B32903FD7E8 /* TrendsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97FFCC221BB33F6F97AAF9C1 /* TrendsTests.swift */; };
 		1ECE60EB652766334247F6E5 /* PlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00CD08DE079F66CE7586C33 /* PlanTests.swift */; };
 		234EA1A4B7A268BDE90562B3 /* HealthSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A7BF848A42528930E7F48B /* HealthSync.swift */; };
+		23AF8EDE52C1B4A25E6272A4 /* ServerRouteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC8B01DA737B74EE9685650D /* ServerRouteTests.swift */; };
 		2749C34ACC4B164A8FD9D3DE /* HealthPush.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F17020D9675275CE912B1F /* HealthPush.swift */; };
 		27623E1B5C49B23D65C4E211 /* Reminders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182BB3EC5490E8009AB7F938 /* Reminders.swift */; };
 		29701B35851FF1CB790F564C /* TrainLogWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04082B44C3130F260F9162CC /* TrainLogWidgets.swift */; };
@@ -61,6 +62,7 @@
 		AE619AC886E9DA86C3B36FEA /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86C506CB1DD44FBB105F6B2 /* TodayView.swift */; };
 		AEC7E99787987D9C15614CD9 /* LiveHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 069C959EF75C5018A65096AB /* LiveHealth.swift */; };
 		B333C40F1D12ADE2ED7B1072 /* PlanModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BA5F6A6FF01D809A7EE68A8 /* PlanModel.swift */; };
+		B370A0E4F4E155C37AFC57E0 /* ServerRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02C3A597DEA9FB3DA0876822 /* ServerRoute.swift */; };
 		BB2AE91082870EA3C1BEB689 /* BodyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98FE562E0DEA91786B3FFC0 /* BodyTests.swift */; };
 		BD8C1B1F425DA86FC239C2DB /* QuickLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 947E7B26646DCF89AEB291E0 /* QuickLogTests.swift */; };
 		BDC56A0850E21766EF352AC0 /* FeedbackSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE5C544BD255D9F8B9F2A36 /* FeedbackSheet.swift */; };
@@ -121,6 +123,7 @@
 		01AD5A97B8F6DB6B3A07C749 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0243D4E3976851681CA3EF5E /* BarlowCondensed-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-SemiBold.ttf"; sourceTree = "<group>"; };
 		027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionModel.swift; sourceTree = "<group>"; };
+		02C3A597DEA9FB3DA0876822 /* ServerRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerRoute.swift; sourceTree = "<group>"; };
 		04082B44C3130F260F9162CC /* TrainLogWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainLogWidgets.swift; sourceTree = "<group>"; };
 		069C959EF75C5018A65096AB /* LiveHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveHealth.swift; sourceTree = "<group>"; };
 		0BA5F6A6FF01D809A7EE68A8 /* PlanModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanModel.swift; sourceTree = "<group>"; };
@@ -188,6 +191,7 @@
 		F00CD08DE079F66CE7586C33 /* PlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanTests.swift; sourceTree = "<group>"; };
 		F2A34FE40F0B4A424DD1A25C /* TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsView.swift; sourceTree = "<group>"; };
 		F82A37EF65E30B4BBE2ADC4D /* Trends.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trends.swift; sourceTree = "<group>"; };
+		FC8B01DA737B74EE9685650D /* ServerRouteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerRouteTests.swift; sourceTree = "<group>"; };
 		FD5EDF9EAF1496F240DB1987 /* ActivitiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitiesView.swift; sourceTree = "<group>"; };
 		FE84774476766302F5B40E04 /* FoodTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -244,6 +248,7 @@
 				4B75853302B3165E45B90291 /* OfflineTests.swift */,
 				F00CD08DE079F66CE7586C33 /* PlanTests.swift */,
 				947E7B26646DCF89AEB291E0 /* QuickLogTests.swift */,
+				FC8B01DA737B74EE9685650D /* ServerRouteTests.swift */,
 				64B465973FE67D56B0AD2792 /* SettingsTests.swift */,
 				7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */,
 				AECFF6858D98599C67E6EEC8 /* TodayTests.swift */,
@@ -348,6 +353,7 @@
 				EDCA15FBA972C52E02035AF5 /* PhoneToday.swift */,
 				CB4B437C24B11803E9C28EE6 /* Plan.swift */,
 				5E1B90F67C5BEB5AA4C54A0B /* QuickLog.swift */,
+				02C3A597DEA9FB3DA0876822 /* ServerRoute.swift */,
 				ADADEEF3EC729686F3AD8BD5 /* StrengthSession.swift */,
 				F82A37EF65E30B4BBE2ADC4D /* Trends.swift */,
 			);
@@ -605,6 +611,7 @@
 				ED06E04A91F8BC227943ED86 /* QuickLogModel.swift in Sources */,
 				0568E5E202514A8C473DBB7F /* QuickLogSheet.swift in Sources */,
 				27623E1B5C49B23D65C4E211 /* Reminders.swift in Sources */,
+				B370A0E4F4E155C37AFC57E0 /* ServerRoute.swift in Sources */,
 				47334F55D41030EFB9932E45 /* SettingsModel.swift in Sources */,
 				D2BCDEA473DECA30A0B3A7C6 /* SettingsView.swift in Sources */,
 				19252000DB3CBDC4D09F33EE /* StrengthActivity.swift in Sources */,
@@ -649,6 +656,7 @@
 				94D4295DC2C299DF58981A1A /* OfflineTests.swift in Sources */,
 				1ECE60EB652766334247F6E5 /* PlanTests.swift in Sources */,
 				BD8C1B1F425DA86FC239C2DB /* QuickLogTests.swift in Sources */,
+				23AF8EDE52C1B4A25E6272A4 /* ServerRouteTests.swift in Sources */,
 				D8A6B99501A49EDD398A4882 /* SettingsTests.swift in Sources */,
 				596B94B045D4FE90A37695C7 /* StrengthSessionTests.swift in Sources */,
 				5949E6B54064073FF68DD91C /* TodayTests.swift in Sources */,

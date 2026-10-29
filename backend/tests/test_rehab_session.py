@@ -1,6 +1,6 @@
 import sqlite3
 import unittest
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from unittest.mock import patch
 
 from backend.app.models.recovery import AIResult, IssueCreate, MessageCreate, RoutineTick
@@ -104,6 +104,20 @@ class RehabSessionTests(unittest.TestCase):
         linked = guided_session_for_activity(self.conn, "core")
         self.assertEqual(([item["name"] for item in linked["exercises"]], linked["guided_min"], linked["context_label"]),
                          (["Quad isometric", "Side-lying hip abduction"], 10.0, "Rehab"))
+
+    def test_a_session_finished_after_midnight_belongs_to_the_day_it_started(self):
+        evening = TODAY - timedelta(days=1)
+        started = datetime.combine(evening, time(23, 54, 38)).astimezone()
+        self.conn.execute("INSERT INTO activities (id, date, type, name, duration_min) VALUES ('core', ?, 'Workout', 'Core Training', 28)", (evening.isoformat(),))
+        self.conn.execute("INSERT INTO activity_source_refs (source, external_id, activity_id, started_at) VALUES ('healthkit', 'core', 'core', ?)",
+                          ((started - timedelta(seconds=6)).isoformat(),))
+        self.tick(0, day=evening)
+        payload = {"session_key": "rehab", "started_at": started.isoformat(), "elapsed_seconds": 1689}
+        state = save_guided_completion(self.conn, payload, today=TODAY)  # finished the next day
+        self.assertEqual(state["completed_today"][0]["activity_id"], "core")
+        self.assertEqual(completions_on(self.conn, TODAY.isoformat(), "rehab"), [])
+        self.assertEqual(self.conn.execute("SELECT workout_intent FROM activities WHERE id = 'core'").fetchone()[0], "mobility")
+        self.assertEqual([item["name"] for item in guided_session_for_activity(self.conn, "core")["exercises"]], ["Quad isometric"])
 
     def test_a_lift_links_only_when_it_started_with_the_rehab_session(self):
         day = TODAY.isoformat()

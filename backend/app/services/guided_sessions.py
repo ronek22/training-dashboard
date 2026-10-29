@@ -235,13 +235,18 @@ def public_session(key: str, conn: Optional[sqlite3.Connection] = None, today: O
 def save_guided_completion(conn: sqlite3.Connection, payload: dict, today: Optional[date] = None) -> dict:
     """Record a finished guided session; re-finishing (after an extra round) updates the same row.
 
-    A rehab session keeps a snapshot of the exercises ticked today: the routine can change later,
+    The session belongs to the day it started on: one begun before midnight and finished after it
+    still matches that evening's watch workout and ticks.
+
+    A rehab session keeps a snapshot of the exercises ticked that day: the routine can change later,
     and the activity page should still show what was done.
     """
     key = payload["session_key"]
     if key not in SESSIONS and key != rehab_session.SESSION_KEY:
         raise ValueError(f"Unknown guided session: {key}")
-    snapshot = rehab_session.done_session(conn, today) if key == rehab_session.SESSION_KEY else None
+    started = _parse_instant(payload["started_at"])
+    day = min(started.astimezone().date(), _today(today)) if started else _today(today)
+    snapshot = rehab_session.done_session(conn, day) if key == rehab_session.SESSION_KEY else None
     conn.execute(
         """
         INSERT INTO sick_session_completions (date, session_key, started_at, elapsed_seconds, completed_steps, extras_json, session_json)
@@ -254,7 +259,7 @@ def save_guided_completion(conn: sqlite3.Connection, payload: dict, today: Optio
             updated_at = CURRENT_TIMESTAMP
         """,
         (
-            _today(today).isoformat(),
+            day.isoformat(),
             payload["session_key"],
             payload["started_at"],
             int(payload["elapsed_seconds"]),
@@ -265,7 +270,7 @@ def save_guided_completion(conn: sqlite3.Connection, payload: dict, today: Optio
     )
     conn.commit()
     reconcile_guided_session_activities(conn)
-    return {"completed_today": completions_on(conn, _today(today).isoformat(), _meta(key)["context"])}
+    return {"completed_today": completions_on(conn, day.isoformat(), _meta(key)["context"])}
 
 
 def _parse_instant(value: Optional[str]) -> Optional[datetime]:

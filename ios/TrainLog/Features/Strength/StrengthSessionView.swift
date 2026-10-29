@@ -21,6 +21,10 @@ struct StrengthSessionView: View {
             switch model.phase {
             case .loading:
                 ProgressView().tint(.muted).frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .brief(let template):
+                SessionBriefView(template: template, starting: model.starting) {
+                    Task { await model.startFromBrief() }
+                }
             case .failed(let message):
                 failed(message)
             case .ready, .closed:
@@ -75,7 +79,10 @@ struct StrengthSessionView: View {
 
     private var topBar: some View {
         HStack {
-            circleButton("xmark", label: "Close workout") { showClose = true }
+            circleButton("xmark", label: "Close workout") {
+                // Nothing started yet: just leave.
+                if model.session == nil { dismiss() } else { showClose = true }
+            }
             Spacer()
             VStack(spacing: 3) {
                 Text((model.session?.templateName ?? "Strength").uppercased())
@@ -95,6 +102,7 @@ struct StrengthSessionView: View {
             Spacer()
             circleButton("line.3.horizontal", label: "All exercises") { showExercises = true }
                 .disabled(model.session == nil)
+                .opacity(model.session == nil ? 0 : 1)
         }
         .padding(.horizontal, 16)
         .padding(.top, 4)

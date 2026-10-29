@@ -43,20 +43,39 @@ struct StrengthSession: Codable, Sendable, Equatable {
     var isActive: Bool { status == "active" }
 }
 
-/// `GET /strength/workouts/templates/{id}`: only the per-lift progression hint is used.
-struct StrengthTemplate: Decodable, Sendable {
+/// `GET /strength/workouts/templates/{id}`: the session brief and the per-lift progression hint.
+struct StrengthTemplate: Decodable, Sendable, Equatable {
     let id: Int
     let name: String
+    var estimatedDurationMinutes: Int?
     let exercises: [Exercise]
 
-    struct Exercise: Decodable, Sendable {
+    struct Exercise: Decodable, Sendable, Equatable {
         let exerciseName: String
+        var setCount: Int?
+        var targetReps: Int?
+        var targetWeightKg: Double?
+        var notes: String?
         let next: Next?
     }
 
-    struct Next: Decodable, Sendable {
+    /// Progressed target for today (`_next_steps`), after the progression guard.
+    struct Next: Decodable, Sendable, Equatable {
+        var targetWeightKg: Double?
+        var targetReps: Int?
         let hint: String?
         let basedOnDate: String?
+        /// Why a load rise was held: effort, big_jump, one_change, life_load, phase, mountain_reentry.
+        var held: String?
+        var last: Last?
+    }
+
+    /// Last session's heaviest working set of the lift.
+    struct Last: Decodable, Sendable, Equatable {
+        let date: String
+        let weightKg: Double?
+        let reps: Int
+        var setCount: Int?
     }
 }
 

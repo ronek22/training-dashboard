@@ -70,6 +70,10 @@ class StrengthPhaseTests(unittest.TestCase):
         self.assertEqual((squat["set_count"], squat["next"]["held"]), (4, "phase"), "the saved workout keeps its sets")
         self.assertIn("Deload week", squat["next"]["hint"])
 
+    def test_template_next_step_carries_last_top_set(self):
+        squat = strength_workouts.get_template(self.conn, self.template["id"])["exercises"][0]
+        self.assertEqual(squat["next"]["last"], {"date": LAST, "weight_kg": 60.0, "reps": 8, "set_count": 4})
+
     def test_hold_pauses_load_jumps_but_keeps_sets(self):
         self._phase("hold", days=20)
         self.assertEqual(self._start(), [("Back Squat", 4, 60), ("Bench Press", 3, 50)])

@@ -9,6 +9,8 @@ import UIKit
 final class StrengthSessionModel {
     enum Phase: Equatable {
         case loading
+        /// A planned workout not started yet: today's targets before the first set.
+        case brief(StrengthTemplate)
         case ready
         case failed(String)
         case closed
@@ -17,6 +19,8 @@ final class StrengthSessionModel {
     private(set) var phase: Phase = .loading
     private(set) var session: StrengthSession?
     private(set) var hints: [String: String] = [:]
+    /// The brief's Start button is waiting on the server.
+    private(set) var starting = false
     /// Writes waiting for the server.
     private(set) var unsynced = false
     private(set) var restEndsAt: Date?
@@ -79,6 +83,12 @@ final class StrengthSessionModel {
         do {
             var live = try await api.getLive("/strength/workouts/sessions/active", as: StrengthSession?.self)
             if live == nil, let templateId {
+                // Brief first; without the template (old server, offline) start straight away.
+                if let template = try? await api.get("/strength/workouts/templates/\(templateId)", as: StrengthTemplate.self) {
+                    hints = Self.hints(from: template.value)
+                    phase = .brief(template.value)
+                    return
+                }
                 live = try await start(templateId, api: api)
             }
             guard let live else {
@@ -108,12 +118,29 @@ final class StrengthSessionModel {
         }
     }
 
+    /// Starts the workout the brief showed.
+    func startFromBrief() async {
+        guard case .brief = phase, let templateId, !starting else { return }
+        starting = true
+        defer { starting = false }
+        do {
+            guard let live = try await start(templateId, api: client()) else { return }
+            show(live)
+        } catch {
+            phase = .failed(error.localizedDescription)
+        }
+    }
+
     private func loadHints(templateId: Int?) async {
         guard let templateId, hints.isEmpty,
               let template = try? await client().get("/strength/workouts/templates/\(templateId)", as: StrengthTemplate.self)
         else { return }
-        hints = Dictionary(
-            template.value.exercises.compactMap { exercise in exercise.next?.hint.map { (exercise.exerciseName, $0) } },
+        hints = Self.hints(from: template.value)
+    }
+
+    private static func hints(from template: StrengthTemplate) -> [String: String] {
+        Dictionary(
+            template.exercises.compactMap { exercise in exercise.next?.hint.map { (exercise.exerciseName, $0) } },
             uniquingKeysWith: { first, _ in first }
         )
     }

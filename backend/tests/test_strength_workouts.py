@@ -204,6 +204,26 @@ class StrengthWorkoutTests(unittest.TestCase):
         self.assertEqual(suggestion["last_source"], "Fitbod")
         self.assertEqual([item["weight_kg"] for item in suggestion["last_sets"]], [52.5, 55.0, 55.0])
         self.assertTrue(all(item["reps"] == 10 and not item["is_warmup"] for item in suggestion["last_sets"]))
+        self.assertEqual(suggestion["recent_sessions"], [{"date": "2026-08-28", "weight_kg": 55.0}])
+
+    def test_template_list_shows_when_each_was_last_done(self):
+        template = self.client.post(
+            "/strength/workouts/templates",
+            json={
+                "name": "Studio Pick",
+                "exercises": [
+                    {"exercise_name": "Goblet Squat", "set_count": 1, "target_reps": 10, "rest_seconds": 60},
+                ],
+            },
+        ).json()
+        listed = {item["id"]: item for item in self.client.get("/strength/workouts/templates").json()}
+        self.assertIsNone(listed[template["id"]]["last_done_at"])
+
+        session = self.client.post("/strength/workouts/sessions", json={"template_id": template["id"]}).json()
+        self.assertEqual(self.client.post(f"/strength/workouts/sessions/{session['id']}/finish", json={}).status_code, 200)
+
+        listed = {item["id"]: item for item in self.client.get("/strength/workouts/templates").json()}
+        self.assertEqual(listed[template["id"]]["last_done_at"], session["started_at"])
 
     def test_template_live_session_and_watch_activity_link(self):
         template_response = self.client.post(

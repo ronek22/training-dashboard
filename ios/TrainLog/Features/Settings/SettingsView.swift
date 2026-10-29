@@ -10,6 +10,7 @@ struct SettingsView: View {
     @AppStorage(Reminders.morningMinutesKey) private var morningMinutes = Reminders.defaultMorningMinutes
     @AppStorage(Reminders.rehabEnabledKey) private var rehabOn = false
     @AppStorage(Reminders.dinnerEnabledKey) private var dinnerOn = false
+    @AppStorage(Reminders.recapEnabledKey) private var recapOn = false
     @AppStorage(HealthSync.recoveryKey) private var readRecovery = false
     @AppStorage(HealthSync.weightKey) private var readWeight = false
     @AppStorage(WorkoutSync.enabledKey) private var sendWorkouts = false
@@ -62,6 +63,7 @@ struct SettingsView: View {
         .onChange(of: morningOn) { reschedule(turnedOn: morningOn) { morningOn = false } }
         .onChange(of: rehabOn) { reschedule(turnedOn: rehabOn) { rehabOn = false } }
         .onChange(of: dinnerOn) { reschedule(turnedOn: dinnerOn) { dinnerOn = false } }
+        .onChange(of: recapOn) { reschedule(turnedOn: recapOn) { recapOn = false } }
         .onChange(of: morningMinutes) { Task { await Reminders.apply() } }
         .onChange(of: readRecovery) { healthChanged(turnedOn: readRecovery) }
         .onChange(of: readWeight) { healthChanged(turnedOn: readWeight) }
@@ -304,6 +306,16 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Log dinner nudge").font(AppFont.body(15)).foregroundStyle(Color.ink)
                         Text("\(Reminders.timeLabel(Reminders.dinnerMinutes)) if under \(Int(Reminders.lowCalorieShare * 100))% of target")
+                            .font(AppFont.body(12)).foregroundStyle(Color.muted)
+                    }
+                }
+                .tint(Color.mobility)
+                .settingsRow()
+                Divider().overlay(Color.cardBorder)
+                Toggle(isOn: $recapOn) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Sunday recap").font(AppFont.body(15)).foregroundStyle(Color.ink)
+                        Text("Sundays at \(Reminders.timeLabel(Reminders.recapMinutes))")
                             .font(AppFont.body(12)).foregroundStyle(Color.muted)
                     }
                 }

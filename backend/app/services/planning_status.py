@@ -101,6 +101,26 @@ def _parse_shipped(current_state_text: str, shipped_texts: list[str] = ()) -> li
     return items
 
 
+IOS_ROADMAP = "roadmaps/ios.md"
+IOS_BUCKETS = ("Now", "Next", "Later")
+
+
+def _parse_ios_track(text: str) -> dict:
+    """The iOS app's own roadmap: Now/Next/Later bullets and a dated Shipped list, newest first."""
+    item = re.compile(r"^-\s+\*\*(.+?)\*\*\s+—\s+(.+)$", re.MULTILINE)
+    buckets = [
+        {"name": name, "items": [{"title": m.group(1).strip(), "detail": _plain(m.group(2))} for m in item.finditer(_section(text, name))]}
+        for name in IOS_BUCKETS
+    ]
+    shipped_line = re.compile(r"^-\s+(\d{4}-\d{2}-\d{2})\s+—\s+\*\*(.+?)\*\*\s+—\s+(.+)$", re.MULTILINE)
+    shipped = [
+        {"date": m.group(1), "title": m.group(2).strip(), "summary": _plain(m.group(3))}
+        for m in shipped_line.finditer(_section(text, "Shipped"))
+    ]
+    shipped.sort(key=lambda entry: entry["date"], reverse=True)
+    return {"buckets": buckets, "shipped": shipped}
+
+
 def _parse_sprint_listing(readme_text: str) -> list[dict]:
     items: list[dict] = []
     pattern = re.compile(r"^\d+\.\s+\[([^\]]+)\]\(([^)]+)\)\s+—\s+(.+?),\s+([a-z_ ]+)$", re.MULTILINE)
@@ -125,6 +145,8 @@ def get_planning_status() -> dict:
     sprints = _parse_sprint_listing(_read_text(sprints_dir / "README.md"))
     shipped_texts = [_read_text(path) for path in sorted((docs_dir / "shipped").glob("*.md"))]
     shipped = _parse_shipped(_read_text(docs_dir / "current-state.md"), shipped_texts)
+    ios_path = docs_dir / IOS_ROADMAP
+    ios = {"path": f"docs/{IOS_ROADMAP}", **_parse_ios_track(_read_text(ios_path))} if ios_path.is_file() else None
 
     return {
         "generated_at": datetime.now().isoformat(),
@@ -139,6 +161,7 @@ def get_planning_status() -> dict:
             "archived": _parse_archived_roadmaps(index_text),
         },
         "shipped": shipped,
+        "ios": ios,
         "sprints": {
             "completed_count": sum(1 for sprint in sprints if sprint["status"] in COMPLETE_SPRINT_STATUSES),
             "total_count": len(sprints),
@@ -149,5 +172,6 @@ def get_planning_status() -> dict:
             {"label": "Shipped index", "path": "docs/current-state.md"},
             {"label": "Shipped log", "path": "docs/shipped/"},
             {"label": "Sprint archive", "path": "docs/sprints/README.md"},
+            {"label": "iOS app track", "path": f"docs/{IOS_ROADMAP}"},
         ],
     }

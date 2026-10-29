@@ -1,6 +1,6 @@
 import unittest
 
-from backend.app.services.planning_status import _parse_shipped, get_planning_status
+from backend.app.services.planning_status import _parse_ios_track, _parse_shipped, get_planning_status
 
 CURRENT_STATE = """# Current State
 
@@ -51,6 +51,44 @@ class PlanningStatusShippedTests(unittest.TestCase):
         self.assertGreater(len(shipped), 40)
         dates = [item["date"] for item in shipped]
         self.assertEqual(dates, sorted(dates, reverse=True))
+
+
+IOS = """# iOS app roadmap
+
+Format: `- YYYY-MM-DD — **Title** — One sentence.`
+
+## Now
+
+- **Widget refresh** — Widgets update without opening the `app`.
+
+## Next
+
+## Later
+
+- **Watch app** — Log sets on the Watch.
+
+## Shipped
+
+- 2026-10-27 — **Today** — Readiness at a glance.
+- 2026-10-29 — **Guided rehab** — Rehab with demos.
+"""
+
+
+class PlanningStatusIosTrackTests(unittest.TestCase):
+    def test_buckets_and_shipped_lines_are_parsed(self):
+        track = _parse_ios_track(IOS)
+
+        self.assertEqual([bucket["name"] for bucket in track["buckets"]], ["Now", "Next", "Later"])
+        self.assertEqual(track["buckets"][0]["items"], [{"title": "Widget refresh", "detail": "Widgets update without opening the app."}])
+        self.assertEqual(track["buckets"][1]["items"], [])
+        self.assertEqual([entry["title"] for entry in track["shipped"]], ["Guided rehab", "Today"])
+
+    def test_repository_docs_include_the_ios_track(self):
+        ios = get_planning_status()["ios"]
+
+        self.assertEqual(ios["path"], "docs/roadmaps/ios.md")
+        self.assertTrue(ios["buckets"][0]["items"])
+        self.assertGreater(len(ios["shipped"]), 10)
 
 
 if __name__ == "__main__":

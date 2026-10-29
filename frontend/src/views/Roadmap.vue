@@ -40,6 +40,42 @@
         </article>
       </section>
 
+      <section v-if="planning.ios" class="card roadmap-section ios-track">
+        <div class="ios-head">
+          <div class="card-title">iOS app</div>
+          <span class="muted-copy">
+            {{ planning.ios.shipped.length }} shipped in {{ iosDays }} {{ iosDays === 1 ? 'day' : 'days' }}
+            · last {{ formatDay(planning.ios.shipped[0]?.date) }}
+            · <code>{{ planning.ios.path }}</code>
+          </span>
+        </div>
+        <div class="ios-buckets">
+          <div v-for="bucket in planning.ios.buckets" :key="bucket.name" class="ios-bucket">
+            <h2 class="month-label">{{ bucket.name }}</h2>
+            <ul v-if="bucket.items.length" class="thread-list ios-items">
+              <li v-for="item in bucket.items" :key="item.title">
+                <strong>{{ item.title }}</strong>
+                <span>{{ item.detail }}</span>
+              </li>
+            </ul>
+            <p v-else class="muted-copy">Nothing here.</p>
+          </div>
+        </div>
+        <ol class="ios-timeline">
+          <li v-for="day in iosDaysShown" :key="day.date" class="ios-day">
+            <time :datetime="day.date">{{ formatDay(day.date) }}</time>
+            <ul>
+              <li v-for="item in day.items" :key="item.title" :title="item.summary">
+                <strong>{{ item.title }}</strong> <span>{{ item.summary }}</span>
+              </li>
+            </ul>
+          </li>
+        </ol>
+        <button v-if="iosTimeline.length > IOS_DAYS_PREVIEW" class="link-button" type="button" @click="showAllIos = !showAllIos">
+          {{ showAllIos ? 'Show fewer days' : `Show all ${iosTimeline.length} days` }}
+        </button>
+      </section>
+
       <section v-if="planning.roadmap.phases.length" class="card roadmap-section">
         <div class="card-title">Roadmap phases</div>
         <div class="phase-list">
@@ -100,6 +136,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useApi } from '../stores/api'
 
 const SHIPPED_PREVIEW = 12
+const IOS_DAYS_PREVIEW = 5
 const COMPLETE_STATUSES = ['complete', 'effectively_complete', 'functionally_implemented', 'structurally_complete']
 
 const api = useApi()
@@ -107,6 +144,7 @@ const loading = ref(true)
 const error = ref('')
 const planning = ref(null)
 const showAllShipped = ref(false)
+const showAllIos = ref(false)
 
 const load = async () => {
   loading.value = true
@@ -138,6 +176,26 @@ const shippedGroups = computed(() => {
     groups.at(-1).items.push(item)
   }
   return groups
+})
+
+const iosTimeline = computed(() => {
+  const days = []
+  for (const item of planning.value?.ios?.shipped || []) {
+    if (days.at(-1)?.date !== item.date) days.push({ date: item.date, items: [] })
+    days.at(-1).items.push(item)
+  }
+  return days
+})
+
+const iosDaysShown = computed(() => (showAllIos.value ? iosTimeline.value : iosTimeline.value.slice(0, IOS_DAYS_PREVIEW)))
+
+// Calendar days from the first iOS entry to today, counting both ends.
+const iosDays = computed(() => {
+  const first = iosTimeline.value.at(-1)?.date
+  if (!first) return 0
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.round((today - toDate(first)) / 86400000) + 1
 })
 
 const sprintStatusTone = (status) => {
@@ -204,6 +262,28 @@ const sprintStatusTone = (status) => {
   font-weight: 600;
   cursor: pointer;
 }
+.ios-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.ios-head code { font-size: 12px; color: var(--text-soft); }
+.ios-buckets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 6px 0 18px; }
+.ios-items { grid-template-columns: 1fr; gap: 10px; }
+.ios-timeline { list-style: none; border-left: 2px solid var(--border-strong); margin-left: 5px; }
+.ios-day { position: relative; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 16px; padding: 0 0 14px 18px; font-size: 13px; }
+.ios-day::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: 2px solid var(--volt);
+}
+.ios-day:first-child::before { background: var(--volt); }
+.ios-day time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ios-day ul { list-style: none; display: grid; gap: 5px; }
+.ios-day li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ios-day li span { color: var(--muted); margin-left: 6px; }
 .archive-roadmaps { list-style: none; display: grid; gap: 6px; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
 .archive-roadmaps code { color: var(--text-soft); font-size: 12px; }
 .sprint-archive summary { cursor: pointer; font-size: 13px; font-weight: 600; }
@@ -233,7 +313,7 @@ const sprintStatusTone = (status) => {
 .chip-active { background: rgba(96, 165, 250, 0.16); color: var(--info-text); }
 .chip-planned { background: rgb(var(--tint-rgb) / 0.12); color: var(--text-soft); }
 @media (max-width: 1000px) {
-  .overview-grid, .thread-list { grid-template-columns: 1fr; }
+  .overview-grid, .thread-list, .ios-buckets { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
   .shipped-row { grid-template-columns: 56px minmax(0, 1fr); }

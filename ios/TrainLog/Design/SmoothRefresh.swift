@@ -16,10 +16,15 @@ private struct SmoothRefresh: ViewModifier {
         content
             .onScrollPhaseChange { _, phase in dragging = phase == .interacting }
             .refreshable {
-                await action()
-                while dragging, !Task.isCancelled {
-                    try? await Task.sleep(for: .milliseconds(50))
-                }
+                // SwiftUI can cancel the refresh task mid-pull (it does on Today), which cut the
+                // requests short, flashed the offline note and ended the spinner early. A task of
+                // its own isn't cancelled with it, so the reload finishes and the pull eases back.
+                await Task { @MainActor in
+                    await action()
+                    while dragging {
+                        try? await Task.sleep(for: .milliseconds(50))
+                    }
+                }.value
             }
     }
 }

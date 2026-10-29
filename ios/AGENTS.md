@@ -95,3 +95,5 @@ Same system as the web (`../docs/design/REDESIGN.md`, tokens in `../frontend/src
   through `tail`.
 - Commit on an `ios-*` branch, one commit per screen or fix. Don't commit `DerivedData`,
   `xcuserdata` or signing files.
+- When a commit ships a feature (not a fix or polish), add one line at the top of "Shipped" in
+  `../docs/roadmaps/ios.md` and drop it from Now/Next/Later. The web Roadmap page shows that file.

@@ -28,6 +28,7 @@ One line per shipped feature, newest first. The full entry (what shipped, API, U
 
 When a feature ships: add its full entry at the top of `docs/shipped/YYYY-MM.md` (create the file for a new month, same shape: `### Title`, a blank line, then `YYYY-MM-DD: summary...`), and add its line at the top of this list.
 
+- 2026-10-29 — Coach-style animation for rehab demos and the cadence runner (`shipped/2026-10.md`)
 - 2026-10-27 — Outdoor season strip on the Cycling page (`shipped/2026-10.md`)
 - 2026-10-27 — Cycling page in Review (`shipped/2026-10.md`)
 - 2026-10-27 — Guided rehab sessions (`shipped/2026-10.md`)

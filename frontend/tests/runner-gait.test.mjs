@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { GROUND_Y, HIP_X, PX_PER_M, frameAt, gaitFrom, hipLift, smootherGait, solveLimb } from '../src/running/runner-gait.mjs'
+import { GROUND_Y, HIP_X, PX_PER_M, frameAt, gaitFrom, hipLift, jointAngles, smootherGait, solveLimb } from '../src/running/runner-gait.mjs'
 
 const metrics = { cadence_spm: 155, stance_time_ms: 251, vertical_oscillation_cm: 10.5, step_length_m: 1.16 }
 
@@ -26,7 +26,7 @@ test('midfoot landing: flat foot on the ground, then a roll off the toes', () =>
   assert.equal(landing.near.ground, true)
   assert.ok(Math.abs(landing.near.ball[1] - GROUND_Y) < 0.5, 'ball of the foot on the ground')
   assert.ok(Math.abs(landing.near.heel[1] - landing.near.toe[1]) < 0.5, 'foot lands flat, not on the heel')
-  assert.ok(landing.near.ball[0] > HIP_X && landing.near.ball[0] - HIP_X < 0.25 * PX_PER_M, 'lands just ahead of the hips')
+  assert.ok(landing.near.ball[0] - HIP_X > 0.2 * PX_PER_M && landing.near.ball[0] - HIP_X < 0.4 * PX_PER_M, 'lands about a third of a metre ahead of the hips')
   // Late push-off: the ball is still down (the toes peel off only in the last tenth of contact).
   const pushOff = frameAt(gait, gait.duty * 0.88)
   assert.ok(Math.abs(pushOff.near.ball[1] - GROUND_Y) < 1, 'ball still down at push-off')
@@ -42,7 +42,7 @@ test('feet leave the ground between steps without hopping high', () => {
   for (let i = 0; i < 100; i += 1) {
     const frame = frameAt(gait, i / 100)
     for (const leg of [frame.near, frame.far]) {
-      assert.ok(leg.ankle[1] <= GROUND_Y, 'no foot below the ground')
+      for (const point of [leg.ankle, leg.heel, leg.ball, leg.toe]) assert.ok(point[1] <= GROUND_Y + 0.01, 'no part of the foot below the ground')
       highest = Math.max(highest, GROUND_Y - leg.toe[1])
     }
   }
@@ -70,4 +70,42 @@ test('the smoother target keeps speed with quicker steps', () => {
   assert.ok(Math.abs(target.speed - now.speed) < 1e-9)
   assert.ok(target.cadence > now.cadence)
   assert.ok(target.voPx < now.voPx)
+})
+
+const knee = leg => jointAngles(leg.hip, leg.knee, leg.ankle)
+
+test('the knee lands and leaves the ground softly bent', () => {
+  for (const cadence of [150, 170, 185]) {
+    const gait = gaitFrom({ cadence_spm: cadence, step_length_m: 180 / cadence, stance_time_ms: 270 - (cadence - 150) * 1.2, vertical_oscillation_cm: 10.2 - (cadence - 150) * 0.085 })
+    const contact = knee(frameAt(gait, 0).near)
+    assert.ok(contact.knee >= 15 && contact.knee <= 35, `${cadence} spm: knee ${contact.knee.toFixed(0)}° at contact`)
+    assert.ok(contact.hip >= 18 && contact.hip <= 30, `${cadence} spm: thigh ${contact.hip.toFixed(0)}° forward at contact`)
+    assert.ok(knee(frameAt(gait, gait.duty - 0.002).near).knee >= 15, `${cadence} spm: knee locked at toe-off`)
+  }
+})
+
+test('the swing tucks the heel under the seat and drives the knee', () => {
+  const gait = gaitFrom(metrics)
+  const swing = Array.from({ length: 100 }, (_, i) => knee(frameAt(gait, gait.duty + (1 - gait.duty) * i / 100).near))
+  const folded = swing.reduce((best, angles) => angles.knee > best.knee ? angles : best)
+  assert.ok(folded.knee > 90, 'knee folds past 90°')
+  assert.ok(folded.hip > 5, 'knee folds while the thigh is already forward, not behind the body')
+  const drive = Math.max(...swing.map(angles => angles.hip))
+  assert.ok(drive >= 30 && drive <= 40, `thigh peaks at ${drive.toFixed(0)}°`)
+})
+
+test('the planted foot moves exactly with the ground, even at speed', () => {
+  const fast = gaitFrom({ cadence_spm: 180, stance_time_ms: 240, vertical_oscillation_cm: 8, step_length_m: 1.4 })
+  const step = 0.001
+  const a = frameAt(fast, 0.05).near.ball, b = frameAt(fast, 0.05 + step).near.ball
+  const groundPerPhase = fast.speed * PX_PER_M * fast.strideTime
+  assert.ok(Math.abs((a[0] - b[0]) / step - groundPerPhase) < 0.5)
+})
+
+test('arms swing opposite the legs', () => {
+  const gait = gaitFrom(metrics)
+  const landing = frameAt(gait, 0)
+  assert.ok(landing.farArm.hand[0] > landing.nearArm.hand[0], 'the far arm is forward while the near foot lands')
+  const other = frameAt(gait, 0.5)
+  assert.ok(other.nearArm.hand[0] > other.farArm.hand[0])
 })

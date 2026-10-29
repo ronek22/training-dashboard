@@ -60,20 +60,16 @@ private struct ReadinessHero: View {
     let readiness: PhoneBody.Readiness
 
     var body: some View {
-        let style = ReadinessStyle(level: readiness.level, points: readiness.points)
+        let style = ReadinessStyle(level: readiness.level)
         VStack(alignment: .leading, spacing: 16) {
             Kicker("Readiness", color: style.color)
-            HStack(spacing: 18) {
-                ReadinessGauge(style: style, steady: steady.count, total: readiness.factors.count, size: 124, lineWidth: 11)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(style.headline.uppercased())
-                        .font(AppFont.title(46))
-                        .foregroundStyle(style.color)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                    Text(style.label).font(AppFont.body(14, weight: .semibold)).foregroundStyle(Color.ink)
-                }
-                Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(style.headline.uppercased())
+                    .font(AppFont.title(46))
+                    .foregroundStyle(style.color)
+                Text(readiness.factors.isEmpty ? style.label : "\(style.label) · \(steady.count) of \(readiness.factors.count) signals steady")
+                    .font(AppFont.body(13, weight: .medium))
+                    .foregroundStyle(Color.inkSoft)
             }
             if !readiness.factors.isEmpty {
                 balance
@@ -354,9 +350,13 @@ private struct VitalsCard: View {
         let status = status(kind, vital)
         return HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(kind.label).font(AppFont.body(12, weight: .medium)).foregroundStyle(Color.muted)
+                HStack(spacing: 5) {
+                    Image(systemName: kind.icon).font(.system(size: 10, weight: .bold))
+                    Text(kind.label).font(AppFont.body(12, weight: .semibold))
+                }
+                .foregroundStyle(kind.color)
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text(kind.format(vital.value)).font(AppFont.title(32)).foregroundStyle(status.color(kind))
+                    Text(kind.format(vital.value)).font(AppFont.title(32)).foregroundStyle(Color.ink)
                     Text(kind.unit).font(AppFont.body(12, weight: .medium)).foregroundStyle(Color.muted)
                 }
                 Text(status.label)

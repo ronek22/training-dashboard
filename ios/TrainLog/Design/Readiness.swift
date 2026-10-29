@@ -1,14 +1,12 @@
 import SwiftUI
 
-/// How a readiness level reads on the phone: a headline word and a spot on the gauge.
+/// How a readiness level reads on the phone: a headline word and its colour.
 struct ReadinessStyle {
     let headline: String
     let label: String
     let color: Color
-    /// Where the marker sits on the gauge, 0 (red end) to 1 (green end); nil without a read.
-    let position: Double?
 
-    init(level: String, points: Int?) {
+    init(level: String) {
         let status = TodayFormat.readiness(level)
         label = status.label
         color = status.color
@@ -17,16 +15,6 @@ struct ReadinessStyle {
         case "amber": headline = "Ease in"
         case "red": headline = "Recover"
         default: headline = "No read"
-        }
-        // Points count against readiness: 0 sits at the green end, 6 or more at the red end.
-        // Without points (an older cached response) the marker sits mid-zone.
-        let fallback: [String: Double] = ["green": 0.88, "amber": 0.56, "red": 0.2]
-        if level == "unknown" || fallback[level] == nil {
-            position = nil
-        } else if let points {
-            position = min(max(1 - Double(points) / 6, 0.04), 0.96)
-        } else {
-            position = fallback[level]
         }
     }
 
@@ -45,78 +33,6 @@ struct ReadinessStyle {
         case "ramp": "chart.line.uptrend.xyaxis"
         default: "circle.fill"
         }
-    }
-}
-
-/// A 240° arc in three zones (red, amber, green), the current zone lit and a knob at the read,
-/// with how many signals are steady in the middle.
-struct ReadinessGauge: View {
-    let style: ReadinessStyle
-    let steady: Int
-    let total: Int
-    var size: CGFloat = 96
-    var lineWidth: CGFloat = 9
-
-    @State private var shown = false
-
-    private static let sweep = 240.0
-    private static let start = 150.0
-    private static let zones: [(from: Double, to: Double, color: Color)] = [
-        (0, 0.375, .danger), (0.375, 0.75, .warning), (0.75, 1, .mobility),
-    ]
-
-    var body: some View {
-        ZStack {
-            ForEach(Self.zones.indices, id: \.self) { index in
-                let zone = Self.zones[index]
-                let lit = style.position.map { $0 >= zone.from && $0 <= zone.to } ?? false
-                arc(from: zone.from + (index == 0 ? 0 : 0.012), to: zone.to - (index == 2 ? 0 : 0.012))
-                    .stroke(style.position == nil ? Color.track : zone.color.opacity(lit ? 1 : 0.18),
-                            style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-            }
-            if let position = style.position {
-                knob
-                    .rotationEffect(.degrees(Self.sweep * (shown ? position : 0)))
-            }
-            if total > 0 {
-                VStack(spacing: 0) {
-                    HStack(alignment: .firstTextBaseline, spacing: 1) {
-                        Text("\(steady)").font(AppFont.title(size * 0.36)).foregroundStyle(Color.ink)
-                        Text("/\(total)").font(AppFont.number(size * 0.17)).foregroundStyle(Color.muted)
-                    }
-                    Text("STEADY")
-                        .font(AppFont.body(size * 0.085, weight: .semibold))
-                        .tracking(size * 0.012)
-                        .foregroundStyle(Color.muted)
-                }
-                .offset(y: size * 0.04)
-            }
-        }
-        .frame(width: size, height: size)
-        .onAppear {
-            withAnimation(.spring(response: 0.9, dampingFraction: 0.75).delay(0.1)) { shown = true }
-        }
-        .accessibilityElement()
-        .accessibilityLabel("Readiness \(style.headline), \(style.label), \(steady) of \(total) signals steady")
-    }
-
-    private func arc(from: Double, to: Double) -> some Shape {
-        Circle()
-            .inset(by: lineWidth / 2)
-            .trim(from: from * Self.sweep / 360, to: to * Self.sweep / 360)
-            .rotation(.degrees(Self.start))
-    }
-
-    /// Sits at the gauge's start angle; rotating the whole frame moves it along the arc.
-    private var knob: some View {
-        let radius = (size - lineWidth) / 2
-        let angle = Self.start * .pi / 180
-        return Circle()
-            .fill(Color.card)
-            .overlay(Circle().strokeBorder(style.color, lineWidth: 3))
-            .frame(width: lineWidth + 7, height: lineWidth + 7)
-            .offset(x: radius * cos(angle), y: radius * sin(angle))
-            .frame(width: size, height: size)
     }
 }
 

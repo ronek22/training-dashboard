@@ -19,8 +19,27 @@ enum VitalKind: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Each vital keeps its own colour, like the Watch's Vitals app.
+    var color: Color {
+        switch self {
+        case .hrv: .ride
+        case .restingHr: .danger
+        case .sleep: .other
+        case .steps: .warning
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .hrv: "waveform.path.ecg"
+        case .restingHr: "heart.fill"
+        case .sleep: "moon.fill"
+        case .steps: "figure.walk"
+        }
+    }
+
     /// For tight spots like the Today card's columns.
-    var shortLabel: String { self == .restingHr ? "Resting" : label }
+    var shortLabel: String { self == .restingHr ? "RHR" : label }
 
     var unit: String {
         switch self {
@@ -42,8 +61,8 @@ enum VitalKind: String, CaseIterable, Identifiable {
     }
 }
 
-/// Where a reading falls against its typical range. Outside it, the colour says whether that's
-/// the good side (green) or the side to watch (amber); inside it stays plain.
+/// Where a reading falls against its typical range. Inside it the vital keeps its own colour;
+/// outside it, green on the good side and amber on the side to watch.
 enum VitalStatus: Equatable {
     case typical, low, high, unknown
 
@@ -65,8 +84,7 @@ enum VitalStatus: Equatable {
 
     func color(_ kind: VitalKind) -> Color {
         switch self {
-        case .typical: .ink
-        case .unknown: .inkSoft
+        case .typical, .unknown: kind.color
         case .low: kind.higherIsBetter ? .warning : .mobility
         case .high: kind.higherIsBetter ? .mobility : .warning
         }
@@ -84,10 +102,10 @@ private func vitalDomain(_ values: [Double], low: Double?, high: Double?) -> Clo
 
 /// A Watch Vitals column: a slim track, the typical range shaded in it, the latest reading as a dot.
 struct VitalBar: View {
+    let kind: VitalKind
     let value: Double
     let low: Double?
     let high: Double?
-    let color: Color
     var width: CGFloat = 14
 
     var body: some View {
@@ -98,17 +116,17 @@ struct VitalBar: View {
             let domain = vitalDomain([value], low: low, high: high)
             let y = { (v: Double) in (1 - (v - domain.lowerBound) / (domain.upperBound - domain.lowerBound)) * height }
             ZStack {
-                Capsule().fill(Color.cardBorder)
+                Capsule().fill(kind.color.opacity(0.14))
                     .frame(width: width, height: height)
                     .position(x: center, y: height / 2)
                 if let low, let high {
                     let band = max(y(low) - y(high), width)
-                    Capsule().fill(Color.dim)
+                    Capsule().fill(kind.color.opacity(0.4))
                         .frame(width: width, height: band)
                         .position(x: center, y: y(high) + band / 2)
                 }
                 Circle()
-                    .fill(color)
+                    .fill(VitalStatus(value: value, low: low, high: high).color(kind))
                     .overlay(Circle().strokeBorder(Color.inset, lineWidth: 2))
                     .frame(width: dot, height: dot)
                     .position(x: center, y: min(max(y(value), dot / 2), height - dot / 2))
@@ -134,7 +152,7 @@ struct VitalWeekChart: View {
         Chart {
             if let low, let high {
                 RectangleMark(xStart: .value("From", -0.45), xEnd: .value("To", 6.45), yStart: .value("Low", low), yEnd: .value("High", high))
-                    .foregroundStyle(Color.raised)
+                    .foregroundStyle(kind.color.opacity(0.16))
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             }
             ForEach(points, id: \.index) { point in
@@ -143,7 +161,7 @@ struct VitalWeekChart: View {
                 PointMark(x: .value("Day", point.index), y: .value(kind.label, point.value))
                     .symbol {
                         Circle()
-                            .fill(status.isOutlier ? status.color(kind) : (isLast ? Color.ink : Color.inkSoft))
+                            .fill(status.color(kind))
                             .overlay(Circle().strokeBorder(Color.card, lineWidth: isLast ? 2 : 1.5))
                             .frame(width: isLast ? 13 : 9, height: isLast ? 13 : 9)
                     }

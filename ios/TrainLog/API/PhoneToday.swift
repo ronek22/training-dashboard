@@ -18,7 +18,6 @@ struct PhoneToday: Decodable, Sendable {
         let label: String
         let advice: String?
         let suggestsSwap: Bool
-        var points: Int?
         var factors: [Factor]?
     }
 

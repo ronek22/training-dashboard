@@ -613,7 +613,7 @@ private struct ReadinessCard: View {
         .card()
     }
 
-    private var style: ReadinessStyle { ReadinessStyle(level: readiness.level, points: readiness.points) }
+    private var style: ReadinessStyle { ReadinessStyle(level: readiness.level) }
     private var factors: [PhoneToday.Factor] { readiness.factors ?? [] }
 
     private var summary: some View {
@@ -626,27 +626,26 @@ private struct ReadinessCard: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.faint)
             }
-            HStack(spacing: 16) {
-                ReadinessGauge(style: style, steady: steadyCount, total: factors.count, size: 92)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(style.headline.uppercased())
-                        .font(AppFont.title(38))
-                        .foregroundStyle(style.color)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    Text(style.label)
-                        .font(AppFont.body(12, weight: .medium))
-                        .foregroundStyle(Color.muted)
-                    if !factors.isEmpty {
-                        HStack(spacing: 5) {
-                            ForEach(factors) { SignalChip(key: $0.key, tone: $0.tone, size: 24) }
-                        }
-                        .padding(.top, 4)
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(style.headline.uppercased())
+                    .font(AppFont.title(30))
+                    .foregroundStyle(style.color)
+                Text(factors.isEmpty ? style.label : "\(style.label) · \(steadyCount) of \(factors.count) steady")
+                    .font(AppFont.body(12, weight: .medium))
+                    .foregroundStyle(Color.muted)
+                    .lineLimit(1)
+            }
+            .padding(.top, 6)
+            if !factors.isEmpty {
+                // One slim slice per signal, steady first: the whole read at a glance.
+                HStack(spacing: 3) {
+                    ForEach(factors.sorted { rank($0) < rank($1) }) { factor in
+                        Capsule().fill(BodyFormat.toneColor(factor.tone))
                     }
                 }
-                Spacer(minLength: 0)
+                .frame(height: 4)
+                .padding(.top, 10)
             }
-            .padding(.top, 10)
             if let ranges = vitals.ranges, !ranges.isEmpty {
                 overnight(ranges).padding(.top, 14)
             }
@@ -658,6 +657,10 @@ private struct ReadinessCard: View {
                     .padding(.top, 12)
             }
         }
+    }
+
+    private func rank(_ factor: PhoneToday.Factor) -> Int {
+        ["caution": 1, "risk": 2][factor.tone] ?? 0
     }
 
     private var steadyCount: Int {
@@ -686,25 +689,28 @@ private struct ReadinessCard: View {
 
     private func vital(_ kind: VitalKind, _ range: PhoneToday.VitalRange) -> some View {
         let status = VitalStatus(value: range.value, low: range.low, high: range.high)
-        let color = status.color(kind)
         return HStack(spacing: 10) {
-            VitalBar(value: range.value, low: range.low, high: range.high, color: color, width: 10)
+            VitalBar(kind: kind, value: range.value, low: range.low, high: range.high, width: 10)
                 .frame(height: 58)
             VStack(alignment: .leading, spacing: 1) {
-                Text(kind.shortLabel).font(AppFont.body(11, weight: .medium)).foregroundStyle(Color.muted).lineLimit(1)
+                HStack(spacing: 4) {
+                    Image(systemName: kind.icon).font(.system(size: 9, weight: .bold))
+                    Text(kind.shortLabel).font(AppFont.body(11, weight: .semibold)).lineLimit(1)
+                }
+                .foregroundStyle(kind.color)
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text(kind.format(range.value)).font(AppFont.number(24)).foregroundStyle(color)
+                    Text(kind.format(range.value)).font(AppFont.number(24)).foregroundStyle(Color.ink)
                     Text(kind.unit).font(AppFont.body(10, weight: .medium)).foregroundStyle(Color.muted)
                 }
                 Text(status == .typical ? "Typical" : status == .low ? "Low" : status == .high ? "High" : "–")
                     .font(AppFont.body(10, weight: .semibold))
-                    .foregroundStyle(status.isOutlier ? color : Color.faint)
+                    .foregroundStyle(status.isOutlier ? status.color(kind) : Color.faint)
             }
             Spacer(minLength: 0)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(kind.color.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(kind.label) \(kind.format(range.value)) \(kind.unit), \(status.label)")
     }

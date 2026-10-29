@@ -63,6 +63,7 @@ struct BodyTests {
         #expect(VitalStatus.low.color(.hrv) == .warning)
         #expect(VitalStatus.low.color(.restingHr) == .mobility)
         #expect(VitalStatus.high.color(.restingHr) == .warning)
+        #expect(VitalStatus.typical.color(.sleep) == VitalKind.sleep.color)
     }
 
     @Test func formZones() {

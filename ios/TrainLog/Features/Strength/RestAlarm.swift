@@ -11,14 +11,14 @@ enum RestAlarm {
     /// The system alarm chime; `AudioServicesPlayAlertSound` also vibrates, even on silent.
     private static let chime: SystemSoundID = 1005
 
-    static func schedule(at endsAt: Date, next: String?) {
+    static func schedule(at endsAt: Date, title: String = "Rest over · go", next: String?) {
         cancel()
         let delay = endsAt.timeIntervalSinceNow
         guard delay > 1 else { return }
         Task {
             guard await Reminders.requestPermission() else { return }
             let content = UNMutableNotificationContent()
-            content.title = "Rest over · go"
+            content.title = title
             content.body = next ?? "Time for the next set."
             content.sound = .default
             content.interruptionLevel = .timeSensitive

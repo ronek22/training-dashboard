@@ -46,7 +46,7 @@ struct TrendsView: View {
         .scrollIndicators(.hidden)
         .background(Color.bg)
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable {
+        .smoothRefreshable {
             await APIClient.current.reconnect()
             await model.load()
         }

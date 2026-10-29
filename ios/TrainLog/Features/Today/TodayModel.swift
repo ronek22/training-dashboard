@@ -12,6 +12,8 @@ final class TodayModel {
     private(set) var loading = false
     /// An open strength workout (started here or on the web), for the Resume banner.
     private(set) var activeWorkout: StrengthSession?
+    /// Rehab exercises still due today (ticked and off-day ones left out); nil without a routine.
+    private(set) var rehabPending: Int?
 
     private let client: () -> APIClient
 
@@ -36,6 +38,7 @@ final class TodayModel {
             syncedAt = cached.syncedAt
         }
         async let workout = Self.activeWorkout(api)
+        async let rehab = Self.rehabPending(api)
         do {
             let loaded = try await api.get(Self.path, as: PhoneToday.self)
             data = loaded.value
@@ -49,6 +52,7 @@ final class TodayModel {
             self.error = error.localizedDescription
         }
         activeWorkout = await workout
+        rehabPending = await rehab
         // A workout finished on the web leaves no open session to end the Live Activity.
         if activeWorkout == nil { StrengthActivity.end() }
     }
@@ -58,6 +62,10 @@ final class TodayModel {
         guard !loading else { return }
         let workout = await Self.activeWorkout(client())
         if workout != activeWorkout { activeWorkout = workout }
+    }
+
+    private static func rehabPending(_ client: APIClient) async -> Int? {
+        try? await client.get("/guided-sessions/rehab", as: GuidedSessionEnvelope.self).value.session.exercises.count
     }
 
     /// The server's open workout; when it's unreachable, the one this phone has in progress.
@@ -72,6 +80,20 @@ final class TodayModel {
 
 /// Pure formatting for the Today screen (unit-tested).
 enum TodayFormat {
+    /// What the session card's volt does.
+    enum Next: Equatable {
+        case startStrength, openSession, startRehab, allDone
+    }
+
+    /// The main part first (the lift, or the ride's steps until the Watch workout syncs), then the
+    /// rehab. A rehab-only day goes straight to the rehab. `rehabLeft` is nil on days without rehab.
+    static func next(isStrength: Bool, rehabOnly: Bool, mainDone: Bool, rehabLeft: Int?) -> Next {
+        let rehabToDo = (rehabLeft ?? 0) > 0
+        if rehabOnly { return rehabToDo ? .startRehab : .allDone }
+        if !mainDone { return isStrength ? .startStrength : .openSession }
+        return rehabToDo ? .startRehab : .allDone
+    }
+
     static func duration(_ minutes: Int) -> String {
         let hours = minutes / 60
         let rest = minutes % 60

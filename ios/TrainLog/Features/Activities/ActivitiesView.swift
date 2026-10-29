@@ -55,7 +55,7 @@ struct ActivitiesView: View {
             .background(Color.bg)
             .toolbar(.hidden, for: .navigationBar)
             .navigationTitle("Activities")
-            .refreshable { await model.sync() }
+            .smoothRefreshable { await model.sync() }
             .task { await model.load() }
             .navigationDestination(for: String.self) { id in
                 ActivityDetailView(id: id, summary: model.activities.first { $0.id == id }) { input in

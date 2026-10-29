@@ -38,7 +38,7 @@ struct BodyView: View {
         .scrollIndicators(.hidden)
         .background(Color.bg)
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable { await model.refresh() }
+        .smoothRefreshable { await model.refresh() }
         .task { await model.load() }
     }
 

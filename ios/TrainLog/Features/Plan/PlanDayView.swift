@@ -22,7 +22,7 @@ struct PlanDayView: View {
         .scrollIndicators(.hidden)
         .background(Color.bg)
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable {
+        .smoothRefreshable {
             await APIClient.current.reconnect()
             await model.load()
         }
@@ -232,6 +232,7 @@ struct RehabChecklistView: View {
     let model: PlanModel
     let date: String
     let routineId: Int
+    @State private var guided = false
 
     private var routine: RehabRoutine? {
         model.day(date)?.rehab?.first { $0.routineId == routineId }
@@ -261,6 +262,14 @@ struct RehabChecklistView: View {
                     .padding(.horizontal, 16)
                     .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+                    if date == model.today, routine.ticked.count < routine.exercises.count {
+                        Button {
+                            guided = true
+                        } label: {
+                            Label("Start guided", systemImage: "play.fill")
+                        }
+                        .buttonStyle(VoltButtonStyle())
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
@@ -269,6 +278,9 @@ struct RehabChecklistView: View {
         .scrollIndicators(.hidden)
         .background(Color.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .fullScreenCover(isPresented: $guided, onDismiss: { Task { await model.load() } }) {
+            RehabSessionView()
+        }
     }
 
     private func exerciseRow(_ routine: RehabRoutine, index: Int, exercise: RehabRoutine.Exercise) -> some View {

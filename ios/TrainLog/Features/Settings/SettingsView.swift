@@ -39,7 +39,7 @@ struct SettingsView: View {
         .background(Color.bg)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.bg, for: .navigationBar)
-        .refreshable { await model.check() }
+        .smoothRefreshable { await model.check() }
         .task { await model.check() }
         .sheet(item: $sheet) { kind in
             Group {

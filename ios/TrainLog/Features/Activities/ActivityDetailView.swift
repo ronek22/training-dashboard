@@ -118,7 +118,7 @@ struct ActivityDetailView: View {
                 }
             }
         }
-        .refreshable {
+        .smoothRefreshable {
             await APIClient.current.reconnect()
             await model.load()
         }

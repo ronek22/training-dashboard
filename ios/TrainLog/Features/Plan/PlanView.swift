@@ -45,7 +45,7 @@ struct PlanView: View {
             .background(Color.bg)
             .toolbar(.hidden, for: .navigationBar)
             .navigationTitle("Plan")
-            .refreshable {
+            .smoothRefreshable {
                 await APIClient.current.reconnect()
                 await model.load()
             }

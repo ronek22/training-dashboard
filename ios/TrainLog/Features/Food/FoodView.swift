@@ -38,7 +38,7 @@ struct FoodView: View {
         }
         .background(Color.bg)
         .overlay(alignment: .bottomTrailing) { snapButton }
-        .refreshable {
+        .smoothRefreshable {
             await APIClient.current.reconnect()
             await model.load()
         }

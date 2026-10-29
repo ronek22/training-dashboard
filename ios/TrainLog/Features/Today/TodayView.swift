@@ -11,6 +11,7 @@ struct TodayView: View {
     @State private var plan = PlanModel()
     @State private var route: Route?
     @State private var moving: PlanDay?
+    @State private var showRehab = false
     var onStartStrength: (Int?) -> Void = { _ in }
     /// Bumped when the strength screen closes, so the banner and plan reload.
     var refresh = 0
@@ -29,13 +30,14 @@ struct TodayView: View {
                         case .day:
                             PlanDayView(model: plan, date: date, onMove: { moving = $0 }, onStartStrength: onStartStrength)
                                 .hidesTabBar()
-                        case .rehab(let routineId):
-                            RehabChecklistView(model: plan, date: date, routineId: routineId).hidesTabBar()
                         }
                     }
                 }
         }
         .tint(.volt)
+        .fullScreenCover(isPresented: $showRehab, onDismiss: { Task { await load() } }) {
+            RehabSessionView()
+        }
         .sheet(item: $moving) { day in
             if let week = plan.weeks.first(where: { $0.days.contains { $0.date == day.date } }) {
                 MoveDaySheet(source: day, slots: PlanFormat.slots(week), today: plan.today) { target in
@@ -58,7 +60,6 @@ struct TodayView: View {
 
     private enum Route: Hashable {
         case day
-        case rehab(Int)
     }
 
     private func load() async {
@@ -83,10 +84,11 @@ struct TodayView: View {
                         planDay: plan.day(data.date),
                         today: plan.today,
                         showFallback: $showFallback,
+                        rehabPending: model.rehabPending,
                         workoutOpen: model.activeWorkout != nil,
                         onStartStrength: onStartStrength,
                         onOpen: { route = .day },
-                        onRehab: { route = .rehab($0) },
+                        onRehab: { showRehab = true },
                         onMove: { moving = $0 }
                     )
                     ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone,
@@ -108,7 +110,7 @@ struct TodayView: View {
             Color.bg.frame(height: 0).background(Color.bg).allowsHitTesting(false)
         }
         .background(Color.bg)
-        .refreshable {
+        .smoothRefreshable {
             await APIClient.current.reconnect()
             await load()
         }
@@ -196,11 +198,12 @@ private struct SessionCard: View {
     let planDay: PlanDay?
     let today: String
     @Binding var showFallback: Bool
+    let rehabPending: Int?
     /// The Resume banner owns the volt action while a workout is open.
     let workoutOpen: Bool
     let onStartStrength: (Int?) -> Void
     let onOpen: () -> Void
-    let onRehab: (Int) -> Void
+    let onRehab: () -> Void
     let onMove: (PlanDay) -> Void
 
     var body: some View {
@@ -211,31 +214,48 @@ private struct SessionCard: View {
         }
     }
 
+    /// Today's rehab from the plan day: exercises ticked, and still due (from the guided session,
+    /// which leaves out off-day ones; the plan's own count when that's unknown).
+    private var rehab: (done: Int, left: Int, title: String)? {
+        guard let routines = planDay?.rehab, !routines.isEmpty else { return nil }
+        let done = routines.reduce(0) { $0 + $1.ticked.count }
+        let total = routines.reduce(0) { $0 + $1.exercises.count }
+        return (done, rehabPending ?? max(0, total - done), routines.map(\.title).joined(separator: " · "))
+    }
+
     private func planned(_ session: PhoneToday.Session) -> some View {
         let sport = session.sport ?? .other
         let fallback = PlanFormat.fallback(session.fallback)
         let canMove = PlanFormat.canMove(planDay, today: today)
+        let rehab = self.rehab
+        // A rehab-only day is the routine itself; any other day with rehab has two parts.
+        let rehabOnly = sport == .mobility && rehab != nil
+        let next = TodayFormat.next(isStrength: session.strength != nil, rehabOnly: rehabOnly,
+                                    mainDone: session.isDone, rehabLeft: rehab?.left)
         return VStack(alignment: .leading, spacing: 0) {
             // Tapping the top half opens the full day: steps, cues, go-check.
             Button(action: onOpen) { header(session, sport: sport).contentShape(Rectangle()) }
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens the full session")
 
-            if let exercises = session.strength?.exercises, !exercises.isEmpty {
-                numberedList(exercises.map { ($0.name, TodayFormat.exerciseTarget($0)) }, color: sport.color)
-                    .padding(.top, 14)
-            } else if let steps = planDay?.steps, !steps.isEmpty {
-                numberedList(steps.map { ($0, nil) }, color: sport.color, limit: 2).padding(.top, 14)
-            } else if let details = session.details {
-                Text(details)
-                    .font(AppFont.body(14))
-                    .foregroundStyle(Color.inkSoft)
-                    .lineSpacing(3)
-                    .lineLimit(4)
-                    .padding(.top, 12)
+            // Once the main part is in, the card is about what's left.
+            if !session.isDone {
+                if let exercises = session.strength?.exercises, !exercises.isEmpty {
+                    numberedList(exercises.map { ($0.name, TodayFormat.exerciseTarget($0)) }, color: sport.color)
+                        .padding(.top, 14)
+                } else if let steps = planDay?.steps, !steps.isEmpty, !rehabOnly {
+                    numberedList(steps.map { ($0, nil) }, color: sport.color, limit: 2).padding(.top, 14)
+                } else if let details = session.details {
+                    Text(details)
+                        .font(AppFont.body(14))
+                        .foregroundStyle(Color.inkSoft)
+                        .lineSpacing(3)
+                        .lineLimit(4)
+                        .padding(.top, 12)
+                }
             }
 
-            if showFallback, let fallback {
+            if showFallback, let fallback, !session.isDone {
                 Text("\(Text("Short on time: ").foregroundStyle(Color.ink).bold())\(fallback)")
                     .font(AppFont.body(13))
                     .foregroundStyle(Color.inkSoft)
@@ -248,11 +268,17 @@ private struct SessionCard: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
-            ForEach(planDay?.rehab ?? []) { routine in
-                rehabRow(routine).padding(.top, 12)
+            if let rehab {
+                VStack(spacing: 8) {
+                    if !rehabOnly {
+                        mainPart(session, sport: sport)
+                    }
+                    rehabPart(rehab, number: rehabOnly ? nil : 2, after: rehabOnly || session.isDone ? nil : sport)
+                }
+                .padding(.top, 14)
             }
 
-            if session.isDone {
+            if next == .allDone {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
                     Text("Done today").font(AppFont.body(15, weight: .bold))
@@ -262,8 +288,8 @@ private struct SessionCard: View {
                 .background(Color.volt.opacity(0.12), in: Capsule())
                 .padding(.top, 16)
             } else if !workoutOpen {
-                primary(session)
-                if fallback != nil || canMove {
+                primary(next, session: session)
+                if !session.isDone, fallback != nil || canMove {
                     HStack(spacing: 8) {
                         if fallback != nil {
                             Button {
@@ -330,17 +356,21 @@ private struct SessionCard: View {
             .fixedSize()
     }
 
-    /// Strength starts the logger; anything else opens the steps to follow on the bike or run.
-    @ViewBuilder
-    private func primary(_ session: PhoneToday.Session) -> some View {
+    /// The volt follows the part that's next: the lift or the ride's steps, then the rehab.
+    private func primary(_ next: TodayFormat.Next, session: PhoneToday.Session) -> some View {
         Group {
-            if let strength = session.strength {
+            switch next {
+            case .startStrength:
                 Button {
-                    onStartStrength(strength.templateId)
+                    onStartStrength(session.strength?.templateId)
                 } label: {
                     Label("Start session", systemImage: "play.fill")
                 }
-            } else {
+            case .startRehab:
+                Button(action: onRehab) {
+                    Label("Start rehab", systemImage: "play.fill")
+                }
+            case .openSession, .allDone:
                 Button(action: onOpen) {
                     Label("Open session", systemImage: "list.bullet")
                 }
@@ -350,43 +380,80 @@ private struct SessionCard: View {
         .padding(.top, 16)
     }
 
-    private func rehabRow(_ routine: RehabRoutine) -> some View {
-        let done = routine.ticked.count
-        let total = routine.exercises.count
-        let complete = total > 0 && done >= total
-        return Button {
-            onRehab(routine.routineId)
-        } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle().stroke(Color.track, lineWidth: 3)
-                    Circle()
-                        .trim(from: 0, to: total == 0 ? 0 : Double(done) / Double(total))
-                        .stroke(Color.mobility, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    if complete {
-                        Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(Color.mobility)
-                    }
-                }
-                .frame(width: 28, height: 28)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(complete ? "Rehab done" : "Rehab · \(done) of \(total)")
-                        .font(AppFont.body(14, weight: .semibold))
-                        .foregroundStyle(Color.ink)
-                    Text(routine.title).font(AppFont.body(12)).foregroundStyle(Color.muted).lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.faint)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .frame(minHeight: 44)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
-            .contentShape(Rectangle())
+    /// Part 1 of a two-part day: recorded on the Watch, ticked here once it syncs.
+    private func mainPart(_ session: PhoneToday.Session, sport: Sport) -> some View {
+        let done = session.isDone
+        let size = session.durationMin.map { "\($0) min" }
+        return Button(action: onOpen) {
+            partRow(
+                badge: AnyView(partBadge(number: 1, done: done, color: sport.color)),
+                title: [sport.label, size].compactMap { $0 }.joined(separator: " · "),
+                subtitle: done ? "Done · synced" : "Record it on your Watch",
+                dimmed: done
+            )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Rehab checklist, \(done) of \(total) done")
+        .accessibilityLabel("\(sport.label), \(done ? "done" : "to do")")
+    }
+
+    /// The rehab part; opens the guided session (its first screen lists the exercises).
+    private func rehabPart(_ rehab: (done: Int, left: Int, title: String), number: Int?, after sport: Sport?) -> some View {
+        let total = rehab.done + rehab.left
+        let complete = rehab.left == 0
+        let ring = ZStack {
+            Circle().stroke(Color.track, lineWidth: 3)
+            Circle()
+                .trim(from: 0, to: total == 0 ? 0 : Double(rehab.done) / Double(total))
+                .stroke(Color.mobility, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            if complete {
+                Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(Color.mobility)
+            } else if let number {
+                Text("\(number)").font(AppFont.number(15)).foregroundStyle(Color.mobility)
+            }
+        }
+        .frame(width: 28, height: 28)
+        let title = complete ? "Rehab done" : "Rehab · \(rehab.left) to do"
+        let subtitle = after.map { "After the \($0.label.lowercased()) · \(rehab.title)" } ?? rehab.title
+        return Button(action: onRehab) {
+            partRow(badge: AnyView(ring), title: title, subtitle: subtitle, dimmed: complete)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(complete ? "Rehab done" : "Rehab, \(rehab.left) exercises to do")
+        .accessibilityHint("Opens the guided rehab session")
+    }
+
+    private func partBadge(number: Int, done: Bool, color: Color) -> some View {
+        ZStack {
+            if done {
+                Circle().fill(color)
+                Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(Color.bg)
+            } else {
+                Circle().strokeBorder(color, lineWidth: 2)
+                Text("\(number)").font(AppFont.number(15)).foregroundStyle(color)
+            }
+        }
+        .frame(width: 28, height: 28)
+    }
+
+    private func partRow(badge: AnyView, title: String, subtitle: String, dimmed: Bool) -> some View {
+        HStack(spacing: 12) {
+            badge
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(AppFont.body(14, weight: .semibold))
+                    .foregroundStyle(dimmed ? Color.inkSoft : Color.ink)
+                Text(subtitle).font(AppFont.body(12)).foregroundStyle(Color.muted).lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.faint)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(minHeight: 44)
+        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+        .contentShape(Rectangle())
     }
 
     private var restDay: some View {

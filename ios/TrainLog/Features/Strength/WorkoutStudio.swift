@@ -1,8 +1,8 @@
 import Observation
 import SwiftUI
 
-/// Workout Studio: start any workout built on the Mac, planned for today or not.
-/// Building workouts on the phone comes later; this only lists the saved templates.
+/// Workout Studio: start any saved workout, planned for today or not, and build or edit them
+/// (Features/WorkoutBuilder).
 @MainActor
 @Observable
 final class WorkoutStudioModel {
@@ -19,6 +19,21 @@ final class WorkoutStudioModel {
     }
 
     static let path = "/strength/workouts/templates"
+
+    func detail(_ id: Int) async -> TemplateDetail? {
+        try? await client().get(WorkoutBuilderModel.templatePath(id), as: TemplateDetail.self).value
+    }
+
+    func delete(_ id: Int) async -> Bool {
+        do {
+            try await client().send("DELETE", WorkoutBuilderModel.templatePath(id))
+            templates.removeAll { $0.id == id }
+            return true
+        } catch {
+            self.error = error.localizedDescription
+            return false
+        }
+    }
 
     func load(planned: Int?) async {
         do {
@@ -96,12 +111,28 @@ struct WorkoutStudioSheet: View {
     let onPick: (Int) -> Void
     @State private var model = WorkoutStudioModel()
     @Environment(\.dismiss) private var dismiss
+    @State private var creating = false
+    @State private var building: BuilderLaunch?
+    /// Opened once the New workout sheet has gone.
+    @State private var pendingDraft: WorkoutDraft?
+    @State private var deleting: StrengthTemplateSummary?
+    @State private var saved: SavedToast?
+
+    private struct BuilderLaunch: Identifiable {
+        let id = UUID()
+        let draft: WorkoutDraft
+    }
+
+    private struct SavedToast: Equatable {
+        let name: String
+        let templateId: Int?
+    }
 
     private var today: String { PlanModel.todayISO }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
+        List {
+            Group {
                 header
                 if model.offline, let syncedAt = model.syncedAt {
                     Text("Offline · last synced \(syncedAt.formatted(date: .omitted, time: .shortened))")
@@ -119,25 +150,124 @@ struct WorkoutStudioSheet: View {
                     ProgressView().tint(.muted).frame(maxWidth: .infinity, minHeight: 200)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 24)
+            .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
         .scrollIndicators(.hidden)
+        .overlay(alignment: .bottom) {
+            if let saved { savedToast(saved) }
+        }
         .task { await model.load(planned: planned) }
+        .task(id: saved) {
+            guard saved != nil else { return }
+            try? await Task.sleep(for: .seconds(6))
+            withAnimation(.snappy) { saved = nil }
+        }
+        .sheet(isPresented: $creating, onDismiss: {
+            if let draft = pendingDraft {
+                pendingDraft = nil
+                building = BuilderLaunch(draft: draft)
+            }
+        }) {
+            NewWorkoutSheet(templates: model.templates) { pendingDraft = $0 }
+                .presentationDetents([.large])
+                .presentationBackground(Color.card)
+                .presentationCornerRadius(34)
+        }
+        .fullScreenCover(item: $building) { launch in
+            WorkoutBuilderView(model: WorkoutBuilderModel(draft: launch.draft)) { result, name in
+                if case .saved(let id) = result {
+                    saved = SavedToast(name: name, templateId: id)
+                } else {
+                    saved = SavedToast(name: name, templateId: nil)
+                }
+                Task { await model.load(planned: planned) }
+            }
+        }
+        .confirmationDialog("Delete \(deleting?.name ?? "this workout")?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {
+            Button("Delete workout", role: .destructive) {
+                if let template = deleting {
+                    Task { _ = await model.delete(template.id) }
+                }
+            }
+        } message: {
+            Text("Past sessions stay in your history.")
+        }
+    }
+
+    private func edit(_ template: StrengthTemplateSummary, copy: Bool = false) {
+        Task {
+            guard let detail = await model.detail(template.id) else { return }
+            var draft = WorkoutDraft(detail)
+            if copy {
+                draft.templateId = nil
+                draft.name = "\(detail.name) copy"
+            }
+            building = BuilderLaunch(draft: draft)
+        }
+    }
+
+    private func savedToast(_ toast: SavedToast) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 12, weight: .heavy))
+                .foregroundStyle(Color.mobility)
+                .frame(width: 28, height: 28)
+                .background(Color.mobility.opacity(0.18), in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Saved “\(toast.name)”").font(AppFont.body(14, weight: .semibold)).foregroundStyle(Color.ink).lineLimit(1)
+                Text(toast.templateId == nil ? "Saves to the Mac when it's back" : "Synced to the Mac")
+                    .font(AppFont.body(12))
+                    .foregroundStyle(Color.muted)
+            }
+            Spacer()
+            if let id = toast.templateId {
+                Button("Start now") {
+                    onPick(id)
+                    dismiss()
+                }
+                .font(AppFont.body(14, weight: .semibold))
+                .foregroundStyle(Color.volt)
+                .frame(minHeight: 44)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Color.raised, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.outline))
+        .shadow(color: .black.opacity(0.45), radius: 14, y: 6)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Kicker("Any day", color: .strength)
-                Spacer()
                 Button("Close") { dismiss() }
                     .font(AppFont.body(16))
                     .foregroundStyle(Color.inkSoft)
                     .frame(minHeight: 44)
+                Spacer()
+                Button {
+                    creating = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Color.volt)
+                        .frame(width: 36, height: 36)
+                        .background(Color(hex: 0x191D27), in: Circle())
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("New workout")
             }
+            Kicker("Any day", color: .strength)
             Text("WORKOUT STUDIO").font(AppFont.title(34)).foregroundStyle(Color.ink)
-            Text("Workouts built on the Mac. Pick one to see its brief before you start.")
+            Text("Pick one to see its brief. Swipe to edit, or + to build a new one.")
                 .font(AppFont.body(13))
                 .foregroundStyle(Color.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -154,11 +284,8 @@ struct WorkoutStudioSheet: View {
             onPick(template.id)
             dismiss()
         } label: {
-            HStack(alignment: .top, spacing: 12) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.strength)
-                    .frame(width: 4)
-                    .frame(maxHeight: .infinity)
+            HStack(alignment: .center, spacing: 12) {
+                thumbnail(template)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(template.name)
@@ -197,13 +324,42 @@ struct WorkoutStudioSheet: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens the workout brief")
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button {
+                deleting = template
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            .tint(Color(hex: 0xFF5A6E))
+            Button {
+                edit(template)
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .tint(Color.ride)
+        }
+        .contextMenu {
+            Button { edit(template) } label: { Label("Edit", systemImage: "pencil") }
+            Button { edit(template, copy: true) } label: { Label("Copy", systemImage: "plus.square.on.square") }
+            Button(role: .destructive) { deleting = template } label: { Label("Delete", systemImage: "trash") }
+        }
+    }
+
+    /// The workout's muscles on whichever side shows more of them.
+    private func thumbnail(_ template: StrengthTemplateSummary) -> some View {
+        let summary = MuscleSummary((template.exercises ?? []).map { ($0.exerciseName, 1) })
+        return MuscleSilhouette(side: summary.bestSide, primary: summary.primary, secondary: summary.secondary, background: .inset)
+            .frame(width: 26, height: 54)
+            .frame(width: 44, height: 64)
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.cardBorder))
     }
 
     private var emptyCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             Kicker(model.error == nil ? "No workouts yet" : "Not synced yet")
             Text(model.error == nil
-                 ? "Build a workout on the Mac and it shows up here."
+                 ? "Tap + to build your first workout."
                  : "Can't reach the Mac. Start the backend and try again.")
                 .font(AppFont.body(14))
                 .foregroundStyle(Color.inkSoft)

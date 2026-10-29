@@ -8,11 +8,10 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Now
 
-- **Workout builder** — Build and edit strength workouts on the phone, for Workout Studio.
+- **Shopping list** — Built from the dinner plan, with barcode scanning for products.
 
 ## Next
 
-- **Shopping list** — Built from the dinner plan, with barcode scanning for products.
 - **Coach chat** — The in-app coach on the phone, tied to what you're looking at.
 
 ## Later
@@ -22,6 +21,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-10-29 — **Workout builder** — Build and edit workouts in Workout Studio from your own lift history, with a body map of what they work and a nudge when core is missing.
 - 2026-10-29 — **Workout Studio** — Start any workout built on the Mac from Today, planned or not; the one that's waited longest comes first.
 - 2026-10-29 — **Sunday weekly recap** — On Sunday and Monday Today offers the week in review: time moving, sports, days, wins, goals, recovery and next week's focus, with an optional Sunday evening nudge.
 - 2026-10-29 — **Session brief** — Before a planned workout starts, see each lift's target, whether it goes up or holds and why, and what you did last time.

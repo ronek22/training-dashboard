@@ -8,11 +8,10 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Now
 
-- **Merge into main** — The `ios-app` branch carries backend changes the web app also runs.
+- **Session brief** — Today's lifts, targets and what changed, shown before a workout.
 
 ## Next
 
-- **Session brief** — Today's lifts, targets and what changed, shown before a workout.
 - **Sunday weekly recap** — A celebratory look back at the week on the phone.
 - **Shopping list** — Built from the dinner plan, with barcode scanning for products.
 - **Coach chat** — The in-app coach on the phone, tied to what you're looking at.

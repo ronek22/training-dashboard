@@ -28,6 +28,7 @@
 		29701B35851FF1CB790F564C /* TrainLogWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04082B44C3130F260F9162CC /* TrainLogWidgets.swift */; };
 		2AB2EED77A398A1DD1C8868B /* StrengthSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */; };
 		2C4263E1FE0E594FA72A5BB1 /* Rehab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B211EEC813E2726B30AB56 /* Rehab.swift */; };
+		350505D17D34531EE0F1FAC2 /* WorkoutStudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = E512A347875EB30547F3C1DD /* WorkoutStudio.swift */; };
 		37EA304719C995B97B562CC1 /* SmoothRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31458FCAE143A0393A63456F /* SmoothRefresh.swift */; };
 		3BF6A8982B0969C3E4443EC7 /* BarlowCondensed-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AF11B1C65F8EFD3AF340D10 /* BarlowCondensed-Bold.ttf */; };
 		3DE319B0B47DD7C2BBA1CFD9 /* WeekRecap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482ADDB7A73593EBAD0A7542 /* WeekRecap.swift */; };
@@ -106,6 +107,7 @@
 		F3E405E6B5D0598BD6EF819F /* FoodModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2432CF39E1025EE60FFEA9AE /* FoodModel.swift */; };
 		F78030B6BBD3602453EA97AA /* WorkoutPush.swift in Sources */ = {isa = PBXBuildFile; fileRef = A328ACC1C28F23D41EFA6650 /* WorkoutPush.swift */; };
 		FA071C807EEE55903138DF6B /* OFL-BarlowCondensed.txt in Resources */ = {isa = PBXBuildFile; fileRef = DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */; };
+		FA7F35C39DD4FC51BAE3CBB0 /* WorkoutStudioTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D7A9C8B452D6A465F01F9F9 /* WorkoutStudioTests.swift */; };
 		FC38EF113D5E3D345D5D8C6D /* Archivo.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */; };
 		FE7CBDB13209D6CCD4C63912 /* SnapshotWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C050D3398D05ECE9CCE14943 /* SnapshotWidgets.swift */; };
 		FE8798CF033971064A21BC66 /* ActivityDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECA017667044B6D2E29E7436 /* ActivityDetailView.swift */; };
@@ -193,6 +195,7 @@
 		8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainLogApp.swift; sourceTree = "<group>"; };
 		83F17020D9675275CE912B1F /* HealthPush.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthPush.swift; sourceTree = "<group>"; };
 		8D06FFA209BAA7436AB6E384 /* TrainLog.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TrainLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8D7A9C8B452D6A465F01F9F9 /* WorkoutStudioTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutStudioTests.swift; sourceTree = "<group>"; };
 		8FA62ACA1E1EE1616ED24F65 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
 		9300D8653189F20A8672DD18 /* RehabTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabTests.swift; sourceTree = "<group>"; };
 		947E7B26646DCF89AEB291E0 /* QuickLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogTests.swift; sourceTree = "<group>"; };
@@ -229,6 +232,7 @@
 		D9430F1CA886700E3F8D4F03 /* BodyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyView.swift; sourceTree = "<group>"; };
 		D98FE562E0DEA91786B3FFC0 /* BodyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyTests.swift; sourceTree = "<group>"; };
 		DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-BarlowCondensed.txt"; sourceTree = "<group>"; };
+		E512A347875EB30547F3C1DD /* WorkoutStudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutStudio.swift; sourceTree = "<group>"; };
 		E77B96BF1230B0932CC403E7 /* ActivitiesModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitiesModel.swift; sourceTree = "<group>"; };
 		E9EE1F2002B2014D0D57BFF3 /* HealthSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSyncTests.swift; sourceTree = "<group>"; };
 		ECA017667044B6D2E29E7436 /* ActivityDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityDetailView.swift; sourceTree = "<group>"; };
@@ -319,6 +323,7 @@
 				AECFF6858D98599C67E6EEC8 /* TodayTests.swift */,
 				97FFCC221BB33F6F97AAF9C1 /* TrendsTests.swift */,
 				628E9967DDE0257DBDB7C508 /* WidgetTests.swift */,
+				8D7A9C8B452D6A465F01F9F9 /* WorkoutStudioTests.swift */,
 				750838068CEBD75A49FE93BE /* WorkoutSyncTests.swift */,
 			);
 			path = TrainLogTests;
@@ -352,6 +357,7 @@
 				B6BBAC8C19B152CC5B05A9FC /* StrengthActivity.swift */,
 				027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */,
 				CDF38361D28FBEE8E2C70373 /* StrengthSessionView.swift */,
+				E512A347875EB30547F3C1DD /* WorkoutStudio.swift */,
 			);
 			path = Strength;
 			sourceTree = "<group>";
@@ -729,6 +735,7 @@
 				6A3E5292221EEBB8372E4EFE /* WidgetSnapshot.swift in Sources */,
 				048B720873039233B054BEB5 /* WidgetSync.swift in Sources */,
 				F78030B6BBD3602453EA97AA /* WorkoutPush.swift in Sources */,
+				350505D17D34531EE0F1FAC2 /* WorkoutStudio.swift in Sources */,
 				10D69E614B8EA14CF015A170 /* WorkoutSync.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -769,6 +776,7 @@
 				5949E6B54064073FF68DD91C /* TodayTests.swift in Sources */,
 				1C78A94319F86B32903FD7E8 /* TrendsTests.swift in Sources */,
 				09768067D6CE829DDCD86661 /* WidgetTests.swift in Sources */,
+				FA7F35C39DD4FC51BAE3CBB0 /* WorkoutStudioTests.swift in Sources */,
 				8DA89CDA3DB28A90107EBF0B /* WorkoutSyncTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

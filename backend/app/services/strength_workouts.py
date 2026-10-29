@@ -117,7 +117,22 @@ def list_templates(conn: sqlite3.Connection) -> list[dict]:
         "SELECT * FROM strength_workout_templates ORDER BY updated_at DESC, id DESC"
     ).fetchall()
     history = latest_next_steps(conn) if rows else {}
-    return [_serialize_template(conn, row, history) for row in rows]
+    # When each template was last finished, so the phone can offer the one that's been waiting longest.
+    last_done = {
+        int(row["template_id"]): row["last_done_at"]
+        for row in conn.execute(
+            """
+            SELECT template_id, MAX(started_at) AS last_done_at
+            FROM strength_workout_sessions
+            WHERE status = 'completed' AND template_id IS NOT NULL
+            GROUP BY template_id
+            """
+        ).fetchall()
+    }
+    return [
+        {**_serialize_template(conn, row, history), "last_done_at": last_done.get(int(row["id"]))}
+        for row in rows
+    ]
 
 
 def get_template(conn: sqlite3.Connection, template_id: int) -> dict:

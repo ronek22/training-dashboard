@@ -13,6 +13,9 @@ struct TodayView: View {
     @State private var moving: PlanDay?
     @State private var showRehab = false
     @State private var recap: RecapLaunch?
+    @State private var showStudio = false
+    /// The workout picked in Workout Studio, started once the sheet is gone.
+    @State private var studioPick: Int?
     var onStartStrength: (Int?) -> Void = { _ in }
     /// Bumped when the strength screen closes, so the banner and plan reload.
     var refresh = 0
@@ -45,6 +48,16 @@ struct TodayView: View {
             WeekRecapView(weekStart: launch.weekStart)
         }
         .onChange(of: recapRequest) { openRecap() }
+        .sheet(isPresented: $showStudio, onDismiss: {
+            if let id = studioPick {
+                studioPick = nil
+                onStartStrength(id)
+            }
+        }) {
+            WorkoutStudioSheet(planned: model.data?.today?.strength?.templateId) { studioPick = $0 }
+                .presentationDetents([.large])
+                .presentationBackground(Color.bg)
+        }
         .sheet(item: $moving) { day in
             if let week = plan.weeks.first(where: { $0.days.contains { $0.date == day.date } }) {
                 MoveDaySheet(source: day, slots: PlanFormat.slots(week), today: plan.today) { target in
@@ -167,6 +180,23 @@ struct TodayView: View {
                     .frame(height: 26)
                     .background(Color.volt.opacity(0.12), in: Capsule())
                     .accessibilityLabel("\(streak) day streak")
+                }
+                // Any workout, planned today or not; the Resume banner owns this while one is open.
+                if model.activeWorkout == nil {
+                    Button {
+                        showStudio = true
+                    } label: {
+                        Image(systemName: "dumbbell.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.strength)
+                            .frame(width: 34, height: 34)
+                            .background(Color.raised, in: Circle())
+                            .frame(width: 44, height: 44)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(-5)
+                    .accessibilityLabel("Workout Studio")
                 }
                 Button {
                     showSettings = true

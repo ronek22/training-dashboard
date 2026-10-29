@@ -74,8 +74,19 @@ struct RehabTick: Encodable, Sendable {
     let done: Bool
 }
 
-/// A row of `GET /strength/workouts/templates`, to start a planned lift by name.
-struct StrengthTemplateSummary: Decodable, Sendable {
+/// A row of `GET /strength/workouts/templates`: starts a planned lift by name, and lists the
+/// workouts in Workout Studio.
+struct StrengthTemplateSummary: Decodable, Sendable, Identifiable, Equatable {
     let id: Int
     let name: String
+    var exerciseCount: Int?
+    var setCount: Int?
+    var estimatedDurationMinutes: Int?
+    /// Start of the last finished session from this template (ISO with offset); nil when never done.
+    var lastDoneAt: String?
+    var exercises: [Exercise]?
+
+    struct Exercise: Decodable, Sendable, Equatable {
+        let exerciseName: String
+    }
 }

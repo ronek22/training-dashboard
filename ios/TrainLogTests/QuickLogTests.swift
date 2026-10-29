@@ -92,3 +92,37 @@ struct QuickLogTests {
         #expect(log.writes.map(\.path) == ["/checkins", "/sick-mode"])
     }
 }
+
+@MainActor
+struct BusyDayTests {
+    private let day = ISO8601DateFormatter().date(from: "2026-10-28T07:12:00Z")!
+
+    @Test func decodesLifeLoadDays() throws {
+        let json = """
+        {"tags": [{"key": "travel", "label": "Travel", "icon": "x"}],
+         "days": [{"date": "2026-10-28", "tags": ["mountains", "travel"], "labels": ["Mountains", "Travel"],
+                   "note": "Tatry", "tagged_after": false}]}
+        """
+        let response = try APIClient.decoder.decode(LifeLoadResponse.self, from: Data(json.utf8))
+        #expect(response.days.first?.tags == ["mountains", "travel"])
+        #expect(response.days.first?.note == "Tatry")
+    }
+
+    @Test func busyTagsWriteOnlyWhenChanged() throws {
+        let log = QuickLogModel(today: day)
+        log.energy = 3
+        log.sleep = 3
+        log.stress = 4
+        #expect(log.busyInput == nil)
+        #expect(log.writes.count == 1)
+        log.toggleBusy("late_night")
+        log.toggleBusy("deadline")
+        #expect(log.busyInput == LifeLoadInput(tags: ["deadline", "late_night"], note: nil))
+        let write = try #require(log.writes.last)
+        #expect(write.method == "PUT")
+        #expect(write.path == "/life-load/2026-10-28")
+        log.toggleBusy("late_night")
+        log.toggleBusy("deadline")
+        #expect(log.busyInput == nil)
+    }
+}

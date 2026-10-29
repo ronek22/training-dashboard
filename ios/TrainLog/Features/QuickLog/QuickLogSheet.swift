@@ -12,6 +12,7 @@ struct QuickLogSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     checkin
+                    busyDay
                     weight
                     if let error = model.error {
                         Text(error).font(AppFont.body(13)).foregroundStyle(Color.danger)
@@ -124,6 +125,41 @@ struct QuickLogSheet: View {
         }
     }
 
+    // MARK: Busy day
+
+    @ViewBuilder private var busyDay: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Kicker("Busy day")
+                Spacer()
+                Text("Optional").font(AppFont.body(12)).foregroundStyle(Color.muted)
+            }
+            FlowLayout(spacing: 8) {
+                ForEach(QuickLogFormat.busyTags, id: \.key) { tag in
+                    let on = model.busyTags.contains(tag.key)
+                    Button {
+                        model.toggleBusy(tag.key)
+                        UISelectionFeedbackGenerator().selectionChanged()
+                    } label: {
+                        Label(tag.label, systemImage: tag.symbol)
+                            .labelStyle(BusyChipLabelStyle())
+                    }
+                    .buttonStyle(.plain)
+                    .font(AppFont.body(13, weight: .semibold))
+                    .foregroundStyle(on ? Color.warning : Color.ink)
+                    .padding(.horizontal, 16)
+                    .frame(height: 44)
+                    .background(on ? Color.warning.opacity(0.12) : .clear, in: Capsule())
+                    .overlay(Capsule().strokeBorder(on ? Color.warning : Color.outline, lineWidth: 1))
+                    .contentShape(Capsule())
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                }
+            }
+            Text("Hard or long sessions today get flagged in the plan, with a calmer day to swap to.")
+                .font(AppFont.body(12)).foregroundStyle(Color.muted)
+        }
+    }
+
     // MARK: Weight
 
     @ViewBuilder private var weight: some View {
@@ -151,6 +187,15 @@ struct QuickLogSheet: View {
                 Text("Last: \(QuickLogFormat.decimal(last.value)) kg on \(last.date)")
                     .font(AppFont.body(12)).foregroundStyle(Color.muted)
             }
+        }
+    }
+}
+
+private struct BusyChipLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 6) {
+            configuration.icon.font(.system(size: 12, weight: .semibold))
+            configuration.title
         }
     }
 }

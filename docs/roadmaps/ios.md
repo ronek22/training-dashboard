@@ -8,7 +8,6 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Now
 
-- **Busy day toggle** — Mark a hectic day from the check-in so the plan eases off (`life_load`).
 - **Merge into main** — The `ios-app` branch carries backend changes the web app also runs.
 
 ## Next
@@ -25,6 +24,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-10-29 — **Busy day** — Tag a hectic day (deadline, travel, family, poor sleep, late night) from the check-in so hard sessions get flagged with a calmer day to swap to.
 - 2026-10-29 — **Zwift rides in Apple Health** — Indoor rides from Strava are saved to Health as cycling workouts, so they count in Fitness without HealthFit.
 - 2026-10-29 — **Background widget refresh** — Widgets and the Lock Screen update hourly and after sleep or a Watch workout syncs, at home or over Tailscale.
 - 2026-10-29 — **Smart reminders** — Check-in, rehab and dinner nudges fire only when that thing is still undone today.

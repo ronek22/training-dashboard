@@ -21,6 +21,10 @@ final class QuickLogModel {
     private(set) var existing: DailyCheckin?
     private var soreTouched = false
 
+    // Busy day: today's life-load tags. Tags the sheet doesn't show (a mountain trip) are kept.
+    var busyTags: Set<String> = []
+    private(set) var savedBusy: LifeLoadResponse.Day?
+
     // Weight: left empty unless typed, so a check-in doesn't re-log yesterday's number.
     var weight = ""
     private(set) var lastWeight: MetricPoint?
@@ -45,6 +49,7 @@ final class QuickLogModel {
         async let checkin = try? api.getLive("/checkins/today?date=\(today)", as: CheckinResponse.self)
         async let sickMode = try? api.getLive("/sick-mode", as: SickModeResponse.self)
         async let weights = try? api.getLive("/metrics/weight?limit=1", as: [MetricPoint].self)
+        async let lifeLoad = try? api.getLive("/life-load?start=\(today)&end=\(today)", as: LifeLoadResponse.self)
         if let saved = await checkin?.checkin {
             existing = saved
             energy = saved.energy
@@ -57,6 +62,10 @@ final class QuickLogModel {
         if let active = await sickMode?.sickMode.active {
             sick = active
             wasSick = active
+        }
+        if let day = await lifeLoad?.days.first(where: { $0.date == today }) {
+            savedBusy = day
+            busyTags = Set(day.tags)
         }
         lastWeight = await weights?.first
         // Weighed in already today: show it so the sheet reads as an edit.
@@ -96,7 +105,20 @@ final class QuickLogModel {
         }
     }
 
-    /// The writes a save sends: the check-in, sick mode when it flipped, and a typed weight.
+    func toggleBusy(_ tag: String) {
+        if busyTags.contains(tag) { busyTags.remove(tag) } else { busyTags.insert(tag) }
+    }
+
+    /// Sent only when the tags changed; keeps the day's note from the web.
+    var busyInput: LifeLoadInput? {
+        guard busyTags != Set(savedBusy?.tags ?? []) else { return nil }
+        let order = QuickLogFormat.busyTags.map(\.key) + (savedBusy?.tags ?? [])
+        var seen = Set<String>()
+        let tags = order.filter { busyTags.contains($0) && seen.insert($0).inserted }
+        return LifeLoadInput(tags: tags, note: savedBusy?.note)
+    }
+
+    /// The writes a save sends: the check-in, sick mode when it flipped, busy-day tags when they changed, and a typed weight.
     var writes: [WriteQueue.Write] {
         guard let input = checkinInput else { return [] }
         var writes: [WriteQueue.Write] = [.init(method: "POST", path: "/checkins", body: try? APIClient.encoder.encode(input))]
@@ -104,6 +126,9 @@ final class QuickLogModel {
             writes.append(sick
                 ? .init(method: "POST", path: "/sick-mode", body: try? APIClient.encoder.encode(SickModeInput()))
                 : .init(method: "POST", path: "/sick-mode/end", body: nil))
+        }
+        if let busy = busyInput {
+            writes.append(.init(method: "PUT", path: "/life-load/\(today)", body: try? APIClient.encoder.encode(busy)))
         }
         if let weight = weightInput, weight.value != todaysWeight {
             writes.append(.init(method: "POST", path: "/metrics", body: try? APIClient.encoder.encode(weight)))
@@ -158,6 +183,15 @@ final class QuickLogModel {
 enum QuickLogFormat {
     static let noSoreness = "None"
     static let soreAreas = ["Chest", "Legs", "Back", "Shoulders", "Arms", noSoreness]
+
+    /// Life-load tags a hectic day can carry (backend `life_load.TAGS`, minus the mountain trip set from the web).
+    static let busyTags: [(key: String, label: String, symbol: String)] = [
+        ("deadline", "Deadline", "flag.fill"),
+        ("travel", "Travel", "airplane"),
+        ("family", "Family", "house.fill"),
+        ("poor_sleep", "Poor sleep", "moon.zzz.fill"),
+        ("late_night", "Late night", "sparkles"),
+    ]
 
     static let energyWords = ["Drained", "Low", "OK", "Good", "Fresh"]
     static let sleepWords = ["Poor", "Restless", "OK", "Good", "Great"]

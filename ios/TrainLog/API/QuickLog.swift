@@ -51,3 +51,20 @@ struct MetricPoint: Decodable, Sendable {
     let date: String
     let value: Double
 }
+
+/// `GET /life-load?start=&end=` (backend/app/services/life_load.py); only the day's tags are used.
+struct LifeLoadResponse: Decodable, Sendable {
+    let days: [Day]
+
+    struct Day: Decodable, Sendable {
+        let date: String
+        let tags: [String]
+        let note: String?
+    }
+}
+
+/// `PUT /life-load/{day}`: replaces the day's tags, an empty list clears it.
+struct LifeLoadInput: Encodable, Sendable, Equatable {
+    let tags: [String]
+    let note: String?
+}

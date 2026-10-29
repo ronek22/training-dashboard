@@ -51,8 +51,11 @@ final class TodayModel {
             offline = data != nil
             self.error = error.localizedDescription
         }
-        activeWorkout = await workout
-        rehabPending = await rehab
+        let (current, pending) = await (workout, rehab)
+        // Leaving the tab cancels the load; a cancelled request isn't "offline", so keep what's shown.
+        guard !Task.isCancelled else { return }
+        activeWorkout = current
+        rehabPending = pending
         // A workout finished on the web leaves no open session to end the Live Activity.
         if activeWorkout == nil { StrengthActivity.end() }
     }
@@ -61,6 +64,7 @@ final class TodayModel {
     func refreshWorkout() async {
         guard !loading else { return }
         let workout = await Self.activeWorkout(client())
+        guard !Task.isCancelled else { return }
         if workout != activeWorkout { activeWorkout = workout }
     }
 
@@ -71,7 +75,16 @@ final class TodayModel {
     /// The server's open workout; when it's unreachable, the one this phone has in progress.
     private static func activeWorkout(_ client: APIClient) async -> StrengthSession? {
         do {
-            return try await client.getLive("/strength/workouts/sessions/active", as: StrengthSession?.self)
+            let live = try await client.getLive("/strength/workouts/sessions/active", as: StrengthSession?.self)
+            // A workout finished on the web while the phone's screen was closed stays on disk as
+            // active; drop it once the server confirms it's over, so offline doesn't resurrect it.
+            let store = SessionStore()
+            if live == nil, let local = store.load(),
+               let server = try? await client.getLive("/strength/workouts/sessions/\(local.id)", as: StrengthSession.self),
+               !server.isActive {
+                store.clear()
+            }
+            return live
         } catch {
             return SessionStore().load().flatMap { $0.isActive ? $0 : nil }
         }

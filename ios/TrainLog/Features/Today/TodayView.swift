@@ -164,7 +164,7 @@ struct TodayView: View {
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(5))
+                guard (try? await Task.sleep(for: .seconds(5))) != nil else { return }
                 await model.refreshWorkout()
             }
         }
@@ -911,7 +911,7 @@ private struct DayRing: View {
                 .background { if isToday && !reduceMotion { TodayPulse() } }
                 .scaleEffect(shown || reduceMotion ? 1 : 0.4)
                 .opacity(shown ? 1 : 0)
-                .onAppear {
+                .onFirstVisible(threshold: 0.8) {
                     withAnimation(.spring(duration: 0.5, bounce: 0.4).delay(reduceMotion ? 0 : delay)) { shown = true }
                 }
         }

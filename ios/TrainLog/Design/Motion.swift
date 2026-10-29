@@ -1,7 +1,8 @@
 import SwiftUI
 
 // Shared motion: cards that lift in, numbers that count up, bars that grow. Each runs once,
-// the first time its view appears, so background refreshes don't replay it.
+// the first time its view scrolls into sight, so background refreshes don't replay it and
+// cards below the fold wait until you get to them. Use them inside a ScrollView.
 
 /// A number that counts up from zero the first time it appears, then rolls to new values.
 struct CountUp: View {
@@ -19,7 +20,7 @@ struct CountUp: View {
 
     var body: some View {
         CountingText(value: shown, format: format)
-            .onAppear {
+            .onFirstVisible {
                 if reduceMotion { shown = value; return }
                 withAnimation(.easeOut(duration: 1.1).delay(delay)) { shown = value }
             }
@@ -51,7 +52,7 @@ private struct Reveal: ViewModifier {
         content
             .opacity(shown ? 1 : 0)
             .offset(y: shown || reduceMotion ? 0 : 18)
-            .onAppear {
+            .onFirstVisible(threshold: 0.1) {
                 withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.55, bounce: 0.2).delay(delay)) {
                     shown = true
                 }
@@ -68,9 +69,23 @@ private struct Grow<Body: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        content(grown).onAppear {
+        content(grown).onFirstVisible {
             if reduceMotion { grown = true; return }
             withAnimation(.spring(duration: 0.9, bounce: 0.15).delay(delay)) { grown = true }
+        }
+    }
+}
+
+private struct FirstVisible: ViewModifier {
+    let threshold: Double
+    let action: () -> Void
+    @State private var fired = false
+
+    func body(content: Content) -> some View {
+        content.onScrollVisibilityChange(threshold: threshold) { visible in
+            guard visible, !fired else { return }
+            fired = true
+            action()
         }
     }
 }
@@ -86,6 +101,11 @@ struct PressableStyle: ButtonStyle {
 }
 
 extension View {
+    /// Runs `action` once enough of the view (`threshold`, 0...1) is on screen in its ScrollView.
+    func onFirstVisible(threshold: Double = 0.5, _ action: @escaping () -> Void) -> some View {
+        modifier(FirstVisible(threshold: threshold, action: action))
+    }
+
     /// Fades and lifts in, `index` steps after the first card.
     func reveal(_ index: Int, base: Double = 0.05) -> some View {
         modifier(Reveal(delay: base + Double(index) * 0.09))

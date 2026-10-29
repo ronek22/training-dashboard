@@ -93,6 +93,7 @@
 		BDC56A0850E21766EF352AC0 /* FeedbackSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE5C544BD255D9F8B9F2A36 /* FeedbackSheet.swift */; };
 		BEF96ECD73622D6F51A05EAE /* ActivitiesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E77B96BF1230B0932CC403E7 /* ActivitiesModel.swift */; };
 		C19583684F90BBC18C547B71 /* FoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD75917A58F54334CDFA0079 /* FoodView.swift */; };
+		C297A0D8E33515CEF103361A /* demo-frames.json in Resources */ = {isa = PBXBuildFile; fileRef = 82F3E6E9D99F322371CA6EFD /* demo-frames.json */; };
 		C54F26CB7A1F3913691533CC /* TodayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A82E7ED074ABF53C867C009 /* TodayModel.swift */; };
 		C98B40EA384C51278706CCD0 /* RehabSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E56A18AEBA64C15818EBE61 /* RehabSessionModel.swift */; };
 		CA2011DC8427C08C7AE1426E /* ExerciseDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BF528BC523521D372994740 /* ExerciseDemoView.swift */; };
@@ -206,6 +207,7 @@
 		7A42369D06F44C4B76267BEB /* TrainLogTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TrainLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionTests.swift; sourceTree = "<group>"; };
 		82CB4D14BAB2BB7DEC58078D /* ActivitiesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitiesTests.swift; sourceTree = "<group>"; };
+		82F3E6E9D99F322371CA6EFD /* demo-frames.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "demo-frames.json"; sourceTree = "<group>"; };
 		8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainLogApp.swift; sourceTree = "<group>"; };
 		83F17020D9675275CE912B1F /* HealthPush.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthPush.swift; sourceTree = "<group>"; };
 		8D06FFA209BAA7436AB6E384 /* TrainLog.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TrainLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -361,6 +363,7 @@
 				4AA60329C14E2B3A7E19D48F /* WorkoutBuilderTests.swift */,
 				8D7A9C8B452D6A465F01F9F9 /* WorkoutStudioTests.swift */,
 				750838068CEBD75A49FE93BE /* WorkoutSyncTests.swift */,
+				9E5C69D34DC6BCB294303F2A /* Fixtures */,
 			);
 			path = TrainLogTests;
 			sourceTree = "<group>";
@@ -507,6 +510,14 @@
 			path = Body;
 			sourceTree = "<group>";
 		};
+		9E5C69D34DC6BCB294303F2A /* Fixtures */ = {
+			isa = PBXGroup;
+			children = (
+				82F3E6E9D99F322371CA6EFD /* demo-frames.json */,
+			);
+			path = Fixtures;
+			sourceTree = "<group>";
+		};
 		A949AC44299C2723DD0F0138 = {
 			isa = PBXGroup;
 			children = (
@@ -620,6 +631,7 @@
 			buildConfigurationList = F6AC022D72DBBA22A051B4CB /* Build configuration list for PBXNativeTarget "TrainLogTests" */;
 			buildPhases = (
 				F83A57A837B67021C7F6472F /* Sources */,
+				4C573D6883EF0376BD945DFE /* Resources */,
 			);
 			buildRules = (
 			);
@@ -678,6 +690,14 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		4C573D6883EF0376BD945DFE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C297A0D8E33515CEF103361A /* demo-frames.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		92EF9D30D0328FF599E723E6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;

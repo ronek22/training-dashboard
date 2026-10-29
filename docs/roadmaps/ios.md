@@ -21,6 +21,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-10-29 — **Coaching rehab demos** — The phone's rehab figures move like the web's: a solid body with the working muscle lighting up, the target pose as a ghost, an arrow along the move and a countdown with a tempo bar.
 - 2026-10-29 — **Workout builder** — Build and edit workouts in Workout Studio from your own lift history, with a body map of what they work and a nudge when core is missing.
 - 2026-10-29 — **Workout Studio** — Start any workout built on the Mac from Today, planned or not; the one that's waited longest comes first.
 - 2026-10-29 — **Sunday weekly recap** — On Sunday and Monday Today offers the week in review: time moving, sports, days, wins, goals, recovery and next week's focus, with an optional Sunday evening nudge.

@@ -70,8 +70,7 @@ struct ExerciseDemoTests {
     @Test func limbsKeepTheirLength() throws {
         let demo = try #require(ExerciseDemos.demo(for: "Glute bridge"))
         for seconds in stride(from: 0.0, to: ExerciseDemos.cycleLength(demo), by: 0.37) {
-            let skeleton = ExerciseDemos.skeleton(ExerciseDemos.frame(demo, at: seconds).pose)
-            let thigh = try #require(skeleton.segments.first { $0.id == "nearThigh" })
+            let thigh = try #require(ExerciseDemos.frame(demo, at: seconds).body.segment("nearThigh"))
             #expect(abs(hypot(thigh.to.x - thigh.from.x, thigh.to.y - thigh.from.y) - 27) < 0.05)
         }
     }
@@ -84,10 +83,91 @@ struct ExerciseDemoTests {
         #expect(box.width / box.height >= 2 - 0.001 && box.width / box.height <= 2.6 + 0.001)
         // Every demo's poses resolve and its peak pose draws.
         for demo in ExerciseDemos.all {
-            #expect(!ExerciseDemos.skeleton(ExerciseDemos.peakPose(demo)).segments.isEmpty)
+            #expect(!FigureShapes.parts(ExerciseDemos.peakFrame(demo).body).isEmpty)
+        }
+    }
+
+    @Test func countsDownTheRunningCue() throws {
+        let demo = try #require(ExerciseDemos.demo(for: "Straight leg raise"))
+        let hold = ExerciseDemos.cueAt(demo, at: 2.7)
+        #expect(hold.cue.label == "Hold")
+        #expect(hold.left == 1)
+        #expect(abs(hold.progress - 0.1) < 0.001)
+        #expect(ExerciseDemos.cueAt(demo, at: ExerciseDemos.cycleLength(demo) + 0.1).index == 0)
+    }
+
+    @Test func plantedFeetNeverSlide() throws {
+        let demo = try #require(ExerciseDemos.demo(for: "Glute bridge"))
+        let start = try #require(ExerciseDemos.frame(demo, at: 0).body.joints["nearAnkle"])
+        for seconds in stride(from: 0.0, to: ExerciseDemos.cycleLength(demo), by: 0.13) {
+            let ankle = try #require(ExerciseDemos.frame(demo, at: seconds).body.joints["nearAnkle"])
+            #expect(hypot(ankle.x - start.x, ankle.y - start.y) < 0.01)
+        }
+    }
+
+    // The web engine's own samples (frontend/scripts/export-demo-frames.mjs): the port must draw
+    // the same body at the same moment, so the two apps animate alike.
+    private struct Fixture: Decodable {
+        struct Sample: Decodable {
+            let joints: [String: [Double]]
+            let bend: Double
+            let effort: Double
+            let step: Int
+        }
+        struct Frame: Decodable {
+            let seconds: Double
+            let joints: [String: [Double]]
+            let bend: Double
+            let effort: Double
+            let step: Int
+            let cue: Int
+            let left: Int
+        }
+        struct Demo: Decodable {
+            let key: String
+            let cycle: Double
+            let guide: String?
+            let peak: Sample
+            let frames: [Frame]
+        }
+        let demos: [Demo]
+    }
+
+    private func expectClose(_ joints: [String: CGPoint], _ expected: [String: [Double]], _ label: String) {
+        #expect(Set(joints.keys) == Set(expected.keys), "\(label)")
+        for (key, value) in expected {
+            guard let point = joints[key] else { continue }
+            #expect(abs(point.x - value[0]) < 0.05 && abs(point.y - value[1]) < 0.05,
+                    "\(label) \(key): \(point.x), \(point.y) vs \(value[0]), \(value[1])")
+        }
+    }
+
+    @Test func matchesTheWebEngine() throws {
+        let url = try #require(Bundle(for: FixtureToken.self).url(forResource: "demo-frames", withExtension: "json"))
+        let fixture = try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: url))
+        #expect(fixture.demos.map(\.key) == ExerciseDemos.all.map(\.key))
+        for expected in fixture.demos {
+            let demo = try #require(ExerciseDemos.all.first { $0.key == expected.key })
+            #expect(abs(ExerciseDemos.cycleLength(demo) - expected.cycle) < 1e-9, "\(expected.key) cycle")
+            #expect(ExerciseDemos.guideJoint(demo) == expected.guide, "\(expected.key) guide")
+            let peak = ExerciseDemos.peakFrame(demo)
+            expectClose(peak.body.joints, expected.peak.joints, "\(expected.key) peak")
+            #expect(abs(peak.effort - expected.peak.effort) < 0.05, "\(expected.key) peak effort")
+            for sample in expected.frames {
+                let frame = ExerciseDemos.frame(demo, at: sample.seconds)
+                let label = "\(expected.key) @\(sample.seconds)"
+                expectClose(frame.body.joints, sample.joints, label)
+                #expect(abs(frame.body.bend - sample.bend) < 0.05, "\(label) bend")
+                #expect(abs(frame.effort - sample.effort) < 0.05, "\(label) effort")
+                #expect(frame.step == sample.step, "\(label) step")
+                let cue = ExerciseDemos.cueAt(demo, at: sample.seconds)
+                #expect(cue.index == sample.cue && cue.left == sample.left, "\(label) cue")
+            }
         }
     }
 }
+
+private final class FixtureToken {}
 
 @MainActor
 struct RehabDiscardTests {

@@ -18,12 +18,31 @@ struct PhoneToday: Decodable, Sendable {
         let label: String
         let advice: String?
         let suggestsSwap: Bool
+        var points: Int?
+        var factors: [Factor]?
+    }
+
+    /// One readiness signal; tone is steady, caution or risk, points how much it pulls the read down.
+    struct Factor: Decodable, Sendable, Identifiable {
+        let key: String
+        let label: String
+        let tone: String
+        let points: Int
+        var id: String { key }
     }
 
     struct Vitals: Decodable, Sendable {
         let restingHr: Double?
         let sleepH: Double?
         let pain: Int?
+        /// The last week, oldest first.
+        var restingHrTrend: [Reading]?
+        var sleepTrend: [Reading]?
+    }
+
+    struct Reading: Decodable, Sendable {
+        let date: String
+        let value: Double
     }
 
     struct Sick: Decodable, Sendable {

@@ -28,6 +28,7 @@
 		3BF6A8982B0969C3E4443EC7 /* BarlowCondensed-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AF11B1C65F8EFD3AF340D10 /* BarlowCondensed-Bold.ttf */; };
 		40039F29AC725FE67E3FE202 /* TrainLogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */; };
 		4012ED2F1A8F181070B6F220 /* Archivo.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */; };
+		46547FA3ABE6FA498F851D9B /* Readiness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 037715B90D253BECAAC35D8A /* Readiness.swift */; };
 		47334F55D41030EFB9932E45 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA62ACA1E1EE1616ED24F65 /* SettingsModel.swift */; };
 		498688F76C581EBDA46C460A /* RehabTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9300D8653189F20A8672DD18 /* RehabTests.swift */; };
 		4D4E5EED8467E4BC70506D95 /* TrendsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F1EC93FC7BA8D8D4DAEA58 /* TrendsModel.swift */; };
@@ -136,6 +137,7 @@
 		0243D4E3976851681CA3EF5E /* BarlowCondensed-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-SemiBold.ttf"; sourceTree = "<group>"; };
 		027F6B3F419EFB1284827144 /* StrengthSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionModel.swift; sourceTree = "<group>"; };
 		02C3A597DEA9FB3DA0876822 /* ServerRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerRoute.swift; sourceTree = "<group>"; };
+		037715B90D253BECAAC35D8A /* Readiness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Readiness.swift; sourceTree = "<group>"; };
 		04082B44C3130F260F9162CC /* TrainLogWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainLogWidgets.swift; sourceTree = "<group>"; };
 		069C959EF75C5018A65096AB /* LiveHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveHealth.swift; sourceTree = "<group>"; };
 		0BA5F6A6FF01D809A7EE68A8 /* PlanModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanModel.swift; sourceTree = "<group>"; };
@@ -224,6 +226,7 @@
 		0437262C4DBAE5078D50D4B1 /* Design */ = {
 			isa = PBXGroup;
 			children = (
+				037715B90D253BECAAC35D8A /* Readiness.swift */,
 				31458FCAE143A0393A63456F /* SmoothRefresh.swift */,
 				6FED9A0BA3F896F441C12CFE /* Theme.swift */,
 			);
@@ -657,6 +660,7 @@
 				75C511A0E9893D7205E311D1 /* QuickLog.swift in Sources */,
 				ED06E04A91F8BC227943ED86 /* QuickLogModel.swift in Sources */,
 				0568E5E202514A8C473DBB7F /* QuickLogSheet.swift in Sources */,
+				46547FA3ABE6FA498F851D9B /* Readiness.swift in Sources */,
 				2C4263E1FE0E594FA72A5BB1 /* Rehab.swift in Sources */,
 				C98B40EA384C51278706CCD0 /* RehabSessionModel.swift in Sources */,
 				87CC72BF310C980892514B44 /* RehabSessionView.swift in Sources */,

@@ -610,28 +610,46 @@ private struct ReadinessCard: View {
         .card()
     }
 
+    private var style: ReadinessStyle { ReadinessStyle(level: readiness.level, points: readiness.points) }
+    private var factors: [PhoneToday.Factor] { readiness.factors ?? [] }
+
     private var summary: some View {
-        let status = TodayFormat.readiness(readiness.level)
+        let style = style
         return VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Kicker("Readiness")
                 Spacer()
-                HStack(spacing: 6) {
-                    Circle().fill(status.color).frame(width: 8, height: 8)
-                    Text(status.label).font(AppFont.body(13, weight: .semibold))
-                }
-                .foregroundStyle(status.color)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.faint)
-                    .padding(.leading, 4)
             }
-            HStack(alignment: .top, spacing: 14) {
-                stat(vitals.restingHr.map { String(Int($0.rounded())) }, unit: "bpm", label: "Resting HR")
-                divider
-                stat(vitals.sleepH.map { String(format: "%.1f", $0) }, unit: "h", label: "Sleep")
-                divider
-                stat(vitals.pain.map(String.init), unit: "/10", label: "Pain", color: vitals.pain.map(TodayFormat.painColor) ?? .ink)
+            HStack(spacing: 16) {
+                ReadinessGauge(style: style, size: 92)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(style.headline.uppercased())
+                        .font(AppFont.title(38))
+                        .foregroundStyle(style.color)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text(signalSummary(style))
+                        .font(AppFont.body(12, weight: .medium))
+                        .foregroundStyle(Color.muted)
+                    if !factors.isEmpty {
+                        HStack(spacing: 5) {
+                            ForEach(factors) { SignalChip(key: $0.key, tone: $0.tone, size: 24) }
+                        }
+                        .padding(.top, 4)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.top, 10)
+            HStack(spacing: 8) {
+                vital(vitals.restingHr.map { String(Int($0.rounded())) }, unit: "bpm", label: "Resting HR",
+                      trend: vitals.restingHrTrend, color: .danger)
+                vital(vitals.sleepH.map { String(format: "%.1f", $0) }, unit: "h", label: "Sleep",
+                      trend: vitals.sleepTrend, color: SleepStage.deep.color)
+                pain
             }
             .padding(.top, 14)
             if let advice = readiness.advice {
@@ -644,21 +662,58 @@ private struct ReadinessCard: View {
         }
     }
 
-    private var divider: some View {
-        Rectangle().fill(Color.cardBorder).frame(width: 1, height: 52)
+    private func signalSummary(_ style: ReadinessStyle) -> String {
+        guard !factors.isEmpty else { return style.label }
+        let steady = factors.filter { $0.points == 0 && !["caution", "risk"].contains($0.tone) }.count
+        return "\(style.label) · \(steady) of \(factors.count) signals steady"
     }
 
-    private func stat(_ value: String?, unit: String, label: String, color: Color = .ink) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(value ?? "–").font(AppFont.number(30)).foregroundStyle(value == nil ? Color.muted : color)
+    private func vital(_ value: String?, unit: String, label: String, trend: [PhoneToday.Reading]?, color: Color) -> some View {
+        let values = (trend ?? []).map(\.value)
+        return VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(AppFont.body(11, weight: .medium)).foregroundStyle(Color.muted)
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(value ?? "–").font(AppFont.number(26)).foregroundStyle(value == nil ? Color.muted : Color.ink)
                 if value != nil {
-                    Text(unit).font(AppFont.body(13, weight: .medium)).foregroundStyle(Color.muted)
+                    Text(unit).font(AppFont.body(11, weight: .medium)).foregroundStyle(Color.muted)
                 }
             }
-            Text(label).font(AppFont.body(12)).foregroundStyle(Color.muted)
+            Group {
+                if values.count >= 2 {
+                    TrendLine(values: values, color: color)
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(height: 18)
         }
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    /// Ten ticks, filled up to today's pain in its colour.
+    private var pain: some View {
+        let color = vitals.pain.map(TodayFormat.painColor) ?? .muted
+        return VStack(alignment: .leading, spacing: 2) {
+            Text("Pain").font(AppFont.body(11, weight: .medium)).foregroundStyle(Color.muted)
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(vitals.pain.map(String.init) ?? "–").font(AppFont.number(26)).foregroundStyle(vitals.pain == nil ? Color.muted : color)
+                if vitals.pain != nil {
+                    Text("/10").font(AppFont.body(11, weight: .medium)).foregroundStyle(Color.muted)
+                }
+            }
+            HStack(spacing: 2) {
+                ForEach(1...10, id: \.self) { tick in
+                    Capsule().fill(tick <= (vitals.pain ?? 0) ? color : Color.track)
+                }
+            }
+            .frame(height: 5)
+            .frame(height: 18)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

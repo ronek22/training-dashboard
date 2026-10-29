@@ -86,6 +86,11 @@ def build_widget_brief(conn: sqlite3.Connection, today: Optional[date] = None) -
             "advice": score.get("advice"),
             "drivers": score.get("drivers", [])[:3],
             "suggests_swap": bool(score.get("suggests_swap")),
+            "points": score.get("points", 0),
+            "factors": [
+                {"key": item["key"], "label": item["label"], "tone": item["tone"], "points": item["points"]}
+                for item in score.get("factors", [])
+            ],
         },
         "checkin_done": get_daily_checkin(conn, today.isoformat()) is not None,
         "sick": {"active": True, "label": sick.get("severity_label"), "day": sick.get("day_number")} if sick.get("active") else None,

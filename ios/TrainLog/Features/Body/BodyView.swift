@@ -57,65 +57,125 @@ private struct ReadinessHero: View {
     let readiness: PhoneBody.Readiness
 
     var body: some View {
-        let status = TodayFormat.readiness(readiness.level)
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle().stroke(status.color.opacity(0.18), lineWidth: 6)
-                    Circle()
-                        .trim(from: 0, to: progress)
-                        .stroke(status.color, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    Image(systemName: icon).font(.system(size: 20, weight: .bold)).foregroundStyle(status.color)
-                }
-                .frame(width: 58, height: 58)
-                VStack(alignment: .leading, spacing: 3) {
-                    Kicker("Readiness", color: status.color)
-                    Text(status.label.uppercased()).font(AppFont.title(30)).foregroundStyle(Color.ink)
-                }
-            }
-            if let advice = readiness.advice {
-                Text(advice).font(AppFont.body(13)).foregroundStyle(Color.inkSoft).lineSpacing(2)
-            }
-            if !readiness.factors.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(readiness.factors) { factor in
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            Circle().fill(BodyFormat.toneColor(factor.tone)).frame(width: 7, height: 7).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
-                            Text(factor.label).font(AppFont.body(13, weight: .semibold)).foregroundStyle(Color.ink)
-                                .frame(width: 112, alignment: .leading)
-                            Text(factor.detail).font(AppFont.body(12)).foregroundStyle(Color.muted)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .padding(.vertical, 8)
-                        if factor != readiness.factors.last {
-                            Rectangle().fill(Color.cardBorder).frame(height: 1)
-                        }
+        let style = ReadinessStyle(level: readiness.level, points: readiness.points)
+        VStack(alignment: .leading, spacing: 16) {
+            Kicker("Readiness", color: style.color)
+            HStack(spacing: 18) {
+                ReadinessGauge(style: style, size: 124, lineWidth: 11)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(style.headline.uppercased())
+                        .font(AppFont.title(46))
+                        .foregroundStyle(style.color)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    Text(style.label).font(AppFont.body(14, weight: .semibold)).foregroundStyle(Color.ink)
+                    if !readiness.factors.isEmpty {
+                        Text("\(steady.count) of \(readiness.factors.count) signals steady")
+                            .font(AppFont.body(12)).foregroundStyle(Color.muted)
                     }
                 }
-                .padding(.horizontal, 12)
-                .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                Spacer(minLength: 0)
+            }
+            if !readiness.factors.isEmpty {
+                balance
+            }
+            if let advice = readiness.advice {
+                Text(advice).font(AppFont.body(14)).foregroundStyle(Color.inkSoft).lineSpacing(3)
+            }
+            if !drivers.isEmpty {
+                group("Pulling it down", drivers)
+            }
+            if !steady.isEmpty {
+                group("On your side", steady)
             }
         }
         .card()
     }
 
-    private var progress: Double {
-        switch readiness.level {
-        case "green": 1
-        case "amber": 0.62
-        case "red": 0.3
-        default: 0
+    private var drivers: [PhoneBody.Factor] {
+        readiness.factors.filter { ($0.points ?? 0) > 0 || Self.tone($0) != "steady" }
+            .sorted { ($0.points ?? 0) > ($1.points ?? 0) }
+    }
+
+    private var steady: [PhoneBody.Factor] {
+        readiness.factors.filter { !drivers.contains($0) }
+    }
+
+    /// Every signal as one slice: green steady, amber caution, red risk.
+    private var balance: some View {
+        let tones = ["steady", "caution", "risk"]
+        let sorted = readiness.factors.map { Self.tone($0) }.sorted { tones.firstIndex(of: $0)! < tones.firstIndex(of: $1)! }
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 3) {
+                ForEach(sorted.indices, id: \.self) { index in
+                    Capsule().fill(BodyFormat.toneColor(sorted[index]))
+                }
+            }
+            .frame(height: 8)
+            HStack(spacing: 14) {
+                ForEach(tones, id: \.self) { tone in
+                    let count = sorted.filter { $0 == tone }.count
+                    if count > 0 {
+                        HStack(spacing: 5) {
+                            Circle().fill(BodyFormat.toneColor(tone)).frame(width: 7, height: 7)
+                            Text("\(count) \(tone)").font(AppFont.body(11, weight: .semibold)).foregroundStyle(Color.muted)
+                        }
+                    }
+                }
+            }
         }
     }
 
-    private var icon: String {
-        switch readiness.level {
-        case "green": "bolt.fill"
-        case "amber": "gauge.with.dots.needle.33percent"
-        case "red": "bed.double.fill"
-        default: "questionmark"
+    /// Neutral and quiet signals count as steady.
+    private static func tone(_ factor: PhoneBody.Factor) -> String {
+        ["caution", "risk"].contains(factor.tone) ? factor.tone : "steady"
+    }
+
+    private func group(_ title: String, _ factors: [PhoneBody.Factor]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Kicker(title)
+            VStack(spacing: 0) {
+                ForEach(factors) { factor in
+                    row(factor)
+                    if factor != factors.last {
+                        Rectangle().fill(Color.cardBorder).frame(height: 1).padding(.leading, 48)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+    }
+
+    private func row(_ factor: PhoneBody.Factor) -> some View {
+        let color = BodyFormat.toneColor(factor.tone)
+        return HStack(spacing: 12) {
+            SignalChip(key: factor.key, tone: factor.tone, size: 36)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(factor.label).font(AppFont.body(14, weight: .semibold)).foregroundStyle(Color.ink)
+                Text(factor.detail.prefix(1).uppercased() + factor.detail.dropFirst())
+                    .font(AppFont.body(12)).foregroundStyle(Color.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            if Self.tone(factor) != "steady" || (factor.points ?? 0) > 0 {
+                let points = factor.points ?? 0
+                // How hard this signal pulls: one bar per point, up to four.
+                HStack(alignment: .bottom, spacing: 3) {
+                    ForEach(0..<max(points, 2), id: \.self) { index in
+                        Capsule()
+                            .fill(index < points ? color : Color.track)
+                            .frame(width: 4, height: 8 + CGFloat(index) * 4)
+                    }
+                }
+                .accessibilityLabel("\(points) point\(points == 1 ? "" : "s") against readiness")
+            } else {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(color.opacity(0.8))
+            }
+        }
+        .padding(.vertical, 10)
     }
 }
 

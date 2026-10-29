@@ -12,6 +12,7 @@ struct PhoneBody: Decodable, Sendable, Equatable {
         let level: String
         let label: String
         var advice: String?
+        var points: Int?
         let factors: [Factor]
     }
 
@@ -21,6 +22,7 @@ struct PhoneBody: Decodable, Sendable, Equatable {
         let label: String
         let detail: String
         let tone: String
+        var points: Int?
         var id: String { key }
     }
 

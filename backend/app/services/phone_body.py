@@ -87,8 +87,9 @@ def build_phone_body(conn: sqlite3.Connection, today: Optional[date] = None) -> 
             "level": readiness.get("level", "unknown"),
             "label": readiness.get("label", "No read"),
             "advice": readiness.get("advice"),
+            "points": readiness.get("points", 0),
             "factors": [
-                {"key": item["key"], "label": item["label"], "detail": item["detail"], "tone": item["tone"]}
+                {"key": item["key"], "label": item["label"], "detail": item["detail"], "tone": item["tone"], "points": item.get("points", 0)}
                 for item in readiness.get("factors", [])
             ],
         },

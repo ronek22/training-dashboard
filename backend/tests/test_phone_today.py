@@ -6,7 +6,7 @@ import unittest
 from datetime import date
 
 from backend.app import db
-from backend.app.services.phone_today import build_phone_today, sport_of
+from backend.app.services.phone_today import _trend, build_phone_today, sport_of
 
 WEEK = "2030-01-07"
 DAYS = [
@@ -75,6 +75,20 @@ class PhoneTodayTests(unittest.TestCase):
         self.assertIsNone(brief["today"])
         self.assertEqual(len(brief["week"]), 7)
         self.assertEqual(brief["week"][2]["status"], "today")
+
+    def test_vitals_trend_is_the_last_week_oldest_first(self):
+        history = [{"date": f"2030-01-{day:02d}", "value": 50 + day} for day in range(11, 0, -1)]
+        trend = _trend(history, TODAY)
+        self.assertEqual([item["date"] for item in trend], [f"2030-01-{day:02d}" for day in range(4, 11)])
+        self.assertEqual(trend[-1]["value"], 60)
+
+    def test_readiness_carries_points_and_factors_and_vitals_carry_trends(self):
+        brief = build_phone_today(self.conn, TODAY)
+        self.assertIsInstance(brief["readiness"]["points"], int)
+        for factor in brief["readiness"]["factors"]:
+            self.assertEqual(set(factor), {"key", "label", "tone", "points"})
+        self.assertEqual(brief["vitals"]["resting_hr_trend"], [])
+        self.assertEqual(brief["vitals"]["sleep_trend"], [])
 
     def test_sport_of_maps_types_to_app_colours(self):
         self.assertEqual(sport_of("VirtualRide"), "ride")

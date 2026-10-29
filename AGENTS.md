@@ -30,4 +30,4 @@ User instructions always take precedence over this orchestration policy.
 
 ## UI redesign
 
-For any frontend/UI work, follow `docs/design/REDESIGN.md` and match the page's artboard screenshot in `docs/design/screens/`. Read only that page's PNG and grep its `.dc.html` for exact values; never read whole artboards. Work on branch `redesign-multisport`.
+For any frontend/UI work, follow `docs/design/REDESIGN.md` and match the page's artboard screenshot in `docs/design/screens/`. Read only that page's PNG and grep its `.dc.html` for exact values; never read whole artboards. Work on `main`.

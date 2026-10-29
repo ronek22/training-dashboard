@@ -1,6 +1,6 @@
 # TrainLog redesign — "Energetic multi-sport"
 
-Branch: `redesign-multisport`. Goal: every page looks like its artboard. The user checks on a
+Branch: `main`. Goal: every page looks like its artboard. The user checks on a
 MacBook Pro M4 in full screen (**1512 × 945 viewport**) and on phone.
 
 ## Where the design lives
@@ -78,7 +78,7 @@ Always use tokens, never raw hex.
    and check `document.documentElement.scrollWidth - innerWidth <= 0` (no horizontal overflow).
    The morning check-in modal opens on load — close it with `[aria-label="Close check-in"]`,
    never submit it.
-5. Commit on `redesign-multisport`, one commit per page or fix.
+5. Commit on `main`, one commit per page or fix.
 
 Dev notes: Vite HMR picks up `frontend/src` changes (Docker mounts only `src`, so `index.html`
 changes need a rebuild — fonts are loaded via `@import` in `style.css` for that reason).

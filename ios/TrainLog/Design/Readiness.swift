@@ -1,4 +1,3 @@
-import Charts
 import SwiftUI
 
 /// How a readiness level reads on the phone: a headline word and a spot on the gauge.
@@ -134,37 +133,5 @@ struct SignalChip: View {
             .foregroundStyle(color)
             .frame(width: size, height: size)
             .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: size * 0.32, style: .continuous))
-    }
-}
-
-/// A week of readings as a thin line with the latest one dotted.
-struct TrendLine: View {
-    let values: [Double]
-    let color: Color
-
-    var body: some View {
-        let low = values.min() ?? 0
-        let high = values.max() ?? 1
-        let pad = max((high - low) * 0.25, 0.5)
-        Chart {
-            ForEach(Array(values.enumerated()), id: \.offset) { index, value in
-                AreaMark(x: .value("Day", index), yStart: .value("Floor", low - pad), yEnd: .value("Value", value))
-                    .foregroundStyle(color.opacity(0.1))
-                    .interpolationMethod(.monotone)
-                LineMark(x: .value("Day", index), y: .value("Value", value))
-                    .foregroundStyle(color)
-                    .lineStyle(StrokeStyle(lineWidth: 1.6, lineCap: .round))
-                    .interpolationMethod(.monotone)
-            }
-            if let last = values.last {
-                PointMark(x: .value("Day", values.count - 1), y: .value("Value", last))
-                    .symbol { Circle().fill(color).frame(width: 5, height: 5) }
-            }
-        }
-        .chartXScale(domain: 0...max(values.count - 1, 1))
-        .chartYScale(domain: (low - pad)...(high + pad))
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
-        .accessibilityHidden(true)
     }
 }

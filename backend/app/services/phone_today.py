@@ -7,6 +7,7 @@ from typing import Optional
 from .checkins import get_daily_checkin
 from .dashboard import compute_activity_streak
 from .health_data import get_health_metric_history, get_sleep_history
+from .phone_body import _vital
 from .plans import serialize_weekly_plan
 from .strength_workouts import list_templates
 from .widget_brief import _day_status, _plan_row_for, build_widget_brief
@@ -41,12 +42,6 @@ def sport_of(kind: Optional[str], intent: Optional[str] = None) -> str:
 
 def _latest(history: list[dict]) -> Optional[float]:
     return history[0]["value"] if history else None
-
-
-def _trend(history: list[dict], today: date, days: int = 7) -> list[dict]:
-    """The last `days` readings up to today, oldest first, for the card's sparklines."""
-    recent = [item for item in history if item["date"] <= today.isoformat()][:days]
-    return [{"date": item["date"], "value": round(float(item["value"]), 1)} for item in reversed(recent)]
 
 
 def _exercises_for(conn: sqlite3.Connection, day: Optional[dict]) -> tuple[Optional[dict], Optional[str]]:
@@ -123,19 +118,21 @@ def build_phone_today(conn: sqlite3.Connection, today: Optional[date] = None) ->
         session = {**session, "sport": sport_of(today_day.get("session_type"), today_day.get("workout_intent")), "fallback": today_day.get("fallback"), "strength": strength}
 
     checkin = get_daily_checkin(conn, today.isoformat()) or {}
-    resting_history = get_health_metric_history(conn, "resting_hr", 7)
-    sleep_history = get_sleep_history(conn, 7)
     return {
         "date": brief["date"],
         "generated_at": brief["generated_at"],
         "streak_days": compute_activity_streak(conn).get("value") or 0,
         "readiness": brief["readiness"],
         "vitals": {
-            "resting_hr": _latest(resting_history),
-            "sleep_h": _latest(sleep_history),
+            "resting_hr": _latest(get_health_metric_history(conn, "resting_hr", 7)),
+            "sleep_h": _latest(get_sleep_history(conn, 7)),
             "pain": checkin.get("pain_level"),
-            "resting_hr_trend": _trend(resting_history, today),
-            "sleep_trend": _trend(sleep_history, today),
+            # Overnight vitals against their typical range, for the readiness card.
+            "ranges": [
+                {"key": key, "value": vital["value"], "date": vital["date"], "low": vital["typical_low"], "high": vital["typical_high"]}
+                for key in ("hrv", "resting_hr", "sleep")
+                if (vital := _vital(conn, key, today))
+            ],
         },
         "checkin_done": brief["checkin_done"],
         "sick": brief["sick"],

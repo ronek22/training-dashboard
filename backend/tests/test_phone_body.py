@@ -66,9 +66,23 @@ class PhoneBodyTests(unittest.TestCase):
         self.conn.commit()
 
         body = build_phone_body(self.conn, TODAY)
-        self.assertEqual(body["vitals"]["resting_hr"], {"date": NIGHT, "value": 52, "baseline": 60})
+        resting = body["vitals"]["resting_hr"]
+        self.assertEqual((resting["date"], resting["value"], resting["baseline"]), (NIGHT, 52, 60))
+        self.assertIsNone(resting["typical_low"])
+        self.assertEqual([item["value"] for item in resting["days"]], [60, 60, 60, 60, 60, 52])
         self.assertIsNone(body["vitals"]["hrv"])
         self.assertIsNone(body["sleep"])
+
+    def test_typical_range_is_the_middle_of_the_month_before(self):
+        values = [50 + offset for offset in range(30)]
+        for offset, value in enumerate([45] + values):
+            self.sample("resting_hr", (TODAY - timedelta(days=offset)).isoformat(), value)
+        self.conn.commit()
+
+        resting = build_phone_body(self.conn, TODAY)["vitals"]["resting_hr"]
+        self.assertEqual((resting["typical_low"], resting["typical_high"]), (53, 76))
+        self.assertEqual(len(resting["days"]), 7)
+        self.assertEqual(resting["days"][-1]["value"], 45)
 
     def test_load_returns_the_fitness_fatigue_and_form_chart(self):
         self.conn.execute(

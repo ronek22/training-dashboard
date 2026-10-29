@@ -48,13 +48,23 @@ struct PhoneBody: Decodable, Sendable, Equatable {
         var restingHr: Vital?
         var hrv: Vital?
         var steps: Vital?
+        var sleep: Vital?
     }
 
-    /// The latest reading and the mean of the 30 days before it.
+    /// The latest reading, the mean of the 30 days before it and that month's typical range
+    /// (its middle 80%), plus the last 7 days with a reading.
     struct Vital: Decodable, Sendable, Equatable {
         let date: String
         let value: Double
         var baseline: Double?
+        var typicalLow: Double?
+        var typicalHigh: Double?
+        var days: [Day]?
+    }
+
+    struct Day: Decodable, Sendable, Equatable {
+        let date: String
+        let value: Double
     }
 
     struct Load: Decodable, Sendable, Equatable {

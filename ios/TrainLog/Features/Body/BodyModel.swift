@@ -165,14 +165,6 @@ enum BodyFormat {
         return ("\(delta < 0 ? "−" : "+")\(minutes) min vs 30 d", delta > 0)
     }
 
-    /// "+3 bpm", "−12 %"; good is nil inside day-to-day noise.
-    static func vitalDelta(_ vital: PhoneBody.Vital, higherIsBetter: Bool, unit: String) -> (text: String, good: Bool?)? {
-        guard let baseline = vital.baseline else { return nil }
-        let delta = vital.value - baseline
-        if abs(delta) < 1.5 { return ("Steady", nil) }
-        return ("\(delta < 0 ? "−" : "+")\(Int(abs(delta).rounded())) \(unit)", (delta > 0) == higherIsBetter)
-    }
-
     static func steps(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(0)).locale(Locale(identifier: "en_US")))
     }

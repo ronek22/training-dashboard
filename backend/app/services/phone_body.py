@@ -61,6 +61,15 @@ def _last_night(conn: sqlite3.Connection, today: date) -> Optional[dict]:
     }
 
 
+def _typical(values: list[float]) -> tuple[Optional[float], Optional[float]]:
+    """The middle 80% of the month before, like the Watch's Vitals range."""
+    if len(values) < 7:
+        return None, None
+    ordered = sorted(values)
+    at = lambda share: ordered[round(share * (len(ordered) - 1))]
+    return round(at(0.1), 1), round(at(0.9), 1)
+
+
 def _vital(conn: sqlite3.Connection, metric: str, today: date) -> Optional[dict]:
     history = [item for item in get_health_metric_history(conn, metric, BASELINE_DAYS + 7) if item["date"] <= today.isoformat()]
     if not history:
@@ -68,10 +77,16 @@ def _vital(conn: sqlite3.Connection, metric: str, today: date) -> Optional[dict]
     latest = history[0]
     cutoff = (datetime.strptime(latest["date"], "%Y-%m-%d").date() - timedelta(days=BASELINE_DAYS)).isoformat()
     before = [item["value"] for item in history[1:] if item["date"] >= cutoff]
+    low, high = _typical(before)
+    week_start = (today - timedelta(days=6)).isoformat()
     return {
         "date": latest["date"],
         "value": latest["value"],
         "baseline": round(mean(before), 1) if len(before) >= 5 else None,
+        "typical_low": low,
+        "typical_high": high,
+        # The last 7 days that have a reading, oldest first.
+        "days": [{"date": item["date"], "value": item["value"]} for item in reversed(history) if item["date"] >= week_start],
     }
 
 
@@ -98,6 +113,7 @@ def build_phone_body(conn: sqlite3.Connection, today: Optional[date] = None) -> 
             "resting_hr": _vital(conn, "resting_hr", today),
             "hrv": _vital(conn, "hrv", today),
             "steps": _vital(conn, "steps", today),
+            "sleep": _vital(conn, "sleep", today),
         },
         "load": {
             "fitness": current.get("fitness", 0),

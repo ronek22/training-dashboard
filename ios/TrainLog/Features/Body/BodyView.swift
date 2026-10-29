@@ -16,10 +16,13 @@ struct BodyView: View {
                             .padding(.horizontal, 4)
                     }
                     ReadinessHero(readiness: data.readiness)
+                    if data.vitals.hrv != nil || data.vitals.restingHr != nil || data.vitals.sleep != nil {
+                        VitalsCard(vitals: data.vitals, today: data.date)
+                    }
                     if let sleep = data.sleep {
                         SleepCard(sleep: sleep, today: data.date)
                     }
-                    StepsCard(steps: model.steps, baseline: data.vitals.steps?.baseline, hours: model.live?.steps ?? [])
+                    StepsCard(steps: model.steps, vital: data.vitals.steps, hours: model.live?.steps ?? [], today: data.date)
                     HeartCard(vitals: data.vitals, live: model.live)
                     TrainingLoadCard(load: data.load)
                 } else if let error = model.error {
@@ -307,49 +310,170 @@ private struct SleepCard: View {
     }
 }
 
+// MARK: - Overnight vitals
+
+/// The Watch's Vitals view: a week of each overnight reading against its typical range.
+private struct VitalsCard: View {
+    let vitals: PhoneBody.Vitals
+    let today: String
+
+    var body: some View {
+        let rows = self.rows
+        let outliers = rows.filter { status($0.kind, $0.vital).isOutlier }.count
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Kicker("Overnight vitals")
+                Spacer()
+                Pill(text: outliers == 0 ? "All typical" : "\(outliers) outlier\(outliers == 1 ? "" : "s")",
+                     color: outliers == 0 ? .mobility : .warning)
+            }
+            Text("Shaded: your typical range over the last 30 days")
+                .font(AppFont.body(11))
+                .foregroundStyle(Color.faint)
+                .padding(.bottom, 6)
+            ForEach(rows, id: \.kind) { row in
+                if row.kind != rows.first?.kind {
+                    Rectangle().fill(Color.cardBorder).frame(height: 1).padding(.vertical, 6)
+                }
+                line(row.kind, row.vital)
+            }
+        }
+        .card()
+    }
+
+    private var rows: [(kind: VitalKind, vital: PhoneBody.Vital)] {
+        [(VitalKind.hrv, vitals.hrv), (.restingHr, vitals.restingHr), (.sleep, vitals.sleep)]
+            .compactMap { kind, vital in vital.map { (kind, $0) } }
+    }
+
+    private func status(_ kind: VitalKind, _ vital: PhoneBody.Vital) -> VitalStatus {
+        VitalStatus(value: vital.value, low: vital.typicalLow, high: vital.typicalHigh)
+    }
+
+    private func line(_ kind: VitalKind, _ vital: PhoneBody.Vital) -> some View {
+        let status = status(kind, vital)
+        return HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(kind.label).font(AppFont.body(12, weight: .medium)).foregroundStyle(Color.muted)
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(kind.format(vital.value)).font(AppFont.title(32)).foregroundStyle(status.color(kind))
+                    Text(kind.unit).font(AppFont.body(12, weight: .medium)).foregroundStyle(Color.muted)
+                }
+                Text(status.label)
+                    .font(AppFont.body(11, weight: .semibold))
+                    .foregroundStyle(status.isOutlier ? status.color(kind) : Color.faint)
+            }
+            .frame(width: 100, alignment: .leading)
+            VitalWeekChart(kind: kind, days: vital.days ?? [], low: vital.typicalLow, high: vital.typicalHigh, today: today)
+                .frame(height: 78)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(kind.label) \(kind.format(vital.value)) \(kind.unit), \(status.label)")
+    }
+}
+
 // MARK: - Steps
 
 private struct StepsCard: View {
     let steps: Double?
-    let baseline: Double?
+    let vital: PhoneBody.Vital?
     let hours: [LiveDay.Hour]
+    let today: String
 
     private let color = Color.warning
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 16) {
                 ZStack {
-                    Circle().stroke(color.opacity(0.16), lineWidth: 9)
+                    Circle().stroke(color.opacity(0.16), lineWidth: 10)
                     Circle()
                         .trim(from: 0, to: min(progress, 1))
-                        .stroke(color, style: StrokeStyle(lineWidth: 9, lineCap: .round))
+                        .stroke(color, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                    Image(systemName: "figure.walk").font(.system(size: 20, weight: .semibold)).foregroundStyle(color)
+                    if progress > 1 {
+                        // A second lap past the average, like the Activity rings.
+                        Circle()
+                            .trim(from: 0, to: min(progress - 1, 1))
+                            .stroke(Color.volt, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                    }
+                    Image(systemName: "figure.walk").font(.system(size: 22, weight: .semibold)).foregroundStyle(color)
                 }
-                .frame(width: 74, height: 74)
+                .frame(width: 78, height: 78)
                 VStack(alignment: .leading, spacing: 3) {
                     Kicker("Steps today", color: color)
-                    Text(steps.map(BodyFormat.steps) ?? "–").font(AppFont.title(42)).foregroundStyle(Color.ink)
-                    if let baseline {
-                        Text(progress >= 1 ? "Past your 30-day average of \(BodyFormat.steps(baseline))" : "\(Int((progress * 100).rounded()))% of your \(BodyFormat.steps(baseline)) daily average")
+                    Text(steps.map(BodyFormat.steps) ?? "–").font(AppFont.title(44)).foregroundStyle(Color.ink)
+                    if let baseline = vital?.baseline {
+                        Text(progress >= 1 ? "Past your \(BodyFormat.steps(baseline)) daily average" : "\(Int((progress * 100).rounded()))% of your \(BodyFormat.steps(baseline)) average")
                             .font(AppFont.body(12)).foregroundStyle(Color.muted)
                     }
                 }
             }
+            if week.count >= 2 {
+                VStack(alignment: .leading, spacing: 8) {
+                    Kicker("Last 7 days")
+                    weekChart.frame(height: 96)
+                }
+            }
             if !hours.isEmpty {
-                chart.frame(height: 80)
+                VStack(alignment: .leading, spacing: 8) {
+                    Kicker("Today by hour")
+                    hourChart.frame(height: 70)
+                }
             }
         }
         .card()
     }
 
     private var progress: Double {
-        guard let steps, let baseline, baseline > 0 else { return 0 }
+        guard let steps, let baseline = vital?.baseline, baseline > 0 else { return 0 }
         return steps / baseline
     }
 
-    private var chart: some View {
+    /// The last 7 days, today's bar from the phone's own count when it's ahead of the last push.
+    private var week: [(date: Date, value: Double, isToday: Bool)] {
+        var days = (vital?.days ?? []).compactMap { day in TodayFormat.parse(day.date).map { (date: $0, value: day.value, isToday: day.date == today) } }
+        if let steps, let date = TodayFormat.parse(today) {
+            days.removeAll { $0.isToday }
+            days.append((date, steps, true))
+        }
+        return days
+    }
+
+    private var weekChart: some View {
+        let week = week
+        return Chart {
+            if let baseline = vital?.baseline {
+                RuleMark(y: .value("Average", baseline))
+                    .foregroundStyle(Color.faint)
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    .annotation(position: .top, alignment: .trailing, spacing: 2) {
+                        Text("avg \(BodyFormat.steps(baseline))").font(AppFont.body(9, weight: .semibold)).foregroundStyle(Color.faint)
+                    }
+            }
+            ForEach(week, id: \.date) { day in
+                BarMark(x: .value("Day", day.date, unit: .day), y: .value("Steps", max(day.value, 1)), width: .ratio(0.55))
+                    .foregroundStyle(day.isToday ? color : color.opacity(0.4))
+                    .cornerRadius(4)
+                    .annotation(position: .top, spacing: 3) {
+                        if day.isToday {
+                            Text(BodyFormat.steps(day.value)).font(AppFont.number(12)).foregroundStyle(color)
+                        }
+                    }
+            }
+        }
+        .chartYAxis(.hidden)
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day)) { value in
+                AxisValueLabel(format: .dateTime.weekday(.narrow).locale(Locale(identifier: "en_GB")), centered: true)
+                    .font(AppFont.body(10, weight: .medium))
+                    .foregroundStyle(Color.faint)
+            }
+        }
+    }
+
+    private var hourChart: some View {
         let start = Calendar.current.startOfDay(for: .now)
         return Chart(hours) { hour in
             BarMark(x: .value("Hour", hour.start, unit: .hour), y: .value("Steps", hour.value))
@@ -375,6 +499,8 @@ private var hourAxis: some AxisContent {
 
 // MARK: - Heart
 
+/// Today's heart rate like the Watch's Heart Rate app: the latest reading, each hour's range,
+/// and resting rate as a dashed line through it.
 private struct HeartCard: View {
     let vitals: PhoneBody.Vitals
     let live: LiveDay?
@@ -385,71 +511,84 @@ private struct HeartCard: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Kicker("Heart", color: color)
-                    if let bpm = live?.latestHeartRate {
-                        HStack(alignment: .firstTextBaseline, spacing: 5) {
-                            Text("\(Int(bpm.rounded()))").font(AppFont.title(42)).foregroundStyle(Color.ink)
-                            Text("bpm").font(AppFont.body(14)).foregroundStyle(Color.muted)
-                        }
-                        if let at = live?.latestHeartRateAt {
-                            Text("Latest · \(at.formatted(date: .omitted, time: .shortened))").font(AppFont.body(12)).foregroundStyle(Color.muted)
-                        }
-                    } else {
-                        Text("Resting heart rate and HRV").font(AppFont.body(13)).foregroundStyle(Color.muted)
+                    Kicker("Heart rate", color: color)
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        Text(headline.map { "\(Int($0.rounded()))" } ?? "–").font(AppFont.title(44)).foregroundStyle(Color.ink)
+                        Text("bpm").font(AppFont.body(14)).foregroundStyle(Color.muted)
                     }
+                    Text(caption).font(AppFont.body(12)).foregroundStyle(Color.muted)
                 }
                 Spacer()
                 Image(systemName: "heart.fill")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(color)
+                    .symbolEffect(.pulse, options: .repeating, isActive: live?.latestHeartRate != nil)
                     .frame(width: 40, height: 40)
                     .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             if let heart = live?.heart, !heart.isEmpty {
-                chart(heart).frame(height: 96)
+                chart(heart).frame(height: 120)
             }
-            HStack(spacing: 10) {
-                vital("Resting HR", vitals.restingHr, unit: "bpm", higherIsBetter: false)
-                vital("HRV", vitals.hrv, unit: "ms", higherIsBetter: true)
+            HStack(spacing: 0) {
+                if let range = dayRange {
+                    stat("Range today", "\(Int(range.low.rounded()))–\(Int(range.high.rounded()))")
+                }
+                if live?.latestHeartRate != nil {
+                    stat("Resting", vitals.restingHr.map { "\(Int($0.value.rounded()))" } ?? "–")
+                }
+                stat("HRV", vitals.hrv.map { "\(Int($0.value.rounded())) ms" } ?? "–")
             }
         }
         .card()
     }
 
-    private func vital(_ label: String, _ vital: PhoneBody.Vital?, unit: String, higherIsBetter: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(AppFont.body(12)).foregroundStyle(Color.muted)
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(vital.map { "\(Int($0.value.rounded()))" } ?? "–").font(AppFont.number(30)).foregroundStyle(Color.ink)
-                Text(unit).font(AppFont.body(12)).foregroundStyle(Color.muted)
-            }
-            if let vital, let delta = BodyFormat.vitalDelta(vital, higherIsBetter: higherIsBetter, unit: unit) {
-                HStack(spacing: 4) {
-                    Text(delta.text).font(AppFont.body(11, weight: .semibold))
-                        .foregroundStyle(delta.good.map { $0 ? Color.mobility : Color.danger } ?? .muted)
-                    Text("vs 30 d").font(AppFont.body(11)).foregroundStyle(Color.faint)
-                }
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    /// The latest reading when the phone has today's, otherwise the resting rate.
+    private var headline: Double? { live?.latestHeartRate ?? vitals.restingHr?.value }
+
+    private var caption: String {
+        if let at = live?.latestHeartRateAt { return "Latest · \(at.formatted(date: .omitted, time: .shortened))" }
+        return vitals.restingHr == nil ? "No heart rate yet" : "Resting · from your Watch"
     }
 
-    /// Each hour's lowest to highest heart rate as a capsule.
+    private var dayRange: (low: Double, high: Double)? {
+        guard let heart = live?.heart, let low = heart.map(\.low).min(), let high = heart.map(\.high).max() else { return nil }
+        return (low, high)
+    }
+
+    private func stat(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(AppFont.body(11, weight: .medium)).foregroundStyle(Color.muted)
+            Text(value).font(AppFont.number(22)).foregroundStyle(Color.ink)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Each hour's lowest to highest heart rate as a capsule, resting rate dashed behind.
     private func chart(_ hours: [LiveDay.HeartHour]) -> some View {
         let start = Calendar.current.startOfDay(for: .now)
-        let low = hours.map(\.low).min() ?? 40
+        let resting = vitals.restingHr?.value
+        let low = min(hours.map(\.low).min() ?? 40, resting ?? .infinity)
         let high = hours.map(\.high).max() ?? 160
-        return Chart(hours) { hour in
-            RectangleMark(
-                x: .value("Hour", hour.start, unit: .hour),
-                yStart: .value("Low", hour.low),
-                yEnd: .value("High", max(hour.high, hour.low + 2)),
-                width: .ratio(0.5)
-            )
-            .foregroundStyle(color.opacity(hour == hours.last ? 1 : 0.6))
-            .clipShape(Capsule())
+        return Chart {
+            if let resting {
+                RuleMark(y: .value("Resting", resting))
+                    .foregroundStyle(Color.faint)
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            }
+            ForEach(hours) { hour in
+                RectangleMark(
+                    x: .value("Hour", hour.start, unit: .hour),
+                    yStart: .value("Low", hour.low),
+                    yEnd: .value("High", max(hour.high, hour.low + 2)),
+                    width: .ratio(0.55)
+                )
+                .foregroundStyle(color.opacity(hour == hours.last ? 1 : 0.6))
+                .clipShape(Capsule())
+            }
+            if let latest = live?.latestHeartRate, let at = live?.latestHeartRateAt {
+                PointMark(x: .value("Hour", at), y: .value("Latest", latest))
+                    .symbol { Circle().fill(Color.ink).overlay(Circle().strokeBorder(color, lineWidth: 2)).frame(width: 9, height: 9) }
+            }
         }
         .chartXScale(domain: start...start.addingTimeInterval(86_400))
         .chartYScale(domain: (low - 8)...(high + 8))

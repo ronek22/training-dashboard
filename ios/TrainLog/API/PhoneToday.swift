@@ -35,14 +35,18 @@ struct PhoneToday: Decodable, Sendable {
         let restingHr: Double?
         let sleepH: Double?
         let pain: Int?
-        /// The last week, oldest first.
-        var restingHrTrend: [Reading]?
-        var sleepTrend: [Reading]?
+        /// HRV, resting HR and sleep against their typical range.
+        var ranges: [VitalRange]?
     }
 
-    struct Reading: Decodable, Sendable {
-        let date: String
+    /// The latest reading and the middle 80% of the month before (nil with too little history).
+    struct VitalRange: Decodable, Sendable, Identifiable {
+        let key: String
         let value: Double
+        let date: String
+        var low: Double?
+        var high: Double?
+        var id: String { key }
     }
 
     struct Sick: Decodable, Sendable {

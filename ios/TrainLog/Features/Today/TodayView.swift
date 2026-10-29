@@ -590,6 +590,9 @@ private struct ReadinessCard: View {
                     HStack(spacing: 6) {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.mobility)
                         Text("Checked in today").foregroundStyle(Color.muted)
+                        if let pain = vitals.pain {
+                            Text("· pain \(pain)/10").foregroundStyle(TodayFormat.painColor(pain))
+                        }
                         Spacer()
                         Text("Edit").foregroundStyle(Color.inkSoft)
                     }
@@ -644,14 +647,9 @@ private struct ReadinessCard: View {
                 Spacer(minLength: 0)
             }
             .padding(.top, 10)
-            HStack(spacing: 8) {
-                vital(vitals.restingHr.map { String(Int($0.rounded())) }, unit: "bpm", label: "Resting HR",
-                      trend: vitals.restingHrTrend, color: .danger)
-                vital(vitals.sleepH.map { String(format: "%.1f", $0) }, unit: "h", label: "Sleep",
-                      trend: vitals.sleepTrend, color: SleepStage.deep.color)
-                pain
+            if let ranges = vitals.ranges, !ranges.isEmpty {
+                overnight(ranges).padding(.top, 14)
             }
-            .padding(.top, 14)
             if let advice = readiness.advice {
                 Text(advice)
                     .font(AppFont.body(13))
@@ -666,52 +664,49 @@ private struct ReadinessCard: View {
         factors.filter { $0.points == 0 && !["caution", "risk"].contains($0.tone) }.count
     }
 
-    private func vital(_ value: String?, unit: String, label: String, trend: [PhoneToday.Reading]?, color: Color) -> some View {
-        let values = (trend ?? []).map(\.value)
-        return VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(AppFont.body(11, weight: .medium)).foregroundStyle(Color.muted)
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(value ?? "–").font(AppFont.number(26)).foregroundStyle(value == nil ? Color.muted : Color.ink)
-                if value != nil {
-                    Text(unit).font(AppFont.body(11, weight: .medium)).foregroundStyle(Color.muted)
+    /// HRV, resting HR and sleep as Watch Vitals columns, each against its typical range.
+    private func overnight(_ ranges: [PhoneToday.VitalRange]) -> some View {
+        let known = ranges.compactMap { range in VitalKind(rawValue: range.key).map { (kind: $0, range: range) } }
+        let outliers = known.filter { VitalStatus(value: $0.range.value, low: $0.range.low, high: $0.range.high).isOutlier }.count
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Kicker("Overnight vitals")
+                Spacer()
+                Text(outliers == 0 ? "All typical" : "\(outliers) outlier\(outliers == 1 ? "" : "s")")
+                    .font(AppFont.body(11, weight: .semibold))
+                    .foregroundStyle(outliers == 0 ? Color.muted : Color.warning)
+            }
+            HStack(spacing: 8) {
+                ForEach(known, id: \.kind) { item in
+                    vital(item.kind, item.range)
                 }
             }
-            Group {
-                if values.count >= 2 {
-                    TrendLine(values: values, color: color)
-                } else {
-                    Color.clear
-                }
-            }
-            .frame(height: 18)
         }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    /// Ten ticks, filled up to today's pain in its colour.
-    private var pain: some View {
-        let color = vitals.pain.map(TodayFormat.painColor) ?? .muted
-        return VStack(alignment: .leading, spacing: 2) {
-            Text("Pain").font(AppFont.body(11, weight: .medium)).foregroundStyle(Color.muted)
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(vitals.pain.map(String.init) ?? "–").font(AppFont.number(26)).foregroundStyle(vitals.pain == nil ? Color.muted : color)
-                if vitals.pain != nil {
-                    Text("/10").font(AppFont.body(11, weight: .medium)).foregroundStyle(Color.muted)
+    private func vital(_ kind: VitalKind, _ range: PhoneToday.VitalRange) -> some View {
+        let status = VitalStatus(value: range.value, low: range.low, high: range.high)
+        let color = status.color(kind)
+        return HStack(spacing: 10) {
+            VitalBar(value: range.value, low: range.low, high: range.high, color: color, width: 10)
+                .frame(height: 58)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(kind.shortLabel).font(AppFont.body(11, weight: .medium)).foregroundStyle(Color.muted).lineLimit(1)
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text(kind.format(range.value)).font(AppFont.number(24)).foregroundStyle(color)
+                    Text(kind.unit).font(AppFont.body(10, weight: .medium)).foregroundStyle(Color.muted)
                 }
+                Text(status == .typical ? "Typical" : status == .low ? "Low" : status == .high ? "High" : "–")
+                    .font(AppFont.body(10, weight: .semibold))
+                    .foregroundStyle(status.isOutlier ? color : Color.faint)
             }
-            HStack(spacing: 2) {
-                ForEach(1...10, id: \.self) { tick in
-                    Capsule().fill(tick <= (vitals.pain ?? 0) ? color : Color.track)
-                }
-            }
-            .frame(height: 5)
-            .frame(height: 18)
+            Spacer(minLength: 0)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(kind.label) \(kind.format(range.value)) \(kind.unit), \(status.label)")
     }
 }
 

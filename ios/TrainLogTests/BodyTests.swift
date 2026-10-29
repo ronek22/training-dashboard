@@ -54,16 +54,15 @@ struct BodyTests {
         #expect(BodyFormat.hours(.awake, sleep.stages) == 0.25)
     }
 
-    @Test func vitalDeltasRespectDirection() throws {
-        let vitals = try decoded().vitals
-        let restingHr = try #require(vitals.restingHr)
-        let resting = try #require(BodyFormat.vitalDelta(restingHr, higherIsBetter: false, unit: "bpm"))
-        #expect(resting.text == "−3 bpm")
-        #expect(resting.good == true)
-        let hrvVital = try #require(vitals.hrv)
-        let hrv = try #require(BodyFormat.vitalDelta(hrvVital, higherIsBetter: true, unit: "ms"))
-        #expect(hrv.text == "Steady")
-        #expect(hrv.good == nil)
+    @Test func vitalStatusColoursOutliersByDirection() {
+        #expect(VitalStatus(value: 50, low: 40, high: 60) == .typical)
+        #expect(VitalStatus(value: 40, low: 40, high: 60) == .typical)
+        #expect(VitalStatus(value: 35, low: 40, high: 60) == .low)
+        #expect(VitalStatus(value: 65, low: 40, high: 60) == .high)
+        #expect(VitalStatus(value: 65, low: nil, high: 60) == .unknown)
+        #expect(VitalStatus.low.color(.hrv) == .warning)
+        #expect(VitalStatus.low.color(.restingHr) == .mobility)
+        #expect(VitalStatus.high.color(.restingHr) == .warning)
     }
 
     @Test func formZones() {

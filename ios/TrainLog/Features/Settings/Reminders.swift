@@ -5,7 +5,7 @@ import UserNotifications
 
 /// Local reminders from Settings that only fire when something is left to do: the check-in when
 /// today's isn't in, rehab when exercises are still open by evening, dinner when you're well under
-/// the calorie target. Nudges are booked one day at a time for the next week; what's known about
+/// the calorie target, and the week recap on Sunday evening. Nudges are booked one day at a time for the next week; what's known about
 /// today (from the server, or from this phone logging it) drops today's nudge or fills in its
 /// numbers. An afternoon background refresh re-checks, so something done on the web stays quiet.
 enum Reminders {
@@ -13,11 +13,14 @@ enum Reminders {
     static let morningMinutesKey = "reminder.morning.minutes"
     static let rehabEnabledKey = "reminder.rehab.enabled"
     static let dinnerEnabledKey = "reminder.dinner.enabled"
+    static let recapEnabledKey = "reminder.recap.enabled"
     static let todayKey = "reminder.today"
 
     static let defaultMorningMinutes = 7 * 60 + 30
     static let rehabMinutes = 19 * 60
     static let dinnerMinutes = 20 * 60 + 30
+    /// Sunday only.
+    static let recapMinutes = 19 * 60 + 30
     /// Dinner nudges while you've eaten less than this share of the calorie target.
     static let lowCalorieShare = 0.9
     /// Background refresh that re-checks today before the evening nudges (Info.plist lists it).
@@ -29,13 +32,14 @@ enum Reminders {
     private static func isLegacy(_ id: String) -> Bool { id == "morning-checkin" || id.hasPrefix("dinner-") }
 
     enum Kind: String, Sendable {
-        case checkin, rehab, dinner
+        case checkin, rehab, dinner, recap
 
         /// Where tapping the notification lands (handled by `RootView.onOpenURL`).
         var link: String {
             switch self {
             case .checkin, .rehab: "trainlog://today"
             case .dinner: "trainlog://food"
+            case .recap: "trainlog://recap"
             }
         }
     }
@@ -66,8 +70,9 @@ enum Reminders {
         var morning: Int?
         var rehab = false
         var dinner = false
+        var recap = false
 
-        var any: Bool { morning != nil || rehab || dinner }
+        var any: Bool { morning != nil || rehab || dinner || recap }
     }
 
     struct Nudge: Equatable, Sendable {
@@ -117,6 +122,11 @@ enum Reminders {
                     nudges.append(Nudge(kind: .dinner, day: iso, date: time, title: "Log dinner",
                                         body: "Still under today's calorie target? Snap dinner so it counts."))
                 }
+            }
+
+            if enabled.recap, calendar.component(.weekday, from: day) == 1, let time = at(recapMinutes) {
+                nudges.append(Nudge(kind: .recap, day: iso, date: time, title: "Your week is in",
+                                    body: "See the time you put in, this week's wins and one focus for next week."))
             }
         }
         return nudges
@@ -221,7 +231,8 @@ enum Reminders {
     static func enabled(_ defaults: UserDefaults = .standard) -> Enabled {
         Enabled(morning: defaults.bool(forKey: morningEnabledKey) ? morningMinutes(defaults) : nil,
                 rehab: defaults.bool(forKey: rehabEnabledKey),
-                dinner: defaults.bool(forKey: dinnerEnabledKey))
+                dinner: defaults.bool(forKey: dinnerEnabledKey),
+                recap: defaults.bool(forKey: recapEnabledKey))
     }
 
     private static func stored(_ defaults: UserDefaults) -> Today? {

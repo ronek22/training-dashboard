@@ -60,13 +60,15 @@ struct RootView: View {
     @State private var tab: AppTab = .today
     @State private var strength: StrengthLaunch?
     @State private var todayRefresh = 0
+    @State private var recapRequest = 0
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         // System tab bar: Liquid Glass on iOS 26, and every tab keeps its scroll and navigation state.
         TabView(selection: $tab) {
             Tab("Today", systemImage: "clock", value: .today) {
-                TodayView(onStartStrength: { strength = StrengthLaunch(templateId: $0) }, refresh: todayRefresh)
+                TodayView(onStartStrength: { strength = StrengthLaunch(templateId: $0) }, refresh: todayRefresh,
+                          recapRequest: recapRequest)
             }
             Tab("Plan", systemImage: "calendar", value: .plan) {
                 PlanView(onStartStrength: { strength = StrengthLaunch(templateId: $0) })
@@ -105,6 +107,9 @@ struct RootView: View {
             switch url.host() {
             case "food": tab = .food
             case "plan": tab = .plan
+            case "recap":
+                tab = .today
+                recapRequest += 1
             case "strength":
                 // `trainlog://strength?template=4` opens that workout's brief when none is running.
                 let template = URLComponents(url: url, resolvingAgainstBaseURL: false)?

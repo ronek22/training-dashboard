@@ -12,9 +12,12 @@ struct TodayView: View {
     @State private var route: Route?
     @State private var moving: PlanDay?
     @State private var showRehab = false
+    @State private var recap: RecapLaunch?
     var onStartStrength: (Int?) -> Void = { _ in }
     /// Bumped when the strength screen closes, so the banner and plan reload.
     var refresh = 0
+    /// Bumped by the Sunday nudge (`trainlog://recap`) to open the week's recap.
+    var recapRequest = 0
 
     var body: some View {
         NavigationStack {
@@ -38,6 +41,10 @@ struct TodayView: View {
         .fullScreenCover(isPresented: $showRehab, onDismiss: { Task { await load() } }) {
             RehabSessionView()
         }
+        .fullScreenCover(item: $recap) { launch in
+            WeekRecapView(weekStart: launch.weekStart)
+        }
+        .onChange(of: recapRequest) { openRecap() }
         .sheet(item: $moving) { day in
             if let week = plan.weeks.first(where: { $0.days.contains { $0.date == day.date } }) {
                 MoveDaySheet(source: day, slots: PlanFormat.slots(week), today: plan.today) { target in
@@ -62,6 +69,12 @@ struct TodayView: View {
         case day
     }
 
+    /// The Sunday nudge: this week on Sunday, last week on Monday, the week so far otherwise.
+    private func openRecap() {
+        let offer = RecapFormat.offer(today: FoodFormat.iso(.now))
+        recap = RecapLaunch(weekStart: offer?.weekStart)
+    }
+
     private func load() async {
         async let today: Void = model.load()
         async let week: Void = plan.load()
@@ -79,6 +92,11 @@ struct TodayView: View {
                     if model.offline, let syncedAt = model.syncedAt {
                         offlineNote(syncedAt)
                     }
+                    if let offer = RecapFormat.offer(today: data.date) {
+                        RecapCard(label: offer.label, range: RecapFormat.range(offer.weekStart, RecapFormat.weekEnd(offer.weekStart))) {
+                            recap = RecapLaunch(weekStart: offer.weekStart)
+                        }
+                    }
                     SessionCard(
                         data: data,
                         planDay: plan.day(data.date),
@@ -93,7 +111,9 @@ struct TodayView: View {
                     )
                     ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone,
                                   onOpen: { showBody = true }, onCheckin: { showCheckin = true })
-                    WeekCard(week: data.week, minutes: data.weekMinutes, today: data.date)
+                    WeekCard(week: data.week, minutes: data.weekMinutes, today: data.date) {
+                        recap = RecapLaunch(weekStart: nil)
+                    }
                 } else if let error = model.error {
                     errorCard(error)
                 } else {
@@ -716,17 +736,62 @@ private struct ReadinessCard: View {
     }
 }
 
+// MARK: - Recap
+
+/// Opens the week recap; a nil week is the current one.
+private struct RecapLaunch: Identifiable {
+    let id = UUID()
+    let weekStart: String?
+}
+
+/// Sunday and Monday: the week in review, one tap away.
+private struct RecapCard: View {
+    let label: String
+    let range: String
+    let onOpen: () -> Void
+
+    var body: some View {
+        Button(action: onOpen) {
+            HStack(spacing: 14) {
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(Color.bg)
+                    .frame(width: 44, height: 44)
+                    .background(Color.volt, in: Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Kicker(range, color: .volt)
+                    Text(label.uppercased()).font(AppFont.title(24)).foregroundStyle(Color.ink)
+                    Text("Time, wins and what's next").font(AppFont.body(13)).foregroundStyle(Color.muted)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 14, weight: .bold)).foregroundStyle(Color.muted)
+            }
+            .card(border: Color.volt.opacity(0.35))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Week
 
 private struct WeekCard: View {
     let week: [PhoneToday.WeekDay]
     let minutes: PhoneToday.WeekMinutes
     let today: String
+    var onOpen: () -> Void = {}
 
     var body: some View {
+        Button(action: onOpen) { content }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens the week recap")
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
                 Kicker("This week")
+                Image(systemName: "chevron.right").font(.system(size: 10, weight: .bold)).foregroundStyle(Color.muted)
                 Spacer()
                 Text(TodayFormat.duration(minutes.done)).font(AppFont.number(22)).foregroundStyle(Color.ink)
                     + Text(minutes.planned > 0 ? " of \(TodayFormat.duration(minutes.planned))" : "")

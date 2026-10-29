@@ -104,6 +104,7 @@ Root:
 - `views/Notes.vue` — coach notes
 - `views/Metrics.vue` — metric history and trends
 - `views/Running.vue` — running fitness page; its charts and panels (`RunFitnessHero`, `RunRaceSimulator`, `RunTrainingPaces`, `RunComebackChart`, `RunPaceTrend`, `RunFormPanel`, `RunnerFigure`, `RunPowerPanel`) with the gait model `runner-gait.mjs` and tested helpers (`running-helpers.mjs`) live in `running/`
+- `components/ExerciseDemo.vue` — animated rehab demo; poses, motion and hand-animated rigs in `recovery/exercise-demos.mjs`, figure paths shared with the runner in `figure/figure-shapes.mjs`
 
 ### Components
 

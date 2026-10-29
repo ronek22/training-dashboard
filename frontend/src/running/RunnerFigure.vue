@@ -3,35 +3,40 @@
     <div class="runner-stage">
       <svg :viewBox="`0 ${TOP} ${W} ${H}`" role="img"
         :aria-label="`Animated runner at ${Math.round(gait.cadence)} steps per minute, ${gait.voCm.toFixed(1)} cm bounce, ${Math.round(gait.stanceMs)} ms ground contact and ${Math.round(gait.flightMs)} ms in the air per step.`">
-        <path class="trace" :d="tracePath" />
+        <defs>
+          <radialGradient :id="shadowId">
+            <stop offset="0" stop-color="#000" stop-opacity=".55" />
+            <stop offset="1" stop-color="#000" stop-opacity="0" />
+          </radialGradient>
+        </defs>
         <g class="ground">
           <line x1="0" :x2="W" :y1="GROUND_Y" :y2="GROUND_Y" />
           <line v-for="tick in groundTicks" :key="tick" class="tick" :x1="tick" :x2="tick + 10" :y1="GROUND_Y + 7" :y2="GROUND_Y + 7" />
         </g>
-        <ellipse class="shadow" :cx="HIP_X + 2" :cy="GROUND_Y + 1" :rx="shadowRx" ry="3" />
-        <g class="vo" aria-hidden="true">
-          <line :x1="BRACKET_X" :x2="BRACKET_X" :y1="hipTop" :y2="hipBottom" />
-          <line :x1="BRACKET_X - 5" :x2="BRACKET_X + 5" :y1="hipTop" :y2="hipTop" />
-          <line :x1="BRACKET_X - 5" :x2="BRACKET_X + 5" :y1="hipBottom" :y2="hipBottom" />
-          <text :x="BRACKET_X + 9" :y="(hipTop + hipBottom) / 2 + 4">{{ gait.voCm.toFixed(1) }} cm</text>
+        <g class="bounce" aria-hidden="true">
+          <rect x="228" :y="hipTop" width="70" :height="hipBottom - hipTop" />
+          <line x1="228" x2="298" :y1="hipTop" :y2="hipTop" />
+          <line x1="228" x2="298" :y1="hipBottom" :y2="hipBottom" />
+          <line class="lead" :x1="HIP_X + 8" x2="228" :y1="frame.hip[1]" :y2="frame.hip[1]" />
+          <circle cx="236" :cy="frame.hip[1]" r="2.6" />
+          <text x="298" :y="hipTop - 5" text-anchor="end">{{ gait.voCm.toFixed(1) }} cm bounce</text>
         </g>
+        <ellipse :fill="`url(#${shadowId})`" :cx="HIP_X + 2" :cy="GROUND_Y + 1" :rx="shadowRx" ry="4" />
+        <ellipse v-for="(ring, index) in rings" :key="`ring${index}`" class="ring" :cx="ring.x" :cy="GROUND_Y" :rx="6 + ring.k * 12" :ry="2 + ring.k * 3.5" :style="{ opacity: 1 - ring.k }" />
         <g class="figure">
-          <g class="far">
-            <polyline :points="pts(frame.shoulder, frame.farArm.elbow, frame.farArm.hand)" />
-            <ellipse v-if="frame.far.ground" class="contact" :cx="frame.far.ball[0]" :cy="GROUND_Y + 1" rx="8" ry="2.5" />
-            <polyline :points="pts(frame.hip, frame.far.knee, frame.far.ankle)" />
-            <polyline class="foot" :points="pts(frame.far.heel, frame.far.toe)" />
-          </g>
-          <line class="torso" :x1="frame.hip[0]" :y1="frame.hip[1]" :x2="frame.shoulder[0]" :y2="frame.shoulder[1]" />
-          <circle class="head" :cx="frame.head[0]" :cy="frame.head[1]" :r="HEAD_R" />
-          <g class="near">
-            <ellipse v-if="frame.near.ground" class="contact" :cx="frame.near.ball[0]" :cy="GROUND_Y + 1" rx="8" ry="2.5" />
-            <polyline :points="pts(frame.hip, frame.near.knee, frame.near.ankle)" :class="{ planted: frame.near.ground }" />
-            <polyline class="foot" :points="pts(frame.near.heel, frame.near.toe)" :class="{ planted: frame.near.ground }" />
-            <polyline :points="pts(frame.shoulder, frame.nearArm.elbow, frame.nearArm.hand)" />
-          </g>
+          <template v-for="(part, index) in parts" :key="index">
+            <circle v-if="part.kind === 'head'" class="head" :cx="part.cx" :cy="part.cy" :r="part.r + 1.2" />
+            <path v-else :d="part.d" :class="[part.layer, { ground: part.ground, shoe: part.kind === 'shoe' }]" />
+          </template>
         </g>
       </svg>
+      <div class="readout" aria-hidden="true">
+        <b>{{ Math.round(gait.cadence) }}</b>
+        <span><em>spm</em>{{ Math.round(gait.stanceMs) }} ms on ground</span>
+      </div>
+      <div class="beat" aria-hidden="true">
+        <i v-for="foot in beat" :key="foot.label" :style="{ '--flash': foot.flash }">{{ foot.label }}</i>
+      </div>
       <div class="stage-controls">
         <div class="seg" role="group" aria-label="Form to animate">
           <button v-for="option in profiles" :key="option.key" type="button" :class="{ on: profile === option.key }"
@@ -73,7 +78,8 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { GROUND_Y, HEAD_R, HIP_X, PX_PER_M, frameAt, gaitFrom, hipLift, lowestHipY, smootherGait, stanceWindows } from './runner-gait.mjs'
+import { GROUND_Y, HIP_X, PX_PER_M, frameAt, gaitFrom, lowestHipY, runnerBody, smootherGait, stanceWindows } from './runner-gait.mjs'
+import { figureParts } from '../figure/figure-shapes.mjs'
 import { pace } from './running-helpers.mjs'
 
 const props = defineProps({ form: { type: Object, required: true } })
@@ -81,7 +87,7 @@ const props = defineProps({ form: { type: Object, required: true } })
 const W = 320
 const TOP = 48 // crop the empty sky above the head
 const H = 140
-const BRACKET_X = 262
+const shadowId = `run-shadow-${Math.random().toString(36).slice(2, 8)}`
 const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 const complete = (metrics) => metrics && ['cadence_spm', 'stance_time_ms', 'vertical_oscillation_cm', 'step_length_m'].every((key) => metrics[key] != null)
@@ -115,26 +121,23 @@ const phase = ref(0.62)
 const scroll = ref(0)
 const frame = computed(() => frameAt(gait.value, phase.value))
 
-const pts = (...points) => points.map((point) => `${point[0].toFixed(1)},${point[1].toFixed(1)}`).join(' ')
+// Direction C (docs/design/motion-study.html): a solid figure, the leg on the ground (seat
+// included) in run orange, a bounce band, a ring as each foot lands and an R/L beat.
+const parts = computed(() => figureParts(runnerBody(frame.value), { shoeSize: { height: 5, length: 12, back: 4 } }))
 const groundSpeed = computed(() => gait.value.speed * PX_PER_M) // px per real second
 const groundTicks = computed(() => {
   const offset = ((scroll.value % 36) + 36) % 36
   return Array.from({ length: 11 }, (_, i) => i * 36 - offset)
 })
-// The hip's path over the ground: points behind the runner are where the hip was earlier.
-const tracePath = computed(() => {
-  const stridePx = groundSpeed.value * gait.value.strideTime
-  const parts = []
-  for (let x = 6; x <= HIP_X; x += 3) {
-    const back = (HIP_X - x) / stridePx
-    const y = lowestHipY() - hipLift(gait.value, phase.value - back)
-    parts.push(`${parts.length ? 'L' : 'M'}${x},${y.toFixed(1)}`)
-  }
-  return parts.join('')
-})
 const hipBottom = computed(() => lowestHipY())
 const hipTop = computed(() => lowestHipY() - gait.value.voPx)
-const shadowRx = computed(() => 16 - (lowestHipY() - frame.value.hip[1]) * 0.6)
+const shadowRx = computed(() => Math.max(8, 22 - (lowestHipY() - frame.value.hip[1]) * 0.8))
+// A ring opens where each foot lands, over the first tenth of the stride.
+const rings = computed(() => [[phase.value, frame.value.near], [phase.value + 0.5, frame.value.far]]
+  .map(([legPhase, leg]) => ({ x: leg.ball[0], k: (((legPhase % 1) + 1) % 1) / 0.1, ground: leg.ground }))
+  .filter((ring) => ring.ground && ring.k < 1))
+const beat = computed(() => [['R', phase.value], ['L', phase.value + 0.5]]
+  .map(([label, legPhase]) => ({ label, flash: Math.max(0, 1 - (((legPhase % 1) + 1) % 1) / 0.12) })))
 const paceText = computed(() => pace(1000 / gait.value.speed))
 const stripRows = computed(() => {
   const windows = stanceWindows(gait.value)
@@ -171,22 +174,32 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); observer?.disconnect() })
 
 <style scoped>
 .runner { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(260px, 1fr); gap: 18px; margin: 0; }
-.runner-stage { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 12px; border-radius: 16px; background: rgb(var(--deep-rgb)); min-width: 0; }
+.runner-stage { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 12px; border-radius: 16px; background: rgb(var(--deep-rgb)); min-width: 0; }
 .runner-stage svg { display: block; width: 100%; height: auto; }
-.trace { fill: none; stroke: var(--volt-fill); stroke-width: 2; stroke-dasharray: 2 4; stroke-linecap: round; opacity: .9; }
-.ground line { stroke: var(--border-strong); stroke-width: 2; }
-.ground .tick { stroke: var(--border-strong); stroke-width: 2; stroke-linecap: round; opacity: .7; }
-.shadow { fill: color-mix(in srgb, var(--text) 10%, transparent); }
-.vo line { stroke: var(--tone-run); stroke-width: 1.5; }
-.vo text { fill: var(--tone-run); font-size: 11px; font-weight: 700; font-family: var(--font-body); }
-.figure polyline, .figure line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.figure .near polyline { stroke: var(--text); stroke-width: 6.5; }
-.figure polyline.foot { stroke-width: 5; }
-.figure .near polyline.planted { stroke: var(--run); }
-.figure .far polyline { stroke: color-mix(in srgb, var(--text) 35%, transparent); stroke-width: 6; }
-.figure .torso { stroke: var(--text); stroke-width: 10; }
-.figure .head { fill: var(--text); }
-.contact { fill: color-mix(in srgb, var(--run) 45%, transparent); }
+.ground line { stroke: var(--border-strong); stroke-width: 1.2; }
+.ground .tick { stroke: var(--border-strong); stroke-width: 1.5; stroke-linecap: round; opacity: .5; }
+.bounce rect { fill: color-mix(in srgb, var(--run) 10%, transparent); }
+.bounce line { stroke: color-mix(in srgb, var(--run) 70%, transparent); stroke-width: 1; stroke-dasharray: 3 3; }
+.bounce line.lead { stroke: color-mix(in srgb, var(--run) 35%, transparent); stroke-dasharray: none; }
+.bounce circle { fill: var(--run); }
+.bounce text { fill: var(--run); font-size: 7px; font-weight: 700; font-family: var(--font-body); }
+.ring { fill: none; stroke: var(--run); stroke-width: 1.5; }
+.figure path { fill: var(--text-soft); }
+.figure path.far { fill: color-mix(in srgb, var(--text-soft) 34%, rgb(var(--deep-rgb))); }
+.figure path.ground { fill: var(--run); }
+.figure path.far.ground { fill: color-mix(in srgb, var(--run) 45%, rgb(var(--deep-rgb))); }
+.figure path.shoe { stroke: var(--text-soft); stroke-width: 1.6; stroke-linejoin: round; }
+.figure path.far.shoe { stroke: color-mix(in srgb, var(--text-soft) 34%, rgb(var(--deep-rgb))); }
+.figure path.ground.shoe { stroke: var(--run); }
+.figure path.far.ground.shoe { stroke: color-mix(in srgb, var(--run) 45%, rgb(var(--deep-rgb))); }
+.figure .head { fill: var(--text-soft); stroke: rgb(var(--deep-rgb)); stroke-width: 2.4; }
+.readout { position: absolute; top: 14px; left: 18px; display: flex; align-items: center; gap: 8px; pointer-events: none; }
+.readout b { font-family: var(--font-display); font-style: italic; font-weight: 800; font-size: 30px; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+.readout span { display: flex; flex-direction: column; font-size: 11px; color: var(--muted); }
+.readout em { font-style: normal; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--run); }
+.beat { position: absolute; top: 16px; right: 18px; display: flex; gap: 6px; pointer-events: none; }
+.beat i { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-style: normal; font-size: 9px; font-weight: 700;
+  background: color-mix(in srgb, var(--run) calc(var(--flash) * 100%), var(--surface3)); color: var(--muted); }
 .stage-controls { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 .seg { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); }
 .seg button { border: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; padding: 6px 11px; border-radius: 999px; cursor: pointer; }

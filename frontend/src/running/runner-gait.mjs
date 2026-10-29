@@ -1,4 +1,5 @@
-// A side-view runner driven by your own running dynamics.
+// A side-view runner driven by your own running dynamics (direction C in
+// docs/design/motion-study.html).
 //
 // Cadence sets the step rhythm, ground contact time how long each foot stays down (and so the
 // flight between steps), vertical oscillation the bounce of the hips, and step length × cadence
@@ -6,32 +7,38 @@
 // really is a tenth of the 0.9 m leg. One stride is two steps: the near leg lands at phase 0, the
 // far leg at 0.5.
 //
-// The stance leg is planted: a midfoot landing just ahead of the hips with the foot flat, the
-// contact point sliding back at running speed, the heel rising late so the foot rolls off the
-// toes. The swing leg follows typical running joint curves instead of a foot path: the knee
-// folds the heel up behind you, the thigh swings through low and relaxed, the shin unfolds and
-// the foot sweeps back under the body to land again. Arms follow the opposite leg.
+// The stance foot lands midfoot about a third of a metre ahead of the hips on a softly bent knee,
+// moves back exactly with the ground, and peels off with the heel rising and the toes bending at
+// the ball. The swing leg follows running joint-angle curves: the knee folds as the thigh swings
+// forward, so the heel tucks under the seat, the thigh peaks at about 35° and pulls back to land,
+// and the foot hinges against the shin (toes up before landing). The pelvis rotates and drops on
+// the swing side, the trunk leans 10° and follows the hips a moment late, the shoulders
+// counter-rotate, and the arms swing low and opposite the legs with the forearms trailing.
 
 export const PX_PER_M = 58
 export const GROUND_Y = 172
 export const HIP_X = 160
-const LEN = { thigh: 27, shin: 27, torso: 36, neck: 9, upperArm: 17, forearm: 16 }
-export const HEAD_R = 8
+const LEN = { thigh: 27, shin: 27, torso: 31, upperArm: 20, forearm: 17, head: 12.2 }
 // Foot: the ball (contact point) sits this far ahead of and below the ankle when flat.
 const BALL_AHEAD = 8
 const ANKLE_UP = 5
 const HEEL_BACK = 4
 const TOE_AHEAD = 4
-const LEAN_DEG = 7
-// Hips at their lowest (mid-stance) with the knee bent about 45°, as in easy running.
-const MID_STANCE_KNEE = 46
-const HEEL_RISE_DEG = 66
-const CONTACT_AHEAD = 0.28 // share of the stance distance the foot lands ahead of the hips
+// Hips at their lowest (mid-stance) with the knee bent about 52°.
+const MID_STANCE_KNEE = 52
+const HEEL_RISE_DEG = 54
+const CONTACT_AHEAD = 0.45 // share of the stance distance the foot lands ahead of the hips
+const LEAN_DEG = 10
+const PELVIS_TURN = 3 // px each hip joint swings fore and aft with its leg
+const PELVIS_DROP = 1.3 // px the swing-side hip drops while the other foot carries the body
+const SHOULDER_TURN = 3.6
 
 const deg = Math.PI / 180
+const TAU = Math.PI * 2
 const wrap = (t) => ((t % 1) + 1) % 1
 const ease = (t) => t * t * (3 - 2 * t)
 const lerp = (a, b, t) => a + (b - a) * t
+const lerpPoint = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t)]
 const clamp01 = (t) => Math.max(0, Math.min(1, t))
 
 export const gaitFrom = ({ cadence_spm: cadence, stance_time_ms: stanceMs, vertical_oscillation_cm: voCm, step_length_m: stepM }) => {
@@ -46,7 +53,8 @@ export const gaitFrom = ({ cadence_spm: cadence, stance_time_ms: stanceMs, verti
     speed,
     duty: contact / strideTime, // share of a stride each foot is on the ground
     flightMs: Math.max(0, (stepTime - contact) * 1000),
-    stanceLen: Math.min(speed * contact * PX_PER_M, 50),
+    // Ground covered while the foot is down, uncapped so the planted foot always moves with it.
+    stanceLen: speed * contact * PX_PER_M,
     voPx: voCm / 100 * PX_PER_M,
     stepM,
     stanceMs,
@@ -65,8 +73,6 @@ export const smootherGait = (metrics) => {
     vertical_oscillation_cm: metrics.vertical_oscillation_cm * 0.9,
   })
 }
-
-const at = (origin, angleDeg, length) => [origin[0] + Math.cos(angleDeg * deg) * length, origin[1] + Math.sin(angleDeg * deg) * length]
 
 // Knee (or elbow) for a two-bone limb; `forward` picks the side the joint bends towards.
 export const solveLimb = (root, end, a, b, forward = 1) => {
@@ -89,30 +95,37 @@ export const solveLimb = (root, end, a, b, forward = 1) => {
 }
 
 // Hip lift above its lowest point: lowest at each mid-stance, highest mid-flight. The valley is
-// a little sharper than a sine, so the hips are already dropping when the foot lands.
+// wide, so the hips stay low through contact and the knee lands and leaves the ground bent.
 export const hipLift = (gait, phase) => {
   const stepPhase = wrap(phase * 2)
-  const wave = (1 - Math.cos(2 * Math.PI * (stepPhase - gait.duty))) / 2
-  return gait.voPx * wave ** 1.5
+  const wave = (1 - Math.cos(TAU * (stepPhase - gait.duty))) / 2
+  return gait.voPx * wave ** 2.2
 }
 
-export const lowestHipY = () => {
-  const hipToAnkle = 2 * LEN.thigh * Math.cos((MID_STANCE_KNEE / 2) * deg)
-  return GROUND_Y - ANKLE_UP - hipToAnkle
+export const lowestHipY = () => GROUND_Y - ANKLE_UP - 2 * LEN.thigh * Math.cos((MID_STANCE_KNEE / 2) * deg)
+
+// Each hip joint swings fore and aft with its own leg (pelvic rotation) and the swing side drops a
+// little while the other foot carries the body. `legPhase` is that leg's own phase.
+const hipFor = (gait, legPhase) => {
+  const lp = wrap(legPhase)
+  const other = wrap(lp - 0.5)
+  const drop = other < gait.duty ? PELVIS_DROP * Math.sin(Math.PI * other / gait.duty) : 0
+  return [HIP_X + PELVIS_TURN * Math.cos(TAU * lp), lowestHipY() - hipLift(gait, lp) + drop]
 }
 
-const hipYAt = (gait, phase) => lowestHipY() - hipLift(gait, phase)
-
-// Foot points from the ankle and the foot's tilt (heel up = positive).
+// Foot points from the ankle and the foot's tilt (heel up = positive). Toes bend at the ball, so a
+// raised heel never pushes them through the floor.
 const footFrom = (ankle, tilt) => {
   const d = [Math.cos(tilt * deg), Math.sin(tilt * deg)] // heel → toe, tipping down as the heel rises
   const n = [Math.sin(tilt * deg), -Math.cos(tilt * deg)] // up from the sole
   const sole = [ankle[0] - n[0] * ANKLE_UP, ankle[1] - n[1] * ANKLE_UP]
-  return {
-    heel: [sole[0] - d[0] * HEEL_BACK, sole[1] - d[1] * HEEL_BACK],
-    ball: [sole[0] + d[0] * BALL_AHEAD, sole[1] + d[1] * BALL_AHEAD],
-    toe: [sole[0] + d[0] * (BALL_AHEAD + TOE_AHEAD), sole[1] + d[1] * (BALL_AHEAD + TOE_AHEAD)],
+  const ball = [sole[0] + d[0] * BALL_AHEAD, sole[1] + d[1] * BALL_AHEAD]
+  let toe = [sole[0] + d[0] * (BALL_AHEAD + TOE_AHEAD), sole[1] + d[1] * (BALL_AHEAD + TOE_AHEAD)]
+  if (toe[1] > GROUND_Y) {
+    const dy = GROUND_Y - ball[1]
+    toe = [ball[0] + Math.sqrt(Math.max(0, TOE_AHEAD ** 2 - dy * dy)), GROUND_Y]
   }
+  return { heel: [sole[0] - d[0] * HEEL_BACK, sole[1] - d[1] * HEEL_BACK], ball, toe }
 }
 
 // Ankle for a ball planted at `ball` with the heel raised by `tilt` degrees.
@@ -123,7 +136,7 @@ const ankleFromBall = (ball, tilt) => {
 }
 
 // Hip flexion (thigh angle forward of vertical) and knee flexion for a hip/knee/ankle chain.
-const jointAngles = (hip, knee, ankle) => {
+export const jointAngles = (hip, knee, ankle) => {
   const thigh = Math.atan2(knee[0] - hip[0], knee[1] - hip[1]) / deg
   const shin = Math.atan2(ankle[0] - knee[0], ankle[1] - knee[1]) / deg
   return { hip: thigh, knee: thigh - shin }
@@ -133,74 +146,118 @@ const stanceLeg = (gait, legPhase, hip) => {
   const u = legPhase / gait.duty
   const ballX = HIP_X + lerp(gait.stanceLen * CONTACT_AHEAD, -gait.stanceLen * (1 - CONTACT_AHEAD), u)
   const tilt = HEEL_RISE_DEG * ease(clamp01((u - 0.4) / 0.6)) ** 0.85
-  const ankleWanted = ankleFromBall([ballX, GROUND_Y], tilt)
-  const [knee, ankle] = solveLimb(hip, ankleWanted, LEN.thigh, LEN.shin, 1)
+  const [knee, ankle] = solveLimb(hip, ankleFromBall([ballX, GROUND_Y], tilt), LEN.thigh, LEN.shin, 1)
   return { knee, ankle, tilt, ground: true }
 }
 
-// Smooth curve through keyframes [u, value] (Catmull–Rom, flat at the ends).
+// Hermite spline through [u, value] keys with tangents scaled to the real key spacing, so uneven
+// keys don't overshoot. Flat at the start, carrying its slope into the end.
 const spline = (keys, u) => {
-  let i = keys.findIndex((key, index) => index < keys.length - 1 && u <= keys[index + 1][0])
-  if (i < 0) i = keys.length - 2
-  const [u0, v0] = keys[i]
-  const [u1, v1] = keys[i + 1]
-  const prev = keys[i - 1]?.[1] ?? v0
-  const next = keys[i + 2]?.[1] ?? v1
-  const t = (u - u0) / (u1 - u0 || 1)
-  const m0 = (v1 - prev) / 2
-  const m1 = (next - v0) / 2
+  const n = keys.length
+  const slope = (i) => i === 0 ? 0 : i === n - 1
+    ? (keys[i][1] - keys[i - 1][1]) / (keys[i][0] - keys[i - 1][0])
+    : (keys[i + 1][1] - keys[i - 1][1]) / (keys[i + 1][0] - keys[i - 1][0])
+  let i = 0
+  while (i < n - 2 && u > keys[i + 1][0]) i++
+  const [t0, v0] = keys[i]
+  const [t1, v1] = keys[i + 1]
+  const h = t1 - t0 || 1
+  const t = clamp01((u - t0) / h)
   const t2 = t * t
   const t3 = t2 * t
-  return (2 * t3 - 3 * t2 + 1) * v0 + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * v1 + (t3 - t2) * m1
+  return (2 * t3 - 3 * t2 + 1) * v0 + (t3 - 2 * t2 + t) * h * slope(i) + (-2 * t3 + 3 * t2) * v1 + (t3 - t2) * h * slope(i + 1)
 }
+
+// Foot angle square to the shin (the swing foot hinges from there).
+const squareToShin = (knee, ankle) => Math.atan2(-(ankle[0] - knee[0]), ankle[1] - knee[1]) / deg
 
 const swingLeg = (gait, legPhase, hip) => {
   const u = (legPhase - gait.duty) / (1 - gait.duty)
-  // Joint angles where the swing must start (toe-off) and end (touchdown), from the stance pose.
-  const off = stanceLeg(gait, gait.duty - 1e-6, [HIP_X, hipYAt(gait, gait.duty)])
-  const on = stanceLeg(gait, 0, [HIP_X, hipYAt(gait, 0)])
-  const start = jointAngles([HIP_X, hipYAt(gait, gait.duty)], off.knee, off.ankle)
-  const end = jointAngles([HIP_X, hipYAt(gait, 0)], on.knee, on.ankle)
+  const hipOff = hipFor(gait, gait.duty - 1e-6)
+  const hipOn = hipFor(gait, 0)
+  const off = stanceLeg(gait, gait.duty - 1e-6, hipOff)
+  const on = stanceLeg(gait, 0, hipOn)
+  const start = jointAngles(hipOff, off.knee, off.ankle)
+  const end = jointAngles(hipOn, on.knee, on.ankle)
   // Faster running folds the heel higher; easy running stays compact.
-  const fold = Math.min(115, 64 + gait.speed * 10)
-  // The thigh comes through early (vertical by a quarter of the swing), so the folded heel tucks
-  // under the hips rather than trailing behind.
-  const hipAngle = spline([[0, start.hip], [0.22, start.hip * 0.1], [0.66, end.hip + 12], [1, end.hip]], u)
-  // The shin stays folded into late swing, then unfolds and the foot sweeps back down to land.
-  const kneeAngle = spline([[0, start.knee], [0.28, fold], [0.62, fold * 0.78], [0.86, end.knee + 22], [1, end.knee]], u)
-  const knee = [hip[0] + Math.sin(hipAngle * deg) * LEN.thigh, hip[1] + Math.cos(hipAngle * deg) * LEN.thigh]
+  const fold = Math.min(112, 72 + gait.speed * 9)
+  const hipAngle = spline([[0, start.hip], [0.16, start.hip * 0.45], [0.36, 14], [0.6, 33], [0.8, end.hip + 7], [1, end.hip]], u)
+  const kneeAngle = spline([[0, start.knee], [0.18, 68], [0.4, fold], [0.6, fold * 0.78], [0.8, end.knee + 8], [1, end.knee]], u)
+  const thighEnd = [hip[0] + Math.sin(hipAngle * deg) * LEN.thigh, hip[1] + Math.cos(hipAngle * deg) * LEN.thigh]
   const shin = hipAngle - kneeAngle
-  let ankle = [knee[0] + Math.sin(shin * deg) * LEN.shin, knee[1] + Math.cos(shin * deg) * LEN.shin]
-  // The foot points down after push-off, relaxes level mid-swing and lands flat (midfoot).
-  const tilt = lerp(HEEL_RISE_DEG, 0, ease(clamp01(u / 0.55))) - 6 * Math.sin(Math.PI * clamp01((u - 0.55) / 0.45))
-  // Never below the ground in late swing.
-  const lowest = GROUND_Y - ANKLE_UP - 1
-  if (ankle[1] > lowest && u < 0.97) ankle = [ankle[0], lowest]
+  let ankle = [thighEnd[0] + Math.sin(shin * deg) * LEN.shin, thighEnd[1] + Math.cos(shin * deg) * LEN.shin]
+  const lowest = GROUND_Y - ANKLE_UP - 0.5
+  if (ankle[1] > lowest) ankle = [ankle[0], lowest]
+  // Late swing eases into the exact touchdown pose instead of snapping to it.
+  ankle = lerpPoint(ankle, on.ankle, ease(clamp01((u - 0.86) / 0.14)))
+  const [knee] = solveLimb(hip, ankle, LEN.thigh, LEN.shin, 1)
+  // The foot hinges against the shin: pointed after push-off, square by mid-swing, toes up before
+  // landing, then level for a midfoot strike.
+  const pointed = HEEL_RISE_DEG - squareToShin(off.knee, off.ankle)
+  const plantar = spline([[0, pointed], [0.15, 22], [0.45, 6], [0.8, -8], [1, -6]], u)
+  const tilt = lerp(squareToShin(knee, ankle) + plantar, 0, ease(clamp01((u - 0.86) / 0.14)))
   return { knee, ankle, tilt, ground: false }
 }
 
-const legAt = (gait, legPhase, hip) => {
-  const leg = legPhase < gait.duty ? stanceLeg(gait, legPhase, hip) : swingLeg(gait, legPhase, hip)
-  const foot = footFrom(leg.ankle, leg.tilt)
-  return { ...leg, ...foot, hipAngle: jointAngles(hip, leg.knee, leg.ankle).hip }
+const legAt = (gait, legPhase) => {
+  const lp = wrap(legPhase)
+  const hip = hipFor(gait, lp)
+  const leg = lp < gait.duty ? stanceLeg(gait, lp, hip) : swingLeg(gait, lp, hip)
+  return { hip, ...leg, ...footFrom(leg.ankle, leg.tilt), hipAngle: jointAngles(hip, leg.knee, leg.ankle).hip }
 }
 
 export const frameAt = (gait, phase) => {
   const p = wrap(phase)
-  const hip = [HIP_X, hipYAt(gait, p)]
-  const shoulder = at(hip, -90 + LEAN_DEG, LEN.torso)
-  const head = at(shoulder, -90 + LEAN_DEG + 3, LEN.neck + HEAD_R)
-  const near = legAt(gait, p, hip)
-  const far = legAt(gait, wrap(p + 0.5), hip)
-  // Each arm mirrors the opposite thigh, elbow held near 90°, hands relaxed at hip height.
-  const arm = (oppositeHip) => {
-    const upper = -0.75 * oppositeHip - 4
-    const elbow = [shoulder[0] + Math.sin(upper * deg) * LEN.upperArm, shoulder[1] + Math.cos(upper * deg) * LEN.upperArm]
-    const fore = upper + 82 + 0.25 * oppositeHip
-    const hand = [elbow[0] + Math.sin(fore * deg) * LEN.forearm, elbow[1] + Math.cos(fore * deg) * LEN.forearm]
-    return { elbow, hand }
+  const near = legAt(gait, p)
+  const far = legAt(gait, p + 0.5)
+  const hip = [HIP_X, (near.hip[1] + far.hip[1]) / 2]
+  // The chest follows the hips a moment late and leans a touch more at push-off.
+  const lean = LEAN_DEG + 1.6 * Math.cos(TAU * (2 * p - 0.15))
+  const shoulder = [HIP_X + Math.sin(lean * deg) * LEN.torso, lowestHipY() - hipLift(gait, p - 0.03) - Math.cos(lean * deg) * LEN.torso]
+  // The head sits a little ahead of the trunk and bobs about 70 % of the hips.
+  const head = [
+    shoulder[0] + Math.sin((lean + 8) * deg) * LEN.head,
+    shoulder[1] - Math.cos((lean + 8) * deg) * LEN.head + 0.3 * (hipLift(gait, p - 0.05) - gait.voPx / 2),
+  ]
+  // Arms swing from the shoulder on a clean arc, opposite the legs, hands low (hip to lower ribs);
+  // the elbow closes a beat after the arm comes forward. Shoulder joints sit just below the top of
+  // the trunk and counter-rotate against the pelvis.
+  const arm = (joint, armPhase) => {
+    const upper = -10 + 30 * Math.cos(TAU * (armPhase - 0.03))
+    const flex = 80 + 13 * Math.cos(TAU * (armPhase - 0.09))
+    const elbow = [joint[0] + Math.sin(upper * deg) * LEN.upperArm, joint[1] + Math.cos(upper * deg) * LEN.upperArm]
+    const fore = upper + flex
+    return { shoulder: joint, elbow, hand: [elbow[0] + Math.sin(fore * deg) * LEN.forearm, elbow[1] + Math.cos(fore * deg) * LEN.forearm] }
   }
-  return { hip, shoulder, head, near, far, nearArm: arm(far.hipAngle), farArm: arm(near.hipAngle) }
+  const top = [shoulder[0] - Math.sin(lean * deg) * 3, shoulder[1] + Math.cos(lean * deg) * 3]
+  const turn = SHOULDER_TURN * Math.cos(TAU * p)
+  // The spine gives a little on each landing and lengthens in flight.
+  const bend = 0.8 * Math.cos(TAU * (2 * p - 0.12))
+  return {
+    hip, shoulder, head, bend, near, far,
+    // The far arm comes forward as the near foot lands (p = 0), the near arm half a stride later.
+    nearArm: arm([top[0] - turn, top[1]], p - 0.5),
+    farArm: arm([top[0] + turn, top[1]], p),
+  }
+}
+
+// The figure as drawable segments (for figure-shapes.mjs); legs carry whether that foot is down.
+export const runnerBody = (frame) => {
+  const leg = (side, l) => [
+    { id: `${side}Thigh`, from: l.hip, to: l.knee },
+    { id: `${side}Shin`, from: l.knee, to: l.ankle },
+    { id: `${side}Foot`, from: l.ankle, to: l.toe, heel: l.heel, ball: l.ball },
+  ].map((segment) => ({ ...segment, layer: side, ground: l.ground }))
+  const arm = (side, a) => [
+    { id: `${side}UpperArm`, from: a.shoulder, to: a.elbow },
+    { id: `${side}Forearm`, from: a.elbow, to: a.hand },
+  ].map((segment) => ({ ...segment, layer: side }))
+  return {
+    segments: [...arm('far', frame.farArm), ...leg('far', frame.far), { id: 'torso', from: frame.hip, to: frame.shoulder, layer: 'body' },
+      ...leg('near', frame.near), ...arm('near', frame.nearArm)],
+    head: frame.head,
+    bend: frame.bend,
+  }
 }
 
 // Stance windows of a stride for the gait strip, as [start, end] phases (end may pass 1).

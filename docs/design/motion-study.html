@@ -1,0 +1,1055 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Approved motion prototype (direction C). Reference for the rehab demos and the cadence runner. -->
+<title>Motion Study</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Barlow+Condensed:ital,wght@0,600;0,800;1,700;1,800&display=swap">
+<style>
+/* Layout: a 4-column comparison matrix (current, A, B, C) × 3 motions, one shared clock. */
+:root {
+  --bg: #0a0c11; --surface: #12151c; --raise: #191d27; --well: #232834;
+  --line: rgba(160, 172, 196, 0.1); --line-strong: rgba(170, 184, 210, 0.2);
+  --text: #f3f5f9; --soft: #c9cfda; --muted: #8a93a6;
+  --run: #ff8a2a; --mob: #2ed3b0; --volt: #d4ff3a;
+  --display: 'Barlow Condensed', 'Archivo Narrow', 'Arial Narrow', sans-serif;
+  --body: 'Archivo', system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 14px; line-height: 1.5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.page { max-width: 1480px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 22px; }
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0; }
+h1 { font-family: var(--display); font-style: italic; font-weight: 800; font-size: 46px; line-height: 1; margin: 6px 0 10px; letter-spacing: .005em; text-wrap: balance; }
+.lead { margin: 0; max-width: 72ch; color: var(--soft); }
+.lead b { color: var(--text); font-weight: 600; }
+
+.review { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.review section { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; min-width: 0; }
+.review h2 { font-family: var(--display); font-weight: 700; font-style: italic; font-size: 22px; margin: 0 0 2px; }
+.review .src { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+.review code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; color: var(--soft); }
+.review ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+.review li { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 10px; font-size: 13px; color: var(--soft); }
+.review li b { color: var(--text); font-weight: 600; }
+.review .ok { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
+
+.controls { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 12px; background: var(--raise); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .35); }
+.seg { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+.seg button, .btn { border: 0; background: transparent; color: var(--muted); font: 600 12px var(--body); padding: 6px 11px; border-radius: 999px; cursor: pointer; }
+.seg button.on { background: var(--well); color: var(--text); }
+.seg button:focus-visible, .btn:focus-visible, input:focus-visible { outline: 2px solid var(--volt); outline-offset: 2px; }
+.btn.play { min-width: 74px; background: var(--volt); color: #12151c; }
+.timecode { font: 600 12px var(--body); color: var(--soft); font-variant-numeric: tabular-nums; min-width: 128px; }
+.cad { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; }
+.cad label { font-size: 12px; color: var(--muted); }
+.cad output { font-family: var(--display); font-style: italic; font-weight: 800; font-size: 22px; line-height: 1; min-width: 74px; font-variant-numeric: tabular-nums; }
+.cad output small { font-family: var(--body); font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); }
+input[type=range] { width: 150px; accent-color: var(--run); }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--soft); cursor: pointer; }
+.toggle input { accent-color: var(--volt); }
+
+.matrix { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; width: 100%; max-width: 1180px; }
+.keys-wrap { width: 100%; max-width: 1180px; }
+.round { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+.round h2 { font-family: var(--display); font-weight: 700; font-style: italic; font-size: 22px; margin: 0 0 8px; }
+.round ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; }
+.round li { font-size: 13px; color: var(--soft); min-width: 0; }
+.round li b { color: var(--text); font-weight: 600; }
+.review-wrap summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--soft); padding: 4px 2px 12px; }
+.keys-wrap { display: flex; flex-direction: column; gap: 10px; }
+.keys { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.key { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.key canvas { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.key figcaption { font-size: 12.5px; color: var(--muted); }
+.key figcaption b { display: block; color: var(--text); font-family: var(--display); font-style: italic; font-weight: 700; font-size: 17px; }
+.colhead { padding: 0 2px; min-width: 0; }
+.colhead h3 { margin: 0; font-family: var(--display); font-weight: 700; font-style: italic; font-size: 21px; line-height: 1.1; }
+.colhead h3 span { color: var(--volt); margin-right: 4px; }
+.colhead p { margin: 3px 0 0; font-size: 12.5px; color: var(--muted); }
+.rowhead { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 12px 2px 0; border-top: 1px solid var(--line); }
+.rowhead h4 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 19px; text-transform: uppercase; letter-spacing: .04em; }
+.rowhead p { margin: 0; font-size: 12.5px; color: var(--muted); }
+.rowhead p b { color: var(--soft); font-weight: 600; }
+.cell { position: relative; min-width: 0; }
+.cell canvas { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.cell .tag { position: absolute; top: 7px; right: 9px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: none; }
+
+.next { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; color: var(--soft); font-size: 13px; }
+.next b { color: var(--text); }
+
+@media (max-width: 1000px) {
+  .keys, .round ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .colhead { display: none; }
+  .cell .tag { display: block; }
+  .review { grid-template-columns: 1fr; }
+  .cad { margin-left: 0; }
+}
+@media (max-width: 560px) {
+  .matrix, .round ul { grid-template-columns: 1fr; }
+  .review li { grid-template-columns: 1fr; gap: 0; }
+  h1 { font-size: 38px; }
+}
+</style>
+
+<div class="page">
+  <header>
+    <p class="eyebrow">TrainLog · animation review</p>
+    <h1>Motion Study</h1>
+    <p class="lead">Direction <b>C (Coaching)</b>, round 5, next to what ships today. The figure now uses real body proportions, and the runner's arms and upper body were rebuilt from run-cycle reference. Use 0.25× or the frame buttons to judge timing, and <b>Arcs</b> to see the paths joints travel.</p>
+  </header>
+
+  <section class="round">
+    <h2>What changed</h2>
+    <ul>
+      <li><b>Round 5: the seat.</b> Every joint used to be a ball centred on its pivot, with the glute as one more ball, so the hips read like an action figure. The seat is now one smooth curve from the lower back, out over the buttock and into the back of the thigh.</li>
+      <li><b>Round 5: the run.</b> The swing leg follows running joint-angle curves: the knee folds as the thigh comes forward so the heel tucks under the seat, and the thigh peaks at about 34° before pulling back to land. The foot hinges against the shin instead of the ground, the toes bend at the ball at push-off, the body leans 10° forward, and the hands swing low and mostly backward.</li>
+      <li><b>Round 4: glutes.</b> The hips were a tube centred on the hip joint. Now the glutes sit behind the joint and follow the thigh, so the seat pushes back in a squat and rounds off when standing. They light up as the working muscle in the squat.</li>
+      <li><b>Round 4: less stiff.</b> Every move now uses a minimum-jerk speed curve (how real lifts and reaches accelerate and slow), not a constant-speed middle. Holds have breathing, a little balance sway and wobble; the spine gives slightly. The runner's pelvis, shoulders and trunk rotate and pitch more, and the spine gives on each landing.</li>
+      <li><b>Round 3: feet are shoes.</b> The ankle sits over the rear third of the foot, with a rounded heel, a sole tapering to the toe and an instep sloping back to the ankle. Before, the foot was a flat bar hanging under the shin.</li>
+      <li><b>Round 3: side plank, and less clutter.</b> The new side plank pivots about the feet and the elbow, so nothing slides; the hold sags a touch, then re-braces. The runner's landing-distance marker is gone.</li>
+      <li><b>Round 2: smaller head, shorter trunk.</b> Sized from standard body proportions (trunk about 0.29 of height, head about 0.13, leg about 0.49). Before, the trunk was 15% too long and the head 20% too big for the legs.</li>
+      <li><b>Round 2: a shaped trunk.</b> Hips, a narrower waist and a chest, instead of one thick tube. Thighs taper to the knee, shins have a calf, feet have a heel, hands end in a fist.</li>
+      <li><b>Round 2: runner arms and foot strike.</b> The foot lands about 34 cm ahead on a soft knee and leaves the ground without locking. Longer upper arms on a clean pendulum from the shoulder, opposite the legs: the hand travels from the hip pocket back to chest height in front, and the elbow closes a beat after the arm comes forward.</li>
+      <li><b>Round 2: runner head.</b> Carried slightly ahead of the trunk and steadier than the hips.</li>
+    </ul>
+  </section>
+
+  <details class="review-wrap">
+  <summary>Round 1 review: what was wrong with the current animation</summary>
+  <div class="review">
+    <section>
+      <h2>Rehab demos</h2>
+      <p class="src"><code>recovery/exercise-demos.mjs</code>, ported 1:1 in <code>ExerciseDemos.swift</code></p>
+      <ol>
+        <li><b>Even timing</b><span>Every move uses the same symmetric cosine ease, so lifting, lowering and settling all have the same rhythm. A 2 s lift and a 3 s eccentric lower should feel different.</span></li>
+        <li><b>Straight lines</b><span>Poses blend hand and foot <em>positions</em> in straight lines and IK fills in the joints. In the straight leg raise that chord is shorter than the leg, so the knee bends about 37° mid-lift and stays 17° bent at the top.</span></li>
+        <li><b>No overlap</b><span>Arms, torso, head and feet start and stop on the same frame. Nothing leads and nothing trails, so the body moves like one rigid puppet.</span></li>
+        <li><b>Dead holds</b><span>A hold repeats the same pose, so the figure freezes. A moving hold (breathing, slight strain drift) keeps it alive.</span></li>
+        <li><b>No anticipation</b><span>No brace before the move (quad set, toes up, inhale) and no settle after it lands.</span></li>
+        <li><b>Twinning</b><span>Left and right limbs move identically, 2 px apart, which reads as mechanical.</span></li>
+        <li><b>Squat path</b><span>The hips slide on one straight diagonal and the head nods with the torso. A real squat sits back first, then down, with a level gaze.</span></li>
+      </ol>
+    </section>
+    <section>
+      <h2>Cadence runner</h2>
+      <p class="src"><code>running/runner-gait.mjs</code> + <code>RunnerFigure.vue</code></p>
+      <ol>
+        <li><b>Bolted-on torso</b><span>Fixed 7° lean. Shoulders and head ride exactly on the hips, with no lag and no counter-rotation.</span></li>
+        <li><b>Rigid pelvis</b><span>Both legs hang from one point: no pelvic rotation and no drop on the swing side.</span></li>
+        <li><b>Arms on rails</b><span>Each arm is a fixed linear copy of the opposite thigh on the same frame, elbow locked near 90°. No lag, no forearm follow-through.</span></li>
+        <li><b>Nodding head</b><span>The head bobs 100% with the hips. Runners hold the head steadier than the pelvis.</span></li>
+        <li><b>Flat approach</b><span>Only a 6° toe-up blip mid-swing. There's no clear dorsiflexion before the foot lands.</span></li>
+        <li><b>Late-swing skim</b><span>The ankle is clamped to ground height in late swing, so the foot can skim the floor and then snap to the touchdown pose.</span></li>
+        <li><b>Slide risk</b><span><code>stanceLen</code> is capped at 50 px. Above about 0.86 m of ground covered per contact (e.g. 3.6 m/s with 240 ms contact), the planted foot moves slower than the ground and appears to slide.</span></li>
+      </ol>
+      <p class="ok">The stance and swing leg mechanics are already solid. The fixes are mostly above the hips.</p>
+    </section>
+  </div>
+  </details>
+
+  <div class="controls" role="group" aria-label="Playback">
+    <button class="btn play" id="play" type="button">Pause</button>
+    <div class="seg" role="group" aria-label="Playback speed">
+      <button type="button" data-speed="1" class="on">1×</button>
+      <button type="button" data-speed="0.5">0.5×</button>
+      <button type="button" data-speed="0.25">0.25×</button>
+    </div>
+    <div class="seg" role="group" aria-label="Step frames">
+      <button type="button" id="back" aria-label="Previous frame">◀ Frame</button>
+      <button type="button" id="fwd" aria-label="Next frame">Frame ▶</button>
+    </div>
+    <span class="timecode" id="tc">Frame 0 · 0.00 s</span>
+    <label class="toggle"><input type="checkbox" id="arcs"> Arcs</label>
+    <div class="cad">
+      <label for="cadence">Cadence</label>
+      <input type="range" id="cadence" min="150" max="185" step="1" value="170">
+      <div class="seg" role="group" aria-label="Cadence presets">
+        <button type="button" data-cad="150">150</button>
+        <button type="button" data-cad="170" class="on">170</button>
+        <button type="button" data-cad="185">185</button>
+      </div>
+      <output id="cadOut" for="cadence">170 <small>spm</small></output>
+    </div>
+  </div>
+
+  <div class="matrix" id="matrix">
+    <div class="colhead"><h3>Current</h3><p>What ships today on the web. iOS uses the same poses and timing.</p></div>
+    <div class="colhead"><h3><span>C</span>Coaching, round 5</h3><p>New motion and proportions. Working muscle in colour, tempo countdown, target ghost, path arrows.</p></div>
+  </div>
+
+  <section class="keys-wrap">
+    <div class="rowhead"><h4>Runner key poses</h4><p>The four poses animators build a run from, at the slider's cadence. Each should read clearly as a still.</p></div>
+    <div class="keys" id="keys"></div>
+  </section>
+
+  <p class="next"><b>Next:</b> tell me what still looks off, or say go and I'll write the short plan covering the files, keeping web and iOS in sync, Reduce Motion and tests. No project code has changed yet.</p>
+</div>
+
+<script>
+// ───────── shared math ─────────
+const TAU = Math.PI * 2, D = Math.PI / 180
+const clamp = (lo, hi, v) => Math.max(lo, Math.min(hi, v))
+const clamp01 = t => clamp(0, 1, t)
+const lerp = (a, b, t) => a + (b - a) * t
+const lerpPt = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t)]
+const wrap = t => ((t % 1) + 1) % 1
+const dir = (deg, len) => [Math.cos(deg * D) * len, Math.sin(deg * D) * len]
+const add = (p, o) => [p[0] + o[0], p[1] + o[1]]
+
+// ───────── CURRENT rehab: ported from recovery/exercise-demos.mjs ─────────
+const FLOOR = 120
+const LEN = { torso: 38, thigh: 27, shin: 26, foot: 9, upperArm: 19, forearm: 18, neck: 12 }
+const HEAD_RADIUS = 8
+// The new figure uses real proportions (Drillis & Contini): trunk ≈ 0.29 and head ≈ 0.13 of height, leg ≈ 0.49.
+const NLEN = { torso: 32, thigh: 27, shin: 26, foot: 9, upperArm: 19, forearm: 17, neck: 11.5 }
+const N_HEAD = 6.6
+const lerpAngle = (a, b, t) => a + ((((b - a) % 360) + 540) % 360 - 180) * t
+function cSolveLimb(root, target, upper, lower, bend) {
+  const dx = target[0] - root[0], dy = target[1] - root[1]
+  const dist = Math.max(0.01, Math.min(Math.hypot(dx, dy), upper + lower - 0.01))
+  const cos = (upper * upper + dist * dist - lower * lower) / (2 * upper * dist)
+  const angle = Math.atan2(dy, dx) + bend * Math.acos(clamp(-1, 1, cos))
+  const joint = [root[0] + Math.cos(angle) * upper, root[1] + Math.sin(angle) * upper]
+  const endAngle = Math.atan2(target[1] - joint[1], target[0] - joint[0])
+  return [joint, [joint[0] + Math.cos(endAngle) * lower, joint[1] + Math.sin(endAngle) * lower]]
+}
+const torsoAngle = pose => pose.shoulder ? Math.atan2(pose.shoulder[1] - pose.hip[1], pose.shoulder[0] - pose.hip[0]) * 180 / Math.PI : pose.torso ?? -90
+function mixLimb(a = {}, b = {}, t) {
+  const limb = { bend: a.bend ?? b.bend }
+  for (const key of ['foot', 'hand', 'handRel', 'knee', 'elbow']) if (a[key] || b[key]) limb[key] = lerpPt(a[key] || b[key], b[key] || a[key], t)
+  if (a.toe !== undefined || b.toe !== undefined) limb.toe = lerpAngle(a.toe ?? b.toe, b.toe ?? a.toe, t)
+  return limb
+}
+function mixPose(a, b, t) {
+  return { hip: lerpPt(a.hip, b.hip, t), torso: lerpAngle(torsoAngle(a), torsoAngle(b), t),
+    head: lerpAngle(a.head ?? torsoAngle(a), b.head ?? torsoAngle(b), t),
+    near: mixLimb(a.near, b.near, t), far: mixLimb(a.far, b.far, t), nearArm: mixLimb(a.nearArm, b.nearArm, t), farArm: mixLimb(a.farArm, b.farArm, t) }
+}
+function cSkeleton(pose) {
+  const torso = torsoAngle(pose), hip = pose.hip
+  const shoulder = add(hip, dir(torso, LEN.torso))
+  const head = add(shoulder, dir(pose.head ?? torso, LEN.neck))
+  const leg = (side, spec = {}) => {
+    const foot = spec.foot || add(hip, [0, LEN.thigh + LEN.shin])
+    const [knee, ankle] = spec.knee ? [spec.knee, foot] : cSolveLimb(hip, foot, LEN.thigh, LEN.shin, spec.bend ?? -1)
+    const toe = add(ankle, dir(spec.toe ?? 10, LEN.foot))
+    return [[`${side}Thigh`, hip, knee], [`${side}Shin`, knee, ankle], [`${side}Foot`, ankle, toe]]
+  }
+  const arm = (side, spec = {}) => {
+    const hand = spec.hand || add(shoulder, spec.handRel || [3, LEN.upperArm + LEN.forearm])
+    const [elbow, wrist] = spec.elbow ? [spec.elbow, hand] : cSolveLimb(shoulder, hand, LEN.upperArm, LEN.forearm, spec.bend ?? 1)
+    return [[`${side}UpperArm`, shoulder, elbow], [`${side}Forearm`, elbow, wrist]]
+  }
+  return toBody([...arm('far', pose.farArm).map(s => [...s, 'far']), ...leg('far', pose.far).map(s => [...s, 'far']),
+    ['torso', hip, shoulder, 'body'], ...leg('near', pose.near).map(s => [...s, 'near']), ...arm('near', pose.nearArm).map(s => [...s, 'near'])], head, hip, shoulder)
+}
+function toBody(list, head, hip, shoulder) {
+  const segments = list.map(([id, from, to, layer]) => ({ id, from, to, layer }))
+  const end = id => segments.find(s => s.id === id).to
+  const joints = { hip, shoulder, head, nearKnee: end('nearThigh'), nearAnkle: end('nearShin'), farKnee: end('farThigh'), farAnkle: end('farShin'),
+    nearHand: end('nearForearm'), farHand: end('farForearm'), nearToe: end('nearFoot') }
+  return { segments, head, hip, shoulder, joints }
+}
+const cEase = t => 0.5 - Math.cos(Math.PI * t) / 2
+function cFrameAt(demo, seconds) {
+  const total = demo.steps.reduce((s, st) => s + st[1], 0)
+  let time = ((seconds % total) + total) % total
+  let from = demo.steps[demo.steps.length - 1][0]
+  for (const [index, [to, duration]] of demo.steps.entries()) {
+    if (time < duration || index === demo.steps.length - 1) {
+      const t = cEase(Math.min(1, time / duration))
+      return { pose: mixPose(demo.poses[from], demo.poses[to], t), effort: lerp(demo.effort?.[from] ?? 0, demo.effort?.[to] ?? 0, t) }
+    }
+    time -= duration; from = to
+  }
+}
+const SUPINE = { hip: [112, 116], torso: 180, head: 200, nearArm: { hand: [113, 117] }, farArm: { hand: [112, 117] } }
+const STAND = hipX => ({ hip: [hipX, 61], torso: -90, near: { foot: [hipX, 114] }, far: { foot: [hipX - 2, 114] } })
+const CUR = {
+  slr: { focus: ['nearThigh'], effort: { up: 1 },
+    poses: { down: { ...SUPINE, near: { foot: [165, 116], toe: -88 }, far: { foot: [150, 116], toe: 0 } },
+      up: { ...SUPINE, near: { foot: [155, 86], toe: -122 }, far: { foot: [150, 116], toe: 0 } } },
+    steps: [['up', 1.5], ['up', 1], ['down', 2], ['down', 0.8]] },
+  squat: { focus: ['nearThigh', 'hip'], effort: { low: 1 },
+    poses: { top: { ...STAND(108), near: { foot: [110, 114] }, far: { foot: [108, 114] }, nearArm: { handRel: [22, 18] }, farArm: { handRel: [20, 18] } },
+      low: { hip: [96, 76], torso: -65, near: { foot: [110, 114] }, far: { foot: [108, 114] }, nearArm: { handRel: [26, 6] }, farArm: { handRel: [24, 6] } } },
+    steps: [['low', 1.5], ['low', 0.6], ['top', 1.2], ['top', 0.6]] },
+  plank: { focus: ['hip'], effort: { up: 1 }, solid: true,
+    poses: { down: { hip: [106, 114], shoulder: [70, 98], nearArm: { elbow: [70, 116], hand: [80, 117] }, farArm: { handRel: [31, 4], bend: -1 },
+        near: { foot: [160, 114], toe: -70 }, far: { foot: [158, 117], toe: -70 } },
+      up: { hip: [107, 105], shoulder: [70, 98], nearArm: { elbow: [70, 116], hand: [80, 117] }, farArm: { handRel: [31, 4], bend: -1 },
+        near: { foot: [160, 114], toe: -70 }, far: { foot: [158, 117], toe: -70 } } },
+    steps: [['up', 1], ['up', 3], ['down', 1], ['down', 1]] },
+}
+for (const d of Object.values(CUR)) d.period = d.steps.reduce((s, st) => s + st[1], 0)
+const curRig = key => ({ period: CUR[key].period, focus: CUR[key].focus, solid: CUR[key].solid, at: t => { const f = cFrameAt(CUR[key], t); return { body: cSkeleton(f.pose), effort: f.effort } } })
+
+// ───────── NEW rehab rig: joint-angle tracks, per-channel curves and delays ─────────
+// Minimum-jerk profile: the bell-shaped speed curve real reaching and lifting movements follow.
+// A constant-speed middle (what a trapezoid gives) reads as robotic, so every move uses this,
+// warped earlier or later for channels that lead or trail.
+const mj = t => { t = clamp01(t); return t * t * t * (10 - 15 * t + 6 * t * t) }
+const warp = k => t => mj(t + k * t * (1 - t))
+const EASE = {
+  io: mj,
+  lift: warp(.15),        // off the floor a touch quicker, long cushion into the top
+  ecc: warp(-.1),         // eases out of the top, steady and slow down
+  lead: warp(.5),         // this channel moves early
+  lag: warp(-.5),         // this channel moves late
+  settle: t => { const s = 1.3; t -= 1; return 1 + (s + 1) * t * t * t + s * t * t }, // small overshoot, then rest
+  lin: t => t,
+}
+function track(keys, t, period) {
+  t = ((t % period) + period) % period
+  for (let i = 1; i < keys.length; i++) {
+    const [t1, v1, e] = keys[i]
+    if (t <= t1) { const [t0, v0] = keys[i - 1]; return lerp(v0, v1, (EASE[e] || EASE.io)(t1 > t0 ? (t - t0) / (t1 - t0) : 1)) }
+  }
+  return keys[keys.length - 1][1]
+}
+function ik(root, target, a, b, prefer) {
+  let dx = target[0] - root[0], dy = target[1] - root[1], d = Math.hypot(dx, dy)
+  const reach = a + b - 0.01
+  if (d > reach) { dx *= reach / d; dy *= reach / d; d = reach }
+  d = Math.max(d, Math.abs(a - b) + 0.01)
+  const base = Math.atan2(dy, dx), bend = Math.acos(clamp(-1, 1, (a * a + d * d - b * b) / (2 * a * d)))
+  const j1 = [root[0] + Math.cos(base + bend) * a, root[1] + Math.sin(base + bend) * a]
+  const j2 = [root[0] + Math.cos(base - bend) * a, root[1] + Math.sin(base - bend) * a]
+  return [prefer(j1, j2) ? j1 : j2, [root[0] + dx, root[1] + dy]]
+}
+const UP = (p, q) => p[1] < q[1], FWD = (p, q) => p[0] > q[0]
+function newBody(hip, shoulder, head, near, far, nearArm, farArm) {
+  return toBody([
+    ['farUpperArm', shoulder, farArm.elbow, 'far'], ['farForearm', farArm.elbow, farArm.hand, 'far'],
+    ['farThigh', hip, far.knee, 'far'], ['farShin', far.knee, far.ankle, 'far'], ['farFoot', far.ankle, far.toe, 'far'],
+    ['torso', hip, shoulder, 'body'],
+    ['nearThigh', hip, near.knee, 'near'], ['nearShin', near.knee, near.ankle, 'near'], ['nearFoot', near.ankle, near.toe, 'near'],
+    ['nearUpperArm', shoulder, nearArm.elbow, 'near'], ['nearForearm', nearArm.elbow, nearArm.hand, 'near'],
+  ], head, hip, shoulder)
+}
+const NEW = {
+  slr: { period: 7.4, focus: ['nearThigh'], peakT: 3.1, guide: 'nearAnkle',
+    phases: [['Brace', 0, .6], ['Lift', .6, 2.6], ['Hold', 2.6, 3.6], ['Lower', 3.6, 6.6], ['Rest', 6.6, 7.4]],
+    at(t) {
+      const P = this.period, tr = (k, lag = 0) => track(k, t - lag, P)
+      const breath = Math.sin(TAU * t / 3.7)
+      const hip = [112, 116]
+      // The leg rises and lowers about the hip, so the foot draws an arc and the knee stays locked.
+      const thigh = tr([[0, 0], [.6, 0], [2.6, -38, 'lift'], [3.6, -39.5, 'io'], [6.6, 0, 'ecc'], [7.4, 0, 'lin']])
+      // Quad set before the lift (knee locks), relaxes only after the heel is down.
+      const flex = tr([[0, 5], [.45, 0, 'io'], [6.75, 0, 'lin'], [7.2, 5, 'io'], [7.4, 5, 'lin']])
+      // Toes pull up first (anticipation) and flop out after landing (follow-through).
+      const footRel = tr([[0, -60], [.5, -94, 'io'], [6.65, -94, 'lin'], [7.25, -60, 'settle'], [7.4, -60, 'lin']])
+      const thighA = thigh - flex * .5, shinA = thighA + flex
+      const knee = add(hip, dir(thighA, NLEN.thigh)), ankle = add(knee, dir(shinA, NLEN.shin))
+      const near = { knee, ankle, toe: add(ankle, dir(shinA + footRel, NLEN.foot)) }
+      const farAnkle = [146, 115.5]
+      const far = { knee: ik(hip, farAnkle, NLEN.thigh, NLEN.shin, UP)[0], ankle: farAnkle, toe: add(farAnkle, dir(0, NLEN.foot)) }
+      const effort = clamp01(-thigh / 38) * .85 + (1 - flex / 5) * .15
+      const effortLag = clamp01(-tr([[0, 0], [.6, 0], [2.6, -38, 'lift'], [3.6, -39.5, 'io'], [6.6, 0, 'ecc'], [7.4, 0, 'lin']], .25) / 38)
+      const shoulder = add(hip, dir(180 + breath * .8, NLEN.torso))
+      const head = add(shoulder, dir(198 + 5 * effortLag, NLEN.neck))
+      // Hands press into the floor a moment after the lift starts.
+      const arm = (bias, lag) => {
+        const press = clamp01(-tr([[0, 0], [.6, 0], [2.6, -38, 'lift'], [3.6, -39.5, 'io'], [6.6, 0, 'ecc'], [7.4, 0, 'lin']], lag) / 38)
+        const up = 1.2 + bias + press * 1.6, elbow = add(shoulder, dir(up, NLEN.upperArm))
+        return { elbow, hand: add(elbow, dir(up - 5 - press * 2, NLEN.forearm)) }
+      }
+      const body = newBody(hip, shoulder, head, near, far, arm(0, .2), arm(-.8, .28))
+      body.bend = -.4 * (1 + breath) // the chest rises on each breath
+      return { body, effort }
+    } },
+  squat: { period: 7.0, focus: ['nearThigh', 'hip'], peakT: 3.8, guide: 'hip',
+    phases: [['Brace', 0, .3], ['Lower', .3, 3.3], ['Pause', 3.3, 4.3], ['Drive up', 4.3, 6.3], ['Stand tall', 6.3, 7]],
+    at(t) {
+      const P = this.period, tr = (k, lag = 0) => track(k, t - lag, P)
+      // Hips go back before they go down, and up before they come forward: a curved path.
+      const hold = clamp01((tr([[0, 61], [.3, 60.3, 'io'], [3.3, 77, 'lag'], [4.3, 77.4, 'io'], [6.3, 61, 'lead'], [7, 61, 'io']]) - 61) / 16) ** 4
+      const sway = .45 * Math.sin(TAU * t / 1.45) * hold // balance corrections at the bottom
+      const hip = [
+        sway + tr([[0, 107], [.3, 107.3, 'io'], [3.3, 94, 'lead'], [4.3, 93.6, 'io'], [6.3, 107, 'lag'], [7, 107, 'io']]),
+        tr([[0, 61], [.3, 60.3, 'io'], [3.3, 77, 'lag'], [4.3, 77.4, 'io'], [6.3, 61, 'lead'], [7, 61, 'io']]),
+      ]
+      const torso = tr([[0, -88], [.3, -90, 'io'], [3.3, -60, 'lead'], [4.3, -61, 'io'], [6.3, -91, 'lag'], [7, -88, 'io']])
+      const shoulder = add(hip, dir(torso, NLEN.torso))
+      // The neck counters the torso so the gaze stays level.
+      const head = add(shoulder, dir(-82 + (torso + 88) * .4, NLEN.neck))
+      const leg = ankle => ({ knee: ik(hip, ankle, NLEN.thigh, NLEN.shin, FWD)[0], ankle, toe: add(ankle, dir(8, NLEN.foot)) })
+      // Arms reach forward as counterbalance, trailing the hips; forearms trail the upper arms.
+      const arm = (bias, lag) => {
+        const up = tr([[0, 84], [.3, 86, 'io'], [3.3, 6, 'io'], [4.3, 4, 'io'], [6.3, 88, 'settle'], [7, 84, 'io']], lag) + bias + 1.6 * Math.sin(TAU * (t + bias) / 2.3)
+        const flex = tr([[0, 14], [3.3, 4, 'io'], [4.3, 4, 'io'], [6.3, 20, 'settle'], [7, 14, 'io']], lag + .12)
+        const elbow = add(shoulder, dir(up, NLEN.upperArm))
+        return { elbow, hand: add(elbow, dir(up - flex, NLEN.forearm)) }
+      }
+      const body = newBody(hip, shoulder, head, leg([109, 114]), leg([106.5, 114]), arm(0, .18), arm(-3, .25))
+      body.bend = .35 * Math.sin(TAU * t / 3.7) + .6 * clamp01((-62 - torso) / -26) // breath, and a little give in the spine at depth
+      return { body, effort: clamp01((hip[1] - 61) / 16) }
+    } },
+}
+
+NEW.plank = { period: 7.2, focus: ['torso', 'hip'], peakT: 3.2, guide: 'hip', solid: true,
+  phases: [['Brace', 0, .6], ['Lift', .6, 1.8], ['Hold', 1.8, 4.8], ['Lower', 4.8, 6.3], ['Rest', 6.3, 7.2]],
+  at(t) {
+    const P = this.period, tr = (k, lag = 0) => track(k, t - lag, P)
+    // The body pivots about the feet and the elbow: the hips swing up on an arc around the ankles
+    // with straight legs, and the shoulder finds its place over the planted elbow (no sliding).
+    const ankle = [153, 115.1], elbow = [70, 117]
+    const liftKeys = [[0, 181.8], [.6, 181.8], [1.8, 192.3, 'lift'], [3.6, 191, 'io'], [4.8, 192.2, 'io'], [6.3, 181.8, 'ecc'], [7.2, 181.8, 'lin']]
+    const legA = tr(liftKeys) + .45 * Math.sin(TAU * t / 1.6) * clamp01((tr(liftKeys) - 181.8) / 10.5) ** 3 // the hold wobbles a little
+    const hip = add(ankle, dir(legA, 52.8))
+    const shoulder = ik(elbow, hip, NLEN.upperArm, NLEN.torso, UP)[0]
+    // Head stays in line with the trunk, a moment behind it, lifting slightly under effort.
+    const hipLag = add(ankle, dir(tr(liftKeys, .15), 52.8)), shLag = ik(elbow, hipLag, NLEN.upperArm, NLEN.torso, UP)[0]
+    const effort = clamp01((legA - 181.8) / 10.5)
+    const trunk = Math.atan2(shLag[1] - hipLag[1], shLag[0] - hipLag[0]) / D
+    const head = add(shoulder, dir(trunk + 6 + 4 * effort + .6 * Math.sin(TAU * t / 3.7), NLEN.neck))
+    const leg = (a, prefer) => ({ knee: ik(hip, a, NLEN.thigh, NLEN.shin, prefer)[0], ankle: a, toe: add(a, dir(-62, NLEN.foot)) })
+    // Top hand rests on the hip and follows it a beat late.
+    const handOnHip = add(add(ankle, dir(tr(liftKeys, .12), 52.8)), [-3, -5])
+    const top = { elbow: ik(shoulder, handOnHip, NLEN.upperArm, NLEN.forearm, UP)[0], hand: handOnHip }
+    const support = { elbow, hand: [elbow[0] + NLEN.forearm, 117] }
+    const body = newBody(hip, shoulder, head, leg(ankle, UP), leg([151.5, 116.6], UP), top, support)
+    body.glute = false // facing the viewer: no glute profile
+    return { body, effort }
+  } }
+
+// ───────── CURRENT runner: ported from running/runner-gait.mjs ─────────
+const PX_PER_M = 58, GROUND_Y = 172, HIP_X = 160
+const RL = { thigh: 27, shin: 27, torso: 36, neck: 9, upperArm: 17, forearm: 16 }
+const R_HEAD = 8, BALL_AHEAD = 8, ANKLE_UP = 5, HEEL_BACK = 4, TOE_AHEAD = 4, LEAN_DEG = 7, MID_STANCE_KNEE = 46, HEEL_RISE_DEG = 66, CONTACT_AHEAD = .28
+const ease = t => t * t * (3 - 2 * t)
+function gaitFrom({ cadence_spm: cadence, stance_time_ms: stanceMs, vertical_oscillation_cm: voCm, step_length_m: stepM }) {
+  const stepTime = 60 / cadence, strideTime = stepTime * 2, contact = Math.min(stanceMs / 1000, stepTime * .95), speed = stepM * (cadence / 60)
+  return { cadence, stepTime, strideTime, speed, duty: contact / strideTime, flightMs: Math.max(0, (stepTime - contact) * 1000),
+    stanceLen: Math.min(speed * contact * PX_PER_M, 50), voPx: voCm / 100 * PX_PER_M, stepM, stanceMs, voCm }
+}
+const at = (o, a, l) => [o[0] + Math.cos(a * D) * l, o[1] + Math.sin(a * D) * l]
+function solveLimb(root, end, a, b, forward = 1) {
+  let dx = end[0] - root[0], dy = end[1] - root[1], d = Math.hypot(dx, dy)
+  const reach = a + b - .01
+  if (d > reach) { dx *= reach / d; dy *= reach / d; d = reach }
+  d = Math.max(d, Math.abs(a - b) + .01)
+  const angle = Math.atan2(dy, dx) - forward * Math.acos((a * a + d * d - b * b) / (2 * a * d))
+  return [[root[0] + Math.cos(angle) * a, root[1] + Math.sin(angle) * a], [root[0] + dx, root[1] + dy]]
+}
+const hipLift = (g, phase) => { const s = wrap(phase * 2); return g.voPx * ((1 - Math.cos(TAU * (s - g.duty))) / 2) ** 1.5 }
+const lowestHipY = () => GROUND_Y - ANKLE_UP - 2 * RL.thigh * Math.cos((MID_STANCE_KNEE / 2) * D)
+const hipYAt = (g, p) => lowestHipY() - hipLift(g, p)
+function footFrom(ankle, tilt) {
+  const d = [Math.cos(tilt * D), Math.sin(tilt * D)], n = [Math.sin(tilt * D), -Math.cos(tilt * D)]
+  const sole = [ankle[0] - n[0] * ANKLE_UP, ankle[1] - n[1] * ANKLE_UP]
+  return { heel: [sole[0] - d[0] * HEEL_BACK, sole[1] - d[1] * HEEL_BACK], ball: [sole[0] + d[0] * BALL_AHEAD, sole[1] + d[1] * BALL_AHEAD],
+    toe: [sole[0] + d[0] * (BALL_AHEAD + TOE_AHEAD), sole[1] + d[1] * (BALL_AHEAD + TOE_AHEAD)] }
+}
+function ankleFromBall(ball, tilt) {
+  const d = [Math.cos(tilt * D), Math.sin(tilt * D)], n = [Math.sin(tilt * D), -Math.cos(tilt * D)]
+  return [ball[0] - d[0] * BALL_AHEAD + n[0] * ANKLE_UP, ball[1] - d[1] * BALL_AHEAD + n[1] * ANKLE_UP]
+}
+function jointAngles(hip, knee, ankle) {
+  const thigh = Math.atan2(knee[0] - hip[0], knee[1] - hip[1]) / D, shin = Math.atan2(ankle[0] - knee[0], ankle[1] - knee[1]) / D
+  return { hip: thigh, knee: thigh - shin }
+}
+function stanceLeg(g, lp, hip) {
+  const u = lp / g.duty
+  const ahead = g.ahead ?? CONTACT_AHEAD
+  const ballX = HIP_X + lerp(g.stanceLen * ahead, -g.stanceLen * (1 - ahead), u)
+  const tilt = (g.heelRise ?? HEEL_RISE_DEG) * ease(clamp01((u - .4) / .6)) ** .85
+  const [knee, ankle] = solveLimb(hip, ankleFromBall([ballX, GROUND_Y], tilt), RL.thigh, RL.shin, 1)
+  return { knee, ankle, tilt, ground: true }
+}
+function spline(keys, u) {
+  let i = keys.findIndex((k, idx) => idx < keys.length - 1 && u <= keys[idx + 1][0]); if (i < 0) i = keys.length - 2
+  const [u0, v0] = keys[i], [u1, v1] = keys[i + 1], prev = keys[i - 1]?.[1] ?? v0, next = keys[i + 2]?.[1] ?? v1
+  const t = (u - u0) / (u1 - u0 || 1), m0 = (v1 - prev) / 2, m1 = (next - v0) / 2, t2 = t * t, t3 = t2 * t
+  return (2 * t3 - 3 * t2 + 1) * v0 + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * v1 + (t3 - t2) * m1
+}
+// Swing joint curves. hipFor(legPhase) gives this leg's hip, so the new rig can move the hips.
+function swingCore(g, lp, hip, hipFor) {
+  const u = (lp - g.duty) / (1 - g.duty)
+  const hOff = hipFor(g.duty - 1e-6), hOn = hipFor(0)
+  const off = stanceLeg(g, g.duty - 1e-6, hOff), on = stanceLeg(g, 0, hOn)
+  const start = jointAngles(hOff, off.knee, off.ankle), end = jointAngles(hOn, on.knee, on.ankle)
+  const fold = Math.min(115, 64 + g.speed * 10)
+  const hipAngle = spline([[0, start.hip], [.22, start.hip * .1], [.66, end.hip + 12], [1, end.hip]], u)
+  const kneeAngle = spline([[0, start.knee], [.28, fold], [.62, fold * .78], [.86, end.knee + 22], [1, end.knee]], u)
+  const knee = [hip[0] + Math.sin(hipAngle * D) * RL.thigh, hip[1] + Math.cos(hipAngle * D) * RL.thigh]
+  const shin = hipAngle - kneeAngle
+  const ankle = [knee[0] + Math.sin(shin * D) * RL.shin, knee[1] + Math.cos(shin * D) * RL.shin]
+  return { u, knee, ankle, on }
+}
+function curFrame(g, phase) {
+  const p = wrap(phase), hip = [HIP_X, hipYAt(g, p)]
+  const hipFor = lp => [HIP_X, hipYAt(g, lp)]
+  const leg = lp => {
+    lp = wrap(lp)
+    let l
+    if (lp < g.duty) l = stanceLeg(g, lp, hip)
+    else {
+      const s = swingCore(g, lp, hip, hipFor), lowest = GROUND_Y - ANKLE_UP - 1
+      let ankle = s.ankle
+      if (ankle[1] > lowest && s.u < .97) ankle = [ankle[0], lowest]
+      const tilt = lerp(HEEL_RISE_DEG, 0, ease(clamp01(s.u / .55))) - 6 * Math.sin(Math.PI * clamp01((s.u - .55) / .45))
+      l = { knee: s.knee, ankle, tilt, ground: false }
+    }
+    return { hip, ...l, ...footFrom(l.ankle, l.tilt), hipAngle: jointAngles(hip, l.knee, l.ankle).hip }
+  }
+  const shoulder = at(hip, -90 + LEAN_DEG, RL.torso), head = at(shoulder, -90 + LEAN_DEG + 3, RL.neck + R_HEAD)
+  const near = leg(p), far = leg(p + .5)
+  const arm = opp => {
+    const upper = -.75 * opp - 4
+    const elbow = [shoulder[0] + Math.sin(upper * D) * RL.upperArm, shoulder[1] + Math.cos(upper * D) * RL.upperArm]
+    const fore = upper + 82 + .25 * opp
+    return { shoulder, elbow, hand: [elbow[0] + Math.sin(fore * D) * RL.forearm, elbow[1] + Math.cos(fore * D) * RL.forearm] }
+  }
+  return { pelvis: hip, chest: shoulder, head, legs: { near, far }, arms: { near: arm(far.hipAngle), far: arm(near.hipAngle) } }
+}
+
+// Hermite spline through [u, value] keys with tangents scaled to the real key spacing, so uneven
+// keys don't overshoot. Flat at the start, carrying its slope into the end.
+function splineT(keys, u) {
+  const n = keys.length
+  const slope = i => i === 0 ? 0 : i === n - 1 ? (keys[i][1] - keys[i - 1][1]) / (keys[i][0] - keys[i - 1][0]) : (keys[i + 1][1] - keys[i - 1][1]) / (keys[i + 1][0] - keys[i - 1][0])
+  let i = 0
+  while (i < n - 2 && u > keys[i + 1][0]) i++
+  const [t0, v0] = keys[i], [t1, v1] = keys[i + 1], h = t1 - t0 || 1, t = clamp01((u - t0) / h), t2 = t * t, t3 = t2 * t
+  return (2 * t3 - 3 * t2 + 1) * v0 + (t3 - 2 * t2 + t) * h * slope(i) + (-2 * t3 + 3 * t2) * v1 + (t3 - t2) * h * slope(i + 1)
+}
+// Swing from running joint-angle curves: the knee folds as the thigh swings forward, so the heel
+// tucks up under the seat rather than kicking out behind; the thigh peaks, then pulls back to land.
+function swingNew(g, lp, hip, hipFor) {
+  const u = (lp - g.duty) / (1 - g.duty)
+  const hOff = hipFor(g.duty - 1e-6), hOn = hipFor(0)
+  const off = stanceLeg(g, g.duty - 1e-6, hOff), on = stanceLeg(g, 0, hOn)
+  const start = jointAngles(hOff, off.knee, off.ankle), end = jointAngles(hOn, on.knee, on.ankle)
+  const fold = Math.min(112, 72 + g.speed * 9)
+  const hipAngle = splineT([[0, start.hip], [.16, start.hip * .45], [.36, 14], [.6, 33], [.8, end.hip + 7], [1, end.hip]], u)
+  const kneeAngle = splineT([[0, start.knee], [.18, 68], [.4, fold], [.6, fold * .78], [.8, end.knee + 8], [1, end.knee]], u)
+  const knee = [hip[0] + Math.sin(hipAngle * D) * RL.thigh, hip[1] + Math.cos(hipAngle * D) * RL.thigh]
+  const shin = hipAngle - kneeAngle
+  return { u, knee, ankle: [knee[0] + Math.sin(shin * D) * RL.shin, knee[1] + Math.cos(shin * D) * RL.shin], on }
+}
+// Foot angle that is square to the shin at the given leg phase (used to start the swing foot).
+function neutralAt(g, lp, hipFor) {
+  const l = stanceLeg(g, lp - 1e-6, hipFor(lp - 1e-6)), sh = [l.ankle[0] - l.knee[0], l.ankle[1] - l.knee[1]], shl = Math.hypot(...sh)
+  return Math.atan2(-sh[0] / shl, sh[1] / shl) / D
+}
+
+// ───────── NEW runner: pelvis, counter-rotation, overlap, steadier head, real foot approach ─────────
+// New runner hips: a slightly deeper stance (knee 52° at mid-stance) and a bounce that stays low through
+// contact, so the knee lands and leaves the ground softly bent instead of locked.
+const N_LOW = GROUND_Y - ANKLE_UP - 2 * RL.thigh * Math.cos(26 * D)
+const hipLiftN = (g, phase) => { const s = wrap(phase * 2); return g.voPx * ((1 - Math.cos(TAU * (s - g.duty))) / 2) ** 2.2 }
+function newFrame(g, phase) {
+  const p = wrap(phase), ROT = 3, DROP = 1.3
+  const hipFor = lp => {
+    lp = wrap(lp)
+    const other = wrap(lp - .5)
+    const drop = other < g.duty ? DROP * Math.sin(Math.PI * other / g.duty) : 0 // swing side drops while the other foot carries
+    return [HIP_X + ROT * Math.cos(TAU * lp), N_LOW - hipLiftN(g, lp) + drop]                // hip forward with its own leg
+  }
+  const stride = g.speed * g.strideTime * PX_PER_M, cover = g.speed * g.duty * g.strideTime * PX_PER_M
+  const len = cover // uncapped, so the planted foot always moves with the ground
+  // Land further ahead (thigh about 25° forward) and push off with less heel rise, so the knee stays soft at toe-off.
+  const gg = { ...g, stanceLen: len, ahead: .45, heelRise: 54 }
+  const leg = lp => {
+    lp = wrap(lp)
+    const hip = hipFor(lp)
+    let l
+    if (lp < gg.duty) l = stanceLeg(gg, lp, hip)
+    else {
+      const s = swingNew(gg, lp, hip, hipFor)
+      let ankle = s.ankle
+      const lowest = GROUND_Y - ANKLE_UP - .5
+      if (ankle[1] > lowest) ankle = [ankle[0], lowest]
+      // Late swing eases into the exact touchdown pose instead of snapping to it.
+      ankle = lerpPt(ankle, s.on.ankle, ease(clamp01((s.u - .86) / .14)))
+      const knee = solveLimb(hip, ankle, RL.thigh, RL.shin, 1)[0]
+      // The foot hinges against the shin, not the ground: pointed after push-off, neutral by
+      // mid-swing, toes up before landing, then level for a midfoot strike.
+      const sh = [ankle[0] - knee[0], ankle[1] - knee[1]], shl = Math.hypot(...sh)
+      const neutral = Math.atan2(-sh[0] / shl, sh[1] / shl) / D
+      const offN = neutralAt(gg, gg.duty, hipFor)
+      const plantar = splineT([[0, gg.heelRise - offN], [.15, 22], [.45, 6], [.8, -8], [1, -6]], s.u)
+      const tilt = lerp(neutral + plantar, 0, ease(clamp01((s.u - .86) / .14)))
+      l = { knee, ankle, tilt, ground: false }
+    }
+    // Toes bend at the ball, so a raised heel never pushes them through the floor.
+    const foot = footFrom(l.ankle, l.tilt)
+    if (foot.toe[1] > GROUND_Y) { const dy = GROUND_Y - foot.ball[1]; foot.toe = [foot.ball[0] + Math.sqrt(Math.max(0, TOE_AHEAD ** 2 - dy * dy)), GROUND_Y] }
+    return { hip, ...l, ...foot, hipAngle: jointAngles(hip, l.knee, l.ankle).hip }
+  }
+  const near = leg(p), far = leg(p + .5)
+  const pelvis = [HIP_X, (near.hip[1] + far.hip[1]) / 2]
+  // The chest follows the hips a moment late and leans a touch more at push-off.
+  const lagLift = hipLiftN(gg, p - .03)
+  const lean = 10 + 1.6 * Math.cos(TAU * (2 * p - .15)) // a relaxed forward lean, not upright
+  const chest = [HIP_X + Math.sin(lean * D) * NR.torso, N_LOW - lagLift - Math.cos(lean * D) * NR.torso]
+  // Head sits a little ahead of the trunk and bobs about 70 % of the hips.
+  const head = [chest[0] + Math.sin((lean + 8) * D) * NR.head, chest[1] - Math.cos((lean + 8) * D) * NR.head + .3 * (hipLiftN(gg, p - .05) - gg.voPx / 2)]
+  // Arms swing from the shoulder on a clean arc, opposite the legs: hand from hip pocket to chest.
+  // The elbow closes as the arm comes forward, a beat after the upper arm (follow-through).
+  const arm = (sh, ph) => {
+    // Relaxed carriage: the swing goes mostly backward and the hands stay low (hip to lower ribs).
+    const upper = -10 + 30 * Math.cos(TAU * (ph - .03)), flex = 80 + 13 * Math.cos(TAU * (ph - .09))
+    const elbow = [sh[0] + Math.sin(upper * D) * NR.upperArm, sh[1] + Math.cos(upper * D) * NR.upperArm]
+    const fore = upper + flex
+    return { shoulder: sh, elbow, hand: [elbow[0] + Math.sin(fore * D) * NR.forearm, elbow[1] + Math.cos(fore * D) * NR.forearm] }
+  }
+  // Shoulder joints sit just below the top of the trunk and counter-rotate against the pelvis.
+  const SH = 3.6, sc = [chest[0] - Math.sin(lean * D) * 3, chest[1] + Math.cos(lean * D) * 3]
+  const nearSh = [sc[0] - SH * Math.cos(TAU * p), sc[1]], farSh = [sc[0] + SH * Math.cos(TAU * p), sc[1]]
+  // The far arm comes forward as the near foot lands (p = 0), the near arm half a stride later.
+  // The spine gives a little on each landing and lengthens in flight.
+  const bend = .8 * Math.cos(TAU * (2 * p - .12))
+  return { pelvis, chest, head, bend, legs: { near, far }, arms: { near: arm(nearSh, p - .5), far: arm(farSh, p) }, gg, stride }
+}
+
+// New runner proportions, same 54-unit leg: trunk 0.29 H, upper arm 0.19 H, forearm to fist 0.17 H, head r 0.065 H.
+const NR = { torso: 31, upperArm: 20, forearm: 17, head: 12.2 }
+const PACE = 3.0 // m/s, about 5:33 /km
+const makeGait = c => gaitFrom({ cadence_spm: c, step_length_m: PACE * 60 / c, stance_time_ms: 270 - (c - 150) * 1.2, vertical_oscillation_cm: 10.2 - (c - 150) * .085 })
+
+// ───────── theme colours (from the tokens) ─────────
+const css = getComputedStyle(document.documentElement)
+const tok = n => css.getPropertyValue(n).trim()
+const hex = h => h.startsWith('rgb') ? h.match(/[\d.]+/g).slice(0, 3).map(Number) : [0, 2, 4].map(i => parseInt(h.replace('#', '').slice(i, i + 2), 16))
+const mix = (a, b, t) => { const A = hex(a), B = hex(b); return `rgb(${A.map((v, i) => Math.round(lerp(B[i], v, t))).join(',')})` }
+const alpha = (h, a) => `rgba(${hex(h).join(',')},${a})`
+const COL = { surface: tok('--surface'), text: tok('--text'), soft: tok('--soft'), muted: tok('--muted'), run: tok('--run'), mob: tok('--mob'), volt: tok('--volt'), lineStrong: tok('--line-strong') }
+
+// ───────── shared drawing ─────────
+function capsule(ctx, a, b, wa, wb) {
+  const ra = wa / 2, rb = wb / 2, L = Math.hypot(b[0] - a[0], b[1] - a[1]) || .001, ang = Math.atan2(b[1] - a[1], b[0] - a[0])
+  const s = Math.asin(clamp(-1, 1, (ra - rb) / L))
+  ctx.beginPath()
+  ctx.arc(a[0], a[1], ra, ang + Math.PI / 2 + s, ang - Math.PI / 2 - s + TAU)
+  ctx.arc(b[0], b[1], rb, ang - Math.PI / 2 - s, ang + Math.PI / 2 + s)
+  ctx.closePath(); ctx.fill()
+}
+function line(ctx, pts, w, color) {
+  ctx.beginPath(); ctx.moveTo(...pts[0]); for (const p of pts.slice(1)) ctx.lineTo(...p)
+  ctx.lineWidth = w; ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke()
+}
+function softShadow(ctx, cx, cy, rx, ry, a) {
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(rx, ry)
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
+  g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 1, 0, TAU); ctx.fill(); ctx.restore()
+}
+function trail(ctx, pts, scale) {
+  ctx.fillStyle = alpha(COL.volt, .5)
+  for (const p of pts) { ctx.beginPath(); ctx.arc(p[0], p[1], 1.1 / Math.max(.6, scale / 2), 0, TAU); ctx.fill() }
+}
+function arrowHead(ctx, tip, angle, size, color, w) {
+  const wing = s => add(tip, dir(angle + 180 + s * 35, size))
+  line(ctx, [wing(-1), tip, wing(1)], w, color)
+}
+const dot = (ctx, p, r) => { ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, TAU); ctx.fill() }
+// A side-view shoe: the ankle sits over the rear third, a rounded heel, a sole that tapers to the toe,
+// and an instep that slopes back up to the ankle. The sole faces away from the knee.
+function shoe(ctx, ankle, toeDir, knee, h, L, back, ball, toe) {
+  const len = Math.hypot(...toeDir) || 1, d = [toeDir[0] / len, toeDir[1] / len]
+  let n = [-d[1], d[0]]
+  if ((ankle[0] - knee[0]) * n[0] + (ankle[1] - knee[1]) * n[1] < 0) n = [-n[0], -n[1]]
+  const S = [ankle[0] + n[0] * h, ankle[1] + n[1] * h]
+  const P = (a, b) => [S[0] + d[0] * a + n[0] * b, S[1] + d[1] * a + n[1] * b]
+  let pts = [P(-1.8, -h * 1.05), P(-back + .3, -h * .5), P(-back, 0), P(L - 1.4, 0), P(L, -1.2), P(L * .5, -h * .6), P(1.8, -h * 1.05)]
+  if (ball && toe) {
+    // Forefoot hinged at the ball: the toe box follows the toe point.
+    const tl = Math.hypot(toe[0] - ball[0], toe[1] - ball[1]) || 1, td = [(toe[0] - ball[0]) / tl, (toe[1] - ball[1]) / tl]
+    let tn = [-td[1], td[0]]
+    if (tn[0] * n[0] + tn[1] * n[1] < 0) tn = [-tn[0], -tn[1]]
+    pts = [P(-1.8, -h * 1.05), P(-back + .3, -h * .5), P(-back, 0), ball, [toe[0] - td[0] * 1.2, toe[1] - td[1] * 1.2],
+      [toe[0] - tn[0] * 1.3, toe[1] - tn[1] * 1.3], [ball[0] - n[0] * 2.6, ball[1] - n[1] * 2.6], P(L * .4, -h * .65), P(1.8, -h * 1.05)]
+  }
+  ctx.beginPath(); ctx.moveTo(...pts[0]); for (const q of pts.slice(1)) ctx.lineTo(...q); ctx.closePath()
+  ctx.lineJoin = 'round'; ctx.lineWidth = 1.6; ctx.strokeStyle = ctx.fillStyle; ctx.fill(); ctx.stroke()
+}
+// One silhouette for every figure. Widths are side-view depths: a trunk that narrows at the waist,
+// thighs heavier than shins, a calf, a shoe with a heel, fists, and a small head on a short neck.
+function seat(ctx, body, th) {
+  const tr = body.segments.find(o => o.id === 'torso'), sh = body.segments.find(o => o.id === 'nearShin')
+  const unit = (a, b) => { const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [(b[0] - a[0]) / l, (b[1] - a[1]) / l] }
+  const u = unit(tr.from, tr.to), back = [u[1], -u[0]], td = unit(th.from, th.to)
+  let tb = [-td[1], td[0]]
+  const toShin = (sh.to[0] - sh.from[0]) * tb[0] + (sh.to[1] - sh.from[1]) * tb[1], toBack = back[0] * tb[0] + back[1] * tb[1]
+  if ((Math.abs(toShin) > 3 ? toShin : toBack) < 0) tb = [-tb[0], -tb[1]] // the hamstring side
+  const at = (o, a, ka, b, kb) => [o[0] + a[0] * ka + b[0] * kb, o[1] + a[1] * ka + b[1] * kb]
+  const h = th.from, top = at(h, u, 3.5, back, 4.1), fold = at(h, td, 9, tb, 3.8)
+  ctx.beginPath(); ctx.moveTo(...at(h, u, 3.5, [0, 0], 0)); ctx.lineTo(...top)
+  ctx.bezierCurveTo(...at(top, u, -3, back, 2.4), ...at(fold, td, -5, tb, 2.4), ...fold)
+  ctx.lineTo(...at(h, td, 9, [0, 0], 0)); ctx.closePath(); ctx.fill()
+}
+function figure(ctx, body, colorOf) {
+  for (const s of body.segments) {
+    ctx.fillStyle = colorOf(s)
+    const kind = s.id.replace(/^(near|far)/, '')
+    if (kind === 'torso') {
+      // The trunk can flex (bend > 0 rounds the back), and the glutes sit behind the hip joint,
+      // following the thigh, instead of the pelvis being a tube centred on the joint.
+      const L = Math.hypot(s.to[0] - s.from[0], s.to[1] - s.from[1]) || 1, u = [(s.to[0] - s.from[0]) / L, (s.to[1] - s.from[1]) / L]
+      const back = [u[1], -u[0]], bend = body.bend || 0
+      const waist = add(lerpPt(s.from, s.to, .45), [back[0] * bend * .7, back[1] * bend * .7]), chest = add(lerpPt(s.from, s.to, .76), [back[0] * bend, back[1] * bend])
+      capsule(ctx, s.from, waist, 8.4, 7.6); capsule(ctx, waist, chest, 7.6, 10); capsule(ctx, chest, s.to, 10, 7.6)
+      ctx.fillStyle = colorOf({ id: 'head', layer: 'body' }); capsule(ctx, s.to, body.head, 3.6, 3.2)
+      ctx.fillStyle = COL.surface; dot(ctx, body.head, N_HEAD + 1.2)
+      ctx.fillStyle = colorOf({ id: 'head', layer: 'body' }); dot(ctx, body.head, N_HEAD)
+    } else if (kind === 'Thigh') {
+      if (s.id === 'nearThigh' && body.glute !== false) {
+        // The seat belongs to the leg: one shape that leaves the back just above the hip, rounds out
+        // over the buttock and runs into the back of the thigh, in the leg's own colour.
+        ctx.fillStyle = colorOf({ ...s, id: 'glute' })
+        seat(ctx, body, s)
+        ctx.fillStyle = colorOf(s)
+      }
+      capsule(ctx, s.from, s.to, 8.6, 5.4)
+    }
+    else if (kind === 'Shin') { const calf = lerpPt(s.from, s.to, .3); capsule(ctx, s.from, calf, 5.4, 6); capsule(ctx, calf, s.to, 6, 3.2) }
+    else if (kind === 'Foot') {
+      const knee = body.segments.find(o => o.id === s.id.replace('Foot', 'Shin')).from
+      if (s.heel) shoe(ctx, s.from, [s.ball[0] - s.heel[0], s.ball[1] - s.heel[1]], knee, ANKLE_UP, BALL_AHEAD + TOE_AHEAD, HEEL_BACK, s.ball, s.to)
+      else shoe(ctx, s.from, [s.to[0] - s.from[0], s.to[1] - s.from[1]], knee, 3, 8.5, 3)
+    } else if (kind === 'UpperArm') capsule(ctx, s.from, s.to, 5, 3.8)
+    else if (kind === 'Forearm') { capsule(ctx, s.from, s.to, 3.8, 2.8); dot(ctx, s.to, 2.4) }
+  }
+}
+// The new runner as figure segments; leg segments carry whether that foot is on the ground.
+function runnerBody(fr) {
+  const L = fr.legs, A = fr.arms
+  const leg = (side, l) => [{ id: side + 'Thigh', from: l.hip, to: l.knee }, { id: side + 'Shin', from: l.knee, to: l.ankle }, { id: side + 'Foot', from: l.ankle, to: l.toe, heel: l.heel, ball: l.ball }]
+    .map(s => ({ ...s, layer: side, ground: l.ground }))
+  const arm = (side, a) => [{ id: side + 'UpperArm', from: a.shoulder, to: a.elbow }, { id: side + 'Forearm', from: a.elbow, to: a.hand }].map(s => ({ ...s, layer: side }))
+  return { segments: [...arm('far', A.far), ...leg('far', L.far), { id: 'torso', from: fr.pelvis, to: fr.chest, layer: 'body' }, ...leg('near', L.near), ...arm('near', A.near)], head: fr.head, bend: fr.bend }
+}
+
+// Motion arrows (the current component's logic): the joint that travels furthest leads.
+function makeMovers(rig) {
+  const start = rig.at(0).body.joints, travel = {}
+  for (let s = 0; s < rig.period; s += .1) { const j = rig.at(s).body.joints; for (const k in j) travel[k] = Math.max(travel[k] || 0, Math.hypot(j[k][0] - start[k][0], j[k][1] - start[k][1])) }
+  const ranked = Object.keys(travel).filter(k => k !== 'head' && k !== 'nearToe' && travel[k] > 6).sort((a, b) => travel[b] - travel[a])
+  const limb = k => k.replace(/Knee|Ankle/, 'Leg')
+  return ranked.filter((k, i) => ranked.findIndex(o => limb(o) === limb(k)) === i).slice(0, 1)
+}
+function motionArrows(rig, movers, t) {
+  const now = rig.at(t).body.joints, b = rig.at(t - .06).body.joints, s = rig.at(t + .06).body.joints
+  return movers.map(k => {
+    const dx = s[k][0] - b[k][0], dy = s[k][1] - b[k][1], a = Math.atan2(dy, dx) * 180 / Math.PI
+    const op = clamp01((Math.hypot(dx, dy) / .12 - 5) / 15)
+    return { tail: add(now[k], dir(a, 11)), tip: add(now[k], dir(a, 24)), a, op }
+  }).filter(x => x.op > .02)
+}
+
+// ───────── rehab renderers ─────────
+function drawRehabLine(ctx, rig, f, t, movers, focus) {
+  const { body, effort } = f
+  ctx.fillStyle = COL.lineStrong; ctx.fillRect(-500, FLOOR, 1200, 1.5)
+  const glow = .06 + .26 * effort
+  if (focus.includes('hip')) { ctx.fillStyle = alpha(COL.mob, Math.min(1, glow * 1.6)); ctx.beginPath(); ctx.arc(...body.hip, 8, 0, TAU); ctx.fill() }
+  for (const s of body.segments) {
+    const fo = focus.includes(s.id)
+    if (fo) line(ctx, [s.from, s.to], 13, alpha(COL.mob, glow))
+    const color = s.layer === 'far' && !rig.solid ? (fo ? mix(COL.mob, COL.surface, .55) : mix(COL.text, COL.surface, .38)) : (fo ? COL.mob : COL.text)
+    line(ctx, [s.from, s.to], s.layer === 'body' ? 10 : 6, color)
+  }
+  ctx.fillStyle = COL.text; ctx.beginPath(); ctx.arc(...body.head, HEAD_RADIUS, 0, TAU); ctx.fill()
+  for (const a of motionArrows(rig, movers, t)) { line(ctx, [a.tail, a.tip], 2.5, alpha(COL.volt, a.op)); arrowHead(ctx, a.tip, a.a, 6, alpha(COL.volt, a.op), 2.5) }
+}
+function rehabShadow(ctx, body) {
+  const xs = body.segments.flatMap(s => [s.from[0], s.to[0]]), ys = body.segments.flatMap(s => [s.from[1], s.to[1]])
+  const lift = Math.max(0, FLOOR - Math.max(...ys))
+  const lo = Math.min(...xs), hi = Math.max(...xs)
+  softShadow(ctx, (lo + hi) / 2, FLOOR + 1, (hi - lo) / 2 + 8, 4.2, Math.max(.22, .6 - lift / 60))
+}
+function drawRehabCoach(ctx, rig, f, t, focus, cell) {
+  ctx.fillStyle = COL.lineStrong; ctx.fillRect(-500, FLOOR, 1200, 1.2)
+  // Target pose as a faint dashed ghost.
+  const peak = rig.at(rig.peakT).body
+  ctx.setLineDash([2, 2.6])
+  for (const s of peak.segments) line(ctx, [s.from, s.to], 1.1, alpha(COL.mob, .4))
+  ctx.beginPath(); ctx.arc(...peak.head, N_HEAD, 0, TAU); ctx.lineWidth = 1.1; ctx.strokeStyle = alpha(COL.mob, .4); ctx.stroke()
+  ctx.setLineDash([])
+  rehabShadow(ctx, f.body)
+  const base = COL.soft, far = mix(COL.soft, COL.surface, .34)
+  const work = mix(COL.mob, base, .3 + .7 * f.effort)
+  figure(ctx, f.body, s => {
+    const fo = focus.includes(s.id) || (s.id === 'glute' && (focus.includes('hip') || focus.includes('nearThigh')))
+    if (s.layer === 'far' && !rig.solid) return fo ? mix(work, COL.surface, .55) : far
+    return fo ? work : base
+  })
+  // Path arrow: where the guide joint goes in the next 0.6 s, along its real arc.
+  const pts = []
+  for (let dt = .08; dt <= .7; dt += .04) pts.push(rig.at(t + dt).body.joints[rig.guide])
+  let len = 0; for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])
+  const op = clamp01((len - 3) / 8)
+  if (op > .02) {
+    line(ctx, pts, 2, alpha(COL.volt, op))
+    const a = pts.at(-1), b = pts.at(-3)
+    arrowHead(ctx, a, Math.atan2(a[1] - b[1], a[0] - b[0]) / D, 5.5, alpha(COL.volt, op), 2)
+  }
+  return () => tempoOverlay(cell, rig, t)
+}
+function tempoOverlay(cell, rig, t) {
+  const { ctx, cssW, cssH } = cell
+  const P = rig.period, tm = ((t % P) + P) % P
+  const ph = rig.phases.find(p => tm >= p[1] && tm < p[2]) || rig.phases.at(-1)
+  const left = ph[2] - tm, long = ph[2] - ph[1] >= 1
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillStyle = COL.text; ctx.font = 'italic 800 30px "Barlow Condensed", sans-serif'
+  const num = long ? String(Math.ceil(left - 1e-6)) : ''
+  ctx.fillText(num, 12, 38)
+  const nx = 12 + (num ? ctx.measureText(num).width + 8 : 0)
+  ctx.fillStyle = COL.mob; ctx.font = '600 11px Archivo, sans-serif'
+  ctx.fillText(ph[0].toUpperCase(), nx, 26)
+  ctx.fillStyle = COL.muted; ctx.font = '500 11px Archivo, sans-serif'
+  ctx.fillText(long ? `${(ph[2] - ph[1]).toFixed(0)} s` : '', nx, 39)
+  // Tempo bar: one segment per phase, the active one filling.
+  const x0 = 12, w = cssW - 24, y = cssH - 10, gap = 3
+  for (const p of rig.phases) {
+    const sx = x0 + (p[1] / P) * w, sw = ((p[2] - p[1]) / P) * w - gap
+    ctx.fillStyle = alpha(COL.text, .1); ctx.fillRect(sx, y, sw, 3)
+    const fill = tm >= p[2] ? 1 : tm >= p[1] ? (tm - p[1]) / (p[2] - p[1]) : 0
+    if (fill > 0) { ctx.fillStyle = p === ph ? COL.mob : alpha(COL.mob, .4); ctx.fillRect(sx, y, sw * fill, 3) }
+  }
+}
+
+// ───────── runner renderers ─────────
+function groundTicks(ctx, scroll, color, w) {
+  const off = ((scroll % 36) + 36) % 36
+  for (let i = 0; i < 11; i++) { const x = i * 36 - off; line(ctx, [[x, GROUND_Y + 7], [x + 10, GROUND_Y + 7]], w, color) }
+}
+function drawRunLine(ctx, fr, g, phase, scroll) {
+  line(ctx, [[0, GROUND_Y], [320, GROUND_Y]], 2, COL.lineStrong)
+  groundTicks(ctx, scroll, alpha(COL.text, .14), 2)
+  ctx.fillStyle = alpha(COL.text, .1); ctx.beginPath(); ctx.ellipse(HIP_X + 2, GROUND_Y + 1, Math.max(4, 16 - (lowestHipY() - fr.pelvis[1]) * .6), 3, 0, 0, TAU); ctx.fill()
+  // Hip path behind the runner.
+  const stridePx = g.speed * PX_PER_M * g.strideTime, pts = []
+  for (let x = 6; x <= HIP_X; x += 3) pts.push([x, lowestHipY() - hipLift(g, phase - (HIP_X - x) / stridePx)])
+  ctx.setLineDash([2, 4]); line(ctx, pts, 2, alpha(COL.volt, .9)); ctx.setLineDash([])
+  // VO bracket.
+  const bx = 262, top = lowestHipY() - g.voPx, bot = lowestHipY()
+  for (const seg of [[[bx, top], [bx, bot]], [[bx - 5, top], [bx + 5, top]], [[bx - 5, bot], [bx + 5, bot]]]) line(ctx, seg, 1.5, '#ff9d4d')
+  ctx.fillStyle = '#ff9d4d'; ctx.font = wfont(700, 11); ctx.fillText(`${g.voCm.toFixed(1)} cm`, bx + 9, (top + bot) / 2 + 4)
+  const farC = alpha(COL.text, .35), L = fr.legs, A = fr.arms
+  line(ctx, [A.far.shoulder, A.far.elbow, A.far.hand], 6, farC)
+  if (L.far.ground) { ctx.fillStyle = alpha(COL.run, .45); ctx.beginPath(); ctx.ellipse(L.far.ball[0], GROUND_Y + 1, 8, 2.5, 0, 0, TAU); ctx.fill() }
+  line(ctx, [L.far.hip, L.far.knee, L.far.ankle], 6, farC); line(ctx, [L.far.heel, L.far.toe], 5, farC)
+  line(ctx, [fr.pelvis, fr.chest], 10, COL.text)
+  ctx.fillStyle = COL.text; ctx.beginPath(); ctx.arc(...fr.head, R_HEAD, 0, TAU); ctx.fill()
+  if (L.near.ground) { ctx.fillStyle = alpha(COL.run, .45); ctx.beginPath(); ctx.ellipse(L.near.ball[0], GROUND_Y + 1, 8, 2.5, 0, 0, TAU); ctx.fill() }
+  const nc = L.near.ground ? COL.run : COL.text
+  line(ctx, [L.near.hip, L.near.knee, L.near.ankle], 6.5, nc); line(ctx, [L.near.heel, L.near.toe], 5, nc)
+  line(ctx, [A.near.shoulder, A.near.elbow, A.near.hand], 6.5, COL.text)
+}
+// The coaching runner figure: the foot on the ground in run orange, the far side in a darker flat tone.
+function runFigure(ctx, fr) {
+  const base = COL.soft, far = mix(COL.soft, COL.surface, .34)
+  figure(ctx, runnerBody(fr), s => s.layer === 'far' ? (s.ground ? mix(COL.run, COL.surface, .55) : far) : (s.ground ? COL.run : base))
+}
+// Key poses (contact, down, push, peak) as stills on the same ground.
+function drawRunKey(ctx, fr) {
+  line(ctx, [[0, GROUND_Y], [320, GROUND_Y]], 1.2, COL.lineStrong)
+  softShadow(ctx, HIP_X + 2, GROUND_Y + 1, Math.max(8, 22 - (N_LOW - fr.pelvis[1]) * .8), 4, .55)
+  for (const l of [fr.legs.near, fr.legs.far]) if (l.ground) softShadow(ctx, l.ball[0], GROUND_Y + .5, 9, 2.4, .5)
+  runFigure(ctx, fr)
+}
+function drawRunCoach(ctx, fr, g, phase, scroll, cell) {
+  const gg = fr.gg
+  line(ctx, [[0, GROUND_Y], [320, GROUND_Y]], 1.2, COL.lineStrong)
+  groundTicks(ctx, scroll, alpha(COL.text, .08), 1.5)
+  // Bounce band: the hip's lowest and highest point, with the hip's current height.
+  const top = N_LOW - gg.voPx, bot = N_LOW
+  ctx.fillStyle = alpha(COL.run, .1); ctx.fillRect(228, top, 70, bot - top)
+  ctx.setLineDash([3, 3]); line(ctx, [[228, top], [298, top]], 1, alpha(COL.run, .7)); line(ctx, [[228, bot], [298, bot]], 1, alpha(COL.run, .7)); ctx.setLineDash([])
+  ctx.fillStyle = COL.run; ctx.beginPath(); ctx.arc(236, fr.pelvis[1], 2.6, 0, TAU); ctx.fill()
+  line(ctx, [[HIP_X + 8, fr.pelvis[1]], [228, fr.pelvis[1]]], 1, alpha(COL.run, .35))
+  ctx.font = wfont(700, 11); ctx.textAlign = 'right'; ctx.fillText(`${gg.voCm.toFixed(1)} cm bounce`, 298, top - 6 / WS * 1.6); ctx.textAlign = 'left'
+  softShadow(ctx, HIP_X + 2, GROUND_Y + 1, Math.max(8, 22 - (N_LOW - fr.pelvis[1]) * .8), 4, .55)
+  // Footstrike: a ring that opens on contact.
+  for (const [lp, l] of [[wrap(phase), fr.legs.near], [wrap(phase + .5), fr.legs.far]]) {
+    if (!l.ground) continue
+    softShadow(ctx, l.ball[0], GROUND_Y + .5, 9, 2.4, .5)
+    const k = lp / .1
+    if (k < 1) {
+      const land = HIP_X + gg.stanceLen * gg.ahead - gg.stanceLen * lp / gg.duty
+      ctx.strokeStyle = alpha(COL.run, 1 - k); ctx.lineWidth = 1.5
+      ctx.beginPath(); ctx.ellipse(land, GROUND_Y, 6 + k * 12, 2 + k * 3.5, 0, 0, TAU); ctx.stroke()
+    }
+  }
+  runFigure(ctx, fr)
+  return () => {
+    const c = cell.ctx
+    c.textBaseline = 'alphabetic'
+    c.fillStyle = COL.text; c.font = 'italic 800 30px "Barlow Condensed", sans-serif'
+    const s = String(Math.round(g.cadence)); c.fillText(s, 12, 38)
+    const nx = 12 + c.measureText(s).width + 8
+    c.fillStyle = COL.run; c.font = '600 11px Archivo, sans-serif'; c.fillText('SPM', nx, 26)
+    c.fillStyle = COL.muted; c.font = '500 11px Archivo, sans-serif'; c.fillText(`${Math.round(gg.stanceMs)} ms on ground`, nx, 39)
+    // Metronome: R and L flash on each footstrike.
+    const flash = lp => clamp01(1 - wrap(lp) / .12)
+    for (const [i, lab, lp] of [[0, 'R', phase], [1, 'L', phase + .5]]) {
+      const x = cell.cssW - 44 + i * 20, a = flash(lp)
+      c.fillStyle = a > 0 ? mix(COL.run, '#232834', .35 + .65 * a) : '#232834'
+      c.beginPath(); c.arc(x, 22, 7, 0, TAU); c.fill()
+      c.fillStyle = a > .3 ? '#12151c' : COL.muted; c.font = '700 9px Archivo, sans-serif'; c.textAlign = 'center'; c.fillText(lab, x, 25.5); c.textAlign = 'left'
+    }
+  }
+}
+
+// ───────── state, cells, clock ─────────
+const S = { t: 0, phase: .62, scroll: 0, playing: !matchMedia('(prefers-reduced-motion: reduce)').matches, speed: 1, cadence: 170, arcs: false, frames: 0 }
+let gait = makeGait(S.cadence)
+const RIGS = {}
+for (const key of ['slr', 'squat', 'plank']) {
+  const cur = curRig(key), nw = { ...NEW[key], at: NEW[key].at.bind(NEW[key]) }
+  RIGS[key] = { cur, nw, curMovers: makeMovers(cur), newMovers: makeMovers(nw), box: boxFor([cur, nw]), trails: { slr: ['nearAnkle'], squat: ['hip', 'head', 'nearHand'], plank: ['hip', 'head'] }[key] }
+  for (const r of [cur, nw]) r.trail = RIGS[key].trails.map(j => Array.from({ length: 90 }, (_, i) => r.at(i / 90 * r.period).body.joints[j]))
+}
+function boxFor(rigs) {
+  let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, FLOOR + 4]
+  for (const r of rigs) for (let s = 0; s < r.period; s += .1) {
+    const b = r.at(s).body
+    for (const p of b.segments.flatMap(sg => [sg.from, sg.to])) { x0 = Math.min(x0, p[0] - 5); x1 = Math.max(x1, p[0] + 5); y0 = Math.min(y0, p[1] - 5) }
+    x0 = Math.min(x0, b.head[0] - 9); x1 = Math.max(x1, b.head[0] + 9); y0 = Math.min(y0, b.head[1] - 9)
+  }
+  const pad = 16; x0 -= pad; x1 += pad; y0 -= pad + 10; y1 += pad / 2 + 2
+  let w = x1 - x0, h = y1 - y0
+  const aspect = clamp(2, 2.6, w / h)
+  if (w / h < aspect) { x0 -= (h * aspect - w) / 2; w = h * aspect } else { y0 -= w / aspect - h; h = w / aspect }
+  return { x: x0, y: y0, w, h }
+}
+const RUN_BOX = { x: 0, y: 48, w: 320, h: 140 }
+const ROWS = [
+  { key: 'slr', title: 'Straight leg raise', note: '<b>Now</b> 1.5 s up · 1 s hold · 2 s down. <b>New</b> brace 0.6 s · 2 s up · 1 s hold · 3 s down. In Current, watch the knee bend mid-lift.' },
+  { key: 'squat', title: 'Mini squat', note: '<b>Now</b> 1.5 s down · 0.6 s pause · 1.2 s up. <b>New</b> 3 s down · 1 s pause · 2 s up. Compare the hip path: a straight diagonal against a sit-back arc.' },
+  { key: 'plank', title: 'Side plank', note: '<b>Now</b> 1 s lift · 3 s hold · 1 s down. <b>New</b> brace 0.6 s · 1.2 s lift · 3 s hold · 1.5 s down. The hips swing up around the feet and the elbow; the hold sags a touch, then re-braces.' },
+  { key: 'run', title: 'Cadence runner', note: 'Same pace (5:33 /km) at every cadence, so steps shorten as cadence rises; contact time and bounce follow. Watch the shoulders, arms and head.' },
+]
+const VARIANTS = [['cur', 'Current'], ['C', 'C · Coaching']]
+const cells = []
+// The four key poses of a run cycle (contact, down, push, peak), at the slider's cadence.
+const KEYS = [['Contact', g => 0, 'Foot lands close under the hips, knee softly bent'], ['Down', g => g.duty * .45, 'Lowest point: stance knee most bent, swing heel tucked'],
+  ['Push', g => g.duty - .01, 'Toe-off: hip extended behind, knee not locked'], ['Peak', g => (g.duty + .5) / 2, 'Both feet off the ground, highest point']]
+const KEY_BOX = { x: 90, y: 54, w: 140, h: 132 }
+const keysEl = document.getElementById('keys')
+for (const [label, at, note] of KEYS) {
+  const el = document.createElement('figure'); el.className = 'key'
+  const canvas = document.createElement('canvas')
+  canvas.style.aspectRatio = `${KEY_BOX.w} / ${KEY_BOX.h}`
+  canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', `Runner key pose: ${label}`)
+  const cap = document.createElement('figcaption'); cap.innerHTML = `<b>${label}</b>${note}`
+  el.append(canvas, cap); keysEl.append(el)
+  cells.push({ row: 'key', v: at, canvas, ctx: canvas.getContext('2d'), box: KEY_BOX, cssW: 0, cssH: 0 })
+}
+const matrix = document.getElementById('matrix')
+for (const row of ROWS) {
+  const head = document.createElement('div'); head.className = 'rowhead'
+  head.innerHTML = `<h4>${row.title}</h4><p>${row.note}</p>`; matrix.append(head)
+  const box = row.key === 'run' ? RUN_BOX : RIGS[row.key].box
+  for (const [v, label] of VARIANTS) {
+    const el = document.createElement('div'); el.className = 'cell'
+    const canvas = document.createElement('canvas')
+    canvas.style.aspectRatio = `${box.w} / ${box.h}`
+    canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', `${row.title}, ${label}`)
+    const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = label
+    el.append(canvas, tag); matrix.append(el)
+    cells.push({ row: row.key, v, canvas, ctx: canvas.getContext('2d'), box, cssW: 0, cssH: 0 })
+  }
+}
+const ro = new ResizeObserver(() => { for (const c of cells) sizeCell(c); draw() })
+function sizeCell(c) {
+  const dpr = devicePixelRatio || 1, w = c.canvas.clientWidth, h = w * c.box.h / c.box.w
+  c.cssW = w; c.cssH = h; c.canvas.width = Math.round(w * dpr); c.canvas.height = Math.round(h * dpr); c.dpr = dpr
+}
+cells.forEach(c => ro.observe(c.canvas))
+
+let runTrails = null
+function computeRunTrails() {
+  const mk = fn => {
+    const pts = { a: [], h: [], d: [] }
+    for (let i = 0; i < 64; i++) { const f = fn(gait, i / 64); pts.a.push(f.legs.near.ankle); pts.h.push(f.arms.near.hand); pts.d.push(f.head) }
+    return [pts.a, pts.h, pts.d]
+  }
+  runTrails = { cur: mk(curFrame), nw: mk(newFrame) }
+}
+computeRunTrails()
+
+let WS = 1
+const wfont = (weight, px) => `${weight} ${(px / WS).toFixed(2)}px Archivo, sans-serif`
+function draw() {
+  let curRun = null, newRun = null
+  for (const c of cells) {
+    const { ctx, box } = c
+    if (!c.cssW) continue
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, c.canvas.width, c.canvas.height)
+    const s = c.cssW / box.w * c.dpr
+    ctx.setTransform(s, 0, 0, s, -box.x * s, -box.y * s)
+    let overlay = null
+    WS = c.cssW / box.w
+    if (c.row === 'key') drawRunKey(ctx, newFrame(gait, c.v(gait)))
+    else if (c.row === 'run') {
+      const isCur = c.v === 'cur'
+      const fr = isCur ? (curRun ||= curFrame(gait, S.phase)) : (newRun ||= newFrame(gait, S.phase))
+      if (S.arcs) for (const t of runTrails[isCur ? 'cur' : 'nw']) trail(ctx, t, s / c.dpr)
+      if (isCur) drawRunLine(ctx, fr, gait, S.phase, S.scroll)
+      else overlay = drawRunCoach(ctx, fr, gait, S.phase, S.scroll, c)
+    } else {
+      const R = RIGS[c.row], rig = c.v === 'cur' ? R.cur : R.nw
+      const f = rig.at(S.t)
+      if (S.arcs) for (const t of rig.trail) trail(ctx, t, s / c.dpr)
+      if (c.v === 'cur') drawRehabLine(ctx, rig, f, S.t, R.curMovers, rig.focus)
+      else overlay = drawRehabCoach(ctx, rig, f, S.t, rig.focus, c)
+    }
+    if (overlay) { ctx.setTransform(c.dpr, 0, 0, c.dpr, 0, 0); overlay() }
+  }
+  document.getElementById('tc').textContent = `Frame ${S.frames} · ${S.t.toFixed(2)} s`
+}
+
+function advance(dt) {
+  S.t += dt
+  S.phase = wrap(S.phase + dt / gait.strideTime)
+  S.scroll += dt * gait.speed * PX_PER_M
+  S.frames = Math.round(S.t * 30)
+}
+let last = 0
+function tick(now) {
+  const dt = last ? Math.min(.05, (now - last) / 1000) : 0
+  last = now
+  if (S.playing) { advance(dt * S.speed); draw() }
+  requestAnimationFrame(tick)
+}
+requestAnimationFrame(tick)
+
+// ───────── controls ─────────
+const playBtn = document.getElementById('play')
+const setPlaying = p => { S.playing = p; playBtn.textContent = p ? 'Pause' : 'Play' }
+setPlaying(S.playing)
+playBtn.onclick = () => setPlaying(!S.playing)
+const stepFrame = n => { setPlaying(false); advance(n / 30); draw() }
+document.getElementById('back').onclick = () => stepFrame(-1)
+document.getElementById('fwd').onclick = () => stepFrame(1)
+document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => {
+  S.speed = +b.dataset.speed
+  document.querySelectorAll('[data-speed]').forEach(x => x.classList.toggle('on', x === b))
+})
+document.getElementById('arcs').onchange = e => { S.arcs = e.target.checked; draw() }
+const slider = document.getElementById('cadence'), out = document.getElementById('cadOut')
+function setCadence(c) {
+  S.cadence = c; gait = makeGait(c); computeRunTrails()
+  slider.value = c; out.innerHTML = `${c} <small>spm</small>`
+  document.querySelectorAll('[data-cad]').forEach(x => x.classList.toggle('on', +x.dataset.cad === c))
+  draw()
+}
+slider.oninput = () => setCadence(+slider.value)
+document.querySelectorAll('[data-cad]').forEach(b => b.onclick = () => setCadence(+b.dataset.cad))
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return
+  if (e.code === 'Space') { e.preventDefault(); setPlaying(!S.playing) }
+  if (e.code === 'ArrowLeft') stepFrame(-1)
+  if (e.code === 'ArrowRight') stepFrame(1)
+})
+document.fonts?.ready.then(draw)
+</script>

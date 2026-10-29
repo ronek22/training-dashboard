@@ -204,6 +204,7 @@ class StrengthWorkoutTests(unittest.TestCase):
         self.assertEqual(suggestion["last_source"], "Fitbod")
         self.assertEqual([item["weight_kg"] for item in suggestion["last_sets"]], [52.5, 55.0, 55.0])
         self.assertTrue(all(item["reps"] == 10 and not item["is_warmup"] for item in suggestion["last_sets"]))
+        self.assertEqual(suggestion["recent_sessions"], [{"date": "2026-08-28", "weight_kg": 55.0}])
 
     def test_template_list_shows_when_each_was_last_done(self):
         template = self.client.post(

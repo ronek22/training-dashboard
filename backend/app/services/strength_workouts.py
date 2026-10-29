@@ -235,6 +235,17 @@ def exercise_suggestions(
             if row["weight_kg"] is not None and float(row["weight_kg"]) > 0
         ]
         display_name = latest_row["exercise_name"]
+        # Working weight of each of the last six sessions, oldest first, for the phone's trend bars.
+        session_weights: dict[str, dict] = {}
+        for row in rows:
+            if row["is_warmup"] or row["weight_kg"] is None or float(row["weight_kg"]) <= 0:
+                continue
+            entry = session_weights.setdefault(row["session_key"], {"date": (row["performed_at"] or "")[:10], "weights": []})
+            entry["weights"].append(float(row["weight_kg"]))
+        recent_sessions = [
+            {"date": entry["date"], "weight_kg": round(float(median(entry["weights"])), 2)}
+            for entry in sorted(session_weights.values(), key=lambda entry: entry["date"])[-6:]
+        ]
         suggestions.append(
             {
                 "exercise_name": display_name,
@@ -251,6 +262,7 @@ def exercise_suggestions(
                     for row in latest_session_rows
                 ],
                 "last_source": latest_row["source"],
+                "recent_sessions": recent_sessions,
             }
         )
 

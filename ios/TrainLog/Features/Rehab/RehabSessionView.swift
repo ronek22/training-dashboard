@@ -44,9 +44,14 @@ struct RehabSessionView: View {
         }
         .confirmationDialog("Leave the rehab session?", isPresented: $confirmClose, titleVisibility: .visible) {
             Button("Finish now") { model.finish() }
-            Button("Leave without saving", role: .destructive) { dismiss() }
+            Button("Discard", role: .destructive) {
+                Task {
+                    await model.discard()
+                    dismiss()
+                }
+            }
         } message: {
-            Text("Exercises you finished are already ticked.")
+            Text("Finish now saves what you've done. Discard unticks it, as if you never started.")
         }
     }
 

@@ -88,3 +88,51 @@ struct ExerciseDemoTests {
         }
     }
 }
+
+@MainActor
+struct RehabDiscardTests {
+    /// Records every write and answers 200, without a server.
+    final class Recorder: URLProtocol, @unchecked Sendable {
+        nonisolated(unsafe) static var writes: [(String, String, Data?)] = []
+        override class func canInit(with request: URLRequest) -> Bool { true }
+        override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+        override func startLoading() {
+            let body = request.httpBodyStream.map { stream -> Data in
+                stream.open(); defer { stream.close() }
+                var data = Data(); var buffer = [UInt8](repeating: 0, count: 4096)
+                while stream.hasBytesAvailable { let n = stream.read(&buffer, maxLength: 4096); if n <= 0 { break }; data.append(buffer, count: n) }
+                return data
+            } ?? request.httpBody
+            Self.writes.append((request.httpMethod ?? "", request.url?.path ?? "", body))
+            client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: Data("{}".utf8))
+            client?.urlProtocolDidFinishLoading(self)
+        }
+        override func stopLoading() {}
+    }
+
+    @Test func discardUnticksWhatTheSessionTicked() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [Recorder.self]
+        var api = APIClient(baseURL: "http://test.local")
+        api.session = URLSession(configuration: config)
+        let queue = WriteQueue(file: FileManager.default.temporaryDirectory.appending(path: "discard-\(UUID()).json"))
+        let model = RehabSessionModel(client: { api }, queue: queue, today: "2026-10-29")
+        let session = try APIClient.decoder.decode(GuidedSessionEnvelope.self, from: Data("""
+        {"session": {"key": "rehab", "title": "Rehab routine", "rest_seconds": 0, "duration_min": 1,
+          "exercises": [{"issue_id": 2, "issue_title": "Knee", "index": 4, "name": "Glute bridge", "sets": 1, "per_side": false, "reps": 12},
+                        {"issue_id": 2, "issue_title": "Knee", "index": 5, "name": "Calf raise", "sets": 1, "per_side": false, "reps": 12}]}}
+        """.utf8)).session
+        Recorder.writes = []
+        model.prepare(session)
+        model.start()
+        model.next()   // passes the glute bridge: ticks index 4
+        await model.discard()
+        let ticks = Recorder.writes.filter { $0.1 == "/recovery/issues/2/ticks" }
+        #expect(!Recorder.writes.contains { $0.1 == "/guided-sessions/complete" })
+        #expect(ticks.count == 2)
+        let last = try JSONSerialization.jsonObject(with: try #require(ticks.last?.2)) as? [String: Any]
+        #expect(last?["done"] as? Bool == false)
+        #expect(last?["index"] as? Int == 4)
+    }
+}

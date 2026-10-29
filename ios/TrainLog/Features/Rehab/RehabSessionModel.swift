@@ -77,15 +77,18 @@ final class RehabSessionModel {
         let api = client()
         await queue.flush(with: api)
         do {
-            let loaded = try await api.getLive("/guided-sessions/rehab", as: GuidedSessionEnvelope.self).session
-            session = loaded
-            steps = RehabFormat.steps(loaded)
-            phase = steps.isEmpty ? .empty : .intro
+            prepare(try await api.getLive("/guided-sessions/rehab", as: GuidedSessionEnvelope.self).session)
         } catch APIError.status(404) {
             phase = .empty
         } catch {
             phase = .failed(error.localizedDescription)
         }
+    }
+
+    func prepare(_ loaded: GuidedSession) {
+        session = loaded
+        steps = RehabFormat.steps(loaded)
+        phase = steps.isEmpty ? .empty : .intro
     }
 
     // MARK: Running
@@ -151,6 +154,19 @@ final class RehabSessionModel {
     }
 
     // MARK: Finishing
+
+    /// Leaving without saving: unticks what this session ticked, after the ticks themselves went out.
+    func discard() async {
+        endsAt = nil
+        pausedLeft = nil
+        RestAlarm.cancel()
+        for completes in ticked {
+            let body = try? APIClient.encoder.encode(RehabTick(day: today, index: completes.index, done: false))
+            enqueue(.init(method: "PUT", path: "/recovery/issues/\(completes.issueId)/ticks", body: body))
+        }
+        ticked = []
+        _ = await lastWrite?.value
+    }
 
     func finish() {
         guard let startedAt else { return }

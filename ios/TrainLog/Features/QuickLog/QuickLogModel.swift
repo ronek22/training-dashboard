@@ -131,6 +131,7 @@ final class QuickLogModel {
             } catch APIError.unreachable {
                 writes[index...].forEach(queue.append)
                 savedOffline = true
+                noteCheckin()
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 return true
             } catch {
@@ -141,8 +142,15 @@ final class QuickLogModel {
         }
         savedOffline = false
         error = nil
+        noteCheckin()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         return true
+    }
+
+    /// Today's check-in is in: no morning nudge.
+    private func noteCheckin() {
+        guard checkinInput?.date == FoodFormat.iso(.now) else { return }
+        Reminders.note { $0.checkinDone = true }
     }
 }
 

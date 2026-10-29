@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct TrainLogApp: App {
@@ -7,6 +8,7 @@ struct TrainLogApp: App {
         HealthSync.shared.startObserving()
         WorkoutSync.shared.startObserving()
         ServerRoute.shared.watchNetwork()
+        UNUserNotificationCenter.current().delegate = NotificationRouter.shared
     }
 
     var body: some Scene {
@@ -33,6 +35,11 @@ struct TrainLogApp: App {
                 #endif
             }
             .preferredColorScheme(.dark)
+        }
+        // Re-checks today before the evening nudges, so one for something done on the web stays quiet.
+        .backgroundTask(.appRefresh(Reminders.refreshTaskID)) {
+            Reminders.scheduleRefresh()
+            await Reminders.refresh()
         }
     }
 }
@@ -64,15 +71,18 @@ struct RootView: View {
             }
         }
         .tint(.volt)
-        // Rolls the dinner nudges a week ahead.
-        .task { await Reminders.apply() }
         .task(id: scenePhase) {
             if scenePhase == .active {
                 async let health: Void = HealthSync.shared.sync()
                 async let workouts: Void = WorkoutSync.shared.sync()
+                // Drops nudges for what's already done today and rolls the week ahead.
+                async let reminders: Void = Reminders.refresh()
                 await CacheWarmer.warm()
                 await health
                 await workouts
+                await reminders
+            } else if scenePhase == .background {
+                Reminders.scheduleRefresh()
             }
         }
         .fullScreenCover(item: $strength, onDismiss: { todayRefresh += 1 }) { launch in

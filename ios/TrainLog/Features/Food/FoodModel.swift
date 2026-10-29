@@ -64,9 +64,6 @@ final class FoodModel {
             let loaded = try await api.get(Self.dayPath(date), as: FoodDay.self)
             guard date == selectedDate else { return }
             day = loaded.value
-            if isToday, let target = loaded.value.target?.kcal, eaten.kcal >= target {
-                Reminders.dinnerTargetMet(date: date)
-            }
             syncedAt = loaded.syncedAt
             offline = loaded.fromCache
             error = nil
@@ -101,11 +98,16 @@ final class FoodModel {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
-    /// Today's kcal to go for the Food widgets, counting meals still queued here.
+    /// Today's kcal to go for the Food widgets and the dinner nudge, counting meals still queued here.
     private func publishWidget() {
         guard isToday, let day, day.date == selectedDate else { return }
         let food = WidgetSnapshot.Food(day, eaten: eaten)
         WidgetStore.update { $0.food = food }
+        let kcal = eaten.kcal
+        Reminders.note {
+            $0.eatenKcal = kcal
+            $0.targetKcal = day.target?.kcal
+        }
     }
 
     /// Saves corrections to a logged meal; offline, the change is queued and shown straight away.

@@ -8,6 +8,7 @@ struct SettingsView: View {
 
     @AppStorage(Reminders.morningEnabledKey) private var morningOn = false
     @AppStorage(Reminders.morningMinutesKey) private var morningMinutes = Reminders.defaultMorningMinutes
+    @AppStorage(Reminders.rehabEnabledKey) private var rehabOn = false
     @AppStorage(Reminders.dinnerEnabledKey) private var dinnerOn = false
     @AppStorage(HealthSync.recoveryKey) private var readRecovery = false
     @AppStorage(HealthSync.weightKey) private var readWeight = false
@@ -57,6 +58,7 @@ struct SettingsView: View {
             .presentationBackground(Color(hex: 0x161A22))
         }
         .onChange(of: morningOn) { reschedule(turnedOn: morningOn) { morningOn = false } }
+        .onChange(of: rehabOn) { reschedule(turnedOn: rehabOn) { rehabOn = false } }
         .onChange(of: dinnerOn) { reschedule(turnedOn: dinnerOn) { dinnerOn = false } }
         .onChange(of: morningMinutes) { Task { await Reminders.apply() } }
         .onChange(of: readRecovery) { healthChanged(turnedOn: readRecovery) }
@@ -255,16 +257,27 @@ struct SettingsView: View {
                 .tint(Color.mobility)
                 .settingsRow()
                 Divider().overlay(Color.cardBorder)
+                Toggle(isOn: $rehabOn) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Rehab nudge").font(AppFont.body(15)).foregroundStyle(Color.ink)
+                        Text("\(Reminders.timeLabel(Reminders.rehabMinutes)) if exercises are still open")
+                            .font(AppFont.body(12)).foregroundStyle(Color.muted)
+                    }
+                }
+                .tint(Color.mobility)
+                .settingsRow()
+                Divider().overlay(Color.cardBorder)
                 Toggle(isOn: $dinnerOn) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Log dinner nudge").font(AppFont.body(15)).foregroundStyle(Color.ink)
-                        Text("\(Reminders.timeLabel(Reminders.dinnerMinutes)) if under target")
+                        Text("\(Reminders.timeLabel(Reminders.dinnerMinutes)) if under \(Int(Reminders.lowCalorieShare * 100))% of target")
                             .font(AppFont.body(12)).foregroundStyle(Color.muted)
                     }
                 }
                 .tint(Color.mobility)
                 .settingsRow()
             }
+            footnote("Each nudge stays quiet once it's done: checked in, rehab ticked off, or enough eaten.")
             if notificationsDenied {
                 footnote("Notifications are off for TrainLog. Turn them on in the iPhone's Settings → Notifications → TrainLog.")
                     .foregroundStyle(Color.warning)
@@ -291,7 +304,8 @@ struct SettingsView: View {
                     return
                 }
             }
-            await Reminders.apply()
+            await Reminders.refresh()
+            Reminders.scheduleRefresh()
         }
     }
 

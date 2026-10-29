@@ -10,7 +10,6 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 - **Background widget refresh** — Widgets and the Lock Screen update without opening the app.
 - **Busy day toggle** — Mark a hectic day from the check-in so the plan eases off (`life_load`).
-- **Smart reminders** — Nudge only when needed: low calories by evening, rehab not ticked, no check-in.
 - **Merge into main** — The `ios-app` branch carries backend changes the web app also runs.
 
 ## Next
@@ -27,6 +26,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-10-29 — **Smart reminders** — Check-in, rehab and dinner nudges fire only when that thing is still undone today.
 - 2026-10-29 — **Readiness vitals** — Each vital is judged against your own typical range, with a week of dots.
 - 2026-10-29 — **Guided rehab** — Run the rehab checklist on the phone with animated exercise demos.
 - 2026-10-29 — **Today card for every day** — The Today card offers something to do on rest, training and rehab days.

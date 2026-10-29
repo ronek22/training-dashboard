@@ -175,6 +175,7 @@ final class RehabSessionModel {
         pausedLeft = nil
         phase = .done
         RestAlarm.cancel()
+        Reminders.note { $0.rehabLeft = 0 }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         let completion = GuidedCompletion(
             sessionKey: session?.key ?? "rehab",

@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrainLog · iOS · Workout builder</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&amp;family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#05070A;color:#F3F5F9;font-family:'Archivo',system-ui,sans-serif}
+.num{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;line-height:1}
+.ttl{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;text-transform:uppercase;line-height:.95;letter-spacing:.01em}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600}
+.muted{color:#8A93A6}
+.soft{color:#A3ABBC}
+.canvas{display:flex;flex-wrap:wrap;gap:64px 56px;padding:56px 64px 72px;max-width:2400px;align-items:flex-start}
+.canvas-head{width:100%;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.frame{display:flex;flex-direction:column;gap:14px}
+.frame-cap{font-size:13px;color:#A3ABBC;max-width:393px;line-height:1.45}
+.frame-cap b{color:#F3F5F9;font-weight:600}
+.phone{width:393px;height:852px;border-radius:56px;background:#0A0C11;position:relative;overflow:hidden;box-shadow:0 0 0 10px #171A21,0 0 0 11px #2A2F3A,0 30px 80px rgba(0,0,0,.55)}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000;z-index:40}
+.sb{height:54px;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 44px;font-weight:600;font-size:16px;box-sizing:border-box;position:relative;z-index:10}
+.home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#F3F5F9;z-index:50}
+.body{padding:6px 16px 0;display:flex;flex-direction:column;gap:10px}
+.card{background:#12151C;border:1px solid #1C212B;border-radius:22px;padding:16px}
+.inset{background:#0E1117;border:1px solid #1C212B;border-radius:14px;padding:10px 12px}
+.row{display:flex;align-items:center;gap:12px}
+.sbw{justify-content:space-between}
+.nav{display:flex;justify-content:space-between;align-items:center;height:44px}
+.nav .lnk{color:#D4FF3A;font-size:16px;font-weight:500}
+.cbtn{width:36px;height:36px;border-radius:50%;background:#191D27;display:flex;align-items:center;justify-content:center;flex:none}
+.pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;border:1px solid #2A303C;color:#A3ABBC;font-size:13px;font-weight:600;flex:none}
+.chip.on{background:#232835;border-color:#232835;color:#F3F5F9}
+.chip.pk{border-color:#FF4D9A;background:rgba(255,77,154,.14);color:#FF9AC6}
+.obtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:52px;padding:0 18px;border-radius:999px;border:1px solid #2A303C;color:#F3F5F9;font-size:15px;font-weight:600;box-sizing:border-box}
+.vbtn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:999px;background:#D4FF3A;color:#0A0C11;font-size:16px;font-weight:700}
+.dock{position:absolute;left:0;right:0;bottom:0;padding:22px 16px 34px;background:linear-gradient(rgba(10,12,17,0),#0A0C11 26px);z-index:30}
+.sheet-dock{position:absolute;left:0;right:0;bottom:0;padding:14px 16px 34px;background:#12151C;border-top:1px solid #1C212B;z-index:30}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:20}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#12151C;border-radius:34px 34px 0 0;border-top:1px solid #232835;z-index:25;overflow:hidden}
+.grab{width:36px;height:5px;border-radius:3px;background:#3A4150;margin:8px auto 0}
+.search{height:40px;border-radius:12px;background:#0E1117;border:1px solid #1C212B;display:flex;align-items:center;gap:8px;padding:0 12px;font-size:15px}
+/* equipment tile */
+.tile{width:46px;height:46px;border-radius:13px;background:#0E1117;border:1px solid #1C212B;display:flex;align-items:center;justify-content:center;flex:none;position:relative}
+.tile svg{stroke:#FF7AB5;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.tile.sm{width:40px;height:40px;border-radius:12px}
+/* builder rows */
+.ex{background:#12151C;border:1px solid #1C212B;border-radius:18px;padding:12px 10px 12px 16px;display:flex;align-items:center;gap:12px;position:relative}
+.ex .nm{font-size:15px;font-weight:600}
+.ex .spec{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;margin-top:4px;letter-spacing:.01em}
+.ex .spec span{color:#8A93A6;font-family:'Archivo',sans-serif;font-size:12px;font-weight:500;margin-left:6px}
+.ex .last{font-size:12px;color:#6B7385;margin-top:3px}
+.handle{color:#4A5263;flex:none;padding:0 4px}
+.badge{position:absolute;top:-6px;left:-6px;width:20px;height:20px;border-radius:50%;background:#232835;border:2px solid #12151C;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:#A3ABBC;display:flex;align-items:center;justify-content:center}
+.swipe{display:flex;border-radius:20px;overflow:hidden;position:relative}
+.sact{width:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:600;color:#fff;flex:none}
+/* muscle bars */
+.mrow{display:grid;grid-template-columns:72px 1fr 18px;align-items:center;gap:8px;font-size:12px;color:#C9CFDA;padding:3px 0}
+.mrow i{display:block;height:6px;border-radius:3px;background:#FF4D9A}
+.mrow .t{height:6px;border-radius:3px;background:#1A1E27;overflow:hidden}
+.mrow b{font-family:'Barlow Condensed',sans-serif;font-size:15px;text-align:right}
+.nudge{display:flex;align-items:center;gap:12px;background:#0E1117;border:1px solid rgba(255,200,58,.28);border-radius:16px;padding:10px 10px 10px 12px}
+/* add sheet rows */
+.srow{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #1C212B}
+.srow .nm{font-size:15px;font-weight:600}
+.srow .d{font-size:12px;color:#8A93A6;margin-top:3px}
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#FF7AB5;background:rgba(255,77,154,.1);border-radius:6px;padding:2px 6px;margin-right:4px}
+.tag.am{color:#FFC83A;background:rgba(255,200,58,.1)}
+.add{width:32px;height:32px;border-radius:50%;border:1.5px solid #2A303C;display:flex;align-items:center;justify-content:center;flex:none}
+.add.on{background:#FF4D9A;border-color:#FF4D9A}
+.sec{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6B7385;font-weight:700;margin:14px 0 2px}
+/* editor */
+.stp{background:#0E1117;border:1px solid #1C212B;border-radius:16px;padding:10px 10px 10px}
+.stp .lbl{font-size:9px}
+.stp .ctl{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.stp .b{width:44px;height:44px;border-radius:50%;border:1px solid #2A303C;display:flex;align-items:center;justify-content:center;font-size:22px;color:#A3ABBC}
+.stp .v{font-size:38px}
+.stp .v small{font-family:'Archivo',sans-serif;font-size:12px;color:#8A93A6;font-weight:500;margin-left:2px}
+.hist{display:flex;align-items:flex-end;gap:6px;height:64px;margin-top:10px}
+.hist div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.hist i{display:block;width:100%;border-radius:5px 5px 2px 2px;background:#2A303C}
+.hist span{font-size:10px;color:#6B7385;height:12px;line-height:12px}
+.radio{width:22px;height:22px;border-radius:50%;border:2px solid #3A4150;box-sizing:border-box;flex:none}
+.radio.on{border:7px solid #D4FF3A}
+.opt{background:#0E1117;border:1px solid #1C212B;border-radius:18px;padding:14px;display:flex;gap:12px;align-items:flex-start}
+.opt.on{border-color:#D4FF3A;background:rgba(212,255,58,.05)}
+.opt .t{font-size:15px;font-weight:600}
+.opt .d{font-size:12px;color:#8A93A6;margin-top:4px;line-height:1.4}
+.toast{position:absolute;left:16px;right:16px;bottom:108px;background:#1A1E27;border:1px solid #2A303C;border-radius:18px;padding:12px 14px;display:flex;align-items:center;gap:12px;z-index:35;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.tmpl{background:#12151C;border:1px solid #1C212B;border-radius:20px;padding:12px 14px 12px 12px;display:flex;align-items:center;gap:12px}
+.fig{background:#0E1117;border:1px solid #1C212B;border-radius:12px;width:44px;height:64px;display:flex;align-items:center;justify-content:center;flex:none}
+.notes{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;width:100%;margin-top:8px}
+.notes div{font-size:13px;color:#A3ABBC;line-height:1.5}
+.notes b{color:#F3F5F9}
+.ms .bb{fill:#1A1E27}
+.ms .rg path{fill:#343B4A;stroke:#12151C;stroke-width:2;stroke-linejoin:round}
+.ms .rg path.p{fill:#F2588F}
+.ms .rg path.s{fill:#8C5674}
+.ms .rg path.g{fill:rgba(255,200,58,.14);stroke:#FFC83A;stroke-width:2.5;stroke-dasharray:6 4}
+.vals{display:flex;align-items:baseline;gap:14px;margin-top:5px;font-size:12px;color:#8A93A6}
+.vals b{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;color:#F3F5F9;margin-right:3px;letter-spacing:.01em}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);background:#0E1117;border:1px solid #1C212B;border-radius:18px;overflow:hidden}
+.trio>div{padding:12px 0 10px;text-align:center;position:relative}
+.trio>div+div{border-left:1px solid #1C212B}
+.trio .lbl{font-size:9px}
+.trio .num{font-size:40px;margin-top:6px}
+.trio .num small{font-family:'Archivo',sans-serif;font-size:12px;font-weight:500;color:#8A93A6;margin-left:3px}
+.trio .on{background:rgba(255,77,154,.08)}
+.trio .on .lbl{color:#FF7AB5}
+.trio .on::after{content:'';position:absolute;left:24%;right:24%;bottom:0;height:3px;border-radius:2px;background:#FF4D9A}
+.ruler{display:flex;align-items:center;gap:8px;margin-top:10px}
+.ruler .b{width:44px;height:44px;border-radius:50%;border:1px solid #2A303C;display:flex;align-items:center;justify-content:center;font-size:22px;color:#A3ABBC;flex:none}
+.scale{flex:1;height:52px;position:relative;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent)}
+.scale .tk{position:absolute;bottom:18px;width:1.5px;background:#3A4150;border-radius:1px}
+.scale .tl{position:absolute;bottom:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#6B7385;transform:translateX(-50%)}
+.scale .needle{position:absolute;left:50%;bottom:16px;width:3px;height:34px;margin-left:-1.5px;border-radius:2px;background:#FF4D9A}
+</style>
+</helmet>
+
+<div class="canvas">
+
+<div class="canvas-head">
+<div>
+<div class="lbl" style="color:#D4FF3A">TrainLog · iOS · Workout builder · v2</div>
+<div class="ttl" style="font-size:56px;margin-top:6px">Build it in the gym</div>
+<div class="muted" style="font-size:15px;margin-top:8px;max-width:860px;line-height:1.45">Create and edit strength workouts on the phone, inside Workout Studio. The rule: <b style="color:#F3F5F9">you should almost never type a number.</b> v2 borrows a few ideas from Fitbod, redrawn in TrainLog's own style: a <b style="color:#F3F5F9">body map</b> of what the workout hits, picks ranked by <b style="color:#F3F5F9">what the workout is missing</b>, <b style="color:#F3F5F9">swap for the same muscle</b>, and clear typographic rows.</div>
+</div>
+<div class="muted" style="font-size:12px;text-align:right;line-height:1.6">iPhone 17 Pro · 393 × 852 pt<br>Frames 12–17 · follows iOS.dc.html 01–11<br>Strength pink = muscles &amp; selection · volt = the one primary</div>
+</div>
+
+<!-- ============ 12. WORKOUT STUDIO (ENTRY POINTS) ============ -->
+<div class="frame">
+<div class="lbl">12 · Workout Studio · entry points</div>
+<div class="phone">
+<div class="island"></div>
+<div class="sb"><span>18:05</span><span></span></div>
+<div class="body">
+<div class="nav"><span class="lnk">‹ Today</span><div class="cbtn"><svg width="16" height="16" viewBox="0 0 16 16" stroke="#D4FF3A" stroke-width="2.2" stroke-linecap="round"><path d="M8 2v12M2 8h12"/></svg></div></div>
+<div style="padding:0 4px 4px">
+<div class="lbl" style="color:#FF7AB5">Workout Studio</div>
+<div class="ttl" style="font-size:40px;margin-top:6px">Workouts</div>
+</div>
+
+<div class="tmpl" style="border-color:rgba(255,77,154,.45)">
+<div class="fig"><svg class="ms" width="26" height="55" viewBox="14 4 212 448"><path class="bb" d="M107 52 Q96 46 97 29 Q96 9 120 8 Q144 9 143 29 Q144 46 133 52 L132 66 Q137 74 152 78 Q170 80 180 96 L192 139 L201 166 L209 195 L216 216 L221 228 L218 238 L212 238 L208 230 L204 235 L198 229 L198 215 L188 195 L175 171 L166 141 L160 126 Q155 151 149 168 L147 191 Q157 213 155 239 L149 279 L144 306 L148 335 L142 373 L137 407 L138 427 L148 437 Q152 446 138 447 L122 443 L122 411 L125 374 L120 338 L116 302 L120 271 L120 239 L120 271 L124 302 L120 338 L115 374 L118 411 L118 443 L102 447 Q88 446 92 437 L102 427 L103 407 L98 373 L92 335 L96 306 L91 279 L85 239 Q83 213 93 191 L91 168 Q85 151 80 126 L74 141 L65 171 L52 195 L42 215 L42 229 L36 235 L32 230 L28 238 L22 238 L19 228 L24 216 L31 195 L39 166 L48 139 L60 96 Q70 80 88 78 Q103 74 108 66 Z"/><g class="rg"><path class="p" d="M109 65 L118 71 L118 119 L96 99 L87 83 Z M89 104 L116 127 L113 155 L100 141 Z"/><path class="s" d="M83 84 Q68 83 62 99 L58 115 Q67 119 79 108 L88 97 Z"/><path d="M58 119 L75 115 L70 140 Q66 156 54 158 Q49 143 58 119 Z"/><path d="M52 161 L64 163 Q57 187 43 206 L36 208 Q42 179 52 161 Z"/><path class="p" d="M81 116 L94 119 L112 157 L108 181 L96 171 Q88 145 81 116 Z"/><path class="s" d="M115 147 L118 156 L118 196 L103 190 L111 175 Z"/><path d="M99 194 Q110 196 118 203 L117 228 Q103 241 90 225 Q88 206 99 194 Z"/><path d="M91 235 Q101 242 107 237 L105 271 L102 291 L96 279 Z M110 236 L118 234 L116 265 L109 290 L107 274 Z"/><path d="M98 308 Q105 305 110 316 L115 342 Q112 363 106 373 L100 363 Q92 336 98 308 Z"/></g><g class="rg" transform="translate(240 0) scale(-1 1)"><path class="p" d="M109 65 L118 71 L118 119 L96 99 L87 83 Z M89 104 L116 127 L113 155 L100 141 Z"/><path class="s" d="M83 84 Q68 83 62 99 L58 115 Q67 119 79 108 L88 97 Z"/><path d="M58 119 L75 115 L70 140 Q66 156 54 158 Q49 143 58 119 Z"/><path d="M52 161 L64 163 Q57 187 43 206 L36 208 Q42 179 52 161 Z"/><path class="p" d="M81 116 L94 119 L112 157 L108 181 L96 171 Q88 145 81 116 Z"/><path class="s" d="M115 147 L118 156 L118 196 L103 190 L111 175 Z"/><path d="M99 194 Q110 196 118 203 L117 228 Q103 241 90 225 Q88 206 99 194 Z"/><path d="M91 235 Q101 242 107 237 L105 271 L102 291 L96 279 Z M110 236 L118 234 L116 265 L109 290 L107 274 Z"/><path d="M98 308 Q105 305 110 316 L115 342 Q112 363 106 373 L100 363 Q92 336 98 308 Z"/></g></svg></div>
+<div style="flex:1;min-width:0">
+<div style="font-size:16px;font-weight:700">Workout B · Back + Core</div>
+<div class="muted" style="font-size:13px;margin-top:4px">5 lifts · 15 sets · ~42 min</div>
+<div style="margin-top:7px"><span class="pill" style="background:rgba(255,77,154,.14);color:#FF7AB5">Planned today</span></div>
+</div>
+<span style="color:#4A5263;font-size:18px">›</span>
+</div>
+
+<div class="swipe">
+<div class="tmpl" style="width:calc(100% - 132px);flex:none;border-radius:20px 0 0 20px;border-right:none;box-sizing:border-box">
+<div class="fig"><svg class="ms" width="26" height="55" viewBox="14 4 212 448"><path class="bb" d="M107 52 Q96 46 97 29 Q96 9 120 8 Q144 9 143 29 Q144 46 133 52 L132 66 Q137 74 152 78 Q170 80 180 96 L192 139 L201 166 L209 195 L216 216 L221 228 L218 238 L212 238 L208 230 L204 235 L198 229 L198 215 L188 195 L175 171 L166 141 L160 126 Q155 151 149 168 L147 191 Q157 213 155 239 L149 279 L144 306 L148 335 L142 373 L137 407 L138 427 L148 437 Q152 446 138 447 L122 443 L122 411 L125 374 L120 338 L116 302 L120 271 L120 239 L120 271 L124 302 L120 338 L115 374 L118 411 L118 443 L102 447 Q88 446 92 437 L102 427 L103 407 L98 373 L92 335 L96 306 L91 279 L85 239 Q83 213 93 191 L91 168 Q85 151 80 126 L74 141 L65 171 L52 195 L42 215 L42 229 L36 235 L32 230 L28 238 L22 238 L19 228 L24 216 L31 195 L39 166 L48 139 L60 96 Q70 80 88 78 Q103 74 108 66 Z"/><g class="rg"><path d="M84 82 Q68 82 62 98 L58 115 Q68 119 78 109 L88 94 Z"/><path d="M91 84 Q108 80 117 89 L118 115 Q104 126 82 114 L81 105 Z"/><path d="M58 119 Q71 121 75 115 L69 139 Q63 155 54 157 Q48 145 58 119 Z"/><path d="M76 119 L78 134 L69 158 L65 159 Q72 139 76 119 Z"/><path d="M51 160 L63 162 Q60 180 43 205 L36 207 Q41 181 51 160 Z"/><path d="M105 127 Q111 123 118 125 L118 142 L104 141 Z M104 146 L118 147 L118 162 L103 161 Z M103 166 L118 166 L118 189 L110 201 L103 183 Z"/><path d="M84 120 L99 130 L98 165 L106 198 L94 187 L94 165 Z"/><path class="p" d="M94 201 Q101 205 105 222 L107 250 L104 277 Q93 269 92 249 Q86 223 94 201 Z M109 226 L117 240 L115 276 L109 293 L104 280 Z"/><path class="s" d="M102 204 L117 213 L118 234 L112 245 Z"/><path d="M97 311 L105 313 L112 348 L109 384 L104 396 L101 365 Q93 339 97 311 Z"/></g><g class="rg" transform="translate(240 0) scale(-1 1)"><path d="M84 82 Q68 82 62 98 L58 115 Q68 119 78 109 L88 94 Z"/><path d="M91 84 Q108 80 117 89 L118 115 Q104 126 82 114 L81 105 Z"/><path d="M58 119 Q71 121 75 115 L69 139 Q63 155 54 157 Q48 145 58 119 Z"/><path d="M76 119 L78 134 L69 158 L65 159 Q72 139 76 119 Z"/><path d="M51 160 L63 162 Q60 180 43 205 L36 207 Q41 181 51 160 Z"/><path d="M105 127 Q111 123 118 125 L118 142 L104 141 Z M104 146 L118 147 L118 162 L103 161 Z M103 166 L118 166 L118 189 L110 201 L103 183 Z"/><path d="M84 120 L99 130 L98 165 L106 198 L94 187 L94 165 Z"/><path class="p" d="M94 201 Q101 205 105 222 L107 250 L104 277 Q93 269 92 249 Q86 223 94 201 Z M109 226 L117 240 L115 276 L109 293 L104 280 Z"/><path class="s" d="M102 204 L117 213 L118 234 L112 245 Z"/><path d="M97 311 L105 313 L112 348 L109 384 L104 396 L101 365 Q93 339 97 311 Z"/></g></svg></div>
+<div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Workout A · Legs</div><div class="muted" style="font-size:13px;margin-top:4px">8 days ago</div></div>
+</div>
+<div class="sact" style="background:#3B8CFF"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5l3 3L7 16H4v-3z"/></svg>Edit</div>
+<div class="sact" style="background:#FF5A6E"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 6h12M8 6V4h4v2M6 6l1 10h6l1-10"/></svg>Delete</div>
+</div>
+
+<div class="tmpl">
+<div class="fig"><svg class="ms" width="26" height="55" viewBox="14 4 212 448"><path class="bb" d="M107 52 Q96 46 97 29 Q96 9 120 8 Q144 9 143 29 Q144 46 133 52 L132 66 Q137 74 152 78 Q170 80 180 96 L192 139 L201 166 L209 195 L216 216 L221 228 L218 238 L212 238 L208 230 L204 235 L198 229 L198 215 L188 195 L175 171 L166 141 L160 126 Q155 151 149 168 L147 191 Q157 213 155 239 L149 279 L144 306 L148 335 L142 373 L137 407 L138 427 L148 437 Q152 446 138 447 L122 443 L122 411 L125 374 L120 338 L116 302 L120 271 L120 239 L120 271 L124 302 L120 338 L115 374 L118 411 L118 443 L102 447 Q88 446 92 437 L102 427 L103 407 L98 373 L92 335 L96 306 L91 279 L85 239 Q83 213 93 191 L91 168 Q85 151 80 126 L74 141 L65 171 L52 195 L42 215 L42 229 L36 235 L32 230 L28 238 L22 238 L19 228 L24 216 L31 195 L39 166 L48 139 L60 96 Q70 80 88 78 Q103 74 108 66 Z"/><g class="rg"><path class="s" d="M84 82 Q68 82 62 98 L58 115 Q68 119 78 109 L88 94 Z"/><path class="p" d="M91 84 Q108 80 117 89 L118 115 Q104 126 82 114 L81 105 Z"/><path d="M58 119 Q71 121 75 115 L69 139 Q63 155 54 157 Q48 145 58 119 Z"/><path class="s" d="M76 119 L78 134 L69 158 L65 159 Q72 139 76 119 Z"/><path d="M51 160 L63 162 Q60 180 43 205 L36 207 Q41 181 51 160 Z"/><path d="M105 127 Q111 123 118 125 L118 142 L104 141 Z M104 146 L118 147 L118 162 L103 161 Z M103 166 L118 166 L118 189 L110 201 L103 183 Z"/><path d="M84 120 L99 130 L98 165 L106 198 L94 187 L94 165 Z"/><path d="M94 201 Q101 205 105 222 L107 250 L104 277 Q93 269 92 249 Q86 223 94 201 Z M109 226 L117 240 L115 276 L109 293 L104 280 Z"/><path d="M102 204 L117 213 L118 234 L112 245 Z"/><path d="M97 311 L105 313 L112 348 L109 384 L104 396 L101 365 Q93 339 97 311 Z"/></g><g class="rg" transform="translate(240 0) scale(-1 1)"><path class="s" d="M84 82 Q68 82 62 98 L58 115 Q68 119 78 109 L88 94 Z"/><path class="p" d="M91 84 Q108 80 117 89 L118 115 Q104 126 82 114 L81 105 Z"/><path d="M58 119 Q71 121 75 115 L69 139 Q63 155 54 157 Q48 145 58 119 Z"/><path class="s" d="M76 119 L78 134 L69 158 L65 159 Q72 139 76 119 Z"/><path d="M51 160 L63 162 Q60 180 43 205 L36 207 Q41 181 51 160 Z"/><path d="M105 127 Q111 123 118 125 L118 142 L104 141 Z M104 146 L118 147 L118 162 L103 161 Z M103 166 L118 166 L118 189 L110 201 L103 183 Z"/><path d="M84 120 L99 130 L98 165 L106 198 L94 187 L94 165 Z"/><path d="M94 201 Q101 205 105 222 L107 250 L104 277 Q93 269 92 249 Q86 223 94 201 Z M109 226 L117 240 L115 276 L109 293 L104 280 Z"/><path d="M102 204 L117 213 L118 234 L112 245 Z"/><path d="M97 311 L105 313 L112 348 L109 384 L104 396 L101 365 Q93 339 97 311 Z"/></g></svg></div>
+<div style="flex:1"><div style="font-size:16px;font-weight:700">Upper · Push</div><div class="muted" style="font-size:13px;margin-top:4px">4 lifts · 12 sets · ~34 min · 11 days ago</div></div>
+<span style="color:#4A5263;font-size:18px">›</span>
+</div>
+
+<div class="tmpl">
+<div class="fig"><svg class="ms" width="26" height="55" viewBox="14 4 212 448"><path class="bb" d="M107 52 Q96 46 97 29 Q96 9 120 8 Q144 9 143 29 Q144 46 133 52 L132 66 Q137 74 152 78 Q170 80 180 96 L192 139 L201 166 L209 195 L216 216 L221 228 L218 238 L212 238 L208 230 L204 235 L198 229 L198 215 L188 195 L175 171 L166 141 L160 126 Q155 151 149 168 L147 191 Q157 213 155 239 L149 279 L144 306 L148 335 L142 373 L137 407 L138 427 L148 437 Q152 446 138 447 L122 443 L122 411 L125 374 L120 338 L116 302 L120 271 L120 239 L120 271 L124 302 L120 338 L115 374 L118 411 L118 443 L102 447 Q88 446 92 437 L102 427 L103 407 L98 373 L92 335 L96 306 L91 279 L85 239 Q83 213 93 191 L91 168 Q85 151 80 126 L74 141 L65 171 L52 195 L42 215 L42 229 L36 235 L32 230 L28 238 L22 238 L19 228 L24 216 L31 195 L39 166 L48 139 L60 96 Q70 80 88 78 Q103 74 108 66 Z"/><g class="rg"><path class="s" d="M84 82 Q68 82 62 98 L58 115 Q68 119 78 109 L88 94 Z"/><path class="s" d="M91 84 Q108 80 117 89 L118 115 Q104 126 82 114 L81 105 Z"/><path d="M58 119 Q71 121 75 115 L69 139 Q63 155 54 157 Q48 145 58 119 Z"/><path d="M76 119 L78 134 L69 158 L65 159 Q72 139 76 119 Z"/><path d="M51 160 L63 162 Q60 180 43 205 L36 207 Q41 181 51 160 Z"/><path class="s" d="M105 127 Q111 123 118 125 L118 142 L104 141 Z M104 146 L118 147 L118 162 L103 161 Z M103 166 L118 166 L118 189 L110 201 L103 183 Z"/><path d="M84 120 L99 130 L98 165 L106 198 L94 187 L94 165 Z"/><path class="s" d="M94 201 Q101 205 105 222 L107 250 L104 277 Q93 269 92 249 Q86 223 94 201 Z M109 226 L117 240 L115 276 L109 293 L104 280 Z"/><path d="M102 204 L117 213 L118 234 L112 245 Z"/><path d="M97 311 L105 313 L112 348 L109 384 L104 396 L101 365 Q93 339 97 311 Z"/></g><g class="rg" transform="translate(240 0) scale(-1 1)"><path class="s" d="M84 82 Q68 82 62 98 L58 115 Q68 119 78 109 L88 94 Z"/><path class="s" d="M91 84 Q108 80 117 89 L118 115 Q104 126 82 114 L81 105 Z"/><path d="M58 119 Q71 121 75 115 L69 139 Q63 155 54 157 Q48 145 58 119 Z"/><path d="M76 119 L78 134 L69 158 L65 159 Q72 139 76 119 Z"/><path d="M51 160 L63 162 Q60 180 43 205 L36 207 Q41 181 51 160 Z"/><path class="s" d="M105 127 Q111 123 118 125 L118 142 L104 141 Z M104 146 L118 147 L118 162 L103 161 Z M103 166 L118 166 L118 189 L110 201 L103 183 Z"/><path d="M84 120 L99 130 L98 165 L106 198 L94 187 L94 165 Z"/><path class="s" d="M94 201 Q101 205 105 222 L107 250 L104 277 Q93 269 92 249 Q86 223 94 201 Z M109 226 L117 240 L115 276 L109 293 L104 280 Z"/><path d="M102 204 L117 213 L118 234 L112 245 Z"/><path d="M97 311 L105 313 L112 348 L109 384 L104 396 L101 365 Q93 339 97 311 Z"/></g></svg></div>
+<div style="flex:1"><div style="font-size:16px;font-weight:700">Hotel room · 20 min</div><div class="muted" style="font-size:13px;margin-top:4px">4 lifts · 10 sets · ~20 min · never done</div></div>
+<span style="color:#4A5263;font-size:18px">›</span>
+</div>
+
+<div class="toast">
+<span style="width:28px;height:28px;border-radius:50%;background:rgba(46,211,176,.18);display:flex;align-items:center;justify-content:center;flex:none"><svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke="#2ED3B0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3"/></svg></span>
+<div style="flex:1"><div style="font-size:14px;font-weight:600">Saved “Upper · Pull”</div><div class="muted" style="font-size:12px;margin-top:2px">Synced to the Mac</div></div>
+<span style="color:#D4FF3A;font-size:14px;font-weight:600">Start now</span>
+</div>
+</div>
+<div class="dock"><div class="vbtn">Start Workout B</div></div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>Each workout gets a tiny body map</b> in place of the plain stripe, so “legs day” and “push day” are recognisable before you read. <b>+</b> in the nav bar makes a new one; swipe left for <b>Edit · Delete</b>, long-press for a menu that adds <b>Copy</b> and <b>Rename</b>. Tapping a row still opens the session brief, so starting stays one tap. After a save, a toast offers <b>Start now</b>.</div>
+</div>
+
+<!-- ============ 13. NEW WORKOUT SHEET ============ -->
+<div class="frame">
+<div class="lbl">13 · New workout · pick a starting point</div>
+<div class="phone">
+<div class="island"></div>
+<div class="dim"></div>
+<div class="sheet" style="top:62px">
+<div class="grab"></div>
+<div style="padding:10px 18px 0">
+<div class="nav"><span class="soft" style="font-size:16px">Cancel</span><span style="font-size:16px;font-weight:600">New workout</span><span style="width:52px"></span></div>
+<div class="lbl" style="margin-top:8px">Name</div>
+<div class="search" style="margin-top:8px;height:48px;font-size:17px;font-weight:600"><span>Upper · Pull</span><span style="width:2px;height:22px;background:#D4FF3A;margin-left:-6px"></span></div>
+<div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap"><span class="chip" style="height:28px;font-size:12px">Workout C</span><span class="chip" style="height:28px;font-size:12px">Full body</span><span class="chip" style="height:28px;font-size:12px">Hotel room</span></div>
+
+<div class="lbl" style="margin-top:22px">Start from</div>
+<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+<div class="opt on">
+<span class="radio on"></span>
+<div style="flex:1"><div class="t">Repeat a session</div><div class="d">Keep the lifts and sets you actually did</div>
+<div class="inset" style="margin-top:10px;padding:10px 12px;display:flex;align-items:center;gap:10px"><div class="fig" style="width:34px;height:46px;border-radius:9px"><svg class="ms" width="20" height="42" viewBox="14 4 212 448"><path class="bb" d="M107 52 Q96 46 97 29 Q96 9 120 8 Q144 9 143 29 Q144 46 133 52 L132 66 Q137 74 152 78 Q170 80 180 96 L192 139 L201 166 L209 195 L216 216 L221 228 L218 238 L212 238 L208 230 L204 235 L198 229 L198 215 L188 195 L175 171 L166 141 L160 126 Q155 151 149 168 L147 191 Q157 213 155 239 L149 279 L144 306 L148 335 L142 373 L137 407 L138 427 L148 437 Q152 446 138 447 L122 443 L122 411 L125 374 L120 338 L116 302 L120 271 L120 239 L120 271 L124 302 L120 338 L115 374 L118 411 L118 443 L102 447 Q88 446 92 437 L102 427 L103 407 L98 373 L92 335 L96 306 L91 279 L85 239 Q83 213 93 191 L91 168 Q85 151 80 126 L74 141 L65 171 L52 195 L42 215 L42 229 L36 235 L32 230 L28 238 L22 238 L19 228 L24 216 L31 195 L39 166 L48 139 L60 96 Q70 80 88 78 Q103 74 108 66 Z"/><g class="rg"><path class="p" d="M109 65 L118 71 L118 119 L96 99 L87 83 Z M89 104 L116 127 L113 155 L100 141 Z"/><path class="s" d="M83 84 Q68 83 62 99 L58 115 Q67 119 79 108 L88 97 Z"/><path d="M58 119 L75 115 L70 140 Q66 156 54 158 Q49 143 58 119 Z"/><path class="s" d="M52 161 L64 163 Q57 187 43 206 L36 208 Q42 179 52 161 Z"/><path class="p" d="M81 116 L94 119 L112 157 L108 181 L96 171 Q88 145 81 116 Z"/><path d="M115 147 L118 156 L118 196 L103 190 L111 175 Z"/><path d="M99 194 Q110 196 118 203 L117 228 Q103 241 90 225 Q88 206 99 194 Z"/><path d="M91 235 Q101 242 107 237 L105 271 L102 291 L96 279 Z M110 236 L118 234 L116 265 L109 290 L107 274 Z"/><path d="M98 308 Q105 305 110 316 L115 342 Q112 363 106 373 L100 363 Q92 336 98 308 Z"/></g><g class="rg" transform="translate(240 0) scale(-1 1)"><path class="p" d="M109 65 L118 71 L118 119 L96 99 L87 83 Z M89 104 L116 127 L113 155 L100 141 Z"/><path class="s" d="M83 84 Q68 83 62 99 L58 115 Q67 119 79 108 L88 97 Z"/><path d="M58 119 L75 115 L70 140 Q66 156 54 158 Q49 143 58 119 Z"/><path class="s" d="M52 161 L64 163 Q57 187 43 206 L36 208 Q42 179 52 161 Z"/><path class="p" d="M81 116 L94 119 L112 157 L108 181 L96 171 Q88 145 81 116 Z"/><path d="M115 147 L118 156 L118 196 L103 190 L111 175 Z"/><path d="M99 194 Q110 196 118 203 L117 228 Q103 241 90 225 Q88 206 99 194 Z"/><path d="M91 235 Q101 242 107 237 L105 271 L102 291 L96 279 Z M110 236 L118 234 L116 265 L109 290 L107 274 Z"/><path d="M98 308 Q105 305 110 316 L115 342 Q112 363 106 373 L100 363 Q92 336 98 308 Z"/></g></svg></div><div style="flex:1"><div style="font-size:13px;font-weight:600">Tue 27 Oct · Gym</div><div class="muted" style="font-size:12px;margin-top:2px">Pull-up, Row, Face pull +2 · 14 sets</div></div><span class="soft" style="font-size:13px">Change</span></div>
+</div>
+</div>
+<div class="opt">
+<span class="radio"></span>
+<div style="flex:1"><div class="t">Copy a workout</div><div class="d">Start from Workout A, B or Upper · Push and change it</div></div>
+</div>
+<div class="opt">
+<span class="radio"></span>
+<div style="flex:1"><div class="t">Pick muscles</div><div class="d">Tap Back + Biceps and get the lifts you do most for them, with last session's sets</div></div>
+</div>
+<div class="opt">
+<span class="radio"></span>
+<div style="flex:1"><div class="t">Start empty</div><div class="d">Add exercises one by one</div></div>
+</div>
+</div>
+</div>
+</div>
+<div class="sheet-dock" style="border-top:none"><div class="vbtn">Continue</div></div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>Never start from a blank page</b> unless you want to. <b>Repeat a session</b> keeps an improvised workout that went well. <b>Pick muscles</b> is the Fitbod-style quick start, but built from <i>your</i> history, not a generic library: no AI generation, just the lifts you already do. Name chips suggest the next letter in your series; naming can be skipped.</div>
+</div>
+
+<!-- ============ 14. BUILDER ============ -->
+<div class="frame">
+<div class="lbl">14 · Builder · the workout</div>
+<div class="phone">
+<div class="island"></div>
+<div class="sb"><span>18:07</span><span></span></div>
+<div class="body">
+<div class="nav"><span class="soft" style="font-size:16px">Cancel</span><span style="display:flex;gap:10px"><span class="cbtn"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v14M3 6l3-3 3 3M14 17V3M11 14l3 3 3-3"/></svg></span><span class="cbtn"><svg width="16" height="16" viewBox="0 0 20 20" fill="#A3ABBC"><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="16" cy="10" r="1.8"/></svg></span></span></div>
+<div style="padding:0 4px">
+<div class="row" style="gap:8px"><div class="ttl" style="font-size:38px">Upper · Pull</div><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#4A5263" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5l3 3L7 16H4v-3z"/></svg></div>
+<div class="muted" style="font-size:13px;margin-top:6px"><span class="num" style="font-size:16px;color:#F3F5F9">5</span> lifts · <span class="num" style="font-size:16px;color:#F3F5F9">15</span> work sets · <span class="num" style="font-size:16px;color:#F3F5F9">~44</span> min</div>
+</div>
+
+<div class="card" style="padding:12px 14px;display:flex;gap:14px;align-items:center">
+<div style="display:flex;gap:2px;flex:none;position:relative;padding-bottom:12px">
+<svg class="ms" width="70" height="148" viewBox="14 4 212 448"><path class="bb" d="M107 52 Q96 46 97 29 Q96 9 120 8 Q144 9 143 29 Q144 46 133 52 L132 66 Q137 74 152 78 Q170 80 180 96 L192 139 L201 166 L209 195 L216 216 L221 228 L218 238 L212 238 L208 230 L204 235 L198 229 L198 215 L188 195 L175 171 L166 141 L160 126 Q155 151 149 168 L147 191 Q157 213 155 239 L149 279 L144 306 L148 335 L142 373 L137 407 L138 427 L148 437 Q152 446 138 447 L122 443 L122 411 L125 374 L120 338 L116 302 L120 271 L120 239 L120 271 L124 302 L120 338 L115 374 L118 411 L118 443 L102 447 Q88 446 92 437 L102 427 L103 407 L98 373 L92 335 L96 306 L91 279 L85 239 Q83 213 93 191 L91 168 Q85 151 80 126 L74 141 L65 171 L52 195 L42 215 L42 229 L36 235 L32 230 L28 238 L22 238 L19 228 L24 216 L31 195 L39 166 L48 139 L60 96 Q70 80 88 78 Q103 74 108 66 Z"/><g class="rg"><path d="M84 82 Q68 82 62 98 L58 115 Q68 119 78 109 L88 94 Z"/><path d="M91 84 Q108 80 117 89 L118 115 Q104 126 82 114 L81 105 Z"/><path class="p" d="M58 119 Q71 121 75 115 L69 139 Q63 155 54 157 Q48 145 58 119 Z"/><path d="M76 119 L78 134 L69 158 L65 159 Q72 139 76 119 Z"/><path class="s" d="M51 160 L63 162 Q60 180 43 205 L36 207 Q41 181 51 160 Z"/><path class="g" d="M105 127 Q111 123 118 125 L118 142 L104 141 Z M104 146 L118 147 L118 162 L103 161 Z M103 166 L118 166 L118 189 L110 201 L103 183 Z"/><path d="M84 120 L99 130 L98 165 L106 198 L94 187 L94 165 Z"/><path d="M94 201 Q101 205 105 222 L107 250 L104 277 Q93 269 92 249 Q86 223 94 201 Z M109 226 L117 240 L115 276 L109 293 L104 280 Z"/><path d="M102 204 L117 213 L118 234 L112 245 Z"/><path d="M97 311 L105 313 L112 348 L109 384 L104 396 L101 365 Q93 339 97 311 Z"/></g><g class="rg" transform="translate(240 0) scale(-1 1)"><path d="M84 82 Q68 82 62 98 L58 115 Q68 119 78 109 L88 94 Z"/><path d="M91 84 Q108 80 117 89 L118 115 Q104 126 82 114 L81 105 Z"/><path class="p" d="M58 119 Q71 121 75 115 L69 139 Q63 155 54 157 Q48 145 58 119 Z"/><path d="M76 119 L78 134 L69 158 L65 159 Q72 139 76 119 Z"/><path class="s" d="M51 160 L63 162 Q60 180 43 205 L36 207 Q41 181 51 160 Z"/><path class="g" d="M105 127 Q111 123 118 125 L118 142 L104 141 Z M104 146 L118 147 L118 162 L103 161 Z M103 166 L118 166 L118 189 L110 201 L103 183 Z"/><path d="M84 120 L99 130 L98 165 L106 198 L94 187 L94 165 Z"/><path d="M94 201 Q101 205 105 222 L107 250 L104 277 Q93 269 92 249 Q86 223 94 201 Z M109 226 L117 240 L115 276 L109 293 L104 280 Z"/><path d="M102 204 L117 213 L118 234 L112 245 Z"/><path d="M97 311 L105 313 L112 348 L109 384 L104 396 L101 365 Q93 339 97 311 Z"/></g></svg>
+<svg class="ms" width="70" height="148" viewBox="14 4 212 448"><path class="bb" d="M107 52 Q96 46 97 29 Q96 9 120 8 Q144 9 143 29 Q144 46 133 52 L132 66 Q137 74 152 78 Q170 80 180 96 L192 139 L201 166 L209 195 L216 216 L221 228 L218 238 L212 238 L208 230 L204 235 L198 229 L198 215 L188 195 L175 171 L166 141 L160 126 Q155 151 149 168 L147 191 Q157 213 155 239 L149 279 L144 306 L148 335 L142 373 L137 407 L138 427 L148 437 Q152 446 138 447 L122 443 L122 411 L125 374 L120 338 L116 302 L120 271 L120 239 L120 271 L124 302 L120 338 L115 374 L118 411 L118 443 L102 447 Q88 446 92 437 L102 427 L103 407 L98 373 L92 335 L96 306 L91 279 L85 239 Q83 213 93 191 L91 168 Q85 151 80 126 L74 141 L65 171 L52 195 L42 215 L42 229 L36 235 L32 230 L28 238 L22 238 L19 228 L24 216 L31 195 L39 166 L48 139 L60 96 Q70 80 88 78 Q103 74 108 66 Z"/><g class="rg"><path class="p" d="M109 65 L118 71 L118 119 L96 99 L87 83 Z M89 104 L116 127 L113 155 L100 141 Z"/><path class="s" d="M83 84 Q68 83 62 99 L58 115 Q67 119 79 108 L88 97 Z"/><path d="M58 119 L75 115 L70 140 Q66 156 54 158 Q49 143 58 119 Z"/><path class="s" d="M52 161 L64 163 Q57 187 43 206 L36 208 Q42 179 52 161 Z"/><path class="p" d="M81 116 L94 119 L112 157 L108 181 L96 171 Q88 145 81 116 Z"/><path class="s" d="M115 147 L118 156 L118 196 L103 190 L111 175 Z"/><path d="M99 194 Q110 196 118 203 L117 228 Q103 241 90 225 Q88 206 99 194 Z"/><path d="M91 235 Q101 242 107 237 L105 271 L102 291 L96 279 Z M110 236 L118 234 L116 265 L109 290 L107 274 Z"/><path d="M98 308 Q105 305 110 316 L115 342 Q112 363 106 373 L100 363 Q92 336 98 308 Z"/></g><g class="rg" transform="translate(240 0) scale(-1 1)"><path class="p" d="M109 65 L118 71 L118 119 L96 99 L87 83 Z M89 104 L116 127 L113 155 L100 141 Z"/><path class="s" d="M83 84 Q68 83 62 99 L58 115 Q67 119 79 108 L88 97 Z"/><path d="M58 119 L75 115 L70 140 Q66 156 54 158 Q49 143 58 119 Z"/><path class="s" d="M52 161 L64 163 Q57 187 43 206 L36 208 Q42 179 52 161 Z"/><path class="p" d="M81 116 L94 119 L112 157 L108 181 L96 171 Q88 145 81 116 Z"/><path class="s" d="M115 147 L118 156 L118 196 L103 190 L111 175 Z"/><path d="M99 194 Q110 196 118 203 L117 228 Q103 241 90 225 Q88 206 99 194 Z"/><path d="M91 235 Q101 242 107 237 L105 271 L102 291 L96 279 Z M110 236 L118 234 L116 265 L109 290 L107 274 Z"/><path d="M98 308 Q105 305 110 316 L115 342 Q112 363 106 373 L100 363 Q92 336 98 308 Z"/></g></svg>
+<span class="muted" style="position:absolute;bottom:0;left:0;width:70px;text-align:center;font-size:9px;letter-spacing:.1em">FRONT</span><span class="muted" style="position:absolute;bottom:0;right:0;width:70px;text-align:center;font-size:9px;letter-spacing:.1em">BACK</span>
+</div>
+<div style="flex:1;min-width:0">
+<div class="lbl" style="font-size:9px;margin-bottom:6px">Work sets per muscle</div>
+<div class="mrow"><span>Back</span><span class="t"><i style="width:100%"></i></span><b>9</b></div>
+<div class="mrow"><span>Biceps</span><span class="t"><i style="width:67%"></i></span><b>6</b></div>
+<div class="mrow"><span>Rear delts</span><span class="t"><i style="width:33%;opacity:.6"></i></span><b>3</b></div>
+<div class="mrow" style="color:#FFC83A"><span>Core</span><span class="t"></span><b>0</b></div>
+</div>
+</div>
+
+<div class="nudge">
+<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">Nothing for core yet</div><div class="muted" style="font-size:12px;margin-top:2px">Hanging Knee Raise · 3 × 12 last time</div></div>
+<span class="chip" style="height:34px;color:#F3F5F9">+ Add</span>
+</div>
+
+<div class="ex">
+<div style="flex:1;min-width:0"><div class="nm">Pull-up</div><div class="vals"><span><b>3</b>sets</span><span><b>6</b>reps</span><span><b>BW</b></span></div><div class="last">Rest 2:00 · last 6, 6, 5 · Hard</div></div>
+<svg class="handle" width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h12M4 10h12M4 13h12"/></svg>
+</div>
+
+<div class="ex">
+<div style="flex:1;min-width:0"><div class="nm">Dumbbell Row</div><div class="vals"><span><b>3</b>sets</span><span><b>10</b>reps</span><span><b>34</b>kg <span style="color:#2ED3B0">+0.4</span></span></div><div class="last">Rest 1:30 · per arm · last 33.6 kg · Good</div></div>
+<svg class="handle" width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h12M4 10h12M4 13h12"/></svg>
+</div>
+
+<div class="ex">
+<div style="flex:1;min-width:0"><div class="nm">Lat Pulldown</div><div class="vals"><span><b>3</b>sets</span><span><b>10</b>reps</span><span><b>52</b>kg</span></div><div class="last">Rest 1:30 · last 52 kg · Good</div></div>
+<svg class="handle" width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h12M4 10h12M4 13h12"/></svg>
+</div>
+
+<div class="ex">
+<div style="flex:1;min-width:0"><div class="nm">Face Pull</div><div class="vals"><span><b>3</b>sets</span><span><b>15</b>reps</span><span><b>18</b>kg</span></div><div class="last">Rest 1:00 · last 18 kg · Easy</div></div>
+<svg class="handle" width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h12M4 10h12M4 13h12"/></svg>
+</div>
+</div>
+<div class="dock" style="display:flex;gap:10px"><span class="obtn" style="flex:none"><svg width="16" height="16" viewBox="0 0 16 16" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round"><path d="M8 2v12M2 8h12"/></svg>Exercise</span><div class="vbtn" style="flex:1">Save workout</div></div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>See the workout as a body, not just a list.</b> The body map lights up by sets per muscle (front and back), with bars for exact counts, using the backend's existing name → muscle mapping. An empty muscle shows as a <span style="color:#FFC83A">dashed outline</span> plus one gentle nudge with a lift from your history, one tap to add, dismissable. Rows read like a sentence, <b>3 sets · 10 reps · 34 kg</b>, numbers big and units small, with rest and last time underneath. <b>Add exercise</b> sits in the dock next to Save, so both stay in reach of your thumb however long the list gets. Swipe a row for <b>Swap · Copy · Remove</b> (Remove gives Undo).</div>
+</div>
+
+<!-- ============ 15. ADD EXERCISE SHEET ============ -->
+<div class="frame">
+<div class="lbl">15 · Add exercises · ranked for this workout</div>
+<div class="phone">
+<div class="island"></div>
+<div class="dim"></div>
+<div class="sheet" style="top:62px">
+<div class="grab"></div>
+<div style="padding:10px 18px 0">
+<div class="nav"><span class="soft" style="font-size:16px">Cancel</span><span style="font-size:16px;font-weight:600">Add exercises</span><span style="width:52px"></span></div>
+<div class="search" style="margin-top:6px;color:#6B7385"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="#8A93A6" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="9" r="6"/><path d="M14 14l4 4"/></svg><span>Search your 64 exercises</span></div>
+<div class="row" style="gap:6px;margin-top:10px;overflow:hidden"><span class="chip on">For this workout</span><span class="chip">Most done</span><span class="chip">Back</span><span class="chip">Arms</span><span class="chip">Legs</span></div>
+
+<div class="sec">Missing · Core</div>
+<div class="srow" style="border-top:none">
+<div style="flex:1;min-width:0"><div class="nm">Hanging Knee Raise</div><div class="d"><span class="tag am">Core</span>3 × 12 · 5 days ago</div></div>
+<span class="add"><svg width="13" height="13" viewBox="0 0 16 16" stroke="#A3ABBC" stroke-width="2.2" stroke-linecap="round"><path d="M8 2v12M2 8h12"/></svg></span>
+</div>
+<div class="srow">
+<div style="flex:1;min-width:0"><div class="nm">Cable Crunch</div><div class="d"><span class="tag am">Core</span>3 × 15 @ 30 kg · 3 weeks ago</div></div>
+<span class="add"><svg width="13" height="13" viewBox="0 0 16 16" stroke="#A3ABBC" stroke-width="2.2" stroke-linecap="round"><path d="M8 2v12M2 8h12"/></svg></span>
+</div>
+
+<div class="sec">More for Biceps</div>
+<div class="srow" style="border-top:none">
+<div style="flex:1;min-width:0"><div class="nm">Barbell Curl</div><div class="d"><span class="tag">Biceps</span>3 × 10 @ 25 kg · 21 sessions</div></div>
+<span class="add on"><svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="#0A0C11" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3"/></svg></span>
+</div>
+<div class="srow">
+<div style="flex:1;min-width:0"><div class="nm">Hammer Curl</div><div class="d"><span class="tag">Biceps</span><span class="tag">Forearms</span>3 × 12 @ 12 kg</div></div>
+<span class="add on"><svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="#0A0C11" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3"/></svg></span>
+</div>
+<div class="srow">
+<div style="flex:1;min-width:0"><div class="nm">Incline Curl</div><div class="d"><span class="tag">Biceps</span>2 × 10 @ 10 kg · Aug</div></div>
+<span class="add"><svg width="13" height="13" viewBox="0 0 16 16" stroke="#A3ABBC" stroke-width="2.2" stroke-linecap="round"><path d="M8 2v12M2 8h12"/></svg></span>
+</div>
+</div>
+</div>
+<div class="sheet-dock">
+<div class="row" style="gap:6px;margin-bottom:12px;overflow:hidden"><span class="chip pk" style="height:28px;font-size:12px">Barbell Curl ×</span><span class="chip pk" style="height:28px;font-size:12px">Hammer Curl ×</span><span class="muted" style="font-size:12px;margin-left:auto">+6 sets · ~9 min</span></div>
+<div class="vbtn">Add 2 exercises</div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>The list knows what the workout needs.</b> “For this workout” groups your own exercises (<code>/exercise-suggestions</code>) by the muscles the workout is <span style="color:#FFC83A">missing</span> first, then what rounds out what's there. Muscle tags on every row; typing searches everything, with “Create … as a new exercise” at the bottom. Picks arrive with last session's sets filled in. The tray shows what the picks <b>add</b> (+6 sets · ~9 min) before you commit.</div>
+</div>
+
+<!-- ============ 16. EXERCISE EDITOR SHEET ============ -->
+<div class="frame">
+<div class="lbl">16 · Exercise · tune the targets</div>
+<div class="phone">
+<div class="island"></div>
+<div class="dim"></div>
+<div class="sheet" style="top:62px">
+<div class="grab"></div>
+<div style="padding:10px 18px 0">
+<div class="nav"><span class="soft" style="font-size:16px;display:flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h11l-3-3M16 13H5l3 3"/></svg>Swap</span><span class="lnk" style="font-weight:600">Done</span></div>
+<div class="row" style="gap:12px;margin-top:2px;align-items:center">
+<div style="flex:1;min-width:0"><div class="ttl" style="font-size:34px">Dumbbell Row</div><div style="margin-top:8px"><span class="tag">Back</span><span class="tag">Biceps</span><span class="tag">Rear delts</span></div></div>
+<svg class="ms" width="38" height="80" viewBox="14 4 212 448"><path class="bb" d="M107 52 Q96 46 97 29 Q96 9 120 8 Q144 9 143 29 Q144 46 133 52 L132 66 Q137 74 152 78 Q170 80 180 96 L192 139 L201 166 L209 195 L216 216 L221 228 L218 238 L212 238 L208 230 L204 235 L198 229 L198 215 L188 195 L175 171 L166 141 L160 126 Q155 151 149 168 L147 191 Q157 213 155 239 L149 279 L144 306 L148 335 L142 373 L137 407 L138 427 L148 437 Q152 446 138 447 L122 443 L122 411 L125 374 L120 338 L116 302 L120 271 L120 239 L120 271 L124 302 L120 338 L115 374 L118 411 L118 443 L102 447 Q88 446 92 437 L102 427 L103 407 L98 373 L92 335 L96 306 L91 279 L85 239 Q83 213 93 191 L91 168 Q85 151 80 126 L74 141 L65 171 L52 195 L42 215 L42 229 L36 235 L32 230 L28 238 L22 238 L19 228 L24 216 L31 195 L39 166 L48 139 L60 96 Q70 80 88 78 Q103 74 108 66 Z"/><g class="rg"><path class="p" d="M109 65 L118 71 L118 119 L96 99 L87 83 Z M89 104 L116 127 L113 155 L100 141 Z"/><path class="s" d="M83 84 Q68 83 62 99 L58 115 Q67 119 79 108 L88 97 Z"/><path d="M58 119 L75 115 L70 140 Q66 156 54 158 Q49 143 58 119 Z"/><path class="s" d="M52 161 L64 163 Q57 187 43 206 L36 208 Q42 179 52 161 Z"/><path class="p" d="M81 116 L94 119 L112 157 L108 181 L96 171 Q88 145 81 116 Z"/><path d="M115 147 L118 156 L118 196 L103 190 L111 175 Z"/><path d="M99 194 Q110 196 118 203 L117 228 Q103 241 90 225 Q88 206 99 194 Z"/><path d="M91 235 Q101 242 107 237 L105 271 L102 291 L96 279 Z M110 236 L118 234 L116 265 L109 290 L107 274 Z"/><path d="M98 308 Q105 305 110 316 L115 342 Q112 363 106 373 L100 363 Q92 336 98 308 Z"/></g><g class="rg" transform="translate(240 0) scale(-1 1)"><path class="p" d="M109 65 L118 71 L118 119 L96 99 L87 83 Z M89 104 L116 127 L113 155 L100 141 Z"/><path class="s" d="M83 84 Q68 83 62 99 L58 115 Q67 119 79 108 L88 97 Z"/><path d="M58 119 L75 115 L70 140 Q66 156 54 158 Q49 143 58 119 Z"/><path class="s" d="M52 161 L64 163 Q57 187 43 206 L36 208 Q42 179 52 161 Z"/><path class="p" d="M81 116 L94 119 L112 157 L108 181 L96 171 Q88 145 81 116 Z"/><path d="M115 147 L118 156 L118 196 L103 190 L111 175 Z"/><path d="M99 194 Q110 196 118 203 L117 228 Q103 241 90 225 Q88 206 99 194 Z"/><path d="M91 235 Q101 242 107 237 L105 271 L102 291 L96 279 Z M110 236 L118 234 L116 265 L109 290 L107 274 Z"/><path d="M98 308 Q105 305 110 316 L115 342 Q112 363 106 373 L100 363 Q92 336 98 308 Z"/></g></svg>
+</div>
+
+<div class="trio" style="margin-top:16px">
+<div><div class="lbl">Sets</div><div class="num">3</div></div>
+<div><div class="lbl">Reps</div><div class="num">10</div></div>
+<div class="on"><div class="lbl">Kg · per arm</div><div class="num">34</div></div>
+</div>
+<div class="ruler"><span class="b">−</span><div class="scale"><i class="tk" style="left:calc(50% + -182px);height:18px;background:#5A6275"></i><i class="tk" style="left:calc(50% + -169px);height:10px"></i><i class="tk" style="left:calc(50% + -156px);height:18px;background:#5A6275"></i><span class="tl" style="left:calc(50% + -156px)">28</span><i class="tk" style="left:calc(50% + -143px);height:10px"></i><i class="tk" style="left:calc(50% + -130px);height:18px;background:#5A6275"></i><i class="tk" style="left:calc(50% + -117px);height:10px"></i><i class="tk" style="left:calc(50% + -104px);height:18px;background:#5A6275"></i><span class="tl" style="left:calc(50% + -104px)">30</span><i class="tk" style="left:calc(50% + -91px);height:10px"></i><i class="tk" style="left:calc(50% + -78px);height:18px;background:#5A6275"></i><i class="tk" style="left:calc(50% + -65px);height:10px"></i><i class="tk" style="left:calc(50% + -52px);height:18px;background:#5A6275"></i><span class="tl" style="left:calc(50% + -52px)">32</span><i class="tk" style="left:calc(50% + -39px);height:10px"></i><i class="tk" style="left:calc(50% + -26px);height:18px;background:#5A6275"></i><i class="tk" style="left:calc(50% + -13px);height:10px"></i><i class="tk" style="left:calc(50% + 0px);height:18px;background:#5A6275"></i><span class="tl" style="left:calc(50% + 0px);color:#F3F5F9">34</span><i class="tk" style="left:calc(50% + 13px);height:10px"></i><i class="tk" style="left:calc(50% + 26px);height:18px;background:#5A6275"></i><i class="tk" style="left:calc(50% + 39px);height:10px"></i><i class="tk" style="left:calc(50% + 52px);height:18px;background:#5A6275"></i><span class="tl" style="left:calc(50% + 52px)">36</span><i class="tk" style="left:calc(50% + 65px);height:10px"></i><i class="tk" style="left:calc(50% + 78px);height:18px;background:#5A6275"></i><i class="tk" style="left:calc(50% + 91px);height:10px"></i><i class="tk" style="left:calc(50% + 104px);height:18px;background:#5A6275"></i><span class="tl" style="left:calc(50% + 104px)">38</span><i class="tk" style="left:calc(50% + 117px);height:10px"></i><i class="tk" style="left:calc(50% + 130px);height:18px;background:#5A6275"></i><i class="tk" style="left:calc(50% + 143px);height:10px"></i><i class="tk" style="left:calc(50% + 156px);height:18px;background:#5A6275"></i><span class="tl" style="left:calc(50% + 156px)">40</span><i class="tk" style="left:calc(50% + 169px);height:10px"></i><i class="tk" style="left:calc(50% + 182px);height:18px;background:#5A6275"></i><i class="needle"></i></div><span class="b">+</span></div>
+<div class="row" style="gap:6px;margin-top:8px;justify-content:center"><span class="chip" style="height:28px;font-size:12px">−2.5</span><span class="chip" style="height:28px;font-size:12px">−1</span><span class="chip" style="height:28px;font-size:12px">+1</span><span class="chip" style="height:28px;font-size:12px">+2.5</span></div>
+<div class="row" style="gap:6px;margin-top:14px"><span class="lbl" style="font-size:10px;width:42px">Rest</span><span class="chip" style="flex:1;justify-content:center;height:40px">1:00</span><span class="chip pk" style="flex:1;justify-content:center;height:40px">1:30</span><span class="chip" style="flex:1;justify-content:center;height:40px">2:00</span><span class="chip" style="flex:1;justify-content:center;height:40px">3:00</span></div>
+
+<div class="inset" style="margin-top:12px;padding:12px 14px">
+<div class="row sbw"><span class="lbl" style="font-size:10px">Working weight · last 6</span><span style="color:#D4FF3A;font-size:13px;font-weight:600">Use last session</span></div>
+<div class="hist">
+<div><i style="height:28px"></i><span>Sep</span></div>
+<div><i style="height:32px"></i><span></span></div>
+<div><i style="height:36px"></i><span></span></div>
+<div><i style="height:36px"></i><span>Oct</span></div>
+<div><i style="height:40px"></i><span></span></div>
+<div><i style="height:42px;background:#FF4D9A"></i><span style="color:#FF7AB5">33.6</span></div>
+<div><i style="height:44px;background:transparent;border:1.5px dashed #FF4D9A;box-sizing:border-box"></i><span style="color:#F3F5F9;font-weight:600">34</span></div>
+</div>
+<div class="muted" style="font-size:12px;margin-top:8px">Last: 10 · 10 · 9 reps · Good, Good, Hard</div>
+</div>
+
+<div class="search" style="margin-top:10px;height:42px;color:#6B7385;font-size:14px">Note · “elbow tucked, pause at top”</div>
+<div class="row sbw" style="margin-top:12px"><span class="muted" style="font-size:12px;line-height:1.4;max-width:250px">Starting target. Your effort taps move it after each session.</span><span style="color:#FF5A6E;font-size:14px;font-weight:600">Remove</span></div>
+</div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>One strip, one control.</b> Sets, reps and kg sit side by side; tap one to select it and the ruler below drives it (drag, or 44 pt − / +, with quick-jump chips). Tap a number twice to type it. The mini map shows what the lift hits. A <b>trend</b> of the working weight replaces the raw last-set table, with today's target as the dashed bar, so you see whether 34 kg is a step or a leap. <b>Swap</b> opens frame 15 filtered to the same muscles (Fitbod's “best replacements”, minus the algorithm) and keeps sets, reps and rest. Changes apply live; <b>Done</b> just closes.</div>
+</div>
+
+<!-- ============ 17. REORDER ============ -->
+<div class="frame">
+<div class="lbl">17 · Builder · reorder</div>
+<div class="phone">
+<div class="island"></div>
+<div class="sb"><span>18:09</span><span></span></div>
+<div class="body" style="gap:8px">
+<div class="nav"><span style="width:52px"></span><span style="font-size:16px;font-weight:600">Reorder</span><span class="lnk" style="font-weight:600">Done</span></div>
+<div class="muted" style="font-size:13px;padding:0 4px 6px">Drag to change the order. Big compound lifts usually go first.</div>
+
+<div class="ex" style="height:56px;box-sizing:border-box"><div class="nm" style="flex:1">Pull-up</div><span class="muted num" style="font-size:16px">3 × 6</span><svg class="handle" width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h12M4 10h12M4 13h12"/></svg></div>
+<div class="ex" style="height:56px;box-sizing:border-box"><div class="nm" style="flex:1">Dumbbell Row</div><span class="muted num" style="font-size:16px">3 × 10</span><svg class="handle" width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h12M4 10h12M4 13h12"/></svg></div>
+<div style="position:relative;height:56px">
+<div style="position:absolute;inset:0;border:1.5px dashed rgba(255,77,154,.5);border-radius:18px"></div>
+<div class="ex" style="position:absolute;left:0;right:0;top:-20px;height:56px;box-sizing:border-box;transform:scale(1.04) rotate(-.8deg);border-color:#FF4D9A;background:#1A1E27;box-shadow:0 18px 36px rgba(0,0,0,.6);z-index:5"><div class="nm" style="flex:1">Barbell Curl</div><span class="muted num" style="font-size:16px">3 × 10</span><svg class="handle" width="18" height="18" viewBox="0 0 20 20" stroke="#FF7AB5" stroke-width="2" stroke-linecap="round"><path d="M4 7h12M4 10h12M4 13h12"/></svg></div>
+</div>
+<div class="ex" style="height:56px;box-sizing:border-box"><div class="nm" style="flex:1">Lat Pulldown</div><span class="muted num" style="font-size:16px">3 × 10</span><svg class="handle" width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h12M4 10h12M4 13h12"/></svg></div>
+<div class="ex" style="height:56px;box-sizing:border-box"><div class="nm" style="flex:1">Face Pull</div><span class="muted num" style="font-size:16px">3 × 15</span><svg class="handle" width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h12M4 10h12M4 13h12"/></svg></div>
+<div class="ex" style="height:56px;box-sizing:border-box"><div class="nm" style="flex:1">Hammer Curl</div><span class="muted num" style="font-size:16px">3 × 12</span><svg class="handle" width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h12M4 10h12M4 13h12"/></svg></div>
+<div class="ex" style="height:56px;box-sizing:border-box"><div class="nm" style="flex:1">Hanging Knee Raise</div><span class="muted num" style="font-size:16px">3 × 12</span><svg class="handle" width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h12M4 10h12M4 13h12"/></svg></div>
+
+<div class="card" style="margin-top:10px;padding:14px 16px">
+<div class="lbl" style="font-size:10px">Leaving with changes</div>
+<div style="font-size:14px;margin-top:8px;line-height:1.45;color:#C9CFDA">Cancel with unsaved edits asks once: <b style="color:#F3F5F9">Save</b> · <b style="color:#FF5A6E">Discard</b> · Keep editing. Drafts survive the app closing mid-gym, and saves queue offline until the Mac is back.</div>
+</div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>Reordering gets its own calm mode</b> (the ⇅ button in frame 14, or long-press any row): rows shrink to one line so the whole workout fits, the lifted row tilts with a haptic tick on each slot, and the slot it will land in is outlined. In normal mode rows stay tappable without fighting a drag.</div>
+</div>
+
+<!-- ============ NOTES ============ -->
+<div class="notes">
+<div><b>Why this shape.</b> You build workouts standing at a rack between sets, one-handed. So: sheets over full-screen pushes, steppers and chips over keyboards, your history over a generic library, and the same controls as the session screen.</div>
+<div><b>Taken from Fitbod, made ours.</b> Body map of muscles hit · swap for the same muscle · long-press to reorder. <b>Not taken:</b> AI-generated workouts, recovery percentages, video library, their blue-on-white cards.</div>
+<div><b>Backend fit.</b> Saving uses the existing <code>POST/PUT /templates</code>. Picks come from <code>/exercise-suggestions</code>. New: sets per muscle in the template response via <code>muscle_groups_for</code>, muscle tags on suggestions, and a template-from-session helper. Silhouette paths are the web's <code>MuscleSilhouette.vue</code>.</div>
+<div><b>Left out on purpose.</b> Supersets, per-set weight ramps and warm-up schemes. The template model has none of them, and the web stays the place for heavy planning. Phase 2 if you miss them.</div>
+</div>
+
+</div>
+</x-dc>
+</body>
+</html>

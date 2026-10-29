@@ -296,6 +296,8 @@ def build_readiness_summary(
         latest_feedback=latest_feedback,
         training_load_summary=training_load_summary,
         ramp=ramp,
+        recent_feedback=[dict(row) for row in feedback_rows],
+        hard_sessions_7d=hard_sessions_7d,
     )
 
     return {

@@ -145,7 +145,53 @@ class ReadinessScoreTests(unittest.TestCase):
         feedback = {
             "activity_date": self.today.isoformat(), "energy": 3, "muscle_soreness": 2, "pain_level": 5,
         }
-        self.assertEqual(self._score(state="strained", feedback=feedback)["level"], "red")
+        load = {**self.load, "current": {"form": -20}, "ratio": {"status": "high"}}
+        score = build_readiness_score(
+            self.conn, state="strained", latest_feedback=feedback, training_load_summary=load, hard_sessions_7d=2,
+        )
+        self.assertEqual(score["level"], "red")
+
+    def test_positive_form_is_not_a_load_risk_even_when_state_is_strained(self):
+        score = self._score(state="strained")
+        load = next(item for item in score["factors"] if item["key"] == "load")
+        self.assertEqual((load["points"], load["tone"]), (0, "steady"))
+
+    def _feedback(self, days_ago, pain=0, soreness=2):
+        return {
+            "activity_date": (self.today - timedelta(days=days_ago)).isoformat(),
+            "energy": 3, "muscle_soreness": soreness, "pain_level": pain,
+        }
+
+    def _pain(self, rows):
+        score = build_readiness_score(
+            self.conn, state="ready", latest_feedback=None, training_load_summary=self.load, recent_feedback=rows,
+        )
+        return next((item for item in score["factors"] if item["key"] == "pain"), None)
+
+    def test_pain_in_latest_session_is_risk(self):
+        self.assertEqual(self._pain([self._feedback(1, pain=6)])["points"], 2)
+
+    def test_pain_settled_by_later_sessions_is_caution(self):
+        pain = self._pain([self._feedback(1), self._feedback(5, pain=6)])
+        self.assertEqual((pain["points"], pain["tone"]), (1, "caution"))
+
+    def test_pain_older_than_a_week_is_ignored(self):
+        self.assertIsNone(self._pain([self._feedback(8, pain=6)]))
+
+    def test_pain_and_activity_checkin_count_at_most_two(self):
+        rows = [self._feedback(0, pain=6)]
+        score = build_readiness_score(
+            self.conn, state="ready", latest_feedback=rows[0], training_load_summary=self.load, recent_feedback=rows,
+        )
+        points = sum(item["points"] for item in score["factors"] if item["key"] in {"check_in", "pain"})
+        self.assertEqual(points, 2)
+
+    def test_usual_short_sleeper_is_not_flagged(self):
+        for days_ago in range(0, 37):
+            self._add("sleep", days_ago, 0, label="asleep", seconds=(6.8 if days_ago == 0 else 7.0) * 3600)
+        sleep = next(item for item in self._score()["factors"] if item["key"] == "sleep")
+        self.assertEqual(sleep["points"], 0)
+        self.assertIn("7.0 h median", sleep["detail"])
 
     def test_no_evidence_is_unknown(self):
         self.assertEqual(self._score(state="insufficient_data", load={})["level"], "unknown")

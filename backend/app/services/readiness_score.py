@@ -20,6 +20,10 @@ RAMP_MIN_PRIOR_LOAD = 40.0
 BASELINE_DAYS = 28
 MAX_SIGNAL_AGE_DAYS = 2
 MIN_BASELINE_POINTS = 7
+# Last night is judged against your median sleep: this far under it is caution / risk.
+SLEEP_SHORT_CAUTION_H = 0.5
+SLEEP_SHORT_RISK_H = 1.5
+PAIN_WINDOW_DAYS = 7
 
 
 def build_ramp_rate(training_load_summary: Optional[dict]) -> dict:
@@ -112,16 +116,24 @@ def _physiology_factors(conn: sqlite3.Connection, today) -> list[dict]:
         ))
 
     sleep_history = get_health_metric_history(conn, "sleep", BASELINE_NIGHTS + WINDOW_NIGHTS + 2)
+    debt = build_sleep_debt(sleep_history, today, series_days=2)
     sleep_points = 0
     if sleep_history and _fresh(sleep_history[0]["date"], today):
         hours = float(sleep_history[0]["value"])
-        sleep_points = 2 if hours < 6 else 1 if hours < 7 else 0
+        if debt["available"]:
+            usual = float(debt["baseline_hours"])
+            short = usual - hours
+            sleep_points = 2 if short > SLEEP_SHORT_RISK_H else 1 if short > SLEEP_SHORT_CAUTION_H or hours < 6 else 0
+            detail = f"{hours:.1f} h last night, {abs(short):.1f} h {'under' if short > 0 else 'over'} your {usual:.1f} h median"
+        else:
+            # Too few nights for a personal median: fall back to fixed lines.
+            sleep_points = 2 if hours < 6 else 1 if hours < 7 else 0
+            detail = f"{hours:.1f} h last night"
         factors.append(_factor(
-            "sleep", "Sleep", f"{hours:.1f} h last night",
+            "sleep", "Sleep", detail,
             "risk" if sleep_points == 2 else "caution" if sleep_points else "steady", sleep_points,
         ))
 
-    debt = build_sleep_debt(sleep_history, today, series_days=2)
     if debt["available"]:
         tone = {"risk": "risk", "caution": "caution"}.get(debt["status"], "steady")
         wanted = 2 if tone == "risk" else 1 if tone == "caution" else 0
@@ -180,6 +192,42 @@ def _daily_checkin_factor(checkin: Optional[dict], today) -> Optional[dict]:
     )
 
 
+def _pain_factor(feedback: list[dict], today) -> Optional[dict]:
+    """Pain and soreness from activity feedback in the last week.
+
+    Pain still in the latest feedback is risk; pain that later sessions report as
+    settled stays caution until it ages out of the window.
+    """
+    cutoff = (today - timedelta(days=PAIN_WINDOW_DAYS - 1)).isoformat()
+    recent = [row for row in feedback if (row.get("activity_date") or "") >= cutoff]
+    if not recent:
+        return None
+    painful = [row for row in recent if int(row.get("pain_level") or 0) >= 4]
+    sore = [row for row in recent if int(row.get("muscle_soreness") or 0) >= 4]
+    latest_pain = int(recent[0].get("pain_level") or 0)
+    if painful and latest_pain >= 4:
+        points, detail = 2, f"pain {latest_pain}/10 in the latest session"
+    elif painful:
+        worst = max(int(row["pain_level"]) for row in painful)
+        points, detail = 1, f"pain up to {worst}/10 on {painful[0]['activity_date'][5:]}, {latest_pain}/10 since"
+    elif sore:
+        points, detail = 1, f"soreness 4+/5 in {len(sore)} session{'s' if len(sore) != 1 else ''}"
+    else:
+        points, detail = 0, "no pain or heavy soreness this week"
+    return _factor(
+        "pain", "Pain & soreness", detail,
+        "risk" if points == 2 else "caution" if points else "steady", points,
+    )
+
+
+def _load_points(form: float, ratio_status: Optional[str], hard_sessions_7d: int) -> int:
+    """Load markers only: form and the acute:chronic ratio, weighted by hard-session density."""
+    strained = form <= -18 or ratio_status == "high"
+    if strained and hard_sessions_7d >= 2:
+        return 2
+    return 1 if strained or form <= -12 else 0
+
+
 LEVEL_LABELS = {"green": "Green", "amber": "Amber", "red": "Red", "unknown": "No read"}
 LEVEL_ADVICE = {
     "green": "Signals are aligned. Train as planned.",
@@ -197,6 +245,8 @@ def build_readiness_score(
     training_load_summary: Optional[dict],
     ramp: Optional[dict] = None,
     daily_checkin: Optional[dict] = None,
+    recent_feedback: Optional[list[dict]] = None,
+    hard_sessions_7d: int = 0,
 ) -> dict:
     """Blend load state, sleep/HRV/resting HR, the latest check-in and ramp rate into green/amber/red."""
     today = datetime.now().date()
@@ -211,6 +261,11 @@ def build_readiness_score(
     checkin = checkin or _checkin_factor(latest_feedback, today)
     if checkin:
         factors.append(checkin)
+    pain = _pain_factor(recent_feedback or [], today)
+    if pain:
+        # The check-in may already rate the same pain; together they count at most 2.
+        pain["points"] = max(0, min(pain["points"], 2 - (checkin["points"] if checkin else 0)))
+        factors.append(pain)
     # Today's check-in already rates sleep; the tag only speaks when there is none.
     life_load = None if (morning_checkin or {}).get("date") == today.isoformat() else life_load_readiness_factor(conn, today)
     if life_load:
@@ -232,7 +287,7 @@ def build_readiness_score(
 
     ratio_status = ((training_load_summary or {}).get("ratio") or {}).get("status")
     form = float(((training_load_summary or {}).get("current") or {}).get("form") or 0)
-    load_points = 2 if state == "strained" else 1 if state == "watch" else 0
+    load_points = _load_points(form, ratio_status, hard_sessions_7d)
     load_detail = f"training form {round(form)}, load ratio {ratio_status or 'n/a'}"
     factors.append(_factor(
         "load", "Training load", load_detail,

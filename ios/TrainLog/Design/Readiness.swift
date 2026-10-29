@@ -25,6 +25,7 @@ struct ReadinessStyle {
         case "hrv": "waveform.path.ecg"
         case "resting_hr": "heart.fill"
         case "check_in", "checkin": "face.smiling"
+        case "pain": "bandage.fill"
         case "life_load": "briefcase.fill"
         case "sick": "thermometer.medium"
         case "illness_return": "cross.case.fill"

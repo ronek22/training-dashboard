@@ -46,6 +46,8 @@ struct TrainLogApp: App {
         .backgroundTask(.appRefresh(WidgetSync.refreshTaskID)) {
             await WidgetSync.scheduleRefresh()
             await WidgetSync.refresh(force: true)
+            // Zwift rides arrive through Strava, which can't wake the app; this picks them up.
+            await RideExport.shared.sync()
         }
     }
 }
@@ -81,11 +83,13 @@ struct RootView: View {
             if scenePhase == .active {
                 async let health: Void = HealthSync.shared.sync()
                 async let workouts: Void = WorkoutSync.shared.sync()
+                async let rides: Void = RideExport.shared.sync()
                 // Drops nudges for what's already done today and rolls the week ahead.
                 async let reminders: Void = Reminders.refresh()
                 await CacheWarmer.warm()
                 await health
                 await workouts
+                await rides
                 await reminders
             } else if scenePhase == .background {
                 Reminders.scheduleRefresh()

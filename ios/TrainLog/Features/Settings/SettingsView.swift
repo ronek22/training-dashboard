@@ -13,8 +13,10 @@ struct SettingsView: View {
     @AppStorage(HealthSync.recoveryKey) private var readRecovery = false
     @AppStorage(HealthSync.weightKey) private var readWeight = false
     @AppStorage(WorkoutSync.enabledKey) private var sendWorkouts = false
+    @AppStorage(RideExport.enabledKey) private var addRides = false
     private var healthSync = HealthSync.shared
     private var workoutSync = WorkoutSync.shared
+    private var rideExport = RideExport.shared
 
     enum AddressSheet: String, Identifiable {
         case find, home, remote
@@ -64,6 +66,7 @@ struct SettingsView: View {
         .onChange(of: readRecovery) { healthChanged(turnedOn: readRecovery) }
         .onChange(of: readWeight) { healthChanged(turnedOn: readWeight) }
         .onChange(of: sendWorkouts) { workoutsChanged() }
+        .onChange(of: addRides) { ridesChanged() }
     }
 
     // MARK: Server
@@ -148,6 +151,16 @@ struct SettingsView: View {
                 .tint(Color.mobility)
                 .settingsRow()
                 Divider().overlay(Color.cardBorder)
+                Toggle(isOn: $addRides) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Save indoor rides to Health").font(AppFont.body(15)).foregroundStyle(Color.ink)
+                        Text(rideStatus).font(AppFont.body(12))
+                            .foregroundStyle(addRides && rideExport.failed ? Color.warning : Color.muted)
+                    }
+                }
+                .tint(Color.mobility)
+                .settingsRow()
+                Divider().overlay(Color.cardBorder)
                 comingSoonRow("Save strength sessions as workouts")
                 Divider().overlay(Color.cardBorder)
                 Toggle(isOn: $readWeight) {
@@ -155,12 +168,12 @@ struct SettingsView: View {
                 }
                 .tint(Color.mobility)
                 .settingsRow()
-                if readRecovery || readWeight || sendWorkouts {
+                if readRecovery || readWeight || sendWorkouts || addRides {
                     Divider().overlay(Color.cardBorder)
                     healthStatusRow
                 }
             }
-            footnote(readRecovery || readWeight || sendWorkouts
+            footnote(readRecovery || readWeight || sendWorkouts || addRides
                 ? "Sent to the Mac when you open TrainLog and whenever Health gets new data, while the Mac is reachable. Missed days are caught up on the next sync."
                 : "Reads Health on this iPhone and sends it to the Mac. Replaces the Health Data Export app.")
         }
@@ -170,8 +183,10 @@ struct SettingsView: View {
         Button {
             Task {
                 async let health: Void = healthSync.sync(force: true)
+                async let rides: Void = rideExport.sync()
                 await workoutSync.sync()
                 await health
+                await rides
             }
         } label: {
             HStack(spacing: 12) {
@@ -180,7 +195,7 @@ struct SettingsView: View {
                     Text(healthStatus).font(AppFont.body(12)).foregroundStyle(healthSync.failed ? Color.warning : Color.muted)
                 }
                 Spacer(minLength: 0)
-                if healthSync.syncing || workoutSync.syncing {
+                if healthSync.syncing || workoutSync.syncing || rideExport.syncing {
                     ProgressView().controlSize(.small).tint(.muted)
                 } else {
                     Image(systemName: "arrow.triangle.2.circlepath")
@@ -191,7 +206,7 @@ struct SettingsView: View {
             .settingsRow()
         }
         .buttonStyle(.plain)
-        .disabled(healthSync.syncing || workoutSync.syncing)
+        .disabled(healthSync.syncing || workoutSync.syncing || rideExport.syncing)
     }
 
     private var healthStatus: String {
@@ -207,6 +222,24 @@ struct SettingsView: View {
         let last = workoutSync.lastSuccess.map { "Last sent " + $0.formatted(.relative(presentation: .named)) }
         if workoutSync.failed { return "Couldn't send" + (last.map { " · \($0)" } ?? "") }
         return last ?? "Not sent yet"
+    }
+
+    /// Zwift and other trainer rides, from Strava via the Mac.
+    private var rideStatus: String {
+        guard addRides else { return "Zwift and trainer rides, so they count in Fitness" }
+        let last = rideExport.lastSuccess.map { "Checked " + $0.formatted(.relative(presentation: .named)) }
+        if rideExport.failed { return "Couldn't save" + (last.map { " · \($0)" } ?? "") }
+        guard let last else { return "Not checked yet" }
+        return last + (rideExport.lastSaved.map { $0 > 0 ? " · \($0) added" : "" } ?? "")
+    }
+
+    private func ridesChanged() {
+        Task {
+            if addRides {
+                await rideExport.requestAccess()
+                await rideExport.sync()
+            }
+        }
     }
 
     private func workoutsChanged() {

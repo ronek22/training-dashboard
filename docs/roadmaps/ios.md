@@ -25,6 +25,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-10-29 — **Zwift rides in Apple Health** — Indoor rides from Strava are saved to Health as cycling workouts, so they count in Fitness without HealthFit.
 - 2026-10-29 — **Background widget refresh** — Widgets and the Lock Screen update hourly and after sleep or a Watch workout syncs, at home or over Tailscale.
 - 2026-10-29 — **Smart reminders** — Check-in, rehab and dinner nudges fire only when that thing is still undone today.
 - 2026-10-29 — **Readiness vitals** — Each vital is judged against your own typical range, with a week of dots.

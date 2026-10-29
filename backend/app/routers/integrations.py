@@ -29,6 +29,7 @@ from ..services.strava_export_import import import_export_streams
 from ..services.healthfit import apply_healthfit_import, preview_healthfit_import
 from ..services.health_data import apply_health_data_import, preview_health_data_import, push_health_data
 from ..services.health_workouts import push_health_workouts
+from ..services.indoor_rides import list_indoor_rides
 
 router = APIRouter()
 
@@ -67,6 +68,16 @@ def push_health_workout_data(payload: dict):
     conn = get_db()
     try:
         return push_health_workouts(conn, payload)
+    finally:
+        conn.close()
+
+
+@router.get("/integrations/indoor-rides")
+def indoor_rides(since: str):
+    """Indoor rides with their streams, for the iOS app to save into Apple Health."""
+    conn = get_db()
+    try:
+        return list_indoor_rides(conn, since)
     finally:
         conn.close()
 

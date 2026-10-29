@@ -105,7 +105,11 @@ struct RootView: View {
             switch url.host() {
             case "food": tab = .food
             case "plan": tab = .plan
-            case "strength": if strength == nil { strength = StrengthLaunch(templateId: nil) }
+            case "strength":
+                // `trainlog://strength?template=4` opens that workout's brief when none is running.
+                let template = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                    .queryItems?.first { $0.name == "template" }?.value.flatMap(Int.init)
+                if strength == nil { strength = StrengthLaunch(templateId: template) }
             default: tab = .today
             }
         }

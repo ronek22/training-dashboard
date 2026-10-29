@@ -8,11 +8,10 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Now
 
-- **Session brief** — Today's lifts, targets and what changed, shown before a workout.
+- **Sunday weekly recap** — A celebratory look back at the week on the phone.
 
 ## Next
 
-- **Sunday weekly recap** — A celebratory look back at the week on the phone.
 - **Shopping list** — Built from the dinner plan, with barcode scanning for products.
 - **Coach chat** — The in-app coach on the phone, tied to what you're looking at.
 
@@ -23,6 +22,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-10-29 — **Session brief** — Before a planned workout starts, see each lift's target, whether it goes up or holds and why, and what you did last time.
 - 2026-10-29 — **Busy day** — Tag a hectic day (deadline, travel, family, poor sleep, late night) from the check-in so hard sessions get flagged with a calmer day to swap to.
 - 2026-10-29 — **Zwift rides in Apple Health** — Indoor rides from Strava are saved to Health as cycling workouts, so they count in Fitness without HealthFit.
 - 2026-10-29 — **Background widget refresh** — Widgets and the Lock Screen update hourly and after sleep or a Watch workout syncs, at home or over Tailscale.

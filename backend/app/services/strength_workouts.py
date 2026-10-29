@@ -66,7 +66,16 @@ def _next_steps(conn: sqlite3.Connection, exercises: list, history: Optional[dic
         plan_next_step(found, exercise["exercise_name"], exercise["target_reps"], max_dumbbell_kg, dumbbell_step_kg)
         for found, exercise in zip(lifts, exercises)
     ]
-    return guard_steps(conn, names, lifts, steps)
+    guarded = guard_steps(conn, names, lifts, steps)
+    # What last time looked like, so the phone's pre-workout brief can say what changed.
+    return [step and found and {**step, "last": _last_top_set(found)} for step, found in zip(guarded, lifts)]
+
+
+def _last_top_set(lift: dict) -> dict:
+    """The heaviest working set of the lift's latest session (most reps on ties)."""
+    top = max(lift["sets"], key=lambda item: (float(item.get("weight_kg") or 0), int(item["reps"])))
+    weight = float(top["weight_kg"]) if top.get("weight_kg") else None
+    return {"date": lift["date"], "weight_kg": weight, "reps": int(top["reps"]), "set_count": len(lift["sets"])}
 
 
 def _serialize_template(conn: sqlite3.Connection, row: sqlite3.Row, history: Optional[dict] = None) -> dict:

@@ -7,6 +7,10 @@ struct TodayView: View {
     @State private var showSettings = false
     @State private var showBody = false
     @State private var showCheckin = false
+    /// The plan week behind today's card: steps, rehab ticks and Move day come from it.
+    @State private var plan = PlanModel()
+    @State private var route: Route?
+    @State private var moving: PlanDay?
     var onStartStrength: (Int?) -> Void = { _ in }
     /// Bumped when the strength screen closes, so the banner and plan reload.
     var refresh = 0
@@ -18,12 +22,49 @@ struct TodayView: View {
                 .navigationTitle("Today")
                 .navigationDestination(isPresented: $showSettings) { SettingsView().hidesTabBar() }
                 .navigationDestination(isPresented: $showBody) { BodyView().hidesTabBar() }
+                // One destination for both: two stacked ones on the same view push the wrong screen.
+                .navigationDestination(item: $route) { route in
+                    if let date = model.data?.date {
+                        switch route {
+                        case .day:
+                            PlanDayView(model: plan, date: date, onMove: { moving = $0 }, onStartStrength: onStartStrength)
+                                .hidesTabBar()
+                        case .rehab(let routineId):
+                            RehabChecklistView(model: plan, date: date, routineId: routineId).hidesTabBar()
+                        }
+                    }
+                }
         }
         .tint(.volt)
+        .sheet(item: $moving) { day in
+            if let week = plan.weeks.first(where: { $0.days.contains { $0.date == day.date } }) {
+                MoveDaySheet(source: day, slots: PlanFormat.slots(week), today: plan.today) { target in
+                    let error = await plan.move(from: day.date, to: target)
+                    if error == nil {
+                        route = nil
+                        await model.load()
+                    }
+                    return error
+                }
+                .presentationDetents([.height(470)])
+                .presentationBackground(Color(hex: 0x161A22))
+            }
+        }
         .onChange(of: showSettings) {
             // Back from Settings may have pointed the app at another server.
-            if !showSettings { Task { await model.load() } }
+            if !showSettings { Task { await load() } }
         }
+    }
+
+    private enum Route: Hashable {
+        case day
+        case rehab(Int)
+    }
+
+    private func load() async {
+        async let today: Void = model.load()
+        async let week: Void = plan.load()
+        _ = await (today, week)
     }
 
     private var content: some View {
@@ -39,9 +80,14 @@ struct TodayView: View {
                     }
                     SessionCard(
                         data: data,
+                        planDay: plan.day(data.date),
+                        today: plan.today,
                         showFallback: $showFallback,
                         workoutOpen: model.activeWorkout != nil,
-                        onStartStrength: onStartStrength
+                        onStartStrength: onStartStrength,
+                        onOpen: { route = .day },
+                        onRehab: { route = .rehab($0) },
+                        onMove: { moving = $0 }
                     )
                     ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone,
                                   onOpen: { showBody = true }, onCheckin: { showCheckin = true })
@@ -64,9 +110,9 @@ struct TodayView: View {
         .background(Color.bg)
         .refreshable {
             await APIClient.current.reconnect()
-            await model.load()
+            await load()
         }
-        .task(id: refresh) { await model.load() }
+        .task(id: refresh) { await load() }
         .sheet(isPresented: $showCheckin, onDismiss: { Task { await model.load() } }) {
             QuickLogSheet()
                 .presentationDetents([.large])
@@ -146,10 +192,16 @@ struct TodayView: View {
 
 private struct SessionCard: View {
     let data: PhoneToday
+    /// The same day from the plan week; nil until it loads (or offline with no cache).
+    let planDay: PlanDay?
+    let today: String
     @Binding var showFallback: Bool
     /// The Resume banner owns the volt action while a workout is open.
     let workoutOpen: Bool
     let onStartStrength: (Int?) -> Void
+    let onOpen: () -> Void
+    let onRehab: (Int) -> Void
+    let onMove: (PlanDay) -> Void
 
     var body: some View {
         if let session = data.today, session.sport != .rest {
@@ -161,38 +213,43 @@ private struct SessionCard: View {
 
     private func planned(_ session: PhoneToday.Session) -> some View {
         let sport = session.sport ?? .other
+        let fallback = PlanFormat.fallback(session.fallback)
+        let canMove = PlanFormat.canMove(planDay, today: today)
         return VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 6) {
-                Pill(text: sport.label, color: sport.color == .strength ? Color(hex: 0xFF7AB5) : sport.color)
-                Text(subtitle(session)).font(AppFont.body(12)).foregroundStyle(Color.muted)
-            }
-            Text((session.title ?? "Session").uppercased())
-                .font(AppFont.title(30))
-                .foregroundStyle(Color.ink)
-                .padding(.top, 12)
-            if let meta = meta(session) {
-                Text(meta).font(AppFont.body(13)).foregroundStyle(Color.muted).padding(.top, 4)
-            }
+            // Tapping the top half opens the full day: steps, cues, go-check.
+            Button(action: onOpen) { header(session, sport: sport).contentShape(Rectangle()) }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens the full session")
 
             if let exercises = session.strength?.exercises, !exercises.isEmpty {
-                exerciseList(exercises, color: sport.color).padding(.top, 14)
+                numberedList(exercises.map { ($0.name, TodayFormat.exerciseTarget($0)) }, color: sport.color)
+                    .padding(.top, 14)
+            } else if let steps = planDay?.steps, !steps.isEmpty {
+                numberedList(steps.map { ($0, nil) }, color: sport.color, limit: 2).padding(.top, 14)
             } else if let details = session.details {
                 Text(details)
                     .font(AppFont.body(14))
                     .foregroundStyle(Color.inkSoft)
                     .lineSpacing(3)
+                    .lineLimit(4)
                     .padding(.top, 12)
             }
 
-            if showFallback, let fallback = session.fallback {
-                Text(fallback)
+            if showFallback, let fallback {
+                Text("\(Text("Short on time: ").foregroundStyle(Color.ink).bold())\(fallback)")
                     .font(AppFont.body(13))
                     .foregroundStyle(Color.inkSoft)
+                    .lineSpacing(2)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
+                    .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.warning.opacity(0.35)))
                     .padding(.top, 12)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            ForEach(planDay?.rehab ?? []) { routine in
+                rehabRow(routine).padding(.top, 12)
             }
 
             if session.isDone {
@@ -205,28 +262,131 @@ private struct SessionCard: View {
                 .background(Color.volt.opacity(0.12), in: Capsule())
                 .padding(.top, 16)
             } else if !workoutOpen {
-                Button {
-                    onStartStrength(session.strength?.templateId)
-                } label: {
-                    Label("Start session", systemImage: "play.fill")
-                }
-                .buttonStyle(VoltButtonStyle())
-                .disabled(session.strength == nil)
-                .padding(.top, 16)
-
-                HStack(spacing: 8) {
-                    Button(showFallback ? "Full session" : "Short on time") {
-                        withAnimation(.snappy) { showFallback.toggle() }
+                primary(session)
+                if fallback != nil || canMove {
+                    HStack(spacing: 8) {
+                        if fallback != nil {
+                            Button {
+                                withAnimation(.snappy) { showFallback.toggle() }
+                            } label: {
+                                Label(showFallback ? "Full session" : "Short on time",
+                                      systemImage: showFallback ? "arrow.uturn.backward" : "timer")
+                            }
+                            .buttonStyle(OutlineButtonStyle(height: 44))
+                        }
+                        if canMove, let planDay {
+                            Button {
+                                onMove(planDay)
+                            } label: {
+                                Label("Move day", systemImage: "arrow.left.arrow.right")
+                            }
+                            .buttonStyle(OutlineButtonStyle(height: 44))
+                        }
                     }
-                    .buttonStyle(OutlineButtonStyle(height: 44))
-                    .disabled(session.fallback == nil)
-                    Button("Swap day") {}
-                        .buttonStyle(OutlineButtonStyle(height: 44))
+                    .padding(.top, 10)
                 }
-                .padding(.top, 10)
             }
         }
         .card(border: sport.color.opacity(0.35))
+    }
+
+    private func header(_ session: PhoneToday.Session, sport: Sport) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: sport.symbol)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(sport.color)
+                    .frame(width: 34, height: 34)
+                    .background(sport.color.opacity(0.14), in: Circle())
+                Kicker(kicker(session, sport: sport), color: sport.color)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                target(session)
+            }
+            Text((session.title ?? "Session").uppercased())
+                .font(AppFont.title(28))
+                .foregroundStyle(Color.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 12)
+            if let meta = meta(session) {
+                Text(meta).font(AppFont.body(13)).foregroundStyle(Color.muted).padding(.top, 4)
+            }
+        }
+    }
+
+    /// The day's size, big on the right: minutes, then km when there's a distance.
+    @ViewBuilder
+    private func target(_ session: PhoneToday.Session) -> some View {
+        if let km = session.distanceKm, km > 0 {
+            bigNumber(TodayFormat.number(km), unit: "km")
+        } else if let minutes = session.durationMin {
+            bigNumber("\(minutes)", unit: "min")
+        }
+    }
+
+    private func bigNumber(_ value: String, unit: String) -> some View {
+        Text("\(Text(value).font(AppFont.number(26)).foregroundStyle(Color.ink))\(Text(" \(unit)").font(AppFont.body(12, weight: .medium)).foregroundStyle(Color.muted))")
+            .lineLimit(1)
+            .fixedSize()
+    }
+
+    /// Strength starts the logger; anything else opens the steps to follow on the bike or run.
+    @ViewBuilder
+    private func primary(_ session: PhoneToday.Session) -> some View {
+        Group {
+            if let strength = session.strength {
+                Button {
+                    onStartStrength(strength.templateId)
+                } label: {
+                    Label("Start session", systemImage: "play.fill")
+                }
+            } else {
+                Button(action: onOpen) {
+                    Label("Open session", systemImage: "list.bullet")
+                }
+            }
+        }
+        .buttonStyle(VoltButtonStyle())
+        .padding(.top, 16)
+    }
+
+    private func rehabRow(_ routine: RehabRoutine) -> some View {
+        let done = routine.ticked.count
+        let total = routine.exercises.count
+        let complete = total > 0 && done >= total
+        return Button {
+            onRehab(routine.routineId)
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle().stroke(Color.track, lineWidth: 3)
+                    Circle()
+                        .trim(from: 0, to: total == 0 ? 0 : Double(done) / Double(total))
+                        .stroke(Color.mobility, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    if complete {
+                        Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(Color.mobility)
+                    }
+                }
+                .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(complete ? "Rehab done" : "Rehab · \(done) of \(total)")
+                        .font(AppFont.body(14, weight: .semibold))
+                        .foregroundStyle(Color.ink)
+                    Text(routine.title).font(AppFont.body(12)).foregroundStyle(Color.muted).lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.faint)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(minHeight: 44)
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Rehab checklist, \(done) of \(total) done")
     }
 
     private var restDay: some View {
@@ -240,42 +400,48 @@ private struct SessionCard: View {
         .card()
     }
 
-    private func exerciseList(_ exercises: [PhoneToday.Exercise], color: Color) -> some View {
+    private func numberedList(_ rows: [(String, String?)], color: Color, limit: Int = 3) -> some View {
         VStack(alignment: .leading, spacing: 9) {
-            ForEach(Array(exercises.prefix(3).enumerated()), id: \.offset) { index, exercise in
-                HStack(spacing: 12) {
+            ForEach(Array(rows.prefix(limit).enumerated()), id: \.offset) { index, row in
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text(String(format: "%02d", index + 1))
                         .font(AppFont.number(16))
                         .foregroundStyle(color)
                         .frame(width: 22, alignment: .leading)
-                    Text(exercise.name).font(AppFont.body(14)).foregroundStyle(Color.ink).lineLimit(1)
+                    Text(row.0).font(AppFont.body(14)).foregroundStyle(Color.ink)
+                        .lineLimit(row.1 == nil ? 2 : 1)
                     Spacer(minLength: 8)
-                    Text(TodayFormat.exerciseTarget(exercise)).font(AppFont.body(14)).foregroundStyle(Color.muted)
+                    if let trailing = row.1 {
+                        Text(trailing).font(AppFont.body(14)).foregroundStyle(Color.muted)
+                    }
                 }
             }
-            if exercises.count > 3 {
-                Text("+ \(exercises.count - 3) more")
-                    .font(AppFont.body(13))
-                    .foregroundStyle(Color.muted)
-                    .padding(.leading, 34)
+            if rows.count > limit {
+                Button(action: onOpen) {
+                    Text("+ \(rows.count - limit) more")
+                        .font(AppFont.body(13, weight: .semibold))
+                        .foregroundStyle(Color.inkSoft)
+                        .padding(.leading, 34)
+                        .frame(minHeight: 28)
+                }
+                .buttonStyle(.plain)
             }
         }
     }
 
-    private func subtitle(_ session: PhoneToday.Session) -> String {
-        var parts = [session.isDone ? "Done" : "Planned"]
-        if let minutes = session.durationMin { parts.append("~\(minutes) min") }
-        if let km = session.distanceKm { parts.append("\(TodayFormat.number(km)) km") }
-        return parts.joined(separator: " · ")
+    private func kicker(_ session: PhoneToday.Session, sport: Sport) -> String {
+        [sport.label, session.intentLabel].compactMap { $0 }.joined(separator: " · ")
     }
 
     private func meta(_ session: PhoneToday.Session) -> String? {
+        var parts: [String] = []
         if let strength = session.strength {
-            var parts = ["\(strength.exercises.count) exercises"]
+            parts.append("\(strength.exercises.count) exercises")
             if let last = strength.lastDone { parts.append("last done \(TodayFormat.shortDay(last, relativeTo: data.date))") }
-            return parts.joined(separator: " · ")
+        } else {
+            if (session.distanceKm ?? 0) > 0, let minutes = session.durationMin { parts.append("~\(minutes) min") }
         }
-        return session.intentLabel
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
 

@@ -70,6 +70,8 @@ final class HealthSync {
                 nonisolated(unsafe) let done = completion
                 Task { @MainActor in
                     await HealthSync.shared.sync()
+                    // Sleep or HRV can change today's readiness on the widgets.
+                    await WidgetSync.refreshInBackground()
                     done()
                 }
             }

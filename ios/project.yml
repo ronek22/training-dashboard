@@ -47,9 +47,10 @@ targets:
       properties:
         # Rest timer on the Lock Screen and in the Dynamic Island (Features/Strength/StrengthActivity.swift).
         NSSupportsLiveActivities: true
-        # Afternoon re-check before the evening nudges (Features/Settings/Reminders.swift).
+        # Afternoon re-check before the evening nudges (Features/Settings/Reminders.swift) and the
+        # hourly widget refresh (App/WidgetSync.swift).
         UIBackgroundModes: [fetch]
-        BGTaskSchedulerPermittedIdentifiers: [com.ronek22.trainlog.reminders]
+        BGTaskSchedulerPermittedIdentifiers: [com.ronek22.trainlog.reminders, com.ronek22.trainlog.widgets]
         # Widgets and the Live Activity open trainlog://today, food, plan or strength.
         CFBundleURLTypes:
           - CFBundleURLName: com.ronek22.trainlog

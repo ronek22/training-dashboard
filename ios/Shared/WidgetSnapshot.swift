@@ -1,10 +1,13 @@
 import Foundation
 import WidgetKit
 
-/// What the widgets show. The app writes it whenever Today or Food loads; the widget extension
-/// reads it from the shared App Group and refreshes it from the server when the Mac is reachable.
+/// What the widgets show. The app writes it whenever Today or Food loads and from its background
+/// runs; the widget extension reads it from the shared App Group and refreshes it from the server
+/// when the Mac is reachable.
 struct WidgetSnapshot: Codable, Sendable, Equatable {
+    /// The address that answered last, then the other one (home ↔ Tailscale).
     var baseURL: String?
+    var fallbackURL: String?
     var today: Today?
     var food: Food?
 
@@ -38,6 +41,11 @@ struct WidgetSnapshot: Codable, Sendable, Equatable {
             guard let targetKcal, targetKcal > 0 else { return 0 }
             return min(1, eatenKcal / targetKcal)
         }
+    }
+
+    /// Where the extension asks, in order.
+    var addresses: [String] {
+        [baseURL, fallbackURL].compactMap { $0 }.reduce(into: []) { if !$0.contains($1) { $0.append($1) } }
     }
 
     /// Today and food only count on the day they were read.

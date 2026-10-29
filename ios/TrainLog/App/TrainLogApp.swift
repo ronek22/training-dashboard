@@ -40,6 +40,12 @@ struct TrainLogApp: App {
         .backgroundTask(.appRefresh(Reminders.refreshTaskID)) {
             Reminders.scheduleRefresh()
             await Reminders.refresh()
+            await WidgetSync.refresh(force: true)
+        }
+        // Widgets and the Lock Screen move without opening the app.
+        .backgroundTask(.appRefresh(WidgetSync.refreshTaskID)) {
+            await WidgetSync.scheduleRefresh()
+            await WidgetSync.refresh(force: true)
         }
     }
 }
@@ -83,6 +89,7 @@ struct RootView: View {
                 await reminders
             } else if scenePhase == .background {
                 Reminders.scheduleRefresh()
+                WidgetSync.scheduleRefresh()
             }
         }
         .fullScreenCover(item: $strength, onDismiss: { todayRefresh += 1 }) { launch in

@@ -55,6 +55,8 @@ final class WorkoutSync {
             nonisolated(unsafe) let done = completion
             Task { @MainActor in
                 await WorkoutSync.shared.sync()
+                // A finished workout ticks off today's session on the widgets.
+                await WidgetSync.refreshInBackground()
                 done()
             }
         }

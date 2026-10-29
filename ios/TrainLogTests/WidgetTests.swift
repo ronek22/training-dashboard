@@ -49,4 +49,28 @@ struct WidgetTests {
         #expect(today.weekDoneMin == 167 && today.weekPlannedMin == 370)
         #expect(today.weekBySport == [.init(sport: "strength", minutes: 98)])
     }
+
+    @Test func extensionAsksTheLastAnsweringAddressFirst() {
+        var snapshot = WidgetSnapshot(baseURL: "https://mac.ts.net", fallbackURL: "http://mac.local:8000")
+        #expect(snapshot.addresses == ["https://mac.ts.net", "http://mac.local:8000"])
+        snapshot.fallbackURL = "https://mac.ts.net"
+        #expect(snapshot.addresses == ["https://mac.ts.net"])
+        #expect(WidgetSnapshot().addresses.isEmpty)
+    }
+
+    @Test @MainActor func appStoresBothServerAddresses() {
+        let defaults = UserDefaults(suiteName: "widget-\(UUID().uuidString)")!
+        let route = ServerRoute(defaults: defaults, ping: { _ in 5 })
+        route.setHome("http://mac.local:8000")
+        route.setRemote("https://mac.ts.net")
+        var snapshot = WidgetSnapshot()
+        snapshot.setAddresses(route)
+        #expect(snapshot.addresses == ["http://mac.local:8000", "https://mac.ts.net"])
+        route.use("https://mac.ts.net")
+        snapshot.setAddresses(route)
+        #expect(snapshot.addresses == ["https://mac.ts.net", "http://mac.local:8000"])
+        route.setRemote(nil)
+        snapshot.setAddresses(route)
+        #expect(snapshot.addresses == ["http://mac.local:8000"])
+    }
 }

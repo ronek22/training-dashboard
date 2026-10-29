@@ -21,7 +21,7 @@ final class TodayModel {
         self.client = client
     }
 
-    private static var path: String {
+    static var path: String {
         #if DEBUG
         // `-todayDate 2026-10-28` as a launch argument previews another day.
         if let day = UserDefaults.standard.string(forKey: "todayDate") { return "/phone/today?date=\(day)" }
@@ -45,8 +45,8 @@ final class TodayModel {
             syncedAt = loaded.syncedAt
             offline = loaded.fromCache
             error = nil
-            let baseURL = api.baseURL
-            WidgetStore.update { $0.baseURL = baseURL; $0.today = .init(loaded.value) }
+            let today = WidgetSnapshot.Today(loaded.value)
+            WidgetStore.update { $0.setAddresses(); $0.today = today }
         } catch {
             offline = data != nil
             self.error = error.localizedDescription

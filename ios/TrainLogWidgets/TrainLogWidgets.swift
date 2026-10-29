@@ -43,17 +43,24 @@ struct SnapshotProvider: TimelineProvider {
 }
 
 /// Reads today and food straight from the Mac, so the widgets move when a meal or ride is logged
-/// elsewhere. Keeps the stored copy when the server can't be reached.
+/// elsewhere. Tries the address that answered last, then the other one (off home Wi-Fi the `.local`
+/// one can't answer). Keeps the stored copy when neither can be reached.
 enum WidgetRefresh {
     static func run() async -> WidgetSnapshot {
-        guard let base = WidgetStore.load().baseURL else { return WidgetStore.load() }
+        let stored = WidgetStore.load()
         let day = WidgetSnapshot.iso(.now)
-        async let phone = fetch(PhoneToday.self, base + "/phone/today")
-        async let food = fetch(FoodDay.self, base + "/nutrition/food?date=\(day)")
-        let (today, eaten) = await (phone, food)
-        WidgetStore.update(reloadWidgets: false) { snapshot in
-            if let today { snapshot.today = .init(today) }
-            if let eaten { snapshot.food = .init(eaten, eaten: eaten.totals) }
+        for base in stored.addresses {
+            guard let today = await fetch(PhoneToday.self, base + "/phone/today") else { continue }
+            let eaten = await fetch(FoodDay.self, base + "/nutrition/food?date=\(day)")
+            WidgetStore.update(reloadWidgets: false) { snapshot in
+                if base != snapshot.baseURL {
+                    snapshot.fallbackURL = snapshot.baseURL
+                    snapshot.baseURL = base
+                }
+                snapshot.today = .init(today)
+                if let eaten { snapshot.food = .init(eaten, eaten: eaten.totals) }
+            }
+            break
         }
         return WidgetStore.load()
     }

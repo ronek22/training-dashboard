@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		017CB6434DBE700DAC1C74EA /* BarlowCondensed-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0243D4E3976851681CA3EF5E /* BarlowCondensed-SemiBold.ttf */; };
+		048B720873039233B054BEB5 /* WidgetSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C52F4A0A7512AA49020D4DE /* WidgetSync.swift */; };
 		054F2BE35CEDCA29B28ED5B2 /* ActivityDetailFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 572F7520C1797D9587E01198 /* ActivityDetailFormat.swift */; };
 		0568E5E202514A8C473DBB7F /* QuickLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10A7B084CF58AD83C3603DB /* QuickLogSheet.swift */; };
 		060527AC9C3F7EC7AB18CBEF /* ActivitiesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CB4D14BAB2BB7DEC58078D /* ActivitiesTests.swift */; };
@@ -183,6 +184,7 @@
 		947E7B26646DCF89AEB291E0 /* QuickLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogTests.swift; sourceTree = "<group>"; };
 		97817D1288D6173D1208D11B /* MealEstimateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEstimateSheet.swift; sourceTree = "<group>"; };
 		97FFCC221BB33F6F97AAF9C1 /* TrendsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsTests.swift; sourceTree = "<group>"; };
+		9C52F4A0A7512AA49020D4DE /* WidgetSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSync.swift; sourceTree = "<group>"; };
 		9F112A2FC94E41B5BFB208A4 /* BarlowCondensed-ExtraBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BarlowCondensed-ExtraBoldItalic.ttf"; sourceTree = "<group>"; };
 		A328ACC1C28F23D41EFA6650 /* WorkoutPush.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPush.swift; sourceTree = "<group>"; };
 		A599FA5C0909F97C3AA92ECA /* Activities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Activities.swift; sourceTree = "<group>"; };
@@ -462,6 +464,7 @@
 			isa = PBXGroup;
 			children = (
 				8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */,
+				9C52F4A0A7512AA49020D4DE /* WidgetSync.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -687,6 +690,7 @@
 				5B44F95AE124CC73DCA73481 /* TrendsView.swift in Sources */,
 				0FD33CD42FF4CEA443A6E936 /* Vitals.swift in Sources */,
 				6A3E5292221EEBB8372E4EFE /* WidgetSnapshot.swift in Sources */,
+				048B720873039233B054BEB5 /* WidgetSync.swift in Sources */,
 				F78030B6BBD3602453EA97AA /* WorkoutPush.swift in Sources */,
 				10D69E614B8EA14CF015A170 /* WorkoutSync.swift in Sources */,
 			);

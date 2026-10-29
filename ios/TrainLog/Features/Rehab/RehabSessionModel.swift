@@ -270,6 +270,15 @@ enum RehabFormat {
         return step.dose ?? "As written"
     }
 
+    /// "Set 2 of 5 · 0:30" while it's the same exercise, else "Glute bridge ×12"; sides added.
+    static func upNext(_ next: RehabStep, after step: RehabStep) -> String {
+        let side = next.side.map { " · \($0.lowercased())" } ?? ""
+        if next.position == step.position {
+            return (next.set == step.set ? "Same set" : "Set \(next.set) of \(next.sets)") + side + " · " + dose(next)
+        }
+        return "\(next.name)\(side) \(dose(next))"
+    }
+
     /// "Exercise 2 of 8 · Set 1 of 3", or "Rest".
     static func kicker(_ step: RehabStep) -> String {
         if step.kind == .rest { return "Rest" }

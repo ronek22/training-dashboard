@@ -238,8 +238,9 @@ private struct SessionCard: View {
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens the full session")
 
-            // Once the main part is in, the card is about what's left.
-            if !session.isDone {
+            // Once the main part is in, the card is about what's left. Two-part days list the parts
+            // instead; the steps are one tap away under Open session.
+            if !session.isDone, rehab == nil {
                 if let exercises = session.strength?.exercises, !exercises.isEmpty {
                     numberedList(exercises.map { ($0.name, TodayFormat.exerciseTarget($0)) }, color: sport.color)
                         .padding(.top, 14)
@@ -414,7 +415,7 @@ private struct SessionCard: View {
         }
         .frame(width: 28, height: 28)
         let title = complete ? "Rehab done" : "Rehab · \(rehab.left) to do"
-        let subtitle = after.map { "After the \($0.label.lowercased()) · \(rehab.title)" } ?? rehab.title
+        let subtitle = sport.map { "After the \($0.label.lowercased()) · \(rehab.title)" } ?? rehab.title
         return Button(action: onRehab) {
             partRow(badge: AnyView(ring), title: title, subtitle: subtitle, dimmed: complete)
         }

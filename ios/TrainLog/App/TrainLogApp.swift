@@ -11,8 +11,28 @@ struct TrainLogApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .preferredColorScheme(.dark)
+            Group {
+                #if DEBUG
+                // `-demoGallery YES` shows every rehab demo, to check the figures without a session.
+                if UserDefaults.standard.bool(forKey: "demoGallery") {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 18) {
+                            ForEach(ExerciseDemos.all, id: \.key) { demo in
+                                Kicker(demo.title, color: .mobility)
+                                ExerciseDemoView(demo: demo)
+                            }
+                        }
+                        .padding(16)
+                    }
+                    .background(Color.bg)
+                } else {
+                    RootView()
+                }
+                #else
+                RootView()
+                #endif
+            }
+            .preferredColorScheme(.dark)
         }
     }
 }

@@ -1,0 +1,90 @@
+import Foundation
+import Testing
+@testable import TrainLog
+
+struct RehabTests {
+    private let sample = """
+    {"session": {"key": "rehab", "title": "Rehab routine", "type": "Workout", "watch_workout": "Core Training",
+      "context": "rehab", "context_label": "Rehab", "layout": "sets", "rounds": 1, "rest_seconds": 30,
+      "issues": ["Left knee"], "duration_min": 14, "steps": ["Quad isometric 2 × 30 s"],
+      "exercises": [
+        {"issue_id": 2, "issue_title": "Left knee", "index": 0, "name": "Quad isometric", "dose": "2 x 30 sec, daily",
+         "cue": "Press the knee down.", "sets": 2, "per_side": false, "frequency": {"kind": "daily", "label": "daily"},
+         "seconds": 30, "done": false, "due": true},
+        {"issue_id": 2, "issue_title": "Left knee", "index": 3, "name": "Clamshell", "dose": "1 x 8-10/side",
+         "cue": "", "sets": 1, "per_side": true, "frequency": {"kind": "daily", "label": "daily"},
+         "reps": 8, "range": "8–10", "done": false, "due": true}
+      ]}}
+    """
+
+    private func session() throws -> GuidedSession {
+        try APIClient.decoder.decode(GuidedSessionEnvelope.self, from: Data(sample.utf8)).session
+    }
+
+    @Test func buildsStraightSetsWithRestsAndSides() throws {
+        let steps = RehabFormat.steps(try session())
+        #expect(steps.map(\.kind) == [.exercise, .rest, .exercise, .exercise, .exercise])
+        #expect(steps[1].seconds == 30)
+        #expect(steps[3].side == "Left side")
+        #expect(steps[4].side == "Right side")
+        // Only an exercise's last step ticks it, with the routine's own index.
+        #expect(steps[2].completes == .init(issueId: 2, index: 0))
+        #expect(steps[4].completes == .init(issueId: 2, index: 3))
+        #expect(steps.filter { $0.completes != nil }.count == 2)
+    }
+
+    @Test func formatsDoseAndKicker() throws {
+        let steps = RehabFormat.steps(try session())
+        #expect(RehabFormat.dose(steps[0]) == "0:30")
+        #expect(RehabFormat.dose(steps[3]) == "×8–10")
+        #expect(RehabFormat.kicker(steps[0]) == "Exercise 1 of 2 · Set 1 of 2")
+        #expect(RehabFormat.kicker(steps[1]) == "Rest")
+        #expect(RehabFormat.kicker(steps[3]) == "Exercise 2 of 2")
+        #expect(RehabFormat.upNext(steps[2], after: steps[0]) == "Set 2 of 2 · 0:30")
+        #expect(RehabFormat.upNext(steps[3], after: steps[2]) == "Clamshell · left side ×8–10")
+        #expect(RehabFormat.upNext(steps[4], after: steps[3]) == "Same set · right side · ×8–10")
+    }
+
+    @Test func todayCardFollowsTheNextPart() {
+        // Ride + rehab: the ride's steps until the Watch workout syncs, then the rehab.
+        #expect(TodayFormat.next(isStrength: false, rehabOnly: false, mainDone: false, rehabLeft: 8) == .openSession)
+        #expect(TodayFormat.next(isStrength: false, rehabOnly: false, mainDone: true, rehabLeft: 8) == .startRehab)
+        #expect(TodayFormat.next(isStrength: false, rehabOnly: false, mainDone: true, rehabLeft: 0) == .allDone)
+        #expect(TodayFormat.next(isStrength: true, rehabOnly: false, mainDone: false, rehabLeft: nil) == .startStrength)
+        #expect(TodayFormat.next(isStrength: true, rehabOnly: false, mainDone: true, rehabLeft: nil) == .allDone)
+        #expect(TodayFormat.next(isStrength: false, rehabOnly: true, mainDone: false, rehabLeft: 5) == .startRehab)
+    }
+}
+
+struct ExerciseDemoTests {
+    @Test func matchesTodaysRoutineByName() {
+        #expect(ExerciseDemos.demo(for: "Quad isometric")?.key == "quad-set")
+        #expect(ExerciseDemos.demo(for: "Side-lying hip abduction")?.key == "hip-abduction")
+        #expect(ExerciseDemos.demo(for: "Side plank (knees bent if needed)")?.key == "side-plank")
+        #expect(ExerciseDemos.demo(for: "Shallow wall sit isometric")?.key == "wall-sit")
+        #expect(ExerciseDemos.demo(for: "Sit-to-stand to a high chair")?.key == "sit-to-stand")
+        #expect(ExerciseDemos.demo(for: "Hamstring and glute stretch (gentle)")?.key == "hamstring-stretch")
+        #expect(ExerciseDemos.demo(for: "Breathing") == nil)
+    }
+
+    @Test func limbsKeepTheirLength() throws {
+        let demo = try #require(ExerciseDemos.demo(for: "Glute bridge"))
+        for seconds in stride(from: 0.0, to: ExerciseDemos.cycleLength(demo), by: 0.37) {
+            let skeleton = ExerciseDemos.skeleton(ExerciseDemos.frame(demo, at: seconds).pose)
+            let thigh = try #require(skeleton.segments.first { $0.id == "nearThigh" })
+            #expect(abs(hypot(thigh.to.x - thigh.from.x, thigh.to.y - thigh.from.y) - 27) < 0.05)
+        }
+    }
+
+    @Test func mergesCuesAndFramesTheMove() throws {
+        let demo = try #require(ExerciseDemos.demo(for: "Quad isometric"))
+        #expect(ExerciseDemos.cues(demo).map(\.label) == ["Tighten thigh", "Press knee down", "Relax"])
+        #expect(ExerciseDemos.cues(demo).last?.seconds == 2)
+        let box = ExerciseDemos.viewBox(demo)
+        #expect(box.width / box.height >= 2 - 0.001 && box.width / box.height <= 2.6 + 0.001)
+        // Every demo's poses resolve and its peak pose draws.
+        for demo in ExerciseDemos.all {
+            #expect(!ExerciseDemos.skeleton(ExerciseDemos.peakPose(demo)).segments.isEmpty)
+        }
+    }
+}

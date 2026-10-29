@@ -169,6 +169,8 @@ struct RehabSessionView: View {
     private func running(_ step: RehabStep) -> some View {
         let isRest = step.kind == .rest
         let accent: Color = isRest ? .inkSoft : .mobility
+        // Rests show the next exercise's demo, so you can see what's coming.
+        let demo = ExerciseDemos.demo(for: isRest ? model.upNext?.name : step.name)
         return VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
                 Kicker(RehabFormat.kicker(step), color: accent)
@@ -189,13 +191,20 @@ struct RehabSessionView: View {
             }
             .padding(.top, 20)
 
+            if let demo {
+                ExerciseDemoView(demo: demo)
+                    .id(demo.key)
+                    .opacity(isRest ? 0.55 : 1)
+                    .padding(.top, 14)
+            }
+
             Spacer(minLength: 12)
             Group {
                 if step.seconds != nil {
-                    TimerRing(model: model, accent: isRest ? .muted : .mobility)
+                    TimerRing(model: model, accent: isRest ? .muted : .mobility, size: demo == nil ? 230 : 150)
                 } else {
                     Text(RehabFormat.dose(step))
-                        .font(AppFont.number(120))
+                        .font(AppFont.number(demo == nil ? 120 : 84))
                         .foregroundStyle(Color.ink)
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
@@ -215,7 +224,7 @@ struct RehabSessionView: View {
             if let next = model.upNext {
                 HStack(spacing: 6) {
                     Text("UP NEXT").font(AppFont.body(11, weight: .semibold)).tracking(11 * 0.14).foregroundStyle(Color.muted)
-                    Text("\(next.name)\(next.side.map { " · \($0.lowercased())" } ?? "") \(RehabFormat.dose(next))")
+                    Text(RehabFormat.upNext(next, after: step))
                         .font(AppFont.body(13, weight: .semibold)).foregroundStyle(Color.ink).lineLimit(1)
                 }
                 .padding(.top, 14)
@@ -358,21 +367,22 @@ struct RehabSessionView: View {
 private struct TimerRing: View {
     let model: RehabSessionModel
     let accent: Color
+    var size: CGFloat = 230
 
     var body: some View {
         let total = model.current?.seconds ?? 0
         TimelineView(.periodic(from: .now, by: 0.25)) { context in
             let left = secondsLeft(at: context.date)
             ZStack {
-                Circle().stroke(Color.track, lineWidth: 10)
+                Circle().stroke(Color.track, lineWidth: size > 200 ? 10 : 8)
                 Circle()
                     .trim(from: 0, to: total > 0 ? Double(left) / Double(total) : 0)
-                    .stroke(accent, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .stroke(accent, style: StrokeStyle(lineWidth: size > 200 ? 10 : 8, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .animation(.linear(duration: 0.25), value: left)
                 VStack(spacing: 2) {
                     Text(StrengthFormat.clock(left))
-                        .font(AppFont.number(72))
+                        .font(AppFont.number(size * 0.31))
                         .foregroundStyle(Color.ink)
                         .monospacedDigit()
                     if model.pausedLeft != nil {
@@ -380,7 +390,7 @@ private struct TimerRing: View {
                     }
                 }
             }
-            .frame(width: 230, height: 230)
+            .frame(width: size, height: size)
             .onChange(of: left) { old, new in
                 // Only a live crossing chimes: coming back long after the timer ended stays quiet.
                 if new > 0 || old > 0 { RestAlarm.countdown(new) }

@@ -1,12 +1,11 @@
 import Charts
 import SwiftUI
 
-/// How a readiness level reads on the phone: a headline word, an icon and a spot on the gauge.
+/// How a readiness level reads on the phone: a headline word and a spot on the gauge.
 struct ReadinessStyle {
     let headline: String
     let label: String
     let color: Color
-    let icon: String
     /// Where the marker sits on the gauge, 0 (red end) to 1 (green end); nil without a read.
     let position: Double?
 
@@ -15,10 +14,10 @@ struct ReadinessStyle {
         label = status.label
         color = status.color
         switch level {
-        case "green": headline = "Ready"; icon = "bolt.fill"
-        case "amber": headline = "Ease in"; icon = "gauge.with.dots.needle.33percent"
-        case "red": headline = "Recover"; icon = "bed.double.fill"
-        default: headline = "No read"; icon = "questionmark"
+        case "green": headline = "Ready"
+        case "amber": headline = "Ease in"
+        case "red": headline = "Recover"
+        default: headline = "No read"
         }
         // Points count against readiness: 0 sits at the green end, 6 or more at the red end.
         // Without points (an older cached response) the marker sits mid-zone.
@@ -50,9 +49,12 @@ struct ReadinessStyle {
     }
 }
 
-/// A 240° arc in three zones (red, amber, green), the current zone lit and a knob at the read.
+/// A 240° arc in three zones (red, amber, green), the current zone lit and a knob at the read,
+/// with how many signals are steady in the middle.
 struct ReadinessGauge: View {
     let style: ReadinessStyle
+    let steady: Int
+    let total: Int
     var size: CGFloat = 96
     var lineWidth: CGFloat = 9
 
@@ -77,17 +79,26 @@ struct ReadinessGauge: View {
                 knob
                     .rotationEffect(.degrees(Self.sweep * (shown ? position : 0)))
             }
-            Image(systemName: style.icon)
-                .font(.system(size: size * 0.24, weight: .bold))
-                .foregroundStyle(style.color)
-                .offset(y: size * 0.02)
+            if total > 0 {
+                VStack(spacing: 0) {
+                    HStack(alignment: .firstTextBaseline, spacing: 1) {
+                        Text("\(steady)").font(AppFont.title(size * 0.36)).foregroundStyle(Color.ink)
+                        Text("/\(total)").font(AppFont.number(size * 0.17)).foregroundStyle(Color.muted)
+                    }
+                    Text("STEADY")
+                        .font(AppFont.body(size * 0.085, weight: .semibold))
+                        .tracking(size * 0.012)
+                        .foregroundStyle(Color.muted)
+                }
+                .offset(y: size * 0.04)
+            }
         }
         .frame(width: size, height: size)
         .onAppear {
             withAnimation(.spring(response: 0.9, dampingFraction: 0.75).delay(0.1)) { shown = true }
         }
         .accessibilityElement()
-        .accessibilityLabel("Readiness \(style.headline), \(style.label)")
+        .accessibilityLabel("Readiness \(style.headline), \(style.label), \(steady) of \(total) signals steady")
     }
 
     private func arc(from: Double, to: Double) -> some Shape {

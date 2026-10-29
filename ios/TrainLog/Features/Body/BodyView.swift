@@ -61,7 +61,7 @@ private struct ReadinessHero: View {
         VStack(alignment: .leading, spacing: 16) {
             Kicker("Readiness", color: style.color)
             HStack(spacing: 18) {
-                ReadinessGauge(style: style, size: 124, lineWidth: 11)
+                ReadinessGauge(style: style, steady: steady.count, total: readiness.factors.count, size: 124, lineWidth: 11)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(style.headline.uppercased())
                         .font(AppFont.title(46))
@@ -69,10 +69,6 @@ private struct ReadinessHero: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                     Text(style.label).font(AppFont.body(14, weight: .semibold)).foregroundStyle(Color.ink)
-                    if !readiness.factors.isEmpty {
-                        Text("\(steady.count) of \(readiness.factors.count) signals steady")
-                            .font(AppFont.body(12)).foregroundStyle(Color.muted)
-                    }
                 }
                 Spacer(minLength: 0)
             }

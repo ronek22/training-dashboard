@@ -624,14 +624,14 @@ private struct ReadinessCard: View {
                     .foregroundStyle(Color.faint)
             }
             HStack(spacing: 16) {
-                ReadinessGauge(style: style, size: 92)
+                ReadinessGauge(style: style, steady: steadyCount, total: factors.count, size: 92)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(style.headline.uppercased())
                         .font(AppFont.title(38))
                         .foregroundStyle(style.color)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    Text(signalSummary(style))
+                    Text(style.label)
                         .font(AppFont.body(12, weight: .medium))
                         .foregroundStyle(Color.muted)
                     if !factors.isEmpty {
@@ -662,10 +662,8 @@ private struct ReadinessCard: View {
         }
     }
 
-    private func signalSummary(_ style: ReadinessStyle) -> String {
-        guard !factors.isEmpty else { return style.label }
-        let steady = factors.filter { $0.points == 0 && !["caution", "risk"].contains($0.tone) }.count
-        return "\(style.label) · \(steady) of \(factors.count) signals steady"
+    private var steadyCount: Int {
+        factors.filter { $0.points == 0 && !["caution", "risk"].contains($0.tone) }.count
     }
 
     private func vital(_ value: String?, unit: String, label: String, trend: [PhoneToday.Reading]?, color: Color) -> some View {

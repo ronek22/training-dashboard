@@ -16,6 +16,7 @@ struct TodayView: View {
     @State private var showStudio = false
     /// The workout picked in Workout Studio, started once the sheet is gone.
     @State private var studioPick: Int?
+    @State private var flameHop = 0
     var onStartStrength: (Int?) -> Void = { _ in }
     /// Bumped when the strength screen closes, so the banner and plan reload.
     var refresh = 0
@@ -100,6 +101,8 @@ struct TodayView: View {
                 header
                 if let workout = model.activeWorkout {
                     ResumeWorkoutCard(workout: workout) { onStartStrength(nil) }
+                        .reveal(0)
+                        .transition(.scale(scale: 0.96).combined(with: .opacity))
                 }
                 if let data = model.data {
                     if model.offline, let syncedAt = model.syncedAt {
@@ -109,6 +112,7 @@ struct TodayView: View {
                         RecapCard(label: offer.label, range: RecapFormat.range(offer.weekStart, RecapFormat.weekEnd(offer.weekStart))) {
                             recap = RecapLaunch(weekStart: offer.weekStart)
                         }
+                        .reveal(1)
                     }
                     SessionCard(
                         data: data,
@@ -122,11 +126,14 @@ struct TodayView: View {
                         onRehab: { showRehab = true },
                         onMove: { moving = $0 }
                     )
+                    .reveal(2)
                     ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone,
                                   onOpen: { showBody = true }, onCheckin: { showCheckin = true })
+                    .reveal(3)
                     WeekCard(week: data.week, minutes: data.weekMinutes, today: data.date) {
                         recap = RecapLaunch(weekStart: nil)
                     }
+                    .reveal(4)
                 } else if let error = model.error {
                     errorCard(error)
                 } else {
@@ -135,6 +142,7 @@ struct TodayView: View {
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
+            .animation(.spring(duration: 0.45, bounce: 0.15), value: model.activeWorkout == nil)
         }
         .scrollIndicators(.hidden)
         .overlay(alignment: .top) {
@@ -173,7 +181,10 @@ struct TodayView: View {
                 if let streak = model.data?.streakDays, streak > 0 {
                     HStack(spacing: 4) {
                         Image(systemName: "flame.fill").font(.system(size: 12))
+                            .symbolEffect(.bounce.up, options: .speed(0.8), value: flameHop)
+                            .onAppear { Task { try? await Task.sleep(for: .seconds(0.6)); flameHop += 1 } }
                         Text("\(streak)").font(AppFont.body(13, weight: .bold))
+                            .contentTransition(.numericText(value: Double(streak)))
                     }
                     .foregroundStyle(Color.volt)
                     .padding(.horizontal, 10)
@@ -338,6 +349,7 @@ private struct SessionCard: View {
                 .frame(maxWidth: .infinity, minHeight: 52)
                 .background(Color.volt.opacity(0.12), in: Capsule())
                 .padding(.top, 16)
+                .transition(.scale(scale: 0.9).combined(with: .opacity))
             } else if !workoutOpen {
                 primary(next, session: session)
                 if !session.isDone, fallback != nil || canMove {
@@ -364,6 +376,7 @@ private struct SessionCard: View {
                 }
             }
         }
+        .animation(.spring(duration: 0.45, bounce: 0.2), value: next)
         .card(border: sport.color.opacity(0.35))
     }
 
@@ -395,16 +408,20 @@ private struct SessionCard: View {
     @ViewBuilder
     private func target(_ session: PhoneToday.Session) -> some View {
         if let km = session.distanceKm, km > 0 {
-            bigNumber(TodayFormat.number(km), unit: "km")
+            bigNumber(km, unit: "km") { TodayFormat.number(($0 * 10).rounded() / 10) }
         } else if let minutes = session.durationMin {
-            bigNumber("\(minutes)", unit: "min")
+            bigNumber(Double(minutes), unit: "min") { "\(Int($0.rounded()))" }
         }
     }
 
-    private func bigNumber(_ value: String, unit: String) -> some View {
-        Text("\(Text(value).font(AppFont.number(26)).foregroundStyle(Color.ink))\(Text(" \(unit)").font(AppFont.body(12, weight: .medium)).foregroundStyle(Color.muted))")
-            .lineLimit(1)
-            .fixedSize()
+    private func bigNumber(_ value: Double, unit: String, format: @escaping (Double) -> String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            CountUp(value: value, delay: 0.3, format: format)
+                .font(AppFont.number(26)).foregroundStyle(Color.ink)
+            Text(" \(unit)").font(AppFont.body(12, weight: .medium)).foregroundStyle(Color.muted)
+        }
+        .lineLimit(1)
+        .fixedSize()
     }
 
     /// The volt follows the part that's next: the lift or the ride's steps, then the rehab.
@@ -443,7 +460,7 @@ private struct SessionCard: View {
                 dimmed: done
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityLabel("\(sport.label), \(done ? "done" : "to do")")
     }
 
@@ -451,14 +468,19 @@ private struct SessionCard: View {
     private func rehabPart(_ rehab: (done: Int, left: Int, title: String), number: Int?, after sport: Sport?) -> some View {
         let total = rehab.done + rehab.left
         let complete = rehab.left == 0
+        let share = total == 0 ? 0 : Double(rehab.done) / Double(total)
         let ring = ZStack {
             Circle().stroke(Color.track, lineWidth: 3)
-            Circle()
-                .trim(from: 0, to: total == 0 ? 0 : Double(rehab.done) / Double(total))
-                .stroke(Color.mobility, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                .rotationEffect(.degrees(-90))
+            growing(delay: 0.5) { grown in
+                Circle()
+                    .trim(from: 0, to: grown ? share : 0)
+                    .stroke(Color.mobility, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.spring(duration: 0.6), value: share)
+            }
             if complete {
                 Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(Color.mobility)
+                    .transition(.scale.combined(with: .opacity))
             } else if let number {
                 Text("\(number)").font(AppFont.number(15)).foregroundStyle(Color.mobility)
             }
@@ -469,7 +491,7 @@ private struct SessionCard: View {
         return Button(action: onRehab) {
             partRow(badge: AnyView(ring), title: title, subtitle: subtitle, dimmed: complete)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .accessibilityLabel(complete ? "Rehab done" : "Rehab, \(rehab.left) exercises to do")
         .accessibilityHint("Opens the guided rehab session")
     }
@@ -598,8 +620,11 @@ private struct ResumeWorkoutCard: View {
                 .padding(.top, 4)
             GeometryReader { proxy in
                 Capsule().fill(Color.track).overlay(alignment: .leading) {
-                    Capsule().fill(Color.strength)
-                        .frame(width: proxy.size.width * (working.isEmpty ? 0 : Double(done) / Double(working.count)))
+                    growing(delay: 0.3) { grown in
+                        Capsule().fill(Color.strength)
+                            .frame(width: grown ? proxy.size.width * (working.isEmpty ? 0 : Double(done) / Double(working.count)) : 0)
+                            .animation(.spring(duration: 0.5), value: done)
+                    }
                 }
             }
             .frame(height: 4)
@@ -688,9 +713,13 @@ private struct ReadinessCard: View {
             .padding(.top, 6)
             if !factors.isEmpty {
                 // One slim slice per signal, steady first: the whole read at a glance.
-                HStack(spacing: 3) {
-                    ForEach(factors.sorted { rank($0) < rank($1) }) { factor in
-                        Capsule().fill(BodyFormat.toneColor(factor.tone))
+                growing(delay: 0.35) { grown in
+                    HStack(spacing: 3) {
+                        ForEach(Array(factors.sorted { rank($0) < rank($1) }.enumerated()), id: \.element.id) { index, factor in
+                            Capsule().fill(BodyFormat.toneColor(factor.tone))
+                                .scaleEffect(x: grown ? 1 : 0, anchor: .leading)
+                                .animation(.spring(duration: 0.5, bounce: 0.2).delay(0.35 + Double(index) * 0.06), value: grown)
+                        }
                     }
                 }
                 .frame(height: 4)
@@ -785,6 +814,7 @@ private struct RecapCard: View {
             HStack(spacing: 14) {
                 Image(systemName: "trophy.fill")
                     .font(.system(size: 18, weight: .bold))
+                    .symbolEffect(.wiggle, options: .repeat(.periodic(delay: 6)))
                     .foregroundStyle(Color.bg)
                     .frame(width: 44, height: 44)
                     .background(Color.volt, in: Circle())
@@ -799,7 +829,7 @@ private struct RecapCard: View {
             .card(border: Color.volt.opacity(0.35))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
     }
 }
 
@@ -813,7 +843,7 @@ private struct WeekCard: View {
 
     var body: some View {
         Button(action: onOpen) { content }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .accessibilityHint("Opens the week recap")
     }
 
@@ -823,14 +853,18 @@ private struct WeekCard: View {
                 Kicker("This week")
                 Image(systemName: "chevron.right").font(.system(size: 10, weight: .bold)).foregroundStyle(Color.muted)
                 Spacer()
-                Text(TodayFormat.duration(minutes.done)).font(AppFont.number(22)).foregroundStyle(Color.ink)
-                    + Text(minutes.planned > 0 ? " of \(TodayFormat.duration(minutes.planned))" : "")
-                    .font(AppFont.body(13)).foregroundStyle(Color.muted)
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    CountUp(value: Double(minutes.done), delay: 0.45) { TodayFormat.duration(Int($0.rounded())) }
+                        .font(AppFont.number(22)).foregroundStyle(Color.ink)
+                    Text(minutes.planned > 0 ? " of \(TodayFormat.duration(minutes.planned))" : "")
+                        .font(AppFont.body(13)).foregroundStyle(Color.muted)
+                }
             }
             progressBar.padding(.top, 10)
             HStack(spacing: 0) {
-                ForEach(week) { day in
-                    DayRing(day: day, isToday: day.date == today).frame(maxWidth: .infinity)
+                ForEach(Array(week.enumerated()), id: \.element.id) { index, day in
+                    DayRing(day: day, isToday: day.date == today, delay: 0.4 + Double(index) * 0.05)
+                        .frame(maxWidth: .infinity)
                 }
             }
             .padding(.top, 14)
@@ -841,13 +875,16 @@ private struct WeekCard: View {
     private var progressBar: some View {
         GeometryReader { proxy in
             let total = Double(max(minutes.planned, minutes.done, 1))
-            HStack(spacing: 2) {
-                ForEach(Array(minutes.bySport.enumerated()), id: \.offset) { _, part in
-                    Rectangle()
-                        .fill(part.sport.color)
-                        .frame(width: max(2, proxy.size.width * Double(part.minutes) / total))
+            growing(delay: 0.45) { grown in
+                HStack(spacing: 2) {
+                    ForEach(Array(minutes.bySport.enumerated()), id: \.offset) { _, part in
+                        Rectangle()
+                            .fill(part.sport.color)
+                            .frame(width: grown ? max(2, proxy.size.width * Double(part.minutes) / total) : 0)
+                    }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
+                .animation(.spring(duration: 0.6), value: minutes.done)
             }
         }
         .frame(height: 6)
@@ -859,6 +896,9 @@ private struct WeekCard: View {
 private struct DayRing: View {
     let day: PhoneToday.WeekDay
     let isToday: Bool
+    var delay: Double = 0
+    @State private var shown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isDone: Bool { !day.doneSports.isEmpty }
 
@@ -868,6 +908,12 @@ private struct DayRing: View {
                 .font(AppFont.body(11, weight: isToday ? .bold : .semibold))
                 .foregroundStyle(isToday ? Color.volt : Color.muted)
             ring.frame(width: 32, height: 32)
+                .background { if isToday && !reduceMotion { TodayPulse() } }
+                .scaleEffect(shown || reduceMotion ? 1 : 0.4)
+                .opacity(shown ? 1 : 0)
+                .onAppear {
+                    withAnimation(.spring(duration: 0.5, bounce: 0.4).delay(reduceMotion ? 0 : delay)) { shown = true }
+                }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(day.label): \(day.title ?? "Rest"), \(isDone ? "done" : day.status)")
@@ -906,6 +952,21 @@ private struct DayRing: View {
             [Gradient.Stop(color: color, location: Double(index) * step), .init(color: color, location: Double(index + 1) * step)]
         }
         return AnyShapeStyle(AngularGradient(stops: stops, center: .center, startAngle: .degrees(-90), endAngle: .degrees(270)))
+    }
+}
+
+/// A volt ripple that leaves today's ring every few seconds: you are here.
+private struct TodayPulse: View {
+    var body: some View {
+        PhaseAnimator([false, true]) { out in
+            Circle()
+                .strokeBorder(Color.volt, lineWidth: 1.5)
+                .scaleEffect(out ? 1.6 : 1)
+                .opacity(out ? 0 : 0.6)
+        } animation: { out in
+            out ? .easeOut(duration: 1.6).delay(1.4) : .linear(duration: 0)
+        }
+        .allowsHitTesting(false)
     }
 }
 

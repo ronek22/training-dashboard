@@ -501,64 +501,6 @@ private struct FocusCard: View {
     }
 }
 
-// MARK: - Motion
-
-/// A number that counts up from zero the first time it appears.
-private struct CountUp: View {
-    let value: Double
-    var delay: Double = 0
-    let format: (Double) -> String
-    @State private var shown = 0.0
-
-    init(value: Double, delay: Double = 0, format: @escaping (Double) -> String) {
-        self.value = value
-        self.delay = delay
-        self.format = format
-    }
-
-    var body: some View {
-        CountingText(value: shown, format: format)
-            .onAppear {
-                withAnimation(.easeOut(duration: 1.1).delay(delay)) { shown = value }
-            }
-            .onChange(of: value) { shown = value }
-            .accessibilityLabel(format(value))
-    }
-}
-
-private struct CountingText: View, @MainActor Animatable {
-    var value: Double
-    let format: (Double) -> String
-
-    var animatableData: Double {
-        get { value }
-        set { value = newValue }
-    }
-
-    var body: some View {
-        Text(format(value)).monospacedDigit()
-    }
-}
-
-private struct Reveal: ViewModifier {
-    let delay: Double
-    @State private var shown = false
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(shown ? 1 : 0)
-            .offset(y: shown ? 0 : 18)
-            .onAppear { withAnimation(.spring(duration: 0.55, bounce: 0.2).delay(delay)) { shown = true } }
-    }
-}
-
-private extension View {
-    /// Fades and lifts in, `index` steps after the first card.
-    func reveal(_ index: Int, base: Double = 0.05) -> some View {
-        modifier(Reveal(delay: base + Double(index) * 0.09))
-    }
-}
-
 #Preview {
     WeekRecapView().preferredColorScheme(.dark)
 }

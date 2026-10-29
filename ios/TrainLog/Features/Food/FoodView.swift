@@ -33,8 +33,8 @@ struct FoodView: View {
             .padding(.bottom, 88)
         }
         .scrollIndicators(.hidden)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            Color.clear.frame(height: 0).background(Color.bg)
+        .overlay(alignment: .top) {
+            Color.bg.frame(height: 0).background(Color.bg).allowsHitTesting(false)
         }
         .background(Color.bg)
         .overlay(alignment: .bottomTrailing) { snapButton }

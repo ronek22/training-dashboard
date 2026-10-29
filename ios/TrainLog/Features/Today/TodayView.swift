@@ -56,9 +56,10 @@ struct TodayView: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            // Keeps scrolled cards from running under the status bar.
-            Color.clear.frame(height: 0).background(Color.bg)
+        .overlay(alignment: .top) {
+            // Keeps scrolled cards from running under the status bar. An overlay, not a
+            // safeAreaInset: an inset fights the refresh control and makes the pull snap back.
+            Color.bg.frame(height: 0).background(Color.bg).allowsHitTesting(false)
         }
         .background(Color.bg)
         .refreshable {

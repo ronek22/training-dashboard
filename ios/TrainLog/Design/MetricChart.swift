@@ -47,6 +47,8 @@ struct MetricChart: View {
     var height: CGFloat = 132
     var scrub: Binding<Double?>?
     var scrubText: ((Double) -> String)?
+    /// Off for a chart stacked under another that already shows the pill.
+    var showsScrubPill = true
 
     var body: some View {
         VStack(spacing: 8) {
@@ -131,6 +133,7 @@ struct MetricChart: View {
                         Rectangle().fill(Color.ink.opacity(0.7)).frame(width: 1, height: proxy.size.height).offset(x: px)
                         Circle().fill(model.color).frame(width: 8, height: 8).overlay(Circle().stroke(Color.bg, lineWidth: 2))
                             .offset(x: px - 4, y: py - 4)
+                        if showsScrubPill {
                         Text(scrubText?(point.x) ?? "")
                             .font(AppFont.body(12, weight: .semibold))
                             .foregroundStyle(Color.bg)
@@ -142,6 +145,7 @@ struct MetricChart: View {
                                 -min(max(px - dimension.width / 2, 0), proxy.size.width - dimension.width)
                             }
                             .offset(y: -34)
+                        }
                     }
                 }
                 .gesture(DragGesture(minimumDistance: 0)

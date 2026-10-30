@@ -295,6 +295,13 @@ struct ActivitiesTests {
         #expect(ActivityDetailFormat.scrubValue("pace", 5.5) == "5:30 /km")
     }
 
+    @Test func sheetsStackHeartRateUnderEverythingElse() throws {
+        let value = try run()
+        #expect(ActivityDetailFormat.compareKeys(value, key: "pace") == ["heartrate"])
+        // Flat ground: elevation is too flat to compare with.
+        #expect(ActivityDetailFormat.compareKeys(value, key: "heartrate") == [])
+    }
+
     @Test func decodesEncodedPolyline() {
         let points = ActivityDetailFormat.decodePolyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@")
         #expect(points.count == 3)

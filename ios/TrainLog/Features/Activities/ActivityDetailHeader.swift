@@ -53,9 +53,9 @@ struct DetailHeaderView: View {
             ZStack {
                 Color.bg
                 MusclePair(summary: summary, background: .bg)
-                    .padding(.horizontal, 40)
-                    .padding(.top, 80)
-                    .padding(.bottom, 150)
+                    .padding(.horizontal, 36)
+                    .padding(.top, 72)
+                    .padding(.bottom, 96)
             }
         default:
             Color(hex: 0x0C0F15)
@@ -220,9 +220,9 @@ private struct RouteGlow: View, @MainActor Animatable {
             guard points.count > 1 else { return }
             let reach = progress * Double(points.count - 1)
             context.drawLayer { glow in
-                glow.addFilter(.blur(radius: 3.5))
-                glow.opacity = 0.5
-                draw(&glow, reach: reach, width: 7)
+                glow.addFilter(.blur(radius: 4))
+                glow.opacity = 0.35
+                draw(&glow, reach: reach, width: 6)
             }
             draw(&context, reach: reach, width: 3.5)
         }

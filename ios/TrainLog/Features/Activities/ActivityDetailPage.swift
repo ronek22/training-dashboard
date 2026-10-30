@@ -78,6 +78,10 @@ extension ActivityDetailFormat {
         case .ride where indoor:
             return ["Indoor ride", platform(activity)].compactMap { $0 }.joined(separator: " · ")
         case .strength:
+            // "Workout A · Upper Chest" already says what it was for.
+            if let focus = activity.title.components(separatedBy: " · ").dropFirst().first?.nilIfEmpty {
+                return "Strength · " + capitalized(focus.lowercased())
+            }
             let exercises = detail?.strengthDetail?.session?.exercises.map { ($0.exerciseName, $0.workSetCount ?? $0.sets.count) } ?? []
             let top = MuscleSummary(exercises).counts.first.map { $0.muscle.label.lowercased() }
             return ["Strength", top.map { $0.prefix(1).uppercased() + $0.dropFirst() }].compactMap { $0 }.joined(separator: " · ")
@@ -266,7 +270,10 @@ extension ActivityDetailFormat {
     /// "43m 36s", "1h 30m", "52m".
     static func durationParts(_ minutes: Double) -> [(value: String, unit: String)] {
         let seconds = Int((minutes * 60).rounded())
-        if seconds >= 3600 { return [("\(seconds / 3600)", "h"), ("\(seconds % 3600 / 60)", "m")] }
+        if seconds >= 3600 {
+            let total = Int(minutes.rounded())
+            return [("\(total / 60)", "h"), ("\(total % 60)", "m")]
+        }
         if seconds % 60 == 0 { return [("\(seconds / 60)", "m")] }
         return [("\(seconds / 60)", "m"), ("\(seconds % 60)", "s")]
     }
@@ -383,7 +390,7 @@ extension ActivityDetailFormat {
             let top = pcts.indices.max { pcts[$0] < pcts[$1] } ?? 0
             let pct = Int(pcts[top].rounded())
             status = (top <= 1 ? .good : .info, pct >= 97 ? "Zone \(top + 1) throughout" : "\(pct)% in Zone \(top + 1)")
-        } else if sport == .strength, let hr = chart(detail, "heartrate"), let low = hr.values.filter({ $0 > 0 }).min(), let high = hr.max {
+        } else if [.strength, .mobility, .other].contains(sport), let hr = chart(detail, "heartrate"), let low = hr.values.filter({ $0 > 0 }).min(), let high = hr.max {
             status = (.info, "\(Int(low.rounded()))–\(Int(high.rounded())) range")
         } else if let max = number(detail, "max_hr") {
             var text = "Max \(Int(max.rounded()))"

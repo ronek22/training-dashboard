@@ -323,6 +323,23 @@ def dynamics_rows(conn: sqlite3.Connection, since: Optional[str] = None) -> list
     return out
 
 
+ACTIVITY_DYNAMICS_FIELDS = ("cadence_spm", "stance_time_ms", "vertical_oscillation_cm", "vertical_ratio_pct", "step_length_m", "avg_power_w")
+
+
+def activity_dynamics(conn: sqlite3.Connection, activity_id: str) -> Optional[dict]:
+    """One run's form averages and per-km splits for the activity detail page, or None without a FIT row."""
+    init_schema(conn)
+    row = conn.execute(
+        f"SELECT {', '.join(ACTIVITY_DYNAMICS_FIELDS)}, splits_json FROM run_dynamics WHERE activity_id = ? ORDER BY scanned_at DESC LIMIT 1",
+        (activity_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    item = {key: row[index] for index, key in enumerate(ACTIVITY_DYNAMICS_FIELDS)}
+    item["splits"] = json.loads(row[len(ACTIVITY_DYNAMICS_FIELDS)] or "[]")
+    return item
+
+
 def activity_ids_with_dynamics(conn: sqlite3.Connection) -> set[str]:
     init_schema(conn)
     return {row[0] for row in conn.execute("SELECT activity_id FROM run_dynamics WHERE activity_id IS NOT NULL")}

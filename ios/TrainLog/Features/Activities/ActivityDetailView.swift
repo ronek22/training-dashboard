@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftUI
 
 @MainActor
@@ -5,8 +6,12 @@ import SwiftUI
 final class ActivityDetailModel {
     private(set) var detail: ActivityDetail?
     private(set) var feedback: ActivityFeedback?
-    private(set) var paces: RunningPaces.Paces.Zones?
+    /// Your usual running form and the good ranges, for runs with a FIT file.
+    private(set) var form: RunningFitness.Form?
+    /// Town under the route's start, for the map header.
+    private(set) var place: String?
     private(set) var offline = false
+    private(set) var syncedAt: Date?
     private(set) var error: String?
     private(set) var asking = false
     private(set) var askError: String?
@@ -30,25 +35,31 @@ final class ActivityDetailModel {
             detail = loaded.value
             feedback = loaded.value.feedback
             offline = loaded.fromCache
+            syncedAt = loaded.syncedAt
             error = nil
         } catch {
             self.error = error.localizedDescription
         }
-        if let detail, ActivityFormat.sport(detail.activity) == .run {
-            await loadPaces()
-        }
+        guard let detail else { return }
+        if detail.runDynamics != nil { await loadForm() }
+        if place == nil, detail.mountainRegion == nil, let start = ActivityDetailFormat.route(detail)?.first { await locate(start) }
     }
 
-    /// Training paces for the run pace gauge; the gauge goes plain without them.
-    private func loadPaces() async {
+    private func loadForm() async {
         let path = "/running/fitness"
-        if paces == nil { paces = client().cached(path, as: RunningPaces.self)?.value.paces?.zones }
-        if let loaded = try? await client().get(path, as: RunningPaces.self, timeout: 15) {
-            paces = loaded.value.paces?.zones
+        if form == nil { form = client().cached(path, as: RunningFitness.self)?.value.form }
+        if let loaded = try? await client().get(path, as: RunningFitness.self, timeout: 15) {
+            form = loaded.value.form
         }
     }
 
-    /// Queues a written analysis; the coach runner picks it up and the card shows it on reload.
+    private func locate(_ coordinate: CLLocationCoordinate2D) async {
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let placemark = try? await CLGeocoder().reverseGeocodeLocation(location).first
+        place = placemark?.locality ?? placemark?.subAdministrativeArea
+    }
+
+    /// Queues a written analysis; the coach runner picks it up and the section shows it on reload.
     func askCoach() async {
         asking = true
         askError = nil
@@ -67,16 +78,39 @@ final class ActivityDetailModel {
         feedback = ActivityFeedback(rpe: input.rpe, energy: input.energy, muscleSoreness: input.muscleSoreness,
                                     painLevel: input.painLevel, note: input.note)
     }
+
+    /// "Offline · last synced 2 h ago · pull to retry".
+    var offlineLine: String? {
+        guard offline, let syncedAt else { return nil }
+        let ago = syncedAt.formatted(.relative(presentation: .numeric, unitsStyle: .abbreviated))
+        return "Offline · last synced \(ago) · pull to retry"
+    }
 }
 
-/// Read-only, phone-sized: one skeleton for every sport, with cards that appear when the backend
-/// has the data (docs/design/artboards/iOSActivityDetail.dc.html). Laps, segments and the coach
-/// chat stay on the web page.
+/// D2 (docs/design/artboards/iOSActivityDetailV3.dc.html): a visual leads, one title, a coloured
+/// grid, then calm sections on the background with depth behind "Show more". Laps, segments and
+/// the coach chat stay on the web page.
 struct ActivityDetailView: View {
     let summary: ActivitySummary?
     let onSaveFeedback: (ActivityFeedbackInput) -> Void
     @State private var model: ActivityDetailModel
     @State private var editingFeedback = false
+    @State private var sheet: SheetKind?
+    @State private var showMap = false
+    @State private var scrolled = false
+    @Environment(\.dismiss) private var dismiss
+
+    enum SheetKind: Identifiable {
+        case metric(String)
+        case coach(ActivityDetailFormat.CoachTake)
+
+        var id: String {
+            switch self {
+            case .metric(let key): key
+            case .coach: "coach"
+            }
+        }
+    }
 
     init(id: String, summary: ActivitySummary?, onSaveFeedback: @escaping (ActivityFeedbackInput) -> Void) {
         self.summary = summary
@@ -87,37 +121,40 @@ struct ActivityDetailView: View {
     private var activity: ActivitySummary? { model.detail?.activity ?? summary }
 
     var body: some View {
+        let visual = model.detail.map(ActivityDetailFormat.visual)
+        let headerHeight = DetailHeaderView.height(visual) ?? 300
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 0) {
                 if let activity {
-                    header(activity)
+                    DetailHeaderView(header: ActivityDetailFormat.header(activity, detail: model.detail, place: model.place),
+                                     visual: visual, offlineLine: model.offlineLine,
+                                     placeholderHeight: model.detail == nil ? 220 : nil)
                 }
-                if let detail = model.detail {
-                    content(detail)
-                } else if let error = model.error {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Kicker("Not loaded")
-                        Text(error).font(AppFont.body(14)).foregroundStyle(Color.inkSoft)
+                Group {
+                    if let detail = model.detail {
+                        content(detail)
+                    } else if let error = model.error {
+                        DetailSection(nil) {
+                            StatusLine(tone: .warn, text: "Not loaded: \(error)").padding(.top, 24)
+                        }
+                    } else {
+                        loading
                     }
-                    .card()
-                } else {
-                    ProgressView().tint(.muted).frame(maxWidth: .infinity, minHeight: 240)
                 }
+                .padding(.horizontal, 16)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 24)
+            .padding(.bottom, 40)
+        }
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > headerHeight - 150
+        } action: { _, value in
+            withAnimation(.easeOut(duration: 0.2)) { scrolled = value }
         }
         .scrollIndicators(.hidden)
+        .ignoresSafeArea(edges: .top)
         .background(Color.bg)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if let url = ActivityDetailFormat.stravaURL(model.id) {
-                ToolbarItem(placement: .topBarTrailing) {
-                    ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }
-                        .tint(.inkSoft)
-                }
-            }
-        }
+        .overlay(alignment: .top) { topBar(visual) }
+        .toolbar(.hidden, for: .navigationBar)
         .smoothRefreshable {
             await APIClient.current.reconnect()
             await model.load()
@@ -129,100 +166,187 @@ struct ActivityDetailView: View {
                 onSaveFeedback(input)
             }
         }
-    }
-
-    private func header(_ activity: ActivitySummary) -> some View {
-        let sport = ActivityFormat.sport(activity)
-        let chips = model.detail.map(ActivityDetailFormat.chips) ?? []
-        return VStack(alignment: .leading, spacing: 6) {
-            Kicker(ActivityDetailFormat.kicker(activity), color: sport.color)
-            Text(activity.title.uppercased())
-                .font(AppFont.title(36))
-                .foregroundStyle(Color.ink)
-                .fixedSize(horizontal: false, vertical: true)
-            if !chips.isEmpty {
-                FlowLayout(spacing: 6) {
-                    ForEach(chips, id: \.self) { chip in
-                        Text(chip)
-                            .font(AppFont.body(12, weight: .semibold))
-                            .foregroundStyle(Color.inkSoft)
-                            .padding(.horizontal, 10)
-                            .frame(height: 24)
-                            .overlay(Capsule().strokeBorder(Color.outline))
-                    }
-                }
-                .padding(.top, 4)
+        .sheet(item: $sheet) { kind in
+            switch kind {
+            case .metric(let key):
+                if let detail = model.detail { MetricSheet(detail: detail, key: key) }
+            case .coach(let take):
+                CoachSheet(take: take)
             }
         }
-        .padding(.horizontal, 4)
+        .fullScreenCover(isPresented: $showMap) {
+            if case let .route(coordinates, fractions)? = visual {
+                RouteMapScreen(coordinates: coordinates, fractions: fractions)
+            }
+        }
+    }
+
+    // MARK: Top bar
+
+    private func topBar(_ visual: ActivityDetailFormat.Visual?) -> some View {
+        HStack(spacing: 12) {
+            GlassCircleButton(symbol: "chevron.left", label: "Back") { dismiss() }
+            Spacer(minLength: 0)
+            if case .route? = visual {
+                GlassCircleButton(symbol: "map", label: "Full-screen map") { showMap = true }
+            }
+            if let url = ActivityDetailFormat.stravaURL(model.id) {
+                ShareLink(item: url) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.ink)
+                        .frame(width: 44, height: 44)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .background(Color(hex: 0x12151C).opacity(0.72), in: Circle())
+                        .overlay(Circle().strokeBorder(Color.white.opacity(0.08)))
+                        .environment(\.colorScheme, .dark)
+                }
+                .accessibilityLabel("Share")
+            }
+        }
+        .overlay {
+            if scrolled, let activity {
+                Text(activity.title)
+                    .font(AppFont.body(16, weight: .semibold))
+                    .foregroundStyle(Color.ink)
+                    .lineLimit(1)
+                    .padding(.horizontal, 120)
+                    .transition(.opacity)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
+        .background {
+            if scrolled {
+                Color.bg.opacity(0.92).background(.ultraThinMaterial).ignoresSafeArea(edges: .top)
+                    .overlay(alignment: .bottom) { Rectangle().fill(Color.cardBorder).frame(height: 1) }
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    // MARK: Content
+
+    private var loading: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible())], alignment: .leading, spacing: 24) {
+                ForEach(0..<4, id: \.self) { _ in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Skeleton(width: 70, height: 10)
+                        Skeleton(width: 90, height: 28)
+                        Skeleton(width: 110, height: 10)
+                    }
+                }
+            }
+            .padding(.top, 32)
+            Rectangle().fill(Color.cardBorder).frame(height: 1).padding(.top, 32)
+            Skeleton(width: 120, height: 14).padding(.top, 24)
+            Skeleton(height: 140, radius: 14).padding(.top, 16)
+        }
     }
 
     @ViewBuilder
     private func content(_ detail: ActivityDetail) -> some View {
         let sport = ActivityFormat.sport(detail.activity)
         let pain = ActivityDetailFormat.painAlert(model.feedback)
-        if let pain {
-            PainAlertCard(pain: pain.pain, note: pain.note)
+        let streams = ActivityDetailFormat.hasStreams(detail)
+        let cells = ActivityDetailFormat.grid(detail)
+        let hasVisual = DetailHeaderView.height(ActivityDetailFormat.visual(detail)) != nil
+
+        if let pain { PainBlock(pain: pain.pain, note: pain.note) }
+        if !cells.isEmpty {
+            MetricGrid(cells: cells) { sheet = .metric("watts") }
+                .padding(.top, pain == nil ? (hasVisual ? 12 : 28) : 24)
+                .reveal(0)
         }
-        // Virtual rides carry the game world's route; it isn't where you were.
-        if detail.cycling?.environment != "indoor", let polyline = detail.route?.polyline, case let coordinates = ActivityDetailFormat.decodePolyline(polyline), coordinates.count >= 2 {
-            RouteMapCard(coordinates: coordinates, color: sport.color, tags: mapTags(detail))
+        if model.feedback == nil {
+            LogFeelPrompt { editingFeedback = true }
         }
-        StatBlockCard(block: ActivityDetailFormat.statBlock(detail, paces: model.paces))
-        if let win = detail.win, win.headline?.nilIfEmpty != nil {
-            WinStrip(win: win)
+        if [.run, .ride, .strength].contains(sport), let read = ActivityDetailFormat.sessionRead(detail) {
+            SessionReadSection(read: read)
         }
-        if let read = ActivityDetailFormat.sessionRead(detail) {
-            SessionReadView(read: read)
+        if sport == .strength {
+            let lifts = ActivityDetailFormat.liftRows(detail)
+            if !lifts.isEmpty { LiftsSection(rows: lifts, comparedTo: ActivityDetailFormat.liftsComparedTo(detail)) }
         }
-        let lifts = ActivityDetailFormat.liftRows(detail)
-        if !lifts.isEmpty {
-            LiftsCard(rows: lifts, comparedTo: liftsComparedTo(detail))
+        if !streams {
+            NoStreamsPlaceholder()
+        } else if sport != .mobility && sport != .other {
+            let chips = ActivityDetailFormat.chips(detail)
+            if sport == .strength {
+                MainChartSection(detail: detail, chips: chips, fixedTitle: "Heart rate") { sheet = .metric($0) }
+            } else if !chips.isEmpty {
+                MainChartSection(detail: detail, chips: chips) { sheet = .metric($0) }
+            }
         }
-        if let charts = ActivityDetailFormat.chartSet(detail) {
-            StreamChartCard(charts: charts)
+        if sport == .run {
+            let splits = ActivityDetailFormat.splits(detail)
+            if !splits.isEmpty {
+                SplitsSection(rows: splits, lines: ActivityDetailFormat.splitLines(splits)) { sheet = .metric("pace") }
+            }
+            let form = ActivityDetailFormat.form(detail, fitness: model.form)
+            if !form.isEmpty {
+                RunningFormSection(cells: form, summary: ActivityDetailFormat.formSummary(form)) { sheet = .metric("pace") }
+            }
         }
-        let hrZones = ActivityDetailFormat.zoneRows(detail.heartRateZones, unit: "bpm")
-        let powerZones = ActivityDetailFormat.zoneRows(detail.powerZones, unit: "W")
-        if !hrZones.isEmpty || !powerZones.isEmpty {
-            ZonesCard(heartRate: hrZones, power: powerZones)
+        if [.run, .ride].contains(sport) {
+            let hr = ActivityDetailFormat.zoneRows(detail.heartRateZones)
+            let power = sport == .ride ? ActivityDetailFormat.zoneRows(detail.powerZones) : []
+            if !hr.isEmpty || !power.isEmpty {
+                ZonesSection(heartRate: hr, power: power, summary: ActivityDetailFormat.zoneSummary(detail)) {
+                    sheet = .metric(hr.isEmpty ? "watts" : "heartrate")
+                }
+            }
         }
-        if let load = ActivityDetailFormat.loadTiles(detail.cycling) {
-            LoadCard(note: load.note, tiles: load.tiles)
+        if sport == .ride {
+            let compared = ActivityDetailFormat.compared(detail)
+            if !compared.isEmpty { ComparedSection(cells: compared) }
+            let bests = ActivityDetailFormat.powerBests(detail)
+            if !bests.isEmpty { PowerBestsSection(rows: bests) }
         }
-        if let efforts = detail.cycling?.powerEfforts, !efforts.isEmpty {
-            BestPowerCard(efforts: efforts)
+        if sport == .run {
+            let efforts = ActivityDetailFormat.bestEfforts(detail)
+            if !efforts.isEmpty { BestEffortsSection(rows: efforts) }
         }
-        if sport == .run, let efforts = detail.bestEfforts?.efforts, !efforts.isEmpty {
-            BestEffortsCard(efforts: efforts)
+        let feel = ActivityDetailFormat.feel(model.feedback)
+        if !feel.isEmpty {
+            FeelSection(cells: feel, note: pain?.note == nil ? model.feedback?.note?.nilIfEmpty : nil) { editingFeedback = true }
         }
-        FeelCard(feedback: model.feedback, showNote: pain?.note == nil) { editingFeedback = true }
+        if let win = ActivityDetailFormat.win(detail) { WinRow(win: win) }
         let coach = ActivityDetailFormat.coachState(detail.analysis)
-        if coach != .none {
-            CoachCard(state: coach, asking: model.asking) {
+        if coach != .none && sport != .mobility && sport != .other {
+            CoachSection(state: coach, asking: model.asking, offline: model.offline, sport: coachNoun(sport)) {
                 Task { await model.askCoach() }
+            } onMore: {
+                if case .take(let take) = coach { sheet = .coach(take) }
             }
             if let askError = model.askError {
-                Text(askError).font(AppFont.body(12)).foregroundStyle(Color.danger).padding(.horizontal, 4)
+                Text(askError).font(AppFont.body(12)).foregroundStyle(Color.danger).padding(.top, 8)
             }
         }
     }
 
-    private func mapTags(_ detail: ActivityDetail) -> [String] {
-        var tags: [String] = []
-        if let km = ActivityDetailFormat.number(detail, "distance_km") {
-            tags.append("\(km.formatted(ActivityFormat.oneDecimal)) km")
+    private func coachNoun(_ sport: Sport) -> String {
+        switch sport {
+        case .ride: "ride"
+        case .run: "run"
+        case .hike: "hike"
+        case .walk: "walk"
+        case .strength: "lift"
+        default: "session"
         }
-        if let climb = ActivityDetailFormat.number(detail, "elevation_m"), climb >= 10 {
-            tags.append("↑ \(Int(climb.rounded())) m")
-        }
-        return tags
+    }
+}
+
+extension UINavigationController: @retroactive UIGestureRecognizerDelegate {
+    /// Keeps swipe-back working on pages that hide the navigation bar for their own back button.
+    override open func viewDidLoad() {
+        super.viewDidLoad()
+        interactivePopGestureRecognizer?.delegate = self
     }
 
-    /// "vs 10 Oct" when every lift was compared with the same session.
-    private func liftsComparedTo(_ detail: ActivityDetail) -> String? {
-        let dates = Set(detail.strengthDetail?.progression?.exercises.values.compactMap { $0.previous?.date } ?? [])
-        guard dates.count == 1, let date = dates.first else { return dates.isEmpty ? nil : "vs last time" }
-        return "vs \(ActivityFormat.longDay(date).split(separator: " ").dropFirst().joined(separator: " "))"
+    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        viewControllers.count > 1
     }
 }

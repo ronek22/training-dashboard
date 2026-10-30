@@ -56,7 +56,12 @@ struct ActivitiesView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationTitle("Activities")
             .smoothRefreshable { await model.sync() }
-            .task { await model.load() }
+            .task {
+                #if DEBUG
+                if path.isEmpty, let id = UserDefaults.standard.string(forKey: "openActivity") { path.append(id) }
+                #endif
+                await model.load()
+            }
             .navigationDestination(for: String.self) { id in
                 ActivityDetailView(id: id, summary: model.activities.first { $0.id == id }) { input in
                     Task { await model.saveFeedback(input, for: id) }

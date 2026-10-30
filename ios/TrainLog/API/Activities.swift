@@ -30,6 +30,8 @@ struct ActivitySummary: Decodable, Sendable, Identifiable, Equatable {
     struct RecordedStrength: Decodable, Sendable, Equatable {
         let id: Int
         let name: String?
+        var startedAt: String?
+        var completedAt: String?
     }
 
     var title: String { displayName ?? name }
@@ -73,6 +75,10 @@ struct ActivityDetail: Decodable, Sendable {
     var route: Route?
     var win: Win?
     var mountainRegion: String?
+    /// Form averages and per-km splits from the run's HealthFit FIT file; nil without one.
+    var runDynamics: RunDynamics?
+    /// How a planned bike workout was ridden (indoor rides from the workout library).
+    var workoutExecution: WorkoutExecution?
 
     struct Stat: Decodable, Sendable {
         let key: String
@@ -106,9 +112,10 @@ struct ActivityDetail: Decodable, Sendable {
         let unit: String?
         let points: [Point]
 
-        /// `t` is minutes from the start.
+        /// `t` is minutes from the start, `x` km along the route.
         struct Point: Decodable, Sendable {
             let t: Double
+            var x: Double?
             let y: Double?
         }
     }
@@ -141,6 +148,7 @@ struct ActivityDetail: Decodable, Sendable {
     struct Cycling: Decodable, Sendable {
         let environment: String?
         let ftpWatts: Double?
+        var hrLoad: Double?
         let powerSource: String?
         let power: Power?
         let estimatedPower: Power?
@@ -187,6 +195,51 @@ struct ActivityDetail: Decodable, Sendable {
 
     struct Route: Decodable, Sendable {
         let polyline: String?
+    }
+
+    struct RunDynamics: Decodable, Sendable {
+        let cadenceSpm: Double?
+        let stanceTimeMs: Double?
+        let verticalOscillationCm: Double?
+        let verticalRatioPct: Double?
+        let stepLengthM: Double?
+        let avgPowerW: Double?
+        let splits: [Split]
+
+        /// One completed kilometre.
+        struct Split: Decodable, Sendable {
+            let km: Int
+            let seconds: Double
+            let heartRate: Double?
+            let cadenceSpm: Double?
+            let powerW: Double?
+        }
+    }
+
+    struct WorkoutExecution: Decodable, Sendable {
+        let workoutName: String?
+        let status: String?
+        let verdict: String?
+        let verdictLabel: String?
+        let ratio: Double?
+        let inZonePct: Double?
+        var explanation: String?
+        let drift: Drift?
+        let blocks: [Block]?
+
+        struct Drift: Decodable, Sendable {
+            let firstHr: Double?
+            let secondHr: Double?
+            let firstWatts: Double?
+            let secondWatts: Double?
+            let decouplingPct: Double?
+        }
+
+        struct Block: Decodable, Sendable {
+            let durationMin: Double?
+            var targetWatts: Double?
+            var avgWatts: Double?
+        }
     }
 
     struct Win: Decodable, Sendable {
@@ -238,6 +291,12 @@ struct ActivityDetail: Decodable, Sendable {
                 struct Snapshot: Decodable, Sendable {
                     let volumeKg: Double?
                     let date: String?
+                    var sets: [SetSnapshot]?
+                }
+
+                struct SetSnapshot: Decodable, Sendable, Equatable {
+                    let reps: Int?
+                    let weightKg: Double?
                 }
             }
         }
@@ -265,10 +324,12 @@ struct ActivityDetail: Decodable, Sendable {
             }
 
             struct Win: Decodable, Sendable {
+                var headline: String?
                 let detail: String?
             }
 
             struct Signal: Decodable, Sendable {
+                var key: String?
                 let label: String
                 let value: String?
                 let detail: String?
@@ -279,29 +340,25 @@ struct ActivityDetail: Decodable, Sendable {
     }
 }
 
-/// `GET /running/fitness`: only the training paces, for the run pace gauge.
-struct RunningPaces: Decodable, Sendable {
-    let paces: Paces?
+/// `GET /running/fitness`: only running form, your usual values and the good ranges.
+struct RunningFitness: Decodable, Sendable {
+    let form: Form?
 
-    struct Paces: Decodable, Sendable {
-        let zones: Zones?
+    struct Form: Decodable, Sendable {
+        let baseline: Values?
+        let ranges: [String: Range]?
 
-        struct Zones: Decodable, Sendable {
-            let easy: Range?
-            let marathon: Mark?
-            let threshold: Mark?
-            let interval: Mark?
-            let repetition: Mark?
+        struct Values: Decodable, Sendable {
+            let cadenceSpm: Double?
+            let stanceTimeMs: Double?
+            let verticalOscillationCm: Double?
+            let verticalRatioPct: Double?
+            let stepLengthM: Double?
+            let avgPowerW: Double?
         }
 
-        /// Seconds per km; `fromS` is the fast end.
         struct Range: Decodable, Sendable {
-            let fromS: Double
-            let toS: Double
-        }
-
-        struct Mark: Decodable, Sendable {
-            let paceS: Double
+            let good: [Double]
         }
     }
 }

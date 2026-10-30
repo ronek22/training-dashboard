@@ -213,6 +213,10 @@ struct ActivityDetail: Decodable, Sendable {
             let heartRate: Double?
             let cadenceSpm: Double?
             let powerW: Double?
+            var stanceTimeMs: Double?
+            var verticalOscillationCm: Double?
+            var verticalRatioPct: Double?
+            var stepLengthM: Double?
         }
     }
 
@@ -359,6 +363,7 @@ struct RunningFitness: Decodable, Sendable {
 
         struct Range: Decodable, Sendable {
             let good: [Double]
+            var note: String?
         }
     }
 }

@@ -103,11 +103,15 @@ struct ActivityDetailView: View {
     enum SheetKind: Identifiable {
         case metric(String)
         case coach(ActivityDetailFormat.CoachTake)
+        case splits
+        case form
 
         var id: String {
             switch self {
             case .metric(let key): key
             case .coach: "coach"
+            case .splits: "splits"
+            case .form: "form"
             }
         }
     }
@@ -172,6 +176,10 @@ struct ActivityDetailView: View {
                 if let detail = model.detail { MetricSheet(detail: detail, key: key) }
             case .coach(let take):
                 CoachSheet(take: take)
+            case .splits:
+                if let detail = model.detail { SplitsSheet(detail: detail) }
+            case .form:
+                if let detail = model.detail { RunningFormSheet(detail: detail, fitness: model.form) }
             }
         }
         .fullScreenCover(isPresented: $showMap) {
@@ -283,11 +291,11 @@ struct ActivityDetailView: View {
         if sport == .run {
             let splits = ActivityDetailFormat.splits(detail)
             if !splits.isEmpty {
-                SplitsSection(rows: splits, lines: ActivityDetailFormat.splitLines(splits)) { sheet = .metric("pace") }
+                SplitsSection(rows: splits, lines: ActivityDetailFormat.splitLines(splits)) { sheet = .splits }
             }
             let form = ActivityDetailFormat.form(detail, fitness: model.form)
             if !form.isEmpty {
-                RunningFormSection(cells: form, summary: ActivityDetailFormat.formSummary(form)) { sheet = .metric("pace") }
+                RunningFormSection(cells: form, summary: ActivityDetailFormat.formSummary(form)) { sheet = .form }
             }
         }
         if [.run, .ride].contains(sport) {

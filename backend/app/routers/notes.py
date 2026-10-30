@@ -5,6 +5,7 @@ from typing import Optional
 from ..db import get_db
 from ..models.notes import (
     CoachChatContextOpen,
+    CoachChatPhoneTurn,
     CoachChatConversationCreate,
     CoachChatMessageCreate,
     CoachNote,
@@ -25,6 +26,7 @@ from ..services.notes import (
     open_context_conversation_data,
     update_preference_data,
 )
+from ..services import coach_chat_relay
 from ..services.coach_moments import build_coach_moments
 
 router = APIRouter()
@@ -129,6 +131,21 @@ def create_chat_message(message: CoachChatMessageCreate):
             raise HTTPException(status_code=400, detail=str(exc)) from exc
     finally:
         conn.close()
+
+
+@router.post("/notes/chat/phone", status_code=202)
+def start_phone_chat_turn(turn: CoachChatPhoneTurn):
+    """The phone's whole chat turn: the backend asks the coach helper and saves both messages."""
+    conn = get_db()
+    try:
+        return coach_chat_relay.start_reply(conn, turn.conversation_id, turn.message)
+    finally:
+        conn.close()
+
+
+@router.get("/notes/chat/phone/{job_id}")
+def get_phone_chat_turn(job_id: str):
+    return coach_chat_relay.get_reply(job_id)
 
 
 @router.get("/notes/preferences")

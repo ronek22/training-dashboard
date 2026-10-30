@@ -105,6 +105,7 @@ struct ActivityDetailView: View {
         case coach(ActivityDetailFormat.CoachTake)
         case splits
         case form
+        case chat
 
         var id: String {
             switch self {
@@ -112,6 +113,7 @@ struct ActivityDetailView: View {
             case .coach: "coach"
             case .splits: "splits"
             case .form: "form"
+            case .chat: "chat"
             }
         }
     }
@@ -180,6 +182,10 @@ struct ActivityDetailView: View {
                 if let detail = model.detail { SplitsSheet(detail: detail) }
             case .form:
                 if let detail = model.detail { RunningFormSheet(detail: detail, fitness: model.form) }
+            case .chat:
+                CoachChatView(context: CoachFormat.activityContext(model.id, title: activity?.title))
+                    .presentationDetents([.large])
+                    .presentationBackground(Color.bg)
             }
         }
         .fullScreenCover(isPresented: $showMap) {
@@ -195,6 +201,7 @@ struct ActivityDetailView: View {
         HStack(spacing: 12) {
             GlassCircleButton(symbol: "chevron.left", label: "Back") { dismiss() }
             Spacer(minLength: 0)
+            GlassCircleButton(symbol: "bubble.left.and.bubble.right", label: "Ask coach") { sheet = .chat }
             if case .route? = visual {
                 GlassCircleButton(symbol: "map", label: "Full-screen map") { showMap = true }
             }

@@ -14,6 +14,7 @@ struct TodayView: View {
     @State private var showRehab = false
     @State private var recap: RecapLaunch?
     @State private var showStudio = false
+    @State private var showCoach = false
     /// The workout picked in Workout Studio, started once the sheet is gone.
     @State private var studioPick: Int?
     @State private var flameHop = 0
@@ -56,6 +57,11 @@ struct TodayView: View {
             }
         }) {
             WorkoutStudioSheet(planned: model.data?.today?.strength?.templateId) { studioPick = $0 }
+                .presentationDetents([.large])
+                .presentationBackground(Color.bg)
+        }
+        .sheet(isPresented: $showCoach) {
+            CoachHomeSheet(today: model.data?.date ?? FoodFormat.iso(.now))
                 .presentationDetents([.large])
                 .presentationBackground(Color.bg)
         }
@@ -190,6 +196,7 @@ struct TodayView: View {
                     .padding(.horizontal, 10)
                     .frame(height: 26)
                     .background(Color.volt.opacity(0.12), in: Capsule())
+                    .fixedSize()
                     .accessibilityLabel("\(streak) day streak")
                 }
                 // Any workout, planned today or not; the Resume banner owns this while one is open.
@@ -209,6 +216,20 @@ struct TodayView: View {
                     .padding(-5)
                     .accessibilityLabel("Workout Studio")
                 }
+                Button {
+                    showCoach = true
+                } label: {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.ink)
+                        .frame(width: 34, height: 34)
+                        .background(Color.raised, in: Circle())
+                        .frame(width: 44, height: 44)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .padding(-5)
+                .accessibilityLabel("Coach")
                 Button {
                     showSettings = true
                 } label: {

@@ -5,6 +5,7 @@ struct PlanView: View {
     @State private var model = PlanModel()
     @State private var path: [String] = []
     @State private var moving: PlanDay?
+    @State private var asking: CoachContext?
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -56,6 +57,11 @@ struct PlanView: View {
             }
         }
         .tint(.volt)
+        .sheet(item: $asking) { context in
+            CoachChatView(context: context)
+                .presentationDetents([.large])
+                .presentationBackground(Color.bg)
+        }
         .sheet(item: $moving) { day in
             if let week = model.week {
                 MoveDaySheet(source: day, slots: PlanFormat.slots(week), today: model.today) { target in
@@ -102,6 +108,21 @@ struct PlanView: View {
             }
             Spacer()
             HStack(spacing: 8) {
+                if let week = model.week {
+                    Button {
+                        asking = CoachFormat.weekContext(week.weekStart)
+                    } label: {
+                        Image(systemName: "bubble.left.and.bubble.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.ink)
+                            .frame(width: 36, height: 36)
+                            .overlay(Circle().strokeBorder(Color.outline))
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Ask coach about this week")
+                }
                 pageButton("chevron.left", enabled: model.hasPrevious, label: "Previous week") { model.page(-1) }
                 pageButton("chevron.right", enabled: model.hasNext, label: "Next week") { model.page(1) }
             }

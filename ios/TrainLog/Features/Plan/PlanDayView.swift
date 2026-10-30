@@ -8,6 +8,7 @@ struct PlanDayView: View {
     let onMove: (PlanDay) -> Void
     let onStartStrength: (Int?) -> Void
     @State private var starting = false
+    @State private var asking = false
 
     var body: some View {
         ScrollView {
@@ -22,6 +23,11 @@ struct PlanDayView: View {
         .scrollIndicators(.hidden)
         .background(Color.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $asking) {
+            CoachChatView(context: CoachFormat.dayContext(date, title: model.day(date)?.title))
+                .presentationDetents([.large])
+                .presentationBackground(Color.bg)
+        }
         .smoothRefreshable {
             await APIClient.current.reconnect()
             await model.load()
@@ -123,6 +129,13 @@ struct PlanDayView: View {
                 .buttonStyle(OutlineButtonStyle(height: 44))
                 .font(AppFont.body(14, weight: .semibold))
             }
+
+            Button {
+                asking = true
+            } label: {
+                Label("Ask coach about this day", systemImage: "bubble.left.and.bubble.right")
+            }
+            .buttonStyle(OutlineButtonStyle(height: 44))
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 24)

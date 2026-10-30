@@ -22,7 +22,24 @@ struct DetailHeaderView: View {
     }
 
     var body: some View {
-        if let height = Self.height(visual) ?? placeholderHeight {
+        if isRoute, let height = Self.height(visual) {
+            // Like Apple Fitness: the map runs on under the title and the first grid row, and only
+            // fades out near its own bottom edge.
+            text.padding(.horizontal, 16).padding(.bottom, 20)
+                .frame(height: height, alignment: .bottom)
+                .frame(maxWidth: .infinity)
+                .background(alignment: .top) {
+                    ZStack(alignment: .bottom) {
+                        visualView.frame(height: height + Self.routeOverhang).clipped()
+                        LinearGradient(stops: [.init(color: Color.bg.opacity(0), location: 0), .init(color: Color.bg.opacity(0.35), location: 0.35),
+                                               .init(color: Color.bg.opacity(0.8), location: 0.72), .init(color: Color.bg, location: 1)],
+                                       startPoint: .top, endPoint: .bottom)
+                            .frame(height: (height + Self.routeOverhang) * 0.55)
+                            .allowsHitTesting(false)
+                    }
+                    .frame(height: height + Self.routeOverhang, alignment: .top)
+                }
+        } else if let height = Self.height(visual) ?? placeholderHeight {
             ZStack(alignment: .bottomLeading) {
                 visualView.frame(height: height).clipped()
                 BackgroundFade().frame(height: height * (isRoute ? 0.62 : 0.46))
@@ -35,6 +52,9 @@ struct DetailHeaderView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
+
+    /// How far the map reaches below the header, behind the grid.
+    static let routeOverhang: CGFloat = 170
 
     private var isRoute: Bool {
         if case .route = visual { return true }
@@ -154,7 +174,7 @@ struct GlowRouteMap: View {
                         if points.isEmpty { project(proxy) }
                     }
             }
-            .overlay(Color.bg.opacity(0.66))
+            .overlay(Color.bg.opacity(0.45))
             .overlay {
                 RouteGlow(points: points, colors: fractions.map(ColorScale.route.color), progress: progress)
             }

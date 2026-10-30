@@ -70,6 +70,15 @@ def _compatible_activity_types(left: str, right: str) -> bool:
     return {left, right} == {"Ride", "VirtualRide"}
 
 
+def _compatible_timed_activity_types(left: str, right: str) -> bool:
+    # Strava files an Apple Watch Core Training as WeightTraining while the phone sends Workout,
+    # and guided rehab sessions are relabelled to Workout. A matching start time is strong
+    # enough evidence to link those; the metrics-only fallback stays strict.
+    if _compatible_activity_types(left, right):
+        return True
+    return {left, right} == {"Workout", "WeightTraining"}
+
+
 def _parse_started_at(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None
@@ -89,7 +98,7 @@ def find_activity_match(conn: sqlite3.Connection, candidate: dict) -> dict:
     if candidate_started_at:
         timed_matches = []
         for row in rows:
-            if not _compatible_activity_types(candidate["type"], row["type"]):
+            if not _compatible_timed_activity_types(candidate["type"], row["type"]):
                 continue
             refs = conn.execute(
                 "SELECT started_at FROM activity_source_refs WHERE activity_id = ? AND started_at IS NOT NULL",

@@ -191,6 +191,54 @@ class HealthWorkoutPushTests(unittest.TestCase):
         self.assertEqual(json.loads(detail["detail_json"])["average_watts"], 182.4)
         self.assertEqual(json.loads(detail["streams_json"])["heartrate"]["data"], [130, 135, 140, 145])
 
+    def _import_strava(self, item, day):
+        from backend.app.services import strava
+        from backend.app.services.activities import upsert_activity
+        from backend.app.services.dashboard import estimate_thresholds, intensity_bucket_from_hr
+        from backend.app.repositories.activities import get_latest_activity_date
+
+        conn = self.get_db()
+        try:
+            with patch.object(strava, "get_strava_access_token", return_value="token"), \
+                    patch.object(strava, "fetch_strava_activities", return_value=[item]), \
+                    patch.object(strava, "_store_mountain_tracks"):
+                strava.import_strava_activities_data(
+                    conn, SimpleNamespace(start_date=day, end_date=day, fetch_streams=False),
+                    get_latest_activity_date_fn=get_latest_activity_date,
+                    get_setting_fn=lambda key: None, set_setting_fn=lambda key, value: None,
+                    upsert_activity_fn=upsert_activity, estimate_thresholds_fn=estimate_thresholds,
+                    intensity_bucket_from_hr_fn=intensity_bucket_from_hr,
+                )
+        finally:
+            conn.close()
+
+    def test_strava_weight_training_links_to_a_watch_core_training_workout(self):
+        # The phone sends Core Training as Workout; Strava files the same workout as WeightTraining.
+        start = datetime(2026, 9, 14, 23, 0).astimezone()
+        self.push(workout("CORE-6", start, kind="Workout", minutes=28, distance_m=None,
+                          name="Core Training", avg_hr=119))
+        self._import_strava({
+            "id": 8888, "type": "WeightTraining", "sport_type": "WeightTraining", "name": "Night Workout",
+            "start_date": start.astimezone().isoformat(), "start_date_local": "2026-09-14T23:00:00Z",
+            "distance": 0.0, "moving_time": 1680, "average_heartrate": 119, "max_heartrate": 147,
+        }, "2026-09-14")
+
+        self.assertFalse(self.query("SELECT 1 FROM activities WHERE id = '8888'"))
+        ref = self.query("SELECT activity_id FROM activity_source_refs WHERE source = 'strava' AND external_id = '8888'")[0]
+        self.assertEqual(ref["activity_id"], "healthkit:core-6")
+
+    def test_same_day_weight_training_at_another_time_stays_separate(self):
+        start = datetime(2026, 9, 15, 7, 0).astimezone()
+        self.push(workout("CORE-7", start, kind="Workout", minutes=28, distance_m=None, name="Core Training"))
+        later = start + timedelta(hours=10)
+        self._import_strava({
+            "id": 9999, "type": "WeightTraining", "sport_type": "WeightTraining", "name": "Evening Weight Training",
+            "start_date": later.astimezone().isoformat(), "start_date_local": "2026-09-15T17:00:00Z",
+            "distance": 0.0, "moving_time": 1680, "average_heartrate": 140, "max_heartrate": 160,
+        }, "2026-09-15")
+
+        self.assertTrue(self.query("SELECT 1 FROM activities WHERE id = '9999'"))
+
     def _one_time_session(self):
         payload = {
             "name": "Watch link test",

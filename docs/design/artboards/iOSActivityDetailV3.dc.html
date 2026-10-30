@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrainLog · iOS · Activity detail v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&amp;family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&amp;display=swap" rel="stylesheet">
+<style>
+/* ---------- canvas (same conventions as iOSActivityDetail.dc.html) ---------- */
+body{margin:0;background:#05070A;color:#F3F5F9;font-family:'Archivo',system-ui,sans-serif}
+.num{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;line-height:1}
+.ttl{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;text-transform:uppercase;line-height:.95;letter-spacing:.01em}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600}
+.muted{color:#8A93A6}
+.soft{color:#A3ABBC}
+.canvas{display:flex;flex-wrap:wrap;gap:64px 56px;padding:56px 64px 72px;max-width:2400px;align-items:flex-start}
+.canvas-head{width:100%;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.section-head{width:100%;border-top:1px solid #1C212B;padding-top:24px}
+.frame{display:flex;flex-direction:column;gap:14px}
+.frame-cap{font-size:13px;color:#A3ABBC;max-width:393px;line-height:1.45}
+.frame-cap b{color:#F3F5F9;font-weight:600}
+.phone{width:393px;min-height:852px;border-radius:56px;background:#0A0C11;position:relative;overflow:hidden;box-shadow:0 0 0 10px #171A21,0 0 0 11px #2A2F3A,0 30px 80px rgba(0,0,0,.55);padding-bottom:40px;box-sizing:border-box}
+.phone.crop{height:852px;padding-bottom:0}
+.phone.short{min-height:0;height:640px;padding-bottom:0}
+.fold{position:absolute;left:0;right:0;top:852px;border-top:1px dashed rgba(212,255,58,.35);z-index:25}
+.fold::after{content:'fold · 852 pt';position:absolute;right:14px;top:-18px;font-size:10px;color:rgba(212,255,58,.6);letter-spacing:.1em;text-transform:uppercase}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000;z-index:20}
+.sb{height:54px;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 44px;font-weight:600;font-size:16px;box-sizing:border-box}
+.row{display:flex;align-items:center;gap:12px}
+.sbw{justify-content:space-between}
+
+/* ---------- v3 tokens: spacing 4 · 8 · 12 · 16 · 24 · 32 only ---------- */
+.v3{padding:0 16px;display:flex;flex-direction:column;gap:16px}
+.navb{height:44px;display:flex;justify-content:space-between;align-items:center;margin-bottom:-4px}
+.circ{width:44px;height:44px;border-radius:22px;background:#12151C;border:1px solid #1C212B;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+
+/* header */
+.hdr{padding:8px 0 8px}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.spill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;box-sizing:border-box}
+.gpill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:12px;border:1px solid #2A303C;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#A3ABBC;box-sizing:border-box}
+.h-ttl{font-size:34px;margin-top:12px}
+.h-meta{font-size:14px;color:#8A93A6;margin-top:8px}
+.h-meta b{color:#A3ABBC;font-weight:500}
+
+/* cards and sections */
+.card{background:#12151C;border:1px solid #1C212B;border-radius:20px;padding:16px}
+.k{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+.st{font-family:'Barlow Condensed';font-weight:700;font-size:22px;line-height:1.1;margin-top:4px}
+.ss{font-size:14px;line-height:1.45;color:#A3ABBC;margin-top:4px}
+.ss b{color:#F3F5F9;font-weight:600}
+.hr{height:1px;background:#1C212B}
+
+/* hero */
+.hero{padding:0;overflow:hidden}
+.hero .in{padding:16px}
+.hero2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.hv{font-size:56px;margin-top:8px}
+.u{font-family:Archivo;font-size:15px;color:#8A93A6;font-weight:500;letter-spacing:0;margin-left:2px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.tile{background:#0E1117;border:1px solid #1C212B;border-radius:14px;padding:12px}
+.tile .k{font-size:10px;letter-spacing:.12em;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.tile .k i{width:6px;height:6px;border-radius:3px;display:inline-block;flex:none}
+.tile .num{font-size:28px;margin-top:8px}
+.tile .num span{font-family:Archivo;font-size:12px;font-weight:600;margin-left:2px;letter-spacing:0}
+.tile .sub{font-size:12px;color:#8A93A6;margin-top:4px;white-space:nowrap}
+.ilist{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:16px;padding-top:12px;border-top:1px solid #1C212B}
+.ilist span{font-size:13px;color:#8A93A6;white-space:nowrap}
+.ilist b{font-family:'Barlow Condensed';font-weight:700;font-size:16px;color:#F3F5F9;margin-left:4px}
+.map{position:relative;height:180px;border-bottom:1px solid #1C212B}
+.map .chip{position:absolute;left:12px;top:12px;display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 12px;border-radius:14px;background:rgba(10,12,17,.86);border:1px solid #2A303C;font-size:12px;font-weight:600}
+.map .exp{position:absolute;right:12px;top:12px;width:32px;height:32px;border-radius:16px;background:rgba(10,12,17,.86);border:1px solid #2A303C;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.map .leg{position:absolute;right:12px;bottom:12px;display:flex;gap:12px;font-size:11px;color:#A3ABBC}
+.map .leg i{display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:4px;vertical-align:0}
+
+/* win / alert / prompt */
+.win{display:flex;gap:12px;align-items:flex-start;background:rgba(212,255,58,.06);border:1px solid rgba(212,255,58,.22);border-radius:20px;padding:16px}
+.win .ic{width:32px;height:32px;border-radius:16px;background:rgba(212,255,58,.12);display:flex;align-items:center;justify-content:center;flex:none}
+.win .k{color:#D4FF3A}
+.win b{display:block;font-size:16px;font-weight:600;margin-top:4px}
+.win p{margin:4px 0 0;font-size:13px;line-height:1.4;color:#A3ABBC}
+.alert{display:flex;gap:12px;align-items:flex-start;background:rgba(255,90,110,.08);border:1px solid rgba(255,90,110,.32);border-radius:20px;padding:16px}
+.alert .ic{width:32px;height:32px;border-radius:16px;background:rgba(255,90,110,.16);display:flex;align-items:center;justify-content:center;flex:none}
+.alert .k{color:#FF5A6E}
+.alert b{display:block;font-size:16px;font-weight:600;margin-top:4px}
+.alert p{margin:8px 0 0;font-size:13px;line-height:1.4;color:#C9CFDA;padding-left:12px;border-left:2px solid rgba(255,90,110,.4)}
+.volt{display:flex;align-items:center;justify-content:center;gap:8px;height:48px;border-radius:24px;background:#D4FF3A;color:#0A0C11;font-size:16px;font-weight:700;margin-top:16px}
+.obtn{display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:22px;border:1px solid #2A303C;color:#F3F5F9;font-size:15px;font-weight:600;margin-top:16px;box-sizing:border-box}
+.edit{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:16px;border:1px solid #2A303C;font-size:13px;font-weight:600;color:#F3F5F9;box-sizing:border-box}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 10px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.b-good{background:rgba(46,211,176,.12);color:#2ED3B0}
+.b-warn{background:rgba(255,200,58,.12);color:#FFC83A}
+.b-bad{background:rgba(255,90,110,.12);color:#FF5A6E}
+.b-same{background:#1A1E27;color:#A3ABBC}
+
+/* session read signals: hairline grid, no boxes */
+.sig{display:grid;grid-template-columns:1fr 1fr;margin-top:16px;border-top:1px solid #1C212B}
+.sig>div{padding:12px 0}
+.sig>div:nth-child(odd){padding-right:12px;border-right:1px solid #1C212B}
+.sig>div:nth-child(even){padding-left:12px}
+.sig>div:nth-child(n+3){border-top:1px solid #1C212B}
+.sig .l{font-size:12px;color:#8A93A6}
+.sig .v{font-family:'Barlow Condensed';font-weight:700;font-size:22px;margin-top:4px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sig .d{font-size:12px;margin-top:4px;line-height:1.35}
+.t-good{color:#2ED3B0}.t-warn{color:#FFC83A}.t-bad{color:#FF5A6E}.t-neutral{color:#8A93A6}
+.next{display:flex;gap:12px;padding-top:12px;border-top:1px solid #1C212B;font-size:14px;line-height:1.45;color:#C9CFDA}
+.next .k{color:#8A93A6;flex:none;margin-top:2px;width:76px}
+
+/* chart */
+.seg{display:flex;background:#0E1117;border:1px solid #1C212B;border-radius:10px;padding:2px;margin-top:12px;height:32px;box-sizing:border-box}
+.seg span{flex:1;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#8A93A6;border-radius:8px}
+.seg span.on{background:#232835;color:#F3F5F9}
+.plot{margin-top:16px}
+.plot.scrub{margin-top:40px}
+.xax{display:flex;justify-content:space-between;font-size:10px;color:#6B7385;margin-top:8px}
+.leg2{display:flex;gap:12px;font-size:12px;color:#8A93A6;margin-top:12px}
+.leg2 i{display:inline-block;width:12px;height:2px;border-radius:1px;vertical-align:3px;margin-right:4px}
+
+/* zones */
+.zbar{display:flex;height:10px;gap:2px;margin-top:16px}
+.zbar i{height:100%;border-radius:2px}
+.zrows{margin-top:12px}
+.zr{display:grid;grid-template-columns:28px 1fr 36px 36px;align-items:center;gap:8px;height:32px;border-radius:8px;padding:0 4px;margin:0 -4px}
+.zr.on{background:rgba(255,255,255,.03)}
+.zr .zn{font-family:'Barlow Condensed';font-weight:700;font-size:15px}
+.zr .zt{position:relative;height:20px;border-radius:6px;background:#0E1117;overflow:hidden}
+.zr .zt i{position:absolute;left:0;top:0;bottom:0;border-radius:6px}
+.zr .zt em{position:absolute;left:8px;top:0;line-height:20px;font-style:normal;font-size:11px;color:#8A93A6;white-space:nowrap}
+.zr .zt em.dk{color:#0A0C11;font-weight:600}
+.zr .zm{text-align:right;font-family:'Barlow Condensed';font-weight:700;font-size:15px}
+.zr .zp{text-align:right;font-size:12px;color:#8A93A6}
+.zr.off .zn,.zr.off .zm{color:#3A4150}
+
+/* efforts */
+.eff{display:grid;grid-template-columns:52px 72px 1fr;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #1C212B}
+.eff:first-of-type{border-top:none}
+.eff .el{font-family:'Barlow Condensed';font-weight:700;font-size:17px;color:#C9CFDA}
+.eff .ev{font-family:'Barlow Condensed';font-weight:700;font-size:22px}
+.eff .ev span{font-family:Archivo;font-size:11px;color:#8A93A6;font-weight:500;margin-left:2px}
+.eff .bar{height:6px;border-radius:3px;background:#1F242E;position:relative}
+.eff .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+.eff .em{display:flex;justify-content:space-between;font-size:11px;color:#8A93A6;margin-top:8px}
+
+/* lifts */
+.lift{padding:12px 0;border-top:1px solid #1C212B}
+.lift:first-of-type{border-top:none;padding-top:4px}
+.lift .top{display:flex;align-items:flex-start;gap:12px}
+.lift .ix{font-family:'Barlow Condensed';font-weight:700;font-size:17px;color:#FF4D9A;width:20px;flex:none;margin-top:1px}
+.lift .nm{font-size:15px;font-weight:600;line-height:1.3}
+.lift .mu{font-size:12px;color:#8A93A6;margin-top:2px}
+.sets{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 0 32px}
+.sets span{height:26px;padding:0 8px;border-radius:8px;background:#0E1117;border:1px solid #1C212B;font-family:'Barlow Condensed';font-weight:700;font-size:15px;display:inline-flex;align-items:center;color:#C9CFDA;box-sizing:border-box}
+.sets span small{font-family:Archivo;font-size:10px;color:#6B7385;margin-left:2px;font-weight:500}
+.last{margin:8px 0 0 32px;font-size:12px;color:#8A93A6;display:flex;justify-content:space-between;align-items:center}
+.last b{color:#C9CFDA;font-weight:500}
+.hint{margin:8px 0 0 32px;font-size:12px;color:#8A93A6}
+.hint b{color:#D4FF3A;font-weight:600}
+
+/* feel */
+.feel{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.fm{background:#0E1117;border:1px solid #1C212B;border-radius:14px;padding:12px}
+.fm .l{font-size:12px;color:#8A93A6}
+.fm .v{display:flex;align-items:baseline;gap:4px;margin-top:4px}
+.fm .v .num{font-size:22px}
+.fm .v em{font-style:normal;font-size:13px;font-weight:600}
+.fm .bars{display:flex;gap:2px;margin-top:8px}
+.fm .bars i{flex:1;height:4px;border-radius:2px;background:#232835}
+.quote{margin-top:12px;padding-left:12px;border-left:2px solid #2A303C;font-size:14px;line-height:1.45;color:#C9CFDA}
+
+/* coach */
+.coach h4{margin:8px 0 0;font-size:17px;font-weight:600;line-height:1.3}
+.coach p{margin:8px 0 0;font-size:14px;line-height:1.5;color:#A3ABBC;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.more{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #1C212B;font-size:14px;font-weight:600;color:#F3F5F9;height:20px}
+
+/* notes / sheet */
+.notes{width:820px;background:#12151C;border:1px solid #1C212B;border-radius:22px;padding:32px;box-sizing:border-box}
+.notes h3{font-family:'Barlow Condensed';font-weight:700;font-size:24px;margin:0 0 12px}
+.notes ol,.notes ul{margin:0;padding-left:20px;font-size:14px;line-height:1.55;color:#C9CFDA}
+.notes li{margin-bottom:10px}
+.notes li b{color:#F3F5F9}
+.notes .ev{color:#8A93A6;font-size:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.spec{display:grid;grid-template-columns:361px 340px;gap:32px;align-items:start;padding:24px 0;border-top:1px solid #1C212B}
+.spec:first-of-type{border-top:none;padding-top:0}
+.spec .txt{font-size:12.5px;line-height:1.6;color:#A3ABBC}
+.spec .txt b{color:#F3F5F9;font-weight:600}
+.spec .txt code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#C9CFDA;background:#0E1117;padding:1px 4px;border-radius:4px}
+.spec .txt .nm{font-family:'Barlow Condensed';font-weight:700;font-size:20px;color:#F3F5F9;margin-bottom:8px}
+.skel{background:#161A22;border-radius:8px}
+.mtable{background:#12151C;border:1px solid #1C212B;border-radius:22px;padding:22px 24px;box-sizing:border-box}
+.mtable table{width:100%;border-collapse:collapse;font-size:13px}
+.mtable th{text-align:left;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600;padding:8px 6px;border-bottom:1px solid #1C212B}
+.mtable td{padding:9px 6px;border-bottom:1px solid #1C212B;color:#C9CFDA;vertical-align:top}
+.mtable td:first-child{color:#F3F5F9;font-weight:600}
+.chg{color:#D4FF3A;font-weight:600}
+</style>
+</helmet>
+
+
+
+
+<div class="canvas">
+
+<div class="canvas-head">
+<div>
+<div class="lbl" style="color:#D4FF3A">TrainLog · iOS · Screen 06 · v3 proposal</div>
+<div class="ttl" style="font-size:56px;margin-top:6px">Activity detail, finished</div>
+<div class="muted" style="font-size:15px;margin-top:8px;max-width:860px;line-height:1.45">A visual redesign of v2 (<b style="color:#F3F5F9">iOSActivityDetail.dc.html</b>, kept for comparison) that borrows the web page's hierarchy: one hero per sport, titled sections, web-style charts, colour only where it means something. Same data, same endpoint. Numbers are real: Zwift 29 Oct, Evening Run 9 Sep, Morning Hike 24 Oct (Karkonosze), Workout A 26 Oct, Evening Physiotherapy 9 Sep, Afternoon Ride 29 Sep. Charts and routes are drawn from their actual streams.</div>
+</div>
+<div class="muted" style="font-size:12px;text-align:right;line-height:1.6">iPhone 17 Pro · 393 × 852 pt<br>Dark only · Swift Charts + MapKit<br>No backend changes</div>
+</div>
+
+<!-- ============ 1. NOTES · DIAGNOSIS + PRINCIPLES ============ -->
+<div class="frame">
+<div class="lbl">01 · Notes · why the web looks finished and the phone doesn't</div>
+<div class="notes">
+<div class="two">
+<div>
+<h3>Diagnosis</h3>
+<ol>
+<li><b>No hero, just a dense instrument panel.</b> The first card stacks 2 big numbers, 2 zone gauges (marker, tick, range, 4 axis labels each in 10 pt) and a footer row. That's five type sizes in one card, and the eye has nowhere to land. The web opens with one band of 4–5 large numbers, each with a single sub-line. <span class="ev">v2 screen 1 · web "Ride performance"</span></li>
+<li><b>Ten boxes, all the same weight.</b> Every module is the same 22 pt-radius grey card with a grey uppercase kicker and no title. Load and Session read then nest boxes inside the box (6 bordered tiles, 4 bordered signals). The web gives every section a coloured kicker plus a Barlow title ("Session analysis", "Time in zones") and puts secondary stats in one quiet inline row. <span class="ev">v2 screens 2–3 · Load card</span></li>
+<li><b>Things are said twice.</b> NP and TSS show in the headline gauge and again in Load. Avg power shows in the gauge and in the chart header. For strength, the win strip and the Session read have the same headline ("3 of 5 lifts up on last time"). <span class="ev">v2 Zwift · v2 Workout A</span></li>
+<li><b>The charts are weaker than the web's.</b> v2 draws a heavy solid navy area with an HR line on top and no gridlines, y-labels or average line. The web uses a 1.75 px line, a 14% flat fill, faint gridlines with labels, a dashed average with a value pill, and elevation as a ghost behind. <span class="ev">v2 "Power &amp; heart rate" vs web "Session analysis"</span></li>
+<li><b>Colour doesn't follow the web.</b> v2 zones run grey → teal → yellow (Z1 grey), but the web uses blue → green → amber → orange → red. Gauge tracks show the zone rainbow at 28% opacity. The not-requested Coach card gets a volt border, though volt is only for wins and the one primary action. <span class="ev">v2 zones · coach card</span></li>
+<li><b>Uneven rhythm.</b> 12 pt gaps everywhere, 16/18 pt padding mixed, and labels at 9, 10 and 11 pt. Section edges blur together when you scroll. The web uses 20+ px between sections, a consistent 24 px card padding and a clear title → sentence → data order. <span class="ev">v2 Load tiles 9 pt labels · gauge axis 10 pt</span></li>
+<li><b>The one action is buried.</b> "Log how it felt" is the most useful tap after a session, but it sits at the bottom of v2. The web puts it first and makes it volt. <span class="ev">web Afternoon Ride / Physio</span></li>
+</ol>
+</div>
+<div>
+<h3>v3 principles</h3>
+<ol>
+<li><b>One hero per sport.</b> The top card shows 2 numbers at 56 pt (the session's identity), then 3 tiles at 28 pt and one inline row. Routes sit inside the hero card for run, hike and outdoor ride, so map and numbers read as one unit.</li>
+<li><b>Sections, not boxes.</b> Every card is <i>kicker (sport colour) → Barlow title 22 → one plain sentence → data</i>. Inside a card: hairlines, never a box in a box (except the hero tiles and feel meters, which are inputs or values to compare).</li>
+<li><b>Say it once.</b> Load merges into the hero (NP · IF · TSS tiles, VI · kJ · drift inline). When the win and the session read share a headline, the win shows as a line inside Session read.</li>
+<li><b>Charts the web way.</b> 1.75 pt line in the series colour, flat 14% fill, gridlines <code>#1F242E</code> with 10 pt labels, dashed average with a pill, elevation ghost at 7%, scrub pill above the plot. No gradients.</li>
+<li><b>Colour means one thing.</b> Sport colour = identity (pill, hero accent, kickers, primary series). Metric dots follow the web (power violet, intensity orange, HR red). Zones use the web palette. Volt = win + the single primary action. Red = pain/warn only.</li>
+<li><b>One spacing scale: 4 · 8 · 12 · 16 · 24 · 32.</b> 16 between cards and inside cards, 12 inside groups, 8 between chips/tiles. Type ramp: 56 / 34 / 28 / 22 / 17 / 15 / 14 / 13 / 12 / 11 (kicker) / 10 (axis).</li>
+<li><b>One primary action.</b> No feedback yet → "Log how it felt" (volt) moves up under the hero. Once logged, How it felt drops back to its v2 slot and nothing on the page is volt except the win.</li>
+<li><b>iOS-native chrome.</b> Floating 44 pt circular back/share buttons over the content, collapsing to an inline title on scroll. Segmented controls for chart and zone tabs. Map tap opens a full-screen sheet.</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ============ MODULE MAP (v3 order) ============ -->
+<div class="frame">
+<div class="lbl">01b · Module order · v3 (changes from v2 in volt)</div>
+<div class="mtable" style="width:820px">
+<table>
+<tr><th>Module (top → bottom)</th><th>Ride</th><th>Run</th><th>Hike / Walk</th><th>Strength</th><th>Other</th></tr>
+<tr><td>Header: sport pill, intent pill, title, date · source</td><td>●</td><td>●</td><td>● + region</td><td>●</td><td>●</td></tr>
+<tr><td>Pain alert (pain ≥ 4)</td><td>if</td><td>if</td><td>if</td><td>if</td><td>if</td></tr>
+<tr><td>Hero card (map on top when outdoor, 2 numbers, 3 tiles, inline row)</td><td>●</td><td>●</td><td>●</td><td>●</td><td>● (2 numbers + row)</td></tr>
+<tr><td class="chg">Log how it felt prompt (only when no feedback)</td><td>if</td><td>if</td><td>if</td><td>if</td><td>if</td></tr>
+<tr><td>Win strip <span class="chg">(folds into Session read when headlines match)</span></td><td>●</td><td>●</td><td>●</td><td class="chg">in read</td><td>●</td></tr>
+<tr><td>Session read (verdict, signals, watch, next time)</td><td>●</td><td>●</td><td>–</td><td>●</td><td>–</td></tr>
+<tr><td>Lifts vs last time</td><td>–</td><td>–</td><td>–</td><td>●</td><td>–</td></tr>
+<tr><td>Stream chart (segmented tabs, scrub)</td><td>Power·HR·Cad·Speed</td><td>Pace·HR·Elev·Power</td><td>Elev·HR·Speed</td><td>HR</td><td>HR</td></tr>
+<tr><td>Time in zones (segmented HR · Power)</td><td>●</td><td>HR</td><td>–</td><td>–</td><td>–</td></tr>
+<tr><td class="chg">Load card → merged into hero</td><td class="chg">hero</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+<tr><td>Best efforts</td><td>Power</td><td>Distances</td><td>–</td><td>–</td><td>–</td></tr>
+<tr><td>How it felt (4 meters + note)</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td></tr>
+<tr><td>Coach take</td><td>●</td><td>●</td><td>●</td><td>●</td><td>–</td></tr>
+</table>
+</div>
+<div class="frame-cap" style="max-width:820px">Every data point v2 shows is still here. Gauge extras move: "53% of FTP" goes to the power tile sub-line in the outdoor/estimated case and to the Zones sentence; "72% in Z2" goes to the Zones sentence; the HR range gauge becomes avg + max in the HR tile.</div>
+</div>
+
+<!-- ============ 2. BEFORE / AFTER ============ -->
+<div class="section-head"><div class="lbl" style="color:#D4FF3A">02 · Before / after · same ride (Zwift, 29 Oct)</div></div>
+
+<div class="frame">
+<div class="lbl">v2 · simulator, first screen</div>
+<img src="../screens/ios/activity-detail-v2-ride1.png" width="393" style="border-radius:44px;display:block;box-shadow:0 0 0 10px #171A21,0 0 0 11px #2A2F3A">
+<div class="frame-cap">Title, three grey chips, then one card holding 2 numbers, 2 gauges with 8 axis labels and a footer row. Nothing leads.</div>
+</div>
+<div class="frame">
+<div class="lbl">v2 · simulator, scrolled</div>
+<img src="../screens/ios/activity-detail-v2-ride2.png" width="393" style="border-radius:44px;display:block;box-shadow:0 0 0 10px #171A21,0 0 0 11px #2A2F3A">
+<div class="frame-cap">The solid chart, zones that start grey, and a Load card that repeats NP and TSS in six boxed tiles.</div>
+</div>
+<div class="frame">
+<div class="lbl">v3 · first screen</div>
+<div class="phone crop">
+<div class="island"></div><div class="fold"></div>
+<div class="sb"><span>21:41</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr">
+<div class="pills"><span class="spill" style="background:rgba(59,140,255,.14);color:#6FAEFF">Indoor ride</span><span class="gpill">Recovery</span></div>
+<div class="ttl h-ttl">Zwift – California Dreamin' in Watopia</div>
+<div class="h-meta">Thu 29 Oct · 19:58 <b>· Zwift · FTP 215 W</b></div>
+</div>
+
+<div class="card hero" style="border-top:2px solid #3B8CFF">
+<div class="in">
+<div class="hero2">
+<div><div class="lbl">Moving time</div><div class="num hv">43:36</div></div>
+<div><div class="lbl">Distance</div><div class="num hv">20.6<span class="u">km</span></div></div>
+</div>
+<div class="tiles">
+<div class="tile"><div class="k" style="color:#A99BFF"><i style="background:#8B7BFF"></i>Norm. power</div><div class="num">116<span style="color:#A99BFF">W</span></div><div class="sub">avg 114 W</div></div>
+<div class="tile"><div class="k" style="color:#FFB067"><i style="background:#FF8A2A"></i>Intensity</div><div class="num">0.54<span style="color:#FFB067">IF</span></div><div class="sub">TSS 21</div></div>
+<div class="tile"><div class="k" style="color:#FF7A8A"><i style="background:#FF5A6E"></i>Avg HR</div><div class="num">146<span style="color:#FF7A8A">bpm</span></div><div class="sub">max 162</div></div>
+</div>
+<div class="ilist"><span>Speed<b>28.4 km/h</b></span><span>Cadence<b>88 rpm</b></span><span>Work<b>297 kJ</b></span><span>VI<b>1.02</b></span><span>HR drift<b>&lt; 45 min</b></span></div>
+</div>
+</div>
+
+<div class="win"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="#D4FF3A"><path d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 7 13c0-2 1-3.4 2-4.5.2 1.6 1 2.8 2.2 3.2C10.6 8 11.4 4.6 12 2z"/></svg></span><div><div class="k">Consistency</div><b>300 days in a row</b><p>A streak milestone. Every single day counted to get here.</p></div></div>
+</div></div>
+<div class="frame-cap"><b>One hero:</b> 2 numbers, then power, intensity and HR as web-style tiles; Load is gone as a separate card. The win fits above the fold.</div>
+</div>
+
+<!-- ============ 3a. RIDE ============ -->
+<div class="section-head"><div class="lbl" style="color:#D4FF3A">03 · Full scroll per sport</div></div>
+
+<div class="frame">
+<div class="lbl">03a · Ride · indoor, measured power</div>
+<div class="phone">
+<div class="island"></div><div class="fold"></div>
+<div class="sb"><span>21:41</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr">
+<div class="pills"><span class="spill" style="background:rgba(59,140,255,.14);color:#6FAEFF">Indoor ride</span><span class="gpill">Recovery</span></div>
+<div class="ttl h-ttl">Zwift – California Dreamin' in Watopia</div>
+<div class="h-meta">Thu 29 Oct · 19:58 <b>· Zwift · FTP 215 W</b></div>
+</div>
+
+<div class="card hero" style="border-top:2px solid #3B8CFF">
+<div class="in">
+<div class="hero2">
+<div><div class="lbl">Moving time</div><div class="num hv">43:36</div></div>
+<div><div class="lbl">Distance</div><div class="num hv">20.6<span class="u">km</span></div></div>
+</div>
+<div class="tiles">
+<div class="tile"><div class="k" style="color:#A99BFF"><i style="background:#8B7BFF"></i>Norm. power</div><div class="num">116<span style="color:#A99BFF">W</span></div><div class="sub">avg 114 W</div></div>
+<div class="tile"><div class="k" style="color:#FFB067"><i style="background:#FF8A2A"></i>Intensity</div><div class="num">0.54<span style="color:#FFB067">IF</span></div><div class="sub">TSS 21</div></div>
+<div class="tile"><div class="k" style="color:#FF7A8A"><i style="background:#FF5A6E"></i>Avg HR</div><div class="num">146<span style="color:#FF7A8A">bpm</span></div><div class="sub">max 162</div></div>
+</div>
+<div class="ilist"><span>Speed<b>28.4 km/h</b></span><span>Cadence<b>88 rpm</b></span><span>Work<b>297 kJ</b></span><span>VI<b>1.02</b></span><span>HR drift<b>&lt; 45 min</b></span></div>
+</div>
+</div>
+
+<div class="win"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="#D4FF3A"><path d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 7 13c0-2 1-3.4 2-4.5.2 1.6 1 2.8 2.2 3.2C10.6 8 11.4 4.6 12 2z"/></svg></span><div><div class="k">Consistency</div><b>300 days in a row</b><p>A streak milestone. Every single day counted to get here.</p></div></div>
+
+
+<div class="card">
+<div class="row sbw"><div class="k" style="color:#6FAEFF">Session read</div><span class="badge b-good">On intent</span></div>
+<div class="st">Easy ride stayed easy</div>
+<div class="sig">
+<div><div class="l">Best 20 min</div><div class="v">119 W</div><div class="d t-neutral">59% of your best</div></div>
+<div><div class="l">Time above Zone 2</div><div class="v">15%</div><div class="d t-good">easy rides stay under 15%</div></div>
+<div><div class="l">Going in</div><div class="v">Energy 4/5</div><div class="d t-neutral">stress 1/5 · sleep 4/5</div></div>
+<div><div class="l">Heart-rate load</div><div class="v">61</div><div class="d t-neutral">0.8× your usual</div></div>
+</div>
+<div class="next"><span class="k">Watch</span><span>Nothing notable.</span></div>
+</div>
+
+<div class="card">
+<div class="k" style="color:#6FAEFF">Effort trace</div>
+<div class="row sbw" style="align-items:baseline"><div class="st">Power</div><div class="num" style="font-size:17px">avg 114 <span class="u" style="font-size:12px">W · NP 116</span></div></div>
+<div class="seg"><span class="on">Power</span><span>HR</span><span>Cadence</span><span>Speed</span></div>
+<div class="plot"><svg width="329" height="132" viewBox="0 0 329 132" style="display:block;overflow:visible"><line x1="0" x2="329" y1="115.9" y2="115.9" stroke="#1F242E" stroke-width="1"/><text x="0" y="111.9" fill="#6B7385" font-size="10" font-family="Archivo">80</text><line x1="0" x2="329" y1="83.7" y2="83.7" stroke="#1F242E" stroke-width="1"/><text x="0" y="79.7" fill="#6B7385" font-size="10" font-family="Archivo">100</text><line x1="0" x2="329" y1="51.5" y2="51.5" stroke="#1F242E" stroke-width="1"/><text x="0" y="47.5" fill="#6B7385" font-size="10" font-family="Archivo">120</text><line x1="0" x2="329" y1="19.3" y2="19.3" stroke="#1F242E" stroke-width="1"/><text x="0" y="15.3" fill="#6B7385" font-size="10" font-family="Archivo">140</text><path d="M0.0 132.0 L2.8 78.9 L5.5 68.2 L8.3 68.5 L11.1 68.8 L13.8 68.4 L16.6 68.3 L19.4 68.6 L22.1 68.0 L24.9 68.3 L27.6 68.7 L30.4 68.6 L33.2 67.9 L35.9 68.8 L38.7 68.6 L41.5 68.2 L44.2 68.5 L47.0 68.8 L49.8 68.6 L52.5 68.3 L55.3 68.5 L58.1 68.0 L60.8 68.2 L63.6 68.2 L66.4 68.3 L69.1 68.2 L71.9 68.3 L74.6 68.8 L77.4 68.5 L80.2 68.6 L82.9 68.0 L85.7 68.3 L88.5 68.8 L91.2 68.5 L94.0 68.2 L96.8 68.5 L99.5 68.2 L102.3 68.6 L105.1 68.3 L107.8 67.9 L110.6 68.3 L113.4 53.8 L116.1 35.7 L118.9 36.0 L121.6 27.5 L124.4 4.1 L127.2 4.4 L129.9 3.9 L132.7 3.8 L135.5 4.1 L138.2 4.1 L141.0 3.5 L143.8 4.2 L146.5 4.4 L149.3 31.8 L152.1 52.7 L154.8 52.1 L157.6 51.8 L160.4 51.9 L163.1 52.8 L165.9 52.2 L168.6 52.5 L171.4 67.9 L174.2 68.0 L176.9 68.0 L179.7 68.6 L182.5 68.3 L185.2 68.5 L188.0 68.5 L190.8 68.3 L193.5 68.5 L196.3 68.8 L199.1 69.1 L201.8 68.1 L204.6 68.0 L207.4 68.2 L210.1 68.0 L212.9 68.3 L215.6 68.3 L218.4 68.8 L221.2 67.9 L223.9 68.0 L226.7 68.3 L229.5 68.7 L232.2 68.6 L235.0 68.3 L237.8 68.6 L240.5 68.6 L243.3 68.8 L246.1 68.5 L248.8 69.1 L251.6 68.3 L254.4 68.8 L257.1 68.3 L259.9 68.2 L262.6 67.9 L265.4 68.6 L268.2 68.5 L270.9 67.6 L273.7 68.1 L276.5 68.2 L279.2 68.2 L282.0 68.5 L284.8 68.0 L287.5 68.4 L290.3 68.6 L293.1 68.9 L295.8 68.5 L298.6 68.6 L301.4 68.3 L304.1 68.5 L306.9 68.5 L309.6 68.3 L312.4 68.3 L315.2 68.2 L317.9 68.2 L320.7 68.3 L323.5 68.0 L326.2 68.5 L329.0 68.8 L329 132 L0 132 Z" fill="#3B8CFF" fill-opacity=".14"/><path d="M0.0 118.8 L2.8 93.4 L5.5 86.5 L8.3 70.0 L11.1 68.8 L13.8 66.4 L16.6 65.1 L19.4 62.7 L22.1 63.2 L24.9 60.3 L27.6 68.4 L30.4 60.5 L33.2 61.7 L35.9 54.3 L38.7 58.0 L41.5 64.6 L44.2 52.8 L47.0 48.9 L49.8 51.9 L52.5 52.9 L55.3 50.6 L58.1 52.1 L60.8 50.4 L63.6 47.6 L66.4 45.9 L69.1 42.7 L71.9 46.5 L74.6 44.0 L77.4 41.3 L80.2 40.7 L82.9 42.8 L85.7 48.6 L88.5 44.7 L91.2 37.3 L94.0 35.6 L96.8 31.7 L99.5 37.3 L102.3 34.4 L105.1 31.4 L107.8 34.6 L110.6 37.8 L113.4 40.3 L116.1 35.4 L118.9 32.2 L121.6 30.5 L124.4 25.8 L127.2 25.0 L129.9 23.5 L132.7 25.8 L135.5 15.1 L138.2 15.1 L141.0 17.4 L143.8 18.0 L146.5 14.9 L149.3 16.1 L152.1 19.9 L154.8 22.0 L157.6 36.2 L160.4 31.9 L163.1 29.2 L165.9 25.8 L168.6 21.1 L171.4 32.2 L174.2 33.6 L176.9 35.6 L179.7 37.3 L182.5 33.6 L185.2 36.6 L188.0 34.9 L190.8 35.3 L193.5 37.6 L196.3 41.7 L199.1 42.0 L201.8 46.5 L204.6 44.0 L207.4 40.0 L210.1 43.9 L212.9 43.0 L215.6 48.4 L218.4 48.4 L221.2 37.5 L223.9 44.0 L226.7 40.5 L229.5 45.6 L232.2 49.1 L235.0 52.4 L237.8 47.6 L240.5 43.3 L243.3 52.6 L246.1 55.3 L248.8 44.2 L251.6 45.4 L254.4 42.7 L257.1 51.8 L259.9 48.4 L262.6 43.2 L265.4 47.7 L268.2 44.7 L270.9 44.7 L273.7 47.7 L276.5 41.8 L279.2 40.3 L282.0 43.7 L284.8 44.4 L287.5 42.7 L290.3 45.4 L293.1 50.4 L295.8 48.2 L298.6 44.9 L301.4 44.4 L304.1 41.7 L306.9 40.8 L309.6 44.7 L312.4 42.8 L315.2 41.0 L317.9 41.3 L320.7 43.5 L323.5 47.7 L326.2 50.9 L329.0 53.1" fill="none" stroke="#FF5A6E" stroke-opacity=".7" stroke-width="1.25" stroke-linejoin="round"/><path d="M0.0 132.0 L2.8 78.9 L5.5 68.2 L8.3 68.5 L11.1 68.8 L13.8 68.4 L16.6 68.3 L19.4 68.6 L22.1 68.0 L24.9 68.3 L27.6 68.7 L30.4 68.6 L33.2 67.9 L35.9 68.8 L38.7 68.6 L41.5 68.2 L44.2 68.5 L47.0 68.8 L49.8 68.6 L52.5 68.3 L55.3 68.5 L58.1 68.0 L60.8 68.2 L63.6 68.2 L66.4 68.3 L69.1 68.2 L71.9 68.3 L74.6 68.8 L77.4 68.5 L80.2 68.6 L82.9 68.0 L85.7 68.3 L88.5 68.8 L91.2 68.5 L94.0 68.2 L96.8 68.5 L99.5 68.2 L102.3 68.6 L105.1 68.3 L107.8 67.9 L110.6 68.3 L113.4 53.8 L116.1 35.7 L118.9 36.0 L121.6 27.5 L124.4 4.1 L127.2 4.4 L129.9 3.9 L132.7 3.8 L135.5 4.1 L138.2 4.1 L141.0 3.5 L143.8 4.2 L146.5 4.4 L149.3 31.8 L152.1 52.7 L154.8 52.1 L157.6 51.8 L160.4 51.9 L163.1 52.8 L165.9 52.2 L168.6 52.5 L171.4 67.9 L174.2 68.0 L176.9 68.0 L179.7 68.6 L182.5 68.3 L185.2 68.5 L188.0 68.5 L190.8 68.3 L193.5 68.5 L196.3 68.8 L199.1 69.1 L201.8 68.1 L204.6 68.0 L207.4 68.2 L210.1 68.0 L212.9 68.3 L215.6 68.3 L218.4 68.8 L221.2 67.9 L223.9 68.0 L226.7 68.3 L229.5 68.7 L232.2 68.6 L235.0 68.3 L237.8 68.6 L240.5 68.6 L243.3 68.8 L246.1 68.5 L248.8 69.1 L251.6 68.3 L254.4 68.8 L257.1 68.3 L259.9 68.2 L262.6 67.9 L265.4 68.6 L268.2 68.5 L270.9 67.6 L273.7 68.1 L276.5 68.2 L279.2 68.2 L282.0 68.5 L284.8 68.0 L287.5 68.4 L290.3 68.6 L293.1 68.9 L295.8 68.5 L298.6 68.6 L301.4 68.3 L304.1 68.5 L306.9 68.5 L309.6 68.3 L312.4 68.3 L315.2 68.2 L317.9 68.2 L320.7 68.3 L323.5 68.0 L326.2 68.5 L329.0 68.8" fill="none" stroke="#3B8CFF" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round"/><line x1="0" x2="329" y1="61.8" y2="61.8" stroke="#A3ABBC" stroke-opacity=".55" stroke-dasharray="3 3"/><rect x="302.4" y="52.8" width="26.6" height="18" rx="9" fill="#232835"/><text x="315.7" y="65.8" text-anchor="middle" fill="#F3F5F9" font-size="11" font-weight="700" font-family="Barlow Condensed">114</text></svg></div>
+<div class="xax"><span>0:00</span><span>15:00</span><span>30:00</span><span>43:36</span></div>
+<div class="leg2"><span><i style="background:#3B8CFF"></i>Power</span><span><i style="background:#FF5A6E"></i>Heart rate</span><span>Press and drag to scrub</span></div>
+</div>
+
+<div class="card">
+<div class="k" style="color:#6FAEFF">Intensity</div>
+<div class="st">Time in zones</div>
+<div class="ss">Mostly <b>Zone 2</b> by heart rate · 31 min (72%). By power, 83% Zone 1 at 53% of FTP.</div>
+<div class="seg"><span class="on">Heart rate</span><span>Power · FTP 215</span></div>
+<div class="zbar"><i style="flex:14;background:#49A6FF"></i><i style="flex:72;background:#43D17C"></i><i style="flex:15;background:#F5B742"></i></div>
+<div class="zrows">
+<div class="zr"><span class="zn" style="color:#49A6FF">Z1</span><span class="zt"><i style="width:14%;background:#49A6FF"></i><em style="left:calc(14% + 8px)">&lt; 140 bpm</em></span><span class="zm">6</span><span class="zp">14%</span></div>
+<div class="zr on"><span class="zn" style="color:#43D17C">Z2</span><span class="zt"><i style="width:72%;background:#43D17C"></i><em class="dk">140–152 bpm</em></span><span class="zm">31</span><span class="zp">72%</span></div>
+<div class="zr"><span class="zn" style="color:#F5B742">Z3</span><span class="zt"><i style="width:15%;background:#F5B742"></i><em style="left:calc(15% + 8px)">153–162 bpm</em></span><span class="zm">6</span><span class="zp">15%</span></div>
+<div class="zr off"><span class="zn">Z4+</span><span class="zt"><em>163 bpm and up</em></span><span class="zm">–</span><span class="zp">0%</span></div>
+</div>
+<div class="xax" style="justify-content:flex-end;gap:16px"><span>min</span><span>share</span></div>
+</div>
+
+<div class="card">
+<div class="k" style="color:#6FAEFF">Power bests</div>
+<div class="st">Against your all-time best</div>
+<div style="margin-top:12px">
+<div class="eff"><span class="el">15 s</span><span class="ev">150<span>W</span></span><div><div class="bar"><i style="width:18%;background:#3B8CFF"></i></div><div class="em"><span>18% of 815 W</span><span>70% FTP · 161 bpm</span></div></div></div>
+<div class="eff"><span class="el">1 min</span><span class="ev">150<span>W</span></span><div><div class="bar"><i style="width:34%;background:#3B8CFF"></i></div><div class="em"><span>34% of 446 W</span><span>70% FTP · 160 bpm</span></div></div></div>
+<div class="eff"><span class="el">5 min</span><span class="ev">143<span>W</span></span><div><div class="bar"><i style="width:51%;background:#3B8CFF"></i></div><div class="em"><span>51% of 280 W</span><span>66% FTP · 156 bpm</span></div></div></div>
+<div class="eff"><span class="el">20 min</span><span class="ev">119<span>W</span></span><div><div class="bar"><i style="width:59%;background:#3B8CFF"></i></div><div class="em"><span>59% of 202 W</span><span>55% FTP · 150 bpm</span></div></div></div>
+</div>
+</div>
+
+<div class="card">
+<div class="row sbw"><div><div class="k" style="color:#6FAEFF">How it felt</div><div class="st">Steady</div></div><span class="edit">Edit</span></div>
+<div class="feel">
+<div class="fm"><div class="l">Effort</div><div class="v"><span class="num">3</span><em style="color:#D4FF3A">Easy</em></div><div class="bars"><i style="background:#D4FF3A"></i><i style="background:#D4FF3A"></i><i style="background:#D4FF3A"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+<div class="fm"><div class="l">Energy</div><div class="v"><span class="num">3</span><em>OK</em></div><div class="bars"><i style="background:#2ED3B0"></i><i style="background:#2ED3B0"></i><i style="background:#2ED3B0"></i><i></i><i></i></div></div>
+<div class="fm"><div class="l">Soreness</div><div class="v"><span class="num">1</span><em>None</em></div><div class="bars"><i style="background:#A3ABBC"></i><i></i><i></i><i></i><i></i></div></div>
+<div class="fm"><div class="l">Pain</div><div class="v"><span class="num" style="color:#2ED3B0">0</span><em style="color:#2ED3B0">Pain-free</em></div><div class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+</div>
+</div>
+
+<div class="card coach">
+<div class="k" style="color:#8A93A6">Coach take</div>
+<h4>No written take yet</h4>
+<p>Ask for an analysis of this ride. It lands here and on the web page.</p>
+<div class="obtn">Ask the coach</div>
+</div>
+
+</div></div>
+<div class="frame-cap"><b>Order kept from v2</b>, minus the Load card (merged into the hero). Chart: power line + HR compare line, dashed average with a pill. Zones use the web palette; the dominant zone gets a highlighted row with its range in dark text on the fill.</div>
+</div>
+
+<!-- ============ 3a'. RIDE OUTDOOR TOP ============ -->
+<div class="frame">
+<div class="lbl">03a′ · Ride · outdoor, est. power</div>
+<div class="phone crop">
+<div class="island"></div>
+<div class="sb"><span>17:12</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr">
+<div class="pills"><span class="spill" style="background:rgba(59,140,255,.14);color:#6FAEFF">Ride</span><span class="gpill">Outdoor</span></div>
+<div class="ttl h-ttl">Afternoon Ride</div>
+<div class="h-meta">Tue 29 Sep · 15:40 <b>· Strava</b></div>
+</div>
+<div class="card hero" style="border-top:2px solid #3B8CFF">
+<div class="map"><svg width="359" height="180" viewBox="0 0 359 180" style="display:block"><rect width="359" height="180" fill="#0F131A"/><path d="M-20 190 Q 40 50.0 120 -10" stroke="#1A1F29" stroke-width="1" fill="none"/><path d="M33 190 Q 87 90.0 181 -10" stroke="#1A1F29" stroke-width="2" fill="none"/><path d="M86 190 Q 134 130.0 242 -10" stroke="#1A1F29" stroke-width="1" fill="none"/><path d="M139 190 Q 181 50.0 303 -10" stroke="#1A1F29" stroke-width="2" fill="none"/><path d="M192 190 Q 228 90.0 364 -10" stroke="#1A1F29" stroke-width="1" fill="none"/><path d="M245 190 Q 275 130.0 425 -10" stroke="#1A1F29" stroke-width="2" fill="none"/><path d="M298 190 Q 322 50.0 486 -10" stroke="#1A1F29" stroke-width="1" fill="none"/><path d="M351 190 Q 369 90.0 547 -10" stroke="#1A1F29" stroke-width="2" fill="none"/><path d="M-10 18 C 107.7 10 215.4 40 369 14" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 55 C 107.7 51 215.4 69 369 53" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 92 C 107.7 92 215.4 98 369 92" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 129 C 107.7 133 215.4 127 369 131" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 166 C 107.7 174 215.4 156 369 170" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 203 C 107.7 215 215.4 185 369 209" stroke="#171C25" stroke-width="1" fill="none"/><path d="M165.2 128.9 L166.6 130.6 L168.7 131.8 L169.9 134.2 L171.2 134.4 L172.3 136.8 L173.4 139.1 L174.9 141.6 L176.6 144.0 L177.6 145.0 L179.1 145.1 L179.4 145.4 L181.0 145.0 L183.0 144.9 L184.2 145.1 L184.5 146.4 L184.6 149.1 L186.1 149.7 L188.6 149.9 L190.5 150.1 L192.8 150.8 L195.1 151.5 L196.9 151.9 L198.3 150.2 L199.8 148.4 L201.6 146.2 L203.2 144.5 L204.7 142.8 L206.4 141.6 L208.4 140.2 L210.4 138.8 L212.0 137.3 L213.3 135.6 L214.6 135.2 L216.4 134.3 L218.3 132.9 L219.8 131.0 L221.3 129.2 L222.7 127.4 L224.2 125.6 L225.7 123.7 L227.2 121.7 L228.7 119.8 L230.2 118.0 L229.2 116.6 L227.5 115.0 L225.6 113.5 L223.6 112.1 L221.6 110.6 L219.7 109.1 L217.7 107.7 L215.8 107.3 L213.9 107.7 L212.2 107.4 L210.7 106.0 L209.8 104.2 L210.3 101.6 L212.3 101.1 L214.5 100.7 L216.2 100.3 L218.2 99.8 L220.2 98.7 L222.1 97.4 L223.4 96.1 L223.3 95.1 L223.3 96.3 L221.8 97.5 L220.0 98.8 L218.2 99.8 L216.1 100.3 L214.7 100.8 L212.6 101.1 L210.7 101.1 L209.8 103.4 L208.0 102.9 L206.0 101.8 L204.0 100.9 L201.9 100.1 L199.9 99.2 L199.8 97.5 L197.4 96.4 L195.2 95.3 L192.9 94.3 L191.2 93.8 L189.2 92.8 L187.4 91.2 L185.7 90.0 L183.5 88.5 L181.4 87.2 L179.3 85.8 L177.3 84.5 L175.4 83.0 L174.0 81.9 L172.0 80.5 L170.2 78.8 L168.4 77.3 L166.5 75.6 L164.6 74.1 L162.7 72.6 L161.0 71.0 L159.1 69.6 L157.1 69.8 L155.4 68.7 L154.6 67.1 L155.1 65.4 L154.6 64.0 L153.2 62.5 L151.7 60.9 L150.3 59.5 L148.8 57.8 L148.0 56.3 L147.1 55.2 L145.3 53.4 L143.7 51.5 L142.3 49.9 L140.9 48.5 L139.2 46.6 L138.1 44.3 L136.6 42.2 L135.2 40.0 L133.9 38.0 L132.6 36.0 L131.3 34.0 L130.3 32.3 L129.1 29.8 L128.7 28.2 L129.0 29.6 L129.4 30.3 L131.3 34.0 L132.8 36.2 L134.2 38.5 L135.7 40.7 L137.2 43.1 L138.7 45.5 L140.0 47.5 L141.3 48.8 L143.1 50.8 L145.0 53.1 L146.7 54.9 L148.3 56.8 L149.5 58.8 L151.1 60.3 L153.0 62.3 L154.7 64.1 L154.9 65.7 L154.9 67.9 L156.4 69.5 L158.9 69.6 L160.9 70.9 L162.7 72.5 L164.2 73.9 L165.8 75.1 L167.7 76.6 L169.6 78.3 L171.5 80.0 L173.4 81.4 L174.8 82.8 L175.9 83.3 L178.0 84.9 L179.9 86.3 L182.1 87.6 L184.2 89.0 L186.0 90.3 L187.8 91.5 L189.9 93.2 L191.6 94.7 L190.9 96.6 L189.1 97.2 L188.4 99.4 L188.1 101.9 L187.4 104.4 L186.5 106.6 L185.4 109.1 L186.0 110.5 L185.3 111.9 L185.1 113.4 L185.1 115.5 L185.1 117.7 L185.1 120.2 L185.1 122.6 L185.1 125.0 L185.2 127.6 L185.2 130.1 L185.2 132.3 L185.2 134.9 L185.2 136.7 L185.1 138.8 L184.9 141.5 L184.7 143.9 L183.7 144.6 L182.2 144.8 L180.8 145.0 L179.4 145.4 L178.5 145.3 L177.6 145.3 L176.2 143.4 L174.4 140.9 L173.1 138.4 L171.9 137.9 L170.9 135.8 L170.1 134.6 L168.6 133.9 L167.8 132.0 L166.2 130.1 L164.9 128.6 L164.0 128.6 L165.5 128.0 L165.5 128.0" fill="none" stroke="#0A0C11" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/><path d="M165.2 128.9 L166.6 130.6 L168.7 131.8 L169.9 134.2 L171.2 134.4 L172.3 136.8 L173.4 139.1 L174.9 141.6 L176.6 144.0 L177.6 145.0 L179.1 145.1 L179.4 145.4 L181.0 145.0 L183.0 144.9 L184.2 145.1 L184.5 146.4 L184.6 149.1 L186.1 149.7 L188.6 149.9 L190.5 150.1 L192.8 150.8 L195.1 151.5 L196.9 151.9 L198.3 150.2 L199.8 148.4 L201.6 146.2 L203.2 144.5 L204.7 142.8 L206.4 141.6 L208.4 140.2 L210.4 138.8 L212.0 137.3 L213.3 135.6 L214.6 135.2 L216.4 134.3 L218.3 132.9 L219.8 131.0 L221.3 129.2 L222.7 127.4 L224.2 125.6 L225.7 123.7 L227.2 121.7 L228.7 119.8 L230.2 118.0 L229.2 116.6 L227.5 115.0 L225.6 113.5 L223.6 112.1 L221.6 110.6 L219.7 109.1 L217.7 107.7 L215.8 107.3 L213.9 107.7 L212.2 107.4 L210.7 106.0 L209.8 104.2 L210.3 101.6 L212.3 101.1 L214.5 100.7 L216.2 100.3 L218.2 99.8 L220.2 98.7 L222.1 97.4 L223.4 96.1 L223.3 95.1 L223.3 96.3 L221.8 97.5 L220.0 98.8 L218.2 99.8 L216.1 100.3 L214.7 100.8 L212.6 101.1 L210.7 101.1 L209.8 103.4 L208.0 102.9 L206.0 101.8 L204.0 100.9 L201.9 100.1 L199.9 99.2 L199.8 97.5 L197.4 96.4 L195.2 95.3 L192.9 94.3 L191.2 93.8 L189.2 92.8 L187.4 91.2 L185.7 90.0 L183.5 88.5 L181.4 87.2 L179.3 85.8 L177.3 84.5 L175.4 83.0 L174.0 81.9 L172.0 80.5 L170.2 78.8 L168.4 77.3 L166.5 75.6 L164.6 74.1 L162.7 72.6 L161.0 71.0 L159.1 69.6 L157.1 69.8 L155.4 68.7 L154.6 67.1 L155.1 65.4 L154.6 64.0 L153.2 62.5 L151.7 60.9 L150.3 59.5 L148.8 57.8 L148.0 56.3 L147.1 55.2 L145.3 53.4 L143.7 51.5 L142.3 49.9 L140.9 48.5 L139.2 46.6 L138.1 44.3 L136.6 42.2 L135.2 40.0 L133.9 38.0 L132.6 36.0 L131.3 34.0 L130.3 32.3 L129.1 29.8 L128.7 28.2 L129.0 29.6 L129.4 30.3 L131.3 34.0 L132.8 36.2 L134.2 38.5 L135.7 40.7 L137.2 43.1 L138.7 45.5 L140.0 47.5 L141.3 48.8 L143.1 50.8 L145.0 53.1 L146.7 54.9 L148.3 56.8 L149.5 58.8 L151.1 60.3 L153.0 62.3 L154.7 64.1 L154.9 65.7 L154.9 67.9 L156.4 69.5 L158.9 69.6 L160.9 70.9 L162.7 72.5 L164.2 73.9 L165.8 75.1 L167.7 76.6 L169.6 78.3 L171.5 80.0 L173.4 81.4 L174.8 82.8 L175.9 83.3 L178.0 84.9 L179.9 86.3 L182.1 87.6 L184.2 89.0 L186.0 90.3 L187.8 91.5 L189.9 93.2 L191.6 94.7 L190.9 96.6 L189.1 97.2 L188.4 99.4 L188.1 101.9 L187.4 104.4 L186.5 106.6 L185.4 109.1 L186.0 110.5 L185.3 111.9 L185.1 113.4 L185.1 115.5 L185.1 117.7 L185.1 120.2 L185.1 122.6 L185.1 125.0 L185.2 127.6 L185.2 130.1 L185.2 132.3 L185.2 134.9 L185.2 136.7 L185.1 138.8 L184.9 141.5 L184.7 143.9 L183.7 144.6 L182.2 144.8 L180.8 145.0 L179.4 145.4 L178.5 145.3 L177.6 145.3 L176.2 143.4 L174.4 140.9 L173.1 138.4 L171.9 137.9 L170.9 135.8 L170.1 134.6 L168.6 133.9 L167.8 132.0 L166.2 130.1 L164.9 128.6 L164.0 128.6 L165.5 128.0 L165.5 128.0" fill="none" stroke="#3B8CFF" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="165.2" cy="128.9" r="5" fill="#2ED3B0" stroke="#0A0C11" stroke-width="2"/><circle cx="165.5" cy="128.0" r="5" fill="#F3F5F9" stroke="#0A0C11" stroke-width="2"/></svg><span class="chip">28.7 km · ↑ 72 m</span><span class="exp"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></span><span class="leg"><span><i style="background:#2ED3B0"></i>Start</span><span><i style="background:#F3F5F9"></i>Finish</span></span></div>
+<div class="in">
+<div class="hero2">
+<div><div class="lbl">Moving time</div><div class="num hv">1:30:24</div></div>
+<div><div class="lbl">Distance</div><div class="num hv">28.7<span class="u">km</span></div></div>
+</div>
+<div class="tiles">
+<div class="tile"><div class="k" style="color:#A99BFF"><i style="background:#8B7BFF"></i>Est. NP</div><div class="num">~100<span style="color:#A99BFF">W</span></div><div class="sub">avg ~76 W · ±15%</div></div>
+<div class="tile"><div class="k" style="color:#FFB067"><i style="background:#FF8A2A"></i>Avg speed</div><div class="num">19.0<span style="color:#FFB067">km/h</span></div><div class="sub">IF ~0.41</div></div>
+<div class="tile"><div class="k" style="color:#FF7A8A"><i style="background:#FF5A6E"></i>Avg HR</div><div class="num">130<span style="color:#FF7A8A">bpm</span></div><div class="sub">max 158</div></div>
+</div>
+<div class="ilist"><span>Est. TSS<b>~26</b></span><span>HR load<b>127</b></span><span>Climb<b>72 m</b></span></div>
+</div>
+</div>
+<div class="win"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4FF3A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></span><div><div class="k">Consistency</div><b>Showed up on a tough day</b><p>Going in: energy 3/5, stress 4/5, sleep 3/5. You still got it done.</p></div></div>
+</div>
+</div>
+<div class="frame-cap"><b>Outdoor rides put the route at the top of the hero card</b> (180 pt, tap → full-screen MapKit sheet). Estimated power keeps its "~" and the ±15% band in the tile sub-line. Below the fold it's the same as 03a, with Speed · HR · Elevation · Grade tabs.</div>
+</div>
+
+<!-- ============ 3b. RUN ============ -->
+<div class="frame">
+<div class="lbl">03b · Run · outdoor</div>
+<div class="phone">
+<div class="island"></div><div class="fold"></div>
+<div class="sb"><span>19:02</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr">
+<div class="pills"><span class="spill" style="background:rgba(255,138,42,.14);color:#FFA25A">Run</span><span class="gpill">Recovery</span></div>
+<div class="ttl h-ttl">Evening Run</div>
+<div class="h-meta">Wed 9 Sep · 18:15 <b>· HealthFit</b></div>
+</div>
+<div class="card hero" style="border-top:2px solid #FF8A2A">
+<div class="map"><svg width="359" height="180" viewBox="0 0 359 180" style="display:block"><rect width="359" height="180" fill="#0F131A"/><path d="M-20 190 Q 40 50.0 120 -10" stroke="#1A1F29" stroke-width="1" fill="none"/><path d="M33 190 Q 87 90.0 181 -10" stroke="#1A1F29" stroke-width="2" fill="none"/><path d="M86 190 Q 134 130.0 242 -10" stroke="#1A1F29" stroke-width="1" fill="none"/><path d="M139 190 Q 181 50.0 303 -10" stroke="#1A1F29" stroke-width="2" fill="none"/><path d="M192 190 Q 228 90.0 364 -10" stroke="#1A1F29" stroke-width="1" fill="none"/><path d="M245 190 Q 275 130.0 425 -10" stroke="#1A1F29" stroke-width="2" fill="none"/><path d="M298 190 Q 322 50.0 486 -10" stroke="#1A1F29" stroke-width="1" fill="none"/><path d="M351 190 Q 369 90.0 547 -10" stroke="#1A1F29" stroke-width="2" fill="none"/><path d="M-10 18 C 107.7 10 215.4 40 369 14" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 55 C 107.7 51 215.4 69 369 53" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 92 C 107.7 92 215.4 98 369 92" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 129 C 107.7 133 215.4 127 369 131" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 166 C 107.7 174 215.4 156 369 170" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 203 C 107.7 215 215.4 185 369 209" stroke="#171C25" stroke-width="1" fill="none"/><path d="M231.8 124.7 L232.3 122.9 L233.9 120.1 L235.7 118.0 L235.2 115.8 L232.9 114.1 L230.7 112.5 L228.6 110.9 L226.5 109.5 L224.3 108.0 L221.9 107.0 L219.4 106.5 L218.3 106.1 L217.0 105.1 L216.6 104.9 L215.6 104.3 L213.1 102.8 L212.0 100.7 L213.5 98.4 L214.7 96.2 L215.8 93.8 L217.2 91.5 L218.7 89.2 L219.9 87.0 L219.4 86.4 L218.7 86.0 L216.6 85.2 L214.1 84.3 L211.8 83.0 L209.7 81.4 L207.6 79.9 L205.7 78.3 L203.9 76.4 L202.1 74.6 L200.2 72.9 L198.3 71.1 L196.4 69.4 L194.7 67.5 L194.3 65.5 L197.0 65.7 L199.6 66.0 L202.0 66.4 L204.5 66.3 L206.5 64.4 L208.6 63.0 L211.2 62.3 L213.7 62.1 L215.9 63.3 L218.1 64.6 L220.3 65.9 L222.4 66.8 L224.3 68.3 L226.4 69.0 L227.5 66.8 L228.9 64.6 L230.3 62.6 L231.6 60.5 L233.1 58.4 L234.4 56.1 L235.9 53.9 L237.2 51.8 L238.5 49.6 L239.8 47.5 L240.7 45.3 L239.9 43.1 L239.1 40.8 L237.4 39.3 L235.2 38.2 L233.0 37.3 L230.7 36.3 L228.6 35.4 L226.4 34.3 L224.3 33.0 L222.4 31.8 L220.4 30.3 L218.3 29.1 L216.1 28.2 L213.8 28.0 L211.3 28.2 L209.0 28.9 L207.3 30.5 L205.8 32.6 L204.6 34.6 L203.7 36.8 L203.2 39.3 L202.6 41.7 L201.5 43.8 L200.9 46.3 L200.0 48.5 L199.2 50.9 L198.3 53.2 L197.4 55.4 L196.5 57.7 L195.7 59.8 L194.7 62.0 L193.7 64.2 L192.4 65.5 L191.7 64.8 L190.1 63.9 L188.2 65.9 L186.6 65.7 L184.6 64.3 L182.7 62.7 L180.8 61.2 L179.0 59.5 L177.1 58.0 L175.2 56.5 L173.3 54.8 L171.4 53.2 L169.7 51.6 L167.8 49.7 L166.0 48.0 L164.0 46.4 L161.8 45.5 L159.4 45.8 L157.5 47.2 L155.8 49.1 L153.9 50.7 L152.3 52.4 L150.7 54.1 L148.8 55.7 L146.8 56.9 L145.0 58.7 L143.1 60.1 L141.2 61.4 L139.0 62.8 L136.9 64.4 L135.0 66.0 L133.2 67.7 L131.3 69.3 L129.1 70.5 L127.0 71.7 L125.0 73.0 L123.3 74.8 L121.7 76.6 L120.4 78.7 L119.3 81.0 L118.7 83.4 L118.3 85.8 L118.3 88.2 L118.8 90.7 L119.9 92.9 L121.0 95.3 L122.0 97.6 L123.1 100.0 L124.2 102.2 L125.5 104.5 L126.6 107.0 L127.9 109.3 L129.2 111.6 L130.5 113.8 L131.9 115.9 L133.4 117.9 L135.1 119.8 L136.7 121.9 L138.6 123.8 L140.4 125.5 L142.2 127.3 L143.9 129.3 L145.7 131.0 L147.7 132.7 L149.7 134.0 L152.1 134.9 L154.0 136.4 L155.8 138.2 L157.6 140.0 L159.4 141.8 L161.0 143.7 L162.7 145.7 L164.5 147.5 L166.4 149.0 L168.7 148.1 L171.0 147.3 L173.4 146.4 L175.7 145.2 L178.2 144.5 L180.7 143.8 L182.8 142.4 L184.6 140.5 L186.2 138.4 L187.3 136.1 L188.7 133.8 L190.2 131.7 L191.3 129.5 L193.4 129.0 L195.7 130.4 L197.8 131.6 L199.8 132.9 L201.9 133.5 L203.9 131.7 L206.2 131.8 L208.5 132.7 L210.7 134.0 L213.1 134.8 L215.5 136.1 L217.6 137.0 L219.5 138.9 L221.3 141.0 L223.2 143.1 L225.0 145.0 L226.4 147.0 L228.1 148.5 L230.3 149.7 L232.6 150.5 L235.0 151.1 L237.3 151.9 L238.3 150.7 L236.9 148.6 L235.1 147.0 L233.8 144.9 L233.1 142.6 L233.4 140.2 L233.2 137.8 L232.7 135.6 L234.7 133.6 L235.7 132.9" fill="none" stroke="#0A0C11" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/><path d="M231.8 124.7 L232.3 122.9 L233.9 120.1 L235.7 118.0 L235.2 115.8 L232.9 114.1 L230.7 112.5 L228.6 110.9 L226.5 109.5 L224.3 108.0 L221.9 107.0 L219.4 106.5 L218.3 106.1 L217.0 105.1 L216.6 104.9 L215.6 104.3 L213.1 102.8 L212.0 100.7 L213.5 98.4 L214.7 96.2 L215.8 93.8 L217.2 91.5 L218.7 89.2 L219.9 87.0 L219.4 86.4 L218.7 86.0 L216.6 85.2 L214.1 84.3 L211.8 83.0 L209.7 81.4 L207.6 79.9 L205.7 78.3 L203.9 76.4 L202.1 74.6 L200.2 72.9 L198.3 71.1 L196.4 69.4 L194.7 67.5 L194.3 65.5 L197.0 65.7 L199.6 66.0 L202.0 66.4 L204.5 66.3 L206.5 64.4 L208.6 63.0 L211.2 62.3 L213.7 62.1 L215.9 63.3 L218.1 64.6 L220.3 65.9 L222.4 66.8 L224.3 68.3 L226.4 69.0 L227.5 66.8 L228.9 64.6 L230.3 62.6 L231.6 60.5 L233.1 58.4 L234.4 56.1 L235.9 53.9 L237.2 51.8 L238.5 49.6 L239.8 47.5 L240.7 45.3 L239.9 43.1 L239.1 40.8 L237.4 39.3 L235.2 38.2 L233.0 37.3 L230.7 36.3 L228.6 35.4 L226.4 34.3 L224.3 33.0 L222.4 31.8 L220.4 30.3 L218.3 29.1 L216.1 28.2 L213.8 28.0 L211.3 28.2 L209.0 28.9 L207.3 30.5 L205.8 32.6 L204.6 34.6 L203.7 36.8 L203.2 39.3 L202.6 41.7 L201.5 43.8 L200.9 46.3 L200.0 48.5 L199.2 50.9 L198.3 53.2 L197.4 55.4 L196.5 57.7 L195.7 59.8 L194.7 62.0 L193.7 64.2 L192.4 65.5 L191.7 64.8 L190.1 63.9 L188.2 65.9 L186.6 65.7 L184.6 64.3 L182.7 62.7 L180.8 61.2 L179.0 59.5 L177.1 58.0 L175.2 56.5 L173.3 54.8 L171.4 53.2 L169.7 51.6 L167.8 49.7 L166.0 48.0 L164.0 46.4 L161.8 45.5 L159.4 45.8 L157.5 47.2 L155.8 49.1 L153.9 50.7 L152.3 52.4 L150.7 54.1 L148.8 55.7 L146.8 56.9 L145.0 58.7 L143.1 60.1 L141.2 61.4 L139.0 62.8 L136.9 64.4 L135.0 66.0 L133.2 67.7 L131.3 69.3 L129.1 70.5 L127.0 71.7 L125.0 73.0 L123.3 74.8 L121.7 76.6 L120.4 78.7 L119.3 81.0 L118.7 83.4 L118.3 85.8 L118.3 88.2 L118.8 90.7 L119.9 92.9 L121.0 95.3 L122.0 97.6 L123.1 100.0 L124.2 102.2 L125.5 104.5 L126.6 107.0 L127.9 109.3 L129.2 111.6 L130.5 113.8 L131.9 115.9 L133.4 117.9 L135.1 119.8 L136.7 121.9 L138.6 123.8 L140.4 125.5 L142.2 127.3 L143.9 129.3 L145.7 131.0 L147.7 132.7 L149.7 134.0 L152.1 134.9 L154.0 136.4 L155.8 138.2 L157.6 140.0 L159.4 141.8 L161.0 143.7 L162.7 145.7 L164.5 147.5 L166.4 149.0 L168.7 148.1 L171.0 147.3 L173.4 146.4 L175.7 145.2 L178.2 144.5 L180.7 143.8 L182.8 142.4 L184.6 140.5 L186.2 138.4 L187.3 136.1 L188.7 133.8 L190.2 131.7 L191.3 129.5 L193.4 129.0 L195.7 130.4 L197.8 131.6 L199.8 132.9 L201.9 133.5 L203.9 131.7 L206.2 131.8 L208.5 132.7 L210.7 134.0 L213.1 134.8 L215.5 136.1 L217.6 137.0 L219.5 138.9 L221.3 141.0 L223.2 143.1 L225.0 145.0 L226.4 147.0 L228.1 148.5 L230.3 149.7 L232.6 150.5 L235.0 151.1 L237.3 151.9 L238.3 150.7 L236.9 148.6 L235.1 147.0 L233.8 144.9 L233.1 142.6 L233.4 140.2 L233.2 137.8 L232.7 135.6 L234.7 133.6 L235.7 132.9" fill="none" stroke="#FF8A2A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="231.8" cy="124.7" r="5" fill="#2ED3B0" stroke="#0A0C11" stroke-width="2"/><circle cx="235.7" cy="132.9" r="5" fill="#F3F5F9" stroke="#0A0C11" stroke-width="2"/></svg><span class="chip">5.04 km · ↑ 20 m</span><span class="exp"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></span><span class="leg"><span><i style="background:#2ED3B0"></i>Start</span><span><i style="background:#F3F5F9"></i>Finish</span></span></div>
+<div class="in">
+<div class="hero2">
+<div><div class="lbl">Distance</div><div class="num hv">5.04<span class="u">km</span></div></div>
+<div><div class="lbl">Avg pace</div><div class="num hv">5:38<span class="u">/km</span></div></div>
+</div>
+<div class="tiles">
+<div class="tile"><div class="k" style="color:#6FAEFF"><i style="background:#3B8CFF"></i>Time</div><div class="num">28:24</div><div class="sub">moving</div></div>
+<div class="tile"><div class="k" style="color:#FF7A8A"><i style="background:#FF5A6E"></i>Avg HR</div><div class="num">169<span style="color:#FF7A8A">bpm</span></div><div class="sub">max 179</div></div>
+<div class="tile"><div class="k" style="color:#A99BFF"><i style="background:#8B7BFF"></i>Power</div><div class="num">241<span style="color:#A99BFF">W</span></div><div class="sub">avg</div></div>
+</div>
+<div class="ilist"><span>Speed<b>10.6 km/h</b></span><span>Climb<b>20 m</b></span><span>Easy cap<b>162 bpm</b></span></div>
+</div>
+</div>
+
+<div class="win"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="#D4FF3A"><path d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 7 13c0-2 1-3.4 2-4.5.2 1.6 1 2.8 2.2 3.2C10.6 8 11.4 4.6 12 2z"/></svg></span><div><div class="k">Consistency</div><b>Day 250 of your streak</b><p>50 days to 300 in a row.</p></div></div>
+
+<div class="card">
+<div class="row sbw"><div class="k" style="color:#FFA25A">Session read</div><span class="badge b-bad">Off intent</span></div>
+<div class="st">Easy run ran hot: 80% above Zone 2</div>
+<div class="sig">
+<div><div class="l">Average heart rate</div><div class="v">169 bpm</div><div class="d t-warn">over the 162 bpm easy cap</div></div>
+<div><div class="l">Pace at ~169 bpm</div><div class="v">5:38/km <svg width="48" height="20" style="display:block"><path d="M2.0 2.0 L10.8 4.5 L19.6 17.5 L28.4 18.0 L37.2 2.9 L46.0 16.5" fill="none" stroke="#FFC83A" stroke-width="1.5" stroke-linejoin="round"/><circle cx="46.0" cy="16.5" r="2.5" fill="#FFC83A"/></svg></div><div class="d t-warn">17 s/km slower than 5 similar runs</div></div>
+</div>
+<div class="next"><span class="k">Watch</span><span>Average heart rate 169 bpm is over the 162 bpm easy cap. Slow down or walk more.</span></div>
+<div class="next" style="margin-top:12px"><span class="k">Next time</span><span>Slow down until heart rate stays in Zone 2, and walk the hills.</span></div>
+</div>
+
+<div class="card">
+<div class="k" style="color:#FFA25A">Effort trace</div>
+<div class="row sbw" style="align-items:baseline"><div class="st">Pace</div><div class="num" style="font-size:17px">avg 5:38 <span class="u" style="font-size:12px">/km · faster is higher</span></div></div>
+<div class="seg"><span class="on">Pace</span><span>HR</span><span>Elevation</span><span>Power</span></div>
+<div class="plot"><svg width="329" height="132" viewBox="0 0 329 132" style="display:block;overflow:visible"><line x1="0" x2="329" y1="24.0" y2="24.0" stroke="#1F242E" stroke-width="1"/><text x="0" y="20.0" fill="#6B7385" font-size="10" font-family="Archivo">5:30</text><line x1="0" x2="329" y1="54.0" y2="54.0" stroke="#1F242E" stroke-width="1"/><text x="0" y="50.0" fill="#6B7385" font-size="10" font-family="Archivo">6:00</text><line x1="0" x2="329" y1="84.0" y2="84.0" stroke="#1F242E" stroke-width="1"/><text x="0" y="80.0" fill="#6B7385" font-size="10" font-family="Archivo">6:30</text><line x1="0" x2="329" y1="114.0" y2="114.0" stroke="#1F242E" stroke-width="1"/><text x="0" y="110.0" fill="#6B7385" font-size="10" font-family="Archivo">7:00</text><path d="M0.0 81.4 L2.8 98.2 L5.5 101.0 L8.3 99.9 L11.1 97.6 L13.8 96.1 L16.6 94.2 L19.4 63.8 L22.1 63.1 L24.9 61.7 L27.6 59.6 L30.4 62.1 L33.2 60.7 L35.9 85.6 L38.7 101.4 L41.5 100.1 L44.2 100.1 L47.0 102.5 L49.8 104.3 L52.5 105.7 L55.3 107.5 L58.1 110.1 L60.8 112.1 L63.6 113.7 L66.4 116.8 L69.1 118.8 L71.9 117.5 L74.6 117.5 L77.4 116.4 L80.2 116.8 L82.9 120.2 L85.7 120.2 L88.5 122.8 L91.2 125.5 L94.0 126.3 L96.8 128.8 L99.5 128.8 L102.3 127.3 L105.1 128.2 L107.8 128.2 L110.6 125.1 L113.4 120.4 L116.1 118.2 L118.9 115.6 L121.6 114.2 L124.4 113.5 L127.2 112.1 L129.9 112.1 L132.7 117.5 L135.5 118.8 L138.2 117.5 L141.0 117.0 L143.8 112.5 L146.5 111.4 L149.3 130.9 L152.1 118.1 L154.8 100.5 L157.6 100.3 L160.4 102.6 L163.1 101.4 L165.9 100.7 L168.6 100.7 L171.4 102.8 L174.2 99.7 L176.9 95.6 L179.7 96.8 L182.5 94.4 L185.2 92.8 L188.0 91.5 L190.8 88.8 L193.5 86.7 L196.3 86.7 L199.1 83.3 L201.8 81.4 L204.6 80.1 L207.4 78.3 L210.1 76.4 L212.9 72.7 L215.6 69.4 L218.4 69.4 L221.2 69.4 L223.9 70.7 L226.7 72.8 L229.5 74.9 L232.2 76.4 L235.0 78.3 L237.8 79.7 L240.5 81.4 L243.3 78.5 L246.1 74.3 L248.8 70.1 L251.6 65.6 L254.4 64.0 L257.1 64.0 L259.9 63.2 L262.6 62.5 L265.4 65.1 L268.2 68.6 L270.9 72.4 L273.7 75.8 L276.5 78.7 L279.2 78.3 L282.0 80.1 L284.8 81.4 L287.5 80.1 L290.3 78.7 L293.1 80.1 L295.8 80.1 L298.6 81.4 L301.4 82.1 L304.1 82.7 L306.9 81.7 L309.6 82.0 L312.4 84.1 L315.2 88.3 L317.9 92.8 L320.7 96.8 L323.5 96.7 L326.2 94.6 L329.0 92.5 L329 132 L0 132 Z" fill="#A3ABBC" fill-opacity=".07"/><path d="M0.0 30.0 L2.8 18.0 L5.5 0.0 L8.3 6.6 L11.1 11.4 L13.8 44.4 L16.6 113.4 L19.4 119.4 L22.1 105.6 L24.9 33.6 L27.6 11.4 L30.4 25.2 L33.2 94.2 L35.9 95.4 L38.7 93.6 L41.5 17.4 L44.2 16.2 L47.0 18.0 L49.8 21.0 L52.5 24.6 L55.3 25.8 L58.1 28.2 L60.8 21.0 L63.6 16.8 L66.4 16.2 L69.1 20.4 L71.9 28.2 L74.6 31.2 L77.4 31.8 L80.2 30.6 L82.9 24.6 L85.7 22.2 L88.5 21.0 L91.2 25.2 L94.0 34.2 L96.8 37.2 L99.5 39.0 L102.3 38.4 L105.1 33.6 L107.8 36.0 L110.6 31.8 L113.4 37.8 L116.1 37.2 L118.9 39.0 L121.6 38.4 L124.4 36.6 L127.2 31.8 L129.9 30.6 L132.7 30.0 L135.5 36.6 L138.2 40.8 L141.0 41.4 L143.8 84.0 L146.5 99.6 L149.3 114.0 L152.1 90.6 L154.8 43.8 L157.6 39.6 L160.4 32.4 L163.1 35.4 L165.9 31.8 L168.6 32.4 L171.4 32.4 L174.2 33.6 L176.9 37.2 L179.7 38.4 L182.5 39.0 L185.2 37.8 L188.0 33.6 L190.8 31.8 L193.5 31.8 L196.3 30.6 L199.1 35.4 L201.8 34.8 L204.6 35.4 L207.4 33.0 L210.1 30.0 L212.9 32.4 L215.6 27.0 L218.4 27.6 L221.2 25.8 L223.9 22.2 L226.7 22.2 L229.5 23.4 L232.2 27.0 L235.0 27.0 L237.8 25.8 L240.5 23.4 L243.3 25.8 L246.1 25.2 L248.8 28.2 L251.6 24.6 L254.4 28.2 L257.1 27.0 L259.9 31.8 L262.6 31.2 L265.4 27.0 L268.2 24.0 L270.9 19.8 L273.7 19.8 L276.5 17.4 L279.2 16.2 L282.0 17.4 L284.8 25.8 L287.5 24.6 L290.3 31.2 L293.1 25.2 L295.8 23.4 L298.6 17.4 L301.4 9.0 L304.1 12.0 L306.9 14.4 L309.6 30.0 L312.4 40.2 L315.2 42.0 L317.9 37.8 L320.7 35.4 L323.5 33.0 L326.2 33.6 L329.0 45.6 L329 132 L0 132 Z" fill="#FF8A2A" fill-opacity=".14"/><path d="M0.0 30.0 L2.8 18.0 L5.5 0.0 L8.3 6.6 L11.1 11.4 L13.8 44.4 L16.6 113.4 L19.4 119.4 L22.1 105.6 L24.9 33.6 L27.6 11.4 L30.4 25.2 L33.2 94.2 L35.9 95.4 L38.7 93.6 L41.5 17.4 L44.2 16.2 L47.0 18.0 L49.8 21.0 L52.5 24.6 L55.3 25.8 L58.1 28.2 L60.8 21.0 L63.6 16.8 L66.4 16.2 L69.1 20.4 L71.9 28.2 L74.6 31.2 L77.4 31.8 L80.2 30.6 L82.9 24.6 L85.7 22.2 L88.5 21.0 L91.2 25.2 L94.0 34.2 L96.8 37.2 L99.5 39.0 L102.3 38.4 L105.1 33.6 L107.8 36.0 L110.6 31.8 L113.4 37.8 L116.1 37.2 L118.9 39.0 L121.6 38.4 L124.4 36.6 L127.2 31.8 L129.9 30.6 L132.7 30.0 L135.5 36.6 L138.2 40.8 L141.0 41.4 L143.8 84.0 L146.5 99.6 L149.3 114.0 L152.1 90.6 L154.8 43.8 L157.6 39.6 L160.4 32.4 L163.1 35.4 L165.9 31.8 L168.6 32.4 L171.4 32.4 L174.2 33.6 L176.9 37.2 L179.7 38.4 L182.5 39.0 L185.2 37.8 L188.0 33.6 L190.8 31.8 L193.5 31.8 L196.3 30.6 L199.1 35.4 L201.8 34.8 L204.6 35.4 L207.4 33.0 L210.1 30.0 L212.9 32.4 L215.6 27.0 L218.4 27.6 L221.2 25.8 L223.9 22.2 L226.7 22.2 L229.5 23.4 L232.2 27.0 L235.0 27.0 L237.8 25.8 L240.5 23.4 L243.3 25.8 L246.1 25.2 L248.8 28.2 L251.6 24.6 L254.4 28.2 L257.1 27.0 L259.9 31.8 L262.6 31.2 L265.4 27.0 L268.2 24.0 L270.9 19.8 L273.7 19.8 L276.5 17.4 L279.2 16.2 L282.0 17.4 L284.8 25.8 L287.5 24.6 L290.3 31.2 L293.1 25.2 L295.8 23.4 L298.6 17.4 L301.4 9.0 L304.1 12.0 L306.9 14.4 L309.6 30.0 L312.4 40.2 L315.2 42.0 L317.9 37.8 L320.7 35.4 L323.5 33.0 L326.2 33.6 L329.0 45.6" fill="none" stroke="#FF8A2A" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round"/><line x1="0" x2="329" y1="32.0" y2="32.0" stroke="#A3ABBC" stroke-opacity=".55" stroke-dasharray="3 3"/><rect x="296.2" y="23.0" width="32.8" height="18" rx="9" fill="#232835"/><text x="312.6" y="36.0" text-anchor="middle" fill="#F3F5F9" font-size="11" font-weight="700" font-family="Barlow Condensed">5:38</text></svg></div>
+<div class="xax"><span>0:00</span><span>10:00</span><span>20:00</span><span>28:24</span></div>
+<div class="leg2"><span><i style="background:#FF8A2A"></i>Pace</span><span><i style="background:#3A4150;height:8px;width:10px;border-radius:2px;vertical-align:0"></i>Elevation</span></div>
+</div>
+
+<div class="card">
+<div class="k" style="color:#FFA25A">Intensity</div>
+<div class="st">Time in zones</div>
+<div class="ss">Mostly <b>Zone 4</b> · 14 min (47%). Zone 2 only 3 min (12%).</div>
+<div class="zbar"><i style="flex:8;background:#49A6FF"></i><i style="flex:12;background:#43D17C"></i><i style="flex:33;background:#F5B742"></i><i style="flex:47;background:#FF8B3D"></i></div>
+<div class="zrows">
+<div class="zr"><span class="zn" style="color:#49A6FF">Z1</span><span class="zt"><i style="width:8%;background:#49A6FF"></i><em style="left:calc(8% + 8px)">&lt; 150 bpm</em></span><span class="zm">2</span><span class="zp">8%</span></div>
+<div class="zr"><span class="zn" style="color:#43D17C">Z2</span><span class="zt"><i style="width:12%;background:#43D17C"></i><em style="left:calc(12% + 8px)">150–162 bpm</em></span><span class="zm">3</span><span class="zp">12%</span></div>
+<div class="zr"><span class="zn" style="color:#F5B742">Z3</span><span class="zt"><i style="width:33%;background:#F5B742"></i><em class="dk">163–172</em></span><span class="zm">10</span><span class="zp">33%</span></div>
+<div class="zr on"><span class="zn" style="color:#FF8B3D">Z4</span><span class="zt"><i style="width:47%;background:#FF8B3D"></i><em class="dk">173–182 bpm</em></span><span class="zm">14</span><span class="zp">47%</span></div>
+<div class="zr off"><span class="zn">Z5</span><span class="zt"><em>≥ 183 bpm</em></span><span class="zm">–</span><span class="zp">0%</span></div>
+</div>
+</div>
+
+<div class="card">
+<div class="k" style="color:#FFA25A">Best efforts</div>
+<div class="st">Fastest stretches in this run</div>
+<div style="margin-top:12px">
+<div class="eff"><span class="el">400 m</span><span class="ev">5:24<span>/km</span></span><div class="em" style="margin:0"><span>2:10</span><span>177 bpm</span></div></div>
+<div class="eff"><span class="el">½ mile</span><span class="ev">5:26<span>/km</span></span><div class="em" style="margin:0"><span>4:22</span><span>177 bpm</span></div></div>
+<div class="eff"><span class="el">1 km</span><span class="ev">5:28<span>/km</span></span><div class="em" style="margin:0"><span>5:28</span><span>177 bpm</span></div></div>
+<div class="eff"><span class="el">1 mile</span><span class="ev">5:29<span>/km</span></span><div class="em" style="margin:0"><span>8:50</span><span>177 bpm</span></div></div>
+<div class="eff"><span class="el">2 mile</span><span class="ev">5:38<span>/km</span></span><div class="em" style="margin:0"><span>18:09</span><span>174 bpm</span></div></div>
+<div class="eff"><span class="el">5 km</span><span class="ev">5:40<span>/km</span></span><div class="em" style="margin:0"><span>28:22</span><span>169 bpm</span></div></div>
+</div>
+</div>
+
+<div class="card">
+<div class="row sbw"><div><div class="k" style="color:#FFA25A">How it felt</div><div class="st">Responded well</div></div><span class="edit">Edit</span></div>
+<div class="feel">
+<div class="fm"><div class="l">Effort</div><div class="v"><span class="num">5</span><em style="color:#FFC83A">Moderate</em></div><div class="bars"><i style="background:#FFC83A"></i><i style="background:#FFC83A"></i><i style="background:#FFC83A"></i><i style="background:#FFC83A"></i><i style="background:#FFC83A"></i><i></i><i></i><i></i><i></i><i></i></div></div>
+<div class="fm"><div class="l">Energy</div><div class="v"><span class="num">4</span><em>Good</em></div><div class="bars"><i style="background:#2ED3B0"></i><i style="background:#2ED3B0"></i><i style="background:#2ED3B0"></i><i style="background:#2ED3B0"></i><i></i></div></div>
+<div class="fm"><div class="l">Soreness</div><div class="v"><span class="num">2</span><em>Light</em></div><div class="bars"><i style="background:#FFC83A"></i><i style="background:#FFC83A"></i><i></i><i></i><i></i></div></div>
+<div class="fm"><div class="l">Pain</div><div class="v"><span class="num" style="color:#2ED3B0">0</span><em style="color:#2ED3B0">Pain-free</em></div><div class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+</div>
+<div class="quote">Woohoo, haven't feel any remains of plantar fasciitis injury. Overall feel somehow like a tank, but everything else was fine</div>
+</div>
+
+<div class="card coach">
+<div class="k" style="color:#8A93A6">Coach take</div>
+<h4>Good durability, but this recovery run drifted into a moderate-load day</h4>
+<p>This was a useful confidence-building run: the athlete felt strong, reported no pain, and noted no remaining plantar-fasciitis symptoms, with only mild soreness and moderate perceived effort. However, it did not behave like a truly easy recovery session…</p>
+<div class="more"><span>4 observations</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+</div>
+</div></div>
+<div class="frame-cap"><b>Hero = route + distance + pace.</b> The pace chart is inverted (faster is higher) with elevation as a ghost, like the web. Best efforts are plain hairline rows with no bars, because there's no all-time comparison to show.</div>
+</div>
+
+<!-- ============ 3c. HIKE ============ -->
+<div class="frame">
+<div class="lbl">03c · Hike · with pain flag</div>
+<div class="phone">
+<div class="island"></div><div class="fold"></div>
+<div class="sb"><span>14:20</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr">
+<div class="pills"><span class="spill" style="background:rgba(139,123,255,.16);color:#A99BFF">Hike</span><span class="gpill">Karkonosze</span></div>
+<div class="ttl h-ttl">Morning Hike</div>
+<div class="h-meta">Sat 24 Oct · 09:12 <b>· Apple Watch</b></div>
+</div>
+
+<div class="alert"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF5A6E" stroke-width="2.4" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg></span><div><div class="k">Pain 6/10</div><b>Check the pain before the next hard session</b><p>ITBS a lot of knee pain, especially on downhill</p></div></div>
+
+<div class="card hero" style="border-top:2px solid #8B7BFF">
+<div class="map"><svg width="359" height="180" viewBox="0 0 359 180" style="display:block"><rect width="359" height="180" fill="#0F131A"/><path d="M-20 190 Q 40 50.0 120 -10" stroke="#1A1F29" stroke-width="1" fill="none"/><path d="M33 190 Q 87 90.0 181 -10" stroke="#1A1F29" stroke-width="2" fill="none"/><path d="M86 190 Q 134 130.0 242 -10" stroke="#1A1F29" stroke-width="1" fill="none"/><path d="M139 190 Q 181 50.0 303 -10" stroke="#1A1F29" stroke-width="2" fill="none"/><path d="M192 190 Q 228 90.0 364 -10" stroke="#1A1F29" stroke-width="1" fill="none"/><path d="M245 190 Q 275 130.0 425 -10" stroke="#1A1F29" stroke-width="2" fill="none"/><path d="M298 190 Q 322 50.0 486 -10" stroke="#1A1F29" stroke-width="1" fill="none"/><path d="M351 190 Q 369 90.0 547 -10" stroke="#1A1F29" stroke-width="2" fill="none"/><path d="M-10 18 C 107.7 10 215.4 40 369 14" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 55 C 107.7 51 215.4 69 369 53" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 92 C 107.7 92 215.4 98 369 92" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 129 C 107.7 133 215.4 127 369 131" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 166 C 107.7 174 215.4 156 369 170" stroke="#171C25" stroke-width="1" fill="none"/><path d="M-10 203 C 107.7 215 215.4 185 369 209" stroke="#171C25" stroke-width="1" fill="none"/><path d="M28.5 90.9 L28.9 90.6 L29.6 90.6 L30.3 93.1 L31.4 95.1 L31.9 95.6 L32.4 95.8 L37.1 95.4 L39.1 95.4 L41.1 95.0 L46.3 96.2 L47.5 96.2 L49.2 95.5 L50.9 94.0 L53.3 91.3 L55.8 88.1 L58.8 86.2 L60.5 84.8 L63.6 82.1 L67.3 80.6 L69.9 79.8 L77.8 79.0 L80.2 77.9 L82.0 76.7 L84.9 75.2 L86.9 74.7 L89.4 74.7 L91.0 75.1 L94.2 76.1 L96.8 76.4 L97.5 76.1 L97.8 75.8 L97.7 74.9 L97.4 74.4 L97.6 74.7 L98.8 74.4 L99.3 74.1 L99.8 74.1 L100.0 73.7 L100.8 74.4 L101.0 74.4 L100.9 74.2 L100.9 74.4 L101.3 74.3 L100.8 74.1 L100.5 74.4 L100.4 74.9 L100.0 75.0 L99.4 74.7 L99.2 75.2 L98.3 75.4 L97.2 74.5 L97.8 74.1 L99.9 73.7 L101.2 73.1 L103.7 73.3 L109.2 74.4 L110.4 74.3 L111.4 73.7 L113.2 74.0 L114.2 74.0 L115.1 73.8 L116.6 73.1 L119.8 72.9 L125.6 73.3 L128.3 74.1 L129.0 75.0 L129.7 76.5 L130.4 77.2 L130.9 78.4 L131.9 79.4 L132.7 80.8 L134.6 83.2 L136.8 84.8 L137.8 85.1 L139.3 85.9 L140.0 86.6 L140.9 88.1 L142.4 89.3 L143.5 90.6 L146.9 92.9 L147.6 93.3 L149.3 93.9 L151.2 93.7 L153.1 92.7 L154.6 91.7 L156.5 89.2 L158.0 87.1 L159.8 84.8 L160.9 82.5 L163.4 76.1 L164.0 73.7 L164.1 72.1 L164.6 69.1 L165.0 67.9 L165.3 67.3 L167.2 65.5 L168.2 64.2 L170.4 62.5 L176.5 59.9 L179.6 57.9 L182.4 57.0 L183.8 57.0 L186.7 57.3 L189.6 58.3 L190.5 58.9 L192.2 60.2 L194.0 62.6 L194.9 63.3 L197.2 65.9 L198.8 67.8 L202.9 71.6 L204.2 72.4 L206.2 73.1 L207.6 73.9 L209.2 74.5 L210.1 75.1 L211.1 75.6 L212.2 76.5 L216.0 78.6 L218.9 80.5 L219.8 80.8 L223.9 81.6 L225.3 81.6 L227.5 81.8 L232.5 81.4 L236.3 81.2 L238.4 80.7 L239.7 80.8 L241.1 81.1 L245.2 80.7 L250.1 79.5 L250.4 80.9 L250.6 79.6 L250.8 79.3 L252.8 78.0 L255.1 77.4 L257.0 77.2 L258.3 77.2 L259.9 77.7 L261.5 78.4 L263.7 80.0 L265.9 82.1 L266.5 83.1 L270.0 87.6 L271.8 90.3 L273.2 92.8 L274.1 94.0 L276.5 95.9 L279.2 97.7 L282.3 100.1 L284.9 102.7 L285.1 102.8 L285.1 103.1 L286.2 103.6 L287.4 104.9 L288.5 105.6 L289.0 106.4 L290.6 107.8 L292.3 110.8 L292.8 112.2 L294.8 115.8 L296.1 119.3 L296.3 120.3 L296.9 121.2 L299.2 122.7 L300.4 122.8 L301.5 122.7 L302.0 122.4 L303.2 121.6 L305.2 119.6 L306.3 118.9 L306.4 119.1 L306.4 118.8 L307.0 118.5 L311.0 116.6 L312.6 116.1 L313.6 115.9 L314.7 116.0 L318.8 116.7 L320.6 116.8 L323.9 117.9 L326.4 119.1 L328.8 121.1 L330.7 121.6 L331.0 121.8 L329.8 121.9 L327.2 120.4 L325.8 119.3 L323.4 118.2 L320.8 117.5 L319.8 117.3 L319.7 117.4 L319.7 117.2 L313.7 116.6 L312.4 116.6 L311.0 117.1 L306.7 119.0 L305.6 119.6 L304.5 120.6 L302.9 122.1 L303.2 122.4 L303.2 122.2 L302.9 122.3 L302.9 122.2 L302.9 122.4 L302.7 122.4 L302.8 122.2 L302.6 122.2 L301.7 122.8 L300.4 123.0 L299.5 123.0 L298.6 122.8 L297.8 122.3 L296.7 121.4 L296.0 120.5 L295.1 118.5 L294.3 115.8 L290.2 108.3 L287.8 105.6 L286.5 104.7 L283.5 102.0 L282.2 101.1 L280.7 99.4 L276.8 96.6 L275.4 95.7 L273.6 94.0 L270.2 88.7 L267.4 84.8 L263.6 80.5 L262.0 79.3 L258.6 77.9 L257.0 77.8 L254.5 78.1 L247.2 80.5 L241.9 81.3 L238.0 81.1 L235.1 81.6 L232.2 81.7 L229.9 82.1 L226.2 82.1 L222.8 81.9 L220.1 81.3 L218.7 80.7 L214.9 78.5 L212.7 77.0 L204.2 72.6 L202.2 71.1 L200.5 69.5 L199.4 68.7 L196.8 66.1 L195.0 63.8 L193.3 62.2 L192.5 61.3 L192.6 60.9 L191.9 60.6 L190.4 59.2 L189.8 58.8 L185.2 57.6 L182.4 57.5 L180.3 57.9 L175.6 60.6 L173.5 61.4 L169.6 63.3 L168.7 63.9 L166.9 65.7 L166.0 66.7 L165.0 68.3 L164.5 72.3 L163.6 76.0 L160.7 83.7 L159.6 85.6 L155.7 90.8 L154.5 92.2 L153.6 93.0 L152.6 93.6 L151.9 93.8 L149.7 93.9 L147.5 93.5 L143.6 91.1 L142.0 89.9 L138.7 86.2 L133.9 83.0 L132.8 81.4 L131.8 80.3 L128.7 75.2 L127.8 74.4 L127.9 74.4 L126.8 73.9 L125.0 73.6 L117.7 73.2 L115.5 73.8 L114.0 74.4 L113.1 74.4 L106.3 72.7 L98.3 71.7 L94.2 70.3 L92.3 69.8 L92.0 69.8 L93.0 70.6 L94.1 71.0 L94.4 71.1 L94.9 72.7 L95.9 73.7 L97.1 74.0 L98.1 75.1 L98.2 75.6 L98.2 75.8 L97.1 76.4 L95.7 76.4 L93.4 75.9 L89.8 74.8 L88.6 74.7 L86.7 74.9 L84.6 75.4 L82.3 76.6 L80.2 77.9 L77.8 79.1 L69.8 79.9 L66.8 80.8 L64.4 81.8 L62.7 82.8 L61.6 84.1 L58.7 86.2 L56.6 87.7 L53.1 91.7 L51.7 93.4 L50.8 94.4 L49.3 95.6 L47.4 96.2 L46.2 96.2 L44.5 95.9 L43.5 95.5 L41.6 95.2 L39.1 95.7 L36.2 95.9 L32.1 95.8 L31.3 95.2 L30.3 93.9 L30.0 93.2 L29.9 91.7 L29.4 90.8 L28.9 90.9 L28.2 91.3 L28.1 91.8 L28.0 91.2 L28.2 91.3 L28.2 91.8 L28.2 91.7 L28.2 91.7" fill="none" stroke="#0A0C11" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/><path d="M28.5 90.9 L28.9 90.6 L29.6 90.6 L30.3 93.1 L31.4 95.1 L31.9 95.6 L32.4 95.8 L37.1 95.4 L39.1 95.4 L41.1 95.0 L46.3 96.2 L47.5 96.2 L49.2 95.5 L50.9 94.0 L53.3 91.3 L55.8 88.1 L58.8 86.2 L60.5 84.8 L63.6 82.1 L67.3 80.6 L69.9 79.8 L77.8 79.0 L80.2 77.9 L82.0 76.7 L84.9 75.2 L86.9 74.7 L89.4 74.7 L91.0 75.1 L94.2 76.1 L96.8 76.4 L97.5 76.1 L97.8 75.8 L97.7 74.9 L97.4 74.4 L97.6 74.7 L98.8 74.4 L99.3 74.1 L99.8 74.1 L100.0 73.7 L100.8 74.4 L101.0 74.4 L100.9 74.2 L100.9 74.4 L101.3 74.3 L100.8 74.1 L100.5 74.4 L100.4 74.9 L100.0 75.0 L99.4 74.7 L99.2 75.2 L98.3 75.4 L97.2 74.5 L97.8 74.1 L99.9 73.7 L101.2 73.1 L103.7 73.3 L109.2 74.4 L110.4 74.3 L111.4 73.7 L113.2 74.0 L114.2 74.0 L115.1 73.8 L116.6 73.1 L119.8 72.9 L125.6 73.3 L128.3 74.1 L129.0 75.0 L129.7 76.5 L130.4 77.2 L130.9 78.4 L131.9 79.4 L132.7 80.8 L134.6 83.2 L136.8 84.8 L137.8 85.1 L139.3 85.9 L140.0 86.6 L140.9 88.1 L142.4 89.3 L143.5 90.6 L146.9 92.9 L147.6 93.3 L149.3 93.9 L151.2 93.7 L153.1 92.7 L154.6 91.7 L156.5 89.2 L158.0 87.1 L159.8 84.8 L160.9 82.5 L163.4 76.1 L164.0 73.7 L164.1 72.1 L164.6 69.1 L165.0 67.9 L165.3 67.3 L167.2 65.5 L168.2 64.2 L170.4 62.5 L176.5 59.9 L179.6 57.9 L182.4 57.0 L183.8 57.0 L186.7 57.3 L189.6 58.3 L190.5 58.9 L192.2 60.2 L194.0 62.6 L194.9 63.3 L197.2 65.9 L198.8 67.8 L202.9 71.6 L204.2 72.4 L206.2 73.1 L207.6 73.9 L209.2 74.5 L210.1 75.1 L211.1 75.6 L212.2 76.5 L216.0 78.6 L218.9 80.5 L219.8 80.8 L223.9 81.6 L225.3 81.6 L227.5 81.8 L232.5 81.4 L236.3 81.2 L238.4 80.7 L239.7 80.8 L241.1 81.1 L245.2 80.7 L250.1 79.5 L250.4 80.9 L250.6 79.6 L250.8 79.3 L252.8 78.0 L255.1 77.4 L257.0 77.2 L258.3 77.2 L259.9 77.7 L261.5 78.4 L263.7 80.0 L265.9 82.1 L266.5 83.1 L270.0 87.6 L271.8 90.3 L273.2 92.8 L274.1 94.0 L276.5 95.9 L279.2 97.7 L282.3 100.1 L284.9 102.7 L285.1 102.8 L285.1 103.1 L286.2 103.6 L287.4 104.9 L288.5 105.6 L289.0 106.4 L290.6 107.8 L292.3 110.8 L292.8 112.2 L294.8 115.8 L296.1 119.3 L296.3 120.3 L296.9 121.2 L299.2 122.7 L300.4 122.8 L301.5 122.7 L302.0 122.4 L303.2 121.6 L305.2 119.6 L306.3 118.9 L306.4 119.1 L306.4 118.8 L307.0 118.5 L311.0 116.6 L312.6 116.1 L313.6 115.9 L314.7 116.0 L318.8 116.7 L320.6 116.8 L323.9 117.9 L326.4 119.1 L328.8 121.1 L330.7 121.6 L331.0 121.8 L329.8 121.9 L327.2 120.4 L325.8 119.3 L323.4 118.2 L320.8 117.5 L319.8 117.3 L319.7 117.4 L319.7 117.2 L313.7 116.6 L312.4 116.6 L311.0 117.1 L306.7 119.0 L305.6 119.6 L304.5 120.6 L302.9 122.1 L303.2 122.4 L303.2 122.2 L302.9 122.3 L302.9 122.2 L302.9 122.4 L302.7 122.4 L302.8 122.2 L302.6 122.2 L301.7 122.8 L300.4 123.0 L299.5 123.0 L298.6 122.8 L297.8 122.3 L296.7 121.4 L296.0 120.5 L295.1 118.5 L294.3 115.8 L290.2 108.3 L287.8 105.6 L286.5 104.7 L283.5 102.0 L282.2 101.1 L280.7 99.4 L276.8 96.6 L275.4 95.7 L273.6 94.0 L270.2 88.7 L267.4 84.8 L263.6 80.5 L262.0 79.3 L258.6 77.9 L257.0 77.8 L254.5 78.1 L247.2 80.5 L241.9 81.3 L238.0 81.1 L235.1 81.6 L232.2 81.7 L229.9 82.1 L226.2 82.1 L222.8 81.9 L220.1 81.3 L218.7 80.7 L214.9 78.5 L212.7 77.0 L204.2 72.6 L202.2 71.1 L200.5 69.5 L199.4 68.7 L196.8 66.1 L195.0 63.8 L193.3 62.2 L192.5 61.3 L192.6 60.9 L191.9 60.6 L190.4 59.2 L189.8 58.8 L185.2 57.6 L182.4 57.5 L180.3 57.9 L175.6 60.6 L173.5 61.4 L169.6 63.3 L168.7 63.9 L166.9 65.7 L166.0 66.7 L165.0 68.3 L164.5 72.3 L163.6 76.0 L160.7 83.7 L159.6 85.6 L155.7 90.8 L154.5 92.2 L153.6 93.0 L152.6 93.6 L151.9 93.8 L149.7 93.9 L147.5 93.5 L143.6 91.1 L142.0 89.9 L138.7 86.2 L133.9 83.0 L132.8 81.4 L131.8 80.3 L128.7 75.2 L127.8 74.4 L127.9 74.4 L126.8 73.9 L125.0 73.6 L117.7 73.2 L115.5 73.8 L114.0 74.4 L113.1 74.4 L106.3 72.7 L98.3 71.7 L94.2 70.3 L92.3 69.8 L92.0 69.8 L93.0 70.6 L94.1 71.0 L94.4 71.1 L94.9 72.7 L95.9 73.7 L97.1 74.0 L98.1 75.1 L98.2 75.6 L98.2 75.8 L97.1 76.4 L95.7 76.4 L93.4 75.9 L89.8 74.8 L88.6 74.7 L86.7 74.9 L84.6 75.4 L82.3 76.6 L80.2 77.9 L77.8 79.1 L69.8 79.9 L66.8 80.8 L64.4 81.8 L62.7 82.8 L61.6 84.1 L58.7 86.2 L56.6 87.7 L53.1 91.7 L51.7 93.4 L50.8 94.4 L49.3 95.6 L47.4 96.2 L46.2 96.2 L44.5 95.9 L43.5 95.5 L41.6 95.2 L39.1 95.7 L36.2 95.9 L32.1 95.8 L31.3 95.2 L30.3 93.9 L30.0 93.2 L29.9 91.7 L29.4 90.8 L28.9 90.9 L28.2 91.3 L28.1 91.8 L28.0 91.2 L28.2 91.3 L28.2 91.8 L28.2 91.7 L28.2 91.7" fill="none" stroke="#8B7BFF" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="28.5" cy="90.9" r="5" fill="#2ED3B0" stroke="#0A0C11" stroke-width="2"/><circle cx="28.2" cy="91.7" r="5" fill="#F3F5F9" stroke="#0A0C11" stroke-width="2"/></svg><span class="chip">Karkonosze · KRNAP</span><span class="exp"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></span><span class="leg"><span><i style="background:#2ED3B0"></i>Start</span><span><i style="background:#F3F5F9"></i>Finish</span></span></div>
+<div class="in">
+<div class="hero2">
+<div><div class="lbl">Distance</div><div class="num hv">10.2<span class="u">km</span></div></div>
+<div><div class="lbl">Ascent</div><div class="num hv">398<span class="u">m</span></div></div>
+</div>
+<div class="tiles">
+<div class="tile"><div class="k" style="color:#6FAEFF"><i style="background:#3B8CFF"></i>Moving</div><div class="num">2:36</div><div class="sub">3:00 with stops</div></div>
+<div class="tile"><div class="k" style="color:#FF7A8A"><i style="background:#FF5A6E"></i>Avg HR</div><div class="num">100<span style="color:#FF7A8A">bpm</span></div><div class="sub">max 139</div></div>
+<div class="tile"><div class="k" style="color:#FFB067"><i style="background:#FF8A2A"></i>Speed</div><div class="num">3.9<span style="color:#FFB067">km/h</span></div><div class="sub">max 5.9</div></div>
+</div>
+<div class="ilist"><span>Calories<b>701 kcal</b></span><span>Elapsed<b>2:59:54</b></span></div>
+</div>
+</div>
+
+<div class="win"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="#D4FF3A"><path d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 7 13c0-2 1-3.4 2-4.5.2 1.6 1 2.8 2.2 3.2C10.6 8 11.4 4.6 12 2z"/></svg></span><div><div class="k">Consistency</div><b>Day 295 of your streak</b><p>5 days to 300 in a row.</p></div></div>
+
+<div class="card">
+<div class="k" style="color:#A99BFF">Elevation</div>
+<div class="row sbw" style="align-items:baseline"><div class="st">Profile</div><div class="num" style="font-size:17px">↑ 398 <span class="u" style="font-size:12px">m · top 973 m</span></div></div>
+<div class="seg"><span class="on">Elevation</span><span>HR</span><span>Speed</span></div>
+<div class="plot scrub"><svg width="329" height="132" viewBox="0 0 329 132" style="display:block;overflow:visible"><line x1="0" x2="329" y1="109.2" y2="109.2" stroke="#1F242E" stroke-width="1"/><text x="0" y="105.2" fill="#6B7385" font-size="10" font-family="Archivo">750</text><line x1="0" x2="329" y1="63.7" y2="63.7" stroke="#1F242E" stroke-width="1"/><text x="0" y="59.7" fill="#6B7385" font-size="10" font-family="Archivo">850</text><line x1="0" x2="329" y1="18.2" y2="18.2" stroke="#1F242E" stroke-width="1"/><text x="0" y="14.2" fill="#6B7385" font-size="10" font-family="Archivo">950</text><path d="M0.0 127.5 L2.8 124.8 L5.5 123.1 L8.3 121.4 L11.1 117.0 L13.8 113.6 L16.6 113.3 L19.4 110.7 L22.1 109.2 L24.9 107.4 L27.6 106.0 L30.4 103.7 L33.2 101.1 L35.9 100.1 L38.7 97.8 L41.5 97.8 L44.2 92.7 L47.0 91.7 L49.8 88.5 L52.5 86.1 L55.3 83.8 L58.1 80.2 L60.8 80.1 L63.6 77.9 L66.4 77.7 L69.1 75.4 L71.9 72.1 L74.6 68.8 L77.4 68.4 L80.2 65.3 L82.9 63.3 L85.7 62.4 L88.5 59.5 L91.2 57.3 L94.0 58.1 L96.8 53.2 L99.5 51.1 L102.3 49.9 L105.1 49.6 L107.8 48.0 L110.6 46.0 L113.4 42.1 L116.1 41.8 L118.9 38.2 L121.6 37.1 L124.4 38.7 L127.2 36.1 L129.9 33.5 L132.7 30.7 L135.5 28.7 L138.2 24.5 L141.0 23.0 L143.8 21.6 L146.5 19.9 L149.3 17.9 L152.1 16.6 L154.8 15.1 L157.6 12.1 L160.4 12.6 L163.1 9.2 L165.9 7.5 L168.6 6.8 L171.4 8.4 L174.2 11.6 L176.9 13.1 L179.7 15.7 L182.5 17.5 L185.2 19.2 L188.0 20.4 L190.8 22.0 L193.5 24.2 L196.3 27.5 L199.1 29.0 L201.8 30.4 L204.6 31.1 L207.4 34.2 L210.1 38.0 L212.9 38.9 L215.6 40.4 L218.4 41.0 L221.2 43.3 L223.9 46.9 L226.7 47.5 L229.5 52.1 L232.2 52.0 L235.0 54.0 L237.8 54.3 L240.5 56.6 L243.3 61.6 L246.1 64.5 L248.8 64.3 L251.6 66.8 L254.4 68.5 L257.1 70.1 L259.9 74.9 L262.6 77.6 L265.4 78.5 L268.2 80.6 L270.9 83.9 L273.7 84.7 L276.5 87.7 L279.2 88.8 L282.0 89.8 L284.8 90.8 L287.5 94.9 L290.3 98.5 L293.1 100.3 L295.8 100.0 L298.6 104.1 L301.4 105.9 L304.1 106.8 L306.9 108.6 L309.6 110.8 L312.4 113.3 L315.2 115.2 L317.9 117.6 L320.7 121.1 L323.5 123.5 L326.2 125.1 L329.0 126.6 L329 132 L0 132 Z" fill="#8B7BFF" fill-opacity=".14"/><path d="M0.0 127.5 L2.8 124.8 L5.5 123.1 L8.3 121.4 L11.1 117.0 L13.8 113.6 L16.6 113.3 L19.4 110.7 L22.1 109.2 L24.9 107.4 L27.6 106.0 L30.4 103.7 L33.2 101.1 L35.9 100.1 L38.7 97.8 L41.5 97.8 L44.2 92.7 L47.0 91.7 L49.8 88.5 L52.5 86.1 L55.3 83.8 L58.1 80.2 L60.8 80.1 L63.6 77.9 L66.4 77.7 L69.1 75.4 L71.9 72.1 L74.6 68.8 L77.4 68.4 L80.2 65.3 L82.9 63.3 L85.7 62.4 L88.5 59.5 L91.2 57.3 L94.0 58.1 L96.8 53.2 L99.5 51.1 L102.3 49.9 L105.1 49.6 L107.8 48.0 L110.6 46.0 L113.4 42.1 L116.1 41.8 L118.9 38.2 L121.6 37.1 L124.4 38.7 L127.2 36.1 L129.9 33.5 L132.7 30.7 L135.5 28.7 L138.2 24.5 L141.0 23.0 L143.8 21.6 L146.5 19.9 L149.3 17.9 L152.1 16.6 L154.8 15.1 L157.6 12.1 L160.4 12.6 L163.1 9.2 L165.9 7.5 L168.6 6.8 L171.4 8.4 L174.2 11.6 L176.9 13.1 L179.7 15.7 L182.5 17.5 L185.2 19.2 L188.0 20.4 L190.8 22.0 L193.5 24.2 L196.3 27.5 L199.1 29.0 L201.8 30.4 L204.6 31.1 L207.4 34.2 L210.1 38.0 L212.9 38.9 L215.6 40.4 L218.4 41.0 L221.2 43.3 L223.9 46.9 L226.7 47.5 L229.5 52.1 L232.2 52.0 L235.0 54.0 L237.8 54.3 L240.5 56.6 L243.3 61.6 L246.1 64.5 L248.8 64.3 L251.6 66.8 L254.4 68.5 L257.1 70.1 L259.9 74.9 L262.6 77.6 L265.4 78.5 L268.2 80.6 L270.9 83.9 L273.7 84.7 L276.5 87.7 L279.2 88.8 L282.0 89.8 L284.8 90.8 L287.5 94.9 L290.3 98.5 L293.1 100.3 L295.8 100.0 L298.6 104.1 L301.4 105.9 L304.1 106.8 L306.9 108.6 L309.6 110.8 L312.4 113.3 L315.2 115.2 L317.9 117.6 L320.7 121.1 L323.5 123.5 L326.2 125.1 L329.0 126.6" fill="none" stroke="#8B7BFF" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round"/><line x1="152.1" x2="152.1" y1="0" y2="132" stroke="#F3F5F9" stroke-opacity=".7" stroke-width="1"/><circle cx="152.1" cy="16.6" r="4.5" fill="#8B7BFF" stroke="#12151C" stroke-width="2"/><rect x="84.5" y="-26" width="135.2" height="20" rx="10" fill="#F3F5F9"/><text x="152.1" y="-12" text-anchor="middle" fill="#0A0C11" font-size="11" font-weight="600" font-family="Archivo">1:14 · 968 m · 112 bpm</text></svg></div>
+<div class="xax"><span>0 km</span><span>2.5</span><span>5</span><span>7.5</span><span>10.2 km</span></div>
+<div class="leg2"><span>Shown mid-scrub: the dot also moves on the map above.</span></div>
+</div>
+
+<div class="card">
+<div class="row sbw"><div><div class="k" style="color:#A99BFF">How it felt</div><div class="st">Check the pain</div></div><span class="edit">Edit</span></div>
+<div class="feel">
+<div class="fm"><div class="l">Effort</div><div class="v"><span class="num">2</span><em style="color:#D4FF3A">Very easy</em></div><div class="bars"><i style="background:#D4FF3A"></i><i style="background:#D4FF3A"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+<div class="fm"><div class="l">Energy</div><div class="v"><span class="num">4</span><em>Good</em></div><div class="bars"><i style="background:#2ED3B0"></i><i style="background:#2ED3B0"></i><i style="background:#2ED3B0"></i><i style="background:#2ED3B0"></i><i></i></div></div>
+<div class="fm"><div class="l">Soreness</div><div class="v"><span class="num">3</span><em>Some</em></div><div class="bars"><i style="background:#FFC83A"></i><i style="background:#FFC83A"></i><i style="background:#FFC83A"></i><i></i><i></i></div></div>
+<div class="fm"><div class="l">Pain</div><div class="v"><span class="num" style="color:#FF5A6E">6</span><em style="color:#FF5A6E">/10</em></div><div class="bars"><i style="background:#FF5A6E"></i><i style="background:#FF5A6E"></i><i style="background:#FF5A6E"></i><i style="background:#FF5A6E"></i><i style="background:#FF5A6E"></i><i style="background:#FF5A6E"></i><i></i><i></i><i></i><i></i></div></div>
+</div>
+</div>
+
+<div class="card coach">
+<div class="k" style="color:#8A93A6">Coach take</div>
+<h4>No written take yet</h4>
+<p>Ask what to take from this hike. It lands here and on the web page.</p>
+<div class="obtn">Ask the coach</div>
+</div>
+</div></div>
+<div class="frame-cap"><b>Pain ≥ 4 jumps to the top</b> as the only red element, with the note quoted there (so How it felt doesn't repeat it). Region chip in the header and on the map. The profile is the hike's chart, shown here mid-scrub.</div>
+</div>
+
+<!-- ============ 3d. STRENGTH ============ -->
+<div class="frame">
+<div class="lbl">03d · Strength · lifts vs last time</div>
+<div class="phone">
+<div class="island"></div><div class="fold"></div>
+<div class="sb"><span>22:30</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr">
+<div class="pills"><span class="spill" style="background:rgba(255,77,154,.14);color:#FF7AB4">Strength</span><span class="gpill">Upper chest</span></div>
+<div class="ttl h-ttl">Workout A · Upper Chest</div>
+<div class="h-meta">Mon 26 Oct · 20:49 <b>· logged in TrainLog</b></div>
+</div>
+
+<div class="card hero" style="border-top:2px solid #FF4D9A">
+<div class="in">
+<div class="hero2">
+<div><div class="lbl">Volume</div><div class="num hv">4.08<span class="u">t</span></div></div>
+<div><div class="lbl">Time</div><div class="num hv">1:39<span class="u">h</span></div></div>
+</div>
+<div class="tiles">
+<div class="tile"><div class="k" style="color:#FF7AB4"><i style="background:#FF4D9A"></i>Vs last</div><div class="num">+3<span style="color:#FF7AB4">%</span></div><div class="sub">3.96 t · same 5</div></div>
+<div class="tile"><div class="k" style="color:#A3ABBC"><i style="background:#A3ABBC"></i>Sets · reps</div><div class="num">17<span style="color:#8A93A6">· 217</span></div><div class="sub">5 lifts</div></div>
+<div class="tile"><div class="k" style="color:#FF7A8A"><i style="background:#FF5A6E"></i>Avg HR</div><div class="num">106<span style="color:#FF7A8A">bpm</span></div><div class="sub">90–147</div></div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="row sbw"><div class="k" style="color:#FF7AB4">Session read</div><span class="badge b-good">On intent</span></div>
+<div class="st">3 of 5 lifts up on last time</div>
+<div class="ss" style="display:flex;gap:8px;align-items:center"><span style="flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4FF3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span><span>Bench press, bicep curl and skullcrusher moved up.</span></div>
+<div class="sig">
+<div><div class="l">Incline bench e1RM</div><div class="v">79.2 kg <svg width="48" height="20" style="display:block"><path d="M2.0 2.0 L10.8 7.9 L19.6 2.0 L28.4 18.0 L37.2 18.0 L46.0 14.0" fill="none" stroke="#2ED3B0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="46.0" cy="14.0" r="2.5" fill="#2ED3B0"/></svg></div><div class="d t-good">+3.2 vs 10 Oct</div></div>
+<div><div class="l">Pull up</div><div class="v">10 reps <svg width="48" height="20" style="display:block"><path d="M2.0 2.0 L10.8 18.0 L19.6 18.0 L28.4 10.0 L37.2 2.0 L46.0 18.0" fill="none" stroke="#FFC83A" stroke-width="1.5" stroke-linejoin="round"/><circle cx="46.0" cy="18.0" r="2.5" fill="#FFC83A"/></svg></div><div class="d t-warn">−2 vs 18 Oct</div></div>
+</div>
+<div class="next"><span class="k">Next time</span><span>Incline bench: every set at 62.5 kg × 8. Try <b style="color:#D4FF3A;font-weight:600">65 kg</b>.</span></div>
+</div>
+
+<div class="card">
+<div class="row sbw"><div class="k" style="color:#FF7AB4">The work you did</div><span class="muted" style="font-size:12px">vs last time</span></div>
+<div class="st" style="margin-bottom:12px">Each lift</div>
+<div class="lift"><div class="top"><span class="ix">01</span><div style="flex:1"><div class="nm">Barbell Incline Bench Press</div><div class="mu">Chest</div></div><span class="badge b-good">▲ 3.2 kg</span></div>
+<div class="sets"><span>62.5<small>×8</small></span><span>62.5<small>×8</small></span><span>62.5<small>×8</small></span><span>62.5<small>×8</small></span></div>
+<div class="last"><span>Last <b>4 × 8 @ 60 kg</b> · 10 Oct</span><span>e1RM 79.2</span></div></div>
+<div class="lift"><div class="top"><span class="ix">02</span><div style="flex:1"><div class="nm">Pull Up</div><div class="mu">Lats</div></div><span class="badge b-warn">▼ 2 reps</span></div>
+<div class="sets"><span>10<small>reps</small></span><span>10<small>reps</small></span><span>10<small>reps</small></span></div>
+<div class="last"><span>Last <b>12 · 10 reps</b> · 18 Oct</span></div></div>
+<div class="lift"><div class="top"><span class="ix">03</span><div style="flex:1"><div class="nm">Dumbbell Lateral Raise</div><div class="mu">Shoulders</div></div><span class="badge b-same">= Matched</span></div>
+<div class="sets"><span>14<small>×20</small></span><span>14<small>×20</small></span><span>14<small>×20</small></span><span>14<small>×20</small></span></div>
+<div class="last"><span>Last <b>5 × 20 @ 14 kg</b> · 25 Oct</span></div></div>
+<div class="lift"><div class="top"><span class="ix">04</span><div style="flex:1"><div class="nm">Dumbbell Bicep Curl</div><div class="mu">Biceps</div></div><span class="badge b-good">▲ 10 reps</span></div>
+<div class="sets"><span>14<small>×10</small></span><span>14<small>×10</small></span><span>14<small>×10</small></span></div>
+<div class="last"><span>Last <b>2 × 10 @ 14 kg</b> · 18 Oct</span></div></div>
+<div class="lift"><div class="top"><span class="ix">05</span><div style="flex:1"><div class="nm">Dumbbell Skullcrusher</div><div class="mu">Triceps</div></div><span class="badge b-good">▲ 15 reps</span></div>
+<div class="sets"><span>12<small>×15</small></span><span>12<small>×15</small></span><span>12<small>×15</small></span></div>
+<div class="last"><span>Last <b>3 × 10 @ 12 kg</b> · 25 Oct</span></div></div>
+</div>
+
+<div class="card">
+<div class="k" style="color:#FF7AB4">Heart rate</div>
+<div class="row sbw" style="align-items:baseline"><div class="st">Across the session</div><div class="num" style="font-size:17px">avg 106 <span class="u" style="font-size:12px">bpm</span></div></div>
+<div class="plot"><svg width="329" height="88" viewBox="0 0 329 88" style="display:block;overflow:visible"><line x1="0" x2="329" y1="66.9" y2="66.9" stroke="#1F242E" stroke-width="1"/><text x="0" y="62.9" fill="#6B7385" font-size="10" font-family="Archivo">100</text><line x1="0" x2="329" y1="31.7" y2="31.7" stroke="#1F242E" stroke-width="1"/><text x="0" y="27.7" fill="#6B7385" font-size="10" font-family="Archivo">120</text><path d="M0.0 77.4 L2.8 7.4 L5.5 23.6 L8.3 35.2 L11.1 14.8 L13.8 11.6 L16.6 4.6 L19.4 22.5 L22.1 29.6 L24.9 33.8 L27.6 9.9 L30.4 16.2 L33.2 25.7 L35.9 55.0 L38.7 33.8 L41.5 12.3 L44.2 46.5 L47.0 46.5 L49.8 16.2 L52.5 50.0 L55.3 55.0 L58.1 54.9 L60.8 57.7 L63.6 56.3 L66.4 65.1 L69.1 67.6 L71.9 64.1 L74.6 60.5 L77.4 62.7 L80.2 10.6 L82.9 58.8 L85.7 43.6 L88.5 60.9 L91.2 65.6 L94.0 64.1 L96.8 62.7 L99.5 66.2 L102.3 65.1 L105.1 14.1 L107.8 58.4 L110.6 71.3 L113.4 69.0 L116.1 62.7 L118.9 68.3 L121.6 70.4 L124.4 69.0 L127.2 67.2 L129.9 73.2 L132.7 63.0 L135.5 29.6 L138.2 60.5 L141.0 65.8 L143.8 74.3 L146.5 53.2 L149.3 46.8 L152.1 52.1 L154.8 49.3 L157.6 49.6 L160.4 58.1 L163.1 48.9 L165.9 56.8 L168.6 54.6 L171.4 51.0 L174.2 53.9 L176.9 56.3 L179.7 56.3 L182.5 55.6 L185.2 58.8 L188.0 65.8 L190.8 62.7 L193.5 72.2 L196.3 65.8 L199.1 70.4 L201.8 64.2 L204.6 65.5 L207.4 58.4 L210.1 67.2 L212.9 68.3 L215.6 66.5 L218.4 64.4 L221.2 62.5 L223.9 74.3 L226.7 61.2 L229.5 70.8 L232.2 53.5 L235.0 42.2 L237.8 79.2 L240.5 77.4 L243.3 73.6 L246.1 67.6 L248.8 72.9 L251.6 78.5 L254.4 35.6 L257.1 66.9 L259.9 82.4 L262.6 78.5 L265.4 72.5 L268.2 66.9 L270.9 70.4 L273.7 80.6 L276.5 70.8 L279.2 70.8 L282.0 74.3 L284.8 66.9 L287.5 73.6 L290.3 73.6 L293.1 43.3 L295.8 66.2 L298.6 80.6 L301.4 78.5 L304.1 79.9 L306.9 36.3 L309.6 69.7 L312.4 70.4 L315.2 74.3 L317.9 77.4 L320.7 81.7 L323.5 49.3 L326.2 72.5 L329.0 40.5 L329 88 L0 88 Z" fill="#FF5A6E" fill-opacity=".14"/><path d="M0.0 77.4 L2.8 7.4 L5.5 23.6 L8.3 35.2 L11.1 14.8 L13.8 11.6 L16.6 4.6 L19.4 22.5 L22.1 29.6 L24.9 33.8 L27.6 9.9 L30.4 16.2 L33.2 25.7 L35.9 55.0 L38.7 33.8 L41.5 12.3 L44.2 46.5 L47.0 46.5 L49.8 16.2 L52.5 50.0 L55.3 55.0 L58.1 54.9 L60.8 57.7 L63.6 56.3 L66.4 65.1 L69.1 67.6 L71.9 64.1 L74.6 60.5 L77.4 62.7 L80.2 10.6 L82.9 58.8 L85.7 43.6 L88.5 60.9 L91.2 65.6 L94.0 64.1 L96.8 62.7 L99.5 66.2 L102.3 65.1 L105.1 14.1 L107.8 58.4 L110.6 71.3 L113.4 69.0 L116.1 62.7 L118.9 68.3 L121.6 70.4 L124.4 69.0 L127.2 67.2 L129.9 73.2 L132.7 63.0 L135.5 29.6 L138.2 60.5 L141.0 65.8 L143.8 74.3 L146.5 53.2 L149.3 46.8 L152.1 52.1 L154.8 49.3 L157.6 49.6 L160.4 58.1 L163.1 48.9 L165.9 56.8 L168.6 54.6 L171.4 51.0 L174.2 53.9 L176.9 56.3 L179.7 56.3 L182.5 55.6 L185.2 58.8 L188.0 65.8 L190.8 62.7 L193.5 72.2 L196.3 65.8 L199.1 70.4 L201.8 64.2 L204.6 65.5 L207.4 58.4 L210.1 67.2 L212.9 68.3 L215.6 66.5 L218.4 64.4 L221.2 62.5 L223.9 74.3 L226.7 61.2 L229.5 70.8 L232.2 53.5 L235.0 42.2 L237.8 79.2 L240.5 77.4 L243.3 73.6 L246.1 67.6 L248.8 72.9 L251.6 78.5 L254.4 35.6 L257.1 66.9 L259.9 82.4 L262.6 78.5 L265.4 72.5 L268.2 66.9 L270.9 70.4 L273.7 80.6 L276.5 70.8 L279.2 70.8 L282.0 74.3 L284.8 66.9 L287.5 73.6 L290.3 73.6 L293.1 43.3 L295.8 66.2 L298.6 80.6 L301.4 78.5 L304.1 79.9 L306.9 36.3 L309.6 69.7 L312.4 70.4 L315.2 74.3 L317.9 77.4 L320.7 81.7 L323.5 49.3 L326.2 72.5 L329.0 40.5" fill="none" stroke="#FF5A6E" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round"/><line x1="0" x2="329" y1="56.3" y2="56.3" stroke="#A3ABBC" stroke-opacity=".55" stroke-dasharray="3 3"/><rect x="302.4" y="47.3" width="26.6" height="18" rx="9" fill="#232835"/><text x="315.7" y="60.3" text-anchor="middle" fill="#F3F5F9" font-size="11" font-weight="700" font-family="Barlow Condensed">106</text></svg></div>
+<div class="xax"><span>0:00</span><span>50:00</span><span>1:38:55</span></div>
+</div>
+
+<div class="card">
+<div class="row sbw"><div><div class="k" style="color:#FF7AB4">How it felt</div><div class="st">Steady</div></div><span class="edit">Edit</span></div>
+<div class="feel">
+<div class="fm"><div class="l">Effort</div><div class="v"><span class="num">3</span><em style="color:#D4FF3A">Easy</em></div><div class="bars"><i style="background:#D4FF3A"></i><i style="background:#D4FF3A"></i><i style="background:#D4FF3A"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+<div class="fm"><div class="l">Energy</div><div class="v"><span class="num">3</span><em>OK</em></div><div class="bars"><i style="background:#2ED3B0"></i><i style="background:#2ED3B0"></i><i style="background:#2ED3B0"></i><i></i><i></i></div></div>
+<div class="fm"><div class="l">Soreness</div><div class="v"><span class="num">2</span><em>Light</em></div><div class="bars"><i style="background:#FFC83A"></i><i style="background:#FFC83A"></i><i></i><i></i><i></i></div></div>
+<div class="fm"><div class="l">Pain</div><div class="v"><span class="num" style="color:#2ED3B0">0</span><em style="color:#2ED3B0">Pain-free</em></div><div class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+</div>
+<div class="quote">Helping nephew with studies during workout thats why it takes so long</div>
+</div>
+
+<div class="card coach">
+<div class="k" style="color:#8A93A6">Coach take</div>
+<h4>Strength held up right after a week of big hiking days; bench rebound is a good sign, not a reason to rush load</h4>
+<p>This lift came straight after five consecutive long hiking days (about 30.8 km/514 min down to roughly 10 km) and a 45-minute lift yesterday. Pressing strength still rose and effort was only RPE 3 with no pain…</p>
+<div class="more"><span>3 observations</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+</div>
+</div></div>
+<div class="frame-cap"><b>The win and the Session read had the same headline, so they merge.</b> The win's detail becomes the line under the verdict. Lifts read as a numbered list with hairlines. Badge colours: up = teal, down = amber, matched = grey. Volt appears only on the next-time target.</div>
+</div>
+
+<!-- ============ 3e. OTHER / PHYSIO ============ -->
+<div class="frame">
+<div class="lbl">03e · Other · physio, no feedback yet</div>
+<div class="phone">
+<div class="island"></div><div class="fold"></div>
+<div class="sb"><span>20:40</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr">
+<div class="pills"><span class="spill" style="background:rgba(139,123,255,.16);color:#A99BFF">Physio</span></div>
+<div class="ttl h-ttl">Evening Physiotherapy</div>
+<div class="h-meta">Wed 9 Sep · 19:30 <b>· Strava</b></div>
+</div>
+
+<div class="card hero" style="border-top:2px solid #8B7BFF">
+<div class="in">
+<div class="hero2">
+<div><div class="lbl">Time</div><div class="num hv">20:00</div></div>
+<div><div class="lbl">Avg HR</div><div class="num hv">117<span class="u">bpm</span></div></div>
+</div>
+<div class="ilist"><span>Max HR<b>133 bpm</b></span><span>Elapsed<b>20:00</b></span></div>
+</div>
+</div>
+
+<div class="card">
+<div class="k" style="color:#A99BFF">How it felt</div>
+<div class="st">Log it while it's fresh</div>
+<div class="ss">Effort, energy, soreness and pain. Takes ten seconds.</div>
+<div class="volt">Log how it felt</div>
+</div>
+
+<div class="win"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="#D4FF3A"><path d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 7 13c0-2 1-3.4 2-4.5.2 1.6 1 2.8 2.2 3.2C10.6 8 11.4 4.6 12 2z"/></svg></span><div><div class="k">Consistency</div><b>Day 250 of your streak</b><p>50 days to 300 in a row.</p></div></div>
+
+<div class="card">
+<div class="k" style="color:#A99BFF">Heart rate</div>
+<div class="row sbw" style="align-items:baseline"><div class="st">Across the session</div><div class="num" style="font-size:17px">avg 117 <span class="u" style="font-size:12px">bpm</span></div></div>
+<div class="plot"><svg width="329" height="100" viewBox="0 0 329 100" style="display:block;overflow:visible"><line x1="0" x2="329" y1="70.6" y2="70.6" stroke="#1F242E" stroke-width="1"/><text x="0" y="66.6" fill="#6B7385" font-size="10" font-family="Archivo">110</text><line x1="0" x2="329" y1="41.2" y2="41.2" stroke="#1F242E" stroke-width="1"/><text x="0" y="37.2" fill="#6B7385" font-size="10" font-family="Archivo">120</text><line x1="0" x2="329" y1="11.8" y2="11.8" stroke="#1F242E" stroke-width="1"/><text x="0" y="7.8" fill="#6B7385" font-size="10" font-family="Archivo">130</text><path d="M0.0 20.6 L2.8 11.8 L5.5 41.2 L8.3 38.2 L11.1 50.0 L13.8 38.2 L16.6 38.2 L19.4 38.2 L22.1 52.9 L24.9 70.6 L27.6 61.8 L30.4 61.8 L33.2 61.8 L35.9 64.7 L38.7 73.5 L41.5 61.8 L44.2 55.9 L47.0 58.8 L49.8 55.9 L52.5 58.8 L55.3 55.9 L58.1 64.7 L60.8 70.6 L63.6 73.5 L66.4 73.5 L69.1 67.6 L71.9 64.7 L74.6 73.5 L77.4 70.6 L80.2 67.6 L82.9 67.6 L85.7 67.6 L88.5 67.6 L91.2 64.7 L94.0 64.7 L96.8 67.6 L99.5 67.6 L102.3 61.8 L105.1 14.7 L107.8 23.5 L110.6 47.1 L113.4 17.6 L116.1 8.8 L118.9 23.5 L121.6 32.4 L124.4 17.6 L127.2 17.6 L129.9 11.8 L132.7 5.9 L135.5 17.6 L138.2 14.7 L141.0 14.7 L143.8 52.9 L146.5 38.2 L149.3 52.9 L152.1 73.5 L154.8 70.6 L157.6 73.5 L160.4 44.1 L163.1 50.0 L165.9 32.4 L168.6 44.1 L171.4 38.2 L174.2 32.4 L176.9 58.8 L179.7 35.3 L182.5 35.3 L185.2 38.2 L188.0 26.5 L190.8 41.2 L193.5 17.6 L196.3 38.2 L199.1 32.4 L201.8 47.1 L204.6 41.2 L207.4 32.4 L210.1 61.8 L212.9 73.5 L215.6 94.1 L218.4 64.7 L221.2 64.7 L223.9 82.4 L226.7 70.6 L229.5 64.7 L232.2 70.6 L235.0 20.6 L237.8 11.8 L240.5 26.5 L243.3 38.2 L246.1 41.2 L248.8 26.5 L251.6 52.9 L254.4 70.6 L257.1 73.5 L259.9 35.3 L262.6 20.6 L265.4 29.4 L268.2 17.6 L270.9 26.5 L273.7 44.1 L276.5 35.3 L279.2 58.8 L282.0 70.6 L284.8 88.2 L287.5 85.3 L290.3 94.1 L293.1 88.2 L295.8 38.2 L298.6 58.8 L301.4 52.9 L304.1 70.6 L306.9 70.6 L309.6 41.2 L312.4 64.7 L315.2 26.5 L317.9 14.7 L320.7 23.5 L323.5 32.4 L326.2 38.2 L329.0 41.2 L329 100 L0 100 Z" fill="#FF5A6E" fill-opacity=".14"/><path d="M0.0 20.6 L2.8 11.8 L5.5 41.2 L8.3 38.2 L11.1 50.0 L13.8 38.2 L16.6 38.2 L19.4 38.2 L22.1 52.9 L24.9 70.6 L27.6 61.8 L30.4 61.8 L33.2 61.8 L35.9 64.7 L38.7 73.5 L41.5 61.8 L44.2 55.9 L47.0 58.8 L49.8 55.9 L52.5 58.8 L55.3 55.9 L58.1 64.7 L60.8 70.6 L63.6 73.5 L66.4 73.5 L69.1 67.6 L71.9 64.7 L74.6 73.5 L77.4 70.6 L80.2 67.6 L82.9 67.6 L85.7 67.6 L88.5 67.6 L91.2 64.7 L94.0 64.7 L96.8 67.6 L99.5 67.6 L102.3 61.8 L105.1 14.7 L107.8 23.5 L110.6 47.1 L113.4 17.6 L116.1 8.8 L118.9 23.5 L121.6 32.4 L124.4 17.6 L127.2 17.6 L129.9 11.8 L132.7 5.9 L135.5 17.6 L138.2 14.7 L141.0 14.7 L143.8 52.9 L146.5 38.2 L149.3 52.9 L152.1 73.5 L154.8 70.6 L157.6 73.5 L160.4 44.1 L163.1 50.0 L165.9 32.4 L168.6 44.1 L171.4 38.2 L174.2 32.4 L176.9 58.8 L179.7 35.3 L182.5 35.3 L185.2 38.2 L188.0 26.5 L190.8 41.2 L193.5 17.6 L196.3 38.2 L199.1 32.4 L201.8 47.1 L204.6 41.2 L207.4 32.4 L210.1 61.8 L212.9 73.5 L215.6 94.1 L218.4 64.7 L221.2 64.7 L223.9 82.4 L226.7 70.6 L229.5 64.7 L232.2 70.6 L235.0 20.6 L237.8 11.8 L240.5 26.5 L243.3 38.2 L246.1 41.2 L248.8 26.5 L251.6 52.9 L254.4 70.6 L257.1 73.5 L259.9 35.3 L262.6 20.6 L265.4 29.4 L268.2 17.6 L270.9 26.5 L273.7 44.1 L276.5 35.3 L279.2 58.8 L282.0 70.6 L284.8 88.2 L287.5 85.3 L290.3 94.1 L293.1 88.2 L295.8 38.2 L298.6 58.8 L301.4 52.9 L304.1 70.6 L306.9 70.6 L309.6 41.2 L312.4 64.7 L315.2 26.5 L317.9 14.7 L320.7 23.5 L323.5 32.4 L326.2 38.2 L329.0 41.2" fill="none" stroke="#FF5A6E" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round"/><line x1="0" x2="329" y1="50.0" y2="50.0" stroke="#A3ABBC" stroke-opacity=".55" stroke-dasharray="3 3"/><rect x="302.4" y="41.0" width="26.6" height="18" rx="9" fill="#232835"/><text x="315.7" y="54.0" text-anchor="middle" fill="#F3F5F9" font-size="11" font-weight="700" font-family="Barlow Condensed">117</text></svg></div>
+<div class="xax"><span>0:00</span><span>10:00</span><span>20:00</span></div>
+</div>
+</div></div>
+<div class="frame-cap"><b>The shortest page, and it still has one hero.</b> No feedback yet, so the volt "Log how it felt" card moves up under the hero (the page's one primary action) and opens the existing FeedbackSheet. No coach card for Other, same as v2.</div>
+</div>
+
+<!-- ============ 4. COMPONENT SHEET ============ -->
+<div class="section-head"><div class="lbl" style="color:#D4FF3A">04 · Component sheet · 1:1, sizes in pt</div></div>
+
+<div class="frame">
+<div class="notes" style="width:auto;padding:32px">
+
+<div class="spec">
+<div class="v3" style="padding:0"><div class="hdr" style="padding:0">
+<div class="pills"><span class="spill" style="background:rgba(59,140,255,.14);color:#6FAEFF">Indoor ride</span><span class="gpill">Recovery</span></div>
+<div class="ttl h-ttl">Test MyWhoosh &amp; Knee</div>
+<div class="h-meta">Tue 27 Oct · 18:35 <b>· MyWhoosh · FTP 215 W</b></div>
+</div></div>
+<div class="txt"><div class="nm">Header</div>
+<b>Nav:</b> floating 44×44 circles, fill <code>#12151C</code>, 1 pt border <code>#1C212B</code>, glyph 18 pt. Collapses to an inline title (Archivo 17/600) after 60 pt of scroll.<br>
+<b>Sport pill:</b> h 24, radius 12, padding 0 10, 11 pt/700, tracking .12em, bg sport @14%, text sport tinted (ride <code>#6FAEFF</code>, run <code>#FFA25A</code>, strength <code>#FF7AB4</code>, hike/other <code>#A99BFF</code>, mobility <code>#2ED3B0</code>). <b>Context pill</b> (intent / region / environment): same size, 1 pt <code>#2A303C</code> outline, <code>#A3ABBC</code>. Gap 8.<br>
+<b>Title:</b> Barlow Condensed 800 italic, 34 pt, line .95, uppercase, 12 below pills. <b>Meta:</b> Archivo 14, <code>#8A93A6</code>, source in <code>#A3ABBC</code>, 8 below.</div>
+</div>
+
+<div class="spec">
+<div class="card hero" style="border-top:2px solid #3B8CFF"><div class="in">
+<div class="hero2"><div><div class="lbl">Moving time</div><div class="num hv">30:24</div></div><div><div class="lbl">Distance</div><div class="num hv">13.5<span class="u">km</span></div></div></div>
+<div class="tiles">
+<div class="tile"><div class="k" style="color:#A99BFF"><i style="background:#8B7BFF"></i>Norm. power</div><div class="num">126<span style="color:#A99BFF">W</span></div><div class="sub">avg 113 W</div></div>
+<div class="tile"><div class="k" style="color:#FFB067"><i style="background:#FF8A2A"></i>Intensity</div><div class="num">0.59<span style="color:#FFB067">IF</span></div><div class="sub">TSS 17</div></div>
+<div class="tile"><div class="k" style="color:#FF7A8A"><i style="background:#FF5A6E"></i>Avg HR</div><div class="num">140<span style="color:#FF7A8A">bpm</span></div><div class="sub">max 159</div></div>
+</div>
+<div class="ilist"><span>Speed<b>26.6 km/h</b></span><span>Cadence<b>85 rpm</b></span><span>Work<b>205 kJ</b></span></div>
+</div></div>
+<div class="txt"><div class="nm">Hero card + stat row</div>
+Card <code>#12151C</code>, 1 pt <code>#1C212B</code>, radius 20, padding 16, <b>2 pt top border in sport colour</b> (the one accent). Map variant: 180 pt map flush at the top, 1 pt hairline under it, chips 28 pt high on <code>rgba(10,12,17,.86)</code>.<br>
+<b>Hero numbers:</b> 2 columns, gap 16. Kicker 11 pt → 8 → Barlow 700 <b>56 pt</b>; unit Archivo 15/500 <code>#8A93A6</code>.<br>
+<b>Tiles:</b> 3 columns, gap 8, 16 below. Inset <code>#0E1117</code>, radius 14, padding 12. Kicker 10 pt/600 tracking .12em with a 6 pt dot, both in the metric colour (power <code>#8B7BFF</code>, intensity/speed <code>#FF8A2A</code>, HR <code>#FF5A6E</code>, time <code>#3B8CFF</code>). Value Barlow 700 <b>28</b>; unit Archivo 12/600 in the metric tint; sub-line Archivo 12 <code>#8A93A6</code>.<br>
+<b>Inline row:</b> 16 below, 12 padding-top over a hairline. Label Archivo 13 <code>#8A93A6</code> + value Barlow 700 16 <code>#F3F5F9</code>, gap 8 × 16, wraps.</div>
+</div>
+
+<div class="spec">
+<div class="card">
+<div class="k" style="color:#6FAEFF">Effort trace</div>
+<div class="row sbw" style="align-items:baseline"><div class="st">Power</div><div class="num" style="font-size:17px">avg 114 <span class="u" style="font-size:12px">W · NP 116</span></div></div>
+<div class="seg"><span class="on">Power</span><span>HR</span><span>Cadence</span><span>Speed</span></div>
+<div class="plot scrub"><svg width="329" height="132" viewBox="0 0 329 132" style="display:block;overflow:visible"><line x1="0" x2="329" y1="115.9" y2="115.9" stroke="#1F242E" stroke-width="1"/><text x="0" y="111.9" fill="#6B7385" font-size="10" font-family="Archivo">80</text><line x1="0" x2="329" y1="83.7" y2="83.7" stroke="#1F242E" stroke-width="1"/><text x="0" y="79.7" fill="#6B7385" font-size="10" font-family="Archivo">100</text><line x1="0" x2="329" y1="51.5" y2="51.5" stroke="#1F242E" stroke-width="1"/><text x="0" y="47.5" fill="#6B7385" font-size="10" font-family="Archivo">120</text><line x1="0" x2="329" y1="19.3" y2="19.3" stroke="#1F242E" stroke-width="1"/><text x="0" y="15.3" fill="#6B7385" font-size="10" font-family="Archivo">140</text><path d="M0.0 132.0 L2.8 78.9 L5.5 68.2 L8.3 68.5 L11.1 68.8 L13.8 68.4 L16.6 68.3 L19.4 68.6 L22.1 68.0 L24.9 68.3 L27.6 68.7 L30.4 68.6 L33.2 67.9 L35.9 68.8 L38.7 68.6 L41.5 68.2 L44.2 68.5 L47.0 68.8 L49.8 68.6 L52.5 68.3 L55.3 68.5 L58.1 68.0 L60.8 68.2 L63.6 68.2 L66.4 68.3 L69.1 68.2 L71.9 68.3 L74.6 68.8 L77.4 68.5 L80.2 68.6 L82.9 68.0 L85.7 68.3 L88.5 68.8 L91.2 68.5 L94.0 68.2 L96.8 68.5 L99.5 68.2 L102.3 68.6 L105.1 68.3 L107.8 67.9 L110.6 68.3 L113.4 53.8 L116.1 35.7 L118.9 36.0 L121.6 27.5 L124.4 4.1 L127.2 4.4 L129.9 3.9 L132.7 3.8 L135.5 4.1 L138.2 4.1 L141.0 3.5 L143.8 4.2 L146.5 4.4 L149.3 31.8 L152.1 52.7 L154.8 52.1 L157.6 51.8 L160.4 51.9 L163.1 52.8 L165.9 52.2 L168.6 52.5 L171.4 67.9 L174.2 68.0 L176.9 68.0 L179.7 68.6 L182.5 68.3 L185.2 68.5 L188.0 68.5 L190.8 68.3 L193.5 68.5 L196.3 68.8 L199.1 69.1 L201.8 68.1 L204.6 68.0 L207.4 68.2 L210.1 68.0 L212.9 68.3 L215.6 68.3 L218.4 68.8 L221.2 67.9 L223.9 68.0 L226.7 68.3 L229.5 68.7 L232.2 68.6 L235.0 68.3 L237.8 68.6 L240.5 68.6 L243.3 68.8 L246.1 68.5 L248.8 69.1 L251.6 68.3 L254.4 68.8 L257.1 68.3 L259.9 68.2 L262.6 67.9 L265.4 68.6 L268.2 68.5 L270.9 67.6 L273.7 68.1 L276.5 68.2 L279.2 68.2 L282.0 68.5 L284.8 68.0 L287.5 68.4 L290.3 68.6 L293.1 68.9 L295.8 68.5 L298.6 68.6 L301.4 68.3 L304.1 68.5 L306.9 68.5 L309.6 68.3 L312.4 68.3 L315.2 68.2 L317.9 68.2 L320.7 68.3 L323.5 68.0 L326.2 68.5 L329.0 68.8 L329 132 L0 132 Z" fill="#3B8CFF" fill-opacity=".14"/><path d="M0.0 132.0 L2.8 78.9 L5.5 68.2 L8.3 68.5 L11.1 68.8 L13.8 68.4 L16.6 68.3 L19.4 68.6 L22.1 68.0 L24.9 68.3 L27.6 68.7 L30.4 68.6 L33.2 67.9 L35.9 68.8 L38.7 68.6 L41.5 68.2 L44.2 68.5 L47.0 68.8 L49.8 68.6 L52.5 68.3 L55.3 68.5 L58.1 68.0 L60.8 68.2 L63.6 68.2 L66.4 68.3 L69.1 68.2 L71.9 68.3 L74.6 68.8 L77.4 68.5 L80.2 68.6 L82.9 68.0 L85.7 68.3 L88.5 68.8 L91.2 68.5 L94.0 68.2 L96.8 68.5 L99.5 68.2 L102.3 68.6 L105.1 68.3 L107.8 67.9 L110.6 68.3 L113.4 53.8 L116.1 35.7 L118.9 36.0 L121.6 27.5 L124.4 4.1 L127.2 4.4 L129.9 3.9 L132.7 3.8 L135.5 4.1 L138.2 4.1 L141.0 3.5 L143.8 4.2 L146.5 4.4 L149.3 31.8 L152.1 52.7 L154.8 52.1 L157.6 51.8 L160.4 51.9 L163.1 52.8 L165.9 52.2 L168.6 52.5 L171.4 67.9 L174.2 68.0 L176.9 68.0 L179.7 68.6 L182.5 68.3 L185.2 68.5 L188.0 68.5 L190.8 68.3 L193.5 68.5 L196.3 68.8 L199.1 69.1 L201.8 68.1 L204.6 68.0 L207.4 68.2 L210.1 68.0 L212.9 68.3 L215.6 68.3 L218.4 68.8 L221.2 67.9 L223.9 68.0 L226.7 68.3 L229.5 68.7 L232.2 68.6 L235.0 68.3 L237.8 68.6 L240.5 68.6 L243.3 68.8 L246.1 68.5 L248.8 69.1 L251.6 68.3 L254.4 68.8 L257.1 68.3 L259.9 68.2 L262.6 67.9 L265.4 68.6 L268.2 68.5 L270.9 67.6 L273.7 68.1 L276.5 68.2 L279.2 68.2 L282.0 68.5 L284.8 68.0 L287.5 68.4 L290.3 68.6 L293.1 68.9 L295.8 68.5 L298.6 68.6 L301.4 68.3 L304.1 68.5 L306.9 68.5 L309.6 68.3 L312.4 68.3 L315.2 68.2 L317.9 68.2 L320.7 68.3 L323.5 68.0 L326.2 68.5 L329.0 68.8" fill="none" stroke="#3B8CFF" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round"/><line x1="0" x2="329" y1="61.8" y2="61.8" stroke="#A3ABBC" stroke-opacity=".55" stroke-dasharray="3 3"/><rect x="302.4" y="52.8" width="26.6" height="18" rx="9" fill="#232835"/><text x="315.7" y="65.8" text-anchor="middle" fill="#F3F5F9" font-size="11" font-weight="700" font-family="Barlow Condensed">114</text><line x1="135.5" x2="135.5" y1="0" y2="132" stroke="#F3F5F9" stroke-opacity=".7" stroke-width="1"/><circle cx="135.5" cy="4.1" r="4.5" fill="#3B8CFF" stroke="#12151C" stroke-width="2"/><rect x="65.1" y="-26" width="140.8" height="20" rx="10" fill="#F3F5F9"/><text x="135.5" y="-12" text-anchor="middle" fill="#0A0C11" font-size="11" font-weight="600" font-family="Archivo">18:20 · 146 W · 151 bpm</text></svg></div>
+<div class="xax"><span>0:00</span><span>15:00</span><span>30:00</span><span>43:36</span></div>
+</div>
+<div class="txt"><div class="nm">Stream chart · scrub state</div>
+Card title row: kicker → Barlow 22 title left, summary Barlow 17 right (unit Archivo 12).<br>
+<b>Segmented control:</b> h 32, inset bg, 1 pt border, radius 10, padding 2; active segment <code>#232835</code> radius 8, Archivo 13/600; inactive <code>#8A93A6</code>. 12 below title.<br>
+<b>Plot:</b> full card width (329), 132 high (88–100 for HR-only sports). Gridlines 1 pt <code>#1F242E</code>, 3–4 of them, labels Archivo 10 <code>#6B7385</code> sitting 4 above the line at x 0. <b>Series</b> 1.75 pt sport colour, round joins; <b>fill</b> same colour at 14%, flat. <b>Compare</b> (HR) 1.25 pt <code>#FF5A6E</code> @70%, scaled to its own range. <b>Ghost</b> (elevation) <code>#A3ABBC</code> @7%, lower 55%. <b>Average</b> 1 pt dashed 3/3 <code>#A3ABBC</code> @55% + pill h 18 <code>#232835</code>, Barlow 11/700, right-aligned.<br>
+<b>Scrub:</b> long-press and drag. Rule 1 pt <code>#F3F5F9</code> @70%, dot r 4.5 with a 2 pt card-colour ring, white pill h 20 above the plot (24 pt reserved), Archivo 11/600 dark text: time · value · HR. Haptic tick each minute. X axis Archivo 10, 8 below.</div>
+</div>
+
+<div class="spec">
+<div class="card">
+<div class="k" style="color:#6FAEFF">Intensity</div>
+<div class="st">Time in zones</div>
+<div class="ss">Mostly <b>Zone 1</b> by power · 36 min (83%).</div>
+<div class="seg"><span>Heart rate</span><span class="on">Power · FTP 215</span></div>
+<div class="zbar"><i style="flex:83;background:#49A6FF"></i><i style="flex:17;background:#43D17C"></i></div>
+<div class="zrows">
+<div class="zr on"><span class="zn" style="color:#49A6FF">Z1</span><span class="zt"><i style="width:83%;background:#49A6FF"></i><em class="dk">0–118 W</em></span><span class="zm">36</span><span class="zp">83%</span></div>
+<div class="zr"><span class="zn" style="color:#43D17C">Z2</span><span class="zt"><i style="width:17%;background:#43D17C"></i><em style="left:calc(17% + 8px)">118–161 W</em></span><span class="zm">8</span><span class="zp">17%</span></div>
+<div class="zr off"><span class="zn">Z3+</span><span class="zt"><em>161 W and up</em></span><span class="zm">–</span><span class="zp">0%</span></div>
+</div>
+</div>
+<div class="txt"><div class="nm">Zones bar + rows</div>
+Sentence first (Archivo 14 <code>#A3ABBC</code>, zone name bold white). Segmented control only when HR and power both exist.<br>
+<b>Palette (web):</b> Z1 <code>#49A6FF</code> · Z2 <code>#43D17C</code> · Z3 <code>#F5B742</code> · Z4 <code>#FF8B3D</code> · Z5 <code>#FF5C6F</code> · Z6 <code>#8B7BFF</code> · Z7 <code>#C04DFF</code>. Replaces v2's grey/teal set.<br>
+<b>Stacked bar:</b> h 10, segment radius 2, gap 2, 16 below.<br>
+<b>Rows:</b> h 32, grid 28 · 1fr · 36 · 36, gap 8. Zone label Barlow 700 15 in the zone colour. Track h 20, radius 6, inset bg; fill zone colour; range text Archivo 11 inside the fill (dark <code>#0A0C11</code>/600) when it fits, otherwise just after it in <code>#8A93A6</code>. Minutes Barlow 700 15, share Archivo 12 muted. Dominant zone row gets a <code>rgba(255,255,255,.03)</code> radius 8 highlight. Zones under 2% merge into one "Zn+" row in <code>#3A4150</code>.</div>
+</div>
+
+<div class="spec">
+<div class="card">
+<div class="k" style="color:#6FAEFF">Power bests</div>
+<div class="st">Against your all-time best</div>
+<div style="margin-top:12px">
+<div class="eff"><span class="el">5 min</span><span class="ev">143<span>W</span></span><div><div class="bar"><i style="width:51%;background:#3B8CFF"></i></div><div class="em"><span>51% of 280 W</span><span>66% FTP · 156 bpm</span></div></div></div>
+<div class="eff"><span class="el">20 min</span><span class="ev">119<span>W</span></span><div><div class="bar"><i style="width:59%;background:#3B8CFF"></i></div><div class="em"><span>59% of 202 W</span><span>55% FTP · 150 bpm</span></div></div></div>
+</div>
+</div>
+<div class="txt"><div class="nm">Best-efforts row</div>
+Grid 52 · 72 · 1fr, gap 12, padding 12 0, hairline between rows.<br>
+Duration Barlow 700 17 <code>#C9CFDA</code>. Value Barlow 700 22 + unit Archivo 11 muted.<br>
+<b>Power:</b> bar h 6 radius 3 on <code>#1F242E</code>, fill = % of all-time in ride blue; under it Archivo 11 muted "51% of 280 W" left · "% FTP · HR" right, 8 below.<br>
+<b>Run:</b> no bar (no all-time value in the payload). Right column shows time · avg HR. A best effort taps → highlights its segment on the map (v2 behaviour).</div>
+</div>
+
+<div class="spec">
+<div class="card">
+<div class="lift" style="border-top:none;padding-top:0"><div class="top"><span class="ix">01</span><div style="flex:1"><div class="nm">Barbell Incline Bench Press</div><div class="mu">Chest</div></div><span class="badge b-good">▲ 3.2 kg</span></div>
+<div class="sets"><span>62.5<small>×8</small></span><span>62.5<small>×8</small></span><span>62.5<small>×8</small></span><span>62.5<small>×8</small></span></div>
+<div class="last"><span>Last <b>4 × 8 @ 60 kg</b> · 10 Oct</span><span>e1RM 79.2</span></div>
+<div class="hint">Next: <b>try 65 kg</b> · every set at 62.5 kg × 8</div></div>
+</div>
+<div class="txt"><div class="nm">Lift vs last row</div>
+Index Barlow 700 17 strength pink, 20 wide, 12 gap. Name Archivo 15/600; muscle Archivo 12 muted, 2 below.<br>
+<b>Badge</b> right: h 24 radius 12, Archivo 11/700 tracking .1em. Up <code>#2ED3B0</code> on 12%, down <code>#FFC83A</code> on 12%, matched <code>#A3ABBC</code> on <code>#1A1E27</code>, PR = volt on 12% (the only volt badge).<br>
+<b>Set chips:</b> h 26, radius 8, inset bg + border, Barlow 700 15 <code>#C9CFDA</code>, reps Archivo 10 <code>#6B7385</code>; gap 4, indented 32.<br>
+<b>Last line:</b> Archivo 12 muted, previous sets in <code>#C9CFDA</code>, metric right. <b>Hint</b> (only when <code>next_hint</code> is present and the read doesn't already show it): target in volt.</div>
+</div>
+
+<div class="spec">
+<div class="card">
+<div class="row sbw"><div><div class="k" style="color:#FFA25A">How it felt</div><div class="st">Responded well</div></div><span class="edit">Edit</span></div>
+<div class="feel">
+<div class="fm"><div class="l">Effort</div><div class="v"><span class="num">5</span><em style="color:#FFC83A">Moderate</em></div><div class="bars"><i style="background:#FFC83A"></i><i style="background:#FFC83A"></i><i style="background:#FFC83A"></i><i style="background:#FFC83A"></i><i style="background:#FFC83A"></i><i></i><i></i><i></i><i></i><i></i></div></div>
+<div class="fm"><div class="l">Pain</div><div class="v"><span class="num" style="color:#FF5A6E">6</span><em style="color:#FF5A6E">/10</em></div><div class="bars"><i style="background:#FF5A6E"></i><i style="background:#FF5A6E"></i><i style="background:#FF5A6E"></i><i style="background:#FF5A6E"></i><i style="background:#FF5A6E"></i><i style="background:#FF5A6E"></i><i></i><i></i><i></i><i></i></div></div>
+</div>
+<div class="quote">Woohoo, haven't feel any remains of plantar fasciitis injury.</div>
+</div>
+<div class="txt"><div class="nm">Feel meters</div>
+Title = the web's feel summary ("Steady", "Responded well", "Check the pain"); <b>Edit</b> outline pill h 32 with a 44 pt hit area.<br>
+2×2 grid, gap 8. Meter inset radius 14, padding 12. Label Archivo 12 muted; value Barlow 700 22 + word Archivo 13/600.<br>
+<b>Bars:</b> 10 segments (effort, pain) or 5 (energy, soreness), h 4, radius 2, gap 2, off <code>#232835</code>. Effort: ≤3 volt "Easy", 4–6 amber "Moderate", ≥7 orange "Hard". Energy teal. Soreness 1 grey, 2–3 amber, 4–5 red. Pain 0 = teal "Pain-free" with empty bars, 1–3 amber, ≥4 red.<br>
+<b>Note:</b> Archivo 14 <code>#C9CFDA</code>, 12 left padding, 2 pt <code>#2A303C</code> rule. Hidden when the pain alert already quotes it.</div>
+</div>
+
+<div class="spec">
+<div style="display:flex;flex-direction:column;gap:16px">
+<div class="card coach">
+<div class="k" style="color:#8A93A6">Coach take</div>
+<h4>Easy ride stayed easy, with room for one more interval next time</h4>
+<p>Power sat where the plan wanted it and heart rate drifted 6.9%, which is fine for 44 minutes indoors. Next recovery spin, keep the same target.</p>
+<div class="more"><span>3 observations</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+</div>
+<div class="card coach">
+<div class="k" style="color:#8A93A6">Coach take</div>
+<div class="row" style="margin-top:12px;gap:8px;font-size:14px;color:#A3ABBC"><span style="width:14px;height:14px;border-radius:7px;border:2px solid #2A303C;border-top-color:#F3F5F9;box-sizing:border-box"></span>Coach is writing…</div>
+</div>
+</div>
+<div class="txt"><div class="nm">Coach take</div>
+Neutral card: <b>no volt border</b> (v2 had one). Kicker muted.<br>
+<b>Saved:</b> headline Archivo 17/600 line 1.3; summary Archivo 14 <code>#A3ABBC</code> clamped to 4 lines; footer row "N observations ›" Archivo 14/600 over a hairline, tap expands in place.<br>
+<b>Not requested:</b> "No written take yet" + one sentence + outline button h 44 radius 22 "Ask the coach" (POST analysis). It's outline because volt belongs to the page's single primary action.<br>
+<b>Pending:</b> 14 pt spinner + "Coach is writing…". <b>Failed:</b> danger text <code>#FF8A8A</code> under the card, as in v2.</div>
+</div>
+
+<div class="spec">
+<div style="display:flex;flex-direction:column;gap:16px">
+<div class="win"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="#D4FF3A"><path d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 7 13c0-2 1-3.4 2-4.5.2 1.6 1 2.8 2.2 3.2C10.6 8 11.4 4.6 12 2z"/></svg></span><div><div class="k">Consistency</div><b>300 days in a row</b><p>A streak milestone. Every single day counted to get here.</p></div></div>
+<div class="alert"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF5A6E" stroke-width="2.4" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg></span><div><div class="k">Pain 6/10</div><b>Check the pain before the next hard session</b><p>ITBS a lot of knee pain, especially on downhill</p></div></div>
+<div class="card"><div class="k" style="color:#A99BFF">How it felt</div><div class="st">Log it while it's fresh</div><div class="ss">Effort, energy, soreness and pain. Takes ten seconds.</div><div class="volt">Log how it felt</div></div>
+</div>
+<div class="txt"><div class="nm">Win strip · pain alert · log prompt</div>
+<b>Win:</b> bg volt @6%, 1 pt volt @22%, radius 20, padding 16, gap 12. Icon in a 32 circle, volt @12%: flame (streak), trophy (consistency), arrow (progress), medal (PR). Kicker = <code>win.kind</code> in volt; headline Archivo 16/600; detail Archivo 13 <code>#A3ABBC</code>.<br>
+<b>Pain alert:</b> same shape in <code>#FF5A6E</code> (8% bg, 32% border). Kicker "Pain n/10"; headline fixed copy; note quoted with a 2 pt red rule. Always the first card under the header.<br>
+<b>Log prompt:</b> normal card, sport kicker, title + sentence, <b>volt button</b> h 48 radius 24 Archivo 16/700 <code>#0A0C11</code>. Opens FeedbackSheet. Shown only when <code>feedback == nil</code>, placed right under the hero.</div>
+</div>
+
+</div>
+</div>
+
+<!-- ============ 5. STATES ============ -->
+<div class="section-head"><div class="lbl" style="color:#D4FF3A">05 · States</div></div>
+
+<div class="frame">
+<div class="lbl">05a · Loading</div>
+<div class="phone short">
+<div class="island"></div>
+<div class="sb"><span>21:41</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr">
+<div class="pills"><span class="spill" style="background:rgba(59,140,255,.14);color:#6FAEFF">Indoor ride</span></div>
+<div class="ttl h-ttl">Zwift – California Dreamin' in Watopia</div>
+<div class="h-meta">Thu 29 Oct · 19:58</div>
+</div>
+<div class="card hero" style="border-top:2px solid #3B8CFF"><div class="in">
+<div class="hero2"><div><div class="lbl">Moving time</div><div class="num hv">43:36</div></div><div><div class="lbl">Distance</div><div class="num hv">20.6<span class="u">km</span></div></div></div>
+<div class="tiles"><div class="skel" style="height:78px;border-radius:14px"></div><div class="skel" style="height:78px;border-radius:14px"></div><div class="skel" style="height:78px;border-radius:14px"></div></div>
+</div></div>
+<div class="card"><div class="skel" style="width:96px;height:10px"></div><div class="skel" style="width:200px;height:18px;margin-top:12px"></div><div class="skel" style="height:132px;margin-top:16px"></div></div>
+</div></div>
+<div class="frame-cap">Header and the two hero numbers render at once from the list row (<code>ActivitySummary</code>). Tiles and the next card show flat skeletons (<code>#161A22</code>, no shimmer gradient; a slow opacity pulse, off under Reduce Motion).</div>
+</div>
+
+<div class="frame">
+<div class="lbl">05b · No streams · manual entry</div>
+<div class="phone short">
+<div class="island"></div>
+<div class="sb"><span>12:05</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr">
+<div class="pills"><span class="spill" style="background:rgba(46,211,176,.14);color:#2ED3B0">Walk</span><span class="gpill">Manual</span></div>
+<div class="ttl h-ttl">Afternoon Walk</div>
+<div class="h-meta">Sun 18 Oct · 15:20 <b>· logged by hand</b></div>
+</div>
+<div class="card hero" style="border-top:2px solid #2ED3B0"><div class="in">
+<div class="hero2"><div><div class="lbl">Distance</div><div class="num hv">4.2<span class="u">km</span></div></div><div><div class="lbl">Time</div><div class="num hv">52:00</div></div></div>
+<div class="ilist"><span>Pace<b>12:23 /km</b></span><span>No heart rate</span></div>
+</div></div>
+<div class="card" style="background:transparent;border-style:dashed"><div class="row" style="gap:12px;align-items:flex-start"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg><div><div style="font-size:15px;font-weight:600">No recorded streams</div><div class="ss" style="margin-top:4px">Logged by hand, so there's no chart, zones or route. Record with the Watch next time to get them.</div></div></div></div>
+<div class="win"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="#D4FF3A"><path d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 7 13c0-2 1-3.4 2-4.5.2 1.6 1 2.8 2.2 3.2C10.6 8 11.4 4.6 12 2z"/></svg></span><div><div class="k">Consistency</div><b>Day 289 of your streak</b><p>11 days to 300 in a row.</p></div></div>
+</div></div>
+<div class="frame-cap">Hero still leads (2 numbers + inline row). Chart, zones and map are replaced by <b>one dashed placeholder</b>, not three empty cards. Everything else (win, feel, coach) is unchanged.</div>
+</div>
+
+<div class="frame">
+<div class="lbl">05c · No feedback yet</div>
+<div class="phone short">
+<div class="island"></div>
+<div class="sb"><span>17:12</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr">
+<div class="pills"><span class="spill" style="background:rgba(59,140,255,.14);color:#6FAEFF">Ride</span><span class="gpill">Outdoor</span></div>
+<div class="ttl h-ttl">Afternoon Ride</div>
+<div class="h-meta">Tue 29 Sep · 15:40 <b>· Strava</b></div>
+</div>
+<div class="card hero" style="border-top:2px solid #3B8CFF"><div class="in">
+<div class="hero2"><div><div class="lbl">Moving time</div><div class="num hv">1:30:24</div></div><div><div class="lbl">Distance</div><div class="num hv">28.7<span class="u">km</span></div></div></div>
+<div class="ilist" style="margin-top:12px"><span>Est. NP<b>~100 W</b></span><span>Avg HR<b>130 bpm</b></span><span>Speed<b>19.0 km/h</b></span></div>
+</div></div>
+<div class="card"><div class="k" style="color:#6FAEFF">How it felt</div><div class="st">Log it while it's fresh</div><div class="ss">Effort, energy, soreness and pain. Takes ten seconds.</div><div class="volt">Log how it felt</div></div>
+</div></div>
+<div class="frame-cap">(Hero shortened here to show the prompt.) The prompt takes the slot right under the hero and is the page's only volt control. After saving, the sheet closes, the card turns into the meters, and it moves back down to its usual slot on the next load.</div>
+</div>
+
+<div class="frame">
+<div class="lbl">05d · Offline · last synced</div>
+<div class="phone short">
+<div class="island"></div>
+<div class="sb"><span>08:14</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr">
+<div class="pills"><span class="spill" style="background:rgba(255,138,42,.14);color:#FFA25A">Run</span><span class="gpill">Recovery</span></div>
+<div class="ttl h-ttl">Evening Run</div>
+<div class="h-meta">Wed 9 Sep · 18:15 <b>· HealthFit</b></div>
+<div class="row" style="gap:8px;margin-top:12px;font-size:12px;color:#FFC83A"><span style="width:6px;height:6px;border-radius:3px;background:#FFC83A"></span>Offline · last synced 2 h ago · pull to retry</div>
+</div>
+<div class="card hero" style="border-top:2px solid #FF8A2A"><div class="in">
+<div class="hero2"><div><div class="lbl">Distance</div><div class="num hv">5.04<span class="u">km</span></div></div><div><div class="lbl">Avg pace</div><div class="num hv">5:38<span class="u">/km</span></div></div></div>
+<div class="tiles">
+<div class="tile"><div class="k" style="color:#6FAEFF"><i style="background:#3B8CFF"></i>Time</div><div class="num">28:24</div><div class="sub">moving</div></div>
+<div class="tile"><div class="k" style="color:#FF7A8A"><i style="background:#FF5A6E"></i>Avg HR</div><div class="num">169<span style="color:#FF7A8A">bpm</span></div><div class="sub">max 179</div></div>
+<div class="tile"><div class="k" style="color:#A99BFF"><i style="background:#8B7BFF"></i>Power</div><div class="num">241<span style="color:#A99BFF">W</span></div><div class="sub">avg</div></div>
+</div>
+</div></div>
+<div class="card coach"><div class="k" style="color:#8A93A6">Coach take</div><h4>Good durability, but this recovery run drifted…</h4><div class="obtn" style="opacity:.4">Ask the coach · needs connection</div></div>
+</div></div>
+<div class="frame-cap">The cached detail renders in full. One amber line under the meta replaces any error card. Writes (feedback) queue as today; actions that need the server (Ask the coach) dim with a reason. The map is the cached MapKit snapshot.</div>
+</div>
+
+</div>
+</x-dc>
+</body>
+</html>

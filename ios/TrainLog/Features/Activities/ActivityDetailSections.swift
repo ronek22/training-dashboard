@@ -542,34 +542,58 @@ struct FeelSection: View {
         DetailSection("How it felt") {
             QuietPillButton(title: "Edit", action: onEdit)
         } content: {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .top, spacing: 0) {
-                    ForEach(Array(cells.enumerated()), id: \.offset) { index, cell in
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(cell.label).font(AppFont.body(13)).foregroundStyle(Color.muted)
-                            Text("\(Text("\(cell.value)").font(AppFont.number(28)).foregroundStyle(cell.color))\(Text("/\(cell.scale)").font(AppFont.number(14)).foregroundStyle(Color.muted))")
-                                .padding(.top, 6)
-                            Text(cell.word).font(AppFont.body(13, weight: .semibold)).foregroundStyle(cell.color).lineLimit(1).minimumScaleFactor(0.8)
-                                .padding(.top, 4)
-                        }
-                        .padding(.leading, index > 0 ? 12 : 0)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .overlay(alignment: .leading) {
-                            if index > 0 { Rectangle().fill(Color.cardBorder).frame(width: 1) }
-                        }
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("\(cell.label) \(cell.value) of \(cell.scale), \(cell.word)")
+            VStack(alignment: .leading, spacing: 8) {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                    ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
+                        FeelTile(cell: cell)
                     }
                 }
-                .padding(.top, 16)
                 if let note {
-                    Text(note).font(AppFont.body(14)).foregroundStyle(Color(hex: 0xC9CFDA)).lineSpacing(3)
-                        .padding(.leading, 12)
-                        .overlay(alignment: .leading) { Rectangle().fill(Color.outline).frame(width: 2) }
-                        .padding(.top, 16)
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "text.bubble")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.muted)
+                            .padding(.top, 2)
+                            .accessibilityHidden(true)
+                        Text(note).font(AppFont.body(14)).foregroundStyle(Color(hex: 0xC9CFDA)).lineSpacing(3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(14)
+                    .background(Color.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.cardBorder))
                 }
             }
+            .padding(.top, 16)
         }
+    }
+}
+
+/// One scale: the word big, a thin segmented meter, the number small.
+private struct FeelTile: View {
+    let cell: ActivityDetailFormat.Feel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Kicker(cell.label)
+            Text(cell.word.uppercased())
+                .font(AppFont.title(28))
+                .foregroundStyle(cell.color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            HStack(spacing: 2) {
+                ForEach(1...cell.scale, id: \.self) { step in
+                    Capsule().fill(step <= cell.value ? cell.color : Color.track).frame(height: 4)
+                }
+            }
+            .padding(.top, 6)
+            Text(cell.caption).font(AppFont.body(12)).foregroundStyle(Color.muted)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.cardBorder))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(cell.label) \(cell.word), \(cell.caption)")
     }
 }
 

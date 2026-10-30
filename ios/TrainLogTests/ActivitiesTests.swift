@@ -96,40 +96,87 @@ struct ActivitiesTests {
       ],
       "feedback": {"rpe": 6, "energy": 3, "muscle_soreness": 2, "pain_level": 2, "note": null},
       "strength_detail": null,
-      "analysis": {"status": "not_requested", "session_read": {"verdict": {"tone": "good", "headline": "Easy run stayed easy"},
+      "run_dynamics": {"cadence_spm": 154.8, "stance_time_ms": 251, "vertical_oscillation_cm": 10.46, "vertical_ratio_pct": 8.99,
+                       "step_length_m": 1.163, "avg_power_w": 241, "splits": [
+        {"km": 1, "seconds": 350, "heart_rate": 154.8, "cadence_spm": 151.5, "power_w": 229.3},
+        {"km": 2, "seconds": 338, "heart_rate": 167.1, "cadence_spm": 157.2, "power_w": 240.7},
+        {"km": 3, "seconds": 351, "heart_rate": 172.2, "cadence_spm": 155.4, "power_w": 234.8},
+        {"km": 4, "seconds": 333, "heart_rate": 176.2, "cadence_spm": 156.0, "power_w": 252.9},
+        {"km": 5, "seconds": 332, "heart_rate": 176.9, "cadence_spm": 155.5, "power_w": 243.2}]},
+      "analysis": {"status": "not_requested", "session_read": {"verdict": {"tone": "bad", "badge": "Off intent", "headline": "Easy run ran hot"},
+                   "signals": [{"key": "pace_at_hr", "label": "Pace at ~169 bpm", "value": "5:38/km", "detail": "17 s/km slower than 5 similar runs", "tone": "warn"},
+                               {"key": "hr_cap", "label": "Average heart rate", "value": "169 bpm", "detail": "over the 162 bpm easy cap", "tone": "warn"}],
                    "wins": [{"score": 40, "detail": "Kept it in zone 2."}]}}
     }
     """
 
-    private let paces = """
-    {"paces": {"vdot": 38.2, "zones": {"easy": {"from_s": 364, "to_s": 408}, "marathon": {"pace_s": 339},
-      "threshold": {"pace_s": 317}, "interval": {"pace_s": 291}, "repetition": {"pace_s": 277}}}}
+    private let fitness = """
+    {"form": {"baseline": {"cadence_spm": 155.2, "step_length_m": 1.2, "vertical_oscillation_cm": 10.23, "vertical_ratio_pct": 8.55,
+                           "stance_time_ms": 248.8, "avg_power_w": 244},
+              "ranges": {"cadence_spm": {"good": [165, 185]}, "stance_time_ms": {"good": [200, 260]},
+                         "vertical_oscillation_cm": {"good": [6, 10]}, "vertical_ratio_pct": {"good": [6, 8.5]}}}}
     """
 
-    @Test func runStatBlockPlacesPaceOnTrainingPaces() throws {
-        var value = try APIClient.decoder.decode(ActivityDetail.self, from: Data(detail.utf8))
-        value.bestEfforts = try APIClient.decoder.decode(ActivityDetail.BestEfforts.self, from: Data("""
-        {"efforts": [{"label": "1K", "duration_s": 328, "metric_value": 5.47, "metric_unit": "min/km", "avg_hr": 177}]}
-        """.utf8))
-        let zones = try APIClient.decoder.decode(RunningPaces.self, from: Data(paces.utf8)).paces?.zones
-        let block = ActivityDetailFormat.statBlock(value, paces: zones)
-        #expect(block.headline.map(\.value) == ["5.04", "28:24"])
-        let pace = try #require(block.gauges.first)
-        #expect(pace.value == "5:38")
-        #expect(pace.side.map(\.bold) == ["5:28", "≈ Marathon"])
-        // 7:30 → 4:23 track: 5:38 sits 62% of the way along, the best km just past it.
-        #expect(abs(pace.dot - (450 - 338) / (450 - 263)) < 0.001)
-        #expect(pace.tick.map { $0 > pace.dot } == true)
-        #expect(block.gauges[1].label == "Heart rate")
-        #expect(block.gauges[1].bands.isEmpty)
-        #expect(block.footer.map(\.0) == ["Climb"])
+    private func run() throws -> ActivityDetail {
+        try APIClient.decoder.decode(ActivityDetail.self, from: Data(detail.utf8))
     }
 
-    @Test func paceGaugeGoesPlainWithoutPaces() throws {
-        let value = try APIClient.decoder.decode(ActivityDetail.self, from: Data(detail.utf8))
-        let pace = try #require(ActivityDetailFormat.statBlock(value).gauges.first)
-        #expect(pace.bands.isEmpty)
-        #expect(pace.labels.map(\.text) == ["7:30", "4:30"])
+    @Test func runHeaderAndGrid() throws {
+        let value = try run()
+        let header = ActivityDetailFormat.header(value.activity, detail: value)
+        #expect(header.big?.value == "5.04")
+        #expect(header.big?.unit == "km")
+        #expect(header.dateLine == "Tue 20 Oct · HealthFit")
+        #expect(header.facts.map(\.value) == ["Recovery", "+20 m"])
+        let cells = ActivityDetailFormat.grid(value)
+        #expect(cells.map(\.label) == ["Moving time", "Avg pace", "Climb", "Avg heart rate"])
+        #expect(cells[0].parts.map(\.value) == ["28", "24"])
+        #expect(cells[0].status?.text == "Recovery run planned")
+        #expect(cells[1].status?.text == "17 s/km slower at this HR")
+        #expect(cells[1].status?.tone == .warn)
+        #expect(cells[3].status?.text == "Over the 162 easy cap")
+    }
+
+    @Test func headerWithoutDetailComesFromTheListRow() throws {
+        let header = ActivityDetailFormat.header(try run().activity)
+        #expect(header.title == "Evening Run")
+        #expect(header.dateLine == "Tue 20 Oct")
+        #expect(header.facts.isEmpty)
+    }
+
+    @Test func splitsFillTheFastestKilometre() throws {
+        let rows = ActivityDetailFormat.splits(try run())
+        #expect(rows.map(\.pace) == ["5:50", "5:38", "5:51", "5:33", "5:32"])
+        #expect(rows.filter(\.fastest).map(\.km) == [5])
+        #expect(abs(rows[2].share - 0.46) < 0.001)
+        #expect(rows[4].share == 1)
+        let lines = ActivityDetailFormat.splitLines(rows)
+        #expect(lines.map(\.text) == ["Negative split: the last two km were your fastest", "Heart rate rose every km, 155 → 177 bpm"])
+    }
+
+    @Test func runningFormUsesRangesAndUsualValues() throws {
+        let form = try APIClient.decoder.decode(RunningFitness.self, from: Data(fitness.utf8)).form
+        let cells = ActivityDetailFormat.form(try run(), fitness: form)
+        #expect(cells.map(\.label) == ["Cadence", "Ground contact", "Step length", "Vert. oscillation", "Vert. ratio", "Power"])
+        #expect(cells.map(\.word) == ["Low", "Good", "Shorter", "High", "High", "Typical"])
+        #expect(cells.map(\.ranged) == [true, true, false, true, true, false])
+        #expect(cells[0].usual == "155")
+        let summary = try #require(ActivityDetailFormat.formSummary(cells))
+        #expect(summary.text == "Cadence is low and you bounce a little more than ideal, both usual for you. Ground contact is good.")
+    }
+
+    @Test func sessionReadKeepsAVerdictSentenceAndLines() throws {
+        let read = try #require(ActivityDetailFormat.sessionRead(try run()))
+        #expect(read.badge == "Off intent")
+        #expect(read.tone == .warn)
+        #expect(read.lines.first?.text == "Pace at ~169 bpm: 5:38/km · 17 s/km slower than 5 similar runs")
+    }
+
+    @Test func feelWordsFollowTheReading() throws {
+        let feel = ActivityDetailFormat.feel(ActivityFeedback(rpe: 2, energy: 4, muscleSoreness: 3, painLevel: 6, note: "ITBS a lot of knee pain"))
+        #expect(feel.map(\.word) == ["Very easy", "Good", "Some", "Knee"])
+        #expect(ActivityDetailFormat.painAlert(ActivityFeedback(rpe: 2, energy: 4, muscleSoreness: 3, painLevel: 6, note: "x"))?.pain == 6)
+        #expect(ActivityDetailFormat.feel(nil).isEmpty)
     }
 
     private let ride = """
@@ -157,34 +204,38 @@ struct ActivitiesTests {
     }
     """
 
-    @Test func rideStatBlockUsesFtpAndHeartRateZones() throws {
+    @Test func indoorRideGridComparisonsAndTrace() throws {
         let value = try APIClient.decoder.decode(ActivityDetail.self, from: Data(ride.utf8))
-        let block = ActivityDetailFormat.statBlock(value)
-        #expect(block.headline.map(\.value) == ["13.5", "30:24"])
-        let power = block.gauges[0]
-        #expect(power.value == "113")
-        #expect(power.side.map(\.bold) == ["126", "53%"])
-        #expect(abs(power.dot - 113.1 / 215 / 1.5) < 0.001)
-        #expect(power.bands.count == 6)
-        let hr = block.gauges[1]
-        #expect(hr.labels.map(\.text) == ["100", "Z2 140", "Z4 163", "190"])
-        #expect(hr.side.map(\.bold) == ["159", "69%"])
-        #expect(abs(hr.dot - 40.0 / 90) < 0.001)
-        #expect(block.footer.map(\.0) == ["Speed", "TSS"])
+        #expect(ActivityDetailFormat.isIndoorRide(value))
+        #expect(ActivityDetailFormat.route(value) == nil)
+        let header = ActivityDetailFormat.header(value.activity, detail: value)
+        #expect(header.kicker == "Indoor ride · MyWhoosh")
+        #expect(header.dateLine == "Tue 27 Oct · FTP 215 W")
+        #expect(header.big?.value == "13.5")
+        let cells = ActivityDetailFormat.grid(value)
+        #expect(cells.map(\.label) == ["Moving time", "Avg speed", "Normalized power", "Avg heart rate"])
+        #expect(cells[2].status?.text == "Avg 113 W")
+        #expect(cells[3].status?.text == "69% in Zone 2")
+        let compared = ActivityDetailFormat.compared(value)
+        #expect(compared.map(\.label) == ["Intensity"])
+        #expect(compared[0].status?.text == "TSS 17 · VI 1.11")
+        #expect(ActivityDetailFormat.zoneRows(value.heartRateZones).map(\.name) == ["Zone 1", "Zone 2", "Zone 3", "Zone 4+"])
+        #expect(ActivityDetailFormat.zoneRows(value.heartRateZones, full: true).count == 5)
+        #expect(ActivityDetailFormat.zoneSummary(value)?.text == "Easy all the way: 99% in Zones 1–2.")
+        // The win repeats the verdict, so it shows in the read only.
+        #expect(ActivityDetailFormat.win(value) == nil)
+        #expect(ActivityDetailFormat.coachState(value.analysis) == .canAsk(failed: false))
     }
 
-    @Test func rideCardsFromThePayload() throws {
-        let value = try APIClient.decoder.decode(ActivityDetail.self, from: Data(ride.utf8))
-        #expect(ActivityDetailFormat.chips(value) == ["Indoor · MyWhoosh", "FTP 215 W"])
-        // The read only repeats the win, so it hides.
-        #expect(ActivityDetailFormat.sessionRead(value) == nil)
-        let rows = ActivityDetailFormat.zoneRows(value.heartRateZones, unit: "bpm")
-        #expect(rows.map(\.name) == ["Z1", "Z2", "Z3", "Z4+"])
-        #expect(rows.last?.range == "163 bpm and up")
-        let load = try #require(ActivityDetailFormat.loadTiles(value.cycling))
-        #expect(load.note == "measured power")
-        #expect(load.tiles.map(\.value) == ["126", "0.58", "17", "1.11", "206", "< 45 min"])
-        #expect(ActivityDetailFormat.coachState(value.analysis) == .canAsk(failed: false))
+    @Test func zoneIndexAndColourScale() {
+        #expect(ActivityDetailFormat.zoneIndex(100, lowers: [118, 161, 194]) == 0)
+        #expect(ActivityDetailFormat.zoneIndex(150, lowers: [118, 161, 194]) == 1)
+        #expect(ActivityDetailFormat.zoneIndex(300, lowers: [118, 161, 194]) == 3)
+        #expect(ActivityDetailFormat.durationParts(43.6) .map(\.value) == ["43", "36"])
+        #expect(ActivityDetailFormat.durationParts(98.9).map(\.value) == ["1", "39"])
+        #expect(ActivityDetailFormat.withStops(179.9) == "3h 00m with stops")
+        #expect(ActivityDetailFormat.world("Zwift - California Dreamin' in Watopia") == "Watopia")
+        #expect(ActivityDetailFormat.niceTicks(5.3...7.1, steps: [0.25, 0.5, 1]) == [5.5, 6, 6.5, 7])
     }
 
     @Test func liftRowsCompareWithLastTime() throws {
@@ -198,26 +249,28 @@ struct ActivitiesTests {
          "progression": {"exercises": {
           "bench": {"exercise_name": "Barbell Incline Bench Press", "metric": "e1rm", "delta": 3.2, "direction": "up", "is_pr": false,
                     "next_hint": "Every set at 62.5 kg × 8 — try 65 kg next time.",
-                    "current": {"volume_kg": 2000}, "previous": {"volume_kg": 1920, "date": "2026-10-10"}},
+                    "current": {"volume_kg": 2000}, "previous": {"volume_kg": 1920, "date": "2026-10-10",
+                    "sets": [{"reps": 8, "weight_kg": 60}, {"reps": 8, "weight_kg": 60}, {"reps": 8, "weight_kg": 60}, {"reps": 8, "weight_kg": 60}]}},
           "pullup": {"exercise_name": "Pull Up", "metric": "reps", "delta": -2, "direction": "down", "is_pr": false,
-                     "next_hint": "Add a rep per set — aim for 11 on every set.",
-                     "current": {"volume_kg": 0}, "previous": {"volume_kg": 0, "date": "2026-10-18"}}}}}
+                     "current": {"volume_kg": 0}, "previous": {"volume_kg": 0, "date": "2026-10-18", "sets": [{"reps": 12, "weight_kg": null}, {"reps": 10, "weight_kg": null}]}}}}}
         """
-        var value = try APIClient.decoder.decode(ActivityDetail.self, from: Data(detail.utf8))
+        var value = try run()
         value = ActivityDetail(activity: value.activity, stats: [], charts: [], feedback: nil, sessionTags: nil,
                                strengthDetail: try APIClient.decoder.decode(ActivityDetail.StrengthDetail.self, from: Data(json.utf8)),
                                analysis: nil)
         let rows = ActivityDetailFormat.liftRows(value)
-        #expect(rows.map(\.name) == ["Barbell Incline Bench", "Pull Up"])
-        #expect(rows[0].sets == ["62.5×8", "62.5×8"])
-        #expect(rows[1].sets == ["BW×10"])
-        #expect(rows[0].badge?.text == "↑ e1RM +3.2 kg")
-        #expect(rows[1].badge?.text == "↓ 2 reps")
-        #expect(rows[0].hint?.action == "try 65 kg")
-        #expect(rows[1].hint?.lead == "Add a rep per set")
-        let volume = try #require(ActivityDetailFormat.volumeGauge(value))
-        #expect(volume.value == "+4")
-        #expect(volume.side.first?.bold == "1.92 t")
+        #expect(rows.map(\.muscle) == ["Chest", "Lats"])
+        #expect(rows[0].sets.map { $0.value + $0.unit } == ["62.5×8", "62.5×8"])
+        #expect(rows[1].sets.map { $0.value + $0.unit } == ["10 reps"])
+        #expect(rows[0].badge?.text == "▲ 3.2 kg e1RM")
+        #expect(rows[1].badge?.text == "▼ 2 reps")
+        #expect(rows[0].last == "Last 4 × 8 @ 60 kg · 10 Oct")
+        #expect(rows[1].last == "Last 12 · 10 reps · 18 Oct")
+        #expect(rows[0].next == "65 kg next time")
+        let volume = try #require(ActivityDetailFormat.volumeChange(value))
+        #expect(volume.parts.first?.value == "+4")
+        #expect(volume.status?.text == "1.92 t · same 2 lifts")
+        #expect(ActivityDetailFormat.liftsComparedTo(value) == "vs last time")
     }
 
     @Test func coachStatePrefersSavedAnalysis() throws {
@@ -232,13 +285,13 @@ struct ActivitiesTests {
         #expect(ActivityDetailFormat.coachState(unsupported) == .none)
     }
 
-    @Test func chartTabsFollowTheSport() throws {
-        let value = try APIClient.decoder.decode(ActivityDetail.self, from: Data(detail.utf8))
-        let set = try #require(ActivityDetailFormat.chartSet(value))
-        // Flat ground: no elevation tab, so heart rate alone.
-        #expect(set.tabs.map(\.key) == ["heartrate"])
-        #expect(set.duration == 28.4)
-        #expect(set.ticks == [0, 10, 20, 28.4])
+    @Test func chartModelsFollowTheSport() throws {
+        let value = try run()
+        // Flat ground: no elevation chip, so heart rate alone.
+        #expect(ActivityDetailFormat.chips(value).map(\.key) == ["heartrate"])
+        let model = try #require(ActivityDetailFormat.chartModel(value, key: "heartrate"))
+        #expect(model.xTicks.map(\.label) == ["0:00", "10:00", "20:00", "28:00"])
+        #expect(model.averageLabel == "169")
         #expect(ActivityDetailFormat.scrubValue("pace", 5.5) == "5:30 /km")
     }
 

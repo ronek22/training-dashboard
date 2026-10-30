@@ -21,6 +21,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-10-30 — **Activity detail v3** — Every activity opens with a visual (glowing pace, speed or elevation route, an animated power or heart-rate trace, or a muscle map), a coloured grid that explains itself, calm sections with splits and running form, and Show more sheets.
 - 2026-10-29 — **Coaching rehab demos** — The phone's rehab figures move like the web's: a solid body with the working muscle lighting up, the target pose as a ghost, an arrow along the move and a countdown with a tempo bar.
 - 2026-10-29 — **Workout builder** — Build and edit workouts in Workout Studio from your own lift history, with a body map of what they work and a nudge when core is missing.
 - 2026-10-29 — **Workout Studio** — Start any workout built on the Mac from Today, planned or not; the one that's waited longest comes first.

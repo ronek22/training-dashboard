@@ -101,6 +101,28 @@ body{margin:0;background:#05070A;color:#F3F5F9;font-family:'Archivo',system-ui,s
 .kv b{font-family:'Barlow Condensed';font-weight:700;font-size:17px}
 .kv b small{font-family:Archivo;font-size:11px;color:#8A93A6;font-weight:500;margin-left:2px}
 
+/* ---------- 00 directions ---------- */
+.raised{background:#151922;border:1px solid #1F2430;border-radius:24px;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 12px 32px rgba(0,0,0,.45)}
+.cap{font-size:12px;color:#8A93A6}
+.strip{display:grid;grid-template-columns:repeat(3,1fr);background:#0F1219;border-top:1px solid #1F2430;padding:16px 20px}
+.strip>div+div{padding-left:16px;border-left:1px solid #1F2430}
+.strip .num{font-size:24px}
+.strip .num .u{font-size:12px}
+.strip .cap{margin-top:4px}
+.bento{display:grid;grid-template-columns:200px 1fr;grid-template-rows:auto auto auto;gap:8px}
+.ico{width:32px;height:32px;border-radius:16px;display:inline-flex;align-items:center;justify-content:center}
+.poster{background:#3B8CFF;border-radius:28px;padding:20px;overflow:hidden;box-shadow:0 16px 40px rgba(59,140,255,.22)}
+.pk{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:rgba(10,12,17,.7)}
+.pbadge{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:12px;background:#0A0C11;color:#6FAEFF;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.prow{display:grid;grid-template-columns:repeat(3,1fr);margin-top:20px;color:#0A0C11}
+.prow>div+div{padding-left:12px;border-left:1px solid rgba(10,12,17,.18)}
+.prow .num{font-size:30px}
+.prow .num .u{color:rgba(10,12,17,.6);font-size:13px}
+.pc{font-size:12px;color:rgba(10,12,17,.65);margin-top:4px;font-weight:500}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mini{display:flex;gap:2px;height:6px;margin-top:12px;background:#1F242E;border-radius:3px;overflow:hidden}
+.mini i{height:100%}
+
 /* win / alert / prompt */
 .win{display:flex;gap:12px;align-items:flex-start;background:rgba(212,255,58,.06);border:1px solid rgba(212,255,58,.22);border-radius:20px;padding:16px}
 .win .ic{width:32px;height:32px;border-radius:16px;background:rgba(212,255,58,.12);display:flex;align-items:center;justify-content:center;flex:none}
@@ -238,6 +260,104 @@ body{margin:0;background:#05070A;color:#F3F5F9;font-family:'Archivo',system-ui,s
 <div class="muted" style="font-size:15px;margin-top:8px;max-width:860px;line-height:1.45">A visual redesign of v2 (<b style="color:#F3F5F9">iOSActivityDetail.dc.html</b>, kept for comparison) that borrows the web page's hierarchy: one hero per sport, titled sections, web-style charts, colour only where it means something. Same data, same endpoint. Numbers are real: Zwift 29 Oct, Evening Run 9 Sep, Morning Hike 24 Oct (Karkonosze), Workout A 26 Oct, Evening Physiotherapy 9 Sep, Afternoon Ride 29 Sep. Charts and routes are drawn from their actual streams.</div>
 </div>
 <div class="muted" style="font-size:12px;text-align:right;line-height:1.6">iPhone 17 Pro · 393 × 852 pt<br>Dark only · Swift Charts + MapKit<br>No backend changes</div>
+</div>
+
+<!-- ============ 00. HERO DIRECTIONS (pick one) ============ -->
+<div class="section-head"><div class="lbl" style="color:#D4FF3A">00 · Pick a direction · same ride, first screen</div><div class="muted" style="font-size:14px;margin-top:8px;max-width:1100px;line-height:1.5">Three different answers to "flat and boring". Each one uses depth (raised surfaces with a soft shadow, no gradients), much stronger size contrast, and blocks of different sizes instead of a stack of equal cards. Whichever you pick, I'll roll it out to every sport, the component sheet and the states. <b style="color:#F3F5F9">Frames 01–05 below still show the previous pass</b> and will be redrawn in the direction you choose.</div></div>
+
+<div class="frame">
+<div class="lbl">A · Trace hero</div>
+<div class="phone crop">
+<div class="island"></div>
+<div class="sb"><span>21:41</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr" style="padding-bottom:0">
+<div class="k" style="color:#6FAEFF">Indoor ride · Recovery</div>
+<div class="ttl" style="font-size:30px;margin-top:8px">Zwift – California Dreamin' in Watopia</div>
+<div class="h-meta">Thu 29 Oct · 19:58 <b>· Zwift</b></div>
+</div>
+<div class="raised" style="padding:0;overflow:hidden">
+<div style="padding:20px 20px 0;display:flex;justify-content:space-between;align-items:flex-end">
+<div><div class="cap">Distance</div><div class="num" style="font-size:72px;line-height:.85;margin-top:8px">20.6<span class="u" style="font-size:20px">km</span></div></div>
+<div style="text-align:right"><div class="cap">Moving time</div><div class="num" style="font-size:34px;margin-top:8px">43:36</div></div>
+</div>
+<div style="margin-top:20px;position:relative">
+<div style="position:absolute;left:20px;top:0;font-size:12px;color:#8A93A6">Power</div>
+<svg width="359" height="128" viewBox="0 0 359 128" style="display:block;overflow:visible"><path d="M0.0 128.0 L3.0 96.9 L6.0 84.8 L9.1 85.1 L12.1 85.4 L15.1 85.0 L18.1 84.9 L21.1 85.3 L24.1 84.6 L27.2 84.9 L30.2 85.4 L33.2 85.3 L36.2 84.4 L39.2 85.4 L42.2 85.3 L45.3 84.8 L48.3 85.1 L51.3 85.4 L54.3 85.3 L57.3 84.9 L60.3 85.1 L63.4 84.6 L66.4 84.8 L69.4 84.8 L72.4 84.9 L75.4 84.8 L78.4 84.8 L81.5 85.4 L84.5 85.1 L87.5 85.3 L90.5 84.6 L93.5 84.8 L96.5 85.4 L99.6 85.1 L102.6 84.8 L105.6 85.1 L108.6 84.8 L111.6 85.3 L114.6 84.9 L117.7 84.4 L120.7 84.9 L123.7 68.5 L126.7 47.9 L129.7 48.2 L132.7 38.6 L135.8 12.0 L138.8 12.3 L141.8 11.8 L144.8 11.6 L147.8 12.0 L150.8 12.0 L153.9 11.3 L156.9 12.1 L159.9 12.3 L162.9 43.4 L165.9 67.2 L168.9 66.5 L172.0 66.2 L175.0 66.3 L178.0 67.3 L181.0 66.7 L184.0 67.0 L187.0 84.4 L190.1 84.6 L193.1 84.6 L196.1 85.3 L199.1 84.9 L202.1 85.1 L205.1 85.1 L208.2 84.9 L211.2 85.1 L214.2 85.4 L217.2 85.8 L220.2 84.7 L223.2 84.6 L226.3 84.8 L229.3 84.6 L232.3 84.9 L235.3 84.8 L238.3 85.4 L241.3 84.4 L244.4 84.6 L247.4 84.9 L250.4 85.4 L253.4 85.3 L256.4 84.9 L259.4 85.3 L262.5 85.3 L265.5 85.4 L268.5 85.1 L271.5 85.8 L274.5 84.9 L277.5 85.4 L280.6 84.9 L283.6 84.8 L286.6 84.4 L289.6 85.3 L292.6 85.1 L295.6 84.1 L298.7 84.7 L301.7 84.8 L304.7 84.8 L307.7 85.1 L310.7 84.6 L313.7 85.0 L316.8 85.3 L319.8 85.6 L322.8 85.1 L325.8 85.3 L328.8 84.9 L331.8 85.1 L334.9 85.1 L337.9 84.9 L340.9 84.9 L343.9 84.8 L346.9 84.8 L349.9 84.9 L353.0 84.6 L356.0 85.1 L359.0 85.4 L359 128 L0 128 Z" fill="#3B8CFF" fill-opacity=".16"/><path d="M0.0 128.0 L3.0 96.9 L6.0 84.8 L9.1 85.1 L12.1 85.4 L15.1 85.0 L18.1 84.9 L21.1 85.3 L24.1 84.6 L27.2 84.9 L30.2 85.4 L33.2 85.3 L36.2 84.4 L39.2 85.4 L42.2 85.3 L45.3 84.8 L48.3 85.1 L51.3 85.4 L54.3 85.3 L57.3 84.9 L60.3 85.1 L63.4 84.6 L66.4 84.8 L69.4 84.8 L72.4 84.9 L75.4 84.8 L78.4 84.8 L81.5 85.4 L84.5 85.1 L87.5 85.3 L90.5 84.6 L93.5 84.8 L96.5 85.4 L99.6 85.1 L102.6 84.8 L105.6 85.1 L108.6 84.8 L111.6 85.3 L114.6 84.9 L117.7 84.4 L120.7 84.9 L123.7 68.5 L126.7 47.9 L129.7 48.2 L132.7 38.6 L135.8 12.0 L138.8 12.3 L141.8 11.8 L144.8 11.6 L147.8 12.0 L150.8 12.0 L153.9 11.3 L156.9 12.1 L159.9 12.3 L162.9 43.4 L165.9 67.2 L168.9 66.5 L172.0 66.2 L175.0 66.3 L178.0 67.3 L181.0 66.7 L184.0 67.0 L187.0 84.4 L190.1 84.6 L193.1 84.6 L196.1 85.3 L199.1 84.9 L202.1 85.1 L205.1 85.1 L208.2 84.9 L211.2 85.1 L214.2 85.4 L217.2 85.8 L220.2 84.7 L223.2 84.6 L226.3 84.8 L229.3 84.6 L232.3 84.9 L235.3 84.8 L238.3 85.4 L241.3 84.4 L244.4 84.6 L247.4 84.9 L250.4 85.4 L253.4 85.3 L256.4 84.9 L259.4 85.3 L262.5 85.3 L265.5 85.4 L268.5 85.1 L271.5 85.8 L274.5 84.9 L277.5 85.4 L280.6 84.9 L283.6 84.8 L286.6 84.4 L289.6 85.3 L292.6 85.1 L295.6 84.1 L298.7 84.7 L301.7 84.8 L304.7 84.8 L307.7 85.1 L310.7 84.6 L313.7 85.0 L316.8 85.3 L319.8 85.6 L322.8 85.1 L325.8 85.3 L328.8 84.9 L331.8 85.1 L334.9 85.1 L337.9 84.9 L340.9 84.9 L343.9 84.8 L346.9 84.8 L349.9 84.9 L353.0 84.6 L356.0 85.1 L359.0 85.4" fill="none" stroke="#3B8CFF" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 6px #3B8CFF99)"/><line x1="0" x2="359" y1="77.5" y2="77.5" stroke="#A3ABBC" stroke-opacity=".55" stroke-dasharray="3 3"/><rect x="295.2" y="68.5" width="63.8" height="18" rx="9" fill="#232835"/><text x="327.1" y="81.5" text-anchor="middle" fill="#F3F5F9" font-size="11" font-weight="700" font-family="Barlow Condensed">114 W avg</text></svg>
+</div>
+<div class="strip">
+<div><div class="num">116<span class="u">W</span></div><div class="cap">Norm. power</div></div>
+<div><div class="num">0.54<span class="u">IF</span></div><div class="cap">TSS 21</div></div>
+<div><div class="num" style="color:#FF7A8A">146<span class="u">bpm</span></div><div class="cap">Avg HR</div></div>
+</div>
+</div>
+<div class="raised" style="display:flex;gap:12px;align-items:center;padding:16px">
+<span style="width:40px;height:40px;border-radius:20px;background:rgba(46,211,176,.14);display:flex;align-items:center;justify-content:center;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2ED3B0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span>
+<div style="flex:1"><div class="cap" style="color:#2ED3B0;font-weight:600">On intent</div><div style="font-size:17px;font-weight:600;margin-top:2px">Easy ride stayed easy</div></div>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+</div>
+<div class="win"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="#D4FF3A"><path d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 7 13c0-2 1-3.4 2-4.5.2 1.6 1 2.8 2.2 3.2C10.6 8 11.4 4.6 12 2z"/></svg></span><div><div class="k">Consistency</div><b>300 days in a row</b><p>A streak milestone. Every single day counted to get here.</p></div></div>
+</div></div>
+<div class="frame-cap"><b>The session's shape is the hero.</b> One raised card: the big distance and time, the power trace edge to edge with a soft glow and the average marked, then a dark strip with three values. The session read shrinks to a one-line verdict row (tap to open). Works for every sport: pace for run, elevation profile for hike, the HR trace for strength and physio.</div>
+</div>
+
+<div class="frame">
+<div class="lbl">B · Bento</div>
+<div class="phone crop">
+<div class="island"></div>
+<div class="sb"><span>21:41</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="hdr" style="padding-bottom:0">
+<div class="k" style="color:#6FAEFF">Indoor ride · Recovery</div>
+<div class="ttl" style="font-size:30px;margin-top:8px">Zwift – California Dreamin' in Watopia</div>
+<div class="h-meta">Thu 29 Oct · 19:58 <b>· Zwift</b></div>
+</div>
+<div class="bento">
+<div class="raised bb" style="grid-row:span 2;padding:16px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;position:relative">
+<div><span class="ico" style="background:rgba(59,140,255,.16)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6FAEFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="17" r="3.5"/><circle cx="18" cy="17" r="3.5"/><path d="M6 17l4-8h5l3 8M10 9l-1-3h-2"/></svg></span>
+<div class="cap" style="margin-top:12px">Distance</div>
+<div class="num" style="font-size:60px;line-height:.85;margin-top:8px">20.6</div><div class="cap" style="margin-top:4px">kilometres</div></div>
+<div style="margin:0 -16px -16px"><svg width="200" height="64" viewBox="0 0 200 64" style="display:block;overflow:visible"><path d="M0.0 64.0 L1.7 48.5 L3.4 42.4 L5.0 42.6 L6.7 42.7 L8.4 42.5 L10.1 42.5 L11.8 42.6 L13.4 42.3 L15.1 42.5 L16.8 42.7 L18.5 42.6 L20.2 42.2 L21.8 42.7 L23.5 42.6 L25.2 42.4 L26.9 42.6 L28.6 42.7 L30.3 42.6 L31.9 42.5 L33.6 42.6 L35.3 42.3 L37.0 42.4 L38.7 42.4 L40.3 42.5 L42.0 42.4 L43.7 42.4 L45.4 42.7 L47.1 42.6 L48.7 42.6 L50.4 42.3 L52.1 42.4 L53.8 42.7 L55.5 42.6 L57.1 42.4 L58.8 42.6 L60.5 42.4 L62.2 42.6 L63.9 42.5 L65.5 42.2 L67.2 42.5 L68.9 34.2 L70.6 23.9 L72.3 24.1 L73.9 19.3 L75.6 6.0 L77.3 6.2 L79.0 5.9 L80.7 5.8 L82.4 6.0 L84.0 6.0 L85.7 5.7 L87.4 6.0 L89.1 6.2 L90.8 21.7 L92.4 33.6 L94.1 33.2 L95.8 33.1 L97.5 33.2 L99.2 33.7 L100.8 33.3 L102.5 33.5 L104.2 42.2 L105.9 42.3 L107.6 42.3 L109.2 42.6 L110.9 42.5 L112.6 42.6 L114.3 42.6 L116.0 42.5 L117.6 42.6 L119.3 42.7 L121.0 42.9 L122.7 42.3 L124.4 42.3 L126.1 42.4 L127.7 42.3 L129.4 42.5 L131.1 42.4 L132.8 42.7 L134.5 42.2 L136.1 42.3 L137.8 42.5 L139.5 42.7 L141.2 42.6 L142.9 42.5 L144.5 42.6 L146.2 42.6 L147.9 42.7 L149.6 42.6 L151.3 42.9 L152.9 42.5 L154.6 42.7 L156.3 42.5 L158.0 42.4 L159.7 42.2 L161.3 42.6 L163.0 42.6 L164.7 42.1 L166.4 42.3 L168.1 42.4 L169.7 42.4 L171.4 42.6 L173.1 42.3 L174.8 42.5 L176.5 42.6 L178.2 42.8 L179.8 42.6 L181.5 42.6 L183.2 42.5 L184.9 42.6 L186.6 42.6 L188.2 42.5 L189.9 42.5 L191.6 42.4 L193.3 42.4 L195.0 42.5 L196.6 42.3 L198.3 42.6 L200.0 42.7 L200 64 L0 64 Z" fill="#3B8CFF" fill-opacity=".18"/><path d="M0.0 64.0 L1.7 48.5 L3.4 42.4 L5.0 42.6 L6.7 42.7 L8.4 42.5 L10.1 42.5 L11.8 42.6 L13.4 42.3 L15.1 42.5 L16.8 42.7 L18.5 42.6 L20.2 42.2 L21.8 42.7 L23.5 42.6 L25.2 42.4 L26.9 42.6 L28.6 42.7 L30.3 42.6 L31.9 42.5 L33.6 42.6 L35.3 42.3 L37.0 42.4 L38.7 42.4 L40.3 42.5 L42.0 42.4 L43.7 42.4 L45.4 42.7 L47.1 42.6 L48.7 42.6 L50.4 42.3 L52.1 42.4 L53.8 42.7 L55.5 42.6 L57.1 42.4 L58.8 42.6 L60.5 42.4 L62.2 42.6 L63.9 42.5 L65.5 42.2 L67.2 42.5 L68.9 34.2 L70.6 23.9 L72.3 24.1 L73.9 19.3 L75.6 6.0 L77.3 6.2 L79.0 5.9 L80.7 5.8 L82.4 6.0 L84.0 6.0 L85.7 5.7 L87.4 6.0 L89.1 6.2 L90.8 21.7 L92.4 33.6 L94.1 33.2 L95.8 33.1 L97.5 33.2 L99.2 33.7 L100.8 33.3 L102.5 33.5 L104.2 42.2 L105.9 42.3 L107.6 42.3 L109.2 42.6 L110.9 42.5 L112.6 42.6 L114.3 42.6 L116.0 42.5 L117.6 42.6 L119.3 42.7 L121.0 42.9 L122.7 42.3 L124.4 42.3 L126.1 42.4 L127.7 42.3 L129.4 42.5 L131.1 42.4 L132.8 42.7 L134.5 42.2 L136.1 42.3 L137.8 42.5 L139.5 42.7 L141.2 42.6 L142.9 42.5 L144.5 42.6 L146.2 42.6 L147.9 42.7 L149.6 42.6 L151.3 42.9 L152.9 42.5 L154.6 42.7 L156.3 42.5 L158.0 42.4 L159.7 42.2 L161.3 42.6 L163.0 42.6 L164.7 42.1 L166.4 42.3 L168.1 42.4 L169.7 42.4 L171.4 42.6 L173.1 42.3 L174.8 42.5 L176.5 42.6 L178.2 42.8 L179.8 42.6 L181.5 42.6 L183.2 42.5 L184.9 42.6 L186.6 42.6 L188.2 42.5 L189.9 42.5 L191.6 42.4 L193.3 42.4 L195.0 42.5 L196.6 42.3 L198.3 42.6 L200.0 42.7" fill="none" stroke="#3B8CFF" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 6px #3B8CFF99)"/></svg></div>
+</div>
+<div class="raised bb" style="padding:16px"><span class="ico" style="background:rgba(163,171,188,.12)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9CFDA" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg></span><div class="num" style="font-size:32px;margin-top:12px">43:36</div><div class="cap" style="margin-top:4px">Moving time</div></div>
+<div class="raised bb" style="padding:16px;background:#1A1418;border-color:#2A1E24"><span class="ico" style="background:rgba(255,90,110,.16)"><svg width="16" height="16" viewBox="0 0 24 24" fill="#FF5A6E"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z"/></svg></span><div class="num" style="font-size:32px;margin-top:12px">146<span class="u">bpm</span></div><div class="cap" style="margin-top:4px">Avg HR · max 162</div></div>
+<div class="raised bb" style="grid-column:span 2;padding:16px;display:flex;align-items:center;gap:16px">
+<svg width="76" height="76" viewBox="0 0 76 76" style="flex:none"><circle cx="38" cy="38" r="30" fill="none" stroke="#1F242E" stroke-width="8"/><circle cx="38" cy="38" r="30" fill="none" stroke="#3B8CFF" stroke-width="8" stroke-linecap="round" stroke-dasharray="101.8 188.5" transform="rotate(-90 38 38)" style="filter:drop-shadow(0 0 4px #3B8CFF88)"/><text x="38" y="43" text-anchor="middle" fill="#F3F5F9" font-family="Barlow Condensed" font-weight="700" font-size="20">54%</text></svg>
+<div style="flex:1"><div class="cap">Intensity · of FTP 215 W</div><div class="row" style="gap:20px;margin-top:8px"><div><div class="num" style="font-size:26px">116<span class="u">W</span></div><div class="cap">NP</div></div><div><div class="num" style="font-size:26px">0.54</div><div class="cap">IF</div></div><div><div class="num" style="font-size:26px">21</div><div class="cap">TSS</div></div></div></div>
+</div>
+</div>
+<div class="win"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="#D4FF3A"><path d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 7 13c0-2 1-3.4 2-4.5.2 1.6 1 2.8 2.2 3.2C10.6 8 11.4 4.6 12 2z"/></svg></span><div><div class="k">Consistency</div><b>300 days in a row</b><p>A streak milestone. Every single day counted to get here.</p></div></div>
+</div></div>
+<div class="frame-cap"><b>Blocks of different sizes, each with one job.</b> A tall distance tile with the trace along its bottom, two small tiles (time, HR on a faint red surface), and a wide intensity tile with a ring for % of FTP. Icons in tinted circles give each block a face. Strength would get volume, sets, HR and a "lifts up" ring; hike would get distance, ascent, HR and a profile.</div>
+</div>
+
+<div class="frame">
+<div class="lbl">C · Verdict poster</div>
+<div class="phone crop">
+<div class="island"></div>
+<div class="sb"><span>21:41</span><span></span></div>
+<div class="v3">
+<div class="navb"><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3ABBC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span></div>
+<div class="poster">
+<div class="row sbw"><span class="pk">Indoor ride · Thu 29 Oct</span><span class="pbadge">On intent</span></div>
+<div class="ttl" style="font-size:46px;margin-top:16px;color:#0A0C11">Easy ride<br>stayed easy</div>
+<div style="font-size:14px;margin-top:8px;color:rgba(10,12,17,.72);font-weight:500">Zwift – California Dreamin' in Watopia</div>
+<div class="prow">
+<div><div class="num">20.6<span class="u">km</span></div><div class="pc">Distance</div></div>
+<div><div class="num">43:36</div><div class="pc">Moving</div></div>
+<div><div class="num">116<span class="u">W</span></div><div class="pc">Norm. power</div></div>
+</div>
+<div style="margin:16px -20px -20px"><svg width="361" height="72" viewBox="0 0 361 72" style="display:block;overflow:visible"><path d="M0.0 72.0 L3.0 54.5 L6.1 47.7 L9.1 47.9 L12.1 48.1 L15.2 47.8 L18.2 47.8 L21.2 48.0 L24.3 47.6 L27.3 47.8 L30.3 48.0 L33.4 48.0 L36.4 47.5 L39.4 48.1 L42.5 48.0 L45.5 47.7 L48.5 47.9 L51.6 48.1 L54.6 48.0 L57.6 47.8 L60.7 47.9 L63.7 47.6 L66.7 47.7 L69.8 47.7 L72.8 47.8 L75.8 47.7 L78.9 47.7 L81.9 48.1 L84.9 47.9 L88.0 48.0 L91.0 47.6 L94.0 47.7 L97.1 48.1 L100.1 47.9 L103.1 47.7 L106.2 47.9 L109.2 47.7 L112.2 48.0 L115.3 47.8 L118.3 47.5 L121.3 47.8 L124.4 38.5 L127.4 26.9 L130.4 27.1 L133.5 21.7 L136.5 6.7 L139.5 6.9 L142.6 6.6 L145.6 6.5 L148.6 6.7 L151.7 6.7 L154.7 6.4 L157.7 6.8 L160.8 6.9 L163.8 24.4 L166.8 37.8 L169.9 37.4 L172.9 37.2 L175.9 37.3 L179.0 37.9 L182.0 37.5 L185.1 37.7 L188.1 47.5 L191.1 47.6 L194.2 47.6 L197.2 48.0 L200.2 47.8 L203.3 47.9 L206.3 47.9 L209.3 47.8 L212.4 47.9 L215.4 48.1 L218.4 48.3 L221.5 47.6 L224.5 47.6 L227.5 47.7 L230.6 47.6 L233.6 47.8 L236.6 47.7 L239.7 48.1 L242.7 47.5 L245.7 47.6 L248.8 47.8 L251.8 48.0 L254.8 48.0 L257.9 47.8 L260.9 48.0 L263.9 48.0 L267.0 48.1 L270.0 47.9 L273.0 48.3 L276.1 47.8 L279.1 48.1 L282.1 47.8 L285.2 47.7 L288.2 47.5 L291.2 48.0 L294.3 47.9 L297.3 47.3 L300.3 47.6 L303.4 47.7 L306.4 47.7 L309.4 47.9 L312.5 47.6 L315.5 47.8 L318.5 48.0 L321.6 48.2 L324.6 47.9 L327.6 48.0 L330.7 47.8 L333.7 47.9 L336.7 47.9 L339.8 47.8 L342.8 47.8 L345.8 47.7 L348.9 47.7 L351.9 47.8 L354.9 47.6 L358.0 47.9 L361.0 48.1 L361 72 L0 72 Z" fill="#0A0C11" fill-opacity=".12"/><path d="M0.0 72.0 L3.0 54.5 L6.1 47.7 L9.1 47.9 L12.1 48.1 L15.2 47.8 L18.2 47.8 L21.2 48.0 L24.3 47.6 L27.3 47.8 L30.3 48.0 L33.4 48.0 L36.4 47.5 L39.4 48.1 L42.5 48.0 L45.5 47.7 L48.5 47.9 L51.6 48.1 L54.6 48.0 L57.6 47.8 L60.7 47.9 L63.7 47.6 L66.7 47.7 L69.8 47.7 L72.8 47.8 L75.8 47.7 L78.9 47.7 L81.9 48.1 L84.9 47.9 L88.0 48.0 L91.0 47.6 L94.0 47.7 L97.1 48.1 L100.1 47.9 L103.1 47.7 L106.2 47.9 L109.2 47.7 L112.2 48.0 L115.3 47.8 L118.3 47.5 L121.3 47.8 L124.4 38.5 L127.4 26.9 L130.4 27.1 L133.5 21.7 L136.5 6.7 L139.5 6.9 L142.6 6.6 L145.6 6.5 L148.6 6.7 L151.7 6.7 L154.7 6.4 L157.7 6.8 L160.8 6.9 L163.8 24.4 L166.8 37.8 L169.9 37.4 L172.9 37.2 L175.9 37.3 L179.0 37.9 L182.0 37.5 L185.1 37.7 L188.1 47.5 L191.1 47.6 L194.2 47.6 L197.2 48.0 L200.2 47.8 L203.3 47.9 L206.3 47.9 L209.3 47.8 L212.4 47.9 L215.4 48.1 L218.4 48.3 L221.5 47.6 L224.5 47.6 L227.5 47.7 L230.6 47.6 L233.6 47.8 L236.6 47.7 L239.7 48.1 L242.7 47.5 L245.7 47.6 L248.8 47.8 L251.8 48.0 L254.8 48.0 L257.9 47.8 L260.9 48.0 L263.9 48.0 L267.0 48.1 L270.0 47.9 L273.0 48.3 L276.1 47.8 L279.1 48.1 L282.1 47.8 L285.2 47.7 L288.2 47.5 L291.2 48.0 L294.3 47.9 L297.3 47.3 L300.3 47.6 L303.4 47.7 L306.4 47.7 L309.4 47.9 L312.5 47.6 L315.5 47.8 L318.5 48.0 L321.6 48.2 L324.6 47.9 L327.6 48.0 L330.7 47.8 L333.7 47.9 L336.7 47.9 L339.8 47.8 L342.8 47.8 L345.8 47.7 L348.9 47.7 L351.9 47.8 L354.9 47.6 L358.0 47.9 L361.0 48.1" fill="none" stroke="#0A0C11" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
+</div>
+<div class="duo">
+<div class="raised" style="padding:16px"><div class="cap">Avg heart rate</div><div class="num" style="font-size:34px;margin-top:8px">146<span class="u">bpm</span></div><div class="mini"><i style="width:14%;background:#49A6FF"></i><i style="width:72%;background:#43D17C"></i><i style="width:14%;background:#F5B742"></i></div><div class="cap" style="margin-top:8px">72% in Zone 2</div></div>
+<div class="raised" style="padding:16px"><div class="cap">Intensity</div><div class="num" style="font-size:34px;margin-top:8px">0.54<span class="u">IF</span></div><div class="mini"><i style="width:54%;background:#3B8CFF"></i></div><div class="cap" style="margin-top:8px">TSS 21 · 53% of FTP</div></div>
+</div>
+<div class="win"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="#D4FF3A"><path d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 7 13c0-2 1-3.4 2-4.5.2 1.6 1 2.8 2.2 3.2C10.6 8 11.4 4.6 12 2z"/></svg></span><div><div class="k">Consistency</div><b>300 days in a row</b><p>A streak milestone. Every single day counted to get here.</p></div></div>
+</div></div>
+<div class="frame-cap"><b>Lead with what it meant, in the sport's colour.</b> A solid block (flat, no gradient) with the verdict as a big italic headline, the three key numbers in dark ink and the power trace as a texture along the bottom. Two raised cards follow with HR and intensity. Run is orange, strength pink, hike violet. Sports without a verdict use the win or "10.2 km in Karkonosze". Loudest of the three.</div>
 </div>
 
 <!-- ============ 1. NOTES · DIAGNOSIS + PRINCIPLES ============ -->

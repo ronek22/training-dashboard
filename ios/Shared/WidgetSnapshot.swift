@@ -22,6 +22,34 @@ struct WidgetSnapshot: Codable, Sendable, Equatable {
         let weekDoneMin: Int
         let weekPlannedMin: Int
         let weekBySport: [SportMinutes]
+        // Added with widgets v2; optional so a snapshot stored by an older build still decodes.
+        var intent: String? = nil
+        var liftCount: Int? = nil
+        var sickDay: Int? = nil
+        var tomorrow: Tomorrow? = nil
+        var week: [Day]? = nil
+
+        /// "Workout C" from "Workout C · Wide Shoulders (extra upper volume)".
+        var shortTitle: String? { title.map(WidgetFormat.shortTitle) }
+        /// "Strength · Wide Shoulders": the sport, then the title's focus or the plan's intent.
+        var kicker: String {
+            if let sickDay { return "Sick · day \(sickDay)" }
+            if sport == "rest" || title == nil { return "Recovery" }
+            let focus = title.flatMap(WidgetFormat.focus) ?? intent
+            return [WidgetFormat.sportLabel(sport), focus].compactMap { $0 }.joined(separator: " · ")
+        }
+    }
+
+    struct Tomorrow: Codable, Sendable, Equatable {
+        let sport: String
+        let durationMin: Int?
+    }
+
+    /// One day of the week strip: done, today, upcoming, missed or skipped.
+    struct Day: Codable, Sendable, Equatable {
+        let sport: String
+        let status: String
+        let doneSports: [String]
     }
 
     struct SportMinutes: Codable, Sendable, Equatable {
@@ -73,7 +101,12 @@ extension WidgetSnapshot.Today {
             streakDays: phone.streakDays,
             weekDoneMin: phone.weekMinutes.done,
             weekPlannedMin: phone.weekMinutes.planned,
-            weekBySport: phone.weekMinutes.bySport.map { .init(sport: $0.sport.rawValue, minutes: $0.minutes) }
+            weekBySport: phone.weekMinutes.bySport.map { .init(sport: $0.sport.rawValue, minutes: $0.minutes) },
+            intent: phone.today?.intentLabel,
+            liftCount: phone.today?.strength?.exercises.count,
+            sickDay: phone.sick.map { $0.day ?? 1 },
+            tomorrow: phone.tomorrow.map { .init(sport: ($0.sport ?? .other).rawValue, durationMin: $0.durationMin) },
+            week: phone.week.map { .init(sport: $0.sport.rawValue, status: $0.status, doneSports: $0.doneSports.map(\.rawValue)) }
         )
     }
 }
@@ -140,5 +173,47 @@ enum WidgetFormat {
 
     static func share(_ done: Int, of planned: Int) -> Double {
         planned > 0 ? min(1, Double(done) / Double(planned)) : 0
+    }
+
+    /// The part before " · ", without asides in brackets.
+    static func shortTitle(_ title: String) -> String {
+        stripAsides(title.components(separatedBy: " · ").first ?? title)
+    }
+
+    /// The part after " · ", without asides in brackets; nil when the title has none.
+    static func focus(_ title: String) -> String? {
+        let parts = title.components(separatedBy: " · ")
+        guard parts.count > 1 else { return nil }
+        let focus = stripAsides(parts.dropFirst().joined(separator: " · "))
+        return focus.isEmpty ? nil : focus
+    }
+
+    private static func stripAsides(_ text: String) -> String {
+        text.replacingOccurrences(of: #"\s*\([^)]*\)"#, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
+    }
+
+    static func sportLabel(_ sport: String) -> String {
+        switch sport {
+        case "mobility": "Mobility"
+        case "rest": "Rest"
+        default: sport.capitalized
+        }
+    }
+
+    /// The headline word the app's Today screen uses for each readiness level.
+    static func readinessWord(_ level: String) -> String {
+        switch level {
+        case "green": "Ready"
+        case "amber": "Ease in"
+        case "red": "Recover"
+        default: "No read"
+        }
+    }
+
+    /// Evening with under 60% eaten: the one time kcal to go turns amber.
+    static func isBehind(_ food: WidgetSnapshot.Food, at date: Date, calendar: Calendar = .current) -> Bool {
+        guard food.targetKcal != nil, food.share < 0.6 else { return false }
+        return calendar.component(.hour, from: date) >= 18
     }
 }

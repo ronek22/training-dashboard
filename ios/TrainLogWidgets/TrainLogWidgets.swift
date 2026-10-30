@@ -80,9 +80,19 @@ extension WidgetSnapshot {
     /// The artboard's numbers, for the widget gallery.
     static let preview = WidgetSnapshot(
         today: Today(
-            date: iso(.now), title: "Workout B", sport: "strength", durationMin: 45, isDone: false,
+            date: iso(.now), title: "Workout B · Lower body", sport: "strength", durationMin: 45, isDone: false,
             readiness: "green", streakDays: 6, weekDoneMin: 167, weekPlannedMin: 370,
-            weekBySport: [.init(sport: "strength", minutes: 98), .init(sport: "ride", minutes: 45), .init(sport: "mobility", minutes: 24)]
+            weekBySport: [.init(sport: "strength", minutes: 98), .init(sport: "ride", minutes: 45), .init(sport: "mobility", minutes: 24)],
+            liftCount: 5,
+            week: [
+                .init(sport: "strength", status: "done", doneSports: ["strength"]),
+                .init(sport: "ride", status: "done", doneSports: ["ride"]),
+                .init(sport: "mobility", status: "done", doneSports: ["mobility"]),
+                .init(sport: "strength", status: "today", doneSports: []),
+                .init(sport: "ride", status: "upcoming", doneSports: []),
+                .init(sport: "rest", status: "upcoming", doneSports: []),
+                .init(sport: "run", status: "upcoming", doneSports: []),
+            ]
         ),
         food: Food(date: iso(.now), eatenKcal: 1862, targetKcal: 2780, proteinG: 96, proteinTargetG: 140)
     )

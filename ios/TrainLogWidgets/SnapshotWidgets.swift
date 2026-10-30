@@ -1,7 +1,8 @@
 import SwiftUI
 import WidgetKit
 
-// Home Screen and Lock Screen widgets (artboard frame 7: week hours ring and kcal to go).
+// Home Screen and Lock Screen widgets (docs/design/artboards/iOSWidgets.dc.html: the wide Today
+// widget is direction A, small widgets and Lock Screen accessories as drawn there).
 
 struct TodayWidget: Widget {
     var body: some WidgetConfiguration {
@@ -38,8 +39,14 @@ struct FoodWidget: Widget {
 
 private extension View {
     func widgetBackground() -> some View {
-        containerBackground(for: .widget) { Color.card }
+        containerBackground(for: .widget) { Color.bg }
     }
+}
+
+private extension Color {
+    /// Time is yellow everywhere in activity detail D2.
+    static let time = Color(hex: 0xFFD24A)
+    static let behind = Color(hex: 0xFFC873)
 }
 
 // MARK: Today
@@ -56,17 +63,8 @@ struct TodayWidgetView: View {
             switch family {
             case .accessoryInline: inline
             case .accessoryRectangular: rectangular
-            case .systemMedium:
-                HStack(spacing: 14) {
-                    TodaySession(today: today, date: entry.date)
-                    Rectangle().fill(Color.cardBorder).frame(width: 1)
-                    VStack(alignment: .leading, spacing: 12) {
-                        WeekMini(today: today)
-                        FoodMini(food: food)
-                    }
-                    .frame(width: 128)
-                }
-            default: TodaySession(today: today, date: entry.date)
+            case .systemMedium: WideToday(today: today, food: food, date: entry.date)
+            default: SmallToday(today: today, date: entry.date)
             }
         }
         .widgetURL(URL(string: "trainlog://today"))
@@ -104,7 +102,7 @@ struct TodayWidgetView: View {
 
     private var title: String {
         guard let today else { return "Open TrainLog" }
-        return today.title ?? "Rest day"
+        return today.shortTitle ?? "Rest day"
     }
 
     private var detail: String {
@@ -115,73 +113,217 @@ struct TodayWidgetView: View {
     }
 }
 
-/// The small Today widget, and the left half of the medium one.
-private struct TodaySession: View {
+/// Direction A: the session across the top, week and food as two meters below.
+private struct WideToday: View {
     let today: WidgetSnapshot.Today?
+    let food: WidgetSnapshot.Food?
     let date: Date
-
-    private var sport: Sport { Sport(rawValue: today?.sport ?? "") ?? .rest }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Kicker(date.formatted(.dateTime.weekday(.abbreviated).day().locale(Locale(identifier: "en_GB"))))
-                Spacer()
-                if let today { ReadinessDot(level: today.readiness) }
+            // A long focus keeps its words; the date gives way first.
+            ViewThatFits(in: .horizontal) {
+                header(showDate: true)
+                header(showDate: false)
+                header(showDate: false, truncate: true)
             }
-            Spacer(minLength: 6)
-            Image(systemName: sport.symbol)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Color.bg)
-                .frame(width: 28, height: 28)
-                .background(sport.color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .widgetAccentable()
-            Text(today.map { $0.title ?? "Rest day" } ?? "Open TrainLog")
-                .font(AppFont.title(26))
-                .textCase(.uppercase)
-                .foregroundStyle(Color.ink)
-                .lineLimit(2)
-                .minimumScaleFactor(0.6)
-                .padding(.top, 8)
-            status.padding(.top, 3)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-    }
-
-    @ViewBuilder private var status: some View {
-        if today?.isDone == true {
-            Label("Done", systemImage: "checkmark")
-                .font(AppFont.body(12, weight: .bold))
-                .foregroundStyle(Color.volt)
-        } else {
-            Text(subtitle)
-                .font(AppFont.body(12, weight: .medium))
-                .foregroundStyle(Color.inkSoft)
-                .lineLimit(1)
+            SessionTitle(today: today, size: 30, lines: 1)
+                .padding(.top, 6)
+            SessionLine(today: today)
+                .padding(.top, 4)
+            Spacer(minLength: 8)
+            Rectangle().fill(Color.cardBorder).frame(height: 1)
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    WeekValue(today: today, size: 22)
+                    SportBar(today: today, height: 5)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Rectangle().fill(Color.cardBorder).frame(width: 1)
+                VStack(alignment: .leading, spacing: 8) {
+                    FoodValue(food: food, date: date, size: 22)
+                    LinearBar(share: food?.share ?? 0, fill: .volt.opacity(0.85), track: .track, height: 5)
+                        .widgetAccentable()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 12)
         }
     }
 
-    private var subtitle: String {
-        guard let today else { return "No data yet" }
-        if sport == .rest { return today.streakDays > 1 ? "\(today.streakDays)-day streak" : "Recover well" }
-        return [sport.label, today.durationMin.map(WidgetFormat.duration)].compactMap { $0 }.joined(separator: " · ")
+    @ViewBuilder private func header(showDate: Bool, truncate: Bool = false) -> some View {
+        HStack(spacing: 8) {
+            if truncate { SportKicker(today: today) } else { SportKicker(today: today).fixedSize() }
+            Spacer(minLength: 4)
+            DayStatus(today: today, date: date, showDate: showDate)
+        }
     }
 }
 
-private struct ReadinessDot: View {
-    let level: String
+private struct SmallToday: View {
+    let today: WidgetSnapshot.Today?
+    let date: Date
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            DayStatus(today: today, date: date)
+            if today?.isDone == true {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 18, weight: .heavy))
+                    .foregroundStyle(Color.bg)
+                    .frame(width: 40, height: 40)
+                    .background(Color.volt, in: Circle())
+                    .widgetAccentable()
+                    .padding(.top, 10)
+            }
+            Spacer(minLength: 6)
+            SportKicker(today: today)
+            SessionTitle(today: today, size: 24, lines: 2)
+                .padding(.top, 4)
+            SessionLine(today: today)
+                .padding(.top, 3)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+}
+
+/// "Strength · Wide Shoulders" in the sport's colour.
+private struct SportKicker: View {
+    let today: WidgetSnapshot.Today?
 
     private var color: Color {
+        guard let today else { return .muted }
+        if today.sickDay != nil { return .danger }
+        return today.sport == "rest" ? .muted : (Sport(rawValue: today.sport) ?? .other).color
+    }
+
+    var body: some View {
+        Kicker(today?.kicker ?? "TrainLog", color: color)
+            .lineLimit(1)
+            .widgetAccentable()
+    }
+}
+
+/// "Fri 30 · ● Ready".
+private struct DayStatus: View {
+    let today: WidgetSnapshot.Today?
+    let date: Date
+    var showDate = true
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if showDate || today == nil {
+                Text(date.formatted(.dateTime.weekday(.abbreviated).day().locale(Locale(identifier: "en_GB"))))
+                    .foregroundStyle(Color.muted)
+            }
+            if let level = today?.readiness {
+                if showDate { Text("·").foregroundStyle(Color.muted) }
+                Circle().fill(ReadinessDot.color(level)).frame(width: 7, height: 7)
+                Text(WidgetFormat.readinessWord(level)).foregroundStyle(ReadinessDot.color(level))
+            }
+        }
+        .font(AppFont.body(11, weight: .semibold))
+        .lineLimit(1)
+        .fixedSize()
+    }
+}
+
+private struct SessionTitle: View {
+    let today: WidgetSnapshot.Today?
+    let size: CGFloat
+    let lines: Int
+
+    private var text: String {
+        guard let today else { return "Open TrainLog" }
+        if today.sickDay != nil { return "Sick day" }
+        return today.sport == "rest" ? "Rest day" : (today.shortTitle ?? "Rest day")
+    }
+
+    var body: some View {
+        Text(text)
+            .font(AppFont.title(size))
+            .textCase(.uppercase)
+            .foregroundStyle(Color.ink)
+            .lineLimit(lines)
+            .minimumScaleFactor(0.6)
+    }
+}
+
+/// Under the title: duration in yellow, done with the streak, or tomorrow on a rest day.
+private struct SessionLine: View {
+    let today: WidgetSnapshot.Today?
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            content
+        }
+        .font(AppFont.body(13, weight: .medium))
+        .foregroundStyle(Color.inkSoft)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+    }
+
+    @ViewBuilder private var content: some View {
+        if let today {
+            if today.sickDay != nil {
+                Text("Rest · plan on hold")
+            } else if today.isDone {
+                Label("Done", systemImage: "checkmark")
+                    .labelStyle(DoneLabel())
+                    .foregroundStyle(Color.volt)
+                if today.streakDays > 1 { Text("· \(today.streakDays)-day streak") }
+            } else if today.sport == "rest" {
+                if let tomorrow = today.tomorrow, tomorrow.sport != "rest" {
+                    Text("Tomorrow")
+                    Text(WidgetFormat.sportLabel(tomorrow.sport))
+                        .fontWeight(.semibold)
+                        .foregroundStyle((Sport(rawValue: tomorrow.sport) ?? .other).color)
+                    if let minutes = tomorrow.durationMin { Minutes(minutes) }
+                } else {
+                    Text(today.streakDays > 1 ? "\(today.streakDays)-day streak" : "Recover well")
+                }
+            } else {
+                if let minutes = today.durationMin { Minutes(minutes) }
+                if let lifts = today.liftCount, lifts > 0 { Text("· \(lifts) lifts") }
+            }
+        } else {
+            Text("No data yet")
+        }
+    }
+}
+
+private struct DoneLabel: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 3) {
+            configuration.icon.font(.system(size: 11, weight: .heavy))
+            configuration.title.fontWeight(.semibold)
+        }
+    }
+}
+
+/// "45 min" in time yellow.
+private struct Minutes: View {
+    let minutes: Int
+    init(_ minutes: Int) { self.minutes = minutes }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 2) {
+            Text("\(minutes)").font(AppFont.number(16))
+            Text("min").font(AppFont.body(12, weight: .medium))
+        }
+        .foregroundStyle(Color.time)
+    }
+}
+
+private enum ReadinessDot {
+    static func color(_ level: String) -> Color {
         switch level {
         case "green": .mobility
         case "amber": .warning
         case "red": .danger
         default: .dim
         }
-    }
-
-    var body: some View {
-        Circle().fill(color).frame(width: 8, height: 8)
     }
 }
 
@@ -215,65 +357,61 @@ struct WeekWidgetView: View {
 
     private var share: Double { WidgetFormat.share(today?.weekDoneMin ?? 0, of: today?.weekPlannedMin ?? 0) }
 
+    /// Done against planned, uncapped: an over-delivered week reads 109%.
+    private var percent: Int {
+        guard let today, today.weekPlannedMin > 0 else { return 0 }
+        return Int((Double(today.weekDoneMin) / Double(today.weekPlannedMin) * 100).rounded())
+    }
+
+    private var weekNumber: Int {
+        var calendar = Calendar(identifier: .iso8601)
+        calendar.timeZone = .current
+        return calendar.component(.weekOfYear, from: entry.date)
+    }
+
     private var small: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Kicker("Week")
+                Kicker("Week \(weekNumber)")
                 Spacer()
-                Text("\(Int((share * 100).rounded()))%")
+                Text("\(percent)%")
                     .font(AppFont.number(14, weight: .semibold))
-                    .foregroundStyle(share >= 1 ? Color.volt : Color.inkSoft)
+                    .foregroundStyle(percent >= 100 ? Color.volt : Color.muted)
             }
             Spacer(minLength: 4)
-            HStack(spacing: 10) {
-                ZStack {
-                    Ring(segments: SportRing.segments(today), lineWidth: 9, track: .track, roundCaps: false)
-                        .widgetAccentable()
-                    VStack(spacing: -2) {
-                        Text(WidgetFormat.clock(today?.weekDoneMin ?? 0)).font(AppFont.number(24)).foregroundStyle(Color.ink)
-                        Text("of \(WidgetFormat.hours(today?.weekPlannedMin ?? 0))").font(AppFont.body(10, weight: .medium)).foregroundStyle(Color.muted)
-                    }
-                }
-                .frame(width: 80, height: 80)
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array((today?.weekBySport ?? []).prefix(4).enumerated()), id: \.offset) { _, part in
-                        let sport = Sport(rawValue: part.sport) ?? .other
-                        HStack(spacing: 5) {
-                            Circle().fill(sport.color).frame(width: 7, height: 7)
-                            Text(WidgetFormat.clock(part.minutes))
-                                .font(AppFont.number(13, weight: .semibold))
-                                .foregroundStyle(Color.inkSoft)
-                                .fixedSize()
-                        }
-                    }
-                }
-            }
-            Spacer(minLength: 0)
+            WeekValue(today: today, size: 44)
+            SportBar(today: today, height: 6)
+                .padding(.top, 8)
+            WeekStrip(today: today, date: entry.date)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
         }
     }
 }
 
-/// The medium Today widget's week line.
-private struct WeekMini: View {
+/// "2:47 of 6h10", time in yellow.
+private struct WeekValue: View {
     let today: WidgetSnapshot.Today?
+    let size: CGFloat
 
     var body: some View {
-        let done = today?.weekDoneMin ?? 0
-        let planned = today?.weekPlannedMin ?? 0
-        VStack(alignment: .leading, spacing: 5) {
-            Kicker("Week")
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(WidgetFormat.clock(done)).font(AppFont.number(22)).foregroundStyle(Color.ink)
-                Text("of \(WidgetFormat.hours(planned))").font(AppFont.body(11)).foregroundStyle(Color.muted)
-            }
-            SportBar(today: today)
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Text(WidgetFormat.clock(today?.weekDoneMin ?? 0))
+                .font(AppFont.number(size))
+                .foregroundStyle(Color.time)
+            Text("of \(WidgetFormat.hours(today?.weekPlannedMin ?? 0))")
+                .font(AppFont.body(size > 30 ? 13 : 12, weight: .medium))
+                .foregroundStyle(Color.inkSoft)
         }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
     }
 }
 
 /// Done minutes per sport, laid along the planned week.
 private struct SportBar: View {
     let today: WidgetSnapshot.Today?
+    let height: CGFloat
 
     var body: some View {
         GeometryReader { geo in
@@ -286,7 +424,57 @@ private struct SportBar: View {
             .background(Color.track)
             .clipShape(Capsule())
         }
-        .frame(height: 5)
+        .frame(height: height)
+        .widgetAccentable()
+    }
+}
+
+/// The week as seven dots: filled = done, ring = planned, dashed = missed, dash = rest.
+private struct WeekStrip: View {
+    let today: WidgetSnapshot.Today?
+    let date: Date
+
+    private var days: [WidgetSnapshot.Day] { Array((today?.week ?? []).prefix(7)) }
+
+    /// Today's place: the day the server marks, else the weekday (Monday first).
+    private var nowIndex: Int {
+        if let index = days.firstIndex(where: { $0.status == "today" }) { return index }
+        return (Calendar(identifier: .gregorian).component(.weekday, from: date) + 5) % 7
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(0..<7, id: \.self) { index in
+                VStack(spacing: 4) {
+                    Text(["M", "T", "W", "T", "F", "S", "S"][index])
+                        .font(AppFont.body(10, weight: .semibold))
+                        .foregroundStyle(index == nowIndex ? Color.ink : Color.faint)
+                    dot(index < days.count ? days[index] : nil, isNow: index == nowIndex)
+                        .frame(width: 12, height: 12)
+                }
+                .overlay(alignment: .bottom) {
+                    if index == nowIndex { Capsule().fill(Color.ink).frame(width: 12, height: 2).offset(y: 6) }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    @ViewBuilder private func dot(_ day: WidgetSnapshot.Day?, isNow: Bool) -> some View {
+        if let day {
+            let color = (Sport(rawValue: day.doneSports.first ?? day.sport) ?? .other).color
+            if day.status == "done" || (isNow && today?.isDone == true) {
+                Circle().fill(color).widgetAccentable()
+            } else if day.sport == "rest" {
+                Capsule().fill(Color.dim).frame(width: 8, height: 2)
+            } else if day.status == "missed" || day.status == "skipped" {
+                Circle().strokeBorder(color.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
+            } else {
+                Circle().strokeBorder(color, lineWidth: 2)
+            }
+        } else {
+            Circle().strokeBorder(Color.dim, lineWidth: 1.5)
+        }
     }
 }
 
@@ -378,62 +566,95 @@ struct FoodWidgetView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var small: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
+    @ViewBuilder private var small: some View {
+        if let food, hit {
+            VStack(alignment: .leading, spacing: 0) {
                 Kicker("Food")
-                Spacer()
-                Image(systemName: "fork.knife").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.muted)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 18, weight: .heavy))
+                    .foregroundStyle(Color.bg)
+                    .frame(width: 40, height: 40)
+                    .background(Color.volt, in: Circle())
+                    .widgetAccentable()
+                    .padding(.top, 10)
+                Spacer(minLength: 4)
+                Text("Fuelled").font(AppFont.title(28)).textCase(.uppercase).foregroundStyle(Color.volt)
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(WidgetFormat.kcal(food.eatenKcal)).font(AppFont.number(16)).foregroundStyle(Color.ink)
+                    Text("kcal ·")
+                    Text(WidgetFormat.kcal(food.proteinG)).font(AppFont.number(16)).foregroundStyle(Color.mobility)
+                    Text("g protein")
+                }
+                .font(AppFont.body(12, weight: .medium))
+                .foregroundStyle(Color.inkSoft)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.top, 2)
             }
-            Spacer(minLength: 4)
-            if hit {
-                Text("Target hit").font(AppFont.title(30)).textCase(.uppercase).foregroundStyle(Color.volt)
-                Text("\(WidgetFormat.kcal(food?.eatenKcal ?? 0)) kcal eaten")
-                    .font(AppFont.body(12, weight: .medium)).foregroundStyle(Color.inkSoft)
-            } else {
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Kicker("Food")
+                    Spacer()
+                    if let food, food.targetKcal != nil {
+                        Text("\(Int((food.share * 100).rounded()))%")
+                            .font(AppFont.body(11, weight: .semibold))
+                            .foregroundStyle(Color.muted)
+                    }
+                }
+                Spacer(minLength: 4)
                 Text(toGo)
-                    .font(AppFont.number(50))
-                    .foregroundStyle(food == nil ? Color.muted : Color.warning)
+                    .font(AppFont.number(52))
+                    .foregroundStyle(food == nil ? Color.muted : behind ? Color.behind : Color.ink)
                     .minimumScaleFactor(0.6)
                     .widgetAccentable()
-                Text(food == nil ? "Open TrainLog" : "kcal to go")
-                    .font(AppFont.body(12, weight: .medium))
-                    .foregroundStyle(Color.inkSoft)
-                    .padding(.top, -4)
-            }
-            LinearBar(share: food?.share ?? 0, fill: .volt, track: .track, height: 6)
-                .widgetAccentable()
-                .padding(.top, 10)
-            if let food, let target = food.proteinTargetG {
                 HStack(spacing: 4) {
-                    Text("Protein").foregroundStyle(Color.muted)
-                    Spacer()
-                    Text("\(WidgetFormat.kcal(food.proteinG)) / \(WidgetFormat.kcal(target)) g").foregroundStyle(Color.ink)
+                    Text(food == nil ? "Open TrainLog" : "kcal to go")
+                    if behind { Text("· behind").foregroundStyle(Color.behind) }
                 }
-                .font(AppFont.body(11, weight: .semibold))
-                .padding(.top, 8)
+                .font(AppFont.body(13, weight: .medium))
+                .foregroundStyle(Color.inkSoft)
+                .padding(.top, -2)
+                LinearBar(share: food?.share ?? 0, fill: .volt.opacity(0.85), track: .track, height: 6)
+                    .widgetAccentable()
+                    .padding(.top, 12)
+                if let food, let target = food.proteinTargetG {
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                        Text("Protein").font(AppFont.body(12, weight: .semibold)).foregroundStyle(Color.mobility)
+                        Spacer()
+                        Text(WidgetFormat.kcal(food.proteinG)).font(AppFont.number(15)).foregroundStyle(Color.ink)
+                        Text("/ \(WidgetFormat.kcal(target)) g").font(AppFont.body(12, weight: .medium)).foregroundStyle(Color.inkSoft)
+                    }
+                    .padding(.top, 8)
+                }
             }
         }
     }
+
+    private var behind: Bool { food.map { WidgetFormat.isBehind($0, at: entry.date) } ?? false }
 }
 
-/// The medium Today widget's food line.
-private struct FoodMini: View {
+/// Kcal to go for the wide Today widget: white on track, amber when behind, volt when fuelled.
+private struct FoodValue: View {
     let food: WidgetSnapshot.Food?
+    let date: Date
+    let size: CGFloat
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Kicker("Food")
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                if food?.kcalToGo == 0 {
-                    Text("Target hit").font(AppFont.number(22)).foregroundStyle(Color.volt)
-                } else {
-                    Text(food?.kcalToGo.map(WidgetFormat.kcal) ?? "–").font(AppFont.number(22)).foregroundStyle(Color.ink)
-                    Text("kcal to go").font(AppFont.body(11)).foregroundStyle(Color.warning)
-                }
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            if food?.kcalToGo == 0 {
+                Text("Fuelled").font(AppFont.number(size)).foregroundStyle(Color.volt)
+            } else {
+                let behind = food.map { WidgetFormat.isBehind($0, at: date) } ?? false
+                Text(food?.kcalToGo.map(WidgetFormat.kcal) ?? "–")
+                    .font(AppFont.number(size))
+                    .foregroundStyle(food == nil ? Color.muted : behind ? Color.behind : Color.ink)
+                Text("kcal to go").font(AppFont.body(12, weight: .medium)).foregroundStyle(Color.inkSoft)
             }
-            LinearBar(share: food?.share ?? 0, fill: .volt, track: .track, height: 5)
         }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
     }
 }
 
@@ -460,7 +681,13 @@ struct LinearBar: View {
     SnapshotEntry(date: .now, snapshot: .preview)
 }
 
-#Preview("Food", as: .accessoryRectangular) {
+#Preview("Week", as: .systemSmall) {
+    WeekWidget()
+} timeline: {
+    SnapshotEntry(date: .now, snapshot: .preview)
+}
+
+#Preview("Food", as: .systemSmall) {
     FoodWidget()
 } timeline: {
     SnapshotEntry(date: .now, snapshot: .preview)

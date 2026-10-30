@@ -15,6 +15,11 @@ class CoachChatMessageCreate(BaseModel):
     content: str
 
 
+class CoachChatPhoneTurn(BaseModel):
+    conversation_id: int
+    message: str
+
+
 class CoachChatConversationCreate(BaseModel):
     title: str = "New conversation"
 

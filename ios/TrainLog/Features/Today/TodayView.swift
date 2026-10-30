@@ -124,7 +124,8 @@ struct TodayView: View {
                         onStartStrength: onStartStrength,
                         onOpen: { route = .day },
                         onRehab: { showRehab = true },
-                        onMove: { moving = $0 }
+                        onMove: { moving = $0 },
+                        onStudio: { showStudio = true }
                     )
                     .reveal(2)
                     ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone,
@@ -190,24 +191,8 @@ struct TodayView: View {
                     .padding(.horizontal, 10)
                     .frame(height: 26)
                     .background(Color.volt.opacity(0.12), in: Capsule())
+                    .fixedSize()
                     .accessibilityLabel("\(streak) day streak")
-                }
-                // Any workout, planned today or not; the Resume banner owns this while one is open.
-                if model.activeWorkout == nil {
-                    Button {
-                        showStudio = true
-                    } label: {
-                        Image(systemName: "dumbbell.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Color.strength)
-                            .frame(width: 34, height: 34)
-                            .background(Color.raised, in: Circle())
-                            .frame(width: 44, height: 44)
-                            .contentShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(-5)
-                    .accessibilityLabel("Workout Studio")
                 }
                 Button {
                     showSettings = true
@@ -266,6 +251,8 @@ private struct SessionCard: View {
     let onOpen: () -> Void
     let onRehab: () -> Void
     let onMove: (PlanDay) -> Void
+    /// Workout Studio: any workout, planned today or not.
+    let onStudio: () -> Void
 
     var body: some View {
         if let session = data.today, session.sport != .rest {
@@ -350,30 +337,21 @@ private struct SessionCard: View {
                 .background(Color.volt.opacity(0.12), in: Capsule())
                 .padding(.top, 16)
                 .transition(.scale(scale: 0.9).combined(with: .opacity))
+                if !workoutOpen {
+                    otherWorkout.padding(.top, 10)
+                }
             } else if !workoutOpen {
                 primary(next, session: session)
-                if !session.isDone, fallback != nil || canMove {
+                let planActions = session.isDone ? 0 : (fallback == nil ? 0 : 1) + (canMove ? 1 : 0)
+                // Three pills don't fit one row at 44pt; with both plan actions, Other workout gets its own.
+                VStack(spacing: 8) {
                     HStack(spacing: 8) {
-                        if fallback != nil {
-                            Button {
-                                withAnimation(.snappy) { showFallback.toggle() }
-                            } label: {
-                                Label(showFallback ? "Full session" : "Short on time",
-                                      systemImage: showFallback ? "arrow.uturn.backward" : "timer")
-                            }
-                            .buttonStyle(OutlineButtonStyle(height: 44))
-                        }
-                        if canMove, let planDay {
-                            Button {
-                                onMove(planDay)
-                            } label: {
-                                Label("Move day", systemImage: "arrow.left.arrow.right")
-                            }
-                            .buttonStyle(OutlineButtonStyle(height: 44))
-                        }
+                        if planActions > 0 { secondary(fallback: session.isDone ? nil : fallback, canMove: !session.isDone && canMove) }
+                        if planActions < 2 { otherWorkout }
                     }
-                    .padding(.top, 10)
+                    if planActions == 2 { otherWorkout }
                 }
+                .padding(.top, 10)
             }
         }
         .animation(.spring(duration: 0.45, bounce: 0.2), value: next)
@@ -536,8 +514,40 @@ private struct SessionCard: View {
             if let tomorrow = data.tomorrow, let title = tomorrow.title {
                 Text("Tomorrow: \(title)").font(AppFont.body(13)).foregroundStyle(Color.muted).padding(.top, 4)
             }
+            if !workoutOpen {
+                otherWorkout.padding(.top, 14)
+            }
         }
         .card()
+    }
+
+    @ViewBuilder
+    private func secondary(fallback: String?, canMove: Bool) -> some View {
+        if fallback != nil {
+            Button {
+                withAnimation(.snappy) { showFallback.toggle() }
+            } label: {
+                Label(showFallback ? "Full session" : "Short on time",
+                      systemImage: showFallback ? "arrow.uturn.backward" : "timer")
+            }
+            .buttonStyle(OutlineButtonStyle(height: 44))
+        }
+        if canMove, let planDay {
+            Button {
+                onMove(planDay)
+            } label: {
+                Label("Move day", systemImage: "arrow.left.arrow.right")
+            }
+            .buttonStyle(OutlineButtonStyle(height: 44))
+        }
+    }
+
+    /// Workout Studio, which used to be the dumbbell in the header.
+    private var otherWorkout: some View {
+        Button(action: onStudio) {
+            Label("Other workout", systemImage: "dumbbell")
+        }
+        .buttonStyle(OutlineButtonStyle(height: 44))
     }
 
     private func numberedList(_ rows: [(String, String?)], color: Color, limit: Int = 3) -> some View {

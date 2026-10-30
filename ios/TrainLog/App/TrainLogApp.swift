@@ -53,7 +53,7 @@ struct TrainLogApp: App {
 }
 
 enum AppTab: Hashable {
-    case today, plan, food, activities
+    case today, plan, coach, food, activities
 }
 
 struct RootView: View {
@@ -77,6 +77,9 @@ struct RootView: View {
             }
             Tab("Plan", systemImage: "calendar", value: .plan) {
                 PlanView(onStartStrength: { strength = StrengthLaunch(templateId: $0) })
+            }
+            Tab("Coach", systemImage: "bubble.left.and.bubble.right", value: .coach) {
+                CoachView()
             }
             Tab("Food", systemImage: "fork.knife", value: .food) {
                 FoodView()

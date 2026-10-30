@@ -130,7 +130,7 @@ extension ActivityDetailFormat {
     // MARK: Header visual
 
     enum Visual {
-        case route([CLLocationCoordinate2D], fractions: [Double], legend: (low: String, high: String))
+        case route([CLLocationCoordinate2D], fractions: [Double])
         case trace(Trace)
         case muscles(MuscleSummary)
         case none
@@ -150,9 +150,8 @@ extension ActivityDetailFormat {
             case .hike, .walk: "altitude"
             default: nil
             }
-            let legend = key == "altitude" ? ("Lower", "Higher") : ("Slower", "Faster")
             let fractions = key.flatMap { routeFractions(detail, key: $0, coordinates: coordinates) } ?? Array(repeating: 0.5, count: coordinates.count)
-            return .route(coordinates, fractions: fractions, legend: legend)
+            return .route(coordinates, fractions: fractions)
         }
         return trace(detail).map(Visual.trace) ?? .none
     }

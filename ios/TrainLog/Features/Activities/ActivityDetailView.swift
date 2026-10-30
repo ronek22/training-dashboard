@@ -175,7 +175,7 @@ struct ActivityDetailView: View {
             }
         }
         .fullScreenCover(isPresented: $showMap) {
-            if case let .route(coordinates, fractions, _)? = visual {
+            if case let .route(coordinates, fractions)? = visual {
                 RouteMapScreen(coordinates: coordinates, fractions: fractions)
             }
         }

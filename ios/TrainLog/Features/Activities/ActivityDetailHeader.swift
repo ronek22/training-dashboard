@@ -64,9 +64,8 @@ struct DetailHeaderView: View {
     @ViewBuilder
     private var visualView: some View {
         switch visual {
-        case let .route(coordinates, fractions, legend):
+        case let .route(coordinates, fractions):
             GlowRouteMap(coordinates: coordinates, fractions: fractions)
-                .overlay(alignment: .topLeading) { RouteLegend(low: legend.low, high: legend.high).padding(.leading, 16).padding(.top, 116) }
         case .trace(let trace):
             TraceView(trace: trace)
         case .muscles(let summary):
@@ -126,27 +125,6 @@ struct DetailHeaderView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct RouteLegend: View {
-    let low: String
-    let high: String
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Text(low)
-            Capsule()
-                .fill(LinearGradient(colors: ColorScale.route.stops.map { Color(hex: $0.hex) }, startPoint: .leading, endPoint: .trailing))
-                .frame(width: 56, height: 4)
-            Text(high)
-        }
-        .font(AppFont.body(11))
-        .foregroundStyle(Color.inkSoft)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color.bg.opacity(0.7), in: Capsule())
-        .accessibilityHidden(true)
     }
 }
 
@@ -239,9 +217,8 @@ private struct RouteGlow: View, @MainActor Animatable {
         Canvas { context, _ in
             guard points.count > 1 else { return }
             let reach = progress * Double(points.count - 1)
-            // A soft halo from two wide, faint strokes (no blur), then the crisp line.
-            draw(&context, reach: reach, width: 10, opacity: 0.07)
-            draw(&context, reach: reach, width: 6.5, opacity: 0.16)
+            // A faint halo (one wide, low-opacity stroke, no blur), then the crisp line.
+            draw(&context, reach: reach, width: 7, opacity: 0.1)
             draw(&context, reach: reach, width: 3.5, opacity: 1)
         }
         .allowsHitTesting(false)

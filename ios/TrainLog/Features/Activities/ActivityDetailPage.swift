@@ -73,7 +73,7 @@ extension ActivityDetailFormat {
 
     private static func kicker(_ activity: ActivitySummary, detail: ActivityDetail?, indoor: Bool, manual: Bool) -> String {
         let sport = ActivityFormat.sport(activity)
-        if manual { return "\(ActivityFormat.typeLabel(activity)) · logged by hand" }
+        if manual { return "\(ActivityFormat.typeLabel(activity)) · " + (activity.id.hasPrefix("healthfit:") ? "HealthFit, no streams" : "logged by hand") }
         switch sport {
         case .ride where indoor:
             return ["Indoor ride", platform(activity)].compactMap { $0 }.joined(separator: " · ")
@@ -297,7 +297,7 @@ extension ActivityDetailFormat {
 
         if manual {
             var cells: [Cell] = []
-            if var time { time.status = (.info, "Logged by hand"); cells.append(time) }
+            if var time { time.status = (.info, activity.id.hasPrefix("healthfit:") ? "From HealthFit" : "Logged by hand"); cells.append(time) }
             if let pace = avgPaceText(detail) { cells.append(Cell(label: "Avg pace", parts: [(pace, "/km")], metric: .pace, status: (.info, "From time and distance"))) }
             return cells + [hr].compactMap { $0 }
         }

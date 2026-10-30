@@ -31,7 +31,7 @@ struct DetailHeaderView: View {
             .frame(height: height, alignment: .bottom)
             .frame(maxWidth: .infinity)
         } else {
-            text.padding(.horizontal, 16).padding(.top, 116)
+            text.padding(.horizontal, 16).padding(.top, 150)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -219,33 +219,41 @@ private struct RouteGlow: View, @MainActor Animatable {
         Canvas { context, _ in
             guard points.count > 1 else { return }
             let reach = progress * Double(points.count - 1)
-            context.drawLayer { glow in
-                glow.addFilter(.blur(radius: 4))
-                glow.opacity = 0.35
-                draw(&glow, reach: reach, width: 6)
-            }
-            draw(&context, reach: reach, width: 3.5)
+            // A soft halo from two wide, faint strokes (no blur), then the crisp line.
+            draw(&context, reach: reach, width: 10, opacity: 0.07)
+            draw(&context, reach: reach, width: 6.5, opacity: 0.16)
+            draw(&context, reach: reach, width: 3.5, opacity: 1)
         }
         .allowsHitTesting(false)
     }
 
-    private func draw(_ context: inout GraphicsContext, reach: Double, width: CGFloat) {
-        let full = Int(reach)
-        for index in 0..<min(full, points.count - 1) {
-            segment(&context, from: points[index], to: points[index + 1], color: colors[safe: index] ?? .ink, width: width)
+    /// Consecutive points of the same colour become one path, so strokes stay clean at the joins.
+    private func draw(_ context: inout GraphicsContext, reach: Double, width: CGFloat, opacity: Double) {
+        let full = min(Int(reach), points.count - 1)
+        var path = Path()
+        var current: Color?
+        func flush() {
+            if let current, !path.isEmpty {
+                context.stroke(path, with: .color(current.opacity(opacity)), style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
+            }
+        }
+        for index in 0..<full {
+            let color = colors[safe: index] ?? .ink
+            if color != current {
+                flush()
+                current = color
+                path = Path()
+                path.move(to: points[index])
+            }
+            path.addLine(to: points[index + 1])
         }
         let rest = reach - Double(full)
         if full < points.count - 1, rest > 0 {
             let a = points[full], b = points[full + 1]
-            segment(&context, from: a, to: CGPoint(x: a.x + (b.x - a.x) * rest, y: a.y + (b.y - a.y) * rest), color: colors[safe: full] ?? .ink, width: width)
+            if current == nil { path.move(to: a); current = colors[safe: full] ?? .ink }
+            path.addLine(to: CGPoint(x: a.x + (b.x - a.x) * rest, y: a.y + (b.y - a.y) * rest))
         }
-    }
-
-    private func segment(_ context: inout GraphicsContext, from a: CGPoint, to b: CGPoint, color: Color, width: CGFloat) {
-        var path = Path()
-        path.move(to: a)
-        path.addLine(to: b)
-        context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
+        flush()
     }
 }
 

@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrainLog · iOS · Food v2</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&amp;family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&amp;display=swap" rel="stylesheet">
+<style>
+@font-face{font-family:'Barlow Condensed';font-weight:700;font-style:normal;src:url('../../../ios/TrainLog/Resources/Fonts/BarlowCondensed-Bold.ttf')}
+@font-face{font-family:'Barlow Condensed';font-weight:600;font-style:normal;src:url('../../../ios/TrainLog/Resources/Fonts/BarlowCondensed-SemiBold.ttf')}
+@font-face{font-family:'Barlow Condensed';font-weight:800;font-style:italic;src:url('../../../ios/TrainLog/Resources/Fonts/BarlowCondensed-ExtraBoldItalic.ttf')}
+@font-face{font-family:'Archivo';font-weight:100 900;src:url('../../../ios/TrainLog/Resources/Fonts/Archivo.ttf')}
+body{margin:0;background:#05070A;color:#F3F5F9;font-family:'Archivo',system-ui,sans-serif}
+.num{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;line-height:1}
+.ttl{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;text-transform:uppercase;line-height:.95;letter-spacing:.01em}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600}
+.muted{color:#8A93A6} .soft{color:#A3ABBC}
+.canvas{display:flex;flex-wrap:wrap;gap:72px 56px;padding:56px 64px 80px;max-width:2600px;align-items:flex-start}
+.canvas-head{width:100%}
+.frame{display:flex;flex-direction:column;gap:14px}
+.frame-cap{font-size:13px;color:#A3ABBC;max-width:393px;line-height:1.45}
+.frame-cap b{color:#F3F5F9;font-weight:600}
+.phone{width:393px;min-height:852px;border-radius:56px;background:#0A0C11;position:relative;overflow:hidden;box-shadow:0 0 0 10px #171A21,0 0 0 11px #2A2F3A,0 30px 80px rgba(0,0,0,.55);padding-bottom:40px;box-sizing:border-box}
+.phone.fixed{height:852px;padding-bottom:0}
+.fold{position:absolute;left:0;right:0;top:852px;border-top:1px dashed rgba(212,255,58,.35);z-index:25}
+.fold::after{content:'fold · 852 pt';position:absolute;right:14px;top:-18px;font-size:10px;color:rgba(212,255,58,.6);letter-spacing:.1em;text-transform:uppercase}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000;z-index:40}
+.sb{height:54px;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 44px;font-weight:600;font-size:16px;box-sizing:border-box;position:relative;z-index:35}
+.home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#F3F5F9;z-index:45}
+.body{padding:6px 16px 0;display:flex;flex-direction:column;gap:12px}
+.card{background:#12151C;border:1px solid #1C212B;border-radius:22px;padding:16px}
+.inset{background:#0E1117;border:1px solid #1C212B;border-radius:14px;padding:10px 12px}
+.row{display:flex;align-items:center;gap:12px}
+.sbw{justify-content:space-between}
+.sep{height:1px;background:#1C212B}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;padding:6px 4px 2px}
+.obtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:999px;border:1px solid #2A303C;color:#F3F5F9;font-size:14px;font-weight:600;box-sizing:border-box}
+.vbtn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:999px;background:#D4FF3A;color:#0A0C11;font-size:16px;font-weight:700}
+.ibtn{width:40px;height:40px;border-radius:50%;background:#12151C;border:1px solid #1C212B;display:flex;align-items:center;justify-content:center;flex:none;box-sizing:border-box}
+.bar{height:6px;border-radius:3px;background:#1F242E;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:3px}
+.tabbar{position:absolute;left:0;right:0;top:766px;height:86px;background:rgba(14,17,23,.96);border-top:1px solid #1C212B;display:flex;justify-content:space-around;align-items:flex-start;padding:8px 10px 0;box-sizing:border-box;z-index:15}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;font-weight:600;color:#6B7385;width:64px}
+.tab.on{color:#F3F5F9}
+.d{display:inline-block;width:6px;height:6px;border-radius:50%}
+/* week strip */
+.week{display:flex;gap:6px}
+.wd{flex:1;height:62px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;color:#8A93A6;font-weight:600}
+.wd .num{font-size:20px;color:#C9CFDA}
+.wd.on{background:#F3F5F9;color:#0A0C11}.wd.on .num{color:#0A0C11}
+.wd.fut{opacity:.45}
+/* macro tanks */
+.tanks{display:flex;gap:8px}
+.tank{flex:1;height:96px;border-radius:16px;background:#0E1117;border:1px solid #1C212B;position:relative;overflow:hidden;box-sizing:border-box}
+.tank>i{position:absolute;left:0;right:0;bottom:0;opacity:.22}
+.tank>b{position:absolute;left:0;right:0;height:2px}
+.tank .t{position:absolute;left:10px;right:10px;bottom:10px}
+.tank .k{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+/* hero macros */
+.mxs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0}
+.mx{padding:0 10px;border-left:1px solid #1C212B;min-width:0}
+.mx:first-child{padding-left:0;border-left:0}.mx:last-child{padding-right:0}
+.mx .num+span{white-space:nowrap}
+.kbar{display:flex;gap:3px;height:12px;border-radius:6px;background:#1F242E;overflow:hidden}
+.kbar i{display:block;height:100%}
+.kbar i:first-child{border-radius:6px 0 0 6px}
+.kbar i.plan{border:1.5px dashed rgba(212,255,58,.7);border-left:0;box-sizing:border-box;border-radius:0 6px 6px 0}
+/* meal macro split */
+.stack{display:flex;gap:2px;height:4px;border-radius:2px;overflow:hidden}
+.stack i{display:block;height:100%}
+.mv{display:flex;gap:12px;margin-top:6px;font-size:11px;color:#8A93A6}
+.mv b{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;margin-right:1px}
+/* timeline */
+.tl{display:flex;gap:10px}
+.rail{width:40px;flex:none;display:flex;flex-direction:column;align-items:center;position:relative}
+.rail::before{content:'';position:absolute;top:28px;bottom:-14px;left:50%;width:1px;background:#1C212B}
+.tl:last-child .rail::before{display:none}
+.time{font-size:11px;font-weight:600;color:#A3ABBC;background:#0E1117;border:1px solid #1C212B;border-radius:8px;padding:4px 6px;position:relative;z-index:1}
+.addc{width:24px;height:24px;border-radius:50%;border:1px solid #2A303C;display:flex;align-items:center;justify-content:center;background:#0A0C11;position:relative;z-index:1;margin-top:auto;margin-bottom:-6px}
+.mc{flex:1;min-width:0}
+.chip{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:6px;background:#1B1F29;font-size:11px;font-weight:600;color:#C9CFDA}
+.chip b{font-weight:700}
+.it{display:flex;align-items:center;justify-content:space-between;padding:9px 0;font-size:13px}
+.it .g{color:#8A93A6;font-size:12px}
+.thumb{width:52px;height:52px;border-radius:12px;flex:none;overflow:hidden}
+/* sheets */
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:20}
+.sheetp{position:absolute;left:0;right:0;bottom:0;background:#12151C;border-top:1px solid #1C212B;border-radius:28px 28px 0 0;z-index:30;padding:8px 16px 40px;box-sizing:border-box}
+.grab{width:38px;height:5px;border-radius:3px;background:#3A4150;margin:0 auto 12px}
+.seg{display:flex;background:#0E1117;border:1px solid #1C212B;border-radius:12px;padding:3px}
+.seg span{flex:1;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#8A93A6}
+.seg span.on{background:#232835;color:#F3F5F9}
+.field{height:44px;border-radius:12px;background:#0E1117;border:1px solid #1C212B;display:flex;align-items:center;gap:10px;padding:0 12px;font-size:15px;color:#6B7385;box-sizing:border-box}
+.mini{display:flex;gap:10px;margin-top:8px}
+.mini>div{display:flex;align-items:center;gap:5px;font-size:11px;color:#A3ABBC}
+.mini i{display:block;width:4px;height:16px;border-radius:2px;background:#1F242E;position:relative;overflow:hidden}
+.mini i>u{position:absolute;left:0;right:0;bottom:0;text-decoration:none}
+/* camera */
+.cam{position:absolute;inset:0;background:#0F1218}
+.brk{position:absolute;width:44px;height:44px;border-color:#F3F5F9;border-style:solid;border-width:0}
+.mode{display:flex;gap:6px;justify-content:center}
+.mode span{height:34px;padding:0 13px;border-radius:999px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#C9CFDA;background:rgba(10,12,17,.6)}
+.mode span.on{background:#F3F5F9;color:#0A0C11}
+.shut{width:78px;height:78px;border-radius:50%;border:4px solid #F3F5F9;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.shut>i{width:62px;height:62px;border-radius:50%;background:#D4FF3A;display:block}
+.notes{width:1240px;background:#12151C;border:1px solid #1C212B;border-radius:28px;padding:32px 36px;box-sizing:border-box}
+.ncols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:36px;margin-top:24px}
+.notes ul{margin:10px 0 0;padding-left:18px;font-size:13px;line-height:1.5;color:#C9CFDA;display:flex;flex-direction:column;gap:8px}
+.notes b{color:#F3F5F9}
+.notes code{font-size:12px;background:#0E1117;padding:1px 5px;border-radius:4px;color:#A3ABBC}
+</style>
+</helmet>
+
+<!-- reusable bowl "photo" (flat illustration standing in for the camera image) -->
+<svg width="0" height="0" style="position:absolute">
+<defs>
+<g id="bowl">
+<circle cx="0" cy="0" r="120" fill="#1A6B66"/>
+<circle cx="0" cy="0" r="104" fill="#14524E"/>
+<path d="M-98 30a100 100 0 0 0 196 0c-40 -18 -150 -22 -196 0z" fill="#EDE8DC"/>
+<circle cx="-30" cy="-10" r="44" fill="#C2622B"/>
+<circle cx="24" cy="-34" r="40" fill="#B5561F"/>
+<circle cx="40" cy="12" r="34" fill="#C9692F"/>
+<circle cx="-52" cy="28" r="20" fill="#B5561F"/>
+<rect x="-16" y="-22" width="16" height="16" rx="3" fill="#D9452B"/><rect x="18" y="-6" width="14" height="14" rx="3" fill="#E1533A"/><rect x="-44" y="-40" width="14" height="14" rx="3" fill="#D9452B"/><rect x="50" y="-30" width="12" height="12" rx="3" fill="#E1533A"/><rect x="2" y="20" width="13" height="13" rx="3" fill="#D9452B"/>
+<circle cx="-4" cy="-48" r="6" fill="#3FA34D"/><circle cx="34" cy="-56" r="5" fill="#4DB85A"/><circle cx="-60" cy="-8" r="5" fill="#3FA34D"/><circle cx="58" cy="-2" r="5" fill="#4DB85A"/><circle cx="-22" cy="12" r="4" fill="#4DB85A"/>
+</g>
+</defs>
+</svg>
+
+<div class="canvas">
+<div class="canvas-head"><div class="lbl">TrainLog Pocket · iOS · artboard</div><div class="ttl" style="font-size:56px;margin-top:6px">Food v2</div>
+<div class="soft" style="font-size:14px;margin-top:6px;max-width:960px">Redesign of the Food tab, drawn from the references: a week strip and calorie ring on top, meals on a timeline with a macro split per meal, a full-screen scanner with Meal · Barcode · Label modes, and an itemised result before anything gets logged. Under-eating stays the headline. Drawn for iPhone 17 Pro, 393 × 852 pt.</div></div>
+
+<!-- ============ 01. FOOD DAY ============ -->
+<div class="frame">
+<div class="lbl">01 · Food · day</div>
+<div class="phone" style="min-height:1180px">
+<div class="island"></div>
+<div class="sb"><span>18:05</span><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="14" height="8" rx="2" fill="#F3F5F9"/><path d="M25 4.5v4" stroke="#8A93A6" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+<div class="body">
+<div class="hdr">
+<div><div class="lbl">Thursday · ride day</div><div class="ttl" style="font-size:44px;margin-top:4px">Food</div></div>
+<div class="row" style="gap:8px;padding-bottom:4px">
+<div class="ibtn"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#C9CFDA" stroke-width="1.8" stroke-linejoin="round"><path d="M5 3h10v14l-5-3.5L5 17z"/></svg></div>
+</div>
+</div>
+
+<div class="week">
+<div class="wd">Mon<span class="num">26</span><span class="d" style="background:#D4FF3A"></span></div>
+<div class="wd">Tue<span class="num">27</span><span class="d" style="background:#FFB547"></span></div>
+<div class="wd">Wed<span class="num">28</span><span class="d" style="background:#D4FF3A"></span></div>
+<div class="wd on">Thu<span class="num">29</span><span class="d" style="background:#0A0C11"></span></div>
+<div class="wd fut">Fri<span class="num">30</span><span class="d" style="background:transparent"></span></div>
+<div class="wd fut">Sat<span class="num">31</span><span class="d" style="background:transparent"></span></div>
+<div class="wd fut">Sun<span class="num">1</span><span class="d" style="background:transparent"></span></div>
+</div>
+
+<div class="card">
+<div class="row sbw" style="gap:14px">
+<div style="min-width:0">
+<div class="lbl">Eaten today</div>
+<div class="num" style="font-size:54px;margin-top:8px">1,857</div>
+<div class="muted" style="font-size:13px;margin-top:4px">of 2,775 kcal</div>
+<div style="display:flex;flex-direction:column;gap:5px;margin-top:12px;font-size:12px;width:150px">
+<span class="row" style="gap:8px"><span style="width:10px;height:10px;border-radius:3px;background:#D4FF3A"></span><span class="soft">Eaten</span><span class="num" style="font-size:15px;margin-left:auto">67%</span></span>
+<span class="row" style="gap:8px"><span style="width:10px;height:10px;display:flex;align-items:center"><span style="width:10px;height:3px;border-radius:2px;background:#D4FF3A;opacity:.8"></span></span><span class="soft">Dinner ~750</span><span class="num" style="font-size:15px;margin-left:auto">27%</span></span>
+</div>
+</div>
+<div style="position:relative;width:120px;height:120px;flex:none">
+<svg width="120" height="120" viewBox="0 0 120 120">
+<circle cx="60" cy="60" r="48" fill="none" stroke="#1C212B" stroke-width="12"/>
+<circle cx="60" cy="60" r="48" fill="none" stroke="#D4FF3A" stroke-width="4" stroke-linecap="round" stroke-dasharray="67.5 301.6" stroke-dashoffset="-210.8" transform="rotate(-90 60 60)" opacity=".8" id="planArc"/>
+<circle cx="60" cy="60" r="48" fill="none" stroke="#D4FF3A" stroke-width="12" stroke-linecap="round" stroke-dasharray="189.8 301.6" stroke-dashoffset="-6" transform="rotate(-90 60 60)"/>
+</svg>
+<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span class="num" style="font-size:32px;color:#FFC873">918</span><span style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#FFC873;margin-top:3px">to go</span></div>
+</div>
+</div>
+<div class="muted" style="font-size:12px;margin-top:12px">After dinner you're still <span style="color:#FFC873;font-weight:600">168 kcal short</span>.</div>
+<div class="sep" style="margin:14px 0 14px"></div>
+<div class="mxs">
+<div class="mx">
+<div class="row" style="gap:6px"><span class="lbl" style="font-size:10px;color:#2ED3B0">Protein</span><svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="#D4FF3A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg></div>
+<div style="margin-top:6px"><span class="num" style="font-size:26px">163</span><span class="muted" style="font-size:11px;white-space:nowrap"> / 130 g</span></div>
+<div class="bar" style="height:5px;margin-top:8px"><i style="width:100%;background:#2ED3B0"></i></div>
+<div style="font-size:11px;margin-top:6px"><span style="color:#D4FF3A;font-weight:600">+33 over</span></div>
+</div>
+<div class="mx">
+<div class="row" style="gap:6px"><span class="lbl" style="font-size:10px;color:#3B8CFF">Carbs</span></div>
+<div style="margin-top:6px"><span class="num" style="font-size:26px">167</span><span class="muted" style="font-size:11px;white-space:nowrap"> / 240 g</span></div>
+<div class="bar" style="height:5px;margin-top:8px"><i style="width:70%;background:#3B8CFF"></i></div>
+<div style="font-size:11px;margin-top:6px"><span class="muted">73 g left</span></div>
+</div>
+<div class="mx">
+<div class="row" style="gap:6px"><span class="lbl" style="font-size:10px;color:#FF8A2A">Fat</span></div>
+<div style="margin-top:6px"><span class="num" style="font-size:26px">57</span><span class="muted" style="font-size:11px;white-space:nowrap"> / 85 g</span></div>
+<div class="bar" style="height:5px;margin-top:8px"><i style="width:66%;background:#FF8A2A"></i></div>
+<div style="font-size:11px;margin-top:6px"><span class="muted">28 g left</span></div>
+</div>
+</div>
+</div>
+
+<div class="row sbw" style="padding:8px 4px 0"><div class="lbl">Meals</div><div class="muted" style="font-size:12px">4 logged · 1 planned</div></div>
+
+<div>
+<!-- breakfast, collapsed -->
+<div class="tl" style="padding-bottom:14px">
+<div class="rail"><span class="time">07:40</span></div>
+<div class="mc card" style="padding:12px 14px">
+<div class="row sbw"><div><div style="font-size:15px;font-weight:700">Breakfast</div><div class="muted" style="font-size:12px;margin-top:2px">Oats, banana, whey · 3 items</div></div><div style="text-align:right"><div class="num" style="font-size:20px">520</div><div class="muted" style="font-size:10px">kcal</div></div></div>
+<div class="stack" style="margin-top:10px"><i style="width:29%;background:#2ED3B0"></i><i style="width:55%;background:#3B8CFF"></i><i style="flex:1;background:#FF8A2A"></i></div>
+<div class="mv"><span><b style="color:#2ED3B0">38</b> g protein</span><span><b style="color:#6FA9FF">72</b> g carbs</span><span><b style="color:#FFA65C">9</b> g fat</span></div>
+</div>
+</div>
+<!-- lunch, expanded with photo -->
+<div class="tl" style="padding-bottom:14px">
+<div class="rail"><span class="time">13:10</span></div>
+<div class="mc card" style="padding:12px 14px">
+<div class="row" style="align-items:flex-start">
+<div class="thumb"><svg width="52" height="52" viewBox="-130 -130 260 260"><rect x="-130" y="-130" width="260" height="260" fill="#2A2F3A"/><use href="#bowl"/></svg></div>
+<div style="flex:1;min-width:0"><div class="row sbw" style="align-items:flex-start"><div><div style="font-size:15px;font-weight:700">Lunch</div><div class="muted" style="font-size:12px;margin-top:2px">Chicken rice bowl · photo</div></div><div style="text-align:right"><div class="num" style="font-size:20px">812</div><div class="muted" style="font-size:10px">kcal</div></div></div>
+<div class="stack" style="margin-top:10px"><i style="width:36%;background:#2ED3B0"></i><i style="width:44%;background:#3B8CFF"></i><i style="flex:1;background:#FF8A2A"></i></div>
+<div class="mv"><span><b style="color:#2ED3B0">71</b> g protein</span><span><b style="color:#6FA9FF">88</b> g carbs</span><span><b style="color:#FFA65C">18</b> g fat</span></div></div>
+</div>
+<div class="sep" style="margin-top:10px"></div>
+<div class="it"><span>Jasmine rice <span class="g">· 220 g</span></span><span class="num" style="font-size:15px">286</span></div>
+<div class="sep"></div>
+<div class="it"><span>Chicken thigh <span class="g">· 250 g</span></span><span class="num" style="font-size:15px">412</span></div>
+<div class="sep"></div>
+<div class="it" style="padding-bottom:2px"><span>Tomato sauce, veg <span class="g">· 140 g</span></span><span class="num" style="font-size:15px">114</span></div>
+</div>
+</div>
+<!-- snack -->
+<div class="tl" style="padding-bottom:14px">
+<div class="rail"><span class="time">16:20</span></div>
+<div class="mc card" style="padding:12px 14px">
+<div class="row sbw"><div><div style="font-size:15px;font-weight:700">Snack</div><div class="muted" style="font-size:12px;margin-top:2px">Skyr, granola · barcode</div></div><div style="text-align:right"><div class="num" style="font-size:20px">525</div><div class="muted" style="font-size:10px">kcal</div></div></div>
+<div class="stack" style="margin-top:10px"><i style="width:42%;background:#2ED3B0"></i><i style="width:5%;background:#3B8CFF"></i><i style="flex:1;background:#FF8A2A"></i></div>
+<div class="mv"><span><b style="color:#2ED3B0">54</b> g protein</span><span><b style="color:#6FA9FF">7</b> g carbs</span><span><b style="color:#FFA65C">30</b> g fat</span></div>
+</div>
+</div>
+<!-- dinner planned -->
+<div class="tl">
+<div class="rail"><span class="time" style="color:#6B7385">19:30</span></div>
+<div class="mc" style="border:1.5px dashed #2F3542;border-radius:22px;padding:12px 14px">
+<div class="row sbw"><div><div class="row" style="gap:8px"><span style="font-size:15px;font-weight:700;color:#C9CFDA">Dinner</span><span class="chip" style="height:18px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#8A93A6">Planned</span></div><div class="muted" style="font-size:12px;margin-top:2px">Salmon pasta · from dinner plan</div></div><div style="text-align:right;color:#8A93A6"><div class="num" style="font-size:20px">~750</div><div style="font-size:10px">kcal</div></div></div>
+<div class="row" style="gap:8px;margin-top:10px"><span class="obtn" style="height:36px;font-size:13px;flex:1">Log as planned</span><span class="obtn" style="height:36px;font-size:13px;padding:0 14px">Ate something else</span></div>
+</div>
+</div>
+</div>
+</div>
+<div class="fold"></div>
+<div style="position:absolute;right:16px;top:692px;z-index:16;display:flex;gap:10px;align-items:center">
+<div class="ibtn" style="width:52px;height:52px;background:#1B1F29;border-color:#2A303C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#F3F5F9" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"/><path d="M13 13l4 4"/></svg></div>
+<div class="vbtn" style="padding:0 20px 0 16px"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#0A0C11" stroke-width="2" stroke-linecap="round"><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7M13 3h2.5A1.5 1.5 0 0 1 17 4.5V7M17 13v2.5a1.5 1.5 0 0 1-1.5 1.5H13M7 17H4.5A1.5 1.5 0 0 1 3 15.5V13"/><circle cx="10" cy="10" r="2.6"/></svg>Scan</div>
+</div>
+<div class="tabbar">
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 5.5V10l3 2"/></svg>Today</div>
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/></svg>Plan</div>
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H8l-4 3v-3.2A2 2 0 0 1 3 12z"/></svg>Coach</div>
+<div class="tab on"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2v6a2 2 0 0 0 4 0V2M7 8v10M14 18V2c-2 1.5-3 4-3 7h3"/></svg>Food</div>
+<div class="tab"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 11h4l2-6 4 10 2-4h4"/></svg>Activities</div>
+</div>
+<div class="home" style="top:839px;bottom:auto"></div>
+</div>
+<div class="frame-cap"><b>Gap first, diary second.</b> The hero leads with kcal to go; on the ring, the thin volt arc is tonight's planned dinner, so you see at a glance whether it closes the gap. <b>Week strip</b> replaces ‹ Mon: volt dot = target hit, amber = short. Macros: three open columns, each with value / target, a thin bar and what’s left (a met target turns volt with a tick). Each meal shows its kcal split as a thin stacked bar with grams under it. <b>Timeline</b>: tap a meal to open it (frame 04 layout, edit mode), swipe to delete. The latest meal opens expanded. One volt action: <b>Scan</b>; the round search button opens Quick add (05).</div>
+</div>
+
+<!-- ============ 02. SCANNER · MEAL ============ -->
+<div class="frame">
+<div class="lbl">02 · Scanner · meal photo</div>
+<div class="phone fixed">
+<div class="cam">
+<svg width="393" height="852" viewBox="-196.5 -426 393 852" style="position:absolute;inset:0"><rect x="-196.5" y="-426" width="393" height="852" fill="#2A2F38"/><rect x="-196.5" y="-426" width="393" height="852" fill="#1E222A" opacity=".6"/><circle cx="0" cy="-30" r="150" fill="#3A404C"/><g transform="translate(0,-30)"><use href="#bowl"/></g></svg>
+</div>
+<div class="island"></div>
+<div class="sb" style="color:#F3F5F9"><span>13:09</span><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#C9CFDA"/><rect x="2.5" y="2.5" width="14" height="8" rx="2" fill="#F3F5F9"/></svg></div>
+<div class="row sbw" style="position:absolute;top:62px;left:16px;right:16px;z-index:5">
+<div class="ibtn" style="background:rgba(10,12,17,.7);border-color:transparent;width:44px;height:44px"><svg width="16" height="16" viewBox="0 0 20 20" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round"><path d="M4 4l12 12M16 4L4 16"/></svg></div>
+<span style="height:36px;padding:0 14px;border-radius:999px;background:rgba(10,12,17,.7);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600">Lunch <svg width="10" height="10" viewBox="0 0 20 20" fill="none" stroke="#C9CFDA" stroke-width="2.4" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg></span>
+<div class="ibtn" style="background:rgba(10,12,17,.7);border-color:transparent;width:44px;height:44px"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#F3F5F9" stroke-width="1.8" stroke-linejoin="round"><path d="M11 2L4 11h5l-1 7 7-9h-5z"/></svg></div>
+</div>
+<!-- brackets -->
+<div class="brk" style="left:46px;top:226px;border-top-width:3px;border-left-width:3px;border-top-left-radius:18px"></div>
+<div class="brk" style="right:46px;top:226px;border-top-width:3px;border-right-width:3px;border-top-right-radius:18px"></div>
+<div class="brk" style="left:46px;top:500px;border-bottom-width:3px;border-left-width:3px;border-bottom-left-radius:18px"></div>
+<div class="brk" style="right:46px;top:500px;border-bottom-width:3px;border-right-width:3px;border-bottom-right-radius:18px"></div>
+<svg width="393" height="852" style="position:absolute;inset:0;z-index:2;pointer-events:none"><g stroke="#F3F5F9" stroke-opacity=".55" stroke-width="1" fill="none"><path d="M150 330L200 300L250 320L270 380L235 430L170 440L130 395Z M150 330L200 370L250 320 M200 370L270 380 M200 370L235 430 M200 370L170 440 M200 370L130 395 M200 300L200 370"/></g><g fill="#F3F5F9"><circle cx="150" cy="330" r="4"/><circle cx="200" cy="300" r="4"/><circle cx="250" cy="320" r="4"/><circle cx="270" cy="380" r="4"/><circle cx="235" cy="430" r="4"/><circle cx="170" cy="440" r="4"/><circle cx="130" cy="395" r="4"/><circle cx="200" cy="370" r="5" fill="#D4FF3A"/></g></svg>
+<div style="position:absolute;top:572px;left:0;right:0;text-align:center"><span style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(10,12,17,.7);font-size:13px;color:#C9CFDA"><span class="d" style="background:#D4FF3A"></span>Plate found · 3 foods · tap to shoot</span></div>
+<!-- bottom controls -->
+<div style="position:absolute;left:0;right:0;bottom:0;height:206px;background:#0A0C11;border-top-left-radius:28px;border-top-right-radius:28px;padding:16px 16px 0;box-sizing:border-box">
+<div class="mode">
+<span class="on"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2.5 6.5a1.5 1.5 0 0 1 1.5-1.5h2l1.5-2h5l1.5 2h2a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5z"/><circle cx="10" cy="10.5" r="3"/></svg>Meal</span>
+<span><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 4v12M6 4v12M9 4v12M12 4v12M14.5 4v12M17 4v12"/></svg>Barcode</span>
+<span><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M10 2.5h6.5V9L9 16.5 3.5 11z"/><circle cx="13" cy="6" r="1"/></svg>Label</span>
+<span><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h12M4 10h12M4 15h7"/></svg>Text</span>
+</div>
+<div class="row sbw" style="margin-top:22px;padding:0 22px">
+<div style="width:48px;height:48px;border-radius:12px;overflow:hidden;border:2px solid #2A303C"><svg width="48" height="48" viewBox="-130 -130 260 260"><rect x="-130" y="-130" width="260" height="260" fill="#3A404C"/><circle r="70" fill="#C9A47A"/><circle r="40" fill="#8A5A2B"/></svg></div>
+<div class="shut"><i></i></div>
+<div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="#C9CFDA" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7a6.5 6.5 0 0 0-11.5-1.5M4 13a6.5 6.5 0 0 0 11.5 1.5M4 2.5v3.5h3.5M16 17.5V14h-3.5"/></svg></div>
+</div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>One camera, four ways in.</b> Scan opens here straight away, mode remembered. <b>Meal</b>: photo → Claude estimate (04). <b>Barcode</b>: live scan → Open Food Facts product (03). <b>Label</b>: photo of the nutrition table → saved product. <b>Text</b>: today's describe-a-meal field. Library sits bottom-left; the meal chip defaults from the clock. Volt shutter is the one primary action.</div>
+</div>
+
+<!-- ============ 03. SCANNER · BARCODE HIT ============ -->
+<div class="frame">
+<div class="lbl">03 · Scanner · barcode hit</div>
+<div class="phone fixed">
+<div class="cam">
+<svg width="393" height="852" style="position:absolute;inset:0"><rect width="393" height="852" fill="#252A33"/><rect x="96" y="150" width="200" height="300" rx="26" fill="#E9EEF5"/><rect x="96" y="150" width="200" height="74" rx="26" fill="#2C6BD6"/><rect x="96" y="200" width="200" height="24" fill="#2C6BD6"/><text x="196" y="296" text-anchor="middle" font-family="Barlow Condensed" font-weight="800" font-style="italic" font-size="38" fill="#1B3F82">SKYR</text><rect x="136" y="340" width="120" height="56" fill="#FFF"/><g fill="#111"><rect x="142" y="346" width="2" height="38"/><rect x="146" y="346" width="4" height="38"/><rect x="153" y="346" width="2" height="38"/><rect x="158" y="346" width="3" height="38"/><rect x="164" y="346" width="2" height="38"/><rect x="169" y="346" width="5" height="38"/><rect x="177" y="346" width="2" height="38"/><rect x="182" y="346" width="3" height="38"/><rect x="188" y="346" width="2" height="38"/><rect x="193" y="346" width="4" height="38"/><rect x="200" y="346" width="2" height="38"/><rect x="205" y="346" width="3" height="38"/><rect x="211" y="346" width="5" height="38"/><rect x="219" y="346" width="2" height="38"/><rect x="224" y="346" width="3" height="38"/><rect x="230" y="346" width="2" height="38"/><rect x="235" y="346" width="4" height="38"/><rect x="242" y="346" width="2" height="38"/><rect x="247" y="346" width="3" height="38"/></g></svg>
+</div>
+<div class="island"></div>
+<div class="sb"><span>16:19</span><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#C9CFDA"/><rect x="2.5" y="2.5" width="14" height="8" rx="2" fill="#F3F5F9"/></svg></div>
+<div style="position:absolute;left:110px;top:322px;width:172px;height:92px;border:3px solid #D4FF3A;border-radius:16px;z-index:3"></div>
+<div style="position:absolute;left:110px;right:110px;top:367px;height:2px;background:#D4FF3A;z-index:3"></div>
+<div class="sheetp" style="padding-top:8px">
+<div class="grab"></div>
+<div class="row sbw" style="align-items:flex-start">
+<div><div class="lbl" style="color:#2ED3B0">Found · 5900820000127</div><div style="font-size:19px;font-weight:700;margin-top:6px">Skyr naturalny</div><div class="muted" style="font-size:13px;margin-top:2px">Piątnica · 150 g cup · saved product</div></div>
+<div class="ibtn"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#C9CFDA" stroke-width="1.8" stroke-linejoin="round"><path d="M5 3h10v14l-5-3.5L5 17z"/></svg></div>
+</div>
+<div class="inset" style="margin-top:14px;padding:12px">
+<div class="row sbw"><span class="lbl">Amount</span><span class="muted" style="font-size:12px">per 100 g: 64 kcal · 11 g P</span></div>
+<div class="row sbw" style="margin-top:10px">
+<div class="ibtn" style="width:44px;height:44px"><svg width="16" height="16" viewBox="0 0 20 20" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round"><path d="M4 10h12"/></svg></div>
+<div style="text-align:center"><span class="num" style="font-size:40px">150</span><span class="muted" style="font-size:15px"> g</span></div>
+<div class="ibtn" style="width:44px;height:44px"><svg width="16" height="16" viewBox="0 0 20 20" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg></div>
+</div>
+<div class="row" style="gap:6px;margin-top:10px;justify-content:center"><span class="chip" style="height:28px;padding:0 10px;background:#232835;color:#F3F5F9">1 cup</span><span class="chip" style="height:28px;padding:0 10px">100 g</span><span class="chip" style="height:28px;padding:0 10px">½ cup</span><span class="chip" style="height:28px;padding:0 10px">2 cups</span></div>
+</div>
+<div class="row" style="gap:8px;margin-top:12px">
+<div class="inset" style="flex:1;text-align:center;padding:8px"><div class="num" style="font-size:22px">96</div><div class="muted" style="font-size:10px;margin-top:2px">kcal</div></div>
+<div class="inset" style="flex:1;text-align:center;padding:8px"><div class="num" style="font-size:22px;color:#2ED3B0">16.5</div><div class="muted" style="font-size:10px;margin-top:2px">protein g</div></div>
+<div class="inset" style="flex:1;text-align:center;padding:8px"><div class="num" style="font-size:22px;color:#6FA9FF">5.4</div><div class="muted" style="font-size:10px;margin-top:2px">carbs g</div></div>
+<div class="inset" style="flex:1;text-align:center;padding:8px"><div class="num" style="font-size:22px;color:#FFA65C">0</div><div class="muted" style="font-size:10px;margin-top:2px">fat g</div></div>
+</div>
+<div class="row" style="gap:8px;margin-top:14px"><span class="obtn" style="height:52px;flex:1">Scan another</span><div class="vbtn" style="flex:1.4">Add 96 kcal</div></div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>Barcode is instant.</b> The code locks volt, a sheet rises over the camera with the product (saved products first, Open Food Facts if new). Grams stepper plus serving chips; numbers update live. <b>Scan another</b> keeps the camera open and stacks items into one Snack entry. Not found → offer Label mode.</div>
+</div>
+
+<!-- ============ 04. SCAN RESULT ============ -->
+<div class="frame">
+<div class="lbl">04 · Scan result · estimate</div>
+<div class="phone" style="min-height:1330px">
+<div style="position:absolute;left:0;right:0;top:0;height:300px;overflow:hidden"><svg width="393" height="300" viewBox="-196.5 -170 393 300"><rect x="-196.5" y="-170" width="393" height="300" fill="#2A2F38"/><circle cx="0" cy="-10" r="150" fill="#3A404C"/><g transform="translate(0,-10) scale(1.05)"><use href="#bowl"/></g></svg></div>
+<div class="island"></div>
+<div class="sb"><span>13:10</span><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#C9CFDA"/><rect x="2.5" y="2.5" width="14" height="8" rx="2" fill="#F3F5F9"/></svg></div>
+<div class="row sbw" style="position:absolute;top:62px;left:16px;right:16px;z-index:5">
+<div class="ibtn" style="background:rgba(10,12,17,.75);border-color:transparent;width:44px;height:44px"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4l-6 6 6 6"/></svg></div>
+<div class="ibtn" style="background:rgba(10,12,17,.75);border-color:transparent;width:44px;height:44px"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#F3F5F9" stroke-width="1.8" stroke-linejoin="round"><path d="M5 3h10v14l-5-3.5L5 17z"/></svg></div>
+</div>
+<div style="position:relative;margin-top:216px;background:#0A0C11;border-radius:28px 28px 0 0;padding:20px 16px 0;display:flex;flex-direction:column;gap:12px">
+<div>
+<div class="row" style="gap:6px"><span class="chip">Lunch ▾</span><span class="chip">13:10</span><span class="chip" style="color:#8A93A6">✦ Claude estimate</span></div>
+<div class="ttl" style="font-size:34px;margin-top:10px">Chicken rice bowl</div>
+<div class="soft" style="font-size:13px;margin-top:6px;line-height:1.45;font-style:italic">Shredded chicken in a tomato sauce over jasmine rice, with diced tomato and herbs.</div>
+</div>
+<div class="card">
+<div class="lbl">This meal · 29% of today</div>
+<div class="row" style="gap:18px;margin-top:12px">
+<div style="position:relative;width:112px;height:112px;flex:none">
+<svg width="112" height="112" viewBox="0 0 112 112"><circle cx="56" cy="56" r="44" fill="none" stroke="#1C212B" stroke-width="12"/><circle cx="56" cy="56" r="44" fill="none" stroke="#2ED3B0" stroke-width="12" stroke-dasharray="94.9 276.5" stroke-dashoffset="-1.8" transform="rotate(-90 56 56)"/><circle cx="56" cy="56" r="44" fill="none" stroke="#3B8CFF" stroke-width="12" stroke-dasharray="118.4 276.5" stroke-dashoffset="-100.1" transform="rotate(-90 56 56)"/><circle cx="56" cy="56" r="44" fill="none" stroke="#FF8A2A" stroke-width="12" stroke-dasharray="52.6 276.5" stroke-dashoffset="-222.1" transform="rotate(-90 56 56)"/></svg>
+<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span class="num" style="font-size:30px">812</span><span style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8A93A6;margin-top:3px">kcal</span></div>
+</div>
+<div style="flex:1;min-width:0">
+<div class="row" style="gap:10px;padding:7px 0"><span style="width:10px;height:10px;border-radius:3px;background:#2ED3B0;flex:none"></span><span class="soft" style="font-size:13px;flex:1">Protein</span><span class="num" style="font-size:20px">71<span class="muted" style="font-size:11px;font-family:Archivo;font-weight:500"> g</span></span><span class="muted" style="font-size:12px;width:34px;text-align:right">36%</span></div>
+<div class="sep"></div>
+<div class="row" style="gap:10px;padding:7px 0"><span style="width:10px;height:10px;border-radius:3px;background:#3B8CFF;flex:none"></span><span class="soft" style="font-size:13px;flex:1">Carbs</span><span class="num" style="font-size:20px">88<span class="muted" style="font-size:11px;font-family:Archivo;font-weight:500"> g</span></span><span class="muted" style="font-size:12px;width:34px;text-align:right">44%</span></div>
+<div class="sep"></div>
+<div class="row" style="gap:10px;padding:7px 0"><span style="width:10px;height:10px;border-radius:3px;background:#FF8A2A;flex:none"></span><span class="soft" style="font-size:13px;flex:1">Fat</span><span class="num" style="font-size:20px">18<span class="muted" style="font-size:11px;font-family:Archivo;font-weight:500"> g</span></span><span class="muted" style="font-size:12px;width:34px;text-align:right">20%</span></div>
+</div>
+</div>
+</div>
+
+<div class="card" style="padding:14px 16px">
+<div class="row sbw"><span class="lbl">Portion</span><span class="muted" style="font-size:12px">1 bowl · ≈ 610 g</span></div>
+<div class="seg" style="margin-top:10px"><span>½</span><span>¾</span><span class="on">1×</span><span>1¼</span><span>1½</span><span>2×</span></div>
+<div class="muted" style="font-size:12px;margin-top:8px">Scales every item. Fine-tune one item below.</div>
+</div>
+
+<div class="row sbw" style="padding:6px 4px 0"><div class="lbl">Breakdown</div><div class="muted" style="font-size:12px">tap an item for grams</div></div>
+<div class="card" style="padding:4px 14px">
+<div style="background:#0E1117;border:1px solid #2A303C;border-radius:16px;margin:8px -6px;padding:0 6px 12px">
+<div class="row" style="padding:11px 6px 8px"><div style="flex:1"><div style="font-size:14px;font-weight:600">Jasmine rice, cooked</div><div class="muted" style="font-size:12px;margin-top:2px">220 g</div></div><div class="row" style="gap:10px;font-size:11px;color:#8A93A6"><span>P 6</span><span>C 62</span><span>F 1</span></div><div class="num" style="font-size:18px;width:40px;text-align:right">286</div></div>
+<div class="row sbw" style="padding:0 6px">
+<div class="ibtn" style="width:44px;height:44px"><svg width="16" height="16" viewBox="0 0 20 20" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round"><path d="M4 10h12"/></svg></div>
+<div style="text-align:center"><span class="num" style="font-size:34px">220</span><span class="muted" style="font-size:14px"> g</span><div class="muted" style="font-size:11px;margin-top:2px">± 10 g per tap · hold to speed up</div></div>
+<div class="ibtn" style="width:44px;height:44px"><svg width="16" height="16" viewBox="0 0 20 20" stroke="#F3F5F9" stroke-width="2.2" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg></div>
+</div>
+<div class="row" style="gap:6px;margin-top:10px;justify-content:center"><span class="chip" style="height:28px;padding:0 10px">½ cup · 90 g</span><span class="chip" style="height:28px;padding:0 10px">1 cup · 180 g</span><span class="chip" style="height:28px;padding:0 10px;background:#232835;color:#F3F5F9">AI · 220 g</span></div>
+</div>
+<div class="row" style="padding:11px 0"><div style="flex:1"><div style="font-size:14px;font-weight:600">Chicken thigh, shredded</div><div class="muted" style="font-size:12px;margin-top:2px">250 g</div></div><div class="row" style="gap:10px;font-size:11px;color:#8A93A6"><span>P 60</span><span>C 0</span><span>F 13</span></div><div class="num" style="font-size:18px;width:40px;text-align:right">412</div></div>
+<div class="sep"></div>
+<div class="row" style="padding:11px 0"><div style="flex:1"><div class="row" style="gap:6px"><span style="font-size:14px;font-weight:600">Tomato sauce, veg</span><span style="font-size:10px;font-weight:700;color:#FFB547">GUESS</span></div><div class="muted" style="font-size:12px;margin-top:2px">140 g</div></div><div class="row" style="gap:10px;font-size:11px;color:#8A93A6"><span>P 5</span><span>C 26</span><span>F 4</span></div><div class="num" style="font-size:18px;width:40px;text-align:right">114</div></div>
+<div class="sep"></div>
+<div class="row" style="padding:12px 0;gap:8px;color:#A3ABBC;font-size:13px;font-weight:600"><svg width="16" height="16" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>Add item</div>
+</div>
+
+<div class="inset row" style="gap:10px;padding:12px"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#FFB547" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v5M10 14h.01"/></svg><div style="font-size:13px;line-height:1.4"><span style="font-weight:600">After this: 1,443 to go.</span> <span class="muted">A snack + planned dinner still leave you ~170 short.</span></div></div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:114px;background:#0A0C11;border-top:1px solid #1C212B;padding:12px 16px 0;box-sizing:border-box;z-index:10" class="row">
+<span class="obtn" style="height:52px;flex:1"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#F3F5F9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5l1.6 4.4 4.4 1.6-4.4 1.6L10 14.5l-1.6-4.4L4 8.5l4.4-1.6z"/></svg>Fix with note</span>
+<div class="vbtn" style="flex:1.3">Log 812 kcal</div>
+</div>
+<div class="home"></div>
+<div class="fold"></div>
+</div>
+<div class="frame-cap"><b>See it before it counts.</b> Photo on top, then name and description. The summary is a split ring (kcal in the middle, gaps between macros) with a legend of grams and % of kcal, the same ring style as the Food hero. <b>Portion</b> scales the whole estimate (½ to 2×), for when you ate less or more than the photo shows. Tap an item for a <b>grams stepper</b> with common servings; the chip marked AI is Claude's guess, so you can go back to it. <b>GUESS</b> flags low-confidence items. <b>Fix with note</b> re-runs the estimate with text. The impact line keeps the under-eating lens. The same layout opens for a logged meal, with Save / Delete instead.</div>
+</div>
+
+<!-- ============ 05. QUICK ADD SHEET ============ -->
+<div class="frame">
+<div class="lbl">05 · Quick add · search sheet</div>
+<div class="phone fixed">
+<div style="opacity:.5">
+<div class="sb"><span>16:19</span></div>
+<div class="body"><div class="hdr"><div><div class="lbl">Thursday · ride day</div><div class="ttl" style="font-size:44px;margin-top:4px">Food</div></div></div></div>
+</div>
+<div class="island"></div>
+<div class="dim" style="background:rgba(0,0,0,.6)"></div>
+<div class="sheetp" style="top:120px;display:flex;flex-direction:column;gap:12px">
+<div class="grab" style="margin-bottom:0"></div>
+<div class="row sbw"><div><div class="lbl">Add to</div><div style="font-size:19px;font-weight:700;margin-top:4px">Snack ▾</div></div><span class="muted" style="font-size:15px;font-weight:600">Done</span></div>
+<div class="field"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#8A93A6" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"/><path d="M13 13l4 4"/></svg><span style="flex:1">Search foods, products…</span><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#C9CFDA" stroke-width="1.8" stroke-linecap="round"><path d="M3 4v12M6 4v12M9 4v12M12 4v12M14.5 4v12M17 4v12"/></svg></div>
+<div class="seg"><span class="on">Recent</span><span>Saved</span><span>Products</span></div>
+
+<div class="card" style="padding:12px 14px;border-color:#2A303C">
+<div class="row sbw"><div><div style="font-size:14px;font-weight:600">Skyr naturalny</div><div class="muted" style="font-size:12px;margin-top:2px">Piątnica · 150 g · 96 kcal</div></div><div class="ibtn" style="width:32px;height:32px;background:#232835;border-color:#232835"><svg width="12" height="12" viewBox="0 0 20 20" stroke="#F3F5F9" stroke-width="2.6" stroke-linecap="round"><path d="M4 10h12"/></svg></div></div>
+<div class="row sbw" style="margin-top:10px"><div class="row" style="gap:6px"><span class="chip" style="height:28px;padding:0 10px;background:#232835;color:#F3F5F9">1 cup</span><span class="chip" style="height:28px;padding:0 10px">100 g</span><span class="chip" style="height:28px;padding:0 10px">2 cups</span></div><span class="num" style="font-size:22px">150<span class="muted" style="font-size:12px;font-family:Archivo"> g</span></span></div>
+<div class="mini"><div><i><u style="height:80%;background:#2ED3B0"></u></i>16.5 P</div><div><i><u style="height:20%;background:#3B8CFF"></u></i>5.4 C</div><div><i><u style="height:2%;background:#FF8A2A"></u></i>0 F</div></div>
+</div>
+
+<div class="row sbw" style="padding:2px 2px"><div><div style="font-size:14px;font-weight:600">Granola, nut</div><div class="muted" style="font-size:12px;margin-top:2px">60 g · 270 kcal</div><div class="mini"><div><i><u style="height:20%;background:#2ED3B0"></u></i>6 P</div><div><i><u style="height:60%;background:#3B8CFF"></u></i>34 C</div><div><i><u style="height:40%;background:#FF8A2A"></u></i>12 F</div></div></div><div class="ibtn" style="width:32px;height:32px"><svg width="12" height="12" viewBox="0 0 20 20" stroke="#F3F5F9" stroke-width="2.6" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg></div></div>
+<div class="sep"></div>
+<div class="row sbw" style="padding:2px 2px"><div><div style="font-size:14px;font-weight:600">Oats, banana, whey</div><div class="muted" style="font-size:12px;margin-top:2px">Saved meal · 520 kcal</div><div class="mini"><div><i><u style="height:60%;background:#2ED3B0"></u></i>38 P</div><div><i><u style="height:80%;background:#3B8CFF"></u></i>72 C</div><div><i><u style="height:15%;background:#FF8A2A"></u></i>9 F</div></div></div><div class="ibtn" style="width:32px;height:32px"><svg width="12" height="12" viewBox="0 0 20 20" stroke="#F3F5F9" stroke-width="2.6" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg></div></div>
+<div class="sep"></div>
+<div class="row sbw" style="padding:2px 2px"><div><div style="font-size:14px;font-weight:600">Banana</div><div class="muted" style="font-size:12px;margin-top:2px">1 medium · 105 kcal</div><div class="mini"><div><i><u style="height:5%;background:#2ED3B0"></u></i>1 P</div><div><i><u style="height:40%;background:#3B8CFF"></u></i>27 C</div><div><i><u style="height:2%;background:#FF8A2A"></u></i>0 F</div></div></div><div class="ibtn" style="width:32px;height:32px"><svg width="12" height="12" viewBox="0 0 20 20" stroke="#F3F5F9" stroke-width="2.6" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg></div></div>
+
+<div style="position:absolute;left:16px;right:16px;bottom:40px"><div class="vbtn">Add 1 item · 96 kcal</div></div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>For the repeats.</b> Opened by the search button or a meal's +. <b>Recent</b> learns from use counts; <b>Saved</b> = saved meals; <b>Products</b> = your products, then Open Food Facts. Tap + to pick, the row expands with serving chips; mini bars show the macro mix at a glance. Picks stack into one entry, logged with the single volt button. The barcode icon jumps to frame 03.</div>
+</div>
+
+<div class="notes">
+<div class="lbl">Notes for the build</div>
+<div class="ncols">
+<div><div style="font-size:15px;font-weight:700">What changes</div><ul>
+<li><b>Header:</b> week strip with target dots replaces the ‹ day buttons. Swipe the strip for earlier weeks.</li>
+<li><b>Hero:</b> eaten / target and a ring with kcal to go in the middle (solid = eaten, thin arc = planned dinner), and three macro columns replace the bar + tiles card.</li>
+<li><b>Meals:</b> one timeline card per entry with P/C/F chips; latest expanded with its items. Planned dinner gets <b>Log as planned</b> / <b>Ate something else</b>.</li>
+<li><b>Scan:</b> custom camera screen (AVFoundation) instead of the system picker, so modes, barcode detection and brackets are possible.</li>
+</ul></div>
+<div><div style="font-size:15px;font-weight:700">Backend (already there)</div><ul>
+<li>Meal photo / text → <code>POST /phone/meal-estimate</code> (as now).</li>
+<li>Barcode → <code>GET /nutrition/products?q=&lt;code&gt;</code> first, then <code>/nutrition/products/search?q=&lt;code&gt;</code> (OFF); save with <code>POST /nutrition/products</code>.</li>
+<li>Recent / Saved → <code>/nutrition/food/saved</code> + <code>/products/{id}/use</code>.</li>
+<li>Label photo → needs a phone route that reads the nutrition table (web does this today). <b>New endpoint.</b></li>
+<li>Week dots → one <code>/nutrition/food?date=</code> per day, or a light <b>week summary</b> route.</li>
+</ul></div>
+<div><div style="font-size:15px;font-weight:700">Open questions</div><ul>
+<li>Keep thumbnails of meal photos? Needs the photo stored server-side (today it isn't). Without it, the row shows the meal emoji.</li>
+<li>Scanner dots: on-device Vision finds the plate outline and food regions only. The real breakdown still comes from Claude after the shot.</li>
+<li>Ship in two steps: <b>1.</b> day screen + result (01, 04); <b>2.</b> scanner modes + quick add (02, 03, 05).</li>
+</ul></div>
+</div>
+</div>
+</div>
+</x-dc>
+</body>
+</html>

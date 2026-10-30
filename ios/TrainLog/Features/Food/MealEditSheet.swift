@@ -1,17 +1,20 @@
 import SwiftUI
 
-/// A logged meal, opened from its row: correct portions, grams or macros, move it to another
-/// meal, or delete it.
+/// A logged meal, opened from its card: the same layout as the scan result. Change the portion,
+/// fine-tune grams, move it to another meal, or delete it.
 struct MealEditSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var meal: String
     @State private var items: [FoodItem]
+    @State private var portion = 1.0
     let entry: FoodEntry
+    let context: MealDayContext
     let onSave: (FoodEntryInput) -> Void
     let onDelete: () -> Void
 
-    init(entry: FoodEntry, onSave: @escaping (FoodEntryInput) -> Void, onDelete: @escaping () -> Void) {
+    init(entry: FoodEntry, context: MealDayContext, onSave: @escaping (FoodEntryInput) -> Void, onDelete: @escaping () -> Void) {
         self.entry = entry
+        self.context = context
         self.onSave = onSave
         self.onDelete = onDelete
         _meal = State(initialValue: entry.meal)
@@ -25,27 +28,35 @@ struct MealEditSheet: View {
                        items: items.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty })
     }
 
+    /// The entry's own items, so a changed one can go back to what was logged.
+    private var originals: [UUID: FoodItem] {
+        Dictionary(uniqueKeysWithValues: entry.items.map { ($0.id, $0) })
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             topBar
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    MealPicker(selection: $meal)
+                VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 0) {
-                        HStack {
-                            Kicker("Items")
-                            Spacer()
-                            Text("\(FoodFormat.kcal(totals.kcal)) kcal · \(Int(totals.proteinG.rounded())) g P")
-                                .font(AppFont.body(12, weight: .semibold))
-                                .foregroundStyle(Color.inkSoft)
+                        HStack(spacing: 6) {
+                            MealChip(meal: $meal)
+                            if let clock = FoodFormat.clock(entry) {
+                                Text(clock).modifier(ChipStyle())
+                            }
+                            if entry.source == "photo" {
+                                Label("From photo", systemImage: "camera").modifier(ChipStyle(color: .muted))
+                            }
                         }
-                        .padding(.bottom, 4)
-                        ForEach($items) { $item in
-                            Rectangle().fill(Color.cardBorder).frame(height: 1)
-                            ItemEditor(item: $item) { items.removeAll { $0.id == item.id } }
-                        }
+                        Text(FoodFormat.itemNames(items, limit: 2).uppercased())
+                            .font(AppFont.title(34))
+                            .foregroundStyle(Color.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 4)
                     }
-                    .card()
+                    MealSummaryCard(totals: totals, target: context.target)
+                    PortionPicker(factor: $portion, grams: items.compactMap(\.grams).reduce(0, +))
+                    Breakdown(items: $items, originals: originals)
                     Button(role: .destructive) {
                         onDelete()
                         dismiss()
@@ -59,20 +70,27 @@ struct MealEditSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
             }
+            .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
             Button {
                 onSave(input)
                 dismiss()
             } label: {
-                Label("Save \(FoodFormat.kcal(totals.kcal)) kcal", systemImage: "checkmark")
+                Text("Save \(FoodFormat.kcal(totals.kcal)) kcal")
             }
             .buttonStyle(VoltButtonStyle())
             .disabled(input.items.isEmpty)
             .opacity(input.items.isEmpty ? 0.4 : 1)
             .padding(.horizontal, 16)
+            .padding(.top, 12)
             .padding(.bottom, 8)
+            .overlay(alignment: .top) { Rectangle().fill(Color.cardBorder).frame(height: 1) }
         }
         .padding(.top, 8)
+        .background(Color.bg)
+        .onChange(of: portion) { old, new in
+            items = FoodFormat.portioned(items, by: new / old)
+        }
     }
 
     private var topBar: some View {
@@ -82,7 +100,7 @@ struct MealEditSheet: View {
                 .foregroundStyle(Color.inkSoft)
                 .frame(minWidth: 52, minHeight: 44, alignment: .leading)
             Spacer()
-            Text("Edit meal").font(AppFont.body(16, weight: .bold)).foregroundStyle(Color.ink)
+            Text("Meal").font(AppFont.body(16, weight: .bold)).foregroundStyle(Color.ink)
             Spacer()
             Color.clear.frame(width: 52, height: 44)
         }

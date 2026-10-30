@@ -7,6 +7,16 @@ struct FoodDay: Decodable, Sendable {
     let totals: Macros
     let target: Target?
     let proteinTargetG: Double?
+    /// The 7 days ending on `date`, judged against their targets (drives the week strip dots).
+    var week: [WeekDay]? = nil
+
+    struct WeekDay: Decodable, Sendable, Equatable {
+        let date: String
+        let logged: Bool
+        let finished: Bool
+        let targetKcal: Double?
+        let under: Bool
+    }
 
     struct Target: Decodable, Sendable {
         let kcal: Double

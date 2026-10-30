@@ -64,6 +64,60 @@ struct FoodTests {
         #expect(FoodFormat.dayKicker("2026-10-27", kind: "rest") == "Tuesday · rest day")
     }
 
+    @Test func marksWeekDays() throws {
+        let json = """
+        [{"date": "2026-10-26", "logged": true, "finished": true, "target_kcal": 2700, "under": false},
+         {"date": "2026-10-27", "logged": true, "finished": true, "target_kcal": 2700, "under": true},
+         {"date": "2026-10-28", "logged": false, "finished": true, "target_kcal": 2700, "under": false},
+         {"date": "2026-10-29", "logged": true, "finished": false, "target_kcal": 2700, "under": false}]
+        """
+        let week = try APIClient.decoder.decode([FoodDay.WeekDay].self, from: Data(json.utf8))
+        #expect(week.map(FoodFormat.mark) == [.hit, .short, nil, nil])
+        #expect(FoodFormat.weekDates(of: "2026-10-29") == ["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-10-31", "2026-11-01"])
+        #expect(FoodFormat.weekDates(of: "2026-11-01").first == "2026-10-26")
+        #expect(FoodFormat.weekDates(of: "2026-10-26").first == "2026-10-26")
+    }
+
+    @Test func splitsKcalByMacro() {
+        let shares = FoodFormat.kcalShares(Macros(kcal: 798, proteinG: 71, carbsG: 88, fatG: 18))
+        #expect(abs(shares.protein - 284.0 / 798) < 0.001)
+        #expect(abs(shares.fat - 162.0 / 798) < 0.001)
+        #expect(FoodFormat.kcalShares(.zero).protein == 0)
+    }
+
+    @Test func scalesWholePortion() {
+        let items = [
+            FoodItem(name: "Rice", grams: 220, kcal: 286, proteinG: 6, carbsG: 62, fatG: 1),
+            FoodItem(name: "Stew", kcal: 600, proteinG: 40, portions: 1),
+        ]
+        let half = FoodFormat.portioned(items, by: 0.5)
+        #expect(half[0].grams == 110)
+        #expect(half[0].kcal == 143)
+        #expect(half[1].portions == 0.5)
+        #expect(half[1].proteinG == 20)
+        #expect(half[0].id == items[0].id)
+        #expect(FoodFormat.portioned(items, by: 1) == items)
+    }
+
+    @Test func namesMealsAndTimes() throws {
+        let day = try APIClient.decoder.decode(FoodDay.self, from: Data(sample.utf8))
+        let warsaw = try #require(TimeZone(identifier: "Europe/Warsaw"))
+        #expect(FoodFormat.clock(day.entries[0], timeZone: warsaw) == "07:40")
+        #expect(FoodFormat.itemNames(day.entries[0].items) == "Oats, whey")
+        let many = ["Rice", "Chicken", "Sauce", "Herbs"].map { FoodItem(name: $0, kcal: 1, proteinG: 0) }
+        #expect(FoodFormat.itemNames(many, limit: 2) == "Rice, chicken +2")
+    }
+
+    @Test func saysWhatIsLeftAfterAMeal() {
+        let short = FoodFormat.impact(meal: 812, eaten: 520, target: 2775, dinner: 750)
+        #expect(short?.headline == "After this: 1,443 to go.")
+        #expect(short?.detail == "Planned dinner still leaves ~693 short.")
+        #expect(short?.closes == false)
+        #expect(FoodFormat.impact(meal: 812, eaten: 1500, target: 2775, dinner: 750)?.closes == true)
+        #expect(FoodFormat.impact(meal: 900, eaten: 2000, target: 2775, dinner: nil)?.headline == "That covers today's target.")
+        #expect(FoodFormat.impact(meal: 900, eaten: 0, target: nil, dinner: nil) == nil)
+    }
+
     @Test func rescalesItemsByGrams() {
         let rice = FoodItem(name: "Rice", grams: 200, kcal: 260, proteinG: 5, carbsG: 56, fatG: 1)
         let bigger = FoodFormat.rescale(rice, grams: 300)

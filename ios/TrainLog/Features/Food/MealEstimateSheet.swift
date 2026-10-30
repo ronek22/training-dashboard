@@ -1,51 +1,65 @@
 import PhotosUI
 import SwiftUI
 
-/// Photo (and/or words) → Claude's items → correct them → log. Starts estimating straight away
-/// when it opens with a photo.
+/// Photo (and/or words) → Claude's items → see the breakdown, fix portions → log. Starts
+/// estimating straight away when it opens with a photo.
 struct MealEstimateSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: MealEstimateModel
     @State private var showCamera = false
     @State private var libraryItem: PhotosPickerItem?
+    @State private var portion = 1.0
+    @State private var fixing = false
     @FocusState private var textFocused: Bool
     let date: String
+    let context: MealDayContext
     let onSave: (FoodEntryInput) -> Void
 
-    init(draft: MealDraft, date: String, onSave: @escaping (FoodEntryInput) -> Void) {
-        _model = State(initialValue: MealEstimateModel(photo: draft.photo))
+    init(draft: MealDraft, date: String, context: MealDayContext, onSave: @escaping (FoodEntryInput) -> Void) {
+        _model = State(initialValue: MealEstimateModel(photo: draft.photo, meal: draft.meal ?? FoodFormat.defaultMeal()))
         self.date = date
+        self.context = context
         self.onSave = onSave
+    }
+
+    private var estimating: Bool {
+        if case .estimating = model.phase { return true }
+        return false
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            topBar
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    photoRow
-                    TextField("What's in it? e.g. big kebab, no sauce", text: $model.text, axis: .vertical)
-                        .font(AppFont.body(15))
-                        .foregroundStyle(Color.ink)
-                        .lineLimit(1...4)
-                        .focused($textFocused)
-                        .padding(12)
-                        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
-                    MealPicker(selection: $model.meal)
-                    result
+                VStack(alignment: .leading, spacing: 0) {
+                    if let photo = model.photo {
+                        photoHeader(photo)
+                    } else {
+                        topBar
+                    }
+                    content
+                        .padding(.horizontal, 16)
+                        .padding(.top, model.photo == nil ? 4 : 20)
+                        .padding(.bottom, 16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.bg, in: UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous))
+                        .padding(.top, model.photo == nil ? 0 : -32)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
             }
+            .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
-            action
+            footer
                 .padding(.horizontal, 16)
+                .padding(.top, 12)
                 .padding(.bottom, 8)
+                .background(Color.bg)
+                .overlay(alignment: .top) { Rectangle().fill(Color.cardBorder).frame(height: 1) }
         }
-        .padding(.top, 8)
+        .background(Color.bg)
         .task {
             if model.photo != nil { await model.estimate() } else { textFocused = true }
+        }
+        .onChange(of: portion) { old, new in
+            model.items = FoodFormat.portioned(model.items, by: new / old)
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { image in
@@ -68,8 +82,41 @@ struct MealEstimateSheet: View {
     private func replacePhoto(_ image: UIImage) {
         textFocused = false
         model.photo = image
-        model.items = []
+        reestimate()
+    }
+
+    private func reestimate() {
+        textFocused = false
+        fixing = false
+        portion = 1
         Task { await model.estimate() }
+    }
+
+    private func photoHeader(_ photo: UIImage) -> some View {
+        Color.clear
+            .frame(height: 280)
+            .overlay { Image(uiImage: photo).resizable().scaledToFill() }
+            .clipped()
+            .overlay(alignment: .top) {
+                HStack {
+                    roundButton("xmark", label: "Cancel") { dismiss() }
+                    Spacer()
+                    roundButton("camera", label: "Retake photo") { showCamera = true }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+            }
+    }
+
+    private func roundButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.ink)
+                .frame(width: 44, height: 44)
+                .background(Color.bg.opacity(0.75), in: Circle())
+        }
+        .accessibilityLabel(label)
     }
 
     private var topBar: some View {
@@ -79,53 +126,55 @@ struct MealEstimateSheet: View {
                 .foregroundStyle(Color.inkSoft)
                 .frame(minWidth: 52, minHeight: 44, alignment: .leading)
             Spacer()
-            Text("Log meal").font(AppFont.body(16, weight: .bold)).foregroundStyle(Color.ink)
-            Spacer()
-            Color.clear.frame(width: 52, height: 44)
         }
         .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 
-    private var photoRow: some View {
-        HStack(spacing: 12) {
-            if let photo = model.photo {
-                Image(uiImage: photo)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 88, height: 88)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(alignment: .topTrailing) {
-                        Button {
-                            model.photo = nil
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(Color.ink)
-                                .frame(width: 24, height: 24)
-                                .background(Color.bg.opacity(0.75), in: Circle())
-                        }
-                        .frame(width: 44, height: 44, alignment: .topTrailing)
-                        .padding(4)
-                        .accessibilityLabel("Remove photo")
+    private var title: String {
+        model.items.isEmpty ? (estimating ? "Estimating" : "Log meal") : FoodFormat.itemNames(model.items, limit: 2)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 6) {
+                    MealChip(meal: $model.meal)
+                    if !model.items.isEmpty {
+                        Label("Claude estimate", systemImage: "sparkle")
+                            .labelStyle(.titleAndIcon)
+                            .modifier(ChipStyle(color: .muted))
                     }
+                }
+                Text(title.uppercased())
+                    .font(AppFont.title(34))
+                    .foregroundStyle(Color.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
+                if !model.note.isEmpty, !model.items.isEmpty {
+                    Text(model.note)
+                        .font(AppFont.body(13).italic())
+                        .foregroundStyle(Color.inkSoft)
+                        .lineSpacing(3)
+                        .padding(.top, 6)
+                }
             }
-            VStack(spacing: 8) {
-                Button {
-                    showCamera = true
-                } label: {
-                    Label(model.photo == nil ? "Take photo" : "Retake", systemImage: "camera")
-                }
-                .buttonStyle(OutlineButtonStyle(height: 40))
-                PhotosPicker(selection: $libraryItem, matching: .images) {
-                    Label("Library", systemImage: "photo.on.rectangle")
-                }
-                .buttonStyle(OutlineButtonStyle(height: 40))
+            status
+            if model.items.isEmpty {
+                if !estimating { describe }
+            } else {
+                MealSummaryCard(totals: model.totals, target: context.target)
+                PortionPicker(factor: $portion, grams: model.items.compactMap(\.grams).reduce(0, +))
+                if fixing { fixNote }
+                Breakdown(items: $model.items, originals: model.estimated)
+                ImpactLine(meal: model.totals.kcal, context: context)
             }
         }
     }
 
     @ViewBuilder
-    private var result: some View {
+    private var status: some View {
         switch model.phase {
         case .estimating(let message):
             HStack(spacing: 10) {
@@ -133,6 +182,7 @@ struct MealEstimateSheet: View {
                 Text(message).font(AppFont.body(14)).foregroundStyle(Color.inkSoft)
             }
             .frame(maxWidth: .infinity, minHeight: 64)
+            .card()
         case .failed(let message):
             Text(message)
                 .font(AppFont.body(14))
@@ -141,34 +191,50 @@ struct MealEstimateSheet: View {
         case .idle, .ready:
             EmptyView()
         }
-        if !model.items.isEmpty {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Kicker("Claude's estimate")
-                    Spacer()
-                    Text("\(FoodFormat.kcal(model.totals.kcal)) kcal · \(Int(model.totals.proteinG.rounded())) g P")
-                        .font(AppFont.body(12, weight: .semibold))
-                        .foregroundStyle(Color.inkSoft)
-                }
-                .padding(.bottom, 4)
-                ForEach($model.items) { $item in
-                    Rectangle().fill(Color.cardBorder).frame(height: 1)
-                    ItemEditor(item: $item) { model.items.removeAll { $0.id == item.id } }
-                }
-                if !model.note.isEmpty {
-                    Text(model.note).font(AppFont.body(12)).foregroundStyle(Color.muted).padding(.top, 10)
+    }
+
+    /// Words (and optionally a photo) before the first estimate.
+    private var describe: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            textField("What's in it? e.g. big kebab, no sauce")
+            if model.photo == nil {
+                HStack(spacing: 8) {
+                    Button { showCamera = true } label: { Label("Take photo", systemImage: "camera") }
+                        .buttonStyle(OutlineButtonStyle(height: 40))
+                    PhotosPicker(selection: $libraryItem, matching: .images) {
+                        Label("Library", systemImage: "photo.on.rectangle")
+                    }
+                    .buttonStyle(OutlineButtonStyle(height: 40))
                 }
             }
-            .card()
         }
     }
 
+    /// "Sauce was cream-based": re-runs the estimate with these words added.
+    private var fixNote: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Kicker("Fix with a note")
+            textField("What did Claude get wrong? e.g. sauce was cream-based")
+        }
+        .card()
+    }
+
+    private func textField(_ prompt: String) -> some View {
+        TextField(prompt, text: $model.text, axis: .vertical)
+            .font(AppFont.body(15))
+            .foregroundStyle(Color.ink)
+            .lineLimit(1...4)
+            .focused($textFocused)
+            .padding(12)
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
+    }
+
     @ViewBuilder
-    private var action: some View {
+    private var footer: some View {
         if model.items.isEmpty {
             Button {
-                textFocused = false
-                Task { await model.estimate() }
+                reestimate()
             } label: {
                 Label("Estimate", systemImage: "sparkles")
             }
@@ -177,114 +243,27 @@ struct MealEstimateSheet: View {
             .opacity(model.canEstimate ? 1 : 0.4)
         } else {
             HStack(spacing: 8) {
-                Button("Re-estimate") {
-                    textFocused = false
-                    Task { await model.estimate() }
+                Button {
+                    if fixing { reestimate() } else {
+                        fixing = true
+                        textFocused = true
+                    }
+                } label: {
+                    Label(fixing ? "Re-estimate" : "Fix with note", systemImage: "sparkles")
+                        .lineLimit(1)
                 }
                 .buttonStyle(OutlineButtonStyle(height: 52))
-                .frame(width: 128)
-                .disabled(!model.canEstimate)
+                .frame(width: 150)
+                .disabled(estimating || (fixing && !model.canEstimate))
                 Button {
                     onSave(model.entry(date: date))
                     dismiss()
                 } label: {
-                    Label("Log \(FoodFormat.kcal(model.totals.kcal)) kcal", systemImage: "checkmark")
+                    Text("Log \(FoodFormat.kcal(model.totals.kcal)) kcal")
                 }
                 .buttonStyle(VoltButtonStyle())
             }
         }
-    }
-}
-
-/// Breakfast · Dinner · Supper · Snack.
-struct MealPicker: View {
-    @Binding var selection: String
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(FoodFormat.meals, id: \.value) { meal in
-                let selected = selection == meal.value
-                Button {
-                    selection = meal.value
-                } label: {
-                    Text(meal.label)
-                        .font(AppFont.body(13, weight: .semibold))
-                        .foregroundStyle(selected ? Color.ink : Color.muted)
-                        .frame(maxWidth: .infinity, minHeight: 36)
-                        .background(selected ? Color.raised : .clear, in: RoundedRectangle(cornerRadius: 10))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
-    }
-}
-
-/// One estimated or logged item: name, then grams (or portions) / kcal / protein to correct.
-struct ItemEditor: View {
-    @Binding var item: FoodItem
-    let onRemove: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                TextField("Food", text: $item.name)
-                    .font(AppFont.body(14, weight: .semibold))
-                    .foregroundStyle(Color.ink)
-                if item.confidence == "low" {
-                    Text("guess").font(AppFont.body(10, weight: .bold)).foregroundStyle(Color.warning)
-                }
-                Button(action: onRemove) {
-                    Image(systemName: "minus.circle").font(.system(size: 17)).foregroundStyle(Color.faint)
-                        .frame(width: 44, height: 32, alignment: .trailing)
-                }
-                .accessibilityLabel("Remove \(item.name)")
-            }
-            HStack(spacing: 8) {
-                if item.portions == nil {
-                    field("g", value: gramsBinding)
-                } else {
-                    field("portion", value: portionsBinding)
-                }
-                field("kcal", value: $item.kcal)
-                field("g P", value: $item.proteinG)
-            }
-        }
-        .padding(.vertical, 10)
-    }
-
-    /// Changing grams rescales kcal and macros, so correcting the portion keeps them consistent.
-    private var gramsBinding: Binding<Double> {
-        Binding(
-            get: { item.grams ?? 0 },
-            set: { item = FoodFormat.rescale(item, grams: $0) }
-        )
-    }
-
-    /// A recipe dish's macros are for its portions, so changing them rescales too.
-    private var portionsBinding: Binding<Double> {
-        Binding(
-            get: { item.portions ?? 1 },
-            set: { item = FoodFormat.rescale(item, portions: $0) }
-        )
-    }
-
-    private func field(_ unit: String, value: Binding<Double>) -> some View {
-        HStack(spacing: 4) {
-            TextField("0", value: value, format: .number.precision(.fractionLength(0...1)))
-                .keyboardType(.decimalPad)
-                .font(AppFont.number(18, weight: .semibold))
-                .foregroundStyle(Color.ink)
-                .multilineTextAlignment(.trailing)
-            Text(unit).font(AppFont.body(11)).foregroundStyle(Color.muted)
-        }
-        .padding(.horizontal, 10)
-        .frame(maxWidth: .infinity, minHeight: 40)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.cardBorder))
     }
 }
 

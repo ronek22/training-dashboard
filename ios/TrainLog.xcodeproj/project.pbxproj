@@ -66,6 +66,7 @@
 		72C8EB591709DB2121B0EC38 /* ActivityDetailPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CB3B6F703F074A4D7AF22A /* ActivityDetailPage.swift */; };
 		75C511A0E9893D7205E311D1 /* QuickLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1B90F67C5BEB5AA4C54A0B /* QuickLog.swift */; };
 		790DBDAE15B345608EE42C8E /* PhoneToday.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDCA15FBA972C52E02035AF5 /* PhoneToday.swift */; };
+		7AC0370CC72ECD18A9EDF1D2 /* MealParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910F2577F433EBD43253D607 /* MealParts.swift */; };
 		7B1301E67C9CB9ABE0665EEA /* HealthSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9EE1F2002B2014D0D57BFF3 /* HealthSyncTests.swift */; };
 		7B7DF9F022485CFF4346DBED /* Plan.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB4B437C24B11803E9C28EE6 /* Plan.swift */; };
 		7C98F62AD27C84490FDD1FCA /* Body.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46FA7C79DDDCE8539A8B0E6D /* Body.swift */; };
@@ -234,6 +235,7 @@
 		8D06FFA209BAA7436AB6E384 /* TrainLog.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TrainLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D7A9C8B452D6A465F01F9F9 /* WorkoutStudioTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutStudioTests.swift; sourceTree = "<group>"; };
 		8FA62ACA1E1EE1616ED24F65 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
+		910F2577F433EBD43253D607 /* MealParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealParts.swift; sourceTree = "<group>"; };
 		9300D8653189F20A8672DD18 /* RehabTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabTests.swift; sourceTree = "<group>"; };
 		947E7B26646DCF89AEB291E0 /* QuickLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogTests.swift; sourceTree = "<group>"; };
 		94F4027994F4CFB503C9088F /* SilhouettePaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilhouettePaths.swift; sourceTree = "<group>"; };
@@ -362,6 +364,7 @@
 				BD75917A58F54334CDFA0079 /* FoodView.swift */,
 				B1E7DD0F4032A9D1960C7D55 /* MealEditSheet.swift */,
 				97817D1288D6173D1208D11B /* MealEstimateSheet.swift */,
+				910F2577F433EBD43253D607 /* MealParts.swift */,
 			);
 			path = Food;
 			sourceTree = "<group>";
@@ -814,6 +817,7 @@
 				AEC7E99787987D9C15614CD9 /* LiveHealth.swift in Sources */,
 				8582072D669C9FFC9F34B87B /* MealEditSheet.swift in Sources */,
 				7DFBA72175D47731D87ACE6C /* MealEstimateSheet.swift in Sources */,
+				7AC0370CC72ECD18A9EDF1D2 /* MealParts.swift in Sources */,
 				A13AFF17141E612799866BB6 /* MetricChart.swift in Sources */,
 				D991039FC7B8BA8250BB4BE9 /* Motion.swift in Sources */,
 				D2312971324EB18D3E32AA50 /* MoveDaySheet.swift in Sources */,

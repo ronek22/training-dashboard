@@ -145,7 +145,7 @@ struct SessionReadSection: View {
     }
 }
 
-private struct Spark: View {
+struct Spark: View {
     let values: [Double]
     let color: Color
 

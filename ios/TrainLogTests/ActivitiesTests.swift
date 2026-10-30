@@ -302,6 +302,29 @@ struct ActivitiesTests {
         #expect(ActivityDetailFormat.compareKeys(value, key: "heartrate") == [])
     }
 
+    @Test func runningFormSheetPlacesTodayOnTheRange() throws {
+        let form = try APIClient.decoder.decode(RunningFitness.self, from: Data(fitness.utf8)).form
+        let rows = ActivityDetailFormat.formDetails(try run(), fitness: form)
+        #expect(rows.map(\.cell.label) == ["Cadence", "Ground contact", "Step length", "Vert. oscillation", "Vert. ratio", "Power"])
+        let cadence = rows[0]
+        #expect(cadence.good == 165...185)
+        #expect(cadence.usual == 155.2)
+        #expect(cadence.scale.contains(cadence.value) && cadence.scale.contains(185))
+        #expect(cadence.perKm.count == 5)
+        #expect(cadence.drift == "152 → 156 spm from the first km to the last")
+        // No range for step length or power: compared with your usual only.
+        #expect(rows[2].good == nil)
+        #expect(rows[5].note?.hasPrefix("Running power") == true)
+    }
+
+    @Test func splitsSheetKeepsColumnsThatHaveData() throws {
+        let columns = ActivityDetailFormat.splitColumns(try run())
+        // The fixture's splits have no ground contact, oscillation or step length.
+        #expect(columns.map(\.title) == ["Pace", "HR", "Cad", "W"])
+        #expect(columns[0].values.first == "5:50")
+        #expect(columns[3].values.last == "243")
+    }
+
     @Test func decodesEncodedPolyline() {
         let points = ActivityDetailFormat.decodePolyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@")
         #expect(points.count == 3)

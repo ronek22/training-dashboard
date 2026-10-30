@@ -176,6 +176,19 @@ class RunningFitnessDbTests(unittest.TestCase):
         self.assertFalse(data["power"]["critical_power"]["steady_only"], "W' of 3.6 kJ is a real hard effort")
         self.assertEqual(data["healthfit"]["missing"], [])
 
+    def test_activity_dynamics_returns_one_runs_form_and_splits(self):
+        self.run_row("r1", ago(5), 8.0, 45.0, avg_hr=150)
+        self.dynamics("f1.fit", "r1", ago(5), vo=9.5)
+        self.conn.execute("UPDATE run_dynamics SET splits_json = ? WHERE file_name = 'f1.fit'",
+                          (json.dumps([{"km": 1, "seconds": 340, "heart_rate": 150.0}]),))
+        self.conn.commit()
+        data = run_dynamics.activity_dynamics(self.conn, "r1")
+        self.assertEqual(data["vertical_oscillation_cm"], 9.5)
+        self.assertEqual(data["cadence_spm"], 160)
+        self.assertEqual(data["avg_power_w"], 240)
+        self.assertEqual(data["splits"], [{"km": 1, "seconds": 340, "heart_rate": 150.0}])
+        self.assertIsNone(run_dynamics.activity_dynamics(self.conn, "nofile"))
+
     def test_strava_run_without_healthfit_file_reaches_the_inbox(self):
         self.run_row("old", ago(60), 8.0, 45.0)
         self.dynamics("old.fit", "old", ago(60))

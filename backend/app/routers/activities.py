@@ -3,6 +3,7 @@ from typing import Optional
 
 from ..db import get_db
 from ..services.hike_detail import mountain_region
+from ..services.run_dynamics import activity_dynamics
 from ..models.fitbod_imports import FitbodImportRequest, FitbodSessionLinkRequest, FitbodSessionRejectRequest
 from ..models.activities import (
     Activity,
@@ -84,6 +85,8 @@ def get_activity_detail(activity_id: str):
         )
         # Hikes, walks and trail runs in a mapped range get the map-first page.
         payload["mountain_region"] = mountain_region(conn, activity_id)
+        # Runs with a HealthFit FIT file: form averages and per-km splits for the phone.
+        payload["run_dynamics"] = activity_dynamics(conn, activity_id)
         return payload
     finally:
         conn.close()

@@ -20,6 +20,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-10-30 — **Widgets v2** — The wide Today widget shows the next session with its focus in sport colour, week hours over a sport bar and kcal to go side by side; small Week and Food widgets match the app's D2 look, with no ring.
 - 2026-10-30 — **Coach chat** — Ask the coach from an activity, a plan day or week, or Today, and pick up the same chats as the web; replies land even if you close the chat.
 - 2026-10-30 — **Activity detail v3** — Every activity opens with a visual (glowing pace, speed or elevation route, an animated power or heart-rate trace, or a muscle map), a coloured grid that explains itself, calm sections with splits and running form, and Show more sheets.
 - 2026-10-29 — **Coaching rehab demos** — The phone's rehab figures move like the web's: a solid body with the working muscle lighting up, the target pose as a ghost, an arrow along the move and a countdown with a tempo bar.

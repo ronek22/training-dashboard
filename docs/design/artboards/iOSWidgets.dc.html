@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrainLog · iOS widgets v2</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&amp;family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&amp;display=swap" rel="stylesheet">
+<style>
+/* ---------- canvas (same conventions as iOSActivityDetailV3.dc.html) ---------- */
+body{margin:0;background:#05070A;color:#F3F5F9;font-family:'Archivo',system-ui,sans-serif}
+.num{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;line-height:1}
+.ttl{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;text-transform:uppercase;line-height:.92;letter-spacing:.01em}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600}
+.muted{color:#8A93A6}
+.soft{color:#A3ABBC}
+.canvas{display:flex;flex-wrap:wrap;gap:56px 56px;padding:56px 64px 72px;max-width:2000px;align-items:flex-start}
+.canvas-head{width:100%;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.section-head{width:100%;border-top:1px solid #1C212B;padding-top:24px}
+.section-head .ttl{font-size:30px;margin-top:6px}
+.section-head p{font-size:14px;color:#8A93A6;margin:8px 0 0;max-width:900px;line-height:1.45}
+.frame{display:flex;flex-direction:column;gap:14px}
+.frame-cap{font-size:13px;color:#A3ABBC;max-width:393px;line-height:1.45}
+.frame-cap b{color:#F3F5F9;font-weight:600}
+.row{display:flex;align-items:center;gap:12px}
+
+/* notes */
+.notes{width:1180px;background:#0E1117;border:1px solid #1C212B;border-radius:20px;padding:24px 28px;box-sizing:border-box}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+.notes h3{font-family:'Barlow Condensed';font-weight:700;font-size:22px;margin:0 0 12px}
+.notes ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.notes li{font-size:14px;line-height:1.45;color:#A3ABBC}
+.notes li b{color:#F3F5F9;font-weight:600}
+table.data{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+table.data th{text-align:left;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8A93A6;font-weight:600;padding:8px 12px 8px 0;border-bottom:1px solid #1C212B}
+table.data td{padding:10px 12px 10px 0;border-bottom:1px solid #1C212B;color:#A3ABBC;vertical-align:top;line-height:1.4}
+table.data td b{color:#F3F5F9;font-weight:600}
+.tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.tag.ok{background:rgba(46,211,176,.14);color:#2ED3B0}
+.tag.add{background:rgba(255,200,58,.14);color:#FFC83A}
+.tag.new{background:rgba(139,123,255,.16);color:#A99BFF}
+
+/* phone */
+.phone{width:393px;height:852px;border-radius:56px;position:relative;overflow:hidden;box-shadow:0 0 0 10px #171A21,0 0 0 11px #2A2F3A,0 30px 80px rgba(0,0,0,.55)}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000;z-index:20}
+.sb{height:54px;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 44px;font-weight:600;font-size:16px;box-sizing:border-box;position:relative;z-index:10}
+.home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#F3F5F9;z-index:30}
+.wall{background:#1A2130}
+.wall-lock{background:#0F141D}
+.hs{position:absolute;left:14px;right:14px;top:62px;display:grid;grid-template-columns:repeat(2,170px);gap:22px 24px;justify-content:space-between}
+.hs .span2{grid-column:span 2}
+.apps{display:grid;grid-template-columns:repeat(4,1fr);gap:22px 0;justify-items:center;grid-column:span 2;margin-top:2px}
+.app{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;color:#E4E8EF}
+.app i{width:62px;height:62px;border-radius:16px;background:#2A3242;display:block}
+.dock{position:absolute;left:14px;right:14px;bottom:24px;height:86px;border-radius:32px;background:rgba(255,255,255,.1);display:flex;justify-content:space-around;align-items:center}
+.dock i{width:62px;height:62px;border-radius:16px;background:#3A4356;display:block}
+.wname{font-size:11px;color:#C9CFDA;text-align:center;margin-top:6px}
+
+/* ---------- widget tokens: spacing 4 · 8 · 12 · 16 only ---------- */
+.w{background:#0A0C11;border-radius:24px;padding:16px;box-sizing:border-box;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.w.s{width:170px;height:170px}
+.w.m{width:364px;height:170px}
+.w.l{width:364px;height:382px}
+.w.old{background:#12151C}
+.wk{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600;display:flex;justify-content:space-between;align-items:center;line-height:13px}
+.rd{display:inline-flex;align-items:center;gap:4px;letter-spacing:.06em;text-transform:none;font-size:11px;font-weight:600}
+.rd i{width:7px;height:7px;border-radius:4px;display:inline-block}
+.wt{font-size:24px;margin-top:8px}
+.wl{font-size:13px;color:#A3ABBC;margin-top:4px;white-space:nowrap;display:flex;align-items:baseline;gap:4px}
+.wl .num{font-size:16px}
+.yel{color:#FFD24A}
+.vlt{color:#D4FF3A}
+.teal{color:#2ED3B0}
+.amb{color:#FFC873}
+.u{font-family:Archivo;font-size:12px;font-weight:500;letter-spacing:0;color:#A3ABBC;margin-left:2px}
+.bar{height:6px;border-radius:3px;background:#1A1F29;overflow:hidden;display:flex;gap:2px}
+.bar>i{display:block;height:100%;border-radius:3px}
+.hr{height:1px;background:#1C212B}
+.glyph{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none}
+
+/* week strip: filled = done (sport colour), ring = planned, dim ring = missed, dash = rest */
+.strip{display:grid;grid-template-columns:repeat(7,1fr);justify-items:center;gap:0}
+.strip>span{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;font-weight:600;color:#6B7385;position:relative}
+.strip>span.now{color:#F3F5F9}
+.strip>span.now::after{content:'';position:absolute;bottom:-6px;width:12px;height:2px;border-radius:1px;background:#F3F5F9}
+.d{width:12px;height:12px;border-radius:6px;box-sizing:border-box;display:block}
+.d.rest{width:8px;height:2px;border-radius:1px;background:#3A4150;margin:5px 0}
+.strip.big .d{width:16px;height:16px;border-radius:8px}
+.strip.big .d.rest{width:10px;margin:7px 0}
+
+/* lock screen accessories: rendered vibrant (monochrome) by iOS */
+.acc-c{width:72px;height:72px;border-radius:36px;background:rgba(255,255,255,.1);position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column}
+.acc-r{width:172px;height:76px;border-radius:18px;padding:8px 10px;box-sizing:border-box;color:#F3F5F9;display:flex;flex-direction:column;justify-content:center}
+.acc-r.bg{background:rgba(255,255,255,.08)}
+.acc-k{font-size:11px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.62);display:flex;align-items:center;gap:4px}
+.lockbg{background:#151B26;border-radius:28px;padding:24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;width:393px;box-sizing:border-box}
+
+/* tinted home screen (iOS 26 Tinted mode): everything but accentable parts goes white, accentable parts take the tint */
+.tint .w{background:rgba(255,255,255,.08)}
+.tint{filter:grayscale(1) sepia(.35) hue-rotate(175deg) saturate(1.6) brightness(1.05)}
+
+.pair{display:flex;gap:24px;align-items:flex-start}
+.state{display:flex;flex-direction:column;gap:8px}
+.state .cap{font-size:12px;color:#8A93A6;max-width:170px;line-height:1.4}
+.state .cap b{color:#C9CFDA;font-weight:600}
+.arrow{font-size:28px;color:#3A4150;align-self:center}
+</style>
+</helmet>
+
+<!-- shared glyphs and the muscle figures (fills come from CSS variables, so each use picks its muscles) -->
+<svg width="0" height="0" style="position:absolute">
+<defs>
+<symbol id="g-str" viewBox="0 0 20 20"><path d="M3 10h14M5.5 6.5v7M14.5 6.5v7M2.5 8.5v3M17.5 8.5v3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+<symbol id="g-ride" viewBox="0 0 20 20"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="13.5" r="3.5"/><circle cx="15" cy="13.5" r="3.5"/><path d="M5 13.5l3-6h5l2 6M8 7.5L10.5 13.5M11.5 4.5h2"/></g></symbol>
+<symbol id="g-run" viewBox="0 0 20 20"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12.5" cy="3.5" r="1.6"/><path d="M6 9l3-3 3 2 2 3M9 6l-1.5 5 3.5 2-1 4.5M7.5 11L4 16"/></g></symbol>
+<symbol id="g-rest" viewBox="0 0 20 20"><path d="M15.5 12.5A6.5 6.5 0 0 1 7.5 4.5a6.5 6.5 0 1 0 8 8z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></symbol>
+<symbol id="g-check" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="g-food" viewBox="0 0 20 20"><path d="M6 2v6a2 2 0 0 0 2 2v8M4 2v5M8 2v5M14 18V2c-2 1.5-3 4-3 7h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="g-sick" viewBox="0 0 20 20"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M7 3h6v4l3 9H4l3-9z"/><path d="M6 12h8"/></g></symbol>
+<symbol id="fig-front" viewBox="0 0 40 90">
+<circle cx="20" cy="7" r="5" fill="#2A303C"/><rect x="17.5" y="11" width="5" height="4" fill="#2A303C"/>
+<ellipse cx="10.5" cy="19.5" rx="4" ry="4.2" fill="var(--sh,#2A303C)"/><ellipse cx="29.5" cy="19.5" rx="4" ry="4.2" fill="var(--sh,#2A303C)"/>
+<rect x="12.5" y="15.5" width="7" height="11" rx="3" fill="var(--ch,#2A303C)"/><rect x="20.5" y="15.5" width="7" height="11" rx="3" fill="var(--ch,#2A303C)"/>
+<rect x="14" y="27.5" width="12" height="15" rx="3" fill="var(--ab,#2A303C)"/>
+<rect x="5" y="24" width="4.5" height="14" rx="2.2" fill="var(--ar,#2A303C)"/><rect x="30.5" y="24" width="4.5" height="14" rx="2.2" fill="var(--ar,#2A303C)"/>
+<rect x="3.5" y="39.5" width="4" height="13" rx="2" fill="var(--fa,#2A303C)"/><rect x="32.5" y="39.5" width="4" height="13" rx="2" fill="var(--fa,#2A303C)"/>
+<path d="M13 43.5h14l1 3H12z" fill="#2A303C"/>
+<rect x="12" y="47.5" width="7.5" height="19" rx="3.5" fill="var(--q,#2A303C)"/><rect x="20.5" y="47.5" width="7.5" height="19" rx="3.5" fill="var(--q,#2A303C)"/>
+<rect x="13" y="69" width="5.5" height="16" rx="2.7" fill="var(--ca,#2A303C)"/><rect x="21.5" y="69" width="5.5" height="16" rx="2.7" fill="var(--ca,#2A303C)"/>
+</symbol>
+<symbol id="fig-back" viewBox="0 0 40 90">
+<circle cx="20" cy="7" r="5" fill="#2A303C"/>
+<path d="M14 13h12l3 6H11z" fill="var(--tr,#2A303C)"/>
+<ellipse cx="10.5" cy="20.5" rx="4" ry="4" fill="var(--sh,#2A303C)"/><ellipse cx="29.5" cy="20.5" rx="4" ry="4" fill="var(--sh,#2A303C)"/>
+<path d="M12.5 20h6.5v15l-5-3z" fill="var(--la,#2A303C)"/><path d="M27.5 20H21v15l5-3z" fill="var(--la,#2A303C)"/>
+<rect x="15" y="34" width="10" height="9" rx="2.5" fill="var(--lb,#2A303C)"/>
+<rect x="5" y="24" width="4.5" height="14" rx="2.2" fill="var(--tri,#2A303C)"/><rect x="30.5" y="24" width="4.5" height="14" rx="2.2" fill="var(--tri,#2A303C)"/>
+<rect x="3.5" y="39.5" width="4" height="13" rx="2" fill="#2A303C"/><rect x="32.5" y="39.5" width="4" height="13" rx="2" fill="#2A303C"/>
+<ellipse cx="16" cy="49" rx="4.5" ry="5" fill="var(--gl,#2A303C)"/><ellipse cx="24" cy="49" rx="4.5" ry="5" fill="var(--gl,#2A303C)"/>
+<rect x="12" y="54.5" width="7.5" height="13" rx="3.5" fill="var(--hm,#2A303C)"/><rect x="20.5" y="54.5" width="7.5" height="13" rx="3.5" fill="var(--hm,#2A303C)"/>
+<rect x="13" y="69" width="5.5" height="16" rx="2.7" fill="var(--ca,#2A303C)"/><rect x="21.5" y="69" width="5.5" height="16" rx="2.7" fill="var(--ca,#2A303C)"/>
+</symbol>
+</defs>
+</svg>
+
+<div class="canvas">
+
+<div class="canvas-head">
+<div>
+<div class="lbl" style="color:#D4FF3A">TrainLog · iOS · Screen 07 · widgets v2 (D2 language)</div>
+<div class="ttl" style="font-size:56px;margin-top:6px">Widgets, D2</div>
+<div class="muted" style="font-size:15px;margin-top:8px;max-width:900px;line-height:1.45">The Home and Lock Screen widgets, redrawn in the language of activity detail D2. The sport leads as a coloured label, the week shows as seven dots, there's one title, colours mean the same thing as in the app, and volt is kept for wins. Same three widgets plus two new sizes. Numbers are Thursday 30 Oct: Workout B, 2:47 of 6h10 this week, 918 kcal to go.</div>
+</div>
+<div class="muted" style="font-size:12px;text-align:right;line-height:1.6">iPhone 17 Pro · 393 × 852 pt<br>Small 170 · Medium 364×170 · Large 364×382<br>WidgetKit · no new dependencies</div>
+</div>
+
+<!-- ============ 01. NOTES ============ -->
+<div class="frame">
+<div class="lbl">01 · Notes · what's wrong with the current widgets and the rules for v2</div>
+<div class="notes">
+<div class="two">
+<div>
+<h3>Why the widgets look out of date</h3>
+<ul>
+<li><b>Grey boxes with grey kickers.</b> Every widget is the old card grey with a caps kicker on top, the look D2 removed from the app.</li>
+<li><b>Nothing leads.</b> The sport is a 28 pt square icon. The app now opens every page with a visual; the widget opens with a date label.</li>
+<li><b>The medium widget is three equal thirds.</b> Session, week hours and food compete, so none of them reads at a glance.</li>
+<li><b>Colour without meaning.</b> Kcal to go is amber (a warning colour) even when you're on track. Week hours are white, but time is yellow everywhere in D2.</li>
+<li><b>No shape to the week.</b> You see hours, not which days are done. The Plan tab and the web both think in days.</li>
+<li><b>Thin states.</b> A rest day says "Recover well" and doesn't mention tomorrow. Done is a small tick. Sick days have no state at all.</li>
+</ul>
+</div>
+<div>
+<h3>v2 rules</h3>
+<ul>
+<li><b>The sport leads.</b> Sport and focus as a coloured label over the title, as on activity detail. Rides and runs can add the workout profile. <i>Round 2: ring and body figure dropped after review.</i></li>
+<li><b>One title, one line.</b> Italic Barlow title, one plain line under it. Only the top-left date stays as a kicker.</li>
+<li><b>Colour per metric, same as D2.</b> Time yellow <span class="yel">●</span>, protein teal <span class="teal">●</span>, sports in their sport colour, kcal bar volt as on the Food tab.</li>
+<li><b>Volt only for wins.</b> Done, target hit. Amber only when you really are behind (evening, under 60% eaten).</li>
+<li><b>The week as seven dots.</b> Filled = done in its sport colour, ring = planned, dim ring = missed, dash = rest. Today is underlined.</li>
+<li><b>Flat, page-black tile.</b> <code>#0A0C11</code>, no border, no gradient. The Lock Screen stays monochrome (iOS draws it that way), so shape carries meaning there, not colour.</li>
+</ul>
+</div>
+</div>
+<div style="margin-top:24px"><h3>Widgets, sizes and data</h3></div>
+<table class="data">
+<tr><th>Widget</th><th>Sizes</th><th>What it shows</th><th>Data</th></tr>
+<tr><td><b>Today</b></td><td>Small · Medium · <b>Large</b> <span class="tag new">new</span> · Lock rect · Lock circle <span class="tag new">new</span> · Inline</td><td>Sport label, title, duration in yellow. Medium (the main one) adds week hours and kcal to go. Large adds the lift list and a week, kcal, protein row.</td><td><span class="tag ok">have</span> /phone/today: title, sport, duration, status, tomorrow, sick, week[], strength.exercises.<br><span class="tag add">additive</span> <code>today.steps [{min, zone}]</code> for the ride and run profile. Without it the widget shows the sport glyph.</td></tr>
+<tr><td><b>Week</b></td><td>Small · <b>Medium</b> <span class="tag new">new</span> · Lock circle · Lock rect <span class="tag new">new</span></td><td>Week hours, a sport bar and the seven days (no ring). Medium shows each day as a column with its title.</td><td><span class="tag ok">have</span> weekMinutes, week[] (label, title, sport, status, doneSports)</td></tr>
+<tr><td><b>Food</b></td><td>Small · Lock rect · Lock circle</td><td>Kcal to go, volt eaten bar, protein in teal. States: on track, behind (evening), fuelled.</td><td><span class="tag ok">have</span> snapshot.food. "Behind" is worked out on the phone from the time of day.</td></tr>
+<tr><td><b>Rest timer</b></td><td>Live Activity · Dynamic Island</td><td>Unchanged; it already matches D2 (volt countdown, strength pink).</td><td><span class="tag ok">have</span></td></tr>
+</table>
+</div>
+</div>
+
+<!-- ============ 02. WIDE TODAY ============ -->
+<div class="section-head">
+<div class="lbl">02 · The wide Today widget · three directions</div>
+<div class="ttl">Next workout, calories, week</div>
+<p>The widget you actually use. Same three things as now (next session, kcal to go, week hours), no ring and no body figure. The sport and focus lead as a coloured label above the title, as on activity detail. Each direction is shown in four states: strength planned, a ride in the morning, done and fuelled, and a rest day.</p>
+</div>
+
+<div class="frame">
+<div class="lbl">v1 · as it ships today</div>
+<div class="w m old" style="flex-direction:row;gap:14px">
+<div style="flex:1;display:flex;flex-direction:column">
+<div class="wk"><span style="text-transform:none;letter-spacing:.06em">Thu 30</span><span class="rd"><i style="background:#2ED3B0"></i></span></div>
+<div style="flex:1"></div>
+<div class="glyph" style="background:#FF4D9A;color:#0A0C11"><svg width="14" height="14"><use href="#g-str"/></svg></div>
+<div class="ttl" style="font-size:26px;margin-top:8px">Workout B</div>
+<div style="font-size:12px;color:#A3ABBC;margin-top:3px">Strength · 45m</div>
+</div>
+<div style="width:1px;background:#1C212B"></div>
+<div style="width:128px;display:flex;flex-direction:column;gap:12px">
+<div><div class="wk">Week</div><div style="margin-top:5px"><span class="num" style="font-size:22px">2:47</span> <span style="font-size:11px" class="muted">of 6h10</span></div><div class="bar" style="height:5px;margin-top:5px"><i style="width:26%;background:#FF4D9A"></i><i style="width:12%;background:#3B8CFF"></i><i style="width:6%;background:#2ED3B0"></i></div></div>
+<div><div class="wk">Food</div><div style="margin-top:5px"><span class="num" style="font-size:22px">918</span> <span style="font-size:11px;color:#FFC76E">kcal to go</span></div><div class="bar" style="height:5px;margin-top:5px"><i style="width:67%;background:#D4FF3A"></i></div></div>
+</div>
+</div>
+<div class="frame-cap"><b>v1.</b> For reference.</div>
+</div>
+
+<div class="frame" style="width:100%">
+<div class="lbl">02a · Direction A · Session on top, two meters below</div>
+<div style="display:grid;grid-template-columns:repeat(2,364px);gap:24px 24px"><div class="state"><div class="w m">
+<div class="wk"><span style="color:#FF4D9A">Strength · Lower body</span><span class="rd" style="color:#8A93A6">Thu 30 · <i style="background:#2ED3B0"></i><span style="color:#2ED3B0">Ready</span></span></div>
+<div class="ttl" style="font-size:30px;margin-top:6px">Workout B</div>
+<div class="wl"><span class="num yel">45</span><span class="yel" style="font-size:12px">min</span><span>· 5 lifts</span></div>
+<div style="flex:1"></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;padding-top:12px;border-top:1px solid #1C212B">
+<div style="padding-right:16px"><div><span class="num yel" style="font-size:22px">2:47</span><span class="u">of 6h10</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:26%;background:#FF4D9A"></i><i style="width:12%;background:#3B8CFF"></i><i style="width:6%;background:#2ED3B0"></i></div></div></div>
+<div style="padding-left:16px;border-left:1px solid #1C212B"><div><span class="num" style="font-size:22px">918</span><span class="u">kcal to go</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:67%;background:rgba(212,255,58,.85)"></i></div></div></div>
+</div>
+</div><div class="cap" style="max-width:364px"><b>Strength planned</b></div></div><div class="state"><div class="w m">
+<div class="wk"><span style="color:#3B8CFF">Ride · Threshold</span><span class="rd" style="color:#8A93A6">Fri 31 · <i style="background:#FFC83A"></i><span style="color:#FFC83A">Steady</span></span></div>
+<div class="ttl" style="font-size:30px;margin-top:6px">3 × 5 min Z4</div>
+<div class="wl"><span class="num yel">60</span><span class="yel" style="font-size:12px">min</span><span>· Zwift</span></div>
+<div style="flex:1"></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;padding-top:12px;border-top:1px solid #1C212B">
+<div style="padding-right:16px"><div><span class="num yel" style="font-size:22px">3:32</span><span class="u">of 6h10</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:35%;background:#FF4D9A"></i><i style="width:12%;background:#3B8CFF"></i><i style="width:6%;background:#2ED3B0"></i></div></div></div>
+<div style="padding-left:16px;border-left:1px solid #1C212B"><div><span class="num" style="font-size:22px">2140</span><span class="u">kcal to go</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:22%;background:rgba(212,255,58,.85)"></i></div></div></div>
+</div>
+</div><div class="cap" style="max-width:364px"><b>Ride planned · morning</b></div></div><div class="state"><div class="w m">
+<div class="wk"><span style="color:#FF4D9A">Strength · Lower body</span><span class="rd" style="color:#8A93A6">Thu 30 · <i style="background:#2ED3B0"></i><span style="color:#2ED3B0">Ready</span></span></div>
+<div class="ttl" style="font-size:30px;margin-top:6px">Workout B</div>
+<div class="wl"><span class="vlt" style="font-weight:600">✓ Done</span><span>· 6-day streak</span></div>
+<div style="flex:1"></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;padding-top:12px;border-top:1px solid #1C212B">
+<div style="padding-right:16px"><div><span class="num yel" style="font-size:22px">3:39</span><span class="u">of 6h10</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:40%;background:#FF4D9A"></i><i style="width:12%;background:#3B8CFF"></i><i style="width:6%;background:#2ED3B0"></i></div></div></div>
+<div style="padding-left:16px;border-left:1px solid #1C212B"><div><span class="num vlt" style="font-size:22px">Fuelled</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:100%;background:rgba(212,255,58,.85)"></i></div></div></div>
+</div>
+</div><div class="cap" style="max-width:364px"><b>Done · fuelled</b></div></div><div class="state"><div class="w m">
+<div class="wk"><span style="color:#8A93A6">Recovery</span><span class="rd" style="color:#8A93A6">Sat 1 · <i style="background:#2ED3B0"></i><span style="color:#2ED3B0">Ready</span></span></div>
+<div class="ttl" style="font-size:30px;margin-top:6px">Rest day</div>
+<div class="wl"><span>Tomorrow</span><span style="color:#FF8A2A;font-weight:600">Run</span><span class="num yel">40</span><span class="yel" style="font-size:12px">min</span></div>
+<div style="flex:1"></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;padding-top:12px;border-top:1px solid #1C212B">
+<div style="padding-right:16px"><div><span class="num yel" style="font-size:22px">4:31</span><span class="u">of 6h10</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:40%;background:#FF4D9A"></i><i style="width:27%;background:#3B8CFF"></i><i style="width:6%;background:#2ED3B0"></i></div></div></div>
+<div style="padding-left:16px;border-left:1px solid #1C212B"><div><span class="num" style="font-size:22px">640</span><span class="u">kcal to go</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:77%;background:rgba(212,255,58,.85)"></i></div></div></div>
+</div>
+</div><div class="cap" style="max-width:364px"><b>Rest day</b></div></div></div>
+<div class="frame-cap" style="max-width:760px"><b>A · recommended.</b> The session gets the full width, so long titles fit on one line. Week and food sit side by side as two equal meters: time in yellow over the sport bar, kcal over the volt bar.</div>
+</div><div class="frame" style="width:100%">
+<div class="lbl">02b · Direction B · Your current layout, redrawn</div>
+<div style="display:grid;grid-template-columns:repeat(2,364px);gap:24px 24px"><div class="state"><div class="w m" style="flex-direction:row;gap:16px">
+<div style="flex:1;display:flex;flex-direction:column;min-width:0">
+<div class="wk"><span class="rd" style="color:#8A93A6;letter-spacing:.06em">Thu 30 · <i style="background:#2ED3B0"></i><span style="color:#2ED3B0">Ready</span></span></div>
+<div style="flex:1"></div>
+<div class="k" style="font-size:11px;letter-spacing:.1em;white-space:nowrap;text-transform:uppercase;font-weight:600;color:#FF4D9A">Strength · Lower body</div>
+<div class="ttl" style="font-size:28px;margin-top:6px">Workout B</div>
+<div class="wl"><span class="num yel">45</span><span class="yel" style="font-size:12px">min</span><span>· 5 lifts</span></div>
+</div>
+<div style="width:132px;flex:none;padding-left:16px;border-left:1px solid #1C212B;display:flex;flex-direction:column;justify-content:space-between">
+<div><div style="font-size:12px" class="muted">Week</div><div style="margin-top:2px"><span class="num yel" style="font-size:22px">2:47</span><span class="u">/ 6h10</span></div><div style="margin-top:8px"><div class="strip" style="grid-template-columns:repeat(7,17px);justify-items:start"><span><i class="d" style="background:#FF4D9A;width:9px;height:9px"></i></span><span><i class="d" style="background:#3B8CFF;width:9px;height:9px"></i></span><span><i class="d" style="background:#2ED3B0;width:9px;height:9px"></i></span><span><i class="d" style="border:2px solid #FF4D9A;width:9px;height:9px"></i></span><span><i class="d" style="border:2px solid #3B8CFF;width:9px;height:9px"></i></span><span><i class="d rest" style="margin:3px 0"></i></span><span><i class="d" style="border:2px solid #FF8A2A;width:9px;height:9px"></i></span></div></div></div>
+<div><div style="font-size:12px" class="muted">Food</div><div style="margin-top:2px"><span class="num" style="font-size:22px">918</span><span class="u">kcal to go</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:67%;background:rgba(212,255,58,.85)"></i></div></div></div>
+</div>
+</div><div class="cap" style="max-width:364px"><b>Strength planned</b></div></div><div class="state"><div class="w m" style="flex-direction:row;gap:16px">
+<div style="flex:1;display:flex;flex-direction:column;min-width:0">
+<div class="wk"><span class="rd" style="color:#8A93A6;letter-spacing:.06em">Fri 31 · <i style="background:#FFC83A"></i><span style="color:#FFC83A">Steady</span></span></div>
+<div style="flex:1"></div>
+<div class="k" style="font-size:11px;letter-spacing:.1em;white-space:nowrap;text-transform:uppercase;font-weight:600;color:#3B8CFF">Ride · Threshold</div>
+<div class="ttl" style="font-size:28px;margin-top:6px">3 × 5 min Z4</div>
+<div class="wl"><span class="num yel">60</span><span class="yel" style="font-size:12px">min</span><span>· Zwift</span></div>
+</div>
+<div style="width:132px;flex:none;padding-left:16px;border-left:1px solid #1C212B;display:flex;flex-direction:column;justify-content:space-between">
+<div><div style="font-size:12px" class="muted">Week</div><div style="margin-top:2px"><span class="num yel" style="font-size:22px">3:32</span><span class="u">/ 6h10</span></div><div style="margin-top:8px"><div class="strip" style="grid-template-columns:repeat(7,17px);justify-items:start"><span><i class="d" style="background:#FF4D9A;width:9px;height:9px"></i></span><span><i class="d" style="background:#3B8CFF;width:9px;height:9px"></i></span><span><i class="d" style="background:#2ED3B0;width:9px;height:9px"></i></span><span><i class="d" style="background:#FF4D9A;width:9px;height:9px"></i></span><span><i class="d" style="border:2px solid #3B8CFF;width:9px;height:9px"></i></span><span><i class="d rest" style="margin:3px 0"></i></span><span><i class="d" style="border:2px solid #FF8A2A;width:9px;height:9px"></i></span></div></div></div>
+<div><div style="font-size:12px" class="muted">Food</div><div style="margin-top:2px"><span class="num" style="font-size:22px">2140</span><span class="u">kcal to go</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:22%;background:rgba(212,255,58,.85)"></i></div></div></div>
+</div>
+</div><div class="cap" style="max-width:364px"><b>Ride planned · morning</b></div></div><div class="state"><div class="w m" style="flex-direction:row;gap:16px">
+<div style="flex:1;display:flex;flex-direction:column;min-width:0">
+<div class="wk"><span class="rd" style="color:#8A93A6;letter-spacing:.06em">Thu 30 · <i style="background:#2ED3B0"></i><span style="color:#2ED3B0">Ready</span></span></div>
+<div style="flex:1"></div>
+<div class="k" style="font-size:11px;letter-spacing:.1em;white-space:nowrap;text-transform:uppercase;font-weight:600;color:#FF4D9A">Strength · Lower body</div>
+<div class="ttl" style="font-size:28px;margin-top:6px">Workout B</div>
+<div class="wl"><span class="vlt" style="font-weight:600">✓ Done</span><span>· 6-day streak</span></div>
+</div>
+<div style="width:132px;flex:none;padding-left:16px;border-left:1px solid #1C212B;display:flex;flex-direction:column;justify-content:space-between">
+<div><div style="font-size:12px" class="muted">Week</div><div style="margin-top:2px"><span class="num yel" style="font-size:22px">3:39</span><span class="u">/ 6h10</span></div><div style="margin-top:8px"><div class="strip" style="grid-template-columns:repeat(7,17px);justify-items:start"><span><i class="d" style="background:#FF4D9A;width:9px;height:9px"></i></span><span><i class="d" style="background:#3B8CFF;width:9px;height:9px"></i></span><span><i class="d" style="background:#2ED3B0;width:9px;height:9px"></i></span><span><i class="d" style="background:#FF4D9A;width:9px;height:9px"></i></span><span><i class="d" style="border:2px solid #3B8CFF;width:9px;height:9px"></i></span><span><i class="d rest" style="margin:3px 0"></i></span><span><i class="d" style="border:2px solid #FF8A2A;width:9px;height:9px"></i></span></div></div></div>
+<div><div style="font-size:12px" class="muted">Food</div><div style="margin-top:2px"><span class="num vlt" style="font-size:22px">Fuelled</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:100%;background:rgba(212,255,58,.85)"></i></div></div></div>
+</div>
+</div><div class="cap" style="max-width:364px"><b>Done · fuelled</b></div></div><div class="state"><div class="w m" style="flex-direction:row;gap:16px">
+<div style="flex:1;display:flex;flex-direction:column;min-width:0">
+<div class="wk"><span class="rd" style="color:#8A93A6;letter-spacing:.06em">Sat 1 · <i style="background:#2ED3B0"></i><span style="color:#2ED3B0">Ready</span></span></div>
+<div style="flex:1"></div>
+<div class="k" style="font-size:11px;letter-spacing:.1em;white-space:nowrap;text-transform:uppercase;font-weight:600;color:#8A93A6">Recovery</div>
+<div class="ttl" style="font-size:28px;margin-top:6px">Rest day</div>
+<div class="wl"><span>Tomorrow</span><span style="color:#FF8A2A;font-weight:600">Run</span><span class="num yel">40</span><span class="yel" style="font-size:12px">min</span></div>
+</div>
+<div style="width:132px;flex:none;padding-left:16px;border-left:1px solid #1C212B;display:flex;flex-direction:column;justify-content:space-between">
+<div><div style="font-size:12px" class="muted">Week</div><div style="margin-top:2px"><span class="num yel" style="font-size:22px">4:31</span><span class="u">/ 6h10</span></div><div style="margin-top:8px"><div class="strip" style="grid-template-columns:repeat(7,17px);justify-items:start"><span><i class="d" style="background:#FF4D9A;width:9px;height:9px"></i></span><span><i class="d" style="background:#3B8CFF;width:9px;height:9px"></i></span><span><i class="d" style="background:#2ED3B0;width:9px;height:9px"></i></span><span><i class="d" style="background:#FF4D9A;width:9px;height:9px"></i></span><span><i class="d" style="background:#3B8CFF;width:9px;height:9px"></i></span><span><i class="d rest" style="margin:3px 0"></i></span><span><i class="d" style="border:2px solid #FF8A2A;width:9px;height:9px"></i></span></div></div></div>
+<div><div style="font-size:12px" class="muted">Food</div><div style="margin-top:2px"><span class="num" style="font-size:22px">640</span><span class="u">kcal to go</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:77%;background:rgba(212,255,58,.85)"></i></div></div></div>
+</div>
+</div><div class="cap" style="max-width:364px"><b>Rest day</b></div></div></div>
+<div class="frame-cap" style="max-width:760px"><b>B.</b> Same split you use now, so nothing moves. The grey caps kickers become plain labels, the sport moves into a coloured label over the title, and the week bar becomes seven dots so you can see which days are done.</div>
+</div><div class="frame" style="width:100%">
+<div class="lbl">02c · Direction C · Week dots + three numbers</div>
+<div style="display:grid;grid-template-columns:repeat(2,364px);gap:24px 24px"><div class="state"><div class="w m">
+<div class="wk"><span style="color:#FF4D9A">Strength · Lower body</span><span class="rd" style="color:#8A93A6">Thu 30 · <i style="background:#2ED3B0"></i><span style="color:#2ED3B0">Ready</span></span></div>
+<div class="ttl" style="font-size:28px;margin-top:6px">Workout B</div>
+<div class="wl"><span class="num yel">45</span><span class="yel" style="font-size:12px">min</span><span>· 5 lifts</span></div>
+<div style="flex:1"></div>
+<div style="display:grid;grid-template-columns:1.25fr 1fr .9fr;padding-top:12px;border-top:1px solid #1C212B;align-items:end">
+<div><div style="margin-bottom:8px"><div class="strip" style="grid-template-columns:repeat(7,17px);justify-items:start"><span><i class="d" style="background:#FF4D9A;width:10px;height:10px"></i></span><span><i class="d" style="background:#3B8CFF;width:10px;height:10px"></i></span><span><i class="d" style="background:#2ED3B0;width:10px;height:10px"></i></span><span><i class="d" style="border:2px solid #FF4D9A;width:10px;height:10px"></i></span><span><i class="d" style="border:2px solid #3B8CFF;width:10px;height:10px"></i></span><span><i class="d rest" style="margin:4px 0"></i></span><span><i class="d" style="border:2px solid #FF8A2A;width:10px;height:10px"></i></span></div></div><span class="num yel" style="font-size:18px">2:47</span><span class="u">/ 6h10</span></div>
+<div style="padding-left:12px;border-left:1px solid #1C212B"><span class="num" style="font-size:18px">918</span><span class="u">kcal to go</span></div>
+<div style="padding-left:12px;border-left:1px solid #1C212B"><span class="num teal" style="font-size:18px">96</span><span class="u">/ 140 g</span></div>
+</div>
+</div><div class="cap" style="max-width:364px"><b>Strength planned</b></div></div><div class="state"><div class="w m">
+<div class="wk"><span style="color:#3B8CFF">Ride · Threshold</span><span class="rd" style="color:#8A93A6">Fri 31 · <i style="background:#FFC83A"></i><span style="color:#FFC83A">Steady</span></span></div>
+<div class="ttl" style="font-size:28px;margin-top:6px">3 × 5 min Z4</div>
+<div class="wl"><span class="num yel">60</span><span class="yel" style="font-size:12px">min</span><span>· Zwift</span></div>
+<div style="flex:1"></div>
+<div style="display:grid;grid-template-columns:1.25fr 1fr .9fr;padding-top:12px;border-top:1px solid #1C212B;align-items:end">
+<div><div style="margin-bottom:8px"><div class="strip" style="grid-template-columns:repeat(7,17px);justify-items:start"><span><i class="d" style="background:#FF4D9A;width:10px;height:10px"></i></span><span><i class="d" style="background:#3B8CFF;width:10px;height:10px"></i></span><span><i class="d" style="background:#2ED3B0;width:10px;height:10px"></i></span><span><i class="d" style="background:#FF4D9A;width:10px;height:10px"></i></span><span><i class="d" style="border:2px solid #3B8CFF;width:10px;height:10px"></i></span><span><i class="d rest" style="margin:4px 0"></i></span><span><i class="d" style="border:2px solid #FF8A2A;width:10px;height:10px"></i></span></div></div><span class="num yel" style="font-size:18px">3:32</span><span class="u">/ 6h10</span></div>
+<div style="padding-left:12px;border-left:1px solid #1C212B"><span class="num" style="font-size:18px">2140</span><span class="u">kcal to go</span></div>
+<div style="padding-left:12px;border-left:1px solid #1C212B"><span class="num teal" style="font-size:18px">31</span><span class="u">/ 140 g</span></div>
+</div>
+</div><div class="cap" style="max-width:364px"><b>Ride planned · morning</b></div></div><div class="state"><div class="w m">
+<div class="wk"><span style="color:#FF4D9A">Strength · Lower body</span><span class="rd" style="color:#8A93A6">Thu 30 · <i style="background:#2ED3B0"></i><span style="color:#2ED3B0">Ready</span></span></div>
+<div class="ttl" style="font-size:28px;margin-top:6px">Workout B</div>
+<div class="wl"><span class="vlt" style="font-weight:600">✓ Done</span><span>· 6-day streak</span></div>
+<div style="flex:1"></div>
+<div style="display:grid;grid-template-columns:1.25fr 1fr .9fr;padding-top:12px;border-top:1px solid #1C212B;align-items:end">
+<div><div style="margin-bottom:8px"><div class="strip" style="grid-template-columns:repeat(7,17px);justify-items:start"><span><i class="d" style="background:#FF4D9A;width:10px;height:10px"></i></span><span><i class="d" style="background:#3B8CFF;width:10px;height:10px"></i></span><span><i class="d" style="background:#2ED3B0;width:10px;height:10px"></i></span><span><i class="d" style="background:#FF4D9A;width:10px;height:10px"></i></span><span><i class="d" style="border:2px solid #3B8CFF;width:10px;height:10px"></i></span><span><i class="d rest" style="margin:4px 0"></i></span><span><i class="d" style="border:2px solid #FF8A2A;width:10px;height:10px"></i></span></div></div><span class="num yel" style="font-size:18px">3:39</span><span class="u">/ 6h10</span></div>
+<div style="padding-left:12px;border-left:1px solid #1C212B"><span class="num vlt" style="font-size:18px">Fuelled</span></div>
+<div style="padding-left:12px;border-left:1px solid #1C212B"><span class="num teal" style="font-size:18px">142</span><span class="u">/ 140 g</span></div>
+</div>
+</div><div class="cap" style="max-width:364px"><b>Done · fuelled</b></div></div><div class="state"><div class="w m">
+<div class="wk"><span style="color:#8A93A6">Recovery</span><span class="rd" style="color:#8A93A6">Sat 1 · <i style="background:#2ED3B0"></i><span style="color:#2ED3B0">Ready</span></span></div>
+<div class="ttl" style="font-size:28px;margin-top:6px">Rest day</div>
+<div class="wl"><span>Tomorrow</span><span style="color:#FF8A2A;font-weight:600">Run</span><span class="num yel">40</span><span class="yel" style="font-size:12px">min</span></div>
+<div style="flex:1"></div>
+<div style="display:grid;grid-template-columns:1.25fr 1fr .9fr;padding-top:12px;border-top:1px solid #1C212B;align-items:end">
+<div><div style="margin-bottom:8px"><div class="strip" style="grid-template-columns:repeat(7,17px);justify-items:start"><span><i class="d" style="background:#FF4D9A;width:10px;height:10px"></i></span><span><i class="d" style="background:#3B8CFF;width:10px;height:10px"></i></span><span><i class="d" style="background:#2ED3B0;width:10px;height:10px"></i></span><span><i class="d" style="background:#FF4D9A;width:10px;height:10px"></i></span><span><i class="d" style="background:#3B8CFF;width:10px;height:10px"></i></span><span><i class="d rest" style="margin:4px 0"></i></span><span><i class="d" style="border:2px solid #FF8A2A;width:10px;height:10px"></i></span></div></div><span class="num yel" style="font-size:18px">4:31</span><span class="u">/ 6h10</span></div>
+<div style="padding-left:12px;border-left:1px solid #1C212B"><span class="num" style="font-size:18px">640</span><span class="u">kcal to go</span></div>
+<div style="padding-left:12px;border-left:1px solid #1C212B"><span class="num teal" style="font-size:18px">118</span><span class="u">/ 140 g</span></div>
+</div>
+</div><div class="cap" style="max-width:364px"><b>Rest day</b></div></div></div>
+<div class="frame-cap" style="max-width:760px"><b>C.</b> The footer holds the most: the seven days and week hours, kcal to go, and protein. Densest of the three; the numbers are smaller.</div>
+</div>
+<!-- ============ 03. IN PLACE ============ -->
+<div class="section-head">
+<div class="lbl">03 · In place</div>
+<div class="ttl">Home screen and Lock Screen</div>
+<p>Direction A on the Home Screen with the small Week (no ring: hours, sport bar, seven days) and Food widgets under it. The Lock Screen is unchanged from the previous round.</p>
+</div>
+
+<div class="frame">
+<div class="lbl">03a · Home screen · direction A</div>
+<div class="phone wall">
+<div class="island"></div>
+<div class="sb"><span>08:14</span><span></span></div>
+<div class="hs">
+<div class="span2"><div class="w m">
+<div class="wk"><span style="color:#FF4D9A">Strength · Lower body</span><span class="rd" style="color:#8A93A6">Thu 30 · <i style="background:#2ED3B0"></i><span style="color:#2ED3B0">Ready</span></span></div>
+<div class="ttl" style="font-size:30px;margin-top:6px">Workout B</div>
+<div class="wl"><span class="num yel">45</span><span class="yel" style="font-size:12px">min</span><span>· 5 lifts</span></div>
+<div style="flex:1"></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;padding-top:12px;border-top:1px solid #1C212B">
+<div style="padding-right:16px"><div><span class="num yel" style="font-size:22px">2:47</span><span class="u">of 6h10</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:26%;background:#FF4D9A"></i><i style="width:12%;background:#3B8CFF"></i><i style="width:6%;background:#2ED3B0"></i></div></div></div>
+<div style="padding-left:16px;border-left:1px solid #1C212B"><div><span class="num" style="font-size:22px">918</span><span class="u">kcal to go</span></div><div style="margin-top:8px"><div class="bar" style="height:5px"><i style="width:67%;background:rgba(212,255,58,.85)"></i></div></div></div>
+</div>
+</div><div class="wname">TrainLog</div></div>
+<div><div class="w s">
+<div class="wk"><span>Week 44</span><span class="num" style="font-size:14px;color:#8A93A6;letter-spacing:0">45%</span></div>
+<div style="flex:1"></div>
+<div><span class="num yel" style="font-size:44px">2:47</span><span class="u" style="font-size:13px">of 6h10</span></div>
+<div class="bar" style="margin-top:8px"><i style="width:26%;background:#FF4D9A"></i><i style="width:12%;background:#3B8CFF"></i><i style="width:6%;background:#2ED3B0"></i></div>
+<div class="strip" style="margin-top:12px"><span>M<i class="d" style="background:#FF4D9A"></i></span><span>T<i class="d" style="background:#3B8CFF"></i></span><span>W<i class="d" style="background:#2ED3B0"></i></span><span class="now">T<i class="d" style="border:2px solid #FF4D9A"></i></span><span>F<i class="d" style="border:2px solid #3B8CFF"></i></span><span>S<i class="d rest"></i></span><span>S<i class="d" style="border:2px solid #FF8A2A"></i></span></div>
+<div style="height:6px"></div>
+</div><div class="wname">Week</div></div>
+<div><div class="w s">
+<div class="wk"><span>Food</span><span class="muted" style="letter-spacing:0;text-transform:none;font-size:11px">67%</span></div>
+<div style="flex:1"></div>
+<div class="num" style="font-size:52px">918</div>
+<div style="font-size:13px;color:#A3ABBC;margin-top:2px">kcal to go</div>
+<div class="bar" style="margin-top:12px"><i style="width:67%;background:rgba(212,255,58,.85)"></i></div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;font-size:12px"><span class="teal" style="font-weight:600">Protein</span><span class="num" style="font-size:15px">96<span class="u">/ 140 g</span></span></div>
+</div><div class="wname">Food</div></div>
+<div class="apps">
+<span class="app"><i></i>Strava</span><span class="app"><i></i>Health</span><span class="app"><i></i>Fitness</span><span class="app"><i></i>Calendar</span>
+<span class="app"><i></i>Maps</span><span class="app"><i></i>Weather</span><span class="app"><i></i>Notes</span><span class="app"><i style="background:#0A0C11;border:1px solid #2A303C;box-sizing:border-box"></i>TrainLog</span>
+</div>
+</div>
+<div class="dock"><i></i><i></i><i></i><i></i></div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>Home screen.</b> Page-black tiles. Colour only from the sports, time yellow, protein teal and the volt kcal bar. The small Week widget no longer has a ring.</div>
+</div>
+<div class="frame">
+<div class="lbl">03c · Lock Screen · accessories + rest timer</div>
+<div class="phone wall-lock">
+<div class="island" style="width:250px;height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 16px 0 12px;box-sizing:border-box">
+<span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#FF7AB5"><svg width="14" height="14" style="color:#FF4D9A"><use href="#g-str"/></svg>Set 3</span><span class="num" style="font-size:17px;color:#D4FF3A">1:12</span>
+</div>
+<div class="sb"><span></span><span></span></div>
+<div style="text-align:center;margin-top:18px">
+<div style="font-size:17px;font-weight:600;color:#C9CFDA">Thursday 30 October</div>
+<div class="num" style="font-size:104px;font-weight:600;margin-top:2px;letter-spacing:-.01em">19:43</div>
+</div>
+<div style="display:flex;gap:10px;justify-content:center;margin-top:10px">
+<!-- week ring -->
+<div class="acc-c"><svg width="72" height="72" viewBox="0 0 72 72" style="position:absolute;inset:0"><circle cx="36" cy="36" r="31" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5"/><circle cx="36" cy="36" r="31" fill="none" stroke="#F3F5F9" stroke-width="5" stroke-linecap="round" stroke-dasharray="88 195" transform="rotate(-90 36 36)"/></svg><span class="num" style="font-size:19px">2:47</span><span style="font-size:9px;color:rgba(255,255,255,.62)">of 6h10</span></div>
+<!-- food ring -->
+<div class="acc-c"><svg width="72" height="72" viewBox="0 0 72 72" style="position:absolute;inset:0"><circle cx="36" cy="36" r="31" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5"/><circle cx="36" cy="36" r="31" fill="none" stroke="#F3F5F9" stroke-width="5" stroke-linecap="round" stroke-dasharray="131 195" transform="rotate(-90 36 36)"/></svg><span class="num" style="font-size:19px">918</span><span style="font-size:9px;color:rgba(255,255,255,.62)">kcal</span></div>
+<!-- today rect -->
+<div class="acc-r" style="width:150px;padding:6px 4px">
+<div class="acc-k"><svg width="12" height="12"><use href="#g-str"/></svg>TODAY · 45 MIN</div>
+<div class="ttl" style="font-size:22px;margin-top:3px">Workout B</div>
+<div class="strip" style="margin-top:6px;justify-items:start;grid-template-columns:repeat(7,16px)"><span><i class="d" style="background:#F3F5F9;width:10px;height:10px"></i></span><span><i class="d" style="background:#F3F5F9;width:10px;height:10px"></i></span><span><i class="d" style="background:#F3F5F9;width:10px;height:10px"></i></span><span><i class="d" style="border:2px solid #F3F5F9;width:10px;height:10px"></i></span><span><i class="d" style="border:1.5px solid rgba(255,255,255,.5);width:10px;height:10px"></i></span><span><i class="d rest" style="width:6px;margin:4px 0;background:rgba(255,255,255,.4)"></i></span><span><i class="d" style="border:1.5px solid rgba(255,255,255,.5);width:10px;height:10px"></i></span></div>
+</div>
+</div>
+
+<div style="position:absolute;left:12px;right:12px;bottom:110px;border-radius:24px;background:rgba(18,21,28,.92);border:1px solid #232835;padding:16px">
+<div class="row" style="justify-content:space-between"><span class="row" style="gap:8px"><svg width="16" height="16" style="color:#FF4D9A"><use href="#g-str"/></svg><span style="font-size:13px;font-weight:600;color:#A3ABBC">Workout B</span></span><span style="font-size:13px;font-weight:600;color:#8A93A6">2 of 5</span></div>
+<div class="row" style="justify-content:space-between;margin-top:12px;align-items:flex-end">
+<div><div class="lbl" style="font-size:10px">Rest · next up</div><div style="font-size:19px;font-weight:700;margin-top:4px">Romanian deadlift · set 3</div><div class="muted" style="font-size:13px;margin-top:2px">60 kg × 8</div></div>
+<div class="num" style="font-size:52px;color:#D4FF3A">1:12</div>
+</div>
+<div class="bar" style="margin-top:12px"><i style="width:20%;background:#D4FF3A"></i></div>
+</div>
+<div class="home"></div>
+</div>
+<div class="frame-cap"><b>Lock Screen.</b> iOS draws these in white, so shape carries the meaning: the week ring, the kcal ring, and Today as a glyph, title and seven dots. The rest timer (Live Activity) stays as it is.</div>
+</div>
+
+<!-- ============ 04. TODAY ============ -->
+<div class="section-head">
+<div class="lbl">04 · Today widget</div>
+<div class="ttl">Small · states</div>
+<p>The sport leads as a coloured label. Rides and runs also show the workout profile for rides and runs (coloured by zone, the same colours as the workout builder), the week strip leads on rest days, and done shows the volt win.</p>
+</div>
+
+<div class="frame">
+<div class="lbl">04a · Today small · five states</div>
+<div class="pair" style="gap:20px;flex-wrap:wrap;max-width:1000px">
+<div class="state">
+<div class="w s">
+<div class="wk"><span style="text-transform:none;letter-spacing:.06em">Thu 30</span><span class="rd" style="color:#2ED3B0"><i style="background:#2ED3B0"></i>Ready</span></div>
+<div style="flex:1"></div>
+<div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:#FF4D9A">Strength · Lower</div>
+<div class="ttl wt" style="margin-top:4px">Workout B</div>
+<div class="wl"><span class="num yel">45</span><span class="yel" style="font-size:12px">min</span><span>· Lower body</span></div>
+</div>
+<div class="cap"><b>Strength.</b> The sport and focus as a coloured label, then the title.</div>
+</div>
+
+<div class="state">
+<div class="w s">
+<div class="wk"><span style="text-transform:none;letter-spacing:.06em">Fri 31</span><span class="rd" style="color:#FFC83A"><i style="background:#FFC83A"></i>Steady</span></div>
+<svg width="138" height="44" viewBox="0 0 138 44" style="margin-top:14px;display:block">
+<rect x="0" y="30" width="18" height="14" rx="2" fill="#49A6FF"/><rect x="20" y="22" width="22" height="22" rx="2" fill="#43D17C"/>
+<rect x="44" y="8" width="10" height="36" rx="2" fill="#FF8B3D"/><rect x="56" y="26" width="6" height="18" rx="2" fill="#43D17C"/>
+<rect x="64" y="8" width="10" height="36" rx="2" fill="#FF8B3D"/><rect x="76" y="26" width="6" height="18" rx="2" fill="#43D17C"/>
+<rect x="84" y="8" width="10" height="36" rx="2" fill="#FF8B3D"/><rect x="96" y="26" width="6" height="18" rx="2" fill="#43D17C"/>
+<rect x="104" y="22" width="18" height="22" rx="2" fill="#43D17C"/><rect x="124" y="30" width="14" height="14" rx="2" fill="#49A6FF"/>
+</svg>
+<div style="flex:1"></div>
+<div class="ttl wt">3 × 5 min Z4</div>
+<div class="wl"><span class="num yel">60</span><span class="yel" style="font-size:12px">min</span><span>· Ride</span></div>
+</div>
+<div class="cap"><b>Ride / run.</b> The planned profile, bars coloured by zone. <span style="color:#FFC83A">Needs</span> <code>today.steps</code>; without it, a 28 pt sport glyph in ride blue.</div>
+</div>
+
+<div class="state">
+<div class="w s">
+<div class="wk"><span style="text-transform:none;letter-spacing:.06em">Thu 30</span><span class="rd" style="color:#2ED3B0"><i style="background:#2ED3B0"></i>Ready</span></div>
+<div style="width:44px;height:44px;border-radius:22px;background:#D4FF3A;color:#0A0C11;display:flex;align-items:center;justify-content:center;margin-top:12px"><svg width="24" height="24"><use href="#g-check"/></svg></div>
+<div style="flex:1"></div>
+<div class="ttl wt">Workout B</div>
+<div class="wl"><span class="vlt" style="font-weight:600">Done</span><span>· 6-day streak</span></div>
+</div>
+<div class="cap"><b>Done.</b> The volt win replaces the visual. The streak line uses <code>streakDays</code>.</div>
+</div>
+
+<div class="state">
+<div class="w s">
+<div class="wk"><span style="text-transform:none;letter-spacing:.06em">Sat 1</span><svg width="14" height="14" style="color:#8A93A6"><use href="#g-rest"/></svg></div>
+<div class="strip big" style="margin-top:16px">
+<span>M<i class="d" style="background:#FF4D9A"></i></span><span>T<i class="d" style="background:#3B8CFF"></i></span><span>W<i class="d" style="background:#2ED3B0"></i></span><span>T<i class="d" style="background:#FF4D9A"></i></span><span>F<i class="d" style="background:#3B8CFF"></i></span><span class="now">S<i class="d rest"></i></span><span>S<i class="d" style="border:2px solid #FF8A2A"></i></span>
+</div>
+<div style="flex:1"></div>
+<div class="ttl wt">Rest day</div>
+<div class="wl"><span>Tomorrow</span><span style="color:#FF8A2A;font-weight:600">Run</span><span class="num yel">40</span><span class="yel" style="font-size:12px">min</span></div>
+</div>
+<div class="cap"><b>Rest.</b> The week strip leads (five done), and the line looks ahead to tomorrow.</div>
+</div>
+
+<div class="state">
+<div class="w s">
+<div class="wk"><span style="text-transform:none;letter-spacing:.06em">Mon 3</span><span class="rd" style="color:#FF8A8A"><i style="background:#FF8A8A"></i>Sick</span></div>
+<div class="glyph" style="width:44px;height:44px;border-radius:22px;background:rgba(255,138,138,.14);color:#FF8A8A;margin-top:12px"><svg width="22" height="22"><use href="#g-sick"/></svg></div>
+<div style="flex:1"></div>
+<div class="ttl wt">Sick · day 2</div>
+<div class="wl"><span>Rest · plan on hold</span></div>
+</div>
+<div class="cap"><b>Sick mode.</b> Uses <code>sick.day</code>. No session, no streak pressure.</div>
+</div>
+</div>
+</div>
+
+<div class="frame">
+<div class="lbl">04b · Today medium · ride · and large <span class="tag new" style="margin-left:6px">new</span></div>
+<div class="pair" style="flex-direction:column;gap:20px">
+<div class="w m">
+<div class="wk"><span style="text-transform:none;letter-spacing:.06em">Friday 31 Oct</span><span class="rd" style="color:#FFC83A"><i style="background:#FFC83A"></i>Steady</span></div>
+<div class="row" style="align-items:flex-end;justify-content:space-between;margin-top:4px">
+<div><div class="ttl" style="font-size:30px">3 × 5 min Z4</div><div class="wl"><span class="num yel">60</span><span class="yel" style="font-size:12px">min</span><span>· Ride · threshold</span></div></div>
+<svg width="104" height="44" viewBox="0 0 138 44" preserveAspectRatio="none">
+<rect x="0" y="30" width="18" height="14" rx="2" fill="#49A6FF"/><rect x="20" y="22" width="22" height="22" rx="2" fill="#43D17C"/>
+<rect x="44" y="8" width="10" height="36" rx="2" fill="#FF8B3D"/><rect x="56" y="26" width="6" height="18" rx="2" fill="#43D17C"/>
+<rect x="64" y="8" width="10" height="36" rx="2" fill="#FF8B3D"/><rect x="76" y="26" width="6" height="18" rx="2" fill="#43D17C"/>
+<rect x="84" y="8" width="10" height="36" rx="2" fill="#FF8B3D"/><rect x="96" y="26" width="6" height="18" rx="2" fill="#43D17C"/>
+<rect x="104" y="22" width="18" height="22" rx="2" fill="#43D17C"/><rect x="124" y="30" width="14" height="14" rx="2" fill="#49A6FF"/>
+</svg>
+</div>
+<div style="flex:1"></div>
+<div class="row" style="gap:16px"><div class="strip" style="flex:1"><span>M<i class="d" style="background:#FF4D9A"></i></span><span>T<i class="d" style="background:#3B8CFF"></i></span><span>W<i class="d" style="background:#2ED3B0"></i></span><span>T<i class="d" style="background:#FF4D9A"></i></span><span class="now">F<i class="d" style="border:2px solid #3B8CFF"></i></span><span>S<i class="d rest"></i></span><span>S<i class="d" style="border:2px solid #FF8A2A"></i></span></div><div style="text-align:right;flex:none;padding-left:16px;border-left:1px solid #1C212B"><div class="num yel" style="font-size:20px">3:32</div><div style="font-size:11px" class="muted">of 6h10</div></div></div>
+</div>
+
+<div class="w l">
+<div class="wk"><span style="text-transform:none;letter-spacing:.06em">Thursday 30 Oct</span><span class="rd" style="color:#2ED3B0"><i style="background:#2ED3B0"></i>Ready</span></div>
+<div class="row" style="align-items:flex-end;justify-content:space-between;margin-top:4px">
+<div><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:#FF4D9A">Strength · Lower body</div><div class="ttl" style="font-size:34px;margin-top:4px">Workout B</div><div class="wl"><span class="num yel">45</span><span class="yel" style="font-size:12px">min</span><span>· Lower body · last done Mon</span></div></div>
+<div class="glyph" style="width:44px;height:44px;border-radius:22px;border:2px solid #FF4D9A;color:#FF4D9A;box-sizing:border-box"><svg width="20" height="20"><use href="#g-str"/></svg></div>
+</div>
+<div style="margin-top:12px;display:flex;flex-direction:column">
+<div class="row" style="justify-content:space-between;padding:8px 0;border-top:1px solid #1C212B;font-size:14px"><span>Back squat</span><span class="num" style="font-size:16px">3 × 5 <span class="u">· 80 kg</span></span></div>
+<div class="row" style="justify-content:space-between;padding:8px 0;border-top:1px solid #1C212B;font-size:14px"><span>Romanian deadlift</span><span class="num" style="font-size:16px">3 × 8 <span class="u">· 60 kg</span></span></div>
+<div class="row" style="justify-content:space-between;padding:8px 0;border-top:1px solid #1C212B;font-size:14px"><span>Walking lunge</span><span class="num" style="font-size:16px">3 × 10 <span class="u">· 16 kg</span></span></div>
+<div class="row" style="justify-content:space-between;padding:8px 0;border-top:1px solid #1C212B;font-size:14px"><span>Hip thrust</span><span class="num" style="font-size:16px">3 × 10 <span class="u">· 70 kg</span></span></div>
+<div class="row" style="justify-content:space-between;padding:8px 0;border-top:1px solid #1C212B;font-size:14px"><span>Calf raise</span><span class="num" style="font-size:16px">3 × 12 <span class="u">· 40 kg</span></span></div>
+</div>
+<div style="flex:1"></div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);padding-top:12px;border-top:1px solid #1C212B">
+<div><div class="num yel" style="font-size:22px">2:47<span class="u">/ 6h10</span></div><div style="font-size:12px" class="muted">Week</div></div>
+<div style="padding-left:16px;border-left:1px solid #1C212B"><div class="num" style="font-size:22px">918<span class="u">kcal</span></div><div style="font-size:12px" class="muted">To go</div></div>
+<div style="padding-left:16px;border-left:1px solid #1C212B"><div class="num teal" style="font-size:22px">96<span class="u">/ 140 g</span></div><div style="font-size:12px" class="muted">Protein</div></div>
+</div>
+</div>
+</div>
+<div class="frame-cap"><b>Large (new).</b> The session laid out before you walk into the gym: lifts with sets and today's targets (from <code>strength.exercises</code>), then week, kcal and protein in one quiet row. For a ride it lists the steps instead.</div>
+</div>
+
+<!-- ============ 05. WEEK + FOOD ============ -->
+<div class="section-head">
+<div class="lbl">05 · Week and Food widgets</div>
+<div class="ttl">Week medium (new) · Food states</div>
+<p>Week medium is the Plan tab in a glance: seven columns, each with its sport, title and status. Food keeps the kcal-to-go number and gains an honest "behind" state for the evening, since under-eating is the thing to watch.</p>
+</div>
+
+<div class="frame">
+<div class="lbl">05a · Week medium <span class="tag new" style="margin-left:6px">new</span></div>
+<div class="w m" style="padding:16px 12px">
+<div class="wk" style="padding:0 4px"><span>Week 44</span><span class="rd" style="text-transform:none;color:#A3ABBC;letter-spacing:0"><span class="num yel" style="font-size:15px">2:47</span><span class="muted">of 6h10</span></span></div>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px;flex:1">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 2px;border-radius:12px"><span style="font-size:10px;font-weight:600" class="muted">MON</span><span class="glyph" style="background:#FF4D9A;color:#0A0C11;width:26px;height:26px;border-radius:13px"><svg width="13" height="13"><use href="#g-check"/></svg></span><span style="font-size:11px;text-align:center;line-height:1.2;color:#A3ABBC">Wkt A</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 2px;border-radius:12px"><span style="font-size:10px;font-weight:600" class="muted">TUE</span><span class="glyph" style="background:#3B8CFF;color:#0A0C11;width:26px;height:26px;border-radius:13px"><svg width="13" height="13"><use href="#g-check"/></svg></span><span style="font-size:11px;text-align:center;line-height:1.2;color:#A3ABBC">Z2 45</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 2px;border-radius:12px"><span style="font-size:10px;font-weight:600" class="muted">WED</span><span class="glyph" style="background:#2ED3B0;color:#0A0C11;width:26px;height:26px;border-radius:13px"><svg width="13" height="13"><use href="#g-check"/></svg></span><span style="font-size:11px;text-align:center;line-height:1.2;color:#A3ABBC">Rehab</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 2px;border-radius:12px;background:#151922;border:1px solid #232835"><span style="font-size:10px;font-weight:700">THU</span><span class="glyph" style="border:2px solid #FF4D9A;color:#FF4D9A;width:26px;height:26px;border-radius:13px;box-sizing:border-box"><svg width="13" height="13"><use href="#g-str"/></svg></span><span style="font-size:11px;text-align:center;line-height:1.2;font-weight:600">Wkt B</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 2px;border-radius:12px"><span style="font-size:10px;font-weight:600" class="muted">FRI</span><span class="glyph" style="border:2px solid #3B8CFF;color:#3B8CFF;width:26px;height:26px;border-radius:13px;box-sizing:border-box"><svg width="13" height="13"><use href="#g-ride"/></svg></span><span style="font-size:11px;text-align:center;line-height:1.2;color:#A3ABBC">3×5 Z4</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 2px;border-radius:12px"><span style="font-size:10px;font-weight:600" class="muted">SAT</span><span class="glyph" style="border:1.5px dashed #3A4150;color:#6B7385;width:26px;height:26px;border-radius:13px;box-sizing:border-box"><svg width="12" height="12"><use href="#g-rest"/></svg></span><span style="font-size:11px;text-align:center;line-height:1.2;color:#6B7385">Rest</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 2px;border-radius:12px"><span style="font-size:10px;font-weight:600" class="muted">SUN</span><span class="glyph" style="border:2px solid #FF8A2A;color:#FF8A2A;width:26px;height:26px;border-radius:13px;box-sizing:border-box"><svg width="13" height="13"><use href="#g-run"/></svg></span><span style="font-size:11px;text-align:center;line-height:1.2;color:#A3ABBC">Easy 40</span></div>
+</div>
+</div>
+<div class="frame-cap"><b>Week medium.</b> Done days are filled with a tick, planned days are rings with the sport glyph, rest is a dashed ring, and today is the raised column. Tap opens the Plan tab on that week. Titles are shortened on the phone.</div>
+</div>
+
+<div class="frame">
+<div class="lbl">05b · Food small · three states</div>
+<div class="pair" style="gap:20px">
+<div class="state">
+<div class="w s">
+<div class="wk"><span>Food</span><span class="muted" style="letter-spacing:0;text-transform:none;font-size:11px">67%</span></div>
+<div style="flex:1"></div>
+<div class="num" style="font-size:52px">918</div>
+<div style="font-size:13px;color:#A3ABBC;margin-top:2px">kcal to go</div>
+<div class="bar" style="margin-top:12px"><i style="width:67%;background:rgba(212,255,58,.85)"></i></div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;font-size:12px"><span class="teal" style="font-weight:600">Protein</span><span class="num" style="font-size:15px">96<span class="u">/ 140 g</span></span></div>
+</div>
+<div class="cap"><b>On track.</b> The number is white, not amber, so nothing looks like a warning.</div>
+</div>
+<div class="state">
+<div class="w s">
+<div class="wk"><span>Food · 19:30</span><span class="muted" style="letter-spacing:0;text-transform:none;font-size:11px">49%</span></div>
+<div style="flex:1"></div>
+<div class="num amb" style="font-size:52px">1420</div>
+<div style="font-size:13px;color:#A3ABBC;margin-top:2px">kcal to go · <span class="amb">behind</span></div>
+<div class="bar" style="margin-top:12px"><i style="width:49%;background:rgba(212,255,58,.85)"></i></div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;font-size:12px"><span class="teal" style="font-weight:600">Protein</span><span class="num" style="font-size:15px">58<span class="u">/ 140 g</span></span></div>
+</div>
+<div class="cap"><b>Behind.</b> After 18:00 with under 60% eaten, the number turns amber. That's the only time it does.</div>
+</div>
+<div class="state">
+<div class="w s">
+<div class="wk"><span>Food</span><svg width="14" height="14" style="color:#D4FF3A"><use href="#g-check"/></svg></div>
+<div style="width:44px;height:44px;border-radius:22px;background:#D4FF3A;color:#0A0C11;display:flex;align-items:center;justify-content:center;margin-top:12px"><svg width="24" height="24"><use href="#g-check"/></svg></div>
+<div style="flex:1"></div>
+<div class="ttl wt vlt">Fuelled</div>
+<div class="wl"><span class="num" style="font-size:16px;color:#F3F5F9">2812</span><span>kcal ·</span><span class="teal num" style="font-size:16px">142</span><span>g protein</span></div>
+</div>
+<div class="cap"><b>Target hit.</b> The volt win, with what you ate and your protein.</div>
+</div>
+</div>
+</div>
+
+<!-- ============ 06. LOCK SCREEN ACCESSORIES ============ -->
+<div class="section-head">
+<div class="lbl">06 · Lock Screen accessories</div>
+<div class="ttl">Circular · rectangular · inline</div>
+<p>Monochrome, as iOS draws them. Each one keeps the shape of its Home Screen widget: a ring for amounts, a glyph and title for the session, seven dots for the week.</p>
+</div>
+
+<div class="frame">
+<div class="lbl">06a · Circular</div>
+<div class="lockbg" style="width:auto;gap:20px">
+<div class="state" style="align-items:center"><div class="acc-c"><svg width="72" height="72" viewBox="0 0 72 72" style="position:absolute;inset:0"><circle cx="36" cy="36" r="31" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5"/><circle cx="36" cy="36" r="31" fill="none" stroke="#F3F5F9" stroke-width="5" stroke-linecap="round" stroke-dasharray="88 195" transform="rotate(-90 36 36)"/></svg><span class="num" style="font-size:19px">2:47</span><span style="font-size:9px;color:rgba(255,255,255,.62)">of 6h10</span></div><div class="cap" style="text-align:center">Week</div></div>
+<div class="state" style="align-items:center"><div class="acc-c"><svg width="72" height="72" viewBox="0 0 72 72" style="position:absolute;inset:0"><circle cx="36" cy="36" r="31" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5"/><circle cx="36" cy="36" r="31" fill="none" stroke="#F3F5F9" stroke-width="5" stroke-linecap="round" stroke-dasharray="131 195" transform="rotate(-90 36 36)"/></svg><span class="num" style="font-size:19px">918</span><span style="font-size:9px;color:rgba(255,255,255,.62)">kcal</span></div><div class="cap" style="text-align:center">Food</div></div>
+<div class="state" style="align-items:center"><div class="acc-c"><svg width="22" height="22"><use href="#g-str"/></svg><span class="num" style="font-size:17px;margin-top:2px">45m</span></div><div class="cap" style="text-align:center">Today <span class="tag new">new</span></div></div>
+<div class="state" style="align-items:center"><div class="acc-c"><svg width="26" height="26"><use href="#g-check"/></svg><span style="font-size:9px;color:rgba(255,255,255,.62);margin-top:2px">Done</span></div><div class="cap" style="text-align:center">Today · done</div></div>
+</div>
+</div>
+
+<div class="frame">
+<div class="lbl">06b · Rectangular + inline</div>
+<div class="lockbg" style="width:auto;flex-direction:column;align-items:flex-start;gap:16px">
+<div class="row" style="gap:16px;align-items:flex-start">
+<div class="state"><div class="acc-r">
+<div class="acc-k"><svg width="12" height="12"><use href="#g-str"/></svg>TODAY · 45 MIN</div>
+<div class="ttl" style="font-size:22px;margin-top:3px">Workout B</div>
+<div style="font-size:12px;color:rgba(255,255,255,.62);margin-top:2px">Lower body · 918 kcal to go</div>
+</div><div class="cap">Today</div></div>
+<div class="state"><div class="acc-r">
+<div class="acc-k">FOOD</div>
+<div style="margin-top:3px"><span class="num" style="font-size:24px">918</span> <span style="font-size:13px;font-weight:500">kcal to go</span></div>
+<div class="bar" style="margin-top:6px;height:4px;background:rgba(255,255,255,.16)"><i style="width:67%;background:#F3F5F9"></i></div>
+</div><div class="cap">Food</div></div>
+<div class="state"><div class="acc-r">
+<div class="acc-k">WEEK · 2:47 OF 6H10</div>
+<div class="strip" style="margin-top:8px">
+<span style="color:rgba(255,255,255,.62)">M<i class="d" style="background:#F3F5F9"></i></span><span style="color:rgba(255,255,255,.62)">T<i class="d" style="background:#F3F5F9"></i></span><span style="color:rgba(255,255,255,.62)">W<i class="d" style="background:#F3F5F9"></i></span><span style="color:#F3F5F9;font-weight:700">T<i class="d" style="border:2px solid #F3F5F9"></i></span><span style="color:rgba(255,255,255,.62)">F<i class="d" style="border:1.5px solid rgba(255,255,255,.5)"></i></span><span style="color:rgba(255,255,255,.62)">S<i class="d rest" style="background:rgba(255,255,255,.4)"></i></span><span style="color:rgba(255,255,255,.62)">S<i class="d" style="border:1.5px solid rgba(255,255,255,.5)"></i></span>
+</div>
+</div><div class="cap">Week <span class="tag new">new</span></div></div>
+</div>
+<div class="state"><div style="font-size:15px;font-weight:600;color:#F3F5F9;display:flex;align-items:center;gap:6px"><svg width="15" height="15"><use href="#g-str"/></svg>Workout B · 45 min · 918 kcal to go</div><div class="cap" style="max-width:none">Inline, above the clock</div></div>
+</div>
+<div class="frame-cap"><b>Rectangular.</b> Today keeps the italic title so it still looks like TrainLog in white. The new week strip shows the week without opening the app.</div>
+</div>
+
+</div>
+</x-dc>
+</body>
+</html>

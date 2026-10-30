@@ -175,6 +175,7 @@ struct ActivitiesTests {
     @Test func feelWordsFollowTheReading() throws {
         let feel = ActivityDetailFormat.feel(ActivityFeedback(rpe: 2, energy: 4, muscleSoreness: 3, painLevel: 6, note: "ITBS a lot of knee pain"))
         #expect(feel.map(\.word) == ["Very easy", "Good", "Some", "Knee"])
+        #expect(feel.map(\.caption) == ["RPE 2 of 10", "4 of 5", "3 of 5", "High · 6 of 10"])
         #expect(ActivityDetailFormat.painAlert(ActivityFeedback(rpe: 2, energy: 4, muscleSoreness: 3, painLevel: 6, note: "x"))?.pain == 6)
         #expect(ActivityDetailFormat.feel(nil).isEmpty)
     }

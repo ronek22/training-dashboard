@@ -679,35 +679,65 @@ extension ActivityDetailFormat {
         let scale: Int
         let word: String
         let color: Color
+        /// Under the meter: "RPE 6 of 10", "Mild · 2 of 10".
+        let caption: String
     }
 
     private static let bodyParts = ["knee", "back", "hip", "ankle", "foot", "heel", "shin", "calf", "hamstring", "shoulder", "neck", "elbow", "wrist", "achilles", "itb", "groin"]
+
+    static func effortWord(_ rpe: Int) -> (word: String, color: Color) {
+        switch rpe {
+        case ...2: ("Very easy", .volt)
+        case 3: ("Easy", .volt)
+        case 4...6: ("Moderate", warn)
+        default: ("Hard", Color(hex: 0xFF8B3D))
+        }
+    }
+
+    /// The line under the big RPE number in the sheet.
+    static func effortHint(_ rpe: Int) -> String {
+        ["Barely moving", "Very light, easy breathing", "Easy, could chat all day", "Comfortable, full sentences",
+         "Steady, talking gets harder", "Breathing hard, could still say a sentence", "Hard, a few words at a time",
+         "Very hard, can't talk much", "Near max", "All out"][Swift.min(Swift.max(rpe, 1), 10) - 1]
+    }
+
+    static func energyWord(_ energy: Int) -> (word: String, color: Color) {
+        let word = ["Drained", "Low", "OK", "Good", "Great"][Swift.min(Swift.max(energy, 1), 5) - 1]
+        return (word, energy >= 4 ? .mobility : (energy == 3 ? Color.inkSoft : warn))
+    }
+
+    static func sorenessWord(_ soreness: Int) -> (word: String, color: Color) {
+        let word = ["None", "Light", "Some", "Sore", "Very sore"][Swift.min(Swift.max(soreness, 1), 5) - 1]
+        return (word, soreness <= 1 ? .mobility : (soreness <= 3 ? warn : bad))
+    }
+
+    /// The body part a note mentions ("ITBS a lot of knee pain" → Knee).
+    static func bodyPart(in note: String?) -> String? {
+        let note = note?.lowercased() ?? ""
+        return bodyParts.first { note.contains($0) }.map { $0 == "itb" ? "ITB" : capitalized($0) }
+    }
 
     static func feel(_ feedback: ActivityFeedback?) -> [Feel] {
         guard let feedback else { return [] }
         var cells: [Feel] = []
         if let rpe = feedback.rpe {
-            let (word, color): (String, Color) = switch rpe {
-            case ...2: ("Very easy", .volt)
-            case 3: ("Easy", .volt)
-            case 4...6: ("Moderate", warn)
-            default: ("Hard", Color(hex: 0xFF8B3D))
-            }
-            cells.append(Feel(label: "Effort", value: rpe, scale: 10, word: word, color: color))
+            let (word, color) = effortWord(rpe)
+            cells.append(Feel(label: "Effort", value: rpe, scale: 10, word: word, color: color, caption: "RPE \(rpe) of 10"))
         }
         if let energy = feedback.energy {
-            let word = ["Drained", "Low", "OK", "Good", "Great"][Swift.min(Swift.max(energy, 1), 5) - 1]
-            cells.append(Feel(label: "Energy", value: energy, scale: 5, word: word, color: energy >= 4 ? .mobility : (energy == 3 ? Color.inkSoft : warn)))
+            let (word, color) = energyWord(energy)
+            cells.append(Feel(label: "Energy", value: energy, scale: 5, word: word, color: color, caption: "\(energy) of 5"))
         }
         if let soreness = feedback.muscleSoreness {
-            let word = ["None", "Light", "Some", "Sore", "Very sore"][Swift.min(Swift.max(soreness, 1), 5) - 1]
-            cells.append(Feel(label: "Soreness", value: soreness, scale: 5, word: word, color: soreness <= 1 ? .mobility : (soreness <= 3 ? warn : bad)))
+            let (word, color) = sorenessWord(soreness)
+            cells.append(Feel(label: "Soreness", value: soreness, scale: 5, word: word, color: color, caption: "\(soreness) of 5"))
         }
         if let pain = feedback.painLevel {
-            let note = feedback.note?.lowercased() ?? ""
-            let part = bodyParts.first { note.contains($0) }.map { $0 == "itb" ? "ITB" : capitalized($0) }
-            let word = pain == 0 ? "Pain-free" : (part ?? (pain >= 4 ? "High" : "Mild"))
-            cells.append(Feel(label: "Pain", value: pain, scale: 10, word: word, color: painColor(pain)))
+            let severity = pain >= 4 ? "High" : "Mild"
+            let part = bodyPart(in: feedback.note)
+            let word = pain == 0 ? "Pain-free" : (part ?? severity)
+            let caption = part != nil && pain > 0 ? "\(severity) · \(pain) of 10" : "\(pain) of 10"
+            cells.append(Feel(label: "Pain", value: pain, scale: 10, word: word, color: painColor(pain), caption: caption))
         }
         return cells
     }

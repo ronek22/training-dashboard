@@ -1,14 +1,12 @@
 import SwiftUI
 
-/// The coach from Today: ask about today, start a general chat, or pick up a recent one
+/// The Coach tab: ask about today, start a general chat, or pick up a recent one
 /// (the same chats as the web Coach page).
-struct CoachHomeSheet: View {
-    let today: String
+struct CoachView: View {
     @State private var conversations: [CoachConversation] = []
     @State private var loaded = false
     @State private var error: String?
     @State private var route: Route?
-    @Environment(\.dismiss) private var dismiss
 
     enum Route: Hashable {
         case context(CoachContext)
@@ -25,7 +23,7 @@ struct CoachHomeSheet: View {
                 Section {
                     startRow(symbol: CoachFormat.symbol(.day), color: CoachFormat.color(.day),
                              title: "Ask about today", detail: "Plan, check-in and recovery") {
-                        route = .context(CoachFormat.dayContext(today))
+                        route = .context(CoachFormat.dayContext(FoodFormat.iso(.now)))
                     }
                     startRow(symbol: "square.and.pencil", color: .inkSoft,
                              title: "New chat", detail: "Anything about your training") {
@@ -56,9 +54,9 @@ struct CoachHomeSheet: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(item: $route) { route in
                 switch route {
-                case .context(let context): CoachChatView(context: context, pushed: true)
-                case .conversation(let conversation): CoachChatView(conversation: conversation, pushed: true)
-                case .new: CoachChatView(pushed: true)
+                case .context(let context): CoachChatView(context: context, pushed: true).hidesTabBar()
+                case .conversation(let conversation): CoachChatView(conversation: conversation, pushed: true).hidesTabBar()
+                case .new: CoachChatView(pushed: true).hidesTabBar()
                 }
             }
             .task(id: route == nil) {
@@ -91,19 +89,12 @@ struct CoachHomeSheet: View {
     }
 
     private var header: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 4) {
-                Kicker("Your coach")
-                Text("COACH").font(AppFont.title(40)).foregroundStyle(Color.ink)
-            }
-            Spacer()
-            Button("Done") { dismiss() }
-                .font(AppFont.body(16, weight: .semibold))
-                .foregroundStyle(Color.inkSoft)
-                .frame(minWidth: 52, minHeight: 44, alignment: .trailing)
+        VStack(alignment: .leading, spacing: 4) {
+            Kicker("Your coach")
+            Text("COACH").font(AppFont.title(44)).foregroundStyle(Color.ink)
         }
         .padding(.horizontal, 4)
-        .padding(.top, 16)
+        .padding(.top, 6)
     }
 
     private func startRow(symbol: String, color: Color, title: String, detail: String, action: @escaping () -> Void) -> some View {

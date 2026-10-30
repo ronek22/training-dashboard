@@ -84,7 +84,8 @@ Same system as the web (`../docs/design/REDESIGN.md`, tokens in `../frontend/src
   outline pills. Flat design: no decorative gradients.
 - Fonts: Barlow Condensed (numbers, titles; titles italic 800 uppercase), Archivo (body).
   Bundle both. Kickers: 11pt, semibold, tracking .14em, uppercase, muted `#8A93A6`.
-- iOS patterns: large titles, bottom tab bar (Today · Plan · Food · Activities; no centre +), sheets for
+- iOS patterns: large titles, bottom tab bar (Today · Plan · Coach · Food · Activities; no centre +, five is the cap; Workout
+  Studio lives on Today's session card, not in a tab or the header), sheets for
   quick input, swipe actions on rows, 44pt minimum tap targets, haptics on set logged.
 
 ## Build and verify

@@ -76,7 +76,6 @@
 		8855717FEAFC4B6CA4379BFB /* OFL-Archivo.txt in Resources */ = {isa = PBXBuildFile; fileRef = CBB385EB2D063C2EA0283EA2 /* OFL-Archivo.txt */; };
 		8CB0D0D61C2DA03E0CB2727E /* FoodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE84774476766302F5B40E04 /* FoodTests.swift */; };
 		8DA89CDA3DB28A90107EBF0B /* WorkoutSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 750838068CEBD75A49FE93BE /* WorkoutSyncTests.swift */; };
-		8DE1D02B7D34E627003F9B56 /* CoachHomeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 384783D34FF70D73184B5899 /* CoachHomeSheet.swift */; };
 		90AA5331DE708BCF6A15830B /* Trends.swift in Sources */ = {isa = PBXBuildFile; fileRef = F82A37EF65E30B4BBE2ADC4D /* Trends.swift */; };
 		94D4295DC2C299DF58981A1A /* OfflineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B75853302B3165E45B90291 /* OfflineTests.swift */; };
 		94FDEAD1EC5788DD4FB2C1DE /* SessionBriefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F14E54A82521E74F4B142C /* SessionBriefTests.swift */; };
@@ -122,6 +121,7 @@
 		D8A6B99501A49EDD398A4882 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64B465973FE67D56B0AD2792 /* SettingsTests.swift */; };
 		D991039FC7B8BA8250BB4BE9 /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71E786C59F442AD3CE8D76CD /* Motion.swift */; };
 		D9F0161252DCA55F451D2C13 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 01AD5A97B8F6DB6B3A07C749 /* Assets.xcassets */; };
+		DA749C4F4632BB07AD7CA959 /* CoachView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82602611B3CA16675FB06875 /* CoachView.swift */; };
 		E0B9C5DAA67798272C0E30DB /* WorkoutBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6551CA838C9FBBA066FCB841 /* WorkoutBuilder.swift */; };
 		E5A5DDD6E75551AC868D7857 /* StrengthLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C48F3797F00F70170A5FD4B /* StrengthLiveActivity.swift */; };
 		E78CA9102855C5DBFFDFF0ED /* CoachChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2825D497536A1DC2067DF70 /* CoachChatView.swift */; };
@@ -192,7 +192,6 @@
 		31458FCAE143A0393A63456F /* SmoothRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmoothRefresh.swift; sourceTree = "<group>"; };
 		32BFBE48F0A518D839DF18AC /* TrainLog.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TrainLog.entitlements; sourceTree = "<group>"; };
 		37E9987AC2A722D595772EEC /* RehabSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabSessionView.swift; sourceTree = "<group>"; };
-		384783D34FF70D73184B5899 /* CoachHomeSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachHomeSheet.swift; sourceTree = "<group>"; };
 		3A1168AEF0F0CD20E70D9C73 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		3AF855BFE456D5029A74E66F /* RideExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideExportTests.swift; sourceTree = "<group>"; };
 		3FDBC3D52C9D5328756342AF /* Vitals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vitals.swift; sourceTree = "<group>"; };
@@ -226,6 +225,7 @@
 		7A42369D06F44C4B76267BEB /* TrainLogTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TrainLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSessionTests.swift; sourceTree = "<group>"; };
 		81C840EEB43E748EBCA2361B /* DetailKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailKit.swift; sourceTree = "<group>"; };
+		82602611B3CA16675FB06875 /* CoachView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachView.swift; sourceTree = "<group>"; };
 		82CB4D14BAB2BB7DEC58078D /* ActivitiesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitiesTests.swift; sourceTree = "<group>"; };
 		82F3E6E9D99F322371CA6EFD /* demo-frames.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "demo-frames.json"; sourceTree = "<group>"; };
 		8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainLogApp.swift; sourceTree = "<group>"; };
@@ -503,7 +503,7 @@
 				FB7772B46C526E29BF5264CA /* CoachChatModel.swift */,
 				E2825D497536A1DC2067DF70 /* CoachChatView.swift */,
 				AE3713660C3D5D713D705982 /* CoachFormat.swift */,
-				384783D34FF70D73184B5899 /* CoachHomeSheet.swift */,
+				82602611B3CA16675FB06875 /* CoachView.swift */,
 			);
 			path = Coach;
 			sourceTree = "<group>";
@@ -800,7 +800,7 @@
 				2741A2EC96798A1BB4576775 /* CoachChatModel.swift in Sources */,
 				E78CA9102855C5DBFFDFF0ED /* CoachChatView.swift in Sources */,
 				E8DA055FCFA9600E7FE3979D /* CoachFormat.swift in Sources */,
-				8DE1D02B7D34E627003F9B56 /* CoachHomeSheet.swift in Sources */,
+				DA749C4F4632BB07AD7CA959 /* CoachView.swift in Sources */,
 				63CBA9572C8212A7C9E61F00 /* DetailKit.swift in Sources */,
 				CA2011DC8427C08C7AE1426E /* ExerciseDemoView.swift in Sources */,
 				9DFC0907E0F743305D04A9FB /* ExerciseDemos.swift in Sources */,

@@ -65,6 +65,13 @@ extension ActivityDetailFormat {
         return nil
     }
 
+    /// What a metric sheet can stack under its chart, best first: heart rate next to anything else,
+    /// and for heart rate itself, what drove it (power, then pace, then speed).
+    static func compareKeys(_ detail: ActivityDetail, key: String) -> [String] {
+        let preferred = ["heartrate", "watts", "pace", "speed", "altitude", "cadence"]
+        return preferred.filter { $0 != key && usable(detail, $0) != nil }
+    }
+
     /// "Zones: < 140 · 140–152 · …".
     static func zoneRangesLine(_ zones: ActivityDetail.Zones?, unit: String) -> String? {
         let ranges = (zones?.zones ?? []).compactMap { $0.range?.replacingOccurrences(of: " \(unit)", with: "").replacingOccurrences(of: "-", with: "–").replacingOccurrences(of: ">=", with: "≥") }
@@ -75,11 +82,17 @@ extension ActivityDetailFormat {
 struct MetricSheet: View {
     let detail: ActivityDetail
     let key: String
-    @State private var showPower = false
+    /// The chart stacked under the main one; nil until picked, "" for none.
+    @State private var compare: String?
     @State private var scrub: Double?
     @Environment(\.dismiss) private var dismiss
 
-    private var chartKey: String { key == "heartrate" && showPower ? "watts" : key }
+    private var chartKey: String { key }
+    private var options: [String] { ActivityDetailFormat.compareKeys(detail, key: key) }
+    private var compareKey: String? {
+        guard let compare else { return options.first }
+        return compare.isEmpty ? nil : compare
+    }
 
     private var subtitle: String {
         let place = ActivityDetailFormat.isIndoorRide(detail) ? ActivityDetailFormat.platform(detail.activity) : nil
@@ -109,13 +122,21 @@ struct MetricSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     stats
-                    if key == "heartrate", ActivityDetailFormat.usable(detail, "watts") != nil {
-                        SegmentedPills(options: ["Heart rate", "With power"], selection: Binding(get: { showPower ? 1 : 0 }, set: { showPower = $0 == 1; scrub = nil }))
-                            .padding(.top, 24)
-                    }
                     if let model = ActivityDetailFormat.chartModel(detail, key: chartKey) {
                         MetricChart(model: model, height: 180, scrub: $scrub) { x in scrubText(x, model: model) }
                             .padding(.top, 48)
+                        if !options.isEmpty { comparePicker.padding(.top, 20) }
+                        if let compareKey, let second = stacked(compareKey, under: model) {
+                            HStack(spacing: 6) {
+                                Circle().fill(second.color).frame(width: 8, height: 8)
+                                Text(second.title).font(AppFont.body(13, weight: .semibold)).foregroundStyle(Color.inkSoft)
+                                Spacer()
+                                if let average = second.averageLabel { Text("avg \(average)").font(AppFont.body(12)).foregroundStyle(Color.muted) }
+                            }
+                            .padding(.top, 20)
+                            MetricChart(model: second, height: 120, scrub: $scrub, showsScrubPill: false)
+                                .padding(.top, 10)
+                        }
                     }
                     zones
                     lines
@@ -146,17 +167,56 @@ struct MetricSheet: View {
         .padding(.top, 8)
     }
 
+    /// The second chart, on the same time (or distance) axis as the first.
+    private func stacked(_ key: String, under model: MetricChartModel) -> MetricChartModel? {
+        guard var second = ActivityDetailFormat.chartModel(detail, key: key) else { return nil }
+        second.xDomain = model.xDomain
+        second.xTicks = model.xTicks
+        return second
+    }
+
+    /// "Compare with" chips; tapping the selected one again hides the second chart.
+    private var comparePicker: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 6) {
+                Text("Compare with").font(AppFont.body(12)).foregroundStyle(Color.muted).padding(.trailing, 4)
+                ForEach(options, id: \.self) { option in
+                    let on = option == compareKey
+                    Button {
+                        withAnimation(.snappy) { compare = on ? "" : option }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Circle().fill(ActivityDetailFormat.chipColor(option)).frame(width: 8, height: 8)
+                            Text(ActivityDetailFormat.chipTitle(option))
+                        }
+                        .font(AppFont.body(12, weight: .semibold))
+                        .foregroundStyle(on ? Color.ink : Color.inkSoft)
+                        .padding(.horizontal, 10)
+                        .frame(height: 32)
+                        .background(on ? Color.raised : Color(hex: 0x1A1E27), in: Capsule())
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    /// One pill for both charts: "18:20 · 151 bpm · 146 W".
     private func scrubText(_ x: Double, model: MetricChartModel) -> String {
         var parts = [ActivityDetailFormat.chartsByDistance(detail) ? "\(x.formatted(ActivityFormat.upToOneDecimal)) km" : ActivityFormat.clock(x)]
         if let point = model.nearest(x) { parts.append(ActivityDetailFormat.scrubValue(chartKey, point.y)) }
-        if chartKey != "watts", key == "heartrate", let watts = ActivityDetailFormat.sample(detail, "watts", at: x) { parts.append("\(Int(watts.rounded())) W") }
-        if chartKey == "watts", let hr = ActivityDetailFormat.sample(detail, "heartrate", at: x) { parts.append("\(Int(hr.rounded())) bpm") }
+        if let compareKey, let second = ActivityDetailFormat.chartModel(detail, key: compareKey)?.nearest(x) {
+            parts.append(ActivityDetailFormat.scrubValue(compareKey, second.y))
+        }
         return parts.joined(separator: " · ")
     }
 
     @ViewBuilder
     private var zones: some View {
-        let power = key == "watts" || (key == "heartrate" && showPower)
+        let power = key == "watts"
         let rows = ActivityDetailFormat.zoneRows(power ? detail.powerZones : detail.heartRateZones, full: true)
         if !rows.isEmpty {
             HStack {

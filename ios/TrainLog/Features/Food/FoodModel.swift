@@ -14,6 +14,8 @@ final class FoodModel {
     /// Meals saved while the server was unreachable, shown until they sync.
     private(set) var pending: [FoodEntryInput] = []
     private(set) var selectedDate: String
+    /// Target hit / short per finished day, kept across loads so the week strip keeps its dots.
+    private(set) var marks: [String: FoodFormat.DayMark] = [:]
 
     private let client: () -> APIClient
     private let queue: WriteQueue
@@ -38,13 +40,28 @@ final class FoodModel {
         return dinner
     }
 
+    /// Mon–Sun of the selected day's week.
+    var weekDates: [String] { FoodFormat.weekDates(of: selectedDate) }
+
     func shiftDay(_ days: Int) async {
         guard let start = FoodFormat.parse(selectedDate),
               let date = Calendar(identifier: .gregorian).date(byAdding: .day, value: days, to: start) else { return }
-        selectedDate = FoodFormat.iso(date)
+        await select(min(FoodFormat.iso(date), FoodFormat.iso(.now)))
+    }
+
+    /// Opens another day; days after today aren't loggable yet.
+    func select(_ date: String) async {
+        guard date != selectedDate, date <= FoodFormat.iso(.now) else { return }
+        selectedDate = date
         day = nil
         dinner = nil
         await load()
+    }
+
+    private func remember(_ day: FoodDay) {
+        for item in day.week ?? [] {
+            marks[item.date] = FoodFormat.mark(item)
+        }
     }
 
     static func dayPath(_ date: String) -> String { "/nutrition/food?date=\(date)" }
@@ -55,6 +72,7 @@ final class FoodModel {
         let date = selectedDate
         if day == nil, let cached = api.cached(Self.dayPath(date), as: FoodDay.self) {
             day = cached.value
+            remember(cached.value)
             syncedAt = cached.syncedAt
             dinner = api.cached(Self.dinnersPath(date), as: DinnerWeek.self)?.value.days.first { $0.date == date }
         }
@@ -64,6 +82,7 @@ final class FoodModel {
             let loaded = try await api.get(Self.dayPath(date), as: FoodDay.self)
             guard date == selectedDate else { return }
             day = loaded.value
+            remember(loaded.value)
             syncedAt = loaded.syncedAt
             offline = loaded.fromCache
             error = nil
@@ -169,6 +188,8 @@ final class MealEstimateModel {
     var text = ""
     var meal: String
     var items: [FoodItem] = []
+    /// Claude's own numbers per item, so a corrected item can go back to them.
+    private(set) var estimated: [UUID: FoodItem] = [:]
     private(set) var note = ""
     private(set) var phase: Phase = .idle
 
@@ -208,6 +229,7 @@ final class MealEstimateModel {
                 job = try await api.getLive("/phone/meal-estimate/\(job.jobId)", as: MealEstimateJob.self)
             }
             items = job.estimate?.items ?? []
+            estimated = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
             note = job.estimate?.note ?? ""
             phase = items.isEmpty ? .failed(note.isEmpty ? "No food was recognised. Add a few words about it." : note) : .ready
         } catch is CancellationError {
@@ -307,6 +329,71 @@ enum FoodFormat {
         return entry.items.count > 1 ? "\(first) +\(entry.items.count - 1)" : first
     }
 
+    /// A finished, logged day against its target: volt dot when eaten, amber when short.
+    enum DayMark: Equatable { case hit, short }
+
+    static func mark(_ day: FoodDay.WeekDay) -> DayMark? {
+        guard day.logged, day.finished, day.targetKcal != nil else { return nil }
+        return day.under ? .short : .hit
+    }
+
+    /// Monday to Sunday of the week holding `iso`.
+    static func weekDates(of iso: String) -> [String] {
+        let calendar = Calendar(identifier: .gregorian)
+        guard let date = parse(iso) else { return [iso] }
+        let fromMonday = (calendar.component(.weekday, from: date) + 5) % 7
+        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0 - fromMonday, to: date).map(Self.iso) }
+    }
+
+    /// Each macro's share of the kcal (4 / 4 / 9 kcal per gram), for the split bar and donut.
+    static func kcalShares(_ macros: Macros) -> (protein: Double, carbs: Double, fat: Double) {
+        let protein = macros.proteinG * 4, carbs = macros.carbsG * 4, fat = macros.fatG * 9
+        let total = protein + carbs + fat
+        guard total > 0 else { return (0, 0, 0) }
+        return (protein / total, carbs / total, fat / total)
+    }
+
+    /// The whole meal scaled for a bigger or smaller portion: grams, portions and macros alike.
+    static func portioned(_ items: [FoodItem], by factor: Double) -> [FoodItem] {
+        guard factor > 0, factor != 1 else { return items }
+        return items.map { item in
+            var scaled = scale(item, by: factor)
+            scaled.grams = item.grams.map { ($0 * factor).rounded() }
+            scaled.portions = item.portions.map { ($0 * factor * 100).rounded() / 100 }
+            return scaled
+        }
+    }
+
+    /// "Oats, banana, whey" for a meal card.
+    static func itemNames(_ items: [FoodItem], limit: Int = 3) -> String {
+        let names = items.map(\.name).filter { !$0.isEmpty }
+        let shown = names.prefix(limit).enumerated().map { $0.offset == 0 ? $0.element : $0.element.lowercased() }
+        return shown.joined(separator: ", ") + (names.count > limit ? " +\(names.count - limit)" : "")
+    }
+
+    /// "07:40" from the entry's server timestamp.
+    static func clock(_ entry: FoodEntry, timeZone: TimeZone = .current) -> String? {
+        guard let created = entry.createdAt.flatMap(parseTimestamp) else { return nil }
+        let clock = DateFormatter()
+        clock.locale = Locale(identifier: "en_US_POSIX")
+        clock.timeZone = timeZone
+        clock.dateFormat = "HH:mm"
+        return clock.string(from: created)
+    }
+
+    /// What's left of today's target after this meal, and whether the planned dinner closes it.
+    static func impact(meal: Double, eaten: Double, target: Double?, dinner: Double?) -> (headline: String, detail: String, closes: Bool)? {
+        guard let target else { return nil }
+        let after = target - eaten - meal
+        guard after > 0 else { return ("That covers today's target.", "", true) }
+        let headline = "After this: \(kcal(after)) to go."
+        guard let dinner else { return (headline, "", false) }
+        let short = after - dinner
+        return short > 0
+            ? (headline, "Planned dinner still leaves ~\(kcal(short)) short.", false)
+            : (headline, "Planned dinner covers the rest.", true)
+    }
+
     static func add(_ total: Macros, _ item: FoodItem) -> Macros {
         Macros(kcal: total.kcal + item.kcal, proteinG: total.proteinG + item.proteinG,
                carbsG: total.carbsG + item.carbsG, fatG: total.fatG + item.fatG)
@@ -349,7 +436,7 @@ enum FoodFormat {
         }
         return FoodDay(date: day.date, entries: entries, totals: entries.map(\.totals).reduce(.zero) {
             Macros(kcal: $0.kcal + $1.kcal, proteinG: $0.proteinG + $1.proteinG, carbsG: $0.carbsG + $1.carbsG, fatG: $0.fatG + $1.fatG)
-        }, target: day.target, proteinTargetG: day.proteinTargetG)
+        }, target: day.target, proteinTargetG: day.proteinTargetG, week: day.week)
     }
 
     static func kcal(_ value: Double) -> String {

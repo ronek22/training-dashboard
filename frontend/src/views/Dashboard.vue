@@ -779,12 +779,23 @@ const todayCard = computed(() => {
     brief: todayBrief.value,
     reasons: decisionReasons.value,
     activities: todayActivityCards.value,
-    primaryAction: todayBrief.value?.guided_session_key
+    // A bodyweight day with the coach's exercises is a strength workout (sets logged, holds timed);
+    // the guided follow-along stays one click away.
+    primaryAction: isStrength && plan.lift_exercises?.length
+      ? { label: 'Start strength workout', to: { path: '/strength/workouts', query: { planDate: plan.date } } }
+      : todayBrief.value?.guided_session_key
       ? { label: 'Start guided session', to: `/guided/${todayBrief.value.guided_session_key}` }
       : isStrength
       ? { label: 'Start in Workout Studio', to: { path: '/strength/workouts', query: { planDate: plan.date } } }
       : { label: 'Open today’s plan', to: '/plan' },
-    secondaryActions: isStrength ? [{ label: 'Open plan', to: '/plan' }] : [],
+    secondaryActions: isStrength
+      ? [
+          ...(plan.lift_exercises?.length && todayBrief.value?.guided_session_key
+            ? [{ label: 'Guided follow-along', to: `/guided/${todayBrief.value.guided_session_key}` }]
+            : []),
+          { label: 'Open plan', to: '/plan' },
+        ]
+      : [],
   }
 })
 

@@ -22,6 +22,7 @@ import { computed } from 'vue'
 import SummaryTiles from './SummaryTiles.vue'
 import { durationTile } from './activityVisuals'
 import { recordedWorkingSets } from '../activity-detail/muscles.mjs'
+import { holdSummary } from '../strength-holds.mjs'
 
 const props = defineProps({
   detail: { type: Object, required: true },
@@ -43,7 +44,7 @@ const exercises = computed(() => {
     return {
       id: exercise.id,
       name: exercise.exercise_name,
-      summary: `${working.length} × ${repRange}${loads.length ? ` · top ${Math.max(...loads)} kg` : ' · bodyweight'}`,
+      summary: `${holdSummary(working) || `${working.length} × ${repRange}`}${loads.length ? ` · top ${Math.max(...loads)} kg` : ' · bodyweight'}`,
       volumePct: (Number(exercise.total_volume_kg || 0) / maxVolume) * 100,
       volumeLabel: exercise.total_volume_kg ? kg(exercise.total_volume_kg) : '—',
     }

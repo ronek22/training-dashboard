@@ -1,3 +1,5 @@
+import { liftExerciseInput } from './strength-holds.mjs'
+
 // Start from where the last session left off (backend `next`), keeping the saved
 // targets alongside so the plan can show what changed.
 function progressedExercise(exercise) {
@@ -73,6 +75,17 @@ function trimExercises(exercises, trim) {
 // unknown instructions require review rather than silently guessed reductions.
 export function buildStrengthPlanDraft(day, templates = []) {
   const details = day.details || ''
+  // Bodyweight days (backend lift_exercises) run the coach's own moves, never a saved workout.
+  if (day.lift_exercises?.length) {
+    return {
+      id: null,
+      oneTime: true,
+      name: day.title,
+      notes: [day.target_duration_min ? `Planned duration: ${day.target_duration_min} min.` : '', details].filter(Boolean).join('\n\n'),
+      exercises: day.lift_exercises.map(liftExerciseInput),
+      reviewNotice: 'Bodyweight session from today’s plan. Holds are timed; you start each one yourself.',
+    }
+  }
   const reducedLower = /2 easy work sets each of squat or leg press,\s*Romanian deadlift,\s*split squat or leg curl,\s*then calves and core/i.test(details)
   const match = templates.find(template => template.name === day.template_label || template.name === day.title)
   const trim = reducedLower ? null : trimmedLift(details)

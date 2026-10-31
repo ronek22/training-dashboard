@@ -109,6 +109,18 @@ class StrengthWorkoutTests(unittest.TestCase):
         self.assertEqual(self.client.post(f'{base}/abandon').status_code, 204)
         self.client.delete(f"/strength/workouts/templates/{template['id']}")
 
+    def test_hold_history_suggests_seconds(self):
+        session = self.client.post('/strength/workouts/sessions/one-time', json={'name': 'Hold history', 'exercises': [
+            {'exercise_name': 'Hollow Hold', 'set_count': 1, 'target_reps': 1, 'target_seconds': 30, 'rest_seconds': 45},
+        ]}).json()
+        base = f"/strength/workouts/sessions/{session['id']}"
+        self.client.post(f"{base}/sets/{session['exercises'][0]['sets'][0]['id']}/complete", json={'actual_reps': 1, 'actual_seconds': 35})
+        self.client.post(f'{base}/finish', json={})
+        suggestion = self.client.get('/strength/workouts/exercise-suggestions', params={'q': 'Hollow Hold', 'limit': 1}).json()[0]
+        self.assertEqual(suggestion['suggested_seconds'], 35)
+        self.assertEqual(suggestion['last_sets'][0]['seconds'], 35)
+        self.client.delete(base)
+
     def test_live_workout_structure_changes(self):
         template = self.client.post('/strength/workouts/templates', json={
             'name': 'Mutable session', 'exercises': [

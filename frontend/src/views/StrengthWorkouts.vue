@@ -111,7 +111,7 @@
                 </button>
               </div>
             </div>
-            <span class="exercise-summary">{{ exercise.set_count || '—' }} × {{ exercise.target_reps || '—' }}<template v-if="exercise.target_weight_kg != null && exercise.target_weight_kg !== ''"> · {{ trimNumber(exercise.target_weight_kg) }} kg</template> · {{ formatRest(Number(exercise.rest_seconds) || 0) }} rest</span>
+            <span class="exercise-summary">{{ prescription(exercise) }}<template v-if="exercise.target_weight_kg != null && exercise.target_weight_kg !== ''"> · {{ trimNumber(exercise.target_weight_kg) }} kg</template> · {{ formatRest(Number(exercise.rest_seconds) || 0) }} rest</span>
             <div class="row-actions">
               <button type="button" :disabled="index === 0" aria-label="Move exercise up" @click="moveExercise(index, -1)">↑</button>
               <button type="button" :disabled="index === editing.exercises.length - 1" aria-label="Move exercise down" @click="moveExercise(index, 1)">↓</button>
@@ -122,7 +122,14 @@
             <div class="exercise-targets">
               <div class="target-fields">
                 <label><span>Sets</span><input v-model.number="exercise.set_count" type="number" min="1" max="20" /></label>
-                <label><span>Reps</span><input v-model.number="exercise.target_reps" type="number" min="1" max="100" /></label>
+                <div class="target-amount">
+                  <div class="amount-mode" role="group" :aria-label="`${exercise.exercise_name || 'Exercise'} counts`">
+                    <button type="button" :aria-pressed="!isTimed(exercise)" @click="setTimed(exercise, false)">Reps</button>
+                    <button type="button" :aria-pressed="isTimed(exercise)" @click="setTimed(exercise, true)">Time</button>
+                  </div>
+                  <input v-if="isTimed(exercise)" v-model.number="exercise.target_seconds" type="number" min="5" max="1800" step="5" aria-label="Hold seconds" />
+                  <input v-else v-model.number="exercise.target_reps" type="number" min="1" max="100" aria-label="Reps" />
+                </div>
                 <label><span>Weight kg</span><input v-model.number="exercise.target_weight_kg" type="number" min="0" max="1000" step="0.5" placeholder="BW" /></label>
                 <label><span>Rest sec</span><input v-model.number="exercise.rest_seconds" type="number" min="0" max="1800" step="5" /></label>
               </div>
@@ -198,7 +205,7 @@
                   <small>{{ formatRest(exercise.rest_seconds) }} rest</small>
                 </div>
                 <div class="movement-target">
-                  <strong>{{ exercise.set_count }} × {{ exercise.target_reps }}</strong>
+                  <strong>{{ prescription(exercise) }}</strong>
                   <small>{{ exercise.target_weight_kg != null ? `${trimNumber(exercise.target_weight_kg)} kg` : 'Bodyweight' }}</small>
                 </div>
               </li>
@@ -282,6 +289,7 @@ import StrengthPhaseCard from '../components/StrengthPhaseCard.vue'
 import StrengthMuscleMap from '../components/activity-detail/StrengthMuscleMap.vue'
 import { buildStrengthPlanDraft } from '../strength-plan-draft.mjs'
 import { exerciseKey } from '../activity-detail/exercise-library.mjs'
+import { formatHold, isTimed, prescription } from '../strength-holds.mjs'
 
 const api = useApi()
 const router = useRouter()
@@ -311,8 +319,20 @@ let suggestionCloseTimer = null
 let suggestionRequestId = 0
 let nextKey = 1
 
-const emptyExercise = () => ({ key: nextKey++, exercise_name: '', set_count: 3, target_reps: 8, target_weight_kg: null, rest_seconds: 90, notes: null, history_suggestion: null })
-const canSave = computed(() => Boolean(editing.value?.name && editing.value.exercises.length && editing.value.exercises.every((item) => item.exercise_name && item.set_count > 0 && item.target_reps > 0 && item.rest_seconds >= 0)))
+const emptyExercise = () => ({ key: nextKey++, exercise_name: '', set_count: 3, target_reps: 8, target_seconds: null, target_weight_kg: null, rest_seconds: 90, notes: null, history_suggestion: null })
+// Time turns the exercise into a hold: timed sets, reps fixed at 1 as the backend stores them.
+const setTimed = (exercise, timed) => {
+  if (timed === isTimed(exercise)) return
+  if (timed) {
+    exercise.saved_reps_input = exercise.target_reps
+    exercise.target_seconds = 30
+    exercise.target_reps = 1
+  } else {
+    exercise.target_seconds = null
+    exercise.target_reps = exercise.saved_reps_input > 1 ? exercise.saved_reps_input : 8
+  }
+}
+const canSave = computed(() => Boolean(editing.value?.name && editing.value.exercises.length && editing.value.exercises.every((item) => item.exercise_name && item.set_count > 0 && item.target_reps > 0 && (!isTimed(item) || item.target_seconds >= 5) && item.rest_seconds >= 0)))
 const templateExerciseCount = computed(() => templates.value.reduce((total, template) => total + template.exercise_count, 0))
 
 const load = async () => {
@@ -384,6 +404,7 @@ const addDiscoveredExercise = (candidate) => {
     exercise_name: candidate.exercise_name,
     set_count: candidate.set_count ?? 3,
     target_reps: candidate.target_reps ?? 8,
+    target_seconds: candidate.target_seconds ?? null,
     target_weight_kg: candidate.target_weight_kg ?? null,
     rest_seconds: candidate.rest_seconds ?? 90,
     notes: candidate.notes || null,
@@ -437,6 +458,11 @@ const selectSuggestion = (exercise, suggestion) => {
   window.clearTimeout(suggestionCloseTimer)
   exercise.exercise_name = suggestion.exercise_name
   exercise.history_suggestion = suggestion
+  // A hold last time comes in timed.
+  if (suggestion.suggested_seconds) {
+    exercise.target_seconds = suggestion.suggested_seconds
+    exercise.target_reps = 1
+  }
   suggestionTargetKey.value = null
   suggestions.value = []
 }
@@ -444,7 +470,13 @@ const selectSuggestion = (exercise, suggestion) => {
 const applySuggestion = (exercise, suggestion = exercise.history_suggestion) => {
   if (!suggestion) return
   if (suggestion.suggested_set_count) exercise.set_count = suggestion.suggested_set_count
-  if (suggestion.suggested_reps != null) exercise.target_reps = suggestion.suggested_reps
+  if (suggestion.suggested_seconds) {
+    exercise.target_seconds = suggestion.suggested_seconds
+    exercise.target_reps = 1
+  } else if (suggestion.suggested_reps != null) {
+    exercise.target_seconds = null
+    exercise.target_reps = suggestion.suggested_reps
+  }
   exercise.target_weight_kg = suggestion.suggested_weight_kg
 }
 
@@ -455,10 +487,11 @@ const saveTemplate = async () => {
   const payload = {
     name: editing.value.name,
     notes: editing.value.notes || null,
-    exercises: editing.value.exercises.map(({ exercise_name, set_count, target_reps, target_weight_kg, rest_seconds, notes }) => ({
+    exercises: editing.value.exercises.map(({ exercise_name, set_count, target_reps, target_seconds, target_weight_kg, rest_seconds, notes }) => ({
       exercise_name,
       set_count: Number(set_count),
-      target_reps: Number(target_reps),
+      target_reps: target_seconds ? 1 : Number(target_reps),
+      target_seconds: target_seconds ? Number(target_seconds) : null,
       target_weight_kg: target_weight_kg === '' || target_weight_kg == null ? null : Number(target_weight_kg),
       rest_seconds: Number(rest_seconds),
       notes: notes || null,
@@ -535,7 +568,7 @@ const formatMonth = (value) => { try { return format(new Date(value), 'MMM') } c
 const formatTime = (value) => { try { return format(new Date(value), 'HH:mm') } catch { return '' } }
 const formatSuggestion = (suggestion) => {
   const sets = suggestion.suggested_set_count || '—'
-  const reps = suggestion.suggested_reps ?? '—'
+  const reps = suggestion.suggested_seconds ? formatHold(suggestion.suggested_seconds) : suggestion.suggested_reps ?? '—'
   const weight = suggestion.suggested_weight_kg == null ? 'bodyweight' : `${trimNumber(suggestion.suggested_weight_kg)} kg`
   return `${sets} × ${reps} · ${weight}`
 }
@@ -628,6 +661,10 @@ input:focus, textarea:focus { outline: 2px solid color-mix(in srgb, var(--streng
 .target-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .target-fields label { gap: 5px; font-size: 10px; }
 .target-fields input { padding: 9px 10px; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.target-amount { display: grid; gap: 5px; }
+.amount-mode { display: flex; gap: 2px; }
+.amount-mode button { padding: 0 6px; border: 0; border-radius: 6px; color: var(--muted-soft); background: transparent; font-size: 10px; font-weight: 800; letter-spacing: .04em; cursor: pointer; }
+.amount-mode button[aria-pressed="true"] { color: var(--text); background: rgb(var(--ov-rgb) / .08); }
 .exercise-notes { padding: 9px 12px; font-size: 13px; }
 .editor-guide { margin-left: 42px; }
 .editor-footer { display: flex; justify-content: space-between; }

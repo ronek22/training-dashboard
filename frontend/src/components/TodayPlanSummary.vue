@@ -74,6 +74,7 @@ import { useApi } from '../stores/api'
 import SummaryTiles from './SummaryTiles.vue'
 import CyclingWorkoutProfile from './CyclingWorkoutProfile.vue'
 import { ZONE_COLORS } from './activityVisuals'
+import { prescription } from '../strength-holds.mjs'
 
 const props = defineProps({
   plan: { type: Object, required: true },
@@ -163,7 +164,7 @@ const effortByName = computed(() => new Map((props.brief?.effort_notes || []).ma
 
 const lifts = computed(() => props.exercises.filter((exercise) => exercise.exercise_name?.trim()).map((exercise) => ({
   name: exercise.exercise_name,
-  summary: `${exercise.set_count} × ${exercise.target_reps ?? '—'}${exercise.target_weight_kg ? ` · ${exercise.target_weight_kg} kg` : ''}`,
+  summary: `${prescription(exercise)}${exercise.target_weight_kg ? ` · ${exercise.target_weight_kg} kg` : ''}`,
   sets: Array.from({ length: Math.min(Number(exercise.set_count) || 0, 8) }, (_, index) => index),
   change: liftChange(exercise),
   hint: exercise.progress_hint || '',

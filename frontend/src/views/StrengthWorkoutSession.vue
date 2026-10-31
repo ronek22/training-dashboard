@@ -91,7 +91,7 @@
               <div class="reference-row">
                 <div class="reference">
                   <span>Target</span>
-                  <strong>{{ currentSet.target_reps }} × {{ formatWeight(currentSet.target_weight_kg, 'BW') }}</strong>
+                  <strong>{{ setLine(currentSet) }}</strong>
                   <small v-if="currentPlates" class="plates" :title="`Plates per side on a ${formatKg(barbellSetup.barKg)} kg bar`">
                     <PlateStack :plates="currentPlates.perSide" :size="22" />
                     <span>
@@ -104,14 +104,15 @@
                 </div>
                 <div class="reference">
                   <span>Last time<template v-if="lastTimeDate && lastTimeSet"> · {{ lastTimeDate }}</template></span>
-                  <strong v-if="lastTimeSet">{{ lastTimeSet.reps ?? '—' }} × {{ formatWeight(lastTimeSet.weight_kg, 'BW') }}</strong>
+                  <strong v-if="lastTimeSet">{{ lastSetLine(lastTimeSet) }}</strong>
                   <strong v-else class="muted">{{ historyLoading ? '…' : 'No history' }}</strong>
                   <small v-if="lastTimeDelta" class="delta-line"><span :class="lastTimeDelta.tone">{{ lastTimeDelta.label }}</span><template v-if="lastTimeEffort"> · felt {{ lastTimeEffort }}</template></small>
                 </div>
                 <button type="button" class="reset-target" :disabled="isAtTarget" @click="applyTarget">Reset to target</button>
               </div>
+              <p v-if="currentTimed" class="set-coach-empty"><span>Timed hold</span>Start the timer when you're in position. It never starts on its own after rest.</p>
               <SetCoach
-                v-if="coachPrevious && currentSet && !(coachPrevious.rateOnly && setEfforts[coachPrevious.id] && restRemaining === 0)"
+                v-else-if="coachPrevious && currentSet && !(coachPrevious.rateOnly && setEfforts[coachPrevious.id] && restRemaining === 0)"
                 :exercise-name="currentExercise.exercise_name"
                 :previous="coachPrevious"
                 :target="{ reps: currentSet.target_reps, weight: currentSet.target_weight_kg }"
@@ -140,9 +141,29 @@
             </div>
             <p v-else-if="!draftsAvailable" class="draft-note muted">Draft recovery is unavailable in this browser — log the set before switching away.</p>
 
-            <form class="log-form" @submit.prevent="completeCurrentSet">
-              <div class="actual-inputs">
-                <label class="performance-field">
+            <form class="log-form" @submit.prevent="submitLog">
+              <div v-if="currentTimed" class="hold-panel" :class="{ running: holdRunning }">
+                <div class="hold-readout">
+                  <span>{{ holdRunning ? 'Holding' : 'Hold for' }}</span>
+                  <strong class="hold-clock" role="timer" aria-live="off">{{ formatClock(holdRunning ? holdRemaining : Number(actualSeconds) || 0) }}</strong>
+                  <small v-if="holdRunning">{{ formatHold(holdElapsed) }} of {{ formatHold(holdTarget) }}</small>
+                  <small v-else>Target {{ formatHold(currentSet.target_seconds) }}</small>
+                </div>
+                <div class="hold-bar" aria-hidden="true"><i :style="{ width: `${holdRunning ? (holdElapsed / holdTarget) * 100 : 0}%` }"></i></div>
+                <div class="hold-controls">
+                  <template v-if="!holdRunning">
+                    <button type="button" class="hold-step" aria-label="5 seconds shorter" @click="actualSeconds = stepHold(actualSeconds, -1)">−5 s</button>
+                    <button type="button" class="hold-start" :disabled="savingSet || !(Number(actualSeconds) > 0)" @click="startHold"><span aria-hidden="true">▶</span> Start hold</button>
+                    <button type="button" class="hold-step" aria-label="5 seconds longer" @click="actualSeconds = stepHold(actualSeconds, 1)">+5 s</button>
+                  </template>
+                  <template v-else>
+                    <button type="button" class="hold-step" @click="cancelHold">Cancel</button>
+                    <button type="button" class="hold-start" @click="stopHold">Stop · log {{ formatHold(holdElapsed) }}</button>
+                  </template>
+                </div>
+              </div>
+              <div class="actual-inputs" :class="{ single: !currentTimed && !weightOpen, 'hold-inputs': currentTimed }">
+                <label v-if="!currentTimed" class="performance-field">
                   <span>Reps</span>
                   <div class="stepper">
                     <button type="button" aria-label="Decrease repetitions" @click="actualReps = Math.max(0, actualReps - 1)">−</button>
@@ -150,9 +171,10 @@
                     <button type="button" aria-label="Increase repetitions" @click="actualReps = Math.min(100, actualReps + 1)">+</button>
                   </div>
                 </label>
-                <div class="performance-field">
+                <div v-if="weightOpen" class="performance-field">
                   <div class="field-head">
-                    <label for="actual-weight">Load <small>kg</small></label>
+                    <label for="actual-weight">{{ currentTimed ? 'Added weight' : 'Load' }} <small>kg</small></label>
+                    <button v-if="currentSet.target_weight_kg == null" type="button" class="weight-remove" @click="removeWeight">No weight</button>
                     <div class="weight-shortcuts" aria-label="Adjust weight quickly">
                       <button type="button" @click="adjustWeight(-5)">−5</button>
                       <button type="button" @click="adjustWeight(-1)">−1</button>
@@ -166,10 +188,11 @@
                     <button type="button" aria-label="Increase weight" @click="adjustWeight(loadStep)">+</button>
                   </div>
                 </div>
+                <button v-else type="button" class="add-weight" @click="weightOpen = true">+ Add weight</button>
               </div>
 
-              <button class="complete-button" type="submit" :disabled="savingSet">
-                <span>{{ savingSet ? 'Saving…' : currentSet.status === 'completed' ? 'Update set' : `Log ${actualReps} × ${formatWeight(actualWeight === '' ? null : actualWeight, 'bodyweight')}` }}</span>
+              <button v-if="!holdRunning" class="complete-button" :class="{ 'log-untimed': currentTimed }" type="submit" :disabled="savingSet">
+                <span>{{ savingSet ? 'Saving…' : currentSet.status === 'completed' ? 'Update set' : logLabel }}</span>
                 <small v-if="!savingSet">then {{ formatRest(currentSet.rest_seconds) }} rest <kbd>↵</kbd></small>
               </button>
             </form>
@@ -194,7 +217,7 @@
                   <span class="set-badge" aria-hidden="true">{{ workoutSet.status === 'completed' ? '✓' : `${workoutSet.set_type === 'warmup' ? 'W' : ''}${setDisplayNumber(currentExercise, workoutSet)}` }}</span>
                   <span class="set-copy">
                     <span class="set-name">{{ setKindLabel(currentExercise, workoutSet) }}<template v-if="workoutSet.status !== 'completed'"> · {{ isCurrent(currentExercise, workoutSet) ? 'up now' : hasDraft(workoutSet) ? 'not logged' : 'target' }}</template></span>
-                    <strong class="set-actual">{{ workoutSet.status === 'completed' ? `${workoutSet.actual_reps} × ${formatWeight(workoutSet.actual_weight_kg, 'BW')}` : `${workoutSet.target_reps} × ${formatWeight(workoutSet.target_weight_kg, 'BW')}` }}</strong>
+                    <strong class="set-actual">{{ setLine(workoutSet, workoutSet.status === 'completed') }}</strong>
                   </span>
                 </button>
               </div>
@@ -301,7 +324,7 @@
               @click="goToSet(exercise, workoutSet)"
             >
               <small>{{ setKindLabel(exercise, workoutSet) }}</small>
-              <strong>{{ workoutSet.status === 'completed' ? `${workoutSet.actual_reps} × ${formatWeight(workoutSet.actual_weight_kg)}` : `${workoutSet.target_reps} × ${formatWeight(workoutSet.target_weight_kg)}` }}</strong>
+              <strong>{{ setLine(workoutSet, workoutSet.status === 'completed') }}</strong>
               <span>{{ workoutSet.status }}</span>
             </button>
           </div>
@@ -378,6 +401,7 @@ import { useApi } from '../stores/api'
 import { useLivePoll } from '../composables/useLivePoll'
 import { isDumbbell } from '../coach/set-coach.mjs'
 import { formatPlates, isBarbellExercise, plateBreakdown, suggestWarmups } from '../coach/plates.mjs'
+import { formatHold, isTimed, stepHold } from '../strength-holds.mjs'
 import { clearDrafts, draftFor, pruneDrafts, readDrafts, recordDraft, removeDraft, sameValues, setBaseline, writeDrafts } from '../coach/set-drafts.mjs'
 
 const api = useApi()
@@ -415,6 +439,10 @@ const removeCurrentExercise = () => {
 const finishing = ref(false)
 const actualReps = ref(0)
 const actualWeight = ref(0)
+const actualSeconds = ref(0)
+// Bodyweight sets keep the load field folded away until "Add weight".
+const weightOpen = ref(true)
+const removeWeight = () => { actualWeight.value = ''; weightOpen.value = false }
 const now = ref(Date.now())
 const candidates = ref([])
 const candidatesLoaded = ref(false)
@@ -518,7 +546,7 @@ const nextPendingAfter = computed(() => {
 const upNextLabel = computed(() => {
   const next = nextPendingAfter.value
   if (!next) return 'Last set of the session'
-  const load = `${next.item.target_reps} × ${formatWeight(next.item.target_weight_kg, 'BW')}`
+  const load = setLine(next.item)
   return next.exercise.id === currentExercise.value?.id
     ? `${setKindLabel(next.exercise, next.item)} · ${load}`
     : `${next.exercise.exercise_name} · ${load}`
@@ -527,11 +555,15 @@ const exercisePrescription = (exercise) => {
   const working = exercise.sets.filter((item) => item.set_type !== 'warmup')
   const first = working[0] || exercise.sets[0]
   if (!first) return 'No sets'
+  if (isTimed(first)) {
+    const sameHold = working.every((item) => item.target_seconds === first.target_seconds)
+    return `${working.length} × ${sameHold ? formatHold(first.target_seconds) : 'mixed'}${first.target_weight_kg != null ? ` · ${formatWeight(first.target_weight_kg)}` : ''}`
+  }
   const sameReps = working.every((item) => item.target_reps === first.target_reps)
   const sameLoad = working.every((item) => item.target_weight_kg === first.target_weight_kg)
   return `${working.length} × ${sameReps ? first.target_reps : 'mixed'} · ${sameLoad ? formatWeight(first.target_weight_kg, 'BW') : 'mixed load'}`
 }
-const isAtTarget = computed(() => actualReps.value === currentSet.value?.target_reps
+const isAtTarget = computed(() => (currentTimed.value ? Number(actualSeconds.value) === currentSet.value.target_seconds : actualReps.value === currentSet.value?.target_reps)
   && (actualWeight.value === '' ? null : Number(actualWeight.value)) === (currentSet.value?.target_weight_kg ?? null))
 
 // "Last time" for each exercise, ignoring the session in progress.
@@ -600,9 +632,13 @@ const lastSetMatch = (exercise, workoutSet) => {
 }
 const lastSetFor = (exercise, workoutSet) => {
   const match = lastSetMatch(exercise, workoutSet)
-  return match ? `last ${match.reps ?? '—'} × ${formatWeight(match.weight_kg, 'BW')}` : ''
+  return match && !(isTimed(workoutSet) && !match.seconds) ? `last ${lastSetLine(match)}` : ''
 }
-const lastTimeSet = computed(() => currentExercise.value && currentSet.value ? lastSetMatch(currentExercise.value, currentSet.value) : null)
+const lastTimeSet = computed(() => {
+  const match = currentExercise.value && currentSet.value ? lastSetMatch(currentExercise.value, currentSet.value) : null
+  // An old hold logged as "1 rep" says nothing about how long it was held.
+  return match && currentTimed.value && !match.seconds ? null : match
+})
 const lastTimeEffort = computed(() => ({ easy: 'easy', solid: 'solid', grinding: 'grinding', form: 'form broke' })[lastTimeSet.value?.effort] || '')
 const lastTimeDate = computed(() => {
   const value = historyFor(currentExercise.value)?.last_performed_at
@@ -613,6 +649,12 @@ const lastTimeDelta = computed(() => {
   if (!last) return null
   const weight = actualWeight.value === '' || actualWeight.value == null ? null : Number(actualWeight.value)
   const weightDelta = weight != null && last.weight_kg != null ? Math.round((weight - Number(last.weight_kg)) * 10) / 10 : 0
+  if (currentTimed.value && last.seconds) {
+    const secondDelta = Number(actualSeconds.value) - Number(last.seconds)
+    if (weightDelta > 0 || (weightDelta === 0 && secondDelta > 0)) return { tone: 'up', label: weightDelta ? `+${weightDelta} kg vs last` : `+${secondDelta} s vs last` }
+    if (weightDelta < 0 || secondDelta < 0) return { tone: 'down', label: weightDelta ? `${weightDelta} kg vs last` : `${secondDelta} s vs last` }
+    return { tone: 'same', label: 'Same as last' }
+  }
   const repDelta = last.reps != null ? Number(actualReps.value) - Number(last.reps) : 0
   if (weightDelta > 0 || (weightDelta === 0 && repDelta > 0)) return { tone: 'up', label: weightDelta ? `+${weightDelta} kg vs last` : `+${repDelta} rep${repDelta === 1 ? '' : 's'} vs last` }
   if (weightDelta < 0 || repDelta < 0) return { tone: 'down', label: weightDelta ? `${weightDelta} kg vs last` : `${repDelta} rep${repDelta === -1 ? '' : 's'} vs last` }
@@ -754,8 +796,10 @@ const syncInputs = () => {
   const values = state === 'restored' ? draft : setBaseline(currentSet.value)
   actualReps.value = values.reps
   actualWeight.value = values.weight
+  actualSeconds.value = currentSet.value.actual_seconds ?? currentSet.value.target_seconds ?? 0
+  weightOpen.value = currentSet.value.target_weight_kg != null || (values.weight !== '' && values.weight != null)
 }
-watch(() => currentSet.value?.id, syncInputs)
+watch(() => currentSet.value?.id, () => { cancelHold(); syncInputs() })
 watch(restRemaining, (remaining, previous) => {
   if (previous > 0 && remaining === 0) {
     if (suppressNextBeep) suppressNextBeep = false
@@ -820,8 +864,9 @@ const completeCurrentSet = async () => {
   const loggedId = currentSet.value.id
   try {
     const { data } = await api.completeStrengthWorkoutSet(session.value.id, currentSet.value.id, {
-      actual_reps: Number(actualReps.value),
+      actual_reps: currentTimed.value ? 1 : Number(actualReps.value),
       actual_weight_kg: actualWeight.value === '' || actualWeight.value == null ? null : Number(actualWeight.value),
+      ...(currentTimed.value ? { actual_seconds: Number(actualSeconds.value) || 0 } : {}),
     })
     session.value = data
     persistDrafts(removeDraft(setDrafts.value, String(loggedId)))
@@ -837,7 +882,46 @@ const completeCurrentSet = async () => {
 const applyTarget = () => {
   actualReps.value = currentSet.value?.target_reps ?? 0
   actualWeight.value = currentSet.value?.target_weight_kg ?? ''
+  actualSeconds.value = currentSet.value?.target_seconds ?? 0
 }
+
+// Timed holds: the athlete starts the clock (never rest), it logs the target at zero,
+// and stopping early logs the time held.
+const currentTimed = computed(() => isTimed(currentSet.value))
+const holdStartedAt = ref(null)
+const holdTarget = ref(0)
+const holdRunning = computed(() => holdStartedAt.value != null)
+const holdElapsed = computed(() => holdRunning.value ? Math.min(holdTarget.value, Math.max(0, Math.floor((now.value - holdStartedAt.value) / 1000))) : 0)
+const holdRemaining = computed(() => holdTarget.value - holdElapsed.value)
+let holdTicker
+const startHold = () => {
+  ensureAudioContext()
+  holdTarget.value = Math.max(1, Number(actualSeconds.value) || 0)
+  holdStartedAt.value = Date.now()
+  now.value = Date.now()
+  holdTicker = window.setInterval(() => { now.value = Date.now() }, 200)
+}
+const cancelHold = () => {
+  window.clearInterval(holdTicker)
+  holdStartedAt.value = null
+}
+const logHold = (seconds) => {
+  cancelHold()
+  actualSeconds.value = seconds
+  completeCurrentSet()
+}
+const stopHold = () => logHold(holdElapsed.value)
+watch(holdRemaining, (remaining) => {
+  if (!holdRunning.value || remaining > 0) return
+  playRestCompleteTone()
+  logHold(holdTarget.value)
+})
+const submitLog = () => (holdRunning.value ? stopHold() : completeCurrentSet())
+const logLabel = computed(() => {
+  const weight = actualWeight.value === '' || actualWeight.value == null ? null : Number(actualWeight.value)
+  if (currentTimed.value) return `Log ${formatHold(actualSeconds.value)}${weight ? ` + ${formatWeight(weight)}` : ''} without timer`
+  return weight == null ? `Log ${actualReps.value} reps` : `Log ${actualReps.value} × ${formatWeight(weight)}`
+})
 
 const changePosition = async (exercise, workoutSet = null) => {
   if (session.value.status !== 'active' || mutationBusy.value) return
@@ -1066,6 +1150,13 @@ const setDisplayNumber = (exercise, workoutSet) => {
   const sameKind = exercise.sets.filter((item) => item.set_type === workoutSet.set_type)
   return Math.max(1, sameKind.findIndex((item) => item.id === workoutSet.id) + 1)
 }
+// "8 × 40 kg", "12 × BW", or for a hold "40 s" (+ added weight).
+const setLine = (workoutSet, done = false) => {
+  const weight = done ? workoutSet.actual_weight_kg : workoutSet.target_weight_kg
+  if (isTimed(workoutSet)) return `${formatHold(done ? workoutSet.actual_seconds ?? workoutSet.target_seconds : workoutSet.target_seconds)}${weight != null ? ` · ${formatWeight(weight)}` : ''}`
+  return `${done ? workoutSet.actual_reps : workoutSet.target_reps} × ${formatWeight(weight, 'BW')}`
+}
+const lastSetLine = (match) => match.seconds ? `${formatHold(match.seconds)}${match.weight_kg != null ? ` · ${formatWeight(match.weight_kg)}` : ''}` : `${match.reps ?? '—'} × ${formatWeight(match.weight_kg, 'BW')}`
 const setKindLabel = (exercise, workoutSet) => `${workoutSet.set_type === 'warmup' ? 'Warm-up' : 'Set'} ${setDisplayNumber(exercise, workoutSet)}`
 const adjustWeight = (amount) => { actualWeight.value = Math.max(0, Math.round((Number(actualWeight.value || 0) + amount) * 2) / 2) }
 const formatClock = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
@@ -1105,6 +1196,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   window.clearInterval(ticker)
+  window.clearInterval(holdTicker)
   clearTimeout(justLoggedTimer)
   restStripObserver?.disconnect()
   window.clearTimeout(liveSuggestionTimer)
@@ -1268,6 +1360,27 @@ onBeforeUnmount(() => {
 .weight-shortcuts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .weight-shortcuts button { min-height: 32px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--muted-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
 .weight-shortcuts button:hover { border-color: var(--border-strong); color: var(--text); }
+.actual-inputs.single, .actual-inputs.hold-inputs { grid-template-columns: minmax(0, 1fr) auto; }
+.actual-inputs.hold-inputs:has(.add-weight) { display: flex; justify-content: flex-end; }
+.add-weight, .weight-remove { align-self: end; min-height: 40px; padding: 0 14px; border: 1px dashed var(--border-strong); border-radius: 999px; background: transparent; color: var(--muted-soft); font-size: 12px; font-weight: 700; }
+.add-weight:hover, .weight-remove:hover { border-color: var(--tone-strength); color: var(--text); }
+.actual-inputs.single .add-weight { margin-bottom: 18px; }
+.weight-remove { min-height: 28px; padding: 0 10px; border-style: solid; }
+.hold-panel { display: grid; gap: 14px; padding: 18px 20px; border: 1px solid var(--border-strong); border-radius: 20px; background: rgb(var(--deep-rgb)); }
+.hold-panel.running { border-color: color-mix(in srgb, var(--tone-strength) 55%, var(--border)); }
+.hold-readout { display: grid; justify-items: center; gap: 2px; }
+.hold-readout > span { color: var(--muted-soft); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.hold-clock { font: 800 64px/1 var(--font-display); font-variant-numeric: tabular-nums; color: var(--text); }
+.running .hold-clock { color: var(--tone-strength); }
+.hold-readout small { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.hold-bar { height: 4px; border-radius: 999px; background: rgb(var(--ov-rgb) / .06); overflow: hidden; }
+.hold-bar i { display: block; height: 100%; background: var(--tone-strength); transition: width .2s linear; }
+.hold-controls { display: grid; grid-template-columns: 96px minmax(0, 1fr) 96px; gap: 8px; }
+.running .hold-controls { grid-template-columns: 96px minmax(0, 1fr); }
+.hold-step { min-height: 52px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface2); color: var(--text-soft); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hold-step:hover { background: var(--surface3); color: var(--text); }
+.hold-start { min-height: 52px; border: 0; border-radius: 999px; background: var(--volt-fill); color: var(--on-volt); font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.hold-start:hover:not(:disabled) { background: var(--volt-fill-strong); }
 .complete-button { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 56px; padding: 0 20px; border: 0; border-radius: 12px; background: var(--runner-accent); color: var(--on-accent); box-shadow: 0 4px 14px rgb(var(--shadow-rgb) / .25); }
 .complete-button > span { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .complete-button small { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; opacity: .75; }
@@ -1464,6 +1577,9 @@ onBeforeUnmount(() => {
 .runner-page .complete-button { min-height: 56px; border-radius: 999px; background: var(--volt-fill); color: var(--on-volt); box-shadow: none; }
 .runner-page .complete-button:hover:not(:disabled) { background: var(--volt-fill-strong); }
 .runner-page .complete-button kbd { border-color: currentColor; }
+.runner-page .complete-button.log-untimed { min-height: 48px; border: 1px solid var(--border-strong); background: transparent; color: var(--text-soft); }
+.runner-page .complete-button.log-untimed:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+.runner-page .complete-button.log-untimed > span { font-size: 14px; }
 .runner-page .current-exercise-sets { gap: 14px; }
 .runner-page .set-management { max-width: 100%; font-size: 12px; color: var(--muted-soft); }
 .runner-page .set-management summary { cursor: pointer; list-style: none; display: grid; place-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; }

@@ -110,6 +110,7 @@ import StrengthMuscleMap from './StrengthMuscleMap.vue'
 import { classifyExercise, MUSCLES } from '../../activity-detail/muscles.mjs'
 import { formatNumber } from '../../activity-detail/presentation'
 import SickSessionSummary from './SickSessionSummary.vue'
+import { formatHold, heldSeconds, holdSummary } from '../../strength-holds.mjs'
 const props = defineProps({ detail: { type: Object, required: true } })
 const strength = computed(() => props.detail.strength_detail || {})
 const session = computed(() => strength.value.session || {})
@@ -224,9 +225,13 @@ const badge = item => {
   if (item.direction === 'down') return { tone: 'is-down', label: `▼ ${signed(item.delta ?? 0)} ${metricUnit[item.metric]}` }
   return { tone: 'is-same', label: '= Matched' }
 }
-const chip = set => set.weight_kg ? `${number(set.weight_kg)} × ${set.reps ?? '—'}` : `${set.reps ?? '—'} reps`
+const chip = set => heldSeconds(set)
+  ? `${formatHold(heldSeconds(set))}${set.weight_kg ? ` · ${number(set.weight_kg)} kg` : ''}`
+  : set.weight_kg ? `${number(set.weight_kg)} × ${set.reps ?? '—'}` : `${set.reps ?? '—'} reps`
 const compactSets = (sets = []) => {
   if (!sets.length) return '—'
+  const holds = holdSummary(sets)
+  if (holds) return holds
   const loads = [...new Set(sets.map(set => set.weight_kg || 0))]
   const reps = sets.map(set => set.reps)
   const sameReps = reps.every(rep => rep === reps[0])
@@ -237,7 +242,7 @@ const compactSets = (sets = []) => {
   return sets.map(set => chip(set)).join(', ')
 }
 const shortDate = value => value ? new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''
-const repTotal = exercise => exerciseWorkingSets(exercise).reduce((sum, set) => sum + Number(set.reps || 0), 0)
+const repTotal = exercise => exerciseWorkingSets(exercise).reduce((sum, set) => sum + (heldSeconds(set) ? 0 : Number(set.reps || 0)), 0)
 const topLoad = exercise => {
   const loads = exerciseWorkingSets(exercise).map(set => Number(set.weight_kg)).filter(load => load > 0)
   return loads.length ? Math.max(...loads) : null

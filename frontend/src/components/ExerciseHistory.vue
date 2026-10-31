@@ -15,7 +15,8 @@
       <ol class="history-sets" aria-label="Last recorded sets">
         <li v-for="(set, index) in history.last_sets" :key="index" :class="{ warmup: set.is_warmup }">
           <small>{{ set.is_warmup ? 'W' : index + 1 }}</small>
-          <strong>{{ set.reps ?? '—' }}<template v-if="set.weight_kg != null"> × {{ set.weight_kg }} kg</template></strong>
+          <strong v-if="heldSeconds(set)">{{ formatHold(heldSeconds(set)) }}<template v-if="set.weight_kg != null"> · {{ set.weight_kg }} kg</template></strong>
+          <strong v-else>{{ set.reps ?? '—' }}<template v-if="set.weight_kg != null"> × {{ set.weight_kg }} kg</template></strong>
         </li>
       </ol>
     </template>
@@ -27,6 +28,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { useApi } from '../stores/api'
+import { formatHold, heldSeconds } from '../strength-holds.mjs'
 const props = defineProps({ name: { type: String, default: '' } })
 defineEmits(['apply'])
 const api = useApi()
@@ -36,11 +38,11 @@ const failed = ref(false)
 let timer
 let requestId = 0
 const normalize = name => name.toLowerCase().replace(/[^a-z0-9]/g, '')
-const canApply = computed(() => history.value?.suggested_set_count >= 1 && history.value?.suggested_set_count <= 20 && history.value?.suggested_reps >= 1 && history.value?.suggested_reps <= 100)
+const canApply = computed(() => history.value?.suggested_set_count >= 1 && history.value?.suggested_set_count <= 20 && (history.value?.suggested_seconds >= 5 || (history.value?.suggested_reps >= 1 && history.value?.suggested_reps <= 100)))
 const targetLabel = computed(() => {
   const h = history.value
   if (!h) return ''
-  return `${h.suggested_set_count ?? '—'} × ${h.suggested_reps ?? '—'}${h.suggested_weight_kg == null ? '' : ` · ${h.suggested_weight_kg} kg`}`
+  return `${h.suggested_set_count ?? '—'} × ${h.suggested_seconds ? formatHold(h.suggested_seconds) : h.suggested_reps ?? '—'}${h.suggested_weight_kg == null ? '' : ` · ${h.suggested_weight_kg} kg`}`
 })
 const dateLabel = computed(() => { try { return format(new Date(history.value.last_performed_at), 'MMM d, yyyy') } catch { return 'Date unknown' } })
 const lookup = async () => {

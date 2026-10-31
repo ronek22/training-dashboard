@@ -200,7 +200,16 @@ struct ActivityDetailView: View {
     private func topBar(_ visual: ActivityDetailFormat.Visual?) -> some View {
         HStack(spacing: 12) {
             GlassCircleButton(symbol: "chevron.left", label: "Back") { dismiss() }
-            Spacer(minLength: 0)
+            ZStack(alignment: .leading) {
+                if scrolled, let activity {
+                    Text(activity.title)
+                        .font(AppFont.body(16, weight: .semibold))
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(1)
+                        .transition(.opacity)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             GlassCircleButton(symbol: "bubble.left.and.bubble.right", label: "Ask coach") { sheet = .chat }
             if case .route? = visual {
                 GlassCircleButton(symbol: "map", label: "Full-screen map") { showMap = true }
@@ -217,16 +226,6 @@ struct ActivityDetailView: View {
                         .environment(\.colorScheme, .dark)
                 }
                 .accessibilityLabel("Share")
-            }
-        }
-        .overlay {
-            if scrolled, let activity {
-                Text(activity.title)
-                    .font(AppFont.body(16, weight: .semibold))
-                    .foregroundStyle(Color.ink)
-                    .lineLimit(1)
-                    .padding(.horizontal, 120)
-                    .transition(.opacity)
             }
         }
         .padding(.horizontal, 16)

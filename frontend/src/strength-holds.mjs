@@ -36,3 +36,15 @@ export const liftExerciseInput = (lift) => ({
 
 // Hold target nudged in 5 s steps, never below 5 s.
 export const stepHold = (seconds, direction) => Math.max(5, Math.round((Number(seconds) || 0) / 5) * 5 + direction * 5)
+
+// Recorded sets (activity detail: duration_seconds; exercise history: seconds).
+export const heldSeconds = (set) => Number(set?.duration_seconds ?? set?.seconds) > 0 ? Number(set.duration_seconds ?? set.seconds) : null
+
+// "3 × 40 s" (or "3 × 30–40 s") when every recorded set is a hold, else null.
+export const holdSummary = (sets) => {
+  const seconds = sets.map(heldSeconds).filter((value) => value != null)
+  if (!seconds.length || seconds.length !== sets.length) return null
+  const low = Math.min(...seconds)
+  const high = Math.max(...seconds)
+  return low === high ? `${sets.length} × ${formatHold(low)}` : `${sets.length} × ${formatHold(low).replace(/ s$/, '')}–${formatHold(high)}`
+}

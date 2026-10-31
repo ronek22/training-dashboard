@@ -23,3 +23,13 @@ test('hold targets move in 5 s steps with a 5 s floor', () => {
   assert.equal(stepHold(5, -1), 5)
   assert.equal(stepHold(42, 1), 45)
 })
+
+test('recorded holds summarise as seconds', async () => {
+  const { heldSeconds, holdSummary } = await import('../src/strength-holds.mjs')
+  assert.equal(heldSeconds({ reps: 1, duration_seconds: 40 }), 40)
+  assert.equal(heldSeconds({ reps: 1, seconds: 35 }), 35)
+  assert.equal(heldSeconds({ reps: 8, duration_seconds: null }), null)
+  assert.equal(holdSummary([{ reps: 1, duration_seconds: 40 }, { reps: 1, duration_seconds: 40 }]), '2 × 40 s')
+  assert.equal(holdSummary([{ reps: 1, duration_seconds: 30 }, { reps: 1, duration_seconds: 40 }]), '2 × 30–40 s')
+  assert.equal(holdSummary([{ reps: 8 }, { reps: 1, duration_seconds: 40 }]), null)
+})

@@ -159,22 +159,48 @@ struct APIClient: Sendable {
 }
 
 /// Writes made while the server was unreachable, replayed in order once it's back. Kept in
-/// Application Support so a logged set survives the app being killed.
+/// Application Support so a logged set survives the app being killed. What each replay did is kept
+/// in a short log next to it, so Settings can show that nothing was lost.
 struct WriteQueue: Sendable {
     struct Write: Codable, Sendable, Equatable {
         let method: String
         let path: String
         let body: Data?
+        /// Stamped by `append`; nil for writes queued before the stamp existed.
+        var queuedAt: Date?
     }
+
+    /// One replayed write: sent, or rejected by the server and dropped.
+    struct Outcome: Codable, Sendable, Equatable {
+        let method: String
+        let path: String
+        let at: Date
+        /// The 4xx the server answered; nil when the write went through.
+        let rejected: Int?
+    }
+
+    static let changed = Notification.Name("WriteQueue.changed")
+    static let logLimit = 30
 
     var file: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         .appending(path: "write-queue.json")
+
+    var logFile: URL {
+        file.deletingPathExtension().appendingPathExtension("log.json")
+    }
 
     var pending: [Write] {
         (try? Data(contentsOf: file)).flatMap { try? JSONDecoder().decode([Write].self, from: $0) } ?? []
     }
 
+    /// Newest first.
+    var log: [Outcome] {
+        (try? Data(contentsOf: logFile)).flatMap { try? JSONDecoder().decode([Outcome].self, from: $0) } ?? []
+    }
+
     func append(_ write: Write) {
+        var write = write
+        if write.queuedAt == nil { write.queuedAt = .now }
         save(pending + [write])
     }
 
@@ -186,15 +212,20 @@ struct WriteQueue: Sendable {
         var remaining = pending
         // Don't hold a screen's load behind a write that can't go out yet.
         if !remaining.isEmpty, client.reachability.knownOffline { return false }
+        var outcomes: [Outcome] = []
+        defer { record(outcomes) }
         while let write = remaining.first {
+            var rejected: Int?
             do {
                 try await client.send(write.method, write.path, body: write.body)
             } catch APIError.status(let code) where (400..<500).contains(code) {
                 // Rejected for good; fall through and drop it.
+                rejected = code
             } catch {
                 save(remaining)
                 return false
             }
+            outcomes.append(Outcome(method: write.method, path: write.path, at: .now, rejected: rejected))
             remaining.removeFirst()
         }
         save(remaining)
@@ -208,6 +239,16 @@ struct WriteQueue: Sendable {
         } else if let data = try? JSONEncoder().encode(writes) {
             try? data.write(to: file, options: .atomic)
         }
+        NotificationCenter.default.post(name: Self.changed, object: file)
+    }
+
+    private func record(_ outcomes: [Outcome]) {
+        guard !outcomes.isEmpty else { return }
+        let log = Array((outcomes.reversed() + log).prefix(Self.logLimit))
+        if let data = try? JSONEncoder().encode(log) {
+            try? data.write(to: logFile, options: .atomic)
+        }
+        NotificationCenter.default.post(name: Self.changed, object: file)
     }
 }
 

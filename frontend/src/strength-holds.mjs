@@ -48,3 +48,14 @@ export const holdSummary = (sets) => {
   const high = Math.max(...seconds)
   return low === high ? `${sets.length} × ${formatHold(low)}` : `${sets.length} × ${formatHold(low).replace(/ s$/, '')}–${formatHold(high)}`
 }
+
+// Minutes a lift takes when the plan gives no duration, the way saved workouts estimate it:
+// 45 s per rep set (hold time + 15 s for a hold) and the rest between sets.
+export const estimateMinutes = (exercises) => {
+  const seconds = (exercises || []).reduce((sum, exercise) => {
+    const sets = Number(exercise.set_count) || 0
+    const work = isTimed(exercise) ? Number(exercise.target_seconds) + 15 : 45
+    return sum + sets * work + Math.max(0, sets - 1) * (Number(exercise.rest_seconds) || 0)
+  }, 0)
+  return seconds ? Math.round(seconds / 60) : null
+}

@@ -74,7 +74,7 @@ import { useApi } from '../stores/api'
 import SummaryTiles from './SummaryTiles.vue'
 import CyclingWorkoutProfile from './CyclingWorkoutProfile.vue'
 import { ZONE_COLORS } from './activityVisuals'
-import { prescription } from '../strength-holds.mjs'
+import { estimateMinutes, prescription } from '../strength-holds.mjs'
 
 const props = defineProps({
   plan: { type: Object, required: true },
@@ -176,10 +176,16 @@ const lifts = computed(() => props.exercises.filter((exercise) => exercise.exerc
   rest: !exercise.rest_seconds ? '' : exercise.rest_seconds >= 60 ? `${Number((exercise.rest_seconds / 60).toFixed(1))} min rest` : `${exercise.rest_seconds} s rest`,
 })))
 
-const durationTile = computed(() => ({
-  key: 'duration', label: 'Target time', value: props.plan.target_duration_min || '—', unit: props.plan.target_duration_min ? 'min' : '',
-  caption: props.plan.template_label || 'Planned duration',
-}))
+const durationTile = computed(() => {
+  if (props.plan.target_duration_min) {
+    return { key: 'duration', label: 'Target time', value: props.plan.target_duration_min, unit: 'min', caption: props.plan.template_label || 'Planned duration' }
+  }
+  // No planned duration (a coach-written bodyweight day, say): estimate it from the lifts.
+  const estimate = isStrength.value ? estimateMinutes(props.exercises) : null
+  return estimate
+    ? { key: 'duration', label: 'Target time', value: `~${estimate}`, unit: 'min', caption: 'Estimate · sets + rests' }
+    : { key: 'duration', label: 'Target time', value: '—', unit: '', caption: props.plan.template_label || 'Planned duration' }
+})
 
 const distanceTile = computed(() => (props.plan.target_distance_km
   ? { key: 'distance', label: 'Target distance', value: props.plan.target_distance_km, unit: 'km', caption: 'Planned route length' }

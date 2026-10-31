@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { formatHold, isTimed, prescription, setAmount, stepHold } from '../src/strength-holds.mjs'
+import { estimateMinutes, formatHold, isTimed, prescription, setAmount, stepHold } from '../src/strength-holds.mjs'
 
 test('holds read as seconds, never as one rep', () => {
   assert.equal(isTimed({ target_reps: 1, target_seconds: 40 }), true)
@@ -32,4 +32,14 @@ test('recorded holds summarise as seconds', async () => {
   assert.equal(holdSummary([{ reps: 1, duration_seconds: 40 }, { reps: 1, duration_seconds: 40 }]), '2 × 40 s')
   assert.equal(holdSummary([{ reps: 1, duration_seconds: 30 }, { reps: 1, duration_seconds: 40 }]), '2 × 30–40 s')
   assert.equal(holdSummary([{ reps: 8 }, { reps: 1, duration_seconds: 40 }]), null)
+})
+
+test('a lift with no planned duration is estimated from sets and rests', () => {
+  const exercises = [
+    { set_count: 4, target_reps: 12, rest_seconds: 60 },
+    { set_count: 3, target_reps: 1, target_seconds: 40, rest_seconds: 60 },
+  ]
+  // 4 × 45 + 3 × 60 = 360 s, then 3 × 55 + 2 × 60 = 285 s.
+  assert.equal(estimateMinutes(exercises), 11)
+  assert.equal(estimateMinutes([]), null)
 })

@@ -118,6 +118,10 @@ class SessionBriefTests(unittest.TestCase):
         self.assertEqual((upper["kind"], upper["guided_session_key"]), ("travel_kit", "travel_upper"))
         self.assertEqual(core["guided_session_key"], "travel_core")
 
+    def test_coach_written_bodyweight_lift_is_a_travel_kit(self):
+        brief = build_session_brief(self.conn, {"session_type": "strength", "title": "Bodyweight upper + core (parents' home)"}, TODAY)
+        self.assertEqual((brief["kind"], brief["guided_session_key"]), ("travel_kit", "travel_upper"))
+
     def test_return_from_illness_caps_effort_and_reps_in_reserve(self):
         self.conn.execute("INSERT INTO sick_periods (start_date, end_date) VALUES (?, ?)", ((TODAY - timedelta(days=6)).isoformat(), (TODAY - timedelta(days=1)).isoformat()))
         brief = build_session_brief(self.conn, {"session_type": "strength", "workout_intent": "strength_upper"}, TODAY)

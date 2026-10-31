@@ -16,6 +16,7 @@ from datetime import date, timedelta
 from typing import Any, Optional
 
 from .muscle_gain import MUSCLE_GROUPS, TARGET_SETS_MAX, TARGET_SETS_MIN, muscle_groups_for
+from .guided_sessions import is_no_equipment_lift
 from .illness_return import illness_return_dates
 from .life_load import mountain_dates
 from .mountain_reentry import mountain_reentry_dates
@@ -39,7 +40,7 @@ ACCESSORIES: dict[str, list[str]] = {
     "shoulders": ["Dumbbell Lateral Raise", "Dumbbell Rear Delt Raise"],
     "arms": ["Dumbbell Bicep Curl", "Dumbbell Skullcrusher"],
 }
-_LIGHT_DAY = re.compile(r"\b(?:light|easy|low energy|recovery|deload|mobility|travel kit)\b", re.IGNORECASE)
+_LIGHT_DAY = re.compile(r"\b(?:light|easy|low energy|recovery|deload|mobility)\b", re.IGNORECASE)
 # Two or more hiking days in the week cover legs: no leg sets are added on top.
 HIKING_DAYS_FOR_LEGS = 2
 # A protected knee, hip or heel rests legs: no leg sets are added, whatever the lift.
@@ -205,7 +206,12 @@ def build_lift_volume(
             for exercise in exercises:
                 for group in muscle_groups_for(exercise["exercise_name"]):
                     planned[group] += exercise["set_count"]
-            light = bool(_LIGHT_DAY.search(str(day.get("title") or ""))) or day["date"] in sick or day["date"] in mountains
+            light = (
+                bool(_LIGHT_DAY.search(str(day.get("title") or "")))
+                or is_no_equipment_lift(day)
+                or day["date"] in sick
+                or day["date"] in mountains
+            )
             if light:
                 state = "light"
             elif not minimum_week_active:

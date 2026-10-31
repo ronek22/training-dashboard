@@ -194,6 +194,13 @@ class LiftVolumeTests(unittest.TestCase):
         self.assertEqual(self._additions(volume, "2026-10-08"), [])
         self.assertEqual(self._additions(volume, "2026-10-09"), [])
 
+    def test_bodyweight_lift_gets_no_loaded_accessories(self):
+        days = [_day("2026-10-08", "Workout A", "Bodyweight upper + core (parents' home)"), _day("2026-10-10", "Workout C")]
+        volume = self._build(days)
+
+        self.assertEqual(self._additions(volume, "2026-10-08"), [])
+        self.assertEqual(volume["days"][0]["state"], "light")
+
     def test_back_from_the_mountains_adds_no_leg_sets_inside_the_window(self):
         self.reentry = {"2026-10-08", "2026-10-09"}
         days = [_day("2026-10-08", "Workout A"), _day("2026-10-09", "Workout B"), _day("2026-10-10", "Workout C")]

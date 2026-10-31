@@ -364,11 +364,9 @@ def _trains_legs(day: dict, conn: sqlite3.Connection) -> bool:
     return any("legs" in muscle_groups_for(item["exercise_name"]) for item in _day_exercises(day, _templates_by_name(conn)))
 
 
-_TRAVEL_KIT_RE = re.compile(r"travel kit", re.IGNORECASE)
-
-
 def _travel_kit_brief(day: dict) -> dict[str, Any]:
-    core = re.search(r"\bcore\b", day.get("title") or "", re.IGNORECASE)
+    title = day.get("title") or ""
+    core = re.search(r"\bcore\b", title, re.IGNORECASE) and not re.search(r"\bupper\b", title, re.IGNORECASE)
     return {
         "sport": "strength",
         "kind": "travel_kit",
@@ -402,7 +400,9 @@ def _hike_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, A
 
 
 def _strength_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, Any]:
-    if _TRAVEL_KIT_RE.search(day.get("title") or ""):
+    from .guided_sessions import is_no_equipment_lift
+
+    if is_no_equipment_lift(day):
         return _travel_kit_brief(day)
     intent = day.get("workout_intent") or "strength_general"
     return {

@@ -74,3 +74,21 @@ test('short on time keeps the first 3 lifts at 3 sets with rests capped at 90 s'
   assert.equal(draft.exercises.length, 3)
   assert.ok(draft.exercises.every(e => e.set_count === 3 && e.rest_seconds === 90 && e.target_weight_kg === 22))
 })
+test('bodyweight plan days run the coach lift_exercises as a one-time session, holds timed', () => {
+  const template = { name: 'Workout A', exercises: [{ exercise_name: 'Bench Press', set_count: 4, target_reps: 6, target_weight_kg: 60 }] }
+  const day = {
+    title: 'Bodyweight upper + core', details: 'No equipment.', template_label: null,
+    lift_exercises: [
+      { name: 'Push-ups', sets: 4, reps: 12, seconds: null, weight_kg: null, rest_seconds: 60, notes: '2 RIR' },
+      { name: 'Plank', sets: 3, reps: null, seconds: 40, weight_kg: null, rest_seconds: 45, notes: null },
+    ],
+  }
+  const draft = buildStrengthPlanDraft(day, [template])
+  assert.equal(draft.oneTime, true)
+  assert.equal(draft.name, 'Bodyweight upper + core')
+  assert.deepEqual(draft.exercises.map(e => e.exercise_name), ['Push-ups', 'Plank'])
+  assert.deepEqual(draft.exercises[0], { exercise_name: 'Push-ups', set_count: 4, target_reps: 12, target_seconds: null, target_weight_kg: null, rest_seconds: 60, notes: '2 RIR' })
+  assert.equal(draft.exercises[1].target_reps, 1)
+  assert.equal(draft.exercises[1].target_seconds, 40)
+  assert.equal(draft.exercises[1].rest_seconds, 45)
+})

@@ -273,7 +273,7 @@ def exercise_suggestions(
                 "suggested_seconds": _mode(second_values),
                 "basis": "Latest recorded work sets" if any(not row["is_warmup"] for row in latest_session_rows) else "Latest recorded warm-up sets",
                 "last_sets": [
-                    {"set_order": row["set_order"], "reps": row["reps"], "weight_kg": row["weight_kg"], "is_warmup": bool(row["is_warmup"]), "effort": row["effort"]}
+                    {"set_order": row["set_order"], "reps": row["reps"], "seconds": row.get("seconds"), "weight_kg": row["weight_kg"], "is_warmup": bool(row["is_warmup"]), "effort": row["effort"]}
                     for row in latest_session_rows
                 ],
                 "last_source": latest_row["source"],

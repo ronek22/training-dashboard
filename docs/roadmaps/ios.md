@@ -8,18 +8,22 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Now
 
-- **Shopping list** — Built from the dinner plan, with barcode scanning for products.
 
 ## Next
 
+- **Run comeback on the phone** — Before a run, today's easy pace from current VDOT or the next return-to-run step; after it, a VDOT trend card and a felt-easy/hard tap.
+- **Strength after-session summary** — Volume against last time, any new bests and how next session's targets move; tap a lift mid-session for its recent history.
+- **Morning brief and wins** — A push after sleep syncs with today's session and why, and a small celebration when check-in, rehab or protein is done.
 
 ## Later
 
+- **Shopping list** — Built from the dinner plan, with barcode scanning for products. Parked for now.
 - **Apple Watch strength app** — Log sets on the Watch without starting a separate workout.
 - **Backend off the Mac** — Move the server to a small EU VPS on Tailscale so the app works when the Mac is off.
 
 ## Shipped
 
+- 2026-10-31 — **Sync status** — Today shows how many logs are waiting for the Mac (or were refused), and Settings lists them with Send now and a log of what went out after waiting.
 - 2026-10-31 — **Bodyweight lifts** — A bodyweight or travel-kit day starts from Today or Plan as a one-time session that follows the coach's steps; reps-only sets with optional added weight, and planks as timed holds you start yourself.
 - 2026-10-30 — **Food v2** — Food opens on a week strip with target dots, a calorie ring that shows kcal to go and the planned dinner, macro columns and a meal timeline; scanned and logged meals show a macro donut, a ½–2× portion picker and a grams stepper per item.
 - 2026-10-30 — **Widgets v2** — The wide Today widget shows the next session with its focus in sport colour, week hours over a sport bar and kcal to go side by side; small Week and Food widgets match the app's D2 look, with no ring.

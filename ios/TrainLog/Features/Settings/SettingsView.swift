@@ -33,6 +33,7 @@ struct SettingsView: View {
                     .padding(.horizontal, 4)
                     .padding(.vertical, 6)
                 server
+                SyncSection(status: .shared)
                 health
                 reminders
             }
@@ -383,7 +384,7 @@ struct SettingsView: View {
 }
 
 /// Card with the artboard's tighter list padding (4 top/bottom, 16 sides).
-private struct SettingsCard<Content: View>: View {
+struct SettingsCard<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -396,7 +397,7 @@ private struct SettingsCard<Content: View>: View {
     }
 }
 
-private extension View {
+extension View {
     func settingsRow() -> some View {
         padding(.vertical, 12)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)

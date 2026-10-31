@@ -179,6 +179,7 @@ struct TodayView: View {
             }
             Spacer()
             HStack(spacing: 8) {
+                SyncPill(status: .shared) { showSettings = true }
                 if let streak = model.data?.streakDays, streak > 0 {
                     HStack(spacing: 4) {
                         Image(systemName: "flame.fill").font(.system(size: 12))

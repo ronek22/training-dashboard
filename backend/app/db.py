@@ -773,6 +773,7 @@ def init_db(snapshot: bool = True):
             target_weight_kg REAL,
             rest_seconds INTEGER NOT NULL DEFAULT 90,
             notes TEXT,
+            target_seconds INTEGER,
             FOREIGN KEY(template_id) REFERENCES strength_workout_templates(id) ON DELETE CASCADE,
             UNIQUE(template_id, exercise_order)
         );
@@ -893,6 +894,11 @@ def init_db(snapshot: bool = True):
     for column in ("target_seconds", "actual_seconds"):
         if column not in strength_set_columns:
             conn.execute(f"ALTER TABLE strength_session_sets ADD COLUMN {column} INTEGER")
+    template_exercise_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(strength_template_exercises)").fetchall()
+    }
+    if "target_seconds" not in template_exercise_columns:
+        conn.execute("ALTER TABLE strength_template_exercises ADD COLUMN target_seconds INTEGER")
     coach_note_columns = {row["name"] for row in conn.execute("PRAGMA table_info(coach_notes)").fetchall()}
     # Standing preferences are coach notes saved from a chat; they can be retired and link back to it.
     for column, definition in (

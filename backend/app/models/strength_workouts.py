@@ -11,7 +11,7 @@ class StrengthTemplateExerciseInput(BaseModel):
     target_weight_kg: Optional[float] = Field(default=None, ge=0, le=1000)
     rest_seconds: int = Field(default=90, ge=0, le=1800)
     notes: Optional[str] = Field(default=None, max_length=500)
-    # A hold (plank): each set is timed. One-time sessions only; saved workouts don't keep it.
+    # A hold (plank): each set is timed and target_reps is 1.
     target_seconds: Optional[int] = Field(default=None, ge=5, le=1800)
 
     @field_validator("exercise_name")

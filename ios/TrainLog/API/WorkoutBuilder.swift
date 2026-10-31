@@ -14,6 +14,8 @@ struct TemplateDetail: Decodable, Sendable, Equatable {
         var targetWeightKg: Double?
         var restSeconds: Int?
         var notes: String?
+        /// A hold: seconds per set instead of reps.
+        var targetSeconds: Int?
     }
 }
 
@@ -30,7 +32,7 @@ struct TemplateInput: Encodable, Sendable, Equatable {
         let targetWeightKg: Double?
         let restSeconds: Int
         let notes: String?
-        /// A hold: each set is timed (one-time sessions only).
+        /// A hold: each set is timed and `targetReps` is 1.
         var targetSeconds: Int? = nil
     }
 }
@@ -54,6 +56,8 @@ struct ExerciseSuggestion: Decodable, Sendable, Equatable, Identifiable {
     var suggestedSetCount: Int?
     var suggestedReps: Int?
     var suggestedWeightKg: Double?
+    /// Held for this long last time: added as a timed exercise.
+    var suggestedSeconds: Int?
     var lastSets: [LastSet]?
     /// Working weight of each of the last six sessions, oldest first.
     var recentSessions: [RecentSession]?

@@ -74,6 +74,7 @@ def _exercises_for(conn: sqlite3.Connection, day: Optional[dict]) -> tuple[Optio
             "sets": exercise["set_count"],
             "reps": step.get("target_reps") or exercise.get("target_reps"),
             "weight_kg": step.get("target_weight_kg") if step else exercise.get("target_weight_kg"),
+            "seconds": exercise.get("target_seconds"),
         })
     return {"template_id": template["id"], "exercises": exercises, "last_done": last}, template["name"]
 

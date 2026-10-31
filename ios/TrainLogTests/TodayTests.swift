@@ -50,6 +50,20 @@ struct TodayTests {
         #expect(saved.oneTime == nil)
     }
 
+    @Test func savedWorkoutsKeepHolds() throws {
+        let json = """
+        {"id": 7, "name": "Core", "exercises": [
+          {"exercise_name": "Plank", "set_count": 3, "target_reps": 1, "target_seconds": 45, "rest_seconds": 45},
+          {"exercise_name": "Dead Bug", "set_count": 3, "target_reps": 10, "rest_seconds": 45}]}
+        """
+        let draft = WorkoutDraft(try APIClient.decoder.decode(TemplateDetail.self, from: Data(json.utf8)))
+        #expect(draft.exercises.map(\.seconds) == [45, nil])
+        #expect(draft.exercises.map(\.dose) == ["3 × 45 s", "3 × 10"])
+        let saved = draft.input.exercises
+        #expect((saved[0].targetReps, saved[0].targetSeconds) == (1, 45))
+        #expect((saved[1].targetReps, saved[1].targetSeconds) == (10, nil))
+    }
+
     @Test func holdsStartAsTimedSets() throws {
         let json = """
         {"template_id": null, "name": "Bodyweight core",

@@ -14,12 +14,13 @@ struct ExerciseEditorSheet: View {
     @FocusState private var typingFocused: Bool
 
     enum Field: CaseIterable {
-        case sets, reps, weight
+        case sets, reps, time, weight
 
         var label: String {
             switch self {
             case .sets: "Sets"
             case .reps: "Reps"
+            case .time: "Time"
             case .weight: "Kg"
             }
         }
@@ -28,16 +29,27 @@ struct ExerciseEditorSheet: View {
             switch self {
             case .sets: 1...20
             case .reps: 1...100
+            case .time: 5...600
             case .weight: 0...400
             }
         }
 
-        var step: Double { self == .weight ? 0.5 : 1 }
+        var step: Double { self == .weight ? 0.5 : self == .time ? 5 : 1 }
         /// Value between labels under the ruler.
-        var labelEvery: Double { self == .sets ? 1 : 2 }
+        var labelEvery: Double { self == .sets ? 1 : self == .time ? 15 : 2 }
         /// Quick jumps under the ruler.
-        var jumps: [Double] { self == .weight ? [-2.5, -1, 1, 2.5] : self == .reps ? [-2, -1, 1, 2] : [] }
+        var jumps: [Double] {
+            switch self {
+            case .weight: [-2.5, -1, 1, 2.5]
+            case .reps: [-2, -1, 1, 2]
+            case .time: [-15, -5, 5, 15]
+            case .sets: []
+            }
+        }
     }
+
+    /// Sets, then reps or time, then weight.
+    private var fields: [Field] { [.sets, exercise.seconds == nil ? .reps : .time, .weight] }
 
     private static let rests = [60, 90, 120, 180]
 
@@ -46,7 +58,8 @@ struct ExerciseEditorSheet: View {
             VStack(alignment: .leading, spacing: 0) {
                 nav
                 header.padding(.top, 4)
-                strip.padding(.top, 18)
+                doseSwitch.padding(.top, 16)
+                strip.padding(.top, 10)
                 ValueRuler(value: binding(field), range: field.range, step: field.step,
                            labelEvery: field.labelEvery, format: format(field))
                     .padding(.top, 12)
@@ -67,8 +80,8 @@ struct ExerciseEditorSheet: View {
         .scrollIndicators(.hidden)
         .background(Color.card)
         .sensoryFeedback(.selection, trigger: field)
-        // Bodyweight lifts are tuned by reps.
-        .onAppear { if exercise.weightKg == nil { field = .reps } }
+        // Bodyweight lifts are tuned by reps, holds by time.
+        .onAppear { if exercise.weightKg == nil { field = exercise.seconds == nil ? .reps : .time } }
     }
 
     private var nav: some View {
@@ -113,13 +126,45 @@ struct ExerciseEditorSheet: View {
         }
     }
 
+    /// Reps or a timed hold (plank): the middle field follows.
+    private var doseSwitch: some View {
+        HStack(spacing: 4) {
+            ForEach([false, true], id: \.self) { timed in
+                let selected = (exercise.seconds != nil) == timed
+                Button {
+                    commitTyping()
+                    withAnimation(.snappy(duration: 0.2)) {
+                        exercise.seconds = timed ? exercise.seconds ?? DraftExercise.defaultHold : nil
+                        if field == .reps || field == .time { field = timed ? .time : .reps }
+                    }
+                } label: {
+                    Label(timed ? "Time" : "Reps", systemImage: timed ? "timer" : "number")
+                        .font(AppFont.body(13, weight: .semibold))
+                        .foregroundStyle(selected ? Color.ink : .muted)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .background(selected ? Color.card : .clear, in: Capsule())
+                        .overlay(Capsule().strokeBorder(selected ? Color.cardBorder : .clear))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .background(Color.inset, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color.cardBorder))
+        .frame(minHeight: 44)
+        .sensoryFeedback(.selection, trigger: exercise.seconds == nil)
+    }
+
     private var strip: some View {
         HStack(spacing: 0) {
-            ForEach(Field.allCases, id: \.self) { item in
+            ForEach(fields, id: \.self) { item in
                 let selected = item == field
                 Button {
                     if selected {
-                        typed = item == .weight && exercise.weightKg == nil ? "" : format(item)(value(item))
+                        typed = item == .weight && exercise.weightKg == nil ? ""
+                            : item == .time ? String(Int(value(item))) : format(item)(value(item))
                         typing = true
                         typingFocused = true
                     } else {
@@ -191,7 +236,7 @@ struct ExerciseEditorSheet: View {
                         binding(field).wrappedValue = min(max(next, field.range.lowerBound), field.range.upperBound)
                     }
                 } label: {
-                    Text((jump > 0 ? "+" : "−") + BuilderFormat.weight(abs(jump)))
+                    Text((jump > 0 ? "+" : "−") + (field == .time ? "\(Int(abs(jump))) s" : BuilderFormat.weight(abs(jump))))
                         .font(AppFont.body(12, weight: .semibold))
                         .foregroundStyle(Color.inkSoft)
                         .padding(.horizontal, 12)
@@ -246,6 +291,7 @@ struct ExerciseEditorSheet: View {
                         withAnimation(.snappy) {
                             exercise.sets = min(max(history.suggestedSetCount ?? exercise.sets, 1), 20)
                             exercise.reps = history.suggestedReps ?? exercise.reps
+                            exercise.seconds = history.suggestedSeconds ?? exercise.seconds
                             exercise.weightKg = history.suggestedWeightKg.flatMap { $0 > 0 ? $0 : nil }
                         }
                     }
@@ -308,7 +354,8 @@ struct ExerciseEditorSheet: View {
 
     private var footer: some View {
         HStack(alignment: .center) {
-            Text("Starting target. Your effort taps move it after each session.")
+            Text(exercise.seconds == nil ? "Starting target. Your effort taps move it after each session."
+                                         : "Hold time stays as set; change it here when it gets easy.")
                 .font(AppFont.body(12))
                 .foregroundStyle(Color.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -333,6 +380,7 @@ struct ExerciseEditorSheet: View {
         switch field {
         case .sets: Double(exercise.sets)
         case .reps: Double(exercise.reps)
+        case .time: Double(exercise.seconds ?? DraftExercise.defaultHold)
         case .weight: exercise.weightKg ?? 0
         }
     }
@@ -344,13 +392,18 @@ struct ExerciseEditorSheet: View {
             switch field {
             case .sets: exercise.sets = Int(new)
             case .reps: exercise.reps = Int(new)
+            case .time: exercise.seconds = Int(new)
             case .weight: exercise.weightKg = new > 0 ? new : nil
             }
         }
     }
 
     private func format(_ field: Field) -> (Double) -> String {
-        field == .weight ? { BuilderFormat.weight($0) } : { String(Int($0)) }
+        switch field {
+        case .weight: { BuilderFormat.weight($0) }
+        case .time: { StrengthFormat.hold(Int($0)) }
+        default: { String(Int($0)) }
+        }
     }
 
     private func commitTyping() {

@@ -60,6 +60,7 @@ struct StrengthTemplate: Decodable, Sendable, Equatable {
         var targetReps: Int?
         var targetWeightKg: Double?
         var notes: String?
+        var targetSeconds: Int?
         let next: Next?
     }
 

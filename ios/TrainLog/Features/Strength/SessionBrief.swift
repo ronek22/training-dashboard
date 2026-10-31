@@ -47,9 +47,10 @@ enum BriefLogic {
             let reps = exercise.next?.targetReps ?? exercise.targetReps ?? 0
             let sets = exercise.setCount ?? 0
             let load = weight.map { "\(TodayFormat.number($0)) kg" } ?? "BW"
+            let target = exercise.targetSeconds.map { "\(sets) × \(StrengthFormat.hold($0))" + (weight.map { " · \(TodayFormat.number($0)) kg" } ?? "") }
             return Lift(
                 name: exercise.exerciseName,
-                target: "\(sets) × \(reps) · \(load)",
+                target: target ?? "\(sets) × \(reps) · \(load)",
                 change: change(exercise.next),
                 hint: exercise.next?.hint,
                 notes: exercise.notes,

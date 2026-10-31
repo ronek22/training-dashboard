@@ -66,9 +66,19 @@ def _next_steps(conn: sqlite3.Connection, exercises: list, history: Optional[dic
         plan_next_step(found, exercise["exercise_name"], exercise["target_reps"], max_dumbbell_kg, dumbbell_step_kg)
         for found, exercise in zip(lifts, exercises)
     ]
+    # Holds keep their saved time: rep progression doesn't apply to a plank.
+    steps = [None if _get(exercise, "target_seconds") else step for step, exercise in zip(steps, exercises)]
     guarded = guard_steps(conn, names, lifts, steps)
     # What last time looked like, so the phone's pre-workout brief can say what changed.
     return [step and found and {**step, "last": _last_top_set(found)} for step, found in zip(guarded, lifts)]
+
+
+def _get(row, key: str):
+    """A column that older rows or plain dicts may not have."""
+    try:
+        return row[key]
+    except (KeyError, IndexError):
+        return None
 
 
 def _last_top_set(lift: dict) -> dict:
@@ -82,7 +92,7 @@ def _serialize_template(conn: sqlite3.Connection, row: sqlite3.Row, history: Opt
     exercises = conn.execute(
         """
         SELECT id, exercise_order, exercise_name, set_count, target_reps,
-               target_weight_kg, rest_seconds, notes
+               target_weight_kg, rest_seconds, notes, target_seconds
         FROM strength_template_exercises
         WHERE template_id = ?
         ORDER BY exercise_order
@@ -99,7 +109,7 @@ def _serialize_template(conn: sqlite3.Connection, row: sqlite3.Row, history: Opt
         "set_count": sum(int(exercise["set_count"]) for exercise in exercises),
         "estimated_duration_minutes": round(
             sum(
-                int(exercise["set_count"]) * 45
+                int(exercise["set_count"]) * (int(exercise["target_seconds"] or 0) + 15 if exercise["target_seconds"] else 45)
                 + max(0, int(exercise["set_count"]) - 1) * int(exercise["rest_seconds"])
                 for exercise in exercises
             )
@@ -150,6 +160,7 @@ def _suggestion_history_rows(conn: sqlite3.Connection, exclude_session_id: Optio
             workout_set.set_order,
             workout_set.actual_reps AS reps,
             workout_set.actual_weight_kg AS weight_kg,
+            workout_set.actual_seconds AS seconds,
             CASE WHEN workout_set.set_type = 'warmup' THEN 1 ELSE 0 END AS is_warmup,
             workout_set.effort
         FROM strength_session_sets workout_set
@@ -172,6 +183,7 @@ def _suggestion_history_rows(conn: sqlite3.Connection, exclude_session_id: Optio
             workout_set.set_order,
             workout_set.reps,
             workout_set.weight_kg,
+            NULL AS seconds,
             workout_set.is_warmup,
             NULL AS effort
         FROM fitbod_workout_sets workout_set
@@ -229,6 +241,7 @@ def exercise_suggestions(
             deduplicated_rows.append(row)
         latest_session_rows = deduplicated_rows
         rep_values = [int(row["reps"]) for row in latest_session_rows if row["reps"] is not None]
+        second_values = [int(row["seconds"]) for row in latest_session_rows if row.get("seconds")]
         weight_values = [
             float(row["weight_kg"])
             for row in latest_session_rows
@@ -256,6 +269,8 @@ def exercise_suggestions(
                 "suggested_set_count": len(latest_session_rows),
                 "suggested_reps": _mode(rep_values),
                 "suggested_weight_kg": round(float(median(weight_values)), 2) if weight_values else None,
+                # A hold last time: the builder adds it as a timed exercise.
+                "suggested_seconds": _mode(second_values),
                 "basis": "Latest recorded work sets" if any(not row["is_warmup"] for row in latest_session_rows) else "Latest recorded warm-up sets",
                 "last_sets": [
                     {"set_order": row["set_order"], "reps": row["reps"], "weight_kg": row["weight_kg"], "is_warmup": bool(row["is_warmup"]), "effort": row["effort"]}
@@ -304,8 +319,8 @@ def save_template(
                 """
                 INSERT INTO strength_template_exercises
                 (template_id, exercise_order, exercise_name, set_count, target_reps,
-                 target_weight_kg, rest_seconds, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 target_weight_kg, rest_seconds, notes, target_seconds)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     template_id,
@@ -316,6 +331,7 @@ def save_template(
                     exercise.target_weight_kg,
                     exercise.rest_seconds,
                     exercise.notes,
+                    exercise.target_seconds,
                 ),
             )
     return get_template(conn, template_id)

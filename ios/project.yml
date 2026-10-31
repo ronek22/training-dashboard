@@ -4,6 +4,7 @@ options:
   bundleIdPrefix: com.ronek22
   deploymentTarget:
     iOS: "18.0"
+    watchOS: "11.0"
   createIntermediateGroups: true
 settings:
   base:
@@ -21,6 +22,8 @@ targets:
       - path: Shared
     dependencies:
       - target: TrainLogWidgets
+      # Embedded so the Watch installs it with the phone app and WatchConnectivity pairs them.
+      - target: TrainLogWatch
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ronek22.trainlog
@@ -104,11 +107,54 @@ targets:
           - BarlowCondensed-Bold.ttf
           - BarlowCondensed-ExtraBoldItalic.ttf
           - Archivo.ttf
+  # Apple Watch app: runs strength, bodyweight and rehab sessions with a HealthKit workout.
+  # Talks to the server only through the iPhone (TrainLog/Watch/WatchRelay.swift); embedded in the
+  # iPhone app, which installs it on the paired Watch.
+  TrainLogWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: TrainLogWatch
+      - path: Shared/WatchWire.swift
+      - path: TrainLog/API/StrengthSession.swift
+      - path: TrainLog/API/Rehab.swift
+      - path: TrainLog/Features/Strength/StrengthLogic.swift
+      - path: TrainLog/Features/Rehab/RehabSteps.swift
+      - path: TrainLog/Resources/Fonts
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ronek22.trainlog.watchkitapp
+        PRODUCT_MODULE_NAME: TrainLogWatch
+        TARGETED_DEVICE_FAMILY: "4"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: TrainLog
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.ronek22.trainlog
+        INFOPLIST_KEY_NSHealthShareUsageDescription: TrainLog reads your heart rate and energy during a workout to show them live and save them with the session.
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: TrainLog saves strength, bodyweight and rehab sessions to Apple Health as workouts, so Strava and Fitness see them.
+    entitlements:
+      path: TrainLogWatch/TrainLogWatch.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    info:
+      path: TrainLogWatch/Info.plist
+      properties:
+        # Keeps the app frontmost and running (timers, haptics) while a workout is active.
+        WKBackgroundModes: [workout-processing]
+        UIAppFonts:
+          - BarlowCondensed-SemiBold.ttf
+          - BarlowCondensed-Bold.ttf
+          - BarlowCondensed-ExtraBoldItalic.ttf
+          - Archivo.ttf
   TrainLogTests:
     type: bundle.unit-test
     platform: iOS
     sources:
       - path: TrainLogTests
+      # The Watch app's pure logic, tested here on the iPhone simulator.
+      - path: TrainLogWatch/Logic
     dependencies:
       - target: TrainLog
     settings:
@@ -126,3 +172,9 @@ schemes:
     test:
       targets:
         - TrainLogTests
+  TrainLogWatch:
+    build:
+      targets:
+        TrainLogWatch: all
+    run:
+      config: Debug

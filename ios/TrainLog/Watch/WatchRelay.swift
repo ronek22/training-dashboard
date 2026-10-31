@@ -1,0 +1,76 @@
+import Foundation
+import WatchConnectivity
+
+/// The iPhone side of the Watch app: makes the Watch's server calls with the phone's own
+/// `APIClient` (address, failover, cache) and puts its writes on the phone's `WriteQueue`, so a set
+/// logged on the wrist is replayed exactly like one logged here. Woken in the background when the
+/// Watch sends a message.
+final class WatchRelay: NSObject, WCSessionDelegate, Sendable {
+    static let shared = WatchRelay()
+
+    func activate() {
+        guard WCSession.isSupported() else { return }
+        WCSession.default.delegate = self
+        WCSession.default.activate()
+    }
+
+    func session(_ session: WCSession, didReceiveMessageData messageData: Data, replyHandler: @escaping (Data) -> Void) {
+        let reply = ReplyBox(replyHandler)
+        Task {
+            let answer = await Self.handle(messageData)
+            reply.send(answer)
+        }
+    }
+
+    /// Decodes one envelope and answers it; never throws, the Watch reads the reply's status.
+    static func handle(_ message: Data, client: APIClient = .current, queue: WriteQueue = WriteQueue()) async -> Data {
+        let reply: WatchWire.Reply
+        if let envelope = try? JSONDecoder().decode(WatchWire.Envelope.self, from: message) {
+            switch envelope.kind {
+            case .request: reply = await request(envelope, client: client)
+            case .write: reply = await write(envelope, client: client, queue: queue)
+            }
+        } else {
+            reply = WatchWire.Reply(status: 400)
+        }
+        return (try? JSONEncoder().encode(reply)) ?? Data()
+    }
+
+    private static func request(_ envelope: WatchWire.Envelope, client: APIClient) async -> WatchWire.Reply {
+        do {
+            let data = try await client.send(envelope.method, envelope.path, body: envelope.body)
+            if envelope.method == "GET" { client.cache.store(data, for: envelope.path) }
+            return WatchWire.Reply(status: 200, data: data)
+        } catch APIError.status(let code) {
+            return WatchWire.Reply(status: code)
+        } catch {
+            // Away from the server: a GET gets the phone's last good copy (Today's own cache too).
+            if envelope.method == "GET", let cached = client.cache.load(envelope.path) {
+                return WatchWire.Reply(status: 200, data: cached.data, fromCache: true)
+            }
+            return WatchWire.Reply(status: nil)
+        }
+    }
+
+    /// Accepted once it's on the queue (it survives the app being killed); sent on from there.
+    private static func write(_ envelope: WatchWire.Envelope, client: APIClient, queue: WriteQueue) async -> WatchWire.Reply {
+        queue.append(.init(method: envelope.method, path: envelope.path, body: envelope.body))
+        await queue.flush(with: client)
+        return WatchWire.Reply(status: 202)
+    }
+
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
+    func sessionDidBecomeInactive(_ session: WCSession) {}
+
+    /// After switching to another Watch.
+    func sessionDidDeactivate(_ session: WCSession) {
+        WCSession.default.activate()
+    }
+}
+
+/// WatchConnectivity's reply handler isn't marked Sendable; it's safe to call from any thread.
+private struct ReplyBox: @unchecked Sendable {
+    let handler: (Data) -> Void
+    init(_ handler: @escaping (Data) -> Void) { self.handler = handler }
+    func send(_ data: Data) { handler(data) }
+}

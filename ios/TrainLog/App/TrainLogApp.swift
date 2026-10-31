@@ -8,6 +8,9 @@ struct TrainLogApp: App {
         HealthSync.shared.startObserving()
         WorkoutSync.shared.startObserving()
         ServerRoute.shared.watchNetwork()
+        // The Watch app's server calls and its mirrored workout (heart rate on the strength screen).
+        WatchRelay.shared.activate()
+        WatchLive.shared.start()
         UNUserNotificationCenter.current().delegate = NotificationRouter.shared
     }
 

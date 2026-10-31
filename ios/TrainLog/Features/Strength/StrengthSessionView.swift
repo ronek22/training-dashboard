@@ -92,10 +92,19 @@ struct StrengthSessionView: View {
                     .lineLimit(1)
                 if let startedAt = model.startedAt {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
-                        Text(StrengthFormat.clock(Int(context.date.timeIntervalSince(startedAt))))
-                            .font(AppFont.number(20))
-                            .foregroundStyle(Color.ink)
-                            .monospacedDigit()
+                        HStack(spacing: 10) {
+                            Text(StrengthFormat.clock(Int(context.date.timeIntervalSince(startedAt))))
+                                .font(AppFont.number(20))
+                                .foregroundStyle(Color.ink)
+                                .monospacedDigit()
+                            // Live from the Watch while it runs the workout.
+                            if let bpm = WatchLive.shared.liveHeartRate(at: context.date) {
+                                Label("\(Int(bpm.rounded()))", systemImage: "heart.fill")
+                                    .font(AppFont.number(17))
+                                    .foregroundStyle(Color(hex: 0xFF5A5F))
+                                    .accessibilityLabel("Heart rate \(Int(bpm.rounded())) from Apple Watch")
+                            }
+                        }
                     }
                 }
             }

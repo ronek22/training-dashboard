@@ -77,6 +77,20 @@ class StrengthWorkoutTests(unittest.TestCase):
         self.assertEqual(self.client.post('/strength/workouts/sessions/one-time', json=invalid).status_code, 422)
         self.assertEqual(self.client.post('/strength/workouts/sessions/one-time', json={**payload, 'exercises': []}).status_code, 422)
 
+    def test_one_time_session_times_holds(self):
+        payload = {'name': 'Bodyweight core', 'exercises': [
+            {'exercise_name': 'Plank', 'set_count': 2, 'target_reps': 1, 'target_seconds': 40, 'rest_seconds': 45},
+        ]}
+        session = self.client.post('/strength/workouts/sessions/one-time', json=payload).json()
+        base = f"/strength/workouts/sessions/{session['id']}"
+        first, second = session['exercises'][0]['sets']
+        self.assertEqual((first['target_seconds'], second['target_seconds']), (40, 40))
+        done = self.client.post(f"{base}/sets/{first['id']}/complete", json={'actual_reps': 1, 'actual_seconds': 35}).json()
+        self.assertEqual(done['exercises'][0]['sets'][0]['actual_seconds'], 35)
+        added = self.client.post(f"{base}/exercises/{session['exercises'][0]['id']}/sets").json()
+        self.assertEqual(added['exercises'][0]['sets'][-1]['target_seconds'], 40)
+        self.assertEqual(self.client.post(f'{base}/abandon').status_code, 204)
+
     def test_live_workout_structure_changes(self):
         template = self.client.post('/strength/workouts/templates', json={
             'name': 'Mutable session', 'exercises': [

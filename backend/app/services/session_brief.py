@@ -400,7 +400,7 @@ def _hike_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, A
 
 
 def _strength_brief(day: dict, conn: sqlite3.Connection, today: date) -> dict[str, Any]:
-    from .guided_sessions import is_no_equipment_lift
+    from .bodyweight_lifts import is_no_equipment_lift
 
     if is_no_equipment_lift(day):
         return _travel_kit_brief(day)

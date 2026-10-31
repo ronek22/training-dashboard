@@ -83,6 +83,8 @@ struct PhoneToday: Decodable, Sendable {
         let weightKg: Double?
         var restSeconds: Int?
         var notes: String?
+        /// A hold: seconds per set instead of reps.
+        var seconds: Int?
     }
 
     struct WeekDay: Decodable, Sendable, Identifiable {

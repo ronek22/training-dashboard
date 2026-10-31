@@ -820,6 +820,8 @@ def init_db(snapshot: bool = True):
             rest_ends_at TEXT,
             set_type TEXT NOT NULL DEFAULT 'working',
             effort TEXT,
+            target_seconds INTEGER,
+            actual_seconds INTEGER,
             FOREIGN KEY(session_exercise_id) REFERENCES strength_session_exercises(id) ON DELETE CASCADE,
             UNIQUE(session_exercise_id, set_order)
         );
@@ -887,6 +889,10 @@ def init_db(snapshot: bool = True):
         )
     if "effort" not in strength_set_columns:
         conn.execute("ALTER TABLE strength_session_sets ADD COLUMN effort TEXT")
+    # Holds (plank): the set is timed, target_reps stays 1.
+    for column in ("target_seconds", "actual_seconds"):
+        if column not in strength_set_columns:
+            conn.execute(f"ALTER TABLE strength_session_sets ADD COLUMN {column} INTEGER")
     coach_note_columns = {row["name"] for row in conn.execute("PRAGMA table_info(coach_notes)").fetchall()}
     # Standing preferences are coach notes saved from a chat; they can be retired and link back to it.
     for column, definition in (

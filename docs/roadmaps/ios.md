@@ -20,7 +20,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
-- 2026-10-31 — **Bodyweight lifts** — A bodyweight or travel-kit day starts from Today as a one-time strength session (push-ups, dips, core) with bodyweight sets.
+- 2026-10-31 — **Bodyweight lifts** — A bodyweight or travel-kit day starts from Today or Plan as a one-time session that follows the coach's steps; reps-only sets with optional added weight, and planks as timed holds you start yourself.
 - 2026-10-30 — **Food v2** — Food opens on a week strip with target dots, a calorie ring that shows kcal to go and the planned dinner, macro columns and a meal timeline; scanned and logged meals show a macro donut, a ½–2× portion picker and a grams stepper per item.
 - 2026-10-30 — **Widgets v2** — The wide Today widget shows the next session with its focus in sport colour, week hours over a sport bar and kcal to go side by side; small Week and Food widgets match the app's D2 look, with no ring.
 - 2026-10-30 — **Coach chat** — Ask the coach from an activity, a plan day or week, or Today, and pick up the same chats as the web; replies land even if you close the chat.

@@ -30,6 +30,18 @@ struct TemplateInput: Encodable, Sendable, Equatable {
         let targetWeightKg: Double?
         let restSeconds: Int
         let notes: String?
+        /// A hold: each set is timed (one-time sessions only).
+        var targetSeconds: Int? = nil
+    }
+}
+
+extension TemplateInput {
+    /// A bodyweight day's exercises as a one-time session.
+    init(bodyweight name: String, exercises: [PhoneToday.Exercise]) {
+        self.init(name: name, notes: nil, exercises: exercises.map {
+            .init(exerciseName: $0.name, setCount: $0.sets, targetReps: $0.seconds == nil ? $0.reps ?? 10 : 1,
+                  targetWeightKg: $0.weightKg, restSeconds: $0.restSeconds ?? 60, notes: $0.notes, targetSeconds: $0.seconds)
+        })
     }
 }
 
@@ -65,9 +77,13 @@ extension PhoneToday.Strength {
     /// `POST /sessions/one-time` body for a day without a saved workout (a bodyweight day).
     var oneTime: TemplateInput? {
         guard templateId == nil, !exercises.isEmpty else { return nil }
-        return TemplateInput(name: name ?? "Bodyweight", notes: nil, exercises: exercises.map {
-            .init(exerciseName: $0.name, setCount: $0.sets, targetReps: $0.reps ?? 10, targetWeightKg: $0.weightKg,
-                  restSeconds: $0.restSeconds ?? 90, notes: $0.notes)
-        })
+        return TemplateInput(bodyweight: name ?? "Bodyweight", exercises: exercises)
+    }
+}
+
+extension PlanDay {
+    var oneTime: TemplateInput? {
+        guard let liftExercises, !liftExercises.isEmpty else { return nil }
+        return TemplateInput(bodyweight: title, exercises: liftExercises)
     }
 }

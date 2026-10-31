@@ -7,6 +7,23 @@ from ..services.cycling_workouts import CYCLING_WORKOUT_IDS
 RIDE_SESSION_TYPES = {"ride", "virtualride", "cycling", "bike"}
 
 
+class PlanExercise(BaseModel):
+    """One lift of a bodyweight day as the phone runs it: reps, or seconds for a hold."""
+    name: str = Field(min_length=1, max_length=120)
+    sets: int = Field(ge=1, le=20)
+    reps: Optional[int] = Field(default=None, ge=1, le=100)
+    seconds: Optional[int] = Field(default=None, ge=5, le=1800)
+    weight_kg: Optional[float] = Field(default=None, ge=0, le=1000)
+    rest_seconds: Optional[int] = Field(default=None, ge=0, le=600)
+    notes: Optional[str] = Field(default=None, max_length=300)
+
+    @model_validator(mode="after")
+    def needs_a_dose(self):
+        if not self.reps and not self.seconds:
+            raise ValueError("A plan exercise needs reps or seconds")
+        return self
+
+
 class WeeklyPlanDay(BaseModel):
     session_id: Optional[str] = None
     date: str
@@ -26,6 +43,8 @@ class WeeklyPlanDay(BaseModel):
     steps: list[str] = Field(default_factory=list, max_length=12)
     cues: list[str] = Field(default_factory=list, max_length=6)
     fallback: Optional[str] = Field(default=None, max_length=400)
+    # Bodyweight lifts only: the steps as exercises, so the phone can log them set by set.
+    exercises: list[PlanExercise] = Field(default_factory=list, max_length=15)
     target_duration_min: Optional[int] = None
     target_distance_km: Optional[float] = None
     cycling_workout_id: Optional[str] = None

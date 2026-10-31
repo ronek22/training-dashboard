@@ -204,6 +204,7 @@ def sessions_complete_set(session_id: int, set_id: int, payload: StrengthSetComp
             set_id,
             payload.actual_reps,
             payload.actual_weight_kg,
+            payload.actual_seconds,
         )
     )
 

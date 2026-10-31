@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct PlanView: View {
-    let onStartStrength: (Int?) -> Void
+    let onStartStrength: (StrengthLaunch) -> Void
     @State private var model = PlanModel()
     @State private var path: [String] = []
     @State private var moving: PlanDay?

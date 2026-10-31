@@ -115,6 +115,7 @@ enum TodayFormat {
     }
 
     static func exerciseTarget(_ exercise: PhoneToday.Exercise) -> String {
+        if let seconds = exercise.seconds { return "\(exercise.sets) × \(StrengthFormat.hold(seconds))" }
         let reps = exercise.reps.map { "\(exercise.sets) × \($0)" } ?? "\(exercise.sets) sets"
         let load = exercise.weightKg.map { "\(number($0)) kg" } ?? "BW"
         return "\(reps) · \(load)"

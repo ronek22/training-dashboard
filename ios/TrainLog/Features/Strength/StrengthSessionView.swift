@@ -203,35 +203,53 @@ struct StrengthSessionView: View {
         let title = set.isWarmup
             ? "Warm-up"
             : "Set \((working.firstIndex { $0.id == set.id } ?? 0) + 1) of \(working.count)"
-        return VStack(alignment: .leading, spacing: 0) {
+        // Loaded lifts lead with the weight; bodyweight ones with reps, weight only when added.
+        let loaded = set.targetWeightKg != nil
+        let showsWeight = loaded || model.draftWeight != nil
+        return VStack(spacing: 0) {
             HStack {
                 Kicker(title)
                 Spacer()
-                Text("Target \(StrengthFormat.load(weight: set.targetWeightKg, reps: set.targetReps))")
+                Text("Target \(StrengthFormat.load(weight: set.targetWeightKg, reps: set.targetReps, seconds: set.targetSeconds))")
                     .font(AppFont.body(12))
                     .foregroundStyle(Color.muted)
             }
-            HStack(spacing: 10) {
-                stepper(
-                    label: "Weight · kg",
-                    value: StrengthFormat.weight(model.draftWeight),
-                    minus: { model.adjustWeight(by: -1) },
-                    plus: { model.adjustWeight(by: 1) },
-                    onTapValue: {
-                        weightText = model.draftWeight.map(TodayFormat.number) ?? ""
-                        editingWeight = true
-                    }
-                )
-                stepper(
-                    label: "Reps",
-                    value: "\(model.draftReps)",
-                    minus: { model.adjustReps(by: -1) },
-                    plus: { model.adjustReps(by: 1) },
-                    onTapValue: nil
-                )
+            VStack(spacing: 0) {
+                if loaded {
+                    weightRow
+                    divider
+                }
+                if set.isTimed {
+                    holdRow
+                } else {
+                    valueRow("Reps", value: "\(model.draftReps)", minus: { model.adjustReps(by: -1) }, plus: { model.adjustReps(by: 1) })
+                }
+                if showsWeight && !loaded {
+                    divider
+                    weightRow.transition(.opacity.combined(with: .move(edge: .top)))
+                }
             }
-            .padding(.top, 14)
-            Kicker("How did it feel?").font(AppFont.body(10, weight: .semibold)).padding(.top, 16)
+            .padding(.top, 10)
+            if !showsWeight && model.holdStartedAt == nil {
+                Button {
+                    withAnimation(.snappy) { model.addWeight() }
+                } label: {
+                    Label("Add weight", systemImage: "plus")
+                        .font(AppFont.body(13, weight: .semibold))
+                        .foregroundStyle(Color.inkSoft)
+                        .padding(.horizontal, 14)
+                        .frame(height: 32)
+                        .overlay(Capsule().strokeBorder(Color.outline))
+                        .frame(minHeight: 44)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+            }
+            Kicker("How did it feel?")
+                .font(AppFont.body(10, weight: .semibold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 14)
             HStack(spacing: 8) {
                 ForEach(SetEffort.allCases, id: \.self) { effort in
                     effortButton(effort)
@@ -244,52 +262,104 @@ struct StrengthSessionView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
+        .animation(.snappy, value: showsWeight)
     }
 
-    private func stepper(
-        label: String, value: String, minus: @escaping () -> Void, plus: @escaping () -> Void, onTapValue: (() -> Void)?
+    private var divider: some View {
+        Rectangle().fill(Color.cardBorder).frame(height: 1).padding(.vertical, 4)
+    }
+
+    private var weightRow: some View {
+        valueRow(
+            "Weight",
+            value: StrengthFormat.weight(model.draftWeight),
+            unit: model.draftWeight == nil ? nil : "kg",
+            minus: { model.adjustWeight(by: -1) },
+            plus: { model.adjustWeight(by: 1) },
+            onTapValue: {
+                weightText = model.draftWeight.map(TodayFormat.number) ?? ""
+                editingWeight = true
+            }
+        )
+    }
+
+    /// One value, big in the middle, with round − and + either side.
+    private func valueRow(
+        _ label: String, value: String, unit: String? = nil,
+        minus: @escaping () -> Void, plus: @escaping () -> Void, onTapValue: (() -> Void)? = nil
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Kicker(label).font(AppFont.body(9, weight: .semibold))
+        HStack(spacing: 0) {
+            roundButton("minus", label: "Less \(label)", action: minus)
+            Spacer(minLength: 8)
+            VStack(spacing: 0) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(value)
+                        .font(AppFont.number(60))
+                        .foregroundStyle(Color.ink)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                    if let unit {
+                        Text(unit).font(AppFont.body(15, weight: .semibold)).foregroundStyle(Color.muted)
+                    }
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                Kicker(label).font(AppFont.body(10, weight: .semibold))
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { onTapValue?() }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(label) \(value) \(unit ?? "")")
+            .accessibilityAddTraits(onTapValue == nil ? [] : .isButton)
+            Spacer(minLength: 8)
+            roundButton("plus", label: "More \(label)", action: plus)
+        }
+        .padding(.vertical, 6)
+    }
+
+    /// A timed set: the dial counts down once started; ±5 s until then.
+    private var holdRow: some View {
+        let running = model.holdStartedAt != nil
+        return VStack(spacing: 6) {
             HStack(spacing: 0) {
-                stepButton("minus", label: "Less \(label)", action: minus)
-                Spacer(minLength: 0)
-                Text(value)
-                    .font(AppFont.number(48))
-                    .foregroundStyle(Color.ink)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .contentTransition(.numericText())
-                    .onTapGesture { onTapValue?() }
-                    .accessibilityLabel("\(label) \(value)")
-                    .accessibilityAddTraits(onTapValue == nil ? [] : .isButton)
-                Spacer(minLength: 0)
-                stepButton("plus", label: "More \(label)", action: plus)
+                roundButton("minus", label: "5 seconds less") { model.adjustSeconds(by: -5) }
+                    .opacity(running ? 0 : 1)
+                    .disabled(running)
+                Spacer(minLength: 8)
+                HoldDial(startedAt: model.holdStartedAt, seconds: model.draftSeconds)
+                Spacer(minLength: 8)
+                roundButton("plus", label: "5 seconds more") { model.adjustSeconds(by: 5) }
+                    .opacity(running ? 0 : 1)
+                    .disabled(running)
+            }
+            if !running {
+                Button("Log without the timer") { Task { await model.logCurrentSet() } }
+                    .font(AppFont.body(13, weight: .medium))
+                    .foregroundStyle(Color.muted)
+                    .frame(minHeight: 44)
+                    .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
+        .padding(.vertical, 6)
     }
 
-    private func stepButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
+    private func roundButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button {
             withAnimation(.snappy) { action() }
         } label: {
             Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.inkSoft)
-                .frame(width: 34, height: 34)
-                .overlay(Circle().strokeBorder(Color.outline))
-                .frame(width: 44, height: 44)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Color.ink)
+                .frame(width: 52, height: 52)
+                .background(Color.inset, in: Circle())
+                .overlay(Circle().strokeBorder(Color.cardBorder))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .buttonRepeatBehavior(.enabled)
         .sensoryFeedback(.selection, trigger: model.draftWeight)
+        .sensoryFeedback(.selection, trigger: model.draftReps)
+        .sensoryFeedback(.selection, trigger: model.draftSeconds)
         .accessibilityLabel(label)
     }
 
@@ -319,7 +389,8 @@ struct StrengthSessionView: View {
                     set: set,
                     isCurrent: set.id == currentId,
                     draftWeight: model.draftWeight,
-                    draftReps: model.draftReps
+                    draftReps: model.draftReps,
+                    draftSeconds: model.draftSeconds
                 )
             }
         }
@@ -364,6 +435,20 @@ struct StrengthSessionView: View {
             if model.allSetsDone {
                 Button("Finish workout") { Task { await model.finish() } }
                     .buttonStyle(VoltButtonStyle())
+            } else if let current = model.current, current.set.isTimed {
+                if model.holdStartedAt == nil {
+                    Button(action: model.startHold) {
+                        Label("Start hold · \(StrengthFormat.hold(model.draftSeconds))", systemImage: "play.fill")
+                    }
+                    .buttonStyle(VoltButtonStyle())
+                } else {
+                    Button {
+                        Task { await model.stopHold() }
+                    } label: {
+                        Label("Stop and log", systemImage: "stop.fill")
+                    }
+                    .buttonStyle(VoltButtonStyle())
+                }
             } else if let current = model.current {
                 Button {
                     Task { await model.logCurrentSet() }
@@ -423,6 +508,7 @@ private struct SetRow: View {
     let isCurrent: Bool
     let draftWeight: Double?
     let draftReps: Int
+    let draftSeconds: Int
 
     var body: some View {
         HStack(spacing: 12) {
@@ -442,9 +528,12 @@ private struct SetRow: View {
     }
 
     private var load: String {
-        if set.isCompleted { return StrengthFormat.load(weight: set.actualWeightKg, reps: set.actualReps ?? set.targetReps) }
-        if isCurrent { return StrengthFormat.load(weight: draftWeight, reps: draftReps) }
-        return StrengthFormat.load(weight: set.targetWeightKg, reps: set.targetReps)
+        if set.isCompleted {
+            return StrengthFormat.load(weight: set.actualWeightKg, reps: set.actualReps ?? set.targetReps,
+                                       seconds: set.isTimed ? set.actualSeconds ?? set.targetSeconds : nil)
+        }
+        if isCurrent { return StrengthFormat.load(weight: draftWeight, reps: draftReps, seconds: set.isTimed ? draftSeconds : nil) }
+        return StrengthFormat.load(weight: set.targetWeightKg, reps: set.targetReps, seconds: set.targetSeconds)
     }
 
     private var trailing: String {
@@ -550,6 +639,42 @@ private struct RestStrip: View {
     private func fraction(_ left: Int) -> Double {
         guard total > 0 else { return 0 }
         return min(1, max(0, Double(left) / Double(total)))
+    }
+}
+
+/// The hold timer: a ring that empties as the seconds run down, ticking for the last three.
+private struct HoldDial: View {
+    let startedAt: Date?
+    let seconds: Int
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.1)) { context in
+            let elapsed = startedAt.map { context.date.timeIntervalSince($0) } ?? 0
+            let left = max(0, Double(seconds) - elapsed)
+            let shown = Int(left.rounded(.up))
+            ZStack {
+                Circle().stroke(Color.track, lineWidth: 8)
+                Circle()
+                    .trim(from: 0, to: seconds > 0 ? left / Double(seconds) : 0)
+                    .stroke(startedAt == nil ? Color.outline : Color.strength, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                VStack(spacing: 0) {
+                    Text(StrengthFormat.clock(shown))
+                        .font(AppFont.number(52))
+                        .foregroundStyle(Color.ink)
+                        .monospacedDigit()
+                        .contentTransition(.numericText(countsDown: true))
+                    Kicker(startedAt == nil ? "Hold" : "Holding", color: startedAt == nil ? .muted : Color(hex: 0xFF7AB5))
+                        .font(AppFont.body(10, weight: .semibold))
+                }
+            }
+            .frame(width: 168, height: 168)
+            .onChange(of: shown) { _, new in
+                if startedAt != nil, (1...3).contains(new) { RestAlarm.countdown(new) }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(startedAt == nil ? "Hold for \(seconds) seconds" : "Holding")
     }
 }
 

@@ -453,7 +453,7 @@ def get_trainlog_strength_detail_for_activity(
                 "set_order": int(workout_set["set_order"]),
                 "reps": workout_set["actual_reps"],
                 "weight_kg": workout_set["actual_weight_kg"],
-                "duration_seconds": None,
+                "duration_seconds": workout_set["actual_seconds"],
                 "distance_m": None,
                 "incline": None,
                 "resistance": None,
@@ -591,8 +591,8 @@ def start_session(
                 conn.execute(
                     """
                     INSERT INTO strength_session_sets
-                    (session_exercise_id, set_order, target_reps, target_weight_kg, rest_seconds)
-                    VALUES (?, ?, ?, ?, ?)
+                    (session_exercise_id, set_order, target_reps, target_weight_kg, rest_seconds, target_seconds)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     """,
                     (
                         session_exercise_id,
@@ -600,6 +600,7 @@ def start_session(
                         exercise["target_reps"],
                         exercise["target_weight_kg"],
                         exercise["rest_seconds"],
+                        exercise.get("target_seconds"),
                     ),
                 )
     return get_session(conn, session_id)
@@ -786,8 +787,8 @@ def add_working_set(conn: sqlite3.Connection, session_id: int, exercise_id: int)
     reference = working[-1] if working else sets[-1]
     with conn:
         conn.execute(
-            "INSERT INTO strength_session_sets (session_exercise_id, set_order, target_reps, target_weight_kg, rest_seconds, set_type) VALUES (?, ?, ?, ?, ?, 'working')",
-            (exercise_id, sets[-1]["set_order"] + 1, reference["target_reps"], reference["target_weight_kg"], reference["rest_seconds"]),
+            "INSERT INTO strength_session_sets (session_exercise_id, set_order, target_reps, target_weight_kg, rest_seconds, target_seconds, set_type) VALUES (?, ?, ?, ?, ?, ?, 'working')",
+            (exercise_id, sets[-1]["set_order"] + 1, reference["target_reps"], reference["target_weight_kg"], reference["rest_seconds"], reference["target_seconds"]),
         )
         conn.execute("UPDATE strength_workout_sessions SET updated_at = ? WHERE id = ?", (_iso(_now()), session_id))
     return get_session(conn, session_id)
@@ -900,6 +901,7 @@ def complete_set(
     set_id: int,
     actual_reps: int,
     actual_weight_kg: Optional[float],
+    actual_seconds: Optional[int] = None,
 ) -> dict:
     session = _session_or_404(conn, session_id)
     _assert_active(session)
@@ -921,11 +923,11 @@ def complete_set(
         conn.execute(
             """
             UPDATE strength_session_sets
-            SET actual_reps = ?, actual_weight_kg = ?, status = 'completed',
+            SET actual_reps = ?, actual_weight_kg = ?, actual_seconds = ?, status = 'completed',
                 completed_at = ?, rest_ends_at = ?
             WHERE id = ?
             """,
-            (actual_reps, actual_weight_kg, _iso(now), _iso(rest_ends_at), set_id),
+            (actual_reps, actual_weight_kg, actual_seconds, _iso(now), _iso(rest_ends_at), set_id),
         )
         next_set = conn.execute(
             """

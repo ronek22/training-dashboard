@@ -76,7 +76,7 @@ struct RootView: View {
                           recapRequest: recapRequest)
             }
             Tab("Plan", systemImage: "calendar", value: .plan) {
-                PlanView(onStartStrength: { strength = StrengthLaunch(templateId: $0) })
+                PlanView(onStartStrength: { strength = $0 })
             }
             Tab("Coach", systemImage: "bubble.left.and.bubble.right", value: .coach) {
                 CoachView()

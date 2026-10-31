@@ -35,8 +35,7 @@ struct TodayView: View {
                     if let date = model.data?.date {
                         switch route {
                         case .day:
-                            PlanDayView(model: plan, date: date, onMove: { moving = $0 },
-                                        onStartStrength: { onStartStrength(StrengthLaunch(templateId: $0)) })
+                            PlanDayView(model: plan, date: date, onMove: { moving = $0 }, onStartStrength: onStartStrength)
                                 .hidesTabBar()
                         }
                     }

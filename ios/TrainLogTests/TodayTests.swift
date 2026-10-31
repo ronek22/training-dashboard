@@ -50,6 +50,19 @@ struct TodayTests {
         #expect(saved.oneTime == nil)
     }
 
+    @Test func holdsStartAsTimedSets() throws {
+        let json = """
+        {"template_id": null, "name": "Bodyweight core",
+         "exercises": [{"name": "Plank", "sets": 3, "reps": null, "seconds": 40, "rest_seconds": 45}]}
+        """
+        let strength = try APIClient.decoder.decode(PhoneToday.Strength.self, from: Data(json.utf8))
+        let plank = try #require(strength.oneTime?.exercises.first)
+        #expect((plank.targetReps, plank.targetSeconds, plank.restSeconds) == (1, 40, 45))
+        #expect(TodayFormat.exerciseTarget(strength.exercises[0]) == "3 × 40 s")
+        #expect(StrengthFormat.hold(90) == "1:30")
+        #expect(StrengthFormat.load(weight: 10, reps: 1, seconds: 40) == "10 kg · 40 s")
+    }
+
     @Test func formatsDurations() {
         #expect(TodayFormat.duration(167) == "2h 47m")
         #expect(TodayFormat.duration(45) == "45m")

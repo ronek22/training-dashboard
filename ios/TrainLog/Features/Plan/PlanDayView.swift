@@ -6,7 +6,7 @@ struct PlanDayView: View {
     let model: PlanModel
     let date: String
     let onMove: (PlanDay) -> Void
-    let onStartStrength: (Int?) -> Void
+    let onStartStrength: (StrengthLaunch) -> Void
     @State private var starting = false
     @State private var asking = false
 
@@ -109,7 +109,11 @@ struct PlanDayView: View {
                 Button {
                     Task {
                         starting = true
-                        onStartStrength(await model.templateId(for: day))
+                        if let oneTime = day.oneTime {
+                            onStartStrength(StrengthLaunch(templateId: nil, oneTime: oneTime))
+                        } else {
+                            onStartStrength(StrengthLaunch(templateId: await model.templateId(for: day)))
+                        }
                         starting = false
                     }
                 } label: {

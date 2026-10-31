@@ -17,7 +17,7 @@ struct TodayView: View {
     /// The workout picked in Workout Studio, started once the sheet is gone.
     @State private var studioPick: Int?
     @State private var flameHop = 0
-    var onStartStrength: (Int?) -> Void = { _ in }
+    var onStartStrength: (StrengthLaunch) -> Void = { _ in }
     /// Bumped when the strength screen closes, so the banner and plan reload.
     var refresh = 0
     /// Bumped by the Sunday nudge (`trainlog://recap`) to open the week's recap.
@@ -52,7 +52,7 @@ struct TodayView: View {
         .sheet(isPresented: $showStudio, onDismiss: {
             if let id = studioPick {
                 studioPick = nil
-                onStartStrength(id)
+                onStartStrength(StrengthLaunch(templateId: id))
             }
         }) {
             WorkoutStudioSheet(planned: model.data?.today?.strength?.templateId) { studioPick = $0 }
@@ -100,7 +100,7 @@ struct TodayView: View {
             VStack(alignment: .leading, spacing: 12) {
                 header
                 if let workout = model.activeWorkout {
-                    ResumeWorkoutCard(workout: workout) { onStartStrength(nil) }
+                    ResumeWorkoutCard(workout: workout) { onStartStrength(StrengthLaunch(templateId: nil)) }
                         .reveal(0)
                         .transition(.scale(scale: 0.96).combined(with: .opacity))
                 }
@@ -247,7 +247,7 @@ private struct SessionCard: View {
     let rehabPending: Int?
     /// The Resume banner owns the volt action while a workout is open.
     let workoutOpen: Bool
-    let onStartStrength: (Int?) -> Void
+    let onStartStrength: (StrengthLaunch) -> Void
     let onOpen: () -> Void
     let onRehab: () -> Void
     let onMove: (PlanDay) -> Void
@@ -408,7 +408,7 @@ private struct SessionCard: View {
             switch next {
             case .startStrength:
                 Button {
-                    onStartStrength(session.strength?.templateId)
+                    onStartStrength(StrengthLaunch(templateId: session.strength?.templateId, oneTime: session.strength?.oneTime))
                 } label: {
                     Label("Start session", systemImage: "play.fill")
                 }

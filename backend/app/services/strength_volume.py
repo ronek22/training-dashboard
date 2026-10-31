@@ -16,7 +16,7 @@ from datetime import date, timedelta
 from typing import Any, Optional
 
 from .muscle_gain import MUSCLE_GROUPS, TARGET_SETS_MAX, TARGET_SETS_MIN, muscle_groups_for
-from .guided_sessions import is_no_equipment_lift
+from .bodyweight_lifts import is_no_equipment_lift
 from .illness_return import illness_return_dates
 from .life_load import mountain_dates
 from .mountain_reentry import mountain_reentry_dates

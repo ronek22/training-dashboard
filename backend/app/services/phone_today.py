@@ -6,6 +6,7 @@ from typing import Optional
 
 from .checkins import get_daily_checkin
 from .dashboard import compute_activity_streak
+from .bodyweight_lifts import is_no_equipment_lift, lift_exercises
 from .health_data import get_health_metric_history, get_sleep_history
 from .phone_body import _vital
 from .plans import serialize_weekly_plan
@@ -47,6 +48,9 @@ def _latest(history: list[dict]) -> Optional[float]:
 def _exercises_for(conn: sqlite3.Connection, day: Optional[dict]) -> tuple[Optional[dict], Optional[str]]:
     if not day or sport_of(day.get("session_type")) != "strength":
         return None, None
+    if is_no_equipment_lift(day):
+        # No saved workout: the phone starts these as a one-time session with bodyweight sets.
+        return {"template_id": None, "name": day.get("title"), "exercises": day.get("lift_exercises") or lift_exercises(day), "last_done": None}, None
     names = {day.get("template_label"), day.get("title")} - {None}
     template = next((item for item in list_templates(conn) if item["name"] in names), None)
     if not template:
@@ -70,6 +74,7 @@ def _exercises_for(conn: sqlite3.Connection, day: Optional[dict]) -> tuple[Optio
             "sets": exercise["set_count"],
             "reps": step.get("target_reps") or exercise.get("target_reps"),
             "weight_kg": step.get("target_weight_kg") if step else exercise.get("target_weight_kg"),
+            "seconds": exercise.get("target_seconds"),
         })
     return {"template_id": template["id"], "exercises": exercises, "last_done": last}, template["name"]
 

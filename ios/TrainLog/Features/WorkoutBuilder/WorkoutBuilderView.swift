@@ -360,7 +360,7 @@ struct WorkoutBuilderView: View {
             HStack(spacing: 12) {
                 Text(exercise.name).font(AppFont.body(15, weight: .semibold)).foregroundStyle(Color.ink).lineLimit(1)
                 Spacer()
-                Text("\(exercise.sets) × \(exercise.reps)").font(AppFont.number(16)).foregroundStyle(Color.muted)
+                Text(exercise.dose).font(AppFont.number(16)).foregroundStyle(Color.muted)
             }
             .padding(.horizontal, 16)
             .frame(height: 56)
@@ -429,7 +429,11 @@ struct WorkoutBuilderView: View {
         let change = exercise.weightKg.flatMap { now in last.map { now - $0 } }
         return HStack(alignment: .firstTextBaseline, spacing: 14) {
             value("\(exercise.sets)", "sets")
-            value("\(exercise.reps)", "reps")
+            if let seconds = exercise.seconds {
+                value(seconds < 60 ? "\(seconds)" : StrengthFormat.clock(seconds), seconds < 60 ? "sec" : "min")
+            } else {
+                value("\(exercise.reps)", "reps")
+            }
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(BuilderFormat.weight(exercise.weightKg)).font(AppFont.number(22)).foregroundStyle(Color.ink)
                 if exercise.weightKg != nil {

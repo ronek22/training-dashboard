@@ -22,7 +22,7 @@ from .fitbod_imports import get_fitbod_strength_detail_for_activity
 from ..repositories.goals import ACTIVE_GOAL_CONDITION
 from .goal_portfolio import build_portfolio_check, portfolio_conflict
 from .goals import build_requirement_summary, serialize_goal
-from .guided_sessions import is_no_equipment_lift
+from .bodyweight_lifts import is_no_equipment_lift, lift_exercises
 from .lift_ride_clash import LOCKING_ACTIVITY_SQL, legs_check, locked_dates, plan_clashes, resolve_clashes
 from .heart_rate_zones import build_activity_heart_rate_zone_summary, run_hr_cap
 from .recovery import rehab_for_day, rehab_routines
@@ -1107,6 +1107,13 @@ def _serialize_weekly_plan(row: sqlite3.Row, conn: Optional[sqlite3.Connection])
         workout_template_programs = get_workout_template_settings_for_conn(conn).get("programs")
         benchmark_lookup = build_benchmark_session_lookup(conn)
         days = _apply_strength_templates_to_days(days, {"programs": workout_template_programs or {}}, restrictions)
+        # Bodyweight days run as a one-time session on the phone: the coach's exercises, holds included.
+        days = [
+            {**day, "lift_exercises": lift_exercises(day)}
+            if normalize_plan_session_type(day.get("session_type")) == "WeightTraining" and is_no_equipment_lift(day)
+            else day
+            for day in days
+        ]
         week_days_by_date = {day["date"]: day for day in days if day.get("date")}
         dates = [day["date"] for day in days if day.get("date")]
         session_ids = [day["session_id"] for day in days if day.get("session_id")]

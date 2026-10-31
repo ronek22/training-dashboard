@@ -64,7 +64,8 @@ enum StrengthActivity {
             setLabel: StrengthLogic.label(for: current.set, in: current.exercise),
             load: StrengthFormat.load(
                 weight: StrengthLogic.carriedWeight(for: current.set, in: current.exercise),
-                reps: current.set.targetReps
+                reps: current.set.targetReps,
+                seconds: current.set.targetSeconds
             ),
             exerciseNumber: (exercises.firstIndex { $0.id == current.exercise.id } ?? 0) + 1,
             exerciseCount: exercises.count,

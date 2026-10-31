@@ -30,6 +30,8 @@ struct PlanDay: Decodable, Sendable, Identifiable {
     let cyclingWorkoutName: String?
     let comparison: Comparison?
     let rehab: [RehabRoutine]?
+    /// A bodyweight day's exercises (coach's steps), started as a one-time session.
+    var liftExercises: [PhoneToday.Exercise]? = nil
 
     var id: String { date }
 

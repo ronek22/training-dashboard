@@ -14,6 +14,8 @@ struct TemplateDetail: Decodable, Sendable, Equatable {
         var targetWeightKg: Double?
         var restSeconds: Int?
         var notes: String?
+        /// A hold: seconds per set instead of reps.
+        var targetSeconds: Int?
     }
 }
 
@@ -30,6 +32,18 @@ struct TemplateInput: Encodable, Sendable, Equatable {
         let targetWeightKg: Double?
         let restSeconds: Int
         let notes: String?
+        /// A hold: each set is timed and `targetReps` is 1.
+        var targetSeconds: Int? = nil
+    }
+}
+
+extension TemplateInput {
+    /// A bodyweight day's exercises as a one-time session.
+    init(bodyweight name: String, exercises: [PhoneToday.Exercise]) {
+        self.init(name: name, notes: nil, exercises: exercises.map {
+            .init(exerciseName: $0.name, setCount: $0.sets, targetReps: $0.seconds == nil ? $0.reps ?? 10 : 1,
+                  targetWeightKg: $0.weightKg, restSeconds: $0.restSeconds ?? 60, notes: $0.notes, targetSeconds: $0.seconds)
+        })
     }
 }
 
@@ -42,6 +56,8 @@ struct ExerciseSuggestion: Decodable, Sendable, Equatable, Identifiable {
     var suggestedSetCount: Int?
     var suggestedReps: Int?
     var suggestedWeightKg: Double?
+    /// Held for this long last time: added as a timed exercise.
+    var suggestedSeconds: Int?
     var lastSets: [LastSet]?
     /// Working weight of each of the last six sessions, oldest first.
     var recentSessions: [RecentSession]?
@@ -58,5 +74,20 @@ struct ExerciseSuggestion: Decodable, Sendable, Equatable, Identifiable {
     struct RecentSession: Decodable, Sendable, Equatable {
         let date: String
         let weightKg: Double
+    }
+}
+
+extension PhoneToday.Strength {
+    /// `POST /sessions/one-time` body for a day without a saved workout (a bodyweight day).
+    var oneTime: TemplateInput? {
+        guard templateId == nil, !exercises.isEmpty else { return nil }
+        return TemplateInput(bodyweight: name ?? "Bodyweight", exercises: exercises)
+    }
+}
+
+extension PlanDay {
+    var oneTime: TemplateInput? {
+        guard let liftExercises, !liftExercises.isEmpty else { return nil }
+        return TemplateInput(bodyweight: title, exercises: liftExercises)
     }
 }

@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// One lift in the workout being built. Weight nil means bodyweight.
+/// One lift in the workout being built. Weight nil means bodyweight; seconds set means a hold (plank).
 struct DraftExercise: Identifiable, Codable, Sendable, Equatable {
     var id = UUID()
     var name: String
@@ -10,16 +10,25 @@ struct DraftExercise: Identifiable, Codable, Sendable, Equatable {
     var weightKg: Double?
     var restSeconds: Int
     var notes: String?
+    var seconds: Int?
 
     static let defaultRest = 90
+    static let defaultHold = 30
 
-    init(name: String, sets: Int = 3, reps: Int = 10, weightKg: Double? = nil, restSeconds: Int = defaultRest, notes: String? = nil) {
+    init(name: String, sets: Int = 3, reps: Int = 10, weightKg: Double? = nil, restSeconds: Int = defaultRest, notes: String? = nil,
+         seconds: Int? = nil) {
         self.name = name
         self.sets = min(max(sets, 1), 20)
         self.reps = min(max(reps, 1), 100)
         self.weightKg = weightKg.flatMap { $0 > 0 ? $0 : nil }
         self.restSeconds = restSeconds
         self.notes = notes
+        self.seconds = seconds.map { min(max($0, 5), 1800) }
+    }
+
+    /// "3 × 10" or "3 × 40 s".
+    var dose: String {
+        "\(sets) × " + (seconds.map(StrengthFormat.hold) ?? "\(reps)")
     }
 
     /// Last session's sets, reps and weight, so most picks need no editing.
@@ -28,7 +37,8 @@ struct DraftExercise: Identifiable, Codable, Sendable, Equatable {
             name: suggestion.exerciseName,
             sets: suggestion.suggestedSetCount ?? 3,
             reps: suggestion.suggestedReps ?? 10,
-            weightKg: suggestion.suggestedWeightKg
+            weightKg: suggestion.suggestedWeightKg,
+            seconds: suggestion.suggestedSeconds
         )
     }
 }
@@ -45,8 +55,8 @@ struct WorkoutDraft: Codable, Sendable, Equatable {
             name: name.trimmingCharacters(in: .whitespaces).isEmpty ? BuilderFormat.defaultName() : name.trimmingCharacters(in: .whitespaces),
             notes: notes.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 },
             exercises: exercises.map {
-                .init(exerciseName: $0.name, setCount: $0.sets, targetReps: $0.reps, targetWeightKg: $0.weightKg,
-                      restSeconds: $0.restSeconds, notes: $0.notes.flatMap { $0.isEmpty ? nil : $0 })
+                .init(exerciseName: $0.name, setCount: $0.sets, targetReps: $0.seconds == nil ? $0.reps : 1, targetWeightKg: $0.weightKg,
+                      restSeconds: $0.restSeconds, notes: $0.notes.flatMap { $0.isEmpty ? nil : $0 }, targetSeconds: $0.seconds)
             }
         )
     }
@@ -61,7 +71,7 @@ struct WorkoutDraft: Codable, Sendable, Equatable {
     init(_ template: TemplateDetail) {
         self.init(templateId: template.id, name: template.name, notes: template.notes, exercises: template.exercises.map {
             DraftExercise(name: $0.exerciseName, sets: $0.setCount, reps: $0.targetReps, weightKg: $0.targetWeightKg,
-                          restSeconds: $0.restSeconds ?? DraftExercise.defaultRest, notes: $0.notes)
+                          restSeconds: $0.restSeconds ?? DraftExercise.defaultRest, notes: $0.notes, seconds: $0.targetSeconds)
         })
     }
 
@@ -73,9 +83,10 @@ struct WorkoutDraft: Codable, Sendable, Equatable {
             guard !sets.isEmpty else { return nil }
             let reps = BuilderFormat.mode(sets.map { $0.actualReps ?? $0.targetReps }) ?? 10
             let weights = sets.compactMap { $0.actualWeightKg ?? $0.targetWeightKg }.filter { $0 > 0 }.sorted()
+            let held = sets[0].isTimed ? BuilderFormat.mode(sets.compactMap { $0.actualSeconds ?? $0.targetSeconds }) : nil
             return DraftExercise(name: exercise.exerciseName, sets: sets.count, reps: reps,
                                  weightKg: weights.isEmpty ? nil : weights[weights.count / 2],
-                                 restSeconds: sets[0].restSeconds, notes: exercise.notes)
+                                 restSeconds: sets[0].restSeconds, notes: exercise.notes, seconds: held)
         })
     }
 }

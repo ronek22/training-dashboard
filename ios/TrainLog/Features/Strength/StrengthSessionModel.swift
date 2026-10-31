@@ -33,19 +33,28 @@ final class StrengthSessionModel {
     var draftWeight: Double?
     var draftReps = 0
     var draftEffort: SetEffort?
+    /// Hold length for a timed set; adjustable until the timer starts.
+    var draftSeconds = 0
+    /// The hold timer is running since this moment. Started by hand, never by the rest ending.
+    private(set) var holdStartedAt: Date?
+    private var holdTask: Task<Void, Never>?
 
     private let templateId: Int?
+    /// A bodyweight day's exercises, started as a one-time session when nothing is running.
+    private let oneTime: TemplateInput?
     private let client: () -> APIClient
     private let queue: WriteQueue
     private let store: SessionStore
 
     init(
         templateId: Int?,
+        oneTime: TemplateInput? = nil,
         client: @escaping () -> APIClient = { .current },
         queue: WriteQueue = WriteQueue(),
         store: SessionStore = SessionStore()
     ) {
         self.templateId = templateId
+        self.oneTime = oneTime
         self.client = client
         self.queue = queue
         self.store = store
@@ -90,6 +99,8 @@ final class StrengthSessionModel {
                     return
                 }
                 live = try await start(templateId, api: api)
+            } else if live == nil, let oneTime {
+                live = try await startOneTime(oneTime, api: api)
             }
             guard let live else {
                 phase = .failed("No strength workout planned today. Start one from the web app.")
@@ -114,6 +125,15 @@ final class StrengthSessionModel {
             return try await api.send("POST", "/strength/workouts/sessions", body: body, as: StrengthSession.self)
         } catch APIError.status(409) {
             // Started elsewhere a moment ago: resume that one.
+            return try await api.getLive("/strength/workouts/sessions/active", as: StrengthSession?.self)
+        }
+    }
+
+    private func startOneTime(_ workout: TemplateInput, api: APIClient) async throws -> StrengthSession? {
+        let body = try APIClient.encoder.encode(workout)
+        do {
+            return try await api.send("POST", "/strength/workouts/sessions/one-time", body: body, as: StrengthSession.self)
+        } catch APIError.status(409) {
             return try await api.getLive("/strength/workouts/sessions/active", as: StrengthSession?.self)
         }
     }
@@ -163,27 +183,57 @@ final class StrengthSessionModel {
 
     // MARK: Actions
 
-    func logCurrentSet() async {
+    /// Starts the hold timer; it logs the set by itself when the target time is up.
+    func startHold() {
+        guard current?.set.isTimed == true, holdStartedAt == nil else { return }
+        skipRest()
+        holdStartedAt = .now
+        let seconds = draftSeconds
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        RestAlarm.schedule(at: .now.addingTimeInterval(TimeInterval(seconds)), title: "Hold done", next: nil)
+        holdTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled, let self else { return }
+            // Logging cancels holdTask; drop the handle first so this task (and its upload) isn't cancelled.
+            self.holdTask = nil
+            RestAlarm.countdown(0)
+            await self.logCurrentSet(seconds: seconds)
+        }
+    }
+
+    /// Stops early and logs the time held so far.
+    func stopHold() async {
+        guard let holdStartedAt else { return }
+        let held = min(draftSeconds, Int(Date.now.timeIntervalSince(holdStartedAt).rounded()))
+        await logCurrentSet(seconds: held)
+    }
+
+    func logCurrentSet(seconds: Int? = nil) async {
         guard var session, let set = current?.set else { return }
-        let reps = draftReps
+        holdTask?.cancel()
+        holdTask = nil
+        holdStartedAt = nil
+        let held = set.isTimed ? seconds ?? draftSeconds : nil
+        let reps = set.isTimed ? 1 : draftReps
         let weight = draftWeight
         let effort = draftEffort
         let label = current.map { StrengthLogic.label(for: set, in: $0.exercise) } ?? "Set"
-        session = StrengthLogic.complete(session, setId: set.id, reps: reps, weightKg: weight, effort: effort)
+        session = StrengthLogic.complete(session, setId: set.id, reps: reps, weightKg: weight, effort: effort, seconds: held)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        lastLogged = LoggedSet(setId: set.id, label: label, load: StrengthFormat.load(weight: weight, reps: reps))
+        lastLogged = LoggedSet(setId: set.id, label: label, load: StrengthFormat.load(weight: weight, reps: reps, seconds: held))
         restSeconds = set.restSeconds
         restEndsAt = .now.addingTimeInterval(TimeInterval(set.restSeconds))
         show(session)
         resetDrafts()
         if let restEndsAt, let next = current, !allSetsDone {
-            RestAlarm.schedule(at: restEndsAt, next: "\(next.exercise.exerciseName) · \(StrengthFormat.load(weight: draftWeight, reps: draftReps))")
+            let load = StrengthFormat.load(weight: draftWeight, reps: draftReps, seconds: next.set.isTimed ? draftSeconds : nil)
+            RestAlarm.schedule(at: restEndsAt, next: "\(next.exercise.exerciseName) · \(load)")
         } else {
             RestAlarm.cancel()
         }
 
         let base = "/strength/workouts/sessions/\(session.id)/sets/\(set.id)"
-        let completion = StrengthSetCompletion(actualReps: reps, actualWeightKg: weight)
+        let completion = StrengthSetCompletion(actualReps: reps, actualWeightKg: weight, actualSeconds: held)
         queue.append(.init(method: "POST", path: base + "/complete", body: try? APIClient.encoder.encode(completion)))
         if let effort {
             queue.append(.init(method: "PUT", path: base + "/effort", body: try? APIClient.encoder.encode(["effort": effort.rawValue])))
@@ -214,6 +264,17 @@ final class StrengthSessionModel {
 
     func adjustReps(by delta: Int) {
         draftReps = min(100, max(0, draftReps + delta))
+    }
+
+    /// 5 s steps, 5 s to 30 min; locked while the timer runs.
+    func adjustSeconds(by delta: Int) {
+        guard holdStartedAt == nil else { return }
+        draftSeconds = min(1800, max(5, draftSeconds + delta))
+    }
+
+    /// "Add weight" on a bodyweight lift: starts at 5 kg (a backpack or a vest).
+    func addWeight() {
+        draftWeight = 5
     }
 
     func finish() async {
@@ -273,8 +334,12 @@ final class StrengthSessionModel {
 
     private func resetDrafts() {
         guard let session, let current = StrengthLogic.current(in: session) else { return }
+        holdTask?.cancel()
+        holdTask = nil
+        holdStartedAt = nil
         draftWeight = StrengthLogic.carriedWeight(for: current.set, in: current.exercise)
         draftReps = current.set.targetReps
+        draftSeconds = current.set.targetSeconds ?? 0
         draftEffort = nil
     }
 }
@@ -288,6 +353,7 @@ struct LoggedSet: Equatable {
 private struct StrengthSetCompletion: Encodable {
     let actualReps: Int
     let actualWeightKg: Double?
+    let actualSeconds: Int?
 }
 
 /// The live session on disk, so the workout survives the app being killed mid-set.
@@ -320,7 +386,7 @@ enum StrengthLogic {
 
     /// Marks a set done and moves to the next pending set, preferring the same exercise.
     static func complete(
-        _ session: StrengthSession, setId: Int, reps: Int, weightKg: Double?, effort: SetEffort?
+        _ session: StrengthSession, setId: Int, reps: Int, weightKg: Double?, effort: SetEffort?, seconds: Int? = nil
     ) -> StrengthSession {
         var session = session
         guard let exerciseIndex = session.exercises.firstIndex(where: { $0.sets.contains { $0.id == setId } }),
@@ -330,6 +396,7 @@ enum StrengthLogic {
         session.exercises[exerciseIndex].sets[setIndex].actualWeightKg = weightKg
         session.exercises[exerciseIndex].sets[setIndex].status = "completed"
         session.exercises[exerciseIndex].sets[setIndex].effort = effort?.rawValue
+        session.exercises[exerciseIndex].sets[setIndex].actualSeconds = seconds
 
         let same = session.exercises[exerciseIndex]
         let candidates = [same] + session.exercises.filter { $0.id != same.id }.sorted { $0.exerciseOrder < $1.exerciseOrder }
@@ -378,8 +445,16 @@ enum StrengthFormat {
         return TodayFormat.number(kg)
     }
 
-    static func load(weight: Double?, reps: Int) -> String {
-        weight.map { "\(TodayFormat.number($0)) kg × \(reps)" } ?? "BW × \(reps)"
+    static func load(weight: Double?, reps: Int, seconds: Int? = nil) -> String {
+        if let seconds {
+            return weight.map { "\(TodayFormat.number($0)) kg · \(hold(seconds))" } ?? hold(seconds)
+        }
+        return weight.map { "\(TodayFormat.number($0)) kg × \(reps)" } ?? "BW × \(reps)"
+    }
+
+    /// "40 s" for short holds, "1:30" from a minute up.
+    static func hold(_ seconds: Int) -> String {
+        seconds < 60 ? "\(seconds) s" : clock(seconds)
     }
 
     static func clock(_ seconds: Int) -> String {

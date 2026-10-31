@@ -36,6 +36,47 @@ struct TodayTests {
         #expect(today.weekMinutes.planned == 370)
     }
 
+    @Test func bodyweightDayStartsAsAOneTimeSession() throws {
+        let json = """
+        {"template_id": null, "name": "Bodyweight upper", "last_done": null,
+         "exercises": [{"name": "Push Up", "sets": 4, "reps": 12, "weight_kg": null, "rest_seconds": 90, "notes": "Hands on a table"}]}
+        """
+        let strength = try APIClient.decoder.decode(PhoneToday.Strength.self, from: Data(json.utf8))
+        let workout = try #require(strength.oneTime)
+        #expect(workout.name == "Bodyweight upper")
+        #expect(workout.exercises == [.init(exerciseName: "Push Up", setCount: 4, targetReps: 12, targetWeightKg: nil, restSeconds: 90, notes: "Hands on a table")])
+
+        let saved = try APIClient.decoder.decode(PhoneToday.Strength.self, from: Data(#"{"template_id": 2, "exercises": [{"name": "Squat", "sets": 3}]}"#.utf8))
+        #expect(saved.oneTime == nil)
+    }
+
+    @Test func savedWorkoutsKeepHolds() throws {
+        let json = """
+        {"id": 7, "name": "Core", "exercises": [
+          {"exercise_name": "Plank", "set_count": 3, "target_reps": 1, "target_seconds": 45, "rest_seconds": 45},
+          {"exercise_name": "Dead Bug", "set_count": 3, "target_reps": 10, "rest_seconds": 45}]}
+        """
+        let draft = WorkoutDraft(try APIClient.decoder.decode(TemplateDetail.self, from: Data(json.utf8)))
+        #expect(draft.exercises.map(\.seconds) == [45, nil])
+        #expect(draft.exercises.map(\.dose) == ["3 × 45 s", "3 × 10"])
+        let saved = draft.input.exercises
+        #expect((saved[0].targetReps, saved[0].targetSeconds) == (1, 45))
+        #expect((saved[1].targetReps, saved[1].targetSeconds) == (10, nil))
+    }
+
+    @Test func holdsStartAsTimedSets() throws {
+        let json = """
+        {"template_id": null, "name": "Bodyweight core",
+         "exercises": [{"name": "Plank", "sets": 3, "reps": null, "seconds": 40, "rest_seconds": 45}]}
+        """
+        let strength = try APIClient.decoder.decode(PhoneToday.Strength.self, from: Data(json.utf8))
+        let plank = try #require(strength.oneTime?.exercises.first)
+        #expect((plank.targetReps, plank.targetSeconds, plank.restSeconds) == (1, 40, 45))
+        #expect(TodayFormat.exerciseTarget(strength.exercises[0]) == "3 × 40 s")
+        #expect(StrengthFormat.hold(90) == "1:30")
+        #expect(StrengthFormat.load(weight: 10, reps: 1, seconds: 40) == "10 kg · 40 s")
+    }
+
     @Test func formatsDurations() {
         #expect(TodayFormat.duration(167) == "2h 47m")
         #expect(TodayFormat.duration(45) == "45m")

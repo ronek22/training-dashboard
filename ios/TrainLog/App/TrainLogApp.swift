@@ -72,11 +72,11 @@ struct RootView: View {
         // System tab bar: Liquid Glass on iOS 26, and every tab keeps its scroll and navigation state.
         TabView(selection: $tab) {
             Tab("Today", systemImage: "clock", value: .today) {
-                TodayView(onStartStrength: { strength = StrengthLaunch(templateId: $0) }, refresh: todayRefresh,
+                TodayView(onStartStrength: { strength = $0 }, refresh: todayRefresh,
                           recapRequest: recapRequest)
             }
             Tab("Plan", systemImage: "calendar", value: .plan) {
-                PlanView(onStartStrength: { strength = StrengthLaunch(templateId: $0) })
+                PlanView(onStartStrength: { strength = $0 })
             }
             Tab("Coach", systemImage: "bubble.left.and.bubble.right", value: .coach) {
                 CoachView()
@@ -107,7 +107,7 @@ struct RootView: View {
             }
         }
         .fullScreenCover(item: $strength, onDismiss: { todayRefresh += 1 }) { launch in
-            StrengthSessionView(templateId: launch.templateId)
+            StrengthSessionView(templateId: launch.templateId, oneTime: launch.oneTime)
         }
         // Widgets and the strength Live Activity.
         .onOpenURL { url in
@@ -150,10 +150,12 @@ enum CacheWarmer {
     }
 }
 
-/// Opens the strength session screen; a nil template resumes the active workout.
+/// Opens the strength session screen; a nil template resumes the active workout, or starts
+/// `oneTime` (a bodyweight day) when none is running.
 struct StrengthLaunch: Identifiable {
     let id = UUID()
     let templateId: Int?
+    var oneTime: TemplateInput?
 }
 
 extension View {

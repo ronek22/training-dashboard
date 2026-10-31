@@ -35,8 +35,12 @@ struct StrengthSession: Codable, Sendable, Equatable {
         var status: String
         var setType: String?
         var effort: String?
+        /// A hold (plank): the set is timed and `targetReps` is 1.
+        var targetSeconds: Int?
+        var actualSeconds: Int?
 
         var isCompleted: Bool { status == "completed" }
+        var isTimed: Bool { targetSeconds != nil }
         var isWarmup: Bool { setType == "warmup" }
     }
 
@@ -56,6 +60,7 @@ struct StrengthTemplate: Decodable, Sendable, Equatable {
         var targetReps: Int?
         var targetWeightKg: Double?
         var notes: String?
+        var targetSeconds: Int?
         let next: Next?
     }
 

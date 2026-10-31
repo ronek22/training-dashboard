@@ -22,15 +22,17 @@ struct Outbox: Sendable {
 
     /// Hands writes over oldest first and stops at the first one the phone didn't take, so they
     /// never arrive out of order. `deliver` returns whether the phone accepted it. Returns what's left.
+    /// Reads the file again after every delivery: a write appended while one was in flight (the
+    /// effort tap right after a set) is kept and sent in the same flush.
     @discardableResult
     func flush(isolation: isolated (any Actor)? = #isolation, _ deliver: (Write) async -> Bool) async -> Int {
-        var remaining = pending
-        while let write = remaining.first {
+        while let write = pending.first {
             guard await deliver(write) else { break }
-            remaining.removeFirst()
+            var remaining = pending
+            if remaining.first == write { remaining.removeFirst() }
             save(remaining)
         }
-        return remaining.count
+        return pending.count
     }
 
     private func save(_ writes: [Write]) {

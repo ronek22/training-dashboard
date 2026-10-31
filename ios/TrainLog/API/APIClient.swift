@@ -206,15 +206,15 @@ struct WriteQueue: Sendable {
 
     /// Sends queued writes in order. Stops at the first unreachable one; drops writes the server
     /// rejects (e.g. a set in a workout finished on the web) so one bad write can't block the rest.
-    /// Returns whether the queue is now empty.
+    /// Returns whether the queue is now empty. Reads the file again after every send, so a write
+    /// appended meanwhile (two sets from the Watch a second apart) is kept and sent too.
     @discardableResult
     func flush(with client: APIClient) async -> Bool {
-        var remaining = pending
         // Don't hold a screen's load behind a write that can't go out yet.
-        if !remaining.isEmpty, client.reachability.knownOffline { return false }
+        if !pending.isEmpty, client.reachability.knownOffline { return false }
         var outcomes: [Outcome] = []
         defer { record(outcomes) }
-        while let write = remaining.first {
+        while let write = pending.first {
             var rejected: Int?
             do {
                 try await client.send(write.method, write.path, body: write.body)
@@ -222,13 +222,13 @@ struct WriteQueue: Sendable {
                 // Rejected for good; fall through and drop it.
                 rejected = code
             } catch {
-                save(remaining)
                 return false
             }
             outcomes.append(Outcome(method: write.method, path: write.path, at: .now, rejected: rejected))
-            remaining.removeFirst()
+            var remaining = pending
+            if remaining.first == write { remaining.removeFirst() }
+            save(remaining)
         }
-        save(remaining)
         return true
     }
 

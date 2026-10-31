@@ -102,11 +102,27 @@ struct WatchTests {
         #expect(!FileManager.default.fileExists(atPath: outbox.file.path))
     }
 
+    @Test func outboxKeepsAWriteAppendedWhileOneIsInFlight() async {
+        let outbox = tempOutbox()
+        outbox.append(.init(method: "POST", path: "/set"))
+        var delivered: [String] = []
+        let left = await outbox.flush { write in
+            // The effort tap lands while the set is still on its way to the phone.
+            if write.path == "/set" { outbox.append(.init(method: "PUT", path: "/effort")) }
+            delivered.append(write.path)
+            return true
+        }
+        #expect(delivered == ["/set", "/effort"])
+        #expect(left == 0)
+    }
+
     // MARK: Phone relay
 
     final class Stub: URLProtocol, @unchecked Sendable {
         nonisolated(unsafe) static var statuses: [String: Int] = [:]
         nonisolated(unsafe) static var offline = false
+        /// Runs as a request arrives, before it's answered.
+        nonisolated(unsafe) static var onLoad: ((String) -> Void)?
         override class func canInit(with request: URLRequest) -> Bool { true }
         override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
         override func startLoading() {
@@ -114,6 +130,7 @@ struct WatchTests {
                 client?.urlProtocol(self, didFailWithError: URLError(.cannotConnectToHost))
                 return
             }
+            Self.onLoad?(request.url?.path ?? "")
             let status = Self.statuses[request.url?.path ?? ""] ?? 200
             client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: Data(#"{"ok":true}"#.utf8))
@@ -169,5 +186,20 @@ struct WatchTests {
         #expect(reply.status == 202)
         #expect(queue.pending.map(\.path) == ["/strength/workouts/sessions/4/sets/20/complete"])
         Stub.offline = false
+    }
+
+    @Test func phoneQueueKeepsAWriteAppendedWhileOneIsSending() async {
+        Stub.offline = false
+        Stub.statuses = [:]
+        let queue = WriteQueue(file: FileManager.default.temporaryDirectory.appending(path: "relayq-\(UUID().uuidString).json"))
+        queue.append(.init(method: "POST", path: "/set/1", body: nil))
+        // The Watch's next set arrives while the first is on its way to the server.
+        Stub.onLoad = { path in
+            if path == "/set/1" { queue.append(.init(method: "POST", path: "/set/2", body: nil)) }
+        }
+        defer { Stub.onLoad = nil }
+        #expect(await queue.flush(with: client()))
+        #expect(queue.pending.isEmpty)
+        #expect(queue.log.map(\.path) == ["/set/2", "/set/1"])
     }
 }

@@ -110,7 +110,9 @@ final class StartModel {
         strength = session?.strength.flatMap { $0.exercises.isEmpty ? nil : $0 }
         strengthDone = session?.isDone ?? false
         durationMin = session?.durationMin
-        let running: StrengthSession? = loadedActive.flatMap { $0.value }
+        // Only a live answer: a cached one may be a workout finished since, and Resume would log
+        // sets into it.
+        let running: StrengthSession? = loadedActive.flatMap { $0.stale ? nil : $0.value }
         self.active = running?.isActive == true ? running : nil
         self.rehab = loadedRehab?.value.session.exercises.isEmpty == false ? loadedRehab?.value.session : nil
         stale = loadedToday?.stale ?? true

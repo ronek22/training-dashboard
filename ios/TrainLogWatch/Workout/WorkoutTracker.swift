@@ -78,8 +78,19 @@ final class WorkoutTracker: NSObject {
         }
     }
 
-    /// After a crash or relaunch mid-workout: picks the running session back up.
+    /// After a crash or relaunch mid-workout: picks the running session back up. The app delegate
+    /// and the root view both ask; they share one attempt, so neither starts a second workout
+    /// while the first is still being recovered.
     func recover() async {
+        if let recovering { return await recovering.value }
+        let attempt = Task { await recoverOnce() }
+        recovering = attempt
+        await attempt.value
+    }
+
+    private var recovering: Task<Void, Never>?
+
+    private func recoverOnce() async {
         guard session == nil, let recovered = try? await store.recoverActiveWorkoutSession() else { return }
         session = recovered
         builder = recovered.associatedWorkoutBuilder()

@@ -71,7 +71,9 @@ struct WatchRoot: View {
                 return
             }
             #endif
-            // Relaunched mid-session: straight back into it.
+            // Relaunched mid-session: straight back into it, on the recovered HealthKit workout
+            // rather than a new one.
+            await tracker.recover()
             if screen == .start, let saved = RunStore().load(), saved.isActive {
                 run = StrengthRun(session: saved)
                 screen = .strength

@@ -36,6 +36,20 @@ struct TodayTests {
         #expect(today.weekMinutes.planned == 370)
     }
 
+    @Test func bodyweightDayStartsAsAOneTimeSession() throws {
+        let json = """
+        {"template_id": null, "name": "Bodyweight upper", "last_done": null,
+         "exercises": [{"name": "Push Up", "sets": 4, "reps": 12, "weight_kg": null, "rest_seconds": 90, "notes": "Hands on a table"}]}
+        """
+        let strength = try APIClient.decoder.decode(PhoneToday.Strength.self, from: Data(json.utf8))
+        let workout = try #require(strength.oneTime)
+        #expect(workout.name == "Bodyweight upper")
+        #expect(workout.exercises == [.init(exerciseName: "Push Up", setCount: 4, targetReps: 12, targetWeightKg: nil, restSeconds: 90, notes: "Hands on a table")])
+
+        let saved = try APIClient.decoder.decode(PhoneToday.Strength.self, from: Data(#"{"template_id": 2, "exercises": [{"name": "Squat", "sets": 3}]}"#.utf8))
+        #expect(saved.oneTime == nil)
+    }
+
     @Test func formatsDurations() {
         #expect(TodayFormat.duration(167) == "2h 47m")
         #expect(TodayFormat.duration(45) == "45m")

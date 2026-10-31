@@ -60,6 +60,22 @@ class PhoneTodayTests(unittest.TestCase):
         self.assertEqual(strength["exercises"][1]["sets"], 3)
         self.assertEqual(strength["last_done"], "2030-01-03")
 
+    def test_bodyweight_day_lists_bodyweight_moves_without_a_template(self):
+        row = self.conn.execute("SELECT days_json FROM weekly_plans").fetchone()
+        days = json.loads(row["days_json"])
+        days[3]["title"] = "Bodyweight upper + core (parents' home)"
+        self.conn.execute("UPDATE weekly_plans SET days_json = ?", (json.dumps(days),))
+        self.conn.commit()
+
+        strength = build_phone_today(self.conn, TODAY)["today"]["strength"]
+        self.assertIsNone(strength["template_id"])
+        self.assertEqual(strength["name"], "Bodyweight upper + core (parents' home)")
+        names = [item["name"] for item in strength["exercises"]]
+        self.assertEqual(names[:2], ["Push Up", "Pike Push Up"])
+        self.assertIn("Dead Bug", names)
+        self.assertNotIn("Air Squat", names)
+        self.assertTrue(all(item["weight_kg"] is None for item in strength["exercises"]))
+
     def test_week_shows_done_sports_and_minutes(self):
         brief = build_phone_today(self.conn, TODAY)
         tuesday = brief["week"][1]

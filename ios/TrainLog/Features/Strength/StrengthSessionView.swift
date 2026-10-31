@@ -11,8 +11,8 @@ struct StrengthSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
-    init(templateId: Int?) {
-        _model = State(initialValue: StrengthSessionModel(templateId: templateId))
+    init(templateId: Int?, oneTime: TemplateInput? = nil) {
+        _model = State(initialValue: StrengthSessionModel(templateId: templateId, oneTime: oneTime))
     }
 
     var body: some View {

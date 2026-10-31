@@ -35,17 +35,21 @@ final class StrengthSessionModel {
     var draftEffort: SetEffort?
 
     private let templateId: Int?
+    /// A bodyweight day's exercises, started as a one-time session when nothing is running.
+    private let oneTime: TemplateInput?
     private let client: () -> APIClient
     private let queue: WriteQueue
     private let store: SessionStore
 
     init(
         templateId: Int?,
+        oneTime: TemplateInput? = nil,
         client: @escaping () -> APIClient = { .current },
         queue: WriteQueue = WriteQueue(),
         store: SessionStore = SessionStore()
     ) {
         self.templateId = templateId
+        self.oneTime = oneTime
         self.client = client
         self.queue = queue
         self.store = store
@@ -90,6 +94,8 @@ final class StrengthSessionModel {
                     return
                 }
                 live = try await start(templateId, api: api)
+            } else if live == nil, let oneTime {
+                live = try await startOneTime(oneTime, api: api)
             }
             guard let live else {
                 phase = .failed("No strength workout planned today. Start one from the web app.")
@@ -114,6 +120,15 @@ final class StrengthSessionModel {
             return try await api.send("POST", "/strength/workouts/sessions", body: body, as: StrengthSession.self)
         } catch APIError.status(409) {
             // Started elsewhere a moment ago: resume that one.
+            return try await api.getLive("/strength/workouts/sessions/active", as: StrengthSession?.self)
+        }
+    }
+
+    private func startOneTime(_ workout: TemplateInput, api: APIClient) async throws -> StrengthSession? {
+        let body = try APIClient.encoder.encode(workout)
+        do {
+            return try await api.send("POST", "/strength/workouts/sessions/one-time", body: body, as: StrengthSession.self)
+        } catch APIError.status(409) {
             return try await api.getLive("/strength/workouts/sessions/active", as: StrengthSession?.self)
         }
     }

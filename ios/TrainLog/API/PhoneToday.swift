@@ -69,7 +69,9 @@ struct PhoneToday: Decodable, Sendable {
     }
 
     struct Strength: Decodable, Sendable {
-        let templateId: Int
+        /// Nil on a bodyweight day: no saved workout, the exercises start as a one-time session.
+        let templateId: Int?
+        var name: String?
         let exercises: [Exercise]
         let lastDone: String?
     }
@@ -79,6 +81,8 @@ struct PhoneToday: Decodable, Sendable {
         let sets: Int
         let reps: Int?
         let weightKg: Double?
+        var restSeconds: Int?
+        var notes: String?
     }
 
     struct WeekDay: Decodable, Sendable, Identifiable {

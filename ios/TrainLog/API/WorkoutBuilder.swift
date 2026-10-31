@@ -60,3 +60,14 @@ struct ExerciseSuggestion: Decodable, Sendable, Equatable, Identifiable {
         let weightKg: Double
     }
 }
+
+extension PhoneToday.Strength {
+    /// `POST /sessions/one-time` body for a day without a saved workout (a bodyweight day).
+    var oneTime: TemplateInput? {
+        guard templateId == nil, !exercises.isEmpty else { return nil }
+        return TemplateInput(name: name ?? "Bodyweight", notes: nil, exercises: exercises.map {
+            .init(exerciseName: $0.name, setCount: $0.sets, targetReps: $0.reps ?? 10, targetWeightKg: $0.weightKg,
+                  restSeconds: $0.restSeconds ?? 90, notes: $0.notes)
+        })
+    }
+}

@@ -180,6 +180,42 @@ def is_no_equipment_lift(day: dict) -> bool:
     return bool(NO_EQUIPMENT_LIFT_RE.search(str(day.get("title") or "")))
 
 
+def _lift(name: str, sets: int, reps: int, rest_seconds: int, notes: str) -> dict:
+    return {"name": name, "sets": sets, "reps": reps, "weight_kg": None, "rest_seconds": rest_seconds, "notes": notes}
+
+
+# Rep-based moves only: a strength session logs reps, not holds. Picked by the words in the title.
+BODYWEIGHT_BLOCKS = {
+    "upper": [
+        _lift("Push Up", 4, 12, 90, "Hands on a table or sofa edge if 12 is too many; feet raised once it's easy."),
+        _lift("Pike Push Up", 3, 8, 90, "Hips high, lower the head between the hands. Shoulders, not chest."),
+        _lift("Chair Dip", 3, 10, 90, "Sturdy chair, elbows straight back, shoulders down."),
+        _lift("Backpack Row", 3, 12, 60, "Pack filled with water bottles, hinge forward, pull to the hip. Reps per arm."),
+    ],
+    "lower": [
+        _lift("Air Squat", 3, 15, 60, "Sit between the heels, chest up, 2 s down."),
+        _lift("Reverse Lunge", 3, 10, 60, "Step back, back knee hovers over the floor. Reps per leg."),
+        _lift("Glute Bridge", 3, 15, 60, "Squeeze at the top for a second."),
+    ],
+    "core": [
+        _lift("Dead Bug", 3, 10, 45, "Lower back pressed into the floor, slow opposite arm and leg. Reps per side."),
+        _lift("Reverse Crunch", 3, 12, 45, "Curl the hips off the floor, lower slowly."),
+        _lift("Plank Shoulder Tap", 3, 20, 45, "Feet wide, hips still while you tap."),
+    ],
+}
+
+
+def bodyweight_lift(day: dict) -> list[dict]:
+    """Exercises for a no-equipment lift day, so it can run as a one-time strength session."""
+    title = str(day.get("title") or "").lower()
+    blocks = [key for key in ("upper", "lower", "core") if re.search(rf"\b{key}\b", title)]
+    if re.search(r"\b(?:legs|full body|full-body)\b", title):
+        blocks = [key for key in ("upper", "lower") if key not in blocks] + blocks
+    if not [key for key in blocks if key != "core"]:
+        blocks.insert(0, "upper")
+    return [dict(item) for key in blocks for item in BODYWEIGHT_BLOCKS[key]]
+
+
 # Pace for the time estimate: an easy rep plus a short setup before each exercise.
 REP_SECONDS = 3
 TRANSITION_SECONDS = 15

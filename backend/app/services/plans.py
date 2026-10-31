@@ -22,6 +22,7 @@ from .fitbod_imports import get_fitbod_strength_detail_for_activity
 from ..repositories.goals import ACTIVE_GOAL_CONDITION
 from .goal_portfolio import build_portfolio_check, portfolio_conflict
 from .goals import build_requirement_summary, serialize_goal
+from .guided_sessions import is_no_equipment_lift
 from .lift_ride_clash import LOCKING_ACTIVITY_SQL, legs_check, locked_dates, plan_clashes, resolve_clashes
 from .heart_rate_zones import build_activity_heart_rate_zone_summary, run_hr_cap
 from .recovery import rehab_for_day, rehab_routines
@@ -275,7 +276,11 @@ def _apply_strength_templates_to_days(
     for day in sorted(days, key=lambda item: item.get("date") or ""):
         normalized = dict(day)
         session_type = normalize_plan_session_type(normalized.get("session_type"))
-        if session_type == "WeightTraining":
+        if session_type == "WeightTraining" and is_no_equipment_lift(normalized):
+            # Bodyweight away from home: no saved workout, and the rotation waits for the gym.
+            for key in ("template_id", "template_label", "template_summary"):
+                normalized[key] = None
+        elif session_type == "WeightTraining":
             named_template = _workout_template_from_title(template_settings, normalized.get("title"))
             template = named_template or _workout_template_by_id(template_settings, normalized.get("template_id"))
             reason = None

@@ -8,6 +8,7 @@ only sick mode used them.
 """
 import json
 import math
+import re
 import sqlite3
 from datetime import date, datetime
 from typing import Optional
@@ -169,6 +170,14 @@ SESSIONS = {
 }
 
 CONTEXT_LABELS = {"sick": "Sick mode", "stress": "Downshift", "travel": "Travel kit"}
+
+# A lift with no gym kit: travel kit, or a coach-written bodyweight session (at the parents', in a hotel).
+# These never take a saved A/B/C/D workout or loaded accessories.
+NO_EQUIPMENT_LIFT_RE = re.compile(r"travel kit|body\s?weight|no[- ]equipment", re.IGNORECASE)
+
+
+def is_no_equipment_lift(day: dict) -> bool:
+    return bool(NO_EQUIPMENT_LIFT_RE.search(str(day.get("title") or "")))
 
 
 # Pace for the time estimate: an easy rep plus a short setup before each exercise.

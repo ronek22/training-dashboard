@@ -5,7 +5,7 @@
 # INSTALL=1 (`just ios`) builds and installs now, keeping the current profile, and opens the app.
 set -euo pipefail
 
-DEVICE_ID="${DEVICE_ID:-EA4E024D-F96E-51F5-841B-04DDF2CC2B49}"
+DEVICE_ID="${DEVICE_ID:-00008140-001E70110A52801C}"
 APP_ID="${APP_ID:-7LNZV748SW.com.ronek22.trainlog}"
 BUNDLE_ID="${APP_ID#*.}"
 RENEW_DAYS="${RENEW_DAYS:-2}"
@@ -37,7 +37,7 @@ if [[ "$FORCE" != 1 && "$INSTALL" != 1 ]] && (( expires > 0 && days_left >= RENE
   exit 0
 fi
 
-if ! xcrun devicectl list devices 2>/dev/null | grep "$DEVICE_ID" | grep -q "available"; then
+if ! xcrun devicectl list devices 2>/dev/null | grep "$DEVICE_ID" | grep -qE "available|connected"; then
   if [[ "$INSTALL" == 1 ]]; then
     log "the iPhone is not reachable: unlock it and keep it on the same Wi-Fi (or plug it in)"; exit 1
   fi

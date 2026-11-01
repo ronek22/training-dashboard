@@ -6,6 +6,10 @@ import Foundation
 enum WatchWire {
     /// Phone → Watch user info / application context: the widget snapshot's JSON (`WidgetStore`).
     static let widgetSnapshotKey = "widgetSnapshot"
+    /// Watch → phone user info: a `.write` envelope's JSON, handed over with `transferUserInfo`
+    /// because the phone was out of reach. The system delivers these in order, even after the Watch
+    /// app has closed.
+    static let writeKey = "write"
 
     /// One HTTP call the phone makes for the Watch.
     struct Envelope: Codable, Sendable, Equatable {

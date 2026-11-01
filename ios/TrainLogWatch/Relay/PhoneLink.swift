@@ -21,14 +21,15 @@ enum LinkError: LocalizedError {
 
 /// The Watch's only way to the server: every call goes through the iPhone app
 /// (`TrainLog/Watch/WatchRelay.swift`). Reads need the phone in reach; writes go to the `Outbox`
-/// first and are handed over in order whenever the phone is reachable.
+/// first and are handed over in order: as a message when the phone is in reach, otherwise as a
+/// queued user-info transfer that the system delivers later.
 @MainActor
 @Observable
 final class PhoneLink: NSObject {
     static let shared = PhoneLink()
 
     private(set) var reachable = false
-    /// Writes the phone hasn't taken yet.
+    /// Writes the phone hasn't taken yet: in the outbox, or in a transfer still on its way.
     private(set) var pendingWrites = 0
 
     private let outbox = Outbox()
@@ -38,7 +39,7 @@ final class PhoneLink: NSObject {
 
     func activate() {
         guard WCSession.isSupported() else { return }
-        pendingWrites = outbox.pending.count
+        pendingWrites = waiting
         WCSession.default.delegate = self
         WCSession.default.activate()
     }
@@ -83,7 +84,7 @@ final class PhoneLink: NSObject {
         if WatchDemo.enabled { return }
         #endif
         outbox.append(.init(method: method, path: path, body: body))
-        pendingWrites = outbox.pending.count
+        pendingWrites = waiting
         Task { await flush() }
     }
 
@@ -92,21 +93,57 @@ final class PhoneLink: NSObject {
         flushing = true
         defer { flushing = false }
         await waitForActivation()
-        pendingWrites = await outbox.flush { [weak self] write in
+        await outbox.flush { [weak self] write in
             guard let self else { return false }
-            let envelope = WatchWire.Envelope(kind: .write, method: write.method, path: write.path, body: write.body)
-            // The phone answers once the write is on its own queue.
-            return (try? await self.send(envelope)) != nil
+            return await self.handOver(WatchWire.Envelope(kind: .write, method: write.method, path: write.path, body: write.body))
         }
+        pendingWrites = waiting
+    }
+
+    private var waiting: Int {
+        let session = WCSession.default
+        let transfers = session.activationState == .activated ? session.outstandingUserInfoTransfers.count : 0
+        return outbox.pending.count + transfers
+    }
+
+    /// A transfer reached the phone, or failed; a failed one isn't retried by the system, so its
+    /// write goes back in the outbox.
+    fileprivate func transferFinished(_ write: Data?, failure: String?) {
+        if let failure, let write, let envelope = try? JSONDecoder().decode(WatchWire.Envelope.self, from: write) {
+            logger.error("Transfer of \(envelope.path, privacy: .public) failed, back in the outbox: \(failure)")
+            outbox.append(.init(method: envelope.method, path: envelope.path, body: envelope.body))
+            Task { await flush() }
+        }
+        pendingWrites = waiting
+    }
+
+    /// A message when the phone is in reach (it answers once the write is on its own queue);
+    /// otherwise a user-info transfer, which the system keeps and delivers even if this app closes
+    /// before the phone is back. While one transfer is still waiting, later writes queue behind it
+    /// instead of overtaking it as a message.
+    private func handOver(_ envelope: WatchWire.Envelope) async -> Bool {
+        let session = WCSession.default
+        if session.outstandingUserInfoTransfers.isEmpty, await reachableSoon() {
+            return (try? await send(envelope)) != nil
+        }
+        guard session.activationState == .activated, let data = try? JSONEncoder().encode(envelope) else { return false }
+        session.transferUserInfo([WatchWire.writeKey: data])
+        logger.info("\(envelope.path, privacy: .public): phone away, handed to a user-info transfer")
+        return true
+    }
+
+    /// Reachability settles a moment after launch (and after the phone wakes); gives it a few seconds.
+    private func reachableSoon() async -> Bool {
+        let session = WCSession.default
+        for _ in 0..<12 where !(session.activationState == .activated && session.isReachable) {
+            try? await Task.sleep(for: .milliseconds(250))
+        }
+        return session.activationState == .activated && session.isReachable
     }
 
     private func send(_ envelope: WatchWire.Envelope) async throws -> WatchWire.Reply {
         let session = WCSession.default
-        // Reachability settles a moment after launch (and after the phone wakes); give it a few seconds.
-        for _ in 0..<12 where !(session.activationState == .activated && session.isReachable) {
-            try? await Task.sleep(for: .milliseconds(250))
-        }
-        guard session.activationState == .activated, session.isReachable else {
+        guard await reachableSoon() else {
             logger.info("\(envelope.path, privacy: .public): phone not reachable (activation \(session.activationState.rawValue))")
             throw LinkError.phoneUnreachable
         }
@@ -162,6 +199,12 @@ extension PhoneLink: WCSessionDelegate {
     private nonisolated func storeWidgetSnapshot(_ payload: [String: Any]) {
         guard let data = payload[WatchWire.widgetSnapshotKey] as? Data else { return }
         WidgetStore.store(data)
+    }
+
+    nonisolated func session(_ session: WCSession, didFinish userInfoTransfer: WCSessionUserInfoTransfer, error: Error?) {
+        let write = userInfoTransfer.userInfo[WatchWire.writeKey] as? Data
+        let failure = error.map { String(describing: $0) }
+        Task { @MainActor in PhoneLink.shared.transferFinished(write, failure: failure) }
     }
 
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {

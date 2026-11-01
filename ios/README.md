@@ -38,6 +38,10 @@ doesn't copy embedded Watch apps by itself.
   ```
 
   Log: `~/Library/Logs/TrainLog-redeploy.log`. It builds whatever is checked out in `ios/`.
+  The same run renews the Apple Watch app, installed straight from the Mac (the iPhone's Watch
+  app can't install it under free signing): when its profile has under 2 days left, it's missing
+  from the Watch, or the phone was just reinstalled. The Watch has to be unlocked (on the wrist)
+  near the Mac; until then it retries each run. `WATCH=0` skips it.
   A paid developer account ($99/yr) removes the 7-day limit and enables TestFlight.
 - The phone and the Mac must be on the same Wi-Fi. Allow the "Local Network" prompt on first
   launch.

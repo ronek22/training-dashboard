@@ -1,6 +1,9 @@
 import Foundation
 import HealthKit
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.ronek22.trainlog", category: "health")
 
 /// Reads Apple Health on the phone and pushes it to the backend, replacing the Health Data Export
 /// app's iCloud files. Runs when the app comes to the foreground and whenever HealthKit wakes it
@@ -49,7 +52,11 @@ final class HealthSync {
     func requestAccess() async {
         guard Self.isAvailable, !types.isEmpty else { return }
         let live = readsRecovery ? LiveHealth.types : []
-        try? await store.requestAuthorization(toShare: [], read: Set(types + live))
+        do {
+            try await store.requestAuthorization(toShare: [], read: Set(types + live))
+        } catch {
+            logger.error("Health access request failed: \(error)")
+        }
     }
 
     /// Call at launch and after a toggle changes. HealthKit relaunches the app in the background for
@@ -65,7 +72,10 @@ final class HealthSync {
         }
         for type in types {
             let query = HKObserverQuery(sampleType: type, predicate: nil) { _, completion, error in
-                guard error == nil else { return completion() }
+                if let error {
+                    logger.error("Health observer for \(type.identifier, privacy: .public) failed: \(error)")
+                    return completion()
+                }
                 // HealthKit allows calling it from any thread; it isn't annotated @Sendable.
                 nonisolated(unsafe) let done = completion
                 Task { @MainActor in
@@ -79,7 +89,9 @@ final class HealthSync {
             observers.append(query)
             // Steps change all day; the rest arrive a few times a day at most.
             let frequency: HKUpdateFrequency = HealthReader.dailyTotalTypes.contains(type) ? .hourly : .immediate
-            store.enableBackgroundDelivery(for: type, frequency: frequency) { _, _ in }
+            store.enableBackgroundDelivery(for: type, frequency: frequency) { _, error in
+                if let error { logger.error("Background delivery for \(type.identifier, privacy: .public) not enabled: \(error)") }
+            }
         }
     }
 
@@ -110,6 +122,7 @@ final class HealthSync {
             defaults.set(now, forKey: Self.lastSuccessKey)
             defaults.set(result.samplesInserted, forKey: Self.lastInsertedKey)
         } catch {
+            logger.error("Health push failed: \(error)")
             failed = true
         }
         syncing = false

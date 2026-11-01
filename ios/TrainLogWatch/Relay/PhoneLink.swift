@@ -1,6 +1,9 @@
 import Foundation
 import Observation
 import WatchConnectivity
+import os
+
+private let logger = Logger(subsystem: "com.ronek22.trainlog.watchkitapp", category: "phone-link")
 
 enum LinkError: LocalizedError {
     case phoneUnreachable
@@ -103,12 +106,18 @@ final class PhoneLink: NSObject {
         for _ in 0..<12 where !(session.activationState == .activated && session.isReachable) {
             try? await Task.sleep(for: .milliseconds(250))
         }
-        guard session.activationState == .activated, session.isReachable else { throw LinkError.phoneUnreachable }
+        guard session.activationState == .activated, session.isReachable else {
+            logger.info("\(envelope.path, privacy: .public): phone not reachable (activation \(session.activationState.rawValue))")
+            throw LinkError.phoneUnreachable
+        }
         let message = try JSONEncoder().encode(envelope)
         let data: Data = try await withCheckedThrowingContinuation { continuation in
             // Called on a WatchConnectivity queue, not the main actor.
             session.sendMessageData(message, replyHandler: { @Sendable data in continuation.resume(returning: data) },
-                                    errorHandler: { @Sendable _ in continuation.resume(throwing: LinkError.phoneUnreachable) })
+                                    errorHandler: { @Sendable error in
+                                        logger.notice("Message to the phone failed: \(error)")
+                                        continuation.resume(throwing: LinkError.phoneUnreachable)
+                                    })
         }
         return try JSONDecoder().decode(WatchWire.Reply.self, from: data)
     }
@@ -134,6 +143,7 @@ final class PhoneLink: NSObject {
 
 extension PhoneLink: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        if let error { logger.error("Session activation failed: \(error)") }
         // The phone's latest widget snapshot, left as the application context while TrainLog slept.
         storeWidgetSnapshot(session.receivedApplicationContext)
         Task { @MainActor in PhoneLink.shared.didActivate() }

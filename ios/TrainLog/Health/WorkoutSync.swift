@@ -2,6 +2,9 @@ import CoreLocation
 import Foundation
 import HealthKit
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.ronek22.trainlog", category: "workouts")
 
 /// Sends Apple Watch workouts to the backend as soon as HealthKit saves them, so Today and the
 /// training load don't wait for the next Strava import. HealthKit wakes the app in the background
@@ -37,7 +40,11 @@ final class WorkoutSync {
 
     func requestAccess() async {
         guard HealthSync.isAvailable, enabled else { return }
-        try? await store.requestAuthorization(toShare: [], read: Set(WorkoutReader.readTypes))
+        do {
+            try await store.requestAuthorization(toShare: [], read: Set(WorkoutReader.readTypes))
+        } catch {
+            logger.error("Workout access request failed: \(error)")
+        }
     }
 
     /// Call at launch and after the toggle changes, like `HealthSync.startObserving`.
@@ -51,7 +58,10 @@ final class WorkoutSync {
             return
         }
         let query = HKObserverQuery(sampleType: type, predicate: nil) { _, completion, error in
-            guard error == nil else { return completion() }
+            if let error {
+                logger.error("Workout observer failed: \(error)")
+                return completion()
+            }
             nonisolated(unsafe) let done = completion
             Task { @MainActor in
                 await WorkoutSync.shared.sync()
@@ -62,7 +72,9 @@ final class WorkoutSync {
         }
         store.execute(query)
         observer = query
-        store.enableBackgroundDelivery(for: type, frequency: .immediate) { _, _ in }
+        store.enableBackgroundDelivery(for: type, frequency: .immediate) { _, error in
+            if let error { logger.error("Workout background delivery not enabled: \(error)") }
+        }
     }
 
     func sync() async {
@@ -90,6 +102,7 @@ final class WorkoutSync {
             failed = false
             defaults.set(now, forKey: Self.lastSuccessKey)
         } catch {
+            logger.error("Workout push failed: \(error)")
             failed = true
         }
         syncing = false

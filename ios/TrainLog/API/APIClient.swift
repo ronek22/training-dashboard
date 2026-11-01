@@ -1,5 +1,8 @@
 import Foundation
+import os
 import Synchronization
+
+private let logger = Logger(subsystem: "com.ronek22.trainlog", category: "api")
 
 enum APIError: LocalizedError {
     case badURL(String)
@@ -65,6 +68,7 @@ struct APIClient: Sendable {
             cache.store(data, for: path)
             return Loaded(value: value, syncedAt: .now, fromCache: false)
         } catch let error as DecodingError {
+            logger.error("GET \(path, privacy: .public) didn't decode: \(error)")
             throw error
         } catch {
             guard let cached = cache.load(path) else { throw error }
@@ -112,10 +116,12 @@ struct APIClient: Sendable {
             // A write that may have reached the server isn't sent twice; the queue retries it later.
             if let route, method == "GET" || !failure.mayHaveArrived,
                let other = await route.failover(from: baseURL) {
+                logger.info("\(method, privacy: .public) \(path, privacy: .public): \(baseURL, privacy: .public) away, trying \(other, privacy: .public)")
                 do {
                     return try await request(other, path, method: method, body: body, timeout: timeout)
                 } catch is Unreachable {}
             }
+            logger.notice("\(method, privacy: .public) \(path, privacy: .public): server unreachable (may have arrived: \(failure.mayHaveArrived))")
             reachability.markUnreachable()
             throw APIError.unreachable
         }
@@ -152,6 +158,7 @@ struct APIClient: Sendable {
         }
         reachability.markReachable()
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            logger.error("\(method, privacy: .public) \(path, privacy: .public) answered \(http.statusCode)")
             throw APIError.status(http.statusCode)
         }
         return data
@@ -189,8 +196,18 @@ struct WriteQueue: Sendable {
         file.deletingPathExtension().appendingPathExtension("log.json")
     }
 
+    /// A file that's there but doesn't decode (a format change, a torn write) is moved aside rather
+    /// than read as empty, so the next `append` can't overwrite the writes in it.
     var pending: [Write] {
-        (try? Data(contentsOf: file)).flatMap { try? JSONDecoder().decode([Write].self, from: $0) } ?? []
+        guard let data = try? Data(contentsOf: file) else { return [] }
+        do {
+            return try JSONDecoder().decode([Write].self, from: data)
+        } catch {
+            let aside = file.deletingPathExtension().appendingPathExtension("unreadable-\(Int(Date.now.timeIntervalSince1970)).json")
+            try? FileManager.default.moveItem(at: file, to: aside)
+            logger.fault("Write queue didn't decode, kept as \(aside.lastPathComponent, privacy: .public): \(error)")
+            return []
+        }
     }
 
     /// Newest first.
@@ -222,8 +239,10 @@ struct WriteQueue: Sendable {
                 // Already ended: the phone and the Watch both send End, and the second finds nothing.
             } catch APIError.status(let code) where (400..<500).contains(code) {
                 // Rejected for good; fall through and drop it.
+                logger.error("Queued \(write.method, privacy: .public) \(write.path, privacy: .public) refused with \(code), dropped")
                 rejected = code
             } catch {
+                logger.info("Queue flush stopped at \(write.path, privacy: .public), \(pending.count) left: \(error)")
                 return false
             }
             outcomes.append(Outcome(method: write.method, path: write.path, at: .now, rejected: rejected))
@@ -238,8 +257,12 @@ struct WriteQueue: Sendable {
         try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         if writes.isEmpty {
             try? FileManager.default.removeItem(at: file)
-        } else if let data = try? JSONEncoder().encode(writes) {
-            try? data.write(to: file, options: .atomic)
+        } else {
+            do {
+                try JSONEncoder().encode(writes).write(to: file, options: .atomic)
+            } catch {
+                logger.fault("Write queue not saved (\(writes.count) writes): \(error)")
+            }
         }
         NotificationCenter.default.post(name: Self.changed, object: file)
     }

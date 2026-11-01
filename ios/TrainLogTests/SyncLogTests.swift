@@ -48,6 +48,35 @@ struct SyncLogTests {
         try? FileManager.default.removeItem(at: queue.file)
     }
 
+    @Test func queueSurvivesARelaunch() throws {
+        let queue = tempQueue()
+        queue.append(.init(method: "POST", path: "/checkins", body: Data("{}".utf8)))
+        // A new instance on the same file, as after the app was killed.
+        let reopened = WriteQueue(file: queue.file)
+        #expect(reopened.pending.map(\.path) == ["/checkins"])
+        #expect(reopened.pending.first?.body == Data("{}".utf8))
+        try? FileManager.default.removeItem(at: queue.file)
+    }
+
+    @Test func unreadableQueueIsSetAsideNotOverwritten() throws {
+        let queue = tempQueue()
+        let garbage = Data("[{\"method\":".utf8)
+        try garbage.write(to: queue.file)
+
+        #expect(queue.pending.isEmpty)
+        queue.append(.init(method: "POST", path: "/checkins", body: nil))
+        #expect(queue.pending.map(\.path) == ["/checkins"])
+
+        let dir = queue.file.deletingLastPathComponent()
+        let stem = queue.file.deletingPathExtension().lastPathComponent
+        let aside = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.hasPrefix(stem + ".unreadable-") }
+        #expect(aside.count == 1)
+        #expect(try aside.first.map { try Data(contentsOf: $0) } == garbage)
+        aside.forEach { try? FileManager.default.removeItem(at: $0) }
+        try? FileManager.default.removeItem(at: queue.file)
+    }
+
     @Test func flushLogsSentAndRefusedWritesNewestFirst() async {
         Stub.statuses = ["/strength/workouts/sessions/4/sets/9/complete": 409]
         let queue = tempQueue()

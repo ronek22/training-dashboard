@@ -124,7 +124,10 @@ struct WorkoutReader: Sendable {
             sortDescriptors: [SortDescriptor(\.startDate)]
         )
         return try await descriptor.result(for: store).filter {
-            WorkoutKind.isWatchRecorded(bundle: $0.sourceRevision.source.bundleIdentifier)
+            WorkoutKind.isWatchRecorded(
+                bundle: $0.sourceRevision.source.bundleIdentifier,
+                externalId: $0.metadata?[HKMetadataKeyExternalUUID] as? String
+            )
         }
     }
 

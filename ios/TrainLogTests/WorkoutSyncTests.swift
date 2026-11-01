@@ -21,6 +21,11 @@ struct WorkoutSyncTests {
     @Test func takesOnlyWatchRecordedWorkouts() {
         #expect(WorkoutKind.isWatchRecorded(bundle: "com.apple.health.7F3A2C"))
         #expect(WorkoutKind.isWatchRecorded(bundle: "com.ronek22.trainlog.watchkitapp"))
+        // The Watch app's workouts as Health files them, under the iPhone app.
+        #expect(WorkoutKind.isWatchRecorded(bundle: "com.ronek22.trainlog"))
+        // A trainer ride the phone saved from Strava: it reaches the backend through Strava.
+        #expect(!WorkoutKind.isWatchRecorded(bundle: "com.ronek22.trainlog", externalId: "trainlog:20782078210"))
+        #expect(!WorkoutKind.isWatchRecorded(bundle: "com.ronek22.trainlogger"))
         #expect(!WorkoutKind.isWatchRecorded(bundle: "com.zwift.ZwiftGame"))
         #expect(!WorkoutKind.isWatchRecorded(bundle: "com.strava.stravaride"))
     }

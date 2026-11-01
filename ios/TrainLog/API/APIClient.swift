@@ -218,6 +218,8 @@ struct WriteQueue: Sendable {
             var rejected: Int?
             do {
                 try await client.send(write.method, write.path, body: write.body)
+            } catch APIError.status(404) where write.path.hasSuffix("/abandon") {
+                // Already ended: the phone and the Watch both send End, and the second finds nothing.
             } catch APIError.status(let code) where (400..<500).contains(code) {
                 // Rejected for good; fall through and drop it.
                 rejected = code

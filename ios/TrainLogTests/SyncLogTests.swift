@@ -63,6 +63,18 @@ struct SyncLogTests {
         try? FileManager.default.removeItem(at: queue.logFile)
     }
 
+    @Test func secondEndOfAWorkoutIsNotARefusal() async {
+        Stub.statuses = ["/strength/workouts/sessions/4/abandon": 404]
+        let queue = tempQueue()
+        queue.append(.init(method: "POST", path: "/strength/workouts/sessions/4/abandon", body: nil))
+
+        #expect(await queue.flush(with: stubbedClient()))
+        #expect(queue.log.map(\.rejected) == [nil])
+        Stub.statuses = [:]
+        try? FileManager.default.removeItem(at: queue.file)
+        try? FileManager.default.removeItem(at: queue.logFile)
+    }
+
     @Test func logKeepsOnlyTheLatest() async {
         Stub.statuses = [:]
         let queue = tempQueue()

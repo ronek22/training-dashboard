@@ -79,9 +79,13 @@ enum WorkoutKind {
 
     /// The watch's own Workout app (and the phone's Fitness app), and TrainLog's Watch app: Zwift
     /// and other apps that write to Health reach the backend through Strava, so taking them here
-    /// would duplicate them.
-    static func isWatchRecorded(bundle: String) -> Bool {
-        bundle.hasPrefix("com.apple.health") || bundle == "com.ronek22.trainlog.watchkitapp"
+    /// would duplicate them. Health files the Watch app's workouts under the iPhone app's id, so any
+    /// TrainLog workout counts except the trainer rides the phone saves (`RideExport`, external id
+    /// `trainlog:<ride>`), which came from Strava.
+    static func isWatchRecorded(bundle: String, externalId: String? = nil) -> Bool {
+        if bundle.hasPrefix("com.apple.health") { return true }
+        guard bundle == "com.ronek22.trainlog" || bundle.hasPrefix("com.ronek22.trainlog.") else { return false }
+        return !(externalId?.hasPrefix("trainlog:") ?? false)
     }
 }
 

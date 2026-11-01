@@ -14,7 +14,8 @@ from .activity_sources import find_activity_match, get_source_activity_id, strav
 STRAVA_TOKEN_URL = "https://www.strava.com/oauth/token"
 STRAVA_AUTHORIZE_URL = "https://www.strava.com/oauth/authorize"
 # Activities (incl. private ones) plus the profile, which is where Strava lists shoes and bikes.
-STRAVA_SCOPES = "read,activity:read_all,profile:read_all"
+# activity:write uploads TrainLog Watch workouts (strava_upload), which Strava never imports itself.
+STRAVA_SCOPES = "read,activity:read_all,activity:write,profile:read_all"
 STRAVA_ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
 STRAVA_ATHLETE_URL = "https://www.strava.com/api/v3/athlete"
 STRAVA_ACTIVITY_DETAIL_URL = "https://www.strava.com/api/v3/activities/{activity_id}"
@@ -146,7 +147,12 @@ def exchange_strava_code(
     set_setting_fn("strava_refresh_token", refresh_token)
     granted = sorted(filter(None, (scope or "").split(",")))
     set_setting_fn("strava_scope", ",".join(granted))
-    return {"connected": True, "scopes": granted, "gear_access": "profile:read_all" in granted}
+    return {
+        "connected": True,
+        "scopes": granted,
+        "gear_access": "profile:read_all" in granted,
+        "upload_access": "activity:write" in granted,
+    }
 
 
 def backfill_strava_gear_ids(
@@ -673,6 +679,8 @@ def build_strava_status_data(
         "last_import_at": get_setting_fn("strava_last_import_at"),
         # Only known after a reconnect from the app; a pasted token's scope is unknown.
         "scopes": (get_setting_fn("strava_scope") or "").split(",") if get_setting_fn("strava_scope") else None,
+        # TrainLog Watch workouts go up to Strava only with this; reconnect to grant it.
+        "upload_access": "activity:write" in (get_setting_fn("strava_scope") or "").split(","),
         "latest_activity_date": latest_activity_date,
         "pending_stream_backfill": _stream_backfill_candidate_count(conn),
         "stream_fetch_limit": STRAVA_STREAM_FETCH_LIMIT,

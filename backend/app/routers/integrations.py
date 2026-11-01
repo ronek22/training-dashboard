@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 
 from ..db import get_db
@@ -25,6 +25,7 @@ import os
 from pathlib import Path
 
 from ..services import strava_history_backfill
+from ..services.strava_upload import run_watch_uploads
 from ..services.strava_export_import import import_export_streams
 from ..services.healthfit import apply_healthfit_import, preview_healthfit_import
 from ..services.health_data import apply_health_data_import, preview_health_data_import, push_health_data
@@ -63,13 +64,16 @@ def push_health_data_samples(payload: dict):
 
 
 @router.post("/integrations/health-workouts/push")
-def push_health_workout_data(payload: dict):
+def push_health_workout_data(payload: dict, background: BackgroundTasks):
     """Apple Watch workouts from the TrainLog iOS app, with their per-second streams."""
     conn = get_db()
     try:
-        return push_health_workouts(conn, payload)
+        result = push_health_workouts(conn, payload)
     finally:
         conn.close()
+    # TrainLog Watch workouts go up to Strava after the phone has its answer.
+    background.add_task(run_watch_uploads)
+    return result
 
 
 @router.get("/integrations/indoor-rides")
@@ -112,8 +116,11 @@ def strava_authorize_url(redirect_uri: str):
 
 
 @router.post("/integrations/strava/exchange")
-def strava_exchange(payload: StravaAuthCode):
-    return exchange_strava_code(payload.code, payload.scope, get_setting, set_setting)
+def strava_exchange(payload: StravaAuthCode, background: BackgroundTasks):
+    result = exchange_strava_code(payload.code, payload.scope, get_setting, set_setting)
+    # Watch workouts that waited for the upload permission go up now.
+    background.add_task(run_watch_uploads)
+    return result
 
 
 @router.get("/integrations/strava/status")

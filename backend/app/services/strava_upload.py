@@ -16,7 +16,7 @@ import logging
 import re
 import sqlite3
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
 
 import httpx
@@ -206,6 +206,9 @@ def _heart_rate(conn: sqlite3.Connection, activity_id: str) -> Optional[dict]:
     points = [(int(t), int(round(b))) for t, b in zip(times, beats) if t is not None and b is not None]
     if not points:
         return None
+    # Strava wants the timeline to begin at the start: the first reading stands in for second 0.
+    if points[0][0] > 0:
+        points.insert(0, (0, points[0][1]))
     return {"time": [t for t, _ in points], "heartrate": [b for _, b in points]}
 
 
@@ -245,7 +248,8 @@ def build_upload(conn: sqlite3.Connection, activity_id: str, started_at: str, en
         elapsed = int(round(activity["duration_min"] * 60))
     body: dict[str, Any] = {
         "version": "1.0",
-        "start_time": start.isoformat(timespec="seconds"),
+        # In UTC: Strava fails the upload ("Error Processing Data") for a start with an offset.
+        "start_time": start.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "utc_offset": int(start.utcoffset().total_seconds()) if start.utcoffset() else 0,
         "elapsed_time": max(1, elapsed or 1),
         "creator": {"name": "TrainLog"},

@@ -71,7 +71,7 @@ class StravaUploadTests(unittest.TestCase):
         self.start = self.start - timedelta(hours=3 * int(uuid[1:]))
         item = workout(uuid, self.start, kind=kind, minutes=minutes, distance_m=None, name="Workout", avg_hr=110)
         item["source_bundle"] = bundle
-        item["streams"] = {"time": [0, 1, 2], "heartrate": [100, None, 112]}
+        item["streams"] = {"time": [1, 2, 3], "heartrate": [100, None, 112]}
         self.client.post("/integrations/health-workouts/push", json={"workouts": [item]})
         return f"healthkit:{uuid}"
 
@@ -149,8 +149,11 @@ class StravaUploadTests(unittest.TestCase):
             {"exercise_type": "BARBELL_BACK_SQUAT", "repetitions": 5, "weight": 82.5},
             {"exercise_type": "PLANK_GENERIC", "duration": 50},
         ])
-        # Points without a reading are dropped; Strava wants every array as long as time.
-        self.assertEqual(sent["file"]["streams"], {"time": [0, 2], "heartrate": [100, 112]})
+        # Points without a reading are dropped (Strava wants every array as long as time), and the
+        # first reading stands in for second 0.
+        self.assertEqual(sent["file"]["streams"], {"time": [0, 1, 3], "heartrate": [100, 100, 112]})
+        self.assertTrue(sent["file"]["start_time"].endswith("Z"))
+        self.assertEqual(sent["file"]["utc_offset"], int(self.start.utcoffset().total_seconds()))
         self.assertEqual(sent["file"]["elapsed_time"], 40 * 60)
         conn = self.get_db()
         ref = conn.execute("SELECT activity_id FROM activity_source_refs WHERE source = 'strava' AND external_id = '9001'").fetchone()

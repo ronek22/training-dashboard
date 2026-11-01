@@ -17,6 +17,7 @@ struct TodayView: View {
     /// The workout picked in Workout Studio, started once the sheet is gone.
     @State private var studioPick: Int?
     @State private var flameHop = 0
+    @State private var watch = WatchLive.shared
     var onStartStrength: (StrengthLaunch) -> Void = { _ in }
     /// Bumped when the strength screen closes, so the banner and plan reload.
     var refresh = 0
@@ -99,6 +100,11 @@ struct TodayView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 header
+                if let rehab = watch.rehab, let session = watch.rehabSession, !rehab.finished, !rehab.discarded {
+                    WatchRehabCard(state: rehab, session: session, heartRate: watch.liveHeartRate()) { showRehab = true }
+                        .reveal(0)
+                        .transition(.scale(scale: 0.96).combined(with: .opacity))
+                }
                 if let workout = model.activeWorkout {
                     ResumeWorkoutCard(workout: workout) { onStartStrength(StrengthLaunch(templateId: nil)) }
                         .reveal(0)
@@ -593,6 +599,60 @@ private struct SessionCard: View {
             if (session.distanceKm ?? 0) > 0, let minutes = session.durationMin { parts.append("~\(minutes) min") }
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
+// MARK: - Rehab on the Watch
+
+/// The rehab routine running in TrainLog on the Watch; opens the follow-along screen on its step.
+private struct WatchRehabCard: View {
+    let state: WatchWire.Rehab
+    let session: GuidedSession
+    let heartRate: Double?
+    let onFollow: () -> Void
+
+    var body: some View {
+        let steps = RehabFormat.steps(session)
+        let step = steps.indices.contains(state.index) ? steps[state.index] : nil
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Kicker("Rehab on Watch", color: .mobility)
+                Spacer()
+                if let heartRate {
+                    Label("\(Int(heartRate.rounded()))", systemImage: "heart.fill")
+                        .font(AppFont.number(20))
+                        .foregroundStyle(Color(hex: 0xFF5A5F))
+                        .accessibilityLabel("Heart rate \(Int(heartRate.rounded())) from Apple Watch")
+                }
+            }
+            Text((step?.name ?? session.title).uppercased())
+                .font(AppFont.title(26))
+                .foregroundStyle(Color.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .padding(.top, 8)
+            if let step {
+                Text(RehabFormat.kicker(step))
+                    .font(AppFont.body(13))
+                    .foregroundStyle(Color.muted)
+                    .padding(.top, 4)
+            }
+            GeometryReader { proxy in
+                Capsule().fill(Color.track).overlay(alignment: .leading) {
+                    Capsule().fill(Color.mobility)
+                        .frame(width: steps.isEmpty ? 0 : proxy.size.width * Double(state.index) / Double(steps.count))
+                        .animation(.snappy, value: state.index)
+                }
+            }
+            .frame(height: 4)
+            .padding(.top, 12)
+            Button(action: onFollow) {
+                Label("Follow on iPhone", systemImage: "figure.cooldown")
+            }
+            .buttonStyle(VoltButtonStyle())
+            .padding(.top, 16)
+        }
+        .card(border: Color.mobility.opacity(0.35))
     }
 }
 

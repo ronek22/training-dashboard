@@ -54,6 +54,63 @@ struct RehabTests {
         #expect(TodayFormat.next(isStrength: true, rehabOnly: false, mainDone: true, rehabLeft: nil) == .allDone)
         #expect(TodayFormat.next(isStrength: false, rehabOnly: true, mainDone: false, rehabLeft: 5) == .startRehab)
     }
+
+    @MainActor
+    @Test func followsTheWatchsRoutineAndSendsItsButtonsThere() throws {
+        // The Watch's copy, as it travels over the mirrored workout session.
+        let wire = try JSONEncoder().encode(try session())
+        let watchCopy = try JSONDecoder().decode(GuidedSession.self, from: wire)
+        let model = RehabSessionModel(queue: WriteQueue(file: FileManager.default.temporaryDirectory.appending(path: "follow-\(UUID()).json")))
+        var pressed: [WatchWire.Command] = []
+        model.remote = { pressed.append($0) }
+
+        let started = Date.now.addingTimeInterval(-90)
+        // No routine yet: nothing to line the index up with.
+        model.follow(WatchWire.Rehab(startedAt: started, index: 2), session: nil)
+        #expect(!model.following)
+
+        model.follow(WatchWire.Rehab(startedAt: started, index: 2), session: watchCopy)
+        #expect(model.following)
+        #expect(model.phase == .running)
+        #expect(model.current?.name == "Quad isometric")
+        #expect(model.current?.set == 2)
+        #expect(model.startedAt == started)
+
+        model.next()
+        model.togglePause()
+        model.back()
+        // The Watch moves the step; the phone only follows.
+        #expect(pressed == [.next, .pause, .back])
+        #expect(model.index == 2)
+
+        model.follow(WatchWire.Rehab(startedAt: started, index: 4, finished: true), session: nil)
+        #expect(model.phase == .done)
+        #expect(model.saveState == .saved)
+    }
+
+    @MainActor
+    @Test func leadsTheWatchAndTakesItsButtons() throws {
+        let model = RehabSessionModel(queue: WriteQueue(file: FileManager.default.temporaryDirectory.appending(path: "lead-\(UUID()).json")))
+        var sent: [WatchWire.Rehab] = []
+        model.onChange = { sent.append($0) }
+        model.prepare(try session())
+        // Start on the Watch's ready screen starts it here, for both.
+        model.handle(.start)
+        #expect(model.phase == .running)
+        // The Watch gets the routine itself once, so its steps line up with the index.
+        let routine = try #require(sent.compactMap(\.session).first)
+        #expect(try JSONDecoder().decode(GuidedSession.self, from: routine).exercises.count == 2)
+        #expect(sent.last?.index == 0)
+        #expect(sent.last?.endsAt != nil)
+
+        model.handle(.pause)
+        #expect(sent.last?.pausedLeft != nil)
+        model.handle(.next)
+        #expect(model.index == 1)
+        #expect(sent.last?.index == 1)
+        model.handle(.sync)
+        #expect(sent.last?.session != nil)
+    }
 }
 
 struct ExerciseDemoTests {

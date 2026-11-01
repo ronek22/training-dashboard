@@ -124,7 +124,7 @@ struct WorkoutReader: Sendable {
             sortDescriptors: [SortDescriptor(\.startDate)]
         )
         return try await descriptor.result(for: store).filter {
-            WorkoutKind.isAppleRecorded(bundle: $0.sourceRevision.source.bundleIdentifier)
+            WorkoutKind.isWatchRecorded(bundle: $0.sourceRevision.source.bundleIdentifier)
         }
     }
 

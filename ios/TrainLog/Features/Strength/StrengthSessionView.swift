@@ -22,6 +22,9 @@ struct StrengthSessionView: View {
             case .loading:
                 ProgressView().tint(.muted).frame(maxWidth: .infinity, maxHeight: .infinity)
             case .brief(let template):
+                WatchReadyRow(watch: .shared)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 4)
                 SessionBriefView(template: template, starting: model.starting) {
                     Task { await model.startFromBrief() }
                 }
@@ -32,7 +35,32 @@ struct StrengthSessionView: View {
             }
         }
         .background(Color.bg.ignoresSafeArea())
-        .task { await model.load() }
+        .task {
+            // TrainLog on the Watch shows the same workout: changes go both ways.
+            model.onShare = { WatchLive.shared.share(strength: $0) }
+            model.onEnd = { WatchLive.shared.send($0) }
+            WatchLive.shared.onStrength = { model.adopt($0) }
+            WatchLive.shared.onCommand = { model.handleWatch($0) }
+            await model.load()
+        }
+        // The brief is up: TrainLog on the Watch wakes and waits, Start on either starts both.
+        .onChange(of: model.phase) {
+            guard case .brief(let template) = model.phase else { return }
+            WatchLive.shared.startOnWatch(WatchWorkoutType.strength(templateId: template.id))
+            let minutes = template.estimatedDurationMinutes.map { " · ~\($0) min" } ?? ""
+            WatchLive.shared.share(pending: .init(kind: .strength, title: template.name,
+                                                  detail: "\(template.exercises.count) exercises\(minutes)"))
+        }
+        // Resumed, or started without a brief: TrainLog on the Watch joins it straight away.
+        .onChange(of: model.session?.id) {
+            guard let session = model.session, session.isActive else { return }
+            WatchLive.shared.startOnWatch(WatchWorkoutType.strength(templateId: session.templateId))
+        }
+        .onDisappear {
+            WatchLive.shared.onStrength = nil
+            WatchLive.shared.onCommand = nil
+            WatchLive.shared.stopLeading()
+        }
         // Keeps in step with the web runner while the app is in front.
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
@@ -92,10 +120,14 @@ struct StrengthSessionView: View {
                     .lineLimit(1)
                 if let startedAt = model.startedAt {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
-                        Text(StrengthFormat.clock(Int(context.date.timeIntervalSince(startedAt))))
-                            .font(AppFont.number(20))
-                            .foregroundStyle(Color.ink)
-                            .monospacedDigit()
+                        HStack(spacing: 10) {
+                            Text(StrengthFormat.clock(Int(context.date.timeIntervalSince(startedAt))))
+                                .font(AppFont.number(20))
+                                .foregroundStyle(Color.ink)
+                                .monospacedDigit()
+                            // Live from the Watch while it runs the workout.
+                            WatchChip(watch: .shared)
+                        }
                     }
                 }
             }

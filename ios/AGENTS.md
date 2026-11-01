@@ -38,6 +38,11 @@ If a feature isn't in the artboard, ask before building it.
   - `TrainLog/Features/<Screen>/`: one folder per screen (view + view model)
   - `TrainLog/Design/`: tokens (colors, fonts, spacing) and shared components
   - `TrainLogTests/`: unit tests for decoding and view-model logic
+  - `TrainLogWatch/`: Apple Watch app (frames in `../docs/design/artboards/Watch.dc.html`), embedded
+    in the phone app. It reaches the server only through the phone (`TrainLog/Watch/WatchRelay.swift`,
+    wire format `Shared/WatchWire.swift`); `TrainLogWatch/Logic/` is pure and tested in TrainLogTests.
+    Simulator screenshots without touching the server: launch with `-watchDemo YES`
+    (`-watchDemoStage set|effort|rest|list|controls|done|hold|summary|rehab`).
   - `TrainLogWidgets/`: widget extension (Home/Lock Screen widgets, strength Live Activity)
   - `Shared/`: code compiled into both the app and the extension (widget snapshot in the
     `group.com.ronek22.trainlog` App Group, Live Activity attributes)

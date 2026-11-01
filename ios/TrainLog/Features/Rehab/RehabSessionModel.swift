@@ -6,6 +6,11 @@ import UIKit
 /// time. Holds and rests count down and move on by themselves; rep steps wait for Done. Passing an
 /// exercise's last step ticks it on the Recovery routine, and finishing saves the session so the
 /// Watch workout that syncs for it is labelled as rehab. Writes queue when the Mac is unreachable.
+///
+/// When the routine runs in TrainLog on the Watch, the phone follows it instead (`follow`): the
+/// Watch keeps the timers and sends the ticks and the completion; the buttons here steer it.
+/// Started here, it's the other way round: every change goes to `onChange` for the Watch to show,
+/// and the Watch's buttons come back through `handle`.
 @MainActor
 @Observable
 final class RehabSessionModel {
@@ -36,6 +41,14 @@ final class RehabSessionModel {
     private(set) var saveState: SaveState = .idle
     /// Pain after the session, per issue id.
     private(set) var pain: [Int: Int] = [:]
+    /// Mirroring the routine running on the Watch.
+    private(set) var following = false
+    /// Sends a button press to the Watch while following.
+    var remote: ((WatchWire.Command) -> Void)?
+    /// Where the routine is now, for the Watch while it runs here.
+    var onChange: ((WatchWire.Rehab) -> Void)?
+    /// The routine as JSON, sent to the Watch with the first update.
+    private var sessionData: Data?
 
     private var ticked: Set<RehabStep.Completes> = []
     /// The last write sent; each new one waits for it, so ticks land before the completion.
@@ -76,12 +89,18 @@ final class RehabSessionModel {
     func load() async {
         let api = client()
         await queue.flush(with: api)
+        let result: Result<GuidedSession, Error>
         do {
-            prepare(try await api.getLive("/guided-sessions/rehab", as: GuidedSessionEnvelope.self).session)
-        } catch APIError.status(404) {
-            phase = .empty
+            result = .success(try await api.getLive("/guided-sessions/rehab", as: GuidedSessionEnvelope.self).session)
         } catch {
-            phase = .failed(error.localizedDescription)
+            result = .failure(error)
+        }
+        // The Watch's routine showed up meanwhile: it wins.
+        guard !following else { return }
+        switch result {
+        case .success(let loaded): prepare(loaded)
+        case .failure(APIError.status(404)): phase = .empty
+        case .failure(let error): phase = .failed(error.localizedDescription)
         }
     }
 
@@ -91,17 +110,73 @@ final class RehabSessionModel {
         phase = steps.isEmpty ? .empty : .intro
     }
 
+    // MARK: Following the Watch
+
+    /// The Watch's routine moved (or the phone just attached). The first call needs the Watch's
+    /// copy of the routine, so the steps line up with its index.
+    func follow(_ state: WatchWire.Rehab, session loaded: GuidedSession?) {
+        if !following {
+            guard let loaded else { return }
+            session = loaded
+            steps = RehabFormat.steps(loaded)
+            following = true
+        }
+        guard !steps.isEmpty else { return }
+        startedAt = state.startedAt
+        index = min(max(0, state.index), steps.count - 1)
+        endsAt = state.endsAt
+        pausedLeft = state.pausedLeft
+        if state.finished {
+            if phase != .done { finishedAt = .now }
+            phase = .done
+            saveState = .saved
+        } else {
+            phase = .running
+        }
+    }
+
     // MARK: Running
 
     func start() {
         startedAt = .now
         phase = .running
+        sessionData = session.flatMap { try? JSONEncoder().encode($0) }
         begin(0)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        publish(withSession: true)
+    }
+
+    /// A button pressed on the Watch, while the routine runs here.
+    func handle(_ command: WatchWire.Command) {
+        guard !following else { return }
+        // Start on the Watch's ready screen starts it here, for both.
+        if command == .start, phase == .intro { return start() }
+        guard phase == .running else { return }
+        switch command {
+        case .start: break
+        case .next: next()
+        case .back: back()
+        case .pause: togglePause()
+        case .finish: finish()
+        case .discard: Task { await discard() }
+        case .sync: publish(withSession: true)
+        }
+    }
+
+    private func publish(withSession: Bool = false, discarded: Bool = false) {
+        guard !following, let startedAt else { return }
+        onChange?(WatchWire.Rehab(
+            session: withSession ? sessionData : nil, startedAt: startedAt, index: index, endsAt: endsAt,
+            pausedLeft: pausedLeft, finished: phase == .done, discarded: discarded
+        ))
     }
 
     /// Done on a rep step, or ends a timed one early.
     func next() {
+        if following {
+            remote?(.next)
+            return
+        }
         guard let step = current else { return }
         if let completes = step.completes { tick(completes) }
         if index + 1 >= steps.count {
@@ -114,16 +189,24 @@ final class RehabSessionModel {
 
     /// The timer of step `stepIndex` ran out. Ignored when the step already moved on.
     func timerEnded(_ stepIndex: Int) {
-        guard phase == .running, stepIndex == index, let endsAt, endsAt <= .now else { return }
+        guard !following, phase == .running, stepIndex == index, let endsAt, endsAt <= .now else { return }
         next()
     }
 
     func back() {
+        if following {
+            remote?(.back)
+            return
+        }
         guard index > 0 else { return }
         begin(index - 1)
     }
 
     func togglePause() {
+        if following {
+            remote?(.pause)
+            return
+        }
         if let left = pausedLeft {
             endsAt = .now.addingTimeInterval(TimeInterval(left))
             pausedLeft = nil
@@ -132,11 +215,13 @@ final class RehabSessionModel {
             self.endsAt = nil
             RestAlarm.cancel()
         }
+        publish()
     }
 
     /// Books the "time's up" notification while the phone is locked mid-timer.
     func scheduleAlarm() {
-        guard phase == .running, let endsAt, let step = current else { return }
+        // Following: the Watch taps the wrist when the timer's up.
+        guard !following, phase == .running, let endsAt, let step = current else { return }
         let title = step.kind == .rest ? "Rest over · go" : "Hold done"
         RestAlarm.schedule(at: endsAt, title: title, next: upNext.map { "Next: \($0.name)" })
     }
@@ -145,6 +230,7 @@ final class RehabSessionModel {
         index = stepIndex
         pausedLeft = nil
         endsAt = steps[stepIndex].seconds.map { .now.addingTimeInterval(TimeInterval($0)) }
+        publish()
     }
 
     private func tick(_ completes: RehabStep.Completes) {
@@ -165,6 +251,7 @@ final class RehabSessionModel {
             enqueue(.init(method: "PUT", path: "/recovery/issues/\(completes.issueId)/ticks", body: body))
         }
         ticked = []
+        publish(discarded: true)
         _ = await lastWrite?.value
     }
 
@@ -188,6 +275,7 @@ final class RehabSessionModel {
         // The server snapshots what was ticked today, so this goes after the ticks.
         let write = enqueue(.init(method: "POST", path: "/guided-sessions/complete", body: body))
         Task { saveState = await write.value }
+        publish()
     }
 
     func checkIn(issueId: Int, pain value: Int) async {
@@ -220,86 +308,5 @@ final class RehabSessionModel {
         } catch {
             return .failed
         }
-    }
-}
-
-/// One screen of the session: a set (one side of it for per-side work) or a rest.
-struct RehabStep: Equatable, Sendable {
-    enum Kind: Sendable { case exercise, rest }
-
-    struct Completes: Hashable, Sendable {
-        let issueId: Int
-        let index: Int
-    }
-
-    let kind: Kind
-    let name: String
-    var side: String?
-    var cue: String?
-    var reps: Int?
-    var seconds: Int?
-    var range: String?
-    var dose: String?
-    let set: Int
-    let sets: Int
-    /// The exercise's place in the session, 1-based.
-    let position: Int
-    let count: Int
-    /// On an exercise's last step: the routine exercise to tick once it's passed.
-    var completes: Completes?
-}
-
-/// Pure step building and formatting (unit-tested).
-enum RehabFormat {
-    /// Every set of one exercise (left then right for per-side work), a rest between sets, then
-    /// the next exercise. Same order as the web's `buildStraightSetSteps`.
-    static func steps(_ session: GuidedSession) -> [RehabStep] {
-        let count = session.exercises.count
-        return session.exercises.enumerated().flatMap { position, exercise -> [RehabStep] in
-            let sets = max(1, exercise.sets ?? 1)
-            var steps: [RehabStep] = []
-            for set in 1...sets {
-                for side in exercise.perSide ? ["Left side", "Right side"] : [nil] {
-                    steps.append(RehabStep(
-                        kind: .exercise, name: exercise.name, side: side, cue: exercise.cue,
-                        reps: exercise.reps, seconds: exercise.seconds, range: exercise.range, dose: exercise.dose,
-                        set: set, sets: sets, position: position + 1, count: count
-                    ))
-                }
-                if set < sets, session.restSeconds > 0 {
-                    steps.append(RehabStep(
-                        kind: .rest, name: "Rest", cue: "Set \(set + 1) of \(sets) next: \(exercise.name).",
-                        seconds: session.restSeconds, set: set, sets: sets, position: position + 1, count: count
-                    ))
-                }
-            }
-            if let issueId = exercise.issueId, let index = exercise.index {
-                steps[steps.count - 1].completes = .init(issueId: issueId, index: index)
-            }
-            return steps
-        }
-    }
-
-    /// "×12", "×8–10", "0:30", or the written dose when it had no numbers.
-    static func dose(_ step: RehabStep) -> String {
-        if let reps = step.reps { return "×" + (step.range ?? String(reps)) }
-        if let seconds = step.seconds { return StrengthFormat.clock(seconds) }
-        return step.dose ?? "As written"
-    }
-
-    /// "Set 2 of 5 · 0:30" while it's the same exercise, else "Glute bridge ×12"; sides added.
-    static func upNext(_ next: RehabStep, after step: RehabStep) -> String {
-        let side = next.side.map { " · \($0.lowercased())" } ?? ""
-        if next.position == step.position {
-            return (next.set == step.set ? "Same set" : "Set \(next.set) of \(next.sets)") + side + " · " + dose(next)
-        }
-        return "\(next.name)\(side) \(dose(next))"
-    }
-
-    /// "Exercise 2 of 8 · Set 1 of 3", or "Rest".
-    static func kicker(_ step: RehabStep) -> String {
-        if step.kind == .rest { return "Rest" }
-        let exercise = "Exercise \(step.position) of \(step.count)"
-        return step.sets > 1 ? "\(exercise) · Set \(step.set) of \(step.sets)" : exercise
     }
 }

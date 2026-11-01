@@ -14,6 +14,17 @@ Rules for agents: `AGENTS.md`.
 
 The Simulator reaches the Mac at `http://localhost:8000` directly.
 
+## Apple Watch
+
+The Watch app (`TrainLogWatch/`) is embedded in the phone app, so installing TrainLog on the
+iPhone offers it on the paired Watch (Watch app › Available apps, or automatic install). It talks
+to the server only through the phone, so keep the phone nearby; sets logged while it's out of
+reach wait on the Watch and go out in order later.
+
+In the Simulator: pair an Apple Watch Ultra 2 with the iPhone 17 Pro, install the phone app, then
+install `TrainLog.app/Watch/TrainLogWatch.app` on the Watch (`xcrun simctl install`); the Simulator
+doesn't copy embedded Watch apps by itself.
+
 ## On your iPhone
 
 - Free Apple ID signing works, but the app expires after 7 days. `scripts/redeploy-device.sh`

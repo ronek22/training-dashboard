@@ -4,6 +4,9 @@ import UIKit
 
 /// Drives one strength workout: one set at a time, logged optimistically so a dropped
 /// connection never loses a set. Writes go through `WriteQueue` and are replayed in order.
+///
+/// With TrainLog on the Watch showing the same workout, every change here goes to `onShare` and
+/// the Watch's changes come back through `adopt`, merged set by set; either device can end it.
 @MainActor
 @Observable
 final class StrengthSessionModel {
@@ -29,6 +32,10 @@ final class StrengthSessionModel {
     private(set) var lastLogged: LoggedSet?
     /// Bumped by every local write, so a poll that raced one is dropped instead of rolling it back.
     private var edits = 0
+    /// The session after a change here, for the Watch.
+    var onShare: ((WatchWire.Strength) -> Void)?
+    /// Finished or discarded here, so the Watch ends its workout too.
+    var onEnd: ((WatchWire.Command) -> Void)?
 
     var draftWeight: Double?
     var draftReps = 0
@@ -165,7 +172,8 @@ final class StrengthSessionModel {
         )
     }
 
-    private func show(_ session: StrengthSession) {
+    /// `logged` is the set just logged here; `share` is false for a copy that came from the Watch.
+    private func show(_ session: StrengthSession, logged: Int? = nil, share: Bool = true) {
         let positionChanged = self.session.map {
             $0.currentExerciseOrder != session.currentExerciseOrder || $0.currentSetOrder != session.currentSetOrder
         } ?? true
@@ -174,6 +182,52 @@ final class StrengthSessionModel {
         if positionChanged { resetDrafts() }
         phase = .ready
         showActivity()
+        if share, session.isActive, let data = try? JSONEncoder().encode(session) {
+            onShare?(WatchWire.Strength(session: data, loggedSetId: logged, restEndsAt: logged == nil ? nil : restEndsAt))
+        }
+    }
+
+    // MARK: The Watch
+
+    /// The Watch's copy after a change there: merged in (a set done here stays done), its rest
+    /// started here too, and a finish or discard there closes this screen.
+    func adopt(_ incoming: WatchWire.Strength) {
+        guard let session, let theirs = try? JSONDecoder().decode(StrengthSession.self, from: incoming.session),
+              theirs.id == session.id
+        else { return }
+        edits += 1
+        let merged = StrengthLogic.merge(session, with: theirs)
+        let doneHere = Set(session.exercises.flatMap(\.sets).filter(\.isCompleted).map(\.id))
+        if let setId = incoming.loggedSetId, !doneHere.contains(setId),
+           let exercise = merged.exercises.first(where: { $0.sets.contains { $0.id == setId } }),
+           let set = exercise.sets.first(where: { $0.id == setId }), set.isCompleted {
+            restSeconds = set.restSeconds
+            restEndsAt = incoming.restEndsAt
+            lastLogged = LoggedSet(
+                setId: set.id, label: StrengthLogic.label(for: set, in: exercise) + " · on Watch",
+                load: StrengthFormat.load(weight: set.actualWeightKg, reps: set.actualReps ?? 0, seconds: set.actualSeconds)
+            )
+        }
+        guard merged.isActive else { return closeFromWatch() }
+        show(merged, share: false)
+    }
+
+    /// A button on the Watch: Start on its ready screen starts the briefed workout here (for
+    /// both); an end closes this screen (the Watch already told the server).
+    func handleWatch(_ command: WatchWire.Command) {
+        switch command {
+        case .start: Task { await startFromBrief() }
+        case .finish, .discard: closeFromWatch()
+        default: break
+        }
+    }
+
+    private func closeFromWatch() {
+        guard phase != .closed else { return }
+        store.clear()
+        RestAlarm.cancel()
+        StrengthActivity.end()
+        phase = .closed
     }
 
     private func showActivity() {
@@ -223,7 +277,7 @@ final class StrengthSessionModel {
         lastLogged = LoggedSet(setId: set.id, label: label, load: StrengthFormat.load(weight: weight, reps: reps, seconds: held))
         restSeconds = set.restSeconds
         restEndsAt = .now.addingTimeInterval(TimeInterval(set.restSeconds))
-        show(session)
+        show(session, logged: set.id)
         resetDrafts()
         if let restEndsAt, let next = current, !allSetsDone {
             let load = StrengthFormat.load(weight: draftWeight, reps: draftReps, seconds: next.set.isTimed ? draftSeconds : nil)
@@ -280,12 +334,14 @@ final class StrengthSessionModel {
     func finish() async {
         guard let session else { return }
         queue.append(.init(method: "POST", path: "/strength/workouts/sessions/\(session.id)/finish", body: Data("{}".utf8)))
+        onEnd?(.finish)
         await close()
     }
 
     func abandon() async {
         guard let session else { return }
         queue.append(.init(method: "POST", path: "/strength/workouts/sessions/\(session.id)/abandon", body: nil))
+        onEnd?(.discard)
         await close()
     }
 
@@ -372,108 +428,5 @@ struct SessionStore: Sendable {
 
     func clear() {
         try? FileManager.default.removeItem(at: file)
-    }
-}
-
-/// Pure session rules, mirroring backend `complete_set` (unit-tested).
-enum StrengthLogic {
-    static func current(in session: StrengthSession) -> (exercise: StrengthSession.Exercise, set: StrengthSession.WorkoutSet)? {
-        guard let exercise = session.exercises.first(where: { $0.exerciseOrder == session.currentExerciseOrder }),
-              let set = exercise.sets.first(where: { $0.setOrder == session.currentSetOrder }) ?? exercise.sets.first
-        else { return nil }
-        return (exercise, set)
-    }
-
-    /// Marks a set done and moves to the next pending set, preferring the same exercise.
-    static func complete(
-        _ session: StrengthSession, setId: Int, reps: Int, weightKg: Double?, effort: SetEffort?, seconds: Int? = nil
-    ) -> StrengthSession {
-        var session = session
-        guard let exerciseIndex = session.exercises.firstIndex(where: { $0.sets.contains { $0.id == setId } }),
-              let setIndex = session.exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setId })
-        else { return session }
-        session.exercises[exerciseIndex].sets[setIndex].actualReps = reps
-        session.exercises[exerciseIndex].sets[setIndex].actualWeightKg = weightKg
-        session.exercises[exerciseIndex].sets[setIndex].status = "completed"
-        session.exercises[exerciseIndex].sets[setIndex].effort = effort?.rawValue
-        session.exercises[exerciseIndex].sets[setIndex].actualSeconds = seconds
-
-        let same = session.exercises[exerciseIndex]
-        let candidates = [same] + session.exercises.filter { $0.id != same.id }.sorted { $0.exerciseOrder < $1.exerciseOrder }
-        for exercise in candidates {
-            if let next = exercise.sets.sorted(by: { $0.setOrder < $1.setOrder }).first(where: { !$0.isCompleted }) {
-                session.currentExerciseOrder = exercise.exerciseOrder
-                session.currentSetOrder = next.setOrder
-                break
-            }
-        }
-        return session
-    }
-
-    /// A weight changed on an earlier set of the same lift carries to the next one.
-    static func carriedWeight(for set: StrengthSession.WorkoutSet, in exercise: StrengthSession.Exercise) -> Double? {
-        guard !set.isWarmup else { return set.targetWeightKg }
-        let previous = exercise.workingSets.last { $0.isCompleted && $0.setOrder < set.setOrder }
-        return previous?.actualWeightKg ?? set.targetWeightKg
-    }
-
-    /// 0.5 kg steps; stepping down from 0 goes back to bodyweight (nil).
-    static func step(_ weight: Double?, by steps: Int) -> Double? {
-        guard let weight else { return steps > 0 ? Double(steps) * 0.5 : nil }
-        let next = ((weight + Double(steps) * 0.5) * 2).rounded() / 2
-        return next <= 0 ? nil : min(1000, next)
-    }
-
-    /// "Set 2" counting working sets only; warm-ups are labelled as such.
-    static func label(for set: StrengthSession.WorkoutSet, in exercise: StrengthSession.Exercise) -> String {
-        if set.isWarmup { return "Warm-up" }
-        let index = exercise.workingSets.firstIndex { $0.id == set.id } ?? 0
-        return "Set \(index + 1)"
-    }
-
-    /// Completed share of each exercise's working sets, for the segmented progress bar.
-    static func progress(of exercise: StrengthSession.Exercise) -> Double {
-        let working = exercise.workingSets
-        guard !working.isEmpty else { return exercise.isDone ? 1 : 0 }
-        return Double(working.filter(\.isCompleted).count) / Double(working.count)
-    }
-}
-
-enum StrengthFormat {
-    static func weight(_ kg: Double?) -> String {
-        guard let kg else { return "BW" }
-        return TodayFormat.number(kg)
-    }
-
-    static func load(weight: Double?, reps: Int, seconds: Int? = nil) -> String {
-        if let seconds {
-            return weight.map { "\(TodayFormat.number($0)) kg · \(hold(seconds))" } ?? hold(seconds)
-        }
-        return weight.map { "\(TodayFormat.number($0)) kg × \(reps)" } ?? "BW × \(reps)"
-    }
-
-    /// "40 s" for short holds, "1:30" from a minute up.
-    static func hold(_ seconds: Int) -> String {
-        seconds < 60 ? "\(seconds) s" : clock(seconds)
-    }
-
-    static func clock(_ seconds: Int) -> String {
-        let seconds = max(0, seconds)
-        let hours = seconds / 3600
-        let minutes = seconds % 3600 / 60
-        let rest = seconds % 60
-        return hours > 0
-            ? String(format: "%d:%02d:%02d", hours, minutes, rest)
-            : String(format: "%d:%02d", minutes, rest)
-    }
-
-    static func parseMoment(_ iso: String) -> Date? {
-        let formatter = ISO8601DateFormatter()
-        if let date = formatter.date(from: iso) { return date }
-        // Backend timestamps without an offset are local time.
-        let local = DateFormatter()
-        local.locale = Locale(identifier: "en_US_POSIX")
-        local.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        return local.date(from: iso)
     }
 }

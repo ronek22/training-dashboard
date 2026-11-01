@@ -1,0 +1,334 @@
+import Foundation
+import HealthKit
+import Observation
+
+/// The HealthKit workout behind a session: live heart rate and energy, the app kept frontmost (and
+/// Always On) while it runs, mirrored to the iPhone, and saved to Apple Health at the end so Strava
+/// imports it like any Apple Workout.
+@MainActor
+@Observable
+final class WorkoutTracker: NSObject {
+    static let shared = WorkoutTracker()
+
+    struct Summary: Equatable {
+        let duration: TimeInterval
+        let averageHeartRate: Double?
+        let maxHeartRate: Double?
+        let activeKcal: Double?
+        /// Saved to Apple Health.
+        let saved: Bool
+    }
+
+    private(set) var heartRate: Double?
+    private(set) var activeKcal: Double?
+    private(set) var running = false
+    /// Sensors on and linked to the phone, nothing recording yet: waiting for Start.
+    private(set) var prepared = false
+    /// The phone mirrors this workout (live heart rate and the two-way channel). False when linking
+    /// failed: the rest still goes over WatchConnectivity.
+    private(set) var mirrored = false
+    /// Heart rate before Start, while the workout is only prepared (the builder isn't collecting yet).
+    private var readyHeartRate: HKAnchoredObjectQuery?
+    private(set) var paused = false
+    private(set) var startDate: Date?
+    /// Highest reading this workout; HealthKit's own maximum isn't available until the end.
+    private(set) var maxHeartRate: Double?
+    /// Heart rate going down (resting) or up since the previous reading.
+    private(set) var falling = false
+
+    let store = HKHealthStore()
+    private var session: HKWorkoutSession?
+    private var builder: HKLiveWorkoutBuilder?
+    private var lastMirrored = Date.distantPast
+    /// The rehab routine's latest state, repeated with each heart-rate update (routine left out).
+    private var rehab: WatchWire.Rehab?
+    /// What the phone sent: its rehab step or strength session, or a button pressed there.
+    var onRemote: ((WatchWire.Live) -> Void)?
+    /// This workout was started from the phone (`startFromPhone`).
+    private(set) var startedByPhone = false
+    /// Bumped each time the phone starts a workout here, for the root to show the hand-off.
+    private(set) var phoneStarts = 0
+
+    var available: Bool { HKHealthStore.isHealthDataAvailable() }
+
+    func requestAuthorization() async {
+        guard available else { return }
+        let share: Set<HKSampleType> = [HKQuantityType.workoutType()]
+        let read: Set<HKObjectType> = [HKQuantityType(.heartRate), HKQuantityType(.activeEnergyBurned), HKQuantityType.workoutType()]
+        try? await store.requestAuthorization(toShare: share, read: read)
+    }
+
+    /// Time since the start, paused time left out.
+    func elapsed(at date: Date = .now) -> TimeInterval {
+        builder?.elapsedTime(at: date) ?? startDate.map { date.timeIntervalSince($0) } ?? 0
+    }
+
+    /// Starts recording now (a session started on the Watch).
+    func start(_ activity: HKWorkoutActivityType) async {
+        await prepare(activity)
+        await begin()
+    }
+
+    /// Sensors on and the session linked to the phone (which mirrors it), without starting the
+    /// clock or recording anything: the hand-off before a workout started on the phone. `begin`
+    /// starts it; `discard` drops it.
+    func prepare(_ activity: HKWorkoutActivityType) async {
+        guard available, session == nil else { return }
+        await requestAuthorization()
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = activity
+        configuration.locationType = .indoor
+        do {
+            let session = try HKWorkoutSession(healthStore: store, configuration: configuration)
+            let builder = session.associatedWorkoutBuilder()
+            builder.dataSource = HKLiveWorkoutDataSource(healthStore: store, workoutConfiguration: configuration)
+            session.delegate = self
+            builder.delegate = self
+            self.session = session
+            self.builder = builder
+            session.prepare()
+            prepared = true
+            heartRate = nil
+            activeKcal = nil
+            watchHeartRateUntilStart()
+            // In the background: Start never waits for the phone.
+            Task { await mirror(session) }
+        } catch {
+            PhoneLink.shared.event("Couldn't prepare the workout: \(error.localizedDescription)")
+            reset()
+        }
+    }
+
+    /// Links the workout to the phone, which then shows the live heart rate and the same session.
+    /// It can take a few tries with the phone asleep in a pocket.
+    private func mirror(_ session: HKWorkoutSession) async {
+        for attempt in 1...3 {
+            do {
+                try await session.startMirroringToCompanionDevice()
+                mirrored = true
+                if attempt > 1 { PhoneLink.shared.event("Linked on try \(attempt)") }
+                return
+            } catch {
+                PhoneLink.shared.event("Link try \(attempt) failed: \(error.localizedDescription)")
+                guard self.session === session else { return }
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
+    }
+
+    /// The prepared session warms the sensor up but its builder isn't collecting yet, so new
+    /// heart-rate samples are read straight from Health for the ready screen (and the phone).
+    private func watchHeartRateUntilStart() {
+        let type = HKQuantityType(.heartRate)
+        let recent = HKQuery.predicateForSamples(withStart: .now.addingTimeInterval(-60), end: nil)
+        let handler: @Sendable (HKAnchoredObjectQuery, [HKSample]?, [HKDeletedObject]?, HKQueryAnchor?, Error?) -> Void = { _, samples, _, _, _ in
+            let bpm = (samples as? [HKQuantitySample])?.max { $0.endDate < $1.endDate }?
+                .quantity.doubleValue(for: .count().unitDivided(by: .minute()))
+            guard let bpm else { return }
+            Task { @MainActor in WorkoutTracker.shared.readyReading(bpm) }
+        }
+        let query = HKAnchoredObjectQuery(type: type, predicate: recent, anchor: nil, limit: HKObjectQueryNoLimit, resultsHandler: handler)
+        query.updateHandler = handler
+        store.execute(query)
+        readyHeartRate = query
+    }
+
+    private func readyReading(_ bpm: Double) {
+        guard prepared, !running else { return }
+        heartRate = bpm
+        mirror()
+    }
+
+    private func stopReadyHeartRate() {
+        if let readyHeartRate { store.stop(readyHeartRate) }
+        readyHeartRate = nil
+    }
+
+    /// Starts the clock and the recording of a prepared session.
+    func begin() async {
+        guard let session, let builder, !running else { return }
+        let start = Date.now
+        stopReadyHeartRate()
+        session.startActivity(with: start)
+        do {
+            try await builder.beginCollection(at: start)
+        } catch {
+            PhoneLink.shared.event("Couldn't start recording: \(error.localizedDescription)")
+            discard()
+            return
+        }
+        startDate = start
+        running = true
+        prepared = false
+        paused = false
+        // The ready screen's reading stays until the builder's first one replaces it.
+        maxHeartRate = heartRate
+        activeKcal = nil
+    }
+
+    /// The phone opened a workout and this app (`handle(_ workoutConfiguration:)`): linked and
+    /// ready, the clock starts when either device presses Start.
+    func prepareFromPhone(_ activity: HKWorkoutActivityType) async {
+        guard session == nil else { return }
+        startedByPhone = true
+        phoneStarts += 1
+        await prepare(activity)
+    }
+
+    /// After a crash or relaunch mid-workout: picks the running session back up. The app delegate
+    /// and the root view both ask; they share one attempt, so neither starts a second workout
+    /// while the first is still being recovered.
+    func recover() async {
+        if let recovering { return await recovering.value }
+        let attempt = Task { await recoverOnce() }
+        recovering = attempt
+        await attempt.value
+    }
+
+    private var recovering: Task<Void, Never>?
+
+    private func recoverOnce() async {
+        guard session == nil, let recovered = try? await store.recoverActiveWorkoutSession() else { return }
+        session = recovered
+        builder = recovered.associatedWorkoutBuilder()
+        recovered.delegate = self
+        builder?.delegate = self
+        builder?.dataSource = HKLiveWorkoutDataSource(healthStore: store, workoutConfiguration: recovered.workoutConfiguration)
+        startDate = recovered.startDate
+        running = true
+        paused = recovered.state == .paused
+    }
+
+    func togglePause() {
+        guard let session else { return }
+        if paused { session.resume() } else { session.pause() }
+    }
+
+    /// Ends the workout and saves it to Apple Health.
+    func finish() async -> Summary {
+        let end = Date.now
+        let duration = elapsed(at: end)
+        let fallback = Summary(duration: duration, averageHeartRate: nil, maxHeartRate: maxHeartRate, activeKcal: activeKcal, saved: false)
+        guard let session, let builder else { reset(); return fallback }
+        session.end()
+        do {
+            try await builder.endCollection(at: end)
+            let workout = try await builder.finishWorkout()
+            let bpm = HKUnit.count().unitDivided(by: .minute())
+            let heart = builder.statistics(for: HKQuantityType(.heartRate))
+            let energy = builder.statistics(for: HKQuantityType(.activeEnergyBurned))?.sumQuantity()
+            let summary = Summary(
+                duration: workout?.duration ?? duration,
+                averageHeartRate: heart?.averageQuantity()?.doubleValue(for: bpm),
+                maxHeartRate: heart?.maximumQuantity()?.doubleValue(for: bpm) ?? maxHeartRate,
+                activeKcal: energy?.doubleValue(for: .kilocalorie()) ?? activeKcal,
+                saved: workout != nil
+            )
+            reset()
+            return summary
+        } catch {
+            reset()
+            return fallback
+        }
+    }
+
+    /// Ends without saving anything to Apple Health.
+    func discard() {
+        session?.end()
+        builder?.discardWorkout()
+        reset()
+    }
+
+    private func reset() {
+        stopReadyHeartRate()
+        rehab = nil
+        prepared = false
+        mirrored = false
+        startedByPhone = false
+        session = nil
+        builder = nil
+        running = false
+        paused = false
+        startDate = nil
+    }
+
+    fileprivate func collected(_ types: Set<HKSampleType>) {
+        guard let builder else { return }
+        if types.contains(HKQuantityType(.heartRate)),
+           let value = builder.statistics(for: HKQuantityType(.heartRate))?.mostRecentQuantity()?
+               .doubleValue(for: .count().unitDivided(by: .minute())) {
+            falling = heartRate.map { value < $0 } ?? false
+            heartRate = value
+            maxHeartRate = max(maxHeartRate ?? 0, value)
+        }
+        if types.contains(HKQuantityType(.activeEnergyBurned)) {
+            activeKcal = builder.statistics(for: HKQuantityType(.activeEnergyBurned))?.sumQuantity()?.doubleValue(for: .kilocalorie())
+        }
+        mirror()
+    }
+
+    /// At most every 3 s: enough for a live number on the phone.
+    private func mirror() {
+        guard Date.now.timeIntervalSince(lastMirrored) >= 3 else { return }
+        send(WatchWire.Live(heartRate: heartRate, activeKcal: activeKcal, rehab: rehab))
+    }
+
+    /// The strength session changed here: sent at once, so the phone's screen moves with the Watch.
+    func share(strength: WatchWire.Strength) {
+        send(WatchWire.Live(strength: strength))
+    }
+
+    /// A button pressed here for a workout the phone runs, or the end of one both show.
+    func send(_ command: WatchWire.Command) {
+        send(WatchWire.Live(command: command))
+    }
+
+    /// A rehab step changed: sent at once, so the phone's screen moves with the Watch.
+    func share(rehab state: WatchWire.Rehab) {
+        var repeated = state
+        repeated.session = nil
+        rehab = repeated
+        send(WatchWire.Live(heartRate: heartRate, activeKcal: activeKcal, rehab: state))
+    }
+
+    private func send(_ live: WatchWire.Live) {
+        guard let session, let data = try? JSONEncoder().encode(live) else { return }
+        lastMirrored = .now
+        session.sendToRemoteWorkoutSession(data: data) { @Sendable _, _ in }
+    }
+
+    fileprivate func received(_ live: WatchWire.Live) {
+        onRemote?(live)
+    }
+
+    #if DEBUG
+    func demo(heartRate: Double, startedMinutesAgo minutes: Double) {
+        self.heartRate = heartRate
+        startDate = Date.now.addingTimeInterval(-minutes * 60)
+        running = true
+    }
+    #endif
+
+    fileprivate func stateChanged(_ state: HKWorkoutSessionState) {
+        paused = state == .paused
+    }
+}
+
+extension WorkoutTracker: HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate {
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {
+        Task { @MainActor in WorkoutTracker.shared.stateChanged(toState) }
+    }
+
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {}
+
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didReceiveDataFromRemoteWorkoutSession data: [Data]) {
+        let messages = data.compactMap { try? JSONDecoder().decode(WatchWire.Live.self, from: $0) }
+        Task { @MainActor in messages.forEach(WorkoutTracker.shared.received) }
+    }
+
+    nonisolated func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
+        Task { @MainActor in WorkoutTracker.shared.collected(collectedTypes) }
+    }
+
+    nonisolated func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
+}

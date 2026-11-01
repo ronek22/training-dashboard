@@ -1,12 +1,17 @@
 import SwiftUI
 
 /// Full-screen follow-along for today's rehab routine. Big type and big targets: the phone sits on
-/// the floor next to the mat. The screen stays awake while it's open.
+/// the floor next to the mat. The screen stays awake while it's open. With the routine running in
+/// TrainLog on the Watch, it follows the Watch's step instead; started here, it opens TrainLog on
+/// the Watch, which shows the same step and steers this one.
 struct RehabSessionView: View {
     @State private var model = RehabSessionModel()
+    @State private var watch = WatchLive.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var confirmClose = false
+    /// The Watch recorded this session (it stops by itself at the end).
+    @State private var watchJoined = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,11 +32,33 @@ struct RehabSessionView: View {
             }
         }
         .background(Color.bg)
-        .task { await model.load() }
+        .task {
+            model.remote = { WatchLive.shared.send($0) }
+            model.onChange = { WatchLive.shared.share(rehab: $0) }
+            WatchLive.shared.onCommand = { command in
+                guard command == .discard else { return model.handle(command) }
+                Task {
+                    await model.discard()
+                    dismiss()
+                }
+            }
+            followWatch()
+            if !model.following { await model.load() }
+        }
+        .onChange(of: watch.rehab) { followWatch() }
+        .onChange(of: watch.linked) { if watch.linked { watchJoined = true } }
+        // The intro is up: TrainLog on the Watch wakes and waits, Start on either starts both.
+        .onChange(of: model.phase) {
+            guard model.phase == .intro else { return }
+            WatchLive.shared.startOnWatch(WatchWorkoutType.rehab(model.session?.watchWorkout))
+            WatchLive.shared.share(pending: .init(kind: .rehab, title: "Today's rehab", detail: introKicker))
+        }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
             RestAlarm.cancel()
+            WatchLive.shared.onCommand = nil
+            WatchLive.shared.stopLeading()
         }
         .onChange(of: scenePhase) {
             if scenePhase == .background {
@@ -55,13 +82,27 @@ struct RehabSessionView: View {
         }
     }
 
+    /// Picks up the Watch's routine; closes when it's discarded there or its workout ends early.
+    private func followWatch() {
+        guard let state = watch.rehab else {
+            if model.following, model.phase != .done { dismiss() }
+            return
+        }
+        if state.discarded {
+            if model.following { dismiss() }
+            return
+        }
+        model.follow(state, session: watch.rehabSession)
+    }
+
     // MARK: Chrome
 
     private var topBar: some View {
         VStack(spacing: 10) {
             HStack {
                 Button {
-                    if model.phase == .running { confirmClose = true } else { dismiss() }
+                    // Following: the routine carries on on the Watch.
+                    if model.phase == .running, !model.following { confirmClose = true } else { dismiss() }
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 15, weight: .bold))
@@ -73,7 +114,10 @@ struct RehabSessionView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Close")
                 Spacer()
-                Kicker("Rehab", color: .mobility)
+                HStack(spacing: 8) {
+                    Kicker(model.following ? "Rehab · on Watch" : "Rehab", color: .mobility)
+                    WatchChip(watch: watch)
+                }
                 Spacer()
                 elapsed.frame(width: 44 + 20, alignment: .trailing)
             }
@@ -116,14 +160,16 @@ struct RehabSessionView: View {
                             Text(issues.joined(separator: " · ")).font(AppFont.body(14)).foregroundStyle(Color.muted)
                         }
                     }
-                    if let watch = model.session?.watchWorkout {
+                    if startsOnWatch {
+                        WatchReadyRow(watch: watch)
+                    } else if let workout = model.session?.watchWorkout {
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: "applewatch")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundStyle(Color.mobility)
                                 .frame(width: 28)
                             VStack(alignment: .leading, spacing: 3) {
-                                Text("Start a \(watch) workout on your Watch")
+                                Text("Start a \(workout) workout on your Watch")
                                     .font(AppFont.body(15, weight: .semibold)).foregroundStyle(Color.ink)
                                 Text("It records heart rate and syncs as this rehab session.")
                                     .font(AppFont.body(13)).foregroundStyle(Color.muted)
@@ -157,12 +203,15 @@ struct RehabSessionView: View {
             Button {
                 model.start()
             } label: {
-                Label(model.session?.watchWorkout != nil ? "Watch is running · start" : "Start", systemImage: "play.fill")
+                Label(model.session?.watchWorkout != nil && !startsOnWatch ? "Watch is running · start" : "Start", systemImage: "play.fill")
             }
             .buttonStyle(VoltButtonStyle())
             .padding(16)
         }
     }
+
+    /// TrainLog on the Watch wakes with the intro, so there's no Apple Workout to start by hand.
+    private var startsOnWatch: Bool { watch.canStartOnWatch }
 
     private var introKicker: String {
         let count = model.session?.exercises.count ?? 0
@@ -285,7 +334,7 @@ struct RehabSessionView: View {
                         Text(doneSummary).font(AppFont.body(14)).foregroundStyle(Color.muted)
                         Text(saveLabel).font(AppFont.body(12, weight: .semibold)).foregroundStyle(saveColor).padding(.top, 2)
                     }
-                    if let watch = model.session?.watchWorkout {
+                    if let watch = model.session?.watchWorkout, !model.following, !watchJoined {
                         HStack(spacing: 12) {
                             Image(systemName: "applewatch").font(.system(size: 20, weight: .semibold)).foregroundStyle(Color.mobility)
                             Text("Stop and save the \(watch) workout on your Watch.")
@@ -341,7 +390,7 @@ struct RehabSessionView: View {
     private var saveLabel: String {
         switch model.saveState {
         case .idle, .saving: "Saving…"
-        case .saved: "Saved to today"
+        case .saved: model.following ? "Saved by the Watch, with its workout" : "Saved to today"
         case .queued: "Saved on the phone · syncs when the Mac is back"
         case .failed: "Not saved · the server turned it down"
         }

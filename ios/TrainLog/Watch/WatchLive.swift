@@ -50,11 +50,14 @@ final class WatchLive: NSObject {
         UserDefaults.standard.object(forKey: Self.autoStartKey) as? Bool ?? true
     }
 
-    /// Starting a workout here will open TrainLog on the Watch.
+    /// Opening a workout here will try to wake TrainLog on the Watch. Only needs a paired Watch:
+    /// `isWatchAppInstalled` misses an app installed straight onto the Watch (how development
+    /// builds get there), and a launch that fails shows Retry anyway.
     var canStartOnWatch: Bool {
         let connectivity = WCSession.default
-        return autoStart && WCSession.isSupported() && connectivity.activationState == .activated
-            && connectivity.isPaired && connectivity.isWatchAppInstalled
+        guard autoStart, HKHealthStore.isHealthDataAvailable(), WCSession.isSupported() else { return false }
+        // Before WatchConnectivity has activated, `isPaired` isn't known yet: try.
+        return connectivity.activationState != .activated || connectivity.isPaired
     }
 
     /// A reading from the last 20 s; older means the Watch stopped sending.

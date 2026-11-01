@@ -2,6 +2,9 @@ import BackgroundTasks
 import Foundation
 import UIKit
 import UserNotifications
+import os
+
+private let logger = Logger(subsystem: "com.ronek22.trainlog", category: "reminders")
 
 /// Local reminders from Settings that only fire when something is left to do: the check-in when
 /// today's isn't in, rehab when exercises are still open by evening, dinner when you're well under
@@ -144,7 +147,13 @@ enum Reminders {
         switch await center.notificationSettings().authorizationStatus {
         case .authorized, .provisional, .ephemeral: return true
         case .denied: return false
-        default: return (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
+        default:
+            do {
+                return try await center.requestAuthorization(options: [.alert, .sound])
+            } catch {
+                logger.error("Notification permission request failed: \(error)")
+                return false
+            }
         }
     }
 
@@ -162,7 +171,11 @@ enum Reminders {
             content.userInfo = ["link": nudge.kind.link]
             let parts = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: nudge.date)
             let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
-            try? await center.add(UNNotificationRequest(identifier: nudge.id, content: content, trigger: trigger))
+            do {
+                try await center.add(UNNotificationRequest(identifier: nudge.id, content: content, trigger: trigger))
+            } catch {
+                logger.error("Reminder \(nudge.id, privacy: .public) not booked: \(error)")
+            }
         }
     }
 

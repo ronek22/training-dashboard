@@ -152,6 +152,26 @@ struct WatchTests {
         #expect(left == 0)
     }
 
+    @Test func outboxSurvivesARelaunchAndSetsAsideAnUnreadableFile() throws {
+        let outbox = tempOutbox()
+        outbox.append(.init(method: "POST", path: "/set"))
+        #expect(Outbox(file: outbox.file).pending.map(\.path) == ["/set"])
+
+        let garbage = Data("not json".utf8)
+        try garbage.write(to: outbox.file)
+        #expect(outbox.pending.isEmpty)
+        outbox.append(.init(method: "PUT", path: "/effort"))
+        #expect(outbox.pending.map(\.path) == ["/effort"])
+
+        let stem = outbox.file.deletingPathExtension().lastPathComponent
+        let aside = try FileManager.default.contentsOfDirectory(at: outbox.file.deletingLastPathComponent(), includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.hasPrefix(stem + ".unreadable-") }
+        #expect(aside.count == 1)
+        #expect(try aside.first.map { try Data(contentsOf: $0) } == garbage)
+        aside.forEach { try? FileManager.default.removeItem(at: $0) }
+        try? FileManager.default.removeItem(at: outbox.file)
+    }
+
     // MARK: Phone relay
 
     final class Stub: URLProtocol, @unchecked Sendable {

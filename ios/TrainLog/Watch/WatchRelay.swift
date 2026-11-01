@@ -1,5 +1,8 @@
 import Foundation
 import WatchConnectivity
+import os
+
+private let logger = Logger(subsystem: "com.ronek22.trainlog", category: "watch-relay")
 
 /// The iPhone side of the Watch app: makes the Watch's server calls with the phone's own
 /// `APIClient` (address, failover, cache) and puts its writes on the phone's `WriteQueue`, so a set
@@ -58,6 +61,7 @@ final class WatchRelay: NSObject, WCSessionDelegate, Sendable {
                 reply = WatchWire.Reply(status: 200)
             }
         } else {
+            logger.error("Watch message didn't decode (\(message.count) bytes)")
             reply = WatchWire.Reply(status: 400)
         }
         return (try? JSONEncoder().encode(reply)) ?? Data()
@@ -75,6 +79,7 @@ final class WatchRelay: NSObject, WCSessionDelegate, Sendable {
             if envelope.method == "GET", let cached = client.cache.load(envelope.path) {
                 return WatchWire.Reply(status: 200, data: cached.data, fromCache: true)
             }
+            logger.notice("Watch \(envelope.method, privacy: .public) \(envelope.path, privacy: .public) failed: \(error)")
             return WatchWire.Reply(status: nil)
         }
     }
@@ -87,6 +92,7 @@ final class WatchRelay: NSObject, WCSessionDelegate, Sendable {
     }
 
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        if let error { logger.error("Watch session activation failed: \(error)") }
         if activationState == .activated { Self.sendWidgetSnapshot() }
     }
     func sessionDidBecomeInactive(_ session: WCSession) {}

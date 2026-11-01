@@ -1,6 +1,9 @@
 import Foundation
 import HealthKit
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.ronek22.trainlog", category: "rides")
 
 /// Saves indoor rides (Zwift, MyWhoosh…) into Apple Health, so they count in Fitness. They reach
 /// the Mac through Strava, which can't write to Health; this replaces dropping the Zwift .fit file
@@ -38,7 +41,11 @@ final class RideExport {
 
     func requestAccess() async {
         guard HealthSync.isAvailable, enabled else { return }
-        try? await store.requestAuthorization(toShare: RideWriter.shareTypes, read: [HKObjectType.workoutType()])
+        do {
+            try await store.requestAuthorization(toShare: RideWriter.shareTypes, read: [HKObjectType.workoutType()])
+        } catch {
+            logger.error("Ride export access request failed: \(error)")
+        }
     }
 
     func sync(now: Date = .now) async {
@@ -69,6 +76,7 @@ final class RideExport {
             defaults.set(now, forKey: Self.lastSuccessKey)
         } catch {
             // Mac out of reach, or Health locked while the phone is locked; the next run retries.
+            logger.error("Ride export failed after \(count) saved: \(error)")
             failed = true
         }
     }

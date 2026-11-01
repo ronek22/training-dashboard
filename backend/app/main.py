@@ -148,6 +148,11 @@ def _strava_auto_import_once() -> None:
         require_strava_config(get_setting)
     except HTTPException:
         return  # Strava isn't connected
+    from .services.strava_upload import run_watch_uploads
+
+    # Watch workouts linked since the last run (a rehab finished after its workout synced) go up
+    # first, so this import already links them.
+    run_watch_uploads()
     try:
         # Two days back: watch workouts pushed by the phone get Strava's title, power and photos,
         # and rides recorded elsewhere (Zwift) arrive without pressing Sync.

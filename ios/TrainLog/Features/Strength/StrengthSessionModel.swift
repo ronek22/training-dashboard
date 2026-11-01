@@ -212,9 +212,14 @@ final class StrengthSessionModel {
         show(merged, share: false)
     }
 
-    /// A button on the Watch: only the end matters here (the Watch already told the server).
+    /// A button on the Watch: Start on its ready screen starts the briefed workout here (for
+    /// both); an end closes this screen (the Watch already told the server).
     func handleWatch(_ command: WatchWire.Command) {
-        if command == .finish || command == .discard { closeFromWatch() }
+        switch command {
+        case .start: Task { await startFromBrief() }
+        case .finish, .discard: closeFromWatch()
+        default: break
+        }
     }
 
     private func closeFromWatch() {

@@ -148,8 +148,12 @@ final class RehabSessionModel {
 
     /// A button pressed on the Watch, while the routine runs here.
     func handle(_ command: WatchWire.Command) {
-        guard !following, phase == .running else { return }
+        guard !following else { return }
+        // Start on the Watch's ready screen starts it here, for both.
+        if command == .start, phase == .intro { return start() }
+        guard phase == .running else { return }
         switch command {
+        case .start: break
         case .next: next()
         case .back: back()
         case .pause: togglePause()

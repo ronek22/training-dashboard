@@ -47,6 +47,12 @@ struct RehabSessionView: View {
         }
         .onChange(of: watch.rehab) { followWatch() }
         .onChange(of: watch.linked) { if watch.linked { watchJoined = true } }
+        // The intro is up: TrainLog on the Watch wakes and waits, Start on either starts both.
+        .onChange(of: model.phase) {
+            guard model.phase == .intro else { return }
+            WatchLive.shared.startOnWatch(WatchWorkoutType.rehab(model.session?.watchWorkout))
+            WatchLive.shared.share(pending: .init(kind: .rehab, title: "Today's rehab", detail: introKicker))
+        }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
@@ -154,24 +160,19 @@ struct RehabSessionView: View {
                             Text(issues.joined(separator: " · ")).font(AppFont.body(14)).foregroundStyle(Color.muted)
                         }
                     }
-                    if let watch = model.session?.watchWorkout {
+                    if startsOnWatch {
+                        WatchReadyRow(watch: watch)
+                    } else if let workout = model.session?.watchWorkout {
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: "applewatch")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundStyle(Color.mobility)
                                 .frame(width: 28)
                             VStack(alignment: .leading, spacing: 3) {
-                                if startsOnWatch {
-                                    Text("Your Watch records it")
-                                        .font(AppFont.body(15, weight: .semibold)).foregroundStyle(Color.ink)
-                                    Text("Start opens TrainLog on the Watch for heart rate. Holds and rests tap your wrist; Done works on either.")
-                                        .font(AppFont.body(13)).foregroundStyle(Color.muted)
-                                } else {
-                                    Text("Start a \(watch) workout on your Watch")
-                                        .font(AppFont.body(15, weight: .semibold)).foregroundStyle(Color.ink)
-                                    Text("It records heart rate and syncs as this rehab session.")
-                                        .font(AppFont.body(13)).foregroundStyle(Color.muted)
-                                }
+                                Text("Start a \(workout) workout on your Watch")
+                                    .font(AppFont.body(15, weight: .semibold)).foregroundStyle(Color.ink)
+                                Text("It records heart rate and syncs as this rehab session.")
+                                    .font(AppFont.body(13)).foregroundStyle(Color.muted)
                             }
                         }
                         .card(border: Color.mobility.opacity(0.35))
@@ -201,7 +202,6 @@ struct RehabSessionView: View {
             .scrollIndicators(.hidden)
             Button {
                 model.start()
-                WatchLive.shared.startOnWatch(WatchWorkoutType.rehab(model.session?.watchWorkout))
             } label: {
                 Label(model.session?.watchWorkout != nil && !startsOnWatch ? "Watch is running · start" : "Start", systemImage: "play.fill")
             }
@@ -210,7 +210,7 @@ struct RehabSessionView: View {
         }
     }
 
-    /// Start opens TrainLog on the Watch, so there's no Apple Workout to start by hand.
+    /// TrainLog on the Watch wakes with the intro, so there's no Apple Workout to start by hand.
     private var startsOnWatch: Bool { watch.canStartOnWatch }
 
     private var introKicker: String {

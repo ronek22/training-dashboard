@@ -22,6 +22,8 @@ final class WorkoutTracker: NSObject {
     private(set) var heartRate: Double?
     private(set) var activeKcal: Double?
     private(set) var running = false
+    /// Sensors on and linked to the phone, nothing recording yet: waiting for Start.
+    private(set) var prepared = false
     private(set) var paused = false
     private(set) var startDate: Date?
     /// Highest reading this workout; HealthKit's own maximum isn't available until the end.
@@ -56,7 +58,16 @@ final class WorkoutTracker: NSObject {
         builder?.elapsedTime(at: date) ?? startDate.map { date.timeIntervalSince($0) } ?? 0
     }
 
+    /// Starts recording now (a session started on the Watch).
     func start(_ activity: HKWorkoutActivityType) async {
+        await prepare(activity)
+        await begin()
+    }
+
+    /// Sensors on and the session linked to the phone (which mirrors it), without starting the
+    /// clock or recording anything: the hand-off before a workout started on the phone. `begin`
+    /// starts it; `discard` drops it.
+    func prepare(_ activity: HKWorkoutActivityType) async {
         guard available, session == nil else { return }
         await requestAuthorization()
         let configuration = HKWorkoutConfiguration()
@@ -70,29 +81,42 @@ final class WorkoutTracker: NSObject {
             builder.delegate = self
             self.session = session
             self.builder = builder
-            let start = Date.now
-            session.startActivity(with: start)
-            try await builder.beginCollection(at: start)
-            startDate = start
-            running = true
-            paused = false
-            heartRate = nil
-            maxHeartRate = nil
-            activeKcal = nil
-            // The phone's strength screen shows the live heart rate.
+            session.prepare()
+            prepared = true
+            // The phone shows the live heart rate and the same session.
             try? await session.startMirroringToCompanionDevice()
         } catch {
             reset()
         }
     }
 
-    /// A workout started on the phone opened this app (`handle(_ workoutConfiguration:)`): the
-    /// Health workout starts here for heart rate, and the root joins the phone's session.
-    func startFromPhone(_ activity: HKWorkoutActivityType) async {
+    /// Starts the clock and the recording of a prepared session.
+    func begin() async {
+        guard let session, let builder, !running else { return }
+        let start = Date.now
+        session.startActivity(with: start)
+        do {
+            try await builder.beginCollection(at: start)
+        } catch {
+            discard()
+            return
+        }
+        startDate = start
+        running = true
+        prepared = false
+        paused = false
+        heartRate = nil
+        maxHeartRate = nil
+        activeKcal = nil
+    }
+
+    /// The phone opened a workout and this app (`handle(_ workoutConfiguration:)`): linked and
+    /// ready, the clock starts when either device presses Start.
+    func prepareFromPhone(_ activity: HKWorkoutActivityType) async {
         guard session == nil else { return }
         startedByPhone = true
         phoneStarts += 1
-        await start(activity)
+        await prepare(activity)
     }
 
     /// After a crash or relaunch mid-workout: picks the running session back up. The app delegate
@@ -161,6 +185,7 @@ final class WorkoutTracker: NSObject {
 
     private func reset() {
         rehab = nil
+        prepared = false
         startedByPhone = false
         session = nil
         builder = nil

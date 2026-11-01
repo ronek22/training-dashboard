@@ -23,21 +23,21 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
         Task { @MainActor in await WorkoutTracker.shared.recover() }
     }
 
-    /// A workout started on the iPhone opened the app (`HKHealthStore.startWatchApp`).
+    /// A workout opened on the iPhone woke the app (`HKHealthStore.startWatchApp`).
     func handle(_ workoutConfiguration: HKWorkoutConfiguration) {
         let activity = workoutConfiguration.activityType
-        Task { @MainActor in await WorkoutTracker.shared.startFromPhone(activity) }
+        Task { @MainActor in await WorkoutTracker.shared.prepareFromPhone(activity) }
     }
 }
 
-/// Start screen → a running session → its summary. A workout started on the phone goes through
-/// the hand-off screen first and joins the phone's session.
+/// Start screen → a running session → its summary. A workout opened on the phone wakes the app on
+/// a ready screen (linked, nothing recording); Start on either device starts both.
 struct WatchRoot: View {
     /// Whole screens swapped at the root: a running workout has no back button to slip out by.
     enum Screen: Hashable {
         case start
-        /// Started on the phone: finding its session.
-        case joining
+        /// A workout open on the phone, not started yet.
+        case ready
         case strength
         case rehab
         case strengthSummary
@@ -55,23 +55,37 @@ struct WatchRoot: View {
     /// A rehab routine the phone runs, and its exercises, as the phone sent them.
     @State private var phoneRehab: WatchWire.Rehab?
     @State private var phoneRoutine: GuidedSession?
+    /// What the phone has open, for the ready screen.
+    @State private var pending: WatchWire.Pending?
+    /// Start pressed here; waiting for the phone to start it.
+    @State private var startRequested = false
+    /// The clock is starting; later copies from the phone go to the screen it opens.
+    @State private var beginning = false
 
     var body: some View {
         NavigationStack {
             switch screen {
             case .start: StartView(model: start, onStrength: open, onRehab: open)
-            case .joining: JoiningView()
+            case .ready:
+                ReadyView(pending: pending, starting: startRequested, onStart: {
+                    startRequested = true
+                    tracker.send(.start)
+                }, onCancel: {
+                    tracker.discard()
+                    close()
+                })
             default: destination(screen)
             }
         }
         .tint(.volt)
-        .onChange(of: tracker.phoneStarts) { Task { await join() } }
+        .onChange(of: tracker.phoneStarts) { Task { await getReady() } }
         .task {
             tracker.onRemote = { received($0) }
             #if DEBUG
             if WatchDemo.enabled, let stage = WatchDemo.stage {
-                if stage == "joining" {
-                    screen = .joining
+                if stage == "ready" {
+                    pending = .init(kind: .strength, title: "Workout B", detail: "5 exercises · ~45 min")
+                    screen = .ready
                     return
                 }
                 tracker.demo(heartRate: stage == "rest" ? 118 : 128, startedMinutesAgo: 18.7)
@@ -103,7 +117,7 @@ struct WatchRoot: View {
     @ViewBuilder
     private func destination(_ screen: Screen) -> some View {
         switch screen {
-        case .start, .joining:
+        case .start, .ready:
             EmptyView()
         case .strength:
             if let run {
@@ -177,31 +191,31 @@ struct WatchRoot: View {
         screen = .rehab
     }
 
-    // MARK: Started on the phone
+    // MARK: Opened on the phone
 
-    /// The phone started a workout and opened this app: find what it runs (a rehab routine it
-    /// sends, or its strength session on the server) and show it. Gives up after about 12 s and
-    /// drops the Health workout, so nothing records without a session behind it.
-    private func join() async {
-        guard screen == .start || screen == .joining else { return }
-        screen = .joining
-        for attempt in 0..<24 {
-            if let state = phoneRehab, let routine = phoneRoutine, !state.finished, !state.discarded {
-                return follow(routine, at: state)
-            }
-            if attempt % 4 == 0 {
-                // Ask the phone for whatever it leads, routine included.
-                tracker.send(.sync)
-                if let active = try? await WatchAPI.get("/strength/workouts/sessions/active", as: StrengthSession?.self),
-                   !active.stale, let session = active.value, session.isActive {
-                    return show(session)
-                }
-            }
-            try? await Task.sleep(for: .milliseconds(500))
+    /// The phone opened a workout and woke this app: show the ready screen and ask the phone what
+    /// it has open (repeated until it answers, since the link takes a moment to come up).
+    private func getReady() async {
+        guard screen == .start else { return }
+        pending = nil
+        startRequested = false
+        screen = .ready
+        for _ in 0..<15 where screen == .ready && pending == nil {
+            tracker.send(.sync)
+            try? await Task.sleep(for: .seconds(1))
         }
-        guard screen == .joining else { return }
-        tracker.discard()
-        screen = .start
+    }
+
+    /// The phone started the workout (Start on either device), or it was already running there:
+    /// the clock starts here too and the same screen opens.
+    private func begin(_ open: @escaping () -> Void) {
+        guard screen == .ready, !beginning else { return }
+        beginning = true
+        Task {
+            await tracker.begin()
+            open()
+            beginning = false
+        }
     }
 
     // MARK: From the phone
@@ -213,7 +227,13 @@ struct WatchRoot: View {
                 state.session = nil
             }
             phoneRehab = state
-            if let rehab, rehab.following {
+            if screen == .ready, !state.finished, !state.discarded {
+                if let routine = phoneRoutine {
+                    begin { follow(routine, at: state) }
+                } else {
+                    tracker.send(.sync)
+                }
+            } else if let rehab, rehab.following {
                 rehab.apply(state)
                 if rehab.discardedOnPhone {
                     tracker.discard()
@@ -221,9 +241,20 @@ struct WatchRoot: View {
                 }
             }
         }
-        if let strength = live.strength { run?.adopt(strength) }
+        if let pending = live.pending { self.pending = pending }
+        if let strength = live.strength {
+            if screen == .ready, let session = try? JSONDecoder().decode(StrengthSession.self, from: strength.session), session.isActive {
+                begin { show(session) }
+            } else {
+                run?.adopt(strength)
+            }
+        }
         guard let command = live.command else { return }
         switch (command, screen) {
+        case (.discard, .ready):
+            // Closed on the phone before Start: nothing was recorded.
+            tracker.discard()
+            close()
         case (.finish, .strength):
             run?.closeFromPhone()
             Task {
@@ -248,29 +279,43 @@ struct WatchRoot: View {
         summary = nil
         phoneRehab = nil
         phoneRoutine = nil
+        pending = nil
+        startRequested = false
         Task { await start.load() }
     }
 }
 
-/// About a second while the Watch joins a workout started on the phone.
-private struct JoiningView: View {
+/// A workout open on the phone, linked and waiting: Start here starts it on both.
+private struct ReadyView: View {
+    let pending: WatchWire.Pending?
+    let starting: Bool
+    let onStart: () -> Void
+    let onCancel: () -> Void
+
     var body: some View {
-        VStack(spacing: 0) {
-            Image(systemName: "iphone")
-                .font(.system(size: 30, weight: .regular))
-                .foregroundStyle(Color.ride)
-            WatchKicker("Started on iPhone", color: .rideSoft)
-                .padding(.top, 10)
-            WatchTitle("Joining", size: 26)
-                .padding(.top, 4)
-            HStack(spacing: 6) {
-                Image(systemName: "heart.fill").foregroundStyle(Color.heart)
-                Text("Recording heart rate").font(WatchFont.body(12, weight: .semibold)).foregroundStyle(Color.muted)
+        ScrollView {
+            VStack(spacing: 0) {
+                Image(systemName: "iphone")
+                    .font(.system(size: 26, weight: .regular))
+                    .foregroundStyle(Color.ride)
+                WatchKicker(pending == nil ? "Linking with iPhone" : "Ready · paired with iPhone", color: .rideSoft)
+                    .padding(.top, 8)
+                WatchTitle(pending?.title ?? "Waiting", size: 24)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 4)
+                if let detail = pending?.detail {
+                    Text(detail).font(WatchFont.body(11)).foregroundStyle(Color.muted).padding(.top, 3)
+                }
+                Button(starting ? "Starting…" : "Start", action: onStart)
+                    .buttonStyle(VoltButtonStyle())
+                    .disabled(pending == nil || starting)
+                    .padding(.top, 12)
+                Button("Not now", action: onCancel)
+                    .buttonStyle(DarkButtonStyle())
+                    .padding(.top, 6)
             }
-            .font(.system(size: 12))
-            .padding(.top, 14)
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationBarBackButtonHidden()
     }
 }

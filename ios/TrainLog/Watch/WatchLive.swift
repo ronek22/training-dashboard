@@ -72,9 +72,10 @@ final class WatchLive: NSObject {
 
     // MARK: Starting on the Watch
 
-    /// A workout started on the phone: TrainLog on the Watch starts the Health workout for heart
-    /// rate and shows the same session. Skipped when the Watch already runs one, the app isn't on
-    /// the Watch, or Settings turned it off.
+    /// A workout opened on the phone: TrainLog on the Watch wakes, links up and waits on a ready
+    /// screen; Start on either device starts both (or, for a session already running, it joins
+    /// straight away). Skipped when the Watch already runs one, the app isn't on the Watch, or
+    /// Settings turned it off.
     func startOnWatch(_ activity: HKWorkoutActivityType) {
         lastLaunch = activity
         guard canStartOnWatch, session == nil else { return }
@@ -121,17 +122,27 @@ final class WatchLive: NSObject {
         let routine = state.session ?? leading.rehab?.session
         leading.rehab = state
         leading.rehab?.session = routine
+        leading.pending = nil
         send(WatchWire.Live(rehab: state))
     }
 
     /// The strength session changed here (a set, a jump, the server's progressed copy).
     func share(strength: WatchWire.Strength) {
         leading.strength = strength
+        leading.pending = nil
         send(WatchWire.Live(strength: strength))
     }
 
-    /// The workout shown here closed: nothing to send a late Watch any more.
+    /// A workout open here and not started yet, for the Watch's ready screen.
+    func share(pending: WatchWire.Pending) {
+        leading.pending = pending
+        send(WatchWire.Live(pending: pending))
+    }
+
+    /// The workout shown here closed: nothing to send a late Watch any more. Closed before Start,
+    /// the Watch drops its ready screen (nothing was recorded).
     func stopLeading() {
+        if leading.pending != nil { send(.discard) }
         leading = WatchWire.Live()
         lastLaunch = nil
         if session == nil { join = .none }
@@ -155,7 +166,7 @@ final class WatchLive: NSObject {
     }
 
     private func sendLeading() {
-        guard leading.rehab != nil || leading.strength != nil else { return }
+        guard leading.rehab != nil || leading.strength != nil || leading.pending != nil else { return }
         send(leading)
     }
 

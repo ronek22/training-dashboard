@@ -73,7 +73,7 @@ final class RehabRun {
         case .back: back()
         case .pause: togglePause()
         case .sync: publish(withSession: true)
-        case .finish, .discard: break
+        case .start, .finish, .discard: break
         }
     }
 

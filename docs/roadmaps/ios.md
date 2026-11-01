@@ -22,7 +22,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
-- 2026-10-31 — **Apple Watch app** — Start today's lift, bodyweight day or rehab on the Watch: one set at a time with the Crown, effort taps, a rest ring with haptics, holds that count themselves, live heart rate on wrist and phone, start on either device and steer from both (the Watch joins a lift or rehab started on the iPhone), and an Apple Health workout at the end that lands in the calendar.
+- 2026-10-31 — **Apple Watch app** — Start today's lift, bodyweight day or rehab on the Watch: one set at a time with the Crown, effort taps, a rest ring with haptics, holds that count themselves, live heart rate on wrist and phone, start on either device and steer from both (opening a lift or rehab on the iPhone readies the Watch, one Start begins both), and an Apple Health workout at the end that lands in the calendar.
 - 2026-10-31 — **Sync status** — Today shows how many logs are waiting for the Mac (or were refused), and Settings lists them with Send now and a log of what went out after waiting.
 - 2026-10-31 — **Bodyweight lifts** — A bodyweight or travel-kit day starts from Today or Plan as a one-time session that follows the coach's steps; reps-only sets with optional added weight, and planks as timed holds you start yourself.
 - 2026-10-30 — **Food v2** — Food opens on a week strip with target dots, a calorie ring that shows kcal to go and the planned dinner, macro columns and a meal timeline; scanned and logged meals show a macro donut, a ½–2× portion picker and a grams stepper per item.

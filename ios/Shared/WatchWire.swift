@@ -39,6 +39,18 @@ enum WatchWire {
         var strength: Strength?
         /// A button pressed on the other device.
         var command: Command?
+        /// A workout open on the phone and not started yet: both devices show Start.
+        var pending: Pending?
+    }
+
+    /// What the phone has open before Start, for the Watch's ready screen.
+    struct Pending: Codable, Sendable, Equatable {
+        enum Kind: String, Codable, Sendable { case strength, rehab }
+
+        let kind: Kind
+        let title: String
+        /// "5 exercises · ~45 min".
+        var detail: String?
     }
 
     /// Where a rehab routine is. The device it was started on runs it (timers, ticks, the
@@ -69,10 +81,13 @@ enum WatchWire {
     }
 
     enum Command: String, Codable, Sendable {
+        /// Start pressed on the Watch's ready screen: the phone starts the workout for both.
+        case start
         case next, back, pause
         /// Send everything again, routine included (the other device just attached).
         case sync
-        /// The workout ended on the other device, which already told the server.
+        /// The workout ended on the other device, which already told the server. Before Start,
+        /// `discard` means the phone closed the workout without starting it.
         case finish, discard
     }
 }

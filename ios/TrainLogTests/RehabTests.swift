@@ -94,7 +94,9 @@ struct RehabTests {
         var sent: [WatchWire.Rehab] = []
         model.onChange = { sent.append($0) }
         model.prepare(try session())
-        model.start()
+        // Start on the Watch's ready screen starts it here, for both.
+        model.handle(.start)
+        #expect(model.phase == .running)
         // The Watch gets the routine itself once, so its steps line up with the index.
         let routine = try #require(sent.compactMap(\.session).first)
         #expect(try JSONDecoder().decode(GuidedSession.self, from: routine).exercises.count == 2)

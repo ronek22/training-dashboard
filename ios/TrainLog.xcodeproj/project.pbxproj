@@ -18,6 +18,7 @@
 		0AF4E5BA56B0A8B7551D0B89 /* RideExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C1A4F9CB05B3B33BBE8671E /* RideExport.swift */; };
 		0FD33CD42FF4CEA443A6E936 /* Vitals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FDBC3D52C9D5328756342AF /* Vitals.swift */; };
 		10D69E614B8EA14CF015A170 /* WorkoutSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C1F25AB9BBF9F5A2082B9B9 /* WorkoutSync.swift */; };
+		125DBA1D87CBF8D18482FF68 /* BarlowCondensed-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AF11B1C65F8EFD3AF340D10 /* BarlowCondensed-Bold.ttf */; };
 		1303EE2F69C0502357AEE277 /* RideExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AF855BFE456D5029A74E66F /* RideExportTests.swift */; };
 		15001E12D44793D398FA851C /* ActivityDetailSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1930C041EB1B10F414766E0 /* ActivityDetailSheets.swift */; };
 		17161759AE3029C848A7CF3A /* ExerciseEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB47B853AECE8A854B1C3100 /* ExerciseEditorSheet.swift */; };
@@ -27,6 +28,8 @@
 		1ECE60EB652766334247F6E5 /* PlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00CD08DE079F66CE7586C33 /* PlanTests.swift */; };
 		1F1B2765790B821D2958F5CC /* StrengthScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A4EB747EDCC4C6EC27B6E19 /* StrengthScreen.swift */; };
 		2122C2C065D749DE238D703B /* Rehab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B211EEC813E2726B30AB56 /* Rehab.swift */; };
+		214B8CA1BDBF14E2FF332A37 /* TrainLogWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D0F5891C434B78652866B8C8 /* TrainLogWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		22143704C233192F93A2911D /* WatchWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 568547BB493CF6B238D71B2C /* WatchWidgets.swift */; };
 		234EA1A4B7A268BDE90562B3 /* HealthSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A7BF848A42528930E7F48B /* HealthSync.swift */; };
 		236149EAC191D16C6CCFC96A /* OFL-Archivo.txt in Resources */ = {isa = PBXBuildFile; fileRef = CBB385EB2D063C2EA0283EA2 /* OFL-Archivo.txt */; };
 		23AF8EDE52C1B4A25E6272A4 /* ServerRouteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC8B01DA737B74EE9685650D /* ServerRouteTests.swift */; };
@@ -38,6 +41,7 @@
 		2C4263E1FE0E594FA72A5BB1 /* Rehab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B211EEC813E2726B30AB56 /* Rehab.swift */; };
 		2C43B26ADD2450B4178C3F8B /* WatchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAB25A3C5E4932DD743EA23 /* WatchTests.swift */; };
 		2EDAC1C5F33005F98A84590C /* AddExercisesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80608A178EB0D5697EB181F /* AddExercisesSheet.swift */; };
+		33983A3BFD627D5ABA59C65F /* WatchGlanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6842213B0681BAAE2240CA69 /* WatchGlanceTests.swift */; };
 		347FA614E358DDF1BD99A273 /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52206926C6C7DE92E7BCE34E /* StartView.swift */; };
 		350505D17D34531EE0F1FAC2 /* WorkoutStudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = E512A347875EB30547F3C1DD /* WorkoutStudio.swift */; };
 		374C154FC14D7A2971A7D47C /* WatchRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EAA219746E1C14E882B4970 /* WatchRelay.swift */; };
@@ -48,6 +52,7 @@
 		3DE319B0B47DD7C2BBA1CFD9 /* WeekRecap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482ADDB7A73593EBAD0A7542 /* WeekRecap.swift */; };
 		40039F29AC725FE67E3FE202 /* TrainLogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */; };
 		4012ED2F1A8F181070B6F220 /* Archivo.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */; };
+		40741095D8BC4D3C6C7E9E1D /* WatchGlance.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8A6B9DC1B0B3B0F7D18ED5 /* WatchGlance.swift */; };
 		4141587358EDBCD10CA77DE7 /* NewWorkoutSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC59591C7AF61E1BAF172A09 /* NewWorkoutSheet.swift */; };
 		45F440814E53A44FF87131EC /* CoachChatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DBE4D0A1E43563696167392 /* CoachChatTests.swift */; };
 		46547FA3ABE6FA498F851D9B /* Readiness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 037715B90D253BECAAC35D8A /* Readiness.swift */; };
@@ -56,6 +61,7 @@
 		4D4E5EED8467E4BC70506D95 /* TrendsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F1EC93FC7BA8D8D4DAEA58 /* TrendsModel.swift */; };
 		4E5774391F1B8CF370604B32 /* StrengthLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C699FD75A1C832F9F59245E /* StrengthLogic.swift */; };
 		4F49A7AF08CFF836BA56ADD3 /* CoachChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB38F578846A0F5BDE23D482 /* CoachChat.swift */; };
+		4FE1043CC9673B93D23696E3 /* GlanceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC63293FF36021440B2D5086 /* GlanceViews.swift */; };
 		509166C9B97C02F66E0515E8 /* WeekRecapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D5E6D753F1132BB56A8EDE /* WeekRecapView.swift */; };
 		526B3F0F15127120AAA32BAE /* SilhouettePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F4027994F4CFB503C9088F /* SilhouettePaths.swift */; };
 		54AB99EC9265B668DA43038A /* Food.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6906A4138E3E54E166438B26 /* Food.swift */; };
@@ -65,6 +71,8 @@
 		594CD5BF3F83C83A62F00DFC /* BarlowCondensed-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AF11B1C65F8EFD3AF340D10 /* BarlowCondensed-Bold.ttf */; };
 		596B94B045D4FE90A37695C7 /* StrengthSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */; };
 		5B44F95AE124CC73DCA73481 /* TrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A34FE40F0B4A424DD1A25C /* TrendsView.swift */; };
+		5EABB8C869CBBC561FC35A0E /* GlanceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC63293FF36021440B2D5086 /* GlanceViews.swift */; };
+		5FEA5E2A2E463AF0C1DCF302 /* WatchGlance.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8A6B9DC1B0B3B0F7D18ED5 /* WatchGlance.swift */; };
 		60F09C24C415FEAF841F31D0 /* PlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFDBF801B91A97A8E95DCA4F /* PlanView.swift */; };
 		616BC71964E4758DDD95BA05 /* BodyModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6792F9B147DBC380B9FD90 /* BodyModel.swift */; };
 		63CBA9572C8212A7C9E61F00 /* DetailKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C840EEB43E748EBCA2361B /* DetailKit.swift */; };
@@ -79,7 +87,9 @@
 		71B9FA8926177DDC0E7C23E0 /* WatchStrength.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC3F301F26196C781C3CC88 /* WatchStrength.swift */; };
 		724D832C0DB980C3F34D1FB7 /* ActivityDetailHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 557474DDD2B15B7B90A49588 /* ActivityDetailHeader.swift */; };
 		72C8EB591709DB2121B0EC38 /* ActivityDetailPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CB3B6F703F074A4D7AF22A /* ActivityDetailPage.swift */; };
+		734178F46D6D60B9F911C192 /* BarlowCondensed-ExtraBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9F112A2FC94E41B5BFB208A4 /* BarlowCondensed-ExtraBoldItalic.ttf */; };
 		75C511A0E9893D7205E311D1 /* QuickLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1B90F67C5BEB5AA4C54A0B /* QuickLog.swift */; };
+		75FE0ED535463B4C47D3AC8D /* WidgetSnapshotPhone.swift in Sources */ = {isa = PBXBuildFile; fileRef = D578A702C7215A7DB3965466 /* WidgetSnapshotPhone.swift */; };
 		790DBDAE15B345608EE42C8E /* PhoneToday.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDCA15FBA972C52E02035AF5 /* PhoneToday.swift */; };
 		7A06DDEE2CE7AE1F504E9129 /* WatchWorkoutType.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6235C44E65B762E633D4B1 /* WatchWorkoutType.swift */; };
 		7AC0370CC72ECD18A9EDF1D2 /* MealParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910F2577F433EBD43253D607 /* MealParts.swift */; };
@@ -93,6 +103,7 @@
 		818D61DD847D5E04641458DA /* StrengthLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C699FD75A1C832F9F59245E /* StrengthLogic.swift */; };
 		822CF2FC1070BB64C4FC0278 /* WatchWire.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9316DC60A5CB6AC693610B21 /* WatchWire.swift */; };
 		8458B87161B17E0D89F26696 /* SyncLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55BFD2B02E2228C82B2A6728 /* SyncLogTests.swift */; };
+		845C79149FEBC61BD6D33057 /* WatchGlance.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8A6B9DC1B0B3B0F7D18ED5 /* WatchGlance.swift */; };
 		8582072D669C9FFC9F34B87B /* MealEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E7DD0F4032A9D1960C7D55 /* MealEditSheet.swift */; };
 		859D6A666F8C99A4587E4D55 /* StrengthSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF38361D28FBEE8E2C70373 /* StrengthSessionView.swift */; };
 		8653FD5C6F0EC80DB90E1CF0 /* TrainLogWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 7F0B93034BF7330FC840ED71 /* TrainLogWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -100,7 +111,9 @@
 		8855717FEAFC4B6CA4379BFB /* OFL-Archivo.txt in Resources */ = {isa = PBXBuildFile; fileRef = CBB385EB2D063C2EA0283EA2 /* OFL-Archivo.txt */; };
 		8CB0D0D61C2DA03E0CB2727E /* FoodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE84774476766302F5B40E04 /* FoodTests.swift */; };
 		8DA89CDA3DB28A90107EBF0B /* WorkoutSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 750838068CEBD75A49FE93BE /* WorkoutSyncTests.swift */; };
+		8E48E10B251973605D0B5ABB /* BarlowCondensed-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0243D4E3976851681CA3EF5E /* BarlowCondensed-SemiBold.ttf */; };
 		90AA5331DE708BCF6A15830B /* Trends.swift in Sources */ = {isa = PBXBuildFile; fileRef = F82A37EF65E30B4BBE2ADC4D /* Trends.swift */; };
+		920AD8EA9EB3D3742F7561E1 /* WidgetSnapshotPhone.swift in Sources */ = {isa = PBXBuildFile; fileRef = D578A702C7215A7DB3965466 /* WidgetSnapshotPhone.swift */; };
 		947D95F6E7D5890CA9248F73 /* TrainLogWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D990965BB05B538360464D2 /* TrainLogWatchApp.swift */; };
 		94D4295DC2C299DF58981A1A /* OfflineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B75853302B3165E45B90291 /* OfflineTests.swift */; };
 		94FDEAD1EC5788DD4FB2C1DE /* SessionBriefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F14E54A82521E74F4B142C /* SessionBriefTests.swift */; };
@@ -113,8 +126,10 @@
 		A2C995FC688A02DC863F7F96 /* ActivitiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD5EDF9EAF1496F240DB1987 /* ActivitiesView.swift */; };
 		A572A367254F23089573D64E /* PlanDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F5CA0ED7E7D3B5DB47A093 /* PlanDayView.swift */; };
 		A791F233764F3A02D340FA64 /* StrengthActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D01836CFA034C828DF59B62F /* StrengthActivityAttributes.swift */; };
+		A82EA5295697D80786855F5F /* OFL-Archivo.txt in Resources */ = {isa = PBXBuildFile; fileRef = CBB385EB2D063C2EA0283EA2 /* OFL-Archivo.txt */; };
 		A8374CA89FF29285D94B840E /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FED9A0BA3F896F441C12CFE /* Theme.swift */; };
 		A990F550D0374A656DEDD2E2 /* RehabScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B58F805E574F78DBCA15DA53 /* RehabScreen.swift */; };
+		A99C6C8DA9EBA434CC484982 /* Archivo.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */; };
 		AA23330C588731EBD1909A8B /* ActivityDetailSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7071006AFA751D31FBAEECA2 /* ActivityDetailSections.swift */; };
 		ABB00E266525DE3626AA11F8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E5D5FB77630D460FBC0896A3 /* Assets.xcassets */; };
 		AC77A33C04FA4990C6D60F75 /* WorkoutTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 611A1D811CB1286D6338543B /* WorkoutTracker.swift */; };
@@ -134,7 +149,9 @@
 		BD8C1B1F425DA86FC239C2DB /* QuickLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 947E7B26646DCF89AEB291E0 /* QuickLogTests.swift */; };
 		BDC56A0850E21766EF352AC0 /* FeedbackSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE5C544BD255D9F8B9F2A36 /* FeedbackSheet.swift */; };
 		BEF96ECD73622D6F51A05EAE /* ActivitiesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E77B96BF1230B0932CC403E7 /* ActivitiesModel.swift */; };
+		C0CE04FAD1E71A9EE9DFFAFD /* WatchTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E537B6C6079FE7215D95EF /* WatchTheme.swift */; };
 		C19583684F90BBC18C547B71 /* FoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD75917A58F54334CDFA0079 /* FoodView.swift */; };
+		C21F724D376C753198309B15 /* OFL-BarlowCondensed.txt in Resources */ = {isa = PBXBuildFile; fileRef = DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */; };
 		C297A0D8E33515CEF103361A /* demo-frames.json in Resources */ = {isa = PBXBuildFile; fileRef = 82F3E6E9D99F322371CA6EFD /* demo-frames.json */; };
 		C40F1CBB27DA5CF5B8D97124 /* RehabSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3313732983612A06E02B92B5 /* RehabSteps.swift */; };
 		C54F26CB7A1F3913691533CC /* TodayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A82E7ED074ABF53C867C009 /* TodayModel.swift */; };
@@ -145,6 +162,7 @@
 		CA2011DC8427C08C7AE1426E /* ExerciseDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BF528BC523521D372994740 /* ExerciseDemoView.swift */; };
 		CAA1710E904C67B7C0D44AC0 /* StrengthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADADEEF3EC729686F3AD8BD5 /* StrengthSession.swift */; };
 		CB468065709667142A241240 /* WorkoutBuilderModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5774A1656F5D44660CD859A4 /* WorkoutBuilderModel.swift */; };
+		CB82D4257A6D8AA0B736E799 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5643ADC614AE0FDB4DF3384 /* WidgetSnapshot.swift */; };
 		CC2BA6D20F74766A63614DEA /* Muscles.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FD085362FBBB40C833A867 /* Muscles.swift */; };
 		CFB15F923AA4D931073261DE /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CDA809C9D860B28A4DB61A /* APIClient.swift */; };
 		D1551A44556E7DD2FAC38C9C /* RestAlarm.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF9130DF7AE2AB262F71881F /* RestAlarm.swift */; };
@@ -154,6 +172,7 @@
 		D2BCDEA473DECA30A0B3A7C6 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1168AEF0F0CD20E70D9C73 /* SettingsView.swift */; };
 		D353F0644878171E37EEA60A /* SessionBrief.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74F3E0A3EE7DA4495775234E /* SessionBrief.swift */; };
 		D5FC7557DBEE38694F3F8F87 /* OFL-BarlowCondensed.txt in Resources */ = {isa = PBXBuildFile; fileRef = DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */; };
+		D7581F3400B22699B200BB0F /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5643ADC614AE0FDB4DF3384 /* WidgetSnapshot.swift */; };
 		D8A6B99501A49EDD398A4882 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64B465973FE67D56B0AD2792 /* SettingsTests.swift */; };
 		D991039FC7B8BA8250BB4BE9 /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71E786C59F442AD3CE8D76CD /* Motion.swift */; };
 		D9F0161252DCA55F451D2C13 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 01AD5A97B8F6DB6B3A07C749 /* Assets.xcassets */; };
@@ -170,6 +189,7 @@
 		F39D8B776736279B1E1D80BD /* BarlowCondensed-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0243D4E3976851681CA3EF5E /* BarlowCondensed-SemiBold.ttf */; };
 		F3D68722FA8D53F429E5C98D /* BarlowCondensed-ExtraBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9F112A2FC94E41B5BFB208A4 /* BarlowCondensed-ExtraBoldItalic.ttf */; };
 		F3E405E6B5D0598BD6EF819F /* FoodModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2432CF39E1025EE60FFEA9AE /* FoodModel.swift */; };
+		F3FDE995486D6DEC6D9626DB /* WatchGlance.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8A6B9DC1B0B3B0F7D18ED5 /* WatchGlance.swift */; };
 		F78030B6BBD3602453EA97AA /* WorkoutPush.swift in Sources */ = {isa = PBXBuildFile; fileRef = A328ACC1C28F23D41EFA6650 /* WorkoutPush.swift */; };
 		F9B759ED69608810B9993158 /* SyncLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D9A2A9BA943EE32E9E4043 /* SyncLog.swift */; };
 		FA071C807EEE55903138DF6B /* OFL-BarlowCondensed.txt in Resources */ = {isa = PBXBuildFile; fileRef = DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */; };
@@ -194,6 +214,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 654D42BF0F8C0B02FEDC4898;
 			remoteInfo = TrainLog;
+		};
+		DF65371B0DBDDA6A86F23A6C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B0833A1E9293B06460465C0E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F3B1070A84ECBC14C64AD208;
+			remoteInfo = TrainLogWatchWidgets;
 		};
 		E1271E0B674B104B0E6B7932 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -227,6 +254,17 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8F06341FF4A41642AA58D67E /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				214B8CA1BDBF14E2FF332A37 /* TrainLogWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -246,6 +284,7 @@
 		18D43DC63E781C9944ACB57E /* TrainLogWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = TrainLogWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		18D9A2A9BA943EE32E9E4043 /* SyncLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncLog.swift; sourceTree = "<group>"; };
 		1DE5C544BD255D9F8B9F2A36 /* FeedbackSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackSheet.swift; sourceTree = "<group>"; };
+		1F3679035D69AC50104A4024 /* TrainLogWatchWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TrainLogWatchWidgets.entitlements; sourceTree = "<group>"; };
 		2432CF39E1025EE60FFEA9AE /* FoodModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodModel.swift; sourceTree = "<group>"; };
 		26CDA809C9D860B28A4DB61A /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		272AC87C90C5064393265AEE /* StrengthRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthRun.swift; sourceTree = "<group>"; };
@@ -271,6 +310,7 @@
 		52206926C6C7DE92E7BCE34E /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
 		557474DDD2B15B7B90A49588 /* ActivityDetailHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityDetailHeader.swift; sourceTree = "<group>"; };
 		55BFD2B02E2228C82B2A6728 /* SyncLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncLogTests.swift; sourceTree = "<group>"; };
+		568547BB493CF6B238D71B2C /* WatchWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWidgets.swift; sourceTree = "<group>"; };
 		572F7520C1797D9587E01198 /* ActivityDetailFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityDetailFormat.swift; sourceTree = "<group>"; };
 		5774A1656F5D44660CD859A4 /* WorkoutBuilderModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutBuilderModel.swift; sourceTree = "<group>"; };
 		5C699FD75A1C832F9F59245E /* StrengthLogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthLogic.swift; sourceTree = "<group>"; };
@@ -281,6 +321,7 @@
 		64B465973FE67D56B0AD2792 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
 		6551CA838C9FBBA066FCB841 /* WorkoutBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutBuilder.swift; sourceTree = "<group>"; };
 		6792E0752DD914E2FA97D1CE /* ExerciseDemos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDemos.swift; sourceTree = "<group>"; };
+		6842213B0681BAAE2240CA69 /* WatchGlanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchGlanceTests.swift; sourceTree = "<group>"; };
 		6906A4138E3E54E166438B26 /* Food.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Food.swift; sourceTree = "<group>"; };
 		69BD8152680FD3835333C42E /* WeekRecapModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekRecapModel.swift; sourceTree = "<group>"; };
 		6A6792F9B147DBC380B9FD90 /* BodyModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyModel.swift; sourceTree = "<group>"; };
@@ -330,6 +371,7 @@
 		AD6235C44E65B762E633D4B1 /* WatchWorkoutType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutType.swift; sourceTree = "<group>"; };
 		ADADEEF3EC729686F3AD8BD5 /* StrengthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthSession.swift; sourceTree = "<group>"; };
 		AE3713660C3D5D713D705982 /* CoachFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachFormat.swift; sourceTree = "<group>"; };
+		AE6C6771328621F5CDC15334 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AECFF6858D98599C67E6EEC8 /* TodayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayTests.swift; sourceTree = "<group>"; };
 		B10A7B084CF58AD83C3603DB /* QuickLogSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogSheet.swift; sourceTree = "<group>"; };
 		B1E7DD0F4032A9D1960C7D55 /* MealEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEditSheet.swift; sourceTree = "<group>"; };
@@ -340,6 +382,7 @@
 		B9F14E54A82521E74F4B142C /* SessionBriefTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBriefTests.swift; sourceTree = "<group>"; };
 		BAEF6563DD549AD3DC924CDE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BB47B853AECE8A854B1C3100 /* ExerciseEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseEditorSheet.swift; sourceTree = "<group>"; };
+		BC63293FF36021440B2D5086 /* GlanceViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlanceViews.swift; sourceTree = "<group>"; };
 		BD75917A58F54334CDFA0079 /* FoodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodView.swift; sourceTree = "<group>"; };
 		BE21E588EDC172EE627EFE67 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BFDBF801B91A97A8E95DCA4F /* PlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanView.swift; sourceTree = "<group>"; };
@@ -354,8 +397,10 @@
 		CF9130DF7AE2AB262F71881F /* RestAlarm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestAlarm.swift; sourceTree = "<group>"; };
 		D01836CFA034C828DF59B62F /* StrengthActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthActivityAttributes.swift; sourceTree = "<group>"; };
 		D0969C0EE47DBE1A1C8A7694 /* TrainLogWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TrainLogWidgets.entitlements; sourceTree = "<group>"; };
+		D0F5891C434B78652866B8C8 /* TrainLogWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TrainLogWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D1CDFCB2A511A6C5F223D8DC /* Archivo.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Archivo.ttf; sourceTree = "<group>"; };
 		D3A7BF848A42528930E7F48B /* HealthSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSync.swift; sourceTree = "<group>"; };
+		D578A702C7215A7DB3965466 /* WidgetSnapshotPhone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotPhone.swift; sourceTree = "<group>"; };
 		D6A250C5567517DF3CFDE735 /* MetricChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricChart.swift; sourceTree = "<group>"; };
 		D9430F1CA886700E3F8D4F03 /* BodyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyView.swift; sourceTree = "<group>"; };
 		D98FE562E0DEA91786B3FFC0 /* BodyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyTests.swift; sourceTree = "<group>"; };
@@ -377,6 +422,7 @@
 		F2B211EEC813E2726B30AB56 /* Rehab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rehab.swift; sourceTree = "<group>"; };
 		F80608A178EB0D5697EB181F /* AddExercisesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddExercisesSheet.swift; sourceTree = "<group>"; };
 		F82A37EF65E30B4BBE2ADC4D /* Trends.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trends.swift; sourceTree = "<group>"; };
+		FA8A6B9DC1B0B3B0F7D18ED5 /* WatchGlance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchGlance.swift; sourceTree = "<group>"; };
 		FB38F578846A0F5BDE23D482 /* CoachChat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachChat.swift; sourceTree = "<group>"; };
 		FB7772B46C526E29BF5264CA /* CoachChatModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachChatModel.swift; sourceTree = "<group>"; };
 		FC8B01DA737B74EE9685650D /* ServerRouteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerRouteTests.swift; sourceTree = "<group>"; };
@@ -513,6 +559,7 @@
 				55BFD2B02E2228C82B2A6728 /* SyncLogTests.swift */,
 				AECFF6858D98599C67E6EEC8 /* TodayTests.swift */,
 				97FFCC221BB33F6F97AAF9C1 /* TrendsTests.swift */,
+				6842213B0681BAAE2240CA69 /* WatchGlanceTests.swift */,
 				8BAB25A3C5E4932DD743EA23 /* WatchTests.swift */,
 				628E9967DDE0257DBDB7C508 /* WidgetTests.swift */,
 				4AA60329C14E2B3A7E19D48F /* WorkoutBuilderTests.swift */,
@@ -622,6 +669,7 @@
 				8D06FFA209BAA7436AB6E384 /* TrainLog.app */,
 				7A42369D06F44C4B76267BEB /* TrainLogTests.xctest */,
 				7F0B93034BF7330FC840ED71 /* TrainLogWatch.app */,
+				D0F5891C434B78652866B8C8 /* TrainLogWatchWidgets.appex */,
 				18D43DC63E781C9944ACB57E /* TrainLogWidgets.appex */,
 			);
 			name = Products;
@@ -758,6 +806,7 @@
 				6ADC6A4A8AB97945B101B0AF /* TrainLog */,
 				3DD793074BA91A76914E2C0A /* TrainLogTests */,
 				83A8FB430F5441E6275212AE /* TrainLogWatch */,
+				CD9F678BB517C2144F6D2173 /* TrainLogWatchWidgets */,
 				C2B699AED1069C36826F5F3E /* TrainLogWidgets */,
 				6C5A222CD4BF19ADC524F513 /* Products */,
 			);
@@ -802,12 +851,25 @@
 			path = TrainLogWidgets;
 			sourceTree = "<group>";
 		};
+		CD9F678BB517C2144F6D2173 /* TrainLogWatchWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				BC63293FF36021440B2D5086 /* GlanceViews.swift */,
+				AE6C6771328621F5CDC15334 /* Info.plist */,
+				1F3679035D69AC50104A4024 /* TrainLogWatchWidgets.entitlements */,
+				568547BB493CF6B238D71B2C /* WatchWidgets.swift */,
+			);
+			path = TrainLogWatchWidgets;
+			sourceTree = "<group>";
+		};
 		E90ECB47365472D76A3FC7E2 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
 				D01836CFA034C828DF59B62F /* StrengthActivityAttributes.swift */,
+				FA8A6B9DC1B0B3B0F7D18ED5 /* WatchGlance.swift */,
 				9316DC60A5CB6AC693610B21 /* WatchWire.swift */,
 				B5643ADC614AE0FDB4DF3384 /* WidgetSnapshot.swift */,
+				D578A702C7215A7DB3965466 /* WidgetSnapshotPhone.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -850,10 +912,12 @@
 			buildPhases = (
 				FBD236C1F4B0469946F31B6F /* Sources */,
 				B505ECD495F57C50AB0203A8 /* Resources */,
+				8F06341FF4A41642AA58D67E /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				26BBD019550EC79868DCC013 /* PBXTargetDependency */,
 			);
 			name = TrainLogWatch;
 			packageProductDependencies = (
@@ -921,6 +985,24 @@
 			productReference = 7A42369D06F44C4B76267BEB /* TrainLogTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		F3B1070A84ECBC14C64AD208 /* TrainLogWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 463751D4C40E655BE27BA0C1 /* Build configuration list for PBXNativeTarget "TrainLogWatchWidgets" */;
+			buildPhases = (
+				E28CA301E5A7A5056626985B /* Sources */,
+				1C2484CF0EBBDA0CD136A497 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TrainLogWatchWidgets;
+			packageProductDependencies = (
+			);
+			productName = TrainLogWatchWidgets;
+			productReference = D0F5891C434B78652866B8C8 /* TrainLogWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -946,6 +1028,10 @@
 						DevelopmentTeam = 7LNZV748SW;
 						ProvisioningStyle = Automatic;
 					};
+					F3B1070A84ECBC14C64AD208 = {
+						DevelopmentTeam = 7LNZV748SW;
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = 53BE4DA6FC7B24C24DC58AAA /* Build configuration list for PBXProject "TrainLog" */;
@@ -965,12 +1051,26 @@
 				654D42BF0F8C0B02FEDC4898 /* TrainLog */,
 				B92B6B4FA3C26B61A9B59877 /* TrainLogWidgets */,
 				1ACF6AB8107194C192D2F0F1 /* TrainLogWatch */,
+				F3B1070A84ECBC14C64AD208 /* TrainLogWatchWidgets */,
 				DADE89526DBB4F66F0A5B3BA /* TrainLogTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		1C2484CF0EBBDA0CD136A497 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A99C6C8DA9EBA434CC484982 /* Archivo.ttf in Resources */,
+				125DBA1D87CBF8D18482FF68 /* BarlowCondensed-Bold.ttf in Resources */,
+				734178F46D6D60B9F911C192 /* BarlowCondensed-ExtraBoldItalic.ttf in Resources */,
+				8E48E10B251973605D0B5ABB /* BarlowCondensed-SemiBold.ttf in Resources */,
+				A82EA5295697D80786855F5F /* OFL-Archivo.txt in Resources */,
+				C21F724D376C753198309B15 /* OFL-BarlowCondensed.txt in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4C573D6883EF0376BD945DFE /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1106,6 +1206,7 @@
 				5B44F95AE124CC73DCA73481 /* TrendsView.swift in Sources */,
 				0FD33CD42FF4CEA443A6E936 /* Vitals.swift in Sources */,
 				B5ADD86CB337452DFA3E8AAC /* WatchChip.swift in Sources */,
+				F3FDE995486D6DEC6D9626DB /* WatchGlance.swift in Sources */,
 				E3730D8A55726FC214284695 /* WatchLinkLog.swift in Sources */,
 				EEDC4711638177A6984933F6 /* WatchLive.swift in Sources */,
 				374C154FC14D7A2971A7D47C /* WatchRelay.swift in Sources */,
@@ -1115,6 +1216,7 @@
 				B51BF3C8479BDFCCDFA6189E /* WeekRecapModel.swift in Sources */,
 				509166C9B97C02F66E0515E8 /* WeekRecapView.swift in Sources */,
 				6A3E5292221EEBB8372E4EFE /* WidgetSnapshot.swift in Sources */,
+				75FE0ED535463B4C47D3AC8D /* WidgetSnapshotPhone.swift in Sources */,
 				048B720873039233B054BEB5 /* WidgetSync.swift in Sources */,
 				E0B9C5DAA67798272C0E30DB /* WorkoutBuilder.swift in Sources */,
 				CB468065709667142A241240 /* WorkoutBuilderModel.swift in Sources */,
@@ -1136,8 +1238,22 @@
 				E5A5DDD6E75551AC868D7857 /* StrengthLiveActivity.swift in Sources */,
 				A8374CA89FF29285D94B840E /* Theme.swift in Sources */,
 				29701B35851FF1CB790F564C /* TrainLogWidgets.swift in Sources */,
+				40741095D8BC4D3C6C7E9E1D /* WatchGlance.swift in Sources */,
 				822CF2FC1070BB64C4FC0278 /* WatchWire.swift in Sources */,
 				1B823BE0C83ED9A8EB08C487 /* WidgetSnapshot.swift in Sources */,
+				920AD8EA9EB3D3742F7561E1 /* WidgetSnapshotPhone.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E28CA301E5A7A5056626985B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5EABB8C869CBBC561FC35A0E /* GlanceViews.swift in Sources */,
+				845C79149FEBC61BD6D33057 /* WatchGlance.swift in Sources */,
+				C0CE04FAD1E71A9EE9DFFAFD /* WatchTheme.swift in Sources */,
+				22143704C233192F93A2911D /* WatchWidgets.swift in Sources */,
+				D7581F3400B22699B200BB0F /* WidgetSnapshot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1164,6 +1280,7 @@
 				8458B87161B17E0D89F26696 /* SyncLogTests.swift in Sources */,
 				5949E6B54064073FF68DD91C /* TodayTests.swift in Sources */,
 				1C78A94319F86B32903FD7E8 /* TrendsTests.swift in Sources */,
+				33983A3BFD627D5ABA59C65F /* WatchGlanceTests.swift in Sources */,
 				7D2936BDE05F212A2B3F3E9E /* WatchStrength.swift in Sources */,
 				2C43B26ADD2450B4178C3F8B /* WatchTests.swift in Sources */,
 				09768067D6CE829DDCD86661 /* WidgetTests.swift in Sources */,
@@ -1177,6 +1294,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4FE1043CC9673B93D23696E3 /* GlanceViews.swift in Sources */,
 				09FE32A1AF2EF435D622D06E /* Outbox.swift in Sources */,
 				C9E48DFBF09855C9A51A199E /* PhoneLink.swift in Sources */,
 				2122C2C065D749DE238D703B /* Rehab.swift in Sources */,
@@ -1191,10 +1309,12 @@
 				C6FF767877E3F4D7C30FCC25 /* StrengthSession.swift in Sources */,
 				947D95F6E7D5890CA9248F73 /* TrainLogWatchApp.swift in Sources */,
 				7C37EB8B6E4076512DD63BDB /* WatchDemo.swift in Sources */,
+				5FEA5E2A2E463AF0C1DCF302 /* WatchGlance.swift in Sources */,
 				71B9FA8926177DDC0E7C23E0 /* WatchStrength.swift in Sources */,
 				DCDBBD32DE611CA7722EC3BC /* WatchTheme.swift in Sources */,
 				6756B2CDDA372F351A590BE6 /* WatchWire.swift in Sources */,
 				3D00744E8CDC7546AD2B97AB /* WatchWorkoutType.swift in Sources */,
+				CB82D4257A6D8AA0B736E799 /* WidgetSnapshot.swift in Sources */,
 				AC77A33C04FA4990C6D60F75 /* WorkoutTracker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1206,6 +1326,11 @@
 			isa = PBXTargetDependency;
 			target = B92B6B4FA3C26B61A9B59877 /* TrainLogWidgets */;
 			targetProxy = 45A9D176E2DD37DA4DED0A0B /* PBXContainerItemProxy */;
+		};
+		26BBD019550EC79868DCC013 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F3B1070A84ECBC14C64AD208 /* TrainLogWatchWidgets */;
+			targetProxy = DF65371B0DBDDA6A86F23A6C /* PBXContainerItemProxy */;
 		};
 		9F93F9AAA25B8646660EC684 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1299,6 +1424,25 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.ronek22.trainlog;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		807E85B0495180BF3953B8A6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TrainLogWatchWidgets/TrainLogWatchWidgets.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TrainLogWatchWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TrainLog;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ronek22.trainlog.watchkitapp.widgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
 			};
 			name = Debug;
 		};
@@ -1446,6 +1590,25 @@
 			};
 			name = Release;
 		};
+		C4B89C2CA90C3D12D0022B79 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TrainLogWatchWidgets/TrainLogWatchWidgets.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TrainLogWatchWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TrainLog;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ronek22.trainlog.watchkitapp.widgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
 		C58CB75492A24C1213B92B15 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1514,6 +1677,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		463751D4C40E655BE27BA0C1 /* Build configuration list for PBXNativeTarget "TrainLogWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				807E85B0495180BF3953B8A6 /* Debug */,
+				C4B89C2CA90C3D12D0022B79 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		4FF4BC3901B8FD8CE4E377C1 /* Build configuration list for PBXNativeTarget "TrainLog" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

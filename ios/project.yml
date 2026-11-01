@@ -116,6 +116,11 @@ targets:
     sources:
       - path: TrainLogWatch
       - path: Shared/WatchWire.swift
+      # Stores the phone's widget snapshot for the Watch widgets.
+      - path: Shared/WidgetSnapshot.swift
+      - path: Shared/WatchGlance.swift
+      # The widget views, for the `-watchDemoStage widgets` screen.
+      - path: TrainLogWatchWidgets/GlanceViews.swift
       - path: TrainLog/API/StrengthSession.swift
       - path: TrainLog/API/Rehab.swift
       - path: TrainLog/Features/Strength/StrengthLogic.swift
@@ -139,11 +144,46 @@ targets:
       properties:
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
+        com.apple.security.application-groups: [group.com.ronek22.trainlog]
+    dependencies:
+      - target: TrainLogWatchWidgets
     info:
       path: TrainLogWatch/Info.plist
       properties:
         # Keeps the app frontmost and running (timers, haptics) while a workout is active.
         WKBackgroundModes: [workout-processing]
+        UIAppFonts:
+          - BarlowCondensed-SemiBold.ttf
+          - BarlowCondensed-Bold.ttf
+          - BarlowCondensed-ExtraBoldItalic.ttf
+          - Archivo.ttf
+  # Smart Stack cards and watch-face complications. Draw the widget snapshot the phone sends and
+  # the Watch app stores in the App Group (TrainLogWatch/Relay/PhoneLink.swift).
+  TrainLogWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    sources:
+      - path: TrainLogWatchWidgets
+      - path: Shared/WidgetSnapshot.swift
+      - path: Shared/WatchGlance.swift
+      - path: TrainLogWatch/Design/WatchTheme.swift
+      - path: TrainLog/Resources/Fonts
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ronek22.trainlog.watchkitapp.widgets
+        TARGETED_DEVICE_FAMILY: "4"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: TrainLog
+    entitlements:
+      path: TrainLogWatchWidgets/TrainLogWatchWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.ronek22.trainlog]
+    info:
+      path: TrainLogWatchWidgets/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
         UIAppFonts:
           - BarlowCondensed-SemiBold.ttf
           - BarlowCondensed-Bold.ttf

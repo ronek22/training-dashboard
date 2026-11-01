@@ -22,6 +22,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-11-01 — **Watch widgets** — Today, Rehab, Week and Food in the Watch Smart Stack and on watch faces (rectangular, circular, corner, inline), in the phone widgets' look; the most useful one rises to the top: the session in the morning, unfinished rehab and food to go in the evening, tomorrow once done.
 - 2026-11-01 — **Watch workouts on Strava** — Strength and rehab sessions recorded on the Watch go up to Strava with their heart rate and Strava's own exercise list (exercises, reps, weights, holds), since Strava never imports them from Apple Health. Needs Strava reconnected once for upload access.
 - 2026-10-31 — **Apple Watch app** — Start today's lift, bodyweight day or rehab on the Watch: one set at a time with the Crown, effort taps, a rest ring with haptics, holds that count themselves, live heart rate on wrist and phone, start on either device and steer from both (opening a lift or rehab on the iPhone readies the Watch, one Start begins both), and an Apple Health workout at the end that lands in the calendar.
 - 2026-10-31 — **Sync status** — Today shows how many logs are waiting for the Mac (or were refused), and Settings lists them with Send now and a log of what went out after waiting.

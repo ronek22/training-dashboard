@@ -3,10 +3,16 @@ import Foundation
 
 /// `-watchDemo YES`: a sample day and workout with every write switched off, for simulator
 /// screenshots without touching the real server. `-watchDemoStage effort|rest|list|controls|done|hold`
-/// opens that screen straight away.
+/// opens that screen straight away. Also fills the Watch widgets with the artboard's day.
 enum WatchDemo {
     static var enabled: Bool { UserDefaults.standard.bool(forKey: "watchDemo") }
     static var stage: String? { UserDefaults.standard.string(forKey: "watchDemoStage") }
+
+    /// The artboard's day for the Watch widgets (Smart Stack and faces).
+    static func seedWidgets() {
+        guard enabled, let data = try? JSONEncoder().encode(WidgetSnapshot.watchPreview) else { return }
+        WidgetStore.store(data)
+    }
 
     static let today = WatchToday(
         date: "2026-10-31",
@@ -64,5 +70,76 @@ enum WatchDemo {
         "Dumbbell Row": .init(date: "2026-10-27", weightKg: 33.5, reps: 10, setCount: 3),
         "Lat Pulldown": .init(date: "2026-10-27", weightKg: 52, reps: 10, setCount: 3),
     ]
+}
+
+import SwiftUI
+import WidgetKit
+
+/// `-watchDemoStage widgets`: the Watch widgets drawn at their sizes, since the simulator can't
+/// open the Smart Stack or the face editor. `widgetsDone` / `widgetsRest` / `widgetsEvening` show
+/// the other states.
+struct WidgetGalleryDemo: View {
+    let stage: String
+
+    private var entry: GlanceEntry {
+        var snapshot = WidgetSnapshot.watchPreview
+        var date = Date.now
+        switch stage {
+        case "widgetsDone":
+            snapshot.today = snapshot.today.map {
+                var done = WidgetSnapshot.Today(date: $0.date, title: $0.title, sport: $0.sport, durationMin: 52, isDone: true,
+                                                readiness: "green", streakDays: 5, weekDoneMin: 219, weekPlannedMin: 370, weekBySport: [])
+                done.tomorrow = $0.tomorrow
+                done.week = $0.week
+                done.rehab = $0.rehab
+                return done
+            }
+        case "widgetsRest":
+            snapshot.today = snapshot.today.map {
+                var rest = WidgetSnapshot.Today(date: $0.date, title: nil, sport: "rest", durationMin: nil, isDone: false,
+                                                readiness: "green", streakDays: 4, weekDoneMin: 219, weekPlannedMin: 370, weekBySport: [])
+                rest.tomorrow = .init(sport: "strength", durationMin: 50)
+                rest.week = $0.week
+                return rest
+            }
+        case "widgetsEvening":
+            date = Calendar.current.date(bySettingHour: 19, minute: 5, second: 0, of: .now) ?? .now
+            snapshot.food = snapshot.food.map { .init(date: $0.date, eatenKcal: 1540, targetKcal: 2780, proteinG: 84, proteinTargetG: 140) }
+        default: break
+        }
+        return GlanceEntry(date: date, snapshot: snapshot, relevance: nil)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 6) {
+                card { TodayGlance(entry: entry, forced: .accessoryRectangular) }
+                card { RehabGlance(entry: entry, forced: .accessoryRectangular) }
+                card { FoodGlance(entry: entry, forced: .accessoryRectangular) }
+                card { WeekGlance(entry: entry, forced: .accessoryRectangular) }
+                HStack(spacing: 4) {
+                    circle { TodayGlance(entry: entry, forced: .accessoryCircular) }
+                    circle { WeekGlance(entry: entry, forced: .accessoryCircular) }
+                    circle { FoodGlance(entry: entry, forced: .accessoryCircular) }
+                }
+                HStack(spacing: 4) {
+                    circle { RehabGlance(entry: entry, forced: .accessoryCircular) }
+                    Text(WatchGlance.inline(entry.today)).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                }
+            }
+        }
+    }
+
+    private func card(@ViewBuilder _ content: () -> some View) -> some View {
+        content()
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.card, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private func circle(@ViewBuilder _ content: () -> some View) -> some View {
+        content().frame(width: 52, height: 52)
+    }
 }
 #endif

@@ -10,6 +10,7 @@ from .bodyweight_lifts import is_no_equipment_lift, lift_exercises
 from .health_data import get_health_metric_history, get_sleep_history
 from .phone_body import _vital
 from .plans import serialize_weekly_plan
+from .rehab_session import rehab_glance
 from .strength_workouts import list_templates
 from .widget_brief import _day_status, _plan_row_for, build_widget_brief
 
@@ -143,6 +144,7 @@ def build_phone_today(conn: sqlite3.Connection, today: Optional[date] = None) ->
         "sick": brief["sick"],
         "today": session,
         "tomorrow": brief["tomorrow"],
+        "rehab": rehab_glance(conn, today),
         "week": week,
         "week_minutes": {
             "done": round(sum(minutes_by_sport.values())),

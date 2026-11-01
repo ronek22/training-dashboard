@@ -177,6 +177,22 @@ def todays_session(conn, today: Optional[date] = None) -> Optional[dict]:
     return build_session(pending, _issue_titles(items))
 
 
+def rehab_glance(conn, today: Optional[date] = None) -> Optional[dict]:
+    """Today's rehab in a line, for the phone and Watch widgets: issue, ticks done of due, minutes left."""
+    items = routine_exercises(conn, today)
+    due = [item for item in items if item["due"]]
+    if not due:
+        return None
+    pending = [item for item in due if not item["done"]]
+    titles = _issue_titles(due)
+    return {
+        "title": titles[0] if len(titles) == 1 else "Rehab",
+        "done": len(due) - len(pending),
+        "total": len(due),
+        "duration_min": max(1, math.ceil(estimate_seconds(pending) / 60)) if pending else 0,
+    }
+
+
 def done_session(conn, today: Optional[date] = None) -> Optional[dict]:
     """What was ticked today, kept with a finished session so the activity page can show it."""
     items = [item for item in routine_exercises(conn, today) if item["done"]]

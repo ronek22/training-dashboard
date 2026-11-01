@@ -12,6 +12,24 @@ final class WatchRelay: NSObject, WCSessionDelegate, Sendable {
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
         WCSession.default.activate()
+        NotificationCenter.default.addObserver(forName: WidgetStore.didChange, object: nil, queue: nil) { _ in
+            WatchRelay.sendWidgetSnapshot()
+        }
+    }
+
+    /// The Watch widgets draw the phone's widget snapshot (TrainLogWatchWidgets). A face with one
+    /// of them gets it right away (about 50 a day); otherwise the latest copy waits as the
+    /// application context and arrives when the Watch next wakes TrainLog.
+    static func sendWidgetSnapshot() {
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isPaired, session.isWatchAppInstalled,
+              let data = WidgetStore.data()
+        else { return }
+        let payload: [String: Any] = [WatchWire.widgetSnapshotKey: data]
+        if session.isComplicationEnabled, session.remainingComplicationUserInfoTransfers > 0 {
+            session.transferCurrentComplicationUserInfo(payload)
+        }
+        try? session.updateApplicationContext(payload)
     }
 
     func session(_ session: WCSession, didReceiveMessageData messageData: Data, replyHandler: @escaping (Data) -> Void) {
@@ -68,7 +86,9 @@ final class WatchRelay: NSObject, WCSessionDelegate, Sendable {
         return WatchWire.Reply(status: 202)
     }
 
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        if activationState == .activated { Self.sendWidgetSnapshot() }
+    }
     func sessionDidBecomeInactive(_ session: WCSession) {}
 
     /// After switching to another Watch.

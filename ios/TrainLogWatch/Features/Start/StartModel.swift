@@ -149,9 +149,4 @@ final class StartModel {
             return try await WatchAPI.get("/strength/workouts/sessions/active", as: StrengthSession?.self).value
         }
     }
-
-    /// Bodyweight days (no saved workout) are functional strength in Apple Health.
-    func activityType(for session: StrengthSession) -> HKWorkoutActivityType {
-        session.templateId == nil ? .functionalStrengthTraining : .traditionalStrengthTraining
-    }
 }

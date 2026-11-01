@@ -35,8 +35,12 @@ final class WorkoutTracker: NSObject {
     private var lastMirrored = Date.distantPast
     /// The rehab routine's latest state, repeated with each heart-rate update (routine left out).
     private var rehab: WatchWire.Rehab?
-    /// A button pressed on the phone's follow-along screen.
-    var onCommand: ((WatchWire.Command.Action) -> Void)?
+    /// What the phone sent: its rehab step or strength session, or a button pressed there.
+    var onRemote: ((WatchWire.Live) -> Void)?
+    /// This workout was started from the phone (`startFromPhone`).
+    private(set) var startedByPhone = false
+    /// Bumped each time the phone starts a workout here, for the root to show the hand-off.
+    private(set) var phoneStarts = 0
 
     var available: Bool { HKHealthStore.isHealthDataAvailable() }
 
@@ -80,6 +84,15 @@ final class WorkoutTracker: NSObject {
         } catch {
             reset()
         }
+    }
+
+    /// A workout started on the phone opened this app (`handle(_ workoutConfiguration:)`): the
+    /// Health workout starts here for heart rate, and the root joins the phone's session.
+    func startFromPhone(_ activity: HKWorkoutActivityType) async {
+        guard session == nil else { return }
+        startedByPhone = true
+        phoneStarts += 1
+        await start(activity)
     }
 
     /// After a crash or relaunch mid-workout: picks the running session back up. The app delegate
@@ -148,6 +161,7 @@ final class WorkoutTracker: NSObject {
 
     private func reset() {
         rehab = nil
+        startedByPhone = false
         session = nil
         builder = nil
         running = false
@@ -176,6 +190,16 @@ final class WorkoutTracker: NSObject {
         send(WatchWire.Live(heartRate: heartRate, activeKcal: activeKcal, rehab: rehab))
     }
 
+    /// The strength session changed here: sent at once, so the phone's screen moves with the Watch.
+    func share(strength: WatchWire.Strength) {
+        send(WatchWire.Live(strength: strength))
+    }
+
+    /// A button pressed here for a workout the phone runs, or the end of one both show.
+    func send(_ command: WatchWire.Command) {
+        send(WatchWire.Live(command: command))
+    }
+
     /// A rehab step changed: sent at once, so the phone's screen moves with the Watch.
     func share(rehab state: WatchWire.Rehab) {
         var repeated = state
@@ -190,8 +214,8 @@ final class WorkoutTracker: NSObject {
         session.sendToRemoteWorkoutSession(data: data) { @Sendable _, _ in }
     }
 
-    fileprivate func received(_ command: WatchWire.Command) {
-        onCommand?(command.action)
+    fileprivate func received(_ live: WatchWire.Live) {
+        onRemote?(live)
     }
 
     #if DEBUG
@@ -215,8 +239,8 @@ extension WorkoutTracker: HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {}
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didReceiveDataFromRemoteWorkoutSession data: [Data]) {
-        let commands = data.compactMap { try? JSONDecoder().decode(WatchWire.Command.self, from: $0) }
-        Task { @MainActor in commands.forEach(WorkoutTracker.shared.received) }
+        let messages = data.compactMap { try? JSONDecoder().decode(WatchWire.Live.self, from: $0) }
+        Task { @MainActor in messages.forEach(WorkoutTracker.shared.received) }
     }
 
     nonisolated func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {

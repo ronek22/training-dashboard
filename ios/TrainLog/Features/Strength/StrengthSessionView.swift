@@ -32,7 +32,24 @@ struct StrengthSessionView: View {
             }
         }
         .background(Color.bg.ignoresSafeArea())
-        .task { await model.load() }
+        .task {
+            // TrainLog on the Watch shows the same workout: changes go both ways.
+            model.onShare = { WatchLive.shared.share(strength: $0) }
+            model.onEnd = { WatchLive.shared.send($0) }
+            WatchLive.shared.onStrength = { model.adopt($0) }
+            WatchLive.shared.onCommand = { model.handleWatch($0) }
+            await model.load()
+        }
+        // Started (or resumed) here: TrainLog on the Watch joins for heart rate.
+        .onChange(of: model.session?.id) {
+            guard let session = model.session, session.isActive else { return }
+            WatchLive.shared.startOnWatch(WatchWorkoutType.strength(templateId: session.templateId))
+        }
+        .onDisappear {
+            WatchLive.shared.onStrength = nil
+            WatchLive.shared.onCommand = nil
+            WatchLive.shared.stopLeading()
+        }
         // Keeps in step with the web runner while the app is in front.
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
@@ -98,12 +115,7 @@ struct StrengthSessionView: View {
                                 .foregroundStyle(Color.ink)
                                 .monospacedDigit()
                             // Live from the Watch while it runs the workout.
-                            if let bpm = WatchLive.shared.liveHeartRate(at: context.date) {
-                                Label("\(Int(bpm.rounded()))", systemImage: "heart.fill")
-                                    .font(AppFont.number(17))
-                                    .foregroundStyle(Color(hex: 0xFF5A5F))
-                                    .accessibilityLabel("Heart rate \(Int(bpm.rounded())) from Apple Watch")
-                            }
+                            WatchChip(watch: .shared)
                         }
                     }
                 }

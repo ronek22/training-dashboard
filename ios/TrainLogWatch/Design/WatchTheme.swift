@@ -29,6 +29,9 @@ extension Color {
     static let strengthTint = Color(hex: 0x1E1219)
     static let mobility = Color(hex: 0x2ED3B0)
     static let mobilityTrack = Color(hex: 0x14302A)
+    /// Started on the iPhone.
+    static let ride = Color(hex: 0x3B8CFF)
+    static let rideSoft = Color(hex: 0x8DBBFF)
 }
 
 enum WatchFont {

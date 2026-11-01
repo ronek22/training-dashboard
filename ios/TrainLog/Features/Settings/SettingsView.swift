@@ -15,6 +15,7 @@ struct SettingsView: View {
     @AppStorage(HealthSync.weightKey) private var readWeight = false
     @AppStorage(WorkoutSync.enabledKey) private var sendWorkouts = false
     @AppStorage(RideExport.enabledKey) private var addRides = false
+    @AppStorage(WatchLive.autoStartKey) private var watchAutoStart = true
     private var healthSync = HealthSync.shared
     private var workoutSync = WorkoutSync.shared
     private var rideExport = RideExport.shared
@@ -164,7 +165,15 @@ struct SettingsView: View {
                 .tint(Color.mobility)
                 .settingsRow()
                 Divider().overlay(Color.cardBorder)
-                comingSoonRow("Save strength sessions as workouts")
+                Toggle(isOn: $watchAutoStart) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Start workouts on Apple Watch").font(AppFont.body(15)).foregroundStyle(Color.ink)
+                        Text("A lift or rehab started here opens TrainLog on the Watch for heart rate, saved to Health at the end")
+                            .font(AppFont.body(12)).foregroundStyle(Color.muted)
+                    }
+                }
+                .tint(Color.mobility)
+                .settingsRow()
                 Divider().overlay(Color.cardBorder)
                 Toggle(isOn: $readWeight) {
                     Text("Read body weight").font(AppFont.body(15)).foregroundStyle(Color.ink)
@@ -259,15 +268,6 @@ struct SettingsView: View {
             healthSync.startObserving()
             if turnedOn { await healthSync.sync(force: true) }
         }
-    }
-
-    private func comingSoonRow(_ title: String) -> some View {
-        Toggle(isOn: .constant(false)) {
-            Text(title).font(AppFont.body(15)).foregroundStyle(Color.faint)
-        }
-        .tint(Color.mobility)
-        .disabled(true)
-        .settingsRow()
     }
 
     // MARK: Reminders

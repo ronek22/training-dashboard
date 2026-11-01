@@ -4,7 +4,8 @@ import WatchKit
 
 /// One strength session on the wrist: set → effort → rest → next set. The Watch's copy of the
 /// session is the truth while it runs; every change is applied here first (`StrengthLogic`, same
-/// rules as the phone) and sent to the server through the iPhone's write queue.
+/// rules as the phone) and sent to the server through the iPhone's write queue. With the phone's
+/// strength screen open on the same session, changes go both ways (`onShare` / `adopt`).
 @MainActor
 @Observable
 final class StrengthRun {
@@ -34,12 +35,19 @@ final class StrengthRun {
     /// Last session's heaviest set per lift, from the template.
     private(set) var lastByName: [String: StrengthTemplate.Last] = [:]
     private(set) var addingSet = false
+    /// "Set 1 logged on iPhone · 45 × 10", for a few seconds after the phone logged one.
+    private(set) var remoteNote: String?
+    /// The session after a change here, for the phone.
+    var onShare: ((WatchWire.Strength) -> Void)?
+    /// Finished or discarded here, so the phone closes too.
+    var onEnd: ((WatchWire.Command) -> Void)?
 
     private let link: PhoneLink
     private let store: RunStore
     private var restTask: Task<Void, Never>?
     private var effortTask: Task<Void, Never>?
     private var holdTask: Task<Void, Never>?
+    private var noteTask: Task<Void, Never>?
 
     init(session: StrengthSession, link: PhoneLink = .shared, store: RunStore = RunStore()) {
         self.session = session
@@ -134,6 +142,7 @@ final class StrengthRun {
 
         resetDrafts()
         startRest(set.restSeconds)
+        share(logged: set.id)
         stage = .effort(setId: set.id)
         // Not tapping keeps the set without an effort, like skipping it on the phone.
         effortTask?.cancel()
@@ -157,6 +166,7 @@ final class StrengthRun {
             let body = try? WatchAPI.encoder.encode(["effort": effort.rawValue])
             link.enqueue("PUT", "/strength/workouts/sessions/\(session.id)/sets/\(setId)/effort", body: body)
             WKInterfaceDevice.current().play(.click)
+            share()
         }
         if session.exercises.allSatisfy(\.isDone) {
             skipRest()
@@ -253,6 +263,7 @@ final class StrengthRun {
         if stage == .allDone, !exercise.isDone { stage = .set }
         let body = try? WatchAPI.encoder.encode(["exercise_order": exercise.exerciseOrder, "set_order": setOrder])
         link.enqueue("POST", "/strength/workouts/sessions/\(session.id)/position", body: body)
+        share()
     }
 
     func skipExercise() {
@@ -272,6 +283,7 @@ final class StrengthRun {
             store.save(updated)
             if stage == .allDone { stage = .set }
             resetDrafts()
+            share()
             return nil
         } catch {
             return error.localizedDescription
@@ -282,11 +294,18 @@ final class StrengthRun {
 
     func finish() {
         link.enqueue("POST", "/strength/workouts/sessions/\(session.id)/finish", body: Data("{}".utf8))
+        onEnd?(.finish)
         close()
     }
 
     func discard() {
         link.enqueue("POST", "/strength/workouts/sessions/\(session.id)/abandon")
+        onEnd?(.discard)
+        close()
+    }
+
+    /// Finished or discarded on the phone, which already told the server.
+    func closeFromPhone() {
         close()
     }
 
@@ -294,7 +313,58 @@ final class StrengthRun {
         restTask?.cancel()
         effortTask?.cancel()
         holdTask?.cancel()
+        noteTask?.cancel()
         store.clear()
+    }
+
+    // MARK: The phone
+
+    private func share(logged: Int? = nil) {
+        guard let data = try? JSONEncoder().encode(session) else { return }
+        onShare?(WatchWire.Strength(session: data, loggedSetId: logged, restEndsAt: logged == nil ? nil : restEndsAt))
+    }
+
+    /// The phone's copy after a change there (or the server's progressed copy): merged in, a set
+    /// done here stays done. A set the phone just logged starts the same rest here, wrist taps
+    /// included; the effort question stays on the phone.
+    func adopt(_ incoming: WatchWire.Strength) {
+        guard let theirs = try? JSONDecoder().decode(StrengthSession.self, from: incoming.session), theirs.id == session.id else { return }
+        let before = session
+        session = StrengthLogic.merge(before, with: theirs)
+        store.save(session)
+        if before.currentExerciseOrder != session.currentExerciseOrder || before.currentSetOrder != session.currentSetOrder,
+           holdStartedAt == nil {
+            resetDrafts()
+        }
+        let doneHere = Set(before.exercises.flatMap(\.sets).filter(\.isCompleted).map(\.id))
+        guard let setId = incoming.loggedSetId, !doneHere.contains(setId),
+              let exercise = session.exercises.first(where: { $0.sets.contains { $0.id == setId } }),
+              let set = exercise.sets.first(where: { $0.id == setId }), set.isCompleted
+        else { return }
+        let load = StrengthFormat.load(weight: set.actualWeightKg, reps: set.actualReps ?? 0, seconds: set.actualSeconds)
+        showNote("\(StrengthLogic.label(for: set, in: exercise)) logged on iPhone · \(load)")
+        effortTask?.cancel()
+        if session.exercises.allSatisfy(\.isDone) {
+            skipRest()
+            stage = .allDone
+        } else if let ends = incoming.restEndsAt, ends > .now {
+            restTotal = set.restSeconds
+            restEndsAt = ends
+            scheduleRestEnd(ends)
+            stage = .rest
+        } else {
+            stage = .set
+        }
+    }
+
+    private func showNote(_ note: String) {
+        remoteNote = note
+        noteTask?.cancel()
+        noteTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            self?.remoteNote = nil
+        }
     }
 
     #if DEBUG

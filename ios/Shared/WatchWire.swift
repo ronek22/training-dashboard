@@ -27,20 +27,26 @@ enum WatchWire {
         var fromCache = false
     }
 
-    /// Live numbers the Watch sends to the iPhone's mirrored workout session.
+    /// What the Watch and the phone send each other over the mirrored workout session, both ways.
+    /// Every field is optional; each message carries only what changed.
     struct Live: Codable, Sendable, Equatable {
+        /// From the Watch, at most every 3 s.
         var heartRate: Double?
         var activeKcal: Double?
-        /// A rehab routine running on the Watch, for the phone to follow along.
+        /// The rehab routine, from whichever device runs it (the one it was started on).
         var rehab: Rehab?
+        /// The strength session after a change on the sending device.
+        var strength: Strength?
+        /// A button pressed on the other device.
+        var command: Command?
     }
 
-    /// Where the Watch's rehab routine is. The Watch runs it (timers, ticks, the completion); the
-    /// phone draws the same step with its demo and sends `Command`s back.
+    /// Where a rehab routine is. The device it was started on runs it (timers, ticks, the
+    /// completion); the other draws the same step and sends `Command`s back.
     struct Rehab: Codable, Sendable, Equatable {
-        /// The routine (`GuidedSession` JSON) as the Watch loaded it. Sent at the start and when the
-        /// phone asks: the phone's own copy loses exercises as they're ticked, so the steps wouldn't
-        /// line up. Nil in the updates in between.
+        /// The routine (`GuidedSession` JSON) as the leading device loaded it. Sent at the start and
+        /// when asked: the other device's own copy loses exercises as they're ticked, so the steps
+        /// wouldn't line up. Nil in the updates in between.
         var session: Data?
         var startedAt: Date
         var index: Int
@@ -48,18 +54,25 @@ enum WatchWire {
         var endsAt: Date?
         var pausedLeft: Int?
         var finished = false
-        /// Left on the Watch without saving.
+        /// Left without saving.
         var discarded = false
     }
 
-    /// The phone steering the Watch's rehab routine.
-    struct Command: Codable, Sendable, Equatable {
-        enum Action: String, Codable, Sendable {
-            case next, back, pause
-            /// Send everything again, routine included (the phone just attached).
-            case sync
-        }
+    /// The strength session as the sending device has it now. The receiver merges it set by set
+    /// (`StrengthLogic.merge`), so a copy that crossed a newer tap never undoes it.
+    struct Strength: Codable, Sendable, Equatable {
+        /// `StrengthSession` JSON.
+        var session: Data
+        /// The set the sender just logged, so the receiver starts the same rest (no effort question there).
+        var loggedSetId: Int?
+        var restEndsAt: Date?
+    }
 
-        let action: Action
+    enum Command: String, Codable, Sendable {
+        case next, back, pause
+        /// Send everything again, routine included (the other device just attached).
+        case sync
+        /// The workout ended on the other device, which already told the server.
+        case finish, discard
     }
 }

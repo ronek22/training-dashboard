@@ -37,6 +37,37 @@ enum StrengthLogic {
         return session
     }
 
+    /// Another device's copy of the session (the Watch's, the phone's, or the server's via the
+    /// phone), folded into this one. A set done here stays done even if the copy predates it, so a
+    /// copy that crossed a newer tap never undoes it; everything else (progressed targets, added
+    /// sets, efforts, the end) comes from the copy. The position follows whichever has more sets done.
+    static func merge(_ local: StrengthSession, with incoming: StrengthSession) -> StrengthSession {
+        guard local.id == incoming.id else { return incoming }
+        var merged = incoming
+        if !local.isActive, incoming.isActive {
+            merged.status = local.status
+            merged.completedAt = local.completedAt
+        }
+        let localSets = Dictionary(local.exercises.flatMap(\.sets).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        for exerciseIndex in merged.exercises.indices {
+            for setIndex in merged.exercises[exerciseIndex].sets.indices {
+                let set = merged.exercises[exerciseIndex].sets[setIndex]
+                guard let mine = localSets[set.id] else { continue }
+                if mine.isCompleted, !set.isCompleted {
+                    merged.exercises[exerciseIndex].sets[setIndex] = mine
+                } else if set.isCompleted, set.effort == nil, mine.effort != nil {
+                    merged.exercises[exerciseIndex].sets[setIndex].effort = mine.effort
+                }
+            }
+        }
+        let done = { (session: StrengthSession) in session.exercises.flatMap(\.sets).filter(\.isCompleted).count }
+        if done(local) > done(incoming) {
+            merged.currentExerciseOrder = local.currentExerciseOrder
+            merged.currentSetOrder = local.currentSetOrder
+        }
+        return merged
+    }
+
     /// A weight changed on an earlier set of the same lift carries to the next one.
     static func carriedWeight(for set: StrengthSession.WorkoutSet, in exercise: StrengthSession.Exercise) -> Double? {
         guard !set.isWarmup else { return set.targetWeightKg }

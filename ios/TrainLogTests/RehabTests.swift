@@ -61,7 +61,7 @@ struct RehabTests {
         let wire = try JSONEncoder().encode(try session())
         let watchCopy = try JSONDecoder().decode(GuidedSession.self, from: wire)
         let model = RehabSessionModel(queue: WriteQueue(file: FileManager.default.temporaryDirectory.appending(path: "follow-\(UUID()).json")))
-        var pressed: [WatchWire.Command.Action] = []
+        var pressed: [WatchWire.Command] = []
         model.remote = { pressed.append($0) }
 
         let started = Date.now.addingTimeInterval(-90)
@@ -86,6 +86,28 @@ struct RehabTests {
         model.follow(WatchWire.Rehab(startedAt: started, index: 4, finished: true), session: nil)
         #expect(model.phase == .done)
         #expect(model.saveState == .saved)
+    }
+
+    @MainActor
+    @Test func leadsTheWatchAndTakesItsButtons() throws {
+        let model = RehabSessionModel(queue: WriteQueue(file: FileManager.default.temporaryDirectory.appending(path: "lead-\(UUID()).json")))
+        var sent: [WatchWire.Rehab] = []
+        model.onChange = { sent.append($0) }
+        model.prepare(try session())
+        model.start()
+        // The Watch gets the routine itself once, so its steps line up with the index.
+        let routine = try #require(sent.compactMap(\.session).first)
+        #expect(try JSONDecoder().decode(GuidedSession.self, from: routine).exercises.count == 2)
+        #expect(sent.last?.index == 0)
+        #expect(sent.last?.endsAt != nil)
+
+        model.handle(.pause)
+        #expect(sent.last?.pausedLeft != nil)
+        model.handle(.next)
+        #expect(model.index == 1)
+        #expect(sent.last?.index == 1)
+        model.handle(.sync)
+        #expect(sent.last?.session != nil)
     }
 }
 

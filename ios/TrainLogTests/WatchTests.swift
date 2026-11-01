@@ -78,6 +78,42 @@ struct WatchTests {
         #expect(WatchStrength.versusLast(nil, last: nil) == nil)
     }
 
+    // MARK: Two devices, one session
+
+    @Test func mergeKeepsASetDoneHereThatTheCopyHasntSeen() {
+        // The phone forwards the server's copy while the Watch has just logged the first row.
+        let watch = StrengthLogic.complete(session(), setId: 20, reps: 10, weightKg: 34, effort: nil)
+        var server = session()
+        server.exercises[1].sets[1] = set(21, order: 2, kg: 36)   // progressed after the pulldowns
+        let merged = StrengthLogic.merge(watch, with: server)
+        #expect(merged.exercises[1].sets[0].isCompleted)
+        #expect(merged.exercises[1].sets[1].targetWeightKg == 36)
+        // More sets done here: the position stays on the second row.
+        #expect(merged.currentExerciseOrder == 2)
+        #expect(merged.currentSetOrder == 2)
+    }
+
+    @Test func mergeTakesTheOtherDevicesSetEffortAndEnd() {
+        let phone = session()
+        var watch = StrengthLogic.complete(session(), setId: 20, reps: 9, weightKg: 34, effort: .grinding)
+        watch.status = "completed"
+        let merged = StrengthLogic.merge(phone, with: watch)
+        #expect(merged.exercises[1].sets[0].actualReps == 9)
+        #expect(merged.exercises[1].sets[0].effort == "grinding")
+        #expect(merged.currentSetOrder == 2)
+        #expect(!merged.isActive)
+        // A finish here isn't undone by an older active copy either.
+        #expect(!StrengthLogic.merge(merged, with: session()).isActive)
+    }
+
+    @Test func wireCarriesASessionBothWays() throws {
+        let live = WatchWire.Live(strength: .init(session: try JSONEncoder().encode(session()), loggedSetId: 20, restEndsAt: .now),
+                                  command: .finish)
+        let decoded = try JSONDecoder().decode(WatchWire.Live.self, from: try JSONEncoder().encode(live))
+        #expect(decoded == live)
+        #expect(try JSONDecoder().decode(StrengthSession.self, from: try #require(decoded.strength?.session)) == session())
+    }
+
     // MARK: Outbox
 
     private func tempOutbox() -> Outbox {

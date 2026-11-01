@@ -9,6 +9,8 @@ import UIKit
 ///
 /// When the routine runs in TrainLog on the Watch, the phone follows it instead (`follow`): the
 /// Watch keeps the timers and sends the ticks and the completion; the buttons here steer it.
+/// Started here, it's the other way round: every change goes to `onChange` for the Watch to show,
+/// and the Watch's buttons come back through `handle`.
 @MainActor
 @Observable
 final class RehabSessionModel {
@@ -42,7 +44,11 @@ final class RehabSessionModel {
     /// Mirroring the routine running on the Watch.
     private(set) var following = false
     /// Sends a button press to the Watch while following.
-    var remote: ((WatchWire.Command.Action) -> Void)?
+    var remote: ((WatchWire.Command) -> Void)?
+    /// Where the routine is now, for the Watch while it runs here.
+    var onChange: ((WatchWire.Rehab) -> Void)?
+    /// The routine as JSON, sent to the Watch with the first update.
+    private var sessionData: Data?
 
     private var ticked: Set<RehabStep.Completes> = []
     /// The last write sent; each new one waits for it, so ticks land before the completion.
@@ -134,8 +140,31 @@ final class RehabSessionModel {
     func start() {
         startedAt = .now
         phase = .running
+        sessionData = session.flatMap { try? JSONEncoder().encode($0) }
         begin(0)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        publish(withSession: true)
+    }
+
+    /// A button pressed on the Watch, while the routine runs here.
+    func handle(_ command: WatchWire.Command) {
+        guard !following, phase == .running else { return }
+        switch command {
+        case .next: next()
+        case .back: back()
+        case .pause: togglePause()
+        case .finish: finish()
+        case .discard: Task { await discard() }
+        case .sync: publish(withSession: true)
+        }
+    }
+
+    private func publish(withSession: Bool = false, discarded: Bool = false) {
+        guard !following, let startedAt else { return }
+        onChange?(WatchWire.Rehab(
+            session: withSession ? sessionData : nil, startedAt: startedAt, index: index, endsAt: endsAt,
+            pausedLeft: pausedLeft, finished: phase == .done, discarded: discarded
+        ))
     }
 
     /// Done on a rep step, or ends a timed one early.
@@ -182,6 +211,7 @@ final class RehabSessionModel {
             self.endsAt = nil
             RestAlarm.cancel()
         }
+        publish()
     }
 
     /// Books the "time's up" notification while the phone is locked mid-timer.
@@ -196,6 +226,7 @@ final class RehabSessionModel {
         index = stepIndex
         pausedLeft = nil
         endsAt = steps[stepIndex].seconds.map { .now.addingTimeInterval(TimeInterval($0)) }
+        publish()
     }
 
     private func tick(_ completes: RehabStep.Completes) {
@@ -216,6 +247,7 @@ final class RehabSessionModel {
             enqueue(.init(method: "PUT", path: "/recovery/issues/\(completes.issueId)/ticks", body: body))
         }
         ticked = []
+        publish(discarded: true)
         _ = await lastWrite?.value
     }
 
@@ -239,6 +271,7 @@ final class RehabSessionModel {
         // The server snapshots what was ticked today, so this goes after the ticks.
         let write = enqueue(.init(method: "POST", path: "/guided-sessions/complete", body: body))
         Task { saveState = await write.value }
+        publish()
     }
 
     func checkIn(issueId: Int, pain value: Int) async {

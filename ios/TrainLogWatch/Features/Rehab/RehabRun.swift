@@ -5,6 +5,10 @@ import WatchKit
 /// Today's rehab routine on the wrist: the phone's step list (`RehabFormat.steps`), holds and rests
 /// that count themselves, ticks sent as each exercise is passed. Every change goes to `onChange`, so
 /// the phone can follow along; the phone's buttons come back through `handle`.
+///
+/// Started on the phone, it follows instead (`following`): the phone runs the timers and sends the
+/// ticks and the completion, `apply` moves this screen, and the buttons here go to `onCommand`.
+/// The wrist still taps at 10 s left and at the end of each hold or rest.
 @MainActor
 @Observable
 final class RehabRun {
@@ -16,8 +20,14 @@ final class RehabRun {
     private(set) var startedAt = Date.now
     private(set) var finished = false
     private(set) var discarded = false
+    /// The phone discarded the routine it runs.
+    private(set) var discardedOnPhone = false
+    /// The routine runs on the phone; this screen mirrors it.
+    let following: Bool
     /// Where the routine is now, for the phone (`WatchWire.Rehab`).
     var onChange: ((WatchWire.Rehab) -> Void)?
+    /// A button pressed here, for the phone running the routine.
+    var onCommand: ((WatchWire.Command) -> Void)?
 
     private var ticked: Set<RehabStep.Completes> = []
     private var timer: Task<Void, Never>?
@@ -26,8 +36,9 @@ final class RehabRun {
     /// The routine as JSON, sent with the first update and when the phone asks again.
     private let sessionData: Data?
 
-    init(session: GuidedSession, link: PhoneLink = .shared, today: Date = .now) {
+    init(session: GuidedSession, following: Bool = false, link: PhoneLink = .shared, today: Date = .now) {
         self.session = session
+        self.following = following
         self.steps = RehabFormat.steps(session)
         self.sessionData = try? JSONEncoder().encode(session)
         self.link = link
@@ -47,6 +58,7 @@ final class RehabRun {
     var progress: Double { steps.isEmpty ? 1 : Double(index) / Double(steps.count) }
 
     func start() {
+        guard !following else { return }
         startedAt = .now
         begin(0)
         WKInterfaceDevice.current().play(.start)
@@ -54,17 +66,44 @@ final class RehabRun {
     }
 
     /// A button pressed on the phone.
-    func handle(_ action: WatchWire.Command.Action) {
-        guard !finished, !discarded else { return }
-        switch action {
+    func handle(_ command: WatchWire.Command) {
+        guard !following, !finished, !discarded else { return }
+        switch command {
         case .next: next()
         case .back: back()
         case .pause: togglePause()
         case .sync: publish(withSession: true)
+        case .finish, .discard: break
+        }
+    }
+
+    /// The phone's routine moved. Timers here only tap the wrist; the phone moves on.
+    func apply(_ state: WatchWire.Rehab) {
+        guard following, !finished, !discarded else { return }
+        if state.discarded {
+            timer?.cancel()
+            discardedOnPhone = true
+            return
+        }
+        startedAt = state.startedAt
+        let moved = state.index != index
+        index = steps.isEmpty ? 0 : min(max(0, state.index), steps.count - 1)
+        pausedLeft = state.pausedLeft
+        timer?.cancel()
+        endsAt = nil
+        if let ends = state.endsAt { schedule(ends) }
+        if state.finished {
+            timer?.cancel()
+            endsAt = nil
+            finished = true
+            WKInterfaceDevice.current().play(.success)
+        } else if moved {
+            WKInterfaceDevice.current().play(.click)
         }
     }
 
     private func publish(withSession: Bool = false) {
+        guard !following else { return }
         onChange?(WatchWire.Rehab(
             session: withSession ? sessionData : nil, startedAt: startedAt, index: index,
             endsAt: endsAt, pausedLeft: pausedLeft, finished: finished, discarded: discarded
@@ -73,6 +112,10 @@ final class RehabRun {
 
     /// Done on a rep step, or ends a timed one early.
     func next() {
+        if following {
+            onCommand?(.next)
+            return
+        }
         guard let step = current else { return }
         if let completes = step.completes, ticked.insert(completes).inserted {
             let body = try? WatchAPI.encoder.encode(Tick(day: today, index: completes.index, done: true))
@@ -86,11 +129,19 @@ final class RehabRun {
     }
 
     func back() {
+        if following {
+            onCommand?(.back)
+            return
+        }
         guard index > 0 else { return }
         begin(index - 1)
     }
 
     func togglePause() {
+        if following {
+            onCommand?(.pause)
+            return
+        }
         if let left = pausedLeft {
             pausedLeft = nil
             schedule(Date.now.addingTimeInterval(TimeInterval(left)))
@@ -104,6 +155,11 @@ final class RehabRun {
 
     func finish() {
         guard !finished else { return }
+        if following {
+            // The phone saves it and sends the finished state back, which ends the workout here.
+            onCommand?(.finish)
+            return
+        }
         timer?.cancel()
         endsAt = nil
         finished = true
@@ -122,6 +178,11 @@ final class RehabRun {
     /// Leaving without saving: unticks what this session ticked.
     func discard() {
         timer?.cancel()
+        if following {
+            discarded = true
+            onCommand?(.discard)
+            return
+        }
         for completes in ticked {
             let body = try? WatchAPI.encoder.encode(Tick(day: today, index: completes.index, done: false))
             link.enqueue("PUT", "/recovery/issues/\(completes.issueId)/ticks", body: body)
@@ -157,7 +218,8 @@ final class RehabRun {
             try? await Task.sleep(for: .seconds(max(0, ends.timeIntervalSinceNow)))
             guard !Task.isCancelled, let self, self.index == step, self.pausedLeft == nil else { return }
             WKInterfaceDevice.current().play(.stop)
-            self.next()
+            // Following: the phone moves on and tells this screen.
+            if !self.following { self.next() }
         }
     }
 }

@@ -120,6 +120,7 @@ targets:
       - path: TrainLog/API/Rehab.swift
       - path: TrainLog/Features/Strength/StrengthLogic.swift
       - path: TrainLog/Features/Rehab/RehabSteps.swift
+      - path: TrainLog/Watch/WatchWorkoutType.swift
       - path: TrainLog/Resources/Fonts
         buildPhase: resources
     settings:

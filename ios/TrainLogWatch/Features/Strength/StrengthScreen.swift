@@ -13,7 +13,10 @@ struct StrengthScreen: View {
     var body: some View {
         TabView(selection: $page) {
             StrengthControls(run: run, tracker: tracker, onEnd: end).tag(Page.controls)
-            main.tag(Page.main)
+            main
+                .overlay(alignment: .top) { remoteNote }
+                .animation(.snappy, value: run.remoteNote)
+                .tag(Page.main)
             ExerciseList(run: run) { exercise in
                 run.jump(to: exercise)
                 withAnimation { page = .main }
@@ -25,6 +28,14 @@ struct StrengthScreen: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 HeartRateLabel(bpm: tracker.heartRate, trend: run.stage == .rest && tracker.falling ? "↓" : nil)
+            }
+            if tracker.startedByPhone {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Image(systemName: "iphone")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.ride)
+                        .accessibilityLabel("Started on iPhone")
+                }
             }
         }
         .task { await run.loadHistory() }
@@ -41,6 +52,22 @@ struct StrengthScreen: View {
             RestPage(run: run, tracker: tracker)
         case .allDone:
             AllDonePage(run: run) { end(finish: true) }
+        }
+    }
+
+    /// "Set 1 logged on iPhone · 45 × 10" over the page for a few seconds.
+    @ViewBuilder
+    private var remoteNote: some View {
+        if let note = run.remoteNote {
+            Label(note, systemImage: "checkmark")
+                .font(WatchFont.body(11, weight: .semibold))
+                .foregroundStyle(Color.rideSoft)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.horizontal, 8)
+                .frame(height: 22)
+                .background(Color.ride.opacity(0.2), in: Capsule())
+                .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
 

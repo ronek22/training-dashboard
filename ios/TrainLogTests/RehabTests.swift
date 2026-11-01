@@ -144,6 +144,29 @@ struct ExerciseDemoTests {
         }
     }
 
+    /// The demos look themselves up by name (steps → poses, guide and press → joints); a typo
+    /// there would draw nothing or crash mid-rehab, so every demo is checked and played through.
+    @Test func everyDemoReferencesItsOwnPosesAndJoints() {
+        for demo in ExerciseDemos.all {
+            #expect(!demo.steps.isEmpty, "\(demo.key) has no steps")
+            if demo.rig == nil {
+                #expect(!demo.poses.isEmpty, "\(demo.key) has no poses")
+                for step in demo.steps {
+                    #expect(demo.poses[step.pose] != nil, "\(demo.key): step names missing pose \(step.pose)")
+                }
+            }
+            if let guide = demo.guide {
+                #expect(ExerciseDemos.jointNames.contains(guide), "\(demo.key): guide \(guide) isn't a joint")
+            }
+            if let press = demo.press {
+                #expect(ExerciseDemos.jointNames.contains(press.at), "\(demo.key): press \(press.at) isn't a joint")
+            }
+            for seconds in stride(from: 0.0, to: ExerciseDemos.cycleLength(demo), by: 0.5) {
+                _ = ExerciseDemos.pathAt(demo, at: seconds)
+            }
+        }
+    }
+
     @Test func countsDownTheRunningCue() throws {
         let demo = try #require(ExerciseDemos.demo(for: "Straight leg raise"))
         let hold = ExerciseDemos.cueAt(demo, at: 2.7)

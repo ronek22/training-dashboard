@@ -445,14 +445,16 @@ enum ExerciseDemos {
         guard let guide = guideJoint(demo) else {
             guard let press = demo.press else { return nil }
             let frame = frame(demo, at: seconds)
-            let at = frame.body.joints[press.at]!, opacity = frame.effort > 0.6 ? (frame.effort - 0.6) / 0.4 : 0
+            guard let at = frame.body.joints[press.at] else { return nil }
+            let opacity = frame.effort > 0.6 ? (frame.effort - 0.6) / 0.4 : 0
             if opacity < 0.02 { return nil }
             return ([add(at, dir(press.angle, -22)), add(at, dir(press.angle, -11))], opacity)
         }
         var points: [CGPoint] = []
         var ahead = 0.08
         while ahead <= 0.7 {
-            points.append(frame(demo, at: seconds + ahead).body.joints[guide]!)
+            guard let point = frame(demo, at: seconds + ahead).body.joints[guide] else { return nil }
+            points.append(point)
             ahead += 0.04
         }
         var length = 0.0

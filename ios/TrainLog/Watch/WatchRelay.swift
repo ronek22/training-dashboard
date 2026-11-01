@@ -43,6 +43,27 @@ final class WatchRelay: NSObject, WCSessionDelegate, Sendable {
         }
     }
 
+    /// A write the Watch handed over as a user-info transfer while the phone was out of reach.
+    /// Appended here, before this callback returns, so transfers stay in the order they arrive.
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        guard Self.queueTransfer(userInfo) else { return }
+        Task { await WriteQueue().flush(with: .current) }
+    }
+
+    /// Puts a transferred write on the queue; false when the payload isn't one.
+    @discardableResult
+    static func queueTransfer(_ userInfo: [String: Any], queue: WriteQueue = WriteQueue()) -> Bool {
+        guard let data = userInfo[WatchWire.writeKey] as? Data,
+              let envelope = try? JSONDecoder().decode(WatchWire.Envelope.self, from: data),
+              envelope.kind == .write
+        else {
+            if userInfo[WatchWire.writeKey] != nil { logger.error("Watch transfer didn't decode as a write") }
+            return false
+        }
+        queue.append(.init(method: envelope.method, path: envelope.path, body: envelope.body))
+        return true
+    }
+
     /// Decodes one envelope and answers it; never throws, the Watch reads the reply's status.
     static func handle(_ message: Data, client: APIClient = .current, queue: WriteQueue = WriteQueue()) async -> Data {
         let reply: WatchWire.Reply

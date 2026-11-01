@@ -244,6 +244,22 @@ struct WatchTests {
         Stub.offline = false
     }
 
+    @Test func transferredWritesQueueInOrderAndOthersAreIgnored() throws {
+        let queue = WriteQueue(file: FileManager.default.temporaryDirectory.appending(path: "relayq-\(UUID().uuidString).json"))
+        for path in ["/sets/1/complete", "/sets/1/effort"] {
+            let envelope = WatchWire.Envelope(kind: .write, method: "POST", path: path, body: Data("{}".utf8))
+            #expect(WatchRelay.queueTransfer([WatchWire.writeKey: try JSONEncoder().encode(envelope)], queue: queue))
+        }
+        let request = WatchWire.Envelope(kind: .request, method: "GET", path: "/phone/today")
+        #expect(!WatchRelay.queueTransfer([WatchWire.writeKey: try JSONEncoder().encode(request)], queue: queue))
+        #expect(!WatchRelay.queueTransfer([WatchWire.writeKey: Data("nope".utf8)], queue: queue))
+        #expect(!WatchRelay.queueTransfer([WatchWire.widgetSnapshotKey: Data()], queue: queue))
+
+        #expect(queue.pending.map(\.path) == ["/sets/1/complete", "/sets/1/effort"])
+        #expect(queue.pending.first?.body == Data("{}".utf8))
+        try? FileManager.default.removeItem(at: queue.file)
+    }
+
     @Test func phoneQueueKeepsAWriteAppendedWhileOneIsSending() async {
         Stub.offline = false
         Stub.statuses = [:]

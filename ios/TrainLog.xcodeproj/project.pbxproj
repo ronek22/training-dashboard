@@ -161,6 +161,7 @@
 		DCDBBD32DE611CA7722EC3BC /* WatchTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E537B6C6079FE7215D95EF /* WatchTheme.swift */; };
 		E0B9C5DAA67798272C0E30DB /* WorkoutBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6551CA838C9FBBA066FCB841 /* WorkoutBuilder.swift */; };
 		E21C9953A4D5B14DB9C74BF6 /* BarlowCondensed-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0243D4E3976851681CA3EF5E /* BarlowCondensed-SemiBold.ttf */; };
+		E3730D8A55726FC214284695 /* WatchLinkLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F59D108B39C78A94B660EF8 /* WatchLinkLog.swift */; };
 		E5A5DDD6E75551AC868D7857 /* StrengthLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C48F3797F00F70170A5FD4B /* StrengthLiveActivity.swift */; };
 		E78CA9102855C5DBFFDFF0ED /* CoachChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2825D497536A1DC2067DF70 /* CoachChatView.swift */; };
 		E8DA055FCFA9600E7FE3979D /* CoachFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE3713660C3D5D713D705982 /* CoachFormat.swift */; };
@@ -274,6 +275,7 @@
 		5774A1656F5D44660CD859A4 /* WorkoutBuilderModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutBuilderModel.swift; sourceTree = "<group>"; };
 		5C699FD75A1C832F9F59245E /* StrengthLogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthLogic.swift; sourceTree = "<group>"; };
 		5E1B90F67C5BEB5AA4C54A0B /* QuickLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLog.swift; sourceTree = "<group>"; };
+		5F59D108B39C78A94B660EF8 /* WatchLinkLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLinkLog.swift; sourceTree = "<group>"; };
 		611A1D811CB1286D6338543B /* WorkoutTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTracker.swift; sourceTree = "<group>"; };
 		628E9967DDE0257DBDB7C508 /* WidgetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTests.swift; sourceTree = "<group>"; };
 		64B465973FE67D56B0AD2792 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
@@ -831,6 +833,7 @@
 			isa = PBXGroup;
 			children = (
 				FC8F19DC8D8B8EB7AF1E2E0B /* WatchChip.swift */,
+				5F59D108B39C78A94B660EF8 /* WatchLinkLog.swift */,
 				969251AB577DBEB3C4A2B9BE /* WatchLive.swift */,
 				9EAA219746E1C14E882B4970 /* WatchRelay.swift */,
 				AD6235C44E65B762E633D4B1 /* WatchWorkoutType.swift */,
@@ -1103,6 +1106,7 @@
 				5B44F95AE124CC73DCA73481 /* TrendsView.swift in Sources */,
 				0FD33CD42FF4CEA443A6E936 /* Vitals.swift in Sources */,
 				B5ADD86CB337452DFA3E8AAC /* WatchChip.swift in Sources */,
+				E3730D8A55726FC214284695 /* WatchLinkLog.swift in Sources */,
 				EEDC4711638177A6984933F6 /* WatchLive.swift in Sources */,
 				374C154FC14D7A2971A7D47C /* WatchRelay.swift in Sources */,
 				BA43CDAE257D464394380883 /* WatchWire.swift in Sources */,

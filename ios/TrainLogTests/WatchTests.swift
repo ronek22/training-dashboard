@@ -238,4 +238,30 @@ struct WatchTests {
         #expect(queue.pending.isEmpty)
         #expect(queue.log.map(\.path) == ["/set/2", "/set/1"])
     }
+
+    // MARK: Linking up
+
+    @MainActor
+    @Test func relayAnswersWhatThePhoneHasOpenAndLogsWatchSteps() async throws {
+        let open = try await relay(.init(kind: .leading, method: "GET", path: ""), client: client())
+        #expect(open.status == 200)
+        #expect(try JSONDecoder().decode(WatchWire.Live.self, from: try #require(open.data)).command == nil)
+        // The Watch asking counts as awake, before any mirrored link.
+        #expect(WatchLive.shared.ready())
+
+        let event = try await relay(.init(kind: .event, method: "POST", path: "Woken by iPhone"), client: client())
+        #expect(event.status == 200)
+        #expect(WatchLinkLog.shared.entries.first?.text == "Watch: Woken by iPhone")
+    }
+
+    @MainActor
+    @Test func linkLogKeepsTheNewestFirstAndTrims() {
+        let defaults = UserDefaults(suiteName: "link-\(UUID())")!
+        let log = WatchLinkLog(defaults: defaults)
+        for index in 0..<(WatchLinkLog.limit + 3) { log.add("step \(index)") }
+        #expect(log.entries.count == WatchLinkLog.limit)
+        #expect(log.entries.first?.text == "step \(WatchLinkLog.limit + 2)")
+        // Survives a relaunch.
+        #expect(WatchLinkLog(defaults: defaults).entries == log.entries)
+    }
 }

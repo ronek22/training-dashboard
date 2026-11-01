@@ -35,6 +35,7 @@ struct SettingsView: View {
                     .padding(.vertical, 6)
                 server
                 SyncSection(status: .shared)
+                WatchLinkSection(log: .shared)
                 health
                 reminders
             }

@@ -29,6 +29,15 @@ final class WatchRelay: NSObject, WCSessionDelegate, Sendable {
             switch envelope.kind {
             case .request: reply = await request(envelope, client: client)
             case .write: reply = await write(envelope, client: client, queue: queue)
+            case .leading: reply = await MainActor.run { WatchLive.shared.leadingForWatch() }
+            case .command:
+                await MainActor.run {
+                    if let command = WatchWire.Command(rawValue: envelope.path) { WatchLive.shared.received(command) }
+                }
+                reply = WatchWire.Reply(status: 200)
+            case .event:
+                await MainActor.run { WatchLinkLog.shared.add("Watch: " + envelope.path) }
+                reply = WatchWire.Reply(status: 200)
             }
         } else {
             reply = WatchWire.Reply(status: 400)

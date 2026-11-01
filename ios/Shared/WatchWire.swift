@@ -11,6 +11,14 @@ enum WatchWire {
             case request
             /// Fire and forget: the phone appends it to its write queue, which replays it in order.
             case write
+            /// Not a server call: what the phone has open (`Live` with its pending workout, rehab
+            /// step or strength session). Works before the mirrored workout links, so the ready
+            /// screen and Start don't wait for it.
+            case leading
+            /// Not a server call: a button pressed on the Watch (`path` is the `Command`).
+            case command
+            /// Not a server call: a step of linking up, for the phone's link log (`path` is the text).
+            case event
         }
 
         let kind: Kind

@@ -24,6 +24,11 @@ final class WorkoutTracker: NSObject {
     private(set) var running = false
     /// Sensors on and linked to the phone, nothing recording yet: waiting for Start.
     private(set) var prepared = false
+    /// The phone mirrors this workout (live heart rate and the two-way channel). False when linking
+    /// failed: the rest still goes over WatchConnectivity.
+    private(set) var mirrored = false
+    /// Heart rate before Start, while the workout is only prepared (the builder isn't collecting yet).
+    private var readyHeartRate: HKAnchoredObjectQuery?
     private(set) var paused = false
     private(set) var startDate: Date?
     /// Highest reading this workout; HealthKit's own maximum isn't available until the end.
@@ -83,21 +88,72 @@ final class WorkoutTracker: NSObject {
             self.builder = builder
             session.prepare()
             prepared = true
-            // The phone shows the live heart rate and the same session.
-            try? await session.startMirroringToCompanionDevice()
+            heartRate = nil
+            activeKcal = nil
+            watchHeartRateUntilStart()
+            // In the background: Start never waits for the phone.
+            Task { await mirror(session) }
         } catch {
+            PhoneLink.shared.event("Couldn't prepare the workout: \(error.localizedDescription)")
             reset()
         }
+    }
+
+    /// Links the workout to the phone, which then shows the live heart rate and the same session.
+    /// It can take a few tries with the phone asleep in a pocket.
+    private func mirror(_ session: HKWorkoutSession) async {
+        for attempt in 1...3 {
+            do {
+                try await session.startMirroringToCompanionDevice()
+                mirrored = true
+                if attempt > 1 { PhoneLink.shared.event("Linked on try \(attempt)") }
+                return
+            } catch {
+                PhoneLink.shared.event("Link try \(attempt) failed: \(error.localizedDescription)")
+                guard self.session === session else { return }
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
+    }
+
+    /// The prepared session warms the sensor up but its builder isn't collecting yet, so new
+    /// heart-rate samples are read straight from Health for the ready screen (and the phone).
+    private func watchHeartRateUntilStart() {
+        let type = HKQuantityType(.heartRate)
+        let recent = HKQuery.predicateForSamples(withStart: .now.addingTimeInterval(-60), end: nil)
+        let handler: @Sendable (HKAnchoredObjectQuery, [HKSample]?, [HKDeletedObject]?, HKQueryAnchor?, Error?) -> Void = { _, samples, _, _, _ in
+            let bpm = (samples as? [HKQuantitySample])?.max { $0.endDate < $1.endDate }?
+                .quantity.doubleValue(for: .count().unitDivided(by: .minute()))
+            guard let bpm else { return }
+            Task { @MainActor in WorkoutTracker.shared.readyReading(bpm) }
+        }
+        let query = HKAnchoredObjectQuery(type: type, predicate: recent, anchor: nil, limit: HKObjectQueryNoLimit, resultsHandler: handler)
+        query.updateHandler = handler
+        store.execute(query)
+        readyHeartRate = query
+    }
+
+    private func readyReading(_ bpm: Double) {
+        guard prepared, !running else { return }
+        heartRate = bpm
+        mirror()
+    }
+
+    private func stopReadyHeartRate() {
+        if let readyHeartRate { store.stop(readyHeartRate) }
+        readyHeartRate = nil
     }
 
     /// Starts the clock and the recording of a prepared session.
     func begin() async {
         guard let session, let builder, !running else { return }
         let start = Date.now
+        stopReadyHeartRate()
         session.startActivity(with: start)
         do {
             try await builder.beginCollection(at: start)
         } catch {
+            PhoneLink.shared.event("Couldn't start recording: \(error.localizedDescription)")
             discard()
             return
         }
@@ -105,8 +161,8 @@ final class WorkoutTracker: NSObject {
         running = true
         prepared = false
         paused = false
-        heartRate = nil
-        maxHeartRate = nil
+        // The ready screen's reading stays until the builder's first one replaces it.
+        maxHeartRate = heartRate
         activeKcal = nil
     }
 
@@ -184,8 +240,10 @@ final class WorkoutTracker: NSObject {
     }
 
     private func reset() {
+        stopReadyHeartRate()
         rehab = nil
         prepared = false
+        mirrored = false
         startedByPhone = false
         session = nil
         builder = nil

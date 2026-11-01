@@ -50,6 +50,30 @@ final class PhoneLink: NSObject {
         return (reply.data ?? Data(), reply.fromCache)
     }
 
+    /// What the phone has open (its pending workout, rehab step or strength session), asked over
+    /// WatchConnectivity: works before the mirrored workout links. Nil when the phone is out of reach.
+    func leading() async -> WatchWire.Live? {
+        await waitForActivation()
+        guard let reply = try? await send(WatchWire.Envelope(kind: .leading, method: "GET", path: "")),
+              let data = reply.data
+        else { return nil }
+        return try? JSONDecoder().decode(WatchWire.Live.self, from: data)
+    }
+
+    /// A button pressed here, for the phone (Start on the ready screen; rehab steering without the
+    /// mirrored link).
+    func command(_ command: WatchWire.Command) {
+        Task { _ = try? await send(WatchWire.Envelope(kind: .command, method: "POST", path: command.rawValue)) }
+    }
+
+    /// A step of linking up, for the phone's link log (Settings). Dropped when the phone is away.
+    func event(_ text: String) {
+        #if DEBUG
+        if WatchDemo.enabled { return }
+        #endif
+        Task { _ = try? await send(WatchWire.Envelope(kind: .event, method: "POST", path: text)) }
+    }
+
     /// Queues a write and hands it over as soon as possible. Never fails: it waits in the outbox.
     func enqueue(_ method: String, _ path: String, body: Data? = nil) {
         #if DEBUG

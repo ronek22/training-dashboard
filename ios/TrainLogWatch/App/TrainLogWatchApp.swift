@@ -61,15 +61,22 @@ struct WatchRoot: View {
     @State private var startRequested = false
     /// The clock is starting; later copies from the phone go to the screen it opens.
     @State private var beginning = false
+    /// Nothing came from the phone while the ready screen waited.
+    @State private var readyFailed = false
 
     var body: some View {
         NavigationStack {
             switch screen {
             case .start: StartView(model: start, onStrength: open, onRehab: open)
             case .ready:
-                ReadyView(pending: pending, starting: startRequested, onStart: {
+                ReadyView(pending: pending, heartRate: tracker.heartRate, starting: startRequested, failed: readyFailed, onStart: {
                     startRequested = true
+                    // Both ways: a second Start does nothing on the phone.
                     tracker.send(.start)
+                    link.command(.start)
+                    link.event("Start pressed")
+                }, onRetry: {
+                    Task { await askPhone() }
                 }, onCancel: {
                     tracker.discard()
                     close()
@@ -79,6 +86,14 @@ struct WatchRoot: View {
         }
         .tint(.volt)
         .onChange(of: tracker.phoneStarts) { Task { await getReady() } }
+        // A workout from the phone without the mirrored link: keep in step over WatchConnectivity.
+        .task(id: screen) {
+            guard screen == .strength || screen == .rehab else { return }
+            while !Task.isCancelled, tracker.startedByPhone, !tracker.mirrored {
+                if let live = await link.leading() { received(live) }
+                try? await Task.sleep(for: .seconds(3))
+            }
+        }
         .task {
             tracker.onRemote = { received($0) }
             #if DEBUG
@@ -162,7 +177,11 @@ struct WatchRoot: View {
     private func show(_ session: StrengthSession) {
         let strength = StrengthRun(session: session)
         strength.onShare = { [tracker] in tracker.share(strength: $0) }
-        strength.onEnd = { [tracker] in tracker.send($0) }
+        strength.onEnd = { [tracker, link] command in
+            // Both ways: closing twice does nothing on the phone.
+            tracker.send(command)
+            link.command(command)
+        }
         run = strength
         screen = .strength
     }
@@ -185,7 +204,10 @@ struct WatchRoot: View {
     /// A rehab routine running on the phone: this screen mirrors it and steers it.
     private func follow(_ session: GuidedSession, at state: WatchWire.Rehab) {
         let routine = RehabRun(session: session, following: true)
-        routine.onCommand = { [tracker] in tracker.send($0) }
+        // One way only: Next twice would skip a step.
+        routine.onCommand = { [tracker, link] command in
+            if tracker.mirrored { tracker.send(command) } else { link.command(command) }
+        }
         routine.apply(state)
         rehab = routine
         screen = .rehab
@@ -200,10 +222,27 @@ struct WatchRoot: View {
         pending = nil
         startRequested = false
         screen = .ready
-        for _ in 0..<15 where screen == .ready && pending == nil {
+        link.event("Woken by iPhone")
+        await askPhone()
+    }
+
+    /// Asks the phone what it has open, over the mirrored link and WatchConnectivity both, until
+    /// it starts (the first update opens the screen) or 45 s pass without an answer.
+    private func askPhone() async {
+        readyFailed = false
+        var heard = pending != nil
+        for _ in 0..<45 where screen == .ready {
             tracker.send(.sync)
+            if let live = await link.leading() { received(live) }
+            if !heard, pending != nil {
+                heard = true
+                link.event("Got the workout from iPhone")
+            }
             try? await Task.sleep(for: .seconds(1))
         }
+        guard screen == .ready, pending == nil else { return }
+        readyFailed = true
+        link.event("Nothing from iPhone after 45 s")
     }
 
     /// The phone started the workout (Start on either device), or it was already running there:
@@ -213,6 +252,7 @@ struct WatchRoot: View {
         beginning = true
         Task {
             await tracker.begin()
+            link.event(tracker.mirrored ? "Recording started" : "Recording started, without the mirrored link")
             open()
             beginning = false
         }
@@ -281,6 +321,7 @@ struct WatchRoot: View {
         phoneRoutine = nil
         pending = nil
         startRequested = false
+        readyFailed = false
         Task { await start.load() }
     }
 }
@@ -288,8 +329,11 @@ struct WatchRoot: View {
 /// A workout open on the phone, linked and waiting: Start here starts it on both.
 private struct ReadyView: View {
     let pending: WatchWire.Pending?
+    let heartRate: Double?
     let starting: Bool
+    let failed: Bool
     let onStart: () -> Void
+    let onRetry: () -> Void
     let onCancel: () -> Void
 
     var body: some View {
@@ -297,19 +341,27 @@ private struct ReadyView: View {
             VStack(spacing: 0) {
                 Image(systemName: "iphone")
                     .font(.system(size: 26, weight: .regular))
-                    .foregroundStyle(Color.ride)
-                WatchKicker(pending == nil ? "Linking with iPhone" : "Ready · paired with iPhone", color: .rideSoft)
+                    .foregroundStyle(failed ? Color.muted : Color.ride)
+                WatchKicker(kicker, color: failed ? .muted : .rideSoft)
                     .padding(.top, 8)
-                WatchTitle(pending?.title ?? "Waiting", size: 24)
+                WatchTitle(pending?.title ?? (failed ? "Couldn't link" : "Waiting"), size: 24)
                     .multilineTextAlignment(.center)
                     .padding(.top, 4)
                 if let detail = pending?.detail {
                     Text(detail).font(WatchFont.body(11)).foregroundStyle(Color.muted).padding(.top, 3)
                 }
-                Button(starting ? "Starting…" : "Start", action: onStart)
-                    .buttonStyle(VoltButtonStyle())
-                    .disabled(pending == nil || starting)
-                    .padding(.top, 12)
+                HeartRateLabel(bpm: heartRate, trend: nil)
+                    .padding(.top, 6)
+                if failed {
+                    Button("Try again", action: onRetry)
+                        .buttonStyle(VoltButtonStyle())
+                        .padding(.top, 10)
+                } else {
+                    Button(starting ? "Starting…" : "Start", action: onStart)
+                        .buttonStyle(VoltButtonStyle())
+                        .disabled(pending == nil || starting)
+                        .padding(.top, 10)
+                }
                 Button("Not now", action: onCancel)
                     .buttonStyle(DarkButtonStyle())
                     .padding(.top, 6)
@@ -317,5 +369,10 @@ private struct ReadyView: View {
             .frame(maxWidth: .infinity)
         }
         .navigationBarBackButtonHidden()
+    }
+
+    private var kicker: String {
+        if failed { return "Keep your iPhone close" }
+        return pending == nil ? "Linking with iPhone" : "Ready · paired with iPhone"
     }
 }

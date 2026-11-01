@@ -42,7 +42,11 @@ If a feature isn't in the artboard, ask before building it.
     in the phone app. It reaches the server only through the phone (`TrainLog/Watch/WatchRelay.swift`,
     wire format `Shared/WatchWire.swift`); `TrainLogWatch/Logic/` is pure and tested in TrainLogTests.
     Simulator screenshots without touching the server: launch with `-watchDemo YES`
-    (`-watchDemoStage set|effort|rest|list|controls|done|hold|summary|rehab`).
+    (`-watchDemoStage set|effort|rest|list|controls|done|hold|summary|rehab`; `widgets|widgetsDone|widgetsRest|widgetsEvening`
+    draws the Watch widgets, which the simulator can't open in the Smart Stack).
+  - `TrainLogWatchWidgets/`: Watch widgets (Smart Stack + complications, `../docs/design/artboards/WatchWidgets.dc.html`).
+    They draw the phone's `WidgetSnapshot`, sent over WatchConnectivity and stored by `PhoneLink`;
+    relevance and text live in `Shared/WatchGlance.swift`.
   - `TrainLogWidgets/`: widget extension (Home/Lock Screen widgets, strength Live Activity)
   - `Shared/`: code compiled into both the app and the extension (widget snapshot in the
     `group.com.ronek22.trainlog` App Group, Live Activity attributes)

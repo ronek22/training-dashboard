@@ -4,6 +4,9 @@ import Foundation
 /// the server itself: it asks the phone (`TrainLog/Watch/WatchRelay.swift`), which already knows the
 /// server address, the offline cache and the write queue.
 enum WatchWire {
+    /// Phone → Watch user info / application context: the widget snapshot's JSON (`WidgetStore`).
+    static let widgetSnapshotKey = "widgetSnapshot"
+
     /// One HTTP call the phone makes for the Watch.
     struct Envelope: Codable, Sendable, Equatable {
         enum Kind: String, Codable, Sendable {

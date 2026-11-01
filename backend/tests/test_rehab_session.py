@@ -8,7 +8,7 @@ from backend.app.repositories.activities import upsert_activity_row
 from backend.app.repositories.recovery import init_recovery_schema
 from backend.app.services import recovery
 from backend.app.services.guided_sessions import completions_on, guided_label_for_activity, guided_session_for_activity, public_session, save_guided_completion
-from backend.app.services.rehab_session import build_rehab_today, parse_dose, todays_session
+from backend.app.services.rehab_session import build_rehab_today, parse_dose, rehab_glance, todays_session
 from backend.tests.test_sick_mode import SCHEMA
 
 TODAY = date.today()
@@ -60,6 +60,15 @@ class RehabSessionTests(unittest.TestCase):
         self.assertEqual(build_rehab_today(self.conn, []), {"active": False})
         self.assertIsNone(public_session("rehab", self.conn))
         self.assertIsNone(public_session("rehab"))
+
+    def test_glance_counts_ticks_of_what_is_due(self):
+        due = len(todays_session(self.conn, TODAY)["exercises"])
+        self.tick(0)
+        glance = rehab_glance(self.conn, TODAY)
+        self.assertEqual((glance["title"], glance["done"], glance["total"]), ("Left knee", 1, due))
+        self.assertGreater(glance["duration_min"], 0)
+        recovery.heal(self.conn, self.issue_id, "")
+        self.assertIsNone(rehab_glance(self.conn, TODAY))
 
     def test_session_is_straight_sets_of_what_is_due(self):
         session = public_session("rehab", self.conn, TODAY)

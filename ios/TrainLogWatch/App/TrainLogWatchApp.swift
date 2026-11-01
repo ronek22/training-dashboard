@@ -8,6 +8,9 @@ struct TrainLogWatchApp: App {
 
     init() {
         PhoneLink.shared.activate()
+        #if DEBUG
+        WatchDemo.seedWidgets()
+        #endif
     }
 
     var body: some Scene {
@@ -65,6 +68,18 @@ struct WatchRoot: View {
     @State private var readyFailed = false
 
     var body: some View {
+        #if DEBUG
+        if WatchDemo.enabled, let stage = WatchDemo.stage, stage.hasPrefix("widgets") {
+            WidgetGalleryDemo(stage: stage)
+        } else {
+            root
+        }
+        #else
+        root
+        #endif
+    }
+
+    private var root: some View {
         NavigationStack {
             switch screen {
             case .start: StartView(model: start, onStrength: open, onRehab: open)

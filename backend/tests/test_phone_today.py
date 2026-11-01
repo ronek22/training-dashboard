@@ -99,6 +99,9 @@ class PhoneTodayTests(unittest.TestCase):
             self.assertEqual(set(factor), {"key", "label", "tone", "points"})
         self.assertEqual(brief["vitals"]["ranges"], [])
 
+    def test_rehab_is_null_without_a_routine(self):
+        self.assertIsNone(build_phone_today(self.conn, TODAY)["rehab"])
+
     def test_sport_of_maps_types_to_app_colours(self):
         self.assertEqual(sport_of("VirtualRide"), "ride")
         self.assertEqual(sport_of("recovery"), "mobility")

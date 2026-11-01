@@ -134,7 +134,24 @@ final class PhoneLink: NSObject {
 
 extension PhoneLink: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        // The phone's latest widget snapshot, left as the application context while TrainLog slept.
+        storeWidgetSnapshot(session.receivedApplicationContext)
         Task { @MainActor in PhoneLink.shared.didActivate() }
+    }
+
+    /// From a face with a TrainLog widget (`transferCurrentComplicationUserInfo`).
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        storeWidgetSnapshot(userInfo)
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        storeWidgetSnapshot(applicationContext)
+    }
+
+    /// For the Watch widgets (TrainLogWatchWidgets), which read it from the App Group.
+    private nonisolated func storeWidgetSnapshot(_ payload: [String: Any]) {
+        guard let data = payload[WatchWire.widgetSnapshotKey] as? Data else { return }
+        WidgetStore.store(data)
     }
 
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {

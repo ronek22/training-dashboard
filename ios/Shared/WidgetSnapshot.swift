@@ -1,7 +1,7 @@
 import Foundation
 import WidgetKit
 
-/// What the widgets show. The app writes it whenever Today or Food loads and from its background
+/// What the widgets show (iPhone and Watch). The app writes it whenever Today or Food loads and from its background
 /// runs; the widget extension reads it from the shared App Group and refreshes it from the server
 /// when the Mac is reachable.
 struct WidgetSnapshot: Codable, Sendable, Equatable {
@@ -28,6 +28,10 @@ struct WidgetSnapshot: Codable, Sendable, Equatable {
         var sickDay: Int? = nil
         var tomorrow: Tomorrow? = nil
         var week: [Day]? = nil
+        // Added with the Watch widgets.
+        var rehab: Rehab? = nil
+        /// "Row 34 kg × 10": the first lift, for the Watch's Today card.
+        var firstLift: String? = nil
 
         /// "Workout C" from "Workout C · Wide Shoulders (extra upper volume)".
         var shortTitle: String? { title.map(WidgetFormat.shortTitle) }
@@ -38,6 +42,15 @@ struct WidgetSnapshot: Codable, Sendable, Equatable {
             let focus = title.flatMap(WidgetFormat.focus) ?? intent
             return [WidgetFormat.sportLabel(sport), focus].compactMap { $0 }.joined(separator: " · ")
         }
+    }
+
+    struct Rehab: Codable, Sendable, Equatable {
+        let title: String
+        let done: Int
+        let total: Int
+        let durationMin: Int
+
+        var isDone: Bool { done >= total }
     }
 
     struct Tomorrow: Codable, Sendable, Equatable {
@@ -89,41 +102,6 @@ struct WidgetSnapshot: Codable, Sendable, Equatable {
     }
 }
 
-extension WidgetSnapshot.Today {
-    init(_ phone: PhoneToday) {
-        self.init(
-            date: phone.date,
-            title: phone.today?.title,
-            sport: (phone.today?.sport ?? .rest).rawValue,
-            durationMin: phone.today?.durationMin,
-            isDone: phone.today?.isDone ?? false,
-            readiness: phone.readiness.level,
-            streakDays: phone.streakDays,
-            weekDoneMin: phone.weekMinutes.done,
-            weekPlannedMin: phone.weekMinutes.planned,
-            weekBySport: phone.weekMinutes.bySport.map { .init(sport: $0.sport.rawValue, minutes: $0.minutes) },
-            intent: phone.today?.intentLabel,
-            liftCount: phone.today?.strength?.exercises.count,
-            sickDay: phone.sick.map { $0.day ?? 1 },
-            tomorrow: phone.tomorrow.map { .init(sport: ($0.sport ?? .other).rawValue, durationMin: $0.durationMin) },
-            week: phone.week.map { .init(sport: $0.sport.rawValue, status: $0.status, doneSports: $0.doneSports.map(\.rawValue)) }
-        )
-    }
-}
-
-extension WidgetSnapshot.Food {
-    /// `eaten` includes meals still queued on the phone.
-    init(_ day: FoodDay, eaten: Macros) {
-        self.init(
-            date: day.date,
-            eatenKcal: eaten.kcal,
-            targetKcal: day.target?.kcal,
-            proteinG: eaten.proteinG,
-            proteinTargetG: day.proteinTargetG
-        )
-    }
-}
-
 /// The snapshot in the App Group's defaults.
 enum WidgetStore {
     static let appGroup = "group.com.ronek22.trainlog"
@@ -143,7 +121,25 @@ enum WidgetStore {
         change(&new)
         guard new != old, let data = try? JSONEncoder().encode(new) else { return }
         UserDefaults(suiteName: appGroup)?.set(data, forKey: key)
-        if reloadWidgets { WidgetCenter.shared.reloadAllTimelines() }
+        if reloadWidgets {
+            WidgetCenter.shared.reloadAllTimelines()
+            // The app sends it on to the Watch widgets (WatchRelay).
+            NotificationCenter.default.post(name: didChange, object: nil)
+        }
+    }
+
+    static let didChange = Notification.Name("WidgetStore.didChange")
+
+    /// The stored JSON as it is, for the Watch.
+    static func data() -> Data? {
+        UserDefaults(suiteName: appGroup)?.data(forKey: key)
+    }
+
+    /// The phone's JSON as the Watch received it; reloads the Watch widgets when it changed.
+    static func store(_ data: Data) {
+        guard data != self.data(), (try? JSONDecoder().decode(WidgetSnapshot.self, from: data)) != nil else { return }
+        UserDefaults(suiteName: appGroup)?.set(data, forKey: key)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 

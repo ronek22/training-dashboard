@@ -18,10 +18,11 @@ struct WorkoutSyncTests {
         #expect(WorkoutKind.name(.running, indoor: false) == "Outdoor Run")
     }
 
-    @Test func takesOnlyAppleRecordedWorkouts() {
-        #expect(WorkoutKind.isAppleRecorded(bundle: "com.apple.health.7F3A2C"))
-        #expect(!WorkoutKind.isAppleRecorded(bundle: "com.zwift.ZwiftGame"))
-        #expect(!WorkoutKind.isAppleRecorded(bundle: "com.strava.stravaride"))
+    @Test func takesOnlyWatchRecordedWorkouts() {
+        #expect(WorkoutKind.isWatchRecorded(bundle: "com.apple.health.7F3A2C"))
+        #expect(WorkoutKind.isWatchRecorded(bundle: "com.ronek22.trainlog.watchkitapp"))
+        #expect(!WorkoutKind.isWatchRecorded(bundle: "com.zwift.ZwiftGame"))
+        #expect(!WorkoutKind.isWatchRecorded(bundle: "com.strava.stravaride"))
     }
 
     @Test func indoorWorkoutUsesHeartRateAsTheTimeline() throws {

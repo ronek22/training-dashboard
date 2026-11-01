@@ -33,6 +33,10 @@ final class WorkoutTracker: NSObject {
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
     private var lastMirrored = Date.distantPast
+    /// The rehab routine's latest state, repeated with each heart-rate update (routine left out).
+    private var rehab: WatchWire.Rehab?
+    /// A button pressed on the phone's follow-along screen.
+    var onCommand: ((WatchWire.Command.Action) -> Void)?
 
     var available: Bool { HKHealthStore.isHealthDataAvailable() }
 
@@ -143,6 +147,7 @@ final class WorkoutTracker: NSObject {
     }
 
     private func reset() {
+        rehab = nil
         session = nil
         builder = nil
         running = false
@@ -167,11 +172,26 @@ final class WorkoutTracker: NSObject {
 
     /// At most every 3 s: enough for a live number on the phone.
     private func mirror() {
-        guard let session, Date.now.timeIntervalSince(lastMirrored) >= 3,
-              let data = try? JSONEncoder().encode(WatchWire.Live(heartRate: heartRate, activeKcal: activeKcal))
-        else { return }
+        guard Date.now.timeIntervalSince(lastMirrored) >= 3 else { return }
+        send(WatchWire.Live(heartRate: heartRate, activeKcal: activeKcal, rehab: rehab))
+    }
+
+    /// A rehab step changed: sent at once, so the phone's screen moves with the Watch.
+    func share(rehab state: WatchWire.Rehab) {
+        var repeated = state
+        repeated.session = nil
+        rehab = repeated
+        send(WatchWire.Live(heartRate: heartRate, activeKcal: activeKcal, rehab: state))
+    }
+
+    private func send(_ live: WatchWire.Live) {
+        guard let session, let data = try? JSONEncoder().encode(live) else { return }
         lastMirrored = .now
         session.sendToRemoteWorkoutSession(data: data) { @Sendable _, _ in }
+    }
+
+    fileprivate func received(_ command: WatchWire.Command) {
+        onCommand?(command.action)
     }
 
     #if DEBUG
@@ -193,6 +213,11 @@ extension WorkoutTracker: HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate
     }
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {}
+
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didReceiveDataFromRemoteWorkoutSession data: [Data]) {
+        let commands = data.compactMap { try? JSONDecoder().decode(WatchWire.Command.self, from: $0) }
+        Task { @MainActor in commands.forEach(WorkoutTracker.shared.received) }
+    }
 
     nonisolated func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
         Task { @MainActor in WorkoutTracker.shared.collected(collectedTypes) }

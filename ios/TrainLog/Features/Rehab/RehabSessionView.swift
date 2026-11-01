@@ -1,9 +1,11 @@
 import SwiftUI
 
 /// Full-screen follow-along for today's rehab routine. Big type and big targets: the phone sits on
-/// the floor next to the mat. The screen stays awake while it's open.
+/// the floor next to the mat. The screen stays awake while it's open. With the routine running in
+/// TrainLog on the Watch, it follows the Watch's step instead.
 struct RehabSessionView: View {
     @State private var model = RehabSessionModel()
+    @State private var watch = WatchLive.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var confirmClose = false
@@ -27,7 +29,12 @@ struct RehabSessionView: View {
             }
         }
         .background(Color.bg)
-        .task { await model.load() }
+        .task {
+            model.remote = { WatchLive.shared.send($0) }
+            followWatch()
+            if !model.following { await model.load() }
+        }
+        .onChange(of: watch.rehab) { followWatch() }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
@@ -55,13 +62,27 @@ struct RehabSessionView: View {
         }
     }
 
+    /// Picks up the Watch's routine; closes when it's discarded there or its workout ends early.
+    private func followWatch() {
+        guard let state = watch.rehab else {
+            if model.following, model.phase != .done { dismiss() }
+            return
+        }
+        if state.discarded {
+            if model.following { dismiss() }
+            return
+        }
+        model.follow(state, session: watch.rehabSession)
+    }
+
     // MARK: Chrome
 
     private var topBar: some View {
         VStack(spacing: 10) {
             HStack {
                 Button {
-                    if model.phase == .running { confirmClose = true } else { dismiss() }
+                    // Following: the routine carries on on the Watch.
+                    if model.phase == .running, !model.following { confirmClose = true } else { dismiss() }
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 15, weight: .bold))
@@ -73,7 +94,19 @@ struct RehabSessionView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Close")
                 Spacer()
-                Kicker("Rehab", color: .mobility)
+                if model.following {
+                    HStack(spacing: 8) {
+                        Kicker("Rehab · on Watch", color: .mobility)
+                        if let bpm = watch.liveHeartRate() {
+                            Label("\(Int(bpm.rounded()))", systemImage: "heart.fill")
+                                .font(AppFont.number(17))
+                                .foregroundStyle(Color(hex: 0xFF5A5F))
+                                .accessibilityLabel("Heart rate \(Int(bpm.rounded())) from Apple Watch")
+                        }
+                    }
+                } else {
+                    Kicker("Rehab", color: .mobility)
+                }
                 Spacer()
                 elapsed.frame(width: 44 + 20, alignment: .trailing)
             }
@@ -285,7 +318,7 @@ struct RehabSessionView: View {
                         Text(doneSummary).font(AppFont.body(14)).foregroundStyle(Color.muted)
                         Text(saveLabel).font(AppFont.body(12, weight: .semibold)).foregroundStyle(saveColor).padding(.top, 2)
                     }
-                    if let watch = model.session?.watchWorkout {
+                    if let watch = model.session?.watchWorkout, !model.following {
                         HStack(spacing: 12) {
                             Image(systemName: "applewatch").font(.system(size: 20, weight: .semibold)).foregroundStyle(Color.mobility)
                             Text("Stop and save the \(watch) workout on your Watch.")
@@ -341,7 +374,7 @@ struct RehabSessionView: View {
     private var saveLabel: String {
         switch model.saveState {
         case .idle, .saving: "Saving…"
-        case .saved: "Saved to today"
+        case .saved: model.following ? "Saved by the Watch, with its workout" : "Saved to today"
         case .queued: "Saved on the phone · syncs when the Mac is back"
         case .failed: "Not saved · the server turned it down"
         }

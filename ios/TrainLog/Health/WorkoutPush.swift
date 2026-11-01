@@ -77,10 +77,11 @@ enum WorkoutKind {
         }
     }
 
-    /// Only the watch's own Workout app (and the phone's Fitness app): Zwift and other apps that
-    /// write to Health reach the backend through Strava, so taking them here would duplicate them.
-    static func isAppleRecorded(bundle: String) -> Bool {
-        bundle.hasPrefix("com.apple.health")
+    /// The watch's own Workout app (and the phone's Fitness app), and TrainLog's Watch app: Zwift
+    /// and other apps that write to Health reach the backend through Strava, so taking them here
+    /// would duplicate them.
+    static func isWatchRecorded(bundle: String) -> Bool {
+        bundle.hasPrefix("com.apple.health") || bundle == "com.ronek22.trainlog.watchkitapp"
     }
 }
 

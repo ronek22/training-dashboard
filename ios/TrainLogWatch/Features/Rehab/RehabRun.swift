@@ -3,7 +3,8 @@ import Observation
 import WatchKit
 
 /// Today's rehab routine on the wrist: the phone's step list (`RehabFormat.steps`), holds and rests
-/// that count themselves, ticks sent as each exercise is passed.
+/// that count themselves, ticks sent as each exercise is passed. Every change goes to `onChange`, so
+/// the phone can follow along; the phone's buttons come back through `handle`.
 @MainActor
 @Observable
 final class RehabRun {
@@ -14,15 +15,21 @@ final class RehabRun {
     private(set) var pausedLeft: Int?
     private(set) var startedAt = Date.now
     private(set) var finished = false
+    private(set) var discarded = false
+    /// Where the routine is now, for the phone (`WatchWire.Rehab`).
+    var onChange: ((WatchWire.Rehab) -> Void)?
 
     private var ticked: Set<RehabStep.Completes> = []
     private var timer: Task<Void, Never>?
     private let link: PhoneLink
     private let today: String
+    /// The routine as JSON, sent with the first update and when the phone asks again.
+    private let sessionData: Data?
 
     init(session: GuidedSession, link: PhoneLink = .shared, today: Date = .now) {
         self.session = session
         self.steps = RehabFormat.steps(session)
+        self.sessionData = try? JSONEncoder().encode(session)
         self.link = link
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -43,6 +50,25 @@ final class RehabRun {
         startedAt = .now
         begin(0)
         WKInterfaceDevice.current().play(.start)
+        publish(withSession: true)
+    }
+
+    /// A button pressed on the phone.
+    func handle(_ action: WatchWire.Command.Action) {
+        guard !finished, !discarded else { return }
+        switch action {
+        case .next: next()
+        case .back: back()
+        case .pause: togglePause()
+        case .sync: publish(withSession: true)
+        }
+    }
+
+    private func publish(withSession: Bool = false) {
+        onChange?(WatchWire.Rehab(
+            session: withSession ? sessionData : nil, startedAt: startedAt, index: index,
+            endsAt: endsAt, pausedLeft: pausedLeft, finished: finished, discarded: discarded
+        ))
     }
 
     /// Done on a rep step, or ends a timed one early.
@@ -73,6 +99,7 @@ final class RehabRun {
             self.endsAt = nil
             timer?.cancel()
         }
+        publish()
     }
 
     func finish() {
@@ -89,6 +116,7 @@ final class RehabRun {
         )
         // The server snapshots what was ticked today, so this goes after the ticks (the outbox keeps order).
         link.enqueue("POST", "/guided-sessions/complete", body: try? WatchAPI.encoder.encode(completion))
+        publish()
     }
 
     /// Leaving without saving: unticks what this session ticked.
@@ -99,6 +127,8 @@ final class RehabRun {
             link.enqueue("PUT", "/recovery/issues/\(completes.issueId)/ticks", body: body)
         }
         ticked = []
+        discarded = true
+        publish()
     }
 
     private func begin(_ stepIndex: Int) {
@@ -110,6 +140,7 @@ final class RehabRun {
             schedule(Date.now.addingTimeInterval(TimeInterval(seconds)))
         }
         WKInterfaceDevice.current().play(.click)
+        publish()
     }
 
     private func schedule(_ ends: Date) {

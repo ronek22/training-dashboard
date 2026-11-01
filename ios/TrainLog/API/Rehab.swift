@@ -2,7 +2,7 @@ import Foundation
 
 /// `GET /guided-sessions/rehab` (backend/app/services/rehab_session.py): today's rehab routine as a
 /// follow-along session. Only exercises still due today; ticked ones are already left out.
-struct GuidedSession: Decodable, Sendable {
+struct GuidedSession: Codable, Sendable {
     let key: String
     let title: String
     let watchWorkout: String?
@@ -11,7 +11,7 @@ struct GuidedSession: Decodable, Sendable {
     let exercises: [Exercise]
     let durationMin: Int
 
-    struct Exercise: Decodable, Sendable {
+    struct Exercise: Codable, Sendable {
         let issueId: Int?
         let issueTitle: String?
         let index: Int?

@@ -31,5 +31,35 @@ enum WatchWire {
     struct Live: Codable, Sendable, Equatable {
         var heartRate: Double?
         var activeKcal: Double?
+        /// A rehab routine running on the Watch, for the phone to follow along.
+        var rehab: Rehab?
+    }
+
+    /// Where the Watch's rehab routine is. The Watch runs it (timers, ticks, the completion); the
+    /// phone draws the same step with its demo and sends `Command`s back.
+    struct Rehab: Codable, Sendable, Equatable {
+        /// The routine (`GuidedSession` JSON) as the Watch loaded it. Sent at the start and when the
+        /// phone asks: the phone's own copy loses exercises as they're ticked, so the steps wouldn't
+        /// line up. Nil in the updates in between.
+        var session: Data?
+        var startedAt: Date
+        var index: Int
+        /// When the current timed step ends; nil on rep steps and while paused.
+        var endsAt: Date?
+        var pausedLeft: Int?
+        var finished = false
+        /// Left on the Watch without saving.
+        var discarded = false
+    }
+
+    /// The phone steering the Watch's rehab routine.
+    struct Command: Codable, Sendable, Equatable {
+        enum Action: String, Codable, Sendable {
+            case next, back, pause
+            /// Send everything again, routine included (the phone just attached).
+            case sync
+        }
+
+        let action: Action
     }
 }

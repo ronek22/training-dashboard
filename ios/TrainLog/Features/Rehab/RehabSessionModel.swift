@@ -6,6 +6,9 @@ import UIKit
 /// time. Holds and rests count down and move on by themselves; rep steps wait for Done. Passing an
 /// exercise's last step ticks it on the Recovery routine, and finishing saves the session so the
 /// Watch workout that syncs for it is labelled as rehab. Writes queue when the Mac is unreachable.
+///
+/// When the routine runs in TrainLog on the Watch, the phone follows it instead (`follow`): the
+/// Watch keeps the timers and sends the ticks and the completion; the buttons here steer it.
 @MainActor
 @Observable
 final class RehabSessionModel {
@@ -36,6 +39,10 @@ final class RehabSessionModel {
     private(set) var saveState: SaveState = .idle
     /// Pain after the session, per issue id.
     private(set) var pain: [Int: Int] = [:]
+    /// Mirroring the routine running on the Watch.
+    private(set) var following = false
+    /// Sends a button press to the Watch while following.
+    var remote: ((WatchWire.Command.Action) -> Void)?
 
     private var ticked: Set<RehabStep.Completes> = []
     /// The last write sent; each new one waits for it, so ticks land before the completion.
@@ -76,12 +83,18 @@ final class RehabSessionModel {
     func load() async {
         let api = client()
         await queue.flush(with: api)
+        let result: Result<GuidedSession, Error>
         do {
-            prepare(try await api.getLive("/guided-sessions/rehab", as: GuidedSessionEnvelope.self).session)
-        } catch APIError.status(404) {
-            phase = .empty
+            result = .success(try await api.getLive("/guided-sessions/rehab", as: GuidedSessionEnvelope.self).session)
         } catch {
-            phase = .failed(error.localizedDescription)
+            result = .failure(error)
+        }
+        // The Watch's routine showed up meanwhile: it wins.
+        guard !following else { return }
+        switch result {
+        case .success(let loaded): prepare(loaded)
+        case .failure(APIError.status(404)): phase = .empty
+        case .failure(let error): phase = .failed(error.localizedDescription)
         }
     }
 
@@ -89,6 +102,31 @@ final class RehabSessionModel {
         session = loaded
         steps = RehabFormat.steps(loaded)
         phase = steps.isEmpty ? .empty : .intro
+    }
+
+    // MARK: Following the Watch
+
+    /// The Watch's routine moved (or the phone just attached). The first call needs the Watch's
+    /// copy of the routine, so the steps line up with its index.
+    func follow(_ state: WatchWire.Rehab, session loaded: GuidedSession?) {
+        if !following {
+            guard let loaded else { return }
+            session = loaded
+            steps = RehabFormat.steps(loaded)
+            following = true
+        }
+        guard !steps.isEmpty else { return }
+        startedAt = state.startedAt
+        index = min(max(0, state.index), steps.count - 1)
+        endsAt = state.endsAt
+        pausedLeft = state.pausedLeft
+        if state.finished {
+            if phase != .done { finishedAt = .now }
+            phase = .done
+            saveState = .saved
+        } else {
+            phase = .running
+        }
     }
 
     // MARK: Running
@@ -102,6 +140,10 @@ final class RehabSessionModel {
 
     /// Done on a rep step, or ends a timed one early.
     func next() {
+        if following {
+            remote?(.next)
+            return
+        }
         guard let step = current else { return }
         if let completes = step.completes { tick(completes) }
         if index + 1 >= steps.count {
@@ -114,16 +156,24 @@ final class RehabSessionModel {
 
     /// The timer of step `stepIndex` ran out. Ignored when the step already moved on.
     func timerEnded(_ stepIndex: Int) {
-        guard phase == .running, stepIndex == index, let endsAt, endsAt <= .now else { return }
+        guard !following, phase == .running, stepIndex == index, let endsAt, endsAt <= .now else { return }
         next()
     }
 
     func back() {
+        if following {
+            remote?(.back)
+            return
+        }
         guard index > 0 else { return }
         begin(index - 1)
     }
 
     func togglePause() {
+        if following {
+            remote?(.pause)
+            return
+        }
         if let left = pausedLeft {
             endsAt = .now.addingTimeInterval(TimeInterval(left))
             pausedLeft = nil
@@ -136,7 +186,8 @@ final class RehabSessionModel {
 
     /// Books the "time's up" notification while the phone is locked mid-timer.
     func scheduleAlarm() {
-        guard phase == .running, let endsAt, let step = current else { return }
+        // Following: the Watch taps the wrist when the timer's up.
+        guard !following, phase == .running, let endsAt, let step = current else { return }
         let title = step.kind == .rest ? "Rest over · go" : "Hold done"
         RestAlarm.schedule(at: endsAt, title: title, next: upNext.map { "Next: \($0.name)" })
     }

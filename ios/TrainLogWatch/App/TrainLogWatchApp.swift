@@ -126,7 +126,11 @@ struct WatchRoot: View {
     }
 
     private func open(_ session: GuidedSession) {
-        rehab = RehabRun(session: session)
+        let run = RehabRun(session: session)
+        // The phone follows along and can press Next, Back and Pause.
+        run.onChange = { [tracker] in tracker.share(rehab: $0) }
+        tracker.onCommand = { [weak run] in run?.handle($0) }
+        rehab = run
         screen = .rehab
         #if DEBUG
         if WatchDemo.enabled {
@@ -142,6 +146,7 @@ struct WatchRoot: View {
         run = nil
         rehab = nil
         summary = nil
+        tracker.onCommand = nil
         Task { await start.load() }
     }
 

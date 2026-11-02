@@ -141,7 +141,7 @@ def _physiology_factors(conn: sqlite3.Connection, today) -> list[dict]:
         points = max(0, min(wanted, 2 - sleep_points))
         factor = _factor(
             "sleep_debt", "Sleep debt",
-            f"{debt['debt_hours']:.1f} h over {debt['nights']} nights vs your {debt['baseline_hours']:.1f} h median",
+            f"{debt['debt_hours']:.1f} h short over {debt['nights']} nights vs your {debt['baseline_hours']:.1f} h median",
             tone, points,
         )
         factor["summary"] = {key: value for key, value in debt.items() if key != "history"}

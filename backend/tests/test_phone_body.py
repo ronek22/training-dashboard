@@ -2,6 +2,7 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from unittest import mock
 from datetime import date, timedelta
 
 from backend.app import db
@@ -97,6 +98,51 @@ class PhoneBodyTests(unittest.TestCase):
         self.assertGreater(load["chart"][-2]["load"], 0)
         self.assertGreater(load["fatigue"], load["fitness"])
         self.assertEqual(set(load["chart"][-1]), {"date", "load", "fitness", "fatigue", "form"})
+
+    def test_training_lists_every_sport_of_the_last_week_with_lift_sets(self):
+        day = (TODAY - timedelta(days=2)).isoformat()
+        for row in (
+            ("ride1", day, "VirtualRide", "recovery", "Zwift", 44),
+            ("lift1", day, "WeightTraining", None, "Evening Weight Training", 55),
+            ("old", (TODAY - timedelta(days=7)).isoformat(), "Ride", None, "Old ride", 90),
+        ):
+            self.conn.execute(
+                "INSERT INTO activities (id, date, type, workout_intent, name, duration_min) VALUES (?, ?, ?, ?, ?, ?)", row)
+        self.conn.commit()
+        session = {
+            "workout_date": day, "title": "Workout B", "matched_activity": {"id": "lift1"}, "total_duration_seconds": 3300,
+            "exercises": [
+                {"exercise_name": "Chin Up", "sets": [{"reps": 8}, {"reps": 7}, {"reps": 10, "is_warmup": True}]},
+                {"exercise_name": "Stretch", "sets": []},
+            ],
+        }
+        with mock.patch("backend.app.services.phone_body._session_index", return_value=[session]):
+            training = build_phone_body(self.conn, TODAY)["training"]
+
+        self.assertEqual(sorted(item["sport"] for item in training), ["ride", "strength"])
+        lift = next(item for item in training if item["sport"] == "strength")
+        self.assertEqual(lift["title"], "Workout B")
+        self.assertEqual(lift["minutes"], 55)
+        self.assertEqual(lift["exercises"], [{"name": "Chin Up", "sets": 2}])
+
+    def test_empty_history_has_no_debt_training_or_issues(self):
+        body = build_phone_body(self.conn, TODAY)
+        self.assertIsNone(body["sleep_debt"])
+        self.assertEqual(body["training"], [])
+        self.assertEqual(body["issues"], [])
+
+    def test_issues_pin_the_protected_area_of_active_injuries(self):
+        self.conn.execute(
+            "INSERT INTO recovery_issues (title, body_area, side, started_on) VALUES ('Outside of left knee', 'knee', 'left', '2026-10-24')")
+        self.conn.execute(
+            "INSERT INTO recovery_issues (title, body_area, side, started_on, status) VALUES ('Old shoulder', 'shoulder', 'right', '2026-01-01', 'healed')")
+        self.conn.commit()
+
+        issues = build_phone_body(self.conn, TODAY)["issues"]
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0]["areas"], ["knee"])
+        self.assertEqual(issues[0]["side"], "left")
+        self.assertEqual(issues[0]["since"], "2026-10-24")
 
 
 if __name__ == "__main__":

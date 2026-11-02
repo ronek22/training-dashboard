@@ -3,6 +3,11 @@ import SwiftUI
 
 struct BodyView: View {
     @State private var model = BodyModel()
+    /// Day (the clock) or Body (the muscle map); the screen opens on the last one used.
+    @AppStorage("bodyTab") private var tab = BodyTab.day.rawValue
+    /// Minutes after midnight; sets the lights-out target.
+    @AppStorage("bodyWakeMinutes") private var wakeMinutes = 450
+    @State private var editingWake = false
 
     var body: some View {
         ScrollView {
@@ -15,16 +20,12 @@ struct BodyView: View {
                             .foregroundStyle(Color.muted)
                             .padding(.horizontal, 4)
                     }
-                    ReadinessHero(readiness: data.readiness)
-                    if data.vitals.hrv != nil || data.vitals.restingHr != nil || data.vitals.sleep != nil {
-                        VitalsCard(vitals: data.vitals, today: data.date)
+                    BodyTabPicker(selection: Binding(get: { BodyTab(rawValue: tab) ?? .day }, set: { tab = $0.rawValue }))
+                    if BodyTab(rawValue: tab) == .body {
+                        BodyMapSection(summary: BodyMapSummary(training: data.training ?? [], issues: data.issues ?? [], today: data.date), today: data.date)
+                    } else {
+                        daySection(data)
                     }
-                    if let sleep = data.sleep {
-                        SleepCard(sleep: sleep, today: data.date)
-                    }
-                    StepsCard(steps: model.steps, vital: data.vitals.steps, hours: model.live?.steps ?? [], today: data.date)
-                    HeartCard(vitals: data.vitals, live: model.live)
-                    TrainingLoadCard(load: data.load)
                 } else if let error = model.error {
                     VStack(alignment: .leading, spacing: 8) {
                         Kicker("Not synced yet")
@@ -43,14 +44,455 @@ struct BodyView: View {
         .navigationBarTitleDisplayMode(.inline)
         .smoothRefreshable { await model.refresh() }
         .task { await model.load() }
+        .sheet(isPresented: $editingWake) { WakeTimeSheet(minutes: $wakeMinutes) }
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Kicker(model.data.map { TodayFormat.dateKicker($0.date) } ?? " ")
-            Text("BODY").font(AppFont.title(44)).foregroundStyle(Color.ink)
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 4) {
+                Kicker(model.data.map { TodayFormat.dateKicker($0.date) } ?? " ")
+                Text("BODY").font(AppFont.title(44)).foregroundStyle(Color.ink)
+            }
+            Spacer()
+            if let readiness = model.data?.readiness {
+                let style = ReadinessStyle(level: readiness.level)
+                Pill(text: style.headline, color: style.color).padding(.bottom, 8)
+            }
         }
         .padding(.horizontal, 4)
+    }
+
+    @ViewBuilder
+    private func daySection(_ data: PhoneBody) -> some View {
+        let need = data.sleepDebt?.needH ?? data.sleep?.baselineH ?? 7.5
+        let lightsOut = BodyClockMath.lightsOut(wakeMinutes: wakeMinutes, needH: need, debtH: data.sleepDebt?.hours ?? 0)
+        TimelineView(.everyMinute) { context in
+            BodyClockDial(now: context.date, sleep: data.sleep, steps: model.live?.steps ?? [], lightsOut: lightsOut) {
+                VStack(spacing: 2) {
+                    Kicker("Since midnight", color: .muted)
+                    Text(model.steps.map(BodyFormat.steps) ?? "–").font(AppFont.number(46)).foregroundStyle(Color.ink).padding(.top, 2)
+                    Text("steps").font(AppFont.body(12, weight: .semibold)).foregroundStyle(Color.run)
+                    if let sleep = data.sleep, sleep.date == data.date {
+                        Text("slept \(BodyFormat.duration(sleep.asleepH))")
+                            .font(AppFont.body(12)).foregroundStyle(Color.inkSoft).padding(.top, 6)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+        ClockLegend()
+        TonightCard(lightsOut: lightsOut, wakeMinutes: wakeMinutes, needH: need, debt: data.sleepDebt,
+                    nights: data.vitals.sleep?.days ?? []) { editingWake = true }
+        VitalTiles(vitals: data.vitals)
+        if let sleep = data.sleep {
+            SleepCard(sleep: sleep, today: data.date)
+        }
+        ReadinessHero(readiness: data.readiness)
+        HeartCard(vitals: data.vitals, live: model.live)
+        TrainingLoadCard(load: data.load)
+    }
+}
+
+enum BodyTab: String, CaseIterable {
+    case day, body
+    var label: String { rawValue.capitalized }
+}
+
+private struct BodyTabPicker: View {
+    @Binding var selection: BodyTab
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(BodyTab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { selection = tab }
+                } label: {
+                    Text(tab.label)
+                        .font(AppFont.body(14, weight: .bold))
+                        .foregroundStyle(selection == tab ? Color.bg : Color.muted)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .background(selection == tab ? Color.ink : .clear, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(Color.card, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color.cardBorder, lineWidth: 1))
+        .sensoryFeedback(.selection, trigger: selection)
+    }
+}
+
+// MARK: - Day
+
+private struct ClockLegend: View {
+    var body: some View {
+        HStack(spacing: 14) {
+            item(SleepStage.core.color, "sleep")
+            item(.run, "steps / hour")
+            item(Color.other.opacity(0.6), "wind-down")
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func item(_ color: Color, _ label: String) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(label).font(AppFont.body(11, weight: .semibold)).foregroundStyle(Color.muted)
+        }
+    }
+}
+
+/// Turns the week's sleep debt into one target: lights out tonight.
+private struct TonightCard: View {
+    let lightsOut: Int
+    let wakeMinutes: Int
+    let needH: Double
+    let debt: PhoneBody.SleepDebt?
+    let nights: [PhoneBody.Day]
+    let editWake: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Kicker("Tonight", color: .other)
+                Spacer()
+                if let debt, debt.hours >= 0.5 {
+                    Text("debt \(BodyFormat.duration(debt.hours))").font(AppFont.body(12, weight: .semibold)).foregroundStyle(Color.muted)
+                }
+            }
+            Text("LIGHTS OUT \(BodyClockMath.clock(minutes: lightsOut))").font(AppFont.title(34)).foregroundStyle(Color.ink)
+            Button(action: editWake) {
+                HStack(spacing: 4) {
+                    Text(line).font(AppFont.body(14)).foregroundStyle(Color.inkSoft).multilineTextAlignment(.leading)
+                    Image(systemName: "pencil").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.muted)
+                }
+                .frame(minHeight: 44, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            if nights.count > 1 {
+                NightBars(nights: nights, needH: needH)
+            }
+        }
+        .card()
+    }
+
+    private var line: String {
+        let hours = BodyClockMath.sleepHours(lightsOut: lightsOut, wakeMinutes: wakeMinutes)
+        let base = "\(BodyFormat.duration(hours)) of sleep before your \(BodyClockMath.clock(minutes: wakeMinutes)) wake-up"
+        guard let debt, debt.hours >= 1 else { return base + "." }
+        return base + ", to start paying back the week."
+    }
+}
+
+/// The last nights against the sleep need, last night solid.
+private struct NightBars: View {
+    let nights: [PhoneBody.Day]
+    let needH: Double
+
+    var body: some View {
+        let top = max(9, (nights.map(\.value).max() ?? 0) + 0.5)
+        VStack(spacing: 4) {
+            GeometryReader { geometry in
+                let height = geometry.size.height
+                ZStack(alignment: .bottomLeading) {
+                    HStack(alignment: .bottom, spacing: 8) {
+                        ForEach(nights.indices, id: \.self) { index in
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(index == nights.count - 1 ? Color.other : Color.other.opacity(0.38))
+                                .frame(height: max(4, nights[index].value / top * height))
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    Rectangle()
+                        .stroke(style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                        .foregroundStyle(Color.ink)
+                        .frame(height: 1)
+                        .offset(y: -needH / top * height)
+                    Text("need \(String(format: "%.1f", needH)) h")
+                        .font(AppFont.body(10, weight: .semibold)).foregroundStyle(Color.ink)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .offset(y: -needH / top * height - 10)
+                }
+            }
+            .frame(height: 72)
+            HStack(spacing: 8) {
+                ForEach(nights.indices, id: \.self) { index in
+                    Text(BodyFormat.weekday(nights[index].date))
+                        .font(AppFont.body(10, weight: .semibold))
+                        .foregroundStyle(index == nights.count - 1 ? Color.ink : Color.faint)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .padding(.top, 6)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Last \(nights.count) nights against your \(String(format: "%.1f", needH)) hour need")
+    }
+}
+
+/// HRV, resting HR and sleep: big number, what it means this week, a 7-day line.
+private struct VitalTiles: View {
+    let vitals: PhoneBody.Vitals
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach([VitalKind.hrv, .restingHr, .sleep], id: \.self) { kind in
+                if let vital = vital(kind) { tile(kind, vital) }
+            }
+        }
+    }
+
+    private func vital(_ kind: VitalKind) -> PhoneBody.Vital? {
+        switch kind {
+        case .hrv: vitals.hrv
+        case .restingHr: vitals.restingHr
+        case .sleep: vitals.sleep
+        case .steps: vitals.steps
+        }
+    }
+
+    private func tile(_ kind: VitalKind, _ vital: PhoneBody.Vital) -> some View {
+        let note = VitalNote.make(kind: kind, vital: vital)
+        return VStack(alignment: .leading, spacing: 4) {
+            Kicker(kind.label, color: kind.color)
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(kind.format(vital.value)).font(AppFont.number(30)).foregroundStyle(Color.ink)
+                Text(kind.unit).font(AppFont.body(11, weight: .medium)).foregroundStyle(Color.muted)
+            }
+            Text(note.text).font(AppFont.body(11, weight: .bold)).foregroundStyle(note.tone.color)
+                .lineLimit(1).minimumScaleFactor(0.8)
+            Sparkline(values: (vital.days ?? []).map(\.value), baseline: vital.baseline, color: kind.color)
+                .frame(height: 26)
+                .padding(.top, 4)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(kind.label) \(kind.format(vital.value)) \(kind.unit), \(note.text)")
+    }
+}
+
+/// One line on what a vital means this week (unit-tested).
+struct VitalNote: Equatable {
+    enum Tone: Equatable {
+        case good, bad, neutral
+        var color: Color {
+            switch self {
+            case .good: .mobility
+            case .bad: .danger
+            case .neutral: .muted
+            }
+        }
+    }
+
+    let text: String
+    let tone: Tone
+
+    static func make(kind: VitalKind, vital: PhoneBody.Vital) -> VitalNote {
+        let week = (vital.days ?? []).map(\.value)
+        if week.count >= 4 {
+            let best = kind.higherIsBetter ? week.max() : week.min()
+            if vital.value == best { return VitalNote(text: kind.higherIsBetter ? "▲ best this week" : "▼ lowest this week", tone: .good) }
+        }
+        guard let baseline = vital.baseline else { return VitalNote(text: "no baseline yet", tone: .neutral) }
+        let delta = vital.value - baseline
+        let small = kind == .sleep ? 0.25 : kind == .restingHr ? 3 : baseline * 0.08
+        if abs(delta) < small { return VitalNote(text: "normal", tone: .neutral) }
+        let better = (delta > 0) == kind.higherIsBetter
+        let amount = kind == .sleep ? String(format: "%.1f h", abs(delta)) : "\(Int(abs(delta).rounded()))"
+        return VitalNote(text: "\(delta > 0 ? "▲ +" : "▼ −")\(amount) vs normal", tone: better ? .good : .bad)
+    }
+}
+
+private struct Sparkline: View {
+    let values: [Double]
+    let baseline: Double?
+    let color: Color
+
+    var body: some View {
+        GeometryReader { geometry in
+            let all = values + (baseline.map { [$0] } ?? [])
+            if values.count > 1, let low = all.min(), let high = all.max() {
+                let range = max(high - low, 0.001)
+                let w = geometry.size.width, h = geometry.size.height
+                let points = values.indices.map { index in
+                    CGPoint(x: 4 + CGFloat(index) / CGFloat(values.count - 1) * (w - 8),
+                            y: 4 + (1 - (values[index] - low) / range) * (h - 8))
+                }
+                ZStack {
+                    if let baseline {
+                        let y = 4 + (1 - (baseline - low) / range) * (h - 8)
+                        Path { $0.move(to: CGPoint(x: 0, y: y)); $0.addLine(to: CGPoint(x: w, y: y)) }
+                            .stroke(Color.faint, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    }
+                    Path { path in path.addLines(points) }
+                        .stroke(color, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                    Circle().fill(color).frame(width: 9, height: 9)
+                        .overlay(Circle().stroke(Color.card, lineWidth: 2))
+                        .position(points.last!)
+                }
+            }
+        }
+    }
+}
+
+private struct WakeTimeSheet: View {
+    @Binding var minutes: Int
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Kicker("Lights-out target")
+            Text("WHEN DO YOU WAKE UP?").font(AppFont.title(30)).foregroundStyle(Color.ink)
+            DatePicker("Wake-up", selection: Binding(
+                get: { Calendar.current.startOfDay(for: .now).addingTimeInterval(Double(minutes) * 60) },
+                set: { minutes = Calendar.current.component(.hour, from: $0) * 60 + Calendar.current.component(.minute, from: $0) }
+            ), displayedComponents: .hourAndMinute)
+            .datePickerStyle(.wheel)
+            .labelsHidden()
+            .frame(maxWidth: .infinity)
+            Button("Done") { dismiss() }.buttonStyle(VoltButtonStyle())
+        }
+        .padding(20)
+        .presentationDetents([.medium])
+        .presentationBackground(Color.card)
+        .colorScheme(.dark)
+    }
+}
+
+// MARK: - Body map
+
+private struct BodyMapSection: View {
+    let summary: BodyMapSummary
+    let today: String
+
+    var body: some View {
+        let tint = Dictionary(uniqueKeysWithValues: summary.states.map { ($0.key, $0.value.color) })
+        let pins = summary.issues.flatMap(BodyMapSummary.pins)
+        VStack(spacing: 12) {
+            HStack(spacing: 4) {
+                figure(.front, tint: tint, pins: pins)
+                figure(.back, tint: tint, pins: pins)
+            }
+            .frame(height: 300)
+            .overlay(alignment: .center) { issueLabel }
+            legend
+            readyCard
+            WorkCard(summary: summary)
+        }
+    }
+
+    private func figure(_ side: MuscleSilhouette.Side, tint: [Muscle: Color], pins: [BodyPin]) -> some View {
+        VStack(spacing: 2) {
+            MuscleSilhouette(side: side, tint: tint, pins: pins.filter { $0.side == side }.map(\.point), background: .bg)
+            Text(side == .front ? "FRONT" : "BACK").font(AppFont.body(10, weight: .semibold)).tracking(1.4).foregroundStyle(Color.faint)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var issueLabel: some View {
+        if let issue = summary.issues.first {
+            let day = BodyMapSummary.issueDay(issue, today: today).map { " · DAY \($0)" } ?? ""
+            Text("\(BodyMapSummary.issueName(issue).uppercased())\(day)")
+                .font(AppFont.body(11, weight: .heavy))
+                .foregroundStyle(Color.bg)
+                .padding(.horizontal, 8)
+                .frame(height: 22)
+                .background(Color.danger, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .offset(y: 118)
+        }
+    }
+
+    private var legend: some View {
+        HStack(spacing: 6) {
+            ForEach(MuscleState.allCases.filter { summary.count($0) > 0 }, id: \.self) { state in
+                chip(state.color, "\(state.label) \(summary.count(state))")
+            }
+            if !summary.issues.isEmpty {
+                chip(.danger, "Protect \(summary.issues.count)")
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func chip(_ color: Color, _ text: String) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(text).font(AppFont.body(11.5, weight: .semibold)).foregroundStyle(Color.inkSoft)
+        }
+        .padding(.horizontal, 9)
+        .frame(height: 28)
+        .background(Color.card, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color.cardBorder, lineWidth: 1))
+    }
+
+    private var readyCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Kicker("Ready to train", color: .mobility)
+            Text(summary.headline).font(AppFont.body(17, weight: .semibold)).foregroundStyle(Color.ink)
+            if let detail = summary.detail {
+                Text(detail).font(AppFont.body(14)).foregroundStyle(Color.inkSoft).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .card()
+    }
+}
+
+/// Sessions per body area over the last week, split by sport, so rides and rehab count too.
+private struct WorkCard: View {
+    let summary: BodyMapSummary
+
+    var body: some View {
+        let peak = max(6, summary.work.map(\.total).max() ?? 0)
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Kicker("Last 7 days · every sport")
+                Text("WHAT WORKED WHAT").font(AppFont.title(24)).foregroundStyle(Color.ink)
+            }
+            .padding(.horizontal, 4)
+            .padding(.top, 8)
+            VStack(spacing: 11) {
+                ForEach(summary.work, id: \.area) { row in
+                    HStack(spacing: 12) {
+                        Text(row.area.label).font(AppFont.body(14, weight: .semibold)).foregroundStyle(Color.ink).frame(width: 84, alignment: .leading)
+                        GeometryReader { geometry in
+                            HStack(spacing: 2) {
+                                ForEach(WorkSport.allCases, id: \.self) { sport in
+                                    if let count = row.sessions[sport], count > 0 {
+                                        Rectangle().fill(sport.color).frame(width: CGFloat(count) / CGFloat(peak) * geometry.size.width)
+                                    }
+                                }
+                                Spacer(minLength: 0)
+                            }
+                            .background(Color.inset)
+                            .clipShape(Capsule())
+                        }
+                        .frame(height: 10)
+                        Text("\(row.total)").font(AppFont.number(18)).foregroundStyle(row.total > 0 ? Color.ink : Color.faint).frame(width: 24, alignment: .trailing)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(row.area.label): \(row.total) sessions")
+                }
+                Rectangle().fill(Color.cardBorder).frame(height: 1)
+                HStack(spacing: 12) {
+                    ForEach(WorkSport.allCases.filter { (summary.sportCounts[$0] ?? 0) > 0 }, id: \.self) { sport in
+                        HStack(spacing: 4) {
+                            Circle().fill(sport.color).frame(width: 7, height: 7)
+                            Text("\(summary.sportCounts[sport] ?? 0) \(sport.label.lowercased())")
+                                .font(AppFont.body(11, weight: .semibold)).foregroundStyle(Color.muted)
+                        }
+                    }
+                    Spacer()
+                    Text("sessions").font(AppFont.body(11, weight: .semibold)).foregroundStyle(Color.faint)
+                }
+            }
+            .card()
+        }
     }
 }
 
@@ -303,186 +745,6 @@ private struct SleepCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-    }
-}
-
-// MARK: - Overnight vitals
-
-/// The Watch's Vitals view: a week of each overnight reading against its typical range.
-private struct VitalsCard: View {
-    let vitals: PhoneBody.Vitals
-    let today: String
-
-    var body: some View {
-        let rows = self.rows
-        let outliers = rows.filter { status($0.kind, $0.vital).isOutlier }.count
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Kicker("Overnight vitals")
-                Spacer()
-                Pill(text: outliers == 0 ? "All typical" : "\(outliers) outlier\(outliers == 1 ? "" : "s")",
-                     color: outliers == 0 ? .mobility : .warning)
-            }
-            Text("Shaded: your typical range over the last 30 days")
-                .font(AppFont.body(11))
-                .foregroundStyle(Color.faint)
-                .padding(.bottom, 6)
-            ForEach(rows, id: \.kind) { row in
-                if row.kind != rows.first?.kind {
-                    Rectangle().fill(Color.cardBorder).frame(height: 1).padding(.vertical, 6)
-                }
-                line(row.kind, row.vital)
-            }
-        }
-        .card()
-    }
-
-    private var rows: [(kind: VitalKind, vital: PhoneBody.Vital)] {
-        [(VitalKind.hrv, vitals.hrv), (.restingHr, vitals.restingHr), (.sleep, vitals.sleep)]
-            .compactMap { kind, vital in vital.map { (kind, $0) } }
-    }
-
-    private func status(_ kind: VitalKind, _ vital: PhoneBody.Vital) -> VitalStatus {
-        VitalStatus(value: vital.value, low: vital.typicalLow, high: vital.typicalHigh)
-    }
-
-    private func line(_ kind: VitalKind, _ vital: PhoneBody.Vital) -> some View {
-        let status = status(kind, vital)
-        return HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 5) {
-                    Image(systemName: kind.icon).font(.system(size: 10, weight: .bold))
-                    Text(kind.label).font(AppFont.body(12, weight: .semibold))
-                }
-                .foregroundStyle(kind.color)
-                HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text(kind.format(vital.value)).font(AppFont.title(32)).foregroundStyle(Color.ink)
-                    Text(kind.unit).font(AppFont.body(12, weight: .medium)).foregroundStyle(Color.muted)
-                }
-                Text(status.label)
-                    .font(AppFont.body(11, weight: .semibold))
-                    .foregroundStyle(status.isOutlier ? status.color(kind) : Color.faint)
-            }
-            .frame(width: 100, alignment: .leading)
-            VitalWeekChart(kind: kind, days: vital.days ?? [], low: vital.typicalLow, high: vital.typicalHigh, today: today)
-                .frame(height: 78)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(kind.label) \(kind.format(vital.value)) \(kind.unit), \(status.label)")
-    }
-}
-
-// MARK: - Steps
-
-private struct StepsCard: View {
-    let steps: Double?
-    let vital: PhoneBody.Vital?
-    let hours: [LiveDay.Hour]
-    let today: String
-
-    private let color = Color.warning
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle().stroke(color.opacity(0.16), lineWidth: 10)
-                    Circle()
-                        .trim(from: 0, to: min(progress, 1))
-                        .stroke(color, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    if progress > 1 {
-                        // A second lap past the average, like the Activity rings.
-                        Circle()
-                            .trim(from: 0, to: min(progress - 1, 1))
-                            .stroke(Color.volt, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                    }
-                    Image(systemName: "figure.walk").font(.system(size: 22, weight: .semibold)).foregroundStyle(color)
-                }
-                .frame(width: 78, height: 78)
-                VStack(alignment: .leading, spacing: 3) {
-                    Kicker("Steps today", color: color)
-                    Text(steps.map(BodyFormat.steps) ?? "–").font(AppFont.title(44)).foregroundStyle(Color.ink)
-                    if let baseline = vital?.baseline {
-                        Text(progress >= 1 ? "Past your \(BodyFormat.steps(baseline)) daily average" : "\(Int((progress * 100).rounded()))% of your \(BodyFormat.steps(baseline)) average")
-                            .font(AppFont.body(12)).foregroundStyle(Color.muted)
-                    }
-                }
-            }
-            if week.count >= 2 {
-                VStack(alignment: .leading, spacing: 8) {
-                    Kicker("Last 7 days")
-                    weekChart.frame(height: 96)
-                }
-            }
-            if !hours.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Kicker("Today by hour")
-                    hourChart.frame(height: 70)
-                }
-            }
-        }
-        .card()
-    }
-
-    private var progress: Double {
-        guard let steps, let baseline = vital?.baseline, baseline > 0 else { return 0 }
-        return steps / baseline
-    }
-
-    /// The last 7 days, today's bar from the phone's own count when it's ahead of the last push.
-    private var week: [(date: Date, value: Double, isToday: Bool)] {
-        var days = (vital?.days ?? []).compactMap { day in TodayFormat.parse(day.date).map { (date: $0, value: day.value, isToday: day.date == today) } }
-        if let steps, let date = TodayFormat.parse(today) {
-            days.removeAll { $0.isToday }
-            days.append((date, steps, true))
-        }
-        return days
-    }
-
-    private var weekChart: some View {
-        let week = week
-        return Chart {
-            if let baseline = vital?.baseline {
-                RuleMark(y: .value("Average", baseline))
-                    .foregroundStyle(Color.faint)
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    .annotation(position: .top, alignment: .trailing, spacing: 2) {
-                        Text("avg \(BodyFormat.steps(baseline))").font(AppFont.body(9, weight: .semibold)).foregroundStyle(Color.faint)
-                    }
-            }
-            ForEach(week, id: \.date) { day in
-                BarMark(x: .value("Day", day.date, unit: .day), y: .value("Steps", max(day.value, 1)), width: .ratio(0.55))
-                    .foregroundStyle(day.isToday ? color : color.opacity(0.4))
-                    .cornerRadius(4)
-                    .annotation(position: .top, spacing: 3) {
-                        if day.isToday {
-                            Text(BodyFormat.steps(day.value)).font(AppFont.number(12)).foregroundStyle(color)
-                        }
-                    }
-            }
-        }
-        .chartYAxis(.hidden)
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day)) { value in
-                AxisValueLabel(format: .dateTime.weekday(.narrow).locale(Locale(identifier: "en_GB")), centered: true)
-                    .font(AppFont.body(10, weight: .medium))
-                    .foregroundStyle(Color.faint)
-            }
-        }
-    }
-
-    private var hourChart: some View {
-        let start = Calendar.current.startOfDay(for: .now)
-        return Chart(hours) { hour in
-            BarMark(x: .value("Hour", hour.start, unit: .hour), y: .value("Steps", hour.value))
-                .foregroundStyle(color.opacity(hour == hours.last ? 1 : 0.55))
-                .cornerRadius(2)
-        }
-        .chartXScale(domain: start...start.addingTimeInterval(86_400))
-        .chartYAxis(.hidden)
-        .chartXAxis { hourAxis }
     }
 }
 

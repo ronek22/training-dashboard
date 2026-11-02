@@ -7,6 +7,43 @@ struct PhoneBody: Decodable, Sendable, Equatable {
     var sleep: Sleep?
     let vitals: Vitals
     let load: Load
+    var sleepDebt: SleepDebt?
+    /// Every session of the last 7 days, any sport (older caches don't have it).
+    var training: [TrainingSession]?
+    /// Active injuries that protect a body area.
+    var issues: [Issue]?
+
+    /// Hours short over the last nights, against the personal need (`needH`).
+    struct SleepDebt: Decodable, Sendable, Equatable {
+        let hours: Double
+        var nights: Int?
+        var needH: Double?
+        var status: String?
+    }
+
+    struct TrainingSession: Decodable, Sendable, Equatable {
+        let date: String
+        /// strength, ride, run, rehab, mobility, walk, hike or other.
+        let sport: String
+        var title: String?
+        var minutes: Int?
+        var exercises: [Exercise]?
+    }
+
+    /// A lift and its working sets; the phone maps the name to muscles (MuscleRules).
+    struct Exercise: Decodable, Sendable, Equatable {
+        let name: String
+        let sets: Int
+    }
+
+    struct Issue: Decodable, Sendable, Equatable, Identifiable {
+        let id: Int
+        let title: String
+        var side: String?
+        var since: String?
+        /// Backend body-area keys: knee, heel, hip, lower_back, shoulder, elbow, wrist, neck.
+        let areas: [String]
+    }
 
     struct Readiness: Decodable, Sendable, Equatable {
         let level: String

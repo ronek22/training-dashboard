@@ -145,7 +145,8 @@ enum CacheWarmer {
         async let templates = try? api.get("/strength/workouts/templates", as: [StrengthTemplateSummary].self)
         async let history = try? api.get(TrendsModel.historyPath, as: TrainingHistory.self)
         async let health = try? api.get(TrendsModel.healthPath, as: HealthSummary.self, timeout: 12)
-        _ = await (plan, activities, dinners, templates, history, health)
+        async let trends = try? api.get(TrendsModel.trendsPath, as: TrendsSummary.self)
+        _ = await (plan, activities, dinners, templates, history, health, trends)
         // The Food widgets, before the Food tab has been opened today.
         if let day = await food, !day.fromCache {
             WidgetStore.update { $0.food = .init(day.value, eaten: day.value.totals) }

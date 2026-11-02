@@ -9,6 +9,10 @@ struct MuscleSilhouette: View {
     var primary: Set<Muscle> = []
     var secondary: Set<Muscle> = []
     var gap: Set<Muscle> = []
+    /// Colour per muscle instead of primary/secondary (the Body map's readiness).
+    var tint: [Muscle: Color]?
+    /// Injury pins, in the web's 240 × 460 viewBox.
+    var pins: [CGPoint] = []
     /// Outline between regions; matches whatever the figure sits on.
     var background: Color = .card
 
@@ -44,6 +48,15 @@ struct MuscleSilhouette: View {
                     }
                 }
             }
+            for pin in pins {
+                let center = pin.applying(place)
+                let radius = max(5, 12 * scale)
+                func ring(_ r: CGFloat) -> Path { Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)) }
+                context.fill(ring(radius * 1.7), with: .color(Color.danger.opacity(0.14)))
+                context.fill(ring(radius), with: .color(Color.danger.opacity(0.3)))
+                context.stroke(ring(radius), with: .color(.danger), lineWidth: max(1.5, 3 * scale))
+                context.fill(ring(radius * 0.3), with: .color(.danger))
+            }
         }
         .aspectRatio(Self.crop.width / Self.crop.height, contentMode: .fit)
         .accessibilityElement()
@@ -52,6 +65,7 @@ struct MuscleSilhouette: View {
 
     private func fill(_ muscle: Muscle?) -> Color {
         guard let muscle else { return Self.restFill }
+        if let tint { return tint[muscle] ?? Self.restFill }
         if primary.contains(muscle) { return Self.primaryFill }
         if secondary.contains(muscle) { return Self.secondaryFill }
         return Self.restFill

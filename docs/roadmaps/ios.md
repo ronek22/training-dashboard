@@ -22,6 +22,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-11-02 — **Body v3** — Body opens on Day or Body. Day is a 24-hour dial (last night's sleep stages, steps per hour, a wind-down before lights out) with a lights-out target that pays back sleep debt, and vitals that call out the best day of the week. Body is a muscle map coloured by readiness from every sport, with active injuries pinned and a week of sessions per body area.
 - 2026-11-02 — **Trends v2** — Trends leads with the last 12 weeks stacked by sport against your typical week (tap a week for its split). The year totals shrink to one card with a vs-last-year comparison and a page per sport. HRV and resting HR show a 7-day average line.
 - 2026-11-01 — **Watch widgets** — Today, Rehab, Week and Food in the Watch Smart Stack and on watch faces (rectangular, circular, corner, inline), in the phone widgets' look; the most useful one rises to the top: the session in the morning, unfinished rehab and food to go in the evening, tomorrow once done.
 - 2026-11-01 — **Watch workouts on Strava** — Strength and rehab sessions recorded on the Watch go up to Strava with their heart rate and Strava's own exercise list (exercises, reps, weights, holds), since Strava never imports them from Apple Health. Needs Strava reconnected once for upload access.

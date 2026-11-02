@@ -165,6 +165,12 @@ enum BodyFormat {
         return ("\(delta < 0 ? "−" : "+")\(minutes) min vs 30 d", delta > 0)
     }
 
+    /// "Mo", "Tu" for a yyyy-MM-dd day.
+    static func weekday(_ iso: String) -> String {
+        guard let day = TodayFormat.parse(iso) else { return "" }
+        return String(day.formatted(.dateTime.weekday(.abbreviated).locale(Locale(identifier: "en_GB"))).prefix(2))
+    }
+
     static func steps(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(0)).locale(Locale(identifier: "en_US")))
     }

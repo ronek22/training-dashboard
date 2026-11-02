@@ -84,6 +84,9 @@ If a feature isn't in the artboard, ask before building it.
 
 ## Design
 
+Any new or redesigned screen, card or sheet goes through the `ios-designer` skill
+(`.claude/skills/ios-designer/`): critique and artboard first, Swift only after approval.
+
 Same system as the web (`../docs/design/REDESIGN.md`, tokens in `../frontend/src/style.css`):
 
 - Dark only. `bg #0A0C11`, card `#12151C`, border `#1C212B`, inset `#0E1117`.

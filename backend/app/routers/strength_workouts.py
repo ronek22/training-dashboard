@@ -20,6 +20,7 @@ from ..models.strength_workouts import (
 from ..services.stall_blocks import annotate_plateaus, blocks_for_names, finish_block, list_blocks, start_block, undo_block
 from ..services.strength_phases import build_strength_phases, delete_phase, save_phase
 from ..services.strength_plateaus import find_plateaus
+from ..services.strength_session_summary import build_session_summary
 from ..services.strength_workouts import (
     abandon_session,
     add_session_exercise,
@@ -122,6 +123,11 @@ def sessions_plateaus(session_id: int):
         plateaus = annotate_plateaus(conn, find_plateaus(conn, exercise_names=names)) if names else []
         return {"plateaus": plateaus, "blocks": blocks_for_names(conn, names, session_id)}
     return _with_db(load)
+
+
+@router.get("/sessions/{session_id}/summary")
+def sessions_summary(session_id: int):
+    return _with_db(lambda conn: build_session_summary(conn, session_id))
 
 
 @router.get("/stall-blocks")

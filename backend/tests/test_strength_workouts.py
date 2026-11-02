@@ -269,6 +269,52 @@ class StrengthWorkoutTests(unittest.TestCase):
         listed = {item["id"]: item for item in self.client.get("/strength/workouts/templates").json()}
         self.assertEqual(listed[template["id"]]["last_done_at"], session["started_at"])
 
+    def test_session_summary_shows_bests_and_next_targets(self):
+        template = self.client.post("/strength/workouts/templates", json={"name": "Summary Day", "exercises": [
+            {"exercise_name": "Summary Press", "set_count": 2, "target_reps": 8, "target_weight_kg": 20, "rest_seconds": 90},
+            {"exercise_name": "Summary Curl", "set_count": 2, "target_reps": 10, "target_weight_kg": 10, "rest_seconds": 60},
+        ]}).json()
+
+        def run(loads):
+            session = self.client.post("/strength/workouts/sessions", json={"template_id": template["id"]}).json()
+            base = f"/strength/workouts/sessions/{session['id']}"
+            sets = [item for exercise in session["exercises"] for item in exercise["sets"]]
+            for item, (weight, reps) in zip(sets, loads):
+                done = self.client.post(f"{base}/sets/{item['id']}/complete", json={"actual_reps": reps, "actual_weight_kg": weight})
+                self.assertEqual(done.status_code, 200, done.text)
+            self.assertEqual(self.client.post(f"{base}/finish", json={}).status_code, 200)
+            return session["id"]
+
+        first = run([(20, 8), (20, 8), (10, 10), (10, 10)])
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        with sqlite3.connect(os.environ["TRAINING_DB_PATH"]) as conn:
+            conn.execute("UPDATE strength_workout_sessions SET started_at = ?, completed_at = ? WHERE id = ?",
+                         (f"{yesterday}T08:00:00+01:00", f"{yesterday}T08:45:00+01:00", first))
+        self.client.post("/activities", json={"id": "summary-lift-1", "date": yesterday, "type": "WeightTraining",
+                                              "name": "Strength", "duration_min": 45})
+        self.client.put(f"/strength/workouts/sessions/{first}/activity", json={"activity_id": "summary-lift-1"})
+
+        second = run([(22.5, 8), (22.5, 8), (10, 10), (10, 8)])
+        response = self.client.get(f"/strength/workouts/sessions/{second}/summary")
+        self.assertEqual(response.status_code, 200, response.text)
+        summary = response.json()
+        self.assertEqual(summary["volume_kg"], 540)
+        self.assertEqual(summary["set_count"], 4)
+        self.assertEqual(summary["previous"]["volume_kg"], 520)
+        press, curl = summary["exercises"]
+        self.assertIn("heaviest", press["bests"])
+        self.assertEqual(press["last"]["top_weight_kg"], 20)
+        self.assertEqual(press["next"]["change"], "up")
+        self.assertGreater(press["next"]["target_weight_kg"], 22.5)
+        self.assertEqual(curl["bests"], [])
+        self.assertEqual(curl["next"]["change"], "reps")
+        self.assertEqual(curl["next"]["target_weight_kg"], 10)
+        self.assertEqual((summary["best_count"], summary["going_up"]), (1, 1))
+        self.assertEqual(self.client.get("/strength/workouts/sessions/999999/summary").status_code, 404)
+        # Other tests count linked sessions.
+        for session_id in (first, second):
+            self.client.delete(f"/strength/workouts/sessions/{session_id}")
+
     def test_template_live_session_and_watch_activity_link(self):
         template_response = self.client.post(
             "/strength/workouts/templates",

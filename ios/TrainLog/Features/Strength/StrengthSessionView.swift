@@ -17,7 +17,7 @@ struct StrengthSessionView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            topBar
+            if case .summary = model.phase {} else { topBar }
             switch model.phase {
             case .loading:
                 ProgressView().tint(.muted).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -30,6 +30,8 @@ struct StrengthSessionView: View {
                 }
             case .failed(let message):
                 failed(message)
+            case .summary(let summary):
+                SessionSummaryView(summary: summary, onDone: model.dismissSummary)
             case .ready, .closed:
                 if let session = model.session { content(session) }
             }
@@ -465,8 +467,13 @@ struct StrengthSessionView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             if model.allSetsDone {
-                Button("Finish workout") { Task { await model.finish() } }
-                    .buttonStyle(VoltButtonStyle())
+                Button {
+                    Task { await model.finish() }
+                } label: {
+                    if model.finishing { ProgressView().tint(Color.bg) } else { Text("Finish workout") }
+                }
+                .buttonStyle(VoltButtonStyle())
+                .disabled(model.finishing)
             } else if let current = model.current, current.set.isTimed {
                 if model.holdStartedAt == nil {
                     Button(action: model.startHold) {

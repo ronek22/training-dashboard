@@ -18,6 +18,9 @@ struct TodayView: View {
     @State private var studioPick: Int?
     @State private var flameHop = 0
     @State private var watch = WatchLive.shared
+    /// Running fitness for the run card and pace guide, and the after-run felt tap.
+    @State private var run = RunModel()
+    @State private var feltRun: RunningFitness.FeltRun?
     var onStartStrength: (StrengthLaunch) -> Void = { _ in }
     /// Bumped when the strength screen closes, so the banner and plan reload.
     var refresh = 0
@@ -38,6 +41,8 @@ struct TodayView: View {
                         case .day:
                             PlanDayView(model: plan, date: date, onMove: { moving = $0 }, onStartStrength: onStartStrength)
                                 .hidesTabBar()
+                        case .paceGuide:
+                            PaceGuideView(model: run).hidesTabBar()
                         }
                     }
                 }
@@ -81,7 +86,7 @@ struct TodayView: View {
     }
 
     private enum Route: Hashable {
-        case day
+        case day, paceGuide
     }
 
     /// The Sunday nudge: this week on Sunday, last week on Monday, the week so far otherwise.
@@ -93,7 +98,17 @@ struct TodayView: View {
     private func load() async {
         async let today: Void = model.load()
         async let week: Void = plan.load()
-        _ = await (today, week)
+        async let running: Void = run.load()
+        _ = await (today, week, running)
+        if feltRun == nil, let date = model.data?.date, let pending = run.pendingFeel(today: date) {
+            feltRun = pending
+        }
+    }
+
+    /// The pain row asks about the return-to-run injury, or any pain logged at check-in.
+    private var painLabel: String? {
+        if let rtr = run.fitness?.returnToRun, rtr.active { return rtr.symptom ?? "Pain" }
+        return model.data?.vitals.pain != nil ? "Pain" : nil
     }
 
     private var content: some View {
@@ -127,8 +142,10 @@ struct TodayView: View {
                         showFallback: $showFallback,
                         rehabPending: model.rehabPending,
                         workoutOpen: model.activeWorkout != nil,
+                        runFitness: run.fitness,
                         onStartStrength: onStartStrength,
                         onOpen: { route = .day },
+                        onGuide: { route = .paceGuide },
                         onRehab: { showRehab = true },
                         onMove: { moving = $0 },
                         onStudio: { showStudio = true }
@@ -167,6 +184,12 @@ struct TodayView: View {
             QuickLogSheet()
                 .presentationDetents([.large])
                 .presentationBackground(Color.card)
+        }
+        .sheet(item: $feltRun, onDismiss: {
+            // Swiped away without a tap: don't ask again for this run.
+            if let last = run.fitness?.felt?.last, run.answered[last.activityId] == nil { run.dismiss(last) }
+        }) { pending in
+            AfterRunSheet(run: pending, model: run, painLabel: painLabel, startingPain: min(model.data?.vitals.pain ?? 0, 5))
         }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
@@ -254,19 +277,82 @@ private struct SessionCard: View {
     let rehabPending: Int?
     /// The Resume banner owns the volt action while a workout is open.
     let workoutOpen: Bool
+    /// On a run day the card leads with today's easy pace (or the return-to-run step).
+    let runFitness: RunningFitness?
     let onStartStrength: (StrengthLaunch) -> Void
     let onOpen: () -> Void
+    let onGuide: () -> Void
     let onRehab: () -> Void
     let onMove: (PlanDay) -> Void
     /// Workout Studio: any workout, planned today or not.
     let onStudio: () -> Void
 
     var body: some View {
-        if let session = data.today, session.sport != .rest {
-            planned(session)
+        if let session = Self.demo(data.today), session.sport != .rest {
+            if session.sport == .run, !session.isDone, let runFitness, runFitness.paces != nil {
+                runCard(session, fitness: runFitness)
+            } else {
+                planned(session)
+            }
         } else {
             restDay
         }
+    }
+
+    /// The run day: the pace tape opens the guide; the plan's actions sit in the long-press menu.
+    private func runCard(_ session: PhoneToday.Session, fitness: RunningFitness) -> some View {
+        let rehab = self.rehab
+        let fallback = PlanFormat.fallback(session.fallback)
+        let canMove = PlanFormat.canMove(planDay, today: today)
+        return VStack(alignment: .leading, spacing: 0) {
+            Button(action: onGuide) {
+                RunCardContent(fitness: fitness, session: session).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens the pace guide")
+            if showFallback, let fallback {
+                Text("\(Text("Short on time: ").foregroundStyle(Color.ink).bold())\(fallback)")
+                    .font(AppFont.body(13))
+                    .foregroundStyle(Color.inkSoft)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .padding(.top, 4)
+            }
+            if let rehab {
+                rehabPart(rehab, number: nil, after: .run).padding(.top, 4)
+            }
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 4)
+        // The footer row is already 44 pt tall; the card's own padding would double it.
+        .padding(.bottom, rehab == nil ? -10 : 0)
+        .card(border: Color.run.opacity(0.30))
+        .contextMenu {
+            Button(action: onOpen) { Label("Open session", systemImage: "list.bullet") }
+            if let fallback, !fallback.isEmpty {
+                Button { withAnimation(.snappy) { showFallback.toggle() } } label: {
+                    Label(showFallback ? "Full session" : "Short on time", systemImage: "timer")
+                }
+            }
+            if canMove, let planDay {
+                Button { onMove(planDay) } label: { Label("Move day", systemImage: "arrow.left.arrow.right") }
+            }
+            if !workoutOpen {
+                Button(action: onStudio) { Label("Other workout", systemImage: "dumbbell") }
+            }
+        }
+    }
+
+    /// `-runDemo YES` (or `rtr`) turns today into a 30 min easy run for screenshots.
+    private static func demo(_ session: PhoneToday.Session?) -> PhoneToday.Session? {
+        #if DEBUG
+        if UserDefaults.standard.string(forKey: "runDemo") != nil {
+            return PhoneToday.Session(title: "Easy run", sessionType: "run", intentLabel: "Easy", durationMin: 30, distanceKm: nil,
+                                      details: nil, status: "planned", sport: .run, fallback: nil, strength: nil)
+        }
+        #endif
+        return session
     }
 
     /// Today's rehab from the plan day: exercises ticked, and still due (from the guided session,

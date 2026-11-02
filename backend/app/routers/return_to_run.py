@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from ..db import get_db
 from ..services.return_to_run import build_return_to_run, save_program, save_symptom_check
+from ..services.run_feel import save_run_feel
 
 router = APIRouter()
 
@@ -20,6 +21,10 @@ class RunSymptomInput(BaseModel):
     # Omitted fields are left unchanged; an explicit null clears them.
     during: Optional[int] = Field(default=None, ge=0, le=10)
     next_morning: Optional[int] = Field(default=None, ge=0, le=10)
+
+
+class RunFeelInput(BaseModel):
+    felt: Literal["easy", "ok", "hard"]
 
 
 @router.get("/return-to-run")
@@ -46,6 +51,20 @@ def update_run_symptoms(activity_id: str, payload: RunSymptomInput):
     conn = get_db()
     try:
         return save_symptom_check(conn, activity_id, payload.model_dump(exclude_unset=True))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    finally:
+        conn.close()
+
+
+@router.put("/activities/{activity_id}/felt")
+def update_run_feel(activity_id: str, payload: RunFeelInput):
+    """How a run felt, tapped on the phone; two hard in a row ease the easy band."""
+    conn = get_db()
+    try:
+        return save_run_feel(conn, activity_id, payload.felt)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

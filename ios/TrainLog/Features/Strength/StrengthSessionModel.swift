@@ -16,6 +16,8 @@ final class StrengthSessionModel {
         case brief(StrengthTemplate)
         case ready
         case failed(String)
+        /// Finished: the recap, until Done.
+        case summary(StrengthSummary)
         case closed
     }
 
@@ -24,6 +26,8 @@ final class StrengthSessionModel {
     private(set) var hints: [String: String] = [:]
     /// The brief's Start button is waiting on the server.
     private(set) var starting = false
+    /// Finish was tapped and the recap is on its way.
+    private(set) var finishing = false
     /// Writes waiting for the server.
     private(set) var unsynced = false
     private(set) var restEndsAt: Date?
@@ -208,7 +212,7 @@ final class StrengthSessionModel {
                 load: StrengthFormat.load(weight: set.actualWeightKg, reps: set.actualReps ?? 0, seconds: set.actualSeconds)
             )
         }
-        guard merged.isActive else { return closeFromWatch() }
+        guard merged.isActive else { return endedElsewhere(finished: merged.status == "completed") }
         show(merged, share: false)
     }
 
@@ -217,17 +221,26 @@ final class StrengthSessionModel {
     func handleWatch(_ command: WatchWire.Command) {
         switch command {
         case .start: Task { await startFromBrief() }
-        case .finish, .discard: closeFromWatch()
+        case .finish: endedElsewhere(finished: true)
+        case .discard: endedElsewhere()
         default: break
         }
     }
 
-    private func closeFromWatch() {
+    /// Ended on the Watch or the web; a finished workout still ends on its recap here.
+    private func endedElsewhere(finished: Bool = false) {
+        if case .summary = phase { return }
         guard phase != .closed else { return }
         store.clear()
         RestAlarm.cancel()
         StrengthActivity.end()
-        phase = .closed
+        guard finished, let session else {
+            phase = .closed
+            return
+        }
+        // The recap shows at once; the server's version follows when the Watch's finish lands there.
+        phase = .summary(SummaryLogic.local(session))
+        Task { await loadSummary(of: session) }
     }
 
     private func showActivity() {
@@ -332,10 +345,27 @@ final class StrengthSessionModel {
     }
 
     func finish() async {
-        guard let session else { return }
+        guard let session, !finishing else { return }
+        finishing = true
+        defer { finishing = false }
         queue.append(.init(method: "POST", path: "/strength/workouts/sessions/\(session.id)/finish", body: Data("{}".utf8)))
         onEnd?(.finish)
         await close()
+        phase = .summary(SummaryLogic.local(session))
+        if !unsynced { await loadSummary(of: session) }
+    }
+
+    /// The server's recap: last time, new bests and next targets. Keeps the local one if it fails.
+    private func loadSummary(of session: StrengthSession) async {
+        guard let summary = try? await client().getLive(
+            "/strength/workouts/sessions/\(session.id)/summary", as: StrengthSummary.self
+        ) else { return }
+        if case .summary = phase { phase = .summary(summary) }
+    }
+
+    /// Done on the recap.
+    func dismissSummary() {
+        phase = .closed
     }
 
     func abandon() async {
@@ -343,6 +373,7 @@ final class StrengthSessionModel {
         queue.append(.init(method: "POST", path: "/strength/workouts/sessions/\(session.id)/abandon", body: nil))
         onEnd?(.discard)
         await close()
+        phase = .closed
     }
 
     private func close() async {
@@ -351,7 +382,6 @@ final class StrengthSessionModel {
         StrengthActivity.end()
         // Flush before closing so Today's reload doesn't still see the workout as open.
         unsynced = !(await queue.flush(with: client()))
-        phase = .closed
     }
 
     /// Picks up sets logged on the web while this screen is open. Skipped while this phone has
@@ -366,10 +396,7 @@ final class StrengthSessionModel {
             show(live)
         } else {
             // Finished or discarded on the web.
-            store.clear()
-            RestAlarm.cancel()
-            StrengthActivity.end()
-            phase = .closed
+            endedElsewhere(finished: live.status == "completed")
         }
     }
 

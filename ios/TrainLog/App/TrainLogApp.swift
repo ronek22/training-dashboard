@@ -30,6 +30,9 @@ struct TrainLogApp: App {
                         .padding(16)
                     }
                     .background(Color.bg)
+                } else if UserDefaults.standard.integer(forKey: "demoSummary") > 0 {
+                    // `-demoSummary 44` shows that finished session's recap.
+                    SummaryDemo(sessionId: UserDefaults.standard.integer(forKey: "demoSummary"))
                 } else {
                     RootView()
                 }

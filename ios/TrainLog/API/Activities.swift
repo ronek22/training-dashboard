@@ -343,27 +343,3 @@ struct ActivityDetail: Decodable, Sendable {
         }
     }
 }
-
-/// `GET /running/fitness`: only running form, your usual values and the good ranges.
-struct RunningFitness: Decodable, Sendable {
-    let form: Form?
-
-    struct Form: Decodable, Sendable {
-        let baseline: Values?
-        let ranges: [String: Range]?
-
-        struct Values: Decodable, Sendable {
-            let cadenceSpm: Double?
-            let stanceTimeMs: Double?
-            let verticalOscillationCm: Double?
-            let verticalRatioPct: Double?
-            let stepLengthM: Double?
-            let avgPowerW: Double?
-        }
-
-        struct Range: Decodable, Sendable {
-            let good: [Double]
-            var note: String?
-        }
-    }
-}

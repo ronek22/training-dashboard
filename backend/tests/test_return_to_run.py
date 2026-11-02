@@ -10,6 +10,7 @@ from backend.app.services.return_to_run import (
     check_run_progression,
     save_program,
     save_symptom_check,
+    stage_blocks,
     suggest_start_stage,
 )
 from backend.app.services.session_brief import build_session_brief
@@ -98,6 +99,14 @@ class ReturnToRunTests(unittest.TestCase):
         self.start(stage=2, started=TODAY)
         self.run_on(TODAY, during=0, morning=None)
         self.assertEqual(build_return_to_run(self.conn, TODAY)["next"]["status"], "rest")
+
+    def test_stage_blocks_lay_out_the_session(self):
+        blocks = stage_blocks(3)
+        self.assertEqual(blocks[0], {"kind": "walk", "minutes": 5})
+        self.assertEqual(sum(block["minutes"] for block in blocks), 29)
+        self.assertEqual([block["kind"] for block in blocks[1:3]], ["jog", "walk"])
+        self.assertEqual([block["kind"] for block in stage_blocks(4)], ["walk", "jog"])
+        self.assertEqual(stage_blocks(6), [])
 
     def test_symptoms_only_for_runs(self):
         ride = self.run_on(TODAY, activity_type="Ride")

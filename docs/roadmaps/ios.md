@@ -11,7 +11,6 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Next
 
-- **Run comeback on the phone** — Before a run, today's easy pace from current VDOT or the next return-to-run step; after it, a VDOT trend card and a felt-easy/hard tap.
 - **Lift history mid-session** — Tap a lift during a workout to see its last few sessions.
 - **Morning brief and wins** — A push after sleep syncs with today's session and why, and a small celebration when check-in, rehab or protein is done.
 
@@ -22,6 +21,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-11-03 — **Run comeback** — On a run day Today shows your easy pace from current VDOT on a pace tape (with your 2015 pace off the edge), or the return-to-run step as jog/walk blocks; a Pace guide explains the way back and every pace; after a run syncs, one tap says how it felt, and two hard runs in a row ease the band by 10 s/km.
 - 2026-11-02 — **Strength after-session summary** — Finishing a lift (on the phone, Watch or web) ends on a recap: volume against last time with time, sets and reps counting up, new bests per lift, and where each target goes next (up, a rep more, or hold, with the reason) so the cautious progression is plain to see.
 - 2026-11-02 — **Body v3** — Body opens on Day or Body. Day is a 24-hour dial (last night's sleep stages, steps per hour, a wind-down before lights out) with a lights-out target that pays back sleep debt, and vitals that call out the best day of the week. Body is a muscle map coloured by readiness from every sport, with active injuries pinned and a week of sessions per body area.
 - 2026-11-02 — **Trends v2** — Trends leads with the last 12 weeks stacked by sport against your typical week (tap a week for its split). The year totals shrink to one card with a vs-last-year comparison and a page per sport. HRV and resting HR show a 7-day average line.

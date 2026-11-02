@@ -10,6 +10,7 @@ from unittest import mock
 from backend.app import db
 from backend.app.services import run_dynamics
 from backend.app.services.data_inbox import build_inbox
+from backend.app.services.run_feel import eased_seconds, save_run_feel
 from backend.app.services.running_fitness import (
     build_running_fitness,
     heart_rate_vdot,
@@ -152,6 +153,41 @@ class RunningFitnessDbTests(unittest.TestCase):
         self.assertEqual(len(data["build_up"]["weeks"]), 10)
         self.assertTrue(data["paces"]["quality_allowed"])
         self.assertFalse(data["form"]["available"])
+
+    def test_two_hard_runs_in_a_row_ease_the_easy_band(self):
+        self.run_row("old1", "2016-05-01", 5.0, 20.0)
+        self.run_row("old2", "2016-05-20", 5.0, 20.2)
+        for index, days in enumerate((20, 10, 3)):
+            self.run_row(f"new{index}", ago(days), 8.0, 48.0, avg_hr=150, max_hr=185)
+        self.conn.commit()
+        before = build_running_fitness(self.conn, TODAY)
+        self.assertEqual(before["paces"]["eased_s"], 0)
+        self.assertEqual([run["felt"] for run in before["felt"]][-3:], [None, None, None])
+        self.assertLess(before["paces"]["peak_easy"]["from_s"], before["paces"]["zones"]["easy"]["from_s"])
+
+        save_run_feel(self.conn, "new1", "hard")
+        save_run_feel(self.conn, "new2", "hard")
+        after = build_running_fitness(self.conn, TODAY)
+        self.assertEqual(after["paces"]["eased_s"], 10)
+        self.assertEqual(after["paces"]["zones"]["easy"]["from_s"], before["paces"]["zones"]["easy"]["from_s"] + 10)
+        self.assertEqual(after["felt"][-1]["felt"], "hard")
+        self.assertEqual(after["felt"][-1]["pace_s"], 360)
+
+        save_run_feel(self.conn, "new2", "easy")
+        self.assertEqual(build_running_fitness(self.conn, TODAY)["paces"]["eased_s"], 0)
+
+    def test_felt_only_for_runs(self):
+        self.conn.execute("INSERT INTO activities (id, date, type, name, distance_km, duration_min) VALUES ('ride', ?, 'Ride', 'Ride', 20, 60)", (ago(1),))
+        with self.assertRaises(ValueError):
+            save_run_feel(self.conn, "ride", "easy")
+        with self.assertRaises(LookupError):
+            save_run_feel(self.conn, "missing", "easy")
+
+    def test_eased_seconds_needs_the_last_two_hard(self):
+        self.assertEqual(eased_seconds(["hard", "hard"]), 10)
+        self.assertEqual(eased_seconds(["hard", "hard", "ok"]), 0)
+        self.assertEqual(eased_seconds(["hard", "easy", "hard"]), 0)
+        self.assertEqual(eased_seconds(["hard"]), 0)
 
     def test_build_up_guard_flags_a_big_jump(self):
         self.run_row("a", ago(20), 3.0, 20.0)

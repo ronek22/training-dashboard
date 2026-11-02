@@ -39,6 +39,7 @@ from .heart_rate_zones import run_hr_cap
 from .personal_records import _activity_rows, _load_efforts
 from .power_trends import _decode_json, _stream_values
 from .run_dynamics import dynamics_rows, first_dynamics_date
+from .run_feel import recent_feel
 
 RACES = (
     ("5k", "5K", 5000.0),
@@ -524,7 +525,7 @@ def runs_missing_dynamics(conn: sqlite3.Connection, today: date, days: int = MIS
 
 
 def _return_to_run(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
-    from .return_to_run import STAGES, build_return_to_run
+    from .return_to_run import STAGES, build_return_to_run, stage_blocks
 
     data = build_return_to_run(conn, today)
     if not data.get("active"):
@@ -534,6 +535,13 @@ def _return_to_run(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
         "active": True,
         "stage": stage,
         "stage_name": data["stage"]["name"],
+        "stages": len(STAGES),
+        "stage_names": [item["name"] for item in STAGES],
+        "minutes": data["stage"]["minutes"],
+        "blocks": stage_blocks(stage),
+        # Run/walk stages run by feel; the phone shows the easy range only as a hint.
+        "pace_target": stage >= 4,
+        "symptom": data["program"].get("symptom"),
         "quality_allowed": stage >= len(STAGES),
         "message": data["next"].get("message"),
     }
@@ -613,6 +621,12 @@ def _build(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
         })
 
     rtr = _return_to_run(conn, today)
+    feel = recent_feel(conn, runs)
+    zones = training_paces(current)
+    if feel["eased_s"]:
+        easy = zones["easy"]
+        zones["easy"] = {**easy, "from_s": easy["from_s"] + feel["eased_s"], "to_s": easy["to_s"] + feel["eased_s"]}
+    peak_easy = training_paces(peak["vdot"])["easy"] if peak else None
     dynamics = dynamics_rows(conn)
     missing = runs_missing_dynamics(conn, today)
     total_km = sum(run["distance_km"] for run in runs)
@@ -662,10 +676,14 @@ def _build(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
         "predictions": predictions,
         "paces": {
             "vdot": round(current, 1),
-            "zones": training_paces(current),
+            "zones": zones,
             "quality_allowed": rtr["quality_allowed"],
             "hr_cap_bpm": cap,
+            # Seconds added to the easy band after two hard-feeling runs in a row.
+            "eased_s": feel["eased_s"],
+            "peak_easy": {"from_s": peak_easy["from_s"], "to_s": peak_easy["to_s"]} if peak_easy else None,
         },
+        "felt": feel["recent"],
         "return_to_run": rtr,
         "timeline": _monthly_timeline(effort_points, hr_points, runs, today),
         "pace_at_cap": _pace_at_cap(hr_points, cap, today),

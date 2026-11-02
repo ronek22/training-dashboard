@@ -76,6 +76,8 @@ enum SyncFormat {
         case has("ticks"): return "Rehab ticks"
         case has("guided-sessions"): return "Rehab session"
         case has("recovery") && path.hasSuffix("/checkins"): return "Rehab check-in"
+        case has("activities") && path.hasSuffix("/felt"): return "Run feel"
+        case has("activities") && path.hasSuffix("/symptoms"): return "Run pain"
         case has("activities") && path.hasSuffix("/feedback"): return "Activity feedback"
         case has("activities") && path.hasSuffix("/tags"): return "Activity tags"
         default: return parts.last.map { $0.prefix(1).uppercased() + $0.dropFirst() } ?? path

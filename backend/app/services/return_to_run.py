@@ -55,6 +55,22 @@ STAGES = (
     {"stage": 6, "name": "Back to normal running", "minutes": 60,
      "prescription": "Easy runs up to 60 min. Add one quality session only after two clean weeks here."},
 )
+# The session as walk/jog blocks for the phone: (warm-up walk, jog, walk, rounds). Rounds take the
+# low end of the prescription. Stage 6 is normal easy running, so it has none.
+STAGE_BLOCKS = {1: (5, 1, 2, 6), 2: (5, 2, 1, 6), 3: (5, 5, 1, 4), 4: (5, 20, 0, 1), 5: (5, 30, 0, 1)}
+
+
+def stage_blocks(stage: int) -> list[dict[str, Any]]:
+    pattern = STAGE_BLOCKS.get(stage)
+    if not pattern:
+        return []
+    warmup, jog, walk, rounds = pattern
+    blocks = [{"kind": "walk", "minutes": warmup}]
+    for _ in range(rounds):
+        blocks.append({"kind": "jog", "minutes": jog})
+        if walk:
+            blocks.append({"kind": "walk", "minutes": walk})
+    return blocks
 
 
 # ---------------------------------------------------------------------------

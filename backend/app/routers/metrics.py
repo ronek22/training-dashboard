@@ -14,6 +14,7 @@ from ..services.health_data import get_health_summary
 from ..services.heart_rate_zones import build_recent_heart_rate_zone_summary
 from ..services.settings import get_performance_settings_for_conn
 from ..services.power_trends import get_cycling_power_trends_data
+from ..services.trends import get_trends
 
 router = APIRouter()
 
@@ -39,6 +40,16 @@ def training_history():
             "run_year_series": build_yearly_distance_series(conn, ("Run",)),
             "strength_year_series": build_yearly_duration_series(conn, ("WeightTraining",)),
         }
+    finally:
+        conn.close()
+
+
+@router.get("/metrics/trends")
+def trends():
+    """The phone's Trends page: 12 weeks by sport, the year so far against last year."""
+    conn = get_db()
+    try:
+        return get_trends(conn)
     finally:
         conn.close()
 

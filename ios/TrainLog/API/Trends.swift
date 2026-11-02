@@ -52,3 +52,35 @@ struct SleepStages: Decodable, Sendable, Equatable {
 struct HealthImport: Decodable, Sendable, Equatable {
     var exportDate: String?
 }
+
+/// `GET /metrics/trends`: 12 weeks of hours by sport (oldest first, ending this week) and the
+/// year so far against the same date last year.
+struct TrendsSummary: Decodable, Sendable, Equatable {
+    let weeks: [TrendWeek]
+    let sports: [SportToDate]
+}
+
+struct TrendWeek: Decodable, Sendable, Equatable {
+    let start: String
+    /// Keyed ride, strength, run, mobility, other.
+    let hours: [String: Double]
+    let sessions: Int
+    var top: Top?
+
+    /// The activity type with the most time that week, and its share of the week.
+    struct Top: Decodable, Sendable, Equatable {
+        let type: String
+        let sessions: Int
+        let share: Double
+    }
+}
+
+struct SportToDate: Decodable, Sendable, Equatable {
+    let sport: Sport
+    /// "km" or "h".
+    let unit: String
+    let total: Double
+    let lastYearToDate: Double
+    let lastYearMonths: [Double]
+    var lastDate: String?
+}

@@ -16,6 +16,9 @@ struct TodayView: View {
     @State private var plan = PlanModel()
     @State private var route: Route?
     @State private var moving: PlanDay?
+    /// Change today: the one-day coach job, made on first use (shares the Plan tab's helper relay).
+    @State private var coach: PlanCoachModel?
+    @State private var changing: ChangeTodayFormat.Session?
     @State private var showRehab = false
     @State private var recap: RecapLaunch?
     @State private var showStudio = false
@@ -100,6 +103,20 @@ struct TodayView: View {
                 .presentationBackground(Color(hex: 0x161A22))
             }
         }
+        .sheet(item: $changing, onDismiss: { Task { await load() } }) { now in
+            if let coach, let data = model.data {
+                ChangeTodaySheet(coach: coach, plan: plan, date: data.date, now: now, readiness: data.readiness,
+                                 fallback: PlanFormat.fallback(data.today?.fallback),
+                                 canMove: PlanFormat.canMove(plan.day(data.date), today: plan.today),
+                                 onShort: { withAnimation(.snappy) { showFallback = true } },
+                                 onMove: { if let day = plan.day(data.date) { moving = day } })
+                    .presentationDetents([.height(760), .large])
+                    .presentationBackground(Color(hex: 0x161A22))
+            }
+        }
+        .onChange(of: coach?.phase) {
+            if case .done = coach?.phase { Task { await load() } }
+        }
         .onChange(of: showSettings) {
             // Back from Settings may have pointed the app at another server.
             if !showSettings { Task { await load() } }
@@ -116,6 +133,39 @@ struct TodayView: View {
     }
 
     /// The Sunday nudge: this week on Sunday, last week on Monday, the week so far otherwise.
+    /// Opens Change today on the session as it is now (or the job's progress while one runs).
+    private func openChange() {
+        guard let data = model.data else { return }
+        let session = data.sick == nil ? data.today : nil
+        var sport = session?.sport ?? .rest
+        #if DEBUG
+        if ChangeTodayDemo.isRest { sport = .rest }
+        #endif
+        let now = ChangeTodayFormat.Session(sport: sport, minutes: sport == .rest ? 0 : session?.durationMin ?? 0,
+                                            title: sport == .rest ? "Rest" : session?.title ?? "")
+        let coach = self.coach ?? PlanCoachModel(plans: plan)
+        self.coach = coach
+        #if DEBUG
+        if ChangeTodayDemo.stage != nil {
+            ChangeTodayDemo.start(coach, date: data.date)
+            changing = now
+            return
+        }
+        #endif
+        if !coach.isRunning { coach.open(.day(week: PlanFormat.weekStart(of: data.date), date: data.date)) }
+        changing = now
+    }
+
+    private func changeOffer(_ data: PhoneToday) -> ChangeOffer {
+        let running = coach.flatMap { coach -> Date? in
+            guard coach.isRunning, case .day(_, let date) = coach.task, date == data.date else { return nil }
+            return coach.startedAt ?? .now
+        }
+        return ChangeOffer(available: data.sick == nil && plan.day(data.date) != nil, running: running,
+                           lighter: data.readiness.suggestsSwap,
+                           trail: UserDefaults.standard.string(forKey: ChangeTodayFormat.trailKey(data.date)))
+    }
+
     private func openRecap() {
         let offer = RecapFormat.offer(today: FoodFormat.iso(.now))
         recap = RecapLaunch(weekStart: offer?.weekStart)
@@ -129,6 +179,9 @@ struct TodayView: View {
         if feltRun == nil, let date = model.data?.date, let pending = run.pendingFeel(today: date) {
             feltRun = pending
         }
+        #if DEBUG
+        if ChangeTodayDemo.stage != nil, changing == nil, coach == nil { openChange() }
+        #endif
     }
 
     /// What's done today, by the same rules the session card uses for its parts.
@@ -270,7 +323,9 @@ struct TodayView: View {
                 onGuide: { route = .paceGuide },
                 onRehab: { showRehab = true },
                 onMove: { moving = $0 },
-                onStudio: { showStudio = true }
+                onStudio: { showStudio = true },
+                change: changeOffer(data),
+                onChange: openChange
             )
             .reveal(2)
             ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone,
@@ -448,6 +503,18 @@ struct TodayView: View {
 
 // MARK: - Session
 
+/// What the card offers for Change today.
+struct ChangeOffer {
+    /// There's a plan day to rewrite and no sick mode.
+    let available: Bool
+    /// When the coach job for today started, while it runs.
+    let running: Date?
+    /// Readiness says to swap: the pill reads "Go lighter".
+    let lighter: Bool
+    /// "Bodyweight upper, 25 min": what today was before the coach changed it.
+    let trail: String?
+}
+
 private struct SessionCard: View {
     let data: PhoneToday
     /// The same day from the plan week; nil until it loads (or offline with no cache).
@@ -468,6 +535,8 @@ private struct SessionCard: View {
     let onMove: (PlanDay) -> Void
     /// Workout Studio: any workout, planned today or not.
     let onStudio: () -> Void
+    let change: ChangeOffer
+    let onChange: () -> Void
 
     var body: some View {
         if let session = Self.demo(data.today), session.sport != .rest {
@@ -520,6 +589,9 @@ private struct SessionCard: View {
             if canMove, let planDay {
                 Button { onMove(planDay) } label: { Label("Move day", systemImage: "arrow.left.arrow.right") }
             }
+            if change.available, !session.isDone {
+                Button(action: onChange) { Label("Change today", systemImage: "sparkles") }
+            }
             if !workoutOpen {
                 Button(action: onStudio) { Label("Other workout", systemImage: "dumbbell") }
             }
@@ -549,7 +621,6 @@ private struct SessionCard: View {
     private func planned(_ session: PhoneToday.Session) -> some View {
         let sport = session.sport ?? .other
         let fallback = PlanFormat.fallback(session.fallback)
-        let canMove = PlanFormat.canMove(planDay, today: today)
         let rehab = self.rehab
         // A rehab-only day is the routine itself; any other day with rehab has two parts.
         let rehabOnly = sport == .mobility && rehab != nil
@@ -580,16 +651,38 @@ private struct SessionCard: View {
             }
 
             if showFallback, let fallback, !session.isDone {
-                Text("\(Text("Short on time: ").foregroundStyle(Color.ink).bold())\(fallback)")
-                    .font(AppFont.body(13))
-                    .foregroundStyle(Color.inkSoft)
-                    .lineSpacing(2)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.warning.opacity(0.35)))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(Text("Short on time: ").foregroundStyle(Color.ink).bold())\(fallback)")
+                        .font(AppFont.body(13))
+                        .foregroundStyle(Color.inkSoft)
+                        .lineSpacing(2)
+                    Button {
+                        withAnimation(.snappy) { showFallback = false }
+                    } label: {
+                        Label("Full session", systemImage: "arrow.uturn.backward")
+                            .font(AppFont.body(13, weight: .semibold))
+                            .foregroundStyle(Color.inkSoft)
+                            .frame(minHeight: 32)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.warning.opacity(0.35)))
+                .padding(.top, 12)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            if let trail = change.trail {
+                Label("Changed with coach · was \(trail)", systemImage: "sparkles")
+                    .font(AppFont.body(12))
+                    .foregroundStyle(Color.faint)
+                    .lineLimit(1)
                     .padding(.top, 12)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
             if let rehab {
@@ -618,16 +711,18 @@ private struct SessionCard: View {
                 }
             } else if !workoutOpen {
                 primary(next, session: session)
-                let planActions = session.isDone ? 0 : (fallback == nil ? 0 : 1) + (canMove ? 1 : 0)
-                // Three pills don't fit one row at 44pt; with both plan actions, Other workout gets its own.
-                VStack(spacing: 8) {
+                if let startedAt = change.running {
+                    changeProgress(startedAt).padding(.top, 10)
+                } else {
+                    // Short on time and Move day live in the Change today sheet.
                     HStack(spacing: 8) {
-                        if planActions > 0 { secondary(fallback: session.isDone ? nil : fallback, canMove: !session.isDone && canMove) }
-                        if planActions < 2 { otherWorkout }
+                        if change.available, !session.isDone {
+                            changeButton(change.lighter ? "Go lighter" : "Change today", alert: change.lighter)
+                        }
+                        otherWorkout
                     }
-                    if planActions == 2 { otherWorkout }
+                    .padding(.top, 10)
                 }
-                .padding(.top, 10)
             }
         }
         .animation(.spring(duration: 0.45, bounce: 0.2), value: next)
@@ -796,31 +891,55 @@ private struct SessionCard: View {
                 Text("Tomorrow: \(title)").font(AppFont.body(13)).foregroundStyle(Color.muted).padding(.top, 4)
             }
             if !workoutOpen {
-                otherWorkout.padding(.top, 14)
+                if let startedAt = change.running {
+                    changeProgress(startedAt).padding(.top, 14)
+                } else {
+                    HStack(spacing: 8) {
+                        if change.available { changeButton("Add a session", alert: false) }
+                        otherWorkout
+                    }
+                    .padding(.top, 14)
+                }
             }
         }
         .card()
     }
 
-    @ViewBuilder
-    private func secondary(fallback: String?, canMove: Bool) -> some View {
-        if fallback != nil {
-            Button {
-                withAnimation(.snappy) { showFallback.toggle() }
-            } label: {
-                Label(showFallback ? "Full session" : "Short on time",
-                      systemImage: showFallback ? "arrow.uturn.backward" : "timer")
+    /// Change today: Short on time, Move day and the coach's rewrite behind one pill. A red
+    /// readiness day reads "Go lighter" with a red dot.
+    private func changeButton(_ title: String, alert: Bool) -> some View {
+        Button(action: onChange) {
+            HStack(spacing: 8) {
+                if alert { Circle().fill(Color(hex: 0xFF5C6C)).frame(width: 7, height: 7) }
+                Image(systemName: "sparkles")
+                Text(title)
             }
-            .buttonStyle(OutlineButtonStyle(height: 44))
         }
-        if canMove, let planDay {
-            Button {
-                onMove(planDay)
-            } label: {
-                Label("Move day", systemImage: "arrow.left.arrow.right")
+        .buttonStyle(OutlineButtonStyle(height: 44))
+        .accessibilityHint("Ask the coach to change today's session")
+    }
+
+    /// While the coach rewrites today, in place of the pills; Start session stays above it.
+    private func changeProgress(_ startedAt: Date) -> some View {
+        Button(action: onChange) {
+            HStack(spacing: 10) {
+                ProgressView().tint(.volt).controlSize(.small)
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    Text("Coach is changing today · \(PlanCoachFormat.clock(Int(context.date.timeIntervalSince(startedAt))))")
+                        .font(AppFont.body(13))
+                        .foregroundStyle(Color(hex: 0xC9CFDA))
+                        .monospacedDigit()
+                }
+                Spacer(minLength: 8)
+                Text("Open").font(AppFont.body(13, weight: .semibold)).foregroundStyle(Color.inkSoft)
             }
-            .buttonStyle(OutlineButtonStyle(height: 44))
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 
     /// Workout Studio, which used to be the dumbbell in the header.

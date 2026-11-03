@@ -254,6 +254,15 @@ final class PlanCoachModel {
     /// `-planCoachDemo compose|refine|day|working|done|changed|offline|away|failed` (simulator screenshots, no server writes).
     static var demoStage: String? { UserDefaults.standard.string(forKey: "planCoachDemo") }
 
+    /// Change today's screenshots (`-changeTodayDemo`): the job state without the server.
+    func demoDay(_ task: PlanCoachTask, phase: Phase, helper: Helper, sent: String = "") {
+        self.task = task
+        self.phase = phase
+        self.helper = helper
+        self.sent = sent
+        startedAt = .now.addingTimeInterval(-48)
+    }
+
     func startDemo(week: WeeklyPlan?, unplanned: String?) {
         guard let stage = Self.demoStage else { return }
         let next = unplanned ?? "2026-11-09"

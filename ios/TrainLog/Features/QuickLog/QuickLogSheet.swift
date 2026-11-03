@@ -32,7 +32,7 @@ struct QuickLogSheet: View {
             .opacity(model.canSave || model.saving ? 1 : 0.4)
             .padding(.bottom, 8)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 8)
         .task { await model.load() }
     }

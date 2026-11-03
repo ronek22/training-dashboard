@@ -153,7 +153,7 @@ struct PlanDayView: View {
             }
             .buttonStyle(OutlineButtonStyle(height: 44))
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.bottom, 24)
     }
 
@@ -300,7 +300,7 @@ struct RehabChecklistView: View {
                         .buttonStyle(VoltButtonStyle())
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Space.gutter)
                 .padding(.bottom, 24)
             }
         }

@@ -53,7 +53,7 @@ struct FeedbackSheet: View {
                         .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(Color.cardBorder))
                         .padding(.top, 20)
                 }
-                .padding(16)
+                .padding(Space.gutter)
             }
             .scrollDismissesKeyboard(.interactively)
             Button("Save") {
@@ -61,7 +61,7 @@ struct FeedbackSheet: View {
                 dismiss()
             }
             .buttonStyle(VoltButtonStyle())
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.bottom, 8)
         }
         .padding(.top, 8)

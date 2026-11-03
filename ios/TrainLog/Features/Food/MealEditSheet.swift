@@ -37,7 +37,7 @@ struct MealEditSheet: View {
         VStack(spacing: 0) {
             topBar
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Space.m) {
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(spacing: 6) {
                             MealChip(meal: $meal)
@@ -67,7 +67,7 @@ struct MealEditSheet: View {
                             .frame(maxWidth: .infinity, minHeight: 44)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Space.gutter)
                 .padding(.bottom, 16)
             }
             .scrollIndicators(.hidden)
@@ -81,7 +81,7 @@ struct MealEditSheet: View {
             .buttonStyle(VoltButtonStyle())
             .disabled(input.items.isEmpty)
             .opacity(input.items.isEmpty ? 0.4 : 1)
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.top, 12)
             .padding(.bottom, 8)
             .overlay(alignment: .top) { Rectangle().fill(Color.cardBorder).frame(height: 1) }

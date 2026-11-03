@@ -354,7 +354,7 @@ enum FigureShapes {
                 ExerciseDemoView(demo: demo)
             }
         }
-        .padding(16)
+        .padding(Space.gutter)
     }
     .background(Color.bg)
 }

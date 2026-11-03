@@ -43,7 +43,7 @@ struct NewWorkoutSheet: View {
                         Text(error).font(AppFont.body(12)).foregroundStyle(Color.danger).padding(.top, 10)
                     }
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, Space.gutter)
                 .padding(.bottom, 20)
             }
             .scrollIndicators(.hidden)

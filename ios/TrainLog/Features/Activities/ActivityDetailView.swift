@@ -228,7 +228,7 @@ struct ActivityDetailView: View {
                 .accessibilityLabel("Share")
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 6)
         .padding(.bottom, 8)
         .background {

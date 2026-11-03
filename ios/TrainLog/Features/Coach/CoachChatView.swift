@@ -48,7 +48,7 @@ struct CoachChatView: View {
             .frame(maxWidth: .infinity)
             Color.clear.frame(width: 52, height: 44)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 8)
         .padding(.bottom, 6)
         .overlay(alignment: .bottom) { Rectangle().fill(Color.cardBorder).frame(height: 1) }
@@ -75,7 +75,7 @@ struct CoachChatView: View {
                     }
                     Color.clear.frame(height: 1).id("end")
                 }
-                .padding(16)
+                .padding(Space.gutter)
             }
             .scrollDismissesKeyboard(.interactively)
             .scrollIndicators(.hidden)
@@ -168,7 +168,7 @@ struct CoachChatView: View {
             .disabled(!model.canSend)
             .accessibilityLabel("Send")
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 8)
         .padding(.bottom, 8)
         .background(Color.bg)

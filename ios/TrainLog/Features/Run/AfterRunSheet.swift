@@ -25,7 +25,7 @@ struct AfterRunSheet: View {
                 ask.transition(.opacity)
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color.card)

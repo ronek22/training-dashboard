@@ -74,7 +74,7 @@ struct ExerciseEditorSheet: View {
                 note.padding(.top, 12)
                 footer.padding(.top, 14)
             }
-            .padding(.horizontal, 18)
+            .padding(.horizontal, Space.gutter)
             .padding(.bottom, 28)
         }
         .scrollIndicators(.hidden)

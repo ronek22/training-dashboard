@@ -504,7 +504,7 @@ struct WorkoutBuilderView: View {
                 .opacity(model.canSave ? 1 : 0.4)
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 22)
         .padding(.bottom, 8)
         .background(
@@ -535,7 +535,7 @@ struct WorkoutBuilderView: View {
         .background(Color.raised, in: RoundedRectangle(cornerRadius: Radius.panel))
         .overlay(RoundedRectangle(cornerRadius: Radius.panel).strokeBorder(Color.outline))
         .shadow(color: .black.opacity(0.45), radius: 14, y: 6)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.bottom, 92)
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }

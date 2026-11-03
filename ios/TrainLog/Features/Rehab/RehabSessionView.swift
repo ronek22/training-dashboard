@@ -131,7 +131,7 @@ struct RehabSessionView: View {
                 .animation(Motion.state, value: model.progress)
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 8)
     }
 
@@ -152,7 +152,7 @@ struct RehabSessionView: View {
     private var intro: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Space.m) {
                     VStack(alignment: .leading, spacing: 6) {
                         Kicker(introKicker, color: .mobility)
                         Text("TODAY'S REHAB").font(AppFont.title(40)).foregroundStyle(Color.ink)
@@ -197,7 +197,7 @@ struct RehabSessionView: View {
                     .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
                 }
-                .padding(16)
+                .padding(Space.gutter)
             }
             .scrollIndicators(.hidden)
             Button {
@@ -206,7 +206,7 @@ struct RehabSessionView: View {
                 Label(model.session?.watchWorkout != nil && !startsOnWatch ? "Watch is running · start" : "Start", systemImage: "play.fill")
             }
             .buttonStyle(VoltButtonStyle())
-            .padding(16)
+            .padding(Space.gutter)
         }
     }
 
@@ -311,7 +311,7 @@ struct RehabSessionView: View {
             }
             .padding(.top, 20)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.bottom, 16)
     }
 
@@ -346,12 +346,12 @@ struct RehabSessionView: View {
                         painCard(issue)
                     }
                 }
-                .padding(16)
+                .padding(Space.gutter)
             }
             .scrollIndicators(.hidden)
             Button("Close") { dismiss() }
                 .buttonStyle(VoltButtonStyle())
-                .padding(16)
+                .padding(Space.gutter)
         }
     }
 
@@ -413,7 +413,7 @@ struct RehabSessionView: View {
             Button("Close") { dismiss() }.buttonStyle(VoltButtonStyle())
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
+        .padding(Space.gutter)
     }
 }
 

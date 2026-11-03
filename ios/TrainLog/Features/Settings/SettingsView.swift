@@ -27,7 +27,7 @@ struct SettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Space.m) {
                 Text("SETTINGS")
                     .font(AppFont.title(40))
                     .foregroundStyle(Color.ink)
@@ -39,7 +39,7 @@ struct SettingsView: View {
                 health
                 reminders
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.bottom, 32)
         }
         .scrollIndicators(.hidden)

@@ -164,7 +164,7 @@ struct SessionSummaryView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Space.m) {
                 header.reveal(0)
                 HeroCard(summary: summary).reveal(1)
                 let wins = summary.exercises.filter { SummaryLogic.best($0) != nil }
@@ -179,7 +179,7 @@ struct SessionSummaryView: View {
                         .padding(.horizontal, 4)
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.top, 12)
             .padding(.bottom, 24)
         }
@@ -187,7 +187,7 @@ struct SessionSummaryView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             Button("Done", action: onDone)
                 .buttonStyle(VoltButtonStyle())
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Space.gutter)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
                 .background(Color.bg)

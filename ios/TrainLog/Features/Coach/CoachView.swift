@@ -48,7 +48,7 @@ struct CoachView: View {
             .listSectionSpacing(12)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
-            .contentMargins(.horizontal, 16, for: .scrollContent)
+            .contentMargins(.horizontal, Space.gutter, for: .scrollContent)
             .contentMargins(.top, 0, for: .scrollContent)
             .background(Color.bg)
             .toolbar(.hidden, for: .navigationBar)

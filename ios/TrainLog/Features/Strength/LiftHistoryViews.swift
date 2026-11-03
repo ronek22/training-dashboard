@@ -123,7 +123,7 @@ struct LiftHistorySheet: View {
                         .padding(.top, 10)
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Space.gutter)
             .padding(.top, 22)
             .padding(.bottom, 24)
         }

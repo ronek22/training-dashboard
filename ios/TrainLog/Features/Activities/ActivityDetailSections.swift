@@ -28,7 +28,7 @@ struct PainBlock: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(16)
+        .padding(Space.gutter)
         .background(ActivityDetailFormat.bad.opacity(0.08), in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(ActivityDetailFormat.bad.opacity(0.3)))
         .padding(.top, 16)
@@ -697,7 +697,7 @@ struct NoStreamsPlaceholder: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(16)
+            .padding(Space.gutter)
             .overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Color.outline, style: StrokeStyle(lineWidth: 1, dash: [4, 4])))
             .padding(.top, 24)
         }

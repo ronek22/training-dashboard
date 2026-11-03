@@ -256,7 +256,7 @@ struct TodayView: View {
                     LoadingCards(blocks: [170, 90, 120])
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.bottom, 24)
             .animation(Motion.enter, value: model.activeWorkout == nil)
             }

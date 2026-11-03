@@ -114,14 +114,14 @@ struct SessionBriefView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Space.m) {
                 header
                 if let note = BriefLogic.dayNote(template) {
                     dayNote(note)
                 }
                 liftList
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
@@ -135,7 +135,7 @@ struct SessionBriefView: View {
             }
             .buttonStyle(VoltButtonStyle())
             .disabled(starting)
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.top, 10)
             .padding(.bottom, 8)
             .background(Color.bg)

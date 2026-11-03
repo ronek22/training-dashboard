@@ -12,7 +12,7 @@ struct WeekRecapView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Space.m) {
                 header
                 if model.offline, let syncedAt = model.syncedAt {
                     OfflineNote(syncedAt: syncedAt)
@@ -31,7 +31,7 @@ struct WeekRecapView: View {
                     LoadingCards(blocks: [200, 120, 120])
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.bottom, 32)
         }
         .scrollIndicators(.hidden)

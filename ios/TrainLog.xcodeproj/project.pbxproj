@@ -154,6 +154,7 @@
 		AE619AC886E9DA86C3B36FEA /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86C506CB1DD44FBB105F6B2 /* TodayView.swift */; };
 		AEC7E99787987D9C15614CD9 /* LiveHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 069C959EF75C5018A65096AB /* LiveHealth.swift */; };
 		AF3E9D5603A84014D82ADBC2 /* RunDynamicsSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BC49F0A3914875F8535B75B /* RunDynamicsSheets.swift */; };
+		AF6178C8A6CC675A1005EB3D /* LiveContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12026DE3D69625A791E545E8 /* LiveContractTests.swift */; };
 		B169C6435D5E2D952D4559D5 /* RunModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA3046ED6EC82DB3A6C83EFB /* RunModel.swift */; };
 		B31BEAA85B64F9F6B50F2224 /* StrengthRun.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272AC87C90C5064393265AEE /* StrengthRun.swift */; };
 		B333C40F1D12ADE2ED7B1072 /* PlanModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BA5F6A6FF01D809A7EE68A8 /* PlanModel.swift */; };
@@ -194,6 +195,7 @@
 		D2BCDEA473DECA30A0B3A7C6 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1168AEF0F0CD20E70D9C73 /* SettingsView.swift */; };
 		D353F0644878171E37EEA60A /* SessionBrief.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74F3E0A3EE7DA4495775234E /* SessionBrief.swift */; };
 		D5FC7557DBEE38694F3F8F87 /* OFL-BarlowCondensed.txt in Resources */ = {isa = PBXBuildFile; fileRef = DD956F8E90E9E45F03FDD774 /* OFL-BarlowCondensed.txt */; };
+		D6FE5DDAB2D43F94B23E1F0E /* StaleWorkoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68082DD5F90107368F4095F1 /* StaleWorkoutTests.swift */; };
 		D7581F3400B22699B200BB0F /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5643ADC614AE0FDB4DF3384 /* WidgetSnapshot.swift */; };
 		D8360ED1A17963812F88DDDC /* PaceTape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CBADB7BC2BD2EA3ADE31836 /* PaceTape.swift */; };
 		D8A6B99501A49EDD398A4882 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64B465973FE67D56B0AD2792 /* SettingsTests.swift */; };
@@ -308,6 +310,7 @@
 		0C1A4F9CB05B3B33BBE8671E /* RideExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideExport.swift; sourceTree = "<group>"; };
 		0D730F1AD91E31C1D31D9DC4 /* StartModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartModel.swift; sourceTree = "<group>"; };
 		0DBE4D0A1E43563696167392 /* CoachChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachChatTests.swift; sourceTree = "<group>"; };
+		12026DE3D69625A791E545E8 /* LiveContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveContractTests.swift; sourceTree = "<group>"; };
 		182BB3EC5490E8009AB7F938 /* Reminders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reminders.swift; sourceTree = "<group>"; };
 		18D43DC63E781C9944ACB57E /* TrainLogWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = TrainLogWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		18D9A2A9BA943EE32E9E4043 /* SyncLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncLog.swift; sourceTree = "<group>"; };
@@ -357,6 +360,7 @@
 		64B465973FE67D56B0AD2792 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
 		6551CA838C9FBBA066FCB841 /* WorkoutBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutBuilder.swift; sourceTree = "<group>"; };
 		6792E0752DD914E2FA97D1CE /* ExerciseDemos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDemos.swift; sourceTree = "<group>"; };
+		68082DD5F90107368F4095F1 /* StaleWorkoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaleWorkoutTests.swift; sourceTree = "<group>"; };
 		6842213B0681BAAE2240CA69 /* WatchGlanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchGlanceTests.swift; sourceTree = "<group>"; };
 		6906A4138E3E54E166438B26 /* Food.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Food.swift; sourceTree = "<group>"; };
 		69BD8152680FD3835333C42E /* WeekRecapModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekRecapModel.swift; sourceTree = "<group>"; };
@@ -604,6 +608,7 @@
 				A6B43510338F9C1349D8BCDC /* FoodQuickTests.swift */,
 				FE84774476766302F5B40E04 /* FoodTests.swift */,
 				E9EE1F2002B2014D0D57BFF3 /* HealthSyncTests.swift */,
+				12026DE3D69625A791E545E8 /* LiveContractTests.swift */,
 				4B75853302B3165E45B90291 /* OfflineTests.swift */,
 				F00CD08DE079F66CE7586C33 /* PlanTests.swift */,
 				947E7B26646DCF89AEB291E0 /* QuickLogTests.swift */,
@@ -615,6 +620,7 @@
 				B9F14E54A82521E74F4B142C /* SessionBriefTests.swift */,
 				E2580B295CBA4FEC68387397 /* SessionSummaryTests.swift */,
 				64B465973FE67D56B0AD2792 /* SettingsTests.swift */,
+				68082DD5F90107368F4095F1 /* StaleWorkoutTests.swift */,
 				7F568AA23E8D16D945B54892 /* StrengthSessionTests.swift */,
 				55BFD2B02E2228C82B2A6728 /* SyncLogTests.swift */,
 				AECFF6858D98599C67E6EEC8 /* TodayTests.swift */,
@@ -1375,6 +1381,7 @@
 				64BBBE58E4478F23CB89AC3C /* FoodQuickTests.swift in Sources */,
 				8CB0D0D61C2DA03E0CB2727E /* FoodTests.swift in Sources */,
 				7B1301E67C9CB9ABE0665EEA /* HealthSyncTests.swift in Sources */,
+				AF6178C8A6CC675A1005EB3D /* LiveContractTests.swift in Sources */,
 				94D4295DC2C299DF58981A1A /* OfflineTests.swift in Sources */,
 				FABE216D20356B5BC5BD7721 /* Outbox.swift in Sources */,
 				1ECE60EB652766334247F6E5 /* PlanTests.swift in Sources */,
@@ -1387,6 +1394,7 @@
 				94FDEAD1EC5788DD4FB2C1DE /* SessionBriefTests.swift in Sources */,
 				607A420ADDF95CC4B09B9239 /* SessionSummaryTests.swift in Sources */,
 				D8A6B99501A49EDD398A4882 /* SettingsTests.swift in Sources */,
+				D6FE5DDAB2D43F94B23E1F0E /* StaleWorkoutTests.swift in Sources */,
 				596B94B045D4FE90A37695C7 /* StrengthSessionTests.swift in Sources */,
 				8458B87161B17E0D89F26696 /* SyncLogTests.swift in Sources */,
 				5949E6B54064073FF68DD91C /* TodayTests.swift in Sources */,

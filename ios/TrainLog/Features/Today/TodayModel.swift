@@ -14,6 +14,8 @@ final class TodayModel {
     private(set) var activeWorkout: StrengthSession?
     /// Rehab exercises still due today (ticked and off-day ones left out); nil without a routine.
     private(set) var rehabPending: Int?
+    /// Today in Apple Health for the evening day strip; loaded only in the evening.
+    private(set) var outside: OutsideDay?
 
     private let client: () -> APIClient
 
@@ -41,7 +43,7 @@ final class TodayModel {
         async let rehab = Self.rehabPending(api)
         do {
             let loaded = try await api.get(Self.path, as: PhoneToday.self)
-            data = Self.winsDemo(loaded.value)
+            data = Self.eveningDemo(Self.winsDemo(loaded.value))
             syncedAt = loaded.syncedAt
             offline = loaded.fromCache
             error = nil
@@ -58,6 +60,18 @@ final class TodayModel {
         rehabPending = Self.winsDemoRehab ?? pending
         // A workout finished on the web leaves no open session to end the Live Activity.
         if activeWorkout == nil { StrengthActivity.end() }
+    }
+
+    /// Steps, daylight and workouts for the evening strip, straight from Health.
+    func loadOutside() async {
+        if let demo = Self.eveningDemoOutside() {
+            outside = demo
+            return
+        }
+        await OutsideHealth.requestDaylightIfNeeded()
+        let day = await OutsideHealth.today()
+        guard !Task.isCancelled else { return }
+        outside = day
     }
 
     /// Keeps the Resume banner in step with a workout started, advanced or finished on the web.
@@ -86,9 +100,60 @@ final class TodayModel {
         guard let stage = winsDemoStage else { return nil }
         return stage == "midday" ? 5 : 0
     }
+
+    /// `-eveningDemo done|open|late|rest|sick` previews evening mode at 21:10 (22:55 for late), with
+    /// made-up Health data, food and sleep need; nothing is written.
+    private static var eveningDemoStage: String? { UserDefaults.standard.string(forKey: "eveningDemo") }
+
+    static var demoNow: Date? {
+        guard let stage = eveningDemoStage else { return nil }
+        let late = stage == "late"
+        return Calendar.current.date(bySettingHour: late ? 22 : 21, minute: late ? 55 : 10, second: 0, of: .now)
+    }
+
+    static func eveningDemo(_ today: PhoneToday) -> PhoneToday {
+        guard let stage = eveningDemoStage else { return today }
+        var today = today
+        today.checkinDone = true
+        today.protein = PhoneToday.Protein(eatenG: 97, targetG: today.protein?.targetG ?? 130, hit: false)
+        today.food = PhoneToday.Food(eatenKcal: stage == "sick" ? 2410 : 1211, targetKcal: 2451)
+        if stage == "sick" { today.protein = PhoneToday.Protein(eatenG: 131, targetG: 130, hit: true) }
+        today.sleepNeed = today.sleepNeed ?? PhoneToday.SleepNeed(needH: 7.14, debtH: 6)
+        switch stage {
+        case "done": today.today?.status = "matched"
+        case "rest": today.today = nil
+        case "sick": today.sick = PhoneToday.Sick(label: "Mild", day: 2)
+        default: today.today?.status = "not_completed_yet"
+        }
+        return today
+    }
+
+    static func eveningDemoOutside() -> OutsideDay? {
+        guard let stage = eveningDemoStage else { return nil }
+        let day = Calendar.current.startOfDay(for: .now)
+        let at = { (hour: Double) in day.addingTimeInterval(hour * 3600) }
+        let sick = stage == "sick"
+        let steps: [Int: Double] = [7: 300, 8: 1800, 9: 400, 10: 200, 11: 350, 12: 2100, 13: 500, 14: 300, 15: 900,
+                                    16: 400, 17: 600, 18: 250, 19: 700, 20: 340, 21: 100]
+        var outside = OutsideDay()
+        outside.steps = steps.keys.sorted().map { LiveDay.Hour(start: at(Double($0)), value: sick ? steps[$0]! / 4 : steps[$0]!) }
+        if !sick {
+            outside.daylight = [(8 + 5 / 60.0, 15.0), (12 + 20 / 60.0, 25), (15.5, 6)].map {
+                OutsideDay.Span(start: at($0.0), end: at($0.0 + $0.1 / 60))
+            }
+            outside.daylightMinutes = 46
+        }
+        if stage == "done" {
+            outside.workouts = [OutsideDay.Workout(start: at(18 + 10 / 60.0), end: at(18 + 37 / 60.0), sport: .strength)]
+        }
+        return outside
+    }
     #else
     static func winsDemo(_ today: PhoneToday) -> PhoneToday { today }
     static var winsDemoRehab: Int? { nil }
+    static var demoNow: Date? { nil }
+    static func eveningDemo(_ today: PhoneToday) -> PhoneToday { today }
+    static func eveningDemoOutside() -> OutsideDay? { nil }
     #endif
 
     private static func rehabPending(_ client: APIClient) async -> Int? {

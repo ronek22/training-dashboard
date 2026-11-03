@@ -27,8 +27,9 @@ struct LiveDay: Sendable, Equatable {
 }
 
 enum LiveHealth {
-    /// Read but never observed in the background: heart rate arrives every few minutes.
-    static let types: [HKSampleType] = [HKQuantityType(.heartRate)]
+    /// Read but never observed in the background: heart rate arrives every few minutes; time in
+    /// daylight feeds the evening day strip.
+    static let types: [HKSampleType] = [HKQuantityType(.heartRate), OutsideHealth.daylightType]
 
     private static let store = HKHealthStore()
 

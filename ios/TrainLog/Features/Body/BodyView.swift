@@ -340,7 +340,7 @@ private struct Sparkline: View {
     }
 }
 
-private struct WakeTimeSheet: View {
+struct WakeTimeSheet: View {
     @Binding var minutes: Int
     @Environment(\.dismiss) private var dismiss
 

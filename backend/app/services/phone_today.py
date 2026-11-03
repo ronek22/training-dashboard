@@ -12,6 +12,7 @@ from .phone_body import _vital
 from .plans import serialize_weekly_plan
 from .protein import latest_body_weight, protein_target_g
 from .rehab_session import rehab_glance
+from .sleep_debt import BASELINE_NIGHTS, WINDOW_NIGHTS, build_sleep_debt
 from .strength_workouts import list_templates
 from .widget_brief import _day_status, _plan_row_for, build_widget_brief
 
@@ -98,6 +99,25 @@ def _protein(conn: sqlite3.Connection, today: date) -> Optional[dict]:
     return {"eaten_g": round(eaten, 1), "target_g": target, "hit": bool(tick and tick["protein_hit"]) or eaten >= target}
 
 
+def _food(conn: sqlite3.Connection, today: date) -> Optional[dict]:
+    """Today's kcal against the Food screen's target, for the evening food row; None without a target."""
+    from .food_log import build_food_day
+
+    day = build_food_day(conn, today.isoformat(), today)
+    target = (day.get("target") or {}).get("kcal")
+    if not target:
+        return None
+    return {"eaten_kcal": round(day["totals"]["kcal"]), "target_kcal": round(target)}
+
+
+def _sleep_need(conn: sqlite3.Connection, today: date) -> Optional[dict]:
+    """The personal sleep need and current debt, for tonight's lights-out time; None with too few nights."""
+    debt = build_sleep_debt(get_sleep_history(conn, BASELINE_NIGHTS + WINDOW_NIGHTS), today, series_days=1)
+    if not debt.get("available"):
+        return None
+    return {"need_h": debt["baseline_hours"], "debt_h": debt["debt_hours"]}
+
+
 def build_phone_today(conn: sqlite3.Connection, today: Optional[date] = None) -> dict:
     today = today or datetime.now().date()
     brief = build_widget_brief(conn, today)
@@ -164,6 +184,8 @@ def build_phone_today(conn: sqlite3.Connection, today: Optional[date] = None) ->
         "tomorrow": brief["tomorrow"],
         "rehab": rehab_glance(conn, today),
         "protein": _protein(conn, today),
+        "food": _food(conn, today),
+        "sleep_need": _sleep_need(conn, today),
         "week": week,
         "week_minutes": {
             "done": round(sum(minutes_by_sport.values())),

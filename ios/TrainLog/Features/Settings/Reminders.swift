@@ -54,6 +54,8 @@ enum Reminders {
         var rehabLeft: Int?
         var eatenKcal: Double?
         var targetKcal: Double?
+        /// The morning brief went out today, so the fixed-time check-in nudge stays quiet.
+        var briefSent: Bool?
 
         /// Progress only moves forward within a day, so a server answer that hasn't seen this
         /// phone's queued writes yet doesn't bring a dropped nudge back.
@@ -104,7 +106,7 @@ enum Reminders {
                 calendar.date(byAdding: .minute, value: minutes, to: day).flatMap { $0 > now ? $0 : nil }
             }
 
-            if let minutes = enabled.morning, let time = at(minutes), !(isToday && known?.checkinDone == true) {
+            if let minutes = enabled.morning, let time = at(minutes), !(isToday && (known?.checkinDone == true || known?.briefSent == true)) {
                 nudges.append(Nudge(kind: .checkin, day: iso, date: time, title: "Morning check-in",
                                     body: "How did you sleep? Ten seconds to log readiness."))
             }

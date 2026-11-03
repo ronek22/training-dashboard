@@ -82,6 +82,8 @@ final class HealthSync {
                     await HealthSync.shared.sync()
                     // Sleep or HRV can change today's readiness on the widgets.
                     await WidgetSync.refreshInBackground()
+                    // Last night's sleep landing is the moment you're up: send the morning brief.
+                    if type == HKCategoryType(.sleepAnalysis) { await MorningBrief.sendAfterSleep() }
                     done()
                 }
             }

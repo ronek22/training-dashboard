@@ -72,6 +72,7 @@ struct RootView: View {
     @State private var strength: StrengthLaunch?
     @State private var todayRefresh = 0
     @State private var recapRequest = 0
+    @State private var checkinRequest = 0
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -79,7 +80,7 @@ struct RootView: View {
         TabView(selection: $tab) {
             Tab("Today", systemImage: "clock", value: .today) {
                 TodayView(onStartStrength: { strength = $0 }, refresh: todayRefresh,
-                          recapRequest: recapRequest)
+                          recapRequest: recapRequest, checkinRequest: checkinRequest)
             }
             Tab("Plan", systemImage: "calendar", value: .plan) {
                 PlanView(onStartStrength: { strength = $0 })
@@ -121,6 +122,9 @@ struct RootView: View {
             switch url.host() {
             case "food": tab = .food
             case "plan": tab = .plan
+            case "checkin":
+                tab = .today
+                checkinRequest += 1
             case "recap":
                 tab = .today
                 recapRequest += 1

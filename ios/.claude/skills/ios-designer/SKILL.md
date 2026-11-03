@@ -11,9 +11,17 @@ approves the artboard.**
 
 ## 1. Artboard
 
-- File: `../docs/design/artboards/iOS<Feature>.dc.html`. Copy the `<head>` and CSS of a recent
-  iOS artboard (e.g. `iOSRun.dc.html`); phone frames are 393 × 852 with captions and a notes block.
+- File: `../docs/design/artboards/iOS<Feature>.dc.html`. Take the fonts and shared CSS from
+  `iOSMorningBrief.dc.html`, and the phone chrome (status bar, floating iOS 26 tab bar, home
+  indicator) from [chrome.html](chrome.html). Older artboards still draw the pre-iOS 26 full-width
+  tab bar: never copy their chrome. Phone frames are 393 × 852 with captions and a notes block.
+- Existing cards drawn as context (readiness, session, week…) must match the app as it is now:
+  screenshot the simulator first and redraw from that, not from an older artboard. If the app's
+  chrome has changed since `chrome.html` was measured, re-measure it and update that file.
 - Use live numbers from the backend (`curl localhost:8000/...`); say which parts are made up.
+- Design for every state the data can be in, not just today's: a card that depends on an injury,
+  a plan, sick mode or a target must show what it does when that thing is absent (put the
+  variants side by side on one board).
 - Serve the repo (`python3 -m http.server <free port> --bind 127.0.0.1` from the repo root) and
   open it in the browser pane. Check every frame for overlaps, wrapping and clipping, and fix
   them before showing the user.

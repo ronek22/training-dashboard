@@ -52,6 +52,25 @@ class PhoneTodayTests(unittest.TestCase):
         )
         self.conn.commit()
 
+    def test_protein_is_missing_without_a_weigh_in(self):
+        self.assertIsNone(build_phone_today(self.conn, TODAY)["protein"])
+
+    def test_protein_counts_todays_logged_food_against_the_target(self):
+        self.conn.execute("INSERT INTO metrics (date, metric, value) VALUES ('2030-01-09', 'weight', 81.0)")
+        entry = self.conn.execute("INSERT INTO food_entries (date, meal, source) VALUES ('2030-01-10', 'lunch', 'text')").lastrowid
+        yesterday = self.conn.execute("INSERT INTO food_entries (date, meal, source) VALUES ('2030-01-09', 'lunch', 'text')").lastrowid
+        self.conn.executemany(
+            "INSERT INTO food_items (entry_id, name, kcal, protein_g) VALUES (?, ?, 0, ?)",
+            [(entry, "Chicken", 62.5), (entry, "Skyr", 35.0), (yesterday, "Eggs", 80.0)],
+        )
+        self.conn.commit()
+        protein = build_phone_today(self.conn, TODAY)["protein"]
+        self.assertEqual(protein, {"eaten_g": 97.5, "target_g": 130, "hit": False})
+
+        self.conn.execute("INSERT INTO food_items (entry_id, name, kcal, protein_g) VALUES (?, 'Tuna', 0, 33)", (entry,))
+        self.conn.commit()
+        self.assertTrue(build_phone_today(self.conn, TODAY)["protein"]["hit"])
+
     def test_strength_day_lists_the_template_exercises_and_last_done(self):
         today = build_phone_today(self.conn, TODAY)["today"]
         self.assertEqual(today["sport"], "strength")

@@ -74,7 +74,7 @@ struct QuickLogSheet: View {
                     Button(area) { model.toggleSore(area) }
                         .buttonStyle(.plain)
                         .font(AppFont.body(13, weight: .semibold))
-                        .foregroundStyle(on ? Color(hex: 0xFF9AC6) : Color.ink)
+                        .foregroundStyle(on ? Color.strengthSoft : Color.ink)
                         .padding(.horizontal, 16)
                         .frame(height: 44)
                         .background(on ? Color.strength.opacity(0.1) : .clear, in: Capsule())
@@ -107,14 +107,14 @@ struct QuickLogSheet: View {
                     let on = value.wrappedValue == n
                     Button {
                         value.wrappedValue = n
-                        UISelectionFeedbackGenerator().selectionChanged()
+                        Haptics.selection()
                     } label: {
                         Text("\(n)")
                             .font(AppFont.number(20))
                             .foregroundStyle(on ? Color.volt : Color.inkSoft)
                             .frame(maxWidth: .infinity, minHeight: 44)
-                            .background(on ? Color.volt.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 12))
-                            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(on ? Color.volt : Color.outline, lineWidth: 1))
+                            .background(on ? Color.volt.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: Radius.control))
+                            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(on ? Color.volt : Color.outline, lineWidth: 1))
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -139,7 +139,7 @@ struct QuickLogSheet: View {
                     let on = model.busyTags.contains(tag.key)
                     Button {
                         model.toggleBusy(tag.key)
-                        UISelectionFeedbackGenerator().selectionChanged()
+                        Haptics.selection()
                     } label: {
                         Label(tag.label, systemImage: tag.symbol)
                             .labelStyle(BusyChipLabelStyle())
@@ -179,8 +179,8 @@ struct QuickLogSheet: View {
             }
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row))
+            .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(Color.cardBorder))
             .contentShape(Rectangle())
             .onTapGesture { focused = true }
             if let warning = model.typoWarning {

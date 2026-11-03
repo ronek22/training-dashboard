@@ -38,8 +38,8 @@ struct MoveDaySheet: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.cardBorder))
             .padding(.top, 14)
 
             Kicker("Move to").padding(.top, 20)
@@ -104,7 +104,7 @@ struct MoveDaySheet: View {
         return Button {
             target = slot.date
             error = nil
-            UISelectionFeedbackGenerator().selectionChanged()
+            Haptics.selection()
         } label: {
             VStack(spacing: 6) {
                 Text(letter)
@@ -116,9 +116,9 @@ struct MoveDaySheet: View {
                 }
                 .foregroundStyle(selected ? Color.volt : isSource ? Color.muted : Color.ink)
                 .frame(maxWidth: .infinity, minHeight: 52)
-                .background(isSource ? Color.raised : .clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(isSource ? Color.raised : .clear, in: RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                         .strokeBorder(selected ? Color.volt : isSource ? .clear : enabled ? Color.outline : Color.cardBorder,
                                       lineWidth: selected ? 2 : 1)
                 )

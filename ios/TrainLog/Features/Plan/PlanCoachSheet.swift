@@ -12,7 +12,7 @@ struct PlanCoachSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Capsule().fill(Color(hex: 0x3A404C)).frame(width: 36, height: 5).frame(maxWidth: .infinity).padding(.bottom, 12)
+            SheetGrabber()
             if let task = coach.task {
                 switch coach.phase {
                 case .compose: compose(task)
@@ -26,7 +26,7 @@ struct PlanCoachSheet: View {
         .padding(.top, 8)
         .padding(.bottom, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .animation(.snappy(duration: 0.25), value: coach.phase)
+        .animation(Motion.quick, value: coach.phase)
     }
 
     // MARK: - Compose
@@ -75,8 +75,8 @@ struct PlanCoachSheet: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .frame(minHeight: 92, alignment: .topLeading)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.cardBorder))
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous).strokeBorder(Color.cardBorder))
     }
 
     private func chips(_ task: PlanCoachTask) -> some View {
@@ -92,7 +92,7 @@ struct PlanCoachSheet: View {
                 } label: {
                     HStack(spacing: 6) {
                         Text("+").foregroundStyle(Color.muted).fontWeight(.semibold)
-                        Text(option).foregroundStyle(Color(hex: 0xC9CFDA))
+                        Text(option).foregroundStyle(Color.inkBody)
                     }
                     .font(AppFont.body(13, weight: .medium))
                     .padding(.horizontal, 12)
@@ -160,8 +160,8 @@ struct PlanCoachSheet: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+                .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.cardBorder))
                 .padding(.top, 16)
         }
         Spacer(minLength: 12)
@@ -196,7 +196,7 @@ struct PlanCoachSheet: View {
             .padding(.top, 16)
             if let summary = result.summary {
                 ScrollView {
-                    Text(summary).font(AppFont.body(14)).foregroundStyle(Color(hex: 0xC9CFDA)).lineSpacing(3)
+                    Text(summary).font(AppFont.body(14)).foregroundStyle(Color.inkBody).lineSpacing(3)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .scrollBounceBehavior(.basedOnSize)
@@ -244,7 +244,7 @@ struct PlanCoachSheet: View {
     @ViewBuilder
     private func failed(_ task: PlanCoachTask, message: String) -> some View {
         head(kicker: kicker(task), title: composeTitle(task))
-        stateCard(color: Color(hex: 0xFF5C6C), title: "The coach couldn't finish", text: message).padding(.top, 18)
+        stateCard(color: Color.alert, title: "The coach couldn't finish", text: message).padding(.top, 18)
         Spacer(minLength: 12)
         Button("Try again") { coach.retry() }
             .buttonStyle(OutlineButtonStyle(height: 48))
@@ -286,8 +286,8 @@ struct PlanCoachSheet: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Color.cardBorder))
     }
 
     // MARK: - Copy

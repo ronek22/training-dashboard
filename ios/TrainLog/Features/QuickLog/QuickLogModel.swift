@@ -170,18 +170,18 @@ final class QuickLogModel {
                 writes[index...].forEach(queue.append)
                 savedOffline = true
                 noteCheckin()
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                Haptics.success()
                 return true
             } catch {
                 self.error = error.localizedDescription
-                UINotificationFeedbackGenerator().notificationOccurred(.error)
+                Haptics.error()
                 return false
             }
         }
         savedOffline = false
         error = nil
         noteCheckin()
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
         return true
     }
 

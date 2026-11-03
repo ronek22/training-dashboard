@@ -30,7 +30,7 @@ extension ActivityDetailFormat {
 
     static func tint(_ sport: Sport) -> Color {
         switch sport {
-        case .ride: Color(hex: 0x6FAEFF)
+        case .ride: Color.rideText
         case .run: Metric.pace.color
         case .strength: Metric.volume.color
         case .mobility, .walk: .mobility

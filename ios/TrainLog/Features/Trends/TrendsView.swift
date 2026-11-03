@@ -14,9 +14,7 @@ struct TrendsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 header
                 if model.offline, let syncedAt = model.syncedAt {
-                    Text("Offline · showing \(syncedAt.formatted(date: .abbreviated, time: .shortened)) data")
-                        .font(AppFont.body(12, weight: .medium))
-                        .foregroundStyle(Color.muted)
+                    OfflineNote(syncedAt: syncedAt)
                 }
                 if !model.loaded {
                     ProgressView().tint(.muted).frame(maxWidth: .infinity, minHeight: 300)
@@ -145,8 +143,8 @@ private struct YearCard: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
     }
 
     private func content(_ row: SportYearRow, chevron: Bool) -> some View {
@@ -156,7 +154,7 @@ private struct YearCard: View {
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(color)
                 .frame(width: 40, height: 40)
-                .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
                 .frame(maxHeight: .infinity, alignment: .top)
             VStack(alignment: .leading, spacing: 5) {
                 Kicker(row.title, color: color)
@@ -335,8 +333,8 @@ private struct CompactHealthCard: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
     }
 
     private var chart: some View {

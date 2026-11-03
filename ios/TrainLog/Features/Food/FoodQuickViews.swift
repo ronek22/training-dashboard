@@ -67,8 +67,8 @@ private struct AgainCard: View {
             .padding(.top, 11)
             .padding(.bottom, 12)
             .frame(width: 148, alignment: .leading)
-            .background(Color.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(done == nil ? Color.cardBorder : Color.volt))
+            .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(done == nil ? Color.cardBorder : Color.volt))
             .overlay(alignment: .bottomTrailing) { badge.padding(10) }
             .contentShape(Rectangle())
         }
@@ -153,8 +153,8 @@ struct GapPicksCard: View {
         .padding(.top, 16)
         .padding(.bottom, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
     }
 
     private func row(_ pick: FoodQuick.Pick, on: Bool) -> some View {
@@ -251,8 +251,8 @@ struct FuelCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.ride.opacity(0.35)))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.ride.opacity(0.35)))
         .accessibilityElement(children: .combine)
     }
 }

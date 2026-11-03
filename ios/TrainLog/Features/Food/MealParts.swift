@@ -103,7 +103,7 @@ struct PortionPicker: View {
                     let selected = factor == step.value
                     Button {
                         factor = step.value
-                        UISelectionFeedbackGenerator().selectionChanged()
+                        Haptics.selection()
                     } label: {
                         Text(step.label)
                             .font(AppFont.body(13, weight: .semibold))
@@ -117,16 +117,16 @@ struct PortionPicker: View {
                 }
             }
             .padding(3)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.cardBorder))
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.control))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Color.cardBorder))
             Text("Scales every item. Tap an item below to fine-tune it.")
                 .font(AppFont.body(12)).foregroundStyle(Color.muted)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
     }
 }
 
@@ -152,16 +152,16 @@ struct Breakdown: View {
                         Rectangle().fill(Color.cardBorder).frame(height: 1)
                     }
                     ItemRow(item: $item, original: originals[item.id], expanded: open) {
-                        withAnimation(.snappy(duration: 0.2)) { expanded = open ? nil : item.id }
+                        withAnimation(Motion.quick) { expanded = open ? nil : item.id }
                     } onRemove: {
-                        withAnimation(.snappy(duration: 0.2)) { items.removeAll { $0.id == item.id } }
+                        withAnimation(Motion.quick) { items.removeAll { $0.id == item.id } }
                     }
                 }
                 if !items.isEmpty { Rectangle().fill(Color.cardBorder).frame(height: 1) }
                 Button {
                     let item = FoodItem(name: "", kcal: 0, proteinG: 0)
                     items.append(item)
-                    withAnimation(.snappy(duration: 0.2)) { expanded = item.id }
+                    withAnimation(Motion.quick) { expanded = item.id }
                 } label: {
                     Label("Add item", systemImage: "plus")
                         .font(AppFont.body(13, weight: .semibold))
@@ -173,8 +173,8 @@ struct Breakdown: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 4)
-            .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+            .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
         }
     }
 
@@ -206,9 +206,9 @@ struct ItemRow: View {
                     .transition(.opacity)
             }
         }
-        .background(expanded ? Color.inset : .clear, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(expanded ? Color.inset : .clear, in: RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
         .overlay {
-            if expanded { RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.outline) }
+            if expanded { RoundedRectangle(cornerRadius: Radius.tile, style: .continuous).strokeBorder(Color.outline) }
         }
         .padding(.horizontal, expanded ? -6 : 0)
         .padding(.vertical, expanded ? 8 : 0)
@@ -223,7 +223,7 @@ struct ItemRow: View {
                         .foregroundStyle(item.name.isEmpty ? Color.muted : Color.ink)
                         .lineLimit(1)
                     if item.confidence == "low" {
-                        Text("GUESS").font(AppFont.body(10, weight: .bold)).foregroundStyle(Color(hex: 0xFFB547))
+                        Text("GUESS").font(AppFont.body(10, weight: .bold)).foregroundStyle(Color.amber)
                     }
                 }
                 Text(amountLabel).font(AppFont.body(12)).foregroundStyle(Color.muted)
@@ -302,14 +302,14 @@ struct ItemRow: View {
 
     private func stepButton(_ symbol: String, delta: Double) -> some View {
         Button {
-            withAnimation(.snappy(duration: 0.15)) {
+            withAnimation(Motion.tap) {
                 if usesPortions {
                     item = FoodFormat.rescale(item, portions: max(0.5, (item.portions ?? 1) + delta))
                 } else {
                     item = FoodFormat.rescale(item, grams: max(5, (item.grams ?? 0) + delta))
                 }
             }
-            UISelectionFeedbackGenerator().selectionChanged()
+            Haptics.selection()
         } label: {
             Image(systemName: symbol)
                 .font(.system(size: 15, weight: .bold))
@@ -343,14 +343,14 @@ struct ItemRow: View {
 
     private func chip(_ label: String, selected: Bool = false, action: @escaping () -> Void) -> some View {
         Button {
-            withAnimation(.snappy(duration: 0.15)) { action() }
+            withAnimation(Motion.tap) { action() }
         } label: {
             Text(label)
                 .font(AppFont.body(12, weight: .semibold))
-                .foregroundStyle(selected ? Color.ink : Color(hex: 0xC9CFDA))
+                .foregroundStyle(selected ? Color.ink : Color.inkBody)
                 .padding(.horizontal, 10)
                 .frame(height: 30)
-                .background(selected ? Color.raised : Color(hex: 0x1B1F29), in: RoundedRectangle(cornerRadius: 8))
+                .background(selected ? Color.raised : Color.chip, in: RoundedRectangle(cornerRadius: Radius.chip))
         }
         .buttonStyle(.plain)
         .frame(minHeight: 44)
@@ -396,7 +396,7 @@ struct MealChip: View {
 }
 
 struct ChipStyle: ViewModifier {
-    var color: Color = Color(hex: 0xC9CFDA)
+    var color: Color = Color.inkBody
 
     func body(content: Content) -> some View {
         content
@@ -404,7 +404,7 @@ struct ChipStyle: ViewModifier {
             .foregroundStyle(color)
             .padding(.horizontal, 9)
             .frame(height: 26)
-            .background(Color(hex: 0x1B1F29), in: RoundedRectangle(cornerRadius: 7))
+            .background(Color.chip, in: RoundedRectangle(cornerRadius: 7))
     }
 }
 
@@ -418,7 +418,7 @@ struct ImpactLine: View {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: impact.closes ? "checkmark.circle.fill" : "exclamationmark.circle")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(impact.closes ? Color.volt : Color(hex: 0xFFB547))
+                    .foregroundStyle(impact.closes ? Color.volt : Color.amber)
                 (Text(impact.headline).foregroundStyle(Color.ink).fontWeight(.semibold)
                     + Text(impact.detail.isEmpty ? "" : " " + impact.detail).foregroundStyle(Color.muted))
                     .font(AppFont.body(13))
@@ -426,8 +426,8 @@ struct ImpactLine: View {
                 Spacer(minLength: 0)
             }
             .padding(12)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row))
+            .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(Color.cardBorder))
         }
     }
 }

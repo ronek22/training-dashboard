@@ -57,8 +57,8 @@ struct PlanWeekStrip: View {
         }
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
-        .background(background(day.style), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(border(day.style), lineWidth: 1))
+        .background(background(day.style), in: RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).strokeBorder(border(day.style), lineWidth: 1))
         .opacity(day.style == .past ? 0.38 : 1)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
@@ -74,10 +74,10 @@ struct PlanWeekStrip: View {
         } else if pending {
             PulsingBar(height: [0.5, 0.75, 0.6, 0.9, 0.55, 0.8, 0.45][index % 7] * Self.slotHeight, delay: Double(index) * 0.12)
                 .frame(width: 18, height: Self.slotHeight, alignment: .bottom)
-                .background(Color(hex: 0x1A1E27), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .background(Color.chip, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
         } else {
             ZStack(alignment: .bottom) {
-                RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color(hex: 0x1A1E27))
+                RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color.chip)
                 if let color = day.color {
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
                         .fill(color)
@@ -131,7 +131,7 @@ private struct PulsingBar: View {
             .frame(height: up && !reduceMotion ? height : height * 0.55)
             .onAppear {
                 guard !reduceMotion else { return }
-                withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true).delay(delay)) { up = true }
+                withAnimation(Motion.breathe.delay(delay)) { up = true }
             }
     }
 }

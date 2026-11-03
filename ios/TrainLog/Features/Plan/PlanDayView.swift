@@ -78,8 +78,8 @@ struct PlanDayView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.mobility.opacity(0.35)))
+                .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.mobility.opacity(0.35)))
             }
 
             if let steps = day.steps, !steps.isEmpty {
@@ -103,8 +103,8 @@ struct PlanDayView: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+                    .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.cardBorder))
             }
 
             if sport == .strength && day.date == model.today && status == .planned {
@@ -181,8 +181,8 @@ struct PlanDayView: View {
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+                .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.cardBorder))
             }
         }
         // Text and number tiles grow to the tallest one.
@@ -216,7 +216,7 @@ struct PlanDayView: View {
                             .foregroundStyle(Color.inkSoft)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .background(Color(hex: 0x1A1E27), in: Capsule())
+                            .background(Color.chip, in: Capsule())
                     }
                 }
                 .padding(.top, 12)
@@ -243,8 +243,8 @@ struct PlanDayView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
         .contentShape(Rectangle())
     }
 
@@ -289,8 +289,8 @@ struct RehabChecklistView: View {
                         }
                     }
                     .padding(.horizontal, 16)
-                    .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+                    .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
                     if date == model.today, routine.ticked.count < routine.exercises.count {
                         Button {
                             guided = true

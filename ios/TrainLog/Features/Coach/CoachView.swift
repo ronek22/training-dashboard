@@ -19,7 +19,7 @@ struct CoachView: View {
     var body: some View {
         NavigationStack {
             List {
-                header.plainRow()
+                header.plainRow(top: 0)
                 Section {
                     startRow(symbol: CoachFormat.symbol(.day), color: CoachFormat.color(.day),
                              title: "Ask about today", detail: "Plan, check-in and recovery") {
@@ -89,12 +89,7 @@ struct CoachView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Kicker("Your coach")
-            Text("COACH").font(AppFont.title(44)).foregroundStyle(Color.ink)
-        }
-        .padding(.horizontal, 4)
-        .padding(.top, 6)
+        ScreenHeader(kicker: "Your coach", title: "Coach")
     }
 
     private func startRow(symbol: String, color: Color, title: String, detail: String, action: @escaping () -> Void) -> some View {
@@ -160,11 +155,3 @@ struct CoachView: View {
     }
 }
 
-private extension View {
-    /// A list row with no card behind it (header).
-    func plainRow() -> some View {
-        listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-    }
-}

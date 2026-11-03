@@ -16,7 +16,7 @@ struct FoodView: View {
                     Task { await model.shiftDay(weeks * 7) }
                 }
                 if model.offline, let syncedAt = model.syncedAt {
-                    offlineNote(syncedAt)
+                    OfflineNote(syncedAt: syncedAt)
                 }
                 if model.isToday, let fuel = model.quick?.fuel {
                     FuelCard(fuel: fuel)
@@ -46,7 +46,7 @@ struct FoodView: View {
                         onDelete: { entry in Task { await model.delete(entry) } }
                     )
                 } else if let error = model.error {
-                    errorCard(error)
+                    SyncStateCard(kicker: "Not synced yet", message: error)
                 } else {
                     ProgressView().tint(.muted).frame(maxWidth: .infinity, minHeight: 300)
                 }
@@ -73,7 +73,7 @@ struct FoodView: View {
                 scanButton
             }
         }
-        .animation(.snappy, value: model.relogged)
+        .animation(Motion.state, value: model.relogged)
         .smoothRefreshable {
             await APIClient.current.reconnect()
             await model.load()
@@ -113,12 +113,7 @@ struct FoodView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 4) {
-                Kicker(FoodFormat.dayKicker(model.selectedDate, kind: model.day?.target?.dayKind))
-                Text("FOOD").font(AppFont.title(44)).foregroundStyle(Color.ink)
-            }
-            Spacer()
+        ScreenHeader(kicker: FoodFormat.dayKicker(model.selectedDate, kind: model.day?.target?.dayKind), title: "Food") {
             if !model.isToday {
                 Button { Task { await model.select(FoodFormat.iso(.now)) } } label: {
                     Text("Today").padding(.horizontal, 14)
@@ -129,8 +124,6 @@ struct FoodView: View {
                 .padding(.bottom, 2)
             }
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 6)
     }
 
     /// The one volt action: camera straight away. The round button describes a meal in words
@@ -144,7 +137,7 @@ struct FoodView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Color.ink)
                     .frame(width: 52, height: 52)
-                    .background(Color(hex: 0x1B1F29), in: Circle())
+                    .background(Color.chip, in: Circle())
                     .overlay(Circle().strokeBorder(Color.outline))
             }
             .accessibilityLabel("Describe a meal")
@@ -166,25 +159,6 @@ struct FoodView: View {
         .padding(.bottom, 16)
     }
 
-    private func offlineNote(_ syncedAt: Date) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: "wifi.slash").font(.system(size: 11, weight: .semibold))
-            Text("Offline · last synced \(syncedAt.formatted(date: .omitted, time: .shortened))")
-                .font(AppFont.body(12, weight: .medium))
-        }
-        .foregroundStyle(Color.muted)
-        .padding(.horizontal, 4)
-    }
-
-    private func errorCard(_ message: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Kicker("Not synced yet")
-            Text(message).font(AppFont.body(14)).foregroundStyle(Color.inkSoft)
-            Text("Start the backend on the Mac (docker compose up) and pull to refresh.")
-                .font(AppFont.body(13)).foregroundStyle(Color.muted)
-        }
-        .card()
-    }
 }
 
 /// A meal being estimated: a camera photo, or nil to describe it in words.
@@ -237,13 +211,13 @@ private struct WeekStrip: View {
                     .foregroundStyle(isSelected ? Color.bg : Color.muted)
                 Text(parsed?.formatted(.dateTime.day()) ?? "")
                     .font(AppFont.number(20))
-                    .foregroundStyle(isSelected ? Color.bg : Color(hex: 0xC9CFDA))
+                    .foregroundStyle(isSelected ? Color.bg : Color.inkBody)
                 Circle()
                     .fill(dotColor(date, selected: isSelected))
                     .frame(width: 6, height: 6)
             }
             .frame(maxWidth: .infinity, minHeight: 62)
-            .background(isSelected ? Color.ink : .clear, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(isSelected ? Color.ink : .clear, in: RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -256,7 +230,7 @@ private struct WeekStrip: View {
     private func dotColor(_ date: String, selected: Bool) -> Color {
         switch marks[date] {
         case .hit: .volt
-        case .short: Color(hex: 0xFFB547)
+        case .short: Color.amber
         case nil: selected ? Color.bg.opacity(0.0) : .clear
         }
     }
@@ -552,8 +526,8 @@ private struct TimelineRow<Content: View>: View {
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
                     .frame(minWidth: 40)
-                    .background(Color.inset, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.cardBorder))
+                    .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.chip))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.chip).strokeBorder(Color.cardBorder))
                 Rectangle().fill(last ? .clear : Color.cardBorder).frame(width: 1).frame(maxHeight: .infinity)
             }
             .frame(width: 44)
@@ -605,8 +579,8 @@ private struct MealCard: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
         .contentShape(Rectangle())
     }
 }
@@ -630,7 +604,7 @@ struct MacroSplit: View {
             .frame(height: 4)
             HStack(spacing: 12) {
                 gram(totals.proteinG, "protein", Color.mobility)
-                gram(totals.carbsG, "carbs", Color(hex: 0x6FA9FF))
+                gram(totals.carbsG, "carbs", Color.rideText)
                 gram(totals.fatG, "fat", Color(hex: 0xFFA65C))
             }
         }
@@ -660,7 +634,7 @@ private struct PlannedDinnerCard: View {
                             .font(AppFont.body(10, weight: .bold)).tracking(0.8)
                             .foregroundStyle(Color.muted)
                             .padding(.horizontal, 6).frame(height: 18)
-                            .background(Color(hex: 0x1B1F29), in: RoundedRectangle(cornerRadius: 6))
+                            .background(Color.chip, in: RoundedRectangle(cornerRadius: 6))
                     }
                     Text("\(dish) · from dinner plan").font(AppFont.body(12)).foregroundStyle(Color.muted).lineLimit(1)
                 }
@@ -679,7 +653,7 @@ private struct PlannedDinnerCard: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
             .strokeBorder(Color(hex: 0x2F3542), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
     }
 }

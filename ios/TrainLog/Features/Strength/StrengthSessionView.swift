@@ -167,7 +167,7 @@ struct StrengthSessionView: View {
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(Color.inkSoft)
                 .frame(width: 36, height: 36)
-                .background(Color(hex: 0x191D27), in: Circle())
+                .background(Color.chip, in: Circle())
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
         }
@@ -198,8 +198,8 @@ struct StrengthSessionView: View {
                     if let ramp = model.ramp {
                         WarmupRampCard(
                             working: ramp.working, reps: ramp.reps, steps: ramp.steps, ticked: model.rampTicks, kit: model.kit,
-                            onTick: { index in withAnimation(.snappy) { model.toggleRampStep(index) } },
-                            onSkip: { withAnimation(.snappy) { model.finishRamp() } }
+                            onTick: { index in withAnimation(Motion.state) { model.toggleRampStep(index) } },
+                            onSkip: { withAnimation(Motion.state) { model.finishRamp() } }
                         )
                         .transition(.opacity)
                     } else {
@@ -215,9 +215,9 @@ struct StrengthSessionView: View {
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
-            .animation(.spring(duration: 0.5, bounce: 0.18), value: model.current?.set.id)
-            .animation(.spring(duration: 0.5, bounce: 0.18), value: model.allSetsDone)
-            .animation(.snappy, value: model.ramp == nil)
+            .animation(Motion.enter, value: model.current?.set.id)
+            .animation(Motion.enter, value: model.allSetsDone)
+            .animation(Motion.state, value: model.ramp == nil)
         }
         .scrollIndicators(.hidden)
         .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
@@ -243,7 +243,7 @@ struct StrengthSessionView: View {
     private func exerciseHeader(_ exercise: StrengthSession.Exercise, in session: StrengthSession) -> some View {
         let index = (session.exercises.firstIndex { $0.id == exercise.id } ?? 0) + 1
         return VStack(alignment: .leading, spacing: 6) {
-            Kicker("Exercise \(index) of \(session.exercises.count)", color: Color(hex: 0xFF7AB5))
+            Kicker("Exercise \(index) of \(session.exercises.count)", color: Color.strengthText)
             Text(exercise.exerciseName.uppercased())
                 .font(AppFont.title(42))
                 .foregroundStyle(Color.ink)
@@ -300,7 +300,7 @@ struct StrengthSessionView: View {
             .padding(.top, 10)
             if !showsWeight && model.holdStartedAt == nil {
                 Button {
-                    withAnimation(.snappy) { model.addWeight() }
+                    withAnimation(Motion.state) { model.addWeight() }
                 } label: {
                     Label("Add weight", systemImage: "plus")
                         .font(AppFont.body(13, weight: .semibold))
@@ -328,9 +328,9 @@ struct StrengthSessionView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
-        .animation(.snappy, value: showsWeight)
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
+        .animation(Motion.state, value: showsWeight)
     }
 
     private var divider: some View {
@@ -413,7 +413,7 @@ struct StrengthSessionView: View {
 
     private func roundButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button {
-            withAnimation(.snappy) { action() }
+            withAnimation(Motion.state) { action() }
         } label: {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .semibold))
@@ -438,7 +438,7 @@ struct StrengthSessionView: View {
         } label: {
             Text(effort.label)
                 .font(AppFont.body(13, weight: .semibold))
-                .foregroundStyle(selected ? Color(hex: 0xFF9AC6) : Color.ink)
+                .foregroundStyle(selected ? Color.strengthSoft : Color.ink)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .background(selected ? Color.strength.opacity(0.14) : .clear, in: Capsule())
                 .overlay(Capsule().strokeBorder(selected ? Color.strength : Color.outline, lineWidth: 1))
@@ -464,8 +464,8 @@ struct StrengthSessionView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
     }
 
     private func allDone(_ session: StrengthSession) -> some View {
@@ -510,7 +510,7 @@ struct StrengthSessionView: View {
                 .disabled(model.finishing)
             } else if model.ramp != nil {
                 Button {
-                    withAnimation(.snappy) { model.finishRamp() }
+                    withAnimation(Motion.state) { model.finishRamp() }
                 } label: {
                     Text("Warm-up done · go to set 1")
                 }
@@ -541,7 +541,7 @@ struct StrengthSessionView: View {
         .padding(.horizontal, 16)
         .padding(.top, 10)
         .padding(.bottom, 8)
-        .animation(.spring(duration: 0.45, bounce: 0.2), value: model.restEndsAt)
+        .animation(Motion.enter, value: model.restEndsAt)
         .background(Color.bg.opacity(0.94).ignoresSafeArea(edges: .bottom))
         // Floats above the bar so popping in doesn't push the layout around.
         .overlay(alignment: .top) {
@@ -552,13 +552,13 @@ struct StrengthSessionView: View {
             }
         }
         .onChange(of: model.lastLogged) { _, logged in
-            withAnimation(.spring(duration: 0.4, bounce: 0.35)) { toast = logged }
+            withAnimation(Motion.pop) { toast = logged }
         }
         .task(id: toast?.setId) {
             guard toast != nil else { return }
             try? await Task.sleep(for: .seconds(1.6))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 0.3)) { toast = nil }
+            withAnimation(Motion.fade) { toast = nil }
         }
     }
 
@@ -599,7 +599,7 @@ private struct SetRow: View {
             Text(load).font(AppFont.number(18))
             Text(trailing)
                 .font(AppFont.body(12))
-                .foregroundStyle(isCurrent ? Color(hex: 0xFF7AB5) : Color.muted)
+                .foregroundStyle(isCurrent ? Color.strengthText : Color.muted)
                 .frame(width: 40, alignment: .trailing)
         }
         .foregroundStyle(set.isCompleted || isCurrent ? Color.ink : Color.faint)
@@ -634,7 +634,7 @@ private struct SetRow: View {
             Circle().strokeBorder(Color.strength, lineWidth: 2).frame(width: 22, height: 22)
         } else {
             Circle()
-                .strokeBorder(Color(hex: 0x4A5263), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                .strokeBorder(Color.rule, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
                 .frame(width: 22, height: 22)
         }
     }
@@ -712,8 +712,8 @@ private struct RestStrip: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous).strokeBorder(Color.cardBorder))
     }
 
     private func fraction(_ left: Int) -> Double {
@@ -744,7 +744,7 @@ private struct HoldDial: View {
                         .foregroundStyle(Color.ink)
                         .monospacedDigit()
                         .contentTransition(.numericText(countsDown: true))
-                    Kicker(startedAt == nil ? "Hold" : "Holding", color: startedAt == nil ? .muted : Color(hex: 0xFF7AB5))
+                    Kicker(startedAt == nil ? "Hold" : "Holding", color: startedAt == nil ? .muted : Color.strengthText)
                         .font(AppFont.body(10, weight: .semibold))
                 }
             }
@@ -799,7 +799,7 @@ private struct ExerciseListSheet: View {
                 } else {
                     Text("\(working.filter(\.isCompleted).count)/\(working.count)")
                         .font(AppFont.number(16))
-                        .foregroundStyle(isCurrent ? Color(hex: 0xFF7AB5) : Color.muted)
+                        .foregroundStyle(isCurrent ? Color.strengthText : Color.muted)
                 }
             }
             .frame(minHeight: 52)

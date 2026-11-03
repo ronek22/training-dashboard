@@ -93,10 +93,10 @@ private struct BlockTape: View {
                 let length: CGFloat = minute % 5 == 0 ? 8 : 4
                 tick.move(to: CGPoint(x: x(Double(minute)), y: 56 - length))
                 tick.addLine(to: CGPoint(x: x(Double(minute)), y: 56))
-                context.stroke(tick, with: .color(Color(hex: 0x343A47)), lineWidth: 1)
+                context.stroke(tick, with: .color(Color.tick), lineWidth: 1)
             }
             func label(_ text: String, _ minute: Double, _ anchor: UnitPoint) {
-                context.draw(Text(text).font(AppFont.body(10, weight: .semibold)).foregroundStyle(Color(hex: 0x5B6375)),
+                context.draw(Text(text).font(AppFont.body(10, weight: .semibold)).foregroundStyle(Color.subtle),
                              at: CGPoint(x: x(minute), y: 62), anchor: anchor)
             }
             label("0", 0, .topLeading)
@@ -139,7 +139,7 @@ private struct StageBar: View {
                         }
                     Text(RunFormat.stageShort(name))
                         .font(AppFont.number(13))
-                        .foregroundStyle(number == stage ? Color.ink : (number < stage ? Color.muted : Color(hex: 0x5B6375)))
+                        .foregroundStyle(number == stage ? Color.ink : (number < stage ? Color.muted : Color.subtle))
                 }
                 .frame(maxWidth: .infinity)
             }

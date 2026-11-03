@@ -1,5 +1,30 @@
 import SwiftUI
 
+/// Animation roles. Pick by what is happening, not by feel, so the same kind of change moves the
+/// same way on every screen.
+enum Motion {
+    /// Press feedback on buttons and cards.
+    static let tap = Animation.snappy(duration: 0.15)
+    /// Small toggles: a chip selected, a row checked, a label swapped.
+    static let quick = Animation.snappy(duration: 0.2)
+    /// Default state change: sections expanding, content swapping.
+    static let state = Animation.snappy
+    /// Size and position changes with no bounce: progress bars, lists reflowing.
+    static let layout = Animation.smooth
+    /// Something new arriving: a card, a banner, the next set.
+    static let enter = Animation.spring(duration: 0.45, bounce: 0.2)
+    /// A win: a check landing, a toast, a goal ring closing.
+    static let pop = Animation.spring(duration: 0.45, bounce: 0.35)
+    /// Bars and rings growing from empty.
+    static let grow = Animation.spring(duration: 0.9, bounce: 0.15)
+    /// Fading something out or in without movement.
+    static let fade = Animation.easeOut(duration: 0.25)
+    /// Slow looping pulse for "working on it" states.
+    static let breathe = Animation.easeInOut(duration: 0.9).repeatForever(autoreverses: true)
+    /// Cards lifting in, `reveal`.
+    static let reveal = Animation.spring(duration: 0.55, bounce: 0.2)
+}
+
 // Shared motion: cards that lift in, numbers that count up, bars that grow. Each runs once,
 // the first time its view scrolls into sight, so background refreshes don't replay it and
 // cards below the fold wait until you get to them. Use them inside a ScrollView.
@@ -53,7 +78,7 @@ private struct Reveal: ViewModifier {
             .opacity(shown ? 1 : 0)
             .offset(y: shown || reduceMotion ? 0 : 18)
             .onFirstVisible(threshold: 0.1) {
-                withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.55, bounce: 0.2).delay(delay)) {
+                withAnimation(reduceMotion ? Motion.fade : Motion.reveal.delay(delay)) {
                     shown = true
                 }
             }
@@ -71,7 +96,7 @@ private struct Grow<Body: View>: View {
     var body: some View {
         content(grown).onFirstVisible {
             if reduceMotion { grown = true; return }
-            withAnimation(.spring(duration: 0.9, bounce: 0.15).delay(delay)) { grown = true }
+            withAnimation(Motion.grow.delay(delay)) { grown = true }
         }
     }
 }
@@ -96,7 +121,7 @@ struct PressableStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .opacity(configuration.isPressed ? 0.9 : 1)
-            .animation(.snappy(duration: 0.18), value: configuration.isPressed)
+            .animation(Motion.tap, value: configuration.isPressed)
     }
 }
 

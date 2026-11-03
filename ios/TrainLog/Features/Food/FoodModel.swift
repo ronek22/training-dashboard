@@ -184,7 +184,7 @@ final class FoodModel {
             self.error = error.localizedDescription
         }
         publishWidget()
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
     }
 
     /// Today's kcal to go for the Food widgets and the dinner nudge, counting meals still queued here.
@@ -217,7 +217,7 @@ final class FoodModel {
             self.error = error.localizedDescription
         }
         publishWidget()
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
     }
 
     func delete(_ entry: FoodEntry) async {

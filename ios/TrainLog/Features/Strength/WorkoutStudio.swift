@@ -164,7 +164,7 @@ struct WorkoutStudioSheet: View {
         .task(id: saved) {
             guard saved != nil else { return }
             try? await Task.sleep(for: .seconds(6))
-            withAnimation(.snappy) { saved = nil }
+            withAnimation(Motion.state) { saved = nil }
         }
         .sheet(isPresented: $creating, onDismiss: {
             if let draft = pendingDraft {
@@ -236,8 +236,8 @@ struct WorkoutStudioSheet: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(Color.raised, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.outline))
+        .background(Color.raised, in: RoundedRectangle(cornerRadius: Radius.panel))
+        .overlay(RoundedRectangle(cornerRadius: Radius.panel).strokeBorder(Color.outline))
         .shadow(color: .black.opacity(0.45), radius: 14, y: 6)
         .padding(.horizontal, 16)
         .padding(.bottom, 12)
@@ -259,7 +259,7 @@ struct WorkoutStudioSheet: View {
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(Color.volt)
                         .frame(width: 36, height: 36)
-                        .background(Color(hex: 0x191D27), in: Circle())
+                        .background(Color.chip, in: Circle())
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
@@ -280,7 +280,7 @@ struct WorkoutStudioSheet: View {
     private func row(_ template: StrengthTemplateSummary) -> some View {
         let isPlanned = template.id == planned
         return Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            Haptics.tick()
             onPick(template.id)
             dismiss()
         } label: {
@@ -330,7 +330,7 @@ struct WorkoutStudioSheet: View {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
-            .tint(Color(hex: 0xFF5A6E))
+            .tint(Color.alert)
             Button {
                 edit(template)
             } label: {
@@ -351,8 +351,8 @@ struct WorkoutStudioSheet: View {
         return MuscleSilhouette(side: summary.bestSide, primary: summary.primary, secondary: summary.secondary, background: .inset)
             .frame(width: 26, height: 54)
             .frame(width: 44, height: 64)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.cardBorder))
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.control))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Color.cardBorder))
     }
 
     private var emptyCard: some View {

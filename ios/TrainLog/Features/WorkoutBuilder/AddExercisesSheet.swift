@@ -110,8 +110,8 @@ struct AddExercisesSheet: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 42)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.cardBorder))
+        .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.control))
+        .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Color.cardBorder))
     }
 
     private var searchPrompt: String { "Search your exercises" }
@@ -122,7 +122,7 @@ struct AddExercisesSheet: View {
                 ForEach(filters, id: \.self) { item in
                     let selected = item == filter
                     Button {
-                        withAnimation(.snappy(duration: 0.2)) { filter = item }
+                        withAnimation(Motion.quick) { filter = item }
                     } label: {
                         Text(item.label)
                             .font(AppFont.body(13, weight: .semibold))
@@ -162,7 +162,7 @@ struct AddExercisesSheet: View {
                         .foregroundStyle(Color.ink)
                         .multilineTextAlignment(.leading)
                     HStack(spacing: 4) {
-                        MuscleTags(muscles: Array(muscles.prefix(2)), color: missing ? .warning : Color(hex: 0xFF7AB5))
+                        MuscleTags(muscles: Array(muscles.prefix(2)), color: missing ? .warning : Color.strengthText)
                         Text(BuilderFormat.history(item))
                             .font(AppFont.body(12))
                             .foregroundStyle(Color.muted)
@@ -239,7 +239,7 @@ struct AddExercisesSheet: View {
                             } label: {
                                 Text("\(pick.exerciseName) ×")
                                     .font(AppFont.body(12, weight: .semibold))
-                                    .foregroundStyle(Color(hex: 0xFF9AC6))
+                                    .foregroundStyle(Color.strengthSoft)
                                     .padding(.horizontal, 10)
                                     .frame(height: 30)
                                     .background(Color.strength.opacity(0.14), in: Capsule())

@@ -49,8 +49,8 @@ struct FeedbackSheet: View {
                         .lineLimit(1...4)
                         .padding(12)
                         .frame(minHeight: 46)
-                        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
+                        .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row))
+                        .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(Color.cardBorder))
                         .padding(.top, 20)
                 }
                 .padding(16)
@@ -95,7 +95,7 @@ struct FeedbackSheet: View {
                 .accessibilityValue("\(input.rpe) of 10, \(word)")
                 .accessibilityAdjustableAction { step(&input.rpe, in: 1...10, $0) }
         }
-        .animation(.snappy(duration: 0.2), value: input.rpe)
+        .animation(Motion.quick, value: input.rpe)
     }
 
     // MARK: Energy, soreness, pain
@@ -110,8 +110,8 @@ struct FeedbackSheet: View {
             Rectangle().fill(Color.cardBorder).frame(height: 1)
             pain
         }
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous).strokeBorder(Color.cardBorder))
     }
 
     private var pain: some View {
@@ -129,7 +129,7 @@ struct FeedbackSheet: View {
                     toggle("Yes", selected: hasPain, color: color) { setPain(true) }
                 }
                 .padding(3)
-                .background(Color(hex: 0x1A1E27), in: Capsule())
+                .background(Color.chip, in: Capsule())
             }
             if hasPain {
                 TickRuler(value: $input.painLevel, range: 1...10, color: color)
@@ -149,7 +149,7 @@ struct FeedbackSheet: View {
         .padding(.leading, 14)
         .padding(.trailing, 12)
         .padding(.vertical, 10)
-        .animation(.snappy(duration: 0.2), value: hasPain)
+        .animation(Motion.quick, value: hasPain)
     }
 
     private func toggle(_ title: String, selected: Bool, color: Color, action: @escaping () -> Void) -> some View {
@@ -170,7 +170,7 @@ struct FeedbackSheet: View {
         guard on != hasPain else { return }
         hasPain = on
         input.painLevel = on ? Swift.max(input.painLevel, 1) : 0
-        UISelectionFeedbackGenerator().selectionChanged()
+        Haptics.selection()
     }
 
     /// A body part chip: it lives in the note (the server has no field for it), so the detail page
@@ -179,7 +179,7 @@ struct FeedbackSheet: View {
         let selected = (input.note ?? "").localizedCaseInsensitiveContains(part)
         return Button {
             input.note = toggled(part, in: input.note)
-            UISelectionFeedbackGenerator().selectionChanged()
+            Haptics.selection()
         } label: {
             Text(part)
                 .font(AppFont.body(13, weight: selected ? .semibold : .regular))
@@ -254,14 +254,14 @@ private struct TickRuler: View {
                 let clamped = Swift.min(Swift.max(picked, range.lowerBound), range.upperBound)
                 if clamped != value {
                     value = clamped
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    Haptics.selection()
                 }
             })
         }
         .frame(height: 64)
         .background(Color.inset)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.cardBorder))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous).strokeBorder(Color.cardBorder))
     }
 }
 
@@ -283,7 +283,7 @@ private struct DotRow: View {
                 ForEach(1...5, id: \.self) { step in
                     Button {
                         value = step
-                        UISelectionFeedbackGenerator().selectionChanged()
+                        Haptics.selection()
                     } label: {
                         Circle()
                             .fill(step <= value ? color : Color.track)
@@ -301,7 +301,7 @@ private struct DotRow: View {
         .padding(.leading, 14)
         .padding(.trailing, 12)
         .padding(.vertical, 6)
-        .animation(.snappy(duration: 0.15), value: value)
+        .animation(Motion.tap, value: value)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
         .accessibilityValue("\(value) of 5, \(word)")

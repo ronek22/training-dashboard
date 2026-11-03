@@ -29,7 +29,7 @@ struct AfterRunSheet: View {
         .padding(.top, 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color.card)
-        .animation(.spring(duration: 0.4, bounce: 0.15), value: saved)
+        .animation(Motion.enter, value: saved)
         .presentationDetents([askDetent, Self.resultDetent, .large], selection: $detent)
         .presentationDragIndicator(.visible)
         .presentationBackground(Color.card)
@@ -103,7 +103,7 @@ struct AfterRunSheet: View {
             ForEach(0...5, id: \.self) { value in
                 Button {
                     pain = value
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    Haptics.selection()
                 } label: {
                     Text(value == 5 ? "5+" : "\(value)")
                         .font(AppFont.number(17))
@@ -118,8 +118,8 @@ struct AfterRunSheet: View {
             }
         }
         .padding(4)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.cardBorder))
     }
 
     private func face(_ feel: RunFeel) -> some View {
@@ -178,8 +178,8 @@ struct AfterRunSheet: View {
                 .font(AppFont.body(13)).foregroundStyle(Color.inkSoft).lineSpacing(2)
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+                .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.cardBorder))
                 .padding(.top, 18)
             Button("Done") { dismiss() }
                 .buttonStyle(OutlineButtonStyle(height: 50))

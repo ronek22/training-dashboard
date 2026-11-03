@@ -61,7 +61,7 @@ struct SettingsView: View {
                 }
             }
             .presentationDetents([.medium, .large])
-            .presentationBackground(Color(hex: 0x161A22))
+            .presentationBackground(Color.sheet)
         }
         .onChange(of: morningOn) { reschedule(turnedOn: morningOn) { morningOn = false } }
         .onChange(of: rehabOn) { reschedule(turnedOn: rehabOn) { rehabOn = false } }
@@ -371,7 +371,7 @@ struct SettingsView: View {
                 }
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color(hex: 0x4A5263))
+                    .foregroundStyle(Color.rule)
             }
             .settingsRow()
         }
@@ -396,8 +396,8 @@ struct SettingsCard<Content: View>: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
+            .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
     }
 }
 
@@ -501,8 +501,8 @@ struct FindServerSheet: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 4)
-            .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
+            .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
             if !finder.searching {
                 Button("Search again") { finder.start() }
                     .buttonStyle(OutlineButtonStyle(height: 44))
@@ -545,8 +545,8 @@ struct ManualAddressSheet: View {
                 .onSubmit { Task { await save() } }
                 .padding(.horizontal, 14)
                 .frame(height: 50)
-                .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
+                .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
             Group {
                 if let error {
                     Text(error).foregroundStyle(Color.danger)

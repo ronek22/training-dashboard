@@ -73,7 +73,7 @@ struct PaceTape: View {
             var tick = Path()
             tick.move(to: CGPoint(x: x(value), y: base - length))
             tick.addLine(to: CGPoint(x: x(value), y: base))
-            context.stroke(tick, with: .color(inZone ? Color.run : Color(hex: 0x343A47)),
+            context.stroke(tick, with: .color(inZone ? Color.run : Color.tick),
                            style: StrokeStyle(lineWidth: value % 10 == 0 ? 1.6 : 1, lineCap: .round))
         }
 
@@ -101,7 +101,7 @@ struct PaceTape: View {
             let px = x(value)
             if leftNote != nil, px < 90 { continue }
             let anchor: UnitPoint = px > width - 14 ? .topTrailing : (px < 14 ? .topLeading : .top)
-            context.draw(Text(RunFormat.pace(value)).font(AppFont.body(10, weight: .semibold)).foregroundStyle(Color(hex: 0x5B6375)),
+            context.draw(Text(RunFormat.pace(value)).font(AppFont.body(10, weight: .semibold)).foregroundStyle(Color.subtle),
                          at: CGPoint(x: px, y: labelY), anchor: anchor)
         }
         if let leftNote {

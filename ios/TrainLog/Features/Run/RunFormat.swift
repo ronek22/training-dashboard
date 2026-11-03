@@ -127,7 +127,7 @@ enum RunFormat {
     static func feelColor(_ feel: RunFeel?) -> Color {
         switch feel {
         case .easy: .mobility
-        case .ok: Color(hex: 0x5B6375)
+        case .ok: Color.subtle
         case .hard: .run
         case nil: .clear
         }

@@ -20,7 +20,7 @@ struct DetailSheetHeader: View {
                     Spacer()
                     Button("Done") { dismiss() }
                         .font(AppFont.body(16, weight: .semibold))
-                        .foregroundStyle(Color(hex: 0x6FAEFF))
+                        .foregroundStyle(Color.rideText)
                         .frame(minWidth: 44, minHeight: 44)
                 }
                 .padding(.horizontal, 16)
@@ -44,7 +44,7 @@ struct RunningFormSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if let summary = ActivityDetailFormat.formSummary(cells) {
-                        StatusLine(tone: summary.tone, text: summary.text, size: 15, color: Color(hex: 0xC9CFDA)).padding(.top, 20)
+                        StatusLine(tone: summary.tone, text: summary.text, size: 15, color: Color.inkBody).padding(.top, 20)
                     }
                     legend.padding(.top, 16)
                     ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
@@ -137,7 +137,7 @@ private struct RangeBar: View {
             let span = max(row.scale.upperBound - row.scale.lowerBound, 0.0001)
             let x = { (v: Double) in CGFloat((v - row.scale.lowerBound) / span) * width }
             ZStack(alignment: .leading) {
-                Capsule().fill(Color(hex: 0x1A1F29)).frame(height: 8)
+                Capsule().fill(Color.chip).frame(height: 8)
                 if let good = row.good {
                     Capsule().fill(Color.mobility.opacity(0.35)).frame(width: max(x(good.upperBound) - x(good.lowerBound), 4), height: 8)
                         .offset(x: x(good.lowerBound))

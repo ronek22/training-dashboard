@@ -15,10 +15,7 @@ struct WeekRecapView: View {
             VStack(alignment: .leading, spacing: 12) {
                 header
                 if model.offline, let syncedAt = model.syncedAt {
-                    Text("Offline · showing \(syncedAt.formatted(date: .abbreviated, time: .shortened)) data")
-                        .font(AppFont.body(12, weight: .medium))
-                        .foregroundStyle(Color.muted)
-                        .padding(.horizontal, 4)
+                    OfflineNote(syncedAt: syncedAt)
                 }
                 if let report = model.report {
                     RecapContent(report: report, wins: model.wins)
@@ -244,7 +241,7 @@ private struct SportsCard: View {
             }
         }
         .card()
-        .onAppear { withAnimation(.easeOut(duration: 0.9).delay(0.35)) { grown = true } }
+        .onAppear { withAnimation(Motion.grow.delay(0.35)) { grown = true } }
     }
 }
 
@@ -300,7 +297,7 @@ private struct DaysCard: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .scaleEffect(y: grown ? 1 : 0.02, anchor: .bottom)
-                .animation(.spring(duration: 0.7, bounce: 0.25).delay(0.4 + Double(index) * 0.07), value: grown)
+                .animation(Motion.pop.delay(0.4 + Double(index) * 0.07), value: grown)
             }
             Text(RecapFormat.dayLetter(day.date))
                 .font(AppFont.body(11, weight: .semibold))
@@ -393,7 +390,7 @@ private struct GoalsCard: View {
             }
         }
         .card()
-        .onAppear { withAnimation(.easeOut(duration: 0.9).delay(0.4)) { grown = true } }
+        .onAppear { withAnimation(Motion.grow.delay(0.4)) { grown = true } }
     }
 
     private func ring(_ share: Double, color: Color) -> some View {
@@ -425,7 +422,7 @@ private struct RecoveryCard: View {
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
                 }
             }
         }
@@ -467,7 +464,7 @@ private struct HistoryCard: View {
                             .fill(week.current ? Color.volt : Color.raised)
                             .frame(height: max(4, 70 * Double(week.minutes) / peak))
                             .scaleEffect(y: grown ? 1 : 0.02, anchor: .bottom)
-                            .animation(.spring(duration: 0.6, bounce: 0.2).delay(0.3 + Double(index) * 0.05), value: grown)
+                            .animation(Motion.enter.delay(0.3 + Double(index) * 0.05), value: grown)
                         Text(TodayFormat.duration(week.minutes))
                             .font(AppFont.number(10, weight: .semibold))
                             .foregroundStyle(week.current ? Color.volt : Color.faint)

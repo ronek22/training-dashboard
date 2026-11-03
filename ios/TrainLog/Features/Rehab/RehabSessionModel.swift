@@ -142,7 +142,7 @@ final class RehabSessionModel {
         phase = .running
         sessionData = session.flatMap { try? JSONEncoder().encode($0) }
         begin(0)
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        Haptics.thud()
         publish(withSession: true)
     }
 
@@ -183,7 +183,7 @@ final class RehabSessionModel {
             finish()
         } else {
             begin(index + 1)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            Haptics.tick()
         }
     }
 
@@ -263,7 +263,7 @@ final class RehabSessionModel {
         phase = .done
         RestAlarm.cancel()
         Reminders.note { $0.rehabLeft = 0 }
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
         let completion = GuidedCompletion(
             sessionKey: session?.key ?? "rehab",
             startedAt: ISO8601DateFormatter().string(from: startedAt),

@@ -5,8 +5,8 @@ import SwiftUI
 /// can be tested. The page itself (header, grid, sections) is in ActivityDetailPage.swift.
 enum ActivityDetailFormat {
     static let good = Color.mobility
-    static let warn = Color(hex: 0xFFC83A)
-    static let bad = Color(hex: 0xFF5C6F)
+    static let warn = Color.caution
+    static let bad = Color.alert
 
     static func painColor(_ pain: Int) -> Color {
         switch pain {

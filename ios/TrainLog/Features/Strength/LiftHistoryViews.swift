@@ -20,7 +20,7 @@ struct LiftHistoryLine: View {
                         .lineLimit(1)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color(hex: 0x5A6375))
+                        .foregroundStyle(Color.subtle)
                 }
                 .padding(.leading, 8)
                 .padding(.trailing, 10)
@@ -62,7 +62,7 @@ private struct Sparkladder: View {
             for (index, value) in values.enumerated() {
                 index == 0 ? line.move(to: point(index, value)) : line.addLine(to: point(index, value))
             }
-            context.stroke(line, with: .color(Color(hex: 0x4A5263)), lineWidth: 1.5)
+            context.stroke(line, with: .color(Color.rule), lineWidth: 1.5)
             if let target, let last = values.last {
                 var ghost = Path()
                 ghost.move(to: point(values.count - 1, last))
@@ -195,7 +195,7 @@ private struct LadderChart: View {
                         .position(x: x(values.count), y: y(target))
                     Text(label(target))
                         .font(AppFont.number(20))
-                        .foregroundStyle(Color(hex: 0xFF7AB5))
+                        .foregroundStyle(Color.strengthText)
                         .fixedSize()
                         .position(x: x(values.count), y: y(target) - 20)
                     footer("Today", nil, today: true).position(x: x(values.count), y: 182)
@@ -220,8 +220,8 @@ private struct LadderChart: View {
         VStack(spacing: 4) {
             Text(date)
                 .font(AppFont.body(12, weight: today ? .semibold : .regular))
-                .foregroundStyle(today ? Color(hex: 0xFF7AB5) : Color.muted)
-            Text(detail ?? " ").font(AppFont.body(12)).foregroundStyle(Color(hex: 0x5A6375))
+                .foregroundStyle(today ? Color.strengthText : Color.muted)
+            Text(detail ?? " ").font(AppFont.body(12)).foregroundStyle(Color.subtle)
         }
         .fixedSize()
     }
@@ -291,8 +291,8 @@ private struct PlateSleeve: View {
     var body: some View {
         Canvas { context, size in
             let mid = size.height / 2
-            context.fill(Path(roundedRect: CGRect(x: 0, y: mid - 2, width: size.width, height: 4), cornerRadius: 1), with: .color(Color(hex: 0x4A5263)))
-            context.fill(Path(roundedRect: CGRect(x: 8, y: mid - 8, width: 5, height: 16), cornerRadius: 1), with: .color(Color(hex: 0x4A5263)))
+            context.fill(Path(roundedRect: CGRect(x: 0, y: mid - 2, width: size.width, height: 4), cornerRadius: 1), with: .color(Color.rule))
+            context.fill(Path(roundedRect: CGRect(x: 8, y: mid - 8, width: 5, height: 16), cornerRadius: 1), with: .color(Color.rule))
             var x: CGFloat = 16
             for kg in plates {
                 let (width, height) = Self.size(kg)
@@ -360,8 +360,8 @@ struct WarmupRampCard: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
     }
 
     private var currentIndex: Int? { steps.first { !ticked.contains($0.index) }?.index }
@@ -407,7 +407,7 @@ struct WarmupRampCard: View {
                 Text("\(StrengthFormat.number(working)) kg").font(AppFont.number(18))
                 Text("× \(reps) · set 1").font(AppFont.body(13))
             }
-            .foregroundStyle(Color(hex: 0x5A6375))
+            .foregroundStyle(Color.subtle)
             .padding(.leading, 8)
             .frame(maxWidth: .infinity, minHeight: 22, alignment: .leading)
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.outline, style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
@@ -432,7 +432,7 @@ struct WarmupRampCard: View {
         } else if current {
             Circle().strokeBorder(Color.strength, lineWidth: 2).frame(width: 22, height: 22)
         } else {
-            Circle().strokeBorder(Color(hex: 0x4A5263), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])).frame(width: 22, height: 22)
+            Circle().strokeBorder(Color.rule, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])).frame(width: 22, height: 22)
         }
     }
 }

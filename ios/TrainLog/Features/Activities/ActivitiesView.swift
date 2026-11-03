@@ -10,14 +10,12 @@ struct ActivitiesView: View {
         NavigationStack(path: $path) {
             List {
                 header
-                    .plainRow()
+                    .plainRow(top: 0)
                 if !model.sports.isEmpty {
                     chips.plainRow()
                 }
                 if model.offline, let syncedAt = model.syncedAt {
-                    Text("Offline · showing \(syncedAt.formatted(date: .omitted, time: .shortened)) data")
-                        .font(AppFont.body(12, weight: .medium))
-                        .foregroundStyle(Color.muted)
+                    OfflineNote(syncedAt: syncedAt)
                         .plainRow()
                 }
                 if model.loaded && model.activities.isEmpty {
@@ -90,12 +88,7 @@ struct ActivitiesView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 4) {
-                Kicker(syncedKicker)
-                Text("ACTIVITIES").font(AppFont.title(44)).foregroundStyle(Color.ink)
-            }
-            Spacer()
+        ScreenHeader(kicker: syncedKicker, title: "Activities") {
             Button {
                 path.append(TrendsRoute())
             } label: {
@@ -114,8 +107,6 @@ struct ActivitiesView: View {
             .buttonStyle(.plain)
             .padding(.bottom, 2)
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 6)
     }
 
     private var syncedKicker: String {
@@ -165,13 +156,8 @@ struct ActivitiesView: View {
     }
 
     private var emptyCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Kicker(model.error == nil ? "Nothing yet" : "Not synced yet")
-            Text(model.error ?? "No activities on the server.").font(AppFont.body(14)).foregroundStyle(Color.inkSoft)
-            Text("Start the backend on the Mac (docker compose up) and pull to refresh.")
-                .font(AppFont.body(13)).foregroundStyle(Color.muted)
-        }
-        .card()
+        SyncStateCard(kicker: model.error == nil ? "Nothing yet" : "Not synced yet",
+                      message: model.error ?? "No activities on the server.")
     }
 }
 
@@ -214,18 +200,10 @@ struct ActivityRow: View {
 
     private func color(_ tone: ActivityFormat.Highlight.Tone?) -> Color {
         switch tone {
-        case .pain: Color(hex: 0xFF7A7A)
+        case .pain: Color.dangerStrong
         case .win: .volt
         case .muted, nil: .muted
         }
     }
 }
 
-private extension View {
-    /// A list row with no card behind it (header, chips).
-    func plainRow() -> some View {
-        listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-    }
-}

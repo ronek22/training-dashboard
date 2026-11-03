@@ -193,7 +193,7 @@ struct SessionSummaryView: View {
                 .background(Color.bg)
         }
         .onAppear {
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            Haptics.success()
         }
     }
 

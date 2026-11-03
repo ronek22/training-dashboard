@@ -59,8 +59,8 @@ struct WorkoutBuilderView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .environment(\.editMode, .constant(reordering ? .active : .inactive))
-        .animation(.snappy, value: reordering)
-        .animation(.snappy, value: model.draft.exercises.map(\.id))
+        .animation(Motion.state, value: reordering)
+        .animation(Motion.state, value: model.draft.exercises.map(\.id))
         .background(Color.bg)
         .safeAreaInset(edge: .top, spacing: 0) { nav }
         .overlay(alignment: .bottom) {
@@ -119,7 +119,7 @@ struct WorkoutBuilderView: View {
         .task(id: removed) {
             guard removed != nil else { return }
             try? await Task.sleep(for: .seconds(4))
-            withAnimation(.snappy) { removed = nil }
+            withAnimation(Motion.state) { removed = nil }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: reordering)
     }
@@ -156,7 +156,7 @@ struct WorkoutBuilderView: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Color.inkSoft)
                         .frame(width: 36, height: 36)
-                        .background(Color(hex: 0x191D27), in: Circle())
+                        .background(Color.chip, in: Circle())
                         .frame(width: 44, height: 44)
                 }
                 .disabled(model.draft.exercises.count < 2)
@@ -277,20 +277,20 @@ struct WorkoutBuilderView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
-        .animation(.snappy, value: summary)
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
+        .animation(Motion.state, value: summary)
     }
 
     private func muscleBar(_ label: String, _ sets: Int, fraction: Double, color: Color) -> some View {
         HStack(spacing: 8) {
             Text(label)
                 .font(AppFont.body(12))
-                .foregroundStyle(color == .warning ? Color.warning : Color(hex: 0xC9CFDA))
+                .foregroundStyle(color == .warning ? Color.warning : Color.inkBody)
                 .lineLimit(1)
                 .frame(width: 74, alignment: .leading)
             GeometryReader { proxy in
-                Capsule().fill(Color(hex: 0x1A1E27))
+                Capsule().fill(Color.chip)
                     .overlay(alignment: .leading) {
                         Capsule().fill(color).frame(width: proxy.size.width * fraction)
                     }
@@ -317,7 +317,7 @@ struct WorkoutBuilderView: View {
             }
             Spacer(minLength: 4)
             Button("+ Add") {
-                withAnimation(.snappy) { model.add([suggestion]) }
+                withAnimation(Motion.state) { model.add([suggestion]) }
             }
             .font(AppFont.body(13, weight: .semibold))
             .foregroundStyle(Color.ink)
@@ -327,7 +327,7 @@ struct WorkoutBuilderView: View {
             .frame(minHeight: 44)
             .buttonStyle(.plain)
             Button {
-                withAnimation(.snappy) { model.nudgeDismissed = true }
+                withAnimation(Motion.state) { model.nudgeDismissed = true }
             } label: {
                 Image(systemName: "xmark").font(.system(size: 11, weight: .bold)).foregroundStyle(Color.faint)
                     .frame(width: 28, height: 44)
@@ -338,8 +338,8 @@ struct WorkoutBuilderView: View {
         .padding(.leading, 14)
         .padding(.trailing, 6)
         .padding(.vertical, 4)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.warning.opacity(0.28)))
+        .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.tile))
+        .overlay(RoundedRectangle(cornerRadius: Radius.tile).strokeBorder(Color.warning.opacity(0.28)))
     }
 
     private var emptyCard: some View {
@@ -364,8 +364,8 @@ struct WorkoutBuilderView: View {
             }
             .padding(.horizontal, 16)
             .frame(height: 56)
-            .background(Color.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.cardBorder))
+            .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Color.cardBorder))
         } else {
             Button {
                 editing = EditTarget(id: exercise.id)
@@ -391,9 +391,9 @@ struct WorkoutBuilderView: View {
                 .padding(.leading, 16)
                 .padding(.trailing, 14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.cardBorder))
-                .contentShape(RoundedRectangle(cornerRadius: 18))
+                .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Color.cardBorder))
+                .contentShape(RoundedRectangle(cornerRadius: Radius.panel))
             }
             .buttonStyle(.plain)
             .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
@@ -405,7 +405,7 @@ struct WorkoutBuilderView: View {
                 } label: {
                     Label("Remove", systemImage: "trash")
                 }
-                .tint(Color(hex: 0xFF5A6E))
+                .tint(Color.alert)
                 Button {
                     model.duplicate(exercise.id)
                 } label: {
@@ -522,7 +522,7 @@ struct WorkoutBuilderView: View {
                 .lineLimit(1)
             Spacer()
             Button("Undo") {
-                withAnimation(.snappy) {
+                withAnimation(Motion.state) {
                     model.restore((item.exercise, item.index))
                     removed = nil
                 }
@@ -532,8 +532,8 @@ struct WorkoutBuilderView: View {
             .frame(minHeight: 44)
         }
         .padding(.horizontal, 16)
-        .background(Color.raised, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.outline))
+        .background(Color.raised, in: RoundedRectangle(cornerRadius: Radius.panel))
+        .overlay(RoundedRectangle(cornerRadius: Radius.panel).strokeBorder(Color.outline))
         .shadow(color: .black.opacity(0.45), radius: 14, y: 6)
         .padding(.horizontal, 16)
         .padding(.bottom, 92)
@@ -543,7 +543,7 @@ struct WorkoutBuilderView: View {
     // MARK: Actions
 
     private func remove(_ id: DraftExercise.ID) {
-        withAnimation(.snappy) {
+        withAnimation(Motion.state) {
             if let (exercise, index) = model.remove(id) {
                 removed = Removed(exercise: exercise, index: index)
             }
@@ -553,7 +553,7 @@ struct WorkoutBuilderView: View {
     private func save() async {
         let name = model.draft.input.name
         guard let result = await model.save() else { return }
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
         onSaved(result, name)
         dismiss()
     }

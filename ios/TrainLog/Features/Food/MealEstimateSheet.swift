@@ -226,8 +226,8 @@ struct MealEstimateSheet: View {
             .lineLimit(1...4)
             .focused($textFocused)
             .padding(12)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row))
+            .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(Color.cardBorder))
     }
 
     @ViewBuilder

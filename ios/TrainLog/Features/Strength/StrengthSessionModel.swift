@@ -24,6 +24,16 @@ final class StrengthSessionModel {
     private(set) var phase: Phase = .loading
     private(set) var session: StrengthSession?
     private(set) var hints: [String: String] = [:]
+    /// The last few sessions of each lift in this workout, by exercise name.
+    private(set) var history: [String: LiftHistory] = [:]
+    /// Bar and plates from the Athlete page, for the plate row and the warm-up ramp.
+    private(set) var kit = GymKit.standard
+    /// Exercises whose warm-up ramp is done or skipped (kept per session on this phone).
+    private(set) var rampDone: Set<Int> = []
+    /// Ramp steps ticked for the current lift; never logged.
+    private(set) var rampTicks: Set<Int> = []
+    /// Screenshot state from `-strengthDemo`; never touches the server or the Watch.
+    private(set) var isDemo = false
     /// The brief's Start button is waiting on the server.
     private(set) var starting = false
     /// Finish was tapped and the recap is on its way.
@@ -81,6 +91,23 @@ final class StrengthSessionModel {
         session.map { $0.exercises.allSatisfy(\.isDone) } ?? false
     }
 
+    /// The warm-up ramp, while the current lift is the session's first barbell lift and nothing
+    /// of it is logged yet. Skipped when the workout already has warm-up sets for it.
+    var ramp: (exercise: StrengthSession.Exercise, working: Double, reps: Int, steps: [LiftLogic.RampStep])? {
+        guard let session, let current, !allSetsDone, !current.set.isWarmup, !current.set.isTimed else { return nil }
+        let exercise = current.exercise
+        guard !rampDone.contains(exercise.id), !exercise.sets.contains(where: \.isWarmup),
+              !exercise.workingSets.contains(where: \.isCompleted),
+              let first = session.exercises.sorted(by: { $0.exerciseOrder < $1.exerciseOrder }).first(where: {
+                  LiftLogic.isBarbell($0.exerciseName) && ($0.workingSets.first?.targetWeightKg ?? 0) > 0
+              }),
+              first.id == exercise.id,
+              let working = draftWeight ?? current.set.targetWeightKg
+        else { return nil }
+        let steps = LiftLogic.ramp(to: working, kit: kit)
+        return steps.isEmpty ? nil : (exercise, working, current.set.targetReps, steps)
+    }
+
     var startedAt: Date? {
         session.flatMap { StrengthFormat.parseMoment($0.startedAt) }
     }
@@ -88,6 +115,7 @@ final class StrengthSessionModel {
     // MARK: Loading
 
     func load() async {
+        guard !isDemo else { return }
         let api = client()
         let synced = await queue.flush(with: api)
         unsynced = !synced
@@ -96,7 +124,7 @@ final class StrengthSessionModel {
         // Queued writes mean the server is behind this phone: keep the local copy.
         if !synced, let local, local.isActive {
             show(local)
-            await loadHints(templateId: local.templateId)
+            await loadExtras(for: local)
             return
         }
 
@@ -118,12 +146,12 @@ final class StrengthSessionModel {
                 return
             }
             show(live)
-            await loadHints(templateId: live.templateId)
+            await loadExtras(for: live)
         } catch {
             if let local, local.isActive {
                 unsynced = true
                 show(local)
-                await loadHints(templateId: local.templateId)
+                await loadExtras(for: local)
             } else {
                 phase = .failed(error.localizedDescription)
             }
@@ -157,6 +185,7 @@ final class StrengthSessionModel {
         do {
             guard let live = try await start(templateId, api: client()) else { return }
             show(live)
+            await loadExtras(for: live)
         } catch {
             phase = .failed(error.localizedDescription)
         }
@@ -168,6 +197,22 @@ final class StrengthSessionModel {
         else { return }
         hints = Self.hints(from: template.value)
     }
+
+    /// Hints, lift history and the gym's bar and plates: cached, so they still show offline.
+    private func loadExtras(for session: StrengthSession) async {
+        rampDone = Set(UserDefaults.standard.array(forKey: Self.rampKey(session.id)) as? [Int] ?? [])
+        let api = client()
+        async let hinted: Void = loadHints(templateId: session.templateId)
+        async let profile = try? api.get("/settings/athlete-profile", as: GymKit.self)
+        let names = session.exercises.sorted { $0.exerciseOrder < $1.exerciseOrder }.map(\.exerciseName)
+        if let path = LiftLogic.historyPath(for: names), let lifts = try? await api.get(path, as: [LiftHistory].self) {
+            history = Dictionary(lifts.value.map { ($0.exerciseName, $0) }, uniquingKeysWith: { first, _ in first })
+        }
+        if let profile = await profile { kit = profile.value }
+        await hinted
+    }
+
+    private static func rampKey(_ sessionId: Int) -> String { "strengthRampDone.\(sessionId)" }
 
     private static func hints(from template: StrengthTemplate) -> [String: String] {
         Dictionary(
@@ -319,6 +364,18 @@ final class StrengthSessionModel {
         await sync()
     }
 
+    func toggleRampStep(_ index: Int) {
+        if rampTicks.contains(index) { rampTicks.remove(index) } else { rampTicks.insert(index) }
+    }
+
+    /// Warm-up done or skipped: the set card comes back.
+    func finishRamp() {
+        guard let ramp, let session else { return }
+        rampDone.insert(ramp.exercise.id)
+        rampTicks = []
+        if !isDemo { UserDefaults.standard.set(Array(rampDone), forKey: Self.rampKey(session.id)) }
+    }
+
     func skipRest() {
         restEndsAt = nil
         RestAlarm.cancel()
@@ -387,6 +444,7 @@ final class StrengthSessionModel {
     /// Picks up sets logged on the web while this screen is open. Skipped while this phone has
     /// writes the server hasn't seen, and dropped if one started while the request was out.
     func refresh() async {
+        guard !isDemo else { return }
         let started = edits
         guard phase == .ready, queue.pending.isEmpty, let id = session?.id,
               let live = try? await client().getLive("/strength/workouts/sessions/\(id)", as: StrengthSession.self),
@@ -403,6 +461,7 @@ final class StrengthSessionModel {
     /// Replays queued writes, then trusts the server's copy (its progression and position).
     private func sync() async {
         edits += 1
+        guard !isDemo else { return }
         let api = client()
         guard await queue.flush(with: api) else {
             unsynced = true
@@ -414,6 +473,21 @@ final class StrengthSessionModel {
         else { return }
         show(live)
     }
+
+    #if DEBUG
+    /// A canned workout for simulator screenshots (`StrengthDemo`).
+    func applyDemo(session: StrengthSession, history: [LiftHistory], kit: GymKit, hints: [String: String], rampDone: Set<Int>, ticks: Set<Int>) {
+        isDemo = true
+        self.history = Dictionary(history.map { ($0.exerciseName, $0) }, uniquingKeysWith: { first, _ in first })
+        self.kit = kit
+        self.hints = hints
+        self.rampDone = rampDone
+        rampTicks = ticks
+        self.session = session
+        resetDrafts()
+        phase = .ready
+    }
+    #endif
 
     private func resetDrafts() {
         guard let session, let current = StrengthLogic.current(in: session) else { return }

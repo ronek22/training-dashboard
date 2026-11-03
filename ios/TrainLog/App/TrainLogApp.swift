@@ -70,7 +70,12 @@ struct RootView: View {
     #else
     @State private var tab: AppTab = .today
     #endif
+    #if DEBUG
+    // `-strengthDemo <stage>` opens the session screen on a canned workout (simulator screenshots).
+    @State private var strength: StrengthLaunch? = StrengthSessionModel.demoStage != nil ? StrengthLaunch(templateId: nil) : nil
+    #else
     @State private var strength: StrengthLaunch?
+    #endif
     @State private var todayRefresh = 0
     @State private var recapRequest = 0
     @State private var checkinRequest = 0

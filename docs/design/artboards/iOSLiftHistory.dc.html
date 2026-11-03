@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrainLog · iOS · Lift history, warm-ups and plates</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&amp;family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&amp;display=swap" rel="stylesheet">
+<style>
+@font-face{font-family:'Barlow Condensed';font-weight:700;font-style:normal;src:url('../../../ios/TrainLog/Resources/Fonts/BarlowCondensed-Bold.ttf')}
+@font-face{font-family:'Barlow Condensed';font-weight:600;font-style:normal;src:url('../../../ios/TrainLog/Resources/Fonts/BarlowCondensed-SemiBold.ttf')}
+@font-face{font-family:'Barlow Condensed';font-weight:800;font-style:italic;src:url('../../../ios/TrainLog/Resources/Fonts/BarlowCondensed-ExtraBoldItalic.ttf')}
+@font-face{font-family:'Archivo';font-weight:100 900;src:url('../../../ios/TrainLog/Resources/Fonts/Archivo.ttf')}
+body{margin:0;background:#05070A;color:#F3F5F9;font-family:'Archivo',system-ui,sans-serif}
+.num{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;line-height:1}
+.ttl{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;text-transform:uppercase;line-height:.95;letter-spacing:.01em}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600}
+.muted{color:#8A93A6} .soft{color:#A3ABBC}
+.canvas{display:flex;flex-wrap:wrap;gap:72px 56px;padding:56px 64px 80px;max-width:2600px;align-items:flex-start}
+.canvas-head{width:100%}
+.frame{display:flex;flex-direction:column;gap:14px}
+.frame-cap{font-size:13px;color:#A3ABBC;max-width:393px;line-height:1.45}
+.frame-cap b{color:#F3F5F9;font-weight:600}
+.phone{width:393px;min-height:852px;border-radius:56px;background:#0A0C11;position:relative;overflow:hidden;box-shadow:0 0 0 10px #171A21,0 0 0 11px #2A2F3A,0 30px 80px rgba(0,0,0,.55);box-sizing:border-box}
+.phone.fixed{height:852px}
+.card{background:#12151C;border:1px solid #1C212B;border-radius:22px;padding:16px}
+.notes{width:1240px;background:#12151C;border:1px solid #1C212B;border-radius:28px;padding:32px 36px;box-sizing:border-box}
+.ncols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:36px;margin-top:24px}
+.notes ul{margin:10px 0 0;padding-left:18px;font-size:13px;line-height:1.5;color:#C9CFDA;display:flex;flex-direction:column;gap:8px}
+.notes b{color:#F3F5F9}
+.notes code{font-size:12px;background:#0E1117;padding:1px 5px;border-radius:4px;color:#A3ABBC}
+</style>
+<style>
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000;z-index:40}
+.sb{height:54px;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 50px;font-weight:600;font-size:16px;box-sizing:border-box;position:relative;z-index:35}
+.sb .ic{display:flex;gap:6px;align-items:center}
+.home{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#F3F5F9;z-index:45}
+</style>
+<style>
+/* session screen, drawn from StrengthSessionView.swift */
+.top{display:flex;align-items:center;justify-content:space-between;padding:4px 20px 12px}
+.cb{width:36px;height:36px;border-radius:50%;background:#191D27;display:flex;align-items:center;justify-content:center;color:#A3ABBC}
+.tc{text-align:center}
+.tc .t{font-size:10px;letter-spacing:.14em;font-weight:600;color:#8A93A6;text-transform:uppercase}
+.tc .c{font-size:20px;margin-top:3px}
+.scr{padding:0 16px;display:flex;flex-direction:column;gap:14px}
+.prog{display:flex;gap:4px}
+.prog i{flex:1;height:4px;border-radius:2px;background:#2A303C;position:relative;overflow:hidden}
+.prog i b{position:absolute;left:0;top:0;bottom:0;background:#FF4D9A;border-radius:2px}
+.hd{padding:6px 4px 0;display:flex;flex-direction:column;gap:6px}
+.kp{font-size:11px;letter-spacing:.14em;font-weight:600;text-transform:uppercase;color:#FF7AB5}
+.k{font-size:11px;letter-spacing:.14em;font-weight:600;text-transform:uppercase;color:#8A93A6}
+.k10{font-size:10px;letter-spacing:.14em;font-weight:600;text-transform:uppercase;color:#8A93A6}
+.hint{font-size:13px;color:#8A93A6;line-height:1.35}
+.sc{background:#12151C;border:1px solid #1C212B;border-radius:22px;padding:18px 16px}
+.sch{display:flex;justify-content:space-between;align-items:center}
+.vr{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+.rb{width:52px;height:52px;border-radius:50%;background:#0E1117;border:1px solid #1C212B;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:500;box-sizing:border-box}
+.vv{text-align:center}
+.vv .n{font-size:60px}
+.vv .u{font-size:15px;font-weight:600;color:#8A93A6;margin-left:4px;font-family:'Archivo'}
+.dv{height:1px;background:#1C212B;margin:4px 0}
+.ef{display:flex;gap:8px;margin-top:8px}
+.ef span{flex:1;height:44px;border-radius:22px;border:1px solid #2A303C;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;box-sizing:border-box}
+.ef span.on{border-color:#FF4D9A;background:rgba(255,77,154,.14);color:#FF9AC6}
+.sl{background:#12151C;border:1px solid #1C212B;border-radius:22px;padding:6px 16px}
+.sr{display:flex;align-items:center;gap:12px;padding:12px 0;font-size:14px;border-top:1px solid #1C212B}
+.sr:first-child{border-top:0}
+.sr .m{width:22px;height:22px;border-radius:50%;box-sizing:border-box;flex:none}
+.sr .l{flex:1}
+.sr .ld{font-size:18px}
+.sr .tr{width:40px;text-align:right;font-size:12px;color:#8A93A6}
+.sr.cur .m{border:2px solid #FF4D9A}
+.sr.cur .tr{color:#FF7AB5}
+.sr.fut{color:#5A6375}
+.sr.fut .m{border:1.5px dashed #4A5263}
+.sr.done .m{background:rgba(46,211,176,.18);display:flex;align-items:center;justify-content:center}
+.bb{position:absolute;left:0;right:0;bottom:0;padding:10px 16px 42px;background:rgba(10,12,17,.94);z-index:20}
+.vbtn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:999px;background:#D4FF3A;color:#0A0C11;font-size:16px;font-weight:700}
+.obtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 14px;border-radius:999px;border:1px solid #2A303C;color:#A3ABBC;font-size:13px;font-weight:600;box-sizing:border-box}
+/* new: history line under the title */
+.hl{display:flex;align-items:center;gap:10px;font-size:13px;color:#A3ABBC;height:30px;padding:0 10px 0 8px;margin-left:-8px;border-radius:10px;background:#0E1117;border:1px solid #1C212B;align-self:flex-start}
+.hl b{color:#F3F5F9;font-weight:600}
+.hl .chev{color:#5A6375;font-size:14px;margin-left:-2px}
+/* new: plates row */
+.pl{display:flex;align-items:center;justify-content:center;gap:10px;padding:2px 0 8px;font-size:13px;color:#A3ABBC}
+.pl b{color:#F3F5F9;font-weight:600}
+/* new: warm-up ramp */
+.wr{display:flex;align-items:center;gap:12px;height:46px;border-top:1px solid #1C212B;font-size:14px}
+.wr:first-of-type{border-top:0}
+.wr .m{width:22px;height:22px;border-radius:50%;box-sizing:border-box;flex:none}
+.wr .bar{flex:1;height:22px;position:relative;border-radius:6px;background:#0E1117}
+.wr .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:rgba(255,77,154,.22)}
+.wr .bar>span{position:absolute;left:8px;top:0;bottom:0;display:flex;align-items:center;gap:6px}
+.wr .ps{width:104px;text-align:right;font-size:12px;color:#8A93A6}
+.wr.done .m{background:rgba(46,211,176,.18);display:flex;align-items:center;justify-content:center}
+.wr.done .bar i{background:rgba(46,211,176,.16)}
+.wr.cur .m{border:2px solid #FF4D9A}
+.wr.fut .m{border:1.5px dashed #4A5263}
+.wr.goal{color:#5A6375}
+.wr.goal .bar{background:transparent;border:1px dashed #2A303C;box-sizing:border-box}
+/* new: history sheet */
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:30}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#12151C;border-radius:34px 34px 0 0;z-index:31;padding:8px 20px 40px;border-top:1px solid #1C212B}
+.grab{width:36px;height:5px;border-radius:3px;background:#3A4150;margin:0 auto 14px}
+.hr{display:flex;align-items:center;gap:12px;height:44px;border-top:1px solid #1C212B;font-size:14px}
+.hr:first-child{border-top:0}
+.hr .dt{width:56px;color:#8A93A6;font-size:13px}
+.hr .ld{flex:1;font-size:18px}
+.hr .ld small{font-family:'Archivo';font-size:12px;color:#8A93A6;font-weight:500;margin-left:6px}
+.hr .ef2{font-size:12px;color:#8A93A6}
+/* states board */
+.board{width:840px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.scn{background:#0A0C11;border:1px solid #1C212B;border-radius:24px;padding:18px}
+.scn .why{font-size:12px;color:#8A93A6;margin-top:12px;line-height:1.45}
+.opt{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.1em;padding:3px 8px;border-radius:999px;margin-left:8px;vertical-align:2px}
+</style>
+</helmet>
+
+<div class="canvas">
+<div class="canvas-head"><div class="lbl">TrainLog Pocket · iOS · artboard</div><div class="ttl" style="font-size:56px;margin-top:6px">Lift history, warm-ups and plates</div>
+<div class="soft" style="font-size:15px;margin-top:10px;max-width:980px;line-height:1.5"><b style="color:#F3F5F9">What's there today:</b> the session screen shows one set at a time, with the coach's hint under the lift name ("Travel today: holding 77.5 kg… Match last time") but not what last time actually was. To see it you'd open the web app, and the brief before the session is gone once you start. Barbell loads are left to mental maths (77.5 kg on your 10 kg bar = 20 + 5 + 5 + 2.5 + 1.25 a side), and there's no warm-up: the first set you log is already the working weight. <b style="color:#F3F5F9">This adds</b> a one-line history under the lift name that opens a small chart of your last sessions, a plate picture inside the set card for barbell lifts, and a warm-up ramp before the first heavy lift that you tick off without logging.</div></div>
+
+<!-- ============ 00 · TODAY (current) -->
+<div class="frame"><div class="lbl">00 · Today · as built</div><div class="phone fixed"><div class="island"></div>
+<div class="sb"><span>18:42</span><span class="ic"><svg width="17" height="12" viewBox="0 0 17 12" fill="#F3F5F9"><path d="M8.5 2.2c2.3 0 4.4.9 6 2.4l1.2-1.2A10.2 10.2 0 0 0 8.5.5 10.2 10.2 0 0 0 1.3 3.4l1.2 1.2a8.5 8.5 0 0 1 6-2.4zm0 3.4c1.4 0 2.6.5 3.6 1.4l1.2-1.2a6.8 6.8 0 0 0-9.6 0L4.9 7a5.1 5.1 0 0 1 3.6-1.4zm0 3.4c.5 0 .9.2 1.2.5L8.5 10.7 7.3 9.5c.3-.3.7-.5 1.2-.5z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="19" height="8" rx="2" fill="#F3F5F9"/><rect x="25" y="4.5" width="1.6" height="4" rx=".8" fill="#8A93A6"/></svg></span></div>
+<div class="top"><div class="cb">✕</div><div class="tc"><div class="t">Workout D · Lower + Core</div><div class="c num">6:18</div></div><div class="cb">☰</div></div>
+<div class="scr">
+<div class="prog"><i><b style="width:0%"></b></i><i></i><i></i><i></i><i></i><i></i></div>
+<div class="hd"><div class="kp">Exercise 1 of 6</div><div class="ttl" style="font-size:42px">Back Squat</div><div class="hint">Travel today: holding 77.5 kg on every lift. Match last time.</div></div>
+<div class="sc">
+<div class="sch"><span class="k">Set 1 of 3</span><span style="font-size:12px" class="muted">Target 77.5 kg × 6</span></div>
+<div style="padding-top:10px">
+<div class="vr"><div class="rb">−</div><div class="vv"><div><span class="num n">77.5</span><span class="u">kg</span></div><div class="k10">Weight</div></div><div class="rb">+</div></div>
+<div class="dv"></div>
+<div class="vr"><div class="rb">−</div><div class="vv"><div><span class="num n">6</span></div><div class="k10">Reps</div></div><div class="rb">+</div></div>
+</div>
+<div class="k10" style="margin-top:14px">How did it feel?</div>
+<div class="ef"><span>Easy</span><span>Good</span><span>Hard</span></div>
+</div>
+<div class="sl">
+<div class="sr cur"><span class="m"></span><span class="l" style="font-weight:600">Set 1</span><span class="num ld">77.5 kg × 6</span><span class="tr">now</span></div>
+<div class="sr fut"><span class="m"></span><span class="l">Set 2</span><span class="num ld">77.5 kg × 6</span><span class="tr"></span></div>
+</div>
+</div>
+<div class="bb"><div class="vbtn">Log set 1 · rest 2:30</div></div>
+<div class="home"></div></div><div class="frame-cap"><b>Redrawn from the code, not a screenshot.</b> Starting a session in the simulator would open a real one on the Mac, so this frame follows <code>StrengthSessionView.swift</code>. The hint says "match last time", but last time isn't on screen.</div></div>
+
+<!-- ============ 01 · A · RECOMMENDED -->
+<div class="frame"><div class="lbl">01 · History line + plates (picked)</div><div class="phone fixed"><div class="island"></div>
+<div class="sb"><span>18:49</span><span class="ic"><svg width="17" height="12" viewBox="0 0 17 12" fill="#F3F5F9"><path d="M8.5 2.2c2.3 0 4.4.9 6 2.4l1.2-1.2A10.2 10.2 0 0 0 8.5.5 10.2 10.2 0 0 0 1.3 3.4l1.2 1.2a8.5 8.5 0 0 1 6-2.4zm0 3.4c1.4 0 2.6.5 3.6 1.4l1.2-1.2a6.8 6.8 0 0 0-9.6 0L4.9 7a5.1 5.1 0 0 1 3.6-1.4zm0 3.4c.5 0 .9.2 1.2.5L8.5 10.7 7.3 9.5c.3-.3.7-.5 1.2-.5z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="19" height="8" rx="2" fill="#F3F5F9"/><rect x="25" y="4.5" width="1.6" height="4" rx=".8" fill="#8A93A6"/></svg></span></div>
+<div class="top"><div class="cb">✕</div><div class="tc"><div class="t">Workout D · Lower + Core</div><div class="c num">12:40</div></div><div class="cb">☰</div></div>
+<div class="scr">
+<div class="prog"><i><b style="width:0%"></b></i><i></i><i></i><i></i><i></i><i></i></div>
+<div class="hd"><div class="kp">Exercise 1 of 6</div><div class="ttl" style="font-size:42px">Back Squat</div>
+<div class="hl"><svg width="56" height="18" viewBox="0 0 56 18"><polyline points="4,4.3 16,13.7 28,6.7 40,5.5" fill="none" stroke="#4A5263" stroke-width="1.5"/><line x1="40" y1="5.5" x2="52" y2="5.5" stroke="#FF4D9A" stroke-width="1.5" stroke-dasharray="2 2"/><circle cx="4" cy="4.3" r="2.5" fill="#A3ABBC"/><circle cx="16" cy="13.7" r="2.5" fill="#A3ABBC"/><circle cx="28" cy="6.7" r="2.5" fill="#A3ABBC"/><circle cx="40" cy="5.5" r="2.5" fill="#F3F5F9"/><circle cx="52" cy="5.5" r="2.5" fill="none" stroke="#FF4D9A" stroke-width="1.5"/></svg><span>Last <b>77.5 × 6</b> · 3 sets · Oct 15</span><span class="chev">›</span></div>
+<div class="hint">Travel today: holding 77.5 kg on every lift. Match last time.</div></div>
+<div class="sc">
+<div class="sch"><span class="k">Set 1 of 3</span><span style="font-size:12px" class="muted">Target 77.5 kg × 6</span></div>
+<div style="padding-top:10px">
+<div class="vr"><div class="rb">−</div><div class="vv"><div><span class="num n">77.5</span><span class="u">kg</span></div><div class="k10">Weight</div></div><div class="rb">+</div></div>
+<div class="pl"><svg width="58" height="40" viewBox="0 0 58 40"><rect x="0" y="18" width="58" height="4" rx="1" fill="#4A5263"/><rect x="8" y="12" width="5" height="16" rx="1" fill="#4A5263"/><rect x="16" y="0" width="9" height="40" rx="2" fill="#A3ABBC"/><rect x="27" y="9" width="5" height="22" rx="1" fill="#A3ABBC"/><rect x="34" y="9" width="5" height="22" rx="1" fill="#A3ABBC"/><rect x="41" y="12" width="4" height="16" rx="1" fill="#A3ABBC"/><rect x="47" y="14" width="3" height="12" rx="1" fill="#A3ABBC"/></svg><span><b>20 · 5 · 5 · 2.5 · 1.25</b> a side</span></div>
+<div class="dv"></div>
+<div class="vr"><div class="rb">−</div><div class="vv"><div><span class="num n">6</span></div><div class="k10">Reps</div></div><div class="rb">+</div></div>
+</div>
+<div class="k10" style="margin-top:14px">How did it feel?</div>
+<div class="ef"><span>Easy</span><span>Good</span><span>Hard</span></div>
+</div>
+</div>
+<div class="bb"><div class="vbtn">Log set 1 · rest 2:30</div></div>
+<div class="home"></div></div><div class="frame-cap"><b>Last time is one line, tap for more.</b> The line under the name merges the number with a tiny ladder of your last four sessions, and today's target is the pink ring at the end. It's the same 13 pt as the hint, so the title still leads. Inside the set card, barbell lifts get the sleeve as you'd load it, with the plates named beside it. Press + or − and the plates change with the weight.</div></div>
+
+<!-- ============ 02 · HISTORY SHEET -->
+<div class="frame"><div class="lbl">02 · Tap the line: history sheet</div><div class="phone fixed"><div class="island"></div>
+<div class="sb"><span>18:49</span><span class="ic"><svg width="17" height="12" viewBox="0 0 17 12" fill="#F3F5F9"><path d="M8.5 2.2c2.3 0 4.4.9 6 2.4l1.2-1.2A10.2 10.2 0 0 0 8.5.5 10.2 10.2 0 0 0 1.3 3.4l1.2 1.2a8.5 8.5 0 0 1 6-2.4zm0 3.4c1.4 0 2.6.5 3.6 1.4l1.2-1.2a6.8 6.8 0 0 0-9.6 0L4.9 7a5.1 5.1 0 0 1 3.6-1.4zm0 3.4c.5 0 .9.2 1.2.5L8.5 10.7 7.3 9.5c.3-.3.7-.5 1.2-.5z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="19" height="8" rx="2" fill="#F3F5F9"/><rect x="25" y="4.5" width="1.6" height="4" rx=".8" fill="#8A93A6"/></svg></span></div>
+<div class="top"><div class="cb">✕</div><div class="tc"><div class="t">Workout D · Lower + Core</div><div class="c num">12:40</div></div><div class="cb">☰</div></div>
+<div class="scr">
+<div class="prog"><i><b style="width:0%"></b></i><i></i><i></i><i></i><i></i><i></i></div>
+<div class="hd"><div class="kp">Exercise 1 of 6</div><div class="ttl" style="font-size:42px">Back Squat</div></div>
+</div>
+<div class="dim"></div>
+<div class="sheet" style="top:318px">
+<div class="grab"></div>
+<div class="k">Back Squat · last 4 sessions</div>
+<svg width="353" height="204" viewBox="0 0 353 204" style="display:block;margin-top:10px">
+<line x1="0" y1="41.7" x2="353" y2="41.7" stroke="#1C212B" stroke-dasharray="3 4"/>
+<polyline points="30,41.7 102,128.3 174,63.3 246,52.5" fill="none" stroke="#3A4150" stroke-width="2"/>
+<line x1="246" y1="52.5" x2="318" y2="52.5" stroke="#FF4D9A" stroke-width="2" stroke-dasharray="4 4"/>
+<circle cx="30" cy="41.7" r="7" fill="#12151C" stroke="#D4FF3A" stroke-width="2"/><circle cx="30" cy="41.7" r="3.5" fill="#D4FF3A"/>
+<circle cx="102" cy="128.3" r="5" fill="#A3ABBC"/>
+<circle cx="174" cy="63.3" r="5" fill="#A3ABBC"/>
+<circle cx="246" cy="52.5" r="6" fill="#F3F5F9"/>
+<circle cx="318" cy="52.5" r="7" fill="#12151C" stroke="#FF4D9A" stroke-width="2"/>
+<g font-family="Barlow Condensed" font-weight="700" text-anchor="middle">
+<text x="30" y="24" font-size="20" fill="#D4FF3A">80</text>
+<text x="102" y="113" font-size="20" fill="#A3ABBC">60</text>
+<text x="174" y="47" font-size="20" fill="#A3ABBC">75</text>
+<text x="246" y="36" font-size="20" fill="#F3F5F9">77.5</text>
+<text x="318" y="36" font-size="20" fill="#FF7AB5">77.5</text>
+</g>
+<g font-family="Archivo" font-size="12" text-anchor="middle" fill="#8A93A6">
+<text x="30" y="178">Sep 2</text><text x="102" y="178">Sep 10</text><text x="174" y="178">Sep 22</text><text x="246" y="178">Oct 15</text><text x="318" y="178" fill="#FF7AB5" font-weight="600">Today</text>
+<text x="30" y="195" fill="#5A6375">3 × 6</text><text x="102" y="195" fill="#5A6375">2 × 6</text><text x="174" y="195" fill="#5A6375">3 × 6</text><text x="246" y="195" fill="#5A6375">3 × 6</text><text x="318" y="195" fill="#5A6375">3 × 6</text>
+</g>
+</svg>
+<div style="margin-top:8px">
+<div class="hr"><span class="dt">Oct 15</span><span class="num ld">77.5 kg × 6 · 6 · 6</span><span class="ef2">Good</span></div>
+<div class="hr"><span class="dt">Sep 22</span><span class="num ld">75 kg × 6 · 6 · 6</span><span class="ef2">Good</span></div>
+<div class="hr"><span class="dt">Sep 10</span><span class="num ld">60 kg × 6 · 6</span><span class="ef2"></span></div>
+<div class="hr"><span class="dt">Sep 2</span><span class="num ld">80 kg × 6 · 6 · 6</span><span class="ef2">Hard</span></div>
+</div>
+<div style="font-size:13px;color:#8A93A6;margin-top:10px">Best <span style="color:#D4FF3A;font-weight:600">80 kg × 6</span> on Sep 2 · 2.5 kg above today</div>
+</div>
+<div class="home"></div></div><div class="frame-cap"><b>One chart: top load per session, with today's target as the next step.</b> The numbers sit on the dots, and sets × reps sit under the dates, so nothing is said twice. Your best is the one volt mark, a win to come back to. Under it is a plain list with each set's reps and how it felt. Medium detent; swipe down to go back to the set.</div></div>
+
+<!-- ============ 03 · WARM-UP RAMP -->
+<div class="frame"><div class="lbl">03 · Warm-up ramp · first barbell lift</div><div class="phone fixed"><div class="island"></div>
+<div class="sb"><span>18:44</span><span class="ic"><svg width="17" height="12" viewBox="0 0 17 12" fill="#F3F5F9"><path d="M8.5 2.2c2.3 0 4.4.9 6 2.4l1.2-1.2A10.2 10.2 0 0 0 8.5.5 10.2 10.2 0 0 0 1.3 3.4l1.2 1.2a8.5 8.5 0 0 1 6-2.4zm0 3.4c1.4 0 2.6.5 3.6 1.4l1.2-1.2a6.8 6.8 0 0 0-9.6 0L4.9 7a5.1 5.1 0 0 1 3.6-1.4zm0 3.4c.5 0 .9.2 1.2.5L8.5 10.7 7.3 9.5c.3-.3.7-.5 1.2-.5z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="19" height="8" rx="2" fill="#F3F5F9"/><rect x="25" y="4.5" width="1.6" height="4" rx=".8" fill="#8A93A6"/></svg></span></div>
+<div class="top"><div class="cb">✕</div><div class="tc"><div class="t">Workout D · Lower + Core</div><div class="c num">2:05</div></div><div class="cb">☰</div></div>
+<div class="scr">
+<div class="prog"><i><b style="width:0%"></b></i><i></i><i></i><i></i><i></i><i></i></div>
+<div class="hd"><div class="kp">Exercise 1 of 6</div><div class="ttl" style="font-size:42px">Back Squat</div>
+<div class="hl"><svg width="56" height="18" viewBox="0 0 56 18"><polyline points="4,4.3 16,13.7 28,6.7 40,5.5" fill="none" stroke="#4A5263" stroke-width="1.5"/><line x1="40" y1="5.5" x2="52" y2="5.5" stroke="#FF4D9A" stroke-width="1.5" stroke-dasharray="2 2"/><circle cx="4" cy="4.3" r="2.5" fill="#A3ABBC"/><circle cx="16" cy="13.7" r="2.5" fill="#A3ABBC"/><circle cx="28" cy="6.7" r="2.5" fill="#A3ABBC"/><circle cx="40" cy="5.5" r="2.5" fill="#F3F5F9"/><circle cx="52" cy="5.5" r="2.5" fill="none" stroke="#FF4D9A" stroke-width="1.5"/></svg><span>Last <b>77.5 × 6</b> · 3 sets · Oct 15</span><span class="chev">›</span></div></div>
+<div class="sc">
+<div class="sch"><span class="k">Warm-up · up to 77.5 kg</span><span style="font-size:12px" class="muted">Tap each as you go</span></div>
+<div style="margin-top:8px">
+<div class="wr done"><span class="m"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M1.5 5.2l2.3 2.3 4.7-5" stroke="#2ED3B0" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span class="bar"><i style="width:13%"></i><span><b class="num" style="font-size:18px">Bar</b><span class="muted" style="font-size:13px">× 10</span></span></span><span class="ps">empty bar</span></div>
+<div class="wr cur"><span class="m"></span><span class="bar"><i style="width:52%"></i><span><b class="num" style="font-size:18px">40 kg</b><span class="muted" style="font-size:13px">× 5</span></span></span><span class="ps">5 · 5 · 2.5 · 2.5</span></div>
+<div class="wr fut"><span class="m"></span><span class="bar"><i style="width:71%;background:rgba(255,77,154,.1)"></i><span><b class="num" style="font-size:18px;color:#A3ABBC">55 kg</b><span class="muted" style="font-size:13px">× 3</span></span></span><span class="ps">20 · 2.5</span></div>
+<div class="wr fut"><span class="m"></span><span class="bar"><i style="width:84%;background:rgba(255,77,154,.1)"></i><span><b class="num" style="font-size:18px;color:#A3ABBC">65 kg</b><span class="muted" style="font-size:13px">× 2</span></span></span><span class="ps">20 · 5 · 2.5</span></div>
+<div class="wr goal"><span class="m" style="border:1.5px dashed #2A303C"></span><span class="bar"><span><b class="num" style="font-size:18px">77.5 kg</b><span style="font-size:13px">× 6 · set 1</span></span></span><span class="ps">33.75 a side</span></div>
+</div>
+<div style="display:flex;justify-content:center;margin-top:12px"><span class="obtn">Skip warm-up</span></div>
+</div>
+</div>
+<div class="bb"><div class="vbtn">Warm-up done · go to set 1</div></div>
+<div class="home"></div></div><div class="frame-cap"><b>A ramp you tick, not sets you log.</b> Before the first barbell lift, the set card becomes the climb to the working weight. Each bar is that step's share of 77.5 kg, labelled with the load and reps, with the plates to add on the right. Taps are kept on the phone: nothing goes to the Mac, Strava or the Watch, and no rest timer runs. Once you're done (or skip it), the set card comes back as in 01.</div></div>
+
+<!-- ============ 05 · STATES -->
+<div class="frame"><div class="lbl">05 · Every kind of lift</div><div class="board">
+<div class="scn"><div class="lbl" style="color:#F3F5F9;margin-bottom:10px">Dumbbell · no plates</div>
+<div class="hl"><svg width="56" height="18" viewBox="0 0 56 18"><polyline points="4,13 16,9 28,9 40,9" fill="none" stroke="#4A5263" stroke-width="1.5"/><line x1="40" y1="9" x2="52" y2="9" stroke="#FF4D9A" stroke-width="1.5" stroke-dasharray="2 2"/><circle cx="4" cy="13" r="2.5" fill="#A3ABBC"/><circle cx="16" cy="9" r="2.5" fill="#A3ABBC"/><circle cx="28" cy="9" r="2.5" fill="#A3ABBC"/><circle cx="40" cy="9" r="2.5" fill="#F3F5F9"/><circle cx="52" cy="9" r="2.5" fill="none" stroke="#FF4D9A" stroke-width="1.5"/></svg><span>Last <b>16 × 8</b> · 3 sets · Oct 15</span><span class="chev">›</span></div>
+<div class="why">Bulgarian split squat. Dumbbells show no plate row (the weight is per hand, as it already is). The sheet charts the dumbbell weight.</div></div>
+<div class="scn"><div class="lbl" style="color:#F3F5F9;margin-bottom:10px">Bodyweight · charts reps</div>
+<div class="hl"><svg width="56" height="18" viewBox="0 0 56 18"><polyline points="4,12 16,10 28,8 40,8" fill="none" stroke="#4A5263" stroke-width="1.5"/><line x1="40" y1="8" x2="52" y2="6" stroke="#FF4D9A" stroke-width="1.5" stroke-dasharray="2 2"/><circle cx="4" cy="12" r="2.5" fill="#A3ABBC"/><circle cx="16" cy="10" r="2.5" fill="#A3ABBC"/><circle cx="28" cy="8" r="2.5" fill="#A3ABBC"/><circle cx="40" cy="8" r="2.5" fill="#F3F5F9"/><circle cx="52" cy="6" r="2.5" fill="none" stroke="#FF4D9A" stroke-width="1.5"/></svg><span>Last <b>BW × 7</b> · 3 sets · Oct 30</span><span class="chev">›</span></div>
+<div class="why">Pull-up. With no load the ladder plots the best set's reps. Added weight shows as <i>+5 × 6</i>, plotted by load.</div></div>
+<div class="scn"><div class="lbl" style="color:#F3F5F9;margin-bottom:10px">Hold · charts seconds</div>
+<div class="hl"><svg width="56" height="18" viewBox="0 0 56 18"><polyline points="4,12 16,12 28,9 40,7" fill="none" stroke="#4A5263" stroke-width="1.5"/><line x1="40" y1="7" x2="52" y2="7" stroke="#FF4D9A" stroke-width="1.5" stroke-dasharray="2 2"/><circle cx="4" cy="12" r="2.5" fill="#A3ABBC"/><circle cx="16" cy="12" r="2.5" fill="#A3ABBC"/><circle cx="28" cy="9" r="2.5" fill="#A3ABBC"/><circle cx="40" cy="7" r="2.5" fill="#F3F5F9"/><circle cx="52" cy="7" r="2.5" fill="none" stroke="#FF4D9A" stroke-width="1.5"/></svg><span>Last <b>50 s</b> · 3 holds · Oct 15</span><span class="chev">›</span></div>
+<div class="why">Plank. Longest hold per session.</div></div>
+<div class="scn"><div class="lbl" style="color:#F3F5F9;margin-bottom:10px">First time · no line</div>
+<div class="hint" style="padding:6px 0">Start light: find a weight you could do 3 more reps with.</div>
+<div class="why">A lift you've never logged has no history line, just the hint as today. One past session shows the line without the ladder ("Last 60 × 8 · Sep 10").</div></div>
+<div class="scn"><div class="lbl" style="color:#F3F5F9;margin-bottom:10px">Plates · empty bar and odd weights</div>
+<div class="pl" style="justify-content:flex-start"><svg width="58" height="40" viewBox="0 0 58 40"><rect x="0" y="18" width="58" height="4" rx="1" fill="#4A5263"/><rect x="8" y="12" width="5" height="16" rx="1" fill="#4A5263"/></svg><span><b>Empty bar</b> · 10 kg</span></div>
+<div class="pl" style="justify-content:flex-start"><svg width="58" height="40" viewBox="0 0 58 40"><rect x="0" y="18" width="58" height="4" rx="1" fill="#4A5263"/><rect x="8" y="12" width="5" height="16" rx="1" fill="#4A5263"/><rect x="16" y="0" width="9" height="40" rx="2" fill="#A3ABBC"/><rect x="27" y="9" width="5" height="22" rx="1" fill="#A3ABBC"/><rect x="34" y="9" width="5" height="22" rx="1" fill="#A3ABBC"/><rect x="41" y="12" width="4" height="16" rx="1" fill="#A3ABBC"/><rect x="47" y="14" width="3" height="12" rx="1" fill="#A3ABBC"/></svg><span>78 kg can't be loaded · <b>77.5</b> or <b>80</b></span></div>
+<div class="why">Typed weights that the plates can't make say so, with the two nearest loads (tap one to use it).</div></div>
+<div class="scn"><div class="lbl" style="color:#F3F5F9;margin-bottom:10px">Warm-up · when it shows</div>
+<div class="hint" style="padding:6px 0;color:#A3ABBC">First barbell lift of the session, working weight ≥ 40 kg. Not on dumbbell days, bodyweight days or rehab.</div>
+<div class="why">Steps: bar × 10, ~50 % × 5, ~70 % × 3, ~85 % × 2, rounded to 2.5 kg, dropping any step that repeats or falls under the 10 kg bar. Resuming a session where set 1 is logged skips it.</div></div>
+</div><div class="frame-cap" style="max-width:840px"><b>The line and plates adapt to the lift.</b> Each shows what that kind of lift is measured by. Lifts with no history, and loads the plates can't make, say so plainly.</div></div>
+
+<!-- ============ NOTES -->
+<div class="notes"><div class="lbl">Notes</div><div class="ttl" style="font-size:32px;margin-top:6px">Rules, data and build</div>
+<div class="ncols">
+<div><div class="lbl" style="color:#F3F5F9">Rules</div><ul>
+<li><b>History:</b> last 4 completed sessions of the same lift (name match), working sets only. Top load per session, or best reps/hold when there's no load.</li>
+<li><b>Barbell lifts:</b> named <i>Barbell…</i>, <i>Back/Front Squat</i>, <i>Deadlift</i> or <i>Romanian Deadlift</i> (not Dumbbell…), or <i>Bench/Overhead Press</i> without "Dumbbell". Others get no plates and no warm-up.</li>
+<li><b>Plates:</b> your equipment from the Athlete page (<code>GET /settings/athlete-profile</code>): 10 kg bar, plates 20 × 2, 5 × 4, 2.5 × 4, 1.25 × 8. Heaviest first, never more than you own; the most you can load is 90 kg, and above that it says so.</li>
+<li><b>Warm-up ticks</b> live on the phone for this session only. Never logged or uploaded.</li>
+</ul></div>
+<div><div class="lbl" style="color:#F3F5F9">Data</div><ul>
+<li>Live on 3 Nov: Back Squat on Sep 2 (80 × 6 × 3), Sep 10 (60 × 6 × 2), Sep 22 (75 × 6 × 3), Oct 15 (77.5 × 6 × 3); best 80 kg; template D target 77.5 × 6 and its hint; split squat 16 × 8.</li>
+<li>Made up: how each set felt, the clocks, and the pull-up and plank history.</li>
+<li>Backend: new <code>GET /strength/workouts/exercise-history?name=&amp;limit=4</code> → sessions with date, sets (weight, reps, seconds, effort). New route plus a test; nothing the web uses changes.</li>
+</ul></div>
+<div><div class="lbl" style="color:#F3F5F9">Build</div><ul>
+<li>History for every lift in the session is fetched once at start and cached, so it works offline once loaded.</li>
+<li>Plate maths and the warm-up ramp are pure functions with unit tests (<code>StrengthLogic</code>).</li>
+<li><code>-strengthDemo set|warmup|history</code> draws these frames from canned data, with no session on the Mac.</li>
+<li>The Watch is untouched in this pass.</li>
+</ul></div>
+</div></div>
+</div>
+</x-dc>
+</body>
+</html>

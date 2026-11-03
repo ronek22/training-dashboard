@@ -13,6 +13,7 @@
 		054F2BE35CEDCA29B28ED5B2 /* ActivityDetailFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 572F7520C1797D9587E01198 /* ActivityDetailFormat.swift */; };
 		0568E5E202514A8C473DBB7F /* QuickLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10A7B084CF58AD83C3603DB /* QuickLogSheet.swift */; };
 		060527AC9C3F7EC7AB18CBEF /* ActivitiesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CB4D14BAB2BB7DEC58078D /* ActivitiesTests.swift */; };
+		06B928DF550881AA07627CBD /* WeightTrendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1344021E88475AD73DC5BD56 /* WeightTrendTests.swift */; };
 		09768067D6CE829DDCD86661 /* WidgetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 628E9967DDE0257DBDB7C508 /* WidgetTests.swift */; };
 		09FE32A1AF2EF435D622D06E /* Outbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 514B65F84FA756AC865BE97C /* Outbox.swift */; };
 		0AF4E5BA56B0A8B7551D0B89 /* RideExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C1A4F9CB05B3B33BBE8671E /* RideExport.swift */; };
@@ -308,6 +309,7 @@
 		0C1A4F9CB05B3B33BBE8671E /* RideExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideExport.swift; sourceTree = "<group>"; };
 		0D730F1AD91E31C1D31D9DC4 /* StartModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartModel.swift; sourceTree = "<group>"; };
 		0DBE4D0A1E43563696167392 /* CoachChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachChatTests.swift; sourceTree = "<group>"; };
+		1344021E88475AD73DC5BD56 /* WeightTrendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightTrendTests.swift; sourceTree = "<group>"; };
 		182BB3EC5490E8009AB7F938 /* Reminders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reminders.swift; sourceTree = "<group>"; };
 		18D43DC63E781C9944ACB57E /* TrainLogWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = TrainLogWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		18D9A2A9BA943EE32E9E4043 /* SyncLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncLog.swift; sourceTree = "<group>"; };
@@ -621,6 +623,7 @@
 				97FFCC221BB33F6F97AAF9C1 /* TrendsTests.swift */,
 				6842213B0681BAAE2240CA69 /* WatchGlanceTests.swift */,
 				8BAB25A3C5E4932DD743EA23 /* WatchTests.swift */,
+				1344021E88475AD73DC5BD56 /* WeightTrendTests.swift */,
 				628E9967DDE0257DBDB7C508 /* WidgetTests.swift */,
 				0C184A629AB5397E2AC3BB0B /* WinsTests.swift */,
 				4AA60329C14E2B3A7E19D48F /* WorkoutBuilderTests.swift */,
@@ -1394,6 +1397,7 @@
 				33983A3BFD627D5ABA59C65F /* WatchGlanceTests.swift in Sources */,
 				7D2936BDE05F212A2B3F3E9E /* WatchStrength.swift in Sources */,
 				2C43B26ADD2450B4178C3F8B /* WatchTests.swift in Sources */,
+				06B928DF550881AA07627CBD /* WeightTrendTests.swift in Sources */,
 				09768067D6CE829DDCD86661 /* WidgetTests.swift in Sources */,
 				607EADC997F3B015A42B0C7D /* WinsTests.swift in Sources */,
 				B64533EA783B6584919F9A88 /* WorkoutBuilderTests.swift in Sources */,

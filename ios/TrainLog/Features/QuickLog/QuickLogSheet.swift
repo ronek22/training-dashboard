@@ -3,7 +3,7 @@ import SwiftUI
 /// The morning check-in, opened from the Readiness card on Today. Weight rides along at the bottom.
 struct QuickLogSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var model = QuickLogModel()
+    @State private var model = QuickLogModel.launch()
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -183,8 +183,24 @@ struct QuickLogSheet: View {
             .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
             .contentShape(Rectangle())
             .onTapGesture { focused = true }
-            if let last = model.lastWeight {
-                Text("Last: \(QuickLogFormat.decimal(last.value)) kg on \(last.date)")
+            if let warning = model.typoWarning {
+                Text(warning).font(AppFont.body(12)).foregroundStyle(Color.warning)
+            }
+            if let trend = model.trend, let line = QuickLogFormat.trendLine(trend) {
+                HStack(spacing: 10) {
+                    WeightSparkline(values: (trend.smoothed ?? []).map(\.kg), color: line.onTrack ? .ink : .warning)
+                        .frame(width: 64, height: 20)
+                    (Text("Average ") + Text(line.average).foregroundColor(.ink).fontWeight(.semibold) + Text(" · ")
+                        + Text(line.rate).foregroundColor(line.onTrack ? .volt : .warning).fontWeight(.semibold))
+                        .font(AppFont.body(13))
+                        .foregroundStyle(Color.inkSoft)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                .accessibilityElement(children: .combine)
+            } else if let last = model.lastWeight {
+                let needs = QuickLogFormat.trendNeeds(model.trend).map { " · \($0)" } ?? ""
+                Text("Last: \(QuickLogFormat.decimal(last.value)) kg on \(QuickLogFormat.shortDate(last.date))\(needs)")
                     .font(AppFont.body(12)).foregroundStyle(Color.muted)
             }
         }
@@ -243,5 +259,26 @@ struct FlowLayout: Layout {
             rows[rows.count - 1] = row
         }
         return rows
+    }
+}
+
+/// The 7-day average as a line, oldest first.
+private struct WeightSparkline: View {
+    let values: [Double]
+    let color: Color
+
+    var body: some View {
+        Canvas { context, size in
+            guard values.count > 1, let low = values.min(), let high = values.max() else { return }
+            let span = max(high - low, 0.1)
+            var path = Path()
+            for (index, value) in values.enumerated() {
+                let point = CGPoint(x: 1 + CGFloat(index) / CGFloat(values.count - 1) * (size.width - 2),
+                                    y: 2 + (1 - CGFloat((value - low) / span)) * (size.height - 4))
+                index == 0 ? path.move(to: point) : path.addLine(to: point)
+            }
+            context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+        }
+        .accessibilityHidden(true)
     }
 }

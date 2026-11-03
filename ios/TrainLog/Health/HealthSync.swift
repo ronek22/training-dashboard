@@ -100,6 +100,10 @@ final class HealthSync {
     /// Reads the window and pushes it. Overlapping calls (each observer fires at launch) collapse into
     /// one run plus at most one more; outside of `force` a run within a minute of the last is skipped.
     func sync(force: Bool = false) async {
+        // The simulator's Health store is sample data; its daily totals would replace the phone's.
+        #if targetEnvironment(simulator)
+        return
+        #endif
         guard Self.isAvailable, readsRecovery || readsWeight else { return }
         if syncing {
             rerun = true

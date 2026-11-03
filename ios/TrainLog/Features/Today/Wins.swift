@@ -98,6 +98,9 @@ struct WinsRow: View {
     let celebrate: Bool
     let onCheckin: () -> Void
     let onFood: () -> Void
+    /// Evening only: rehab still due, shown as one more open ring.
+    var rehab: (done: Int, total: Int)?
+    var onRehab: () -> Void = {}
 
     var body: some View {
         HStack(spacing: 14) {
@@ -132,6 +135,11 @@ struct WinsRow: View {
                 open(icon: "fish.fill", progress: protein.eatenG / Double(max(protein.targetG, 1)),
                      value: label.value, rest: label.rest, action: onFood)
                     .accessibilityLabel("Protein \(label.value) of \(protein.targetG) grams")
+            }
+            if let rehab, rehab.done < rehab.total {
+                open(icon: "figure.cooldown", progress: Double(rehab.done) / Double(max(rehab.total, 1)),
+                     value: "\(rehab.done)", rest: "/\(rehab.total) rehab", action: onRehab)
+                    .accessibilityLabel("Rehab \(rehab.done) of \(rehab.total)")
             }
             Spacer(minLength: 0)
         }

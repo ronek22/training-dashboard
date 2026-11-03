@@ -7,7 +7,7 @@ struct PhoneToday: Decodable, Sendable {
     let readiness: Readiness
     let vitals: Vitals
     var checkinDone: Bool
-    let sick: Sick?
+    var sick: Sick?
     var today: Session?
     let tomorrow: Session?
     let week: [WeekDay]
@@ -16,6 +16,20 @@ struct PhoneToday: Decodable, Sendable {
     var rehab: Rehab?
     /// Today's logged protein against the target; nil without a weigh-in (and from an older server).
     var protein: Protein?
+    /// Today's kcal against the Food target, for the evening food row; nil without a target.
+    var food: Food?
+    /// Sleep need and debt for tonight's lights out; nil with too few nights (and from an older server).
+    var sleepNeed: SleepNeed?
+
+    struct Food: Decodable, Sendable, Equatable {
+        let eatenKcal: Double
+        let targetKcal: Double
+    }
+
+    struct SleepNeed: Decodable, Sendable, Equatable {
+        let needH: Double
+        let debtH: Double
+    }
 
     struct Protein: Decodable, Sendable, Equatable {
         let eatenG: Double

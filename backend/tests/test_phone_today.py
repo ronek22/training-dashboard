@@ -3,9 +3,11 @@ import os
 import sqlite3
 import tempfile
 import unittest
-from datetime import date
+from datetime import date, timedelta
+from unittest.mock import patch
 
 from backend.app import db
+from backend.app.services.food_log import save_nutrition_profile
 from backend.app.services.phone_today import build_phone_today, sport_of
 
 WEEK = "2030-01-07"
@@ -70,6 +72,28 @@ class PhoneTodayTests(unittest.TestCase):
         self.conn.execute("INSERT INTO food_items (entry_id, name, kcal, protein_g) VALUES (?, 'Tuna', 0, 33)", (entry,))
         self.conn.commit()
         self.assertTrue(build_phone_today(self.conn, TODAY)["protein"]["hit"])
+
+    def test_food_is_missing_until_the_profile_gives_a_target(self):
+        self.assertIsNone(build_phone_today(self.conn, TODAY)["food"])
+
+    def test_food_counts_todays_kcal_against_the_food_target(self):
+        self.conn.execute("INSERT INTO metrics (date, metric, value) VALUES ('2030-01-09', 'weight', 80.0)")
+        save_nutrition_profile(self.conn, {"sex": "male", "birth_year": 1996, "height_cm": 175})
+        entry = self.conn.execute("INSERT INTO food_entries (date, meal, source) VALUES ('2030-01-10', 'lunch', 'text')").lastrowid
+        self.conn.execute("INSERT INTO food_items (entry_id, name, kcal, protein_g) VALUES (?, 'Pasta', 640.4, 20)", (entry,))
+        self.conn.commit()
+        food = build_phone_today(self.conn, TODAY)["food"]
+        self.assertEqual(food["eaten_kcal"], 640)
+        self.assertGreater(food["target_kcal"], 1500)
+
+    def test_sleep_need_is_missing_without_enough_nights(self):
+        self.assertIsNone(build_phone_today(self.conn, TODAY)["sleep_need"])
+
+    def test_sleep_need_carries_the_median_night_and_the_debt(self):
+        history = [{"date": (TODAY - timedelta(days=offset)).isoformat(), "value": 6.0 if offset < 7 else 7.5} for offset in range(40)]
+        with patch("backend.app.services.phone_today.get_sleep_history", return_value=history):
+            need = build_phone_today(self.conn, TODAY)["sleep_need"]
+        self.assertEqual(need, {"need_h": 7.5, "debt_h": 10.5})
 
     def test_strength_day_lists_the_template_exercises_and_last_done(self):
         today = build_phone_today(self.conn, TODAY)["today"]

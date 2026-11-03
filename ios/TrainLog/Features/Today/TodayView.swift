@@ -25,6 +25,9 @@ struct TodayView: View {
     @State private var celebrating: Set<Wins.Key> = []
     @State private var winTick = 0
     @State private var ledger = WinLedger()
+    /// Shared with Body's lights-out target.
+    @AppStorage("bodyWakeMinutes") private var wakeMinutes = 450
+    @State private var editingWake = false
     @Environment(\.openURL) private var openURL
     var onStartStrength: (StrengthLaunch) -> Void = { _ in }
     /// Bumped when the strength screen closes, so the banner and plan reload.
@@ -50,6 +53,9 @@ struct TodayView: View {
                                 .hidesTabBar()
                         case .paceGuide:
                             PaceGuideView(model: run).hidesTabBar()
+                        case .tomorrow:
+                            PlanDayView(model: plan, date: Self.nextDay(date), onMove: { moving = $0 }, onStartStrength: onStartStrength)
+                                .hidesTabBar()
                         }
                     }
                 }
@@ -96,7 +102,12 @@ struct TodayView: View {
     }
 
     private enum Route: Hashable {
-        case day, paceGuide
+        case day, paceGuide, tomorrow
+    }
+
+    static func nextDay(_ iso: String) -> String {
+        guard let day = TodayFormat.parse(iso), let next = Calendar.current.date(byAdding: .day, value: 1, to: day) else { return iso }
+        return FoodFormat.iso(next)
     }
 
     /// The Sunday nudge: this week on Sunday, last week on Monday, the week so far otherwise.
@@ -148,8 +159,11 @@ struct TodayView: View {
 
     private var content: some View {
         ScrollView {
+            TimelineView(.everyMinute) { context in
+            let now = TodayModel.demoNow ?? context.date
+            let evening = model.data.map { isEvening($0, now: now) } ?? false
             VStack(alignment: .leading, spacing: 12) {
-                header
+                header(evening: evening)
                 if let rehab = watch.rehab, let session = watch.rehabSession, !rehab.finished, !rehab.discarded {
                     WatchRehabCard(state: rehab, session: session, heartRate: watch.liveHeartRate()) { showRehab = true }
                         .reveal(0)
@@ -162,48 +176,19 @@ struct TodayView: View {
                 }
                 if let data = model.data {
                     let done = winsDone(data)
-                    WinsRow(checkinDone: data.checkinDone, protein: data.protein, done: done,
-                            cleanThisWeek: ledger.cleanDays(weekOf: data.date),
-                            celebrate: !celebrating.isDisjoint(with: [.checkin, .protein, .clean]),
-                            onCheckin: { showCheckin = true },
-                            onFood: { if let url = URL(string: "trainlog://food") { openURL(url) } })
-                        .reveal(0)
-                        .onChange(of: done.map(\.rawValue).sorted() + [plan.loaded ? "plan" : ""], initial: true) {
-                            celebrate(done, on: data.date)
+                    Group {
+                        if evening {
+                            eveningCards(data, done: done, now: now)
+                        } else {
+                            morningCards(data, done: done)
                         }
-                    if model.offline, let syncedAt = model.syncedAt {
-                        offlineNote(syncedAt)
                     }
-                    if let offer = RecapFormat.offer(today: data.date) {
-                        RecapCard(label: offer.label, range: RecapFormat.range(offer.weekStart, RecapFormat.weekEnd(offer.weekStart))) {
-                            recap = RecapLaunch(weekStart: offer.weekStart)
-                        }
-                        .reveal(1)
+                    .onChange(of: done.map(\.rawValue).sorted() + [plan.loaded ? "plan" : ""], initial: true) {
+                        celebrate(done, on: data.date)
                     }
-                    SessionCard(
-                        data: data,
-                        planDay: plan.day(data.date),
-                        today: plan.today,
-                        showFallback: $showFallback,
-                        rehabPending: model.rehabPending,
-                        celebrating: celebrating,
-                        workoutOpen: model.activeWorkout != nil,
-                        runFitness: run.fitness,
-                        onStartStrength: onStartStrength,
-                        onOpen: { route = .day },
-                        onGuide: { route = .paceGuide },
-                        onRehab: { showRehab = true },
-                        onMove: { moving = $0 },
-                        onStudio: { showStudio = true }
-                    )
-                    .reveal(2)
-                    ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone,
-                                  onOpen: { showBody = true }, onCheckin: { showCheckin = true })
-                    .reveal(3)
-                    WeekCard(week: data.week, minutes: data.weekMinutes, today: data.date) {
-                        recap = RecapLaunch(weekStart: nil)
+                    .task(id: evening) {
+                        if evening { await model.loadOutside() }
                     }
-                    .reveal(4)
                 } else if let error = model.error {
                     errorCard(error)
                 } else {
@@ -213,6 +198,7 @@ struct TodayView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
             .animation(.spring(duration: 0.45, bounce: 0.15), value: model.activeWorkout == nil)
+            }
         }
         .sensoryFeedback(.success, trigger: winTick)
         .scrollIndicators(.hidden)
@@ -247,11 +233,153 @@ struct TodayView: View {
         }
     }
 
-    private var header: some View {
+    /// The morning screen: what's due today.
+    private func morningCards(_ data: PhoneToday, done: Set<Wins.Key>) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            WinsRow(checkinDone: data.checkinDone, protein: data.protein, done: done,
+                    cleanThisWeek: ledger.cleanDays(weekOf: data.date),
+                    celebrate: !celebrating.isDisjoint(with: [.checkin, .protein, .clean]),
+                    onCheckin: { showCheckin = true },
+                    onFood: openFood)
+                .reveal(0)
+            if model.offline, let syncedAt = model.syncedAt {
+                offlineNote(syncedAt)
+            }
+            if let offer = RecapFormat.offer(today: data.date) {
+                RecapCard(label: offer.label, range: RecapFormat.range(offer.weekStart, RecapFormat.weekEnd(offer.weekStart))) {
+                    recap = RecapLaunch(weekStart: offer.weekStart)
+                }
+                .reveal(1)
+            }
+            SessionCard(
+                data: data,
+                planDay: plan.day(data.date),
+                today: plan.today,
+                showFallback: $showFallback,
+                rehabPending: model.rehabPending,
+                celebrating: celebrating,
+                workoutOpen: model.activeWorkout != nil,
+                runFitness: run.fitness,
+                onStartStrength: onStartStrength,
+                onOpen: { route = .day },
+                onGuide: { route = .paceGuide },
+                onRehab: { showRehab = true },
+                onMove: { moving = $0 },
+                onStudio: { showStudio = true }
+            )
+            .reveal(2)
+            ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone,
+                          onOpen: { showBody = true }, onCheckin: { showCheckin = true })
+            .reveal(3)
+            weekCard(data).reveal(4)
+        }
+    }
+
+    private func weekCard(_ data: PhoneToday) -> some View {
+        WeekCard(week: data.week, minutes: data.weekMinutes, today: data.date) {
+            recap = RecapLaunch(weekStart: nil)
+        }
+    }
+
+    private func openFood() {
+        if let url = URL(string: "trainlog://food") { openURL(url) }
+    }
+
+    /// After 20:00 on today's own date (or in the evening demo).
+    private func isEvening(_ data: PhoneToday, now: Date) -> Bool {
+        EveningFormat.isEvening(now) && (TodayModel.demoNow != nil || data.date == FoodFormat.iso(now))
+    }
+
+    /// Rehab exercises for today as done / total; nil without a routine.
+    private func rehabProgress(_ data: PhoneToday) -> (done: Int, total: Int)? {
+        guard let rehab = data.rehab, rehab.total > 0 else { return nil }
+        let done = model.rehabPending.map { rehab.total - $0 } ?? rehab.done
+        return (min(max(0, done), rehab.total), rehab.total)
+    }
+
+    /// The evening: the planned workout decides what leads, then how today went, tonight, tomorrow.
+    @ViewBuilder
+    private func eveningCards(_ data: PhoneToday, done: Set<Wins.Key>, now date: Date) -> some View {
+        let now = EveningFormat.minutes(date)
+        let debt = data.sleepNeed?.debtH ?? 0
+        let lights = EveningFormat.lightsOut(wakeMinutes: wakeMinutes, needH: data.sleepNeed?.needH ?? 7.5,
+                                             debtH: debt, sick: data.sick != nil)
+        let rehab = rehabProgress(data)
+        let session = data.sick == nil ? data.today : nil
+        let sport = session?.sport ?? .other
+        let rehabOnly = sport == .mobility && rehab != nil
+        let open = session.map { !$0.isDone && sport != .rest && !rehabOnly } ?? false
+        let fits = open && EveningFormat.fits(now: now, durationMin: session?.durationMin ?? 0, lightsOut: lights)
+        let day: EveningFormat.Day = data.sick != nil ? .sick(day: data.sick?.day)
+            : session == nil || sport == .rest ? .rest
+            : rehabOnly ? (rehab.map { $0.done >= $0.total } ?? true ? .done(.mobility) : .open(.mobility))
+            : open ? .open(sport) : .done(sport)
+        VStack(alignment: .leading, spacing: 12) {
+            if model.offline, let syncedAt = model.syncedAt {
+                offlineNote(syncedAt)
+            }
+            if open, let session, model.activeWorkout == nil {
+                StillOpenCard(
+                    session: session, sport: sport, fits: fits,
+                    doneBy: EveningFormat.clock(now + (session.durationMin ?? 0)),
+                    showFallback: $showFallback,
+                    onStart: {
+                        if let strength = session.strength {
+                            onStartStrength(StrengthLaunch(templateId: strength.templateId, oneTime: strength.oneTime))
+                        } else {
+                            route = .day
+                        }
+                    },
+                    onMove: plan.day(data.date).map { day in { moving = day } }
+                )
+                .reveal(0)
+            }
+            let tonight = TonightEveningCard(
+                now: now, lightsOut: lights, wakeMinutes: wakeMinutes,
+                reason: EveningFormat.reason(debtH: debt, sick: data.sick != nil),
+                ghostMinutes: fits ? session?.durationMin : nil,
+                food: EveningFormat.food(eatenKcal: data.food?.eatenKcal ?? 0, targetKcal: data.food?.targetKcal, protein: data.protein),
+                onWake: { editingWake = true },
+                onFood: openFood
+            )
+            let recap = HowTodayWentCard(
+                line: EveningFormat.line(day, outsideMin: model.outside?.daylightMinutes, clean: done.contains(.clean)),
+                outside: model.outside,
+                sun: EveningFormat.sun(on: date),
+                now: now
+            ) {
+                WinsRow(checkinDone: data.checkinDone, protein: nil, done: done,
+                        cleanThisWeek: ledger.cleanDays(weekOf: data.date),
+                        celebrate: !celebrating.isDisjoint(with: [.checkin, .protein, .clean]),
+                        onCheckin: { showCheckin = true },
+                        onFood: openFood,
+                        rehab: data.sick == nil ? rehab : nil,
+                        onRehab: { showRehab = true })
+            }
+            if open {
+                tonight.reveal(1)
+                recap.reveal(2)
+            } else {
+                recap.reveal(0)
+                tonight.reveal(1)
+            }
+            TomorrowCard(session: data.tomorrow, weekday: weekday(Self.nextDay(data.date))) { route = .tomorrow }
+                .reveal(3)
+            weekCard(data).reveal(4)
+        }
+        .sheet(isPresented: $editingWake) { WakeTimeSheet(minutes: $wakeMinutes) }
+    }
+
+    private func weekday(_ iso: String) -> String {
+        TodayFormat.parse(iso)?.formatted(.dateTime.weekday(.wide).locale(Locale(identifier: "en_GB"))) ?? ""
+    }
+
+    private func header(evening: Bool) -> some View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 4) {
                 Kicker(model.data.map { TodayFormat.dateKicker($0.date) } ?? " ")
-                Text("TODAY").font(AppFont.title(44)).foregroundStyle(Color.ink)
+                Text(evening ? "TONIGHT" : "TODAY").font(AppFont.title(44)).foregroundStyle(Color.ink)
+                    .contentTransition(.opacity)
             }
             Spacer()
             HStack(spacing: 8) {

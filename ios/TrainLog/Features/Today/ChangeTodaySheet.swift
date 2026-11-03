@@ -27,7 +27,7 @@ struct ChangeTodaySheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Capsule().fill(Color(hex: 0x3A404C)).frame(width: 36, height: 5).frame(maxWidth: .infinity).padding(.bottom, 12)
+            SheetGrabber()
             switch coach.phase {
             case .compose: compose
             case .working(let stage): working(stage)
@@ -39,7 +39,7 @@ struct ChangeTodaySheet: View {
         .padding(.top, 8)
         .padding(.bottom, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .animation(.snappy(duration: 0.25), value: coach.phase)
+        .animation(Motion.quick, value: coach.phase)
         .onAppear(perform: preselect)
         .onChange(of: coach.phase) {
             // Keep the first version of the day: "Change again" shouldn't hide what the plan said.
@@ -155,7 +155,7 @@ struct ChangeTodaySheet: View {
     private func send() {
         typing = false
         if instant {
-            UISelectionFeedbackGenerator().selectionChanged()
+            Haptics.selection()
             dismiss()
             onShort()
             return
@@ -173,19 +173,19 @@ struct ChangeTodaySheet: View {
 
     private var readinessLine: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Circle().fill(Color(hex: 0xFF5C6C)).frame(width: 8, height: 8)
-            (Text("Readiness ") + Text((readiness?.label ?? "low").lowercased()).foregroundStyle(Color(hex: 0xFF7A7A)).bold()
+            Circle().fill(Color.alert).frame(width: 8, height: 8)
+            (Text("Readiness ") + Text((readiness?.label ?? "low").lowercased()).foregroundStyle(Color.dangerStrong).bold()
              + Text(" · \(ChangeTodayFormat.readinessLine(readiness?.factors ?? [])) The coach sees this too."))
                 .font(AppFont.body(13))
-                .foregroundStyle(Color(hex: 0xC9CFDA))
+                .foregroundStyle(Color.inkBody)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.cardBorder))
     }
 
     private var composeRows: [ChangeTape.Row] {
@@ -213,7 +213,7 @@ struct ChangeTodaySheet: View {
             ForEach(ChangeTodayFormat.Ask.allCases) { item in
                 let on = ask == item
                 Button {
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    Haptics.selection()
                     if on {
                         ask = nil
                         choice = nil
@@ -239,8 +239,8 @@ struct ChangeTodaySheet: View {
                     }
                     .padding(.horizontal, 12)
                     .frame(minHeight: 58)
-                    .background(on ? Color.cardBorder : Color.inset, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(on ? Color.ink : Color.cardBorder))
+                    .background(on ? Color.cardBorder : Color.inset, in: RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous).strokeBorder(on ? Color.ink : Color.cardBorder))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -255,7 +255,7 @@ struct ChangeTodaySheet: View {
             ForEach(options, id: \.self) { option in
                 let on = option == selected
                 Button {
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    Haptics.selection()
                     pick(option)
                 } label: {
                     HStack(spacing: 6) {
@@ -265,7 +265,7 @@ struct ChangeTodaySheet: View {
                         Text(ChangeTodayFormat.label(option)).lineLimit(1).minimumScaleFactor(0.8)
                     }
                     .font(AppFont.body(13, weight: .semibold))
-                    .foregroundStyle(on ? Color.bg : Color(hex: 0xC9CFDA))
+                    .foregroundStyle(on ? Color.bg : Color.inkBody)
                     .frame(maxWidth: .infinity, minHeight: 36)
                     .background(on ? Color.ink : .clear, in: Capsule())
                     .overlay(Capsule().strokeBorder(on ? Color.ink : Color.outline))
@@ -295,8 +295,8 @@ struct ChangeTodaySheet: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 13)
             .frame(minHeight: 48, alignment: .leading)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.cardBorder))
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous).strokeBorder(Color.cardBorder))
     }
 
     @ViewBuilder
@@ -351,8 +351,8 @@ struct ChangeTodaySheet: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+                .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.cardBorder))
                 .padding(.top, 16)
         }
         Spacer(minLength: 12)
@@ -397,7 +397,7 @@ struct ChangeTodaySheet: View {
         }
         if let text = result.summary ?? after?.details {
             ScrollView {
-                Text(text).font(AppFont.body(14)).foregroundStyle(Color(hex: 0xC9CFDA)).lineSpacing(3)
+                Text(text).font(AppFont.body(14)).foregroundStyle(Color.inkBody).lineSpacing(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollBounceBehavior(.basedOnSize)
@@ -434,7 +434,7 @@ struct ChangeTodaySheet: View {
     @ViewBuilder
     private func failed(_ message: String) -> some View {
         head(kicker: kicker, title: now.isRest ? "Add a session" : "Change today")
-        stateCard(color: Color(hex: 0xFF5C6C), title: "The coach couldn't finish", text: "\(message) Nothing was changed.").padding(.top, 18)
+        stateCard(color: Color.alert, title: "The coach couldn't finish", text: "\(message) Nothing was changed.").padding(.top, 18)
         Spacer(minLength: 12)
         Button("Try again") {
             coach.retry()
@@ -480,8 +480,8 @@ struct ChangeTodaySheet: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Color.cardBorder))
     }
 }
 
@@ -530,7 +530,7 @@ struct ChangeTape: View {
         GeometryReader { proxy in
             let width = proxy.size.width * min(Double(row.minutes), Double(scale)) / Double(max(scale, 1))
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color(hex: 0x1A1E27))
+                RoundedRectangle(cornerRadius: Radius.chip, style: .continuous).fill(Color.chip)
                 bar(row).frame(width: max(width, row.minutes > 0 ? 8 : 0))
                 if !row.label.isEmpty {
                     Text(row.label)
@@ -544,12 +544,12 @@ struct ChangeTape: View {
             }
         }
         .frame(height: 26)
-        .animation(.spring(duration: 0.4, bounce: 0.2), value: row.minutes)
+        .animation(Motion.enter, value: row.minutes)
     }
 
     @ViewBuilder
     private func bar(_ row: Row) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: Radius.chip, style: .continuous)
         switch row.style {
         case .solid: shape.fill(row.color)
         case .faded: shape.fill(row.color.opacity(0.35))
@@ -560,7 +560,7 @@ struct ChangeTape: View {
             shape.fill(row.color)
                 .opacity(breathe ? 0.45 : 1)
                 .onAppear {
-                    withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { breathe = true }
+                    withAnimation(Motion.breathe) { breathe = true }
                 }
         }
     }

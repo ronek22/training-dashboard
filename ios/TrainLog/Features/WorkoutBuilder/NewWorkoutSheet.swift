@@ -85,8 +85,8 @@ struct NewWorkoutSheet: View {
             .submitLabel(.done)
             .padding(.horizontal, 12)
             .frame(height: 48)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(nameFocused ? Color.volt.opacity(0.5) : Color.cardBorder))
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.control))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(nameFocused ? Color.volt.opacity(0.5) : Color.cardBorder))
     }
 
     private var nameIdeas: some View {
@@ -109,7 +109,7 @@ struct NewWorkoutSheet: View {
         // The picker sits outside the button so its own taps (a Menu, chips) still work.
         return VStack(alignment: .leading, spacing: 10) {
             Button {
-                withAnimation(.snappy(duration: 0.2)) { choice = value }
+                withAnimation(Motion.quick) { choice = value }
             } label: {
                 HStack(alignment: .top, spacing: 12) {
                     Circle()
@@ -129,8 +129,8 @@ struct NewWorkoutSheet: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(selected ? Color.volt.opacity(0.05) : Color.inset, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(selected ? Color.volt : Color.cardBorder))
+        .background(selected ? Color.volt.opacity(0.05) : Color.inset, in: RoundedRectangle(cornerRadius: Radius.panel))
+        .overlay(RoundedRectangle(cornerRadius: Radius.panel).strokeBorder(selected ? Color.volt : Color.cardBorder))
     }
 
     private var sessionPicker: some View {
@@ -173,8 +173,8 @@ struct NewWorkoutSheet: View {
             Text("Change").font(AppFont.body(13)).foregroundStyle(Color.inkSoft)
         }
         .padding(10)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.row))
+        .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(Color.cardBorder))
     }
 
     private var musclePicker: some View {
@@ -187,7 +187,7 @@ struct NewWorkoutSheet: View {
                 } label: {
                     Text(group.rawValue)
                         .font(AppFont.body(13, weight: .semibold))
-                        .foregroundStyle(on ? Color(hex: 0xFF9AC6) : .inkSoft)
+                        .foregroundStyle(on ? Color.strengthSoft : .inkSoft)
                         .frame(maxWidth: .infinity, minHeight: 36)
                         .background(on ? Color.strength.opacity(0.14) : .clear, in: Capsule())
                         .overlay(Capsule().strokeBorder(on ? Color.strength : .outline))

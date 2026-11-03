@@ -154,7 +154,7 @@ struct ActivityDetailView: View {
         .onScrollGeometryChange(for: Bool.self) { geometry in
             geometry.contentOffset.y + geometry.contentInsets.top > headerHeight - 150
         } action: { _, value in
-            withAnimation(.easeOut(duration: 0.2)) { scrolled = value }
+            withAnimation(Motion.fade) { scrolled = value }
         }
         .scrollIndicators(.hidden)
         .ignoresSafeArea(edges: .top)
@@ -221,7 +221,7 @@ struct ActivityDetailView: View {
                         .foregroundStyle(Color.ink)
                         .frame(width: 44, height: 44)
                         .background(.ultraThinMaterial, in: Circle())
-                        .background(Color(hex: 0x12151C).opacity(0.72), in: Circle())
+                        .background(Color.card.opacity(0.72), in: Circle())
                         .overlay(Circle().strokeBorder(Color.white.opacity(0.08)))
                         .environment(\.colorScheme, .dark)
                 }

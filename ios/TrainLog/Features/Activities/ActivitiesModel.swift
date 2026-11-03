@@ -67,7 +67,7 @@ final class ActivitiesModel {
         update(activity.id) { $0.sessionTags = SessionTags(verdict: verdict) }
         let body = try? APIClient.encoder.encode(SessionTags(verdict: verdict))
         await write("PUT", "/activities/\(activity.id)/tags", body: body)
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Haptics.tick()
     }
 
     func saveFeedback(_ input: ActivityFeedbackInput, for id: String) async {
@@ -77,7 +77,7 @@ final class ActivitiesModel {
         }
         let body = try? APIClient.encoder.encode(input)
         await write("POST", "/activities/\(id)/feedback", body: body)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
     }
 
     /// Sends a write, or queues it when the server is unreachable; the row already shows it.

@@ -63,7 +63,7 @@ final class RunModel {
     func save(_ feel: RunFeel, pain: Int?, for run: RunningFitness.FeltRun) async {
         answered[run.activityId] = feel
         defaults.set(answered.mapValues(\.rawValue), forKey: Self.answeredKey)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
         let encodedID = run.activityId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? run.activityId
         var writes: [WriteQueue.Write] = [
             .init(method: "PUT", path: "/activities/\(encodedID)/felt", body: try? APIClient.encoder.encode(RunFeelInput(felt: feel))),

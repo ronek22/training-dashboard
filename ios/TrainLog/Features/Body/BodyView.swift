@@ -15,10 +15,7 @@ struct BodyView: View {
                 header
                 if let data = model.data {
                     if model.offline, let syncedAt = model.syncedAt {
-                        Text("Offline · showing \(syncedAt.formatted(date: .abbreviated, time: .shortened)) data")
-                            .font(AppFont.body(12, weight: .medium))
-                            .foregroundStyle(Color.muted)
-                            .padding(.horizontal, 4)
+                        OfflineNote(syncedAt: syncedAt)
                     }
                     BodyTabPicker(selection: Binding(get: { BodyTab(rawValue: tab) ?? .day }, set: { tab = $0.rawValue }))
                     if BodyTab(rawValue: tab) == .body {
@@ -105,7 +102,7 @@ private struct BodyTabPicker: View {
         HStack(spacing: 0) {
             ForEach(BodyTab.allCases, id: \.self) { tab in
                 Button {
-                    withAnimation(.snappy(duration: 0.2)) { selection = tab }
+                    withAnimation(Motion.quick) { selection = tab }
                 } label: {
                     Text(tab.label)
                         .font(AppFont.body(14, weight: .bold))
@@ -269,8 +266,8 @@ private struct VitalTiles: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(kind.label) \(kind.format(vital.value)) \(kind.unit), \(note.text)")
     }
@@ -403,7 +400,7 @@ private struct BodyMapSection: View {
                 .foregroundStyle(Color.bg)
                 .padding(.horizontal, 8)
                 .frame(height: 22)
-                .background(Color.danger, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .background(Color.danger, in: RoundedRectangle(cornerRadius: Radius.chip, style: .continuous))
                 .offset(y: 118)
         }
     }
@@ -580,7 +577,7 @@ private struct ReadinessHero: View {
                 }
             }
             .padding(.horizontal, 12)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
         }
     }
 
@@ -786,7 +783,7 @@ private struct HeartCard: View {
                     .foregroundStyle(color)
                     .symbolEffect(.pulse, options: .repeating, isActive: live?.latestHeartRate != nil)
                     .frame(width: 40, height: 40)
-                    .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
             }
             if let heart = live?.heart, !heart.isEmpty {
                 chart(heart).frame(height: 120)

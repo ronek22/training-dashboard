@@ -19,11 +19,9 @@ struct PlanView: View {
     var body: some View {
         NavigationStack(path: $path) {
             List {
-                header.plainRow()
+                header.plainRow(top: 0)
                 if model.offline, let syncedAt = model.syncedAt {
-                    Text("Offline · showing \(syncedAt.formatted(date: .omitted, time: .shortened)) data")
-                        .font(AppFont.body(12, weight: .medium))
-                        .foregroundStyle(Color.muted)
+                    OfflineNote(syncedAt: syncedAt)
                         .plainRow()
                 }
                 if let week = model.week {
@@ -110,7 +108,7 @@ struct PlanView: View {
                            today: model.today,
                            onRefine: { if let week = coach.task?.week { coach.open(.refine(week: week)) } })
                 .presentationDetents([.large])
-                .presentationBackground(Color(hex: 0x161A22))
+                .presentationBackground(Color.sheet)
         }
         .sheet(item: $asking) { context in
             CoachChatView(context: context)
@@ -125,7 +123,7 @@ struct PlanView: View {
                     return error
                 }
                 .presentationDetents([.height(470)])
-                .presentationBackground(Color(hex: 0x161A22))
+                .presentationBackground(Color.sheet)
             }
         }
     }
@@ -156,12 +154,7 @@ struct PlanView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 4) {
-                Kicker(model.selected.map(PlanFormat.weekKicker) ?? " ")
-                Text("PLAN").font(AppFont.title(44)).foregroundStyle(Color.ink)
-            }
-            Spacer()
+        ScreenHeader(kicker: model.selected.map(PlanFormat.weekKicker) ?? " ", title: "Plan") {
             HStack(spacing: 8) {
                 if let week = model.week, coach.isRunning(for: week.weekStart) || !PlanCoachFormat.editableDates(week, today: model.today).isEmpty {
                     Button {
@@ -183,42 +176,21 @@ struct PlanView: View {
                     .accessibilityLabel("Refine this week with the coach")
                 }
                 if let week = model.week {
-                    Button {
+                    HeaderIconButton(label: "Ask coach about this week") {
                         asking = CoachFormat.weekContext(week.weekStart)
-                    } label: {
-                        Image(systemName: "bubble.left.and.bubble.right")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Color.ink)
-                            .frame(width: 36, height: 36)
-                            .overlay(Circle().strokeBorder(Color.outline))
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
+                    } icon: {
+                        Image(systemName: "bubble.left.and.bubble.right").font(.system(size: 13, weight: .semibold))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Ask coach about this week")
                 }
-                pageButton("chevron.left", enabled: model.hasPrevious, label: "Previous week") { model.page(-1) }
-                pageButton("chevron.right", enabled: model.hasNext, label: "Next week") { model.page(1) }
+                HeaderIconButton(enabled: model.hasPrevious, label: "Previous week") { model.page(-1) } icon: {
+                    Image(systemName: "chevron.left")
+                }
+                HeaderIconButton(enabled: model.hasNext, label: "Next week") { model.page(1) } icon: {
+                    Image(systemName: "chevron.right")
+                }
             }
             .padding(.bottom, 4)
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 6)
-    }
-
-    private func pageButton(_ icon: String, enabled: Bool, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(enabled ? Color.ink : Color.dim)
-                .frame(width: 36, height: 36)
-                .overlay(Circle().strokeBorder(enabled ? Color.outline : Color.cardBorder))
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-        .accessibilityLabel(label)
     }
 
     private func openCoach(_ task: PlanCoachTask) {
@@ -227,13 +199,8 @@ struct PlanView: View {
     }
 
     private var emptyCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Kicker(model.error == nil ? "No plan yet" : "Not synced yet")
-            Text(model.error ?? "There's no weekly plan on the server.").font(AppFont.body(14)).foregroundStyle(Color.inkSoft)
-            Text("Pull to refresh once the server is reachable.")
-                .font(AppFont.body(13)).foregroundStyle(Color.muted)
-        }
-        .card()
+        SyncStateCard(kicker: model.error == nil ? "No plan yet" : "Not synced yet",
+                      message: model.error ?? "There's no weekly plan on the server.")
     }
 }
 
@@ -271,8 +238,8 @@ private struct WeekSummaryCard: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
     }
 
     private func progressBar(_ summary: PlanFormat.Summary) -> some View {
@@ -323,8 +290,8 @@ private struct UnplannedWeekCard: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
     }
 }
 
@@ -340,7 +307,7 @@ struct CoachRunningLine: View {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     Text("\(verb) · \(PlanCoachFormat.clock(Int(context.date.timeIntervalSince(coach.startedAt ?? context.date))))")
                         .font(AppFont.body(13))
-                        .foregroundStyle(Color(hex: 0xC9CFDA))
+                        .foregroundStyle(Color.inkBody)
                         .monospacedDigit()
                 }
                 Spacer()
@@ -444,11 +411,3 @@ struct PlanRing: View {
     }
 }
 
-private extension View {
-    /// A list row with no card behind it (header, summary).
-    func plainRow() -> some View {
-        listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-    }
-}

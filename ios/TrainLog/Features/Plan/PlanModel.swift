@@ -109,7 +109,7 @@ final class PlanModel {
         } catch {
             return error.localizedDescription
         }
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
         await load()
         return nil
     }
@@ -131,7 +131,7 @@ final class PlanModel {
         let body = try? APIClient.encoder.encode(RehabTick(day: date, index: index, done: done))
         do {
             try await client().send("PUT", "/recovery/issues/\(routine.issueId)/ticks", body: body)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            Haptics.tick()
         } catch {
             update(routine, on: date) { ticked in
                 if done { ticked.removeAll { $0 == index } } else { ticked.append(index) }

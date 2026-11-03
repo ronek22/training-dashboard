@@ -222,7 +222,7 @@ final class PlanCoachModel {
         let after = plans.weeks.first { $0.weekStart == task.week }
         phase = .done(PlanCoachFormat.result(task, before: before, after: after, today: plans.today, summary: summary,
                                              seconds: Int(Date.now.timeIntervalSince(startedAt ?? .now))))
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
     }
 
     private func saveDraft(_ text: String, for task: PlanCoachTask) {

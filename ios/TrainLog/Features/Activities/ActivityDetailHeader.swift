@@ -77,7 +77,7 @@ struct DetailHeaderView: View {
                     .padding(.bottom, 96)
             }
         default:
-            Color(hex: 0x0C0F15)
+            Color.deep
         }
     }
 
@@ -106,8 +106,8 @@ struct DetailHeaderView: View {
                 .padding(.top, 8)
             if let offlineLine {
                 HStack(spacing: 6) {
-                    Circle().fill(Color(hex: 0xFFC83A)).frame(width: 6, height: 6)
-                    Text(offlineLine).font(AppFont.body(13)).foregroundStyle(Color(hex: 0xFFC83A))
+                    Circle().fill(Color.caution).frame(width: 6, height: 6)
+                    Text(offlineLine).font(AppFont.body(13)).foregroundStyle(Color.caution)
                 }
                 .padding(.top, 8)
             }
@@ -298,7 +298,7 @@ struct TraceView: View {
         GeometryReader { geometry in
             let plot = CGRect(x: 0, y: 100, width: geometry.size.width, height: 146)
             ZStack(alignment: .topLeading) {
-                Color(hex: 0x0C0F15)
+                Color.deep
                 Canvas { context, size in grid(&context, size) }
                 if let guide = trace.guide {
                     let y = plot.maxY - guide.y * plot.height
@@ -321,7 +321,7 @@ struct TraceView: View {
                             .foregroundStyle(Color.ink)
                             .padding(.horizontal, 12)
                             .frame(height: 20)
-                            .background(Color(hex: 0x12151C).opacity(0.9), in: Capsule())
+                            .background(Color.card.opacity(0.9), in: Capsule())
                             .overlay(Capsule().strokeBorder(Color.outline))
                             .offset(x: 16, y: y - 10)
                     }
@@ -344,7 +344,7 @@ struct TraceView: View {
     private func grid(_ context: inout GraphicsContext, _ size: CGSize) {
         for index in 0..<5 {
             let y = 100 + CGFloat(index) * 36.5
-            context.stroke(Path { $0.move(to: CGPoint(x: 0, y: y)); $0.addLine(to: CGPoint(x: size.width, y: y)) }, with: .color(Color(hex: 0x151A23)), lineWidth: 1)
+            context.stroke(Path { $0.move(to: CGPoint(x: 0, y: y)); $0.addLine(to: CGPoint(x: size.width, y: y)) }, with: .color(Color.well), lineWidth: 1)
         }
         for index in 1..<6 {
             let x = size.width * CGFloat(index) / 6

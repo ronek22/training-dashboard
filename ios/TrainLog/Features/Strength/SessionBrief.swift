@@ -148,7 +148,7 @@ struct SessionBriefView: View {
             .compactMap { $0 }
             .joined(separator: " · ")
         return VStack(alignment: .leading, spacing: 6) {
-            Kicker("Session brief", color: Color(hex: 0xFF7AB5))
+            Kicker("Session brief", color: Color.strengthText)
             Text(template.name.uppercased())
                 .font(AppFont.title(36))
                 .foregroundStyle(Color.ink)
@@ -186,8 +186,8 @@ struct SessionBriefView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder, lineWidth: 1))
     }
 
     private func row(_ lift: BriefLogic.Lift) -> some View {

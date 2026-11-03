@@ -87,7 +87,7 @@ struct CoachChatView: View {
     }
 
     private func scrollToEnd(_ proxy: ScrollViewProxy) {
-        withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo("end", anchor: .bottom) }
+        withAnimation(Motion.fade) { proxy.scrollTo("end", anchor: .bottom) }
     }
 
     @ViewBuilder
@@ -112,8 +112,8 @@ struct CoachChatView: View {
                         }
                         .padding(.horizontal, 14)
                         .frame(minHeight: 44)
-                        .background(Color.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+                        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.cardBorder))
                     }
                     .buttonStyle(.plain)
                 }
@@ -137,7 +137,7 @@ struct CoachChatView: View {
                 .foregroundStyle(Color.ink)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(Color.raised, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .background(Color.raised, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
                 .frame(maxWidth: 300, alignment: .trailing)
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .textSelection(.enabled)
@@ -153,8 +153,8 @@ struct CoachChatView: View {
                 .focused($composing)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 11)
-                .background(Color.inset, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+                .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
             Button {
                 Task { await model.send() }
             } label: {

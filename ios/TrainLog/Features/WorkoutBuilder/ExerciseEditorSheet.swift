@@ -133,7 +133,7 @@ struct ExerciseEditorSheet: View {
                 let selected = (exercise.seconds != nil) == timed
                 Button {
                     commitTyping()
-                    withAnimation(.snappy(duration: 0.2)) {
+                    withAnimation(Motion.quick) {
                         exercise.seconds = timed ? exercise.seconds ?? DraftExercise.defaultHold : nil
                         if field == .reps || field == .time { field = timed ? .time : .reps }
                     }
@@ -169,12 +169,12 @@ struct ExerciseEditorSheet: View {
                         typingFocused = true
                     } else {
                         commitTyping()
-                        withAnimation(.snappy(duration: 0.2)) { field = item }
+                        withAnimation(Motion.quick) { field = item }
                     }
                 } label: {
                     VStack(spacing: 6) {
                         Kicker(item == .weight && exercise.weightKg != nil && isPerArm ? "Kg · per arm" : item.label,
-                               color: selected ? Color(hex: 0xFF7AB5) : .muted)
+                               color: selected ? Color.strengthText : .muted)
                             .font(AppFont.body(9, weight: .semibold))
                         if selected && typing {
                             TextField("", text: $typed)
@@ -214,8 +214,8 @@ struct ExerciseEditorSheet: View {
         }
         .fixedSize(horizontal: false, vertical: true)
         .background(Color.inset)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.cardBorder))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Color.cardBorder))
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
@@ -231,7 +231,7 @@ struct ExerciseEditorSheet: View {
         HStack(spacing: 6) {
             ForEach(field.jumps, id: \.self) { jump in
                 Button {
-                    withAnimation(.snappy) {
+                    withAnimation(Motion.state) {
                         let next = value(field) + jump
                         binding(field).wrappedValue = min(max(next, field.range.lowerBound), field.range.upperBound)
                     }
@@ -262,7 +262,7 @@ struct ExerciseEditorSheet: View {
                 } label: {
                     Text(BuilderFormat.rest(seconds))
                         .font(AppFont.body(13, weight: .semibold))
-                        .foregroundStyle(selected ? Color(hex: 0xFF9AC6) : .inkSoft)
+                        .foregroundStyle(selected ? Color.strengthSoft : .inkSoft)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .background(selected ? Color.strength.opacity(0.14) : .clear, in: Capsule())
                         .overlay(Capsule().strokeBorder(selected ? Color.strength : .outline))
@@ -288,7 +288,7 @@ struct ExerciseEditorSheet: View {
                 Spacer()
                 if let history {
                     Button("Use last session") {
-                        withAnimation(.snappy) {
+                        withAnimation(Motion.state) {
                             exercise.sets = min(max(history.suggestedSetCount ?? exercise.sets, 1), 20)
                             exercise.reps = history.suggestedReps ?? exercise.reps
                             exercise.seconds = history.suggestedSeconds ?? exercise.seconds
@@ -305,7 +305,7 @@ struct ExerciseEditorSheet: View {
                     let last = index == trend.count - 1
                     bar(height: scale(session.weightKg), fill: last ? Color.strength : Color.outline,
                         label: last ? BuilderFormat.weight(session.weightKg) : month(session.date, previous: index > 0 ? trend[index - 1].date : nil),
-                        labelColor: last ? Color(hex: 0xFF7AB5) : .faint)
+                        labelColor: last ? Color.strengthText : .faint)
                 }
                 if target > 0 {
                     VStack(spacing: 4) {
@@ -327,8 +327,8 @@ struct ExerciseEditorSheet: View {
             }
         }
         .padding(14)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder))
+        .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row))
+        .overlay(RoundedRectangle(cornerRadius: Radius.row).strokeBorder(Color.cardBorder))
     }
 
     private func bar(height: Double, fill: Color, label: String, labelColor: Color) -> some View {
@@ -348,8 +348,8 @@ struct ExerciseEditorSheet: View {
             .foregroundStyle(Color.ink)
             .padding(.horizontal, 12)
             .frame(minHeight: 44)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.cardBorder))
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.control))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Color.cardBorder))
     }
 
     private var footer: some View {
@@ -365,7 +365,7 @@ struct ExerciseEditorSheet: View {
                 dismiss()
             }
             .font(AppFont.body(14, weight: .semibold))
-            .foregroundStyle(Color(hex: 0xFF5A6E))
+            .foregroundStyle(Color.alert)
             .frame(minHeight: 44)
         }
     }
@@ -456,7 +456,7 @@ struct ValueRuler: View {
                     let major = isMultiple(tick, of: 1)
                     let height: CGFloat = major ? 18 : 10
                     let rect = CGRect(x: x - 0.75, y: size.height - 18 - height, width: 1.5, height: height)
-                    context.fill(Path(roundedRect: rect, cornerRadius: 0.75), with: .color(major ? Color(hex: 0x5A6275) : .dim))
+                    context.fill(Path(roundedRect: rect, cornerRadius: 0.75), with: .color(major ? Color.subtle : .dim))
                     if isMultiple(tick, of: labelEvery) {
                         let text = Text(format(tick))
                             .font(AppFont.number(13))
@@ -494,7 +494,7 @@ struct ValueRuler: View {
 
     private func stepButton(_ icon: String, _ delta: Double) -> some View {
         Button {
-            withAnimation(.snappy) { set(value + delta) }
+            withAnimation(Motion.state) { set(value + delta) }
         } label: {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
@@ -522,7 +522,7 @@ struct ValueRuler: View {
 /// Pink muscle tags under a lift's name.
 struct MuscleTags: View {
     let muscles: [Muscle]
-    var color: Color = Color(hex: 0xFF7AB5)
+    var color: Color = Color.strengthText
 
     var body: some View {
         HStack(spacing: 4) {

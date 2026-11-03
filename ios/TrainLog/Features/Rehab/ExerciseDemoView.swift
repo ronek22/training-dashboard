@@ -33,8 +33,8 @@ struct ExerciseDemoView: View {
                 .aspectRatio(box.width / box.height, contentMode: .fit)
                 .overlay(alignment: .topLeading) { if animated { tempo(phase) } }
                 .overlay(alignment: .bottom) { if animated { tempoBar(phase) } }
-                .background(Self.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(Self.surface, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
                 cueChips(active: animated ? phase.index : nil, progress: phase.progress)
             }
         }

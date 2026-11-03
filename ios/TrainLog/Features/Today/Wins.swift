@@ -145,7 +145,7 @@ struct WinsRow: View {
         }
         .padding(.horizontal, 2)
         .frame(height: 30)
-        .animation(.spring(duration: 0.5, bounce: 0.3), value: done)
+        .animation(Motion.pop, value: done)
     }
 
     private func open(icon: String, progress: Double, value: String, rest: String?, action: @escaping () -> Void) -> some View {

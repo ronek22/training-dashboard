@@ -111,7 +111,7 @@ struct MetricSheet: View {
                     Spacer()
                     Button("Done") { dismiss() }
                         .font(AppFont.body(16, weight: .semibold))
-                        .foregroundStyle(Color(hex: 0x6FAEFF))
+                        .foregroundStyle(Color.rideText)
                         .frame(minWidth: 44, minHeight: 44)
                 }
                 .padding(.horizontal, 16)
@@ -183,7 +183,7 @@ struct MetricSheet: View {
                 ForEach(options, id: \.self) { option in
                     let on = option == compareKey
                     Button {
-                        withAnimation(.snappy) { compare = on ? "" : option }
+                        withAnimation(Motion.state) { compare = on ? "" : option }
                     } label: {
                         HStack(spacing: 5) {
                             Circle().fill(ActivityDetailFormat.chipColor(option)).frame(width: 8, height: 8)
@@ -193,7 +193,7 @@ struct MetricSheet: View {
                         .foregroundStyle(on ? Color.ink : Color.inkSoft)
                         .padding(.horizontal, 10)
                         .frame(height: 32)
-                        .background(on ? Color.raised : Color(hex: 0x1A1E27), in: Capsule())
+                        .background(on ? Color.raised : Color.chip, in: Capsule())
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                     }
@@ -225,7 +225,7 @@ struct MetricSheet: View {
                 Text(power ? "FTP-based · \(rows.count) zones" : "\(rows.count) zones").font(AppFont.number(13, weight: .semibold)).foregroundStyle(Color.muted)
             }
             .padding(.top, 32)
-            ZoneBars(rows: rows, trackColor: Color(hex: 0x1A1E27)).padding(.top, 16)
+            ZoneBars(rows: rows, trackColor: Color.chip).padding(.top, 16)
         }
     }
 
@@ -262,7 +262,7 @@ struct CoachSheet: View {
                 Spacer()
             }
             .overlay(alignment: .trailing) {
-                Button("Done") { dismiss() }.font(AppFont.body(16, weight: .semibold)).foregroundStyle(Color(hex: 0x6FAEFF))
+                Button("Done") { dismiss() }.font(AppFont.body(16, weight: .semibold)).foregroundStyle(Color.rideText)
                     .frame(minWidth: 44, minHeight: 44)
             }
             .padding(.horizontal, 16)
@@ -275,12 +275,12 @@ struct CoachSheet: View {
                         Text(headline).font(AppFont.body(18, weight: .semibold)).foregroundStyle(Color.ink).lineSpacing(3)
                     }
                     if let body = take.body {
-                        Text(body).font(AppFont.body(15)).foregroundStyle(Color(hex: 0xC9CFDA)).lineSpacing(5)
+                        Text(body).font(AppFont.body(15)).foregroundStyle(Color.inkBody).lineSpacing(5)
                     }
                     if !take.observations.isEmpty {
                         Text("Observations").font(AppFont.number(22)).foregroundStyle(Color.ink).padding(.top, 12)
                         ForEach(Array(take.observations.enumerated()), id: \.offset) { _, line in
-                            StatusLine(tone: .info, text: line, size: 14, color: Color(hex: 0xC9CFDA))
+                            StatusLine(tone: .info, text: line, size: 14, color: Color.inkBody)
                         }
                     }
                 }

@@ -301,7 +301,7 @@ final class StrengthSessionModel {
         skipRest()
         holdStartedAt = .now
         let seconds = draftSeconds
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        Haptics.thud()
         RestAlarm.schedule(at: .now.addingTimeInterval(TimeInterval(seconds)), title: "Hold done", next: nil)
         holdTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(seconds))
@@ -331,7 +331,7 @@ final class StrengthSessionModel {
         let effort = draftEffort
         let label = current.map { StrengthLogic.label(for: set, in: $0.exercise) } ?? "Set"
         session = StrengthLogic.complete(session, setId: set.id, reps: reps, weightKg: weight, effort: effort, seconds: held)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
         lastLogged = LoggedSet(setId: set.id, label: label, load: StrengthFormat.load(weight: weight, reps: reps, seconds: held))
         restSeconds = set.restSeconds
         restEndsAt = .now.addingTimeInterval(TimeInterval(set.restSeconds))

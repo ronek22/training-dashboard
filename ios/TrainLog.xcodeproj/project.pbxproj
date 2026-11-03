@@ -65,6 +65,7 @@
 		46547FA3ABE6FA498F851D9B /* Readiness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 037715B90D253BECAAC35D8A /* Readiness.swift */; };
 		47334F55D41030EFB9932E45 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA62ACA1E1EE1616ED24F65 /* SettingsModel.swift */; };
 		489F47686BF888A9F4C64447 /* LiftLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8149CA4DC3A1C0C1C579DFD8 /* LiftLogic.swift */; };
+		48CF585BA0BF85AF142DC621 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8690801D8C0F56C195751257 /* Haptics.swift */; };
 		498688F76C581EBDA46C460A /* RehabTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9300D8653189F20A8672DD18 /* RehabTests.swift */; };
 		4C1BA8C00EF2F11FDB9AB0CD /* PaceGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3DB20DFA164F1DC2669988B /* PaceGuideView.swift */; };
 		4D4E5EED8467E4BC70506D95 /* TrendsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F1EC93FC7BA8D8D4DAEA58 /* TrendsModel.swift */; };
@@ -75,6 +76,7 @@
 		4FE1043CC9673B93D23696E3 /* GlanceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC63293FF36021440B2D5086 /* GlanceViews.swift */; };
 		509166C9B97C02F66E0515E8 /* WeekRecapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D5E6D753F1132BB56A8EDE /* WeekRecapView.swift */; };
 		526B3F0F15127120AAA32BAE /* SilhouettePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F4027994F4CFB503C9088F /* SilhouettePaths.swift */; };
+		527AAB15A16E06A15595E86A /* Chrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 452AAE727E6484788E6A6245 /* Chrome.swift */; };
 		5481137614C592B41CBE0FB7 /* Evening.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004525A97199623EC1C4A371 /* Evening.swift */; };
 		54AB99EC9265B668DA43038A /* Food.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6906A4138E3E54E166438B26 /* Food.swift */; };
 		5676A4FF0E7E7A482B0B2D2E /* ChangeToday.swift in Sources */ = {isa = PBXBuildFile; fileRef = E89D8343E48E6612D85CD859 /* ChangeToday.swift */; };
@@ -355,6 +357,7 @@
 		3FDBC3D52C9D5328756342AF /* Vitals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vitals.swift; sourceTree = "<group>"; };
 		42F5CA0ED7E7D3B5DB47A093 /* PlanDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanDayView.swift; sourceTree = "<group>"; };
 		43EE3D4D4985D5671AD66DCF /* WatchDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchDemo.swift; sourceTree = "<group>"; };
+		452AAE727E6484788E6A6245 /* Chrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chrome.swift; sourceTree = "<group>"; };
 		454F7ED84BBABF02A971B212 /* PlanWeekStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanWeekStrip.swift; sourceTree = "<group>"; };
 		46FA7C79DDDCE8539A8B0E6D /* Body.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Body.swift; sourceTree = "<group>"; };
 		482ADDB7A73593EBAD0A7542 /* WeekRecap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekRecap.swift; sourceTree = "<group>"; };
@@ -410,6 +413,7 @@
 		82F3E6E9D99F322371CA6EFD /* demo-frames.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "demo-frames.json"; sourceTree = "<group>"; };
 		8389B5B8CD6CB0BCB5021829 /* TrainLogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainLogApp.swift; sourceTree = "<group>"; };
 		83F17020D9675275CE912B1F /* HealthPush.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthPush.swift; sourceTree = "<group>"; };
+		8690801D8C0F56C195751257 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		8BAB25A3C5E4932DD743EA23 /* WatchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchTests.swift; sourceTree = "<group>"; };
 		8BC49F0A3914875F8535B75B /* RunDynamicsSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunDynamicsSheets.swift; sourceTree = "<group>"; };
 		8D06FFA209BAA7436AB6E384 /* TrainLog.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TrainLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -517,7 +521,9 @@
 		0437262C4DBAE5078D50D4B1 /* Design */ = {
 			isa = PBXGroup;
 			children = (
+				452AAE727E6484788E6A6245 /* Chrome.swift */,
 				81C840EEB43E748EBCA2361B /* DetailKit.swift */,
+				8690801D8C0F56C195751257 /* Haptics.swift */,
 				D6A250C5567517DF3CFDE735 /* MetricChart.swift */,
 				71E786C59F442AD3CE8D76CD /* Motion.swift */,
 				A9FD085362FBBB40C833A867 /* Muscles.swift */,
@@ -1277,6 +1283,7 @@
 				6587A02C639342CFF169FA34 /* BodyView.swift in Sources */,
 				5676A4FF0E7E7A482B0B2D2E /* ChangeToday.swift in Sources */,
 				90CDA5D790FCE958691AAF88 /* ChangeTodaySheet.swift in Sources */,
+				527AAB15A16E06A15595E86A /* Chrome.swift in Sources */,
 				4F49A7AF08CFF836BA56ADD3 /* CoachChat.swift in Sources */,
 				2741A2EC96798A1BB4576775 /* CoachChatModel.swift in Sources */,
 				E78CA9102855C5DBFFDFF0ED /* CoachChatView.swift in Sources */,
@@ -1294,6 +1301,7 @@
 				F3E405E6B5D0598BD6EF819F /* FoodModel.swift in Sources */,
 				69B093569E6ACE86C42F856F /* FoodQuickViews.swift in Sources */,
 				C19583684F90BBC18C547B71 /* FoodView.swift in Sources */,
+				48CF585BA0BF85AF142DC621 /* Haptics.swift in Sources */,
 				2749C34ACC4B164A8FD9D3DE /* HealthPush.swift in Sources */,
 				234EA1A4B7A268BDE90562B3 /* HealthSync.swift in Sources */,
 				88B99F4F886AFDE3510D9372 /* LiftHistory.swift in Sources */,

@@ -180,7 +180,7 @@ struct StillOpenCard: View {
                 HStack(spacing: 8) {
                     if session.fallback != nil {
                         Button {
-                            withAnimation(.snappy) { showFallback.toggle() }
+                            withAnimation(Motion.state) { showFallback.toggle() }
                         } label: {
                             Label(showFallback ? "Full session" : "Short version", systemImage: showFallback ? "arrow.uturn.backward" : "timer")
                         }
@@ -381,7 +381,7 @@ struct TomorrowCard: View {
         let color = session == nil ? Color.muted : rest ? Color.mobility : sport?.color ?? .muted
         Button(action: onOpen) {
             HStack(spacing: 12) {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                     .fill(color.opacity(0.13))
                     .frame(width: 40, height: 40)
                     .overlay(Image(systemName: (sport ?? .rest).symbol).font(.system(size: 17, weight: .semibold)).foregroundStyle(color))

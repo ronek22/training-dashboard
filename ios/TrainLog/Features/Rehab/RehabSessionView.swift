@@ -128,7 +128,7 @@ struct RehabSessionView: View {
                     }
                 }
                 .frame(height: 4)
-                .animation(.snappy, value: model.progress)
+                .animation(Motion.state, value: model.progress)
             }
         }
         .padding(.horizontal, 16)
@@ -194,8 +194,8 @@ struct RehabSessionView: View {
                         }
                     }
                     .padding(.horizontal, 16)
-                    .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+                    .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
                 }
                 .padding(16)
             }
@@ -370,8 +370,8 @@ struct RehabSessionView: View {
                             .font(AppFont.number(20))
                             .foregroundStyle(selected ? Color.bg : TodayFormat.painColor(value))
                             .frame(maxWidth: .infinity, minHeight: 44)
-                            .background(selected ? TodayFormat.painColor(value) : Color.inset, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.cardBorder))
+                            .background(selected ? TodayFormat.painColor(value) : Color.inset, in: RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).strokeBorder(Color.cardBorder))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Pain \(value) of 10")

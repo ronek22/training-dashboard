@@ -21,7 +21,7 @@ struct PainBlock: View {
                     .font(AppFont.body(16, weight: .semibold)).foregroundStyle(Color.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 if let note {
-                    Text(note).font(AppFont.body(14)).foregroundStyle(Color(hex: 0xC9CFDA)).lineSpacing(2)
+                    Text(note).font(AppFont.body(14)).foregroundStyle(Color.inkBody).lineSpacing(2)
                         .padding(.leading, 12)
                         .overlay(alignment: .leading) { Rectangle().fill(ActivityDetailFormat.bad.opacity(0.4)).frame(width: 2) }
                 }
@@ -29,8 +29,8 @@ struct PainBlock: View {
             Spacer(minLength: 0)
         }
         .padding(16)
-        .background(ActivityDetailFormat.bad.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(ActivityDetailFormat.bad.opacity(0.3)))
+        .background(ActivityDetailFormat.bad.opacity(0.08), in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(ActivityDetailFormat.bad.opacity(0.3)))
         .padding(.top, 16)
     }
 }
@@ -74,7 +74,7 @@ struct LogFeelPrompt: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("How did it feel?").font(AppFont.body(18, weight: .semibold)).foregroundStyle(Color.ink)
                 Text("Effort, energy, soreness and pain. Takes ten seconds while it's fresh.")
-                    .font(AppFont.body(15)).foregroundStyle(Color(hex: 0xC9CFDA)).lineSpacing(3)
+                    .font(AppFont.body(15)).foregroundStyle(Color.inkBody).lineSpacing(3)
                     .padding(.top, 8)
                 Button("Log how it felt", action: action)
                     .buttonStyle(VoltPromptStyle())
@@ -94,7 +94,7 @@ private struct VoltPromptStyle: ButtonStyle {
             .frame(maxWidth: .infinity, minHeight: 48)
             .background(Color.volt.opacity(configuration.isPressed ? 0.8 : 1), in: Capsule())
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.snappy(duration: 0.15), value: configuration.isPressed)
+            .animation(Motion.tap, value: configuration.isPressed)
     }
 }
 
@@ -107,7 +107,7 @@ struct SessionReadSection: View {
         DetailSection("Session read") {
             if let badge = read.badge {
                 ToneBadge(text: badge, color: read.tone == .info ? .inkSoft : (read.tone == .good ? .mobility : ActivityDetailFormat.bad),
-                          fill: read.tone == .info ? Color(hex: 0x1A1E27) : nil)
+                          fill: read.tone == .info ? Color.chip : nil)
             }
         } content: {
             VStack(alignment: .leading, spacing: 0) {
@@ -116,7 +116,7 @@ struct SessionReadSection: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 12)
                 if let explanation = read.explanation {
-                    Text(explanation).font(AppFont.body(15)).foregroundStyle(Color(hex: 0xC9CFDA)).lineSpacing(4)
+                    Text(explanation).font(AppFont.body(15)).foregroundStyle(Color.inkBody).lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 8)
                 }
@@ -136,7 +136,7 @@ struct SessionReadSection: View {
                 }
                 if let next = read.nextTime {
                     Rectangle().fill(Color.cardBorder).frame(height: 1).padding(.top, 16)
-                    Text("\(Text("Next time").font(AppFont.body(14, weight: .semibold)).foregroundStyle(Color.ink))  \(Text(next).foregroundStyle(Color(hex: 0xC9CFDA)))")
+                    Text("\(Text("Next time").font(AppFont.body(14, weight: .semibold)).foregroundStyle(Color.ink))  \(Text(next).foregroundStyle(Color.inkBody))")
                         .font(AppFont.body(14)).lineSpacing(3)
                         .padding(.top, 12)
                 }
@@ -190,7 +190,7 @@ struct MainChartSection: View {
                             HStack(spacing: 6) {
                                 ForEach(chips, id: \.key) { chip in
                                     Button {
-                                        withAnimation(.snappy) { selected = chip.key }
+                                        withAnimation(Motion.state) { selected = chip.key }
                                     } label: {
                                         HStack(spacing: 5) {
                                             Circle().fill(chip.color).frame(width: 8, height: 8)
@@ -200,7 +200,7 @@ struct MainChartSection: View {
                                         .foregroundStyle(chip.key == key ? Color.ink : Color.inkSoft)
                                         .padding(.horizontal, 10)
                                         .frame(height: 32)
-                                        .background(chip.key == key ? Color.raised : Color(hex: 0x151922), in: Capsule())
+                                        .background(chip.key == key ? Color.raised : Color.well, in: Capsule())
                                         .frame(minHeight: 44)
                                         .contentShape(Rectangle())
                                     }
@@ -256,7 +256,7 @@ struct SplitsSection: View {
                 if let pace {
                     GeometryReader { proxy in
                         ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: Radius.chip, style: .continuous)
                                 .fill(pace.fastest ? Metric.pace.color : Metric.pace.color.opacity(0.22))
                                 .frame(width: proxy.size.width * pace.share)
                             Text(pace.pace).foregroundStyle(pace.fastest ? Color.bg : Metric.pace.color).padding(.leading, 10)
@@ -316,7 +316,7 @@ struct RunningFormSection: View {
 
 struct ZoneBars: View {
     let rows: [ActivityDetailFormat.ZoneRow]
-    var trackColor = Color(hex: 0x151922)
+    var trackColor = Color.well
 
     var body: some View {
         VStack(spacing: 12) {
@@ -376,13 +376,13 @@ struct SegmentedPills: View {
         HStack(spacing: 0) {
             ForEach(Array(options.enumerated()), id: \.offset) { index, title in
                 Button {
-                    withAnimation(.snappy) { selection = index }
+                    withAnimation(Motion.state) { selection = index }
                 } label: {
                     Text(title)
                         .font(AppFont.body(13, weight: .semibold))
                         .foregroundStyle(index == selection ? Color.ink : Color.muted)
                         .frame(maxWidth: .infinity, minHeight: 30)
-                        .background(index == selection ? Color.raised : .clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .background(index == selection ? Color.raised : .clear, in: RoundedRectangle(cornerRadius: Radius.chip, style: .continuous))
                         .contentShape(Rectangle())
                 }
                 .accessibilityAddTraits(index == selection ? .isSelected : [])
@@ -419,10 +419,10 @@ struct PowerBestsSection: View {
                     if index > 0 { Rectangle().fill(Color.cardBorder).frame(height: 1) }
                     let color = ColorScale.share.color(row.share)
                     HStack(spacing: 10) {
-                        Text(row.label).font(AppFont.number(16)).foregroundStyle(Color(hex: 0xC9CFDA)).frame(width: 44, alignment: .leading)
+                        Text(row.label).font(AppFont.number(16)).foregroundStyle(Color.inkBody).frame(width: 44, alignment: .leading)
                         GeometryReader { proxy in
                             ZStack(alignment: .leading) {
-                                Capsule().fill(Color(hex: 0x151922))
+                                Capsule().fill(Color.well)
                                 Capsule().fill(color).frame(width: proxy.size.width * row.share)
                             }
                         }
@@ -496,11 +496,11 @@ struct LiftsSection: View {
                             }
                             FlowLayout(spacing: 4) {
                                 ForEach(Array(row.sets.enumerated()), id: \.offset) { _, set in
-                                    Text("\(Text(set.value).font(AppFont.number(15)).foregroundStyle(Color(hex: 0xC9CFDA)))\(Text(set.unit).font(AppFont.body(10, weight: .medium)).foregroundStyle(Color.faint))")
+                                    Text("\(Text(set.value).font(AppFont.number(15)).foregroundStyle(Color.inkBody))\(Text(set.unit).font(AppFont.body(10, weight: .medium)).foregroundStyle(Color.faint))")
                                         .padding(.horizontal, 8)
                                         .frame(height: 26)
-                                        .background(Color.inset, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.cardBorder))
+                                        .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.chip, style: .continuous))
+                                        .overlay(RoundedRectangle(cornerRadius: Radius.chip, style: .continuous).strokeBorder(Color.cardBorder))
                                 }
                             }
                             .padding(.top, 8)
@@ -527,7 +527,7 @@ struct LiftsSection: View {
         case "warn": ActivityDetailFormat.warn
         default: .inkSoft
         }
-        return ToneBadge(text: badge.text, color: color, fill: badge.tone == "same" ? Color(hex: 0x1A1E27) : nil)
+        return ToneBadge(text: badge.text, color: color, fill: badge.tone == "same" ? Color.chip : nil)
     }
 }
 
@@ -555,12 +555,12 @@ struct FeelSection: View {
                             .foregroundStyle(Color.muted)
                             .padding(.top, 2)
                             .accessibilityHidden(true)
-                        Text(note).font(AppFont.body(14)).foregroundStyle(Color(hex: 0xC9CFDA)).lineSpacing(3)
+                        Text(note).font(AppFont.body(14)).foregroundStyle(Color.inkBody).lineSpacing(3)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(14)
-                    .background(Color.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.cardBorder))
+                    .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous).strokeBorder(Color.cardBorder))
                 }
             }
             .padding(.top, 16)
@@ -590,8 +590,8 @@ private struct FeelTile: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous).strokeBorder(Color.cardBorder))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(cell.label) \(cell.word), \(cell.caption)")
     }
@@ -657,14 +657,14 @@ struct CoachSection: View {
                 case .pending:
                     HStack(spacing: 10) {
                         ProgressView().tint(.muted)
-                        Text("Coach is writing… it lands here and on the web page.").font(AppFont.body(15)).foregroundStyle(Color(hex: 0xC9CFDA))
+                        Text("Coach is writing… it lands here and on the web page.").font(AppFont.body(15)).foregroundStyle(Color.inkBody)
                     }
                     .padding(.top, 12)
                 case .canAsk(let failed):
                     if !offline {
                         Text(failed ? "The last try failed. Ask again and it lands here and on the web page."
                                     : "No written take yet. Ask what to take from this \(sport); it lands here and on the web page.")
-                            .font(AppFont.body(15)).foregroundStyle(Color(hex: 0xC9CFDA)).lineSpacing(4)
+                            .font(AppFont.body(15)).foregroundStyle(Color.inkBody).lineSpacing(4)
                             .padding(.top, 12)
                     }
                     Button(action: onAsk) {
@@ -698,7 +698,7 @@ struct NoStreamsPlaceholder: View {
                 Spacer(minLength: 0)
             }
             .padding(16)
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.outline, style: StrokeStyle(lineWidth: 1, dash: [4, 4])))
+            .overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Color.outline, style: StrokeStyle(lineWidth: 1, dash: [4, 4])))
             .padding(.top, 24)
         }
     }

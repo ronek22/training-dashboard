@@ -100,7 +100,7 @@ struct TodayView: View {
                     return error
                 }
                 .presentationDetents([.height(470)])
-                .presentationBackground(Color(hex: 0x161A22))
+                .presentationBackground(Color.sheet)
             }
         }
         .sheet(item: $changing, onDismiss: { Task { await load() } }) { now in
@@ -108,10 +108,10 @@ struct TodayView: View {
                 ChangeTodaySheet(coach: coach, plan: plan, date: data.date, now: now, readiness: data.readiness,
                                  fallback: PlanFormat.fallback(data.today?.fallback),
                                  canMove: PlanFormat.canMove(plan.day(data.date), today: plan.today),
-                                 onShort: { withAnimation(.snappy) { showFallback = true } },
+                                 onShort: { withAnimation(Motion.state) { showFallback = true } },
                                  onMove: { if let day = plan.day(data.date) { moving = day } })
                     .presentationDetents([.height(760), .large])
-                    .presentationBackground(Color(hex: 0x161A22))
+                    .presentationBackground(Color.sheet)
             }
         }
         .onChange(of: coach?.phase) {
@@ -248,14 +248,14 @@ struct TodayView: View {
                         if evening { await model.loadOutside() }
                     }
                 } else if let error = model.error {
-                    errorCard(error)
+                    SyncStateCard(kicker: "Not synced yet", message: error)
                 } else {
                     ProgressView().tint(.muted).frame(maxWidth: .infinity, minHeight: 300)
                 }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
-            .animation(.spring(duration: 0.45, bounce: 0.15), value: model.activeWorkout == nil)
+            .animation(Motion.enter, value: model.activeWorkout == nil)
             }
         }
         .sensoryFeedback(.success, trigger: winTick)
@@ -301,7 +301,7 @@ struct TodayView: View {
                     onFood: openFood)
                 .reveal(0)
             if model.offline, let syncedAt = model.syncedAt {
-                offlineNote(syncedAt)
+                OfflineNote(syncedAt: syncedAt)
             }
             if let offer = RecapFormat.offer(today: data.date) {
                 RecapCard(label: offer.label, range: RecapFormat.range(offer.weekStart, RecapFormat.weekEnd(offer.weekStart))) {
@@ -376,7 +376,7 @@ struct TodayView: View {
             : open ? .open(sport) : .done(sport)
         VStack(alignment: .leading, spacing: 12) {
             if model.offline, let syncedAt = model.syncedAt {
-                offlineNote(syncedAt)
+                OfflineNote(syncedAt: syncedAt)
             }
             if open, let session, model.activeWorkout == nil {
                 StillOpenCard(
@@ -435,13 +435,7 @@ struct TodayView: View {
     }
 
     private func header(evening: Bool) -> some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 4) {
-                Kicker(model.data.map { TodayFormat.dateKicker($0.date) } ?? " ")
-                Text(evening ? "TONIGHT" : "TODAY").font(AppFont.title(44)).foregroundStyle(Color.ink)
-                    .contentTransition(.opacity)
-            }
-            Spacer()
+        ScreenHeader(kicker: model.data.map { TodayFormat.dateKicker($0.date) } ?? " ", title: evening ? "Tonight" : "Today") {
             HStack(spacing: 8) {
                 SyncPill(status: .shared) { showSettings = true }
                 if let streak = model.data?.streakDays, streak > 0 {
@@ -476,29 +470,8 @@ struct TodayView: View {
             }
             .padding(.bottom, 4)
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 6)
     }
 
-    private func offlineNote(_ syncedAt: Date) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: "wifi.slash").font(.system(size: 11, weight: .semibold))
-            Text("Offline · last synced \(syncedAt.formatted(date: .omitted, time: .shortened))")
-                .font(AppFont.body(12, weight: .medium))
-        }
-        .foregroundStyle(Color.muted)
-        .padding(.horizontal, 4)
-    }
-
-    private func errorCard(_ message: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Kicker("Not synced yet")
-            Text(message).font(AppFont.body(14)).foregroundStyle(Color.inkSoft)
-            Text("Start the backend on the Mac (docker compose up) and pull to refresh.")
-                .font(AppFont.body(13)).foregroundStyle(Color.muted)
-        }
-        .card()
-    }
 }
 
 // MARK: - Session
@@ -567,7 +540,7 @@ private struct SessionCard: View {
                     .foregroundStyle(Color.inkSoft)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
                     .padding(.top, 4)
             }
             if let rehab {
@@ -582,7 +555,7 @@ private struct SessionCard: View {
         .contextMenu {
             Button(action: onOpen) { Label("Open session", systemImage: "list.bullet") }
             if let fallback, !fallback.isEmpty {
-                Button { withAnimation(.snappy) { showFallback.toggle() } } label: {
+                Button { withAnimation(Motion.state) { showFallback.toggle() } } label: {
                     Label(showFallback ? "Full session" : "Short on time", systemImage: "timer")
                 }
             }
@@ -657,7 +630,7 @@ private struct SessionCard: View {
                         .foregroundStyle(Color.inkSoft)
                         .lineSpacing(2)
                     Button {
-                        withAnimation(.snappy) { showFallback = false }
+                        withAnimation(Motion.state) { showFallback = false }
                     } label: {
                         Label("Full session", systemImage: "arrow.uturn.backward")
                             .font(AppFont.body(13, weight: .semibold))
@@ -671,8 +644,8 @@ private struct SessionCard: View {
                 .padding(.top, 12)
                 .padding(.bottom, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.warning.opacity(0.35)))
+                .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.warning.opacity(0.35)))
                 .padding(.top, 12)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -725,7 +698,7 @@ private struct SessionCard: View {
                 }
             }
         }
-        .animation(.spring(duration: 0.45, bounce: 0.2), value: next)
+        .animation(Motion.enter, value: next)
         .card(border: sport.color.opacity(0.35))
     }
 
@@ -826,7 +799,7 @@ private struct SessionCard: View {
                     .trim(from: 0, to: grown ? share : 0)
                     .stroke(Color.mobility, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                    .animation(.spring(duration: 0.6), value: share)
+                    .animation(Motion.layout, value: share)
             }
             if complete {
                 // A finished part is a win: solid volt, like the wins row.
@@ -838,7 +811,7 @@ private struct SessionCard: View {
             }
         }
         .frame(width: 28, height: 28)
-        .animation(.spring(duration: 0.4, bounce: 0.4), value: complete)
+        .animation(Motion.pop, value: complete)
         .overlay { WinBurst(trigger: celebrating.contains(.rehab)) }
         let title = complete ? "Rehab done" : "Rehab · \(rehab.left) to do"
         let subtitle = sport.map { "After the \($0.label.lowercased()) · \(rehab.title)" } ?? rehab.title
@@ -878,8 +851,8 @@ private struct SessionCard: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .frame(minHeight: 44)
-        .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+        .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.cardBorder))
         .contentShape(Rectangle())
     }
 
@@ -910,7 +883,7 @@ private struct SessionCard: View {
     private func changeButton(_ title: String, alert: Bool) -> some View {
         Button(action: onChange) {
             HStack(spacing: 8) {
-                if alert { Circle().fill(Color(hex: 0xFF5C6C)).frame(width: 7, height: 7) }
+                if alert { Circle().fill(Color.alert).frame(width: 7, height: 7) }
                 Image(systemName: "sparkles")
                 Text(title)
             }
@@ -927,7 +900,7 @@ private struct SessionCard: View {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     Text("Coach is changing today · \(PlanCoachFormat.clock(Int(context.date.timeIntervalSince(startedAt))))")
                         .font(AppFont.body(13))
-                        .foregroundStyle(Color(hex: 0xC9CFDA))
+                        .foregroundStyle(Color.inkBody)
                         .monospacedDigit()
                 }
                 Spacer(minLength: 8)
@@ -935,8 +908,8 @@ private struct SessionCard: View {
             }
             .padding(.horizontal, 14)
             .frame(minHeight: 44)
-            .background(Color.inset, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.cardBorder))
+            .background(Color.inset, in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Radius.row, style: .continuous).strokeBorder(Color.cardBorder))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -1014,7 +987,7 @@ private struct WatchRehabCard: View {
                 if let heartRate {
                     Label("\(Int(heartRate.rounded()))", systemImage: "heart.fill")
                         .font(AppFont.number(20))
-                        .foregroundStyle(Color(hex: 0xFF5A5F))
+                        .foregroundStyle(Color.alert)
                         .accessibilityLabel("Heart rate \(Int(heartRate.rounded())) from Apple Watch")
                 }
             }
@@ -1034,7 +1007,7 @@ private struct WatchRehabCard: View {
                 Capsule().fill(Color.track).overlay(alignment: .leading) {
                     Capsule().fill(Color.mobility)
                         .frame(width: steps.isEmpty ? 0 : proxy.size.width * Double(state.index) / Double(steps.count))
-                        .animation(.snappy, value: state.index)
+                        .animation(Motion.state, value: state.index)
                 }
             }
             .frame(height: 4)
@@ -1061,7 +1034,7 @@ private struct ResumeWorkoutCard: View {
         let index = workout.exercises.firstIndex { $0.exerciseOrder == workout.currentExerciseOrder }
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                Kicker("Workout in progress", color: Color(hex: 0xFF7AB5))
+                Kicker("Workout in progress", color: Color.strengthText)
                 Spacer()
                 if let startedAt = StrengthFormat.parseMoment(workout.startedAt) {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -1087,7 +1060,7 @@ private struct ResumeWorkoutCard: View {
                     growing(delay: 0.3) { grown in
                         Capsule().fill(Color.strength)
                             .frame(width: grown ? proxy.size.width * (working.isEmpty ? 0 : Double(done) / Double(working.count)) : 0)
-                            .animation(.spring(duration: 0.5), value: done)
+                            .animation(Motion.layout, value: done)
                     }
                 }
             }
@@ -1182,7 +1155,7 @@ private struct ReadinessCard: View {
                         ForEach(Array(factors.sorted { rank($0) < rank($1) }.enumerated()), id: \.element.id) { index, factor in
                             Capsule().fill(BodyFormat.toneColor(factor.tone))
                                 .scaleEffect(x: grown ? 1 : 0, anchor: .leading)
-                                .animation(.spring(duration: 0.5, bounce: 0.2).delay(0.35 + Double(index) * 0.06), value: grown)
+                                .animation(Motion.enter.delay(0.35 + Double(index) * 0.06), value: grown)
                         }
                     }
                 }
@@ -1253,7 +1226,7 @@ private struct ReadinessCard: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(kind.color.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(kind.color.opacity(0.08), in: RoundedRectangle(cornerRadius: Radius.row, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(kind.label) \(kind.format(range.value)) \(kind.unit), \(status.label)")
     }
@@ -1348,7 +1321,7 @@ private struct WeekCard: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .animation(.spring(duration: 0.6), value: minutes.done)
+                .animation(Motion.layout, value: minutes.done)
             }
         }
         .frame(height: 6)
@@ -1376,7 +1349,7 @@ private struct DayRing: View {
                 .scaleEffect(shown || reduceMotion ? 1 : 0.4)
                 .opacity(shown ? 1 : 0)
                 .onFirstVisible(threshold: 0.8) {
-                    withAnimation(.spring(duration: 0.5, bounce: 0.4).delay(reduceMotion ? 0 : delay)) { shown = true }
+                    withAnimation(Motion.pop.delay(reduceMotion ? 0 : delay)) { shown = true }
                 }
         }
         .accessibilityElement(children: .ignore)

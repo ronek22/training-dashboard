@@ -106,13 +106,13 @@ private struct WayBackCard: View {
                 var tick = Path()
                 tick.move(to: CGPoint(x: x(Double(value)), y: 96 - (tall ? 10 : 5)))
                 tick.addLine(to: CGPoint(x: x(Double(value)), y: 96))
-                context.stroke(tick, with: .color(Double(value) <= vdot.current ? Color.run : Color(hex: 0x343A47)),
+                context.stroke(tick, with: .color(Double(value) <= vdot.current ? Color.run : Color.tick),
                                style: StrokeStyle(lineWidth: tall ? 1.4 : 1, lineCap: .round))
                 // Tens under the ruler, except where the projection note runs.
                 let px = x(Double(value))
                 if tall, !(now - 8...now + 110).contains(px) {
                     let anchor: UnitPoint = px < 10 ? .topLeading : (px > size.width - 10 ? .topTrailing : .top)
-                    context.draw(Text("\(value)").font(AppFont.body(10, weight: .semibold)).foregroundStyle(Color(hex: 0x5B6375)),
+                    context.draw(Text("\(value)").font(AppFont.body(10, weight: .semibold)).foregroundStyle(Color.subtle),
                                  at: CGPoint(x: px, y: 106), anchor: anchor)
                 }
             }
@@ -127,7 +127,7 @@ private struct WayBackCard: View {
             }
             stand(now, value: TodayFormat.number(vdot.current), label: "NOW", size: 44, color: .ink)
             if let peak {
-                stand(x(peak), value: TodayFormat.number(peak), label: peakYear ?? "PEAK", size: 28, color: Color(hex: 0x5B6375))
+                stand(x(peak), value: TodayFormat.number(peak), label: peakYear ?? "PEAK", size: 28, color: Color.subtle)
             }
             context.draw(Text("→ \(Int(vdot.projected.rounded())) in \(vdot.projectionWeeks) weeks").font(AppFont.body(10, weight: .bold)).foregroundStyle(Color.run),
                          at: CGPoint(x: now + 6, y: 112), anchor: .leading)
@@ -146,7 +146,7 @@ private struct PacesCard: View {
             HStack {
                 Kicker("All paces at \(TodayFormat.number(paces.vdot))")
                 Spacer()
-                Kicker("min / km", color: Color(hex: 0x5B6375))
+                Kicker("min / km", color: Color.subtle)
             }
             ForEach(Array(RunFormat.zones(paces).enumerated()), id: \.element.id) { index, zone in
                 HStack(spacing: 14) {

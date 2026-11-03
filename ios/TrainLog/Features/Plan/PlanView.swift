@@ -2,10 +2,19 @@ import SwiftUI
 
 struct PlanView: View {
     let onStartStrength: (StrengthLaunch) -> Void
-    @State private var model = PlanModel()
+    @State private var model: PlanModel
+    @State private var coach: PlanCoachModel
     @State private var path: [String] = []
     @State private var moving: PlanDay?
     @State private var asking: CoachContext?
+    @State private var coachOpen = false
+
+    init(onStartStrength: @escaping (StrengthLaunch) -> Void) {
+        self.onStartStrength = onStartStrength
+        let model = PlanModel()
+        _model = State(initialValue: model)
+        _coach = State(initialValue: PlanCoachModel(plans: model))
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -19,17 +28,43 @@ struct PlanView: View {
                 }
                 if let week = model.week {
                     WeekSummaryCard(week: week, today: model.today).plainRow()
+                    if coach.isRunning(for: week.weekStart) {
+                        CoachRunningLine(coach: coach) { coachOpen = true }.plainRow()
+                    }
                     Section {
                         ForEach(PlanFormat.slots(week)) { slot in
                             row(slot)
                         }
                     }
-                    if model.nextWeekMissing && week.weekStart == model.weeks.last?.weekStart {
-                        Text("Next week isn't planned yet · plan it on the Mac")
-                            .font(AppFont.body(12))
+                    if week.weekStart == model.weeks.last?.weekStart, let next = model.unplannedStart {
+                        Button {
+                            model.page(1)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("Week \(PlanCoachFormat.weekNumber(next)) isn't planned ·")
+                                Text("Plan it").foregroundStyle(Color.ink).fontWeight(.semibold)
+                                Image(systemName: "chevron.right").font(.system(size: 10, weight: .bold))
+                            }
+                            .font(AppFont.body(13))
                             .foregroundStyle(Color.muted)
-                            .frame(maxWidth: .infinity)
-                            .plainRow()
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .plainRow()
+                    }
+                } else if model.showingUnplanned, let start = model.selected {
+                    UnplannedWeekCard(weekStart: start, coach: coach, onPlan: { openCoach(.plan(week: start)) },
+                                      onOpen: { coachOpen = true })
+                        .plainRow()
+                    if let last = model.weeks.last {
+                        HStack {
+                            Text("Last week").font(AppFont.body(13)).foregroundStyle(Color.inkSoft)
+                            Spacer()
+                            Text(PlanCoachFormat.weekLine(last)).font(AppFont.body(12)).foregroundStyle(Color.muted)
+                        }
+                        .padding(.horizontal, 6)
+                        .plainRow()
                     }
                 } else if model.loaded {
                     emptyCard.plainRow()
@@ -50,13 +85,33 @@ struct PlanView: View {
                 await APIClient.current.reconnect()
                 await model.load()
             }
-            .task { await model.load() }
+            .task {
+                await model.load()
+                coach.resume()
+                #if DEBUG
+                if let stage = PlanCoachModel.demoStage {
+                    // Planning stages show the unsaved week behind the sheet; refine stages the current one.
+                    if !["refine", "changed", "day"].contains(stage), let next = model.unplannedStart { model.select(next) }
+                    coach.startDemo(week: model.week, unplanned: model.unplannedStart)
+                    coachOpen = stage != "card"
+                }
+                #endif
+            }
             .navigationDestination(for: String.self) { date in
-                PlanDayView(model: model, date: date, onMove: { moving = $0 }, onStartStrength: onStartStrength)
+                PlanDayView(model: model, date: date, onMove: { moving = $0 },
+                            onChange: { day in openCoach(.day(week: PlanFormat.weekStart(of: day.date), date: day.date)) },
+                            onStartStrength: onStartStrength)
                     .hidesTabBar()
             }
         }
         .tint(.volt)
+        .sheet(isPresented: $coachOpen) {
+            PlanCoachSheet(coach: coach, week: coach.task.flatMap { task in model.weeks.first { $0.weekStart == task.week } },
+                           today: model.today,
+                           onRefine: { if let week = coach.task?.week { coach.open(.refine(week: week)) } })
+                .presentationDetents([.large])
+                .presentationBackground(Color(hex: 0x161A22))
+        }
         .sheet(item: $asking) { context in
             CoachChatView(context: context)
                 .presentationDetents([.large])
@@ -103,11 +158,30 @@ struct PlanView: View {
     private var header: some View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 4) {
-                Kicker(model.week.map { PlanFormat.weekKicker($0.weekStart) } ?? " ")
+                Kicker(model.selected.map(PlanFormat.weekKicker) ?? " ")
                 Text("PLAN").font(AppFont.title(44)).foregroundStyle(Color.ink)
             }
             Spacer()
             HStack(spacing: 8) {
+                if let week = model.week, coach.isRunning(for: week.weekStart) || !PlanCoachFormat.editableDates(week, today: model.today).isEmpty {
+                    Button {
+                        if coach.isRunning(for: week.weekStart) { coachOpen = true } else { openCoach(.refine(week: week.weekStart)) }
+                    } label: {
+                        ZStack {
+                            if coach.isRunning(for: week.weekStart) {
+                                ProgressView().controlSize(.small).tint(.volt)
+                            } else {
+                                Image(systemName: "sparkles").font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.volt)
+                            }
+                        }
+                        .frame(width: 36, height: 36)
+                        .overlay(Circle().strokeBorder(Color.outline))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Refine this week with the coach")
+                }
                 if let week = model.week {
                     Button {
                         asking = CoachFormat.weekContext(week.weekStart)
@@ -147,11 +221,16 @@ struct PlanView: View {
         .accessibilityLabel(label)
     }
 
+    private func openCoach(_ task: PlanCoachTask) {
+        coach.open(task)
+        coachOpen = true
+    }
+
     private var emptyCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             Kicker(model.error == nil ? "No plan yet" : "Not synced yet")
             Text(model.error ?? "There's no weekly plan on the server.").font(AppFont.body(14)).foregroundStyle(Color.inkSoft)
-            Text("Plans are written on the Mac. Pull to refresh once one is saved.")
+            Text("Pull to refresh once the server is reachable.")
                 .font(AppFont.body(13)).foregroundStyle(Color.muted)
         }
         .card()
@@ -209,6 +288,77 @@ private struct WeekSummaryCard: View {
         .frame(height: 6)
         .background(Color.track)
         .clipShape(Capsule())
+    }
+}
+
+/// The week after the newest saved one: seven dashed slots and the one volt action, Plan with coach.
+private struct UnplannedWeekCard: View {
+    let weekStart: String
+    let coach: PlanCoachModel
+    let onPlan: () -> Void
+    let onOpen: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Kicker("Not planned yet")
+            Text("PLAN WEEK \(PlanCoachFormat.weekNumber(weekStart))").font(AppFont.title(30)).foregroundStyle(Color.ink)
+                .padding(.top, 8)
+                .padding(.bottom, 14)
+            PlanWeekStrip(days: PlanCoachFormat.ghost(weekStart), showMinutes: false, pending: coach.isRunning(for: weekStart))
+            if coach.isRunning(for: weekStart) {
+                CoachRunningLine(coach: coach, action: onOpen).padding(.top, 14)
+            } else {
+                Text("The coach reads this week, your readiness and recovery, then writes all seven days. Tell it anything that's different next week.")
+                    .font(AppFont.body(13))
+                    .foregroundStyle(Color.inkSoft)
+                    .lineSpacing(2)
+                    .padding(.top, 14)
+                Button(action: onPlan) {
+                    Label("Plan with coach", systemImage: "sparkles")
+                }
+                .buttonStyle(VoltButtonStyle())
+                .padding(.top, 16)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.cardBorder))
+    }
+}
+
+/// "Coach is planning · 2:10 · Open": the job keeps running after the sheet closes.
+struct CoachRunningLine: View {
+    let coach: PlanCoachModel
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                ProgressView().controlSize(.small).tint(.volt)
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    Text("\(verb) · \(PlanCoachFormat.clock(Int(context.date.timeIntervalSince(coach.startedAt ?? context.date))))")
+                        .font(AppFont.body(13))
+                        .foregroundStyle(Color(hex: 0xC9CFDA))
+                        .monospacedDigit()
+                }
+                Spacer()
+                Text("Open").font(AppFont.body(13, weight: .semibold)).foregroundStyle(Color.inkSoft)
+            }
+            .padding(.horizontal, 4)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var verb: String {
+        switch coach.task {
+        case .plan: "Coach is planning"
+        case .day: "Coach is changing a day"
+        default: "Coach is refining"
+        }
     }
 }
 

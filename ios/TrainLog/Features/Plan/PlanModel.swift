@@ -3,7 +3,7 @@ import Observation
 import UIKit
 
 /// The Plan tab: read this week, page to the weeks around it, move a session to another day.
-/// Writing and adjusting plans stays on the Mac.
+/// Paging past the newest saved week reaches the week to plan with the coach (PlanCoachModel).
 @MainActor
 @Observable
 final class PlanModel {
@@ -34,13 +34,19 @@ final class PlanModel {
     var week: WeeklyPlan? { weeks.first { $0.weekStart == selected } }
 
     private var index: Int? { weeks.firstIndex { $0.weekStart == selected } }
-    var hasPrevious: Bool { (index ?? 0) > 0 }
-    var hasNext: Bool { index.map { $0 < weeks.count - 1 } ?? false }
 
-    /// True when the newest saved week is already behind us: there's nothing to page forward to.
-    var nextWeekMissing: Bool {
-        guard let last = weeks.last else { return false }
-        return PlanFormat.addingDays(6, to: last.weekStart) <= PlanFormat.addingDays(6, to: PlanFormat.weekStart(of: today))
+    /// The week the coach can plan next (see PlanCoachFormat.unplannedStart), once the weeks are loaded.
+    var unplannedStart: String? {
+        loaded ? PlanCoachFormat.unplannedStart(weeks.map(\.weekStart), today: today) : nil
+    }
+
+    /// The selected page is the unsaved week.
+    var showingUnplanned: Bool { selected != nil && selected == unplannedStart && week == nil }
+
+    var hasPrevious: Bool { showingUnplanned ? !weeks.isEmpty : (index ?? 0) > 0 }
+    var hasNext: Bool {
+        guard let index else { return false }
+        return index < weeks.count - 1 || (index == weeks.count - 1 && unplannedStart != nil)
     }
 
     func day(_ date: String) -> PlanDay? {
@@ -67,15 +73,27 @@ final class PlanModel {
             offline = !weeks.isEmpty
             self.error = error.localizedDescription
         }
-        if week == nil {
-            selected = PlanFormat.currentWeek(weeks.map(\.weekStart), today: today)
-        }
         loaded = true
+        if week == nil && !showingUnplanned {
+            selected = PlanFormat.currentWeek(weeks.map(\.weekStart), today: today) ?? unplannedStart
+        }
     }
 
     func page(_ step: Int) {
-        guard let index, weeks.indices.contains(index + step) else { return }
-        selected = weeks[index + step].weekStart
+        if showingUnplanned {
+            if step < 0 { selected = weeks.last?.weekStart }
+            return
+        }
+        guard let index else { return }
+        if weeks.indices.contains(index + step) {
+            selected = weeks[index + step].weekStart
+        } else if step > 0, let next = unplannedStart {
+            selected = next
+        }
+    }
+
+    func select(_ weekStart: String) {
+        selected = weekStart
     }
 
     /// Swaps two days on the server, then reloads. Moves aren't queued offline: the server checks

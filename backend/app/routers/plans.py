@@ -2,6 +2,7 @@ from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Query
+from pydantic import BaseModel
 
 from ..db import get_db
 from ..models.plans import WeeklyPlan, WeeklyPlanAdjustment, WeeklyPlanSwap
@@ -23,8 +24,41 @@ from ..services.season_timeline import PREVIEW_MAX_WEEKS, build_season_timeline
 from ..services.week_preview import PREVIEW_WEEKS, build_week_preview
 from ..services.load_forecast import build_load_forecast
 from ..services.winter_arc import clear_winter_arc, save_winter_arc
+from ..services import plan_coach_relay
 
 router = APIRouter()
+
+
+class CoachPlanRequest(BaseModel):
+    week_start: str
+    planning_brief: str = ""
+
+
+class CoachRevisionRequest(BaseModel):
+    week_start: str
+    feedback: str
+    target_date: Optional[str] = None
+
+
+# The phone's way to the coach helper (the web calls it directly on the Mac).
+@router.get("/plans/weekly/coach/status")
+def coach_planning_status():
+    return plan_coach_relay.status()
+
+
+@router.post("/plans/weekly/coach", status_code=202)
+def start_coach_plan(request: CoachPlanRequest):
+    return plan_coach_relay.start_plan(request.week_start, request.planning_brief)
+
+
+@router.post("/plans/weekly/coach/revise", status_code=202)
+def start_coach_revision(request: CoachRevisionRequest):
+    return plan_coach_relay.start_revision(request.week_start, request.feedback, request.target_date)
+
+
+@router.get("/plans/weekly/coach/{job_id}")
+def get_coach_plan_job(job_id: str):
+    return plan_coach_relay.get_job(job_id)
 
 
 @router.post("/plans/weekly", status_code=201)

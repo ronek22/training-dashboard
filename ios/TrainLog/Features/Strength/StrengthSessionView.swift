@@ -8,11 +8,15 @@ struct StrengthSessionView: View {
     @State private var editingWeight = false
     @State private var weightText = ""
     @State private var toast: LoggedSet?
+    @State private var historyFor: String?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
     init(templateId: Int?, oneTime: TemplateInput? = nil) {
-        _model = State(initialValue: StrengthSessionModel(templateId: templateId, oneTime: oneTime))
+        _model = State(initialValue: StrengthSessionModel.launch(templateId: templateId, oneTime: oneTime))
+        #if DEBUG
+        if StrengthSessionModel.demoStage == "history" { _historyFor = State(initialValue: "Back Squat") }
+        #endif
     }
 
     var body: some View {
@@ -38,6 +42,7 @@ struct StrengthSessionView: View {
         }
         .background(Color.bg.ignoresSafeArea())
         .task {
+            guard !model.isDemo else { return }
             // TrainLog on the Watch shows the same workout: changes go both ways.
             model.onShare = { WatchLive.shared.share(strength: $0) }
             model.onEnd = { WatchLive.shared.send($0) }
@@ -47,7 +52,7 @@ struct StrengthSessionView: View {
         }
         // The brief is up: TrainLog on the Watch wakes and waits, Start on either starts both.
         .onChange(of: model.phase) {
-            guard case .brief(let template) = model.phase else { return }
+            guard case .brief(let template) = model.phase, !model.isDemo else { return }
             WatchLive.shared.startOnWatch(WatchWorkoutType.strength(templateId: template.id))
             let minutes = template.estimatedDurationMinutes.map { " · ~\($0) min" } ?? ""
             WatchLive.shared.share(pending: .init(kind: .strength, title: template.name,
@@ -55,10 +60,11 @@ struct StrengthSessionView: View {
         }
         // Resumed, or started without a brief: TrainLog on the Watch joins it straight away.
         .onChange(of: model.session?.id) {
-            guard let session = model.session, session.isActive else { return }
+            guard let session = model.session, session.isActive, !model.isDemo else { return }
             WatchLive.shared.startOnWatch(WatchWorkoutType.strength(templateId: session.templateId))
         }
         .onDisappear {
+            guard !model.isDemo else { return }
             WatchLive.shared.onStrength = nil
             WatchLive.shared.onCommand = nil
             WatchLive.shared.stopLeading()
@@ -92,6 +98,11 @@ struct StrengthSessionView: View {
                 .presentationDetents([.medium, .large])
                 .presentationBackground(Color.card)
             }
+        }
+        .sheet(item: Binding(get: { historyFor.flatMap { model.history[$0] } }, set: { historyFor = $0?.exerciseName })) { history in
+            LiftHistorySheet(history: history, target: historyTarget(history))
+                .presentationDetents([.medium, .large])
+                .presentationBackground(Color.card)
         }
         .alert("Weight (kg)", isPresented: $editingWeight) {
             TextField("Bodyweight", text: $weightText).keyboardType(.decimalPad)
@@ -143,6 +154,13 @@ struct StrengthSessionView: View {
         .padding(.bottom, 12)
     }
 
+    /// Today's target in the history's own measure, from the current set when it's this lift.
+    private func historyTarget(_ history: LiftHistory) -> Double? {
+        let set = model.session?.exercises.first { $0.exerciseName == history.exerciseName }
+            .flatMap { exercise in model.current?.exercise.id == exercise.id ? model.current?.set : exercise.workingSets.first { !$0.isCompleted } }
+        return LiftLogic.target(of: set, LiftLogic.metric(of: history))
+    }
+
     private func circleButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
@@ -177,19 +195,29 @@ struct StrengthSessionView: View {
                     exerciseHeader(current.exercise, in: session)
                         .id(current.exercise.id)
                         .transition(.opacity)
-                    setCard(current.exercise, current.set)
-                        .id(current.set.id)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .leading).combined(with: .opacity)
-                        ))
-                    setList(current.exercise, currentId: current.set.id)
+                    if let ramp = model.ramp {
+                        WarmupRampCard(
+                            working: ramp.working, reps: ramp.reps, steps: ramp.steps, ticked: model.rampTicks, kit: model.kit,
+                            onTick: { index in withAnimation(.snappy) { model.toggleRampStep(index) } },
+                            onSkip: { withAnimation(.snappy) { model.finishRamp() } }
+                        )
+                        .transition(.opacity)
+                    } else {
+                        setCard(current.exercise, current.set)
+                            .id(current.set.id)
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .trailing).combined(with: .opacity),
+                                removal: .move(edge: .leading).combined(with: .opacity)
+                            ))
+                        setList(current.exercise, currentId: current.set.id)
+                    }
                 }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
             .animation(.spring(duration: 0.5, bounce: 0.18), value: model.current?.set.id)
             .animation(.spring(duration: 0.5, bounce: 0.18), value: model.allSetsDone)
+            .animation(.snappy, value: model.ramp == nil)
         }
         .scrollIndicators(.hidden)
         .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
@@ -221,6 +249,9 @@ struct StrengthSessionView: View {
                 .foregroundStyle(Color.ink)
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
+            if let history = model.history[exercise.exerciseName] {
+                LiftHistoryLine(history: history, target: historyTarget(history)) { historyFor = exercise.exerciseName }
+            }
             if let hint = model.hints[exercise.exerciseName] {
                 Text(hint).font(AppFont.body(13)).foregroundStyle(Color.muted)
             }
@@ -251,6 +282,9 @@ struct StrengthSessionView: View {
             VStack(spacing: 0) {
                 if loaded {
                     weightRow
+                    if LiftLogic.isBarbell(exercise.exerciseName) {
+                        PlateRow(weight: model.draftWeight, kit: model.kit) { model.draftWeight = $0 }
+                    }
                     divider
                 }
                 if set.isTimed {
@@ -474,6 +508,13 @@ struct StrengthSessionView: View {
                 }
                 .buttonStyle(VoltButtonStyle())
                 .disabled(model.finishing)
+            } else if model.ramp != nil {
+                Button {
+                    withAnimation(.snappy) { model.finishRamp() }
+                } label: {
+                    Text("Warm-up done · go to set 1")
+                }
+                .buttonStyle(VoltButtonStyle())
             } else if let current = model.current, current.set.isTimed {
                 if model.holdStartedAt == nil {
                     Button(action: model.startHold) {

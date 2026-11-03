@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Query, Response, status
 
 from ..db import get_db
 from ..models.strength_workouts import (
@@ -17,6 +17,7 @@ from ..models.strength_workouts import (
     StrengthTemplateInput,
     StrengthWarmupSetAddRequest,
 )
+from ..services.exercise_history import exercise_history
 from ..services.stall_blocks import annotate_plateaus, blocks_for_names, finish_block, list_blocks, start_block, undo_block
 from ..services.strength_phases import build_strength_phases, delete_phase, save_phase
 from ..services.strength_plateaus import find_plateaus
@@ -67,6 +68,14 @@ def exercise_suggestion_index(q: str = "", limit: int = 12, exclude_session_id: 
     return _with_db(
         lambda conn: exercise_suggestions(conn, query=q, limit=limit, exclude_session_id=exclude_session_id)
     )
+
+
+@router.get("/exercise-history")
+def exercise_history_index(name: list[str] = Query(default=[]), limit: int = 4):
+    """Recent sessions per lift; one name per lift (the phone asks for a whole workout at once)."""
+    names = [item for item in dict.fromkeys(name) if item.strip()][:20]
+    limit = max(1, min(limit, 12))
+    return _with_db(lambda conn: [exercise_history(conn, item, limit) for item in names])
 
 
 @router.post("/templates", status_code=status.HTTP_201_CREATED)

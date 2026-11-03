@@ -11,7 +11,6 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Next
 
-- **Lift history mid-session** — Tap a lift during a workout to see its last few sessions.
 
 ## Later
 
@@ -20,6 +19,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-11-03 — **Lift history, plates and warm-up** — During a workout the lift shows last time under its name (tap for a chart of the last sessions against today's target and your best), barbell lifts show the plates a side for your bar and plates, and the first heavy lift starts with a warm-up ramp you tick off without logging.
 - 2026-11-03 — **Evening mode and time outside** — After 20:00 Today turns into Tonight: if the planned workout is still open it leads with when you'd finish (or Move day once wind-down starts); then how today went on a day strip of steps, daylight minutes from the Watch and the workout, lights out on a runway to the wake-up with food left, and tomorrow's session.
 - 2026-11-03 — **Close the gap and eat it again** — Food opens with an Again row (yesterday's meal for this time of day and the meals you repeat, one tap to log, with Undo); in the evening, when protein or kcal is still short, it offers two foods from your own log sized to fit, drawn as a ghost on the ring before you log; on a ride day that needs fuel, a note shows the carbs, bottles and where to eat on the ride.
 - 2026-11-03 — **Morning brief and wins** — When your sleep syncs, one push says today's session and why (the short version on a red day). Today shows check-in and protein as a quiet row, and finished parts of the session card turn volt with a small burst, up to a clean day.

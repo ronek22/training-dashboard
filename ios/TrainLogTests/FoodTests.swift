@@ -180,6 +180,13 @@ struct FoodTests {
         #expect(entry.rawText == "2 eggs")
     }
 
+    @Test func ringClosesOnlyAtTarget() {
+        #expect(!FoodFormat.ringClosed(eaten: 1173, target: 2478))
+        #expect(FoodFormat.ringClosed(eaten: 2478, target: 2478))
+        #expect(FoodFormat.ringClosed(eaten: 2512, target: 2478))
+        #expect(!FoodFormat.ringClosed(eaten: 500, target: 0))
+    }
+
     @Test func explainsHelperErrors() {
         #expect(MealEstimateModel.message(for: APIError.status(503)).contains("coach-helper-start"))
     }

@@ -289,15 +289,16 @@ private struct EatenCard: View {
     }
 
     private func legend(_ target: Double) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            legendRow(swatch: RoundedRectangle(cornerRadius: 3).fill(Color.volt).frame(width: 10, height: 10),
+        let tint = FoodFormat.ringTint(eaten: eaten.kcal, target: target)
+        return VStack(alignment: .leading, spacing: 5) {
+            legendRow(swatch: RoundedRectangle(cornerRadius: 3).fill(tint).frame(width: 10, height: 10),
                       label: "Eaten", value: FoodFormat.share(eaten.kcal, of: target))
             if let dinnerKcal {
-                legendRow(swatch: Capsule().fill(Color.volt.opacity(0.8)).frame(width: 10, height: 3).frame(height: 10),
+                legendRow(swatch: Capsule().fill(tint.opacity(0.8)).frame(width: 10, height: 3).frame(height: 10),
                           label: "Dinner ~\(FoodFormat.kcal(dinnerKcal))", value: dinnerKcal / target)
             }
             if let ghost {
-                legendRow(swatch: Hatch(color: .volt).frame(width: 10, height: 10).clipShape(RoundedRectangle(cornerRadius: 3)),
+                legendRow(swatch: Hatch(color: tint).frame(width: 10, height: 10).clipShape(RoundedRectangle(cornerRadius: 3)),
                           label: "Pick", value: ghost.kcal / target, signed: true)
             }
         }
@@ -326,7 +327,14 @@ private struct EatenCard: View {
     }
 }
 
-/// Eaten as a solid volt arc, the planned dinner as a thin arc after it, kcal to go in the middle.
+extension FoodFormat {
+    static func ringTint(eaten: Double, target: Double) -> Color {
+        ringClosed(eaten: eaten, target: target) ? .volt : .ink
+    }
+}
+
+/// Eaten as a solid arc, the planned dinner as a thin arc after it, kcal to go in the middle.
+/// The arc is ink while there's a gap and turns volt once the target is reached: volt is a win.
 private struct CalorieRing: View {
     let eaten: Double
     let target: Double
@@ -338,6 +346,7 @@ private struct CalorieRing: View {
 
     private var eatenShare: Double { FoodFormat.share(eaten, of: target) }
     private var toGo: Double { target - eaten }
+    private var tint: Color { FoodFormat.ringTint(eaten: eaten, target: target) }
 
     var body: some View {
         ZStack {
@@ -348,19 +357,19 @@ private struct CalorieRing: View {
                 if end > start {
                     Circle()
                         .trim(from: start, to: end)
-                        .stroke(Color.volt.opacity(0.8), style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .stroke(tint.opacity(0.8), style: StrokeStyle(lineWidth: 4, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                 }
             }
             if let ghost, let range = FoodFormat.ghostRange(eaten: eaten, planned: toGo > 0 ? planned : nil, ghost: ghost, target: target) {
                 let arc = Circle().trim(from: range.lowerBound, to: range.upperBound).rotation(.degrees(-90))
-                arc.stroke(Color.volt.opacity(0.22), lineWidth: width)
+                arc.stroke(tint.opacity(0.22), lineWidth: width)
                 // Short dashes across a wide stroke read as hatching.
-                arc.stroke(Color.volt.opacity(0.7), style: StrokeStyle(lineWidth: width, dash: [2, 3.5]))
+                arc.stroke(tint.opacity(0.7), style: StrokeStyle(lineWidth: width, dash: [2, 3.5]))
             }
             Circle()
                 .trim(from: 0, to: eatenShare)
-                .stroke(Color.volt, style: StrokeStyle(lineWidth: width, lineCap: .round))
+                .stroke(tint, style: StrokeStyle(lineWidth: width, lineCap: .round))
                 .rotationEffect(.degrees(-90))
             VStack(spacing: 3) {
                 if toGo > 0 {

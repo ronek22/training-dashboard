@@ -6,14 +6,22 @@ struct PhoneToday: Decodable, Sendable {
     let streakDays: Int
     let readiness: Readiness
     let vitals: Vitals
-    let checkinDone: Bool
+    var checkinDone: Bool
     let sick: Sick?
-    let today: Session?
+    var today: Session?
     let tomorrow: Session?
     let week: [WeekDay]
     let weekMinutes: WeekMinutes
     /// Today's rehab ticks; nil without a routine due today (and from an older server).
     var rehab: Rehab?
+    /// Today's logged protein against the target; nil without a weigh-in (and from an older server).
+    var protein: Protein?
+
+    struct Protein: Decodable, Sendable, Equatable {
+        let eatenG: Double
+        let targetG: Int
+        let hit: Bool
+    }
 
     struct Rehab: Decodable, Sendable {
         let title: String
@@ -69,7 +77,9 @@ struct PhoneToday: Decodable, Sendable {
         let durationMin: Int?
         let distanceKm: Double?
         let details: String?
-        let status: String?
+        /// Why this session is in the plan, for the morning brief.
+        var purpose: String?
+        var status: String?
         let sport: Sport?
         let fallback: String?
         let strength: Strength?

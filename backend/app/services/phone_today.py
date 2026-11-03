@@ -10,6 +10,7 @@ from .bodyweight_lifts import is_no_equipment_lift, lift_exercises
 from .health_data import get_health_metric_history, get_sleep_history
 from .phone_body import _vital
 from .plans import serialize_weekly_plan
+from .protein import latest_body_weight, protein_target_g
 from .rehab_session import rehab_glance
 from .strength_workouts import list_templates
 from .widget_brief import _day_status, _plan_row_for, build_widget_brief
@@ -80,6 +81,23 @@ def _exercises_for(conn: sqlite3.Connection, day: Optional[dict]) -> tuple[Optio
     return {"template_id": template["id"], "exercises": exercises, "last_done": last}, template["name"]
 
 
+def _protein(conn: sqlite3.Connection, today: date) -> Optional[dict]:
+    """Today's logged protein against the target, for the wins row; None without a weigh-in."""
+    from .food_log import logged_protein_by_day
+
+    weight = latest_body_weight(conn)
+    if not weight:
+        return None
+    key = today.isoformat()
+    target = protein_target_g(weight["kg"])
+    eaten = logged_protein_by_day(conn, key, key).get(key, 0.0)
+    try:
+        tick = conn.execute("SELECT protein_hit FROM daily_nutrition WHERE date = ?", (key,)).fetchone()
+    except sqlite3.OperationalError:
+        tick = None
+    return {"eaten_g": round(eaten, 1), "target_g": target, "hit": bool(tick and tick["protein_hit"]) or eaten >= target}
+
+
 def build_phone_today(conn: sqlite3.Connection, today: Optional[date] = None) -> dict:
     today = today or datetime.now().date()
     brief = build_widget_brief(conn, today)
@@ -145,6 +163,7 @@ def build_phone_today(conn: sqlite3.Connection, today: Optional[date] = None) ->
         "today": session,
         "tomorrow": brief["tomorrow"],
         "rehab": rehab_glance(conn, today),
+        "protein": _protein(conn, today),
         "week": week,
         "week_minutes": {
             "done": round(sum(minutes_by_sport.values())),

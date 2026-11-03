@@ -12,7 +12,6 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 ## Next
 
 - **Lift history mid-session** — Tap a lift during a workout to see its last few sessions.
-- **Morning brief and wins** — A push after sleep syncs with today's session and why, and a small celebration when check-in, rehab or protein is done.
 
 ## Later
 
@@ -22,6 +21,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 ## Shipped
 
 - 2026-11-03 — **Close the gap and eat it again** — Food opens with an Again row (yesterday's meal for this time of day and the meals you repeat, one tap to log, with Undo); in the evening, when protein or kcal is still short, it offers two foods from your own log sized to fit, drawn as a ghost on the ring before you log; on a ride day that needs fuel, a note shows the carbs, bottles and where to eat on the ride.
+- 2026-11-03 — **Morning brief and wins** — When your sleep syncs, one push says today's session and why (the short version on a red day). Today shows check-in and protein as a quiet row, and finished parts of the session card turn volt with a small burst, up to a clean day.
 - 2026-11-03 — **Run comeback** — On a run day Today shows your easy pace from current VDOT on a pace tape (with your 2015 pace off the edge), or the return-to-run step as jog/walk blocks; a Pace guide explains the way back and every pace; after a run syncs, one tap says how it felt, and two hard runs in a row ease the band by 10 s/km.
 - 2026-11-02 — **Strength after-session summary** — Finishing a lift (on the phone, Watch or web) ends on a recap: volume against last time with time, sets and reps counting up, new bests per lift, and where each target goes next (up, a rep more, or hold, with the reason) so the cautious progression is plain to see.
 - 2026-11-02 — **Body v3** — Body opens on Day or Body. Day is a 24-hour dial (last night's sleep stages, steps per hour, a wind-down before lights out) with a lights-out target that pays back sleep debt, and vitals that call out the best day of the week. Body is a muscle map coloured by readiness from every sport, with active injuries pinned and a week of sessions per body area.

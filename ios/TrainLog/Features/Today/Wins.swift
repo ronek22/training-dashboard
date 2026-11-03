@@ -108,16 +108,18 @@ struct WinsRow: View {
                 Button(action: done.contains(.checkin) ? onCheckin : onFood) {
                     HStack(spacing: 6) {
                         ZStack {
-                            Circle().fill(Color.bg)
-                            Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(Color.volt)
+                            Circle().fill(Color.volt)
+                            Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(Color.bg)
                         }
                         .frame(width: 22, height: 22)
-                        Text(text).font(AppFont.body(13, weight: .bold)).foregroundStyle(Color.bg).lineLimit(1)
+                        Text(text).font(AppFont.body(13, weight: .bold)).foregroundStyle(Color.volt).lineLimit(1)
                     }
                     .padding(.leading, 3)
                     .padding(.trailing, 11)
                     .frame(height: 28)
-                    .background(Color.volt, in: Capsule())
+                    // Tinted, not solid: a win stays volt, but the session's Start button is the
+                    // only solid volt shape on Today.
+                    .background(Color.volt.opacity(0.12), in: Capsule())
                     .overlay { WinBurst(trigger: celebrate) }
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())

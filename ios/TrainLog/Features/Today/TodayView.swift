@@ -21,11 +21,18 @@ struct TodayView: View {
     /// Running fitness for the run card and pace guide, and the after-run felt tap.
     @State private var run = RunModel()
     @State private var feltRun: RunningFitness.FeltRun?
+    /// Wins that just landed (the burst plays on them) and the success haptic's trigger.
+    @State private var celebrating: Set<Wins.Key> = []
+    @State private var winTick = 0
+    @State private var ledger = WinLedger()
+    @Environment(\.openURL) private var openURL
     var onStartStrength: (StrengthLaunch) -> Void = { _ in }
     /// Bumped when the strength screen closes, so the banner and plan reload.
     var refresh = 0
     /// Bumped by the Sunday nudge (`trainlog://recap`) to open the week's recap.
     var recapRequest = 0
+    /// Bumped by the morning brief (`trainlog://checkin`) to open the check-in sheet.
+    var checkinRequest = 0
 
     var body: some View {
         NavigationStack {
@@ -55,6 +62,9 @@ struct TodayView: View {
             WeekRecapView(weekStart: launch.weekStart)
         }
         .onChange(of: recapRequest) { openRecap() }
+        .onChange(of: checkinRequest) {
+            if model.data?.checkinDone != true { showCheckin = true }
+        }
         .sheet(isPresented: $showStudio, onDismiss: {
             if let id = studioPick {
                 studioPick = nil
@@ -105,6 +115,31 @@ struct TodayView: View {
         }
     }
 
+    /// What's done today, by the same rules the session card uses for its parts.
+    private func winsDone(_ data: PhoneToday) -> Set<Wins.Key> {
+        let routines = plan.day(data.date)?.rehab ?? []
+        let total = routines.reduce(0) { $0 + $1.exercises.count }
+        let ticked = routines.reduce(0) { $0 + $1.ticked.count }
+        let state = TodayFormat.sessionState(data.sick == nil ? data.today : nil, hasRehab: !routines.isEmpty,
+                                             rehabLeft: model.rehabPending ?? max(0, total - ticked))
+        return Wins.done(checkinDone: data.checkinDone, protein: data.protein, mainDone: state.main,
+                         rehabDone: state.rehab, sessionDone: state.all)
+    }
+
+    /// Plays each win once per day: the burst on it and one success haptic.
+    private func celebrate(_ done: Set<Wins.Key>, on date: String) {
+        // Wait for the plan week, so a two-part day doesn't celebrate before its rehab is known.
+        guard plan.loaded else { return }
+        let fresh = ledger.claim(done, on: date)
+        guard !fresh.isEmpty else { return }
+        celebrating = fresh
+        winTick += 1
+        Task {
+            try? await Task.sleep(for: .seconds(1.2))
+            celebrating = []
+        }
+    }
+
     /// The pain row asks about the return-to-run injury, or any pain logged at check-in.
     private var painLabel: String? {
         if let rtr = run.fitness?.returnToRun, rtr.active { return rtr.symptom ?? "Pain" }
@@ -126,6 +161,16 @@ struct TodayView: View {
                         .transition(.scale(scale: 0.96).combined(with: .opacity))
                 }
                 if let data = model.data {
+                    let done = winsDone(data)
+                    WinsRow(checkinDone: data.checkinDone, protein: data.protein, done: done,
+                            cleanThisWeek: ledger.cleanDays(weekOf: data.date),
+                            celebrate: !celebrating.isDisjoint(with: [.checkin, .protein, .clean]),
+                            onCheckin: { showCheckin = true },
+                            onFood: { if let url = URL(string: "trainlog://food") { openURL(url) } })
+                        .reveal(0)
+                        .onChange(of: done.map(\.rawValue).sorted() + [plan.loaded ? "plan" : ""], initial: true) {
+                            celebrate(done, on: data.date)
+                        }
                     if model.offline, let syncedAt = model.syncedAt {
                         offlineNote(syncedAt)
                     }
@@ -141,6 +186,7 @@ struct TodayView: View {
                         today: plan.today,
                         showFallback: $showFallback,
                         rehabPending: model.rehabPending,
+                        celebrating: celebrating,
                         workoutOpen: model.activeWorkout != nil,
                         runFitness: run.fitness,
                         onStartStrength: onStartStrength,
@@ -168,6 +214,7 @@ struct TodayView: View {
             .padding(.bottom, 24)
             .animation(.spring(duration: 0.45, bounce: 0.15), value: model.activeWorkout == nil)
         }
+        .sensoryFeedback(.success, trigger: winTick)
         .scrollIndicators(.hidden)
         .overlay(alignment: .top) {
             // Keeps scrolled cards from running under the status bar. An overlay, not a
@@ -275,6 +322,8 @@ private struct SessionCard: View {
     let today: String
     @Binding var showFallback: Bool
     let rehabPending: Int?
+    /// Wins that just landed: their part badge (or Done today) bursts.
+    let celebrating: Set<Wins.Key>
     /// The Resume banner owns the volt action while a workout is open.
     let workoutOpen: Bool
     /// On a run day the card leads with today's easy pace (or the return-to-run step).
@@ -429,6 +478,7 @@ private struct SessionCard: View {
                 .frame(maxWidth: .infinity, minHeight: 52)
                 .background(Color.volt.opacity(0.12), in: Capsule())
                 .padding(.top, 16)
+                .overlay { WinBurst(trigger: rehab == nil && !celebrating.isDisjoint(with: [.main, .rehab])) }
                 .transition(.scale(scale: 0.9).combined(with: .opacity))
                 if !workoutOpen {
                     otherWorkout.padding(.top, 10)
@@ -525,7 +575,8 @@ private struct SessionCard: View {
         let size = session.durationMin.map { "\($0) min" }
         return Button(action: onOpen) {
             partRow(
-                badge: AnyView(partBadge(number: 1, done: done, color: sport.color)),
+                badge: AnyView(partBadge(number: 1, done: done, color: sport.color)
+                    .overlay { WinBurst(trigger: celebrating.contains(.main)) }),
                 title: [sport.label, size].compactMap { $0 }.joined(separator: " · "),
                 subtitle: done ? "Done · synced" : "Record it on your Watch",
                 dimmed: done
@@ -550,13 +601,17 @@ private struct SessionCard: View {
                     .animation(.spring(duration: 0.6), value: share)
             }
             if complete {
-                Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(Color.mobility)
+                // A finished part is a win: solid volt, like the wins row.
+                Circle().fill(Color.volt)
+                Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(Color.bg)
                     .transition(.scale.combined(with: .opacity))
             } else if let number {
                 Text("\(number)").font(AppFont.number(15)).foregroundStyle(Color.mobility)
             }
         }
         .frame(width: 28, height: 28)
+        .animation(.spring(duration: 0.4, bounce: 0.4), value: complete)
+        .overlay { WinBurst(trigger: celebrating.contains(.rehab)) }
         let title = complete ? "Rehab done" : "Rehab · \(rehab.left) to do"
         let subtitle = sport.map { "After the \($0.label.lowercased()) · \(rehab.title)" } ?? rehab.title
         return Button(action: onRehab) {
@@ -570,7 +625,7 @@ private struct SessionCard: View {
     private func partBadge(number: Int, done: Bool, color: Color) -> some View {
         ZStack {
             if done {
-                Circle().fill(color)
+                Circle().fill(Color.volt)
                 Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(Color.bg)
             } else {
                 Circle().strokeBorder(color, lineWidth: 2)

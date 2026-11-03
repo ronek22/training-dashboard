@@ -41,7 +41,7 @@ final class TodayModel {
         async let rehab = Self.rehabPending(api)
         do {
             let loaded = try await api.get(Self.path, as: PhoneToday.self)
-            data = loaded.value
+            data = Self.winsDemo(loaded.value)
             syncedAt = loaded.syncedAt
             offline = loaded.fromCache
             error = nil
@@ -55,7 +55,7 @@ final class TodayModel {
         // Leaving the tab cancels the load; a cancelled request isn't "offline", so keep what's shown.
         guard !Task.isCancelled else { return }
         activeWorkout = current
-        rehabPending = pending
+        rehabPending = Self.winsDemoRehab ?? pending
         // A workout finished on the web leaves no open session to end the Live Activity.
         if activeWorkout == nil { StrengthActivity.end() }
     }
@@ -67,6 +67,29 @@ final class TodayModel {
         guard !Task.isCancelled else { return }
         if workout != activeWorkout { activeWorkout = workout }
     }
+
+    #if DEBUG
+    /// `-winsDemo midday|rehab|protein|clean` previews the wins for screenshots; nothing is written.
+    private static var winsDemoStage: String? { UserDefaults.standard.string(forKey: "winsDemo") }
+
+    static func winsDemo(_ today: PhoneToday) -> PhoneToday {
+        guard let stage = winsDemoStage else { return today }
+        var today = today
+        today.checkinDone = true
+        let hit = stage == "protein" || stage == "clean"
+        today.protein = PhoneToday.Protein(eatenG: hit ? 132 : 97, targetG: today.protein?.targetG ?? 130, hit: hit)
+        if stage == "rehab" || stage == "clean" { today.today?.status = "matched" }
+        return today
+    }
+
+    static var winsDemoRehab: Int? {
+        guard let stage = winsDemoStage else { return nil }
+        return stage == "midday" ? 5 : 0
+    }
+    #else
+    static func winsDemo(_ today: PhoneToday) -> PhoneToday { today }
+    static var winsDemoRehab: Int? { nil }
+    #endif
 
     private static func rehabPending(_ client: APIClient) async -> Int? {
         try? await client.get("/guided-sessions/rehab", as: GuidedSessionEnvelope.self).value.session.exercises.count
@@ -105,6 +128,16 @@ enum TodayFormat {
         if rehabOnly { return rehabToDo ? .startRehab : .allDone }
         if !mainDone { return isStrength ? .startStrength : .openSession }
         return rehabToDo ? .startRehab : .allDone
+    }
+
+    /// The session card's parts as wins. No session, a rest day or sick mode count as all done, so
+    /// the clean day rests on the row alone.
+    static func sessionState(_ session: PhoneToday.Session?, hasRehab: Bool, rehabLeft: Int) -> (main: Bool, rehab: Bool, all: Bool) {
+        guard let session, session.sport != .rest else { return (false, false, true) }
+        let rehabOnly = session.sport == .mobility && hasRehab
+        let next = next(isStrength: session.strength != nil, rehabOnly: rehabOnly, mainDone: session.isDone,
+                        rehabLeft: hasRehab ? rehabLeft : nil)
+        return (!rehabOnly && session.isDone, hasRehab && rehabLeft == 0, next == .allDone)
     }
 
     static func duration(_ minutes: Int) -> String {

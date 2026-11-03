@@ -279,15 +279,18 @@ struct SettingsView: View {
             SettingsCard {
                 Toggle(isOn: $morningOn) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Morning check-in").font(AppFont.body(15)).foregroundStyle(Color.ink)
+                        Text("Morning brief").font(AppFont.body(15)).foregroundStyle(Color.ink)
                         if morningOn {
-                            DatePicker("Time", selection: morningTime, displayedComponents: .hourAndMinute)
-                                .labelsHidden()
-                                .datePickerStyle(.compact)
-                                .scaleEffect(0.9, anchor: .leading)
-                                .padding(.top, 2)
+                            HStack(spacing: 4) {
+                                Text("After you wake, or at").font(AppFont.body(12)).foregroundStyle(Color.muted)
+                                DatePicker("Time", selection: morningTime, displayedComponents: .hourAndMinute)
+                                    .labelsHidden()
+                                    .datePickerStyle(.compact)
+                                    .scaleEffect(0.9, anchor: .leading)
+                            }
+                            .padding(.top, 2)
                         } else {
-                            Text(Reminders.timeLabel(morningMinutes)).font(AppFont.body(12)).foregroundStyle(Color.muted)
+                            Text("After you wake, or at \(Reminders.timeLabel(morningMinutes))").font(AppFont.body(12)).foregroundStyle(Color.muted)
                         }
                     }
                 }

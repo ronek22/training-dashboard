@@ -6,6 +6,8 @@ struct ActivitiesView: View {
     @State private var feedbackFor: ActivitySummary?
     @State private var ratingFor: ActivitySummary?
 
+    @Namespace private var zoom
+
     var body: some View {
         NavigationStack(path: $path) {
             List {
@@ -21,7 +23,7 @@ struct ActivitiesView: View {
                 if model.loaded && model.activities.isEmpty {
                     emptyCard.plainRow()
                 } else if !model.loaded {
-                    ProgressView().tint(.muted).frame(maxWidth: .infinity, minHeight: 300).plainRow()
+                    LoadingCards(blocks: [40, 220]).plainRow()
                 }
                 ForEach(model.weeks) { week in
                     Section {
@@ -29,6 +31,7 @@ struct ActivitiesView: View {
                             NavigationLink(value: activity.id) {
                                 ActivityRow(activity: activity)
                             }
+                            .zoomSource(activity.id, in: zoom)
                             .listRowBackground(Color.card)
                             .listRowSeparatorTint(Color.cardBorder)
                             .listRowInsets(EdgeInsets(top: 0, leading: 14, bottom: 0, trailing: 14))
@@ -65,6 +68,7 @@ struct ActivitiesView: View {
                     Task { await model.saveFeedback(input, for: id) }
                 }
                 .hidesTabBar()
+                .zoomTransition(from: id, in: zoom)
             }
             .navigationDestination(for: TrendsRoute.self) { _ in TrendsView().hidesTabBar() }
         }

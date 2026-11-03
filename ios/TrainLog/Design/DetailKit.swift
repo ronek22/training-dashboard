@@ -262,7 +262,7 @@ struct Skeleton: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
-            .fill(Color(hex: 0x161A22))
+            .fill(Color.sheet)
             .frame(width: width, height: height)
             .opacity(dim ? 0.55 : 1)
             .onAppear {

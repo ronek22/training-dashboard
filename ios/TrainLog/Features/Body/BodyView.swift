@@ -30,7 +30,7 @@ struct BodyView: View {
                     }
                     .card()
                 } else {
-                    ProgressView().tint(.muted).frame(maxWidth: .infinity, minHeight: 300)
+                    LoadingCards(blocks: [260, 90])
                 }
             }
             .padding(.horizontal, 16)
@@ -67,7 +67,7 @@ struct BodyView: View {
             BodyClockDial(now: context.date, sleep: data.sleep, steps: model.live?.steps ?? [], lightsOut: lightsOut) {
                 VStack(spacing: 2) {
                     Kicker("Since midnight", color: .muted)
-                    Text(model.steps.map(BodyFormat.steps) ?? "–").font(AppFont.number(46)).foregroundStyle(Color.ink).padding(.top, 2)
+                    stepsText.font(AppFont.number(46)).foregroundStyle(Color.ink).padding(.top, 2)
                     Text("steps").font(AppFont.body(12, weight: .semibold)).foregroundStyle(Color.run)
                     if let sleep = data.sleep, sleep.date == data.date {
                         Text("slept \(BodyFormat.duration(sleep.asleepH))")
@@ -77,16 +77,27 @@ struct BodyView: View {
             }
         }
         .padding(.horizontal, 8)
+        .reveal(0)
         ClockLegend()
         TonightCard(lightsOut: lightsOut, wakeMinutes: wakeMinutes, needH: need, debt: data.sleepDebt,
                     nights: data.vitals.sleep?.days ?? []) { editingWake = true }
-        VitalTiles(vitals: data.vitals)
+            .reveal(1)
+        VitalTiles(vitals: data.vitals).reveal(2)
         if let sleep = data.sleep {
-            SleepCard(sleep: sleep, today: data.date)
+            SleepCard(sleep: sleep, today: data.date).reveal(3)
         }
-        ReadinessHero(readiness: data.readiness)
-        HeartCard(vitals: data.vitals, live: model.live)
-        TrainingLoadCard(load: data.load)
+        ReadinessHero(readiness: data.readiness).reveal(4)
+        HeartCard(vitals: data.vitals, live: model.live).reveal(5)
+        TrainingLoadCard(load: data.load).reveal(6)
+    }
+
+    @ViewBuilder
+    private var stepsText: some View {
+        if let steps = model.steps {
+            CountUp(value: steps, format: BodyFormat.steps)
+        } else {
+            Text("–")
+        }
     }
 }
 

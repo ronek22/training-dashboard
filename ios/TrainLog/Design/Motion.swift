@@ -1,28 +1,34 @@
 import SwiftUI
+import UIKit
 
 /// Animation roles. Pick by what is happening, not by feel, so the same kind of change moves the
-/// same way on every screen.
+/// same way on every screen. With Reduce Motion on, every role that moves or bounces becomes a
+/// short fade, so no screen has to check the setting itself.
+@MainActor
 enum Motion {
+    private static var reduced: Bool { UIAccessibility.isReduceMotionEnabled }
+    private static let still = Animation.easeOut(duration: 0.2)
+
     /// Press feedback on buttons and cards.
     static let tap = Animation.snappy(duration: 0.15)
     /// Small toggles: a chip selected, a row checked, a label swapped.
     static let quick = Animation.snappy(duration: 0.2)
     /// Default state change: sections expanding, content swapping.
-    static let state = Animation.snappy
+    static var state: Animation { reduced ? still : .snappy }
     /// Size and position changes with no bounce: progress bars, lists reflowing.
-    static let layout = Animation.smooth
+    static var layout: Animation { reduced ? still : .smooth }
     /// Something new arriving: a card, a banner, the next set.
-    static let enter = Animation.spring(duration: 0.45, bounce: 0.2)
+    static var enter: Animation { reduced ? still : .spring(duration: 0.45, bounce: 0.2) }
     /// A win: a check landing, a toast, a goal ring closing.
-    static let pop = Animation.spring(duration: 0.45, bounce: 0.35)
+    static var pop: Animation { reduced ? still : .spring(duration: 0.45, bounce: 0.35) }
     /// Bars and rings growing from empty.
-    static let grow = Animation.spring(duration: 0.9, bounce: 0.15)
+    static var grow: Animation { reduced ? still : .spring(duration: 0.9, bounce: 0.15) }
     /// Fading something out or in without movement.
     static let fade = Animation.easeOut(duration: 0.25)
-    /// Slow looping pulse for "working on it" states.
-    static let breathe = Animation.easeInOut(duration: 0.9).repeatForever(autoreverses: true)
+    /// Slow looping pulse for "working on it" states; holds still with Reduce Motion.
+    static var breathe: Animation { reduced ? still : .easeInOut(duration: 0.9).repeatForever(autoreverses: true) }
     /// Cards lifting in, `reveal`.
-    static let reveal = Animation.spring(duration: 0.55, bounce: 0.2)
+    static var reveal: Animation { reduced ? still : .spring(duration: 0.55, bounce: 0.2) }
 }
 
 // Shared motion: cards that lift in, numbers that count up, bars that grow. Each runs once,
@@ -64,7 +70,9 @@ private struct CountingText: View, @MainActor Animatable {
     }
 
     var body: some View {
-        Text(format(value)).monospacedDigit()
+        // Proportional figures, like every static number: Barlow's tabular digits are wider and
+        // give the 1 a foot, so a counted number would look like a different font.
+        Text(format(value))
     }
 }
 
@@ -140,4 +148,27 @@ extension View {
 /// Grows its content from empty the first time it appears; `grown` is false on the first frame.
 @MainActor func growing<Content: View>(delay: Double = 0, @ViewBuilder _ content: @escaping @MainActor (_ grown: Bool) -> Content) -> some View {
     Grow(delay: delay, content: content)
+}
+
+extension View {
+    /// Marks this view as where a zoom transition starts (`zoomTransition` on the destination).
+    @ViewBuilder
+    func zoomSource(_ id: String, in namespace: Namespace.ID?) -> some View {
+        if let namespace {
+            matchedTransitionSource(id: id, in: namespace)
+        } else {
+            self
+        }
+    }
+
+    /// Zooms this pushed page or cover out of the view marked with `zoomSource(id)`; with no id
+    /// it keeps the default transition.
+    @ViewBuilder
+    func zoomTransition(from id: String?, in namespace: Namespace.ID?) -> some View {
+        if let id, let namespace {
+            navigationTransition(.zoom(sourceID: id, in: namespace))
+        } else {
+            self
+        }
+    }
 }

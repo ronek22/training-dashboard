@@ -99,8 +99,10 @@ Same system as the web (`../docs/design/REDESIGN.md`, tokens in `../frontend/src
 - Use the tokens in `TrainLog/Design/`, not literals: `Color.*` (no `Color(hex:)` outside
   Design, except a feature's own data palette), `Radius.*`, `Space.*`, `Motion.*` for every
   animation, `Haptics.*` for feedback. Tab headers are `ScreenHeader`; cached data shows
-  `OfflineNote`; empty or unreachable states are `SyncStateCard`; List rows without a card use
-  `plainRow()`.
+  `OfflineNote`; empty or unreachable states are `SyncStateCard`; first loads show `LoadingCards`, not a
+  spinner; List rows without a card use `plainRow()`. Cards on a ScrollView screen lift in with
+  `.reveal(i)`, hero numbers use `CountUp`; a page opened from a card zooms out of it
+  (`zoomSource` / `zoomTransition`). `Motion` roles already honour Reduce Motion.
 - iOS patterns: large titles, bottom tab bar (Today · Plan · Coach · Food · Activities; no centre +, five is the cap; Workout
   Studio lives on Today's session card, not in a tab or the header), sheets for
   quick input, swipe actions on rows, 44pt minimum tap targets, haptics on set logged.

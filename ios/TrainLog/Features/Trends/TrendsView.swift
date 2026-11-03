@@ -17,7 +17,7 @@ struct TrendsView: View {
                     OfflineNote(syncedAt: syncedAt)
                 }
                 if !model.loaded {
-                    ProgressView().tint(.muted).frame(maxWidth: .infinity, minHeight: 300)
+                    LoadingCards()
                 } else if model.years.isEmpty && model.metrics.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Kicker("Not loaded")

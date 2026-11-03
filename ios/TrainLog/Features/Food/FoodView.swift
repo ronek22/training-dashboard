@@ -19,22 +19,25 @@ struct FoodView: View {
                     OfflineNote(syncedAt: syncedAt)
                 }
                 if model.isToday, let fuel = model.quick?.fuel {
-                    FuelCard(fuel: fuel)
+                    FuelCard(fuel: fuel).reveal(0)
                 }
                 if model.isToday, model.quick?.gap == nil, let cards = model.quick?.again, !cards.isEmpty {
                     AgainRow(cards: cards, relogged: model.relogged) { card, meal in
                         Task { await model.quickLog(key: card.key, items: card.items, meal: meal) }
                     }
+                    .reveal(1)
                 }
                 if let day = model.day {
                     EatenCard(day: day, eaten: model.eaten, dinner: model.isToday ? model.plannedDinner : nil, isToday: model.isToday,
                               ghost: model.isToday ? model.pick?.totals : nil)
+                        .reveal(2)
                     if model.isToday, let gap = model.quick?.gap {
                         GapPicksCard(gap: gap, selected: model.selectedPick) { pick in
                             model.selectedPick = pick.key
                         } onLog: { pick in
                             Task { await model.quickLog(key: pick.key, items: pick.items) }
                         }
+                        .reveal(3)
                     }
                     MealTimeline(
                         entries: day.entries,
@@ -45,10 +48,11 @@ struct FoodView: View {
                         onEdit: { editing = $0 },
                         onDelete: { entry in Task { await model.delete(entry) } }
                     )
+                    .reveal(4)
                 } else if let error = model.error {
                     SyncStateCard(kicker: "Not synced yet", message: error)
                 } else {
-                    ProgressView().tint(.muted).frame(maxWidth: .infinity, minHeight: 300)
+                    LoadingCards(blocks: [150, 90])
                 }
             }
             .padding(.horizontal, 16)
@@ -254,7 +258,7 @@ private struct EatenCard: View {
             HStack(alignment: .center, spacing: 14) {
                 VStack(alignment: .leading, spacing: 0) {
                     Kicker(isToday ? "Eaten today" : "Eaten")
-                    Text(FoodFormat.kcal(eaten.kcal)).font(AppFont.number(54)).foregroundStyle(Color.ink).padding(.top, 8)
+                    CountUp(value: eaten.kcal, format: FoodFormat.kcal).font(AppFont.number(54)).foregroundStyle(Color.ink).padding(.top, 8)
                     Text(target.map { "of \(FoodFormat.kcal($0)) kcal" } ?? "kcal")
                         .font(AppFont.body(13)).foregroundStyle(Color.muted).padding(.top, 2)
                     if let target {
@@ -367,10 +371,13 @@ private struct CalorieRing: View {
                 // Short dashes across a wide stroke read as hatching.
                 arc.stroke(tint.opacity(0.7), style: StrokeStyle(lineWidth: width, dash: [2, 3.5]))
             }
-            Circle()
-                .trim(from: 0, to: eatenShare)
-                .stroke(tint, style: StrokeStyle(lineWidth: width, lineCap: .round))
-                .rotationEffect(.degrees(-90))
+            growing(delay: 0.15) { grown in
+                Circle()
+                    .trim(from: 0, to: grown ? eatenShare : 0)
+                    .stroke(tint, style: StrokeStyle(lineWidth: width, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(Motion.layout, value: eatenShare)
+            }
             VStack(spacing: 3) {
                 if toGo > 0 {
                     Text(FoodFormat.kcal(toGo)).font(AppFont.number(32)).foregroundStyle(Color.warning)

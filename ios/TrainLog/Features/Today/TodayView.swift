@@ -44,6 +44,8 @@ struct TodayView: View {
     var recapRequest = 0
     /// Bumped by the morning brief (`trainlog://checkin`) to open the check-in sheet.
     var checkinRequest = 0
+    /// Shared with the app's strength cover so the session zooms out of the card that started it.
+    var zoom: Namespace.ID?
 
     var body: some View {
         NavigationStack {
@@ -228,7 +230,8 @@ struct TodayView: View {
                         .transition(.scale(scale: 0.96).combined(with: .opacity))
                 }
                 if let workout = model.activeWorkout {
-                    ResumeWorkoutCard(workout: workout) { onStartStrength(StrengthLaunch(templateId: nil)) }
+                    ResumeWorkoutCard(workout: workout) { onStartStrength(StrengthLaunch(templateId: nil, zoomSource: StrengthLaunch.resumeCard)) }
+                        .zoomSource(StrengthLaunch.resumeCard, in: zoom)
                         .reveal(0)
                         .transition(.scale(scale: 0.96).combined(with: .opacity))
                 }
@@ -250,7 +253,7 @@ struct TodayView: View {
                 } else if let error = model.error {
                     SyncStateCard(kicker: "Not synced yet", message: error)
                 } else {
-                    ProgressView().tint(.muted).frame(maxWidth: .infinity, minHeight: 300)
+                    LoadingCards(blocks: [170, 90, 120])
                 }
             }
             .padding(.horizontal, 16)
@@ -327,6 +330,7 @@ struct TodayView: View {
                 change: changeOffer(data),
                 onChange: openChange
             )
+            .zoomSource(StrengthLaunch.todayCard, in: zoom)
             .reveal(2)
             ReadinessCard(readiness: data.readiness, vitals: data.vitals, checkinDone: data.checkinDone,
                           onOpen: { showBody = true }, onCheckin: { showCheckin = true })
@@ -752,7 +756,8 @@ private struct SessionCard: View {
             switch next {
             case .startStrength:
                 Button {
-                    onStartStrength(StrengthLaunch(templateId: session.strength?.templateId, oneTime: session.strength?.oneTime))
+                    onStartStrength(StrengthLaunch(templateId: session.strength?.templateId, oneTime: session.strength?.oneTime,
+                                                   zoomSource: StrengthLaunch.todayCard))
                 } label: {
                     Label("Start session", systemImage: "play.fill")
                 }

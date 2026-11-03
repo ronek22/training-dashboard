@@ -25,7 +25,7 @@ struct PlanView: View {
                         .plainRow()
                 }
                 if let week = model.week {
-                    WeekSummaryCard(week: week, today: model.today).plainRow()
+                    WeekSummaryCard(week: week, today: model.today).reveal(0).plainRow()
                     if coach.isRunning(for: week.weekStart) {
                         CoachRunningLine(coach: coach) { coachOpen = true }.plainRow()
                     }
@@ -67,7 +67,7 @@ struct PlanView: View {
                 } else if model.loaded {
                     emptyCard.plainRow()
                 } else {
-                    ProgressView().tint(.muted).frame(maxWidth: .infinity, minHeight: 300).plainRow()
+                    LoadingCards(blocks: [60, 280]).plainRow()
                 }
             }
             .listStyle(.insetGrouped)
@@ -248,12 +248,15 @@ private struct WeekSummaryCard: View {
     private func progressBar(_ summary: PlanFormat.Summary) -> some View {
         GeometryReader { geo in
             let total = Double(max(summary.plannedMinutes, summary.doneMinutes, 1))
-            HStack(spacing: 2) {
-                ForEach(summary.bySport, id: \.sport) { part in
-                    Rectangle().fill(part.sport.color).frame(width: geo.size.width * Double(part.minutes) / total)
+            growing(delay: 0.2) { grown in
+                HStack(spacing: 2) {
+                    ForEach(summary.bySport, id: \.sport) { part in
+                        Rectangle().fill(part.sport.color).frame(width: grown ? geo.size.width * Double(part.minutes) / total : 0)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .animation(Motion.layout, value: summary.doneMinutes)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(height: 6)
         .background(Color.track)

@@ -22,7 +22,7 @@ struct PlanCoachSheet: View {
                 }
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 8)
         .padding(.bottom, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -284,7 +284,7 @@ struct PlanCoachSheet: View {
             }
             Text(text).font(AppFont.body(13)).foregroundStyle(Color.inkSoft).lineSpacing(2)
         }
-        .padding(16)
+        .padding(Space.gutter)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Color.cardBorder))

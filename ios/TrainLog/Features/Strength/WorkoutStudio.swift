@@ -239,7 +239,7 @@ struct WorkoutStudioSheet: View {
         .background(Color.raised, in: RoundedRectangle(cornerRadius: Radius.panel))
         .overlay(RoundedRectangle(cornerRadius: Radius.panel).strokeBorder(Color.outline))
         .shadow(color: .black.opacity(0.45), radius: 14, y: 6)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.bottom, 12)
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }

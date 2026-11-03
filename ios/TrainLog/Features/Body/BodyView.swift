@@ -11,7 +11,7 @@ struct BodyView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Space.m) {
                 header
                 if let data = model.data {
                     if model.offline, let syncedAt = model.syncedAt {
@@ -33,7 +33,7 @@ struct BodyView: View {
                     LoadingCards(blocks: [260, 90])
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)

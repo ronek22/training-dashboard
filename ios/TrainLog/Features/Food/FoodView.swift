@@ -8,7 +8,7 @@ struct FoodView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Space.m) {
                 header
                 WeekStrip(dates: model.weekDates, selected: model.selectedDate, marks: model.marks) { date in
                     Task { await model.select(date) }
@@ -55,7 +55,7 @@ struct FoodView: View {
                     LoadingCards(blocks: [150, 90])
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.bottom, 88)
         }
         .scrollIndicators(.hidden)
@@ -66,7 +66,7 @@ struct FoodView: View {
         .overlay(alignment: .bottomTrailing) {
             if let relogged = model.relogged {
                 QuickLogToast(relogged: relogged) { Task { await model.undoQuickLog() } }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Space.gutter)
                     .padding(.bottom, 16)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .task(id: relogged) {

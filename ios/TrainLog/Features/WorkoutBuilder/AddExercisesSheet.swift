@@ -33,7 +33,7 @@ struct AddExercisesSheet: View {
                 searchField
                 if swapping == nil && query.isEmpty { chips }
             }
-            .padding(.horizontal, 18)
+            .padding(.horizontal, Space.gutter)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(sections, id: \.title) { section in
@@ -59,7 +59,7 @@ struct AddExercisesSheet: View {
                             .padding(.top, 24)
                     }
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, Space.gutter)
                 .padding(.bottom, 20)
             }
             .scrollIndicators(.hidden)
@@ -262,7 +262,7 @@ struct AddExercisesSheet: View {
             }
             .buttonStyle(VoltButtonStyle())
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 14)
         .padding(.bottom, 8)
         .background(Color.card)

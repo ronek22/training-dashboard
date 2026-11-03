@@ -51,7 +51,7 @@ struct RunningFormSheet: View {
                         FormRow(row: row).padding(.top, index == 0 ? 8 : 0)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Space.gutter)
                 .padding(.bottom, 32)
             }
             .scrollIndicators(.hidden)
@@ -179,7 +179,7 @@ struct SplitsSheet: View {
                         MetricChart(model: model, height: 140).padding(.top, 16)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Space.gutter)
                 .padding(.bottom, 32)
             }
             .scrollIndicators(.hidden)

@@ -37,7 +37,7 @@ struct MealEstimateSheet: View {
                         topBar
                     }
                     content
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, Space.gutter)
                         .padding(.top, model.photo == nil ? 4 : 20)
                         .padding(.bottom, 16)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -48,7 +48,7 @@ struct MealEstimateSheet: View {
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
             footer
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Space.gutter)
                 .padding(.top, 12)
                 .padding(.bottom, 8)
                 .background(Color.bg)
@@ -103,7 +103,7 @@ struct MealEstimateSheet: View {
                     Spacer()
                     roundButton("camera", label: "Retake photo") { showCamera = true }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Space.gutter)
                 .padding(.top, 16)
             }
     }
@@ -127,7 +127,7 @@ struct MealEstimateSheet: View {
                 .frame(minWidth: 52, minHeight: 44, alignment: .leading)
             Spacer()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 8)
     }
 

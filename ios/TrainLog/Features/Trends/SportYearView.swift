@@ -16,7 +16,7 @@ struct SportYearView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Space.m) {
                 header
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
@@ -31,7 +31,7 @@ struct SportYearView: View {
                 .card()
                 monthRows
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)

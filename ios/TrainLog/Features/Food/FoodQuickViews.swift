@@ -149,7 +149,7 @@ struct GapPicksCard: View {
                 row(pick, on: pick.key == current)
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 16)
         .padding(.bottom, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -249,7 +249,7 @@ struct FuelCard: View {
                 .foregroundStyle(Color.muted)
                 .padding(.top, 10)
         }
-        .padding(16)
+        .padding(Space.gutter)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.card, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.ride.opacity(0.35)))

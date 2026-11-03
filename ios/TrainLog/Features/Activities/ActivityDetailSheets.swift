@@ -141,7 +141,7 @@ struct MetricSheet: View {
                     zones
                     lines
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Space.gutter)
                 .padding(.bottom, 32)
             }
             .scrollIndicators(.hidden)
@@ -265,12 +265,12 @@ struct CoachSheet: View {
                 Button("Done") { dismiss() }.font(AppFont.body(16, weight: .semibold)).foregroundStyle(Color.rideText)
                     .frame(minWidth: 44, minHeight: 44)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.top, 20)
             .padding(.bottom, 12)
             Rectangle().fill(Color.cardBorder).frame(height: 1)
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Space.m) {
                     if let headline = take.headline {
                         Text(headline).font(AppFont.body(18, weight: .semibold)).foregroundStyle(Color.ink).lineSpacing(3)
                     }
@@ -284,7 +284,7 @@ struct CoachSheet: View {
                         }
                     }
                 }
-                .padding(16)
+                .padding(Space.gutter)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }

@@ -27,7 +27,7 @@ struct StrengthSessionView: View {
                 ProgressView().tint(.muted).frame(maxWidth: .infinity, maxHeight: .infinity)
             case .brief(let template):
                 WatchReadyRow(watch: .shared)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Space.gutter)
                     .padding(.bottom, 4)
                 SessionBriefView(template: template, starting: model.starting) {
                     Task { await model.startFromBrief() }
@@ -149,7 +149,7 @@ struct StrengthSessionView: View {
                 .disabled(model.session == nil)
                 .opacity(model.session == nil ? 0 : 1)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 4)
         .padding(.bottom, 12)
     }
@@ -179,7 +179,7 @@ struct StrengthSessionView: View {
 
     private func content(_ session: StrengthSession) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Space.m) {
                 progressBar(session)
                 if model.unsynced {
                     HStack(spacing: 6) {
@@ -213,7 +213,7 @@ struct StrengthSessionView: View {
                     }
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Space.gutter)
             .padding(.bottom, 24)
             .animation(Motion.enter, value: model.current?.set.id)
             .animation(Motion.enter, value: model.allSetsDone)
@@ -538,7 +538,7 @@ struct StrengthSessionView: View {
                 .buttonStyle(VoltButtonStyle())
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, 10)
         .padding(.bottom, 8)
         .animation(Motion.enter, value: model.restEndsAt)

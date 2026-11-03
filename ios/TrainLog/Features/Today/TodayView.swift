@@ -6,7 +6,12 @@ struct TodayView: View {
     @State private var showFallback = false
     @State private var showSettings = false
     @State private var showBody = false
+    #if DEBUG
+    // `-checkinDemo <stage>` opens the check-in sheet filled in (simulator screenshots).
+    @State private var showCheckin = UserDefaults.standard.string(forKey: "checkinDemo") != nil
+    #else
     @State private var showCheckin = false
+    #endif
     /// The plan week behind today's card: steps, rehab ticks and Move day come from it.
     @State private var plan = PlanModel()
     @State private var route: Route?

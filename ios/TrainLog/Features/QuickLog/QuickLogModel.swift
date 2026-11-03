@@ -28,6 +28,10 @@ final class QuickLogModel {
     // Weight: left empty unless typed, so a check-in doesn't re-log yesterday's number.
     var weight = ""
     private(set) var lastWeight: MetricPoint?
+    /// The 7-day average and weekly rate from the muscle-gain check; cached, so it shows offline.
+    private(set) var trend: WeightTrend?
+    /// Screenshot state from `-checkinDemo`; never touches the server.
+    private(set) var isDemo = false
 
     private(set) var saving = false
     private(set) var error: String?
@@ -45,11 +49,13 @@ final class QuickLogModel {
     }
 
     func load() async {
+        guard !isDemo else { return }
         let api = client()
         async let checkin = try? api.getLive("/checkins/today?date=\(today)", as: CheckinResponse.self)
         async let sickMode = try? api.getLive("/sick-mode", as: SickModeResponse.self)
         async let weights = try? api.getLive("/metrics/weight?limit=1", as: [MetricPoint].self)
         async let lifeLoad = try? api.getLive("/life-load?start=\(today)&end=\(today)", as: LifeLoadResponse.self)
+        async let muscleGain = try? api.get("/strength/muscle-gain", as: MuscleGainWeight.self)
         if let saved = await checkin?.checkin {
             existing = saved
             energy = saved.energy
@@ -68,6 +74,7 @@ final class QuickLogModel {
             busyTags = Set(day.tags)
         }
         lastWeight = await weights?.first
+        trend = await muscleGain?.value.weight
         // Weighed in already today: show it so the sheet reads as an edit.
         if weight.isEmpty, let lastWeight, lastWeight.date == today { weight = QuickLogFormat.decimal(lastWeight.value) }
     }
@@ -78,6 +85,11 @@ final class QuickLogModel {
     }
 
     var isEditing: Bool { existing != nil }
+
+    /// A typed weight far from the average is probably a typo; it can still be saved.
+    var typoWarning: String? {
+        QuickLogFormat.typoWarning(typed: QuickLogFormat.number(weight), average: trend?.available == true ? trend?.endKg : nil)
+    }
 
     private var weightEmpty: Bool { weight.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -143,6 +155,7 @@ final class QuickLogModel {
 
     /// Returns true when the sheet can close.
     func save() async -> Bool {
+        guard !isDemo else { return true }
         guard canSave else { return false }
         let writes = self.writes
 
@@ -171,6 +184,24 @@ final class QuickLogModel {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         return true
     }
+
+    #if DEBUG
+    /// `-checkinDemo trend|flat|fast|sparse`: a filled-in sheet for screenshots.
+    static func launch() -> QuickLogModel {
+        guard let stage = UserDefaults.standard.string(forKey: "checkinDemo") else { return QuickLogModel() }
+        let model = QuickLogModel()
+        model.isDemo = true
+        model.energy = 4
+        model.sleep = 4
+        model.stress = 2
+        model.weight = stage == "typo" ? "89.6" : "79.6"
+        model.lastWeight = MetricPoint(date: "2026-11-02", value: 80)
+        model.trend = WeightTrend.demo(stage)
+        return model
+    }
+    #else
+    static func launch() -> QuickLogModel { QuickLogModel() }
+    #endif
 
     /// Today's check-in is in: no morning nudge.
     private func noteCheckin() {
@@ -211,6 +242,45 @@ enum QuickLogFormat {
     /// Accepts both "82.4" and the Polish keyboard's "82,4".
     static func number(_ text: String) -> Double? {
         Double(text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
+    }
+
+    /// "Average 79.7 · +0.25 kg a week, lean gain": the coloured part says whether it's on track.
+    static func trendLine(_ trend: WeightTrend) -> (average: String, rate: String, onTrack: Bool)? {
+        guard trend.available, let average = trend.endKg, let perWeek = trend.kgPerWeek else { return nil }
+        let rate = (perWeek > 0 ? "+" : perWeek < 0 ? "−" : "") + String(format: "%.2f", abs(perWeek)) + " kg a week"
+        let word: String
+        switch trend.status {
+        case "gentle_gain": word = "lean gain"
+        case "fast_gain": word = "faster than lean gain"
+        case "losing": word = "losing"
+        default: word = "flat"
+        }
+        return (decimal(average), "\(rate), \(word)", trend.status == "gentle_gain")
+    }
+
+    /// Before there's a trend: how many more weigh-ins the backend needs.
+    static func trendNeeds(_ trend: WeightTrend?) -> String? {
+        guard let trend, !trend.available else { return nil }
+        let missing = (trend.minWeighIns ?? 4) - (trend.weighIns?.count ?? 0)
+        if missing <= 0 { return "a few more days for a trend" }
+        return "\(missing) more weigh-in\(missing == 1 ? "" : "s") for a trend"
+    }
+
+    static func typoWarning(typed: Double?, average: Double?) -> String? {
+        guard let typed, let average, abs(typed - average) > 2 else { return nil }
+        return "\(decimal(abs(typed - average))) kg \(typed > average ? "above" : "below") your average · typo?"
+    }
+
+    /// "Nov 2" from "2026-11-02".
+    static func shortDate(_ iso: String) -> String {
+        let input = DateFormatter()
+        input.locale = Locale(identifier: "en_US_POSIX")
+        input.dateFormat = "yyyy-MM-dd"
+        guard let date = input.date(from: iso) else { return iso }
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "en_US_POSIX")
+        output.dateFormat = "MMM d"
+        return output.string(from: date)
     }
 
     static func decimal(_ value: Double) -> String {

@@ -137,3 +137,73 @@ struct MealEstimateJob: Decodable, Sendable {
         let note: String?
     }
 }
+
+/// `GET /phone/food/quick?date=&hour=` (backend/app/services/phone_food.py): what the top of Food offers.
+struct FoodQuick: Decodable, Sendable {
+    let date: String
+    let slot: String
+    let again: [Again]
+    let gap: Gap?
+    let fuel: Fuel?
+
+    /// A meal to log again: yesterday's for this time of day, a repeat from the last 30 days, or a saved food.
+    struct Again: Decodable, Sendable, Identifiable {
+        let key: String
+        let kind: String
+        let meal: String
+        let date: String?
+        let count: Int
+        let title: String
+        let items: [FoodItem]
+        let totals: Macros
+
+        var id: String { key }
+    }
+
+    /// Evening picks from the athlete's own log that close what's still missing.
+    struct Gap: Decodable, Sendable {
+        /// "both", "protein" (kcal is nearly there) or "refuel" (after a long ride).
+        let focus: String
+        let meal: String
+        let left: Left
+        let picks: [Pick]
+
+        struct Left: Decodable, Sendable {
+            let kcal: Double
+            let proteinG: Double
+        }
+    }
+
+    struct Pick: Decodable, Sendable, Identifiable {
+        let key: String
+        let title: String
+        let source: String
+        let lastDate: String?
+        let count: Int
+        let portions: Double
+        let items: [FoodItem]
+        let totals: Macros
+
+        var id: String { key }
+    }
+
+    /// Today's planned ride fuel, until the ride is recorded.
+    struct Fuel: Decodable, Sendable {
+        let title: String
+        let durationMin: Int
+        let totalCarbsG: Double
+        let bottles: Int
+        let carbsGPerH: Rate
+        let blocks: [[Int]]
+        let stops: [Stop]
+
+        struct Rate: Decodable, Sendable {
+            let target: Double
+        }
+
+        struct Stop: Decodable, Sendable {
+            let min: Int
+            let carbsG: Double
+        }
+    }
+}

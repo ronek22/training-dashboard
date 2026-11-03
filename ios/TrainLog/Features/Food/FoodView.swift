@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct FoodView: View {
-    @State private var model = FoodModel()
+    @State private var model = FoodModel.launch()
     @State private var showCamera = false
     @State private var draft: MealDraft?
     @State private var editing: FoodEntry?
@@ -18,8 +18,24 @@ struct FoodView: View {
                 if model.offline, let syncedAt = model.syncedAt {
                     offlineNote(syncedAt)
                 }
+                if model.isToday, let fuel = model.quick?.fuel {
+                    FuelCard(fuel: fuel)
+                }
+                if model.isToday, model.quick?.gap == nil, let cards = model.quick?.again, !cards.isEmpty {
+                    AgainRow(cards: cards, relogged: model.relogged) { card, meal in
+                        Task { await model.quickLog(key: card.key, items: card.items, meal: meal) }
+                    }
+                }
                 if let day = model.day {
-                    EatenCard(day: day, eaten: model.eaten, dinner: model.isToday ? model.plannedDinner : nil, isToday: model.isToday)
+                    EatenCard(day: day, eaten: model.eaten, dinner: model.isToday ? model.plannedDinner : nil, isToday: model.isToday,
+                              ghost: model.isToday ? model.pick?.totals : nil)
+                    if model.isToday, let gap = model.quick?.gap {
+                        GapPicksCard(gap: gap, selected: model.selectedPick) { pick in
+                            model.selectedPick = pick.key
+                        } onLog: { pick in
+                            Task { await model.quickLog(key: pick.key, items: pick.items) }
+                        }
+                    }
                     MealTimeline(
                         entries: day.entries,
                         pending: model.pending.filter { $0.date == model.selectedDate },
@@ -43,7 +59,21 @@ struct FoodView: View {
             Color.bg.frame(height: 0).background(Color.bg).allowsHitTesting(false)
         }
         .background(Color.bg)
-        .overlay(alignment: .bottomTrailing) { scanButton }
+        .overlay(alignment: .bottomTrailing) {
+            if let relogged = model.relogged {
+                QuickLogToast(relogged: relogged) { Task { await model.undoQuickLog() } }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task(id: relogged) {
+                        try? await Task.sleep(for: .seconds(5))
+                        if !Task.isCancelled { await model.finishQuickLog() }
+                    }
+            } else {
+                scanButton
+            }
+        }
+        .animation(.snappy, value: model.relogged)
         .smoothRefreshable {
             await APIClient.current.reconnect()
             await model.load()
@@ -239,6 +269,8 @@ private struct EatenCard: View {
     let eaten: Macros
     let dinner: DinnerWeek.Day?
     let isToday: Bool
+    /// The selected evening pick, drawn as a striped ghost on the ring and bars.
+    var ghost: Macros? = nil
 
     private var target: Double? { day.target?.kcal }
     private var dinnerKcal: Double? { dinner?.kcal }
@@ -257,19 +289,19 @@ private struct EatenCard: View {
                 }
                 Spacer(minLength: 0)
                 if let target {
-                    CalorieRing(eaten: eaten.kcal, target: target, planned: dinnerKcal)
+                    CalorieRing(eaten: eaten.kcal, target: target, planned: dinnerKcal, ghost: ghost?.kcal)
                 }
             }
-            if let target, let dinnerKcal, target > eaten.kcal {
+            if ghost == nil, let target, let dinnerKcal, target > eaten.kcal {
                 afterDinner(short: target - eaten.kcal - dinnerKcal).padding(.top, 12)
             }
             Rectangle().fill(Color.cardBorder).frame(height: 1).padding(.vertical, 14)
             HStack(alignment: .top, spacing: 0) {
                 MacroColumn(label: "Protein", value: eaten.proteinG, target: day.proteinTargetG, color: .mobility,
-                            share: FoodFormat.kcalShares(eaten).protein)
+                            share: FoodFormat.kcalShares(eaten).protein, ghost: ghost?.proteinG)
                 divider
                 MacroColumn(label: "Carbs", value: eaten.carbsG, target: day.target?.carbsG, color: .ride,
-                            share: FoodFormat.kcalShares(eaten).carbs)
+                            share: FoodFormat.kcalShares(eaten).carbs, ghost: ghost?.carbsG)
                 divider
                 MacroColumn(label: "Fat", value: eaten.fatG, target: nil, color: .run,
                             share: FoodFormat.kcalShares(eaten).fat)
@@ -290,16 +322,20 @@ private struct EatenCard: View {
                 legendRow(swatch: Capsule().fill(Color.volt.opacity(0.8)).frame(width: 10, height: 3).frame(height: 10),
                           label: "Dinner ~\(FoodFormat.kcal(dinnerKcal))", value: dinnerKcal / target)
             }
+            if let ghost {
+                legendRow(swatch: Hatch(color: .volt).frame(width: 10, height: 10).clipShape(RoundedRectangle(cornerRadius: 3)),
+                          label: "Pick", value: ghost.kcal / target, signed: true)
+            }
         }
         .frame(width: 150, alignment: .leading)
     }
 
-    private func legendRow(swatch: some View, label: String, value: Double) -> some View {
+    private func legendRow(swatch: some View, label: String, value: Double, signed: Bool = false) -> some View {
         HStack(spacing: 8) {
             swatch
             Text(label).font(AppFont.body(12)).foregroundStyle(Color.inkSoft)
             Spacer(minLength: 4)
-            Text("\(Int((value * 100).rounded()))%").font(AppFont.number(15)).foregroundStyle(Color.ink)
+            Text("\(signed ? "+" : "")\(Int((value * 100).rounded()))%").font(AppFont.number(15)).foregroundStyle(Color.ink)
         }
     }
 
@@ -321,6 +357,7 @@ private struct CalorieRing: View {
     let eaten: Double
     let target: Double
     let planned: Double?
+    var ghost: Double? = nil
 
     private let size: CGFloat = 120
     private let width: CGFloat = 12
@@ -340,6 +377,12 @@ private struct CalorieRing: View {
                         .stroke(Color.volt.opacity(0.8), style: StrokeStyle(lineWidth: 4, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                 }
+            }
+            if let ghost, let range = FoodFormat.ghostRange(eaten: eaten, planned: toGo > 0 ? planned : nil, ghost: ghost, target: target) {
+                let arc = Circle().trim(from: range.lowerBound, to: range.upperBound).rotation(.degrees(-90))
+                arc.stroke(Color.volt.opacity(0.22), lineWidth: width)
+                // Short dashes across a wide stroke read as hatching.
+                arc.stroke(Color.volt.opacity(0.7), style: StrokeStyle(lineWidth: width, dash: [2, 3.5]))
             }
             Circle()
                 .trim(from: 0, to: eatenShare)
@@ -370,6 +413,7 @@ private struct MacroColumn: View {
     let target: Double?
     let color: Color
     let share: Double
+    var ghost: Double? = nil
 
     private var met: Bool { target.map { value >= $0 } ?? false }
 
@@ -392,7 +436,14 @@ private struct MacroColumn: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.track)
-                    Capsule().fill(color).frame(width: geo.size.width * (target == nil ? share : FoodFormat.share(value, of: target)))
+                    let filled = geo.size.width * (target == nil ? share : FoodFormat.share(value, of: target))
+                    if let ghost, let target, value < target {
+                        Hatch(color: color)
+                            .frame(width: geo.size.width * min(ghost, target - value) / target)
+                            .clipShape(UnevenRoundedRectangle(bottomTrailingRadius: 3, topTrailingRadius: 3))
+                            .offset(x: filled)
+                    }
+                    Capsule().fill(color).frame(width: filled)
                 }
             }
             .frame(height: 5)

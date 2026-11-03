@@ -4,7 +4,7 @@ from fastapi import APIRouter, Query
 
 from ..db import get_db
 from ..models.nutrition import DinnerPlanInput, FoodEntryInput, MealEstimateInput, ProductInput, RecipeInput, FoodItemInput, NutritionProfileInput, ProteinTickInput, WeeklyBodyCheckinInput
-from ..services import dinner_plan, food_log, meal_estimate_relay, meal_ideas, products, recipes
+from ..services import dinner_plan, food_log, meal_estimate_relay, meal_ideas, phone_food, products, recipes
 from ..services.protein import build_protein_status, set_protein_tick
 from ..services.weekly_body_checkin import build_weekly_body_checkin, save_weekly_body_checkin
 
@@ -70,6 +70,16 @@ def post_food_entry(payload: FoodEntryInput):
     conn = get_db()
     try:
         return food_log.create_food_entry(conn, payload.model_dump())
+    finally:
+        conn.close()
+
+
+# The phone's Food tab: meals to log again, evening picks that close the gap, today's ride fuel.
+@router.get("/phone/food/quick")
+def get_phone_food_quick(date: str, hour: int = Query(..., ge=0, le=23)):
+    conn = get_db()
+    try:
+        return phone_food.build_food_quick(conn, date, hour)
     finally:
         conn.close()
 

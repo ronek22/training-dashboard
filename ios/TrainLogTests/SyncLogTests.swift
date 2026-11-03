@@ -116,6 +116,27 @@ struct SyncLogTests {
         try? FileManager.default.removeItem(at: queue.logFile)
     }
 
+    @Test func serverErrorStopsTheFlushAndKeepsTheRestInOrder() async {
+        // A 5xx may pass (a restart, a deploy): keep the write and everything after it, in order.
+        Stub.statuses = ["/strength/workouts/sessions/4/sets/10/complete": 500]
+        let queue = tempQueue()
+        queue.append(.init(method: "POST", path: "/strength/workouts/sessions/4/sets/9/complete", body: nil))
+        queue.append(.init(method: "POST", path: "/strength/workouts/sessions/4/sets/10/complete", body: nil))
+        queue.append(.init(method: "PUT", path: "/strength/workouts/sessions/4/sets/10/effort", body: nil))
+
+        #expect(await queue.flush(with: stubbedClient()) == false)
+        #expect(queue.pending.map(\.path) == ["/strength/workouts/sessions/4/sets/10/complete", "/strength/workouts/sessions/4/sets/10/effort"])
+        #expect(queue.log.map(\.path) == ["/strength/workouts/sessions/4/sets/9/complete"])
+
+        // Back up: the rest goes out in the order it was logged.
+        Stub.statuses = [:]
+        #expect(await queue.flush(with: stubbedClient()))
+        #expect(queue.pending.isEmpty)
+        #expect(queue.log.map(\.path).prefix(2) == ["/strength/workouts/sessions/4/sets/10/effort", "/strength/workouts/sessions/4/sets/10/complete"])
+        try? FileManager.default.removeItem(at: queue.file)
+        try? FileManager.default.removeItem(at: queue.logFile)
+    }
+
     @Test func unreachableFlushKeepsWritesAndLogsNothing() async {
         let queue = tempQueue()
         queue.append(.init(method: "POST", path: "/checkins", body: nil))

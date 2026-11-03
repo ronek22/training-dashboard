@@ -130,6 +130,8 @@ struct MetricChart: View {
                     if let x = scrub.wrappedValue, let point = model.nearest(x) {
                         let px = xPos(point.x, proxy.size.width)
                         let py = yPos(point.y, proxy.size.height)
+                        // A plain value: the alignment closure is @Sendable and GeometryProxy isn't.
+                        let chartWidth = proxy.size.width
                         Rectangle().fill(Color.ink.opacity(0.7)).frame(width: 1, height: proxy.size.height).offset(x: px)
                         Circle().fill(model.color).frame(width: 8, height: 8).overlay(Circle().stroke(Color.bg, lineWidth: 2))
                             .offset(x: px - 4, y: py - 4)
@@ -142,7 +144,7 @@ struct MetricChart: View {
                             .background(Color.ink, in: Capsule())
                             .fixedSize()
                             .alignmentGuide(.leading) { dimension in
-                                -min(max(px - dimension.width / 2, 0), proxy.size.width - dimension.width)
+                                -min(max(px - dimension.width / 2, 0), chartWidth - dimension.width)
                             }
                             .offset(y: -34)
                         }

@@ -161,20 +161,22 @@ final class TodayModel {
     }
 
     /// The server's open workout; when it's unreachable, the one this phone has in progress.
-    private static func activeWorkout(_ client: APIClient) async -> StrengthSession? {
+    static func activeWorkout(_ client: APIClient, store: SessionStore = SessionStore()) async -> StrengthSession? {
         do {
             let live = try await client.getLive("/strength/workouts/sessions/active", as: StrengthSession?.self)
-            // A workout finished on the web while the phone's screen was closed stays on disk as
-            // active; drop it once the server confirms it's over, so offline doesn't resurrect it.
-            let store = SessionStore()
-            if live == nil, let local = store.load(),
-               let server = try? await client.getLive("/strength/workouts/sessions/\(local.id)", as: StrengthSession.self),
-               !server.isActive {
-                store.clear()
+            // A workout finished or deleted on the web while the phone's screen was closed stays on
+            // disk as active; drop it once the server confirms it's over, so offline doesn't resurrect it.
+            if live == nil, let local = store.load() {
+                do {
+                    let server = try await client.getLive("/strength/workouts/sessions/\(local.id)", as: StrengthSession.self)
+                    if !server.isActive { store.clear() }
+                } catch APIError.status(404) {
+                    store.clear()
+                } catch {}
             }
             return live
         } catch {
-            return SessionStore().load().flatMap { $0.isActive ? $0 : nil }
+            return store.load().flatMap { $0.isActive ? $0 : nil }
         }
     }
 }

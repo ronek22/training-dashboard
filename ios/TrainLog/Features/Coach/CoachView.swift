@@ -41,7 +41,7 @@ struct CoachView: View {
                         row(conversation)
                     }
                 } header: {
-                    Kicker("Recent").padding(.leading, -16)
+                    Kicker("Recent").padding(.leading, -12)
                 }
             }
             .listStyle(.insetGrouped)
@@ -108,6 +108,7 @@ struct CoachView: View {
         }
         .buttonStyle(.plain)
         .listRowBackground(Color.card)
+        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
         .listRowSeparatorTint(Color.cardBorder)
     }
 
@@ -136,6 +137,7 @@ struct CoachView: View {
         }
         .buttonStyle(.plain)
         .listRowBackground(Color.card)
+        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
         .listRowSeparatorTint(Color.cardBorder)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {

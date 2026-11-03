@@ -513,6 +513,11 @@ enum FoodFormat {
         Int(value.rounded()).formatted(.number.grouping(.automatic).locale(Locale(identifier: "en_US")))
     }
 
+    /// The kcal ring closes (and turns volt) once eaten reaches the target.
+    static func ringClosed(eaten: Double, target: Double) -> Bool {
+        target > 0 && eaten >= target
+    }
+
     static func share(_ value: Double, of target: Double?) -> Double {
         guard let target, target > 0 else { return 0 }
         return min(1, max(0, value / target))

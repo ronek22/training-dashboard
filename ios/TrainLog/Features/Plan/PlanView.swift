@@ -156,31 +156,8 @@ struct PlanView: View {
     private var header: some View {
         ScreenHeader(kicker: model.selected.map(PlanFormat.weekKicker) ?? " ", title: "Plan") {
             HStack(spacing: 8) {
-                if let week = model.week, coach.isRunning(for: week.weekStart) || !PlanCoachFormat.editableDates(week, today: model.today).isEmpty {
-                    Button {
-                        if coach.isRunning(for: week.weekStart) { coachOpen = true } else { openCoach(.refine(week: week.weekStart)) }
-                    } label: {
-                        ZStack {
-                            if coach.isRunning(for: week.weekStart) {
-                                ProgressView().controlSize(.small).tint(.volt)
-                            } else {
-                                Image(systemName: "sparkles").font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.volt)
-                            }
-                        }
-                        .frame(width: 36, height: 36)
-                        .overlay(Circle().strokeBorder(Color.outline))
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Refine this week with the coach")
-                }
                 if let week = model.week {
-                    HeaderIconButton(label: "Ask coach about this week") {
-                        asking = CoachFormat.weekContext(week.weekStart)
-                    } icon: {
-                        Image(systemName: "bubble.left.and.bubble.right").font(.system(size: 13, weight: .semibold))
-                    }
+                    coachButton(week)
                 }
                 HeaderIconButton(enabled: model.hasPrevious, label: "Previous week") { model.page(-1) } icon: {
                     Image(systemName: "chevron.left")
@@ -190,6 +167,32 @@ struct PlanView: View {
                 }
             }
             .padding(.bottom, 4)
+        }
+    }
+
+    /// The one coach entry in the header. While the coach is working it shows a spinner and
+    /// opens the sheet; otherwise a menu to refine the week (if days are left) or ask about it.
+    @ViewBuilder
+    private func coachButton(_ week: WeeklyPlan) -> some View {
+        if coach.isRunning(for: week.weekStart) {
+            Button { coachOpen = true } label: {
+                ProgressView().controlSize(.small).tint(.volt).headerCircle()
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Coach is working on this week")
+        } else {
+            Menu {
+                if !PlanCoachFormat.editableDates(week, today: model.today).isEmpty {
+                    Button("Refine this week", systemImage: "sparkles") { openCoach(.refine(week: week.weekStart)) }
+                }
+                Button("Ask about this week", systemImage: "bubble.left.and.bubble.right") {
+                    asking = CoachFormat.weekContext(week.weekStart)
+                }
+            } label: {
+                Image(systemName: "sparkles").font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.volt).headerCircle()
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Coach")
         }
     }
 
@@ -411,3 +414,12 @@ struct PlanRing: View {
     }
 }
 
+private extension View {
+    /// The outline circle of `HeaderIconButton`, for header controls that aren't plain buttons.
+    func headerCircle() -> some View {
+        frame(width: 36, height: 36)
+            .overlay(Circle().strokeBorder(Color.outline))
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+    }
+}

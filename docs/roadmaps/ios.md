@@ -19,6 +19,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-11-03 — **Plan with the coach** — Plan next week from its empty page and refine the current week from the header sparkle or a single day from Plan day: the coach on the Mac writes it while a week strip fills in, then the sheet shows the new week or the days that changed.
 - 2026-11-03 — **Weight trend in the check-in** — Under the weight field the check-in shows your 7-day average and weekly rate with a sparkline, volt when it's a lean gain and amber when it's flat or too fast; a typed number far from the average asks if it's a typo.
 - 2026-11-03 — **Lift history, plates and warm-up** — During a workout the lift shows last time under its name (tap for a chart of the last sessions against today's target and your best), barbell lifts show the plates a side for your bar and plates, and the first heavy lift starts with a warm-up ramp you tick off without logging.
 - 2026-11-03 — **Evening mode and time outside** — After 20:00 Today turns into Tonight: if the planned workout is still open it leads with when you'd finish (or Move day once wind-down starts); then how today went on a day strip of steps, daylight minutes from the Watch and the workout, lights out on a runway to the wake-up with food left, and tomorrow's session.

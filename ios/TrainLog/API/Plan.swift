@@ -1,7 +1,7 @@
 import Foundation
 
 /// One week of `GET /plans/weekly` (backend/app/services/plans.py `serialize_weekly_plan`).
-/// Only the fields the phone shows; planning itself stays on the web.
+/// Only the fields the phone shows.
 struct WeeklyPlan: Decodable, Sendable, Identifiable {
     let weekStart: String
     let title: String?
@@ -91,4 +91,33 @@ struct StrengthTemplateSummary: Decodable, Sendable, Identifiable, Equatable {
     struct Exercise: Decodable, Sendable, Equatable {
         let exerciseName: String
     }
+}
+
+/// `POST /plans/weekly/coach`: the backend asks the coach helper on the Mac to write the week.
+struct CoachPlanRequest: Encodable, Sendable {
+    let weekStart: String
+    let planningBrief: String
+}
+
+/// `POST /plans/weekly/coach/revise`: change the week from today on, or only `targetDate`.
+struct CoachRevisionRequest: Encodable, Sendable {
+    let weekStart: String
+    let feedback: String
+    let targetDate: String?
+}
+
+/// Both POSTs above and `GET /plans/weekly/coach/{job_id}` (backend/app/services/plan_coach_relay.py).
+struct CoachPlanJob: Decodable, Sendable {
+    let jobId: String
+    let kind: String?
+    let status: String
+    let message: String?
+    let summary: String?
+    let weekStart: String?
+}
+
+/// `GET /plans/weekly/coach/status`: whether the helper on the Mac answers.
+struct CoachPlanStatus: Decodable, Sendable {
+    let available: Bool
+    let detail: String?
 }

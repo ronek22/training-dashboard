@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// Everything needed for the session, nothing to edit: go check, steps, cues, the rehab
-/// checklist and the short-on-time fallback. Today's strength day gets the volt Start session.
+/// Everything needed for the session: go check, steps, cues, the rehab checklist and the
+/// short-on-time fallback, plus moving it or asking the coach to change it. Today's strength day gets the volt Start session.
 struct PlanDayView: View {
     let model: PlanModel
     let date: String
     let onMove: (PlanDay) -> Void
+    /// Asks the coach to rewrite this day only (the Plan tab; Today leaves it out).
+    var onChange: ((PlanDay) -> Void)? = nil
     let onStartStrength: (StrengthLaunch) -> Void
     @State private var starting = false
     @State private var asking = false
@@ -129,6 +131,16 @@ struct PlanDayView: View {
                     onMove(day)
                 } label: {
                     Label("Move to another day", systemImage: "arrow.left.arrow.right")
+                }
+                .buttonStyle(OutlineButtonStyle(height: 44))
+                .font(AppFont.body(14, weight: .semibold))
+            }
+
+            if let onChange, day.date >= model.today, ![.done, .replaced].contains(status) {
+                Button {
+                    onChange(day)
+                } label: {
+                    Label("Change with coach", systemImage: "sparkles")
                 }
                 .buttonStyle(OutlineButtonStyle(height: 44))
                 .font(AppFont.body(14, weight: .semibold))

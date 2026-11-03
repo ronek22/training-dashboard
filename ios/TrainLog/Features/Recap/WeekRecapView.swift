@@ -28,7 +28,7 @@ struct WeekRecapView: View {
                     }
                     .card()
                 } else {
-                    ProgressView().tint(.muted).frame(maxWidth: .infinity, minHeight: 400)
+                    LoadingCards(blocks: [200, 120, 120])
                 }
             }
             .padding(.horizontal, 16)

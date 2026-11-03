@@ -79,6 +79,7 @@ struct RootView: View {
     @State private var strength: StrengthLaunch?
     #endif
     @State private var todayRefresh = 0
+    @Namespace private var zoom
     @State private var recapRequest = 0
     @State private var checkinRequest = 0
     @Environment(\.scenePhase) private var scenePhase
@@ -88,7 +89,7 @@ struct RootView: View {
         TabView(selection: $tab) {
             Tab("Today", systemImage: "clock", value: .today) {
                 TodayView(onStartStrength: { strength = $0 }, refresh: todayRefresh,
-                          recapRequest: recapRequest, checkinRequest: checkinRequest)
+                          recapRequest: recapRequest, checkinRequest: checkinRequest, zoom: zoom)
             }
             Tab("Plan", systemImage: "calendar", value: .plan) {
                 PlanView(onStartStrength: { strength = $0 })
@@ -123,6 +124,7 @@ struct RootView: View {
         }
         .fullScreenCover(item: $strength, onDismiss: { todayRefresh += 1 }) { launch in
             StrengthSessionView(templateId: launch.templateId, oneTime: launch.oneTime)
+                .zoomTransition(from: launch.zoomSource, in: zoom)
         }
         // Widgets and the strength Live Activity.
         .onOpenURL { url in
@@ -175,6 +177,11 @@ struct StrengthLaunch: Identifiable {
     let id = UUID()
     let templateId: Int?
     var oneTime: TemplateInput?
+    /// The Today card it was started from, so the session zooms out of it.
+    var zoomSource: String?
+
+    static let todayCard = "todaySession"
+    static let resumeCard = "resumeWorkout"
 }
 
 extension View {

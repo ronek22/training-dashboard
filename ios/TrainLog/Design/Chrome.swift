@@ -71,6 +71,28 @@ struct SyncStateCard: View {
     }
 }
 
+/// First load with nothing cached: card-shaped placeholders that breathe, in roughly the
+/// screen's layout, instead of a spinner on an empty page.
+struct LoadingCards: View {
+    /// Height of each placeholder card's body block, top to bottom.
+    var blocks: [CGFloat] = [120, 80, 160]
+
+    var body: some View {
+        VStack(spacing: 12) {
+            ForEach(Array(blocks.enumerated()), id: \.offset) { _, height in
+                VStack(alignment: .leading, spacing: 10) {
+                    Skeleton(width: 90, height: 10)
+                    Skeleton(width: 170, height: 22)
+                    Skeleton(height: height, radius: Radius.control)
+                }
+                .card()
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Loading")
+    }
+}
+
 /// Drag handle for sheets that draw their own top (the system indicator is hidden there).
 struct SheetGrabber: View {
     var body: some View {

@@ -64,8 +64,9 @@ enum AppTab: Hashable {
 
 struct RootView: View {
     #if DEBUG
-    // `-openActivity <id>` opens that activity on launch (simulator screenshots).
-    @State private var tab: AppTab = UserDefaults.standard.string(forKey: "openActivity") == nil ? .today : .activities
+    // `-openActivity <id>` opens that activity on launch, `-foodDemo <stage>` the Food tab (simulator screenshots).
+    @State private var tab: AppTab = UserDefaults.standard.string(forKey: "openActivity") != nil ? .activities
+        : UserDefaults.standard.string(forKey: "foodDemo") != nil ? .food : .today
     #else
     @State private var tab: AppTab = .today
     #endif

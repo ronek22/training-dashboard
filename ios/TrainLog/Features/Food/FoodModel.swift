@@ -16,6 +16,21 @@ final class FoodModel {
     private(set) var selectedDate: String
     /// Target hit / short per finished day, kept across loads so the week strip keeps its dots.
     private(set) var marks: [String: FoodFormat.DayMark] = [:]
+    /// Today's Again cards, evening picks and ride fuel (`GET /phone/food/quick`).
+    private(set) var quick: FoodQuick?
+    /// The evening pick drawn as a ghost on the ring; the first one until another is tapped.
+    var selectedPick: String?
+    /// The last one-tap log: its Again card shows a check and the toast offers Undo.
+    private(set) var relogged: Relogged?
+    /// Screenshot state from `-foodDemo`; never touches the server.
+    private var demo = false
+
+    struct Relogged: Equatable {
+        let key: String
+        let meal: String
+        let kcal: Double
+        let entryId: Int?
+    }
 
     private let client: () -> APIClient
     private let queue: WriteQueue
@@ -40,6 +55,12 @@ final class FoodModel {
         return dinner
     }
 
+    /// The pick shown on the ring, when the evening card is up.
+    var pick: FoodQuick.Pick? {
+        guard let picks = quick?.gap?.picks else { return nil }
+        return picks.first { $0.key == selectedPick } ?? picks.first
+    }
+
     /// Mon–Sun of the selected day's week.
     var weekDates: [String] { FoodFormat.weekDates(of: selectedDate) }
 
@@ -55,6 +76,8 @@ final class FoodModel {
         selectedDate = date
         day = nil
         dinner = nil
+        quick = nil
+        relogged = nil
         await load()
     }
 
@@ -66,8 +89,10 @@ final class FoodModel {
 
     static func dayPath(_ date: String) -> String { "/nutrition/food?date=\(date)" }
     static func dinnersPath(_ date: String) -> String { "/nutrition/dinners?week_start=\(date)" }
+    static func quickPath(_ date: String, hour: Int) -> String { "/phone/food/quick?date=\(date)&hour=\(hour)" }
 
     func load() async {
+        guard !demo else { return }
         let api = client()
         let date = selectedDate
         if day == nil, let cached = api.cached(Self.dayPath(date), as: FoodDay.self) {
@@ -94,7 +119,52 @@ final class FoodModel {
         if date == selectedDate {
             dinner = week?.value.days.first { $0.date == date }
         }
+        await loadQuick()
         publishWidget()
+    }
+
+    /// Today only; a failed load keeps what was there.
+    private func loadQuick() async {
+        guard isToday else { return }
+        let date = selectedDate
+        let path = Self.quickPath(date, hour: Calendar.current.component(.hour, from: .now))
+        if let loaded = try? await client().get(path, as: FoodQuick.self), date == selectedDate {
+            quick = loaded.value
+        }
+    }
+
+    /// One tap from an Again card or an evening pick: the items are logged as they are, no sheet.
+    func quickLog(key: String, items: [FoodItem], meal: String = FoodFormat.defaultMeal()) async {
+        guard !demo else { return }
+        let before = Set(day?.entries.map(\.id) ?? [])
+        await save(FoodEntryInput(date: selectedDate, meal: meal, source: "saved", rawText: nil, items: items))
+        let added = day?.entries.first { !before.contains($0.id) }?.id
+        relogged = Relogged(key: key, meal: meal, kcal: items.reduce(.zero, FoodFormat.add).kcal, entryId: added)
+    }
+
+    #if DEBUG
+    func applyDemo(day: FoodDay, quick: FoodQuick, relogged: Relogged?) {
+        demo = true
+        self.day = day
+        self.quick = quick
+        self.relogged = relogged
+        syncedAt = .now
+    }
+    #endif
+
+    /// Removes the entry the last one-tap log made (only once the server has it).
+    func undoQuickLog() async {
+        guard !demo, let id = relogged?.entryId, let entry = day?.entries.first(where: { $0.id == id }) else { return }
+        relogged = nil
+        await delete(entry)
+        await loadQuick()
+    }
+
+    /// The toast is gone: the cards catch up with what's now eaten.
+    func finishQuickLog() async {
+        guard !demo else { return }
+        relogged = nil
+        await loadQuick()
     }
 
     /// Saves a meal; when the server is unreachable it's queued and counted locally.

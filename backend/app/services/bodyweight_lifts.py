@@ -17,6 +17,12 @@ def is_no_equipment_lift(day: dict) -> bool:
     return bool(NO_EQUIPMENT_LIFT_RE.search(str(day.get("title") or "")))
 
 
+def runs_as_one_time(day: dict) -> bool:
+    """Bodyweight days, and gym days the coach rewrote with its own exercises: the phone runs these
+    lifts as a one-time session instead of the saved A/B/C/D workout."""
+    return is_no_equipment_lift(day) or bool(_from_structured(day.get("exercises") or []))
+
+
 def _lift(name: str, sets: int, reps: Optional[int], rest_seconds: int, notes: Optional[str], seconds: Optional[int] = None) -> dict:
     return {"name": name, "sets": sets, "reps": reps, "seconds": seconds, "weight_kg": None, "rest_seconds": rest_seconds, "notes": notes}
 

@@ -43,7 +43,8 @@ class WeeklyPlanDay(BaseModel):
     steps: list[str] = Field(default_factory=list, max_length=12)
     cues: list[str] = Field(default_factory=list, max_length=6)
     fallback: Optional[str] = Field(default=None, max_length=400)
-    # Bodyweight lifts only: the steps as exercises, so the phone can log them set by set.
+    # Bodyweight lifts, or a gym day whose lifts the coach changed: the steps as exercises, so the phone
+    # logs them set by set instead of the saved workout.
     exercises: list[PlanExercise] = Field(default_factory=list, max_length=15)
     target_duration_min: Optional[int] = None
     target_distance_km: Optional[float] = None

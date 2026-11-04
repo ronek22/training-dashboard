@@ -119,6 +119,24 @@ class PhoneTodayTests(unittest.TestCase):
         self.assertNotIn("Air Squat", names)
         self.assertTrue(all(item["weight_kg"] is None for item in strength["exercises"]))
 
+    def test_gym_day_the_coach_rewrote_runs_its_exercises_not_the_template(self):
+        row = self.conn.execute("SELECT days_json FROM weekly_plans").fetchone()
+        days = json.loads(row["days_json"])
+        title = days[3]["title"]
+        days[3]["title"] = f"{title} (short, dumbbells only)"
+        days[3]["exercises"] = [
+            {"name": "Dumbbell Bench Press", "sets": 3, "reps": 10, "weight_kg": 24},
+            {"name": "Dumbbell Lateral Raise", "sets": 3, "reps": 15, "weight_kg": 12},
+        ]
+        self.conn.execute("UPDATE weekly_plans SET days_json = ?", (json.dumps(days),))
+        self.conn.commit()
+
+        strength = build_phone_today(self.conn, TODAY)["today"]["strength"]
+        self.assertIsNone(strength["template_id"])
+        self.assertEqual(strength["name"], f"{title} (short, dumbbells only)")
+        self.assertEqual([(item["name"], item["weight_kg"]) for item in strength["exercises"]],
+                         [("Dumbbell Bench Press", 24), ("Dumbbell Lateral Raise", 12)])
+
     def test_week_shows_done_sports_and_minutes(self):
         brief = build_phone_today(self.conn, TODAY)
         tuesday = brief["week"][1]

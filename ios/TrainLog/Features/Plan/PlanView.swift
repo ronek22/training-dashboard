@@ -8,6 +8,7 @@ struct PlanView: View {
     @State private var moving: PlanDay?
     @State private var asking: CoachContext?
     @State private var coachOpen = false
+    @State private var arcOpen = false
 
     init(onStartStrength: @escaping (StrengthLaunch) -> Void) {
         self.onStartStrength = onStartStrength
@@ -19,7 +20,11 @@ struct PlanView: View {
     var body: some View {
         NavigationStack(path: $path) {
             List {
-                header.plainRow(top: 0)
+                VStack(alignment: .leading, spacing: 10) {
+                    header
+                    arcStrip
+                }
+                .plainRow(top: 0)
                 if model.offline, let syncedAt = model.syncedAt {
                     OfflineNote(syncedAt: syncedAt)
                         .plainRow()
@@ -87,6 +92,8 @@ struct PlanView: View {
                 await model.load()
                 coach.resume()
                 #if DEBUG
+                // `-arcDemoSheet YES` opens the arc sheet on launch.
+                if UserDefaults.standard.bool(forKey: "arcDemoSheet") { arcOpen = true }
                 if let stage = PlanCoachModel.demoStage {
                     // Planning stages show the unsaved week behind the sheet; refine stages the current one.
                     if !["refine", "changed", "day"].contains(stage), let next = model.unplannedStart { model.select(next) }
@@ -108,6 +115,11 @@ struct PlanView: View {
                            today: model.today,
                            onRefine: { if let week = coach.task?.week { coach.open(.refine(week: week)) } })
                 .presentationDetents([.large])
+                .presentationBackground(Color.sheet)
+        }
+        .sheet(isPresented: $arcOpen) {
+            ArcSheet(blocks: model.arcBlocks, stall: model.stallBlock, weekStart: model.selected ?? PlanFormat.weekStart(of: model.today))
+                .presentationDetents([.fraction(0.78), .large])
                 .presentationBackground(Color.sheet)
         }
         .sheet(item: $asking) { context in
@@ -167,6 +179,19 @@ struct PlanView: View {
                 }
             }
             .padding(.bottom, 4)
+        }
+    }
+
+    /// Where the selected week sits in the winter arc and the stall block; hidden until known.
+    @ViewBuilder
+    private var arcStrip: some View {
+        if model.arcLoaded, let start = model.selected {
+            let strip = ArcFormat.strip(model.arcBlocks, weekStart: start)
+            let stall = ArcFormat.stall(model.stallBlock, weekStart: start, today: model.today)
+            if strip != nil || stall != nil {
+                ArcStrip(strip: strip, stall: stall,
+                         onTap: model.arcBlocks.isEmpty && stall == nil ? nil : { arcOpen = true })
+            }
         }
     }
 

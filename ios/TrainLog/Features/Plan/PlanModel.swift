@@ -15,6 +15,10 @@ final class PlanModel {
     private(set) var offline = false
     private(set) var error: String?
     private(set) var today = PlanModel.todayISO
+    /// The winter arc's blocks and the running stall block, for the strip under the header.
+    private(set) var arcBlocks: [WinterArc.Block] = []
+    private(set) var stallBlock: StallBlock?
+    private(set) var arcLoaded = false
 
     private let client: () -> APIClient
     private var templates: [StrengthTemplateSummary]?
@@ -55,8 +59,16 @@ final class PlanModel {
 
     static let weeksPath = "/plans/weekly?limit=4"
 
+    static let arcPath = "/plans/winter-arc"
+    static let stallPath = "/strength/workouts/stall-blocks?status=active"
+
+    #if DEBUG
+    static var arcDemo: String? { UserDefaults.standard.string(forKey: "arcDemo") }
+    #endif
+
     func load() async {
         today = Self.todayISO
+        async let arc: Void = loadArc()
         if weeks.isEmpty, let cached = client().cached(Self.weeksPath, as: [WeeklyPlan].self) {
             weeks = cached.value.sorted { $0.weekStart < $1.weekStart }
             syncedAt = cached.syncedAt
@@ -73,10 +85,37 @@ final class PlanModel {
             offline = !weeks.isEmpty
             self.error = error.localizedDescription
         }
+        await arc
         loaded = true
         if week == nil && !showingUnplanned {
             selected = PlanFormat.currentWeek(weeks.map(\.weekStart), today: today) ?? unplannedStart
         }
+    }
+
+    /// Arc and stall block: small, cached, and never an error on their own (the strip just waits).
+    private func loadArc() async {
+        #if DEBUG
+        if let stage = Self.arcDemo {
+            (arcBlocks, stallBlock) = ArcFormat.demo(stage, today: today)
+            arcLoaded = true
+            return
+        }
+        #endif
+        let client = client()
+        if !arcLoaded {
+            if let cached = client.cached(Self.arcPath, as: WinterArc.self) {
+                arcBlocks = cached.value.blocks
+                arcLoaded = true
+            }
+            stallBlock = client.cached(Self.stallPath, as: [StallBlock].self)?.value.first
+        }
+        async let arc = try? client.get(Self.arcPath, as: WinterArc.self)
+        async let stalls = try? client.get(Self.stallPath, as: [StallBlock].self)
+        if let arc = await arc {
+            arcBlocks = arc.value.blocks
+            arcLoaded = true
+        }
+        if let stalls = await stalls { stallBlock = stalls.value.first }
     }
 
     func page(_ step: Int) {

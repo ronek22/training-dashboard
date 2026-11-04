@@ -46,6 +46,8 @@ struct LiveContractTests {
 
     @Test func plan() async throws {
         try await decode(PlanModel.weeksPath, as: [WeeklyPlan].self)
+        try await decode(PlanModel.arcPath, as: WinterArc.self)
+        try await decode(PlanModel.stallPath, as: [StallBlock].self)
         try await decode("/guided-sessions/rehab", as: GuidedSessionEnvelope.self)
     }
 

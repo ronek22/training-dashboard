@@ -4,6 +4,7 @@ import SwiftUI
 /// so it reads as a celebration rather than a report.
 struct WeekRecapView: View {
     @State private var model: WeekRecapModel
+    @State private var showMonth = false
     @Environment(\.dismiss) private var dismiss
 
     init(weekStart: String? = nil) {
@@ -45,6 +46,9 @@ struct WeekRecapView: View {
             await model.load()
         }
         .task { await model.load() }
+        .fullScreenCover(isPresented: $showMonth) {
+            MonthRecapView(month: model.report.flatMap { MonthRecapFormat.month(ofWeek: $0.weekStart) })
+        }
     }
 
     private var header: some View {
@@ -53,6 +57,19 @@ struct WeekRecapView: View {
                 weekButton("chevron.left", to: model.report?.previousWeek, label: "Previous week")
                 weekButton("chevron.right", to: model.report?.nextWeek, label: "Next week")
                 Spacer()
+                Button {
+                    showMonth = true
+                } label: {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color.ink)
+                        .frame(width: 34, height: 34)
+                        .overlay(Circle().strokeBorder(Color.outline, lineWidth: 1))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Month in review")
                 Button {
                     dismiss()
                 } label: {
@@ -129,7 +146,7 @@ private struct RecapContent: View {
                 HistoryCard(history: report.history, fitness: report.fitness).reveal(6)
             }
             if let focus = wins?.focus {
-                FocusCard(focus: focus, finished: report.finished).reveal(7)
+                FocusCard(focus: focus, kicker: report.finished ? "Next week" : "Before Sunday").reveal(7)
             }
         }
     }
@@ -310,7 +327,8 @@ private struct DaysCard: View {
     }
 }
 
-private struct WinsCard: View {
+/// Shared with the month recap.
+struct WinsCard: View {
     let wins: [WeekWins.Win]
 
     var body: some View {
@@ -482,13 +500,14 @@ private struct HistoryCard: View {
     }
 }
 
-private struct FocusCard: View {
+/// What to do next; shared with the month recap.
+struct FocusCard: View {
     let focus: WeekWins.Focus
-    let finished: Bool
+    let kicker: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Kicker(finished ? "Next week" : "Before Sunday", color: .ride)
+            Kicker(kicker, color: .ride)
             Text(focus.headline).font(AppFont.title(26)).foregroundStyle(Color.ink).textCase(.uppercase)
             if let detail = focus.detail {
                 Text(detail).font(AppFont.body(14)).foregroundStyle(Color.inkSoft).fixedSize(horizontal: false, vertical: true)

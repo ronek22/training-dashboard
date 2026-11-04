@@ -75,7 +75,11 @@ struct TodayView: View {
             RehabSessionView()
         }
         .fullScreenCover(item: $recap) { launch in
-            WeekRecapView(weekStart: launch.weekStart)
+            if let month = launch.month {
+                MonthRecapView(month: month)
+            } else {
+                WeekRecapView(weekStart: launch.weekStart)
+            }
         }
         .onChange(of: recapRequest) { openRecap() }
         .onChange(of: checkinRequest) {
@@ -183,6 +187,7 @@ struct TodayView: View {
         }
         #if DEBUG
         if ChangeTodayDemo.stage != nil, changing == nil, coach == nil { openChange() }
+        if let month = MonthRecapDemo.launchMonth, recap == nil { recap = RecapLaunch(month: month) }
         #endif
     }
 
@@ -306,7 +311,14 @@ struct TodayView: View {
             if model.offline, let syncedAt = model.syncedAt {
                 OfflineNote(syncedAt: syncedAt)
             }
-            if let offer = RecapFormat.offer(today: data.date) {
+            // The month just ended takes the week's place on the first seven days.
+            if let offer = MonthRecapFormat.offer(today: data.date) {
+                MonthOfferCard(label: offer.label, range: MonthRecapFormat.offerRange(offer.month), strip: model.monthStrip) {
+                    recap = RecapLaunch(month: offer.month)
+                }
+                .reveal(1)
+                .task(id: offer.month) { await model.loadMonthStrip(offer.month, today: data.date) }
+            } else if let offer = RecapFormat.offer(today: data.date) {
                 RecapCard(label: offer.label, range: RecapFormat.range(offer.weekStart, RecapFormat.weekEnd(offer.weekStart))) {
                     recap = RecapLaunch(weekStart: offer.weekStart)
                 }
@@ -1239,10 +1251,11 @@ private struct ReadinessCard: View {
 
 // MARK: - Recap
 
-/// Opens the week recap; a nil week is the current one.
+/// Opens the week recap (a nil week is the current one), or the month recap when `month` is set.
 private struct RecapLaunch: Identifiable {
     let id = UUID()
-    let weekStart: String?
+    var weekStart: String?
+    var month: String?
 }
 
 /// Sunday and Monday: the week in review, one tap away.
@@ -1267,6 +1280,49 @@ private struct RecapCard: View {
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.system(size: 14, weight: .bold)).foregroundStyle(Color.muted)
+            }
+            .card(border: Color.volt.opacity(0.35))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+    }
+}
+
+/// First seven days of a month: last month in review, with the month as a strip of days.
+private struct MonthOfferCard: View {
+    let label: String
+    let range: String
+    let strip: [MonthReport.Day]
+    let onOpen: () -> Void
+
+    var body: some View {
+        Button(action: onOpen) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 14) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 18, weight: .bold))
+                        .symbolEffect(.wiggle, options: .repeat(.periodic(delay: 6)))
+                        .foregroundStyle(Color.bg)
+                        .frame(width: 44, height: 44)
+                        .background(Color.volt, in: Circle())
+                    VStack(alignment: .leading, spacing: 3) {
+                        Kicker(range, color: .volt)
+                        Text(label.uppercased()).font(AppFont.title(24)).foregroundStyle(Color.ink)
+                        Text("Is it working? Body, lifts, base, run").font(AppFont.body(13)).foregroundStyle(Color.muted)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.system(size: 14, weight: .bold)).foregroundStyle(Color.muted)
+                }
+                if !strip.isEmpty {
+                    HStack(spacing: 2) {
+                        ForEach(strip) { day in
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(MonthRecapFormat.sport(day.sport).map { $0.color.opacity(MonthRecapFormat.intensity(day.minutes)) } ?? Color.track)
+                                .frame(height: 14)
+                        }
+                    }
+                    .accessibilityHidden(true)
+                }
             }
             .card(border: Color.volt.opacity(0.35))
             .contentShape(Rectangle())

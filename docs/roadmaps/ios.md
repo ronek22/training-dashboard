@@ -19,6 +19,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-11-05 — **Month in review** — On the first seven days of a month Today offers last month in review (and the week recap opens any month): time as a calendar with sick and record days, the wins, then a four-chip "Is it working?" strip and one card each for weight against the lean-gain lane, best e1RM per lift against the month before with lift days per week, ride hours by intensity, and VDOT against your peak.
 - 2026-11-03 — **Change today with the coach** — Today's session card has one Change today pill (Go lighter, with a red dot, on a red readiness day): pick Feeling rough, Short on time, More time or Other sport, add a note if you like, and the coach on the Mac rewrites just today while a now/ask bar shows what you asked for; Short on time with the plan's own short version and Move day still work without the coach. On a rest day the pill adds a session.
 - 2026-11-03 — **Plan with the coach** — Plan next week from its empty page and refine the current week from the header sparkle or a single day from Plan day: the coach on the Mac writes it while a week strip fills in, then the sheet shows the new week or the days that changed.
 - 2026-11-03 — **Weight trend in the check-in** — Under the weight field the check-in shows your 7-day average and weekly rate with a sparkline, volt when it's a lean gain and amber when it's flat or too fast; a typed number far from the average asks if it's a typo.

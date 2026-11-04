@@ -206,8 +206,8 @@ enum RecapFormat {
 
     static func winSymbol(_ kind: String) -> String {
         switch kind {
-        case "progress": "arrow.up.right"
-        case "consistency": "flame.fill"
+        case "progress", "record": "arrow.up.right"
+        case "consistency", "streak": "flame.fill"
         case "plan": "checkmark.seal.fill"
         case "goal": "target"
         default: "star.fill"

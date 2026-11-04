@@ -54,6 +54,8 @@ struct TodayView: View {
                 .navigationTitle("Today")
                 .navigationDestination(isPresented: $showSettings) { SettingsView().hidesTabBar() }
                 .navigationDestination(isPresented: $showBody) { BodyView().hidesTabBar() }
+                // `-openBody YES` opens Body on launch (simulator screenshots; it only reads).
+                .task { if UserDefaults.standard.bool(forKey: "openBody") { showBody = true } }
                 // One destination for both: two stacked ones on the same view push the wrong screen.
                 .navigationDestination(item: $route) { route in
                     if let date = model.data?.date {

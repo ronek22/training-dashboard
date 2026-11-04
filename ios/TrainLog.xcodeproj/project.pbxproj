@@ -104,6 +104,7 @@
 		6A3E5292221EEBB8372E4EFE /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5643ADC614AE0FDB4DF3384 /* WidgetSnapshot.swift */; };
 		6D608015D33A3B49E694A568 /* PhoneToday.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDCA15FBA972C52E02035AF5 /* PhoneToday.swift */; };
 		6E95F4C09DA51FA184371553 /* BarlowCondensed-ExtraBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9F112A2FC94E41B5BFB208A4 /* BarlowCondensed-ExtraBoldItalic.ttf */; };
+		70F42D51ACB5A2D8F5B60E16 /* BodyCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 113A0AC4AB1D124BA779E4B8 /* BodyCoverageTests.swift */; };
 		71B9FA8926177DDC0E7C23E0 /* WatchStrength.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC3F301F26196C781C3CC88 /* WatchStrength.swift */; };
 		724D832C0DB980C3F34D1FB7 /* ActivityDetailHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 557474DDD2B15B7B90A49588 /* ActivityDetailHeader.swift */; };
 		72C8EB591709DB2121B0EC38 /* ActivityDetailPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CB3B6F703F074A4D7AF22A /* ActivityDetailPage.swift */; };
@@ -200,6 +201,7 @@
 		CE63EB65EA97C256B77E0ADC /* ChangeTodayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FEA957E3957A966A338D68D /* ChangeTodayTests.swift */; };
 		CFB15F923AA4D931073261DE /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CDA809C9D860B28A4DB61A /* APIClient.swift */; };
 		D066460D0D47F1F2BFD54D21 /* EveningFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97DE34BBD7E92A2D45D5A23 /* EveningFormat.swift */; };
+		D07B52B90E5ADB3A1EF0EF13 /* BodyCoverage.swift in Sources */ = {isa = PBXBuildFile; fileRef = D81E5DBA2E99C2D9223B893F /* BodyCoverage.swift */; };
 		D1551A44556E7DD2FAC38C9C /* RestAlarm.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF9130DF7AE2AB262F71881F /* RestAlarm.swift */; };
 		D2312971324EB18D3E32AA50 /* MoveDaySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F6C3A816B5B7AB82A6DB7C /* MoveDaySheet.swift */; };
 		D26D91F8C3B776862999FED7 /* Food.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6906A4138E3E54E166438B26 /* Food.swift */; };
@@ -326,6 +328,7 @@
 		0D730F1AD91E31C1D31D9DC4 /* StartModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartModel.swift; sourceTree = "<group>"; };
 		0DBE4D0A1E43563696167392 /* CoachChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachChatTests.swift; sourceTree = "<group>"; };
 		0FEA957E3957A966A338D68D /* ChangeTodayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangeTodayTests.swift; sourceTree = "<group>"; };
+		113A0AC4AB1D124BA779E4B8 /* BodyCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyCoverageTests.swift; sourceTree = "<group>"; };
 		12026DE3D69625A791E545E8 /* LiveContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveContractTests.swift; sourceTree = "<group>"; };
 		1344021E88475AD73DC5BD56 /* WeightTrendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightTrendTests.swift; sourceTree = "<group>"; };
 		182BB3EC5490E8009AB7F938 /* Reminders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reminders.swift; sourceTree = "<group>"; };
@@ -482,6 +485,7 @@
 		D3A7BF848A42528930E7F48B /* HealthSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSync.swift; sourceTree = "<group>"; };
 		D578A702C7215A7DB3965466 /* WidgetSnapshotPhone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotPhone.swift; sourceTree = "<group>"; };
 		D6A250C5567517DF3CFDE735 /* MetricChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricChart.swift; sourceTree = "<group>"; };
+		D81E5DBA2E99C2D9223B893F /* BodyCoverage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyCoverage.swift; sourceTree = "<group>"; };
 		D9430F1CA886700E3F8D4F03 /* BodyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyView.swift; sourceTree = "<group>"; };
 		D98FE562E0DEA91786B3FFC0 /* BodyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyTests.swift; sourceTree = "<group>"; };
 		DA3046ED6EC82DB3A6C83EFB /* RunModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunModel.swift; sourceTree = "<group>"; };
@@ -633,6 +637,7 @@
 			isa = PBXGroup;
 			children = (
 				82CB4D14BAB2BB7DEC58078D /* ActivitiesTests.swift */,
+				113A0AC4AB1D124BA779E4B8 /* BodyCoverageTests.swift */,
 				534E99558BF3538BBB4FCECC /* BodyMapTests.swift */,
 				D98FE562E0DEA91786B3FFC0 /* BodyTests.swift */,
 				0FEA957E3957A966A338D68D /* ChangeTodayTests.swift */,
@@ -897,6 +902,7 @@
 			isa = PBXGroup;
 			children = (
 				798D2C22A23E6655FCD8392D /* BodyClock.swift */,
+				D81E5DBA2E99C2D9223B893F /* BodyCoverage.swift */,
 				9B4F5635911995C7FFD1BFA8 /* BodyMap.swift */,
 				6A6792F9B147DBC380B9FD90 /* BodyModel.swift */,
 				D9430F1CA886700E3F8D4F03 /* BodyView.swift */,
@@ -1278,6 +1284,7 @@
 				CE4E44337E95F41F90A5EFE5 /* AfterRunSheet.swift in Sources */,
 				7C98F62AD27C84490FDD1FCA /* Body.swift in Sources */,
 				DAE825061AEC2E800D5F50A6 /* BodyClock.swift in Sources */,
+				D07B52B90E5ADB3A1EF0EF13 /* BodyCoverage.swift in Sources */,
 				C2004FD4D8CE8CB81238D813 /* BodyMap.swift in Sources */,
 				616BC71964E4758DDD95BA05 /* BodyModel.swift in Sources */,
 				6587A02C639342CFF169FA34 /* BodyView.swift in Sources */,
@@ -1430,6 +1437,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				060527AC9C3F7EC7AB18CBEF /* ActivitiesTests.swift in Sources */,
+				70F42D51ACB5A2D8F5B60E16 /* BodyCoverageTests.swift in Sources */,
 				24FBBB900E741EEB54F624F5 /* BodyMapTests.swift in Sources */,
 				BB2AE91082870EA3C1BEB689 /* BodyTests.swift in Sources */,
 				CE63EB65EA97C256B77E0ADC /* ChangeTodayTests.swift in Sources */,

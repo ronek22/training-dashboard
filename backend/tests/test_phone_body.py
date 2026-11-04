@@ -147,3 +147,37 @@ class PhoneBodyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_coverage_without_a_plan_lists_the_main_groups_at_zero(self):
+        coverage = build_phone_body(self.conn, TODAY)["coverage"]
+
+        self.assertFalse(coverage["has_plan"])
+        self.assertEqual(coverage["target"], 8)
+        self.assertEqual([item["key"] for item in coverage["groups"]], ["legs", "back", "chest", "shoulders", "arms"])
+        self.assertTrue(all(item["done_sets"] == 0 and item["planned_sets"] == 0 for item in coverage["groups"]))
+        self.assertEqual(coverage["days"], [])
+
+    def test_coverage_names_the_lift_days_ahead_and_their_sets(self):
+        import json
+
+        monday = TODAY - timedelta(days=TODAY.weekday())
+        sunday = (monday + timedelta(days=6)).isoformat()
+        template = self.conn.execute("INSERT INTO strength_workout_templates (name) VALUES ('Workout D')").lastrowid
+        self.conn.execute(
+            "INSERT INTO strength_template_exercises (template_id, exercise_order, exercise_name, set_count, target_reps) VALUES (?, 1, 'Back Squat', 4, 6)",
+            (template,),
+        )
+        days = [{"date": sunday, "session_type": "strength", "title": "Workout D", "template_label": "Workout D"}]
+        self.conn.execute("INSERT INTO weekly_plans (week_start, title, days_json) VALUES (?, 'Week', ?)", (monday.isoformat(), json.dumps(days)))
+        self.conn.commit()
+
+        coverage = build_phone_body(self.conn, TODAY)["coverage"]
+
+        self.assertTrue(coverage["has_plan"])
+        self.assertEqual(coverage["week_start"], monday.isoformat())
+        day = coverage["days"][0]
+        self.assertEqual((day["date"], day["state"]), (sunday, "planned"))
+        # Four squat sets, then the planner tops legs up to the target on the same day.
+        self.assertGreaterEqual(day["group_sets"]["legs"], 8)
+        legs = next(item for item in coverage["groups"] if item["key"] == "legs")
+        self.assertEqual(legs["planned_sets"], day["group_sets"]["legs"])

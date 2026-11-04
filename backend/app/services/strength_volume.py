@@ -78,6 +78,22 @@ def _day_exercises(day: dict, templates: dict[str, list[dict]]) -> list[dict]:
     return []
 
 
+def logged_group_sets(conn: sqlite3.Connection, week_start: str, week_end: str) -> tuple[dict[str, int], set[str]]:
+    """Working sets logged per primary muscle group between two dates, and the days lifted."""
+    done = _empty_counts()
+    logged_dates: set[str] = set()
+    for session in _session_index(conn):
+        day = session["workout_date"][:10]
+        if not week_start <= day <= week_end:
+            continue
+        logged_dates.add(day)
+        for exercise in session.get("exercises", []):
+            sets = len(_working_sets(exercise))
+            for group in muscle_groups_for(exercise["exercise_name"]) if sets else ():
+                done[group] += sets
+    return done, logged_dates
+
+
 def _empty_counts() -> dict[str, int]:
     return {group["key"]: 0 for group in MUSCLE_GROUPS}
 
@@ -180,17 +196,7 @@ def build_lift_volume(
     injury_rests_legs = any(item["area"] in LEG_AREAS for item in body_areas)
     skipped: set[str] = set()
 
-    done = _empty_counts()
-    logged_dates: set[str] = set()
-    for session in _session_index(conn):
-        day = session["workout_date"][:10]
-        if not week_start <= day <= week_end:
-            continue
-        logged_dates.add(day)
-        for exercise in session.get("exercises", []):
-            sets = len(_working_sets(exercise))
-            for group in muscle_groups_for(exercise["exercise_name"]) if sets else ():
-                done[group] += sets
+    done, logged_dates = logged_group_sets(conn, week_start, week_end)
 
     planned = _empty_counts()
     day_rows: list[dict[str, Any]] = []
@@ -216,7 +222,11 @@ def build_lift_volume(
                 state = "light"
             elif not minimum_week_active:
                 open_days.append((day, exercises))
-        day_rows.append({"date": day["date"], "title": day.get("title") or day.get("template_label") or "Lift", "state": state, "additions": []})
+        template_sets = _empty_counts()
+        for exercise in exercises:
+            for group in muscle_groups_for(exercise["exercise_name"]):
+                template_sets[group] += exercise["set_count"]
+        day_rows.append({"date": day["date"], "title": day.get("title") or day.get("template_label") or "Lift", "state": state, "additions": [], "group_sets": template_sets})
 
     rows_by_date = {row["date"]: row for row in day_rows}
     deficits = {
@@ -245,6 +255,11 @@ def build_lift_volume(
             placed = sum(item["sets"] for item in row["additions"]) - before
             added[group] += placed
             remaining -= placed
+
+    # Saved-workout sets plus the extra sets placed on that day, per group (the phone's nudge).
+    for row in day_rows:
+        for addition in row["additions"]:
+            row["group_sets"][addition["group"]] += addition["sets"]
 
     if any(row["additions"] for row in day_rows):
         history = latest_next_steps(conn)

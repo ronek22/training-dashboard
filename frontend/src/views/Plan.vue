@@ -88,6 +88,7 @@
 
             </article>
           </div>
+          <WeekBrief ref="weekBrief" :week-start="selectedPlan.week_start" />
       </section>
 
       <div v-if="!plans.length" class="empty card plan-empty"><span aria-hidden="true">↗</span><h2>Your next chapter starts here.</h2><p>Build a week around your goals, your schedule, and where you are today.</p><button type="button" class="save-button" :disabled="planningWithCoach || !isLocalCoachHost" :title="isLocalCoachHost ? undefined : 'Open TrainLog on your Mac to use the coach'" @click="openCoachPlanningBrief">Create your first week →</button></div>
@@ -305,6 +306,7 @@ import MinimumWeekDialog from '../plan/MinimumWeekDialog.vue'
 import PlanCoachingDiff from '../plan/PlanCoachingDiff.vue'
 import PlanDayGrid from '../plan/PlanDayGrid.vue'
 import PlannedSessionDialog from '../plan/PlannedSessionDialog.vue'
+import WeekBrief from '../plan/WeekBrief.vue'
 import PlanWeekEditor from '../plan/PlanWeekEditor.vue'
 import PlanWeekNotes from '../plan/PlanWeekNotes.vue'
 import { useLifeLoad } from '../composables/useLifeLoad'
@@ -397,8 +399,10 @@ const loadForecast = ref(null)
 const seasonTimeline = ref(null)
 const timelineShowsArc = ref(false)
 const timelineHasContent = ref(false)
+const weekBrief = ref(null)
 const onArcChanged = () => {
   load()
+  weekBrief.value?.load()
   weekPreview.value?.load()
   seasonTimeline.value?.load()
   loadForecast.value?.load()

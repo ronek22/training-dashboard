@@ -341,6 +341,11 @@ def _normalize_strength_program(raw_program: Optional[dict]) -> dict:
         "prefer_ride_when_run_blocked": rules_source.get("prefer_ride_when_run_blocked", True) is not False,
         "delay_lower_body_when_running_restricted": rules_source.get("delay_lower_body_when_running_restricted", True) is not False,
         "replace_rest_with_recovery_only_when_explicit": bool(rules_source.get("replace_rest_with_recovery_only_when_explicit", False)),
+        # A fixed week (e.g. Upper 1 · Lower · Upper 2) instead of the rotating pointer; empty keeps the rotation.
+        "weekly_slots": [
+            item for item in (rules_source.get("weekly_slots") if isinstance(rules_source.get("weekly_slots"), list) else [])
+            if item in {template["id"] for template in templates}
+        ][:7],
     }
 
     state_source = raw.get("rotation_state") if isinstance(raw.get("rotation_state"), dict) else {}

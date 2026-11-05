@@ -357,6 +357,7 @@ export const useApi = () => ({
   clearWinterArc: () => api.delete('/plans/winter-arc'),
   adjustWinterArc: (payload) => api.post('/plans/winter-arc/adjustment', payload),
   undoWinterArcAdjustment: (id) => api.post('/plans/winter-arc/adjustment/undo', { id }),
+  getWeekBrief: (weekStart) => api.get('/plans/week-brief', { params: { week_start: weekStart } }),
   getWinterArcSuggestionContext: () => api.get('/plans/winter-arc/suggestion-context'),
   startArcSuggestion: (payload) => coachHelper.post('/arc-suggestion', payload),
   getArcSuggestionJob: (id) => coachHelper.get(`/arc-suggestion/${encodeURIComponent(id)}`),

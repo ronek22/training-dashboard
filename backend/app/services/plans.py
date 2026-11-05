@@ -1528,6 +1528,11 @@ def upsert_weekly_plan_data(conn: sqlite3.Connection, plan: WeeklyPlan) -> dict:
     from .winter_arc import fit_week_to_arc
 
     days, arc_changes = fit_week_to_arc(conn, [day.model_dump() for day in prepared_plan.days], prepared_plan.week_start)
+    # Weekly lift slots: each lift day gets its slot's workout, a lower slot swapped while a leg is protected.
+    from .week_brief import fit_week_to_lift_slots
+
+    days, lift_changes = fit_week_to_lift_slots(conn, days, prepared_plan.week_start)
+    arc_changes = arc_changes + lift_changes
     # Clash rule: swap days so a leg lift does not sit next to a hard ride.
     resolved_days, clash_swaps = resolve_clashes(days, legs_check(conn), locked_dates(conn, days))
     if clash_swaps or arc_changes:

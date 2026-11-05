@@ -26,6 +26,7 @@ from .session_brief import build_briefs_for_date
 from ..request_cache import db_memo
 from .stall_blocks import current_block as current_stall_block
 from .strength_phases import current_phase as current_strength_phase
+from .week_brief import week_brief_context
 from .winter_arc import winter_arc_coaching_context
 from .what_worked import build_what_worked_coaching_context
 from .return_to_run import build_return_to_run_context
@@ -1312,6 +1313,7 @@ def build_recent_context(
         "stall_block": current_stall_block(conn),
         "strength_phase": current_strength_phase(conn),
         "winter_arc": winter_arc_coaching_context(conn),
+        "week_brief": week_brief_context(conn),
         "cycling_power": build_cycling_power_coaching_context(conn, include_thresholds=False),
         "aerobic_fitness": aerobic_decoupling_coaching_context(conn),
         "athlete_profile": athlete_profile,

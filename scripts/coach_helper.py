@@ -199,6 +199,16 @@ def validate_daily_state_request(payload: object) -> str:
     return context_key
 
 
+WEEK_BRIEF_GUIDANCE = """get_recent_context includes week_brief: the ordered contract for this_week
+and next_week, already resolved from injuries, illness, anchor goals, the winter
+arc block, other goals and habits. Start from the brief of the week you plan and
+follow its rules top to bottom; a higher rule wins (Safety > Anchor > Block >
+Outcome > Habit). A goal marked "waits for a quality block" gets no session this
+week. When week_brief lifts.mode is "slots", plan exactly those workouts, by
+label, one per lift day in that order (a swapped slot already accounts for the
+injury); ignore the rotation pointer. The other context below explains the brief;
+do not re-weigh it against the brief."""
+
 INJURY_GUIDANCE = """get_recent_context includes recovery_issues: injuries and soreness the
 athlete logged, each with current_pain (0-10), protected_areas, avoid, do and
 rehab_exercises. An active issue outranks the strength rotation, leg volume,
@@ -277,6 +287,8 @@ Treat that input as an important preference and constraint, while still
 protecting completed days, respecting modality restrictions, and avoiding
 unsafe load decisions. If it conflicts with recovery evidence or an active
 restriction, choose the safer plan and explain the tradeoff in the summary.{build_standing_preferences_section(preferences, planning=True)}
+
+{WEEK_BRIEF_GUIDANCE}
 
 {INJURY_GUIDANCE}
 
@@ -364,6 +376,8 @@ athlete shrank it on purpose: keep it small unless the feedback asks for more.
 If the feedback conflicts with recovery
 evidence or an active restriction, choose the safer revision and explain the
 tradeoff in the summary.
+
+{WEEK_BRIEF_GUIDANCE}
 
 {INJURY_GUIDANCE}
 

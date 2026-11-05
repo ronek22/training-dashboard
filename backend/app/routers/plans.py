@@ -20,6 +20,7 @@ from ..services.today_options import apply_today_option, build_today_options, un
 from ..models.plans import BlockRecapDecision, TodayOptionApply, TodayOptionUndo, WinterArc, WinterArcAdjustment, WinterArcAdjustmentUndo
 from ..services.block_recap import build_block_recap, decide_block_suggestion
 from ..services.arc_suggest import suggestion_context
+from ..services.week_brief import build_week_brief
 from ..services.arc_adjust import apply_arc_adjustment, undo_arc_adjustment, winter_arc_payload
 from ..services.season_timeline import PREVIEW_MAX_WEEKS, build_season_timeline
 from ..services.week_preview import PREVIEW_WEEKS, build_week_preview
@@ -184,6 +185,16 @@ def get_winter_arc(day: Optional[date] = None):
     conn = get_db()
     try:
         return winter_arc_payload(conn, day)
+    finally:
+        conn.close()
+
+
+@router.get("/plans/week-brief")
+def get_week_brief(week_start: date):
+    """The week's ordered rules (safety > anchors > block > outcomes > habits) with their sources."""
+    conn = get_db()
+    try:
+        return build_week_brief(conn, week_start.isoformat())
     finally:
         conn.close()
 

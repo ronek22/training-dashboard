@@ -1592,8 +1592,10 @@ def adjust_weekly_plan_data(
     adjustment: WeeklyPlanAdjustment,
     *,
     unprotected_dates: frozenset[str] = frozenset(),
+    fit_lift_slots: bool = False,
 ) -> dict:
-    """``unprotected_dates``: days whose recorded activity does not complete the planned session (e.g. a walk)."""
+    """``unprotected_dates``: days whose recorded activity does not complete the planned session (e.g. a walk).
+    ``fit_lift_slots``: give open lift days the weekly slot workouts (coach edits; the athlete's own edits stay as made)."""
     plan_row = get_weekly_plan_row(conn, adjustment.week_start)
     if not plan_row:
         raise HTTPException(status_code=404, detail=f"Weekly plan not found for {adjustment.week_start}")
@@ -1692,6 +1694,17 @@ def adjust_weekly_plan_data(
         notes=adjustment.notes if adjustment.notes is not None else append_plan_note(existing_plan.notes, adjustment.adaptation_reason, effective_from),
     )
     updated_plan = prepare_weekly_plan_for_storage(updated_plan, template_settings=template_settings, restrictions=restrictions)
+    if fit_lift_slots:
+        from .week_brief import fit_week_to_lift_slots
+
+        fitted, lift_changes = fit_week_to_lift_slots(conn, [day.model_dump() for day in updated_plan.days], updated_plan.week_start)
+        if lift_changes:
+            updated_plan = prepare_weekly_plan_for_storage(
+                updated_plan.model_copy(update={"days": [WeeklyPlanDay(**day) for day in fitted]}),
+                template_settings=template_settings,
+                restrictions=restrictions,
+            )
+            changed_dates = sorted(set(changed_dates) | {change["date"] for change in lift_changes})
 
     create_weekly_plan_revision_row(
         conn,

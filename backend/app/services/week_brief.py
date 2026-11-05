@@ -251,10 +251,11 @@ def fit_week_to_lift_slots(
     conn: Optional[sqlite3.Connection], days: list[dict], week_start: str, today: Optional[date] = None,
 ) -> tuple[list[dict], list[dict]]:
     """Give the week's lift days the slot workouts in order. Done and past lifts use up their slot;
-    bodyweight days and lifts the coach wrote out exercise by exercise are left alone."""
+    bodyweight and travel days are left alone. A gym day the coach wrote out exercise by exercise
+    gets its slot workout too: the slot already accounts for any protected area."""
     if conn is None:
         return days, []
-    from .bodyweight_lifts import runs_as_one_time
+    from .bodyweight_lifts import is_no_equipment_lift
     from .lift_ride_clash import locked_dates
     from .plans import normalize_plan_session_type
     from .recovery import coaching_summary
@@ -266,7 +267,7 @@ def fit_week_to_lift_slots(
     days = [dict(day) for day in days]
     locked = locked_dates(conn, days, today)
     lift_days = sorted(
-        (day for day in days if normalize_plan_session_type(day.get("session_type")) == "WeightTraining" and not runs_as_one_time(day)),
+        (day for day in days if normalize_plan_session_type(day.get("session_type")) == "WeightTraining" and not is_no_equipment_lift(day)),
         key=lambda day: day["date"],
     )
     remaining = list(lifts["slots"])
@@ -283,7 +284,7 @@ def fit_week_to_lift_slots(
     templates = {item["id"]: item for item in get_workout_template_settings_for_conn(conn)["programs"]["strength"]["templates"]}
     changes = []
     for day, slot in zip(open_days, remaining):
-        if day.get("template_id") == slot["template_id"] and day.get("title") == slot["label"]:
+        if day.get("template_id") == slot["template_id"] and day.get("title") == slot["label"] and not day.get("exercises"):
             continue
         template = templates[slot["template_id"]]
         index = days.index(day)
@@ -296,6 +297,7 @@ def fit_week_to_lift_slots(
             "workout_intent": template["workout_intent"],
             "title": template["display_name"],
             "details": template.get("summary") or day.get("details"),
+            "exercises": [],
             "planning_rule_reason": reason,
         }
         changes.append({"date": day["date"], "kind": "lift_slot", "slot": slot["slot"], "from": day.get("title"), "to": template["display_name"]})

@@ -976,7 +976,7 @@ def call_mcp_tool(
 
         elif name == "adjust_weekly_plan":
             adjustment = weekly_plan_adjustment_model(**args)
-            data = adjust_weekly_plan_data_fn(conn, adjustment)
+            data = adjust_weekly_plan_data_fn(conn, adjustment, fit_lift_slots=True)
             message = f"Weekly plan adjusted for {adjustment.week_start} from {data['effective_from']}"
 
         elif name == "get_dashboard_summary":

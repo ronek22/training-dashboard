@@ -7,7 +7,8 @@ from datetime import date
 
 from backend.app import db
 from backend.app.models.plans import WeeklyPlan, WeeklyPlanDay, WinterArc
-from backend.app.services.plans import upsert_weekly_plan_data
+from backend.app.models.plans import WeeklyPlanAdjustment
+from backend.app.services.plans import adjust_weekly_plan_data, upsert_weekly_plan_data
 from backend.app.services.settings import set_workout_template_settings_for_conn
 from backend.app.services.week_brief import build_week_brief, week_brief_context
 from backend.app.services.winter_arc import save_winter_arc
@@ -91,6 +92,37 @@ class WeekBriefTests(unittest.TestCase):
         self.assertEqual([stored[i]["template_id"] for i in (0, 2, 4)], ["strength-a", "strength-c", "strength-b"])
         self.assertTrue(stored[2]["planning_rule_reason"].startswith("Weekly lifts: Lower (Knee protected:"))
         self.assertEqual(sum(change["kind"] == "lift_slot" for change in result["arc_changes"]), 3)
+
+    def save_rotation_week(self):
+        lift = lambda title: {"session_type": "strength", "workout_intent": "strength_upper", "title": title, "target_duration_min": 50}
+        rest = {"session_type": "Rest", "title": "Rest"}
+        days = [lift("Workout B"), rest, lift("Workout C"), rest, lift("Workout A"), rest, rest]
+        upsert_weekly_plan_data(self.conn, WeeklyPlan(week_start=WEEK, title="Test", days=[WeeklyPlanDay(date=DATES[i], label="d", **day) for i, day in enumerate(days)]))
+
+    def stored_templates(self):
+        stored = json.loads(self.conn.execute("SELECT days_json FROM weekly_plans WHERE week_start = ?", (WEEK,)).fetchone()[0])
+        return [stored[i].get("template_id") for i in (0, 2, 4)], stored
+
+    def coach_friday(self):
+        return WeeklyPlanDay(date=DATES[4], label="d", session_type="strength", workout_intent="strength_upper",
+                             title="Upper-body lift (Workout A style)", target_duration_min=50,
+                             exercises=[{"name": "Dumbbell Bench Press", "sets": 3, "reps": "10"}])
+
+    def test_coach_edits_get_the_slots_and_a_custom_gym_lift_takes_its_slot(self):
+        self.save_rotation_week()  # Saved before slots existed: B, C, A.
+        self.use_slots()
+        self.injure_knee()
+        adjust_weekly_plan_data(self.conn, WeeklyPlanAdjustment(week_start=WEEK, effective_from=DATES[0], days=[self.coach_friday()]), fit_lift_slots=True)
+        templates, stored = self.stored_templates()
+        self.assertEqual(templates, ["strength-a", "strength-c", "strength-b"])
+        self.assertEqual(stored[4]["exercises"], [])
+
+    def test_the_athletes_own_edits_stay_as_made(self):
+        self.save_rotation_week()
+        self.use_slots()
+        adjust_weekly_plan_data(self.conn, WeeklyPlanAdjustment(week_start=WEEK, effective_from=DATES[0], days=[self.coach_friday()]))
+        templates, _ = self.stored_templates()
+        self.assertEqual(templates[0], "strength-b")
 
     def test_planner_context_has_this_and_next_week(self):
         context = week_brief_context(self.conn, TODAY)

@@ -16,7 +16,7 @@ struct WeekBriefTests {
      "block": {"block_id": 1, "label": "Base", "focus": "base", "focus_label": "Base", "week_start": "2026-11-09", "week_number": 1,
       "weeks_in_block": 5, "weeks_left": 4, "lighter": false, "ride_hours": 3.5, "ride_mix": {"z2": 3, "sweet_spot": 0, "vo2": 0}, "key_types": ["z2"]},
      "lifts": {"mode": "slots", "slots": [
-      {"slot": "Upper 1", "template_id": "strength-a", "label": "Workout A · Upper Press", "focus_area": "upper", "swapped_from": null, "reason": null},
+      {"slot": "Upper 1", "template_id": "strength-a", "workout_template_id": 2, "label": "Workout A · Upper Press", "focus_area": "upper", "swapped_from": null, "reason": null},
       {"slot": "Lower", "template_id": "strength-c", "label": "Workout C · Wide Shoulders", "focus_area": "upper", "swapped_from": "Workout D · Lower + Core", "reason": "Knee protected"},
       {"slot": "Upper 2", "template_id": "strength-b", "label": "Workout B · Upper Pull", "focus_area": "upper", "swapped_from": null, "reason": null}], "next": null},
      "protected_areas": ["knee"], "priority": ["Safety", "Anchor", "Block", "Outcome", "Habit"]}
@@ -58,7 +58,7 @@ struct WeekBriefTests {
         #expect(rules[0].text.hasPrefix("no lower-body lifts"))
         #expect(rules[1].kicker == "Lift 3× · anchor")
         #expect(rules[1].slots == [
-            .init(code: "A", name: "Upper Press", swapped: false, done: true),
+            .init(code: "A", name: "Upper Press", swapped: false, done: true, workoutTemplateId: 2),
             .init(code: "C", name: "for D · knee", swapped: true, done: false),
             .init(code: "B", name: "Upper Pull", swapped: false, done: false),
         ])
@@ -80,6 +80,15 @@ struct WeekBriefTests {
         let rule = try #require(WeekBriefFormat.rules(brief, week: try week(), today: "2026-11-11").first)
         #expect(rule.slots.isEmpty)
         #expect(rule.lead == "Lift three times per week")
+    }
+
+    @Test func ruleReasonsReadAsOneLine() {
+        #expect(WeekBriefFormat.reason("Week brief: knee protected, so no hard rides") == "Knee protected, so no hard rides")
+        #expect(WeekBriefFormat.reason("Winter arc: Base has no sweet spot rides, so this one is Z2") == "Base has no sweet spot rides, so this one is Z2")
+        #expect(WeekBriefFormat.reason("Weekly lifts: Lower (Knee protected: Workout C · Wide Shoulders instead of Workout D · Lower + Core)")
+                == "Lower slot: C for D, knee protected")
+        #expect(WeekBriefFormat.reason("Weekly lifts: Upper 1") == nil)
+        #expect(WeekBriefFormat.reason(nil) == nil)
     }
 
     @Test func compactsWeeklyGoalWording() {

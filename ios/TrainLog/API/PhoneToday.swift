@@ -97,6 +97,8 @@ struct PhoneToday: Decodable, Sendable {
         let sport: Sport?
         let fallback: String?
         let strength: Strength?
+        /// Why the save rules shaped the day ("Week brief: knee protected, so no hard rides").
+        var ruleReason: String? = nil
 
         var isDone: Bool { ["matched", "linked", "rest_day_changed"].contains(status ?? "") }
     }

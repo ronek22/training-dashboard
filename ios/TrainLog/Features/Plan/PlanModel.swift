@@ -180,6 +180,7 @@ final class PlanModel {
         if templates == nil {
             templates = try? await client().get("/strength/workouts/templates", as: [StrengthTemplateSummary].self).value
         }
+        if let id = day.workoutTemplateId { return id }
         let names = Set([day.templateLabel, day.title].compactMap { $0 })
         return templates?.first { names.contains($0.name) }?.id
     }

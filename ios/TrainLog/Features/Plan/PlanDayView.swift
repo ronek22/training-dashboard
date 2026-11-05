@@ -62,6 +62,10 @@ struct PlanDayView: View {
             }
             .padding(.horizontal, 4)
 
+            if let why = WeekBriefFormat.reason(day.planningRuleReason) {
+                RuleReasonLine(text: why).padding(.horizontal, 4)
+            }
+
             tiles(day)
 
             if let check = day.check, !check.isEmpty {

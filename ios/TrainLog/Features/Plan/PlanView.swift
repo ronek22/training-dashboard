@@ -34,7 +34,8 @@ struct PlanView: View {
                     Group {
                         // The brief's rules lead once they arrive; without any, the coach's summary.
                         if let brief = model.brief, !brief.lines.isEmpty {
-                            WeekContractCard(week: week, brief: brief, today: model.today) { briefOpen = true }
+                            WeekContractCard(week: week, brief: brief, today: model.today, onOpen: { briefOpen = true },
+                                             onSlot: { onStartStrength(StrengthLaunch(templateId: $0)) })
                         } else {
                             WeekSummaryCard(week: week, today: model.today)
                         }

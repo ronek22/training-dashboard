@@ -25,6 +25,7 @@ enum WeekBriefFormat {
         let name: String
         let swapped: Bool
         let done: Bool
+        var workoutTemplateId: Int? = nil
     }
 
     struct RideTick: Equatable {
@@ -100,7 +101,7 @@ enum WeekBriefFormat {
             let done = doneLabels.firstIndex(of: slot.label).map { doneLabels.remove(at: $0) } != nil
             let swappedArea = slot.reason.map { $0.replacingOccurrences(of: " protected", with: "").lowercased() }
             return SlotPill(code: code(slot.label), name: slot.swappedFrom.map { "for \(code($0)) · \(swappedArea ?? "protected")" } ?? title(slot.label),
-                            swapped: slot.swappedFrom != nil, done: done)
+                            swapped: slot.swappedFrom != nil, done: done, workoutTemplateId: slot.workoutTemplateId)
         }
     }
 
@@ -129,6 +130,29 @@ enum WeekBriefFormat {
         if intent == "interval" || title.contains("vo2") { return "vo2" }
         if intent == "tempo" || title.contains("sweet spot") || title.contains("threshold") { return "sweet_spot" }
         return "z2"
+    }
+
+    /// The save rules' reason for a day, as one line for Today and the day page; nil when it says
+    /// nothing new (a lift that simply is its slot).
+    ///   "Week brief: knee protected, so no hard rides" → "Knee protected, so no hard rides"
+    ///   "Weekly lifts: Lower (Knee protected: Workout C · Wide Shoulders instead of Workout D · Lower + Core)"
+    ///     → "Lower slot: C for D, knee protected"
+    static func reason(_ raw: String?) -> String? {
+        guard var text = raw?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
+        if text.hasPrefix("Weekly lifts: ") {
+            let body = String(text.dropFirst("Weekly lifts: ".count))
+            guard let open = body.firstIndex(of: "("), body.hasSuffix(")") else { return nil }
+            let slot = body[..<open].trimmingCharacters(in: .whitespaces)
+            let inner = body[body.index(after: open)..<body.index(before: body.endIndex)]
+            let (why, swap) = split(String(inner))
+            let parts = swap.components(separatedBy: " instead of ")
+            guard parts.count == 2, let why else { return nil }
+            return "\(slot) slot: \(code(parts[0])) for \(code(parts[1])), \(why.lowercased())"
+        }
+        for prefix in ["Week brief: ", "Winter arc: "] where text.hasPrefix(prefix) {
+            text = String(text.dropFirst(prefix.count))
+        }
+        return text.prefix(1).uppercased() + text.dropFirst()
     }
 
     /// "Base wk 1 of 5" for the sheet's title, or the week's dates without a block.

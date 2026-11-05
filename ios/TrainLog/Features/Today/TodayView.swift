@@ -622,6 +622,9 @@ private struct SessionCard: View {
             Button(action: onOpen) { header(session, sport: sport).contentShape(Rectangle()) }
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens the full session")
+            if !session.isDone, let why = WeekBriefFormat.reason(session.ruleReason) {
+                RuleReasonLine(text: why).padding(.top, 8)
+            }
 
             // Once the main part is in, the card is about what's left. Two-part days list the parts
             // instead; the steps are one tap away under Open session.

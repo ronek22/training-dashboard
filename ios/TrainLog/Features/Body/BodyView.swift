@@ -19,7 +19,9 @@ struct BodyView: View {
                     }
                     BodyTabPicker(selection: Binding(get: { BodyTab(rawValue: tab) ?? .day }, set: { tab = $0.rawValue }))
                     if BodyTab(rawValue: tab) == .body {
-                        BodyMapSection(summary: BodyMapSummary(training: data.training ?? [], issues: data.issues ?? [], today: data.date), today: data.date)
+                        BodyMapSection(summary: BodyMapSummary(training: data.training ?? [], issues: data.issues ?? [], today: data.date),
+                                       coverage: data.coverage.map { CoverageSummary(coverage: $0, training: data.training ?? [], today: data.date) },
+                                       today: data.date)
                     } else {
                         daySection(data)
                     }
@@ -376,22 +378,62 @@ struct WakeTimeSheet: View {
 
 private struct BodyMapSection: View {
     let summary: BodyMapSummary
+    let coverage: CoverageSummary?
     let today: String
+    /// Readiness or Sets; the map opens on the last one used.
+    @AppStorage("bodyMapLayer") private var layerRaw = BodyMapLayer.readiness.rawValue
+
+    private var layer: BodyMapLayer { coverage == nil ? .readiness : BodyMapLayer(rawValue: layerRaw) ?? .readiness }
 
     var body: some View {
-        let tint = Dictionary(uniqueKeysWithValues: summary.states.map { ($0.key, $0.value.color) })
+        let tint: [Muscle: Color] = if layer == .sets, let coverage {
+            Dictionary(uniqueKeysWithValues: Muscle.allCases.map { ($0, CoverageRamp.color(coverage.muscleSets[$0] ?? 0, target: coverage.target)) })
+        } else {
+            Dictionary(uniqueKeysWithValues: summary.states.map { ($0.key, $0.value.color) })
+        }
         let pins = summary.issues.flatMap(BodyMapSummary.pins)
         VStack(spacing: 12) {
+            if coverage != nil {
+                LayerPicker(selection: Binding(get: { layer }, set: { layerRaw = $0.rawValue }))
+            }
             HStack(spacing: 4) {
                 figure(.front, tint: tint, pins: pins)
                 figure(.back, tint: tint, pins: pins)
             }
             .frame(height: 300)
             .overlay(alignment: .center) { issueLabel }
-            legend
-            readyCard
+            .animation(Motion.quick, value: layer)
+            if layer == .sets, let coverage {
+                rampLegend(coverage)
+                CoverageCard(coverage: coverage)
+            } else {
+                legend
+                readyCard
+                if let coverage { CoverageCard(coverage: coverage) }
+            }
             WorkCard(summary: summary)
         }
+    }
+
+    /// 0 → 8+ swatches in the map's own colours, plus the injury chip.
+    private func rampLegend(_ coverage: CoverageSummary) -> some View {
+        HStack(spacing: 8) {
+            Text("0").font(AppFont.body(11.5, weight: .semibold)).foregroundStyle(Color.muted)
+            HStack(spacing: 2) {
+                ForEach(0...coverage.target, id: \.self) { sets in
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(CoverageRamp.color(sets, target: coverage.target))
+                        .frame(width: 16, height: 10)
+                }
+            }
+            Text("\(coverage.target)+ sets").font(AppFont.body(11.5, weight: .semibold)).foregroundStyle(Color.muted)
+            if !summary.issues.isEmpty {
+                chip(.danger, "Protect \(summary.issues.count)").padding(.leading, 4)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Colour shows logged sets this week, grey for none to bright pink at \(coverage.target) or more")
     }
 
     private func figure(_ side: MuscleSilhouette.Side, tint: [Muscle: Color], pins: [BodyPin]) -> some View {
@@ -448,6 +490,125 @@ private struct BodyMapSection: View {
             }
         }
         .card()
+    }
+}
+
+/// Small Readiness | Sets switch above the map.
+private struct LayerPicker: View {
+    @Binding var selection: BodyMapLayer
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(BodyMapLayer.allCases, id: \.self) { layer in
+                Button {
+                    withAnimation(Motion.quick) { selection = layer }
+                } label: {
+                    Text(layer.label)
+                        .font(AppFont.body(12, weight: .bold))
+                        .foregroundStyle(selection == layer ? Color.ink : Color.muted)
+                        .padding(.horizontal, 12)
+                        .frame(height: 28)
+                        .background(selection == layer ? Color.raised : .clear, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .frame(minHeight: 44)
+            }
+        }
+        .padding(.horizontal, 2)
+        .frame(height: 32)
+        .background(Color.card, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color.cardBorder, lineWidth: 1))
+        .frame(maxWidth: .infinity)
+        .sensoryFeedback(.selection, trigger: selection)
+    }
+}
+
+/// Eight pips per group: filled = logged this week, outlined = still planned, empty = short.
+private struct CoverageCard: View {
+    let coverage: CoverageSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            VStack(alignment: .leading, spacing: 6) {
+                Kicker("Sets this week · target \(coverage.target)", color: .strength)
+                Text(coverage.headline)
+                    .font(AppFont.body(17, weight: .semibold))
+                    .foregroundStyle(coverage.isWin ? Color.volt : Color.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let detail = coverage.detail {
+                    Text(detail).font(AppFont.body(14)).foregroundStyle(Color.inkSoft)
+                }
+            }
+            ForEach(coverage.rows, id: \.key) { row in
+                HStack(spacing: 12) {
+                    Text(row.label).font(AppFont.body(14, weight: .semibold)).foregroundStyle(Color.ink).frame(width: 76, alignment: .leading)
+                    pips(row)
+                    trailing(row).frame(width: 62, alignment: .trailing)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibility(row))
+            }
+            Rectangle().fill(Color.cardBorder).frame(height: 1)
+            HStack(spacing: 14) {
+                key(filled: true, "logged")
+                key(filled: false, "planned")
+                Spacer()
+                Text("Mon–Sun").font(AppFont.body(11, weight: .semibold)).foregroundStyle(Color.faint)
+            }
+        }
+        .card()
+    }
+
+    private func pips(_ row: CoverageSummary.Row) -> some View {
+        HStack(spacing: 3) {
+            ForEach(0..<coverage.target, id: \.self) { index in
+                let shape = RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                switch (row.hold, index) {
+                case (.hiking, _):
+                    shape.fill(Color.other.opacity(0.28)).overlay(shape.strokeBorder(Color.other.opacity(0.5), lineWidth: 1))
+                case (.none, _) where index < row.done:
+                    shape.fill(Color.strength)
+                case (.none, _) where index < row.done + row.planned:
+                    shape.fill(Color.inset).overlay(shape.strokeBorder(Color.strength, lineWidth: 1.5))
+                default:
+                    shape.fill(Color.inset).overlay(shape.strokeBorder(Color.cardBorder, lineWidth: 1))
+                }
+            }
+        }
+        .frame(height: 12)
+    }
+
+    @ViewBuilder
+    private func trailing(_ row: CoverageSummary.Row) -> some View {
+        switch row.hold {
+        case .protected:
+            Text("PROTECT").font(AppFont.body(11, weight: .bold)).tracking(0.9).foregroundStyle(Color.danger)
+        case .hiking:
+            Text("HIKING").font(AppFont.body(11, weight: .bold)).tracking(0.9).foregroundStyle(Color.other)
+        case .none:
+            (Text("\(row.done)").font(AppFont.number(20)).foregroundStyle(row.done > 0 ? Color.ink : Color.faint)
+                + Text("/\(coverage.target)").font(AppFont.body(12, weight: .medium)).foregroundStyle(Color.faint))
+        }
+    }
+
+    private func key(filled: Bool, _ text: String) -> some View {
+        HStack(spacing: 5) {
+            let shape = RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+            Group {
+                if filled { shape.fill(Color.strength) } else { shape.strokeBorder(Color.strength, lineWidth: 1.5) }
+            }
+            .frame(width: 12, height: 9)
+            Text(text).font(AppFont.body(11, weight: .semibold)).foregroundStyle(Color.muted)
+        }
+    }
+
+    private func accessibility(_ row: CoverageSummary.Row) -> String {
+        switch row.hold {
+        case .protected: "\(row.label): protected while an injury heals"
+        case .hiking: "\(row.label): covered by hiking this week"
+        case .none: "\(row.label): \(row.done) of \(coverage.target) sets logged, \(row.planned) planned"
+        }
     }
 }
 

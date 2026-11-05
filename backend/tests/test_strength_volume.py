@@ -86,6 +86,21 @@ class LiftVolumeTests(unittest.TestCase):
         legs_per_day = [sum(item["sets"] for item in row["additions"] if item["group"] == "legs") for row in volume["days"]]
         self.assertEqual(sorted(legs_per_day), [2, 3, 3])
 
+    def test_each_day_lists_its_sets_per_group_with_the_extra_sets(self):
+        days = [_day("2026-10-08", "Workout A"), _day("2026-10-09", "Workout B"), _day("2026-10-10", "Workout C")]
+        volume = self._build(days)
+
+        for row in volume["days"]:
+            day = next(item for item in days if item["date"] == row["date"])
+            template = strength_volume._day_exercises(day, strength_volume._templates_by_name(self.conn))
+            for group, sets in row["group_sets"].items():
+                own = sum(item["set_count"] for item in template if group in strength_volume.muscle_groups_for(item["exercise_name"]))
+                extra = sum(item["sets"] for item in row["additions"] if item["group"] == group)
+                self.assertEqual(sets, own + extra, (row["date"], group))
+        # Workout C trains no legs; the leg sets it carries are the planner's extras.
+        legs_on_c = next(row for row in volume["days"] if row["date"] == "2026-10-10")["group_sets"]["legs"]
+        self.assertEqual(legs_on_c, sum(item["sets"] for item in self._additions(volume, "2026-10-10") if item["group"] == "legs"))
+
     def test_protected_knee_rests_legs_entirely(self):
         days = [_day("2026-10-08", "Workout A"), _day("2026-10-09", "Workout B"), _day("2026-10-10", "Workout C")]
         restrictions = {"body_areas": [{"area": "knee", "side": "left"}]}

@@ -12,6 +12,37 @@ struct PhoneBody: Decodable, Sendable, Equatable {
     var training: [TrainingSession]?
     /// Active injuries that protect a body area.
     var issues: [Issue]?
+    /// Hard sets per main muscle group this week against the target (older servers don't send it).
+    var coverage: Coverage?
+
+    /// This week (Mon–Sun): sets logged per group, sets still planned, and the lift days.
+    struct Coverage: Decodable, Sendable, Equatable {
+        let weekStart: String
+        let target: Int
+        let hasPlan: Bool
+        let groups: [CoverageGroup]
+        let days: [CoverageDay]
+    }
+
+    struct CoverageGroup: Decodable, Sendable, Equatable {
+        /// legs, back, chest, shoulders or arms.
+        let key: String
+        let label: String
+        let doneSets: Int
+        /// Saved-workout sets of lift days still ahead plus the planner's extra sets.
+        let plannedSets: Int
+        /// low, in_range, high, protected (an injury rests it) or hiking (mountain days cover legs).
+        let status: String
+    }
+
+    struct CoverageDay: Decodable, Sendable, Equatable {
+        let date: String
+        let title: String
+        /// done, missed, planned or light.
+        let state: String
+        /// Sets per group key that day (saved workout + extra sets).
+        let groupSets: [String: Int]
+    }
 
     /// Hours short over the last nights, against the personal need (`needH`).
     struct SleepDebt: Decodable, Sendable, Equatable {

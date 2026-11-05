@@ -2,6 +2,7 @@
 training load (fitness, fatigue, form), what drives today's readiness, and the last week of
 training and active injuries for the body map."""
 
+import json
 import sqlite3
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -15,6 +16,9 @@ from .readiness import build_readiness_summary
 from .recovery import _active_issue_rows, detect_body_areas
 from .rehab_session import CONTEXT_LABEL as REHAB_LABEL
 from .strength_progression import _session_index, _working_sets
+from .strength_volume import TARGET_SETS_MIN, build_lift_volume, logged_group_sets
+from .muscle_gain import MUSCLE_GROUPS
+from ..repositories.plans import get_weekly_plan_row
 
 BASELINE_DAYS = 30
 TRAINING_DAYS = 7
@@ -169,6 +173,48 @@ def _sleep_debt(readiness: dict) -> Optional[dict]:
     }
 
 
+def _coverage(conn: sqlite3.Connection, today: date) -> dict:
+    """Hard sets per main muscle group this week (Mon-Sun) against the target, with the lift
+    days still ahead and the sets each one brings: the Body map's Sets layer and nudge."""
+    week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=6)
+    volume = None
+    row = get_weekly_plan_row(conn, week_start.isoformat())
+    if row:
+        from .minimum_week import minimum_week_state
+        from .plans import ensure_plan_day_ids
+
+        days = ensure_plan_day_ids(row["week_start"], json.loads(row["days_json"]))
+        minimum = minimum_week_state(conn, row["week_start"]) or {}
+        volume = build_lift_volume(conn, days, row["week_start"], today=today, minimum_week_active=bool(minimum.get("active")))
+    if volume:
+        groups = [
+            {
+                "key": item["key"],
+                "label": item["label"],
+                "done_sets": item["done_sets"],
+                "planned_sets": item["planned_sets"] + item["added_sets"],
+                "status": item["status"],
+            }
+            for item in volume["groups"]
+            if item["targeted"]
+        ]
+        days = [
+            {"date": item["date"], "title": item["title"], "state": item["state"], "group_sets": {key: sets for key, sets in item["group_sets"].items() if sets}}
+            for item in volume["days"]
+        ]
+    else:
+        # No plan (or no lift days in it): what was logged so far.
+        done, _ = logged_group_sets(conn, week_start.isoformat(), week_end.isoformat())
+        groups = [
+            {"key": group["key"], "label": group["label"], "done_sets": done[group["key"]], "planned_sets": 0, "status": "in_range" if done[group["key"]] >= TARGET_SETS_MIN else "low"}
+            for group in MUSCLE_GROUPS
+            if group["targeted"]
+        ]
+        days = []
+    return {"week_start": week_start.isoformat(), "target": TARGET_SETS_MIN, "has_plan": bool(row), "groups": groups, "days": days}
+
+
 def build_phone_body(conn: sqlite3.Connection, today: Optional[date] = None) -> dict:
     today = today or datetime.now().date()
     load = build_training_load_summary(conn, days=LOAD_DAYS, today=today)
@@ -197,6 +243,7 @@ def build_phone_body(conn: sqlite3.Connection, today: Optional[date] = None) -> 
         },
         "training": _training(conn, today),
         "issues": _issues(conn),
+        "coverage": _coverage(conn, today),
         "load": {
             "fitness": current.get("fitness", 0),
             "fatigue": current.get("fatigue", 0),

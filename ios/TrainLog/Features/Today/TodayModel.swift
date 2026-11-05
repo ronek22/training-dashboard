@@ -16,6 +16,8 @@ final class TodayModel {
     private(set) var rehabPending: Int?
     /// Today in Apple Health for the evening day strip; loaded only in the evening.
     private(set) var outside: OutsideDay?
+    /// Last month's days for the month-in-review card's strip (first seven days of a month only).
+    private(set) var monthStrip: [MonthReport.Day] = []
 
     private let client: () -> APIClient
 
@@ -29,6 +31,24 @@ final class TodayModel {
         if let day = UserDefaults.standard.string(forKey: "todayDate") { return "/phone/today?date=\(day)" }
         #endif
         return "/phone/today"
+    }
+
+    /// Same request as the month recap, so opening it afterwards is instant from the cache.
+    func loadMonthStrip(_ month: String, today: String) async {
+        #if DEBUG
+        if let demo = MonthRecapDemo.report(month: month) {
+            monthStrip = demo.days
+            return
+        }
+        #endif
+        let api = client()
+        let path = MonthRecapModel.path(month, day: today)
+        if monthStrip.isEmpty, let cached = api.cached(path, as: MonthReport.self) {
+            monthStrip = cached.value.days
+        }
+        if let loaded = try? await api.get(path, as: MonthReport.self, timeout: 15) {
+            monthStrip = loaded.value.days
+        }
     }
 
     func load() async {

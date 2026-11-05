@@ -117,6 +117,14 @@ class WeekBriefTests(unittest.TestCase):
         self.assertEqual(templates, ["strength-a", "strength-c", "strength-b"])
         self.assertEqual(stored[4]["exercises"], [])
 
+    def test_coach_edits_ride_extra_quality_as_z2_in_a_base_week(self):
+        save_winter_arc(self.conn, WinterArc(**BASE), TODAY)
+        self.save_rotation_week()
+        sweet_spot = WeeklyPlanDay(date=DATES[1], label="d", session_type="ride", workout_intent="tempo", title="Sweet spot 3 x 10", target_duration_min=70)
+        adjust_weekly_plan_data(self.conn, WeeklyPlanAdjustment(week_start=WEEK, effective_from=DATES[0], days=[sweet_spot]), fit_lift_slots=True)
+        _, stored = self.stored_templates()
+        self.assertEqual((stored[1]["title"], stored[1]["workout_intent"]), ("Endurance 70", "easy"))
+
     def test_the_athletes_own_edits_stay_as_made(self):
         self.save_rotation_week()
         self.use_slots()

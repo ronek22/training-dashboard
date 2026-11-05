@@ -459,10 +459,32 @@ def _key_ride(day: dict, kind: str, target: dict, last_ridden: dict[str, str]) -
     }
 
 
+def _easy_ride(day: dict, kind: str, target: dict) -> dict:
+    """A quality ride the block doesn't ask for, ridden as Z2 for the same time."""
+    minutes = _ride_minutes(day) or 60
+    return {
+        **day,
+        "workout_intent": "easy",
+        "cycling_workout_id": "endurance-60" if minutes == 60 else None,
+        "title": f"Endurance {minutes}",
+        "details": f"{target['label']} block: easy Z2, conversational, steady cadence. Replaces {day.get('title') or 'a quality ride'}.",
+        "target_duration_min": minutes,
+        "target_distance_km": None,
+        "planning_rule_reason": f"{REASON}: {target['label']} " + (
+            f"has no {MIX_LABELS[kind].lower()} rides" if not target["ride_mix"][kind]
+            else f"asks for {target['ride_mix'][kind]} {MIX_LABELS[kind].lower()} ride{'s' if target['ride_mix'][kind] > 1 else ''} a week"
+        ) + ", so this one is Z2",
+    }
+
+
 def fit_week_to_arc(
     conn: Optional[sqlite3.Connection], days: list[dict], week_start: str, today: Optional[date] = None,
 ) -> tuple[list[dict], list[dict]]:
-    """Make a generated week carry its block's key rides and respect a lighter week. Rides only."""
+    """Make a generated week match its block's ride mix and respect a lighter week. Rides only.
+
+    Quality rides beyond the block's mix (a sweet-spot ride in a base block) become Z2 rides;
+    missing key rides are added; a lighter week trims easy rides.
+    """
     if conn is None:
         return days, []
     target = arc_week(conn, week_start)
@@ -472,6 +494,18 @@ def fit_week_to_arc(
     guarded = _guarded_dates(conn, days, today)
     last_ridden = last_ridden_dates(conn)
     changes: list[dict] = []
+
+    from .lift_ride_clash import locked_dates
+    locked = locked_dates(conn, days, today)
+    for kind in QUALITY_TYPES:
+        # A carried ride comes on top of the mix; done and past rides count first, then the earliest stay.
+        rides = [day for day in days if ride_type(day) == kind and not _is_carried(day)]
+        open_rides = [day for day in rides if day["date"] not in locked]
+        allowed = max(0, target["ride_mix"][kind] - (len(rides) - len(open_rides)))
+        for day in open_rides[allowed:]:
+            index = days.index(day)
+            days[index] = _easy_ride(day, kind, target)
+            changes.append({"date": day["date"], "kind": "too_hard", "type": kind, "from": day.get("title"), "to": days[index]["title"]})
 
     for kind in QUALITY_TYPES:
         if kind not in target["key_types"]:

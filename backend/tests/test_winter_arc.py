@@ -114,6 +114,23 @@ class WinterArcTests(unittest.TestCase):
         status = list_weekly_plans_data(self.conn)[0]["winter_arc"]
         self.assertEqual(status["missing"], [])
 
+    def test_base_week_rides_a_planned_sweet_spot_as_z2(self):
+        self.save_arc()
+        base_dates = ["2029-12-10", "2029-12-11", "2029-12-12", "2029-12-13", "2029-12-14", "2029-12-15", "2029-12-16"]
+        sweet_spot = ("Ride", "tempo", "Sweet spot 3 x 10 min", 70)
+        result, days = self.save_week(week(LIFT, sweet_spot, LIFT, REST, LIFT, Z2, REST, dates=base_dates), week_start=base_dates[0])
+        self.assertEqual(planned_mix(days), {"z2": 2, "sweet_spot": 0, "vo2": 0})
+        self.assertEqual((days[1]["title"], days[1]["workout_intent"], days[1]["target_duration_min"]), ("Endurance 70", "easy", 70))
+        self.assertEqual(days[1]["planning_rule_reason"], "Winter arc: Base has no sweet spot rides, so this one is Z2")
+        self.assertEqual([change["kind"] for change in result["arc_changes"]], ["too_hard"])
+
+    def test_quality_rides_beyond_the_mix_are_ridden_easy(self):
+        self.save_arc()
+        sweet_spot = ("Ride", "tempo", "Sweet spot", 60)
+        _, days = self.save_week(week(sweet_spot, LIFT, sweet_spot, LIFT, sweet_spot, LONG, REST))
+        self.assertEqual(planned_mix(days)["sweet_spot"], 2)
+        self.assertEqual(days[4]["title"], "Endurance 60")  # The last one goes easy; the earlier two stay.
+
     def test_key_ride_rotates_away_from_a_recently_ridden_workout(self):
         self.save_arc()
         self.conn.execute("INSERT INTO weekly_plans (week_start, title, days_json) VALUES (?, ?, ?)", ("2029-12-31", "Last", json.dumps([

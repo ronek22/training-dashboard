@@ -63,6 +63,15 @@ class StravaUploadTests(unittest.TestCase):
         cls.temp_dir.cleanup()
 
     def setUp(self):
+        # One database for the class: start each test without the others' workouts, or a lift pushed
+        # earlier the same calendar day is taken as this test's workout.
+        conn = self.get_db()
+        existing = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        for table in ("strava_uploads", "activity_source_refs", "strength_workout_sessions", "activities"):
+            if table in existing:  # strava_uploads appears with the first upload
+                conn.execute(f"DELETE FROM {table}")
+        conn.commit()
+        conn.close()
         self.settings = {"strava_scope": "activity:read_all,activity:write,read"}
         self.start = datetime.now().astimezone().replace(microsecond=0) - timedelta(hours=2)
 

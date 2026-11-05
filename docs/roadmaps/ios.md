@@ -8,6 +8,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Now
 
+- **Week brief on Plan** — The week's ordered rules (safety, anchors, block, outcomes, habits) and the lift slots on the iPhone Plan screen, like the web.
 
 ## Next
 

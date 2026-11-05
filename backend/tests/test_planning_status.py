@@ -87,7 +87,8 @@ class PlanningStatusIosTrackTests(unittest.TestCase):
         ios = get_planning_status()["ios"]
 
         self.assertEqual(ios["path"], "docs/roadmaps/ios.md")
-        self.assertTrue(ios["buckets"][0]["items"])
+        # Now can be empty between features; the buckets themselves must parse.
+        self.assertEqual([bucket["name"] for bucket in ios["buckets"]][:3], ["Now", "Next", "Later"])
         self.assertGreater(len(ios["shipped"]), 10)
 
 

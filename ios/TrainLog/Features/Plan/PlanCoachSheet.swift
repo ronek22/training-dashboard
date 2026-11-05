@@ -194,14 +194,21 @@ struct PlanCoachSheet: View {
                 }
             }
             .padding(.top, 16)
-            if let summary = result.summary {
-                ScrollView {
-                    Text(summary).font(AppFont.body(14)).foregroundStyle(Color.inkBody).lineSpacing(3)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(result.sessions.enumerated()), id: \.element.date) { index, session in
+                        sessionRow(session)
+                        if index < result.sessions.count - 1 { Rectangle().fill(Color.cardBorder).frame(height: 1) }
+                    }
+                    if let summary = result.summary {
+                        Text(summary).font(AppFont.body(13)).foregroundStyle(Color.muted).lineSpacing(2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, result.sessions.isEmpty ? 0 : 12)
+                    }
                 }
-                .scrollBounceBehavior(.basedOnSize)
-                .padding(.top, 12)
             }
+            .scrollBounceBehavior(.basedOnSize)
+            .padding(.top, 12)
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -225,6 +232,22 @@ struct PlanCoachSheet: View {
             .foregroundStyle(Color.inkSoft)
             .frame(maxWidth: .infinity, minHeight: 44)
             .padding(.top, 6)
+    }
+
+    private func sessionRow(_ session: PlanCoachFormat.Session) -> some View {
+        HStack(spacing: 12) {
+            Text(PlanCoachFormat.weekday(session.date)).font(AppFont.number(15)).foregroundStyle(Color.ink).frame(width: 32, alignment: .leading)
+            RoundedRectangle(cornerRadius: 2).fill(session.sport == .rest ? Color.cardBorder : session.sport.color).frame(width: 4, height: 30)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(session.title).font(AppFont.body(14, weight: .semibold))
+                    .foregroundStyle(session.sport == .rest ? Color.faint : Color.ink).lineLimit(1)
+                if !session.meta.isEmpty {
+                    Text(session.meta).font(AppFont.body(12)).foregroundStyle(Color.muted).lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 9)
     }
 
     private func changeRow(_ change: PlanCoachFormat.Change) -> some View {

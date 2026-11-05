@@ -110,4 +110,25 @@ struct PlanCoachTests {
         let back = try JSONDecoder().decode(PlanCoachTask.self, from: JSONEncoder().encode(task))
         #expect(back == task && back.week == "2026-11-02")
     }
+
+    @Test func noteDropsTablesCodeAndToolTalk() {
+        let raw = """
+        The week of 2026-11-09 is saved and checked with `get_weekly_plans`. Friday is now an **upper-body** lift.
+
+        | Day | Session |
+        |---|---|
+        | Mon | Workout B |
+
+        - Go only if knee pain is 0–2/10.
+        """
+        #expect(PlanCoachFormat.note(raw) == "Friday is now an upper-body lift.\n\nGo only if knee pain is 0–2/10.")
+        #expect(PlanCoachFormat.note("| a | b |\n|---|") == nil)
+        #expect(PlanCoachFormat.note(nil) == nil)
+    }
+
+    @Test func plannedResultListsEveryDay() {
+        let result = PlanCoachFormat.result(.plan(week: "2026-11-02"), before: [], after: week45, today: "2026-11-03", summary: nil, seconds: 60)
+        #expect(result.sessions.count == week45.days.count)
+        #expect(result.sessions.map(\.date) == week45.days.map(\.date).sorted())
+    }
 }

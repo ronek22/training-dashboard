@@ -36,6 +36,8 @@ struct PlanCoachResult: Equatable {
     let mix: [PlanCoachFormat.MixPart]
     let summary: String?
     let seconds: Int
+    /// The saved week day by day, for a planned week.
+    var sessions: [PlanCoachFormat.Session] = []
 }
 
 /// Planning and refining weeks with the coach helper on the Mac, through the backend relay
@@ -303,6 +305,14 @@ enum PlanCoachFormat {
         let now: String?
     }
 
+    /// One day of the planned week: "Workout B · Back + Arms", "Easy · 55 min".
+    struct Session: Equatable {
+        let date: String
+        let sport: Sport
+        let title: String
+        let meta: String
+    }
+
     struct MixPart: Equatable {
         let sport: Sport
         let label: String
@@ -465,9 +475,43 @@ enum PlanCoachFormat {
                 strip = Self.strip(after, today: today, changed: Set(changes.map(\.date)), editable: Set(editableDates(after, today: today)).union(changes.map(\.date)))
             }
         }
-        let text = summary?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isPlan = if case .plan = task { true } else { false }
         return PlanCoachResult(task: task, days: strip, changes: changes, totalMinutes: totalMinutes(days), mix: mix(days),
-                               summary: text?.isEmpty == false ? text : nil, seconds: seconds)
+                               summary: note(summary), seconds: seconds, sessions: isPlan ? sessions(days) : [])
+    }
+
+    static func sessions(_ days: [PlanDay]) -> [Session] {
+        days.sorted { $0.date < $1.date }.map { day in
+            let sport = PlanFormat.sport(day)
+            return sport == .rest
+                ? Session(date: day.date, sport: .rest, title: "Rest", meta: "")
+                : Session(date: day.date, sport: sport, title: PlanFormat.rowTitle(day.title), meta: PlanFormat.plannedMeta(day))
+        }
+    }
+
+    /// The coach's reply as plain prose for the phone: markdown tables, headings and list markers go
+    /// (the day list shows the week), code and emphasis marks are stripped, and sentences about its own
+    /// tools (`get_weekly_plans`) are dropped.
+    static func note(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let lines = raw.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.hasPrefix("|") && !$0.hasPrefix("#") }
+            .map { $0.replacingOccurrences(of: #"^([-*•]|\d+\.)\s+"#, with: "", options: .regularExpression) }
+        let paragraphs = lines.split(separator: "", omittingEmptySubsequences: true).map { $0.joined(separator: " ") }
+        let cleaned = paragraphs.compactMap { paragraph -> String? in
+            let sentences = paragraph.replacingOccurrences(of: #"(?<=[.!?])\s+"#, with: "\n", options: .regularExpression)
+                .components(separatedBy: "\n")
+                .filter { !$0.contains("`") || $0.range(of: #"`[a-z]+_[a-z_]+`"#, options: .regularExpression) == nil }
+            let text = sentences.joined(separator: " ")
+                .replacingOccurrences(of: "`", with: "")
+                .replacingOccurrences(of: "**", with: "")
+                .replacingOccurrences(of: "__", with: "")
+                .trimmingCharacters(in: .whitespaces)
+            return text.isEmpty ? nil : text
+        }
+        let text = cleaned.joined(separator: "\n\n")
+        return text.isEmpty ? nil : text
     }
 
     /// "3:51".
@@ -484,7 +528,11 @@ enum PlanCoachFormat {
         return PlanCoachResult(task: .plan(week: weekStart), days: strip, changes: [], totalMinutes: 300,
                                mix: [MixPart(sport: .strength, label: "3 lifts"), MixPart(sport: .ride, label: "2 rides"), MixPart(sport: .mobility, label: "rehab")],
                                summary: "Lifts stay at three, Thursday is rehab only for the deadline, and Saturday's 90 min ride is gated on the knee: drop to 60 min if it's above 2/10.",
-                               seconds: 231)
+                               seconds: 231,
+                               sessions: zip(plan.indices, ["Workout B · Back + Arms", "Sweet spot 3×10", "Workout C · Wide Shoulders", "Rehab: left knee", "Workout A · Upper", "Endurance ride", "Rest"]).map { offset, title in
+                                   Session(date: PlanFormat.addingDays(offset, to: weekStart), sport: plan[offset].0, title: title,
+                                           meta: plan[offset].0 == .rest ? "" : "\(plan[offset].1) min")
+                               })
     }
 
     static func demoChanged(_ week: WeeklyPlan, today: String) -> PlanCoachResult {

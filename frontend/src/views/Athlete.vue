@@ -37,20 +37,14 @@
         </article>
       </section>
 
-      <div v-show="tab === 'profile'" id="panel-profile" class="athlete-panel" role="tabpanel">
-        <section class="athlete-summary" :aria-label="'Profile summary'">
-          <div v-for="tile in summaryTiles.profile" :key="tile.label" class="summary-tile" :class="tile.tone && `is-${tile.tone}`">
-            <span>{{ tile.label }}</span>
-            <strong>{{ tile.value }}<small v-if="tile.unit"> {{ tile.unit }}</small></strong>
-            <em v-if="tile.detail">{{ tile.detail }}</em>
-          </div>
-        </section>
+      <div v-show="tab === 'season'" id="panel-season" class="athlete-panel" role="tabpanel">
+        <SeasonCard />
         <!-- Profile -->
         <section id="profile" class="card athlete-card" aria-labelledby="profile-title">
           <header class="athlete-card-head">
             <div>
-              <h2 id="profile-title">Profile</h2>
-              <p class="used-by">Used by the planner, goal suggestions and the coach</p>
+              <h2 id="profile-title">Priorities</h2>
+              <p class="used-by">Which sport gets the best slots when the week is tight</p>
             </div>
             <span v-if="dirty.profileOnly" class="dirty-chip">Edited</span>
           </header>
@@ -67,7 +61,7 @@
             </div>
           </div>
 
-          <label class="field">
+          <label v-if="!hasArc" class="field">
             <span class="field-label">
               Current block
               <NoteAge :review="noteReview('current_block')" :text="profileForm.current_block" @confirm="confirmNote('current_block')" />
@@ -90,6 +84,26 @@
             </ol>
           </div>
 
+        </section>
+
+      </div>
+
+      <div v-show="tab === 'habits'" id="panel-habits" class="athlete-panel" role="tabpanel">
+        <section class="athlete-summary" :aria-label="'Habits summary'">
+          <div v-for="tile in summaryTiles.habits" :key="tile.label" class="summary-tile" :class="tile.tone && `is-${tile.tone}`">
+            <span>{{ tile.label }}</span>
+            <strong>{{ tile.value }}<small v-if="tile.unit"> {{ tile.unit }}</small></strong>
+            <em v-if="tile.detail">{{ tile.detail }}</em>
+          </div>
+        </section>
+        <section id="habits" class="card athlete-card" aria-labelledby="habits-title">
+          <header class="athlete-card-head">
+            <div>
+              <h2 id="habits-title">Your week</h2>
+              <p class="used-by">How you like to train; the week brief keeps these after safety, anchors and the block</p>
+            </div>
+            <span v-if="dirty.profileOnly" class="dirty-chip">Edited</span>
+          </header>
           <div class="field">
             <span class="field-label">Long-session days</span>
             <div class="day-chips">
@@ -117,7 +131,6 @@
           </div>
           <p class="hint">Off-season weeks are compared with past off-season weeks.</p>
         </section>
-
         <!-- Notes for the coach -->
         <section id="notes" class="card athlete-card" aria-labelledby="notes-title">
           <header class="athlete-card-head">
@@ -322,20 +335,32 @@
           <header class="athlete-card-head">
             <div>
               <h2 id="body-areas-title">Protected body areas</h2>
-              <p class="used-by">The lift top-up never adds or extends lifts that load them</p>
+              <p class="used-by">Safety comes first in every week brief: no lifts that load these, easy sessions around them</p>
             </div>
           </header>
 
           <div class="field">
-            <ul v-if="restrictionForm.body_areas.length" class="area-list">
-              <li v-for="(item, index) in restrictionForm.body_areas" :key="`${item.area}-${item.side}`" class="area-row">
+            <span class="field-label">From Recovery <small>Protected while the injury is active</small></span>
+            <ul v-if="activeIssues.length" class="issue-list">
+              <li v-for="issue in activeIssues" :key="issue.id">
+                <router-link to="/recovery" class="issue-title">{{ issue.title }}</router-link>
+                <small>{{ issue.side ? `${issue.side}, ` : '' }}since {{ shortDate(issue.started_on) }}<template v-if="issue.current_pain != null"> · pain {{ issue.current_pain }}/10</template></small>
+                <span class="ok-chip">Protected</span>
+              </li>
+            </ul>
+            <p v-else class="empty-line">No active injuries. Log one in <router-link to="/recovery">Recovery</router-link> and it is protected here.</p>
+          </div>
+
+          <div class="field">
+            <span class="field-label">Other areas <small>Not an injury, but keep load off it</small></span>
+            <ul v-if="manualAreas.length" class="area-list">
+              <li v-for="item in manualAreas" :key="`${item.area}-${item.side}`" class="area-row">
                 <span class="area-name">{{ areaLabel(item) }}</span>
                 <input v-model="item.note" type="text" placeholder="What hurts, what to avoid" :aria-label="`Note for ${areaLabel(item)}`">
                 <small v-if="item.since" class="area-since">since {{ shortDate(item.since) }}</small>
-                <button type="button" class="icon-btn" :aria-label="`Stop protecting ${areaLabel(item)}`" @click="restrictionForm.body_areas.splice(index, 1)">×</button>
+                <button type="button" class="icon-btn" :aria-label="`Stop protecting ${areaLabel(item)}`" @click="removeArea(item)">×</button>
               </li>
             </ul>
-            <p v-else class="empty-line">Nothing protected.</p>
             <div class="area-add">
               <select v-model="newArea.area" aria-label="Body area">
                 <option value="">Add an area…</option>
@@ -349,18 +374,6 @@
               </select>
               <button type="button" class="ghost-btn" :disabled="!newArea.area" @click="addArea()">Protect</button>
             </div>
-          </div>
-
-          <div v-if="activeIssues.length" class="field">
-            <span class="field-label">Active in Recovery</span>
-            <ul class="issue-list">
-              <li v-for="issue in activeIssues" :key="issue.id" :class="{ 'is-unprotected': !issueProtected(issue) }">
-                <router-link to="/recovery" class="issue-title">{{ issue.title }}</router-link>
-                <small>{{ issue.side ? `${issue.side}, ` : '' }}since {{ shortDate(issue.started_on) }}<template v-if="issue.current_pain != null"> · pain {{ issue.current_pain }}/10</template></small>
-                <span v-if="issueProtected(issue)" class="ok-chip">Protected</span>
-                <button v-else-if="areaForIssue(issue)" type="button" class="ghost-btn" @click="protectIssue(issue)">Protect {{ areaOption(areaForIssue(issue))?.label.toLowerCase() }}</button>
-              </li>
-            </ul>
           </div>
         </section>
       </div>
@@ -377,11 +390,45 @@
         <section id="rotation" class="card athlete-card athlete-card-wide" aria-labelledby="rotation-title">
           <header class="athlete-card-head">
             <div>
-              <h2 id="rotation-title">Strength rotation</h2>
-              <p class="used-by">Used by the planner to pick each lift day's workout</p>
+              <h2 id="rotation-title">Weekly lifts</h2>
+              <p class="used-by">The workouts each week's lift days get, in order</p>
             </div>
             <span v-if="dirty.rotation" class="dirty-chip">Edited</span>
           </header>
+
+          <div class="segmented" role="radiogroup" aria-label="How lift days get their workout">
+            <button type="button" role="radio" :aria-checked="rotationForm.weekly_slots.length > 0" :class="{ 'is-active': rotationForm.weekly_slots.length > 0 }" @click="useSlots">Same lifts every week</button>
+            <button type="button" role="radio" :aria-checked="!rotationForm.weekly_slots.length" :class="{ 'is-active': !rotationForm.weekly_slots.length }" @click="rotationForm.weekly_slots = []">Rotate through workouts</button>
+          </div>
+
+          <template v-if="rotationForm.weekly_slots.length">
+            <ol class="slots" aria-label="Weekly lift slots">
+              <li v-for="(slotId, index) in rotationForm.weekly_slots" :key="index" class="slot-row">
+                <span class="slot-name">{{ slotNames[index] }}</span>
+                <select v-model="rotationForm.weekly_slots[index]" :aria-label="`Workout for ${slotNames[index]}`">
+                  <option v-for="template in rotationForm.templates" :key="template.id" :value="template.id">{{ template.code }} · {{ template.title }}</option>
+                </select>
+                <span class="slot-meta">
+                  <em :class="`focus-${templateById(slotId)?.focus_area}`">{{ focusLabel(templateById(slotId)?.focus_area) }}</em>
+                  <template v-if="savedWorkout(templateById(slotId))">{{ savedWorkout(templateById(slotId)).exercise_count }} lifts · ~{{ savedWorkout(templateById(slotId)).estimated_duration_minutes }} min</template>
+                </span>
+                <span class="priority-move">
+                  <button type="button" :disabled="index === 0" :aria-label="`Move ${slotNames[index]} earlier`" @click="moveSlot(index, -1)">↑</button>
+                  <button type="button" :disabled="index === rotationForm.weekly_slots.length - 1" :aria-label="`Move ${slotNames[index]} later`" @click="moveSlot(index, 1)">↓</button>
+                </span>
+                <button type="button" class="icon-btn" :disabled="rotationForm.weekly_slots.length === 1" :aria-label="`Remove ${slotNames[index]}`" @click="rotationForm.weekly_slots.splice(index, 1)">×</button>
+              </li>
+            </ol>
+            <div class="slot-actions">
+              <button type="button" class="ghost-btn" :disabled="rotationForm.weekly_slots.length >= 7" @click="rotationForm.weekly_slots.push(rotationForm.templates[0].id)">Add a lift day</button>
+            </div>
+            <p class="hint">
+              <template v-if="spareTemplate">While a knee, hip or heel is protected, a lower-body slot becomes {{ spareTemplate.code }} · {{ spareTemplate.title }}. </template>
+              Exercises live in <router-link to="/strength/workouts">Workout Studio</router-link>.
+            </p>
+          </template>
+
+          <template v-else>
 
           <ol class="rotation" aria-label="Rotation order. Choose a workout to make it next.">
             <li v-for="template in rotationForm.templates" :key="template.id">
@@ -419,6 +466,7 @@
             <label class="toggle"><input v-model="rotationForm.prefer_ride_when_run_blocked" type="checkbox"><span>Swap runs for rides while running is blocked</span></label>
           </div>
           </div>
+          </template>
         </section>
 
         <!-- Home gym -->
@@ -522,6 +570,7 @@ import { ZONE_COLORS } from '../components/activityVisuals'
 import PlateStack from '../components/PlateStack.vue'
 import KitList from '../components/KitList.vue'
 import CoachPreferences from '../components/CoachPreferences.vue'
+import SeasonCard from '../components/SeasonCard.vue'
 import AnimatedNumber from '../components/AnimatedNumber.vue'
 import { DEFAULT_PLATES, barbellRange, plateColor } from '../coach/plates.mjs'
 
@@ -589,13 +638,13 @@ const noteFields = [
 ]
 
 // Each section lives on one tab; old #section links still land on it.
-const sectionTabs = { profile: 'profile', notes: 'profile', preferences: 'profile', thresholds: 'zones', 'hr-zones': 'zones', restrictions: 'limits', 'body-areas': 'limits', rotation: 'strength', equipment: 'strength', kit: 'kit' }
-const tabKeys = ['profile', 'zones', 'limits', 'strength', 'kit']
+const sectionTabs = { profile: 'season', season: 'season', habits: 'habits', notes: 'habits', preferences: 'habits', thresholds: 'zones', 'hr-zones': 'zones', restrictions: 'limits', 'body-areas': 'limits', rotation: 'strength', equipment: 'strength', kit: 'kit' }
+const tabKeys = ['season', 'limits', 'habits', 'zones', 'strength', 'kit']
 const tabFromHash = (hash) => {
   const key = hash.slice(1)
   return tabKeys.includes(key) ? key : sectionTabs[key] || null
 }
-const tab = ref(tabFromHash(route.hash) || 'profile')
+const tab = ref(tabFromHash(route.hash) || 'season')
 const setTab = (key) => {
   tab.value = key
   router.replace({ hash: `#${key}` })
@@ -661,12 +710,12 @@ const dirty = computed(() => ({
 }))
 const anyDirty = computed(() => Object.values(dirty.value).some(Boolean))
 const dirtyLabels = computed(() => [
-  dirty.value.profileOnly && 'profile & notes',
+  dirty.value.profileOnly && 'season & habits',
   dirty.value.equipment && 'home gym',
   dirty.value.thresholds && 'thresholds',
   dirty.value.hrZones && 'heart-rate zones',
   dirty.value.restrictions && 'restrictions',
-  dirty.value.rotation && 'rotation',
+  dirty.value.rotation && 'weekly lifts',
 ].filter(Boolean))
 
 async function load({ refresh = false } = {}) {
@@ -691,6 +740,7 @@ async function load({ refresh = false } = {}) {
   }
   // Secondary context: the page works without it.
   cached(api.getRecoveryIssues).then(({ data }) => { recoveryIssues.value = Array.isArray(data) ? data : [] }).catch(() => {})
+  cached(api.getWinterArc).then(({ data }) => { hasArc.value = Boolean(data?.blocks?.length) }).catch(() => {})
   cached(api.getStrengthWorkoutTemplates).then(({ data }) => { savedWorkouts.value = Array.isArray(data) ? data : [] }).catch(() => {})
   if (!refresh && sectionTabs[route.hash.slice(1)]) goToSection(route.hash.slice(1))
 }
@@ -882,35 +932,41 @@ const addArea = (extra = {}) => {
   newArea.side = ''
 }
 const activeIssues = computed(() => recoveryIssues.value.filter((issue) => issue.status === 'active'))
-const areaForIssue = (issue) => {
-  const text = `${issue.body_area || ''} ${issue.title || ''}`.toLowerCase()
-  return bodyAreaOptions.find((option) => option.keywords.test(text))?.value || null
-}
-const issueProtected = (issue) => restrictionForm.value.body_areas.some(
-  (item) => item.recovery_issue_id === issue.id || (item.area === areaForIssue(issue) && (!item.side || !issue.side || item.side === issue.side || item.side === 'both')),
-)
-const protectIssue = (issue) => addArea({
-  area: areaForIssue(issue),
-  side: ['left', 'right', 'both'].includes(issue.side) ? issue.side : null,
-  note: issue.body_area || issue.title,
-  since: issue.started_on,
-  recovery_issue_id: issue.id,
-})
-
-// Rotation
+// Recovery protects its own areas; the list here is only what isn't an injury.
+const manualAreas = computed(() => restrictionForm.value.body_areas.filter((item) => !item.recovery_issue_id))
+const removeArea = (item) => restrictionForm.value.body_areas.splice(restrictionForm.value.body_areas.indexOf(item), 1)
+const hasArc = ref(false)
 const lastTemplateId = computed(() => rotation.value?.programs?.strength?.rotation_state?.last_completed_template_id)
 const lastCompletedAt = computed(() => rotation.value?.programs?.strength?.rotation_state?.last_completed_at)
 const focusLabel = (focus) => ({ upper: 'Upper', lower: 'Lower', full_body: 'Full body', mobility: 'Mobility' }[focus] || 'Upper')
+const templateById = (id) => rotationForm.value.templates.find((template) => template.id === id)
+// "Upper 1 · Lower · Upper 2": a name repeats with a number only when it repeats.
+const slotNames = computed(() => {
+  const names = rotationForm.value.weekly_slots.map((id) => focusLabel(templateById(id)?.focus_area))
+  const seen = {}
+  return names.map((name) => (names.filter((item) => item === name).length > 1 ? `${name} ${(seen[name] = (seen[name] || 0) + 1)}` : name))
+})
+const spareTemplate = computed(() => rotationForm.value.templates.find((template) => !rotationForm.value.weekly_slots.includes(template.id) && template.focus_area !== 'lower'))
+const useSlots = () => {
+  if (rotationForm.value.weekly_slots.length) return
+  const upper = rotationForm.value.templates.filter((template) => template.focus_area !== 'lower')
+  const lower = rotationForm.value.templates.find((template) => template.focus_area === 'lower')
+  rotationForm.value.weekly_slots = [upper[0], lower, upper[1]].filter(Boolean).map((template) => template.id)
+}
+const moveSlot = (index, step) => {
+  const slots = rotationForm.value.weekly_slots
+  ;[slots[index], slots[index + step]] = [slots[index + step], slots[index]]
+}
 const savedWorkout = (template) => savedWorkouts.value.find((workout) => workout.name === `${template.label} · ${template.title}` || workout.name === template.title)
 
 // Nudges: what looks out of date or out of sync.
 const nudges = computed(() => {
   const items = []
-  const stale = [...noteFields, { key: 'current_block', label: 'Current block' }]
+  const stale = [...noteFields, ...(hasArc.value ? [] : [{ key: 'current_block', label: 'Current block' }])]
     .filter((note) => profileForm.value[note.key] && noteReview(note.key)?.stale)
   if (stale.length) {
     items.push({
-      key: 'notes', tone: 'warn', tab: 'profile',
+      key: 'notes', tone: 'warn', tab: 'habits',
       title: `${stale.length === 1 ? 'A coach note needs' : `${stale.length} coach notes need`} a look.`,
       detail: `${stale.map((note) => note.label).join(', ')} ${stale.length === 1 ? 'hasn\'t' : 'haven\'t'} been confirmed in over 6 weeks. The coach still reads ${stale.length === 1 ? 'it' : 'them'} word for word.`,
       action: { label: 'Review', run: () => goToSection('notes') },
@@ -936,16 +992,6 @@ const nudges = computed(() => {
       action: { label: 'Choose FTP', run: () => goToSection('thresholds') },
     })
   }
-  for (const issue of activeIssues.value) {
-    const area = areaForIssue(issue)
-    if (!area || issueProtected(issue)) continue
-    items.push({
-      key: `issue-${issue.id}`, tone: 'alert', tab: 'limits',
-      title: `${issue.title} is active in Recovery but not protected.`,
-      detail: 'The lift top-up can still add lifts that load it.',
-      action: { label: `Protect ${areaOption(area).label.toLowerCase()}`, run: () => protectIssue(issue) },
-    })
-  }
   return items
 })
 
@@ -959,11 +1005,22 @@ const tabs = computed(() => {
   const areas = restrictionForm.value.body_areas
   const next = rotationForm.value.templates.find((template) => template.id === rotationForm.value.next_template_id)
   const focus = focusOptions.find((option) => option.value === formState.primary_focus)?.label || 'General fitness'
+  const days = weekdayOptions.filter((day) => formState.preferred_long_session_days.includes(day.value)).map((day) => day.label)
   return [
     {
-      key: 'profile', label: 'Profile', dirty: dirty.value.profileOnly,
+      key: 'season', label: 'Season', dirty: dirty.value.profileOnly,
       value: focus,
-      detail: formState.current_block || 'No current block set',
+      detail: hasArc.value ? 'Winter arc, anchors and outcomes' : formState.current_block || 'No arc yet',
+    },
+    {
+      key: 'limits', label: 'Limits', dirty: dirty.value.restrictions,
+      value: activeIssues.value.length ? `${activeIssues.value.length} injur${activeIssues.value.length === 1 ? 'y' : 'ies'} protected` : restricted.length ? restricted.map((sport) => `${sport.label} ${modalities[sport.key].status}`).join(', ') : 'Nothing limited',
+      detail: areas.length ? `Also protecting ${areas.map(areaLabel).join(', ').toLowerCase()}` : 'No other areas protected',
+    },
+    {
+      key: 'habits', label: 'Habits', dirty: dirty.value.profileOnly,
+      value: days.length ? `Long days ${days.join(' · ')}` : 'Any day for long sessions',
+      detail: 'Notes and agreements with the coach',
     },
     {
       key: 'zones', label: 'Zones', dirty: dirty.value.thresholds || dirty.value.hrZones,
@@ -971,13 +1028,8 @@ const tabs = computed(() => {
       detail: `${ftpSourceLabel[performanceForm.value.ftp_source] || 'Logged'} · Z2 ${rideZonePreview.value}`,
     },
     {
-      key: 'limits', label: 'Limits', dirty: dirty.value.restrictions,
-      value: restricted.length ? restricted.map((sport) => `${sport.label} ${modalities[sport.key].status}`).join(', ') : 'All sports allowed',
-      detail: areas.length ? `Protecting ${areas.map(areaLabel).join(', ').toLowerCase()}` : 'No body areas protected',
-    },
-    {
       key: 'strength', label: 'Strength', dirty: dirty.value.rotation || dirty.value.equipment,
-      value: next ? `Next: ${next.code} · ${next.title}` : 'No rotation',
+      value: rotationForm.value.weekly_slots.length ? rotationForm.value.weekly_slots.map((id) => templateById(id)?.code).join(' · ') + ' every week' : next ? `Next: ${next.code} · ${next.title}` : 'No rotation',
       detail: `${rotationForm.value.templates.length} workouts · bar up to ${formatKg(barbell.value.maxKg)} kg`,
     },
     { key: 'kit', label: 'Kit', count: kitSummary.value?.due || 0, value: kitSummary.value?.value || 'Kit', detail: kitSummary.value?.detail || 'Shoes, chain, tyres' },
@@ -992,16 +1044,13 @@ const summaryTiles = computed(() => {
   const month = (value) => monthOptions.find((option) => option.value === value)?.label?.slice(0, 3)
   const modalities = restrictionForm.value.modalities
   const areas = restrictionForm.value.body_areas
-  const unprotected = activeIssues.value.filter((issue) => !issueProtected(issue))
   const rotationState = rotationForm.value
   const next = rotationState.templates.find((template) => template.id === rotationState.next_template_id)
   const last = rotationState.templates.find((template) => template.id === lastTemplateId.value)
   const dumbbellStep = dumbbellStepOptions.find((option) => option.value === formState.dumbbell_step_kg)?.label || 'Auto'
   const runPace = runPaceSeconds.value ? formatPace(runPaceSeconds.value) : null
   return {
-    profile: [
-      { label: 'Focus', value: focusOptions.find((option) => option.value === formState.primary_focus)?.label || 'General fitness' },
-      { label: 'Block', value: formState.current_block ? formState.current_block.split(/[,(]/)[0].trim() : 'Not set' },
+    habits: [
       { label: 'Long days', value: days.length ? days.join(' · ') : 'Any day' },
       { label: 'Off season', value: formState.off_season_start ? `${month(formState.off_season_start)} – ${month(formState.off_season_end)}` : 'None' },
     ],
@@ -1017,13 +1066,15 @@ const summaryTiles = computed(() => {
         return { label: sport.label, value: statusOptions.find((option) => option.value === status)?.label || 'Allowed', detail: status === 'allowed' ? 'No limits' : modalities[sport.key].reason || 'No reason given', tone: statusTone[status] || 'ok' }
       }),
       {
-        label: 'Protected areas', value: areas.length ? String(areas.length) : 'None',
-        detail: unprotected.length ? `${unprotected.length} active in Recovery, not protected` : areas.length ? areas.map(areaLabel).join(', ') : 'Nothing protected',
-        tone: unprotected.length ? 'warn' : '',
+        label: 'Protected', value: String(activeIssues.value.length + manualAreas.value.length || 'None'),
+        detail: [...activeIssues.value.map((issue) => issue.title), ...manualAreas.value.map(areaLabel)].join(', ') || 'Nothing protected',
+        tone: activeIssues.value.length ? 'warn' : '',
       },
     ],
     strength: [
-      { label: 'Next workout', value: next ? `${next.code} · ${next.title}` : 'None', detail: next ? focusLabel(next.focus_area) : 'Pick one below', tone: next ? 'strength' : '' },
+      rotationState.weekly_slots.length
+        ? { label: 'Every week', value: rotationState.weekly_slots.map((id) => templateById(id)?.code).join(' · '), detail: rotationState.weekly_slots.map((_, index) => slotNames.value[index]).join(' · '), tone: 'strength' }
+        : { label: 'Next workout', value: next ? `${next.code} · ${next.title}` : 'None', detail: next ? focusLabel(next.focus_area) : 'Pick one below', tone: next ? 'strength' : '' },
       { label: 'Last done', value: last ? `${last.code} · ${last.title}` : '—', detail: lastCompletedAt.value ? shortDate(lastCompletedAt.value) : 'Nothing logged yet' },
       { label: 'Bar up to', value: formatKg(barbell.value.maxKg), unit: 'kg', detail: `${formatKg(formState.bar_weight_kg || 20)} kg bar · ${barbell.value.stepKg == null ? 'no' : formatKg(barbell.value.stepKg) + ' kg'} jumps` },
       { label: 'Dumbbells', value: formState.max_dumbbell_kg ? formatKg(formState.max_dumbbell_kg) : 'No limit', unit: formState.max_dumbbell_kg ? 'kg' : '', detail: `Adjusts in ${dumbbellStep.toLowerCase()}` },
@@ -1192,6 +1243,7 @@ function rotationFormFrom(data) {
     continue_across_weeks: rules.continue_across_weeks !== false,
     delay_lower_body_when_running_restricted: rules.delay_lower_body_when_running_restricted !== false,
     prefer_ride_when_run_blocked: rules.prefer_ride_when_run_blocked !== false,
+    weekly_slots: [...(rules.weekly_slots || [])],
   }
 }
 function rotationPayload(formState) {
@@ -1203,6 +1255,7 @@ function rotationPayload(formState) {
           continue_across_weeks: formState.continue_across_weeks,
           delay_lower_body_when_running_restricted: formState.delay_lower_body_when_running_restricted,
           prefer_ride_when_run_blocked: formState.prefer_ride_when_run_blocked,
+          weekly_slots: formState.weekly_slots,
         },
         rotation_state: { next_template_id: formState.next_template_id, pending_template_id: formState.next_template_id },
       },
@@ -1305,6 +1358,13 @@ function monthsFromSeasonRange(start, end) {
 .dumbbell-line .unit-input { width: 110px; }
 .gym-dumbbells .hint { margin: 0; }
 .athlete-card-wide { grid-column: 1 / -1; }
+.slots { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.slot-row { display: grid; grid-template-columns: 96px minmax(180px, 280px) minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface2); }
+.slot-name { color: var(--tone-strength); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.slot-meta { display: flex; gap: 10px; align-items: baseline; color: var(--muted); font-size: 12.5px; }
+.slot-meta em { font-style: normal; color: var(--text-soft); }
+.slot-actions { display: flex; gap: 8px; }
+@media (max-width: 700px) { .slot-row { grid-template-columns: 1fr auto auto; } .slot-name { grid-column: 1 / -1; } .slot-meta { display: none; } }
 .athlete-skeleton { display: grid; gap: 12px; min-height: 260px; }
 .athlete-skeleton .skeleton-block { height: 140px; }
 .athlete-error { display: flex; gap: 12px; align-items: center; }
@@ -1582,8 +1642,6 @@ select:disabled { opacity: 0.5; }
 .athlete-page #body-areas .empty-line { padding: 14px 16px; border: 1px dashed var(--border-strong); border-radius: 14px; }
 .athlete-page .area-row { border-radius: 14px; }
 .athlete-page .issue-list li { padding: 10px 10px 10px 16px; border-radius: 14px; border-style: solid; border-color: var(--border); background: var(--surface2); }
-.athlete-page .issue-list li.is-unprotected { border-color: color-mix(in srgb, var(--warning) 35%, transparent); background: color-mix(in srgb, var(--warning) 7%, var(--surface2)); }
-.athlete-page .issue-list li.is-unprotected .ghost-btn { border-color: color-mix(in srgb, var(--warning) 45%, transparent); color: var(--warning-text); }
 
 /* Strength */
 .athlete-page .rotation-step { border-radius: 18px; }

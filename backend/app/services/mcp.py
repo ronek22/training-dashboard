@@ -474,6 +474,22 @@ MCP_TOOLS = [
         },
     },
     {
+        "name": "get_week_brief",
+        "description": "The week's ordered rules (Safety > Anchor > Block > Outcome > Habit), resolved from injuries, illness, anchor goals, the winter arc block, other goals and habits, with each rule's source and the week's lift slots. Read this first when planning or revising a week and follow it top to bottom",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+            "idempotentHint": True,
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "week_start": {"type": "string", "description": "Monday date YYYY-MM-DD; defaults to the current week"},
+            },
+        },
+    },
+    {
         "name": "preview_minimum_week",
         "description": "Preview the minimum viable week for a plan week without changing it: anchor lifts as short sessions, two easy rides, rest elsewhere, counting what is already done; travel and sick days rest. Returns targets, the proposed days and a diff",
         "annotations": {
@@ -1092,6 +1108,13 @@ def call_mcp_tool(
             day = set_life_load_day(conn, args["date"], list(args.get("tags") or []), args.get("note"))
             data = {"date": args["date"], "day": day}
             message = f"Life load on {args['date']}: {', '.join(day['labels']) if day else 'cleared'}"
+
+        elif name == "get_week_brief":
+            from .week_brief import build_week_brief
+
+            today = datetime.now().date()
+            data = build_week_brief(conn, args.get("week_start") or (today - timedelta(days=today.weekday())).isoformat())
+            message = json.dumps({key: data[key] for key in ("week_start", "headline", "lines", "lifts", "protected_areas")}, indent=2)
 
         elif name in ("preview_minimum_week", "set_minimum_week"):
             from .minimum_week import apply_minimum_week, preview_minimum_week, restore_full_week

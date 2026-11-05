@@ -199,8 +199,9 @@ def validate_daily_state_request(payload: object) -> str:
     return context_key
 
 
-WEEK_BRIEF_GUIDANCE = """get_recent_context includes week_brief: the ordered contract for this_week
-and next_week, already resolved from injuries, illness, anchor goals, the winter
+WEEK_BRIEF_GUIDANCE = """Call get_week_brief with the week you are planning before anything else
+(get_recent_context also carries it as week_brief, but that reply can be cut
+short). The brief is the ordered contract for the week, already resolved from injuries, illness, anchor goals, the winter
 arc block, other goals and habits. Start from the brief of the week you plan and
 follow its rules top to bottom; a higher rule wins (Safety > Anchor > Block >
 Outcome > Habit). A goal marked "waits for a quality block" gets no session this

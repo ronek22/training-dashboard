@@ -9,7 +9,7 @@ from backend.app import db
 from backend.app.models.plans import WeeklyPlan, WeeklyPlanDay, WinterArc
 from backend.app.models.plans import WeeklyPlanAdjustment
 from backend.app.services.plans import adjust_weekly_plan_data, upsert_weekly_plan_data
-from backend.app.services.settings import set_workout_template_settings_for_conn
+from backend.app.services.settings import get_workout_template_settings_for_conn, set_workout_template_settings_for_conn
 from backend.app.services.week_brief import build_week_brief, reconcile_summary, week_brief_context
 from backend.app.services.winter_arc import save_winter_arc
 
@@ -187,6 +187,17 @@ class WeekBriefTests(unittest.TestCase):
         adjust_weekly_plan_data(self.conn, WeeklyPlanAdjustment(week_start=WEEK, effective_from=DATES[0], days=[self.coach_friday()]))
         templates, _ = self.stored_templates()
         self.assertEqual(templates[0], "strength-b")
+
+    def test_plan_workouts_link_to_workout_studio_by_id_and_follow_renames(self):
+        from backend.app.models.strength_workouts import StrengthTemplateInput
+        from backend.app.services.strength_workouts import save_template
+
+        workout = save_template(self.conn, StrengthTemplateInput(name="Workout B · Back + Arms", exercises=[{"exercise_name": "Chin Up", "set_count": 3, "target_reps": 8}]))
+        b = next(t for t in get_workout_template_settings_for_conn(self.conn)["programs"]["strength"]["templates"] if t["id"] == "strength-b")
+        self.assertEqual(b["workout_template_id"], workout["id"], "matched by name once")
+        save_template(self.conn, StrengthTemplateInput(name="Workout B · Upper Pull", exercises=[{"exercise_name": "Chin Up", "set_count": 3, "target_reps": 8}]), workout["id"])
+        b = next(t for t in get_workout_template_settings_for_conn(self.conn)["programs"]["strength"]["templates"] if t["id"] == "strength-b")
+        self.assertEqual((b["display_name"], b["workout_template_id"]), ("Workout B · Upper Pull", workout["id"]))
 
     def test_planner_context_has_this_and_next_week(self):
         context = week_brief_context(self.conn, TODAY)

@@ -149,6 +149,19 @@ class GoalSuggestionsTests(unittest.TestCase):
         self.assertEqual(suggestions.season_template(self.conn, date(2026, 8, 1), OFF_MONTHS), [])
         self.assertEqual(suggestions.season_template(self.conn, TODAY, []), [])
 
+    def test_a_running_winter_arc_owns_weekly_ride_amounts(self):
+        self.winter()
+        with patch.object(suggestions, 'season_template', return_value=suggestions.season_template(self.conn, TODAY, OFF_MONTHS)):
+            before = [item['draft']['metric_type'] for item in suggestions.build_goal_suggestions(self.conn, TODAY)['suggestions']]
+            self.conn.execute("CREATE TABLE IF NOT EXISTS winter_arc_blocks (id INTEGER PRIMARY KEY, start_date TEXT, end_date TEXT, focus TEXT, label TEXT, weekly_hours REAL, ride_mix_json TEXT, lighter_every INTEGER)")
+            self.conn.execute("INSERT INTO winter_arc_blocks (start_date, end_date, focus, label, weekly_hours, ride_mix_json, lighter_every) VALUES ('2026-11-02', '2027-02-28', 'base', 'Base', 4, '{}', 0)")
+            self.conn.commit()
+            after = [item['draft']['metric_type'] for item in suggestions.build_goal_suggestions(self.conn, TODAY)['suggestions']]
+        self.assertIn('ride_km', before)
+        self.assertNotIn('ride_km', after)
+        self.assertTrue(suggestions.arc_owns({'period_type': 'week', 'metric_type': 'quality_sessions', 'activity_type': 'Ride'}))
+        self.assertFalse(suggestions.arc_owns({'period_type': 'week', 'metric_type': 'strength_sessions', 'activity_type': 'WeightTraining'}))
+
     def test_season_without_same_season_history_is_silent(self):
         for week in range(12):
             self.add(date(2026, 7, 6) + timedelta(weeks=week), distance=220)

@@ -159,7 +159,9 @@ def build_phone_today(conn: sqlite3.Connection, today: Optional[date] = None) ->
     strength, _ = _exercises_for(conn, today_day)
     session = brief["today"]
     if session is not None:
-        session = {**session, "sport": sport_of(today_day.get("session_type"), today_day.get("workout_intent")), "fallback": today_day.get("fallback"), "strength": strength}
+        session = {**session, "sport": sport_of(today_day.get("session_type"), today_day.get("workout_intent")), "fallback": today_day.get("fallback"), "strength": strength,
+                   # Why the rules shaped the day ("Week brief: knee protected, so no hard rides").
+                   "rule_reason": today_day.get("planning_rule_reason")}
 
     checkin = get_daily_checkin(conn, today.isoformat()) or {}
     return {

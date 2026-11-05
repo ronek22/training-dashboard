@@ -305,6 +305,10 @@ def save_template(
             template_id = int(cursor.lastrowid)
         else:
             _template_or_404(conn, template_id)
+            # Before the name changes, so a plan workout still matched by name is found.
+            from .settings import rename_linked_workout
+
+            rename_linked_workout(conn, template_id, payload.name)
             conn.execute(
                 "UPDATE strength_workout_templates SET name = ?, notes = ?, updated_at = ? WHERE id = ?",
                 (payload.name, payload.notes, now, template_id),

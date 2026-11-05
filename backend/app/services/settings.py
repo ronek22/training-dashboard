@@ -314,6 +314,8 @@ def _normalize_template(raw_template: dict, fallback_index: int) -> dict:
         "workout_intent": workout_intent,
         "focus_area": focus_area,
         "display_name": None,
+        # The Workout Studio workout this is (strength_workout_templates.id); names can change.
+        "workout_template_id": raw.get("workout_template_id") if isinstance(raw.get("workout_template_id"), int) else None,
     }
     normalized["display_name"] = _template_display_name(normalized)
     return normalized
@@ -412,6 +414,7 @@ def serialize_workout_template_settings_for_storage(settings: dict) -> dict:
                         "session_type": item.get("session_type"),
                         "workout_intent": item.get("workout_intent"),
                         "focus_area": item.get("focus_area"),
+                        "workout_template_id": item.get("workout_template_id"),
                     }
                     for item in program.get("templates", [])
                 ],
@@ -729,12 +732,45 @@ def set_performance_settings_data(payload: dict) -> dict:
 def get_workout_template_settings_for_conn(conn: sqlite3.Connection) -> dict:
     raw_value = get_setting_value(conn, WORKOUT_TEMPLATE_SETTINGS_KEY)
     if not raw_value:
-        return default_workout_template_settings()
+        return _link_workouts(conn, default_workout_template_settings(), save=False)
     try:
         parsed = json.loads(raw_value)
     except json.JSONDecodeError:
         return default_workout_template_settings()
-    return normalize_workout_template_settings(parsed)
+    return _link_workouts(conn, normalize_workout_template_settings(parsed))
+
+
+def _link_workouts(conn: sqlite3.Connection, settings: dict, save: bool = True) -> dict:
+    """Give each plan workout its Workout Studio id, matched by name once and kept from then on."""
+    templates = settings["programs"]["strength"]["templates"]
+    if all(item.get("workout_template_id") for item in templates):
+        return settings
+    try:
+        workouts = {row["name"]: int(row["id"]) for row in conn.execute("SELECT id, name FROM strength_workout_templates")}
+    except sqlite3.OperationalError:
+        return settings
+    changed = False
+    for item in templates:
+        match = workouts.get(item.get("display_name") or "") or workouts.get(item.get("title") or "")
+        if not item.get("workout_template_id") and match:
+            item["workout_template_id"] = match
+            changed = True
+    if changed and save:
+        set_setting_value(conn, WORKOUT_TEMPLATE_SETTINGS_KEY, json.dumps(serialize_workout_template_settings_for_storage(settings)))
+        conn.commit()
+    return settings
+
+
+def rename_linked_workout(conn: sqlite3.Connection, workout_template_id: int, name: str) -> None:
+    """A Workout Studio rename ("Workout B · Upper Pull") renames the plan workout linked to it."""
+    settings = get_workout_template_settings_for_conn(conn)
+    for item in settings["programs"]["strength"]["templates"]:
+        if item.get("workout_template_id") == workout_template_id:
+            label, _, title = name.partition(" · ")
+            item["label"], item["title"] = (label, title) if title else (item["label"], name)
+            item["display_name"] = _template_display_name(item)
+            set_setting_value(conn, WORKOUT_TEMPLATE_SETTINGS_KEY, json.dumps(serialize_workout_template_settings_for_storage(settings)))
+            return
 
 
 def get_workout_template_settings_data() -> dict:

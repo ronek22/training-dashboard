@@ -242,6 +242,7 @@ def _assign_template_to_day(day: dict, template: dict, reason: Optional[str] = N
     enriched = dict(day)
     enriched["template_id"] = template.get("id")
     enriched["template_label"] = template.get("display_name") or template.get("label")
+    enriched["workout_template_id"] = template.get("workout_template_id")
     enriched["template_summary"] = template.get("summary")
     if not enriched.get("workout_intent"):
         enriched["workout_intent"] = template.get("workout_intent")
@@ -278,7 +279,7 @@ def _apply_strength_templates_to_days(
         session_type = normalize_plan_session_type(normalized.get("session_type"))
         if session_type == "WeightTraining" and is_no_equipment_lift(normalized):
             # Bodyweight away from home: no saved workout, and the rotation waits for the gym.
-            for key in ("template_id", "template_label", "template_summary"):
+            for key in ("template_id", "template_label", "template_summary", "workout_template_id"):
                 normalized[key] = None
         elif session_type == "WeightTraining":
             named_template = _workout_template_from_title(template_settings, normalized.get("title"))

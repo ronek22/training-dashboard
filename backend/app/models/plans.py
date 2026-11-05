@@ -34,6 +34,7 @@ class WeeklyPlanDay(BaseModel):
     benchmark_label: Optional[str] = None
     template_id: Optional[str] = None
     template_label: Optional[str] = None
+    workout_template_id: Optional[int] = None
     template_summary: Optional[str] = None
     planning_rule_reason: Optional[str] = None
     title: str

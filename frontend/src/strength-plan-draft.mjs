@@ -87,7 +87,9 @@ export function buildStrengthPlanDraft(day, templates = []) {
     }
   }
   const reducedLower = /2 easy work sets each of squat or leg press,\s*Romanian deadlift,\s*split squat or leg curl,\s*then calves and core/i.test(details)
-  const match = templates.find(template => template.name === day.template_label || template.name === day.title)
+  // By id first (names can change in Workout Studio), then by name for days saved before the link.
+  const match = templates.find(template => day.workout_template_id && template.id === day.workout_template_id)
+    || templates.find(template => template.name === day.template_label || template.name === day.title)
   const trim = reducedLower ? null : trimmedLift(details)
   const loadFactor = reducedLower && /70\s*% of (?:usual|normal) load/i.test(details) ? 0.7 : null
   const guidance = [day.target_duration_min ? `Planned duration: ${day.target_duration_min} min.` : '', details].filter(Boolean).join('\n\n')

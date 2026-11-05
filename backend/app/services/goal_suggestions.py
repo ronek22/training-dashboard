@@ -192,6 +192,22 @@ def _modality(draft: dict) -> Optional[str]:
     return modality_for_goal(draft["metric_type"], draft.get("activity_type"))
 
 
+ARC_RIDE_METRICS = {"ride_km", "zone2_hours", "quality_sessions", "ride_hours", "ride_minutes"}
+
+
+def arc_owns(draft: dict) -> bool:
+    """Weekly ride amounts (km, Z2 hours, quality rides) that the winter arc's blocks already set."""
+    return (draft.get("period_type") == "week" and draft.get("metric_type") in ARC_RIDE_METRICS
+            and draft.get("activity_type") in (None, "Ride", "VirtualRide"))
+
+
+def _arc_running(conn: sqlite3.Connection, today: date) -> bool:
+    try:
+        return conn.execute("SELECT 1 FROM winter_arc_blocks WHERE end_date >= ? LIMIT 1", (today.isoformat(),)).fetchone() is not None
+    except sqlite3.OperationalError:
+        return False
+
+
 def select_suggestions(candidates: list[dict], goals: list[dict], restrictions: dict,
                        decisions: dict, today: date) -> list[dict]:
     occupied = {(goal["metric_type"], goal["period_type"]) for goal in goals
@@ -235,6 +251,9 @@ def build_goal_suggestions(conn: sqlite3.Connection, today: Optional[date] = Non
         candidates.append(weakness)
     candidates.extend(season_template(conn, current, off_months))
     candidates.extend(neglected_modality(conn, current))
+    if _arc_running(conn, current):
+        # The arc sets weekly ride hours and quality rides; a goal for the same would compete with it.
+        candidates = [item for item in candidates if not arc_owns(item["draft"])]
     return {"generated_on": current.isoformat(), "suggestions": select_suggestions(
         candidates, goals, get_modality_restrictions_for_conn(conn), latest_goal_suggestion_decisions(conn), current)}
 

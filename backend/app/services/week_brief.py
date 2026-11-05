@@ -118,11 +118,11 @@ def lift_slots(conn: sqlite3.Connection, protected_areas: set[str]) -> dict:
         template = templates[template_id]
         name = SLOT_NAMES.get(template["focus_area"], "Lift")
         counts[name] = counts.get(name, 0) + 1
-        slot = {"slot": name, "template_id": template_id, "label": template["display_name"], "focus_area": template["focus_area"],
-                "swapped_from": None, "reason": None}
+        slot = {"slot": name, "template_id": template_id, "workout_template_id": template.get("workout_template_id"),
+                "label": template["display_name"], "focus_area": template["focus_area"], "swapped_from": None, "reason": None}
         if template["focus_area"] == "lower" and blocked and spare:
             swap = spare.pop(0)
-            slot.update(template_id=swap["id"], label=swap["display_name"], focus_area=swap["focus_area"],
+            slot.update(template_id=swap["id"], workout_template_id=swap.get("workout_template_id"), label=swap["display_name"], focus_area=swap["focus_area"],
                         swapped_from=template["display_name"], reason=f"{', '.join(blocked).capitalize()} protected")
         slots.append(slot)
     # Number repeated slot names (Upper 1, Upper 2) only when they repeat.
@@ -300,6 +300,7 @@ def fit_week_to_lift_slots(
             "template_id": template["id"],
             "template_label": template["display_name"],
             "template_summary": template.get("summary"),
+            "workout_template_id": template.get("workout_template_id"),
             "workout_intent": template["workout_intent"],
             "title": template["display_name"],
             "details": template.get("summary") or day.get("details"),

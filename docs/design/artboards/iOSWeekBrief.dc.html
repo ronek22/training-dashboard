@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrainLog · iOS · Week brief</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&amp;family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&amp;display=swap" rel="stylesheet">
+<style>
+@font-face{font-family:'Barlow Condensed';font-weight:700;font-style:normal;src:url('../../../ios/TrainLog/Resources/Fonts/BarlowCondensed-Bold.ttf')}
+@font-face{font-family:'Barlow Condensed';font-weight:600;font-style:normal;src:url('../../../ios/TrainLog/Resources/Fonts/BarlowCondensed-SemiBold.ttf')}
+@font-face{font-family:'Barlow Condensed';font-weight:800;font-style:italic;src:url('../../../ios/TrainLog/Resources/Fonts/BarlowCondensed-ExtraBoldItalic.ttf')}
+@font-face{font-family:'Archivo';font-weight:100 900;src:url('../../../ios/TrainLog/Resources/Fonts/Archivo.ttf')}
+body{margin:0;background:#05070A;color:#F3F5F9;font-family:'Archivo',system-ui,sans-serif}
+.num{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;line-height:1}
+.ttl{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;text-transform:uppercase;line-height:.95;letter-spacing:.01em}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8A93A6;font-weight:600}
+.muted{color:#8A93A6} .soft{color:#A3ABBC}
+.canvas{display:flex;flex-wrap:wrap;gap:72px 56px;padding:56px 64px 80px;max-width:2600px;align-items:flex-start}
+.canvas-head{width:100%}
+.frame{display:flex;flex-direction:column;gap:14px}
+.frame-cap{font-size:13px;color:#A3ABBC;max-width:393px;line-height:1.45}
+.frame-cap b{color:#F3F5F9;font-weight:600}
+.phone{width:393px;min-height:852px;border-radius:56px;background:#0A0C11;position:relative;overflow:hidden;box-shadow:0 0 0 10px #171A21,0 0 0 11px #2A2F3A,0 30px 80px rgba(0,0,0,.55);padding-bottom:40px;box-sizing:border-box}
+.phone.fixed{height:852px;padding-bottom:0}
+.fold{position:absolute;left:0;right:0;top:852px;border-top:1px dashed rgba(212,255,58,.35);z-index:25}
+.fold::after{content:'fold · 852 pt';position:absolute;right:14px;top:-18px;font-size:10px;color:rgba(212,255,58,.6);letter-spacing:.1em;text-transform:uppercase}
+.body{padding:6px 16px 0;display:flex;flex-direction:column;gap:12px}
+.card{background:#12151C;border:1px solid #1C212B;border-radius:22px;padding:16px}
+.inset{background:#0E1117;border:1px solid #1C212B;border-radius:14px;padding:10px 12px}
+.row{display:flex;align-items:center;gap:12px}
+.sbw{justify-content:space-between}
+.sep{height:1px;background:#1C212B}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;padding:6px 4px 2px}
+.obtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:999px;border:1px solid #2A303C;color:#F3F5F9;font-size:14px;font-weight:600;box-sizing:border-box}
+.vbtn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:999px;background:#D4FF3A;color:#0A0C11;font-size:16px;font-weight:700}
+.ibtn{width:40px;height:40px;border-radius:50%;background:#12151C;border:1px solid #1C212B;display:flex;align-items:center;justify-content:center;flex:none;box-sizing:border-box}
+.bar{height:6px;border-radius:3px;background:#1F242E;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:3px}
+.d{display:inline-block;width:6px;height:6px;border-radius:50%}
+.it{display:flex;align-items:center;justify-content:space-between;padding:9px 0;font-size:13px}
+.it .g{color:#8A93A6;font-size:12px}
+.notes{width:1240px;background:#12151C;border:1px solid #1C212B;border-radius:28px;padding:32px 36px;box-sizing:border-box}
+.ncols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:36px;margin-top:24px}
+.notes ul{margin:10px 0 0;padding-left:18px;font-size:13px;line-height:1.5;color:#C9CFDA;display:flex;flex-direction:column;gap:8px}
+.notes b{color:#F3F5F9}
+.notes code{font-size:12px;background:#0E1117;padding:1px 5px;border-radius:4px;color:#A3ABBC}
+.num small{font-size:.5em;color:#8A93A6;margin:0 2px 0 1px;font-weight:600}
+.pill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.06em;white-space:nowrap}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:11px;color:#A3ABBC}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.st{flex:1;min-width:0}
+.st .d{vertical-align:1px}
+.yr{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #1C212B}
+.yr.last{border-bottom:0}
+.sic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none;align-self:flex-start;margin-top:2px}
+.pair{display:flex;gap:10px}
+.half{flex:1;min-width:0;padding:14px}
+.stages{display:flex;gap:14px;margin-top:10px;font-size:11px;color:#A3ABBC}
+.stages span{display:inline-flex;align-items:center;gap:5px}
+.stages b{font-size:13px;color:#F3F5F9;margin-left:2px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;box-sizing:border-box}
+.rseg{display:flex;gap:4px;padding-bottom:4px}
+.rseg span{width:44px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#A3ABBC;border:1px solid #2A303C;box-sizing:border-box}
+.rseg span.on{background:#F3F5F9;color:#0A0C11;border-color:#F3F5F9}
+
+ block into the artboard's <helmet> after the shared CSS, and the markup into
+  each .phone. Measured from a simulator screenshot on 2026-11-03; re-measure if the app changes.
+
+  - Tab bar: the system Liquid Glass bar, floating 21 pt from the sides, 62 pt tall, 18 pt above
+    the bottom edge, fully rounded. Selected tab sits in a lighter inner pill, icon and label volt.
+    Five tabs: Today (clock) · Plan (calendar) · Coach (bubbles) · Food (fork and knife) ·
+    Activities (waveform). Content scrolls under it; a short fade sits behind it.
+  - Status bar: time left, Wi-Fi + battery right, Dynamic Island centred.
+-->
+<style>
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000;z-index:40}
+.sb{height:54px;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 50px;font-weight:600;font-size:16px;box-sizing:border-box;position:relative;z-index:35}
+.sb .ic{display:flex;gap:6px;align-items:center}
+.tabfade{position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(to bottom,rgba(10,12,17,0),rgba(10,12,17,.92) 55%);z-index:14;pointer-events:none}
+.tabbar{position:absolute;left:21px;right:21px;bottom:18px;height:62px;border-radius:31px;background:rgba(28,30,36,.94);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 8px 24px rgba(0,0,0,.45);display:flex;align-items:center;padding:0 4px;box-sizing:border-box;z-index:15}
+.tab{flex:1;height:54px;border-radius:27px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;font-weight:600;color:#F3F5F9}
+.tab svg{width:24px;height:24px}
+.tab.on{background:#3E4048;color:#E9F76A}
+.home{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#F3F5F9;z-index:45}
+
+ block into the artboard's <helmet> after the shared CSS, and the markup into
+  each .phone. Measured from a simulator screenshot on 2026-11-03; re-measure if the app changes.
+
+  - Tab bar: the system Liquid Glass bar, floating 21 pt from the sides, 62 pt tall, 18 pt above
+    the bottom edge, fully rounded. Selected tab sits in a lighter inner pill, icon and label volt.
+    Five tabs: Today (clock) · Plan (calendar) · Coach (bubbles) · Food (fork and knife) ·
+    Activities (waveform). Content scrolls under it; a short fade sits behind it.
+  - Status bar: time left, Wi-Fi + battery right, Dynamic Island centred.
+-->
+<style>
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000;z-index:40}
+.sb{height:54px;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 50px;font-weight:600;font-size:16px;box-sizing:border-box;position:relative;z-index:35}
+.sb .ic{display:flex;gap:6px;align-items:center}
+.tabfade{position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(to bottom,rgba(10,12,17,0),rgba(10,12,17,.92) 55%);z-index:14;pointer-events:none}
+.tabbar{position:absolute;left:21px;right:21px;bottom:18px;height:62px;border-radius:31px;background:rgba(28,30,36,.94);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 8px 24px rgba(0,0,0,.45);display:flex;align-items:center;padding:0 4px;box-sizing:border-box;z-index:15}
+.tab{flex:1;height:54px;border-radius:27px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;font-weight:600;color:#F3F5F9}
+.tab svg{width:24px;height:24px}
+.tab.on{background:#3E4048;color:#E9F76A}
+.home{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#F3F5F9;z-index:45}
+
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:50}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#161A22;border-radius:34px 34px 0 0;z-index:60;padding:8px 20px 34px;box-sizing:border-box;display:flex;flex-direction:column}
+.grab{width:36px;height:5px;border-radius:3px;background:#3A404C;margin:0 auto 10px}
+.shead{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.x{width:32px;height:32px;border-radius:50%;background:#232835;display:flex;align-items:center;justify-content:center;flex:none}
+.strip{display:flex;gap:6px}
+.sd{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 0 7px;border-radius:12px;box-sizing:border-box;border:1px solid transparent;position:relative}
+.sd .w{font-size:10px;font-weight:600;letter-spacing:.1em;color:#8A93A6}
+.sd .n{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;line-height:1;color:#F3F5F9}
+.sd .slot{width:18px;height:58px;border-radius:5px;background:#1A1E27;display:flex;align-items:flex-end;overflow:hidden}
+.sd .slot i{display:block;width:100%;border-radius:5px}
+.sd .m{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:12px;color:#A3ABBC;line-height:1;height:12px}
+.sd.ghost .slot{background:transparent;border:1.5px dashed #2A303C;box-sizing:border-box}
+.sd.past{opacity:.38}
+.sd.today .w{color:#D4FF3A}
+.sd.today .n{color:#D4FF3A}
+.sd.chg{border-color:#D4FF3A;background:rgba(212,255,58,.06)}
+.sd.tap{border-color:#3A404C;background:#1C212B}
+.sd .tag{position:absolute;top:-7px;right:2px;font-size:10px;width:16px;height:16px;border-radius:50%;background:#232835;display:flex;align-items:center;justify-content:center;color:#A3ABBC}
+.pulse i{background:linear-gradient(#232835,#232835)!important}
+.field{background:#0E1117;border:1px solid #1C212B;border-radius:16px;padding:12px 14px;font-size:15px;line-height:1.4;color:#F3F5F9;min-height:92px;box-sizing:border-box}
+.field .ph{color:#6B7385}
+.caret{display:inline-block;width:2px;height:18px;background:#D4FF3A;vertical-align:-3px;margin-left:1px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px solid #2A303C;font-size:13px;font-weight:500;color:#C9CFDA;box-sizing:border-box;white-space:nowrap}
+.chip b{color:#8A93A6;font-weight:600}
+.foot{font-size:12px;color:#8A93A6;text-align:center;line-height:1.4}
+.vbtn.off{background:#232835;color:#6B7385}
+.chg-list .it{justify-content:flex-start;padding:11px 0;border-top:1px solid #1C212B;align-items:flex-start;gap:12px}
+.chg-list .it:first-child{border-top:0}
+.dk{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;width:32px;flex:none;color:#F3F5F9;line-height:1.3}
+.was{color:#6B7385;text-decoration:line-through;text-decoration-color:#3A404C;font-size:12px}
+.now{color:#F3F5F9;font-size:14px;font-weight:600;margin-top:2px}
+.spin{width:18px;height:18px;border-radius:50%;border:2px solid #2A303C;border-top-color:#D4FF3A;box-sizing:border-box;flex:none}
+.prow{display:flex;align-items:center;gap:12px;padding:14px 4px 6px}
+.row-list{background:#12151C;border:1px solid #1C212B;border-radius:22px;padding:0 16px}
+.pr{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #1C212B}
+.pr:last-child{border-bottom:0}
+.pr .dd{width:34px;text-align:center;flex:none}
+.pr .dd .w{font-size:10px;letter-spacing:.12em;font-weight:600;color:#8A93A6}
+.pr .dd .n{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;line-height:1.05}
+.pr .vb{width:4px;height:38px;border-radius:2px;flex:none}
+.pr .t{font-size:16px;font-weight:600;color:#F3F5F9}
+.pr .s{font-size:13px;color:#8A93A6;margin-top:2px}
+.pr .ring{width:28px;height:28px;border-radius:50%;box-sizing:border-box;flex:none;margin-left:auto}
+.hb{width:40px;height:40px;border-radius:50%;border:1px solid #2A303C;display:flex;align-items:center;justify-content:center;box-sizing:border-box;flex:none}
+.board{width:393px;background:#0A0C11;border:1px solid #1C212B;border-radius:28px;padding:20px 16px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px}
+.scn .why{font-size:12px;color:#8A93A6;margin-top:8px;line-height:1.4}
+.scn{padding-bottom:4px}
+.state{background:#161A22;border:1px solid #1C212B;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px}
+</style>
+
+<style>
+.tape{display:flex;gap:6px;align-items:center}
+.tape .blk{display:flex;gap:2px;align-items:center}
+.tape i{display:block;flex:1;height:8px;border-radius:2px;background:#232835}
+.tape i.l{height:4px}
+.tape i.p{background:#3B8CFF;opacity:.55}
+.tape i.c{background:#D4FF3A;opacity:1}
+.tape i.dash{background:transparent;border:1px dashed #2A303C;box-sizing:border-box;height:8px}
+.tape.big i{height:14px;border-radius:3px}
+.tape.big i.l{height:7px}
+.arc{padding:2px 4px 0}
+.arc .t{display:flex;align-items:baseline;justify-content:space-between;font-size:13px;color:#8A93A6;margin-bottom:8px}
+.arc .t b{color:#F3F5F9;font-weight:600}
+.arc .t .chev{color:#6B7385;font-size:12px}
+.stl{display:flex;align-items:center;gap:8px;font-size:13px;color:#A3ABBC;margin-top:10px}
+.stl b{color:#F3F5F9;font-weight:600}
+.pips{display:flex;gap:3px;flex:none}
+.pips i{width:12px;height:4px;border-radius:2px;background:#232835;display:block}
+.pips i.on{background:#FF4D9A}
+.chiprow{display:flex;gap:8px;margin-top:12px}
+.tagc{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;background:#1A1E27;font-size:12px;font-weight:600;color:#C9CFDA;white-space:nowrap}
+.tagc .vb{width:3px;height:12px;border-radius:2px}
+.blabels{display:flex;gap:6px;margin-top:6px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:#6B7385}
+.blabels span{white-space:nowrap;overflow:hidden}
+.blabels .on{color:#F3F5F9}
+.brow{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid #1C212B}
+.brow:first-child{border-top:0}
+.brow .vb{width:4px;height:34px;border-radius:2px;flex:none;margin-top:2px}
+.brow .h{font-size:15px;font-weight:600;color:#F3F5F9}
+.brow .s{font-size:12px;color:#8A93A6;margin-top:3px;line-height:1.35}
+.brow .r{margin-left:auto;text-align:right;font-size:12px;color:#8A93A6;white-space:nowrap}
+.mark{outline:1px dashed rgba(212,255,58,.45);outline-offset:6px;border-radius:6px}
+</style>
+
+<style>
+.rules{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.rl{display:flex;gap:10px;align-items:flex-start}
+.rl .rail{width:3px;align-self:stretch;border-radius:2px;flex:none}
+.rl .k{font-size:10px;letter-spacing:.14em;font-weight:700;text-transform:uppercase;line-height:1.2}
+.rl .v{font-size:13px;color:#C9CFDA;line-height:1.38;margin-top:2px}
+.rl .v b{color:#F3F5F9;font-weight:600}
+.slots{display:flex;gap:6px;margin-top:6px}
+.sl{flex:1;min-width:0;height:30px;border-radius:9px;border:1.5px solid rgba(255,77,154,.55);display:flex;align-items:center;gap:6px;padding:0 8px;box-sizing:border-box;font-size:12px;color:#F3F5F9;font-weight:600;white-space:nowrap;overflow:hidden}
+.sl .c{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;color:#FF6FAE}
+.sl .n{color:#A3ABBC;font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.sl.done{background:#FF4D9A;border-color:#FF4D9A}.sl.done .c,.sl.done .n{color:#0A0C11}
+.sl.swap{border-style:dashed}
+.ticks{display:flex;gap:4px;margin-top:6px;align-items:center}
+.ticks i{display:block;height:8px;border-radius:2px;background:#1F242E;border:1.5px solid rgba(59,140,255,.6);box-sizing:border-box}
+.ticks i.done{background:#3B8CFF;border-color:#3B8CFF}
+.ticks .m{font-size:12px;color:#8A93A6;margin-left:6px;white-space:nowrap}
+.more{font-size:13px;color:#8A93A6;margin-top:12px;display:flex;justify-content:space-between;align-items:baseline}
+.more b{color:#F3F5F9;font-weight:600}
+.cue{display:flex;gap:6px;flex-wrap:nowrap;margin-top:10px;overflow:hidden}
+.cue span{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;background:#1A1E27;font-size:12px;font-weight:600;color:#C9CFDA;white-space:nowrap}
+.cue span i{width:6px;height:6px;border-radius:50%;display:block}
+.br{display:flex;gap:12px;padding:12px 0;border-top:1px solid #1C212B;align-items:flex-start}
+.br:first-child{border-top:0}
+.br .pk{width:62px;flex:none;font-size:10px;letter-spacing:.12em;font-weight:700;text-transform:uppercase;padding-top:2px}
+.br .tx{font-size:14px;color:#F3F5F9;line-height:1.38}
+.br .src{font-size:12px;color:#8A93A6;margin-top:3px}
+.br.low .tx{color:#C9CFDA}
+.board .state{padding:12px}.board .state .card{padding:12px}.board .sl{padding:0 6px;gap:4px}
+</style>
+</helmet>
+<div class="canvas"><div class="canvas-head"><div class="lbl">TrainLog Pocket · iOS · artboard</div><div class="ttl" style="font-size:56px;margin-top:6px">Week brief on Plan</div><div class="soft" style="font-size:15px;margin-top:10px;max-width:960px;line-height:1.5"><b style="color:#F3F5F9">Critique:</b> Plan's week card leads with the coach's prose, which is cut to one line and can contradict the rules that actually shape the week. Progress (3 of 7, a bar) repeats what the rows already tick off. What's missing is the <i>why</i>: the knee swap, the Z2-only block, the fixed lift slots. <b style="color:#F3F5F9">Signature visual:</b> the rules as coloured rails, with the lift slots and ride ticks that fill as the week goes, so the contract and the progress are one picture.</div></div>
+<div class="frame"><div class="lbl">00 · Plan next week (before)</div><div class="phone fixed"><div class="island"></div>
+<div class="sb"><span>15:13</span><span class="ic"><svg width="17" height="12" viewBox="0 0 17 12" fill="#F3F5F9"><path d="M8.5 2.2c2.3 0 4.4.9 6 2.4l1.2-1.2A10.2 10.2 0 0 0 8.5.5 10.2 10.2 0 0 0 1.3 3.4l1.2 1.2a8.5 8.5 0 0 1 6-2.4zm0 3.4c1.4 0 2.6.5 3.6 1.4l1.2-1.2a6.8 6.8 0 0 0-9.6 0L4.9 7a5.1 5.1 0 0 1 3.6-1.4zm0 3.4c.5 0 .9.2 1.2.5L8.5 10.7 7.3 9.5c.3-.3.7-.5 1.2-.5z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="19" height="8" rx="2" fill="#F3F5F9"/><rect x="25" y="4.5" width="1.6" height="4" rx=".8" fill="#8A93A6"/></svg></span></div>
+<div class="body"><div class="hdr" style="align-items:center;padding-top:14px"><div><div class="lbl">Week 46 · Nov 9 – 15</div><div class="ttl" style="font-size:44px;margin-top:4px">Plan</div></div><div class="row" style="gap:8px;margin-top:18px"><span class="hb" style="width:44px;height:44px;color:#D4FF3A">✦</span><span class="hb" style="width:44px;height:44px">‹</span><span class="hb" style="width:44px;height:44px">›</span></div></div><div class="arc"><div class="t"><span><b>Base</b> · week 1 of 5</span><span>4 weeks left <span class="chev">›</span></span></div><div class="tape"><div class="blk" style="flex:5"><i class="c"></i><i></i><i></i><i class="l"></i><i></i></div><div class="blk" style="flex:6"><i></i><i></i><i class="l"></i><i></i><i></i><i class="l"></i></div><div class="blk" style="flex:3"><i></i><i></i><i class="l"></i></div><div class="blk" style="flex:2"><i></i><i></i></div></div></div><div class="card"><div class="ttl" style="font-size:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Base wk 1/5: Z2 volume, upper lifts…</div><div style="font-size:13px;color:#8A93A6;margin-top:5px;line-height:1.4">Three upper-body lifts while the left knee is protected, three easy Z2 rides building to 3.5 h, rehab on Thursday.</div><div class="row sbw" style="margin-top:12px;align-items:baseline"><span style="font-size:13px;color:#A3ABBC"><b style="color:#F3F5F9">0</b> of 7 done</span><span><span class="num" style="font-size:20px">0m</span><span style="font-size:12px;color:#8A93A6"> of 5h 50m</span></span></div><div class="bar" style="margin-top:8px"></div></div><div class="row-list"><div class="pr"><div class="dd"><div class="w">MON</div><div class="n">9</div></div><span class="vb" style="background:#FF4D9A"></span><div style="min-width:0"><div class="t">Workout A · Upper Press</div><div class="s">Upper-body strength · 55 min</div></div><span class="ring" style="border:2px solid #7A2E52"></span></div><div class="pr"><div class="dd"><div class="w">TUE</div><div class="n">10</div></div><span class="vb" style="background:#3B8CFF"></span><div style="min-width:0"><div class="t">Z2 endurance ride 70 min</div><div class="s">Easy · 70 min</div></div><span class="ring" style="border:2px solid #24477A"></span></div><div class="pr"><div class="dd"><div class="w">WED</div><div class="n">11</div></div><span class="vb" style="background:#FF4D9A"></span><div style="min-width:0"><div class="t">Workout C · Wide Shoulders</div><div class="s">Upper-body strength · 55 min</div></div><span class="ring" style="border:2px solid #7A2E52"></span></div><div class="pr"><div class="dd"><div class="w">THU</div><div class="n">12</div></div><span class="vb" style="background:#2ED3B0"></span><div style="min-width:0"><div class="t">Rehab: left knee</div><div class="s">Recovery · 25 min</div></div><span class="ring" style="border:2px solid #1E6B5C"></span></div><div class="pr"><div class="dd"><div class="w">FRI</div><div class="n">13</div></div><span class="vb" style="background:#FF4D9A"></span><div style="min-width:0"><div class="t">Workout B · Upper Pull</div><div class="s">Upper-body strength · 55 min</div></div><span class="ring" style="border:2px solid #7A2E52"></span></div><div class="pr"><div class="dd"><div class="w">SAT</div><div class="n">14</div></div><span class="vb" style="background:#3B8CFF"></span><div style="min-width:0"><div class="t">Long Z2 ride 90 min</div><div class="s">Long · 90 min</div></div><span class="ring" style="border:2px solid #24477A"></span></div><div class="pr"><div class="dd"><div class="w">SUN</div><div class="n">15</div></div><span class="vb" style="background:#3B8CFF"></span><div style="min-width:0"><div class="t">Easy Z2 ride 50 min</div><div class="s">Easy · 50 min</div></div><span class="ring" style="border:2px solid #24477A"></span></div></div></div>
+<div class="tabfade"></div>
+<div class="tabbar">
+<div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M12 6.5V12h4" stroke="#3E4048" stroke-width="2" stroke-linecap="round" fill="none"/></svg>Today</div>
+<div class="tab on"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="18" height="17" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 8.5h18" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="12.5" r="1.1"/><circle cx="12" cy="12.5" r="1.1"/><circle cx="16" cy="12.5" r="1.1"/><circle cx="8" cy="16.5" r="1.1"/><circle cx="12" cy="16.5" r="1.1"/><circle cx="16" cy="16.5" r="1.1"/></svg>Plan</div>
+<div class="tab"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 4.5A2.5 2.5 0 0 1 5 2h9a2.5 2.5 0 0 1 2.5 2.5v6A2.5 2.5 0 0 1 14 13H7.5l-3.5 3v-3.2a2.5 2.5 0 0 1-1.5-2.3z"/><path d="M18 7h1a2.5 2.5 0 0 1 2.5 2.5v6a2.5 2.5 0 0 1-1.5 2.3V21l-3.5-3H11a2.5 2.5 0 0 1-2.5-2.5V15H14a4 4 0 0 0 4-4z"/></svg>Coach</div>
+<div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2.5v7a2.5 2.5 0 0 0 5 0v-7M8.5 2.5v19M17.5 21.5v-19c-2.5 1.5-3.5 5-3.5 8.5h3.5"/></svg>Food</div>
+<div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12.5h4.5l2.5-7 5 13 2.5-6H22"/></svg>Activities</div>
+</div>
+<div class="home"></div></div><div class="frame-cap"><b>What's there.</b> The hero is the coach's prose, cut off at one line, and it can disagree with the rules (last week it promised a sweet-spot ride in a Base week). Nothing says Workout C is standing in for the leg day, or why every ride is Z2. The rules exist on the web only.</div></div><div class="frame"><div class="lbl">01 · A · Rules in the week card (recommended)</div><div class="phone fixed"><div class="island"></div>
+<div class="sb"><span>15:13</span><span class="ic"><svg width="17" height="12" viewBox="0 0 17 12" fill="#F3F5F9"><path d="M8.5 2.2c2.3 0 4.4.9 6 2.4l1.2-1.2A10.2 10.2 0 0 0 8.5.5 10.2 10.2 0 0 0 1.3 3.4l1.2 1.2a8.5 8.5 0 0 1 6-2.4zm0 3.4c1.4 0 2.6.5 3.6 1.4l1.2-1.2a6.8 6.8 0 0 0-9.6 0L4.9 7a5.1 5.1 0 0 1 3.6-1.4zm0 3.4c.5 0 .9.2 1.2.5L8.5 10.7 7.3 9.5c.3-.3.7-.5 1.2-.5z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="19" height="8" rx="2" fill="#F3F5F9"/><rect x="25" y="4.5" width="1.6" height="4" rx=".8" fill="#8A93A6"/></svg></span></div>
+<div class="body"><div class="hdr" style="align-items:center;padding-top:14px"><div><div class="lbl">Week 46 · Nov 9 – 15</div><div class="ttl" style="font-size:44px;margin-top:4px">Plan</div></div><div class="row" style="gap:8px;margin-top:18px"><span class="hb" style="width:44px;height:44px;color:#D4FF3A">✦</span><span class="hb" style="width:44px;height:44px">‹</span><span class="hb" style="width:44px;height:44px">›</span></div></div><div class="arc"><div class="t"><span><b>Base</b> · week 1 of 5</span><span>4 weeks left <span class="chev">›</span></span></div><div class="tape"><div class="blk" style="flex:5"><i class="c"></i><i></i><i></i><i class="l"></i><i></i></div><div class="blk" style="flex:6"><i></i><i></i><i class="l"></i><i></i><i></i><i class="l"></i></div><div class="blk" style="flex:3"><i></i><i></i><i class="l"></i></div><div class="blk" style="flex:2"><i></i><i></i></div></div></div><div class="card"><div class="ttl" style="font-size:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Base wk 1/5: Z2 volume, upper lifts…</div>
+<div class="rules">
+<div class="rl"><span class="rail" style="background:#FF8A8A"></span><div style="min-width:0;flex:1"><div class="k" style="color:#FF8A8A">Safety</div><div class="v"><b>Left knee</b> · no lower-body lifts, rides easy and flat</div></div></div>
+<div class="rl"><span class="rail" style="background:#FF6FAE"></span><div style="min-width:0;flex:1"><div class="k" style="color:#FF6FAE">Lift 3× · anchor</div><div class="slots"><span class="sl "><span class="c">A</span><span class="n">Upper Press</span></span><span class="sl swap"><span class="c">C</span><span class="n">for D · knee</span></span><span class="sl "><span class="c">B</span><span class="n">Upper Pull</span></span></div></div></div>
+<div class="rl"><span class="rail" style="background:#6EA9FF"></span><div style="min-width:0;flex:1"><div class="k" style="color:#6EA9FF">Base · rides</div><div class="ticks"><i class="" style="width:60px"></i><i class="" style="width:78px"></i><i class="" style="width:43px"></i><span class="m">3× Z2 · 3.5 h · no SS / VO2</span></div></div></div>
+</div>
+<div class="more"><span>3 more rules <span style="color:#6B7385">›</span></span><span><span class="num" style="font-size:20px;color:#F3F5F9">0m</span><span style="font-size:12px"> of 5h 50m</span></span></div></div><div class="row-list"><div class="pr"><div class="dd"><div class="w">MON</div><div class="n">9</div></div><span class="vb" style="background:#FF4D9A"></span><div style="min-width:0"><div class="t">Workout A · Upper Press</div><div class="s">Upper-body strength · 55 min</div></div><span class="ring" style="border:2px solid #7A2E52"></span></div><div class="pr"><div class="dd"><div class="w">TUE</div><div class="n">10</div></div><span class="vb" style="background:#3B8CFF"></span><div style="min-width:0"><div class="t">Z2 endurance ride 70 min</div><div class="s">Easy · 70 min</div></div><span class="ring" style="border:2px solid #24477A"></span></div><div class="pr"><div class="dd"><div class="w">WED</div><div class="n">11</div></div><span class="vb" style="background:#FF4D9A"></span><div style="min-width:0"><div class="t">Workout C · Wide Shoulders</div><div class="s">Upper-body strength · 55 min</div></div><span class="ring" style="border:2px solid #7A2E52"></span></div><div class="pr"><div class="dd"><div class="w">THU</div><div class="n">12</div></div><span class="vb" style="background:#2ED3B0"></span><div style="min-width:0"><div class="t">Rehab: left knee</div><div class="s">Recovery · 25 min</div></div><span class="ring" style="border:2px solid #1E6B5C"></span></div><div class="pr"><div class="dd"><div class="w">FRI</div><div class="n">13</div></div><span class="vb" style="background:#FF4D9A"></span><div style="min-width:0"><div class="t">Workout B · Upper Pull</div><div class="s">Upper-body strength · 55 min</div></div><span class="ring" style="border:2px solid #7A2E52"></span></div><div class="pr"><div class="dd"><div class="w">SAT</div><div class="n">14</div></div><span class="vb" style="background:#3B8CFF"></span><div style="min-width:0"><div class="t">Long Z2 ride 90 min</div><div class="s">Long · 90 min</div></div><span class="ring" style="border:2px solid #24477A"></span></div><div class="pr"><div class="dd"><div class="w">SUN</div><div class="n">15</div></div><span class="vb" style="background:#3B8CFF"></span><div style="min-width:0"><div class="t">Easy Z2 ride 50 min</div><div class="s">Easy · 50 min</div></div><span class="ring" style="border:2px solid #24477A"></span></div></div></div>
+<div class="tabfade"></div>
+<div class="tabbar">
+<div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M12 6.5V12h4" stroke="#3E4048" stroke-width="2" stroke-linecap="round" fill="none"/></svg>Today</div>
+<div class="tab on"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="18" height="17" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 8.5h18" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="12.5" r="1.1"/><circle cx="12" cy="12.5" r="1.1"/><circle cx="16" cy="12.5" r="1.1"/><circle cx="8" cy="16.5" r="1.1"/><circle cx="12" cy="16.5" r="1.1"/><circle cx="16" cy="16.5" r="1.1"/></svg>Plan</div>
+<div class="tab"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 4.5A2.5 2.5 0 0 1 5 2h9a2.5 2.5 0 0 1 2.5 2.5v6A2.5 2.5 0 0 1 14 13H7.5l-3.5 3v-3.2a2.5 2.5 0 0 1-1.5-2.3z"/><path d="M18 7h1a2.5 2.5 0 0 1 2.5 2.5v6a2.5 2.5 0 0 1-1.5 2.3V21l-3.5-3H11a2.5 2.5 0 0 1-2.5-2.5V15H14a4 4 0 0 0 4-4z"/></svg>Coach</div>
+<div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2.5v7a2.5 2.5 0 0 0 5 0v-7M8.5 2.5v19M17.5 21.5v-19c-2.5 1.5-3.5 5-3.5 8.5h3.5"/></svg>Food</div>
+<div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12.5h4.5l2.5-7 5 13 2.5-6H22"/></svg>Activities</div>
+</div>
+<div class="home"></div></div><div class="frame-cap"><b>The hero becomes the week's contract.</b> The three rules that shape the week, in their order, each in its colour: safety, the lift slots (the dashed one stands in for the protected leg) and the block's rides as ticks sized by length. Slots and ticks fill as you train, so the old progress bar goes; the time stays. The coach's summary moves into the sheet. "3 more rules" → 03.</div></div><div class="frame"><div class="lbl">02 · B · Cue chips under the arc strip</div><div class="phone fixed"><div class="island"></div>
+<div class="sb"><span>15:13</span><span class="ic"><svg width="17" height="12" viewBox="0 0 17 12" fill="#F3F5F9"><path d="M8.5 2.2c2.3 0 4.4.9 6 2.4l1.2-1.2A10.2 10.2 0 0 0 8.5.5 10.2 10.2 0 0 0 1.3 3.4l1.2 1.2a8.5 8.5 0 0 1 6-2.4zm0 3.4c1.4 0 2.6.5 3.6 1.4l1.2-1.2a6.8 6.8 0 0 0-9.6 0L4.9 7a5.1 5.1 0 0 1 3.6-1.4zm0 3.4c.5 0 .9.2 1.2.5L8.5 10.7 7.3 9.5c.3-.3.7-.5 1.2-.5z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="19" height="8" rx="2" fill="#F3F5F9"/><rect x="25" y="4.5" width="1.6" height="4" rx=".8" fill="#8A93A6"/></svg></span></div>
+<div class="body"><div class="hdr" style="align-items:center;padding-top:14px"><div><div class="lbl">Week 46 · Nov 9 – 15</div><div class="ttl" style="font-size:44px;margin-top:4px">Plan</div></div><div class="row" style="gap:8px;margin-top:18px"><span class="hb" style="width:44px;height:44px;color:#D4FF3A">✦</span><span class="hb" style="width:44px;height:44px">‹</span><span class="hb" style="width:44px;height:44px">›</span></div></div><div class="arc"><div class="t"><span><b>Base</b> · week 1 of 5</span><span>4 weeks left <span class="chev">›</span></span></div><div class="tape"><div class="blk" style="flex:5"><i class="c"></i><i></i><i></i><i class="l"></i><i></i></div><div class="blk" style="flex:6"><i></i><i></i><i class="l"></i><i></i><i></i><i class="l"></i></div><div class="blk" style="flex:3"><i></i><i></i><i class="l"></i></div><div class="blk" style="flex:2"><i></i><i></i></div></div><div class="cue"><span><i style="background:#FF8A8A"></i>Knee protected</span><span><i style="background:#FF6FAE"></i>A · C · B</span><span><i style="background:#6EA9FF"></i>Z2 only</span></div></div><div class="card"><div class="ttl" style="font-size:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Base wk 1/5: Z2 volume, upper lifts…</div><div style="font-size:13px;color:#8A93A6;margin-top:5px;line-height:1.4">Three upper-body lifts while the left knee is protected, three easy Z2 rides building to 3.5 h, rehab on Thursday.</div><div class="row sbw" style="margin-top:12px;align-items:baseline"><span style="font-size:13px;color:#A3ABBC"><b style="color:#F3F5F9">0</b> of 7 done</span><span><span class="num" style="font-size:20px">0m</span><span style="font-size:12px;color:#8A93A6"> of 5h 50m</span></span></div><div class="bar" style="margin-top:8px"></div></div><div class="row-list"><div class="pr"><div class="dd"><div class="w">MON</div><div class="n">9</div></div><span class="vb" style="background:#FF4D9A"></span><div style="min-width:0"><div class="t">Workout A · Upper Press</div><div class="s">Upper-body strength · 55 min</div></div><span class="ring" style="border:2px solid #7A2E52"></span></div><div class="pr"><div class="dd"><div class="w">TUE</div><div class="n">10</div></div><span class="vb" style="background:#3B8CFF"></span><div style="min-width:0"><div class="t">Z2 endurance ride 70 min</div><div class="s">Easy · 70 min</div></div><span class="ring" style="border:2px solid #24477A"></span></div><div class="pr"><div class="dd"><div class="w">WED</div><div class="n">11</div></div><span class="vb" style="background:#FF4D9A"></span><div style="min-width:0"><div class="t">Workout C · Wide Shoulders</div><div class="s">Upper-body strength · 55 min</div></div><span class="ring" style="border:2px solid #7A2E52"></span></div><div class="pr"><div class="dd"><div class="w">THU</div><div class="n">12</div></div><span class="vb" style="background:#2ED3B0"></span><div style="min-width:0"><div class="t">Rehab: left knee</div><div class="s">Recovery · 25 min</div></div><span class="ring" style="border:2px solid #1E6B5C"></span></div><div class="pr"><div class="dd"><div class="w">FRI</div><div class="n">13</div></div><span class="vb" style="background:#FF4D9A"></span><div style="min-width:0"><div class="t">Workout B · Upper Pull</div><div class="s">Upper-body strength · 55 min</div></div><span class="ring" style="border:2px solid #7A2E52"></span></div><div class="pr"><div class="dd"><div class="w">SAT</div><div class="n">14</div></div><span class="vb" style="background:#3B8CFF"></span><div style="min-width:0"><div class="t">Long Z2 ride 90 min</div><div class="s">Long · 90 min</div></div><span class="ring" style="border:2px solid #24477A"></span></div><div class="pr"><div class="dd"><div class="w">SUN</div><div class="n">15</div></div><span class="vb" style="background:#3B8CFF"></span><div style="min-width:0"><div class="t">Easy Z2 ride 50 min</div><div class="s">Easy · 50 min</div></div><span class="ring" style="border:2px solid #24477A"></span></div></div></div>
+<div class="tabfade"></div>
+<div class="tabbar">
+<div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M12 6.5V12h4" stroke="#3E4048" stroke-width="2" stroke-linecap="round" fill="none"/></svg>Today</div>
+<div class="tab on"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="18" height="17" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 8.5h18" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="12.5" r="1.1"/><circle cx="12" cy="12.5" r="1.1"/><circle cx="16" cy="12.5" r="1.1"/><circle cx="8" cy="16.5" r="1.1"/><circle cx="12" cy="16.5" r="1.1"/><circle cx="16" cy="16.5" r="1.1"/></svg>Plan</div>
+<div class="tab"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 4.5A2.5 2.5 0 0 1 5 2h9a2.5 2.5 0 0 1 2.5 2.5v6A2.5 2.5 0 0 1 14 13H7.5l-3.5 3v-3.2a2.5 2.5 0 0 1-1.5-2.3z"/><path d="M18 7h1a2.5 2.5 0 0 1 2.5 2.5v6a2.5 2.5 0 0 1-1.5 2.3V21l-3.5-3H11a2.5 2.5 0 0 1-2.5-2.5V15H14a4 4 0 0 0 4-4z"/></svg>Coach</div>
+<div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2.5v7a2.5 2.5 0 0 0 5 0v-7M8.5 2.5v19M17.5 21.5v-19c-2.5 1.5-3.5 5-3.5 8.5h3.5"/></svg>Food</div>
+<div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12.5h4.5l2.5-7 5 13 2.5-6H22"/></svg>Activities</div>
+</div>
+<div class="home"></div></div><div class="frame-cap"><b>Three cues under the arc, details behind a tap.</b> The smallest change: the strip gains a chip line (safety, lift slots, ride rule) and the hero stays as it is. Cheaper, but the coach's prose stays the main story and still can contradict the chips, and progress and rules live in two places.</div></div><div class="frame"><div class="lbl">03 · Week brief sheet</div><div class="phone fixed"><div class="island"></div>
+<div class="sb"><span>15:13</span><span class="ic"><svg width="17" height="12" viewBox="0 0 17 12" fill="#F3F5F9"><path d="M8.5 2.2c2.3 0 4.4.9 6 2.4l1.2-1.2A10.2 10.2 0 0 0 8.5.5 10.2 10.2 0 0 0 1.3 3.4l1.2 1.2a8.5 8.5 0 0 1 6-2.4zm0 3.4c1.4 0 2.6.5 3.6 1.4l1.2-1.2a6.8 6.8 0 0 0-9.6 0L4.9 7a5.1 5.1 0 0 1 3.6-1.4zm0 3.4c.5 0 .9.2 1.2.5L8.5 10.7 7.3 9.5c.3-.3.7-.5 1.2-.5z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="#8A93A6"/><rect x="2.5" y="2.5" width="19" height="8" rx="2" fill="#F3F5F9"/><rect x="25" y="4.5" width="1.6" height="4" rx=".8" fill="#8A93A6"/></svg></span></div>
+<div class="body"><div class="hdr" style="align-items:center;padding-top:14px"><div><div class="lbl">Week 46 · Nov 9 – 15</div><div class="ttl" style="font-size:44px;margin-top:4px">Plan</div></div><div class="row" style="gap:8px;margin-top:18px"><span class="hb" style="width:44px;height:44px;color:#D4FF3A">✦</span><span class="hb" style="width:44px;height:44px">‹</span><span class="hb" style="width:44px;height:44px">›</span></div></div><div class="arc"><div class="t"><span><b>Base</b> · week 1 of 5</span><span>4 weeks left <span class="chev">›</span></span></div><div class="tape"><div class="blk" style="flex:5"><i class="c"></i><i></i><i></i><i class="l"></i><i></i></div><div class="blk" style="flex:6"><i></i><i></i><i class="l"></i><i></i><i></i><i class="l"></i></div><div class="blk" style="flex:3"><i></i><i></i><i class="l"></i></div><div class="blk" style="flex:2"><i></i><i></i></div></div></div><div class="card"><div class="ttl" style="font-size:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Base wk 1/5: Z2 volume, upper lifts…</div>
+<div class="rules">
+<div class="rl"><span class="rail" style="background:#FF8A8A"></span><div style="min-width:0;flex:1"><div class="k" style="color:#FF8A8A">Safety</div><div class="v"><b>Left knee</b> · no lower-body lifts, rides easy and flat</div></div></div>
+<div class="rl"><span class="rail" style="background:#FF6FAE"></span><div style="min-width:0;flex:1"><div class="k" style="color:#FF6FAE">Lift 3× · anchor</div><div class="slots"><span class="sl "><span class="c">A</span><span class="n">Upper Press</span></span><span class="sl swap"><span class="c">C</span><span class="n">for D · knee</span></span><span class="sl "><span class="c">B</span><span class="n">Upper Pull</span></span></div></div></div>
+<div class="rl"><span class="rail" style="background:#6EA9FF"></span><div style="min-width:0;flex:1"><div class="k" style="color:#6EA9FF">Base · rides</div><div class="ticks"><i class="" style="width:60px"></i><i class="" style="width:78px"></i><i class="" style="width:43px"></i><span class="m">3× Z2 · 3.5 h · no SS / VO2</span></div></div></div>
+</div>
+<div class="more"><span>3 more rules <span style="color:#6B7385">›</span></span><span><span class="num" style="font-size:20px;color:#F3F5F9">0m</span><span style="font-size:12px"> of 5h 50m</span></span></div></div><div class="row-list"><div class="pr"><div class="dd"><div class="w">MON</div><div class="n">9</div></div><span class="vb" style="background:#FF4D9A"></span><div style="min-width:0"><div class="t">Workout A · Upper Press</div><div class="s">Upper-body strength · 55 min</div></div><span class="ring" style="border:2px solid #7A2E52"></span></div><div class="pr"><div class="dd"><div class="w">TUE</div><div class="n">10</div></div><span class="vb" style="background:#3B8CFF"></span><div style="min-width:0"><div class="t">Z2 endurance ride 70 min</div><div class="s">Easy · 70 min</div></div><span class="ring" style="border:2px solid #24477A"></span></div><div class="pr"><div class="dd"><div class="w">WED</div><div class="n">11</div></div><span class="vb" style="background:#FF4D9A"></span><div style="min-width:0"><div class="t">Workout C · Wide Shoulders</div><div class="s">Upper-body strength · 55 min</div></div><span class="ring" style="border:2px solid #7A2E52"></span></div><div class="pr"><div class="dd"><div class="w">THU</div><div class="n">12</div></div><span class="vb" style="background:#2ED3B0"></span><div style="min-width:0"><div class="t">Rehab: left knee</div><div class="s">Recovery · 25 min</div></div><span class="ring" style="border:2px solid #1E6B5C"></span></div><div class="pr"><div class="dd"><div class="w">FRI</div><div class="n">13</div></div><span class="vb" style="background:#FF4D9A"></span><div style="min-width:0"><div class="t">Workout B · Upper Pull</div><div class="s">Upper-body strength · 55 min</div></div><span class="ring" style="border:2px solid #7A2E52"></span></div><div class="pr"><div class="dd"><div class="w">SAT</div><div class="n">14</div></div><span class="vb" style="background:#3B8CFF"></span><div style="min-width:0"><div class="t">Long Z2 ride 90 min</div><div class="s">Long · 90 min</div></div><span class="ring" style="border:2px solid #24477A"></span></div><div class="pr"><div class="dd"><div class="w">SUN</div><div class="n">15</div></div><span class="vb" style="background:#3B8CFF"></span><div style="min-width:0"><div class="t">Easy Z2 ride 50 min</div><div class="s">Easy · 50 min</div></div><span class="ring" style="border:2px solid #24477A"></span></div></div><div class="dim"></div><div class="sheet" style="top:150px"><div class="grab"></div><div class="shead"><div><div class="lbl">Week brief · Nov 9 – 15</div><div class="ttl" style="font-size:28px;margin-top:4px">Base wk 1 of 5</div></div><span class="x">✕</span></div>
+<div style="font-size:13px;color:#8A93A6;margin:6px 0 10px;line-height:1.4">Higher rules win. The coach plans to this list, and the save step holds rides to the block and lifts to the slots.</div>
+<div>
+<div class="br"><span class="pk" style="color:#FF8A8A">Safety</span><div><div class="tx">Left knee (probable ITBS): no lower-body lifts, rides easy and flat with a pain check</div><div class="src">Recovery · pain 1/10</div></div></div>
+<div class="br"><span class="pk" style="color:#FF6FAE">Anchor</span><div><div class="tx">Lift 3× a week: A · Upper Press, C · Wide Shoulders for D, B · Upper Pull</div><div class="src">Anchor goal · weekly lifts</div></div></div>
+<div class="br"><span class="pk" style="color:#6EA9FF">Block</span><div><div class="tx">Rides about 3.5 h: 3× Z2, no sweet spot or VO2</div><div class="src">Winter arc · Base wk 1/5</div></div></div>
+<div class="br low"><span class="pk" style="color:#A3ABBC">Outcome</span><div><div class="tx">210 W for 15 min waits for a quality block</div><div class="src">Goal · Base has none</div></div></div>
+<div class="br low"><span class="pk" style="color:#A3ABBC">Habit</span><div><div class="tx">Long ride Sat or Sun · key sessions Mon–Wed, not Sun</div><div class="src">Athlete settings · plan follow-through</div></div></div>
+</div>
+<div class="sep" style="margin:8px 0 12px"></div>
+<div class="lbl">Coach's note</div><div style="font-size:13px;color:#C9CFDA;margin-top:6px;line-height:1.45">Three upper-body lifts while the left knee is protected, three easy Z2 rides building to 3.5 h, rehab on Thursday.</div>
+</div></div>
+<div class="tabfade"></div>
+<div class="tabbar">
+<div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M12 6.5V12h4" stroke="#3E4048" stroke-width="2" stroke-linecap="round" fill="none"/></svg>Today</div>
+<div class="tab on"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="18" height="17" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 8.5h18" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="12.5" r="1.1"/><circle cx="12" cy="12.5" r="1.1"/><circle cx="16" cy="12.5" r="1.1"/><circle cx="8" cy="16.5" r="1.1"/><circle cx="12" cy="16.5" r="1.1"/><circle cx="16" cy="16.5" r="1.1"/></svg>Plan</div>
+<div class="tab"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 4.5A2.5 2.5 0 0 1 5 2h9a2.5 2.5 0 0 1 2.5 2.5v6A2.5 2.5 0 0 1 14 13H7.5l-3.5 3v-3.2a2.5 2.5 0 0 1-1.5-2.3z"/><path d="M18 7h1a2.5 2.5 0 0 1 2.5 2.5v6a2.5 2.5 0 0 1-1.5 2.3V21l-3.5-3H11a2.5 2.5 0 0 1-2.5-2.5V15H14a4 4 0 0 0 4-4z"/></svg>Coach</div>
+<div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2.5v7a2.5 2.5 0 0 0 5 0v-7M8.5 2.5v19M17.5 21.5v-19c-2.5 1.5-3.5 5-3.5 8.5h3.5"/></svg>Food</div>
+<div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12.5h4.5l2.5-7 5 13 2.5-6H22"/></svg>Activities</div>
+</div>
+<div class="home"></div></div><div class="frame-cap"><b>The whole brief.</b> All rules in order with where each comes from, outcomes and habits quieter. The coach's note sits at the bottom as commentary, not the headline. Opens from "3 more rules" (A) or the chips (B); tapping a slot opens that workout as today.</div></div><div class="frame"><div class="lbl">04 · A in other states</div><div class="board"><div class="state"><div class="lbl" style="color:#F3F5F9">No injury · no arc · rotation mode</div><div class="card" style="background:#12151C"><div class="ttl" style="font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Easy week, 3 lifts and 2 rides</div><div class="rules"><div class="rl"><span class="rail" style="background:#FF6FAE"></span><div style="min-width:0;flex:1"><div class="k" style="color:#FF6FAE">Lift 3× · anchor</div><div class="v"><b>Next: B · Upper Pull</b> · rotating through A–D</div></div></div><div class="rl"><span class="rail" style="background:#A3ABBC"></span><div style="min-width:0;flex:1"><div class="k" style="color:#A3ABBC">Habit</div><div class="v">Long ride Sat or Sun</div></div></div></div><div class="more"><span>1 more rule ›</span><span><span class="num" style="font-size:18px;color:#F3F5F9">0m</span> of 4h</span></div></div></div><div class="state"><div class="lbl" style="color:#F3F5F9">Sick mode inside the week</div><div class="card" style="background:#12151C"><div class="ttl" style="font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sick week: keep the anchor light</div><div class="rules"><div class="rl"><span class="rail" style="background:#FF8A8A"></span><div style="min-width:0;flex:1"><div class="k" style="color:#FF8A8A">Safety</div><div class="v"><b>Sick Tue–Thu</b> · no training beyond an easy walk</div></div></div><div class="rl"><span class="rail" style="background:#FF6FAE"></span><div style="min-width:0;flex:1"><div class="k" style="color:#FF6FAE">Lift 3× · anchor</div><div class="slots"><span class="sl done"><span class="c">A</span><span class="n">Upper Press</span></span><span class="sl"><span class="c">D</span><span class="n">Lower</span></span><span class="sl"><span class="c">B</span><span class="n">Upper Pull</span></span></div></div></div></div><div class="more"><span>3 more rules ›</span><span><span class="num" style="font-size:18px;color:#F3F5F9">55m</span> of 3h 10m</span></div></div></div><div class="state"><div class="lbl" style="color:#F3F5F9">Quality block · lighter week · knee healed</div><div class="card" style="background:#12151C"><div class="ttl" style="font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Lighter week in the build</div><div class="rules"><div class="rl"><span class="rail" style="background:#FF6FAE"></span><div style="min-width:0;flex:1"><div class="k" style="color:#FF6FAE">Lift 3× · anchor</div><div class="slots"><span class="sl done"><span class="c">A</span><span class="n">Upper Press</span></span><span class="sl"><span class="c">D</span><span class="n">Lower</span></span><span class="sl"><span class="c">B</span><span class="n">Upper Pull</span></span></div></div></div><div class="rl"><span class="rail" style="background:#FFB547"></span><div style="min-width:0;flex:1"><div class="k" style="color:#FFB547">Sweet-spot build · rides</div><div class="ticks"><i class="done" style="width:46px;background:#FFB547;border-color:#FFB547"></i><i style="width:40px"></i><i style="width:36px"></i><span class="m">1× SS · 2× Z2 · 2.6 h · lighter</span></div></div></div></div><div class="more"><span>2 more rules ›</span><span><span class="num" style="font-size:18px;color:#F3F5F9">1h 50m</span> of 4h 20m</span></div></div></div></div><div class="frame-cap"><b>Only the rules that exist.</b> No arc: no rides line. No slots: the anchor line names the next workout in the rotation. Sick days come first in red. A quality block colours the ticks by ride type (amber = sweet spot) and says when the week is lighter. With no rules at all the card falls back to the coach's summary.</div></div><div class="notes"><div class="lbl" style="color:#F3F5F9">Notes</div><div class="ncols">
+<div><div class="lbl" style="color:#F3F5F9">Behaviour</div><ul>
+<li>The card shows the first three rules of <code>GET /plans/week-brief</code> (already ordered); the rest and the coach's summary go to the sheet.</li>
+<li>Lift slots fill from the week's done lift days in slot order; ride ticks fill from done rides, widths from planned minutes.</li>
+<li>Tap a slot → that workout's brief (as Today). Tap anywhere else → sheet.</li>
+<li>Offline: cached with the week like the arc strip; "last synced" as elsewhere.</li>
+</ul></div>
+<div><div class="lbl" style="color:#F3F5F9">Data</div><ul>
+<li>Live on 5 Nov for Nov 9–15: the brief (knee, A · C for D · B, Base wk 1/5 3.5 h 3× Z2, 210 W waits, Sat/Sun, Mon–Wed), the saved plan, the arc.</li>
+<li>Made up: the states in 04 (sick week, lighter build week, no arc), and progress fills.</li>
+<li>Backend: none needed; the endpoint exists. Slots in <code>lifts.slots</code>, rules in <code>lines</code>.</li>
+</ul></div>
+<div><div class="lbl" style="color:#F3F5F9">Not changing</div><ul>
+<li>Arc strip, stall line, header buttons, day rows.</li>
+<li>Coach refine/ask menu.</li>
+<li>Web Plan already shows the same brief.</li>
+</ul></div>
+</div></div></div>
+</x-dc>
+</body>
+</html>

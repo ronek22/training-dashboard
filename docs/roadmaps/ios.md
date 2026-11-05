@@ -8,7 +8,6 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Now
 
-- **Week brief on Plan** — The week's ordered rules (safety, anchors, block, outcomes, habits) and the lift slots on the iPhone Plan screen, like the web.
 
 ## Next
 
@@ -20,6 +19,7 @@ remove it from Now/Next/Later. Fixes and polish don't need a line. Format:
 
 ## Shipped
 
+- 2026-11-05 — **Week brief on Plan** — The week card leads with the rules that shape the week: safety on a red rail, the lift slots as pills (a dashed one stands in for a protected leg) and the block's rides as ticks sized by length, both filling as you train; tap for every rule with its source and the coach's note.
 - 2026-11-05 — **Where you are in the arc** — A thin strip under the Plan header shows the week's place in the winter arc (a tape with one segment per week: ridden, this week in volt, lighter weeks short) with what's next, plus the running stall block's pips; tap for the whole arc and the block's plan. No arc yet shows a quiet prompt to set one up on the Mac.
 - 2026-11-05 — **Muscle coverage** — Body's muscle map has a Sets layer: each muscle goes from grey to full pink as it nears 8 hard sets this week, and a card shows eight pips per group (logged, still planned, short) with one line naming the planned lift day that closes the biggest gap, like “Chest 3/8 · Friday and Saturday close it”; groups an injury or hiking covers are marked instead of nudged.
 - 2026-11-05 — **Month in review** — On the first seven days of a month Today offers last month in review (and the week recap opens any month): time as a calendar with sick and record days, the wins, then a four-chip "Is it working?" strip and one card each for weight against the lean-gain lane, best e1RM per lift against the month before with lift days per week, ride hours by intensity, and VDOT against your peak.

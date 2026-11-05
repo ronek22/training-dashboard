@@ -9,6 +9,7 @@ struct PlanView: View {
     @State private var asking: CoachContext?
     @State private var coachOpen = false
     @State private var arcOpen = false
+    @State private var briefOpen = false
 
     init(onStartStrength: @escaping (StrengthLaunch) -> Void) {
         self.onStartStrength = onStartStrength
@@ -30,7 +31,16 @@ struct PlanView: View {
                         .plainRow()
                 }
                 if let week = model.week {
-                    WeekSummaryCard(week: week, today: model.today).reveal(0).plainRow()
+                    Group {
+                        // The brief's rules lead once they arrive; without any, the coach's summary.
+                        if let brief = model.brief, !brief.lines.isEmpty {
+                            WeekContractCard(week: week, brief: brief, today: model.today) { briefOpen = true }
+                        } else {
+                            WeekSummaryCard(week: week, today: model.today)
+                        }
+                    }
+                    .reveal(0)
+                    .plainRow()
                     if coach.isRunning(for: week.weekStart) {
                         CoachRunningLine(coach: coach) { coachOpen = true }.plainRow()
                     }
@@ -94,6 +104,8 @@ struct PlanView: View {
                 #if DEBUG
                 // `-arcDemoSheet YES` opens the arc sheet on launch.
                 if UserDefaults.standard.bool(forKey: "arcDemoSheet") { arcOpen = true }
+                // `-briefDemoSheet YES` opens the week brief on launch.
+                if UserDefaults.standard.bool(forKey: "briefDemoSheet") { briefOpen = model.brief != nil }
                 if let stage = PlanCoachModel.demoStage {
                     // Planning stages show the unsaved week behind the sheet; refine stages the current one.
                     if !["refine", "changed", "day"].contains(stage), let next = model.unplannedStart { model.select(next) }
@@ -121,6 +133,13 @@ struct PlanView: View {
             ArcSheet(blocks: model.arcBlocks, stall: model.stallBlock, weekStart: model.selected ?? PlanFormat.weekStart(of: model.today))
                 .presentationDetents([.fraction(0.78), .large])
                 .presentationBackground(Color.sheet)
+        }
+        .sheet(isPresented: $briefOpen) {
+            if let brief = model.brief {
+                WeekBriefSheet(brief: brief, week: model.week)
+                    .presentationDetents([.fraction(0.78), .large])
+                    .presentationBackground(Color.sheet)
+            }
         }
         .sheet(item: $asking) { context in
             CoachChatView(context: context)

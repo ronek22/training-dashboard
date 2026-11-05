@@ -19,6 +19,8 @@ final class PlanModel {
     private(set) var arcBlocks: [WinterArc.Block] = []
     private(set) var stallBlock: StallBlock?
     private(set) var arcLoaded = false
+    /// Each week's brief (its ordered rules and lift slots), by Monday.
+    private(set) var briefs: [String: WeekBrief] = [:]
 
     private let client: () -> APIClient
     private var templates: [StrengthTemplateSummary]?
@@ -36,6 +38,7 @@ final class PlanModel {
     }
 
     var week: WeeklyPlan? { weeks.first { $0.weekStart == selected } }
+    var brief: WeekBrief? { selected.flatMap { briefs[$0] } }
 
     private var index: Int? { weeks.firstIndex { $0.weekStart == selected } }
 
@@ -90,6 +93,23 @@ final class PlanModel {
         if week == nil && !showingUnplanned {
             selected = PlanFormat.currentWeek(weeks.map(\.weekStart), today: today) ?? unplannedStart
         }
+        await loadBrief()
+    }
+
+    /// The selected week's brief: cached, and never an error on its own (the card falls back to the
+    /// coach's summary until it arrives).
+    func loadBrief() async {
+        guard let week = selected, self.week != nil else { return }
+        #if DEBUG
+        if let stage = WeekBriefFormat.demoStage {
+            briefs[week] = WeekBriefFormat.demo(stage, weekStart: week)
+            return
+        }
+        #endif
+        let client = client()
+        let path = WeekBriefFormat.path(week)
+        if briefs[week] == nil, let cached = client.cached(path, as: WeekBrief.self) { briefs[week] = cached.value }
+        if let fresh = try? await client.get(path, as: WeekBrief.self) { briefs[week] = fresh.value }
     }
 
     /// Arc and stall block: small, cached, and never an error on their own (the strip just waits).
@@ -119,6 +139,7 @@ final class PlanModel {
     }
 
     func page(_ step: Int) {
+        defer { Task { await loadBrief() } }
         if showingUnplanned {
             if step < 0 { selected = weeks.last?.weekStart }
             return
@@ -133,6 +154,7 @@ final class PlanModel {
 
     func select(_ weekStart: String) {
         selected = weekStart
+        Task { await loadBrief() }
     }
 
     /// Swaps two days on the server, then reloads. Moves aren't queued offline: the server checks

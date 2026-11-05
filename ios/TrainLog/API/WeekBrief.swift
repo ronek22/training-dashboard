@@ -31,6 +31,8 @@ struct WeekBrief: Decodable, Sendable, Equatable {
         /// "Upper 1", "Lower", "Upper 2".
         let slot: String
         let templateId: String
+        /// The Workout Studio workout to open from the pill.
+        var workoutTemplateId: Int? = nil
         /// "Workout C · Wide Shoulders".
         let label: String
         let focusArea: String

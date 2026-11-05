@@ -1,23 +1,25 @@
 import SwiftUI
 
 /// The week card as the week's contract: the brief's first rules on coloured rails, with the lift
-/// slots and the block's rides as pills and ticks that fill as the week is trained. Tap → the brief.
+/// slots and the block's rides as pills and ticks that fill as the week is trained. Tap → the brief;
+/// tap a slot → that workout.
 struct WeekContractCard: View {
     let week: WeeklyPlan
     let brief: WeekBrief
     let today: String
     let onOpen: () -> Void
+    var onSlot: (Int) -> Void = { _ in }
 
     var body: some View {
         let summary = PlanFormat.summary(week, today: today)
-        Button(action: onOpen) {
+        VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 if let title = PlanFormat.shortTitle(week.title) {
                     Text(title.uppercased()).font(AppFont.title(22)).foregroundStyle(Color.ink).lineLimit(1)
                 }
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(WeekBriefFormat.rules(brief, week: week, today: today).enumerated()), id: \.offset) { _, rule in
-                        RuleRail(rule: rule)
+                        RuleRail(rule: rule, onSlot: onSlot)
                     }
                 }
                 .padding(.top, 12)
@@ -43,7 +45,9 @@ struct WeekContractCard: View {
             .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Color.cardBorder))
             .contentShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
         }
-        .buttonStyle(.plain)
+        // Not a Button: the slot pills inside are their own buttons.
+        .onTapGesture(perform: onOpen)
+        .accessibilityAddTraits(.isButton)
         .accessibilityHint("Opens the week brief")
     }
 }
@@ -62,6 +66,7 @@ extension WeekBriefFormat.Kind {
 /// One rule: a 3 pt rail in its colour, the kicker, then text, slot pills or ride ticks.
 private struct RuleRail: View {
     let rule: WeekBriefFormat.Rule
+    let onSlot: (Int) -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -74,7 +79,16 @@ private struct RuleRail: View {
                     .lineLimit(1)
                 if !rule.slots.isEmpty {
                     HStack(spacing: 6) {
-                        ForEach(Array(rule.slots.enumerated()), id: \.offset) { _, slot in SlotPillView(slot: slot) }
+                        ForEach(Array(rule.slots.enumerated()), id: \.offset) { _, slot in
+                            if let id = slot.workoutTemplateId {
+                                // Borderless: in a List row each borderless button gets its own taps.
+                                Button { onSlot(id) } label: { SlotPillView(slot: slot) }
+                                    .buttonStyle(.borderless)
+                                    .accessibilityHint("Opens this workout")
+                            } else {
+                                SlotPillView(slot: slot)
+                            }
+                        }
                     }
                     .padding(.top, 2)
                 } else if !rule.rides.isEmpty {
@@ -155,6 +169,22 @@ private struct RideTicks: View {
         case "vo2": .alert
         default: .ride
         }
+    }
+}
+
+/// Why the rules shaped a day, one quiet line: "Knee protected, so no hard rides".
+struct RuleReasonLine: View {
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: "checklist").font(.system(size: 11, weight: .semibold))
+            Text(text).lineLimit(2)
+        }
+        .font(AppFont.body(12))
+        .foregroundStyle(Color.muted)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Why: \(text)")
     }
 }
 

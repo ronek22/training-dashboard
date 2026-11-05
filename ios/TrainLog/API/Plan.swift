@@ -19,6 +19,10 @@ struct PlanDay: Decodable, Sendable, Identifiable {
     let workoutIntent: String?
     let workoutIntentLabel: String?
     let templateLabel: String?
+    /// The Workout Studio workout (strength template id) the day runs.
+    var workoutTemplateId: Int? = nil
+    /// Why the save rules changed or placed the day ("Week brief: knee protected, so no hard rides").
+    var planningRuleReason: String? = nil
     let title: String
     let details: String?
     let check: String?

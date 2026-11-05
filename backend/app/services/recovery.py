@@ -2,7 +2,7 @@ import json
 import re
 import sqlite3
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from ..repositories import recovery as repo
 
@@ -303,6 +303,42 @@ def issue_body_areas(conn):
     return areas
 
 
+LEG_AREAS = {"knee", "heel", "hip"}
+COMEBACK_DAYS = 42
+
+
+def short_label(issue):
+    """"Left knee" from the side and the protected area; the title when no area is detected."""
+    areas = detect_body_areas(f"{issue['title']} {issue['body_area']}")
+    if not areas:
+        return issue["title"]
+    side = issue.get("side") if issue.get("side") in ("left", "right") else ""
+    return f"{side} {areas[0].replace('_', ' ')}".strip().capitalize()
+
+
+def leg_comeback(conn, today=None):
+    """The most recent knee, hip or heel issue healed in the last six weeks, while no leg area is
+    still protected: its first lower-body lift eases back in."""
+    today = today or date.today()
+    if any(LEG_AREAS & set(detect_body_areas(f"{row['title']} {row['body_area']}"))
+           for row in _active_issue_rows(conn) if row.get("protects_area", 1)):
+        return None
+    since = (today - timedelta(days=COMEBACK_DAYS)).isoformat()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM recovery_issues WHERE status = 'healed' AND healed_on >= ? AND protects_area = 1 ORDER BY healed_on DESC",
+            (since,),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return None
+    for row in map(dict, rows):
+        areas = LEG_AREAS & set(detect_body_areas(f"{row['title']} {row['body_area']}"))
+        if areas:
+            return {"issue_id": row["id"], "label": short_label(row), "healed_on": row["healed_on"],
+                    "started_on": row["started_on"], "areas": sorted(areas)}
+    return None
+
+
 def coaching_summary(conn):
     """Active injuries for Coach and planning context: no conversation text."""
     summaries = []
@@ -311,7 +347,7 @@ def coaching_summary(conn):
             ORDER BY id DESC LIMIT 1""", (item["id"],)).fetchone()
         plan = json.loads(plan[0]) if plan else {}
         plan = plan if isinstance(plan, dict) else {}
-        summaries.append({"issue_id": item["id"], "title": item["title"], "body_area": item["body_area"], "side": item["side"],
+        summaries.append({"issue_id": item["id"], "title": item["title"], "label": short_label(item), "body_area": item["body_area"], "side": item["side"],
                           "started_on": item["started_on"], "current_pain": _current_pain(conn, item["id"]),
                           "protected_areas": detect_body_areas(f"{item['title']} {item['body_area']}")
                           if item.get("protects_area", 1) else [],

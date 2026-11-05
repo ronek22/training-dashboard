@@ -21,10 +21,12 @@ def _rating(day, finish=None, **counts):
 
 
 class ProgressionGuardTests(unittest.TestCase):
-    def guard(self, names, lifts, steps, ratings=None, tagged=None, reentry=None):
+    def guard(self, names, lifts, steps, ratings=None, tagged=None, reentry=None, comeback=None):
         with mock.patch.object(progression_guard, "latest_ratings", return_value=ratings or {}), \
                 mock.patch.object(progression_guard, "get_life_load_days", return_value=tagged or {}), \
-                mock.patch.object(progression_guard, "build_mountain_reentry", return_value=reentry):
+                mock.patch.object(progression_guard, "build_mountain_reentry", return_value=reentry), \
+                mock.patch.object(progression_guard, "leg_comeback", return_value=comeback), \
+                mock.patch.object(progression_guard, "_dumbbell_step_kg", return_value=None):
             return progression_guard.guard_steps(None, names, lifts, steps, TODAY)
 
     def test_grinding_or_broken_form_holds_or_goes_back_to_the_finishing_load(self):
@@ -73,6 +75,19 @@ class ProgressionGuardTests(unittest.TestCase):
         self.assertIn("Back from the mountains", result[0]["hint"])
         self.assertEqual(result[1]["target_weight_kg"], 77.5, "a leg lift already done after the trip progresses")
         self.assertEqual(result[2]["target_weight_kg"], 26, "upper body goes on as normal")
+
+    def test_back_after_a_healed_knee_leg_lifts_ease_in_at_about_80_percent(self):
+        comeback = {"label": "Left knee", "healed_on": "2026-10-10", "areas": ["knee"]}
+        names = ["Back Squat", "Dumbbell Bulgarian Split Squat", "Romanian Deadlift", "Dumbbell Bench Press"]
+        lifts = [_lift("2026-09-20", 75, 6), _lift("2026-09-20", 16, 8), _lift("2026-10-12", 60, 8), _lift("2026-10-05", 24)]
+        steps = [_step(77.5, 6), _step(18, 8), _step(62.5, 8), _step(26)]
+        result = self.guard(names, lifts, steps, comeback=comeback)
+
+        self.assertEqual((result[0]["target_weight_kg"], result[0]["held"]), (60, "leg_comeback"))
+        self.assertIn("Back after the left knee: 60 kg", result[0]["hint"])
+        self.assertEqual(result[1]["target_weight_kg"], 12, "dumbbells land on a 2 kg step")
+        self.assertEqual(result[2]["target_weight_kg"], 62.5, "a leg lift already done since healing progresses")
+        self.assertEqual(result[3]["target_weight_kg"], 26, "upper body goes on as normal")
 
 
 if __name__ == "__main__":

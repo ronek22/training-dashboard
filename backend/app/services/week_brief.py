@@ -65,7 +65,7 @@ def _limits(conn: sqlite3.Connection, week_start: str, today: date) -> tuple[lis
     """Safety lines and the protected body areas that change the lifts."""
     from .illness_return import illness_return_dates
     from .mountain_reentry import mountain_reentry_dates
-    from .recovery import coaching_summary
+    from .recovery import coaching_summary, leg_comeback
     from .sick_mode import sick_dates
 
     dates = set(_week_dates(week_start))
@@ -76,7 +76,12 @@ def _limits(conn: sqlite3.Connection, week_start: str, today: date) -> tuple[lis
         rule = "no lower-body lifts, rides easy and flat with a pain check (go if 0-2/10 at rest)" if protected & LOWER_AREAS else (
             f"nothing that loads the {', '.join(sorted(protected))}" if protected else "keep sessions from aggravating it")
         pain = f", pain {issue['current_pain']}/10" if issue.get("current_pain") is not None else ""
-        lines.append(_line("safety", f"{issue['title']}: {rule}", f"Recovery{pain}", f"injury:{issue['issue_id']}"))
+        lines.append(_line("safety", f"{issue['label']}: {rule}", f"Recovery: {issue['title']}{pain}", f"injury:{issue['issue_id']}"))
+    comeback = leg_comeback(conn, today)
+    if comeback:
+        healed = date.fromisoformat(comeback["healed_on"]).strftime("%-d %b")
+        lines.append(_line("safety", f"{comeback['label']} healed {healed}: first lower-body lift at about 80% of last loads, 2+ reps in reserve",
+                           "Recovery, healed", f"comeback:{comeback['issue_id']}"))
     for key, label, rule, read in (
         ("sick", "Sick", "no training beyond an easy walk", lambda: sick_dates(conn)),
         ("illness_return", "Back from illness", "easy sessions only", lambda: illness_return_dates(conn, today)),
@@ -307,33 +312,46 @@ def fit_week_to_lift_slots(
 def fit_week_to_safety(
     conn: Optional[sqlite3.Connection], days: list[dict], week_start: str, today: Optional[date] = None,
 ) -> tuple[list[dict], list[dict]]:
-    """Safety outranks the block: while a knee, hip or heel is protected, a quality ride is ridden
-    as Z2 for the same time. Done and past days stay as they were."""
+    """Safety outranks the block: while a knee, hip or heel is protected, and on sick, illness-return
+    and mountain-return days, a quality ride is ridden as Z2 for the same time. Done and past days
+    stay as they were."""
     if conn is None:
         return days, []
+    from .illness_return import illness_return_dates
     from .lift_ride_clash import locked_dates
+    from .mountain_reentry import mountain_reentry_dates
     from .recovery import coaching_summary
+    from .sick_mode import sick_dates
     from .winter_arc import QUALITY_TYPES, _ride_minutes, ride_type
 
     blocked = sorted({area for issue in coaching_summary(conn)["issues"] for area in issue["protected_areas"]} & LOWER_AREAS)
-    if not blocked:
+    easy_days: dict[str, str] = {}
+    for reason, read in (("sick", lambda: sick_dates(conn)), ("back from illness", lambda: illness_return_dates(conn, today)),
+                         ("back from the mountains", lambda: mountain_reentry_dates(conn, today))):
+        try:
+            for day in read():
+                easy_days.setdefault(day, reason)
+        except sqlite3.OperationalError:
+            pass
+    if not blocked and not easy_days:
         return days, []
     days = [dict(day) for day in days]
     locked = locked_dates(conn, days, today)
     changes = []
     for index, day in enumerate(days):
-        if day["date"] in locked or ride_type(day) not in QUALITY_TYPES:
+        if day["date"] in locked or ride_type(day) not in QUALITY_TYPES or not (blocked or day["date"] in easy_days):
             continue
+        why = f"{', '.join(blocked)} protected" if blocked else easy_days[day["date"]]
         minutes = _ride_minutes(day) or 60
         days[index] = {
             **day,
             "workout_intent": "easy",
             "cycling_workout_id": "endurance-60" if minutes == 60 else None,
             "title": f"Endurance {minutes}",
-            "details": f"Easy Z2, flat and low resistance, smooth cadence; stop if the {blocked[0]} hurts. Replaces {day.get('title') or 'a quality ride'}.",
+            "details": f"Easy Z2, flat and low resistance, smooth cadence{f'; stop if the {blocked[0]} hurts' if blocked else ''}. Replaces {day.get('title') or 'a quality ride'}.",
             "target_duration_min": minutes,
             "target_distance_km": None,
-            "planning_rule_reason": f"Week brief: {', '.join(blocked)} protected, so no hard rides",
+            "planning_rule_reason": f"Week brief: {why}, so no hard rides",
         }
         changes.append({"date": day["date"], "kind": "safety", "from": day.get("title"), "to": days[index]["title"]})
     return days, changes

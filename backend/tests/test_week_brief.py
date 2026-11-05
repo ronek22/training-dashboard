@@ -77,6 +77,29 @@ class WeekBriefTests(unittest.TestCase):
         anchor = next(text for priority, text in self.lines(brief) if priority == "anchor")
         self.assertIn(f"(for {lower['swapped_from']})", anchor)
 
+    def test_a_healed_knee_eases_the_lower_slot_back_in(self):
+        self.use_slots()
+        self.conn.execute("INSERT INTO recovery_issues (title, body_area, side, started_on, status, healed_on) "
+                          "VALUES ('Outside of left knee, probably ITBS', 'outside of left knee', 'left', '2029-10-20', 'healed', '2029-11-28')")
+        brief = build_week_brief(self.conn, WEEK, TODAY)
+        self.assertEqual(brief["lifts"]["slots"][1]["template_id"], "strength-d", "no swap once healed")
+        safety = [line["text"] for line in brief["lines"] if line["priority"] == "safety"]
+        self.assertEqual(safety, ["Left knee healed 28 Nov: first lower-body lift at about 80% of last loads, 2+ reps in reserve"])
+
+    def test_injury_lines_lead_with_a_short_label(self):
+        self.conn.execute("INSERT INTO recovery_issues (title, body_area, side, started_on, status) "
+                          "VALUES ('Outside of left knee, probably ITBS', 'outside of left knee', 'left', '2029-11-20', 'active')")
+        line = build_week_brief(self.conn, WEEK, TODAY)["lines"][0]
+        self.assertTrue(line["text"].startswith("Left knee: no lower-body lifts"))
+        self.assertEqual(line["source"], "Recovery: Outside of left knee, probably ITBS")
+
+    def test_sick_days_ride_quality_as_z2(self):
+        self.conn.execute("INSERT INTO sick_periods (start_date, end_date) VALUES (?, ?)", (DATES[5], DATES[6]))
+        tempo = WeeklyPlanDay(date=DATES[6], label="d", session_type="ride", workout_intent="tempo", title="Sweet spot 3 x 10", target_duration_min=70)
+        upsert_weekly_plan_data(self.conn, WeeklyPlan(week_start=WEEK, title="Test", days=[tempo]))
+        stored = json.loads(self.conn.execute("SELECT days_json FROM weekly_plans WHERE week_start = ?", (WEEK,)).fetchone()[0])
+        self.assertEqual((stored[0]["workout_intent"], stored[0]["planning_rule_reason"]), ("easy", "Week brief: sick, so no hard rides"))
+
     def test_without_slots_the_rotation_stays(self):
         self.assertEqual(build_week_brief(self.conn, WEEK, TODAY)["lifts"]["mode"], "rotation")
 

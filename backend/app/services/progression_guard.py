@@ -14,6 +14,9 @@ workout's progressed targets and holds load when:
 5. Back from a mountain trip: leg lifts last done before the trip stay at their pre-trip loads.
 6. A confirmed hold phase or deload week (``strength_phases``) is on: no lift goes up. With no
    phase saved this rule never fires.
+7. Back from a protected knee, hip or heel (healed in the last six weeks): a leg lift last done
+   before it healed comes back at about ``COMEBACK_SHARE`` of that load, 2+ reps in reserve. The
+   next session progresses from there as usual.
 """
 from __future__ import annotations
 
@@ -26,10 +29,18 @@ from .mountain_reentry import build_mountain_reentry
 from .muscle_gain import muscle_groups_for
 from .set_effort import latest_ratings
 from .strength_phases import HOLDING, current_phase
-from .strength_progression import _fmt, _normalize
+from .recovery import leg_comeback
+from .strength_progression import _dumbbell_step_kg, _fmt, _increment, _normalize
 
 BIG_JUMP_SHARE = 0.10
 MAX_LOAD_STEPS = 2
+COMEBACK_SHARE = 0.8
+
+
+def _eased(name: str, top: float, dumbbell_step_kg: Optional[float]) -> float:
+    """About 80% of ``top``, on a load the equipment can make, never above it."""
+    step = _increment(name, top, dumbbell_step_kg)
+    return min(top, max(step, round(top * COMEBACK_SHARE / step) * step))
 
 
 def _top(lift: Optional[dict]) -> Optional[float]:
@@ -81,6 +92,16 @@ def guard_steps(conn: sqlite3.Connection, names: list[str], lifts: list[Optional
             if "legs" in muscle_groups_for(name) and lift and lift["date"] <= trip_end and _rises(step, _top(lift)):
                 top = _top(lift)
                 result[index] = _held(step, top, f"Back from the mountains: {_fmt(top)} kg like before the trip, 2+ reps in reserve.", "mountain_reentry")
+
+    comeback = leg_comeback(conn, today)
+    if comeback:
+        step_kg = _dumbbell_step_kg(conn)
+        for index, (name, lift, step) in enumerate(zip(names, lifts, result)):
+            top = _top(lift)
+            if step and top and "legs" in muscle_groups_for(name) and lift["date"] < comeback["healed_on"]:
+                load = _eased(name, top, step_kg)
+                result[index] = _held(step, load, f"Back after the {comeback['label'].lower()}: {_fmt(load)} kg, about 80% of last time, "
+                                                  "2+ reps in reserve.", "leg_comeback")
 
     tagged = get_life_load_days(conn, today.isoformat(), today.isoformat()).get(today.isoformat())
     busy = tagged and [label for tag, label in zip(tagged["tags"], tagged["labels"]) if tag != "mountains"]

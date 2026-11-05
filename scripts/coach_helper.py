@@ -26,8 +26,9 @@ from urllib.parse import quote
 from urllib.request import urlopen
 
 try:
-    from scripts import coach_chat_diagnostics, coach_usage, recovery_helper, team_coaching_helper, cycling_power_helper, meal_helper, recipe_helper
+    from scripts import arc_helper, coach_chat_diagnostics, coach_usage, recovery_helper, team_coaching_helper, cycling_power_helper, meal_helper, recipe_helper
 except ModuleNotFoundError:
+    import arc_helper
     import coach_chat_diagnostics
     import coach_usage
     import recovery_helper
@@ -1459,6 +1460,24 @@ def execute_cycling_power_review_job(job_id: str) -> None:
                                 review=result, finished_at=now_iso())
 
 
+def execute_arc_suggestion_job(job_id: str, note: str) -> None:
+    """A winter arc draft for Plan's editor; nothing is saved here."""
+
+    def progress(message):
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="running", message=message)
+
+    progress("Preparing your winter arc…")
+    try:
+        result = arc_helper.run_suggestion(run_coach, progress, note)
+    except Exception as exc:
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="failed", message=str(exc), finished_at=now_iso())
+    else:
+        with JOBS_LOCK:
+            JOBS[job_id].update(status="succeeded", message="Your winter arc is ready.", arc=result, finished_at=now_iso())
+
+
 def execute_meal_estimate_job(job_id: str, text: str, image: dict | None) -> None:
     """Meal estimates always use Claude: it reads photos, and nothing is saved here."""
 
@@ -1684,6 +1703,41 @@ class Handler(BaseHTTPRequestHandler):
         threading.Thread(target=execute_recipe_draft_job, args=(job_id, request), daemon=True).start()
         self.send_json(202, public_job(job))
 
+    def start_arc_suggestion(self) -> None:
+        if "application/json" not in (self.headers.get("Content-Type") or ""):
+            self.send_json(415, {"detail": "Content-Type must be application/json"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+        if length < 1 or length > 8 * 1024:
+            self.send_json(400, {"detail": "Invalid request size"})
+            return
+        try:
+            request = arc_helper.validate_request(json.loads(self.rfile.read(length)))
+        except (json.JSONDecodeError, ValueError) as exc:
+            self.send_json(400, {"detail": str(exc)})
+            return
+        with JOBS_LOCK:
+            active = next((dict(job) for job in JOBS.values()
+                           if job.get("kind") == "arc_suggestion" and job["status"] in {"queued", "running"}), None)
+            if active:
+                self.send_json(202, public_job(active))
+                return
+            job_id = uuid.uuid4().hex
+            job = {
+                "job_id": job_id,
+                "kind": "arc_suggestion",
+                "status": "queued",
+                "message": "Your winter arc is queued.",
+                "created_at": now_iso(),
+                "finished_at": None,
+            }
+            JOBS[job_id] = job
+        threading.Thread(target=execute_arc_suggestion_job, args=(job_id, request["note"]), daemon=True).start()
+        self.send_json(202, public_job(job))
+
     def start_meal_ideas(self) -> None:
         if "application/json" not in (self.headers.get("Content-Type") or ""):
             self.send_json(415, {"detail": "Content-Type must be application/json"})
@@ -1737,7 +1791,7 @@ class Handler(BaseHTTPRequestHandler):
                 "pid": os.getpid(),
                 "coach_cli": current_cli(),
                 "model": current_model(),
-                "capabilities": ["recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "usage", "meal_estimate", "recipe_draft", "label_read", "meal_ideas"],
+                "capabilities": ["recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "usage", "meal_estimate", "recipe_draft", "label_read", "meal_ideas", "arc_suggestion"],
                 "sunday_review": {"enabled": True, "time": "23:59", "timezone": "Europe/Warsaw"},
             })
             return
@@ -1750,6 +1804,15 @@ class Handler(BaseHTTPRequestHandler):
                 job = dict(JOBS.get(self.path[len(prefix):], {}))
             if not job or job.get("kind") != "meal_estimate":
                 self.send_json(404, {"detail": "Meal estimate job not found"})
+                return
+            self.send_json(200, public_job(job))
+            return
+        prefix = "/arc-suggestion/"
+        if self.path.startswith(prefix):
+            with JOBS_LOCK:
+                job = dict(JOBS.get(self.path[len(prefix):], {}))
+            if not job or job.get("kind") != "arc_suggestion":
+                self.send_json(404, {"detail": "Arc suggestion job not found"})
                 return
             self.send_json(200, public_job(job))
             return
@@ -1867,6 +1930,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path == "/recipe-draft":
             self.start_recipe_draft()
+            return
+        if self.path == "/arc-suggestion":
+            self.start_arc_suggestion()
             return
         if self.path == "/label-read":
             self.start_label_read()
@@ -2007,7 +2073,7 @@ def health() -> dict | None:
 def start() -> int:
     existing = health()
     if existing:
-        if not {"recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "meal_estimate", "recipe_draft", "label_read", "meal_ideas"}.issubset(existing.get("capabilities", [])):
+        if not {"recovery_chat", "team_review", "coach_chat_diagnostics", "cycling_power_review", "coach_chat_context", "meal_estimate", "recipe_draft", "label_read", "meal_ideas", "arc_suggestion"}.issubset(existing.get("capabilities", [])):
             print("The running helper is outdated. Run coach_helper.py stop, then start, to enable the latest coaching features.", file=sys.stderr)
             return 1
         print(f"Coach helper is already running (PID {existing['pid']}).")

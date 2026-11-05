@@ -19,6 +19,7 @@ from ..services.minimum_week import apply_minimum_week, preview_minimum_week, re
 from ..services.today_options import apply_today_option, build_today_options, undo_today_option
 from ..models.plans import BlockRecapDecision, TodayOptionApply, TodayOptionUndo, WinterArc, WinterArcAdjustment, WinterArcAdjustmentUndo
 from ..services.block_recap import build_block_recap, decide_block_suggestion
+from ..services.arc_suggest import suggestion_context
 from ..services.arc_adjust import apply_arc_adjustment, undo_arc_adjustment, winter_arc_payload
 from ..services.season_timeline import PREVIEW_MAX_WEEKS, build_season_timeline
 from ..services.week_preview import PREVIEW_WEEKS, build_week_preview
@@ -183,6 +184,16 @@ def get_winter_arc(day: Optional[date] = None):
     conn = get_db()
     try:
         return winter_arc_payload(conn, day)
+    finally:
+        conn.close()
+
+
+@router.get("/plans/winter-arc/suggestion-context")
+def get_winter_arc_suggestion_context(day: Optional[date] = None):
+    """Facts the coach helper uses to suggest an arc; the suggestion itself is never saved here."""
+    conn = get_db()
+    try:
+        return suggestion_context(conn, day)
     finally:
         conn.close()
 

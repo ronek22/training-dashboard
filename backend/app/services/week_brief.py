@@ -302,3 +302,38 @@ def fit_week_to_lift_slots(
         }
         changes.append({"date": day["date"], "kind": "lift_slot", "slot": slot["slot"], "from": day.get("title"), "to": template["display_name"]})
     return days, changes
+
+
+def fit_week_to_safety(
+    conn: Optional[sqlite3.Connection], days: list[dict], week_start: str, today: Optional[date] = None,
+) -> tuple[list[dict], list[dict]]:
+    """Safety outranks the block: while a knee, hip or heel is protected, a quality ride is ridden
+    as Z2 for the same time. Done and past days stay as they were."""
+    if conn is None:
+        return days, []
+    from .lift_ride_clash import locked_dates
+    from .recovery import coaching_summary
+    from .winter_arc import QUALITY_TYPES, _ride_minutes, ride_type
+
+    blocked = sorted({area for issue in coaching_summary(conn)["issues"] for area in issue["protected_areas"]} & LOWER_AREAS)
+    if not blocked:
+        return days, []
+    days = [dict(day) for day in days]
+    locked = locked_dates(conn, days, today)
+    changes = []
+    for index, day in enumerate(days):
+        if day["date"] in locked or ride_type(day) not in QUALITY_TYPES:
+            continue
+        minutes = _ride_minutes(day) or 60
+        days[index] = {
+            **day,
+            "workout_intent": "easy",
+            "cycling_workout_id": "endurance-60" if minutes == 60 else None,
+            "title": f"Endurance {minutes}",
+            "details": f"Easy Z2, flat and low resistance, smooth cadence; stop if the {blocked[0]} hurts. Replaces {day.get('title') or 'a quality ride'}.",
+            "target_duration_min": minutes,
+            "target_distance_km": None,
+            "planning_rule_reason": f"Week brief: {', '.join(blocked)} protected, so no hard rides",
+        }
+        changes.append({"date": day["date"], "kind": "safety", "from": day.get("title"), "to": days[index]["title"]})
+    return days, changes

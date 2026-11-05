@@ -1529,10 +1529,11 @@ def upsert_weekly_plan_data(conn: sqlite3.Connection, plan: WeeklyPlan) -> dict:
 
     days, arc_changes = fit_week_to_arc(conn, [day.model_dump() for day in prepared_plan.days], prepared_plan.week_start)
     # Weekly lift slots: each lift day gets its slot's workout, a lower slot swapped while a leg is protected.
-    from .week_brief import fit_week_to_lift_slots
+    from .week_brief import fit_week_to_lift_slots, fit_week_to_safety
 
     days, lift_changes = fit_week_to_lift_slots(conn, days, prepared_plan.week_start)
-    arc_changes = arc_changes + lift_changes
+    days, safety_changes = fit_week_to_safety(conn, days, prepared_plan.week_start)
+    arc_changes = arc_changes + lift_changes + safety_changes
     # Clash rule: swap days so a leg lift does not sit next to a hard ride.
     resolved_days, clash_swaps = resolve_clashes(days, legs_check(conn), locked_dates(conn, days))
     if clash_swaps or arc_changes:
@@ -1696,12 +1697,13 @@ def adjust_weekly_plan_data(
     updated_plan = prepare_weekly_plan_for_storage(updated_plan, template_settings=template_settings, restrictions=restrictions)
     if fit_lift_slots:
         # Coach edits follow the week brief like a fresh save: rides to the arc block, lifts to the slots.
-        from .week_brief import fit_week_to_lift_slots
+        from .week_brief import fit_week_to_lift_slots, fit_week_to_safety
         from .winter_arc import fit_week_to_arc
 
         fitted, arc_changes = fit_week_to_arc(conn, [day.model_dump() for day in updated_plan.days], updated_plan.week_start)
         fitted, lift_changes = fit_week_to_lift_slots(conn, fitted, updated_plan.week_start)
-        lift_changes = arc_changes + lift_changes
+        fitted, safety_changes = fit_week_to_safety(conn, fitted, updated_plan.week_start)
+        lift_changes = arc_changes + lift_changes + safety_changes
         if lift_changes:
             updated_plan = prepare_weekly_plan_for_storage(
                 updated_plan.model_copy(update={"days": [WeeklyPlanDay(**day) for day in fitted]}),

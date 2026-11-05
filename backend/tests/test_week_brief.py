@@ -125,6 +125,23 @@ class WeekBriefTests(unittest.TestCase):
         _, stored = self.stored_templates()
         self.assertEqual((stored[1]["title"], stored[1]["workout_intent"]), ("Endurance 70", "easy"))
 
+    def test_a_protected_knee_rides_quality_as_z2_even_without_an_arc(self):
+        self.injure_knee()
+        tempo = {"session_type": "ride", "workout_intent": "tempo", "title": "Sweet spot 3 x 10 (knee-gated)", "target_duration_min": 70}
+        rest = {"session_type": "Rest", "title": "Rest"}
+        days = [rest] * 6 + [tempo]
+        result = upsert_weekly_plan_data(self.conn, WeeklyPlan(week_start=WEEK, title="Test", days=[WeeklyPlanDay(date=DATES[i], label="d", **day) for i, day in enumerate(days)]))
+        _, stored = self.stored_templates()
+        self.assertEqual((stored[6]["title"], stored[6]["workout_intent"], stored[6]["target_duration_min"]), ("Endurance 70", "easy", 70))
+        self.assertEqual(stored[6]["planning_rule_reason"], "Week brief: knee protected, so no hard rides")
+        self.assertEqual([change["kind"] for change in result["arc_changes"]], ["safety"])
+
+    def test_without_a_protected_leg_quality_rides_stay(self):
+        tempo = WeeklyPlanDay(date=DATES[6], label="d", session_type="ride", workout_intent="tempo", title="Sweet spot 3 x 10", target_duration_min=70)
+        upsert_weekly_plan_data(self.conn, WeeklyPlan(week_start=WEEK, title="Test", days=[tempo]))
+        stored = json.loads(self.conn.execute("SELECT days_json FROM weekly_plans WHERE week_start = ?", (WEEK,)).fetchone()[0])
+        self.assertEqual(stored[0]["workout_intent"], "tempo")
+
     def test_the_athletes_own_edits_stay_as_made(self):
         self.save_rotation_week()
         self.use_slots()

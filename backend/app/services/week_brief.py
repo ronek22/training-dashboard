@@ -11,6 +11,7 @@ block and lifts to the weekly slots, and Plan shows it so the week explains itse
 """
 from __future__ import annotations
 
+import re
 import sqlite3
 from datetime import date, timedelta
 from typing import Optional
@@ -355,3 +356,46 @@ def fit_week_to_safety(
         }
         changes.append({"date": day["date"], "kind": "safety", "from": day.get("title"), "to": days[index]["title"]})
     return days, changes
+
+
+QUALITY_WORDS = re.compile(r"quality|sweet[- ]?spot|tempo|threshold|vo2|interval", re.IGNORECASE)
+
+
+def _without_quality(text: Optional[str], sentences: bool) -> Optional[str]:
+    """Drop the clauses (or sentences) that promise a hard ride."""
+    if not text or not QUALITY_WORDS.search(text):
+        return text
+    if sentences:
+        # Sentence by sentence; inside one, only the clause that promises the ride goes.
+        kept = []
+        for sentence in re.split(r"(?<=[.!?])\s+", text.strip()):
+            if not QUALITY_WORDS.search(sentence):
+                kept.append(sentence)
+                continue
+            end = sentence[-1] if sentence[-1] in ".!?" else ""
+            rest = _without_quality(sentence.rstrip(".!?"), sentences=False)
+            if rest:
+                kept.append(rest + end)
+        return " ".join(kept) or None
+    parts = re.split(r",\s*|;\s*|\s+and\s+", text.strip())
+    kept = [part for part in parts if part and not QUALITY_WORDS.search(part)]
+    if not kept:
+        return None
+    joined = ", ".join(kept)
+    return joined[0].upper() + joined[1:]
+
+
+def reconcile_summary(fields: dict, days: list[dict], changes: list[dict]) -> dict:
+    """The coach's title, focus and overview after the save rules: once a hard ride was taken out
+    and none is left, text that still promises one is dropped so the headline matches the week."""
+    from .winter_arc import QUALITY_TYPES, ride_type
+
+    removed = any(change["kind"] in ("too_hard", "safety") for change in changes)
+    if not removed or any(ride_type(day) in QUALITY_TYPES for day in days):
+        return {}
+    update = {
+        "title": _without_quality(fields.get("title"), sentences=False),
+        "focus": _without_quality(fields.get("focus"), sentences=True),
+        "overview": _without_quality(fields.get("overview"), sentences=True),
+    }
+    return {key: value for key, value in update.items() if value != fields.get(key)}

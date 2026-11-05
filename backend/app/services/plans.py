@@ -1537,8 +1537,14 @@ def upsert_weekly_plan_data(conn: sqlite3.Connection, plan: WeeklyPlan) -> dict:
     # Clash rule: swap days so a leg lift does not sit next to a hard ride.
     resolved_days, clash_swaps = resolve_clashes(days, legs_check(conn), locked_dates(conn, days))
     if clash_swaps or arc_changes:
+        from .week_brief import reconcile_summary
+
         prepared_plan = prepare_weekly_plan_for_storage(
-            prepared_plan.model_copy(update={"days": [WeeklyPlanDay(**day) for day in resolved_days]}),
+            prepared_plan.model_copy(update={
+                "days": [WeeklyPlanDay(**day) for day in resolved_days],
+                # The coach's headline no longer promises a ride the rules took out.
+                **reconcile_summary(prepared_plan.model_dump(), resolved_days, arc_changes),
+            }),
             template_settings=template_settings,
             restrictions=restrictions,
         )
@@ -1705,8 +1711,11 @@ def adjust_weekly_plan_data(
         fitted, safety_changes = fit_week_to_safety(conn, fitted, updated_plan.week_start)
         lift_changes = arc_changes + lift_changes + safety_changes
         if lift_changes:
+            from .week_brief import reconcile_summary
+
             updated_plan = prepare_weekly_plan_for_storage(
-                updated_plan.model_copy(update={"days": [WeeklyPlanDay(**day) for day in fitted]}),
+                updated_plan.model_copy(update={"days": [WeeklyPlanDay(**day) for day in fitted],
+                                                **reconcile_summary(updated_plan.model_dump(), fitted, lift_changes)}),
                 template_settings=template_settings,
                 restrictions=restrictions,
             )

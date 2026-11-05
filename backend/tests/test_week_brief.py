@@ -10,7 +10,7 @@ from backend.app.models.plans import WeeklyPlan, WeeklyPlanDay, WinterArc
 from backend.app.models.plans import WeeklyPlanAdjustment
 from backend.app.services.plans import adjust_weekly_plan_data, upsert_weekly_plan_data
 from backend.app.services.settings import set_workout_template_settings_for_conn
-from backend.app.services.week_brief import build_week_brief, week_brief_context
+from backend.app.services.week_brief import build_week_brief, reconcile_summary, week_brief_context
 from backend.app.services.winter_arc import save_winter_arc
 
 TODAY = date(2029, 12, 1)
@@ -158,6 +158,22 @@ class WeekBriefTests(unittest.TestCase):
         self.assertEqual((stored[6]["title"], stored[6]["workout_intent"], stored[6]["target_duration_min"]), ("Endurance 70", "easy", 70))
         self.assertEqual(stored[6]["planning_rule_reason"], "Week brief: knee protected, so no hard rides")
         self.assertEqual([change["kind"] for change in result["arc_changes"]], ["safety"])
+
+    def test_the_coachs_headline_drops_a_hard_ride_the_rules_took_out(self):
+        self.injure_knee()
+        tempo = WeeklyPlanDay(date=DATES[1], label="d", session_type="ride", workout_intent="tempo", title="Sweet spot 3 x 10", target_duration_min=70)
+        plan = WeeklyPlan(week_start=WEEK, title="Three upper lifts, one gated quality ride, knee stays protected",
+                          focus="Hold the 3-lift anchor. One knee-gated sweet-spot ride on Tuesday. Gentle ride-volume step.",
+                          days=[tempo])
+        upsert_weekly_plan_data(self.conn, plan)
+        row = self.conn.execute("SELECT title, focus FROM weekly_plans WHERE week_start = ?", (WEEK,)).fetchone()
+        self.assertEqual(row["title"], "Three upper lifts, knee stays protected")
+        self.assertEqual(row["focus"], "Hold the 3-lift anchor. Gentle ride-volume step.")
+
+    def test_headline_stays_when_a_hard_ride_is_still_planned(self):
+        days = [{"session_type": "ride", "workout_intent": "tempo", "title": "Sweet spot"}]
+        self.assertEqual(reconcile_summary({"title": "One quality ride"}, days, [{"kind": "too_hard"}]), {})
+        self.assertEqual(reconcile_summary({"title": "One quality ride"}, [], []), {})
 
     def test_without_a_protected_leg_quality_rides_stay(self):
         tempo = WeeklyPlanDay(date=DATES[6], label="d", session_type="ride", workout_intent="tempo", title="Sweet spot 3 x 10", target_duration_min=70)
